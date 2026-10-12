@@ -101,6 +101,9 @@
     (fn-arx-read-cache-entries 8)
     (fn-bph-node-serve-p (and *bp-terms* t))
     (fn-heap-reserve-report-line (format nil "~s" (first args)))
+    ;; The command's line (books/heap-log-extent-cap.lisp): the decision, as
+    ;; the report line prints it; the totals, image, config and extent words
+    ;; are the charged-totals fixtures', not this one's.
     (fn-lxc-command-line (format nil "~s" (first args)))
     (fn-heap-decision-exit-code (if (eq (caar args) :heap) 0 1))
     (otherwise (apply *original-core* entry args))))

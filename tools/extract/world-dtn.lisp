@@ -132,6 +132,7 @@
 (include-book "../../books/heap-reservation")
 (include-book "../../books/heap-command")
 (include-book "../../books/heap-log-extent-cap")
+(include-book "../../books/store-log-open-scan")
 (include-book "../../books/bp-heap-command")
 (include-book "../../books/cold-read-reservation")
 (include-book "../../books/resource-output")

@@ -211,6 +211,76 @@
    "mutation": "tests/acl2/store-log-buffer-tests.lisp::bound-one-below-max",
    "provenance": "keystone_critical.py --declare sha256:f3f27c4cb03fc71dbd6e3dfd5bc58e964650f69a2013d944980df4d939a946ef"
   },
+  "fn-lgo-chain-is-the-fold": {
+   "subject": "fn-lgo-fold",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-chain-is-the-fold",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::genesis-not-carried",
+   "provenance": "keystone_critical.py --declare sha256:b14c78dada9144f9deb86d8ce8f0fb9efbccb946e68b43d85e2f594a7d6804e2"
+  },
+  "fn-lgo-fold-from-no-skip-bounds-any-skip": {
+   "subject": "fn-lgo-fold",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-fold-from-no-skip-bounds-any-skip",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::skip-blind",
+   "provenance": "keystone_critical.py --declare sha256:5635361cd816146dd00695d5c35e551a82b2fe944589c4c969e6e1bf7a3bbf04"
+  },
+  "fn-lgo-fold-is-the-wire-fold": {
+   "subject": "fn-lgo-fold",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-fold-is-the-wire-fold",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::wire-fold-from-the-start",
+   "provenance": "keystone_critical.py --declare sha256:fb76c55ea2560fbe5707f94837b831b74166534d02d1aa4c66bde262b5a28778"
+  },
+  "fn-lgo-head-genesis-is-the-open-lineage-start": {
+   "subject": "fn-lgo-head-genesis",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-head-genesis-is-the-open-lineage-start",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::starts-from-the-head-itself",
+   "provenance": "keystone_critical.py --declare sha256:e3bd84318eebaa620c05ac3d17632090b95d6c1e7346b640e0791b3a95e1644b"
+  },
+  "fn-lgo-history-ceiling-bounds-the-intern": {
+   "subject": "fn-lgo-fold",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-history-ceiling-bounds-the-intern",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::the-scan-row-history",
+   "provenance": "keystone_critical.py --declare sha256:478a5a8f04dc16be74c679a961ec021953e736409559d4ef26b488bd016a5a12"
+  },
+  "fn-lgo-host-suffix-covers-the-opened-store": {
+   "subject": "fn-lgo-fold",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-host-suffix-covers-the-opened-store",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::the-bound-claimed-exact",
+   "provenance": "keystone_critical.py --declare sha256:df56d824d3953dd7dab891be80df35d3d21cb076f82a5878bc7901aeeed7a09d"
+  },
+  "fn-lgo-observed-covers-the-opened-store": {
+   "subject": "fn-lgo-fold",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-observed-covers-the-opened-store",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::prefix-skipped-twice",
+   "provenance": "keystone_critical.py --declare sha256:e88e54dd28859f9518c3f96690bea5f4056d9913087c6b2aa556ccb9649cd1cb"
+  },
+  "fn-lgo-run-is-the-fold": {
+   "subject": "fn-lgo-fold",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-run-is-the-fold",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::charges-the-covered-records",
+   "provenance": "keystone_critical.py --declare sha256:f9e2388d701d4dde3e10554a5c389bf7dd3c546cc2a2dc1a7d075232907dbb1e"
+  },
+  "fn-lgo-scan-plan-scans-every-present-segment": {
+   "subject": "fn-lgo-scan-plan",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-scan-plan-scans-every-present-segment",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::skip-s-past-a-drop",
+   "provenance": "keystone_critical.py --declare sha256:43f57315e80e859285d978eb1138ff4c83dfcfa3781d64b883742a6f8c87baaf"
+  },
+  "fn-lgo-wire-fold-covers-the-replay": {
+   "subject": "fn-lgo-fold",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-wire-fold-covers-the-replay",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::history-claimed-exact",
+   "provenance": "keystone_critical.py --declare sha256:2edf6fd2478b6004e63c756451a2c35e0cd33a4282877fc6d2618c883acad2f2"
+  },
   "fn-lgob-three-barrier-open-after-the-copy-is-the-five": {
    "subject": "fn-lg-open-program",
    "host_test": "tests/campaign/native_operator_campaign.py::run_cut",

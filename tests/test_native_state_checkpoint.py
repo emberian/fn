@@ -511,12 +511,12 @@ class StateCheckpointTests(StateCheckpointFixture):
         fn-mo-read-holds-every-store-within-its-totals).  (1) After a
         checkpoint at 3 and nothing past it, the probe reads HDR from the
         header (host/native/heap.lisp fnn-heap-charged-totals) and SUFFIX is
-        the empty one, so the decision is the observed branch: exit 0, a
+        the scan's zero, so the decision is the observed branch: exit 0, a
         `heap=' line, none of the offline adapter's words, and the totals it
         read (fn-mo-totals-words) are the stopped status's header line, with
-        CHARGE the replayed headroom's bytes-used.  (2) Two records past the
-        checkpoint: SUFFIX is unseen (L's adapter), so the line says so.  (3)
-        No checkpoint at all: the same."""
+        CHARGE the replayed headroom's bytes-used.  (2) Records past the
+        checkpoint are seen: test_the_read_decision_sees_the_records_past_the_header.
+        (3) No checkpoint at all: the totals are unseen."""
         created = self.op("init", "--profile", "development", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.ids = ["<scp-{}@example.invalid>".format(n) for n in range(5)]
@@ -555,10 +555,77 @@ class StateCheckpointTests(StateCheckpointFixture):
         # CHARGE is the store budget's row octets (fn-sbud-row-octets), whose
         # sum the replayed headroom reports as bytes-used
         self.assertEqual(observed[7], self.headroom()["bytes-used"])
-        # (2) records past S
-        self.post(self.ids[3:])
+
+    def heap_observed_totals(self):
+        """The read decision's observed totals (the probe's `totals=' words)."""
+        code, line = self.heap_replay_line()
+        self.assertEqual(code, EXIT_OK, line)
+        self.assertNotIn("unseen", line)
+        match = re.search(r" totals=([0-9]+(?:,[0-9]+){7}),(resident|paged)", line)
+        self.assertIsNotNone(match, line)
+        return [int(x) for x in match.group(1).split(",")]
+
+    def assert_covers_the_checkpoint_at_five(self, observed, exact):
+        """OBSERVED (the header at 3 plus the probe's suffix of the two
+        records past it) against EXACT, the header a checkpoint at 5 writes:
+        RECORDS, ARENA, HCHARGE, MEMBERSHIPS, EVENTS and CHARGE equal (the
+        wire fold is exact in them, KEYSTONE fn-lgo-wire-fold-covers-the-
+        replay), LOG at least (the observation raises it to the segment
+        extent), HISTORY at least (charged at the HISTORY clause, Builder M's
+        ruling (b))."""
+        names = ("records", "arena", "hcharge", "memberships", "events", "log", "history", "charge")
+        for i, k in enumerate(names):
+            if k in ("log", "history"):
+                self.assertGreaterEqual(observed[i], exact[k], (k, observed, exact))
+            else:
+                self.assertEqual(observed[i], exact[k], (k, observed, exact))
+
+    def test_the_read_decision_sees_the_records_past_the_header(self):
+        """Landing 2a-host (host/native/heap.lisp fnn-heap-log-suffix: the
+        plan fn-lgo-scan-plan and the fold fn-lgo-fold; KEYSTONES fn-lgo-host-suffix-covers-the-opened-store,
+        fn-lgo-scan-plan-scans-every-present-segment).  A checkpoint at 3 and
+        two records past it: the probe sees the totals.  (1) After the drop
+        (segment 1 gone: the scan from segment 2's head with skip 0) and (2)
+        with the dropped segment linked back (an interrupted drop: from the
+        genesis with skip 3), each covers the header a checkpoint at 5
+        writes, exact in six fields, and the two plans agree but for LOG.
+        (3) A damaged lowest head leaves the totals unseen
+        (fn-lgo-head-genesis)."""
+        self.init_with_checkpoint_at_three()
+        restored = self.dropped_segments()
+        self.assertIn("000001.log", restored)
+        after_drop = self.heap_observed_totals()
+        self.assertEqual(after_drop[0], 5)
+        # (3) Codex l-2ah F2: the head the :head plan starts from is accepted
+        # only as a readable rotation entry naming the lowest segment
+        # (fn-lgo-head-genesis, KEYSTONE
+        # fn-lgo-head-genesis-is-the-open-lineage-start).  Codex's construction:
+        # the segment zeroed at its extent, which the open refuses
+        # (segment-head-damaged) and a stream from a zero-padded predecessor
+        # reads as an empty complete segment; the totals are unseen, not the
+        # header's alone.
+        # (000000.log is the genesis, which the :head plan does not read.)
+        low = self.store / "journal" / sorted(
+            p.name for p in (self.store / "journal").iterdir()
+            if p.name != "000000.log")[0]
+        self.assertNotIn(low.name, restored)
+        good = low.read_bytes()
+        low.write_bytes(bytes(len(good)))
         code, line = self.heap_replay_line()
         self.assertTrue(line.endswith("header totals unseen"), line)
+        low.write_bytes(good)
+        self.assertEqual(self.heap_observed_totals(), after_drop)
+        for name in restored:
+            os.link(self.root / "kept-log" / name, self.store / "journal" / name)
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+        from_genesis = self.heap_observed_totals()
+        made = self.checkpoint()
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
+        self.assertIn(b"checkpoint sequence=5", made.stdout)
+        exact = self.stopped_charged_totals()
+        self.assert_covers_the_checkpoint_at_five(after_drop, exact)
+        self.assert_covers_the_checkpoint_at_five(from_genesis, exact)
+        self.assertEqual(after_drop[:5] + after_drop[6:], from_genesis[:5] + from_genesis[6:])
 
     def test_the_read_refuses_a_segment_past_the_decided_extent(self):
         """The read's extent cap (books/heap-log-extent-cap.lisp; host/native/io.lisp

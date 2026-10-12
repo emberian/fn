@@ -1454,10 +1454,13 @@
                             (bs2 (mv-nth 1 (fn-bs-write bs ino extent (fn-bs-zeros (- (nfix next) (nfix extent))) eo1)))
                             (bs3 (mv-nth 1 (fn-bs-fsync-file (mv-nth 1 (fn-bs-write bs ino extent (fn-bs-zeros (- (nfix next) (nfix extent))) eo1)) ino eo2))))))))
 
-(defthm fn-lgu-tailp-recordsp
-  (implies (fn-lgu-tailp bs ks ino genesis max)
-           (fn-lg-recordsp (fn-lgk-inflight ks) max))
-  :hints (("Goal" :in-theory (enable fn-lgu-tailp))))
+; A proof step of this book's tail lemmas (local: not a premise the host
+; establishes; books/post-transaction-durable.lisp proves its own).
+(local
+ (defthm fn-lgu-tailp-recordsp
+   (implies (fn-lgu-tailp bs ks ino genesis max)
+            (fn-lg-recordsp (fn-lgk-inflight ks) max))
+   :hints (("Goal" :in-theory (enable fn-lgu-tailp)))))
 
 (defthm fn-lgu-tailp-of-fence-failed
   (implies (fn-lgu-tailp bs ks ino genesis max)

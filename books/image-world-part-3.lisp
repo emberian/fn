@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
-(include-book "post-admission-keyed")
 (include-book "moderation-verbs")
 (include-book "owner-results")
 (include-book "owner-served-bound")
@@ -137,6 +136,7 @@
 (include-book "payload-extent")
 (include-book "payload-arena-extent")
 (include-book "served-columns")
+(include-book "store-log-open-scan")
 (include-book "owner-commit-held")
 (include-book "owner-reconfig-lock")
 (include-book "bp-node-progress-bridge")

@@ -8,12 +8,14 @@
  "id": "CL15",
  "line": "",
  "locus": "connections",
- "notes": [],
+ "notes": [
+  "10-11 12:05 10-11 Builder D: tests/test_raw_depth_check.py is retired with raw_depth_check (b90d0148e); its cases are tests.test_depth_check's raw domain."
+ ],
  "owner": "sweep-gates",
  "severity": "medium",
  "slice": "mux",
  "source": "check-lane-355a5c843",
- "state": "open",
+ "state": "closed",
  "title": "check-lane red: tests.test_raw_depth_check",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-11T16:05:36Z"
 }

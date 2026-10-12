@@ -288,7 +288,10 @@ while [ $# -gt 0 ]; do
             esac
             # Spelled out: a locale's [A-Z] range can match lower case.
             case ${2%%=*} in [0-9]*|*[!ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_]*) echo "hbox_native: bad --env name ${2%%=*}" >&2; exit 2 ;; esac
-            case ${2#*=} in *[!A-Za-z0-9_./:\$-]*) echo "hbox_native: --env value may hold only A-Za-z0-9_./:-\$" >&2; exit 2 ;; esac
+            # A comma is inert in the box script's unquoted `export NAME=VALUE`
+            # and native_env.py splits a value only at its first `=` (C15: a
+            # comma-separated value was refused).
+            case ${2#*=} in *[!A-Za-z0-9_./:,\$-]*) echo "hbox_native: --env value may hold only A-Za-z0-9_./:,-\$" >&2; exit 2 ;; esac
             ENVS="$ENVS $2"; shift 2 ;;
         -h|--help) usage ;;
         -*) echo "hbox_native: unknown option $1" >&2; usage ;;
@@ -689,7 +692,10 @@ BOX
         fi
         # More than one image: build the foreign libraries once, then every
         # save at once (pstep/pwait); one image keeps the plain step.
-        NIMG=$(echo "$IMAGES" | tr ',' '\n' | grep -vc '^prof$')
+        # `grep -c` exits 1 on a count of 0 (--images prof alone): under set -e
+        # that ended box_script after host-ld, shipping a run.sh with no image
+        # step and no finish (C15, 2026-10-11).  The count is still printed.
+        NIMG=$(echo "$IMAGES" | tr ',' '\n' | grep -vc '^prof$' || true)
         if [ "$NIMG" -gt 1 ] && [ "${FN_NATIVE_SERIAL_IMAGES:-}" != 1 ]; then
             ISTEP=pstep
             cat <<BOX
@@ -887,7 +893,7 @@ BOX
     echo "esac"
     echo "exit 0"
     echo "MODULE"
-    count=$(echo "$PLAN" | grep -c .)
+    count=$(echo "$PLAN" | grep -c . || true)  # 0 modules (--build-only): grep exits 1
     echo "echo \"== modules: $count, $MODULE_JOBS at a time\""
     echo "seq 1 $count | xargs -P $MODULE_JOBS -n 1 sh \$S/module.sh"
     echo 'failed=0 passed=0 skipped=0 broke=0'

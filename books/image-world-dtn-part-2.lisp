@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-1")
+(include-book "store-log-walk-once")
+(include-book "store-log-segments")
 (include-book "store-log-extend")
 (include-book "store-init-log-publication")
 (include-book "definterface")

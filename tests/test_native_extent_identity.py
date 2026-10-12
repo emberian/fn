@@ -97,10 +97,13 @@ class ExtentIdentitySourceTests(unittest.TestCase):
         release = native_cuts.host_function(owner, "fnn-owner-release-extents")
         self.assertIn("(fnn-extent-entry-fresh new-id eoff elen)", release)
         self.assertNotIn("(fnn-extent-entry new-id eoff elen 0)", release)
-        # The open and the commit attach the commitment to every place.
-        io = (ROOT / "host" / "native" / "io.lisp").read_text(encoding="ascii")
-        self.assertIn("'fn-arx-attach-trailers-buffer", io)
-        self.assertIn("'fn-arx-attach-trailers\n", io)
+        # That the open and the commit attach the commitment to every place is
+        # behaviour, tested by ExtentIdentityTests below, not by naming the ACL2
+        # entries that do it (the open's moved from fn-arx-attach-trailers-buffer
+        # to the log walk's fn-lgb-descriptor in log landing 2b(a)): every
+        # payload there is an extent of a restarted open's replay, and a wrong
+        # recorded trailer under an intact prefix is refused by the trailer's
+        # name only because the open attached the recorded one.
 
 
 class ExtentIdentityFixture(verbs.NativeOperatorVerbFixture):

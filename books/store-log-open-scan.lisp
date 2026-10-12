@@ -16,13 +16,15 @@
 ; the interned ROW) also reads the row's arena handle and its statement
 ; context, which the open decides from the checkpoint's arena and the
 ; statement epoch at S; neither is in the log past S (seam L-M-A
-; 2026-10-10, build/log-runs/l2/SEAM-history-field.md, M's ruling (b)).  The
-; scan charges HISTORY at ALLOW + 3 x the row's octets, Builder M's per-row
-; HISTORY clause of K-BOUND (books/admission-memory.lisp fn-adm-row-within-p,
-; ALLOW = fn-adm-row-allowance PROFILE, memory landing 4b), and is exact in
-; the other eight.  So the scan's totals bound the opened store's from above
-; (fn-mm-tot-le), and M's fn-mo-read-holds-every-store-within-its-totals
-; makes the read decision sound at them.
+; 2026-10-10, build/log-runs/l2/SEAM-history-field.md).  The scan charges
+; HISTORY at the record's own ceiling over every handle, keyring and
+; generation (books/store-log-history-ceiling.lisp fn-lgo-history-ceiling,
+; L2H-5), and is exact in the other eight.  So the scan's totals bound the
+; opened store's from above (fn-mm-tot-le), and M's
+; fn-mo-read-holds-every-store-within-its-totals makes the read decision
+; sound at them.  (Until 2026-10-11 HISTORY was charged at the profile's
+; per-row allowance, fn-adm-row-allowance, under a premise no theorem
+; established; that charged 64 small posts 2.24 GB.)
 ;
 ; KEYSTONES
 ;   L2-1 fn-lgo-run-is-the-fold          the stream's fold over one segment
@@ -37,79 +39,68 @@
 ;                                        the wire fold agrees with the charged
 ;                                        fold of the rows the suffix replay
 ;                                        interns (fn-ssr-intern-step) in eight
-;                                        fields and bounds its HISTORY, every
-;                                        row within the HISTORY clause
+;                                        fields and bounds its HISTORY
 ;   L2-5 fn-lgo-observed-covers-the-opened-store
 ;                                        from a valid (K . TOT) cache, the
 ;                                        scan's total bounds the charged fold
 ;                                        of every row the open recovers, the
 ;                                        suffix replayed from the epoch at K
+;   L2H-1 fn-lgo-fold-from-no-skip-bounds-any-skip
+;                                        the fold is monotone in its skip:
+;                                        from skip 0 it bounds any skip
+;   L2H-2 fn-lgo-host-suffix-covers-the-opened-store
+;                                        the probe's suffix, the dropped
+;                                        segments' records unseen, bounds the
+;                                        charged fold the open recovers
+;   L2H-3 fn-lgo-scan-plan-scans-every-present-segment
+;                                        the probe's plan scans every segment
+;                                        journal/ holds, skip S only from
+;                                        the genesis
+;   L2H-4 fn-lgo-head-genesis-is-the-open-lineage-start
+;                                        a head the probe accepts is one the
+;                                        open admits, and both start from
+;                                        its predecessor
 
 (in-package "ACL2")
 (include-book "store-log-segments")
 (include-book "store-log-stream")
 (include-book "statement-recover-stream")
 (include-book "history-totals-carried")
+(include-book "store-log-lineage")
+(include-book "store-log-history-ceiling")
 
 (local (in-theory (disable (tau-system))))
 
 ; -----------------------------------------------------------------------------
 ; 1. One record's charged totals, from its wire event.
 
-; The held row the intern builds from wire record A (books/catalog-record.lisp
-; fn-cat-intern-list) at handle 0, under the empty keyring and generation 0.
-; The handle and the context are the two fields the scan cannot know; no
-; total but HISTORY reads them.
-(defun fn-lgo-held-of (a)
-  (declare (xargs :guard (fn-record-p a) :verify-guards nil))
-  (let ((bytes (fn-record-payload a)))
-    (fn-held-make (fn-record-sequence a) (fn-record-txid a)
-                  (fn-record-generation a) (fn-record-msgid a) 0
-                  (fn-record-groups a) (fn-record-obligation-id a)
-                  (fn-record-content-subject a) (fn-record-release-evidence a)
-                  (fn-record-charge a) (fn-record-stamp a)
-                  (fn-held-facts-of bytes)
-                  (fn-held-context-of bytes nil 0)
-                  nil nil)))
-
-; The row the intern builds from wire event W, up to handle and context
-; (books/store-intern.lisp fn-intern-event); :bad where the intern refuses.
-(defun fn-lgo-wire-row (w)
-  (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-record-p w) (fn-lgo-held-of w))
-        ((fn-stxa-p w)
-         (let ((a (fn-replay-composite-record w)))
-           (if (fn-record-p a) (fn-hstxa-make w (fn-lgo-held-of a)) :bad)))
-        ((fn-wire-event-p w) w)
-        (t :bad)))
-
-; The row's charged totals with HISTORY at the clause's ceiling.
-(defun fn-lgo-wire-tot (w allow)
+; The row's charged totals with HISTORY at W's ceiling (L2H-5).
+(defun fn-lgo-wire-tot (w)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((row (fn-lgo-wire-row w))
          (tot (ec-call (fn-ct-row-tot row :resident))))
     (fn-mm-make-tot 1 (fn-mm-tot-arena tot) (fn-mm-tot-hcharge tot)
                     (fn-mm-tot-memberships tot) (fn-mm-tot-events tot)
                     (fn-mm-tot-log tot)
-                    (+ (nfix allow) (* 3 (ec-call (fn-sbud-row-octets row))))
+                    (fn-lgo-history-ceiling w)
                     (fn-mm-tot-charge tot) :resident)))
 
-(defun fn-lgo-wire-fold (ws allow)
+(defun fn-lgo-wire-fold (ws)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp ws)
-      (fn-mm-tot-plus (fn-lgo-wire-tot (car ws) allow)
-                      (fn-lgo-wire-fold (cdr ws) allow))
+      (fn-mm-tot-plus (fn-lgo-wire-tot (car ws))
+                      (fn-lgo-wire-fold (cdr ws)))
     (fn-ct-zero-tot :resident)))
 
 ; One log record Z (as the stream hands it on: a frame of the store's
 ; dictionaries DICTS, or the record itself), expanded and decoded as the
 ; open decodes it, then charged; :bad where either refuses.
-(defun fn-lgo-record-tot (z dicts allow)
+(defun fn-lgo-record-tot (z dicts)
   (declare (xargs :guard (and (fn-lzr-dictsp dicts) (fn-cbor-octet-listp z)) :verify-guards nil))
   (let ((x (fn-lzr-expand dicts z)))
     (if (and (consp x) (eq (car x) :ok))
         (let ((ws (ec-call (fn-srs-decode (list (cadr x))))))
-          (if (consp ws) (fn-lgo-wire-tot (car ws) allow) :bad))
+          (if (consp ws) (fn-lgo-wire-tot (car ws)) :bad))
       :bad)))
 
 ; -----------------------------------------------------------------------------
@@ -117,18 +108,18 @@
 ; them), every later one is added to ACC; :bad absorbs.  Answers
 ; (mv SKIP' ACC').
 
-(defun fn-lgo-add (acc z dicts allow)
+(defun fn-lgo-add (acc z dicts)
   (declare (xargs :guard (and (fn-lzr-dictsp dicts) (fn-cbor-octet-listp z)) :verify-guards nil))
   (if (eq acc :bad)
       :bad
-    (let ((r (fn-lgo-record-tot z dicts allow)))
+    (let ((r (fn-lgo-record-tot z dicts)))
       (if (eq r :bad) :bad (fn-mm-tot-plus acc r)))))
 
-(defun fn-lgo-fold (zs skip acc dicts allow)
+(defun fn-lgo-fold (zs skip acc dicts)
   (declare (xargs :guard (and (fn-lzr-dictsp dicts) (fn-octet-list-listp zs)) :verify-guards nil))
   (cond ((atom zs) (mv (nfix skip) acc))
-        ((posp skip) (fn-lgo-fold (cdr zs) (1- skip) acc dicts allow))
-        (t (fn-lgo-fold (cdr zs) 0 (fn-lgo-add acc (car zs) dicts allow) dicts allow))))
+        ((posp skip) (fn-lgo-fold (cdr zs) (1- skip) acc dicts))
+        (t (fn-lgo-fold (cdr zs) 0 (fn-lgo-add acc (car zs) dicts) dicts))))
 
 ; The expansions of the records ZS, or :bad.
 (defun fn-lgo-expansions (zs dicts)
@@ -148,9 +139,6 @@
    (implies (and (consp (fn-lzr-expand dicts z)) (equal (car (fn-lzr-expand dicts z)) :ok))
             (consp (cdr (fn-lzr-expand dicts z))))
    :hints (("Goal" :in-theory (enable fn-lzr-expand)))))
-(verify-guards fn-lgo-held-of
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp fn-record-internals))))
-(verify-guards fn-lgo-wire-row)
 (verify-guards fn-lgo-wire-tot)
 (verify-guards fn-lgo-wire-fold)
 (verify-guards fn-lgo-record-tot)
@@ -162,35 +150,25 @@
 ; 3. The stream: fn-lgw-run's loop with each step's records folded at once.
 ; Answers (mv SKIP' ACC' ST').
 
-(defun fn-lgo-run (c st unit max skip acc dicts allow)
+(defun fn-lgo-run (c st unit max skip acc dicts)
   (declare (xargs :measure (nfix (- (len c) (fn-lgw-pos st)))
                   :verify-guards nil
                   :hints (("Goal" :in-theory (disable fn-lgw-step fn-lgw-window)))))
   (mv-let (took records st2) (fn-lgw-step (fn-lgw-window c st) st unit max (len c))
-    (mv-let (skip2 acc2) (if took (fn-lgo-fold records skip acc dicts allow) (mv (nfix skip) acc))
+    (mv-let (skip2 acc2) (if took (fn-lgo-fold records skip acc dicts) (mv (nfix skip) acc))
       (if (and took (not (fn-lgw-stop st2)) (< (fn-lgw-pos st2) (len c)))
-          (fn-lgo-run c st2 unit max skip2 acc2 dicts allow)
+          (fn-lgo-run c st2 unit max skip2 acc2 dicts)
         (mv skip2 acc2 st2)))))
 
 ; The open's segments CS (their durable octets, index order), each streamed
 ; from the genesis the one before ends on (books/store-log-stream.lisp
 ; fn-lgw-open-chain-records).  Answers (mv SKIP' ACC').
-(defun fn-lgo-chain (cs genesis unit max skip acc dicts allow)
+(defun fn-lgo-chain (cs genesis unit max skip acc dicts)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp cs)
-      (mv-let (skip2 acc2 st) (fn-lgo-run (car cs) (fn-lgw-start genesis 1) unit max skip acc dicts allow)
-        (fn-lgo-chain (cdr cs) (fn-lgc-last (fn-lgw-kernel st)) unit max skip2 acc2 dicts allow))
+      (mv-let (skip2 acc2 st) (fn-lgo-run (car cs) (fn-lgw-start genesis 1) unit max skip acc dicts)
+        (fn-lgo-chain (cdr cs) (fn-lgc-last (fn-lgw-kernel st)) unit max skip2 acc2 dicts))
     (mv (nfix skip) acc)))
-
-; Every row within the HISTORY clause (K-BOUND's, books/admission-memory.lisp
-; fn-adm-row-within-p, at ALLOW = fn-adm-row-allowance PROFILE).
-(defun fn-lgo-rows-history-within (rows allow)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (and (<= (nfix (fn-ct-row-history (car rows)))
-               (+ (nfix allow) (* 3 (ec-call (fn-sbud-row-octets (car rows))))))
-           (fn-lgo-rows-history-within (cdr rows) allow))
-    t))
 
 ; Two totals equal in every field but HISTORY.
 (defun fn-lgo-agree-but-history (a b)
@@ -208,38 +186,38 @@
 ; 4. The stream is the fold (L2-1, L2-2).
 
 (defthm fn-lgo-fold-of-nfix
-  (equal (fn-lgo-fold zs (nfix skip) acc dicts allow)
-         (fn-lgo-fold zs skip acc dicts allow))
-  :hints (("Goal" :expand ((fn-lgo-fold zs (nfix skip) acc dicts allow)
-                           (fn-lgo-fold zs skip acc dicts allow))
+  (equal (fn-lgo-fold zs (nfix skip) acc dicts)
+         (fn-lgo-fold zs skip acc dicts))
+  :hints (("Goal" :expand ((fn-lgo-fold zs (nfix skip) acc dicts)
+                           (fn-lgo-fold zs skip acc dicts))
            :in-theory (disable fn-lgo-add))))
 
 (defthm fn-lgo-fold-of-append
-  (equal (fn-lgo-fold (append a b) skip acc dicts allow)
-         (mv-let (s1 a1) (fn-lgo-fold a skip acc dicts allow)
-           (fn-lgo-fold b s1 a1 dicts allow)))
-  :hints (("Goal" :induct (fn-lgo-fold a skip acc dicts allow)
+  (equal (fn-lgo-fold (append a b) skip acc dicts)
+         (mv-let (s1 a1) (fn-lgo-fold a skip acc dicts)
+           (fn-lgo-fold b s1 a1 dicts)))
+  :hints (("Goal" :induct (fn-lgo-fold a skip acc dicts)
            :in-theory (disable fn-lgo-add))))
 
 (defthm fn-lgo-fold-of-atom
   (implies (atom zs)
-           (equal (fn-lgo-fold zs skip acc dicts allow) (mv (nfix skip) acc))))
+           (equal (fn-lgo-fold zs skip acc dicts) (mv (nfix skip) acc))))
 
 (defthm fn-lgo-run-is-the-run-folded
-  (let ((run (fn-lgo-run c st unit max skip acc dicts allow))
+  (let ((run (fn-lgo-run c st unit max skip acc dicts))
         (w (fn-lgw-run c st unit max)))
-    (and (equal (mv-nth 0 run) (mv-nth 0 (fn-lgo-fold (mv-nth 0 w) skip acc dicts allow)))
-         (equal (mv-nth 1 run) (mv-nth 1 (fn-lgo-fold (mv-nth 0 w) skip acc dicts allow)))
+    (and (equal (mv-nth 0 run) (mv-nth 0 (fn-lgo-fold (mv-nth 0 w) skip acc dicts)))
+         (equal (mv-nth 1 run) (mv-nth 1 (fn-lgo-fold (mv-nth 0 w) skip acc dicts)))
          (equal (mv-nth 2 run) (mv-nth 1 w))))
-  :hints (("Goal" :induct (fn-lgo-run c st unit max skip acc dicts allow)
-           :expand ((fn-lgo-run c st unit max skip acc dicts allow)
+  :hints (("Goal" :induct (fn-lgo-run c st unit max skip acc dicts)
+           :expand ((fn-lgo-run c st unit max skip acc dicts)
                     (fn-lgw-run c st unit max))
            :in-theory (disable fn-lgw-step fn-lgw-window fn-lgo-fold))))
 
 (defthm fn-lgo-run-is-the-fold
-  (let* ((run (fn-lgo-run c (fn-lgw-start genesis floor) unit max skip acc dicts allow))
+  (let* ((run (fn-lgo-run c (fn-lgw-start genesis floor) unit max skip acc dicts))
          (ks (fn-lgt-recover c genesis unit max floor))
-         (fold (fn-lgo-fold (fn-lgk-committed ks) skip acc dicts allow)))
+         (fold (fn-lgo-fold (fn-lgk-committed ks) skip acc dicts)))
     (and (equal (mv-nth 0 run) (mv-nth 0 fold))
          (equal (mv-nth 1 run) (mv-nth 1 fold))
          (equal (fn-lgw-kernel (mv-nth 2 run)) (fn-lgc-of ks))))
@@ -250,17 +228,17 @@
 
 (local
  (defthm fn-lgo-chain-is-the-open-chain-fold
-   (equal (fn-lgo-chain cs genesis unit max skip acc dicts allow)
-          (fn-lgo-fold (fn-lgw-open-chain-records cs genesis unit max) skip acc dicts allow))
-   :hints (("Goal" :induct (fn-lgo-chain cs genesis unit max skip acc dicts allow)
+   (equal (fn-lgo-chain cs genesis unit max skip acc dicts)
+          (fn-lgo-fold (fn-lgw-open-chain-records cs genesis unit max) skip acc dicts))
+   :hints (("Goal" :induct (fn-lgo-chain cs genesis unit max skip acc dicts)
             :expand ((fn-lgw-open-chain-records cs genesis unit max))
             :in-theory (e/d (fn-lgw-segment-records fn-lgw-segment-last)
                             (fn-lgo-fold fn-lgo-run fn-lgw-run fn-lgw-kernel fn-lgw-start
                              fn-lgw-open-chain-is-the-chain))))))
 
 (defthm fn-lgo-chain-is-the-fold
-  (equal (fn-lgo-chain cs genesis unit max skip acc dicts allow)
-         (fn-lgo-fold (fn-lgs-chain-records cs genesis unit max) skip acc dicts allow))
+  (equal (fn-lgo-chain cs genesis unit max skip acc dicts)
+         (fn-lgo-fold (fn-lgs-chain-records cs genesis unit max) skip acc dicts))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-lgo-chain fn-lgo-fold)
            :use ((:instance fn-lgw-open-chain-is-the-chain)))))
@@ -422,14 +400,14 @@
 
 (local
  (defthm fn-lgo-fold-of-bad
-   (equal (mv-nth 1 (fn-lgo-fold zs skip :bad dicts allow)) :bad)
-   :hints (("Goal" :induct (fn-lgo-fold zs skip :bad dicts allow)))))
+   (equal (mv-nth 1 (fn-lgo-fold zs skip :bad dicts)) :bad)
+   :hints (("Goal" :induct (fn-lgo-fold zs skip :bad dicts)))))
 
 (local
  (defthm fn-lgo-fold-past-the-skip
-   (equal (mv-nth 1 (fn-lgo-fold zs skip acc dicts allow))
-          (mv-nth 1 (fn-lgo-fold (nthcdr skip zs) 0 acc dicts allow)))
-   :hints (("Goal" :induct (fn-lgo-fold zs skip acc dicts allow)
+   (equal (mv-nth 1 (fn-lgo-fold zs skip acc dicts))
+          (mv-nth 1 (fn-lgo-fold (nthcdr skip zs) 0 acc dicts)))
+   :hints (("Goal" :induct (fn-lgo-fold zs skip acc dicts)
             :in-theory (disable fn-lgo-add)))
    :rule-classes nil))
 
@@ -455,41 +433,40 @@
 (local
  (defthm fn-lgo-add-of-tot
    (implies (fn-mm-tot-p acc)
-            (equal (fn-lgo-add acc z dicts allow)
+            (equal (fn-lgo-add acc z dicts)
                    (let ((x (fn-lzr-expand dicts z)))
                      (if (and (consp x) (eq (car x) :ok) (consp (fn-srs-decode (list (cadr x)))))
-                         (fn-mm-tot-plus acc (fn-lgo-wire-tot (car (fn-srs-decode (list (cadr x)))) allow))
+                         (fn-mm-tot-plus acc (fn-lgo-wire-tot (car (fn-srs-decode (list (cadr x))))))
                        :bad))))
    :hints (("Goal" :in-theory (disable fn-lgo-wire-tot fn-lzr-expand fn-srs-decode fn-mm-tot-plus)))))
 
 (local
  (defthm fn-lgo-wire-fold-of-atom
-   (implies (atom ws) (equal (fn-lgo-wire-fold ws allow) (fn-ct-zero-tot :resident)))))
+   (implies (atom ws) (equal (fn-lgo-wire-fold ws) (fn-ct-zero-tot :resident)))))
 
 (local
  (defthm fn-lgo-fold-0-is-the-wire-fold
-   (let ((acc2 (mv-nth 1 (fn-lgo-fold zs 0 acc dicts allow)))
+   (let ((acc2 (mv-nth 1 (fn-lgo-fold zs 0 acc dicts)))
          (xs (fn-lgo-expansions zs dicts)))
      (implies (and (fn-mm-tot-p acc) (not (eq acc2 :bad)))
               (and (not (eq xs :bad))
                    (not (eq (fn-srs-decode xs) :bad))
-                   (equal acc2 (fn-mm-tot-plus acc (fn-lgo-wire-fold (fn-srs-decode xs) allow))))))
-   :hints (("Goal" :induct (fn-lgo-fold zs 0 acc dicts allow)
-            :expand ((fn-lgo-fold zs 0 acc dicts allow) (fn-lgo-expansions zs dicts)
+                   (equal acc2 (fn-mm-tot-plus acc (fn-lgo-wire-fold (fn-srs-decode xs)))))))
+   :hints (("Goal" :induct (fn-lgo-fold zs 0 acc dicts)
+            :expand ((fn-lgo-fold zs 0 acc dicts) (fn-lgo-expansions zs dicts)
                      (fn-lgo-wire-fold (cons (car (fn-srs-decode (list (cadr (fn-lzr-expand dicts (car zs))))))
-                                             (fn-srs-decode (fn-lgo-expansions (cdr zs) dicts)))
-                                       allow))
+                                             (fn-srs-decode (fn-lgo-expansions (cdr zs) dicts)))))
             :in-theory (disable fn-lgo-wire-tot fn-lzr-expand fn-lgo-add
                                 fn-srs-decode fn-store-event-decode-exact fn-lgo-record-tot
-                                fn-lgo-wire-fold)))))
+                                fn-lgo-wire-fold (:e fn-lgo-wire-fold) (:e fn-ct-zero-tot))))))
 
 (defthm fn-lgo-fold-is-the-wire-fold
-  (let ((acc2 (mv-nth 1 (fn-lgo-fold zs skip acc dicts allow)))
+  (let ((acc2 (mv-nth 1 (fn-lgo-fold zs skip acc dicts)))
         (xs (fn-lgo-expansions (nthcdr skip zs) dicts)))
     (implies (and (fn-mm-tot-p acc) (not (eq acc2 :bad)))
              (and (not (eq xs :bad))
                   (not (eq (fn-srs-decode xs) :bad))
-                  (equal acc2 (fn-mm-tot-plus acc (fn-lgo-wire-fold (fn-srs-decode xs) allow))))))
+                  (equal acc2 (fn-mm-tot-plus acc (fn-lgo-wire-fold (fn-srs-decode xs)))))))
   :hints (("Goal" :do-not-induct t
            :in-theory (theory 'minimal-theory)
            :use ((:instance fn-lgo-fold-0-is-the-wire-fold (zs (nthcdr skip zs)))
@@ -692,18 +669,18 @@
    (let ((row (car (fn-intern-event w keyring generation fn-arena))))
      (implies (and (natp generation) (not (equal row :bad)))
               (and
-                   (equal (fn-mm-tot-records (fn-ct-row-tot row :resident)) (fn-mm-tot-records (fn-lgo-wire-tot w allow)))
-                   (equal (fn-mm-tot-arena (fn-ct-row-tot row :resident)) (fn-mm-tot-arena (fn-lgo-wire-tot w allow)))
-                   (equal (fn-mm-tot-hcharge (fn-ct-row-tot row :resident)) (fn-mm-tot-hcharge (fn-lgo-wire-tot w allow)))
-                   (equal (fn-mm-tot-memberships (fn-ct-row-tot row :resident)) (fn-mm-tot-memberships (fn-lgo-wire-tot w allow)))
-                   (equal (fn-mm-tot-events (fn-ct-row-tot row :resident)) (fn-mm-tot-events (fn-lgo-wire-tot w allow)))
-                   (equal (fn-mm-tot-log (fn-ct-row-tot row :resident)) (fn-mm-tot-log (fn-lgo-wire-tot w allow)))
-                   (equal (fn-mm-tot-charge (fn-ct-row-tot row :resident)) (fn-mm-tot-charge (fn-lgo-wire-tot w allow)))
+                   (equal (fn-mm-tot-records (fn-ct-row-tot row :resident)) (fn-mm-tot-records (fn-lgo-wire-tot w)))
+                   (equal (fn-mm-tot-arena (fn-ct-row-tot row :resident)) (fn-mm-tot-arena (fn-lgo-wire-tot w)))
+                   (equal (fn-mm-tot-hcharge (fn-ct-row-tot row :resident)) (fn-mm-tot-hcharge (fn-lgo-wire-tot w)))
+                   (equal (fn-mm-tot-memberships (fn-ct-row-tot row :resident)) (fn-mm-tot-memberships (fn-lgo-wire-tot w)))
+                   (equal (fn-mm-tot-events (fn-ct-row-tot row :resident)) (fn-mm-tot-events (fn-lgo-wire-tot w)))
+                   (equal (fn-mm-tot-log (fn-ct-row-tot row :resident)) (fn-mm-tot-log (fn-lgo-wire-tot w)))
+                   (equal (fn-mm-tot-charge (fn-ct-row-tot row :resident)) (fn-mm-tot-charge (fn-lgo-wire-tot w)))
                    (equal (fn-mm-tot-paged-p (fn-ct-row-tot row :resident)) nil)
-                   (equal (fn-mm-tot-paged-p (fn-lgo-wire-tot w allow)) nil)
+                   (equal (fn-mm-tot-paged-p (fn-lgo-wire-tot w)) nil)
                    (equal (fn-mm-tot-history (fn-ct-row-tot row :resident)) (fn-ct-row-history row))
-                   (equal (fn-mm-tot-history (fn-lgo-wire-tot w allow))
-                          (+ (nfix allow) (* 3 (fn-sbud-row-octets row)))))))
+                   (equal (fn-mm-tot-history (fn-lgo-wire-tot w))
+                          (fn-lgo-history-ceiling w)))))
    :hints (("Goal" :in-theory (e/d (fn-ct-row-tot fn-lgo-wire-tot)
                                    (fn-ct-row fn-ct-row-log fn-sbud-row-octets fn-ct-row-history
                                     fn-intern-event fn-lgo-wire-row))
@@ -730,10 +707,6 @@
                                    (fn-stxk-p fn-stxk-context-kind fn-stxk-context-current-generation
                                     fn-ssk-apply-snapshot fn-stxk-keyring-generation))))))
 
-(local
- (defthm fn-lgo-within-of-append
-   (equal (fn-lgo-rows-history-within (append a b) allow)
-          (and (fn-lgo-rows-history-within a allow) (fn-lgo-rows-history-within b allow)))))
 
 (local
  (defthm fn-lgo-statep-generation
@@ -749,7 +722,7 @@
 
 (local
  (defthm fn-lgo-wire-fold-paged
-   (equal (fn-mm-tot-paged-p (fn-lgo-wire-fold ws allow)) nil)
+   (equal (fn-mm-tot-paged-p (fn-lgo-wire-fold ws)) nil)
    :hints (("Goal" :in-theory (e/d (fn-lgo-wire-tot) (fn-lgo-wire-row fn-ct-row-tot fn-sbud-row-octets))))))
 
 
@@ -763,7 +736,7 @@
 
 (local
  (defthm fn-lgo-records-of-wire-tot
-   (equal (fn-mm-tot-records (fn-lgo-wire-tot w allow)) 1)
+   (equal (fn-mm-tot-records (fn-lgo-wire-tot w)) 1)
    :hints (("Goal" :in-theory (union-theories '(fn-lgo-wire-tot fn-lgo-records-of-make (:e nfix))
                                               (theory 'minimal-theory))))))
 
@@ -774,6 +747,17 @@
                    (if (and (null ws) (not (equal acc :bad))) acc :bad)))
    :hints (("Goal" :expand ((fn-ssr-intern-step acc ws rs ps mode dicts fn-arena))))))
 
+; Each row the replay interns is within its record's HISTORY ceiling (L2H-5).
+(local
+ (defthm fn-lgo-intern-history-within-ceiling
+   (implies (and (natp generation)
+                 (not (equal (car (fn-intern-event w keyring generation fn-arena)) :bad)))
+            (<= (fn-ct-row-history (car (fn-intern-event w keyring generation fn-arena)))
+                (fn-lgo-history-ceiling w)))
+   :rule-classes :linear
+   :hints (("Goal" :use ((:instance fn-lgo-history-ceiling-bounds-the-intern))
+            :in-theory (disable fn-lgo-history-ceiling-bounds-the-intern fn-lgo-history-ceiling
+                                fn-ct-row-history fn-intern-event)))))
 (local
  (defthm fn-lgo-replay-fields
    (let ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws rs ps :resident dicts fn-arena))))
@@ -781,35 +765,34 @@
               (and
                    (equal (fn-mm-tot-records (fn-ct-charged (fn-ssr-rows acc1) :resident))
                           (+ (fn-mm-tot-records (fn-ct-charged (fn-ssr-rows acc) :resident))
-                             (fn-mm-tot-records (fn-lgo-wire-fold ws allow))))
+                             (fn-mm-tot-records (fn-lgo-wire-fold ws))))
                    (equal (fn-mm-tot-arena (fn-ct-charged (fn-ssr-rows acc1) :resident))
                           (+ (fn-mm-tot-arena (fn-ct-charged (fn-ssr-rows acc) :resident))
-                             (fn-mm-tot-arena (fn-lgo-wire-fold ws allow))))
+                             (fn-mm-tot-arena (fn-lgo-wire-fold ws))))
                    (equal (fn-mm-tot-hcharge (fn-ct-charged (fn-ssr-rows acc1) :resident))
                           (+ (fn-mm-tot-hcharge (fn-ct-charged (fn-ssr-rows acc) :resident))
-                             (fn-mm-tot-hcharge (fn-lgo-wire-fold ws allow))))
+                             (fn-mm-tot-hcharge (fn-lgo-wire-fold ws))))
                    (equal (fn-mm-tot-memberships (fn-ct-charged (fn-ssr-rows acc1) :resident))
                           (+ (fn-mm-tot-memberships (fn-ct-charged (fn-ssr-rows acc) :resident))
-                             (fn-mm-tot-memberships (fn-lgo-wire-fold ws allow))))
+                             (fn-mm-tot-memberships (fn-lgo-wire-fold ws))))
                    (equal (fn-mm-tot-events (fn-ct-charged (fn-ssr-rows acc1) :resident))
                           (+ (fn-mm-tot-events (fn-ct-charged (fn-ssr-rows acc) :resident))
-                             (fn-mm-tot-events (fn-lgo-wire-fold ws allow))))
+                             (fn-mm-tot-events (fn-lgo-wire-fold ws))))
                    (equal (fn-mm-tot-log (fn-ct-charged (fn-ssr-rows acc1) :resident))
                           (+ (fn-mm-tot-log (fn-ct-charged (fn-ssr-rows acc) :resident))
-                             (fn-mm-tot-log (fn-lgo-wire-fold ws allow))))
+                             (fn-mm-tot-log (fn-lgo-wire-fold ws))))
                    (equal (fn-mm-tot-charge (fn-ct-charged (fn-ssr-rows acc1) :resident))
                           (+ (fn-mm-tot-charge (fn-ct-charged (fn-ssr-rows acc) :resident))
-                             (fn-mm-tot-charge (fn-lgo-wire-fold ws allow))))
-                   (implies (fn-lgo-rows-history-within (fn-ssr-rows acc1) allow)
-                            (and (fn-lgo-rows-history-within (fn-ssr-rows acc) allow)
-                                 (<= (fn-mm-tot-history (fn-ct-charged (fn-ssr-rows acc1) :resident))
-                                     (+ (fn-mm-tot-history (fn-ct-charged (fn-ssr-rows acc) :resident))
-                                        (fn-mm-tot-history (fn-lgo-wire-fold ws allow)))))))))
+                             (fn-mm-tot-charge (fn-lgo-wire-fold ws))))
+                   (<= (fn-mm-tot-history (fn-ct-charged (fn-ssr-rows acc1) :resident))
+                       (+ (fn-mm-tot-history (fn-ct-charged (fn-ssr-rows acc) :resident))
+                          (fn-mm-tot-history (fn-lgo-wire-fold ws)))))))
    :rule-classes nil
    :hints (("Goal" :induct (fn-ssr-intern-step acc ws rs ps :resident dicts fn-arena)
             :expand ((fn-ssr-intern-step acc ws rs ps :resident dicts fn-arena)
-                     (fn-lgo-wire-fold ws allow))
+                     (fn-lgo-wire-fold ws))
             :in-theory (e/d ((:induction fn-ssr-intern-step)) (fn-intern-event fn-arx-intern-event fn-lzr-intern-event
+                                fn-lgo-history-ceiling
                                 fn-replay-identity-step fn-ssr-publish fn-ssr-at fn-ssr-rows
                                 fn-stxk-context-kind fn-ct-row-tot fn-lgo-wire-tot fn-ct-row-history
                                 fn-sbud-row-octets fn-ct-charged fn-lgo-wire-fold fn-ssr-statep))
@@ -839,10 +822,9 @@
    (let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena)))
           (rows (fn-ssr-rows acc1)))
      (implies (and (natp (fn-ssr-at 2 acc)) (not (equal acc :bad)) (null (fn-ssr-at 0 acc))
-                   (not (eq acc1 :bad))
-                   (fn-lgo-rows-history-within rows allow))
-              (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow))
-                   (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow)))))
+                   (not (eq acc1 :bad)))
+              (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws))
+                   (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws)))))
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-mm-tot-le) (fn-ct-charged fn-lgo-wire-fold fn-ssr-rows))
             :use ((:instance fn-lgo-replay-fields (rs nil) (ps nil)))))))
@@ -851,10 +833,9 @@
 (defthm fn-lgo-wire-fold-covers-the-replay
   (let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena)))
          (rows (fn-ssr-rows acc1)))
-    (implies (and (fn-ssr-statep acc) (null (fn-ssr-at 0 acc)) (not (eq acc1 :bad))
-                  (fn-lgo-rows-history-within rows allow))
-             (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow))
-                  (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow)))))
+    (implies (and (fn-ssr-statep acc) (null (fn-ssr-at 0 acc)) (not (eq acc1 :bad)))
+             (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws))
+                  (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-lgo-wire-fold-covers-any-replay fn-ct-charged fn-lgo-wire-fold
                                fn-ssr-rows fn-lgo-agree-but-history fn-mm-tot-le)
@@ -882,8 +863,8 @@
 
 (local
  (defthm fn-lgo-wire-fold-is-a-tot
-   (fn-mm-tot-p (fn-lgo-wire-fold ws allow))
-   :hints (("Goal" :expand ((fn-lgo-wire-fold ws allow))
+   (fn-mm-tot-p (fn-lgo-wire-fold ws))
+   :hints (("Goal" :expand ((fn-lgo-wire-fold ws))
             :in-theory (e/d (fn-ct-zero-tot) (fn-lgo-wire-tot))))))
 
 (local
@@ -910,10 +891,10 @@
 
 (local
  (defthm fn-lgo-suffix-is-the-wire-fold
-   (let ((suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow)))
+   (let ((suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts)))
          (xs (fn-lgo-expansions (nthcdr j zs) dicts)))
      (implies (not (eq suffix :bad))
-              (equal suffix (fn-lgo-wire-fold (fn-srs-decode xs) allow))))
+              (equal suffix (fn-lgo-wire-fold (fn-srs-decode xs)))))
    :rule-classes nil
    :hints (("Goal" :in-theory (disable fn-lgo-fold fn-lgo-expansions fn-srs-decode fn-lgo-wire-fold
                                        fn-lgo-fold-is-the-wire-fold)
@@ -930,7 +911,7 @@
 (local
  (defthm fn-lgo-observed-covers-when-interned
   (let* ((k (car cache))
-         (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow)))
+         (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts)))
          (acc (fn-ssr-state nil keyring (nfix generation) identity))
          (acc1 (mv-nth 0 (fn-ssr-intern-step
                           acc (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts))
@@ -938,7 +919,6 @@
     (implies (and (fn-ct-totals-cache-validp cache rows :resident)
                   (not (eq acc1 :bad))
                   (equal (nthcdr k rows) (fn-ssr-rows acc1))
-                  (fn-lgo-rows-history-within (nthcdr k rows) allow)
                   (not (eq suffix :bad)))
              (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) suffix))))
   :hints (("Goal" :do-not-induct t
@@ -953,17 +933,16 @@
                  (:instance fn-lgo-le-of-plus
                             (c (cdr cache))
                             (a (fn-ct-charged (nthcdr (car cache) rows) :resident))
-                            (b (fn-lgo-wire-fold (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts))
-                                                 allow))))))))
+                            (b (fn-lgo-wire-fold (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts))))))))))
 
 (local
  (defthm fn-lgo-fold-0-does-not-refuse
    (implies (and (fn-mm-tot-p acc)
                  (not (eq (fn-lgo-expansions zs dicts) :bad))
                  (not (eq (fn-srs-decode (fn-lgo-expansions zs dicts)) :bad)))
-            (not (eq (mv-nth 1 (fn-lgo-fold zs 0 acc dicts allow)) :bad)))
-   :hints (("Goal" :induct (fn-lgo-fold zs 0 acc dicts allow)
-            :expand ((fn-lgo-fold zs 0 acc dicts allow) (fn-lgo-expansions zs dicts))
+            (not (eq (mv-nth 1 (fn-lgo-fold zs 0 acc dicts)) :bad)))
+   :hints (("Goal" :induct (fn-lgo-fold zs 0 acc dicts)
+            :expand ((fn-lgo-fold zs 0 acc dicts) (fn-lgo-expansions zs dicts))
             :in-theory (disable fn-lgo-wire-tot fn-lzr-expand fn-lgo-add
                                 fn-srs-decode fn-store-event-decode-exact fn-lgo-record-tot
                                 fn-lgo-wire-fold)))))
@@ -1007,8 +986,7 @@
 ; KEYSTONE L2-5.  The suffix replay starts from the statement epoch at K with
 ; no rows (ACC, any keyring, any natural generation, any identity context);
 ; from a valid (K . TOT) cache for the opened ROWS, the rows past K the
-; replay's, each within the HISTORY clause, the scan's total from the cache's
-; TOT bounds the charged fold of ROWS.  Whether the replay or the scan
+; replay's, the scan's total from the cache's TOT bounds the charged fold of ROWS.  Whether the replay or the scan
 ; refuses is not a hypothesis.  A replay that does not refuse decoded every
 ; record past J, so the scan did not refuse.  A refused replay meets the tail
 ; premise only for ROWS of exactly K cons cells ending in :bad, never an
@@ -1016,14 +994,13 @@
 ; fold is the cache's TOT, so the claim holds there trivially (Codex l-l2b Q3).
 (defthm fn-lgo-observed-covers-the-opened-store
   (let* ((k (car cache))
-         (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow)))
+         (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts)))
          (acc1 (mv-nth 0 (fn-ssr-intern-step
                           (fn-ssr-state nil keyring (nfix generation) identity)
                           (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts))
                           nil nil :resident nil fn-arena))))
     (implies (and (fn-ct-totals-cache-validp cache rows :resident)
-                  (equal (nthcdr k rows) (fn-ssr-rows acc1))
-                  (fn-lgo-rows-history-within (nthcdr k rows) allow))
+                  (equal (nthcdr k rows) (fn-ssr-rows acc1)))
              (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) suffix))))
   :hints (("Goal" :do-not-induct t
            :cases ((equal (mv-nth 0 (fn-ssr-intern-step
@@ -1044,8 +1021,282 @@
 ; which stays a nine-field total or :bad (no record is kept past its step).
 (defthm fn-lgo-fold-keeps-a-tot
   (implies (or (fn-mm-tot-p acc) (equal acc :bad))
-           (let ((acc2 (mv-nth 1 (fn-lgo-fold zs skip acc dicts allow))))
+           (let ((acc2 (mv-nth 1 (fn-lgo-fold zs skip acc dicts))))
              (or (fn-mm-tot-p acc2) (equal acc2 :bad))))
   :rule-classes nil
-  :hints (("Goal" :induct (fn-lgo-fold zs skip acc dicts allow)
+  :hints (("Goal" :induct (fn-lgo-fold zs skip acc dicts)
            :in-theory (disable fn-lgo-record-tot fn-mm-tot-p))))
+
+; -----------------------------------------------------------------------------
+; 9. The host's scan before the open (landing 2a-host): which segments, from
+; which chain value, with which skip (fn-lgo-scan-plan), and why a scan that
+; cannot see the dropped prefix still bounds the open (L2H-1, L2H-2).
+;
+; Before the open the read-only probe (host/native/heap.lisp
+; fnn-heap-charged-totals) knows the header's S but not the F row's K.  The
+; checkpoint's capture rotates, so the segments below K hold exactly the
+; S-record prefix (books/store-log-stream.lisp T8,
+; fn-lgw-segment-drop-preserves-the-open; the chain splits at a segment
+; boundary, books/store-log-segments.lisp fn-lgs-chain-records-of-append).
+; With segment 1 present the probe streams the whole chain from the genesis
+; and skips S: the open's fold exactly (L2-5).  With segment 1 gone (the
+; install's drop took the covered segments) it streams from the lowest
+; present segment's head predecessor with skip 0.  The records it cannot see
+; (PRE, the dropped segments') number at most S, so its fold bounds the
+; open's (L2H-2): exact when the drop completed, an over-count of the covered
+; records an interrupted drop left (transient: the next install's drop takes
+; them, fn-lgs-install-drop-covers-what-the-open-left).
+
+; The least positive index of KS, at most ACC.
+(defun fn-lgo-min-index (ks acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp ks)
+      (fn-lgo-min-index (cdr ks) (if (posp (car ks)) (min acc (car ks)) acc))
+    acc))
+
+; The probe's plan over journal/'s NAMES and the header's S: (KIND LOW SCAN
+; SKIP ACC), ACC the fold's start (L2H-2's), KIND :genesis (segment 1 present: from the genesis, skip S) or :head
+; (from segment LOW's head predecessor, skip 0), SCAN the indices LOW..top
+; in order; NIL when the indices are not one contiguous run (the open
+; refuses such a log by name: history-short-of-checkpoint, checkpoint-damaged).
+(defun fn-lgo-scan-plan (names s)
+  (declare (xargs :guard t))
+  (let* ((present (fn-lgs-indices names))
+         (low (fn-lgo-min-index present (fn-lgs-max-index present 0)))
+         (plan (fn-lgs-open-plan names (if (eql low 1) nil low))))
+    (if (and (posp low) (consp plan) (eq (car plan) :scan))
+        (list (if (eql low 1) :genesis :head) low (cadr plan) (if (eql low 1) (nfix s) 0)
+              (fn-ct-zero-tot :resident))
+      nil)))
+
+(local
+ (defthm fn-lgo-member-range
+   (implies (and (natp from) (natp to) (natp k) (<= from k) (<= k to))
+            (member-equal k (fn-lgs-range from to)))
+   :hints (("Goal" :induct (fn-lgs-range from to) :in-theory (enable fn-lgs-range)))))
+(local
+ (defthm fn-lgo-indices-are-posp
+   (implies (member-equal k (fn-lgs-indices names)) (posp k))
+   :hints (("Goal" :in-theory (enable fn-lgs-indices fn-lgs-segment-index)))))
+(local
+ (defthm fn-lgo-min-index-le-acc
+   (<= (fn-lgo-min-index ks acc) acc)
+   :rule-classes :linear))
+(local
+ (defthm fn-lgo-min-index-natp
+   (implies (natp acc) (natp (fn-lgo-min-index ks acc)))
+   :rule-classes :type-prescription))
+(local
+ (defthm fn-lgo-min-index-le-member
+   (implies (and (member-equal k ks) (posp k))
+            (<= (fn-lgo-min-index ks acc) k))
+   :rule-classes nil))
+(local
+ (defthm fn-lgo-max-index-ge-acc
+   (implies (natp acc) (<= acc (fn-lgs-max-index ks acc)))
+   :rule-classes :linear))
+(local
+ (defthm fn-lgo-max-index-ge-member
+   (implies (and (member-equal k ks) (natp k) (natp acc))
+            (<= k (fn-lgs-max-index ks acc)))
+   :rule-classes nil))
+(local
+ (defun fn-lgo-subset-ind (xs)
+   (if (consp xs) (fn-lgo-subset-ind (cdr xs)) xs)))
+(local
+ (defthm fn-lgo-indices-in-range
+   (implies (and (subsetp-equal xs (fn-lgs-indices names))
+                 (natp lo) (natp hi)
+                 (<= lo (fn-lgo-min-index (fn-lgs-indices names) a))
+                 (<= (fn-lgs-max-index (fn-lgs-indices names) 0) hi))
+            (subsetp-equal xs (fn-lgs-range lo hi)))
+   :hints (("Goal" :induct (fn-lgo-subset-ind xs))
+           ("Subgoal *1/1" :use ((:instance fn-lgo-min-index-le-member (k (car xs))
+                                            (ks (fn-lgs-indices names)) (acc a))
+                                 (:instance fn-lgo-max-index-ge-member (k (car xs))
+                                            (ks (fn-lgs-indices names)) (acc 0))
+                                 (:instance fn-lgo-indices-are-posp (k (car xs))))))))
+(local
+ (defthm fn-lgo-subsetp-cons
+   (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))))
+(local (defthm fn-lgo-subsetp-refl (subsetp-equal x x)))
+
+; KEYSTONE L2H-3.  A plan scans every segment journal/ holds, LOW to the
+; top in order, from the genesis with skip S exactly when segment 1 is
+; present, else with skip 0, the fold starting from the zero total.  Stated
+; over both answers, as the host branches on them (fnn-heap-log-suffix scans
+; only a plan; NIL leaves the totals unseen): the plan is no premise the host
+; must establish (tools/premise_audit.py).
+(defthm fn-lgo-scan-plan-scans-every-present-segment
+  (let ((p (fn-lgo-scan-plan names s)))
+    (or (null p)
+        (and (subsetp-equal (fn-lgs-indices names) (third p))
+             (equal (third p) (fn-lgs-range (second p) (fn-lgs-max-index (fn-lgs-indices names) 0)))
+             (iff (equal (car p) :genesis) (member-equal 1 (fn-lgs-indices names)))
+             (equal (fourth p) (if (equal (car p) :genesis) (nfix s) 0))
+             (equal (fifth p) (fn-ct-zero-tot :resident)))))
+  :hints (("Goal" :in-theory (e/d (fn-lgs-open-plan) (fn-lgs-indices fn-lgs-range fn-lgs-all-present
+                                                        fn-lgs-below fn-lgo-min-index fn-lgs-max-index))
+           :use ((:instance fn-lgo-indices-in-range (xs (fn-lgs-indices names))
+                            (lo (fn-lgo-min-index (fn-lgs-indices names)
+                                                  (fn-lgs-max-index (fn-lgs-indices names) 0)))
+                            (a (fn-lgs-max-index (fn-lgs-indices names) 0))
+                            (hi (fn-lgs-max-index (fn-lgs-indices names) 0)))
+                 (:instance fn-lgo-min-index-le-member (k 1) (ks (fn-lgs-indices names))
+                            (acc (fn-lgs-max-index (fn-lgs-indices names) 0)))))))
+
+;
+; The chain value the :head plan streams segment LOW from: the head's claimed
+; predecessor, only when the head is a readable rotation entry naming LOW
+; (books/store-log-lineage.lisp fn-lgl-headed-p, fn-lgl-head-index); NIL
+; (unseen) for a damaged or misnamed head (Codex l-2ah F2).  Whether the head
+; continues this store's lineage needs the F row's G, which the probe cannot
+; read before the open: a foreign head is refused by the open itself
+; (foreign-lineage), so the figure then sizes a command that refuses.
+(defun fn-lgo-head-genesis (octets low max)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
+  (and (fn-lgl-headed-p octets max)
+       (equal (fn-lgl-head-index octets max) (fn-cbor-u32-bytes low))
+       (fn-lgl-head-prev octets max)))
+
+; KEYSTONE L2H-4.  A head the probe accepts is one the open's lineage
+; decision admits for K = LOW under the F row whose G is that head's
+; trailer, and the probe starts from the chain value the open starts from
+; (host/native/io.lisp fnn-log-lineage-genesis answers fn-lgl-head-prev).
+; Stated over both answers, as the host branches on them (NIL: unseen).
+(defthm fn-lgo-head-genesis-is-the-open-lineage-start
+  (implies (and (integerp k) (<= 2 k))
+           (or (null (fn-lgo-head-genesis octets k max))
+               (and (not (fn-lgl-open k (fn-lgl-head-trailer octets) octets t0 max))
+                    (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-prev octets max)))))
+  :hints (("Goal" :in-theory (enable fn-lgl-open fn-lgl-head-check))))
+
+; The probe's answer: ACC, only when the plan and the header it re-reads
+; after the walk are the ones it started from and the fold did not refuse;
+; else NIL (unseen).  A checkpoint, rotation or drop that lands during the
+; walk changes one of them (Codex l-2ah F1).  Records appended to the active
+; segment after its stream passed them are missed, within the size the probe
+; observed, so the read's extent cap does not see them (ADAPTER
+; LOG-SUFFIX-WALK-STALE, owner Builder L, retired by A's host lease).
+(defun fn-lgo-suffix-settled (plan hdr acc plan2 hdr2)
+  (declare (xargs :guard t))
+  (and (equal plan plan2) (equal hdr hdr2) (not (eq acc :bad)) acc))
+
+; The order's algebra.
+(local
+ (defthm fn-lgo-le-trans
+   (implies (and (fn-mm-tot-le a b) (fn-mm-tot-le b c)) (fn-mm-tot-le a c))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le)))))
+(local
+ (defthm fn-lgo-le-plus
+   (implies (fn-mm-tot-le a b) (fn-mm-tot-le a (fn-mm-tot-plus b r)))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le fn-mm-tot-plus)))))
+(local
+ (defthm fn-lgo-plus-monotone
+   (implies (fn-mm-tot-le a b) (fn-mm-tot-le (fn-mm-tot-plus a r) (fn-mm-tot-plus b r)))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le fn-mm-tot-plus)))))
+(local
+ (defthm fn-lgo-plus-monotone-right
+   (implies (fn-mm-tot-le a b) (fn-mm-tot-le (fn-mm-tot-plus c a) (fn-mm-tot-plus c b)))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le fn-mm-tot-plus)))))
+(local
+ (defthm fn-lgo-plus-not-bad
+   (not (equal (fn-mm-tot-plus a b) :bad))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-plus fn-mm-make-tot)))))
+(local
+ (defthm fn-lgo-le-zero
+   (fn-mm-tot-le (fn-ct-zero-tot :resident) (fn-ct-zero-tot :resident))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le fn-ct-zero-tot)))))
+(local
+ (defthm fn-lgo-zero-not-bad
+   (not (equal (fn-ct-zero-tot :resident) :bad))
+   :hints (("Goal" :in-theory (enable (:e fn-ct-zero-tot))))))
+(local
+ (defthm fn-lgo-nthcdr-of-append
+   (implies (<= (len a) (nfix n))
+            (equal (nthcdr n (append a b)) (nthcdr (- (nfix n) (len a)) b)))
+   :hints (("Goal" :induct (nthcdr n a)))))
+(local
+ (defun fn-lgo-skip-ind (zs j a b dicts)
+   (declare (xargs :measure (len zs) :verify-guards nil))
+   (cond ((atom zs) (list j a b))
+         ((posp j) (fn-lgo-skip-ind (cdr zs) (1- j) a (fn-lgo-add b (car zs) dicts) dicts))
+         (t (fn-lgo-skip-ind (cdr zs) 0 (fn-lgo-add a (car zs) dicts)
+                             (fn-lgo-add b (car zs) dicts) dicts)))))
+
+; KEYSTONE L2H-1.  The fold is monotone in its skip and its start: from
+; skip 0 and a start B above A, a fold that does not refuse bounds the fold
+; from any skip J and A, which does not refuse either.
+(defthm fn-lgo-fold-from-no-skip-bounds-any-skip
+  (implies (and (fn-mm-tot-le a b)
+                (not (equal a :bad))
+                (not (equal (mv-nth 1 (fn-lgo-fold zs 0 b dicts)) :bad)))
+           (and (not (equal (mv-nth 1 (fn-lgo-fold zs j a dicts)) :bad))
+                (fn-mm-tot-le (mv-nth 1 (fn-lgo-fold zs j a dicts))
+                              (mv-nth 1 (fn-lgo-fold zs 0 b dicts)))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-lgo-skip-ind zs j a b dicts)
+           :expand ((fn-lgo-fold zs 0 b dicts) (fn-lgo-fold zs j a dicts))
+           :in-theory (union-theories '(fn-lgo-add fn-lgo-fold-of-bad fn-lgo-le-trans fn-lgo-le-plus
+                                        fn-lgo-plus-monotone fn-lgo-plus-not-bad posp zp nfix mv-nth
+                                        (:induction fn-lgo-skip-ind))
+                                      (theory 'minimal-theory)))))
+
+; The host's case: a prefix PRE of at most J records dropped from the front,
+; the fold of the rest from skip 0 bounds the open's fold from skip J.
+(defthm fn-lgo-fold-past-a-dropped-prefix-is-bounded
+  (let ((exact (mv-nth 1 (fn-lgo-fold (append pre rest) j (fn-ct-zero-tot :resident) dicts)))
+        (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts))))
+    (implies (and (<= (len pre) (nfix j))
+                  (not (equal host :bad)))
+             (and (not (equal exact :bad))
+                  (fn-mm-tot-le exact host))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgo-nthcdr-of-append fn-lgo-zero-not-bad fn-lgo-le-zero)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lgo-fold-past-the-skip (zs (append pre rest)) (skip j)
+                            (acc (fn-ct-zero-tot :resident)))
+                 (:instance fn-lgo-fold-past-the-skip (zs rest) (skip (- (nfix j) (len pre)))
+                            (acc (fn-ct-zero-tot :resident)))
+                 (:instance fn-lgo-fold-from-no-skip-bounds-any-skip (zs rest) (j (- (nfix j) (len pre)))
+                            (a (fn-ct-zero-tot :resident)) (b (fn-ct-zero-tot :resident)))))))
+
+; KEYSTONE L2H-2.  The open's records are PRE (the dropped segments', at
+; most J of them) then REST (the host's scan); from a valid (K . TOT) cache,
+; the rows past K the replay's from the epoch at K, the host's suffix (REST from skip 0) over the cache's TOT bounds
+; the charged fold of every row the open recovers.  PRE empty is the
+; :genesis plan's case with J = S (L2-5 itself).  A refusing host suffix is
+; unseen (the host answers NIL), never a bound.
+(defthm fn-lgo-host-suffix-covers-the-opened-store
+  (let* ((k (car cache))
+         (zs (append pre rest))
+         (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts)))
+         (acc1 (mv-nth 0 (fn-ssr-intern-step
+                          (fn-ssr-state nil keyring (nfix generation) identity)
+                          (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts))
+                          nil nil :resident nil fn-arena))))
+    (implies (and (<= (len pre) (nfix j))
+                  (not (equal host :bad))
+                  (fn-ct-totals-cache-validp cache rows :resident)
+                  (equal (nthcdr k rows) (fn-ssr-rows acc1)))
+             (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) host))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgo-le-trans fn-lgo-plus-monotone-right)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lgo-observed-covers-the-opened-store (zs (append pre rest)))
+                 (:instance fn-lgo-fold-past-a-dropped-prefix-is-bounded)
+                 (:instance fn-lgo-plus-monotone-right
+                            (c (cdr cache))
+                            (a (mv-nth 1 (fn-lgo-fold (append pre rest) j (fn-ct-zero-tot :resident)
+                                                      dicts)))
+                            (b (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts))))
+                 (:instance fn-lgo-le-trans
+                            (a (fn-ct-charged rows :resident))
+                            (b (fn-mm-tot-plus (cdr cache)
+                                               (mv-nth 1 (fn-lgo-fold (append pre rest) j
+                                                                      (fn-ct-zero-tot :resident) dicts))))
+                            (c (fn-mm-tot-plus (cdr cache)
+                                               (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident)
+                                                                      dicts)))))))))

@@ -696,18 +696,20 @@ DONEP YIELDP COLD-READ END WINDOW-WAIT)."
 (defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
 positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
-  (let ((ms (fnn-core 'fn-asto-resume-ms plan)))
+  (let ((ms (fnn-core 'fn-asto-resume-ms plan (not empty-progressp))))
     (unless (and (integerp ms) (>= ms 0))
       (fnn-fault "owner returned a malformed cursor resume delay"))
     (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
       ;; PASSES: the loop's completed passes (lane host-lifecycle: an
       ;; ineligible idle deadline made a yield's wait a busy poll, r71 F11).
-      (fnn-err "OVER ~a cid=~d passes=~d" (if empty-progressp "empty-yield" "cursor-yield")
-               (fnn-mux-conn-cid conn) (fnn-mux-loop-passes loop)))
-    ;; ACL2 decides the delay (fn-asto-resume-ms): an ARTICLE or LIST quantum
-    ;; spends its whole grant, so it is due now and resumes on the next pass of
-    ;; the loop (the poll timeout is zero, every other ready connection is
-    ;; served first); a sparse OVER range waits ACL2's positive delay.
+      (fnn-err "OVER ~a cid=~d passes=~d ms=~d" (if empty-progressp "empty-yield" "cursor-yield")
+               (fnn-mux-conn-cid conn) (fnn-mux-loop-passes loop) ms))
+    ;; ACL2 decides the delay (fn-asto-resume-ms, PRODUCEDP = not
+    ;; EMPTY-PROGRESSP): a yield after a sent window (fnn-mux-flush) and an
+    ;; ARTICLE or LIST quantum are due now: this I/O event ends here and the
+    ;; plan resumes at the loop's next timer pass (no second quantum in this
+    ;; event); only an OVER/NEWNEWS quantum that made empty progress (a sparse
+    ;; range) waits ACL2's positive delay.
     (setf (fnn-mux-conn-plan conn) plan
           (fnn-mux-conn-drained-late conn) t
           (fnn-mux-conn-after conn) after
