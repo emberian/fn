@@ -11839,6 +11839,11 @@
         "fn-lgb-span-within-max",
         "fn-lgb-descriptor-is-the-attached-place",
         "fn-lgb-descriptor-of-an-accepted-record",
+        "fn-lgb-next-record-yields-the-records",
+        "fn-lgb-next-record-advances-the-cursor",
+        "fn-lgb-next-record-within-max",
+        "fn-lgb-next-record-descriptor-is-the-attached-place",
+        "fn-lgb-next-record-has-a-descriptor",
         "fn-lg-entry-okp-holds-the-chain-field",
         "fn-lgb-decide-is-flat"
       ],
