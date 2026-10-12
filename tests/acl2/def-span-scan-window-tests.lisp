@@ -5,7 +5,15 @@
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defun dsw-t-map (o) (declare (xargs :guard t)) o)
-(local (defattach fn-dss-copy-f dsw-t-map))
+(def-span-scan-window dsw-t-id-copy () :shape :copy)
+(def-span-scan-window dsw-t-id-copy-string () :shape :copy-string)
+(def-span-scan-window dsw-t-zero-copy (zero) :shape :copy :map (if zero 0 o))
+(def-span-scan-window dsw-t-zero-copy-string (zero) :shape :copy-string :map (if zero 0 o))
+
+; Explicit maps export neither identity event. Follow def-carried-tests' world check.
+(assert-event
+ (and (null (getpropc 'dsw-t-zero-copy-list-is-identity 'theorem nil (w state)))
+      (null (getpropc 'dsw-t-zero-copy-is-the-source-splice 'theorem nil (w state)))))
 
 (defun dsw-t-bytes (h i end fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st :verify-guards nil :measure (nfix (- (nfix end) (nfix i)))))
@@ -33,6 +41,12 @@
 (defun dsw-t-write (kind n fn-octets fn-rtc-st)
   (declare (xargs :stobjs (fn-octets fn-rtc-st) :verify-guards nil))
   (case kind
+    (:zero-copy (dsw-t-zero-copy t 0 0 3 2 fn-octets fn-rtc-st))
+    (:zero-string (dsw-t-zero-copy-string t 0 1 4 2 "x345y" fn-rtc-st))
+    (:context-copy (dsw-t-zero-copy nil 0 0 3 2 fn-octets fn-rtc-st))
+    (:context-string (dsw-t-zero-copy-string nil 0 1 4 2 "x345y" fn-rtc-st))
+    (:id-copy (dsw-t-id-copy 0 0 3 2 fn-octets fn-rtc-st))
+    (:id-string (dsw-t-id-copy-string 0 1 4 2 "x345y" fn-rtc-st))
     (:copy (fn-dsw-copy 0 0 3 2 fn-octets fn-rtc-st))
     (:string (fn-dsw-copy-string 0 1 4 2 "x345y" fn-rtc-st))
     (:decimal (fn-dsw-decimal 0 2 n fn-rtc-st))
@@ -43,7 +57,11 @@
   (let* ((fn-rtc-st (dsw-t-seed cap fn-rtc-st))
          (fn-octets (fn-octets-from-list '(3 4 5) fn-octets))
          (before (dsw-t-state fn-rtc-st))
-         (data (case kind (:string '(51 52 53)) (:decimal (fn-nntp-decimal n)) (otherwise '(3 4 5))))
+         (data (case kind
+                 ((:zero-copy :zero-string) '(0 0 0))
+                 ((:id-string :context-string :string) '(51 52 53))
+                 (:decimal (fn-nntp-decimal n))
+                 (otherwise '(3 4 5))))
          (fits (fn-rtc-splice-okp 0 2 data before)))
     (mv-let (sig j fn-rtc-st) (dsw-t-write kind n fn-octets fn-rtc-st)
       (let ((after (dsw-t-state fn-rtc-st)))
@@ -68,6 +86,21 @@
           (mv ok fn-octets)))
       ok)))
 
+; These live calls run before the generic template's local attachment.
+(assert-event (dsw-t-value :id-copy 8 0))
+(assert-event (dsw-t-value :id-copy 4 0))
+(assert-event (dsw-t-value :id-string 8 0))
+(assert-event (dsw-t-value :id-string 4 0))
+(assert-event (dsw-t-value :zero-copy 8 0))
+(assert-event (dsw-t-value :zero-copy 4 0))
+(assert-event (dsw-t-value :zero-string 8 0))
+(assert-event (dsw-t-value :zero-string 4 0))
+(assert-event (dsw-t-value :context-copy 8 0))
+(assert-event (dsw-t-value :context-copy 4 0))
+(assert-event (dsw-t-value :context-string 8 0))
+(assert-event (dsw-t-value :context-string 4 0))
+
+(local (defattach fn-dss-copy-f dsw-t-map))
 (assert-event (dsw-t-value :copy 8 0))
 (assert-event (dsw-t-value :string 8 0))
 (assert-event (dsw-t-value :append 8 0))
