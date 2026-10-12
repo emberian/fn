@@ -168,6 +168,96 @@
 (defthm fn-arena-payload-is-nth
   (equal (fn-arena-payload h fn-arena) (nth h fn-arena)))
 
+; Exact scalar comparison shared by completion and extent reseating.
+(defun fn-arx-arena-prefixp (h j n tail fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (natp h) (< h (fn-arena-count fn-arena))
+                              (natp j) (natp n) (<= n (fn-arena-payload-len h fn-arena)))
+                  :measure (nfix (- (nfix n) (nfix j)))))
+  (if (or (not (natp j)) (not (natp n)) (<= n j))
+      t
+    (and (consp tail)
+         (equal (car tail) (fn-arena-get h j fn-arena))
+         (fn-arx-arena-prefixp h (1+ j) n (cdr tail) fn-arena))))
+
+(local
+ (defthm fn-pce-take-cons
+   (implies (posp n) (equal (take n (cons a x)) (cons a (take (1- n) x))))))
+
+(local
+ (defthm fn-pce-nthcdr-true-listp
+   (implies (true-listp x) (true-listp (nthcdr k x)))))
+
+(local
+ (defthm fn-pce-nthcdr-opens
+   (implies (and (natp j) (< j (len p)))
+            (equal (nthcdr j p) (cons (nth j p) (nthcdr (1+ j) p))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable nth nthcdr)))))
+
+(local
+ (defthm fn-pce-take-0
+   (equal (take 0 x) nil)))
+
+(local
+ (defthm fn-pce-nthcdr-len
+   (implies (true-listp p) (equal (nthcdr (len p) p) nil))))
+
+; The arena's octets from J match TAIL: TAIL opens with the payload's suffix
+; from J.
+(defthm fn-arx-arena-prefixp-is-take
+  (implies (and (natp j) (true-listp (nth h fn-arena))
+                (equal n (len (nth h fn-arena))) (<= j n)
+                (fn-arx-arena-prefixp h j n tail fn-arena))
+           (equal (take (- n j) tail)
+                  (nthcdr j (nth h fn-arena))))
+  :hints (("Goal" :induct (fn-arx-arena-prefixp h j n tail fn-arena)
+           :in-theory (disable nthcdr take))
+          ("Subgoal *1/2" :use ((:instance fn-pce-nthcdr-opens (p (nth h fn-arena))))
+           :expand ((take (+ (len (nth h fn-arena)) (- j)) tail)))))
+
+(defun fn-arena-payload-equal-p (h x fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (natp h) (< h (fn-arena-count fn-arena)))))
+  (and (true-listp x)
+       (equal (len x) (fn-arena-payload-len h fn-arena))
+       (fn-arx-arena-prefixp h 0 (len x) x fn-arena)))
+
+(local
+ (defthm fn-phei-payload-true-listp
+   (implies (fn-arn-payload-listp a) (true-listp (nth h a)))
+   :hints (("Goal" :induct (nth h a)
+            :in-theory (enable nth fn-arn-payload-listp fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-phei-take-len
+   (implies (true-listp x) (equal (take (len x) x) x))
+   :hints (("Goal" :in-theory (enable take)))))
+
+(local
+ (defthm fn-phei-prefix-of-payload
+   (implies (and (natp j) (true-listp (nth h fn-arena))
+                 (<= j (len (nth h fn-arena))))
+            (fn-arx-arena-prefixp h j (len (nth h fn-arena))
+                                  (nthcdr j (nth h fn-arena)) fn-arena))
+   :hints (("Goal" :induct (fn-arx-arena-prefixp h j (len (nth h fn-arena))
+                                             (nthcdr j (nth h fn-arena)) fn-arena)
+            :in-theory (disable nthcdr))
+           ("Subgoal *1/4" :use ((:instance fn-pce-nthcdr-opens (p (nth h fn-arena)))))
+           ("Subgoal *1/3" :use ((:instance fn-pce-nthcdr-opens (p (nth h fn-arena)))))
+           ("Subgoal *1/2" :use ((:instance fn-pce-nthcdr-opens (p (nth h fn-arena))))))))
+
+(defthm fn-arena-payload-equal-p-is-equal
+  (implies (fn-arena-p fn-arena)
+           (equal (fn-arena-payload-equal-p h x fn-arena)
+                  (equal (fn-arena-payload h fn-arena) x)))
+  :hints (("Goal" :cases ((equal (nth h fn-arena) x))
+           :in-theory (e/d (fn-arena-payload-equal-p fn-arena-p-is-payload-listp nthcdr)
+                           (fn-arx-arena-prefixp take))
+           :use ((:instance fn-arx-arena-prefixp-is-take
+                            (j 0) (n (len x)) (tail x))
+                 (:instance fn-phei-prefix-of-payload (j 0))))))
+
 (defthm fn-arena-seal-list-is-append
   (implies (fn-arena-p fn-arena)
            (equal (fn-arena-seal-list xs fn-arena) (append fn-arena (list xs)))))

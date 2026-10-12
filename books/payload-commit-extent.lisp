@@ -43,16 +43,6 @@
 ; 1. The payload's place, compared against the arena's copy.
 
 ; The arena's octets [J, N) of handle H open TAIL.
-(defun fn-arx-arena-prefixp (h j n tail fn-arena)
-  (declare (xargs :stobjs fn-arena
-                  :guard (and (natp h) (< h (fn-arena-count fn-arena))
-                              (natp j) (natp n) (<= n (fn-arena-payload-len h fn-arena)))
-                  :measure (nfix (- (nfix n) (nfix j)))))
-  (if (or (not (natp j)) (not (natp n)) (<= n j))
-      t
-    (and (consp tail)
-         (equal (car tail) (fn-arena-get h j fn-arena))
-         (fn-arx-arena-prefixp h (1+ j) n (cdr tail) fn-arena))))
 
 ; The first I in [I, END] where the payload opens (nthcdr I r), walking the
 ; record's tails; nil when none.
@@ -172,42 +162,6 @@
 
 ; -----------------------------------------------------------------------------
 ; 2. What a found place means.
-
-(local
- (defthm fn-pce-take-cons
-   (implies (posp n) (equal (take n (cons a x)) (cons a (take (1- n) x))))))
-
-(local
- (defthm fn-pce-nthcdr-true-listp
-   (implies (true-listp x) (true-listp (nthcdr k x)))))
-
-(local
- (defthm fn-pce-nthcdr-opens
-   (implies (and (natp j) (< j (len p)))
-            (equal (nthcdr j p) (cons (nth j p) (nthcdr (1+ j) p))))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (enable nth nthcdr)))))
-
-(local
- (defthm fn-pce-take-0
-   (equal (take 0 x) nil)))
-
-(local
- (defthm fn-pce-nthcdr-len
-   (implies (true-listp p) (equal (nthcdr (len p) p) nil))))
-
-; The arena's octets from J match TAIL: TAIL opens with the payload's suffix
-; from J.
-(defthm fn-arx-arena-prefixp-is-take
-  (implies (and (natp j) (true-listp (nth h fn-arena))
-                (equal n (len (nth h fn-arena))) (<= j n)
-                (fn-arx-arena-prefixp h j n tail fn-arena))
-           (equal (take (- n j) tail)
-                  (nthcdr j (nth h fn-arena))))
-  :hints (("Goal" :induct (fn-arx-arena-prefixp h j n tail fn-arena)
-           :in-theory (disable nthcdr take))
-          ("Subgoal *1/2" :use ((:instance fn-pce-nthcdr-opens (p (nth h fn-arena))))
-           :expand ((take (+ (len (nth h fn-arena)) (- j)) tail)))))
 
 ; A found place I is where the payload opens.
 (defthm fn-arx-arena-find-is-a-place
