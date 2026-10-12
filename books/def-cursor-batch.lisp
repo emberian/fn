@@ -12,7 +12,7 @@
 (include-book "def-cursor")
 
 (defmacro def-cursor/batch (name formals &key step stobjs byte-proof call-proof remaining residual-proof
-                                 demand-metric demand-proof)
+                                 yield-proof demand-metric demand-proof)
   (let ((batch (intern-in-package-of-symbol
                 (concatenate 'string (symbol-name name) "-BATCH") name))
         (byte-bound (intern-in-package-of-symbol
@@ -33,11 +33,15 @@
         (source-empty (intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-BATCH-SOURCE-EMPTY") name))
         (source-rest (intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-BATCH-SOURCE-REST") name))
         (residual (intern-in-package-of-symbol
-                   (concatenate 'string (symbol-name name) "-BATCH-RESIDUAL") name)))
+                   (concatenate 'string (symbol-name name) "-BATCH-RESIDUAL") name))
+        (source-yield (intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-BATCH-SOURCE-YIELD") name))
+        (yield-spends (intern-in-package-of-symbol
+                       (concatenate 'string (symbol-name name) "-BATCH-YIELD-SPENDS-THE-VISITS") name)))
     (if (or (not (symbolp name)) (not (true-listp formals))
             (not (symbolp step)) (not (symbolp byte-proof))
             (not (symbolp call-proof)) (not (consp remaining))
             (not (symbolp residual-proof))
+            (not (symbolp yield-proof)) (not yield-proof)
             (and (or demand-metric demand-proof)
                  (or (not (consp demand-metric)) (not (symbolp demand-proof)) (not demand-proof))))
         '(assert-event nil :msg "def-cursor/batch requires literal step contracts (and, with :demand-metric, the step's named demand bound)")
@@ -57,6 +61,18 @@
          (make-event
           (fn-cur-visit-proof-event ',call-proof
            '(<= (mv-nth 2 (,step cur visits bytes ,@formals)) (nfix visits)) state))
+         (make-event
+          (fn-cur-visit-proof-event ',yield-proof
+           '(implies (equal (mv-nth 3 (,step cur visits bytes ,@formals)) :yield)
+                     (and (equal (mv-nth 2 (,step cur visits bytes ,@formals)) 0)
+                          (or (zp bytes) (zp visits))))
+           state))
+         (local (defthm ,source-yield
+           (implies (equal (mv-nth 3 (,step cur visits bytes ,@formals)) :yield)
+                    (and (equal (mv-nth 2 (,step cur visits bytes ,@formals)) 0)
+                         (or (zp bytes) (zp visits))))
+           :rule-classes :forward-chaining
+           :hints (("Goal" :use ,yield-proof :in-theory (disable ,step)))))
          (make-event
           (fn-cur-visit-proof-event ',residual-proof
            '(equal (append (car (,step cur visits bytes ,@formals))
@@ -157,6 +173,19 @@
            :rule-classes (:rewrite :type-prescription)
            :hints (("Goal" :induct (,batch cur visits bytes ,@budget ,@formals)
                     :in-theory (e/d (,batch) (,step ,(car remaining))))))
+         ;; KEYSTONE (lane spans-newnews): a batch with an octet budget that
+         ;; yields has spent its whole visit budget, so a stream of yielding
+         ;; batches of V visits takes ceil(calls / V) of them.  With a demand
+         ;; budget a batch also yields when the demand runs out, so the
+         ;; theorem is the demand-free batch's.
+         ,@(if demand-metric
+               nil
+             `((defthm ,yield-spends
+                 (implies (and (posp bytes)
+                               (equal (mv-nth 3 (,batch cur visits bytes ,@formals)) :yield))
+                          (equal (mv-nth 2 (,batch cur visits bytes ,@formals)) (nfix visits)))
+                 :hints (("Goal" :induct (,batch cur visits bytes ,@formals)
+                          :in-theory (e/d (,batch) (,step ,(car remaining))))))))
          ,@(if demand-metric
                `((local (defthm ,demand-split
                    (equal (,demand-of cur ,rest-call)

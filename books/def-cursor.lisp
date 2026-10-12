@@ -112,7 +112,9 @@
         (call-bound (intern-in-package-of-symbol
                      (concatenate 'string (symbol-name name) "-STEP-CALL-BOUND") name))
         (demand-bound (intern-in-package-of-symbol
-                       (concatenate 'string (symbol-name name) "-STEP-DEMAND-BOUND") name)))
+                       (concatenate 'string (symbol-name name) "-STEP-DEMAND-BOUND") name))
+        (yield-bound (intern-in-package-of-symbol
+                      (concatenate 'string (symbol-name name) "-STEP-YIELD-IS-EXHAUSTION") name)))
     (if (or (not (symbolp name)) (not (true-listp formals))
             (not (consp call)) (not (symbolp visit-proof)) (not visit-proof)
             (not (consp visit-metric))
@@ -174,6 +176,14 @@
          (defthm ,call-bound
            (<= (mv-nth 2 (,step cur visits bytes ,@formals)) (nfix visits))
            :rule-classes :linear
+           :hints (("Goal" :in-theory (e/d (,step) (fn-cur-split)))))
+         ;; A step yields only for an exhausted budget, and visits nothing
+         ;; (def-cursor/batch's NAME-BATCH-YIELD-SPENDS-THE-VISITS).
+         (defthm ,yield-bound
+           (implies (equal (mv-nth 3 (,step cur visits bytes ,@formals)) :yield)
+                    (and (equal (mv-nth 2 (,step cur visits bytes ,@formals)) 0)
+                         (or (zp bytes) (zp visits))))
+           :rule-classes nil
            :hints (("Goal" :in-theory (e/d (,step) (fn-cur-split)))))
          ,@(if demand-metric
                `((defthm ,demand-bound

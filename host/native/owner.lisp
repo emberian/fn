@@ -762,6 +762,20 @@ exists; NIL until a configure.")
         (fit *fnn-owner-over-window-fit*))
     (if (and (integerp fit) (plusp fit)) (min w fit) w)))
 
+(defvar *fnn-owner-cursor-octets-fit* nil
+  "The run's NEWNEWS/LIST quantum octets (books/memory-model.lisp
+fn-mm-cursor-octets-fit, the octets of W' NOV lines), published with
+*fnn-owner-over-window-fit* by fnn-owner-memory-configure-locked; NIL until
+a configure.")
+
+(defun fnn-owner-cursor-octets ()
+  "The octet budget B of a NEWNEWS or LIST quantum: under a configured run the
+run's fit (fn-mm-cursor-octets-fit, charged within LARGE), else ACL2's
+quantum.  Their visit budget V is the unfitted quantum (fnn-owner-over-quantum):
+a selector or LIST control visit builds no NOV line (lane spans-newnews)."
+  (let ((fit *fnn-owner-cursor-octets-fit*))
+    (if (and (integerp fit) (plusp fit)) fit (fnn-owner-over-quantum))))
+
 (defun fnn-owner-article-window ()
   "ACL2's ARTICLE quantum (fn-asto-quantum), the developer selector's override
 passed through as for the OVER cursor."
@@ -863,6 +877,7 @@ never awaits a page or replays a quantum in the same I/O event."
                        (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
                          (destructuring-bind (status rest)
                              (fnn-call 'fn-qplan-cursor-step plan (fnn-owner-over-window)
+                                       (fnn-owner-over-quantum) (fnn-owner-cursor-octets)
                                        (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
                            (unless (eq status :ok)
                              (fnn-fault "owner returned a malformed cursor in its served reply"))

@@ -1797,7 +1797,12 @@
          ; A-OVER-WINDOW-FIT: the OVER quantum the gate charges, which
          ; the host serves (host/native/owner.lisp fnn-owner-over-window).
          (state (f-put-global 'fn-owner-memory-over-window
-                              (fn-mm-over-window-fit profile cfg) state)))
+                              (fn-mm-over-window-fit profile cfg) state))
+         ; The octets of a NEWNEWS or LIST quantum (fn-mm-cursor-octets-fit,
+         ; within the same LARGE term: fn-mm-cursor-octets-fit-is-charged);
+         ; their visits stay the unfitted quantum (lane spans-newnews).
+         (state (f-put-global 'fn-owner-memory-cursor-octets
+                              (fn-mm-cursor-octets-fit profile cfg) state)))
     (mv limit cfg state)))
 
 (defun fn-owner-memory-gate-install (img resident-obs trigger pub-trigger profile tlsp live
