@@ -233,3 +233,171 @@
          '(:before (:owner t :retained t :record t :okp t :arena t :count 0)
            :word :prepared :staged-phase :record-staged :unsealed-okp nil
            :abort-word :aborted :after-phase :ready :after-okp t :count 0))))
+
+; v5: actual carried deferred prepares and the grant/outcome entries.
+(with-guard-checking-event :none
+ (defconst *rfclv5-retention*
+  (fn-store-retention-event-make :undertake 1 1 1 "rfclv5-obligation"
+                               "rfclv5-subject" "rfclv5-evidence" 5)))
+
+(with-guard-checking-event :none
+ (defconst *rfclv5-consumer* (fn-cpe-make 1 1 1 '(:bootstrap (1) (2)))))
+
+(with-guard-checking-event :none
+ (defconst *rfclv5-topic*
+  (fn-stmt-value (fn-th-local-admin-install 1 1 1 501 (make-list 32 :initial-element 61) nil))))
+
+(defun rfclv5-staging (kind entryp badp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((ready (rfcllive-ready-owner fn-arena))
+         (oc (if badp (fn-ocfg-with-owner ready (fn-ocl-owner-with-store (fn-ocfg-owner ready) *sit-after-composite*)) ready))
+         (s (fn-sbud-oc-store oc))
+         (e (cond ((equal kind :retention) *rfclv5-retention*)
+                  ((equal kind :consumer) *rfclv5-consumer*)
+                  (t *rfclv5-topic*)))
+         (grant (list :identity-grant (1- (fn-sf-frontier (fn-sn-files s))) e))
+         (out (cond ((equal kind :retention) (mv-list 4 (fn-idrp-prepare-retention oc e grant fn-arena)))
+                    ((equal kind :consumer) (mv-list 2 (fn-pdc-pout-prepare-consumer oc e)))
+                    (t (mv-list 2 (fn-pdc-pout-prepare-topic oc e)))))
+         (next (if entryp (fn-sbud-oc-store (mv-nth 1 out))
+                 (cond ((equal kind :retention) (fn-pdc-sn-prepare-retention s e))
+                       ((equal kind :consumer) (fn-pdc-sn-prepare-consumer s e))
+                       (t (fn-pdc-sn-prepare-topic s e))))))
+    (mv (list :before-okp (fn-rfcl-okp s fn-arena)
+              :before-phase (fn-sf-phase (fn-sn-files s))
+              :entry-word (mv-nth 0 out)
+              :changed (not (equal next s))
+              :after-phase (fn-sf-phase (fn-sn-files next))
+              :candidate (equal (fn-sf-record-candidate (fn-sn-files next)) e)
+              :after-okp (fn-rfcl-okp next fn-arena)
+              :count (fn-arena-count fn-arena)) fn-arena)))
+
+(defun rfclv5-run-staging (kind entryp badp)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (answer fn-arena) (rfclv5-staging kind entryp badp fn-arena) answer)))
+
+; Whole antecedent and real staging.
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :retention nil nil)
+                      '(:before-okp t :before-phase :reserved :entry-word :prepared :changed t :after-phase :record-staged :candidate t :after-okp t :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :consumer nil nil)
+                      '(:before-okp t :before-phase :reserved :entry-word :prepared :changed t :after-phase :record-staged :candidate t :after-okp t :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :topic nil nil)
+                      '(:before-okp t :before-phase :reserved :entry-word :prepared :changed t :after-phase :record-staged :candidate t :after-okp t :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :retention t nil)
+                      '(:before-okp t :before-phase :reserved :entry-word :prepared :changed t :after-phase :record-staged :candidate t :after-okp t :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :consumer t nil)
+                      '(:before-okp t :before-phase :reserved :entry-word :prepared :changed t :after-phase :record-staged :candidate t :after-okp t :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :topic t nil)
+                      '(:before-okp t :before-phase :reserved :entry-word :prepared :changed t :after-phase :record-staged :candidate t :after-okp t :count 0))))
+
+; Removal of the sole input-invariant hypothesis; refused no-op control.
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :retention nil t)
+                      '(:before-okp nil :before-phase :ready :entry-word :refused :changed nil :after-phase :ready :candidate nil :after-okp nil :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :consumer nil t)
+                      '(:before-okp nil :before-phase :ready :entry-word :refused :changed nil :after-phase :ready :candidate nil :after-okp nil :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :topic nil t)
+                      '(:before-okp nil :before-phase :ready :entry-word :refused :changed nil :after-phase :ready :candidate nil :after-okp nil :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :retention t t)
+                      '(:before-okp nil :before-phase :ready :entry-word :refused :changed nil :after-phase :ready :candidate nil :after-okp nil :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :consumer t t)
+                      '(:before-okp nil :before-phase :ready :entry-word :refused :changed nil :after-phase :ready :candidate nil :after-okp nil :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-staging :topic t t)
+                      '(:before-okp nil :before-phase :ready :entry-word :refused :changed nil :after-phase :ready :candidate nil :after-okp nil :count 0))))
+
+; LV-2c/LV-3c v6: positive valid-choice controls and choice-removal teeth.
+; The invalid choices refuted the seat's v5 forms and falsify v6 without
+; its new choice recognizer.
+(defun rfclv5-crash-entry (identityp frontier-choice record-choice fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((oc (rfcllive-ready-owner fn-arena))
+         (s (fn-sbud-oc-store oc))
+         (row (fn-intern-row-at *rfcllive-wire* (fn-sn-keyring s)
+                               (fn-sn-keyring-generation s) (fn-arena-count fn-arena)))
+         (before (list :retained (fn-osr-retainedp s)
+                       :record (fn-record-p *rfcllive-wire*)
+                       :okp (fn-rfcl-okp s fn-arena))))
+    (mv-let (word next)
+      (if identityp (fn-pout-prepare-identity oc *sit-composite-wire* (fn-arena-count fn-arena))
+        (fn-pout-prepare-article oc row 100
+          (fn-prc-refresh nil (fn-node-retention (fn-sn-node s)))))
+      (let* ((staged (fn-sbud-oc-store next))
+             (crashed (fn-sn-crash staged frontier-choice record-choice)))
+        (mv (list :before before :word word
+                  :staged-phase (fn-sf-phase (fn-sn-files staged))
+                  :unsealed-okp (fn-rfcl-okp staged fn-arena)
+                  :choicep (fn-sf-crash-choicep frontier-choice record-choice)
+                  :unchanged (equal crashed staged)
+                  :crash-phase (fn-sf-phase (fn-sn-files crashed))
+                  :after-okp (fn-rfcl-okp crashed fn-arena)
+                  :count (fn-arena-count fn-arena)) fn-arena)))))
+
+(defun rfclv5-run-crash-entry (identityp frontier-choice record-choice)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (answer fn-arena)
+      (rfclv5-crash-entry identityp frontier-choice record-choice fn-arena) answer)))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-crash-entry nil :old :present)
+                      '(:before (:retained t :record t :okp t) :word :prepared :staged-phase :record-staged :unsealed-okp nil :choicep t :unchanged nil :crash-phase :replaying :after-okp t :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-crash-entry t :old :present)
+                      '(:before (:retained t :record t :okp t) :word :prepared :staged-phase :record-staged :unsealed-okp nil :choicep t :unchanged nil :crash-phase :replaying :after-okp t :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-crash-entry nil :invalid :present)
+                      '(:before (:retained t :record t :okp t) :word :prepared :staged-phase :record-staged :unsealed-okp nil :choicep nil :unchanged t :crash-phase :record-staged :after-okp nil :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv5-run-crash-entry t :invalid :present)
+                      '(:before (:retained t :record t :okp t) :word :prepared :staged-phase :record-staged :unsealed-okp nil :choicep nil :unchanged t :crash-phase :record-staged :after-okp nil :count 0))))
+
+; LV-2c/LV-3c v6: input-invariant removal while every other hypothesis holds.
+(defun rfclv6-invariant-removal (identityp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((oc (rfcllive-ready-owner fn-arena))
+         (s (fn-sbud-oc-store oc))
+         (row (fn-intern-row-at *rfcllive-wire* (fn-sn-keyring s)
+                               (fn-sn-keyring-generation s) (fn-arena-count fn-arena))))
+    (mv-let (word staged)
+      (fn-pout-prepare-article oc row 100
+        (fn-prc-refresh nil (fn-node-retention (fn-sn-node s))))
+      (let* ((durable (fn-sn-finish (fn-sit-publish (fn-sbud-oc-store staged))))
+             (oc2 (fn-ocfg-with-owner oc
+                    (fn-ocl-owner-with-store (fn-ocfg-owner oc) durable)))
+             (before (list :retained (fn-osr-retainedp durable)
+                           :record (fn-record-p *rfcllive-wire*)
+                           :okp (fn-rfcl-okp durable fn-arena)
+                           :statep (fn-sn-statep durable))))
+        (mv-let (word2 next)
+          (if identityp (fn-pout-prepare-identity oc2 *sit-composite-wire* (fn-arena-count fn-arena))
+            (fn-pout-prepare-article oc2 row 100 nil))
+          (let ((crashed (fn-sn-crash (fn-sbud-oc-store next) :old :present)))
+            (mv (list :first-word word :before before :word word2
+                      :choicep (fn-sf-crash-choicep :old :present)
+                      :crash-phase (fn-sf-phase (fn-sn-files crashed))
+                      :after-okp (fn-rfcl-okp crashed fn-arena)
+                      :count (fn-arena-count fn-arena)) fn-arena)))))))
+
+(defun rfclv6-run-invariant-removal (identityp)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (answer fn-arena) (rfclv6-invariant-removal identityp fn-arena) answer)))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv6-run-invariant-removal nil)
+   '(:first-word :prepared :before (:retained t :record t :okp nil :statep t)
+     :word :refused :choicep t :crash-phase :replaying :after-okp nil :count 0))))
+(with-guard-checking-event :none
+ (assert-event (equal (rfclv6-run-invariant-removal t)
+   '(:first-word :prepared :before (:retained t :record t :okp nil :statep t)
+     :word :refused :choicep t :crash-phase :replaying :after-okp nil :count 0))))

@@ -8,6 +8,9 @@
 ; owner, books/post-prepare-catalog.lisp).  The host then either seals the
 ; payload once (LV-2h) or, when the catalog's may-seal gate refuses, aborts
 ; the staged row unsealed (host/native/owner.lisp:3562, LV-2k).
+; LV-4 and LV-4e cover the served carried deferred prepares and their
+; grant/outcome entries. LV-2c/LV-3c restore the invariant after a valid-
+; choice fn-sn-crash in the unsealed prepare interval, before seal or abort.
 ; LV-6 covers fn-sn-crash's choices only, not the separate rollback
 ; constructors.  fn-sn-set-keyring is outside the native composition
 ; (books/catalog-commit.lisp:751).
@@ -17,6 +20,7 @@
 (in-package "ACL2")
 (include-book "reclaim-fold-contexts")
 (include-book "owner-cursor-domain")
+(include-book "owner-identity-prepare")
 
 (local (in-theory (disable (tau-system))))
 
@@ -141,40 +145,39 @@
                 (equal (fn-sf-phase (fn-sn-files s)) :reserved)
                 (not (fn-orcr-retained-p event)))
            (fn-rfcl-okp
-            (fn-sn-update s (fn-sf-prepare-record (fn-sn-files s) event groups capacity) node)
+            (fn-sn-update s (fn-pcar-stage-record (fn-sn-files s) event) node)
             fn-arena))
-  :hints (("Goal" :in-theory
-           (e/d (fn-rfcl-okp fn-rfcl-rows fn-rfcl-pending-phasep fn-sn-update
-                  fn-sf-prepare-record)
-                (fn-sn-statep fn-sf-statep fn-sf-candidatep fn-sf-history-recoverablep
-                 fn-rows-handles-inp fn-orcr-fold-contexts-okp fn-orcr-retained-p))))))
+  :hints (("Goal" :in-theory (union-theories
+    '(fn-rfcl-okp fn-rfcl-rows fn-rfcl-pending-phasep fn-pcar-stage-record
+      fn-sn-files-of-fn-sn-update fn-sf-scalars-of-fn-sf-make-fields
+      fn-sf-records-of-fn-sf-make-fields-kept rfcl-nonheld-append
+      rfcl-handles-append rfcl-fold-append
+      (:e fn-rfcl-pending-phasep) (:e member-equal))
+    (theory 'minimal-theory))))))
 
 (local
  (defthm rfcl-lv4-retention
   (implies (fn-rfcl-okp s fn-arena)
-           (fn-rfcl-okp (fn-sn-prepare-retention s event) fn-arena))
-  :hints (("Goal" :in-theory
-           (e/d (fn-sn-prepare-retention fn-orcr-retained-p)
-                (fn-rfcl-okp fn-sn-update fn-sn-statep fn-sf-prepare-record fn-replay-apply-retention-event
-                 fn-store-retention-event-p fn-held-p fn-hstxa-p fn-cpe-projection-step))))))
+           (fn-rfcl-okp (fn-pdc-sn-prepare-retention s event) fn-arena))
+  :hints (("Goal" :in-theory (union-theories
+    '(fn-pdc-sn-prepare-retention rfcl-stage-nonheld rfcl-event-nonheld)
+    (theory 'minimal-theory))))))
 
 (local
  (defthm rfcl-lv4-consumer
   (implies (fn-rfcl-okp s fn-arena)
-           (fn-rfcl-okp (fn-sn-prepare-consumer s event) fn-arena))
-  :hints (("Goal" :in-theory
-           (e/d (fn-sn-prepare-consumer fn-orcr-retained-p)
-                (fn-rfcl-okp fn-sn-update fn-sn-statep fn-sf-prepare-record fn-replay-apply-record
-                 fn-cpe-eventp fn-held-p fn-hstxa-p fn-cpe-projection-step))))))
+           (fn-rfcl-okp (fn-pdc-sn-prepare-consumer s event) fn-arena))
+  :hints (("Goal" :in-theory (union-theories
+    '(fn-pdc-sn-prepare-consumer rfcl-stage-nonheld rfcl-event-nonheld)
+    (theory 'minimal-theory))))))
 
 (local
  (defthm rfcl-lv4-topic
   (implies (fn-rfcl-okp s fn-arena)
-           (fn-rfcl-okp (fn-sn-prepare-topic s event) fn-arena))
-  :hints (("Goal" :in-theory
-           (e/d (fn-sn-prepare-topic fn-orcr-retained-p)
-                (fn-rfcl-okp fn-sn-update fn-sn-statep fn-sf-prepare-record fn-replay-apply-record
-                 fn-th-topic-eventp fn-held-p fn-hstxa-p fn-th-prefix-step))))))
+           (fn-rfcl-okp (fn-pdc-sn-prepare-topic s event) fn-arena))
+  :hints (("Goal" :in-theory (union-theories
+    '(fn-pdc-sn-prepare-topic rfcl-stage-nonheld rfcl-event-nonheld)
+    (theory 'minimal-theory))))))
 
 (local
  (defun rfcl-file-rows (f)
@@ -486,8 +489,7 @@
                                 (fn-arena-count fn-arena)))
          (out (fn-pout-prepare-article oc row budget carry))
          (s2 (fn-sbud-oc-store (mv-nth 1 out))))
-    (implies (and (fn-own-relation (fn-ocfg-owner oc))
-                  (fn-osr-retainedp s)
+    (implies (and (fn-osr-retainedp s)
                   (fn-record-p record)
                   (fn-rfcl-okp s fn-arena))
              (fn-rfcl-okp s2 (if (equal (mv-nth 0 out) :prepared)
@@ -646,8 +648,7 @@
   (let* ((s (fn-sbud-oc-store oc))
          (out (fn-pout-prepare-identity oc w (fn-arena-count fn-arena)))
          (s2 (fn-sbud-oc-store (mv-nth 1 out))))
-    (implies (and (fn-own-relation (fn-ocfg-owner oc))
-                  (fn-osr-retainedp s)
+    (implies (and (fn-osr-retainedp s)
                   (fn-rfcl-okp s fn-arena))
              (fn-rfcl-okp s2 (if (and (equal (mv-nth 0 out) :prepared)
                                       (fn-oii-identity-sealsp w))
@@ -662,7 +663,7 @@
 
 (local (in-theory (union-theories '(rfcl-lv0) (theory 'minimal-theory))))
 
-(defthm fn-rfcl-okp-is-the-capture-premise
+(defthm fn-rfcl-okp-is-the-capture-premise-by-definition
   (implies (and (fn-rfcl-okp s fn-arena)
                 (not (fn-rfcl-pending-phasep (fn-sf-phase (fn-sn-files s)))))
            (fn-orcr-fold-contexts-okp (fn-sf-records (fn-sn-files s))
@@ -703,8 +704,7 @@
                                 (fn-arena-count fn-arena)))
          (out (fn-pout-prepare-article oc row budget carry))
          (s2 (fn-sbud-oc-store (mv-nth 1 out))))
-    (implies (and (fn-own-relation (fn-ocfg-owner oc))
-                  (fn-osr-retainedp s)
+    (implies (and (fn-osr-retainedp s)
                   (fn-record-p record)
                   (fn-rfcl-okp s fn-arena))
              (fn-rfcl-okp s2 (if (equal (mv-nth 0 out) :prepared)
@@ -717,8 +717,7 @@
   (let* ((s (fn-sbud-oc-store oc))
          (out (fn-pout-prepare-identity oc w (fn-arena-count fn-arena)))
          (s2 (fn-sbud-oc-store (mv-nth 1 out))))
-    (implies (and (fn-own-relation (fn-ocfg-owner oc))
-                  (fn-osr-retainedp s)
+    (implies (and (fn-osr-retainedp s)
                   (fn-rfcl-okp s fn-arena))
              (fn-rfcl-okp s2 (if (and (equal (mv-nth 0 out) :prepared)
                                       (fn-oii-identity-sealsp w))
@@ -729,19 +728,19 @@
 
 (defthm fn-rfcl-prepare-retention-keeps-okp
   (implies (fn-rfcl-okp s fn-arena)
-           (fn-rfcl-okp (fn-sn-prepare-retention s event) fn-arena)))
+           (fn-rfcl-okp (fn-pdc-sn-prepare-retention s event) fn-arena)))
 
 (local (in-theory (union-theories '(rfcl-lv4-consumer) (theory 'minimal-theory))))
 
 (defthm fn-rfcl-prepare-consumer-keeps-okp
   (implies (fn-rfcl-okp s fn-arena)
-           (fn-rfcl-okp (fn-sn-prepare-consumer s event) fn-arena)))
+           (fn-rfcl-okp (fn-pdc-sn-prepare-consumer s event) fn-arena)))
 
 (local (in-theory (union-theories '(rfcl-lv4-topic) (theory 'minimal-theory))))
 
 (defthm fn-rfcl-prepare-topic-keeps-okp
   (implies (fn-rfcl-okp s fn-arena)
-           (fn-rfcl-okp (fn-sn-prepare-topic s event) fn-arena)))
+           (fn-rfcl-okp (fn-pdc-sn-prepare-topic s event) fn-arena)))
 
 (local (in-theory (union-theories '(rfcl-lv4-io) (theory 'minimal-theory))))
 
@@ -887,9 +886,156 @@
                                 (fn-arena-count fn-arena)))
          (out (fn-pout-prepare-article oc row budget carry))
          (ab (fn-pout-known-abort (mv-nth 1 out) fn-arena)))
-    (implies (and (fn-own-relation (fn-ocfg-owner oc))
-                  (fn-osr-retainedp s)
+    (implies (and (fn-osr-retainedp s)
                   (fn-record-p record)
                   (equal (mv-nth 0 out) :prepared)
                   (fn-rfcl-okp s fn-arena))
              (fn-rfcl-okp (fn-sbud-oc-store (mv-nth 1 ab)) fn-arena))))
+
+(local
+ (defthm rfcl-idrp
+  (implies (fn-rfcl-okp (fn-sbud-oc-store oc) fn-arena)
+           (fn-rfcl-okp (fn-sbud-oc-store (mv-nth 1 (fn-idrp-prepare-retention oc event grant fn-arena)))
+                        fn-arena))
+  :hints (("Goal"
+    :use ((:instance fn-idrp-retention-preparation-consumes-exact-current-grant)
+          (:instance fn-pdc-store-of-owner-prepares (e event)))
+    :in-theory (union-theories '(rfcl-lv4-retention) (theory 'minimal-theory))))))
+(local
+ (defthm rfcl-pdc-consumer
+  (implies (fn-rfcl-okp (fn-sbud-oc-store oc) fn-arena)
+           (fn-rfcl-okp (fn-sbud-oc-store (mv-nth 1 (fn-pdc-pout-prepare-consumer oc e))) fn-arena))
+  :hints (("Goal" :use ((:instance fn-pdc-store-of-owner-prepares))
+    :in-theory (union-theories
+      '(fn-pdc-pout-prepares-answer-the-store-change rfcl-lv4-consumer)
+      (theory 'minimal-theory))))))
+(local
+ (defthm rfcl-pdc-topic
+  (implies (fn-rfcl-okp (fn-sbud-oc-store oc) fn-arena)
+           (fn-rfcl-okp (fn-sbud-oc-store (mv-nth 1 (fn-pdc-pout-prepare-topic oc e))) fn-arena))
+  :hints (("Goal" :use ((:instance fn-pdc-store-of-owner-prepares))
+    :in-theory (union-theories
+      '(fn-pdc-pout-prepares-answer-the-store-change rfcl-lv4-topic)
+      (theory 'minimal-theory))))))
+
+(local (in-theory (union-theories '(rfcl-idrp) (theory 'minimal-theory))))
+(defthm fn-rfcl-idrp-prepare-retention-keeps-okp
+  (implies (fn-rfcl-okp (fn-sbud-oc-store oc) fn-arena)
+           (fn-rfcl-okp (fn-sbud-oc-store (mv-nth 1 (fn-idrp-prepare-retention oc event grant fn-arena)))
+                        fn-arena)))
+
+(local (in-theory (union-theories '(rfcl-pdc-consumer) (theory 'minimal-theory))))
+(defthm fn-rfcl-pdc-pout-prepare-consumer-keeps-okp
+  (implies (fn-rfcl-okp (fn-sbud-oc-store oc) fn-arena)
+           (fn-rfcl-okp (fn-sbud-oc-store (mv-nth 1 (fn-pdc-pout-prepare-consumer oc e))) fn-arena)))
+
+(local (in-theory (union-theories '(rfcl-pdc-topic) (theory 'minimal-theory))))
+(defthm fn-rfcl-pdc-pout-prepare-topic-keeps-okp
+  (implies (fn-rfcl-okp (fn-sbud-oc-store oc) fn-arena)
+           (fn-rfcl-okp (fn-sbud-oc-store (mv-nth 1 (fn-pdc-pout-prepare-topic oc e))) fn-arena)))
+
+; Valid-choice crashes drop the record-staged candidate. The prepare itself
+; establishes Store validity whenever it changes the Store.
+(local
+ (defthm rfcl-crash-staged-restores-records
+  (implies (and (fn-rfcl-okp s fn-arena)
+                (fn-sn-statep next)
+                (equal (fn-sf-phase (fn-sn-files next)) :record-staged)
+                (equal (fn-sf-records (fn-sn-files next))
+                       (fn-sf-records (fn-sn-files s)))
+                (fn-sf-crash-choicep frontier-choice record-choice))
+           (fn-rfcl-okp (fn-sn-crash next frontier-choice record-choice) fn-arena))
+  :hints (("Goal"
+    :use ((:instance rfcl-fok-has-records (f (fn-sn-files s)) (h (fn-arena-count fn-arena)))
+          (:instance fn-cstp-sn-statep-files (st next)))
+    :in-theory (union-theories
+      '(rfcl-okp-is-fok rfcl-fok rfcl-file-rows fn-sn-crash
+        fn-sn-update-indexed fn-sn-with-consumer fn-sn-with-topic
+        fn-sn-files-of-fn-sn-with-event-index fn-sn-fields-of-fn-sn-make-v6
+        fn-sf-crash fn-sf-record-present-visiblep fn-sf-frontier-new-visiblep
+        fn-sf-phase-of-fn-sf-make fn-sf-records-of-fn-sf-make
+        (:e fn-rfcl-pending-phasep) (:e member-equal))
+      (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-prc-change-is-staged
+  (implies (not (equal (fn-prc-spc-prepare s row view carry) s))
+           (equal (fn-sf-phase (fn-sn-files (fn-prc-spc-prepare s row view carry)))
+                  :record-staged))
+  :hints (("Goal" :in-theory (union-theories
+    '(fn-prc-spc-prepare fn-cstp-sn-update-fields)
+    (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-ccar-identity-change-facts
+  (let ((next (fn-ccar-sn-prepare-identity s event)))
+    (implies (not (equal next s))
+             (and (fn-sn-statep next)
+                  (equal (fn-sf-phase (fn-sn-files next)) :record-staged)
+                  (equal (fn-sf-records (fn-sn-files next))
+                         (fn-sf-records (fn-sn-files s))))))
+  :hints (("Goal" :in-theory (union-theories
+    '(fn-ccar-sn-prepare-identity rfcl-update-statep rfcl-stage-files-facts
+      fn-cstp-sn-update-fields fn-sn-statep)
+    (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-article-prepare-crash
+  (implies (and (fn-rfcl-okp (fn-sbud-oc-store oc) fn-arena)
+                (fn-sf-crash-choicep frontier-choice record-choice))
+           (fn-rfcl-okp (fn-sn-crash
+                         (fn-sbud-oc-store (mv-nth 1 (fn-pout-prepare-article oc row budget carry)))
+                         frontier-choice record-choice) fn-arena))
+  :hints (("Goal"
+    :use ((:instance fn-pout-store-of-psrv-prepare (record row))
+          (:instance rfcl-prc-prepared-facts (s (fn-sbud-oc-store oc))
+                     (view (fn-own-view (fn-ocfg-owner oc))))
+          (:instance rfcl-prc-change-is-staged (s (fn-sbud-oc-store oc))
+                     (view (fn-own-view (fn-ocfg-owner oc))))
+          (:instance rfcl-crash-staged-restores-records (s (fn-sbud-oc-store oc))
+            (next (fn-prc-spc-prepare (fn-sbud-oc-store oc) row (fn-own-view (fn-ocfg-owner oc)) carry))))
+    :in-theory (union-theories
+      '(fn-pout-prepare-article-answers-the-store-change rfcl-lv6)
+      (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-identity-prepare-crash
+  (implies (and (fn-rfcl-okp (fn-sbud-oc-store oc) fn-arena)
+                (fn-sf-crash-choicep frontier-choice record-choice))
+           (fn-rfcl-okp (fn-sn-crash
+                         (fn-sbud-oc-store (mv-nth 1 (fn-pout-prepare-identity oc w h)))
+                         frontier-choice record-choice) fn-arena))
+  :hints (("Goal"
+    :use ((:instance fn-pout-store-of-oiis-prepare-identity)
+          (:instance rfcl-ccar-identity-change-facts (s (fn-sbud-oc-store oc))
+            (event (fn-oii-identity-row w (fn-sn-keyring (fn-sbud-oc-store oc))
+                                        (fn-sn-keyring-generation (fn-sbud-oc-store oc)) h)))
+          (:instance rfcl-crash-staged-restores-records (s (fn-sbud-oc-store oc))
+            (next (fn-ccar-sn-prepare-identity (fn-sbud-oc-store oc)
+                    (fn-oii-identity-row w (fn-sn-keyring (fn-sbud-oc-store oc))
+                                        (fn-sn-keyring-generation (fn-sbud-oc-store oc)) h)))))
+    :in-theory (union-theories
+      '(fn-pout-prepare-identity-answers-the-store-change rfcl-lv6)
+      (theory 'minimal-theory))))))
+
+(local (in-theory (union-theories '(rfcl-article-prepare-crash) (theory 'minimal-theory))))
+(defthm fn-rfcl-crash-after-prepare-article-keeps-okp
+  (let* ((s (fn-sbud-oc-store oc))
+         (row (fn-intern-row-at record (fn-sn-keyring s) (fn-sn-keyring-generation s)
+                                (fn-arena-count fn-arena)))
+         (out (fn-pout-prepare-article oc row budget carry)))
+    (implies (and (fn-rfcl-okp s fn-arena)
+                  (fn-sf-crash-choicep frontier-choice record-choice))
+             (fn-rfcl-okp (fn-sn-crash (fn-sbud-oc-store (mv-nth 1 out))
+                                       frontier-choice record-choice)
+                          fn-arena))))
+
+(local (in-theory (union-theories '(rfcl-identity-prepare-crash) (theory 'minimal-theory))))
+(defthm fn-rfcl-crash-after-prepare-identity-keeps-okp
+  (let* ((s (fn-sbud-oc-store oc))
+         (out (fn-pout-prepare-identity oc w (fn-arena-count fn-arena))))
+    (implies (and (fn-rfcl-okp s fn-arena)
+                  (fn-sf-crash-choicep frontier-choice record-choice))
+             (fn-rfcl-okp (fn-sn-crash (fn-sbud-oc-store (mv-nth 1 out))
+                                       frontier-choice record-choice)
+                          fn-arena))))
