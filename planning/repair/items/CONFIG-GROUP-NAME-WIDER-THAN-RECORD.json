@@ -1,0 +1,12 @@
+{
+ "detail": "A configured moderated (or any) group name wider than the record codec's group-name width (*fn-record-max-group-name*, 256 octets; books/records-shape.lisp) can never be stored as a group, yet a valid injection config admits it (fn-inj-configp, books/injection.lisp): P9's c9 built a valid ICFG with a 900-octet moderated source group (post-acc build/post-runs/l2/c9/A1-COUNTEREXAMPLE.lsp). A post to it is forwarded to the moderation queue and the envelope's Subject carries the 900-octet name (books/moderation.lisp:221-231). Config validation should reject a group name wider than the record codec. This is hygiene, not a dependency: POST landing 2 derives K from the stored-article line gate (coordinator DECISION (i), 2026-10-12), which bounds the envelope independently of config validation.",
+ "file": "books/injection.lisp",
+ "id": "CONFIG-GROUP-NAME-WIDER-THAN-RECORD",
+ "notes": [],
+ "owner": "builder-A",
+ "severity": "low",
+ "source": "Coordinator DECISION 2026-10-12 (P9's A1 RED, option (ii) filed as hygiene)",
+ "state": "open",
+ "title": "Config admits group names wider than the record codec can store",
+ "updated": "2026-10-13T02:00:00Z"
+}
