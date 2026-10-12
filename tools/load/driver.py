@@ -31,6 +31,7 @@ import json
 import os
 import re
 import shlex
+import signal
 import shutil
 import subprocess
 import tempfile
@@ -90,14 +91,16 @@ def proc_snapshot(pid):
     if "VmRSS" not in st:
         return None
     sm = read_kv("/proc/%d/smaps_rollup" % pid, {"Rss", "Pss", "Anonymous"})
-    io = read_kv("/proc/%d/io" % pid, {"read_bytes", "write_bytes", "rchar", "wchar"})
+    io = read_kv("/proc/%d/io" % pid, {"read_bytes", "write_bytes", "rchar", "wchar", "syscr", "syscw"})
     cpu = None
+    faults = {}
     with contextlib.suppress(OSError, IndexError, ValueError):
         fields = Path("/proc/%d/stat" % pid).read_text().rsplit(")", 1)[1].split()
         cpu = (int(fields[11]) + int(fields[12])) / CLK
+        faults = {"minor": int(fields[7]), "major": int(fields[9])}
     return {"vmrss": st.get("VmRSS"), "hwm": st.get("VmHWM"), "anon": st.get("RssAnon", sm.get("Anonymous")),
             "file": st.get("RssFile"), "pss": sm.get("Pss"), "smaps_rss": sm.get("Rss"),
-            "threads": st.get("Threads"), "cpu_s": cpu, "io": io}
+            "threads": st.get("Threads"), "cpu_s": cpu, "io": io, "faults": faults}
 
 
 def loadavg():
@@ -280,10 +283,11 @@ class Node:
             raise CellError("operator %s exit %d: %s" % (" ".join(words[:3]), p.returncode, p.stdout[-400:].decode("utf-8", "replace")))
         return p.stdout.decode("utf-8", "replace")
 
-    def decide_heap(self):
+    def decide_heap(self, command=None):
         """The heap and control stack the image's own probe decides for this store (MEM-002):
         `IMAGE --fn heap -- operator CONFIG run`, as tests/native_harness.decided_launch does."""
-        p = subprocess.run([str(self.launcher), "--fn", "heap", "--", "operator", str(self.config), "run"], env=self.env,
+        command = command or ["operator", str(self.config), "run"]
+        p = subprocess.run([str(self.launcher), "--fn", "heap", "--", *command], env=self.env,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=300)
         out = p.stdout.decode("utf-8", "replace")
         heap, stack = re.search(r"heap=(\d+) MB", out), re.search(r"stack=(\d+) KB", out)
@@ -297,19 +301,28 @@ class Node:
         self.env["SBCL_USER_ARGS"] = self.decided
         return self.decided
 
-    def start(self, timeout=1800):
+    def start(self, timeout=1800, *, probe_heap=True, command_wrapper=None):
         import select
-        if self.heap_mode == "decided" and not self.launcher_decides:
+        if probe_heap and self.heap_mode == "decided" and not self.launcher_decides:
             self.decide_heap()
         self.err_n += 1
         errp = self.work / ("owner.%d.err" % self.err_n)
         err = open(errp, "wb")
         t0 = time.monotonic()
-        self.proc = subprocess.Popen(self.argv("run"), env=self.env, stdout=subprocess.PIPE, stderr=err)
-        self.pid = self.proc.pid
+        command = self.argv("run")
+        if command_wrapper is not None:
+            command = command_wrapper.wrap(command, timeout)
+        self.proc = subprocess.Popen(command, env=self.env, stdout=subprocess.PIPE, stderr=err)
+        err.close()
+        self.pid_file = command_wrapper.pidfile if command_wrapper else self.work / "owner.pid"
+        self.wrapped_command = command_wrapper is not None
+        self.pid = None if self.wrapped_command else self.proc.pid
+        if not self.wrapped_command:
+            self.pid_file.write_text("%d\n" % self.pid)
         deadline = t0 + timeout
         while True:
-            if not select.select([self.proc.stdout], [], [], max(0.1, deadline - time.monotonic()))[0]:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not select.select([self.proc.stdout], [], [], remaining)[0]:
                 raise CellError("no LISTENING in %d s" % timeout)
             line = self.proc.stdout.readline()
             if not line:
@@ -318,21 +331,55 @@ class Node:
                                 errp.read_text("utf-8", "replace")[-400:]))
             if line.startswith(b"LISTENING"):
                 break
-        threading.Thread(target=lambda: [None for _ in iter(lambda: self.proc.stdout.read(4096), b"")], daemon=True).start()
+        if self.wrapped_command:
+            self.pid = int(self.pid_file.read_text().strip())
+            if self.pid <= 1:
+                raise CellError("invalid owner PID file; no signal sent")
+        pipe = self.proc.stdout
+        threading.Thread(target=lambda: [None for _ in iter(lambda: pipe.read(4096), b"")], daemon=True).start()
         self.open_s = time.monotonic() - t0
         snap = proc_snapshot(self.pid)
+        self.open_snapshot = snap
         self.open_cpu_s = snap["cpu_s"] if snap else None
         return self.open_s
 
     def stop(self, grace=300):
         if not self.proc:
             return None
+        if self.proc.poll() is not None:
+            rc = self.proc.wait()
+            self.last_exit, self.proc, self.pid = rc, None, None
+            return rc
+        pid_file = getattr(self, "pid_file", self.work / "owner.pid")
+        if not pid_file.exists():
+            raise CellError("owner PID file absent; no signal sent; tell the coordinator")
+        pid = int(pid_file.read_text())
+        if self.pid is None and getattr(self, "wrapped_command", False):
+            self.pid = pid  # a start that failed before LISTENING still has its inner PID file
+        if pid <= 1 or pid != self.pid:
+            raise CellError("owner PID file does not identify our child")
+        def signal_owner(signum):
+            if getattr(self, "wrapped_command", False):
+                # The tracer can reap its child before its own summary is done.
+                # Refuse a reused PID that no longer belongs to our wrapper.
+                current, seen = pid, set()
+                while current != self.proc.pid:
+                    if current <= 1 or current in seen:
+                        raise CellError("owner PID is no longer our descendant; no signal sent")
+                    seen.add(current)
+                    try:
+                        fields = Path("/proc/%d/stat" % current).read_text().rsplit(")", 1)[1].split()
+                    except FileNotFoundError:
+                        return  # child has already exited; wait for the wrapper
+                    current = int(fields[1])
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(pid, signum)
         if self.proc.poll() is None:
-            self.proc.terminate()
+            signal_owner(signal.SIGTERM)
         try:
             rc = self.proc.wait(grace)
         except subprocess.TimeoutExpired:
-            self.proc.kill()      # our own child, by the PID we started
+            signal_owner(signal.SIGKILL)  # only the child identified by its PID file
             rc = self.proc.wait(60)
         self.last_exit, self.proc, self.pid = rc, None, None
         return rc
@@ -343,11 +390,14 @@ class Node:
                            stderr=subprocess.STDOUT, timeout=120)
         return p.returncode, p.stdout.decode("utf-8", "replace").strip()[-300:]
 
-    def verb(self, *argv):
+    def verb(self, *argv, command_wrapper=None, timeout=3600):
         """An offline `store ROOT ...` verb, timed (the owner must be stopped)."""
+        command = [str(self.launcher), "--fn", "store", str(self.store), *argv]
+        if command_wrapper is not None:
+            command = command_wrapper.wrap(command, timeout)
         t0 = time.monotonic()
-        p = subprocess.run([str(self.launcher), "--fn", "store", str(self.store), *argv], env=self.env,
-                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=3600)
+        p = subprocess.run(command, env=self.env,
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout + (35 if command_wrapper else 0))
         return p.returncode, time.monotonic() - t0, p.stdout.decode("utf-8", "replace")[-300:]
 
 
@@ -404,18 +454,26 @@ def shaped_article(r, i, octets, shape=None):
     return art
 
 
-def post_one(conn, ctr, octets, retries=40, shape=None):
+def post_one(conn, ctr, octets, retries=40, shape=None, deadline=None):
     """One POST that counts its refusals by name and retries a refused POST command; seconds or None."""
     m, r = _clients()
     i = ctr.next_id()
+    def remaining_timeout():
+        if deadline is not None:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise TimeoutError("POST exceeded command deadline")
+            conn.sock.settimeout(left)
     for _ in range(retries):
         t0 = time.perf_counter()
+        remaining_timeout()
         first = conn.line("POST")
         if not first.startswith(b"340"):
             ctr.refuse(first)
             time.sleep(0.25)
             continue
         conn.stream.write(shaped_article(r, i, octets, shape) + b".\r\n")
+        remaining_timeout()
         final = conn.readline()
         dt_ = time.perf_counter() - t0
         if final.startswith(b"240"):
@@ -1149,6 +1207,18 @@ class Run:
                 res[name]["hooked_cpu_ms_per_cmd"] = round((cpu1 - cpu0) * 1000 / K, 3)
         return {"prof": res, "reps": K, "hooked": True}
 
+    def phase_op_profile(self, ph):
+        from tools.load import op_profile
+        return op_profile.run(self, ph, sys.modules[__name__])
+
+    def phase_floor(self, ph):
+        from tools.load import floor
+        return {"floor": floor.run(self.node.work, reps=ph.get("reps", 300))}
+
+    def phase_pub_profile(self, ph):
+        from tools.load import pub_profile
+        return pub_profile.run(self, ph, sys.modules[__name__])
+
     def phase_conn_capacity(self, ph):
         """Per preset: the decided default cap (no key in fn.toml), then the largest `[server] max_connections` the image
         admits (doubling, then 3 bisection steps), the RSS per held connection and the refusal line past the cap."""
@@ -1274,15 +1344,19 @@ def preload(node, run, n, octets, budget_s):
     return out
 
 
-def prepare_store(node, run, spec, cache_dir, key):
+def prepare_store(node, run, spec, cache_dir, key, *, start_owner=True):
     """Fresh init, or a cached preloaded store copied in; returns {'preloaded': n, ...}."""
     st = spec.get("store")
     if not st or not st.get("preload"):
+        if not start_owner:
+            raise CellError("preparing a store without an owner requires a fixture")
         node.init()
         node.start()
         return {}
     n, octets = st["preload"], st.get("octets", 2048)
     fixture = Path(run.args.fixtures) / st["fixture"].format(N=n) / "store" if st.get("fixture") else None
+    if st.get("require_fixture") and (fixture is None or not fixture.is_dir()):
+        raise CellError("required fixture store unavailable: %s" % fixture)
     if fixture is not None and fixture.is_dir():
         shutil.copytree(fixture, node.store, symlinks=True)
         node.write_config()
@@ -1293,6 +1367,8 @@ def prepare_store(node, run, spec, cache_dir, key):
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=900)     # a copy on another filesystem than the fixture's (PKT-579)
         if rb.returncode != 0:
             raise CellError("fixture rebind-filesystem exit %d: %s" % (rb.returncode, rb.stdout[-400:].decode("utf-8", "replace")))
+        if not start_owner:
+            return {"preloaded": n, "source": "fixture %s" % fixture}
         node.start()
         ids, group = discover_ids(node.port)
         if not ids:
@@ -1301,6 +1377,8 @@ def prepare_store(node, run, spec, cache_dir, key):
         run.ctr._ids = itertools.count(10 ** 6)       # our own POSTs never collide with the fixture's ids
         run.spec["_group"] = group
         return {"preloaded": n, "source": "fixture %s" % fixture, "group": group}
+    if not start_owner:
+        raise CellError("preparing a store without an owner requires a fixture")
     cached = Path(cache_dir) / ("%s-%d-%d" % (key, n, octets))
     if cached.is_dir() and (cached / "store").is_dir():
         shutil.copytree(cached / "store", node.store, symlinks=True)
@@ -1525,6 +1603,10 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
             text = lock_log_text(work)
             cells_mod.attach_lock_metrics(cr["phases"], text)
         cr["metrics"], cr["not_measured"] = cells_mod.derive(cell.workload, cr["phases"])
+        for phase in cr["phases"]:
+            for kind in ("op_profile", "floor", "pub_profile"):
+                if kind in phase:
+                    cr[kind] = phase[kind]
         if spec.get("sprof") and not list(work.glob("sprof.*.txt")):
             cr["not_measured"]["sprof"] = "owner produced no CPU flat profile"
         st = (cr.get("site") or {}).get("write4k_fdatasync") or {}
@@ -1543,6 +1625,11 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         with contextlib.suppress(OSError):
             (work / "samples.json").write_text(json.dumps(node.sampler.series))
         cr["raw_artifacts"] = collect_measurement_artifacts(work, args.out, label)
+        if cell.workload in ("op-prof", "floor", "pub-prof"):
+            dest = Path(args.out) / label
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / "result.json").write_text(json.dumps(
+                {"schema": 1, "label": args.label, "rev": args.rev, "cells": [cr]}, indent=1))
         write()
         if not args.keep:
             shutil.rmtree(work / "store", ignore_errors=True)
