@@ -2315,6 +2315,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-publication-state-tests \
 	tests/acl2/owner-readers-state-tests \
 	tests/acl2/def-span-scan-tests \
+	tests/acl2/def-span-scan-window-tests \
 	tests/acl2/owner-reclaim-ready-tests \
 	tests/acl2/control-request-word-tests \
 	tests/acl2/packed-submission-tests \

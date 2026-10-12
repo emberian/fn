@@ -61,14 +61,6 @@
    (implies (true-listp xs) (equal (fn-ovr-copy-string-list xs) xs))
    :hints (("Goal" :in-theory (enable fn-ovr-copy-string-list)))))
 
-(local
- (defthm fn-ovr-dss-string-octets-aux-is-nntp
-   (equal (fn-dss-string-octets-aux cs) (fn-nntp-string-octets-aux cs))
-   :hints (("Goal" :in-theory (enable fn-dss-string-octets-aux fn-nntp-string-octets-aux)))))
-
-(defthm fn-ovr-dss-string-octets-is-nntp
-  (equal (fn-dss-string-octets s) (fn-nntp-string-octets s))
-  :hints (("Goal" :in-theory (enable fn-dss-string-octets fn-nntp-string-octets))))
 
 (local
  (defthm fn-ovr-nntp-octets-true-listp
@@ -589,12 +581,12 @@
   (equal (fn-record-string-octets s) (fn-nntp-string-octets s))
   :hints (("Goal" :in-theory (enable fn-record-string-octets fn-nntp-string-octets))))
 
-; The third char-code map is a twin (fn-dss-string-octets beside fn-nntp-string-octets and
-; fn-record-string-octets); its retirement is C's: one definition below def-span-scan's
-; includes that the other two are proved equal to.
+; Preserve the inverse equality for explicit :use. Automatic rewriting follows
+; fn-ovr-record-octets-is-nntp-octets, avoiding a cycle between the two names.
 (defthm fn-ovr-dss-string-octets-is-record
-  (equal (fn-dss-string-octets s) (fn-record-string-octets s))
-  :hints (("Goal" :in-theory (disable fn-dss-string-octets fn-record-string-octets fn-nntp-string-octets))))
+  (equal (fn-nntp-string-octets s) (fn-record-string-octets s))
+  :hints (("Goal" :in-theory (disable fn-nntp-string-octets fn-record-string-octets)))
+  :rule-classes nil)
 
 (defthm fn-ovr-put-column-line-is-the-line
   (implies (true-listp fn-ovr-lease)
