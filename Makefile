@@ -1681,6 +1681,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-share \
 	books/store-checkpoint-arena-size-load \
 	books/store-checkpoint-arena-load \
+	books/store-checkpoint-arena-checked \
+	tests/acl2/store-checkpoint-arena-checked-tests \
 	books/store-checkpoint-verify \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \

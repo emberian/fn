@@ -69,6 +69,12 @@
            (fn-orcr-fold-contexts-okp (cdr rows) (fn-replay-identity-loop (list row) id)
                                       (if (fn-record-p w) (+ 1 h) h) fn-arena)))))
 
+(verify-guards fn-orcr-fold-contexts-okp
+ :hints (("Goal" :use ((:instance fn-ssr-seed-establishes-statep (identity id)))
+          :in-theory (e/d (fn-ssr-statep)
+                          (fn-ssr-seed fn-ssr-at fn-intern-row-at fn-row-bytes fn-held-context-of
+                           fn-replay-identity-loop)))))
+
 ; -----------------------------------------------------------------------------
 ; 2. One row: the fold's row and the predicted row advance the identity alike
 ; and carry the same context.
