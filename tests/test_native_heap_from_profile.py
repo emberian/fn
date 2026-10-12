@@ -624,6 +624,16 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 r"\b(articles|signed)=(\d+)", replay.stdout.decode())}
 
         # With room: P enrolled and granted `keys', a succession is admitted.
+        # The room is derived, not the remainder C' happens to leave (under
+        # one connection's charge, which a statement's row may exceed: 10-12,
+        # 2007 of 2008 MB at C' = 122): the run is priced at C' - 1, which
+        # leaves at least one connection's charge free.
+        self.start()
+        cap, configured, term = self.capacity()
+        self.stop()
+        roomy = self.run_fn("operator", config, "policy", "set",
+                            "exposure-connections", str(max(1, cap - 1)))
+        self.assertEqual(roomy.returncode, EXIT_OK, text(roomy))
         self.start()
         helper.enrol_and_grant(self.node)
         with Client(port, timeout=300) as client:
@@ -637,6 +647,9 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         base = counts()
         self.assertGreaterEqual(base["signed"], 1, base)
 
+        restored = self.run_fn("operator", config, "policy", "set",
+                               "exposure-connections", str(CAPACITY_CONNECTIONS))
+        self.assertEqual(restored.returncode, EXIT_OK, text(restored))
         # Without room: fill with one reader and minimal posts
         # until an ordinary POST is refused, which must be by the memory's
         # word, then POST the revocation, signed by the succeeded keys.
