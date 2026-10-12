@@ -1,0 +1,12 @@
+{
+ "file": "books/store-checkpoint-arena-writer.lisp",
+ "id": "PAYLOAD-EXPORT-CHECKPOINT-SRC-WALK",
+ "notes": [],
+ "owner": "builder-L",
+ "retired_by": "a span/arena-side read of the row payload (FILL-BOUNDS-JOIN-POST-HEAP follow-up; perf plan D1)",
+ "severity": "medium",
+ "source": "FACTS-I.md section 5 (A20, lane vertical-post-heap, dev f0c2f4d5f; static trace): whole-payload export via fn-row-wire-of/fn-row-bytes on a path that survives POST landing 2",
+ "state": "open",
+ "title": "Checkpoint/reclaim source walk exports the whole payload only to take its length (books/store-checkpoint-arena-writer.lisp:396-399 fn-scka-srcs-n; I:3807; O:8872)",
+ "updated": "2026-10-12T17:32:18Z"
+}

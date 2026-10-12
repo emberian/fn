@@ -1022,24 +1022,50 @@
 
 (in-theory (disable fn-apc-held-context-of fn-apc-intern-row-at))
 
+(defun fn-apc-completion-row-names-p (record msgid expected fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (and (equal (fn-record-msgid record) msgid)
+       (let ((h (fn-record-payload record)))
+         (if (and (natp h) (< h (fn-arena-count fn-arena)))
+             (fn-arena-payload-equal-p h expected fn-arena)
+           (equal expected nil)))))
+
+(defthm fn-apc-completion-row-names-is-wire
+  (implies (and (fn-arena-p fn-arena) (fn-held-p record))
+           (equal (fn-apc-completion-row-names-p record msgid expected fn-arena)
+                  (let ((w (fn-row-wire-of record fn-arena)))
+                    (and (equal (fn-record-msgid w) msgid)
+                         (equal (fn-record-payload w) expected)))))
+  :hints (("Goal" :in-theory (enable fn-apc-completion-row-names-p
+                                     fn-row-wire-of fn-row-bytes fn-held-wire))))
+
 ; books/owner-commit-carried.lisp fn-ccar-completion-names-submission-p.
 (defun fn-apc-completion-names-submission-p (o cfg fn-arena carry)
   (declare (xargs :stobjs fn-arena
                   :guard (fn-sn-statep (fn-own-store o))
                   :guard-hints
                   (("Goal" :in-theory
-                    (disable fn-ccar-completion-record-is-completion-record)))))
+                    (e/d (fn-evc-recordp fn-row-wire-of fn-held-wire)
+                         (fn-ccar-completion-record-is-completion-record
+                          fn-apc-completion-row-names-p
+                          fn-apc-sub-stored-octets))))))
   (let ((sub (fn-own-inflight o))
         (record (fn-ccar-completion-record (fn-own-store o))))
     (and sub
          record
          (fn-evc-recordp record)
-         (let ((w (fn-row-wire-of record fn-arena)))
+         (mbe :logic (let ((w (fn-row-wire-of record fn-arena)))
            (and (equal (fn-record-msgid w)
                        (fn-record-octets-string (fn-own-sub-msgid sub)))
                 (equal (fn-record-payload w)
                        (fn-apc-sub-stored-octets cfg sub (fn-own-node-secret o)
                                                  carry))))
+              :exec (let ((msgid (fn-record-octets-string (fn-own-sub-msgid sub))))
+                      (and (equal (fn-record-msgid record) msgid)
+                           (fn-apc-completion-row-names-p
+                            record msgid
+                            (fn-apc-sub-stored-octets cfg sub (fn-own-node-secret o) carry)
+                            fn-arena))))
          t)))
 
 (defthm fn-apc-completion-names-submission-p-is-reference
