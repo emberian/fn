@@ -1,0 +1,14 @@
+{
+ "category": "proofs",
+ "file": "books/reclaim-fold-contexts-live.lisp",
+ "id": "RFCL-OWNER-RETAIN-LIFT",
+ "note": "Retired by A's owner-retain-state transition-preservation landing, which adds fn-rfcl-okp to fn-owner-retain-statep's carry using LV-1b, LV-2h, LV-2k, LV-3, LV-4, LV-5 and LV-6. Not yet scheduled: A18 (2026-10-12) lists it after the host lease, unstarted.",
+ "notes": [],
+ "owner": "builder-L",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "coordinator ruling (a) on RECLAIM-FOLD-CONTEXTS-CARRIED part 2 (2026-10-12)",
+ "state": "open",
+ "title": "Named adapter: fn-rfcl-okp (books/reclaim-fold-contexts-live.lisp) is carried by every host entry and Store step but is not yet a conjunct of fn-owner-retain-statep's carried relation, so the owner's running state is not proved to hold it at the reclaim capture",
+ "updated": "2026-10-12T11:13:34Z"
+}
