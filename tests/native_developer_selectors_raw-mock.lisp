@@ -184,6 +184,10 @@
 (defun note (&rest event) (push event *log*))
 ;; fnn-main sets ACL2's invariant-risk mode first (served-readers, 057f9b08a).
 (defvar *the-live-state* :live-state)
+;; The seal resolves the declared entries against the world: this harness's
+;; world declares none, so no row is written and every call keeps its path.
+(defun w (state) state)
+(defun table-alist (name wrld) (declare (ignore name wrld)) nil)
 (defun f-put-global (key value state) (declare (ignore key value)) state)
 (defun make-fnn-store (root &key writable)
   (note :probe-store root writable)
