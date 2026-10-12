@@ -156,6 +156,9 @@ DRIVER = r"""
 ;; before the seal no ACL2 session extent exists
 (check (handler-case (progn (fnn-raw-session-extent (lambda () t)) nil)
          (fnn-raw-dispatch-trap (c) (search "developer-only" (princ-to-string c)))))
+(dolist (name '(create-fn-thing fn-wide fn-refused))
+  (setf (symbol-function (intern (symbol-name name) "ACL2_*1*_ACL2"))
+        (symbol-function name)))
 (check (= (fnn-raw-trap-seal :developer t) 4))
 (check (= (fnn-raw-dispatch-traps-intact) 4))
 (check (handler-case (progn (fnn-raw-trap-seal) nil) (fnn-raw-dispatch-trap () t)))
@@ -206,10 +209,15 @@ DRIVER = r"""
 ;; calls, and callback 31,997,600 below plain 32,015,808 over 1M).  One page
 ;; is the resolution; one extra word per call over 100k calls is 800,000.
 (defun consed (thunk)
+  ;; The least of three runs: sb-ext:get-bytes-consed moves by whole
+  ;; allocation regions (64 KiB), so one run can read a region boundary
+  ;; that the call itself did not cause; an allocation per call shows in
+  ;; every run (100k calls x 16 octets is 1.6 MB).
   (funcall thunk)
-  (let ((before (sb-ext:get-bytes-consed)))
-    (funcall thunk)
-    (- (sb-ext:get-bytes-consed) before)))
+  (loop repeat 3
+        minimize (let ((before (sb-ext:get-bytes-consed)))
+                   (funcall thunk)
+                   (- (sb-ext:get-bytes-consed) before))))
 (defun fn-sub-plain (x y) (values (- x y) (list x y)))
 (compile 'fn-sub-plain)
 (let* ((sub (fnn-fixed-raw-callback 'fn-sub))
@@ -313,6 +321,7 @@ DRIVER_UNSEALED = r"""
          (fnn-raw-dispatch-trap (c) (search "redefined after its trap" (princ-to-string c)))))
 (check (handler-case (progn (fnn-raw-trap-install 'fn-sub 'fn-sub) nil)
          (fnn-raw-dispatch-trap (c) (search "redefined after its trap" (princ-to-string c)))))
+(setf (symbol-function (intern "FN-SUB" "ACL2_*1*_ACL2")) (symbol-function 'fn-sub))
 (defvar *fnn-image-profile* :production)
 (check (integerp (fnn-raw-trap-seal :developer nil)))   ; the refused install left the table empty
 (let ((*fnn-image-profile* :developer))
@@ -417,6 +426,98 @@ def verdict_forms():
     return "\n\n".join(selected[name] for name in VERDICT_FORMS)
 
 
+# W4: resolve the whole interface, including entries without raw declarations.
+DRIVER_COUNTERPARTS = r"""
+%PRELUDE%
+(load "%RAWTRAP%")
+%SHIPPED%
+(defvar *lookups* 0)
+(let ((original (symbol-function 'fnn-counterpart)))
+  (setf (symbol-function 'fnn-counterpart)
+        (lambda (name) (incf *lookups*) (funcall original name))))
+(defun fnn-entry-guard (name args)
+  (declare (ignore args))
+  (when (eq name 'fn-refused)
+    (error 'fnn-entry-guard-fault :message "guard comes first")))
+(defun fault-text (name)
+  (handler-case (progn (fnn-call name) nil)
+    (fnn-store-fault (c) (princ-to-string c))))
+(setf (symbol-function (intern "FN-PLAIN" "ACL2_*1*_ACL2"))
+      (lambda (x) (values x :plain)))
+(assert (equal (fnn-call 'fn-plain 3) '(3 :plain)))
+(assert (= *lookups* 1)) ; unsealed fallback
+(assert (equal (fault-text 'fn-missing)
+               "ACL2 error in fn-missing: ACL2 executable counterpart missing: FN-MISSING"))
+(setq *test-interfaces* '((fn-plain :class :common-lisp-compliant)
+                          (fn-raw :raw-with (fn-raw-carries))
+                          (create-fn-test :raw-guarded (0 nil (fn-test)))
+                          (fn-refused :class :common-lisp-compliant)
+                          (fn-late-declared :class :common-lisp-compliant)))
+(defun fn-raw (x) (values x :raw))
+(defun create-fn-test () :creator-raw)
+(compile 'fn-raw) (compile 'create-fn-test)
+(setf (symbol-function (intern "FN-RAW" "ACL2_*1*_ACL2"))
+      (lambda (x) (values x :counterpart))
+      (symbol-function (intern "CREATE-FN-TEST" "ACL2_*1*_ACL2"))
+      (lambda () :creator-counterpart))
+(fnn-raw-trap-install 'fn-raw 'fn-raw)
+(fnn-raw-trap-install 'create-fn-test 'create-fn-test :creator t)
+;; A declared entry this world does not define (FN-REFUSED here: a declaration
+;; another image serves) gets no row; the seal resolves the rest without the
+;; per-call lookup, and a call of the undefined one keeps its fault at the call.
+(let ((before *lookups*))
+  (assert (= (fnn-raw-trap-seal :developer t) 2))
+  (assert (= (- *lookups* before) 0)))
+(setf (symbol-function (intern "FN-REFUSED" "ACL2_*1*_ACL2")) (lambda () :ran))
+(let ((before *lookups*))
+  (dolist (mode '(nil t))
+    (let ((*fnn-dispatch-counterpart* mode))
+      (assert (equal (fnn-call 'fn-plain 5) '(5 :plain)))
+      (assert (equal (fnn-call 'fn-raw 7) (list 7 (if mode :counterpart :raw))))
+      (assert (equal (fnn-call 'create-fn-test) '(:creator-raw)))
+      (assert (eq (fnn-dispatch-symbol 'fn-plain)
+                  (find-symbol "FN-PLAIN" "ACL2_*1*_ACL2")))
+      (assert (eq (fnn-dispatch-symbol 'fn-raw)
+                  (if mode (find-symbol "FN-RAW" "ACL2_*1*_ACL2") 'fn-raw)))
+      (assert (eq (fnn-dispatch-symbol 'create-fn-test) 'create-fn-test))
+      (assert (eq (fnn-raw-dispatch-captured-p 'fn-raw) (not mode)))
+      (assert (fnn-raw-dispatch-captured-p 'create-fn-test))
+      (assert (not (fnn-raw-dispatch-captured-p 'fn-plain)))))
+  ;; Redefine through the developer session, then dispatch the current binding.
+  (fnn-raw-session-extent
+   (lambda () (setf (symbol-function (intern "FN-PLAIN" "ACL2_*1*_ACL2"))
+                    (lambda (x) (values x :redefined)))))
+  (assert (equal (fnn-call 'fn-plain 9) '(9 :redefined)))
+  (let ((threads (loop repeat 4 collect
+                  (sb-thread:make-thread
+                   (lambda () (dotimes (i 10000)
+                     (assert (equal (fnn-call 'fn-plain i) (list i :redefined)))))))))
+    (mapc #'sb-thread:join-thread threads))
+  (fmakunbound (find-symbol "FN-PLAIN" "ACL2_*1*_ACL2"))
+  (assert (equal (fault-text 'fn-plain)
+                 "ACL2 error in fn-plain: ACL2 executable counterpart missing: FN-PLAIN"))
+  (assert (handler-case (progn (fnn-call 'fn-refused) nil)
+            (fnn-entry-guard-fault (c) (equal (princ-to-string c) "guard comes first"))))
+  (assert (= *lookups* before))) ; no lookup or fallback cache writes for sealed names
+;; A declared entry undefined at seal, whose guard admits the call: the call
+;; faults at the call as before, and once defined it dispatches in both modes.
+(assert (equal (fault-text 'fn-late-declared)
+               "ACL2 error in fn-late-declared: ACL2 executable counterpart missing: FN-LATE-DECLARED"))
+(setf (symbol-function (intern "FN-LATE-DECLARED" "ACL2_*1*_ACL2")) (lambda () :late-declared))
+(dolist (mode '(nil t))
+  (let ((*fnn-dispatch-counterpart* mode))
+    (assert (equal (fnn-call 'fn-late-declared) '(:late-declared)))))
+(let ((before *lookups*))
+  (assert (equal (fault-text 'fn-missing)
+                 "ACL2 error in fn-missing: ACL2 executable counterpart missing: FN-MISSING"))
+  (setf (symbol-function (intern "FN-LATE" "ACL2_*1*_ACL2")) (lambda () :late))
+  (assert (equal (fnn-call 'fn-late) '(:late)))
+  (assert (equal (fnn-call 'fn-late) '(:late)))
+  (assert (= (- *lookups* before) 3))) ; undeclared fallback remains uncached
+(format t "PASS sealed counterparts: modes, resolution, redefinition, fallbacks, guards, threads~%")
+"""
+
+
 def shipped_forms(names):
     selected = {}
     for form in proof_repl.forms((ROOT / "host/native/io.lisp").read_text()):
@@ -463,6 +564,12 @@ class RawDispatchTrapTests(unittest.TestCase):
         run = run_sbcl(driver(DRIVER_VERDICTS), "verdicts.lisp")
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertIn("PASS raw-dispatch verdicts", run.stdout)
+
+    @unittest.skipUnless(shutil.which("sbcl"), "SBCL required")
+    def test_sealed_counterparts_preserve_dispatch_and_fallbacks(self):
+        run = run_sbcl(driver(DRIVER_COUNTERPARTS), "counterparts.lisp")
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertIn("PASS sealed counterparts", run.stdout)
 
     def test_traps_install_before_every_other_raw_host_file(self):
         """r63-F2: each build script loads raw-trap.lisp and installs the

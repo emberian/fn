@@ -558,7 +558,14 @@ uninterned and held only by raw-trap.lisp's closures, bound by the dispatcher
 (`fnn-call`, a fixed callback, the developer `acl2 session`) for the call's
 dynamic extent. A same-named symbol, a closure kept past the call and a
 thread started inside the extent are all outside it; no lock or allocation
-is added per call. The table is sealed at the end of the image build, and
+is added per call. At seal, the final loaded world's `fn-interfaces` names
+that this world defines are resolved once into an immutable target table (a declared name it does not define gets no row and keeps the call-time fault).
+Each row holds the captured raw function (if any), the creator flag and the
+executable-counterpart symbol; a dispatch selects its target with one hash
+lookup. Dispatch applies the symbol's current function binding, preserving
+ACL2 redefinition in a developer session; unsealed calls and undeclared names
+retain the lookup and missing-counterpart fault. The table is sealed at the
+end of the image build, and
 `fnn-raw-dispatch-traps-intact` refuses a redefined target at the build's end
 and at every start. `fn acl2 raw-traps` (developer images) probes every entry.
 
