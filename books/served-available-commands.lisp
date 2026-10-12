@@ -8,6 +8,16 @@
 
 (local (in-theory (disable (tau-system))))
 
+(defun fn-av-scat-group-initial-of (archive group s)
+  (declare (xargs :guard (and (true-listp s) (consp s))))
+  (let ((summary (fn-scat-available-summary-of archive group s)))
+    (fn-nntp-append-pieces
+     (list (fn-nntp-string-octets "211 ")
+           (fn-nntp-decimal-field (fn-nntp-summary-count summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-low summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-high summary)) '(32)
+           (fn-nntp-string-octets group)))))
+
 (defun fn-av-scat-group-initial (archive group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (let ((summary (fn-scat-available-summary archive group v fn-cat)))
@@ -22,26 +32,28 @@
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (if (mbe :logic (member-equal group (fn-state-groups archive))
            :exec (fn-ag-member group (fn-state-groups archive)))
-      (let* ((low (fn-scat-available-low group v fn-cat))
+      (let* ((s (fn-scv-summary group v fn-cat))
+             (low (cadr s))
              (current (if (posp low) low nil))
              (next-session (fn-nntp-set-cursor session group current)))
         (fn-nntp-make-result
          next-session
          (list (fn-nntp-reply-effect
-                (fn-nntp-crlf (fn-av-scat-group-initial archive group v fn-cat))))))
+                (fn-nntp-crlf (fn-av-scat-group-initial-of archive group s))))))
     (fn-nntp-single session (fn-proto-text * :no-group))))
 
 (defun fn-av-nntp-listgroup-result-cat (session archive group range v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (if (mbe :logic (member-equal group (fn-state-groups archive))
            :exec (fn-ag-member group (fn-state-groups archive)))
-      (let* ((low (fn-scat-available-low group v fn-cat))
+      (let* ((s (fn-scv-summary group v fn-cat))
+             (low (cadr s))
              (current (if (posp low) low nil))
              (next-session (fn-nntp-set-cursor session group current))
              (shown (fn-scat-available-range-numbers group (nfix (fn-nntp-range-low range))
                                            (nfix (fn-nntp-range-high range)) v fn-cat)))
         (fn-nntp-multi-octets next-session
-                              (append (fn-av-scat-group-initial archive group v fn-cat)
+                              (append (fn-av-scat-group-initial-of archive group s)
                                       (fn-nntp-string-octets " list follows"))
                               (fn-nntp-number-lines shown)))
     (fn-nntp-single session (fn-proto-text * :no-group))))

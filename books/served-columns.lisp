@@ -90,9 +90,11 @@
   (if (atom seqs)
       nil
     (let ((s (car seqs)))
-      (if (and (natp s) (< s (fn-cat-count fn-cat))
-               (equal (fn-record-payload (fn-cat-at s fn-cat)) h))
-          (fn-cat-at s fn-cat)
+      (if (and (natp s) (< s (fn-cat-count fn-cat)))
+          (let ((row (fn-cat-at s fn-cat)))
+            (if (equal (fn-record-payload row) h)
+                row
+              (fn-scol-find-row h (cdr seqs) fn-cat)))
         (fn-scol-find-row h (cdr seqs) fn-cat)))))
 
 (defthm fn-scol-find-row-payload
@@ -112,15 +114,18 @@
 (in-theory (disable fn-scol-find-row))
 
 ; The facts of the article's row when its column is decided, else nil.
+(defun fn-scol-facts-of-held-row (row)
+  (declare (xargs :guard t))
+  (let ((facts (fn-held-facts row)))
+    (if (and row (fn-hf-nov facts)) facts nil)))
+
 (defun fn-scol-facts (article fn-cat)
   (declare (xargs :stobjs fn-cat :guard t))
   (let ((h (fn-article-payload article)))
     (if (natp h)
         (let ((row (fn-scol-find-row h (fn-cat-msgid-seqs (fn-article-msgid article) fn-cat)
                                      fn-cat)))
-          (if (and row (fn-hf-nov (fn-held-facts row)))
-              (fn-held-facts row)
-            nil))
+          (fn-scol-facts-of-held-row row))
       nil)))
 
 ; KEYSTONE (the lookup): under F, facts the lookup answers are the facts of
@@ -293,6 +298,52 @@
            :use ((:instance fn-scol-facts-are-the-bytes-facts)
                  (:instance fn-scol-nov-overview-of-bytes-facts)))))
 
+; One facts lookup also carries the tombstone verdict: scalar OVER replies
+; distinguish reclaimed articles from malformed overview bytes.
+(defun fn-scol-line-decision (article fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard t))
+  (let* ((facts (fn-scol-facts article fn-cat))
+         (tomb (if facts (fn-hnov-tomb (fn-hf-nov facts))
+                 (fn-nntp-article-tombstonep article fn-arena))))
+    (mv (if tomb (list :error)
+          (if facts (fn-scol-nov-overview article facts fn-arena)
+            (fn-nov-overview article fn-arena)))
+        tomb)))
+
+(defun fn-scol-line-over (article fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard t))
+  (mv-let (over tomb) (fn-scol-line-decision article fn-arena fn-cat)
+    (declare (ignore tomb))
+    over))
+
+(defthm fn-scol-line-over-is-the-two-lookups
+  (equal (fn-scol-line-over article fn-arena fn-cat)
+         (if (fn-scol-tombstonep article fn-arena fn-cat)
+             (list :error)
+           (fn-scol-overview-of article fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (enable fn-scol-tombstonep fn-scol-overview-of))))
+
+(defthm fn-scol-line-decision-tombstone-by-definition
+  (equal (mv-nth 1 (fn-scol-line-decision article fn-arena fn-cat))
+         (fn-scol-tombstonep article fn-arena fn-cat))
+  :hints (("Goal" :in-theory (enable fn-scol-tombstonep))))
+
+(defthm fn-scol-line-decision-over-by-definition
+  (equal (mv-nth 0 (fn-scol-line-decision article fn-arena fn-cat))
+         (fn-scol-line-over article fn-arena fn-cat)))
+
+(defthm fn-scol-line-decision-is-pair-by-definition
+  (equal (fn-scol-line-decision article fn-arena fn-cat)
+         (mv (fn-scol-line-over article fn-arena fn-cat)
+             (fn-scol-tombstonep article fn-arena fn-cat)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-scol-line-decision fn-scol-line-over
+                 fn-scol-tombstonep fn-scol-overview-of)
+                (fn-scol-line-decision-over-by-definition
+                 fn-scol-line-over-is-the-two-lookups)))))
+
+(in-theory (disable fn-scol-line-decision fn-scol-line-over))
+
 ; HDR/XHDR/XPAT content.  A header lookup depends only on the lowercased
 ; name (books/article.lisp fn-article-field-name-equalp), so a field token
 ; that lowercases to one of the five overview names reads that column.
@@ -431,10 +482,9 @@
   :shape :map :over numbers :elt n :stobjs (fn-arena fn-cat)
   :let ((number n)
          (article (fn-gidx-nidx-number-article number nidx arts))
-         (over (if (and (consp article)
-                        (not (fn-scol-tombstonep article fn-arena fn-cat)))
-                   (fn-scol-overview-of article fn-arena fn-cat)
-                   (list :error))))
+         (over (if (consp article)
+                  (fn-scol-line-over article fn-arena fn-cat)
+                  (list :error))))
   :keep (fn-nov-okp over)
   :body (fn-nov-served-line number over server article))
 
@@ -492,9 +542,11 @@
                         group current (fn-state-articles archive))))
           (if (not (consp article))
               (fn-nntp-single session "420 no current article")
-            (if (fn-scol-tombstonep article fn-arena fn-cat)
-                (fn-nntp-single session "423 article reclaimed")
-              (let ((over (fn-scol-overview-of article fn-arena fn-cat)))
+            (mv-let (over tomb)
+              (mbe :logic (mv (fn-scol-line-over article fn-arena fn-cat)
+                              (fn-scol-tombstonep article fn-arena fn-cat))
+                   :exec (fn-scol-line-decision article fn-arena fn-cat))
+              (if tomb (fn-nntp-single session "423 article reclaimed")
                 (if (fn-nov-okp over)
                     (fn-nntp-multi session "224 overview information follows"
                                    (list (fn-nov-served-line current over
@@ -517,10 +569,12 @@
                                   (fn-state-articles archive))))
     (if (not (consp article))
         (fn-nntp-single session "430 no article with that message-id")
-      (if (fn-scol-tombstonep article fn-arena fn-cat)
-          (fn-nntp-single session "430 article reclaimed")
-        (let ((over (fn-scol-overview-of article fn-arena fn-cat)))
-          (if (fn-nov-okp over)
+      (mv-let (over tomb)
+              (mbe :logic (mv (fn-scol-line-over article fn-arena fn-cat)
+                              (fn-scol-tombstonep article fn-arena fn-cat))
+                   :exec (fn-scol-line-decision article fn-arena fn-cat))
+              (if tomb (fn-nntp-single session "430 article reclaimed")
+                (if (fn-nov-okp over)
               (fn-nntp-multi session "224 overview information follows"
                              (list (fn-nov-served-line 0 over server article)))
             (fn-nntp-single session

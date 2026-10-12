@@ -45,16 +45,27 @@
 ; (fn-scv-summary; empty correction at the live view, so O(1) there).
 ; fn-scat-available-summary-is-the-walk below states it equals the walk over
 ; the group's numbers.
+(defun fn-scat-available-summary-of (archive group s)
+  (declare (xargs :guard (and (true-listp s) (consp s))))
+  (if (posp (car s)) s
+      (let ((next (fn-next-number group (fn-state-nexts archive))))
+        (list 0 next (if (posp next) (- next 1) 0)))))
+
 (defun fn-scat-available-summary (archive group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
-  (let ((s (fn-scv-summary group v fn-cat)))
-    (if (posp (car s)) s
-      (let ((next (fn-next-number group (fn-state-nexts archive))))
-        (list 0 next (if (posp next) (- next 1) 0))))))
+  (fn-scat-available-summary-of archive group (fn-scv-summary group v fn-cat)))
+
+(defthm fn-scat-available-summary-is-of-the-view-summary
+  (equal (fn-scat-available-summary archive group v fn-cat)
+         (fn-scat-available-summary-of archive group (fn-scv-summary group v fn-cat))))
 
 (defun fn-scat-available-low (group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (cadr (fn-scv-summary group v fn-cat)))
+
+(defthm fn-scat-available-low-is-the-view-summary-low
+  (equal (fn-scat-available-low group v fn-cat)
+         (cadr (fn-scv-summary group v fn-cat))))
 
 (defun fn-scat-available-next-number (group current v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (and (natp current) (natp v))))
@@ -286,3 +297,10 @@
            :use (fn-sar-summary-unfold
                  (:instance fn-sar-walk-gen
                             (next (fn-next-number group (fn-state-nexts archive))))))))
+
+; The factoring equations are explicit bridges, not invitations to unfold
+; the carried summary inside every formatter/controller proof.
+(in-theory (disable fn-scat-available-summary
+                    fn-scat-available-summary-of
+                    fn-scat-available-summary-is-of-the-view-summary
+                    fn-scat-available-low-is-the-view-summary-low))

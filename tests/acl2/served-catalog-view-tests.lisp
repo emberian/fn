@@ -11,6 +11,7 @@
 ; omitted hypothesis' failure and of the conclusion's.
 (in-package "ACL2")
 (include-book "../../books/served-catalog")
+(include-book "../../books/served-available-commands")
 (include-book "must-fail-checked")
 
 (defconst *scvt-p0* (append (fn-record-string-octets "Subject: a") '(13 10 13 10 65 13 10)))
@@ -125,3 +126,95 @@
    (equal (car (fn-scv-summary group v fn-cat))
           (fn-scv-count-p group 1 (fn-cat-group-high group fn-cat) v fn-cat))
    :rule-classes nil))
+
+; W2c: old-view corrections include both post-view appends and a post-view
+; withdrawal. The full result is nondegenerate, not merely three equal zeros.
+(defun scvt-w2-live-min (group xs lo top fn-cat)
+  (declare (xargs :stobjs fn-cat :verify-guards nil))
+  (if (consp xs)
+      (fn-scv-min* (if (and (fn-scv-in-rangep (car xs) lo top)
+                            (fn-scv-liveq group (car xs) fn-cat)) (car xs) 0)
+                    (scvt-w2-live-min group (cdr xs) lo top fn-cat))
+    0))
+
+(defun scvt-w2-load (fn-cat)
+  (declare (xargs :stobjs fn-cat :verify-guards nil))
+  (let* ((fn-cat (fn-cat-clear fn-cat))
+         (fn-cat (fn-cat-commit (scvt-held *scvt-w0* 0 nil nil) fn-cat))
+         (fn-cat (fn-cat-commit (scvt-held *scvt-w1* 1 nil nil) fn-cat))
+         (fn-cat (fn-cat-commit (scvt-held *scvt-w2* 2 nil nil) fn-cat))
+         (fn-cat (fn-cat-withdraw 1 3 fn-cat)))
+    (fn-cat-commit (scvt-held *scvt-w3* 3 nil nil) fn-cat)))
+
+(defun scvt-w2-xfold-check (fn-cat)
+  (declare (xargs :stobjs fn-cat :verify-guards nil))
+  (let ((xs (fn-scv-x "fn.test" 2 fn-cat)))
+    (and (fn-cat-p fn-cat) (consp xs)
+         (equal xs '(3 4 2))
+         (equal (fn-scv-xfold "fn.test" xs 1 4 2 fn-cat) '(-1 2 2))
+         (equal (fn-scv-xfold "fn.test" xs 1 4 2 fn-cat)
+                (list (fn-scv-xdiff "fn.test" xs 1 4 2 fn-cat)
+                      (fn-scv-xmin "fn.test" xs 1 4 2 fn-cat)
+                      (fn-scv-xmax "fn.test" xs 1 4 2 fn-cat)))
+         (fn-scv-keptp "fn.test" 2 2 fn-cat)
+         (not (fn-scv-liveq "fn.test" 2 fn-cat))
+         ; Mutant: compute minimum from liveq rather than keptp.
+         (equal (scvt-w2-live-min "fn.test" xs 1 4 fn-cat) 3)
+         (not (equal (cadr (fn-scv-xfold "fn.test" xs 1 4 2 fn-cat))
+                     (scvt-w2-live-min "fn.test" xs 1 4 fn-cat)))
+         ; Mutant: fail to exclude number 4 from the correction range.
+         (equal (fn-scv-xfold "fn.test" '(4 2) 1 2 2 fn-cat) '(1 2 2))
+         (equal (fn-scv-xfold "fn.test" '(4 2) 1 2 2 fn-cat)
+                (list (fn-scv-xdiff "fn.test" '(4 2) 1 2 2 fn-cat)
+                      (fn-scv-xmin "fn.test" '(4 2) 1 2 2 fn-cat)
+                      (fn-scv-xmax "fn.test" '(4 2) 1 2 2 fn-cat)))
+         (not (equal (fn-scv-xfold "fn.test" '(4 2) 1 2 2 fn-cat)
+                     (fn-scv-xfold "fn.test" '(4 2) 1 4 2 fn-cat))))))
+
+(with-guard-checking-event
+ :none
+ (assert-event
+  (let ((fn-cat (scvt-w2-load fn-cat)))
+    (mv (scvt-w2-xfold-check fn-cat) fn-cat))
+  :stobjs-out '(nil fn-cat)))
+
+(defconst *scvt-w2-archive*
+  (fn-make-state '("fn.test" "fn.empty")
+                  '(("fn.test" . 5) ("fn.empty" . 7)) nil 0 nil nil))
+
+; W2b's two equations, including the count-zero distinction: the reply's
+; low is the watermark 7 but the cursor's view low is 0, hence NIL current.
+(defun scvt-w2-summary-check (fn-cat)
+  (declare (xargs :stobjs fn-cat :verify-guards nil))
+  (let* ((s (fn-scv-summary "fn.test" 2 fn-cat))
+         (empty (fn-scv-summary "fn.empty" 4 fn-cat))
+         (session (fn-nntp-make-session t nil nil t))
+         (group (fn-av-nntp-group-result-cat session *scvt-w2-archive*
+                                             "fn.empty" 4 fn-cat)))
+    (and (fn-cat-p fn-cat)
+         (equal s '(2 1 2))
+         (equal (fn-scat-available-summary *scvt-w2-archive* "fn.test" 2 fn-cat)
+                (fn-scat-available-summary-of *scvt-w2-archive* "fn.test" s))
+         (equal (fn-scat-available-low "fn.test" 2 fn-cat) (cadr s))
+         (equal empty '(0 0 0))
+         (equal (fn-scat-available-summary *scvt-w2-archive* "fn.empty" 4 fn-cat)
+                (fn-scat-available-summary-of *scvt-w2-archive* "fn.empty" empty))
+         (equal (fn-scat-available-low "fn.empty" 4 fn-cat) (cadr empty))
+         (equal (fn-scat-available-summary-of *scvt-w2-archive* "fn.empty" empty)
+                '(0 7 6))
+         (not (equal (cadr empty)
+                     (cadr (fn-scat-available-summary-of *scvt-w2-archive* "fn.empty" empty))))
+         (null (fn-nntp-session-current (fn-nntp-result-session group)))
+         (equal group
+                (fn-nntp-make-result
+                 (fn-nntp-set-cursor session "fn.empty" nil)
+                 (list (fn-nntp-reply-effect
+                        (fn-nntp-crlf
+                         (fn-av-scat-group-initial *scvt-w2-archive* "fn.empty" 4 fn-cat)))))))))
+
+(with-guard-checking-event
+ :none
+ (assert-event
+  (let ((fn-cat (scvt-w2-load fn-cat)))
+    (mv (scvt-w2-summary-check fn-cat) fn-cat))
+  :stobjs-out '(nil fn-cat)))

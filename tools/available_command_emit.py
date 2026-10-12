@@ -39,6 +39,19 @@ def specialize(form):
                    for m in TOKEN.finditer(form))
 
 
+def one_summary(form, name):
+    """Keep the cursor's view low separate from the reply's empty fallback."""
+    if name not in ('fn-nntp-group-result-cat', 'fn-nntp-listgroup-result-cat'):
+        return form
+    low = '(low (fn-scat-available-low group v fn-cat))'
+    initial = '(fn-av-scat-group-initial archive group v fn-cat)'
+    if form.count(low) != 1 or form.count(initial) != 1:
+        raise ValueError(f'{name}: expected one low and one initial formatter')
+    return form.replace(low, '(s (fn-scv-summary group v fn-cat))\n'
+                             '             (low (cadr s))').replace(
+        initial, '(fn-av-scat-group-initial-of archive group s)')
+
+
 def render():
     selected = []
     seen = set()
@@ -47,7 +60,7 @@ def render():
         if ((head == 'defun' and name in FUNCTIONS)
                 or (head == 'defthm' and name in LOCAL_FACTS)
                 or (head == 'verify-guards' and name in FUNCTIONS)):
-            selected.append(specialize(form))
+            selected.append(one_summary(specialize(form), name))
             if head == 'defun':
                 seen.add(name)
     if seen != set(FUNCTIONS):
@@ -65,6 +78,16 @@ def render():
 (include-book "list-metadata-cursor")
 
 (local (in-theory (disable (tau-system))))
+
+(defun fn-av-scat-group-initial-of (archive group s)
+  (declare (xargs :guard (and (true-listp s) (consp s))))
+  (let ((summary (fn-scat-available-summary-of archive group s)))
+    (fn-nntp-append-pieces
+     (list (fn-nntp-string-octets "211 ")
+           (fn-nntp-decimal-field (fn-nntp-summary-count summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-low summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-high summary)) '(32)
+           (fn-nntp-string-octets group)))))
 
 ''' + '\n\n'.join(selected) + '''
 
