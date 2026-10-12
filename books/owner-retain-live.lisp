@@ -1,10 +1,15 @@
 ; K1 live owner retention: completed-cut invariant and host writer frames.
 (in-package "ACL2")
-(include-book "../host/owner-host")
+; The unary pilot is declared in the model world. Attachment headers must
+; precede the shared arena predicate; the later host-world owed enumeration
+; reports every returning entry not covered by that pilot.
+(include-book "payload-arena-attach")
+(include-book "history-paged-attach")
+(include-book "catalog-paged-attach")
 (include-book "owner-retain-carried")
 (include-book "owner-retain-livep")
+(include-book "owner-retain-frame")
 (include-book "owner-host-relation")
-
 
 (local
  (defthm fn-owner-retain-store-projection
@@ -61,6 +66,392 @@
                  fn-rfcl-recovery-establishes-okp)
            :in-theory '(fn-owner-retain-livep fn-owner-retain-install-arena-frame
                         fn-owner-retain-install-store-when-recovering))))
+
+(local
+ (defthm fn-owner-retain-update-selectors
+   (let ((b (fn-sn-update s files node)))
+     (and (equal (fn-sn-keyring b) (fn-sn-keyring s))
+          (equal (fn-sn-keyring-generation b) (fn-sn-keyring-generation s))
+          (equal (fn-sn-keyring-snapshots b) (fn-sn-keyring-snapshots s))
+          (equal (fn-sn-verdicts b) (fn-sn-verdicts s))
+          (equal (fn-sn-index b) (fn-sn-index s))
+          (equal (fn-sn-event-index b) (fn-sn-event-index s))
+          (equal (fn-sn-identity-next b) (fn-sn-identity-next s))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-update)
+                 (fn-sn-make-v6 fn-sn-keyring fn-sn-keyring-generation
+                  fn-sn-keyring-snapshots fn-sn-verdicts fn-sn-index
+                  fn-sn-event-index fn-sn-identity-next))))))
+
+(local
+ (defthm fn-owner-retain-ccar-identity-view-frame
+   (equal (fn-osr-retained-view (fn-ccar-sn-prepare-identity s e))
+          (fn-osr-retained-view s))
+   :hints (("Goal" :in-theory
+            '(fn-ccar-sn-prepare-identity fn-osr-retained-view
+              fn-cstp-sn-update-fields fn-owner-retain-update-selectors fn-pcar-stage-record
+              fn-sf-records-of-fn-sf-make-fields-kept car-cons cdr-cons)))))
+
+(local
+ (defthm fn-owner-retain-ccar-identity-keeps-retained
+   (implies (and (fn-osr-retainedp s)
+                 (fn-cst-relation (fn-ccar-sn-prepare-identity s e)))
+            (fn-osr-retainedp (fn-ccar-sn-prepare-identity s e)))
+   :hints (("Goal"
+            :use ((:instance fn-osr-retained-view-connects-full-carry
+                             (a s) (b (fn-ccar-sn-prepare-identity s e)))
+                  (:instance fn-owner-carried-identity-prepare-preserves-cursor (event e))
+                  (:instance fn-cstp-relation-is-statep (st (fn-ccar-sn-prepare-identity s e)))
+                  (:instance fn-th-topic-event-is-not-stxe (event e))
+                  (:instance fn-th-topic-event-is-not-stxk (event e))
+                  (:instance fn-hls-retained-kind4-disjoint-from-other-store-events (event e)))
+            :in-theory
+            '(fn-owner-retain-ccar-identity-view-frame fn-ccar-sn-prepare-identity
+              fn-osr-retainedp fn-osr-livep fn-cstp-relation-is-statep
+              fn-sti-livep fn-csi-livep fn-sti-completed-prefixp
+              fn-csi-completed-prefixp fn-csi-completion-lastp
+              fn-osr-identity-prefixp fn-sn-identity-context
+              fn-cstp-sn-update-fields fn-owner-retain-update-selectors fn-pcar-stage-record
+              fn-sf-records-of-fn-sf-make-fields-kept fn-sf-scalars-of-fn-sf-make-fields
+              fn-sf-completion-phasep member-equal car-cons cdr-cons
+              (:e member-equal) (:e equal))))) )
+
+(local
+ (defthm fn-owner-retain-pout-identity-keeps-retained
+   (implies (and (fn-lgoc-invariantp oc) (fn-osr-retainedp (fn-sbud-oc-store oc)))
+            (fn-osr-retainedp
+             (fn-sbud-oc-store (mv-nth 1 (fn-pout-prepare-identity oc w h)))))
+   :hints (("Goal"
+            :use ((:instance fn-pout-store-of-oiis-prepare-identity)
+                  (:instance fn-oiis-prepare-identity-preserves-invariant)
+                  (:instance fn-lgoc-ocl-relation-cst
+                             (oc (fn-oiis-prepare-identity oc w h)))
+                  (:instance fn-owner-retain-ccar-identity-keeps-retained
+                             (s (fn-sbud-oc-store oc))
+                             (e (fn-oii-identity-row w (fn-sn-keyring (fn-sbud-oc-store oc))
+                                                    (fn-sn-keyring-generation (fn-sbud-oc-store oc)) h))))
+            :in-theory
+            '(fn-pout-prepare-identity fn-lgoc-invariantp fn-sbud-oc-store
+              mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--))))))
+
+(local
+ (defthm fn-owner-retain-identity-prepare-cut
+   (let* ((out (fn-owner-prepare-identity event fn-arena state))
+          (next (mv-nth 2 out)) (word (mv-nth 1 out)))
+     (implies (fn-owner-retain-livep state fn-arena)
+              (and (fn-owner-retain-statep next)
+                   (fn-osr-retainedp (fn-owner-store next))
+                   (fn-rfcl-okp (fn-owner-store next)
+                     (if (and (consp word) (equal (car word) :seal))
+                         (fn-arena-seal-list (cadr word) fn-arena)
+                       fn-arena)))))
+   :hints (("Goal"
+            :use ((:instance fn-pout-identity-refusal-kind-is-a-refusal (oc (fn-owner-ocfg state)) (w event) (h (fn-arena-count fn-arena)))
+                  fn-owner-prepare-identity-preserves-retain-state
+                  fn-owner-retain-statep-implies-lgoc fn-owner-retain-statep-implies-entry-guard
+                  (:instance fn-rfcl-prepare-identity-keeps-okp
+                             (oc (fn-owner-ocfg state)) (w event))
+                  (:instance fn-owner-retain-pout-identity-keeps-retained
+                             (oc (fn-owner-ocfg state)) (w event) (h (fn-arena-count fn-arena))))
+            :in-theory
+            '(fn-owner-retain-livep fn-owner-prepare-identity fn-pout-prepare-identity member-equal (:e equal)
+              fn-irc-pout-prepare-identity-of-refresh-is-pout
+              fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg
+              fn-owner-ocfg-of-retain-carry-put fn-owner-ocfg-of-other-global-put
+              mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--))))))
+
+; Retained input of the cold installer, discharged at its existing producers.
+(defthm fn-owner-retain-install-establishes-retained-state
+  (implies (or (equal oc :fault)
+               (and (fn-lgoc-invariantp oc)
+                    (fn-osr-retainedp (fn-sbud-oc-store oc))))
+           (if (equal (mv-nth 1 (fn-owner-install-extended
+                                  oc extended key fn-arena fn-cat fn-hist state))
+                      :recovering)
+               (fn-owner-retain-retained-statep
+                (mv-nth 5 (fn-owner-install-extended
+                            oc extended key fn-arena fn-cat fn-hist state)))
+             t))
+  :hints (("Goal"
+           :use (fn-owner-install-extended-establishes-when-recovering
+                 fn-owner-install-extended-word-when-refused)
+           :in-theory '(fn-owner-retain-retained-statep
+                        fn-owner-retain-install-store-when-recovering))))
+
+(defthm fn-owner-retain-recovery-produces-retained-input
+  (implies (fn-assume-capture-extensionp extended configs)
+           (let ((oc (fn-ock-recover-extended extended configs frontier max-conns)))
+             (or (equal oc :fault)
+                 (and (fn-lgoc-invariantp oc)
+                      (fn-osr-retainedp (fn-sbud-oc-store oc))))))
+  :hints (("Goal"
+           :use (fn-owner-recover-extended-produces-invariant
+                 (:instance fn-assume-capture-extension-is-one (e extended))
+                 (:instance fn-owner-recovery-establishes-retained-store
+                            (prefix (fn-assume-capture-prefix extended configs))
+                            (suffix (fn-assume-capture-suffix extended configs))))
+           :in-theory (theory 'minimal-theory))))
+
+(defthm fn-owner-retain-store-open-produces-retained-input
+  (implies (fn-assume-store-open-pairp replayed opened)
+           (let ((oc (fn-ock-install replayed opened max-conns)))
+             (or (equal oc :fault)
+                 (and (fn-lgoc-invariantp oc)
+                      (fn-osr-retainedp (fn-sbud-oc-store oc))))))
+  :hints (("Goal"
+           :use (fn-assume-store-open-pair-is-an-open
+                 (:instance fn-ock-install-of-store-open-by-definition
+                            (e (fn-assume-store-open-e replayed opened))
+                            (configs (fn-assume-store-open-configs replayed opened))
+                            (frontier (fn-assume-store-open-frontier replayed opened)))
+                 (:instance fn-owner-retain-recovery-produces-retained-input
+                            (extended (fn-assume-store-open-e replayed opened))
+                            (configs (fn-assume-store-open-configs replayed opened))
+                            (frontier (fn-assume-store-open-frontier replayed opened))))
+           :in-theory (theory 'minimal-theory))))
+
+(defthm fn-owner-retain-identity-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep
+            (mv-nth 2 (fn-owner-prepare-identity event fn-arena state))))
+  :hints (("Goal"
+           :use (fn-owner-prepare-identity-preserves-retain-state
+                 fn-owner-retain-statep-implies-lgoc
+                 (:instance fn-owner-retain-pout-identity-keeps-retained
+                            (oc (fn-owner-ocfg state)) (w event)
+                            (h (fn-arena-count fn-arena))))
+           :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep
+                        fn-owner-prepare-identity fn-pout-prepare-identity
+                        fn-irc-pout-prepare-identity-of-refresh-is-pout
+                        fn-owner-retain-store-projection
+                        fn-owner-ocfg-of-install-ocfg
+                        fn-owner-ocfg-of-retain-carry-put
+                        fn-owner-ocfg-of-other-global-put
+                        mv-nth nth zp endp car-cons cdr-cons (:e equal)
+                        (:e zp) (:e binary-+) (:e unary--)))))
+
+(local
+ (defthm fn-owner-retain-cpe-not-topic
+   (implies (fn-cpe-eventp e) (not (fn-th-topic-eventp e)))
+   :hints (("Goal" :use ((:instance fn-th-topic-event-has-topic-tag (event e)))
+            :in-theory '(fn-cpe-eventp fn-cp-nth nth zp car-cons cdr-cons
+                         member-equal (:e member-equal) (:e equal) (:e zp)
+                         (:e binary-+) (:e unary--))))))
+(local
+ (defthm fn-owner-retain-pdc-consumer-view-frame
+   (equal (fn-osr-retained-view (fn-pdc-sn-prepare-consumer s e)) (fn-osr-retained-view s))
+   :hints (("Goal" :in-theory '(fn-osr-retained-view fn-pdc-sn-prepare-consumer
+              fn-cstp-sn-update-fields fn-owner-retain-update-selectors
+              fn-pcar-stage-record fn-sf-records-of-fn-sf-make-fields-kept
+              car-cons cdr-cons)))))
+(local
+ (defthm fn-owner-retain-pdc-consumer-keeps-cursor
+   (implies (fn-sn-identity-sequencep s)
+            (fn-sn-identity-sequencep (fn-pdc-sn-prepare-consumer s e)))
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-pdc-sn-prepare-consumer fn-sn-identity-sequencep fn-pcar-stage-record
+         fn-cstp-sn-update-fields fn-owner-retain-update-selectors
+         fn-sf-records-of-fn-sf-make-fields-kept fn-sf-scalars-of-fn-sf-make-fields
+         fn-sf-completion-phasep natp member-equal car-cons cdr-cons
+         (:e member-equal) (:e equal)))))))
+(local
+ (defthm fn-owner-retain-pdc-consumer-keeps-retained
+   (implies (and (fn-osr-retainedp s) (fn-cst-relation (fn-pdc-sn-prepare-consumer s e)))
+            (fn-osr-retainedp (fn-pdc-sn-prepare-consumer s e)))
+   :hints (("Goal"
+            :use (fn-owner-retain-pdc-consumer-keeps-cursor
+                  fn-owner-retain-cpe-not-topic
+                  (:instance fn-osr-retained-view-connects-full-carry
+                       (a s) (b (fn-pdc-sn-prepare-consumer s e)))
+                  (:instance fn-cstp-relation-is-statep (st (fn-pdc-sn-prepare-consumer s e))))
+            :in-theory '(fn-owner-retain-pdc-consumer-view-frame fn-pdc-sn-prepare-consumer
+              fn-osr-retainedp fn-osr-livep fn-sti-livep fn-csi-livep
+              fn-sti-completed-prefixp fn-csi-completed-prefixp fn-csi-completion-lastp
+              fn-osr-identity-prefixp fn-sn-identity-context
+              fn-cstp-sn-update-fields fn-owner-retain-update-selectors fn-pcar-stage-record
+              fn-sf-records-of-fn-sf-make-fields-kept fn-sf-scalars-of-fn-sf-make-fields
+              fn-sf-completion-phasep fn-ccar-cpe-projection-step-is-cpe-projection-step
+              member-equal car-cons cdr-cons
+              (:e member-equal) (:e equal))))) )
+(local
+ (defthm fn-owner-retain-pdc-pout-consumer-keeps-retained
+   (implies (and (fn-lgoc-invariantp oc) (fn-osr-retainedp (fn-sbud-oc-store oc)))
+            (fn-osr-retainedp (fn-sbud-oc-store
+              (mv-nth 1 (fn-pdc-pout-prepare-consumer oc e)))))
+   :hints (("Goal"
+            :use ((:instance fn-pdc-store-of-owner-prepares)
+                  (:instance fn-pdc-ocfg-prepare-consumer-preserves-invariant)
+                  (:instance fn-lgoc-ocl-relation-cst (oc (fn-pdc-ocfg-prepare-consumer oc e)))
+                  (:instance fn-owner-retain-pdc-consumer-keeps-retained
+                       (s (fn-sbud-oc-store oc))))
+            :in-theory '(fn-pdc-pout-prepare-consumer fn-lgoc-invariantp
+              fn-sbud-oc-store mv-nth nth zp endp car-cons cdr-cons
+              (:e zp) (:e binary-+) (:e unary--))))) )
+(defthm fn-owner-retain-consumer-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep
+            (mv-nth 2 (fn-owner-prepare-consumer event fn-arena state))))
+  :hints (("Goal"
+           :use (fn-owner-prepare-consumer-preserves-retain-state
+                 fn-owner-retain-statep-implies-lgoc
+                 (:instance fn-owner-retain-pdc-pout-consumer-keeps-retained
+                      (oc (fn-owner-ocfg state)) (e event)))
+           :in-theory '(fn-owner-retain-retained-statep fn-owner-prepare-consumer
+             fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg
+             mv-nth nth zp endp car-cons cdr-cons
+             (:e zp) (:e binary-+) (:e unary--)))))
+
+(local
+ (defthm fn-owner-retain-pdc-topic-view-frame
+   (equal (fn-osr-retained-view (fn-pdc-sn-prepare-topic s e)) (fn-osr-retained-view s))
+   :hints (("Goal" :in-theory '(fn-osr-retained-view fn-pdc-sn-prepare-topic
+              fn-cstp-sn-update-fields fn-owner-retain-update-selectors
+              fn-pcar-stage-record fn-sf-records-of-fn-sf-make-fields-kept
+              car-cons cdr-cons)))))
+(local
+ (defthm fn-owner-retain-pdc-topic-keeps-cursor
+   (implies (fn-sn-identity-sequencep s)
+            (fn-sn-identity-sequencep (fn-pdc-sn-prepare-topic s e)))
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-pdc-sn-prepare-topic fn-sn-identity-sequencep fn-pcar-stage-record
+         fn-cstp-sn-update-fields fn-owner-retain-update-selectors
+         fn-sf-records-of-fn-sf-make-fields-kept fn-sf-scalars-of-fn-sf-make-fields
+         fn-sf-completion-phasep natp member-equal car-cons cdr-cons
+         (:e member-equal) (:e equal)))))))
+(local
+ (defthm fn-owner-retain-pdc-topic-keeps-retained
+   (implies (and (fn-osr-retainedp s) (fn-cst-relation (fn-pdc-sn-prepare-topic s e)))
+            (fn-osr-retainedp (fn-pdc-sn-prepare-topic s e)))
+   :hints (("Goal"
+            :use (fn-owner-retain-pdc-topic-keeps-cursor
+                  fn-owner-retain-cpe-not-topic
+                  (:instance fn-osr-retained-view-connects-full-carry
+                       (a s) (b (fn-pdc-sn-prepare-topic s e)))
+                  (:instance fn-cstp-relation-is-statep (st (fn-pdc-sn-prepare-topic s e))))
+            :in-theory '(fn-owner-retain-pdc-topic-view-frame fn-pdc-sn-prepare-topic
+              fn-osr-retainedp fn-osr-livep fn-sti-livep fn-csi-livep
+              fn-sti-completed-prefixp fn-csi-completed-prefixp fn-csi-completion-lastp
+              fn-osr-identity-prefixp fn-sn-identity-context
+              fn-cstp-sn-update-fields fn-owner-retain-update-selectors fn-pcar-stage-record
+              fn-sf-records-of-fn-sf-make-fields-kept fn-sf-scalars-of-fn-sf-make-fields
+              fn-sf-completion-phasep fn-ccar-cpe-projection-step-is-cpe-projection-step
+              member-equal car-cons cdr-cons
+              (:e member-equal) (:e equal))))) )
+(local
+ (defthm fn-owner-retain-pdc-pout-topic-keeps-retained
+   (implies (and (fn-lgoc-invariantp oc) (fn-osr-retainedp (fn-sbud-oc-store oc)))
+            (fn-osr-retainedp (fn-sbud-oc-store
+              (mv-nth 1 (fn-pdc-pout-prepare-topic oc e)))))
+   :hints (("Goal"
+            :use ((:instance fn-pdc-store-of-owner-prepares)
+                  (:instance fn-pdc-psrv-prepare-topic-preserves-invariant)
+                  (:instance fn-lgoc-ocl-relation-cst (oc (fn-pdc-psrv-prepare-topic oc e)))
+                  (:instance fn-owner-retain-pdc-topic-keeps-retained
+                       (s (fn-sbud-oc-store oc))))
+            :in-theory '(fn-pdc-pout-prepare-topic fn-lgoc-invariantp
+              fn-sbud-oc-store mv-nth nth zp endp car-cons cdr-cons
+              (:e zp) (:e binary-+) (:e unary--))))) )
+(defthm fn-owner-retain-topic-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep
+            (mv-nth 2 (fn-owner-prepare-topic event fn-arena state))))
+  :hints (("Goal"
+           :use (fn-owner-prepare-topic-preserves-retain-state
+                 fn-owner-retain-statep-implies-lgoc
+                 (:instance fn-owner-retain-pdc-pout-topic-keeps-retained
+                      (oc (fn-owner-ocfg state)) (e event)))
+           :in-theory '(fn-owner-retain-retained-statep fn-owner-prepare-topic
+             fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg
+             mv-nth nth zp endp car-cons cdr-cons
+             (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-retained-statep-implies-entry-guard
+  (implies (fn-owner-retain-retained-statep state)
+           (and (boundp-global 'fn-owner state)
+                (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
+                (fn-prc-carryp (fn-owner-retain-carry state))))
+  :hints (("Goal" :use fn-owner-retain-statep-implies-entry-guard
+           :in-theory '(fn-owner-retain-retained-statep))))
+
+; As in the existing pilot, the installer input premise is discharged at
+; both actual recovery producers under their existing named assumptions.
+; This model-world row is followed by host-world owed enumeration below.
+(def-carried fn-owner-retain-retained-carried
+  :invariant fn-owner-retain-retained-statep
+  :established ((fn-owner-install-extended
+                 fn-owner-retain-install-establishes-retained-state
+                 :ok (equal (mv-nth 1 _) :recovering)
+                 :hyps ((or (equal oc :fault)
+                            (and (fn-lgoc-invariantp oc)
+                                 (fn-osr-retainedp (fn-sbud-oc-store oc)))))
+                 :produced ((fn-ock-recover-extended
+                             fn-owner-retain-recovery-produces-retained-input
+                             :assuming ((fn-assume-capture-extensionp extended configs)))
+                            (fn-ock-install
+                             fn-owner-retain-store-open-produces-retained-input
+                             :assuming ((fn-assume-store-open-pairp replayed opened))))
+                 :witness ((fn-owner-retain-witness-oc) nil (make-list 32 :initial-element 0)
+                           (create-fn-arena$a) (create-fn-cat$a) (create-fn-hist$a)
+                           (fn-owner-retain-witness-state))))
+  :transitions ((fn-owner-prepare-identity fn-owner-retain-identity-keeps-retained-state)
+                (fn-owner-prepare-consumer fn-owner-retain-consumer-keeps-retained-state)
+                (fn-owner-prepare-topic fn-owner-retain-topic-keeps-retained-state))
+  :concludes ((fn-sn-statep fn-owner-retain-retained-statep-implies-entry-guard)
+              (fn-prc-carryp fn-owner-retain-retained-statep-implies-entry-guard)))
+
+(defthm fn-owner-retain-retained-statep-implies-lgoc
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-lgoc-invariantp (fn-owner-ocfg state)))
+  :hints (("Goal" :use fn-owner-retain-statep-implies-lgoc
+           :in-theory '(fn-owner-retain-retained-statep))))
+(defthm fn-owner-retain-retained-statep-of-other-global-put
+  (implies (and (not (equal key 'fn-owner))
+                (not (equal key 'fn-owner-retain-carry)))
+           (equal (fn-owner-retain-retained-statep (f-put-global key value state))
+                  (fn-owner-retain-retained-statep state)))
+  :hints (("Goal" :in-theory '(fn-owner-retain-retained-statep
+              fn-orh-retain-statep-of-other-global-put fn-owner-store-is-configured-store-by-definition fn-sbud-oc-store
+              fn-owner-ocfg-of-other-global-put))))
+(defthm fn-owner-retain-retained-statep-of-install-ocfg
+  (implies (and (fn-owner-retain-retained-statep state)
+                (fn-lgoc-invariantp oc) (fn-osr-retainedp (fn-sbud-oc-store oc)))
+           (fn-owner-retain-retained-statep (fn-owner-install-ocfg oc state)))
+  :hints (("Goal" :in-theory '(fn-owner-retain-retained-statep
+              fn-orh-retain-statep-of-install-ocfg fn-owner-store-is-configured-store-by-definition fn-sbud-oc-store
+              fn-owner-ocfg-of-install-ocfg))))
+(defthm fn-owner-retain-retained-statep-of-retain-carry-put
+  (implies (and (fn-owner-retain-retained-statep state) (fn-prc-carryp carry))
+           (fn-owner-retain-retained-statep (fn-owner-retain-carry-put carry state)))
+  :hints (("Goal" :in-theory '(fn-owner-retain-retained-statep
+              fn-orh-retain-statep-of-retain-carry-put fn-owner-store-is-configured-store-by-definition fn-sbud-oc-store
+              fn-owner-ocfg-of-retain-carry-put))))
+
+(def-carried-profile fn-owner-retain-retained
+  :invariant fn-owner-retain-retained-statep
+  :installers (fn-owner-install-ocfg fn-owner-retain-carry-put)
+  :carried-globals (fn-owner fn-owner-retain-carry)
+  :at ((oc (fn-owner-ocfg state)))
+  :bridge fn-owner-retain-retained-statep-implies-lgoc
+  :frame (fn-owner-retain-retained-statep-of-other-global-put
+          fn-owner-retain-retained-statep-of-install-ocfg
+          fn-owner-retain-retained-statep-of-retain-carry-put)
+  :row fn-owner-retain-retained-carried
+  :theory (mv-nth nth zp car-cons cdr-cons (:e zp) (:e equal)))
+
+; V1E-UNARY-ROW-INSERTION
+(deflabel fn-owner-retain-unary-pilot-end)
+(include-book "../host/owner-host")
+
+
+
+
+
+
+
+
+
 
 ; Group C: the bounded article plan worker updates only connections.
 (local
@@ -154,11 +545,7 @@
            :in-theory '(fn-owner-orcp-swap-store-effect-by-definition fn-owner-retain-nth-one-is-cadr car-cons cdr-cons
                         (:e zp) (:e binary-+) (:e unary--)))))
 
-; Seat-flagged history premise: statement only, deliberately not a theorem.
-; (defthm fn-owner-retain-finish-submission-keeps-retained-store
-;   (implies (and (fn-osr-retainedp (fn-own-store o)) (fn-apc-p carry)
-;                 (fn-hist-of-storep fn-hist (fn-own-store o)))
-;     (fn-osr-retainedp (fn-own-store (cdr (fn-apc-own-finish o cfg fn-arena fn-hist carry))))))
+
 
 ; A retained view transfers the additional fields once the successor is live.
 (local
@@ -601,21 +988,7 @@
                   (mv-let (erp answer state) (fn-owner-cat-prepare-sealed fn-arena fn-cat state)
                     (declare (ignore erp)) (mv answer fn-arena state)))))))))))
 
-; Both unchanged statements passed the A22 REPL proof.
-; Kept comment-only under the closing scope: no proofs admitted into any book.
-#|
-(defthm fn-owner-post-quantum-keeps-retain-live
-  (implies (fn-owner-retain-livep state fn-arena)
-           (fn-owner-retain-livep
-            (mv-nth 2 (fn-owner-retain-post-quantum record budget force-abort fn-arena fn-cat state))
-            (mv-nth 1 (fn-owner-retain-post-quantum record budget force-abort fn-arena fn-cat state))))
-  :rule-classes nil)
 
-(defthm fn-owner-retain-quanta-keep-retained-store
-  (implies (fn-owner-retain-livep state fn-arena)
-    (and (fn-osr-retainedp (fn-owner-store (mv-nth 2 (fn-owner-retain-post-quantum record budget abort fn-arena fn-cat state))))
-         (fn-osr-retainedp (fn-owner-store (mv-nth 2 (fn-owner-retain-identity-quantum event fn-arena fn-cat state)))))))
-|#
 
 (defun fn-owner-retain-identity-quantum (event fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-arena fn-cat state) :verify-guards nil))
@@ -629,98 +1002,15 @@
           (t (mv-let (erp answer state) (fn-owner-refuse-reservation fn-arena state)
                (declare (ignore erp)) (mv answer fn-arena state))))))
 
-(local
- (defthm fn-owner-retain-update-selectors
-   (let ((b (fn-sn-update s files node)))
-     (and (equal (fn-sn-keyring b) (fn-sn-keyring s))
-          (equal (fn-sn-keyring-generation b) (fn-sn-keyring-generation s))
-          (equal (fn-sn-keyring-snapshots b) (fn-sn-keyring-snapshots s))
-          (equal (fn-sn-verdicts b) (fn-sn-verdicts s))
-          (equal (fn-sn-index b) (fn-sn-index s))
-          (equal (fn-sn-event-index b) (fn-sn-event-index s))
-          (equal (fn-sn-identity-next b) (fn-sn-identity-next s))))
-   :hints (("Goal" :in-theory
-            (e/d (fn-sn-update)
-                 (fn-sn-make-v6 fn-sn-keyring fn-sn-keyring-generation
-                  fn-sn-keyring-snapshots fn-sn-verdicts fn-sn-index
-                  fn-sn-event-index fn-sn-identity-next))))))
+
 
 ; The carried identity implementation stages without changing its retained view.
-(local
- (defthm fn-owner-retain-ccar-identity-view-frame
-   (equal (fn-osr-retained-view (fn-ccar-sn-prepare-identity s e))
-          (fn-osr-retained-view s))
-   :hints (("Goal" :in-theory
-            '(fn-ccar-sn-prepare-identity fn-osr-retained-view
-              fn-cstp-sn-update-fields fn-owner-retain-update-selectors fn-pcar-stage-record
-              fn-sf-records-of-fn-sf-make-fields-kept car-cons cdr-cons)))))
-(local
- (defthm fn-owner-retain-ccar-identity-keeps-retained
-   (implies (and (fn-osr-retainedp s)
-                 (fn-cst-relation (fn-ccar-sn-prepare-identity s e)))
-            (fn-osr-retainedp (fn-ccar-sn-prepare-identity s e)))
-   :hints (("Goal"
-            :use ((:instance fn-osr-retained-view-connects-full-carry
-                             (a s) (b (fn-ccar-sn-prepare-identity s e)))
-                  (:instance fn-owner-carried-identity-prepare-preserves-cursor (event e))
-                  (:instance fn-cstp-relation-is-statep (st (fn-ccar-sn-prepare-identity s e)))
-                  (:instance fn-th-topic-event-is-not-stxe (event e))
-                  (:instance fn-th-topic-event-is-not-stxk (event e))
-                  (:instance fn-hls-retained-kind4-disjoint-from-other-store-events (event e)))
-            :in-theory
-            '(fn-owner-retain-ccar-identity-view-frame fn-ccar-sn-prepare-identity
-              fn-osr-retainedp fn-osr-livep fn-cstp-relation-is-statep
-              fn-sti-livep fn-csi-livep fn-sti-completed-prefixp
-              fn-csi-completed-prefixp fn-csi-completion-lastp
-              fn-osr-identity-prefixp fn-sn-identity-context
-              fn-cstp-sn-update-fields fn-owner-retain-update-selectors fn-pcar-stage-record
-              fn-sf-records-of-fn-sf-make-fields-kept fn-sf-scalars-of-fn-sf-make-fields
-              fn-sf-completion-phasep member-equal car-cons cdr-cons
-              (:e member-equal) (:e equal))))) )
 
-(local
- (defthm fn-owner-retain-pout-identity-keeps-retained
-   (implies (and (fn-lgoc-invariantp oc) (fn-osr-retainedp (fn-sbud-oc-store oc)))
-            (fn-osr-retainedp
-             (fn-sbud-oc-store (mv-nth 1 (fn-pout-prepare-identity oc w h)))))
-   :hints (("Goal"
-            :use ((:instance fn-pout-store-of-oiis-prepare-identity)
-                  (:instance fn-oiis-prepare-identity-preserves-invariant)
-                  (:instance fn-lgoc-ocl-relation-cst
-                             (oc (fn-oiis-prepare-identity oc w h)))
-                  (:instance fn-owner-retain-ccar-identity-keeps-retained
-                             (s (fn-sbud-oc-store oc))
-                             (e (fn-oii-identity-row w (fn-sn-keyring (fn-sbud-oc-store oc))
-                                                    (fn-sn-keyring-generation (fn-sbud-oc-store oc)) h))))
-            :in-theory
-            '(fn-pout-prepare-identity fn-lgoc-invariantp fn-sbud-oc-store
-              mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--))))))
 
-(local
- (defthm fn-owner-retain-identity-prepare-cut
-   (let* ((out (fn-owner-prepare-identity event fn-arena state))
-          (next (mv-nth 2 out)) (word (mv-nth 1 out)))
-     (implies (fn-owner-retain-livep state fn-arena)
-              (and (fn-owner-retain-statep next)
-                   (fn-osr-retainedp (fn-owner-store next))
-                   (fn-rfcl-okp (fn-owner-store next)
-                     (if (and (consp word) (equal (car word) :seal))
-                         (fn-arena-seal-list (cadr word) fn-arena)
-                       fn-arena)))))
-   :hints (("Goal"
-            :use ((:instance fn-pout-identity-refusal-kind-is-a-refusal (oc (fn-owner-ocfg state)) (w event) (h (fn-arena-count fn-arena)))
-                  fn-owner-prepare-identity-preserves-retain-state
-                  fn-owner-retain-statep-implies-lgoc fn-owner-retain-statep-implies-entry-guard
-                  (:instance fn-rfcl-prepare-identity-keeps-okp
-                             (oc (fn-owner-ocfg state)) (w event))
-                  (:instance fn-owner-retain-pout-identity-keeps-retained
-                             (oc (fn-owner-ocfg state)) (w event) (h (fn-arena-count fn-arena))))
-            :in-theory
-            '(fn-owner-retain-livep fn-owner-prepare-identity fn-pout-prepare-identity member-equal (:e equal)
-              fn-irc-pout-prepare-identity-of-refresh-is-pout
-              fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg
-              fn-owner-ocfg-of-retain-carry-put fn-owner-ocfg-of-other-global-put
-              mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--))))))
+
+
+
+
 
 (local
  (defthm fn-owner-retain-sn-refuse-keeps-retained
@@ -792,5 +1082,1446 @@
              fn-owner-retain-refuse-reservation-keeps-live
              fn-owner-retain-cat-prepare-sealed-keeps-live
              mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--)))))
+
+; POST completed-cut support, replayed from a22-accepted-post-events.log.
+; Retain the complete recorded support, including implicit rewrite dependencies.
+(local
+ (DEFTHM RFCL-LV0
+  (IMPLIES (AND (FN-RFCL-OKP S FN-ARENA)
+                (NOT (FN-RFCL-PENDING-PHASEP (FN-SF-PHASE (FN-SN-FILES S)))))
+           (FN-ORCR-FOLD-CONTEXTS-OKP (FN-SF-RECORDS (FN-SN-FILES S))
+                                      (FN-STXK-INITIAL-CONTEXT 0)
+                                      (FN-ARENA-COUNT FN-ARENA)
+                                      FN-ARENA))
+  :HINTS (("Goal" :IN-THEORY '(FN-RFCL-OKP FN-RFCL-ROWS)))))
+
+(local
+ (DEFTHM RFCL-LV1
+   (FN-RFCL-OKP (FN-SN-INITIAL GROUPS CAPACITY)
+                FN-ARENA)
+   :HINTS (("Goal" :IN-THEORY (ENABLE FN-RFCL-OKP
+                                      FN-RFCL-ROWS FN-RFCL-PENDING-PHASEP
+                                      FN-SN-INITIAL FN-SN-MAKE-V2
+                                      FN-SN-FILES FN-STORE-EVENT-NTH
+                                      FN-SF-INITIAL-STATE)))))
+
+(local
+ (DEFTHM RFCL-HANDLES-APPEND
+   (EQUAL (FN-ROWS-HANDLES-INP (APPEND A B)
+                               FN-ARENA)
+          (AND (FN-ROWS-HANDLES-INP A FN-ARENA)
+               (FN-ROWS-HANDLES-INP B FN-ARENA)))
+   :HINTS
+   (("Goal" :INDUCT (APPEND A B)
+            :IN-THEORY (E/D (FN-ROWS-HANDLES-INP APPEND)
+                            (FN-HELD-P FN-HSTXA-P FN-ROW-HANDLE-INP))))))
+
+(local
+ (DEFUN RFCL-AFTER (ROWS ID H)
+   (DECLARE (XARGS :VERIFY-GUARDS NIL))
+   (IF (ATOM ROWS)
+       (MV ID H)
+     (LET* ((W (CAR ROWS))
+            (SEED (FN-SSR-SEED ID))
+            (ROW (IF (FN-RECORD-P W)
+                     (FN-INTERN-ROW-AT W (FN-SSR-AT 1 SEED)
+                                       (FN-SSR-AT 2 SEED)
+                                       H)
+                   W)))
+       (RFCL-AFTER (CDR ROWS)
+                   (FN-REPLAY-IDENTITY-LOOP (LIST ROW) ID)
+                   (IF (FN-RECORD-P W) (+ 1 H) H))))))
+
+(local
+ (DEFTHM RFCL-FOLD-APPEND
+   (EQUAL (FN-ORCR-FOLD-CONTEXTS-OKP (APPEND A B)
+                                     ID H FN-ARENA)
+          (AND (FN-ORCR-FOLD-CONTEXTS-OKP A ID H FN-ARENA)
+               (FN-ORCR-FOLD-CONTEXTS-OKP B (MV-NTH 0 (RFCL-AFTER A ID H))
+                                          (MV-NTH 1 (RFCL-AFTER A ID H))
+                                          FN-ARENA)))
+   :HINTS
+   (("Goal"
+         :INDUCT (RFCL-AFTER A ID H)
+         :IN-THEORY
+         (UNION-THEORIES '(RFCL-AFTER FN-ORCR-FOLD-CONTEXTS-OKP
+                                      APPEND (:INDUCTION RFCL-AFTER)
+                                      NATP
+                                      NOT CAR-CONS CDR-CONS CONS-EQUAL MV-NTH
+                                      NTH ZP (:EXECUTABLE-COUNTERPART ZP)
+                                      (:EXECUTABLE-COUNTERPART BINARY-+)
+                                      (:EXECUTABLE-COUNTERPART UNARY--)
+                                      (:EXECUTABLE-COUNTERPART MEMBER-EQUAL)
+                                      MEMBER-EQUAL)
+                         (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-HANDLES-SEAL
+  (IMPLIES (FN-ROWS-HANDLES-INP ROWS FN-ARENA)
+           (FN-ROWS-HANDLES-INP ROWS (FN-ARENA-SEAL-LIST P FN-ARENA)))
+  :HINTS
+  (("Goal" :INDUCT (FN-ROWS-HANDLES-INP ROWS FN-ARENA)
+           :IN-THEORY (E/D (FN-ROWS-HANDLES-INP FN-ROW-HANDLE-INP)
+                           (FN-HELD-P FN-HSTXA-P FN-ARENA-SEAL-LIST-IS-APPEND
+                                      FN-ARENA-COUNT-IS-LEN))))))
+
+(local
+ (DEFTHM RFCL-FOLD-SEAL
+  (IMPLIES (AND (FN-ROWS-HANDLES-INP ROWS FN-ARENA)
+                (FN-ORCR-FOLD-CONTEXTS-OKP ROWS ID H FN-ARENA))
+           (FN-ORCR-FOLD-CONTEXTS-OKP ROWS
+                                      ID H (FN-ARENA-SEAL-LIST P FN-ARENA)))
+  :HINTS
+  (("Goal"
+     :INDUCT (FN-ORCR-FOLD-CONTEXTS-OKP ROWS ID H FN-ARENA)
+     :IN-THEORY
+     (UNION-THEORIES
+          '(FN-ORCR-FOLD-CONTEXTS-OKP FN-ROWS-HANDLES-INP
+                                      FN-ROW-HANDLE-INP FN-ROW-BYTES
+                                      FN-ORCR-RETAINED-P FN-ORCR-HELD-PART
+                                      FN-ARENA-SEAL-KEEPS-SEALED
+                                      FN-ARENA-SEAL-COUNT
+                                      (:TYPE-PRESCRIPTION FN-ARENA-COUNT)
+                                      FN-CSTP-HELD-KIND-FACTS
+                                      FN-HSTXA-IS-NOT-HELD NATP
+                                      NOT CAR-CONS CDR-CONS CONS-EQUAL MV-NTH
+                                      NTH ZP (:EXECUTABLE-COUNTERPART ZP)
+                                      (:EXECUTABLE-COUNTERPART BINARY-+)
+                                      (:EXECUTABLE-COUNTERPART UNARY--)
+                                      (:EXECUTABLE-COUNTERPART MEMBER-EQUAL)
+                                      MEMBER-EQUAL)
+          (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-LV5
+  (IMPLIES (FN-RFCL-OKP S FN-ARENA)
+           (FN-RFCL-OKP S (FN-ARENA-SEAL-LIST P FN-ARENA)))
+  :HINTS
+  (("Goal"
+       :IN-THEORY (E/D (FN-RFCL-OKP)
+                       (FN-RFCL-ROWS FN-ORCR-FOLD-CONTEXTS-OKP
+                                     FN-ROWS-HANDLES-INP))
+       :USE ((:INSTANCE FN-RFC-FOLD-CONTEXTS-OKP-ANY-HANDLE
+                        (ROWS (FN-RFCL-ROWS S))
+                        (ID (FN-STXK-INITIAL-CONTEXT 0))
+                        (H1 (FN-ARENA-COUNT (FN-ARENA-SEAL-LIST P FN-ARENA)))
+                        (H2 (FN-ARENA-COUNT FN-ARENA))
+                        (FN-ARENA (FN-ARENA-SEAL-LIST P FN-ARENA))))))))
+
+(local
+ (DEFTHM RFCL-EVENT-NONHELD
+   (IMPLIES (OR (FN-STORE-RETENTION-EVENT-P EVENT)
+                (FN-CPE-EVENTP EVENT)
+                (FN-TH-TOPIC-EVENTP EVENT))
+            (NOT (FN-ORCR-RETAINED-P EVENT)))
+   :HINTS
+   (("Goal" :USE ((:INSTANCE FN-HELD-IS-NO-WIRE-EVENT (X EVENT))
+                  FN-HLS-RETAINED-KIND4-DISJOINT-FROM-OTHER-STORE-EVENTS)
+            :IN-THEORY '(FN-ORCR-RETAINED-P)))))
+
+(local
+ (DEFTHM RFCL-NONHELD-APPEND
+  (IMPLIES (AND (NOT (FN-ORCR-RETAINED-P EVENT))
+                (FN-ROWS-HANDLES-INP ROWS FN-ARENA)
+                (FN-ORCR-FOLD-CONTEXTS-OKP ROWS ID H FN-ARENA))
+           (AND (FN-ROWS-HANDLES-INP (APPEND ROWS (LIST EVENT))
+                                     FN-ARENA)
+                (FN-ORCR-FOLD-CONTEXTS-OKP (APPEND ROWS (LIST EVENT))
+                                           ID H FN-ARENA)))
+  :HINTS
+  (("Goal"
+      :IN-THEORY (E/D (FN-ROWS-HANDLES-INP FN-ORCR-RETAINED-P)
+                      (FN-HELD-P FN-HSTXA-P FN-RECORD-P
+                                 FN-INTERN-ROW-AT FN-SSR-SEED FN-SSR-AT
+                                 FN-ROW-BYTES FN-HELD-CONTEXT-OF
+                                 FN-REPLAY-IDENTITY-LOOP))
+      :EXPAND ((:FREE (CTX COUNT)
+                      (FN-ORCR-FOLD-CONTEXTS-OKP (LIST EVENT)
+                                                 CTX COUNT FN-ARENA))
+               (:FREE (CTX COUNT)
+                      (FN-ORCR-FOLD-CONTEXTS-OKP NIL CTX COUNT FN-ARENA)))))))
+
+(local
+ (DEFTHM RFCL-STAGE-NONHELD
+  (IMPLIES (AND (FN-RFCL-OKP S FN-ARENA)
+                (EQUAL (FN-SF-PHASE (FN-SN-FILES S))
+                       :RESERVED)
+                (NOT (FN-ORCR-RETAINED-P EVENT)))
+           (FN-RFCL-OKP (FN-SN-UPDATE S
+                                      (FN-PCAR-STAGE-RECORD (FN-SN-FILES S)
+                                                            EVENT)
+                                      NODE)
+                        FN-ARENA))
+  :HINTS
+  (("Goal"
+        :IN-THEORY
+        (UNION-THEORIES '(FN-RFCL-OKP FN-RFCL-ROWS FN-RFCL-PENDING-PHASEP
+                                      FN-PCAR-STAGE-RECORD
+                                      FN-SN-FILES-OF-FN-SN-UPDATE
+                                      FN-SF-SCALARS-OF-FN-SF-MAKE-FIELDS
+                                      FN-SF-RECORDS-OF-FN-SF-MAKE-FIELDS-KEPT
+                                      RFCL-NONHELD-APPEND
+                                      RFCL-HANDLES-APPEND RFCL-FOLD-APPEND
+                                      (:E FN-RFCL-PENDING-PHASEP)
+                                      (:E MEMBER-EQUAL))
+                        (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-LV4-RETENTION
+  (IMPLIES (FN-RFCL-OKP S FN-ARENA)
+           (FN-RFCL-OKP (FN-PDC-SN-PREPARE-RETENTION S EVENT)
+                        FN-ARENA))
+  :HINTS
+  (("Goal"
+    :IN-THEORY
+    (UNION-THEORIES
+         '(FN-PDC-SN-PREPARE-RETENTION RFCL-STAGE-NONHELD RFCL-EVENT-NONHELD)
+         (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-LV4-CONSUMER
+  (IMPLIES (FN-RFCL-OKP S FN-ARENA)
+           (FN-RFCL-OKP (FN-PDC-SN-PREPARE-CONSUMER S EVENT)
+                        FN-ARENA))
+  :HINTS
+  (("Goal"
+     :IN-THEORY
+     (UNION-THEORIES
+          '(FN-PDC-SN-PREPARE-CONSUMER RFCL-STAGE-NONHELD RFCL-EVENT-NONHELD)
+          (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-LV4-TOPIC
+  (IMPLIES (FN-RFCL-OKP S FN-ARENA)
+           (FN-RFCL-OKP (FN-PDC-SN-PREPARE-TOPIC S EVENT)
+                        FN-ARENA))
+  :HINTS
+  (("Goal"
+        :IN-THEORY
+        (UNION-THEORIES
+             '(FN-PDC-SN-PREPARE-TOPIC RFCL-STAGE-NONHELD RFCL-EVENT-NONHELD)
+             (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFUN RFCL-FILE-ROWS (F)
+   (DECLARE (XARGS :GUARD T :VERIFY-GUARDS NIL))
+   (IF (FN-RFCL-PENDING-PHASEP (FN-SF-PHASE F))
+       (APPEND (FN-SF-RECORDS F)
+               (LIST (FN-SF-RECORD-CANDIDATE F)))
+     (FN-SF-RECORDS F))))
+
+(local
+ (DEFUN RFCL-FOK (F H FN-ARENA)
+   (DECLARE (XARGS :STOBJS FN-ARENA
+                   :VERIFY-GUARDS NIL))
+   (AND (FN-ROWS-HANDLES-INP (RFCL-FILE-ROWS F)
+                             FN-ARENA)
+        (FN-ORCR-FOLD-CONTEXTS-OKP (RFCL-FILE-ROWS F)
+                                   (FN-STXK-INITIAL-CONTEXT 0)
+                                   H FN-ARENA))))
+
+(local
+ (DEFTHM RFCL-OKP-IS-FOK
+   (EQUAL (FN-RFCL-OKP S FN-ARENA)
+          (RFCL-FOK (FN-SN-FILES S)
+                    (FN-ARENA-COUNT FN-ARENA)
+                    FN-ARENA))
+   :HINTS
+   (("Goal" :IN-THEORY '(FN-RFCL-OKP RFCL-FOK FN-RFCL-ROWS RFCL-FILE-ROWS)))))
+
+(local
+ (DEFTHM RFCL-FOK-HAS-RECORDS
+   (IMPLIES (RFCL-FOK F H FN-ARENA)
+            (AND (FN-ROWS-HANDLES-INP (FN-SF-RECORDS F)
+                                      FN-ARENA)
+                 (FN-ORCR-FOLD-CONTEXTS-OKP (FN-SF-RECORDS F)
+                                            (FN-STXK-INITIAL-CONTEXT 0)
+                                            H FN-ARENA)))
+   :HINTS
+   (("Goal"
+         :IN-THEORY (E/D (RFCL-FOK RFCL-FILE-ROWS)
+                         (FN-ROWS-HANDLES-INP FN-ORCR-FOLD-CONTEXTS-OKP))))))
+
+(local
+ (DEFTHM RFCL-FOK-FILE-STEP
+  (IMPLIES (RFCL-FOK F H FN-ARENA)
+           (RFCL-FOK (FN-SN-FILE-STEP F OPERATION RESULT)
+                     H FN-ARENA))
+  :HINTS
+  (("Goal" :IN-THEORY
+           (UNION-THEORIES '(RFCL-FOK RFCL-FILE-ROWS FN-RFCL-PENDING-PHASEP
+                                      FN-SN-FILE-STEP FN-SF-START-FRONTIER
+                                      FN-SF-FRONTIER-FILE-RESULT
+                                      FN-SF-FRONTIER-REPLACE-RESULT
+                                      FN-SF-FRONTIER-DIR-RESULT
+                                      FN-SF-RECORD-FILE-RESULT
+                                      FN-SF-RECORD-LINK-RESULT
+                                      FN-SF-RECORD-DIR-RESULT
+                                      FN-SF-RECOVERY-BARRIER
+                                      FN-SF-SCALARS-OF-FN-SF-MAKE-FIELDS
+                                      FN-SF-RECORDS-OF-FN-SF-MAKE-FIELDS-KEPT
+                                      FN-SF-RECORDS-OF-FN-SF-MAKE-FIELDS-SNOC
+                                      RFCL-HANDLES-APPEND RFCL-FOLD-APPEND
+                                      RFCL-FOK-HAS-RECORDS NATP
+                                      NOT CAR-CONS CDR-CONS CONS-EQUAL MV-NTH
+                                      NTH ZP (:EXECUTABLE-COUNTERPART ZP)
+                                      (:EXECUTABLE-COUNTERPART BINARY-+)
+                                      (:EXECUTABLE-COUNTERPART UNARY--)
+                                      (:EXECUTABLE-COUNTERPART MEMBER-EQUAL)
+                                      MEMBER-EQUAL)
+                           (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-LV4-IO
+  (IMPLIES (AND (FN-SN-STATEP S)
+                (FN-RFCL-OKP S FN-ARENA))
+           (FN-RFCL-OKP (FN-SN-IO S OPERATION RESULT)
+                        FN-ARENA))
+  :HINTS
+  (("Goal"
+       :IN-THEORY
+       (UNION-THEORIES '(RFCL-OKP-IS-FOK FN-SN-IO FN-SN-FILES-OF-FN-SN-UPDATE
+                                         RFCL-FOK-FILE-STEP)
+                       (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-FOK-CRASH
+  (IMPLIES (RFCL-FOK F H FN-ARENA)
+           (RFCL-FOK (FN-SF-CRASH F FC RC)
+                     H FN-ARENA))
+  :HINTS
+  (("Goal" :IN-THEORY
+           (UNION-THEORIES '(RFCL-FOK RFCL-FILE-ROWS
+                                      FN-RFCL-PENDING-PHASEP FN-SF-CRASH
+                                      FN-SF-RECORD-PRESENT-VISIBLEP
+                                      FN-SF-PHASE-OF-FN-SF-MAKE
+                                      FN-SF-RECORDS-OF-FN-SF-MAKE
+                                      FN-SF-RECORD-CANDIDATE-OF-FN-SF-MAKE
+                                      RFCL-HANDLES-APPEND RFCL-FOLD-APPEND
+                                      RFCL-FOK-HAS-RECORDS NATP
+                                      NOT CAR-CONS CDR-CONS CONS-EQUAL MV-NTH
+                                      NTH ZP (:EXECUTABLE-COUNTERPART ZP)
+                                      (:EXECUTABLE-COUNTERPART BINARY-+)
+                                      (:EXECUTABLE-COUNTERPART UNARY--)
+                                      (:EXECUTABLE-COUNTERPART MEMBER-EQUAL)
+                                      MEMBER-EQUAL)
+                           (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-LV6
+  (IMPLIES (FN-RFCL-OKP S FN-ARENA)
+           (FN-RFCL-OKP (FN-SN-CRASH S FRONTIER-CHOICE RECORD-CHOICE)
+                        FN-ARENA))
+  :HINTS
+  (("Goal"
+      :IN-THEORY
+      (UNION-THEORIES '(RFCL-OKP-IS-FOK FN-SN-CRASH FN-SN-UPDATE-INDEXED
+                                        FN-SN-WITH-CONSUMER FN-SN-WITH-TOPIC
+                                        FN-SN-FILES-OF-FN-SN-WITH-EVENT-INDEX
+                                        FN-SN-FIELDS-OF-FN-SN-MAKE-V6
+                                        RFCL-FOK-CRASH)
+                      (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-FOK-COMPLETE
+  (IMPLIES (RFCL-FOK F H FN-ARENA)
+           (RFCL-FOK (FN-SF-CORE-COMPLETION F SEQ TX)
+                     H FN-ARENA))
+  :HINTS
+  (("Goal" :IN-THEORY
+           (UNION-THEORIES '(RFCL-FOK RFCL-FILE-ROWS FN-RFCL-PENDING-PHASEP
+                                      FN-SF-CORE-COMPLETION
+                                      FN-SF-SCALARS-OF-FN-SF-MAKE-FIELDS
+                                      FN-SF-RECORDS-OF-FN-SF-MAKE-FIELDS-KEPT
+                                      NATP
+                                      NOT CAR-CONS CDR-CONS CONS-EQUAL MV-NTH
+                                      NTH ZP (:EXECUTABLE-COUNTERPART ZP)
+                                      (:EXECUTABLE-COUNTERPART BINARY-+)
+                                      (:EXECUTABLE-COUNTERPART UNARY--)
+                                      (:EXECUTABLE-COUNTERPART MEMBER-EQUAL)
+                                      MEMBER-EQUAL)
+                           (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-FOK-EMIT
+  (IMPLIES (RFCL-FOK F H FN-ARENA)
+           (RFCL-FOK (FN-SF-EMIT-SUCCESS F SEQ TX)
+                     H FN-ARENA))
+  :HINTS
+  (("Goal" :IN-THEORY
+           (UNION-THEORIES '(RFCL-FOK RFCL-FILE-ROWS FN-RFCL-PENDING-PHASEP
+                                      FN-SF-EMIT-SUCCESS
+                                      FN-SF-SCALARS-OF-FN-SF-MAKE-FIELDS
+                                      FN-SF-RECORDS-OF-FN-SF-MAKE-FIELDS-KEPT
+                                      NATP
+                                      NOT CAR-CONS CDR-CONS CONS-EQUAL MV-NTH
+                                      NTH ZP (:EXECUTABLE-COUNTERPART ZP)
+                                      (:EXECUTABLE-COUNTERPART BINARY-+)
+                                      (:EXECUTABLE-COUNTERPART UNARY--)
+                                      (:EXECUTABLE-COUNTERPART MEMBER-EQUAL)
+                                      MEMBER-EQUAL)
+                           (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-FINISH-FILES
+  (IMPLIES
+       (FN-SN-COMPLETION-ENABLEDP S)
+       (EQUAL (FN-SN-FILES (FN-SN-FINISH S))
+              (FN-SF-EMIT-SUCCESS
+                   (FN-SF-CORE-COMPLETION
+                        (FN-SN-FILES S)
+                        (FN-STORE-EVENT-SEQUENCE (FN-SN-COMPLETION-RECORD S))
+                        (FN-STORE-EVENT-TXID (FN-SN-COMPLETION-RECORD S)))
+                   (FN-STORE-EVENT-SEQUENCE (FN-SN-COMPLETION-RECORD S))
+                   (FN-STORE-EVENT-TXID (FN-SN-COMPLETION-RECORD S)))))
+  :HINTS
+  (("Goal"
+        :IN-THEORY
+        (UNION-THEORIES '(FN-SN-FINISH FN-SN-FINISH-IDENTITY
+                                       FN-SN-UPDATE-ACCEPTED
+                                       FN-SN-UPDATE-INDEXED
+                                       FN-SN-ADVANCE-IDENTITY-NEXT
+                                       FN-SN-WITH-CONSUMER FN-SN-WITH-TOPIC
+                                       FN-SN-FIELDS-OF-FN-SN-MAKE-V6
+                                       FN-SN-FILES-OF-FN-SN-UPDATE
+                                       FN-SN-FILES-OF-FN-SN-WITH-EVENT-INDEX)
+                        (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-LV4-FINISH
+  (IMPLIES (FN-RFCL-OKP S FN-ARENA)
+           (FN-RFCL-OKP (FN-SN-FINISH S) FN-ARENA))
+  :HINTS
+  (("Goal" :CASES ((FN-SN-COMPLETION-ENABLEDP S))
+           :IN-THEORY
+           (UNION-THEORIES '(RFCL-OKP-IS-FOK RFCL-FINISH-FILES
+                                             RFCL-FOK-EMIT RFCL-FOK-COMPLETE)
+                           (THEORY 'MINIMAL-THEORY)))
+   ("Subgoal 2" :IN-THEORY (UNION-THEORIES '(FN-SN-FINISH)
+                                           (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-STORE-EVENT-NOT-RECORD
+   (IMPLIES (FN-STORE-EVENT-P X)
+            (NOT (FN-RECORD-P X)))
+   :HINTS
+   (("Goal" :USE (FN-HELD-IS-NO-WIRE-EVENT FN-HSTXA-IS-NO-WIRE-EVENT
+                                           FN-RECORD-IS-NO-OTHER-WIRE-EVENT)
+            :IN-THEORY '(FN-STORE-EVENT-P)))))
+
+(local
+ (DEFTHM RFCL-AFTER-IS-REPLAY
+  (IMPLIES (FN-SF-RECORD-VALUESP ROWS)
+           (EQUAL (RFCL-AFTER ROWS ID H)
+                  (MV (FN-REPLAY-IDENTITY-LOOP ROWS ID)
+                      H)))
+  :HINTS
+  (("Goal"
+        :INDUCT (RFCL-AFTER ROWS ID H)
+        :IN-THEORY (E/D (RFCL-AFTER FN-SF-RECORD-VALUESP
+                                    FN-REPLAY-IDENTITY-LOOP)
+                        (FN-STORE-EVENT-P FN-RECORD-P FN-REPLAY-IDENTITY-STEP
+                                          FN-STXK-FAULT FN-INTERN-ROW-AT
+                                          FN-SSR-SEED FN-SSR-AT))))))
+
+(local
+ (DEFTHM RFCL-RECORD-LIST-VALUES
+   (IMPLIES (FN-SF-RECORD-LISTP ROWS SEQ LOW FRONTIER)
+            (FN-SF-RECORD-VALUESP ROWS))
+   :HINTS
+   (("Goal" :INDUCT (FN-SF-RECORD-LISTP ROWS SEQ LOW FRONTIER)
+            :IN-THEORY (E/D (FN-SF-RECORD-LISTP FN-SF-RECORD-VALUESP)
+                            (FN-STORE-EVENT-P FN-STORE-EVENT-SEQUENCE
+                                              FN-STORE-EVENT-TXID
+                                              FN-STORE-EVENT-GENERATION))))))
+
+(local
+ (DEFTHM RFCL-STATE-RECORD-VALUES
+  (IMPLIES (FN-SN-STATEP S)
+           (FN-SF-RECORD-VALUESP (FN-SF-RECORDS (FN-SN-FILES S))))
+  :HINTS
+  (("Goal" :USE ((:INSTANCE FN-CSTP-SN-STATEP-FILES (ST S)))
+           :IN-THEORY (UNION-THEORIES '(FN-SF-STATEP RFCL-RECORD-LIST-VALUES)
+                                      (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-RETAINED-PARTS
+  (IMPLIES (FN-OSR-RETAINEDP S)
+           (AND (FN-SN-STATEP S)
+                (FN-SF-STATEP (FN-SN-FILES S))
+                (FN-SN-IDENTITY-SEQUENCEP S)
+                (FN-OSR-IDENTITY-PREFIXP S)
+                (FN-SKP-RESOLVEDP S)
+                (FN-SF-RECORD-VALUESP (FN-SF-RECORDS (FN-SN-FILES S)))))
+  :HINTS
+  (("Goal"
+      :IN-THEORY
+      (UNION-THEORIES '(FN-OSR-RETAINEDP FN-OSR-LIVEP FN-STI-LIVEP
+                                         FN-CSI-LIVEP FN-CSTP-SN-STATEP-FILES
+                                         RFCL-STATE-RECORD-VALUES)
+                      (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-RESERVED-SNAPSHOT-EXACT
+  (IMPLIES (AND (FN-OSR-RETAINEDP S)
+                (EQUAL (FN-SF-PHASE (FN-SN-FILES S))
+                       :RESERVED))
+           (EQUAL (FN-STXK-CONTEXT-SNAPSHOTS
+                       (FN-REPLAY-IDENTITY (FN-SF-RECORDS (FN-SN-FILES S))))
+                  (FN-SN-KEYRING-SNAPSHOTS S)))
+  :HINTS
+  (("Goal"
+      :USE
+      (RFCL-RETAINED-PARTS (:INSTANCE FN-SF-STATE-RECORDS-ARE-TRUE-LIST
+                                      (S (FN-SN-FILES S)))
+                           (:INSTANCE FN-CBOR-TAKE-WHOLE-LIST
+                                      (XS (FN-SF-RECORDS (FN-SN-FILES S)))))
+      :IN-THEORY
+      (UNION-THEORIES
+           '(FN-SN-IDENTITY-SEQUENCEP FN-OSR-IDENTITY-PREFIXP
+                                      FN-OSR-CONTEXT-VIEW
+                                      FN-SN-IDENTITY-CONTEXT
+                                      FN-STXK-CONTEXT-SNAPSHOTS
+                                      FN-STXK-CONTEXT FN-SF-COMPLETION-PHASEP
+                                      FN-STORE-EVENT-NTH
+                                      FN-CSTP-SN-STATEP-FILES
+                                      FN-SF-STATE-RECORDS-ARE-TRUE-LIST
+                                      MEMBER-EQUAL
+                                      (:EXECUTABLE-COUNTERPART MEMBER-EQUAL)
+                                      NATP NOT CAR-CONS CDR-CONS CONS-EQUAL)
+           (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-RESERVED-SEED-EXACT
+  (IMPLIES
+   (AND (FN-OSR-RETAINEDP S)
+        (EQUAL (FN-SF-PHASE (FN-SN-FILES S))
+               :RESERVED))
+   (AND
+    (EQUAL
+     (FN-SSR-AT
+          1
+          (FN-SSR-SEED (FN-REPLAY-IDENTITY (FN-SF-RECORDS (FN-SN-FILES S)))))
+     (FN-SN-KEYRING S))
+    (EQUAL
+     (FN-SSR-AT
+          2
+          (FN-SSR-SEED (FN-REPLAY-IDENTITY (FN-SF-RECORDS (FN-SN-FILES S)))))
+     (FN-SN-KEYRING-GENERATION S))))
+  :HINTS
+  (("Goal"
+    :USE (RFCL-RETAINED-PARTS RFCL-RESERVED-SNAPSHOT-EXACT)
+    :IN-THEORY
+    (UNION-THEORIES '(FN-SKP-RESOLVEDP FN-SSR-SEED FN-SSR-STATE
+                                       FN-SSR-AT FN-AG-CAR FN-AG-CDR
+                                       ZP (:EXECUTABLE-COUNTERPART ZP)
+                                       (:EXECUTABLE-COUNTERPART BINARY-+)
+                                       (:EXECUTABLE-COUNTERPART UNARY--)
+                                       NATP NOT CAR-CONS CDR-CONS CONS-EQUAL)
+                    (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-INTERN-IS-HELD
+   (IMPLIES (AND (FN-RECORD-P W) (NATP G) (NATP H))
+            (FN-HELD-P (FN-INTERN-ROW-AT W K G H)))
+   :HINTS (("Goal" :IN-THEORY (ENABLE FN-INTERN-ROW-AT FN-RECORD-P
+                                      FN-HELD-P FN-RECORD-INTERNALS
+                                      FN-HELD-INTERNALS FN-HF-P
+                                      FN-HC-P FN-HF-STARTP FN-HC-VERDICTP)))))
+
+(local
+ (DEFTHM RFCL-INTERN-FIELDS
+   (AND (EQUAL (FN-HELD-CONTEXT (FN-INTERN-ROW-AT W K G H))
+               (FN-HELD-CONTEXT-OF (FN-RECORD-PAYLOAD W)
+                                   K G))
+        (EQUAL (FN-RECORD-PAYLOAD (FN-INTERN-ROW-AT W K G H))
+               H))
+   :HINTS (("Goal" :IN-THEORY (ENABLE FN-INTERN-ROW-AT)))))
+
+(local
+ (DEFTHM RFCL-ONE-INTERN
+  (IMPLIES
+       (AND (FN-HELD-P (FN-INTERN-ROW-AT W K G (FN-ARENA-COUNT FN-ARENA)))
+            (NATP G)
+            (EQUAL K (FN-SSR-AT 1 (FN-SSR-SEED ID)))
+            (EQUAL G (FN-SSR-AT 2 (FN-SSR-SEED ID))))
+       (AND (FN-ROWS-HANDLES-INP
+                 (LIST (FN-INTERN-ROW-AT W K G (FN-ARENA-COUNT FN-ARENA)))
+                 (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W)
+                                     FN-ARENA))
+            (FN-ORCR-FOLD-CONTEXTS-OKP
+                 (LIST (FN-INTERN-ROW-AT W K G (FN-ARENA-COUNT FN-ARENA)))
+                 ID HH
+                 (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W)
+                                     FN-ARENA))))
+  :HINTS
+  (("Goal"
+       :IN-THEORY
+       (E/D (FN-ROWS-HANDLES-INP FN-ROW-HANDLE-INP FN-ORCR-RETAINED-P
+                                 FN-ORCR-HELD-PART FN-ROW-BYTES)
+            (FN-HELD-CONTEXT-OF FN-SSR-SEED FN-SSR-AT
+                                FN-INTERN-ROW-AT FN-REPLAY-IDENTITY-LOOP
+                                FN-HELD-P FN-HSTXA-P
+                                FN-RECORD-P FN-ARENA-COUNT-IS-LEN
+                                FN-ARENA-PAYLOAD-IS-NTH
+                                FN-ARENA-SEAL-LIST-IS-APPEND))
+       :EXPAND
+       ((:FREE (ROWS H A)
+               (FN-ORCR-FOLD-CONTEXTS-OKP NIL ROWS H A))
+        (:FREE (A)
+               (FN-ORCR-FOLD-CONTEXTS-OKP
+                    (LIST (FN-INTERN-ROW-AT W K G (FN-ARENA-COUNT FN-ARENA)))
+                    ID HH A)))))))
+
+(local
+ (DEFTHM RFCL-AFTER-STORE
+  (IMPLIES (FN-OSR-RETAINEDP S)
+           (EQUAL (RFCL-AFTER (FN-SF-RECORDS (FN-SN-FILES S))
+                              (FN-STXK-INITIAL-CONTEXT 0)
+                              H)
+                  (MV (FN-REPLAY-IDENTITY (FN-SF-RECORDS (FN-SN-FILES S)))
+                      H)))
+  :HINTS
+  (("Goal"
+        :USE (RFCL-RETAINED-PARTS)
+        :IN-THEORY (UNION-THEORIES '(RFCL-AFTER-IS-REPLAY FN-REPLAY-IDENTITY)
+                                   (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-FOLD-SEAL-ANY-HANDLE
+  (IMPLIES (AND (FN-ROWS-HANDLES-INP ROWS FN-ARENA)
+                (FN-ORCR-FOLD-CONTEXTS-OKP ROWS ID H FN-ARENA)
+                (NATP H)
+                (NATP HH))
+           (FN-ORCR-FOLD-CONTEXTS-OKP ROWS
+                                      ID HH (FN-ARENA-SEAL-LIST P FN-ARENA)))
+  :HINTS
+  (("Goal" :USE ((:INSTANCE FN-RFC-FOLD-CONTEXTS-OKP-ANY-HANDLE
+                            (H1 HH)
+                            (H2 H)
+                            (FN-ARENA (FN-ARENA-SEAL-LIST P FN-ARENA))))
+           :IN-THEORY (UNION-THEORIES '(RFCL-FOLD-SEAL)
+                                      (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-STATE-GENERATION
+   (IMPLIES (FN-SN-STATEP S)
+            (NATP (FN-SN-KEYRING-GENERATION S)))
+   :HINTS (("Goal" :IN-THEORY '(FN-SN-STATEP NATP)))))
+
+(local
+ (DEFTHM RFCL-APPEND-INTERN
+  (IMPLIES
+   (AND (FN-OSR-RETAINEDP S)
+        (FN-RFCL-OKP S FN-ARENA)
+        (EQUAL (FN-SF-PHASE (FN-SN-FILES S))
+               :RESERVED)
+        (FN-HELD-P (FN-INTERN-ROW-AT W (FN-SN-KEYRING S)
+                                     (FN-SN-KEYRING-GENERATION S)
+                                     (FN-ARENA-COUNT FN-ARENA))))
+   (LET ((ROWS (APPEND (FN-SF-RECORDS (FN-SN-FILES S))
+                       (LIST (FN-INTERN-ROW-AT W (FN-SN-KEYRING S)
+                                               (FN-SN-KEYRING-GENERATION S)
+                                               (FN-ARENA-COUNT FN-ARENA))))))
+     (AND (FN-ROWS-HANDLES-INP ROWS
+                               (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W)
+                                                   FN-ARENA))
+          (FN-ORCR-FOLD-CONTEXTS-OKP
+               ROWS (FN-STXK-INITIAL-CONTEXT 0)
+               (FN-ARENA-COUNT (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W)
+                                                   FN-ARENA))
+               (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W)
+                                   FN-ARENA)))))
+  :HINTS
+  (("Goal"
+    :USE
+    (RFCL-RETAINED-PARTS
+     RFCL-RESERVED-SEED-EXACT
+     (:INSTANCE RFCL-ONE-INTERN (K (FN-SN-KEYRING S))
+                (G (FN-SN-KEYRING-GENERATION S))
+                (ID (FN-REPLAY-IDENTITY (FN-SF-RECORDS (FN-SN-FILES S))))
+                (HH (FN-ARENA-COUNT (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W)
+                                                        FN-ARENA))))
+     (:INSTANCE RFCL-STATE-GENERATION))
+    :IN-THEORY
+    (UNION-THEORIES
+         '(FN-RFCL-OKP FN-RFCL-ROWS FN-RFCL-PENDING-PHASEP
+                       RFCL-HANDLES-APPEND RFCL-FOLD-APPEND
+                       RFCL-AFTER-STORE RFCL-HANDLES-SEAL
+                       RFCL-FOLD-SEAL-ANY-HANDLE
+                       FN-ARENA-SEAL-COUNT
+                       (:TYPE-PRESCRIPTION FN-ARENA-COUNT)
+                       NATP MV-NTH NTH ZP CAR-CONS
+                       CDR-CONS (:EXECUTABLE-COUNTERPART ZP)
+                       (:EXECUTABLE-COUNTERPART BINARY-+)
+                       (:EXECUTABLE-COUNTERPART UNARY--)
+                       (:EXECUTABLE-COUNTERPART FN-RFCL-PENDING-PHASEP))
+         (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-STAGE-INTERN
+  (IMPLIES
+   (AND (FN-OSR-RETAINEDP S)
+        (FN-RFCL-OKP S FN-ARENA)
+        (EQUAL (FN-SF-PHASE (FN-SN-FILES S))
+               :RESERVED)
+        (FN-HELD-P (FN-INTERN-ROW-AT W (FN-SN-KEYRING S)
+                                     (FN-SN-KEYRING-GENERATION S)
+                                     (FN-ARENA-COUNT FN-ARENA))))
+   (FN-RFCL-OKP
+       (FN-SN-UPDATE
+            S
+            (FN-SF-MAKE-FIELDS :RECORD-STAGED FRONTIER NIL
+                               (FN-SF-RECORDS-FIELD (FN-SN-FILES S))
+                               (FN-INTERN-ROW-AT W (FN-SN-KEYRING S)
+                                                 (FN-SN-KEYRING-GENERATION S)
+                                                 (FN-ARENA-COUNT FN-ARENA))
+                               NIL SF BARRIERS)
+            NODE)
+       (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W)
+                           FN-ARENA)))
+  :HINTS
+  (("Goal"
+        :USE (RFCL-APPEND-INTERN)
+        :IN-THEORY
+        (UNION-THEORIES
+             '(FN-RFCL-OKP FN-RFCL-ROWS FN-RFCL-PENDING-PHASEP
+                           FN-SN-FILES-OF-FN-SN-UPDATE
+                           FN-SF-SCALARS-OF-FN-SF-MAKE-FIELDS
+                           FN-SF-RECORDS-OF-FN-SF-MAKE-FIELDS-KEPT
+                           (:EXECUTABLE-COUNTERPART FN-RFCL-PENDING-PHASEP))
+             (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-LV2
+  (IMPLIES (AND (FN-OSR-RETAINEDP S)
+                (FN-RFCL-OKP S FN-ARENA))
+           (FN-RFCL-OKP (MV-NTH 0
+                                (FN-STORE-PREPARE-INTERNED S W FN-ARENA))
+                        (MV-NTH 1
+                                (FN-STORE-PREPARE-INTERNED S W FN-ARENA))))
+  :HINTS
+  (("Goal"
+    :IN-THEORY
+    (UNION-THEORIES
+         '(FN-STORE-PREPARE-INTERNED FN-SN-PREPARE FN-SF-PREPARE-RECORD
+                                     RFCL-STAGE-INTERN MV-NTH NTH ZP CAR-CONS
+                                     CDR-CONS (:EXECUTABLE-COUNTERPART ZP)
+                                     (:EXECUTABLE-COUNTERPART BINARY-+)
+                                     (:EXECUTABLE-COUNTERPART UNARY--))
+         (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-PRC-PREPARE-INTERN
+  (IMPLIES
+      (AND (FN-OSR-RETAINEDP S)
+           (FN-RFCL-OKP S FN-ARENA))
+      (FN-RFCL-OKP
+           (FN-PRC-SPC-PREPARE S
+                               (FN-INTERN-ROW-AT W (FN-SN-KEYRING S)
+                                                 (FN-SN-KEYRING-GENERATION S)
+                                                 (FN-ARENA-COUNT FN-ARENA))
+                               VIEW CARRY)
+           (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD W)
+                               FN-ARENA)))
+  :HINTS
+  (("Goal" :IN-THEORY
+           (UNION-THEORIES '(FN-PRC-SPC-PREPARE FN-PCAR-STAGE-RECORD
+                                                RFCL-STAGE-INTERN RFCL-LV5)
+                           (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-LV2H
+  (LET* ((S (FN-SBUD-OC-STORE OC))
+         (ROW (FN-INTERN-ROW-AT RECORD (FN-SN-KEYRING S)
+                                (FN-SN-KEYRING-GENERATION S)
+                                (FN-ARENA-COUNT FN-ARENA)))
+         (OUT (FN-POUT-PREPARE-ARTICLE OC ROW BUDGET CARRY))
+         (S2 (FN-SBUD-OC-STORE (MV-NTH 1 OUT))))
+    (IMPLIES (AND (FN-OSR-RETAINEDP S)
+                  (FN-RFCL-OKP S FN-ARENA))
+             (FN-RFCL-OKP S2
+                          (IF (EQUAL (MV-NTH 0 OUT) :PREPARED)
+                              (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD RECORD)
+                                                  FN-ARENA)
+                            FN-ARENA))))
+  :HINTS
+  (("Goal"
+    :USE
+    ((:INSTANCE
+      FN-POUT-STORE-OF-PSRV-PREPARE
+      (RECORD
+           (FN-INTERN-ROW-AT RECORD
+                             (FN-SN-KEYRING (FN-SBUD-OC-STORE OC))
+                             (FN-SN-KEYRING-GENERATION (FN-SBUD-OC-STORE OC))
+                             (FN-ARENA-COUNT FN-ARENA))))
+     (:INSTANCE RFCL-PRC-PREPARE-INTERN
+                (S (FN-SBUD-OC-STORE OC))
+                (W RECORD)
+                (VIEW (FN-OWN-VIEW (FN-OCFG-OWNER OC)))))
+    :IN-THEORY
+    (UNION-THEORIES
+         '(FN-POUT-PREPARE-ARTICLE-ANSWERS-THE-STORE-CHANGE RFCL-LV5)
+         (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-BINDSP-IS-NODE-STATEP
+   (IMPLIES (FN-RCON-SN-RECORD-BINDSP NODE ROW)
+            (FN-NODE-STATEP NODE))
+   :RULE-CLASSES NIL
+   :HINTS
+   (("Goal"
+         :IN-THEORY
+         (UNION-THEORIES '(FN-RCON-SN-RECORD-BINDSP FN-SN-RECORD-BINDSP
+                                                    FN-NODE-PENDING-MATCHESP)
+                         (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-UPDATE-STATEP
+  (IMPLIES (AND (FN-SN-STATEP S)
+                (FN-SF-STATEP FILES)
+                (FN-NODE-STATEP NODE))
+           (FN-SN-STATEP (FN-SN-UPDATE S FILES NODE)))
+  :HINTS
+  (("Goal"
+     :IN-THEORY (UNION-THEORIES '(FN-SN-STATEP FN-SN-UPDATE
+                                               FN-SN-FIELDS-OF-FN-SN-MAKE-V6)
+                                (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-STAGE-FILES-FACTS
+  (IMPLIES
+   (FN-SF-STATEP FILES)
+   (AND
+    (FN-SF-STATEP (FN-PCAR-STAGE-RECORD FILES ROW))
+    (EQUAL (FN-SF-RECORDS (FN-PCAR-STAGE-RECORD FILES ROW))
+           (FN-SF-RECORDS FILES))
+    (IMPLIES (EQUAL (FN-SF-PHASE FILES) :RESERVED)
+             (EQUAL (FN-SF-RECORD-CANDIDATE (FN-PCAR-STAGE-RECORD FILES ROW))
+                    (IF (FN-PCAR-FILES-CANDIDATEP ROW FILES)
+                        ROW
+                      (FN-SF-RECORD-CANDIDATE FILES))))))
+  :HINTS
+  (("Goal"
+        :IN-THEORY
+        (UNION-THEORIES
+             '(FN-PCAR-STAGE-RECORD FN-PCAR-FILES-CANDIDATEP-IS-CANDIDATEP
+                                    FN-SF-STATEP
+                                    FN-SF-SHAPE-FIELDS-CANONICAL
+                                    FN-SF-PHASE-SHAPEP
+                                    FN-PCAR-CANDIDATEP-IS-CANDIDATEP
+                                    FN-SF-SHAPEP-OF-FN-SF-MAKE-FIELDS
+                                    FN-SF-SUCCESSES-OF-FN-SF-MAKE-FIELDS-KEPT
+                                    (:E FN-SF-PHASEP)
+                                    (:E FN-SF-FRONTIER-PHASEP)
+                                    (:E FN-SF-RECORD-PHASEP)
+                                    (:E FN-SF-COMPLETION-PHASEP)
+                                    FN-SF-SCALARS-OF-FN-SF-MAKE-FIELDS
+                                    FN-SF-RECORDS-OF-FN-SF-MAKE-FIELDS-KEPT)
+             (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-STAGE-NONCANDIDATE-IS-NO-OP
+   (IMPLIES (NOT (FN-PCAR-FILES-CANDIDATEP ROW FILES))
+            (EQUAL (FN-PCAR-STAGE-RECORD FILES ROW)
+                   FILES))
+   :HINTS (("Goal" :IN-THEORY (UNION-THEORIES '(FN-PCAR-STAGE-RECORD)
+                                              (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-PRC-PREPARED-FACTS
+  (LET ((NEXT (FN-PRC-SPC-PREPARE S ROW VIEW CARRY)))
+    (IMPLIES (NOT (EQUAL NEXT S))
+             (AND (FN-SN-STATEP NEXT)
+                  (FN-SN-KNOWN-ABORT-ENABLEDP NEXT)
+                  (EQUAL (FN-SF-RECORDS (FN-SN-FILES NEXT))
+                         (FN-SF-RECORDS (FN-SN-FILES S))))))
+  :HINTS
+  (("Goal"
+      :USE ((:INSTANCE RFCL-BINDSP-IS-NODE-STATEP
+                       (NODE (FN-PRC-SN-PREPARE-NODE (FN-SN-NODE S)
+                                                     ROW VIEW CARRY))))
+      :IN-THEORY
+      (UNION-THEORIES
+           '(FN-PRC-SPC-PREPARE FN-SN-KNOWN-ABORT-ENABLEDP
+                                FN-CSTP-SN-UPDATE-FIELDS
+                                RFCL-UPDATE-STATEP
+                                RFCL-STAGE-FILES-FACTS
+                                RFCL-STAGE-NONCANDIDATE-IS-NO-OP
+                                FN-CSTP-SN-STATEP-FILES
+                                FN-RCON-SN-RECORD-BINDSP-IS-SN-RECORD-BINDSP)
+           (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-POUT-PREPARED-FACTS
+   (LET* ((OUT (FN-POUT-PREPARE-ARTICLE OC ROW BUDGET CARRY))
+          (S (FN-SBUD-OC-STORE OC))
+          (NEXT (FN-SBUD-OC-STORE (MV-NTH 1 OUT))))
+     (IMPLIES (EQUAL (MV-NTH 0 OUT) :PREPARED)
+              (AND (FN-SN-KNOWN-ABORT-ENABLEDP NEXT)
+                   (EQUAL (FN-SF-RECORDS (FN-SN-FILES NEXT))
+                          (FN-SF-RECORDS (FN-SN-FILES S))))))
+   :HINTS
+   (("Goal"
+         :USE ((:INSTANCE FN-POUT-STORE-OF-PSRV-PREPARE
+                          (RECORD ROW))
+               (:INSTANCE RFCL-PRC-PREPARED-FACTS
+                          (S (FN-SBUD-OC-STORE OC))
+                          (VIEW (FN-OWN-VIEW (FN-OCFG-OWNER OC)))))
+         :IN-THEORY
+         (UNION-THEORIES
+              '(FN-POUT-PREPARE-ARTICLE FN-POUT-STAGEDP FN-PSRV-REFUSAL-KIND
+                                        FN-SBUD-REFUSAL-KIND
+                                        MV-NTH CAR-CONS CDR-CONS (:E ZP)
+                                        (:E BINARY-+)
+                                        (:E UNARY--))
+              (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-ABORT-RESTORES-RECORDS-OKP
+  (IMPLIES (AND (FN-RFCL-OKP S FN-ARENA)
+                (FN-SN-KNOWN-ABORT-ENABLEDP NEXT)
+                (EQUAL (FN-SF-RECORDS (FN-SN-FILES NEXT))
+                       (FN-SF-RECORDS (FN-SN-FILES S))))
+           (FN-RFCL-OKP (FN-SN-KNOWN-ABORT NEXT)
+                        FN-ARENA))
+  :HINTS
+  (("Goal"
+    :USE ((:INSTANCE RFCL-FOK-HAS-RECORDS (F (FN-SN-FILES S))
+                     (H (FN-ARENA-COUNT FN-ARENA)))
+          (:INSTANCE FN-POUT-KNOWN-ABORT-REACHES-READY
+                     (S NEXT))
+          (:INSTANCE FN-SNRT-KNOWN-ABORT-KEEPS-RECORDS
+                     (S NEXT)))
+    :IN-THEORY (UNION-THEORIES '(RFCL-OKP-IS-FOK RFCL-FOK RFCL-FILE-ROWS
+                                                 (:E FN-RFCL-PENDING-PHASEP))
+                               (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM RFCL-POUT-PREPARE-THEN-ABORT
+  (LET* ((OUT (FN-POUT-PREPARE-ARTICLE OC ROW BUDGET CARRY))
+         (AB (FN-POUT-KNOWN-ABORT (MV-NTH 1 OUT)
+                                  FN-ARENA)))
+    (IMPLIES (AND (FN-RFCL-OKP (FN-SBUD-OC-STORE OC)
+                               FN-ARENA)
+                  (EQUAL (MV-NTH 0 OUT) :PREPARED))
+             (FN-RFCL-OKP (FN-SBUD-OC-STORE (MV-NTH 1 AB))
+                          FN-ARENA)))
+  :HINTS
+  (("Goal"
+    :USE
+    ((:INSTANCE RFCL-POUT-PREPARED-FACTS)
+     (:INSTANCE
+        RFCL-ABORT-RESTORES-RECORDS-OKP
+        (S (FN-SBUD-OC-STORE OC))
+        (NEXT (FN-SBUD-OC-STORE
+                   (MV-NTH 1
+                           (FN-POUT-PREPARE-ARTICLE OC ROW BUDGET CARRY))))))
+    :IN-THEORY
+    (UNION-THEORIES
+         '(FN-POUT-KNOWN-ABORT FN-POUT-STORE-OF-STORE-STEP FN-SNRT-STEP
+                               MV-NTH CAR-CONS CDR-CONS (:E ZP)
+                               (:E BINARY-+)
+                               (:E UNARY--))
+         (THEORY 'MINIMAL-THEORY))))))
+
+(local
+ (DEFTHM FN-OWNER-RETAIN-PRC-ARTICLE-VIEW-FRAME
+  (EQUAL (FN-OSR-RETAINED-VIEW (FN-PRC-SPC-PREPARE S E VIEW CARRY))
+         (FN-OSR-RETAINED-VIEW S))
+  :HINTS
+  (("Goal"
+      :IN-THEORY '(FN-PRC-SPC-PREPARE FN-OSR-RETAINED-VIEW
+                                      FN-CSTP-SN-UPDATE-FIELDS
+                                      FN-OWNER-RETAIN-UPDATE-SELECTORS
+                                      FN-PCAR-STAGE-RECORD
+                                      FN-SF-RECORDS-OF-FN-SF-MAKE-FIELDS-KEPT
+                                      CAR-CONS CDR-CONS)))))
+
+(local
+ (DEFTHM FN-OWNER-RETAIN-PRC-ARTICLE-LIVE-MODEL
+  (IMPLIES (AND (FN-OSR-LIVEP S)
+                (FN-CST-RELATION (FN-PRC-SPC-PREPARE S E VIEW CARRY)))
+           (FN-OSR-LIVEP (FN-PRC-SPC-PREPARE S E VIEW CARRY)))
+  :HINTS
+  (("Goal" :USE ((:INSTANCE FN-OWNER-CARRIED-ARTICLE-PREPARE-PRESERVES-CURSOR
+                            (RECORD E))
+                 (:INSTANCE FN-CSTP-RELATION-IS-STATEP
+                            (ST (FN-PRC-SPC-PREPARE S E VIEW CARRY)))
+                 (:INSTANCE FN-HELD-IS-NO-WIRE-EVENT (X E)))
+           :IN-THEORY '(FN-OWNER-RETAIN-PRC-ARTICLE-VIEW-FRAME
+                            FN-PRC-SPC-PREPARE FN-OSR-LIVEP
+                            FN-CSTP-RELATION-IS-STATEP FN-STI-LIVEP
+                            FN-CSI-LIVEP FN-STI-COMPLETED-PREFIXP
+                            FN-CSI-COMPLETED-PREFIXP
+                            FN-CSI-COMPLETION-LASTP
+                            FN-OSR-IDENTITY-PREFIXP
+                            FN-SN-IDENTITY-CONTEXT
+                            FN-CSTP-SN-UPDATE-FIELDS
+                            FN-OWNER-RETAIN-UPDATE-SELECTORS
+                            FN-PCAR-STAGE-RECORD
+                            FN-SF-RECORDS-OF-FN-SF-MAKE-FIELDS-KEPT
+                            FN-SF-SCALARS-OF-FN-SF-MAKE-FIELDS
+                            FN-SF-COMPLETION-PHASEP MEMBER-EQUAL
+                            CAR-CONS CDR-CONS (:E MEMBER-EQUAL)
+                            (:E EQUAL))))))
+
+(local
+ (DEFTHM FN-OWNER-RETAIN-PRC-ARTICLE-KEEPS-RETAINED
+  (IMPLIES (AND (FN-OSR-RETAINEDP S)
+                (FN-CST-RELATION (FN-PRC-SPC-PREPARE S E VIEW CARRY)))
+           (FN-OSR-RETAINEDP (FN-PRC-SPC-PREPARE S E VIEW CARRY)))
+  :HINTS
+  (("Goal"
+     :USE ((:INSTANCE FN-OSR-RETAINED-VIEW-CONNECTS-FULL-CARRY
+                      (A S)
+                      (B (FN-PRC-SPC-PREPARE S E VIEW CARRY)))
+           FN-OWNER-RETAIN-PRC-ARTICLE-LIVE-MODEL)
+     :IN-THEORY '(FN-OSR-RETAINEDP FN-OWNER-RETAIN-PRC-ARTICLE-VIEW-FRAME)))))
+
+(local
+ (DEFTHM FN-OWNER-RETAIN-POUT-ARTICLE-KEEPS-RETAINED
+  (IMPLIES
+       (AND (FN-LGOC-INVARIANTP OC)
+            (FN-PRC-CARRYP CARRY)
+            (FN-OSR-RETAINEDP (FN-SBUD-OC-STORE OC)))
+       (FN-OSR-RETAINEDP
+            (FN-SBUD-OC-STORE
+                 (MV-NTH 1
+                         (FN-POUT-PREPARE-ARTICLE OC RECORD BUDGET CARRY)))))
+  :HINTS
+  (("Goal"
+        :USE (FN-POUT-STORE-OF-PSRV-PREPARE
+                  FN-PSRV-PREPARE-PRESERVES-INVARIANT
+                  (:INSTANCE FN-LGOC-OCL-RELATION-CST
+                             (OC (FN-PSRV-PREPARE OC RECORD BUDGET CARRY)))
+                  (:INSTANCE FN-OWNER-RETAIN-PRC-ARTICLE-KEEPS-RETAINED
+                             (S (FN-SBUD-OC-STORE OC))
+                             (E RECORD)
+                             (VIEW (FN-OWN-VIEW (FN-OCFG-OWNER OC)))))
+        :IN-THEORY
+        '(FN-POUT-PREPARE-ARTICLE FN-LGOC-INVARIANTP
+                                  FN-SBUD-OC-STORE MV-NTH
+                                  NTH ENDP ZP CAR-CONS CDR-CONS (:E ZP)
+                                  (:E BINARY-+)
+                                  (:E UNARY--))))))
+
+(local
+ (DEFTHM FN-OWNER-RETAIN-ARTICLE-PREPARE-CUT
+  (LET*
+    ((S (FN-OWNER-STORE STATE))
+     (ROW (FN-INTERN-ROW-AT RECORD (FN-SN-KEYRING S)
+                            (FN-SN-KEYRING-GENERATION S)
+                            (FN-ARENA-COUNT FN-ARENA)))
+     (CARRY (FN-PRC-REFRESH (FN-OWNER-RETAIN-CARRY STATE)
+                            (FN-NODE-RETENTION (FN-SN-NODE S))))
+     (OUT (FN-POUT-PREPARE-ARTICLE (FN-OWNER-OCFG STATE)
+                                   ROW BUDGET CARRY))
+     (NEXT (FN-OWNER-INSTALL-OCFG (MV-NTH 1 OUT)
+                                  (FN-OWNER-RETAIN-CARRY-PUT CARRY STATE))))
+    (IMPLIES
+         (FN-OWNER-RETAIN-LIVEP STATE FN-ARENA)
+         (AND (FN-OWNER-RETAIN-STATEP NEXT)
+              (FN-OSR-RETAINEDP (FN-OWNER-STORE NEXT))
+              (FN-RFCL-OKP (FN-OWNER-STORE NEXT)
+                           (IF (EQUAL (MV-NTH 0 OUT) :PREPARED)
+                               (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD RECORD)
+                                                   FN-ARENA)
+                             FN-ARENA)))))
+  :HINTS
+  (("Goal"
+    :USE
+    (FN-OWNER-RETAIN-STATEP-IMPLIES-LGOC
+     (:INSTANCE
+          FN-PRC-CARRYP-OF-REFRESH
+          (CARRY (FN-OWNER-RETAIN-CARRY STATE))
+          (LEDGER (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE)))))
+     (:INSTANCE
+      FN-PSRV-PREPARE-PRESERVES-INVARIANT
+      (OC (FN-OWNER-OCFG STATE))
+      (RECORD
+          (FN-INTERN-ROW-AT RECORD
+                            (FN-SN-KEYRING (FN-OWNER-STORE STATE))
+                            (FN-SN-KEYRING-GENERATION (FN-OWNER-STORE STATE))
+                            (FN-ARENA-COUNT FN-ARENA)))
+      (CARRY (FN-PRC-REFRESH
+                  (FN-OWNER-RETAIN-CARRY STATE)
+                  (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))))
+     (:INSTANCE
+       RFCL-LV2H (OC (FN-OWNER-OCFG STATE))
+       (CARRY (FN-PRC-REFRESH
+                   (FN-OWNER-RETAIN-CARRY STATE)
+                   (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))))
+     (:INSTANCE
+      FN-OWNER-RETAIN-POUT-ARTICLE-KEEPS-RETAINED
+      (OC (FN-OWNER-OCFG STATE))
+      (RECORD
+          (FN-INTERN-ROW-AT RECORD
+                            (FN-SN-KEYRING (FN-OWNER-STORE STATE))
+                            (FN-SN-KEYRING-GENERATION (FN-OWNER-STORE STATE))
+                            (FN-ARENA-COUNT FN-ARENA)))
+      (CARRY (FN-PRC-REFRESH
+                  (FN-OWNER-RETAIN-CARRY STATE)
+                  (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE)))))))
+    :IN-THEORY
+    '(FN-OWNER-RETAIN-LIVEP FN-OWNER-RETAIN-STATEP
+                            FN-POUT-PREPARE-ARTICLE
+                            FN-ORH-RETAIN-STATEP-OF-RETAIN-CARRY-PUT
+                            FN-ORH-RETAIN-STATEP-OF-INSTALL-OCFG
+                            FN-OWNER-BOUND-OF-RETAIN-CARRY-PUT
+                            FN-OWNER-BOUND-OF-INSTALL-OCFG
+                            FN-OWNER-RETAIN-CARRY-OF-INSTALL-OCFG
+                            FN-OWNER-RETAIN-CARRY-OF-PUT
+                            FN-OWNER-RETAIN-STORE-PROJECTION
+                            FN-OWNER-STORE-IS-CONFIGURED-STORE-BY-DEFINITION
+                            FN-OWNER-OCFG-OF-INSTALL-OCFG
+                            FN-OWNER-OCFG-OF-RETAIN-CARRY-PUT
+                            FN-OWNER-OCFG-OF-OTHER-GLOBAL-PUT MV-NTH
+                            NTH ENDP ZP CAR-CONS CDR-CONS (:E ZP)
+                            (:E BINARY-+)
+                            (:E UNARY--))))))
+
+(local
+ (DEFTHM FN-OWNER-RETAIN-SN-ABORT-KEEPS-RETAINED
+   (IMPLIES (AND (FN-OSR-RETAINEDP S)
+                 (FN-CST-RELATION (FN-SN-KNOWN-ABORT S)))
+            (FN-OSR-RETAINEDP (FN-SN-KNOWN-ABORT S)))
+   :HINTS
+   (("Goal"
+         :USE ((:INSTANCE FN-OSR-RETAINED-VIEW-CONNECTS-FULL-CARRY
+                          (A S)
+                          (B (FN-SN-KNOWN-ABORT S)))
+               (:INSTANCE FN-OSR-STORE-STEP-PRESERVES-INDEPENDENT-LIVE
+                          (EVENT (LIST :KNOWN-ABORT))))
+         :IN-THEORY '(FN-OSR-RETAINEDP FN-OSR-LIVEP
+                                       FN-OSR-INDEPENDENT-LIVEP FN-SNRT-STEP
+                                       FN-OSR-PREPARATIONS-KEEP-RETAINED-VIEW
+                                       FN-SN-KNOWN-ABORT
+                                       FN-CSTP-SN-UPDATE-FIELDS MEMBER-EQUAL
+                                       CAR-CONS CDR-CONS (:E EQUAL)
+                                       (:E MEMBER-EQUAL))))))
+
+(local
+ (DEFTHM FN-OWNER-RETAIN-KNOWN-ABORT-RETAINED
+  (IMPLIES
+       (AND (FN-OWNER-RETAIN-STATEP STATE)
+            (FN-OSR-RETAINEDP (FN-OWNER-STORE STATE)))
+       (FN-OSR-RETAINEDP
+            (FN-OWNER-STORE (MV-NTH 2
+                                    (FN-OWNER-KNOWN-ABORT FN-ARENA STATE)))))
+  :HINTS
+  (("Goal"
+     :USE
+     (FN-OWNER-RETAIN-STATEP-IMPLIES-LGOC
+          (:INSTANCE FN-POUT-KNOWN-ABORT-PRESERVES-OWNER-INVARIANT
+                     (OC (FN-OWNER-OCFG STATE)))
+          (:INSTANCE FN-LGOC-OCL-RELATION-CST
+                     (OC (MV-NTH 1
+                                 (FN-POUT-KNOWN-ABORT (FN-OWNER-OCFG STATE)
+                                                      FN-ARENA))))
+          (:INSTANCE FN-POUT-STORE-OF-STORE-STEP
+                     (OC (FN-OWNER-OCFG STATE))
+                     (EV (LIST :KNOWN-ABORT)))
+          (:INSTANCE FN-OWNER-RETAIN-SN-ABORT-KEEPS-RETAINED
+                     (S (FN-OWNER-STORE STATE))))
+     :IN-THEORY '(FN-OWNER-KNOWN-ABORT FN-POUT-KNOWN-ABORT FN-LGOC-INVARIANTP
+                                       FN-OWNER-RETAIN-STORE-PROJECTION
+                                       FN-OWNER-OCFG-OF-INSTALL-OCFG
+                                       FN-OWNER-OCFG-OF-OTHER-GLOBAL-PUT
+                                       FN-SNRT-STEP FN-SBUD-OC-STORE MV-NTH
+                                       NTH ENDP ZP CAR-CONS CDR-CONS (:E ZP)
+                                       (:E BINARY-+)
+                                       (:E UNARY--))))))
+
+(local
+ (DEFTHM FN-OWNER-RETAIN-KNOWN-ABORT-CUT
+  (IMPLIES
+   (AND
+    (FN-OWNER-RETAIN-STATEP STATE)
+    (FN-OSR-RETAINEDP (FN-OWNER-STORE STATE))
+    (FN-RFCL-OKP
+         (FN-SBUD-OC-STORE (MV-NTH 1
+                                   (FN-POUT-KNOWN-ABORT (FN-OWNER-OCFG STATE)
+                                                        FN-ARENA)))
+         FN-ARENA))
+   (FN-OWNER-RETAIN-LIVEP (MV-NTH 2 (FN-OWNER-KNOWN-ABORT FN-ARENA STATE))
+                          FN-ARENA))
+  :HINTS
+  (("Goal" :USE (FN-OWNER-KNOWN-ABORT-PRESERVES-RETAIN-STATE
+                     FN-OWNER-RETAIN-KNOWN-ABORT-RETAINED)
+           :IN-THEORY
+           '(FN-OWNER-RETAIN-LIVEP FN-OWNER-KNOWN-ABORT-EXACT-EFFECTS
+                                   FN-OWNER-RETAIN-STORE-PROJECTION
+                                   MV-NTH NTH ZP CAR-CONS CDR-CONS (:E ZP)
+                                   (:E BINARY-+)
+                                   (:E UNARY--))))))
+
+(defthm fn-owner-post-quantum-keeps-retain-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep
+            (mv-nth 2 (fn-owner-retain-post-quantum record budget force-abort fn-arena fn-cat state))
+            (mv-nth 1 (fn-owner-retain-post-quantum record budget force-abort fn-arena fn-cat state))))
+  :rule-classes nil
+  :hints (("Goal"
+    :USE
+    (FN-OWNER-RETAIN-ARTICLE-PREPARE-CUT
+     (:INSTANCE
+      RFCL-POUT-PREPARE-THEN-ABORT
+      (OC (FN-OWNER-OCFG STATE))
+      (ROW
+          (FN-INTERN-ROW-AT RECORD
+                            (FN-SN-KEYRING (FN-OWNER-STORE STATE))
+                            (FN-SN-KEYRING-GENERATION (FN-OWNER-STORE STATE))
+                            (FN-ARENA-COUNT FN-ARENA)))
+      (CARRY (FN-PRC-REFRESH
+                  (FN-OWNER-RETAIN-CARRY STATE)
+                  (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))))
+     (:INSTANCE
+      FN-OWNER-RETAIN-KNOWN-ABORT-CUT
+      (STATE
+       (F-PUT-GLOBAL
+        'FN-OWNER-CAT-CANDIDATE
+        (CONS
+          RECORD
+          (FN-INTERN-ROW-AT RECORD
+                            (FN-SN-KEYRING (FN-OWNER-STORE STATE))
+                            (FN-SN-KEYRING-GENERATION (FN-OWNER-STORE STATE))
+                            (FN-ARENA-COUNT FN-ARENA)))
+        (FN-OWNER-INSTALL-OCFG
+         (MV-NTH
+          1
+          (FN-POUT-PREPARE-ARTICLE
+              (FN-OWNER-OCFG STATE)
+              (FN-INTERN-ROW-AT
+                   RECORD
+                   (FN-SN-KEYRING (FN-OWNER-STORE STATE))
+                   (FN-SN-KEYRING-GENERATION (FN-OWNER-STORE STATE))
+                   (FN-ARENA-COUNT FN-ARENA))
+              BUDGET
+              (FN-PRC-REFRESH
+                   (FN-OWNER-RETAIN-CARRY STATE)
+                   (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))))
+         (FN-OWNER-RETAIN-CARRY-PUT
+              (FN-PRC-REFRESH
+                   (FN-OWNER-RETAIN-CARRY STATE)
+                   (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))
+              STATE)))))
+     (:INSTANCE
+      FN-OWNER-RETAIN-REFUSE-RESERVATION-KEEPS-LIVE
+      (STATE
+       (FN-OWNER-INSTALL-OCFG
+        (MV-NTH
+         1
+         (FN-POUT-PREPARE-ARTICLE
+          (FN-OWNER-OCFG STATE)
+          (FN-INTERN-ROW-AT RECORD
+                            (FN-SN-KEYRING (FN-OWNER-STORE STATE))
+                            (FN-SN-KEYRING-GENERATION (FN-OWNER-STORE STATE))
+                            (FN-ARENA-COUNT FN-ARENA))
+          BUDGET
+          (FN-PRC-REFRESH
+               (FN-OWNER-RETAIN-CARRY STATE)
+               (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))))
+        (FN-OWNER-RETAIN-CARRY-PUT
+             (FN-PRC-REFRESH
+                  (FN-OWNER-RETAIN-CARRY STATE)
+                  (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))
+             STATE))))
+     (:INSTANCE
+      FN-OWNER-RETAIN-CAT-PREPARE-SEALED-KEEPS-LIVE
+      (STATE
+       (F-PUT-GLOBAL
+        'FN-OWNER-CAT-CANDIDATE
+        (CONS
+          RECORD
+          (FN-INTERN-ROW-AT RECORD
+                            (FN-SN-KEYRING (FN-OWNER-STORE STATE))
+                            (FN-SN-KEYRING-GENERATION (FN-OWNER-STORE STATE))
+                            (FN-ARENA-COUNT FN-ARENA)))
+        (FN-OWNER-INSTALL-OCFG
+         (MV-NTH
+          1
+          (FN-POUT-PREPARE-ARTICLE
+              (FN-OWNER-OCFG STATE)
+              (FN-INTERN-ROW-AT
+                   RECORD
+                   (FN-SN-KEYRING (FN-OWNER-STORE STATE))
+                   (FN-SN-KEYRING-GENERATION (FN-OWNER-STORE STATE))
+                   (FN-ARENA-COUNT FN-ARENA))
+              BUDGET
+              (FN-PRC-REFRESH
+                   (FN-OWNER-RETAIN-CARRY STATE)
+                   (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))))
+         (FN-OWNER-RETAIN-CARRY-PUT
+              (FN-PRC-REFRESH
+                   (FN-OWNER-RETAIN-CARRY STATE)
+                   (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))
+              STATE))))
+      (FN-ARENA (FN-ARENA-SEAL-LIST (FN-RECORD-PAYLOAD RECORD)
+                                    FN-ARENA))))
+    :IN-THEORY '(FN-OWNER-RETAIN-POST-QUANTUM
+                     FN-OWNER-RETAIN-LIVEP
+                     FN-POUT-PREPARE-ARTICLE
+                     FN-OWNER-CAT-MAY-SEAL-REFINES-CAT-BY-DEFINITION
+                     FN-OWNER-RETAIN-STORE-PROJECTION
+                     FN-OWNER-OCFG-OF-INSTALL-OCFG
+                     FN-OWNER-OCFG-OF-RETAIN-CARRY-PUT
+                     FN-OWNER-OCFG-OF-OTHER-GLOBAL-PUT
+                     FN-ORH-RETAIN-STATEP-OF-OTHER-GLOBAL-PUT
+                     MV-NTH
+                     NTH ENDP ZP CAR-CONS CDR-CONS (:E ZP)
+                     (:E EQUAL)
+                     (:E BINARY-+)
+                     (:E UNARY--)))))
+
+(defthm fn-owner-retain-quanta-keep-retained-store
+  (implies (fn-owner-retain-livep state fn-arena)
+    (and (fn-osr-retainedp (fn-owner-store (mv-nth 2 (fn-owner-retain-post-quantum record budget abort fn-arena fn-cat state))))
+         (fn-osr-retainedp (fn-owner-store (mv-nth 2 (fn-owner-retain-identity-quantum event fn-arena fn-cat state))))))
+  :hints (("Goal" :USE ((:INSTANCE FN-OWNER-POST-QUANTUM-KEEPS-RETAIN-LIVE
+                            (FORCE-ABORT ABORT))
+                 (:INSTANCE FN-OWNER-IDENTITY-QUANTUM-KEEPS-RETAIN-LIVE))
+           :IN-THEORY '(FN-OWNER-RETAIN-LIVEP))))
+
+; v1c finish: the host calls fn-apc-own-finish, whose existing keystone
+; fn-apc-own-finish-is-own-finish supplies the pre-existing parse/history
+; premises at the host boundary. This pure finish statement needs neither.
+(defthm fn-owner-retain-finish-submission-keeps-retained-store
+  (implies (fn-osr-retainedp (fn-own-store o))
+           (fn-osr-retainedp (fn-own-store (cdr (fn-own-finish o cfg fn-arena)))))
+  :hints (("Goal"
+           :use ((:instance fn-osr-finish-preserves-full-retained-carry
+                            (s (fn-own-store o))))
+           :in-theory '(fn-own-finish fn-own-complete fn-own-refresh-keeps-fields
+                        fn-own-store-of-fn-own-make car-cons cdr-cons))))
+
+; Host POST map: host/owner-host.lisp:2516-2650 prepares the catalog row,
+; installs next ocfg, and applies fn-adm-article-word to the prepare word.
+; host/native/owner.lisp:3683-3728 maps :seal-buffer to seal + catalog prepare;
+; a staged refusal uses known-abort; an unstaged refusal consumes reservation.
+; R-POST-1 hypotheses are copied from existing keystones
+; fn-ppc-pout-prepare-article-cat-of-live-owner and
+; fn-apc-intern-row-at-is-reference (CARRY here is the parse carry;
+; RETAIN-CARRY is the separate refreshed retention carry).
+(defthm fn-owner-retain-host-prepare-is-the-quantum-prepare
+  (let ((oc (fn-owner-ocfg state)))
+    (implies (and (fn-ocl-relation oc)
+                  (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+                  (fn-apc-p carry))
+             (and
+              (equal (mv-nth 0
+                       (fn-ppc-pout-prepare-article-cat oc
+                         (fn-apc-intern-row-at record kr gen n carry)
+                         budget retain-carry fn-arena fn-cat))
+                     (mv-nth 0 (fn-pout-prepare-article oc
+                                 (fn-intern-row-at record kr gen n)
+                                 budget retain-carry)))
+              (equal (mv-nth 1
+                       (fn-ppc-pout-prepare-article-cat oc
+                         (fn-apc-intern-row-at record kr gen n carry)
+                         budget retain-carry fn-arena fn-cat))
+                     (mv-nth 1 (fn-pout-prepare-article oc
+                                 (fn-intern-row-at record kr gen n)
+                                 budget retain-carry))))))
+  :hints (("Goal"
+           :use ((:instance fn-ppc-pout-prepare-article-cat-of-live-owner
+                            (oc (fn-owner-ocfg state))
+                            (record (fn-intern-row-at record kr gen n))
+                            (carry retain-carry))
+                 (:instance fn-apc-intern-row-at-is-reference
+                            (w record) (keyring kr) (generation gen) (h n)))
+           :in-theory '(fn-apc-intern-row-at-is-reference))))
+
+; R-POST-2: no hypotheses are needed. Existing keystones:
+; fn-adm-article-word-passes-other-words, and the refusal cases named by
+; fn-adm-article-word-under-the-budget-names-the-resource.
+; The memory refusal is passed budget zero before the prepare, not after
+; an accepted prepare; neither refusal naming function creates :prepared.
+(defthm fn-owner-retain-admitted-word-is-prepared-iff
+  (iff (equal (fn-adm-article-word word profile img cfg limit used bytes-used
+                                 record debt tot row) :prepared)
+       (equal word :prepared))
+  :hints (("Goal" :cases ((equal word :unaffordable))
+           :use fn-adm-article-word-passes-other-words
+           :in-theory '(fn-adm-article-word fn-cvec-article-refusal-word
+                        (:e equal)))))
+
+; Identity map: host/native/owner.lisp:4200-4222 calls prepare-identity;
+; (:seal payload) causes one seal and cat-prepare-sealed, :prepared passes,
+; and every refusal calls refuse-reservation. Those are the quantum's arms.
+; R-IDENTITY's only hypothesis is copied verbatim from the existing keystone
+; fn-irc-pout-prepare-identity-of-refresh-is-pout, with CARRY bound to the
+; actual owner's retention carry. The invalid-event branch remains explicit.
+(defthm fn-owner-retain-host-identity-is-the-quantum-prepare
+  (let* ((carry (fn-owner-retain-carry state))
+         (oc (fn-owner-ocfg state))
+         (out (fn-pout-prepare-identity oc event (fn-arena-count fn-arena))))
+    (implies (fn-prc-carryp carry)
+             (and
+              (equal (mv-nth 1 (fn-owner-prepare-identity event fn-arena state))
+                     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
+                         :invalid
+                       (if (and (equal (mv-nth 0 out) :prepared)
+                                (fn-oii-identity-sealsp event))
+                           (list :seal (fn-oii-identity-payload event))
+                         (mv-nth 0 out))))
+              (equal (fn-owner-ocfg
+                       (mv-nth 2 (fn-owner-prepare-identity event fn-arena state)))
+                     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
+                         oc
+                       (mv-nth 1 out))))))
+  :hints (("Goal"
+           :use ((:instance fn-irc-pout-prepare-identity-of-refresh-is-pout
+                            (oc (fn-owner-ocfg state)) (w event)
+                            (h (fn-arena-count fn-arena))
+                            (carry (fn-owner-retain-carry state))
+                            (ledger (fn-node-retention (fn-sn-node (fn-owner-store state))))))
+           :in-theory '(fn-owner-prepare-identity fn-pout-prepare-identity
+                        fn-owner-ocfg-of-install-ocfg
+                        fn-owner-ocfg-of-retain-carry-put
+                        fn-owner-ocfg-of-other-global-put
+                        mv-nth nth endp zp car-cons cdr-cons (:e zp)
+                        (:e equal) (:e binary-+) (:e unary--)))))
+
+; The preparation interval does not seal. Its completed-cut keeper names
+; exactly the seal performed by the already proved identity quantum.
+(defthm fn-owner-retain-identity-prepare-keeps-live-after-seal
+  (let* ((out (fn-owner-prepare-identity event fn-arena state))
+         (word (mv-nth 1 out)))
+    (implies (fn-owner-retain-livep state fn-arena)
+             (fn-owner-retain-livep (mv-nth 2 out)
+               (if (and (consp word) (equal (car word) :seal))
+                   (fn-arena-seal-list (cadr word) fn-arena)
+                 fn-arena))))
+  :hints (("Goal" :use fn-owner-retain-identity-prepare-cut
+           :in-theory '(fn-owner-retain-livep))))
+(defthm fn-owner-retain-consumer-prepare-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep
+            (mv-nth 2 (fn-owner-prepare-consumer event fn-arena state)) fn-arena))
+  :hints (("Goal"
+           :use (fn-owner-retain-consumer-keeps-retained-state
+                 (:instance fn-rfcl-pdc-pout-prepare-consumer-keeps-okp
+                      (oc (fn-owner-ocfg state)) (e event)))
+           :in-theory '(fn-owner-retain-livep fn-owner-retain-retained-statep
+                        fn-owner-prepare-consumer fn-owner-retain-store-projection
+                        fn-owner-ocfg-of-install-ocfg
+                        mv-nth nth zp endp car-cons cdr-cons (:e zp)
+                        (:e binary-+) (:e unary--)))))
+(defthm fn-owner-retain-topic-prepare-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep
+            (mv-nth 2 (fn-owner-prepare-topic event fn-arena state)) fn-arena))
+  :hints (("Goal"
+           :use (fn-owner-retain-topic-keeps-retained-state
+                 (:instance fn-rfcl-pdc-pout-prepare-topic-keeps-okp
+                      (oc (fn-owner-ocfg state)) (e event)))
+           :in-theory '(fn-owner-retain-livep fn-owner-retain-retained-statep
+                        fn-owner-prepare-topic fn-owner-retain-store-projection
+                        fn-owner-ocfg-of-install-ocfg
+                        mv-nth nth zp endp car-cons cdr-cons (:e zp)
+                        (:e binary-+) (:e unary--)))))
+
+(def-carried-writers-owed fn-owner-retain-retained :from fn-owner-retain-retained-carried)
 
 (in-theory (disable fn-owner-retain-livep fn-owner-retain-identity-quantum))

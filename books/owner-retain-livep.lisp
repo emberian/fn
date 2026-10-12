@@ -7,3 +7,8 @@
   (and (fn-owner-retain-statep state)
        (fn-osr-retainedp (fn-owner-store state))
        (fn-rfcl-okp (fn-owner-store state) fn-arena)))
+
+(defun fn-owner-retain-retained-statep (state)
+  (declare (xargs :stobjs state :guard t :verify-guards nil))
+  (and (fn-owner-retain-statep state)
+       (fn-osr-retainedp (fn-owner-store state))))
