@@ -955,6 +955,18 @@
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-cat-live-numberp)))))
 
+(local
+ (defthm fn-scv-live-first-is-live
+   (implies (not (equal (fn-cat-live-first g k top c) 0))
+            (fn-cat-live-numberp g (fn-cat-live-first g k top c) c))
+   :hints (("Goal" :in-theory (disable fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-scv-live-last-is-live
+   (implies (not (equal (fn-cat-live-last g k c) 0))
+            (fn-cat-live-numberp g (fn-cat-live-last g k c) c))
+   :hints (("Goal" :in-theory (disable fn-cat-live-numberp)))))
+
 (defthm fn-scv-link-up-is-scan-up
   (implies (and (fn-cat-p fn-cat) (fn-cat-live-numberp g k fn-cat))
            (equal (fn-scv-link-up g k v fn-cat)
@@ -984,18 +996,6 @@
            :use ((:instance fn-scv-scan-down-from-last (group g) (k (- k 1)))))
           ("Subgoal *1/2" :expand ((fn-scv-scan-down g k v fn-cat))
            :use ((:instance fn-scv-scan-down-from-last (group g) (k (- k 1)))))))
-
-(local
- (defthm fn-scv-live-first-is-live
-   (implies (not (equal (fn-cat-live-first g k top c) 0))
-            (fn-cat-live-numberp g (fn-cat-live-first g k top c) c))
-   :hints (("Goal" :in-theory (disable fn-cat-live-numberp)))))
-
-(local
- (defthm fn-scv-live-last-is-live
-   (implies (not (equal (fn-cat-live-last g k c) 0))
-            (fn-cat-live-numberp g (fn-cat-live-last g k c) c))
-   :hints (("Goal" :in-theory (disable fn-cat-live-numberp)))))
 
 ; -----------------------------------------------------------------------------
 ; The summary at V, and its keystones.
