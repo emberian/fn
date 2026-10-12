@@ -12,10 +12,12 @@ number by number from the greatest past every number in X or dead
 list (fn-cat-live-prev, fn-scv-link-down), so neither mentions the run.
 
 The case first posts a surviving floor, then D articles (FN_DEAD_RUN_D,
-default 20000) to fn.dr through a configured peer, each with an RFC 8315
+default 1200) to fn.dr through a configured peer, each with an RFC 8315
 Cancel-Lock, and cancels every one in
-ascending order: a run of D dead numbers.  Then R rounds (FN_DEAD_RUN_R,
-default 2000) each post one article to fn.dr above the run and cancel it
+ascending order: a run of D dead numbers.  The store is the scale profile
+(4096 transactions; the case spends 2D + 2R + 3), so D and R default to
+1200 and 400; the counting method needs only D >= 64.  Then R rounds (FN_DEAD_RUN_R,
+default 400) each post one article to fn.dr above the run and cancel it
 (the cancel withdraws the group's greatest, whose live neighbour below is
 the run's floor), while a reader repeats GROUP fn.dr and GROUP fn.ctl (a
 group with no run).  The developer-image timing method asserts:
@@ -50,8 +52,8 @@ from tests.native_harness import (
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 PROF_IMAGE = Path(os.environ.get("FN_DEAD_RUN_PROF_HOST", ROOT / "build/fn-host-prof"))
-D = int(os.environ.get("FN_DEAD_RUN_D", "20000"))
-R = int(os.environ.get("FN_DEAD_RUN_R", "2000"))
+D = int(os.environ.get("FN_DEAD_RUN_D", "1200"))
+R = int(os.environ.get("FN_DEAD_RUN_R", "400"))
 WINDOW = 200
 COUNT_FACTOR = 16
 COUNT_NAMES = ("FN-CAT-LIVE-PREV", "FN-CAT-LIVE-NEXT", "FN-SCV-IN-XP")
@@ -98,7 +100,7 @@ class NativeDeadRun(unittest.TestCase):
         node = Node(self, image, listener=False, control=False, env={
             "FN_PROF_HOOK": None, "FN_PROF_OUT": None, "FN_COUNT_OUT": None,
             "FN_COUNT_SNAPSHOT": None, "FN_COUNT_TRIGGER": None})
-        node.store("init", "fn.dr", "fn.ctl", "control.cancel", expect=EXIT_OK)
+        node.store("init", "--profile", "scale", "fn.dr", "fn.ctl", "control.cancel", expect=EXIT_OK)
         configured = native_peer_add(
             image, node.store_path, ["source", "source.invalid", "127.0.0.1", "9", "fn.*",
                                      "-", "127.0.0.1", "true"], node.environment(), ROOT)
