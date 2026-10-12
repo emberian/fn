@@ -3,12 +3,15 @@
  "file": "books/store-log-open-scan.lisp",
  "id": "LGO-ROWS-HISTORY-WITHIN-ADAPTER",
  "note": "Retired by MEMORY-K-BOUND-ADMITTED-ROWS (owner M): once K-BOUND is proved over admitted rows the premise is a corollary of fn-adm-row-within-p's HISTORY conjunct and the restated hypothesis is deleted. Until then it is recorded here; it moves into D12's premise_audit term-premise baseline when that lands, and this item closes then. premise_audit --explain fn-lgo-rows-history-within: never concluded; assumed of a term by the three keystones, subjects hosted. Also recorded in PRF-10006's statement.",
- "notes": [],
+ "notes": [
+  "10-12 05:02 Closed 2026-10-12 (Builder L14): its premise fn-lgo-rows-history-within is deleted on dev by lane/log-host@507a01640 (C5, dev bf81a2991). The suffix fold charges HISTORY at the record's proved ceiling, KEYSTONE L2H-5 fn-lgo-history-ceiling-bounds-the-intern (books/store-log-history-ceiling.lisp), so L2-4, L2-5 and L2H-2 no longer assume it; no premise_audit term-premise baseline row names it."
+ ],
  "owner": "builder-L",
  "severity": "medium",
+ "sha": "507a01640",
  "slice": "storage",
  "source": "coordinator ruling on L12's premise_audit seam (2026-10-11): interim record (b) until D12's --all term-premise baseline (a) lands",
- "state": "open",
+ "state": "closed",
  "title": "Named adapter fn-lgo-rows-history-within (premise of L2-4 fn-lgo-wire-fold-covers-the-replay, L2-5 fn-lgo-observed-covers-the-opened-store and L2H-2 fn-lgo-host-suffix-covers-the-opened-store, books/store-log-open-scan.lisp) is never concluded by a hosted theorem and is invisible to premise_audit --strict because it is assumed of a term, (nthcdr k rows)",
- "updated": "2026-10-11T19:59:35Z"
+ "updated": "2026-10-12T09:02:32Z"
 }

@@ -761,7 +761,8 @@ def run_acl2(
         return subprocess.run(
             command, cwd=ROOT, input=driver.encode("utf-8"),
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            env=environment, check=False, timeout=timeout_seconds)
+            env=environment, pass_fds=acl2_slots.inherited_run_lock_fds(environment),
+            check=False, timeout=timeout_seconds)
     if book is None:
         raise ValueError("a streamed ACL2 log needs its book name")
     activity_path = log_path.with_name(
@@ -774,7 +775,8 @@ def run_acl2(
     with log_path.open("wb") as log:
         process = subprocess.Popen(
             command, cwd=ROOT, stdin=subprocess.PIPE, stdout=log,
-            stderr=subprocess.STDOUT, env=environment)
+            stderr=subprocess.STDOUT, env=environment,
+            pass_fds=acl2_slots.inherited_run_lock_fds(environment))
         activity = {
             "book": book, "wave": wave, "pid": process.pid,
             "started_utc": started_utc, "started_monotonic": started,
@@ -953,7 +955,7 @@ def git_facts() -> dict[str, Any]:
         try:
             result = subprocess.run(["git", "-C", str(ROOT), *args],
                                     capture_output=True, text=True, check=False,
-                                    timeout=30)
+                                    timeout=30, pass_fds=acl2_slots.inherited_run_lock_fds())
         except (OSError, subprocess.SubprocessError):
             return None
         return result.stdout.strip() if result.returncode == 0 else None

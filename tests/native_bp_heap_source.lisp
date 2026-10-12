@@ -24,6 +24,7 @@
   (harness-stub-reached 'fnn-heap-operator-profile "host/native/heap.lisp"))
 ;;; ---- derived stubs: END ----
 (declaim (declaration xargs))
+(load "tests/raw_def_loop.lisp")
 (defun posp (x) (and (integerp x) (< 0 x)))
 (defun source-functions (path names)
  (with-open-file (in path)
@@ -33,7 +34,8 @@
    finally (assert (null names)))))
 (source-functions "books/bp-heap-command.lisp"
  '(fn-bph-decimal-characters fn-bph-connections fn-bph-command-plan fn-bph-refusal-line
-   fn-bph-before-control fn-bph-node-serve-p fn-bph-node-journal fn-bph-node-transfer))
+   fn-bph-node-serve-p fn-bph-node-journal fn-bph-node-transfer))
+(assert (raw-def-loop-load "books/bp-heap-command.lisp" 'fn-bph-before-control))
 (defvar *events* nil)
 (define-condition fixture-refused (error) ())
 (defun fnn-core (name &rest args) (apply name args))
@@ -53,7 +55,7 @@
  (let ((*events* nil))
   (assert (equal (multiple-value-list (fnn-heap-command-profile (first entry)))
                  (list '(:profile "/captured/store") (second entry) :run nil nil nil "/captured/store"
-                       '(:peer "/captured/store") nil)))
+                       '(:peer "/captured/store") nil nil nil)))
   (assert (equal *events* '((:peer "/captured/store") (:profile "/captured/store"))))))
 (dolist (argv
  '(("bp-node" "serve")
@@ -66,7 +68,7 @@
 (let ((*events* nil))
  (assert (equal (multiple-value-list
                  (fnn-heap-command-profile '("bp-node" "dispatch" "journal" "store")))
-                '(nil 0 nil nil nil nil nil nil nil)))
+                '(nil 0 nil nil nil nil nil nil nil nil nil)))
  (assert (null *events*)))
 ;; The probe's BP terms (fnn-heap-bp-terms): the two profiles read under the
 ;; command's journal root with the node's own readers, the transfer argument

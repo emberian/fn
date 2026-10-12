@@ -18,6 +18,9 @@ import sys
 import tempfile
 import unittest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests.scratch_git import run as scratch_git
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -206,7 +209,7 @@ class RepoRootTests(unittest.TestCase):
     def git(self, *arguments, cwd):
         # A bounded wait: git that blocks on a prompt is a hung test suite,
         # not a slow one.
-        subprocess.run(["git", "-C", str(cwd), *arguments], check=True,
+        scratch_git(["git", "-C", str(cwd), *arguments], check=True,
                        stdin=subprocess.DEVNULL, timeout=60,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
