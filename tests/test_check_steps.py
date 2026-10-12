@@ -11,6 +11,8 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from tests.scratch_git import run as scratch_git
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]

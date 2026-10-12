@@ -13,10 +13,10 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from tests.scratch_git import run as scratch_git
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from tests.scratch_git import run as scratch_git
 
 from tools import coverage  # noqa: E402
 

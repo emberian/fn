@@ -14,8 +14,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from tools import train
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests.scratch_git import run as scratch_git
+
+from tools import train
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPT = Path(os.environ.get("TRAIN_SCRIPT", REPO / "tools" / "train.py"))

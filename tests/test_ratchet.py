@@ -7,11 +7,14 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests.scratch_git import run as scratch_git
 
 from tools import (clock_unit_check, cost_obligations, evidence_size_check, list_codec_check,
                    loop_call_check, owner_globals_check, proof_cost, ratchet, reach_check,
                    premise_audit, scenario_suite, throughput_gate)
-from tests.scratch_git import run as scratch_git
 
 DASH = "—"
 

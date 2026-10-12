@@ -636,9 +636,9 @@ def remote_running_runs_script(remote: Path) -> str:
         ': FN_FARM_RUNS_CHECK; test -x /usr/bin/flock || exit 9; '
         f'for record in {where}/build/farm/run-*.lock; do '
         '[ -f "$record" ] || continue; base=${record%.lock}; '
-        '[ ! -e "$base.status" ] || continue; name=${base##*/}; '
-        'if /usr/bin/flock -n "$record" true; then echo "DEAD $name"; '
-        'else echo "RUNNING $name"; fi; done; '
+        'name=${base##*/}; '
+        'if ! /usr/bin/flock -n "$record" true; then echo "RUNNING $name"; '
+        'elif [ ! -e "$base.status" ]; then echo "DEAD $name"; fi; done; '
         f'for record in {where}/build/farm/run-*.log; do '
         '[ -f "$record" ] || continue; base=${record%.log}; '
         '[ ! -e "$base.status" ] && [ ! -e "$base.lock" ] || continue; '
@@ -653,7 +653,8 @@ def refuse_a_running_run_in_the_same_tree(host: str, remote: Path, runner=None) 
     """Under the submit lock, refuse to rewrite a live runner's sources.
 
     The wrapper and its children inherit the same locked descriptor. PIDs
-    are diagnostic only: a lock stays held until its last holder exits.
+    are diagnostic only: a lock stays held until its last holder exits, even
+    if the wrapper already wrote a terminal status.
     Older wrappers have no lock file: a recently modified log conservatively
     blocks mirroring; a stale legacy log is reported and does not block.
     """
@@ -672,7 +673,7 @@ def refuse_a_running_run_in_the_same_tree(host: str, remote: Path, runner=None) 
                   "allowing submission", file=sys.stderr)
         elif len(words) == 2 and words[0] == "DEAD":
             print(f"{words[1]} on {host}:{remote}: dead run (run lock is free) "
-                  "with no status file; no process holds its run lock", file=sys.stderr)
+                  "no process holds its run lock", file=sys.stderr)
     if done.returncode != 0:
         raise FarmError(f"no farm run started: could not check runners in {host}:{remote}: "
                         f"ssh exited {done.returncode}: {done.stdout.strip() or '(no output)'}")

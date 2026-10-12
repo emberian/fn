@@ -25,6 +25,7 @@ from unittest import mock
 
 
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
+sys.path.insert(0, str(TOOLS.parent))
 sys.path.insert(0, str(TOOLS))
 SPEC = importlib.util.spec_from_file_location("farm", TOOLS / "farm.py")
 farm = importlib.util.module_from_spec(SPEC)
@@ -1324,7 +1325,7 @@ class SubmitLockTests(unittest.TestCase):
                             affected_by=[])
             self.assertTrue([c for c in fake.scripts() if "FN_FARM_LOCK_GIVE" in c])
 
-    def foreign_run(self, remote, finished=False, dead=False, legacy=False):
+    def foreign_run(self, remote, finished=False, dead=False, legacy=False, status_held=False):
         """A foreign wrapper holds a run lock; no local run record exists."""
         records = remote / "build/farm"
         records.mkdir(parents=True)
@@ -1350,18 +1351,19 @@ class SubmitLockTests(unittest.TestCase):
             child.wait(timeout=5)
             child.stdout.close()
         self.addCleanup(finish)
-        if finished:
+        if finished or status_held:
             pid_file.with_suffix(".status").write_text("0\n")
-        if dead:
+        if dead or finished:
             finish()
 
-    def submit_with_foreign_run(self, finished=False, dead=False, legacy=False, pid_contents=None):
+    def submit_with_foreign_run(self, finished=False, dead=False, legacy=False,
+                                pid_contents=None, status_held=False):
         with tempfile.TemporaryDirectory() as directory:
             # Spaces also exercise quoting in the exact remote scripts.
             root = Path(directory) / "second worktree"
             root.mkdir()
             remote = Path(directory) / "box tree"
-            self.foreign_run(remote, finished, dead, legacy)
+            self.foreign_run(remote, finished, dead, legacy, status_held)
             if pid_contents is not None:
                 (remote / "build/farm/run-foreign.pid").write_text(pid_contents)
             test = self
@@ -1395,17 +1397,24 @@ class SubmitLockTests(unittest.TestCase):
         self.assertFalse([s for s in fake.scripts() if "tools/certs.py" in s])
         self.assertFalse([s for s in fake.scripts() if "nohup sh -c" in s])
 
+    def test_a_status_file_cannot_hide_a_held_run_lock(self):
+        fake, _ = self.submit_with_foreign_run(status_held=True)
+        self.assertEqual(fake.rsyncs(), [])
+        self.assertFalse([s for s in fake.scripts() if "tools/certs.py" in s])
+        self.assertFalse([s for s in fake.scripts() if "nohup sh -c" in s])
+
     def test_a_finished_foreign_run_does_not_refuse(self):
         fake, err = self.submit_with_foreign_run(finished=True)
         self.assertEqual(len(fake.rsyncs()), 1)
-        self.assertNotIn("dead run", err)
+        # a run that wrote its status and released its lock is history, not news
+        self.assertNotIn("run-foreign", err)
 
     def test_a_dead_foreign_runner_does_not_refuse_and_is_named(self):
         fake, err = self.submit_with_foreign_run(dead=True)
         self.assertEqual(len(fake.rsyncs()), 1)
         self.assertIn("run-foreign", err)
         self.assertIn("dead run (run lock is free)", err)
-        self.assertIn("no status file", err)
+        self.assertIn("no process holds its run lock", err)
 
     def test_a_recent_legacy_run_refuses_before_any_mirror(self):
         fake, _ = self.submit_with_foreign_run(legacy=True)
