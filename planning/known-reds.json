@@ -50,13 +50,6 @@
    "item": "A-OVER-WINDOW-FIT",
    "owner": "builder-C",
    "evidence": "measured red on both images at memory landing 3+4a (hbox m15-r3 at lane/memory e6aab64bb; B's persvati run at train 89's gated head a8685dab1 agrees): the run admitted at C' answers \"400 too many connections\" where the test expects the connection served, because the admission gate prices the OVER reply through the named adapter A-OVER-WINDOW-FIT (books/memory-model.lisp fn-mm-over-window-fit; host/native/owner.lisp fnn-owner-over-window) until OVER renders into one pool lease; retirement: landing O1 (Builder O's OVER pool lease); admitted by amendment, coordinator 2026-10-10"
-  },
-  {
-   "kind": "check",
-   "subject": "check:cost_obligations",
-   "item": "LEASE-DISPATCH-COST-ROWS",
-   "owner": "builder-A",
-   "evidence": "python3 tools/cost_obligations.py --check at dev 402b65786 and train C8 (integrate/20261012d): 7 findings, fn-hld-begin/end/init/quantum/sent/window-base/workspace are new guard-verified dispatched entries with no def-cost and not in planning/cost-baseline.json (C7 vertical-lease)"
   }
  ]
 }
