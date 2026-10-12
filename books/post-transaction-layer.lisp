@@ -14,9 +14,8 @@
 ; The obligations are discharged from the machine's lemmas by :use, in the machine's theory as of
 ; its P5 statement (its later proof lemmas loop the rewriter on the generator's goals).
 (local (in-theory (current-theory 'fn-ptx-p5)))
-; The machine's guards are not verified (its book runs at eagerness 0), so the instance's exec
-; copies are admitted without guard verification too; fn-ptx-step's guards are landing 2's, where
-; the host first executes it.
+; The machine's guards are verified with guard T (landing 2), so the generator verifies the instance's
+; exec copies' guards too: fn-ptl-x-step is common-lisp-compliant, guarded by fn-rtc-st-p alone.
 
 (defun fn-ptx-static-init (j) (declare (xargs :guard t) (ignore j)) (fn-ptx-closed))
 
