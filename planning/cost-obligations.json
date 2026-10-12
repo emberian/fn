@@ -68,6 +68,10 @@
  "undispatched_declarations": [
   "fn-clt-mv",
   "fn-clt-nested",
+  "fn-clt-row-caller",
+  "fn-clt-row-clean",
+  "fn-clt-row-helper",
+  "fn-clt-row-recursive",
   "fn-clt-shadow",
   "fn-clt-single",
   "fn-clt-swap",
@@ -3997,6 +4001,7 @@
     "fn-cth-header-tot",
     "fn-cth-segment-bound",
     "fn-mm-checkpoint-load-octets",
+    "fn-scc-octet-listp",
     "fn-scc-parse-header"
    ],
    "theorem": "fn-cth-header-open-visits-bound",
@@ -4006,23 +4011,15 @@
    "name": "fn-cth-status-text",
    "class": "common-lisp-compliant",
    "claim": "partial",
-   "bound": "(+ 64 (* 3 n) l)",
+   "bound": "(+ 106 (* 3 n) l)",
    "sizes": [
     "n",
     "l"
    ],
    "unaccounted": [
     "fn-cth-status-field",
-    "fn-mm-tot-arena",
-    "fn-mm-tot-charge",
-    "fn-mm-tot-events",
-    "fn-mm-tot-hcharge",
-    "fn-mm-tot-history",
-    "fn-mm-tot-log",
-    "fn-mm-tot-memberships",
-    "fn-mm-tot-paged-p",
-    "fn-mm-tot-records",
-    "fn-nls-text"
+    "fn-nls-text",
+    "true-list-fix"
    ],
    "theorem": "fn-cth-status-text-visits-bound",
    "declared_in": "books/charged-totals-header-cost.lisp"
@@ -5090,6 +5087,7 @@
     "fn-hld-fuel",
     "fn-hld-settle",
     "fn-hll-x-step*",
+    "fn-rtc-outcomep",
     "mv-nth",
     "true-list-fix"
    ],
@@ -5901,7 +5899,8 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-lgo-add"
+    "fn-lgo-add",
+    "fn-lzr-dictsp"
    ],
    "theorem": null,
    "declared_in": "books/store-log-open-scan-cost.lisp"
@@ -8735,7 +8734,6 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-nco-work-class",
     "fn-nctrl-reason-word"
    ],
    "theorem": null,
@@ -8760,7 +8758,6 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-nco-client-status",
     "fn-nctrl-reason-word"
    ],
    "theorem": null,
@@ -8839,8 +8836,7 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-nco-terminalp",
-    "fn-nco-work-class"
+    "fn-nco-terminalp"
    ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
@@ -8894,7 +8890,6 @@
    "unaccounted": [
     "fn-nco-terminalp",
     "fn-nco-token-text",
-    "fn-nco-work-class",
     "fn-record-string-octets"
    ],
    "theorem": null,
@@ -19061,6 +19056,33 @@
    "unaccounted": [],
    "theorem": "fn-asto-quantum-conses-bound",
    "declared_in": "host/cost-host.lisp"
+  },
+  "fn-clt-row-caller": {
+   "claim": "partial",
+   "bound": "1",
+   "unaccounted": [
+    "fn-clt-leaf"
+   ],
+   "theorem": "fn-clt-row-caller-conses-bound",
+   "declared_in": "books/def-cost-lambda-tests.lisp"
+  },
+  "fn-clt-row-helper": {
+   "claim": "partial",
+   "bound": "0",
+   "unaccounted": [
+    "fn-clt-leaf"
+   ],
+   "theorem": "fn-clt-row-helper-conses-bound",
+   "declared_in": "books/def-cost-lambda-tests.lisp"
+  },
+  "fn-clt-row-recursive": {
+   "claim": "derived",
+   "bound": null,
+   "unaccounted": [
+    "fn-clt-leaf"
+   ],
+   "theorem": null,
+   "declared_in": "books/def-cost-lambda-tests.lisp"
   },
   "fn-clt-twice": {
    "claim": "partial",

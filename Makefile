@@ -728,6 +728,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/charged-totals-header-writes \
 	books/charged-totals-header-cost \
 	books/runtime-contract-host-lease-cost \
+	books/cost-final-world \
 	tests/acl2/charged-totals-header-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \

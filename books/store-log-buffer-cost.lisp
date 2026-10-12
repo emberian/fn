@@ -5,12 +5,13 @@
 ; window copy's fixnum type checks; the descriptor over the trailer
 ; attachment; the steps over the decision, the trailer and the txid fold.
 (in-package "ACL2")
+(include-book "image-world")
 (include-book "def-cost")
 (include-book "store-log-walk-once")
 
 (def-cost fn-lgb-span)
 (def-cost fn-lgb-slice-acc :unaccounted (unsigned-byte-p))
-(def-cost fn-lgb-slice :unaccounted (unsigned-byte-p))
+(def-cost fn-lgb-slice :unaccounted (expt unsigned-byte-p))
 (def-cost fn-lgb-descriptor :unaccounted (fn-arx-attach-trailers-buffer))
 (def-cost fn-lgb-next-record
   :unaccounted (mv-nth unsigned-byte-p fn-arx-attach-trailers-buffer))
