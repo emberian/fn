@@ -941,6 +941,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-transaction-sim \
 	books/post-transaction-layer \
 	tests/acl2/post-transaction-tests \
+	books/post-context \
+	tests/acl2/post-context-tests \
+	books/post-acceptance \
+	books/post-transaction-host-layer \
+	books/post-transaction-host-rely \
 	tests/acl2/store-log-critical-teeth-tests \
 	tests/acl2/store-log-copy-teeth-tests \
 	tests/acl2/store-log-copy-ack-teeth-tests \
