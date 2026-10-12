@@ -1086,16 +1086,16 @@ def verify_statement_commit_routes(owner: str) -> None:
     barrier/crash behavior still requires the model and runtime witnesses.
     """
     from tools import ledger
-    pending = ["fnn-owner-attempt-transit"]
+    pending = [("fnn-owner-attempt-transit", False)]
     seen = set()
     commits = wrapped = 0
     while pending:
-        name = pending.pop()
-        if name in seen:
+        name, caller_fenced = pending.pop()
+        if (name, caller_fenced) in seen:
             continue
-        seen.add(name)
+        seen.add((name, caller_fenced))
         forms = ledger.Reader(host_function(owner, name)).top_level()
-        stack = [(forms[0][0], False)]
+        stack = [(forms[0][0], caller_fenced)]
         while stack:
             form, fenced = stack.pop()
             if not isinstance(form, list):
@@ -1104,7 +1104,11 @@ def verify_statement_commit_routes(owner: str) -> None:
             if head in ("quote", "quasiquote"):
                 continue
             if head == "fnn-owner-attempt-filled":
-                pending.append(head)
+                pending.append((head, fenced))
+            if head == "fnn-owner-identity-commit-or-word":
+                if [str(a) for a in form[1:]] != ["service", "event"]:
+                    raise AssertionError(f"{name}: unrecognized kind-4 wrapper arguments")
+                pending.append((head, fenced))
             if head == "fnn-owner-statement-committed":
                 if [str(a) for a in form[1:3]] != ["service", "event"]:
                     raise AssertionError(f"{name}: statement fence does not name the commit's service/event")
@@ -1118,7 +1122,7 @@ def verify_statement_commit_routes(owner: str) -> None:
             stack.extend((part, fenced) for part in form)
     if commits == 0 or wrapped != commits:
         raise AssertionError("transit route {}: {} kind-4 commits, {} through fnn-owner-statement-committed".format(
-            ", ".join(sorted(seen)), commits, wrapped))
+            ", ".join(sorted({name for name, _ in seen})), commits, wrapped))
 
 
 def verify_statement_cut_map() -> None:

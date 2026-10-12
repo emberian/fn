@@ -4284,25 +4284,26 @@ def collect_references(host: HostFile, macros: set[str]) -> None:
         host_references(host, form, line, macros)
 
 
-def host_paths() -> list[tuple[Path, str]]:
+def host_paths(root: Path | None = None) -> list[tuple[Path, str]]:
     """Every `.lisp` outside `books/` and `tests/acl2/` that the tree loads.
 
     `host/` and `host/native/` are the tree's two host directories; anything
     else reaches this list by being named in an `(ld "...")` that a host file
     or a `tools/*.py` bridge issues.
     """
+    root = ROOT if root is None else root
     found: dict[str, Path] = {}
     for directory in HOST_DIRS:
-        for path in sorted((ROOT / directory).glob("*.lisp")):
-            found[path.relative_to(ROOT).as_posix()] = path
-    sources = [ROOT / relative for relative in found] + sorted((ROOT / "tools").glob("*.py"))
+        for path in sorted((root / directory).glob("*.lisp")):
+            found[path.relative_to(root).as_posix()] = path
+    sources = [root / relative for relative in found] + sorted((root / "tools").glob("*.py"))
     for source in sources:
         for reference in LD_REFERENCE.findall(source.read_text(encoding="utf-8")):
             relative = resolve(reference)
             if (relative.startswith(("books/", "tests/acl2/"))
-                    or not (ROOT / relative).is_file()):
+                    or not (root / relative).is_file()):
                 continue
-            found[relative] = ROOT / relative
+            found[relative] = root / relative
     return [(path, relative) for relative, path in sorted(found.items())]
 
 
@@ -4604,16 +4605,18 @@ def lint_warnings(tree: "Tree | None" = None) -> list[str]:
 HOST_DIRS = ("host", "host/native")
 
 
-def book_paths() -> list[tuple[Path, str]]:
+def book_paths(root: Path | None = None) -> list[tuple[Path, str]]:
+    root = ROOT if root is None else root
     found = []
     for directory in ("books", "tests/acl2"):
-        for path in sorted((ROOT / directory).glob("*.lisp")):
-            found.append((path, path.relative_to(ROOT).as_posix()))
+        for path in sorted((root / directory).glob("*.lisp")):
+            found.append((path, path.relative_to(root).as_posix()))
     return found
 
 
-def makefile_roots() -> list[str]:
-    text = (ROOT / "Makefile").read_text(encoding="utf-8")
+def makefile_roots(root: Path | None = None) -> list[str]:
+    root = ROOT if root is None else root
+    text = (root / "Makefile").read_text(encoding="utf-8")
     match = re.search(r"(?ms)^ACL2_BOOKS\s*\??=\s*(.*?)(?=^\S|\Z)", text)
     if not match:
         raise ValueError("Makefile: no ACL2_BOOKS assignment")
@@ -4666,19 +4669,19 @@ TREE_CACHE_ENTRIES = 4
 _TREE_CACHE_FORMAT = b"fn-ledger-tree-cache-4"
 
 
-def _tree_cache_dir() -> "Path | None":
+def _tree_cache_dir(root: Path | None = None) -> "Path | None":
     """Where analysed trees persist, or None when this call must not persist.
 
     Not when a caller has substituted any function the analysis runs (a
     test's mock would otherwise outlive its process), and not for a tree
-    other than this file's own (a test's temporary repository).
+    other than this file's own unless explicitly supplied to load_tree.
     """
     import os
     setting = os.environ.get("FN_LEDGER_TREE_CACHE", "")
     if setting == "0":
         return None
     genuine = (book_paths, host_paths, makefile_roots, analyze_book, analyze_host, Tree)
-    if genuine != _GENUINE_ANALYSIS or ROOT != Path(__file__).resolve().parents[1]:
+    if genuine != _GENUINE_ANALYSIS or (root is None and ROOT != Path(__file__).resolve().parents[1]):
         return None
     return Path(setting) if setting else TREE_CACHE_DIR
 
@@ -4738,7 +4741,7 @@ def _checked_tree(tree: Tree, *, lazy: bool) -> Tree:
     return tree
 
 
-def load_tree(*, lazy: bool = False) -> Tree:
+def load_tree(*, lazy: bool = False, root: Path | None = None) -> Tree:
     """The analysed tree, computed once per content of its inputs.
 
     One `make check` process asked for it up to five times (teeth_check:
@@ -4750,6 +4753,8 @@ def load_tree(*, lazy: bool = False) -> Tree:
     calls (a test's temporary tree) is a new analysis, never a stale one.
     Across processes the same key names an entry in TREE_CACHE_DIR, with the
     analyser's source, the Python version and the root list added to it.
+    ROOT explicitly selects another repository; omitted, it uses this tree.
+    Its absolute path is part of both cache keys.
     Callers read the Tree; none mutates it.
 
     LAZY (a caller that never reads `suspects', or reads a few books'): a
@@ -4759,10 +4764,12 @@ def load_tree(*, lazy: bool = False) -> Tree:
     other process reads a partial analysis.
     """
     global _TREE_CACHE
-    books = book_paths()
-    hosts = host_paths()
-    digest = hashlib.sha256(str(ROOT).encode())
-    for path, relative in books + hosts + [(ROOT / "Makefile", "Makefile")]:
+    explicit_root = root
+    root = ROOT if root is None else Path(root).resolve()
+    books = book_paths() if explicit_root is None else book_paths(root)
+    hosts = host_paths() if explicit_root is None else host_paths(root)
+    digest = hashlib.sha256(str(root).encode())
+    for path, relative in books + hosts + [(root / "Makefile", "Makefile")]:
         digest.update(relative.encode() + b"\0")
         try:
             digest.update(path.read_bytes())
@@ -4772,8 +4779,8 @@ def load_tree(*, lazy: bool = False) -> Tree:
     key = digest.hexdigest()
     if _TREE_CACHE is not None and _TREE_CACHE[0] == key:
         return _checked_tree(_TREE_CACHE[1], lazy=lazy)
-    roots = makefile_roots()
-    directory = _tree_cache_dir()
+    roots = makefile_roots() if explicit_root is None else makefile_roots(root)
+    directory = _tree_cache_dir(explicit_root)
     persistent = None
     if directory is not None:
         shared = hashlib.sha256(_TREE_CACHE_FORMAT + b"\0")
