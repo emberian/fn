@@ -12,12 +12,16 @@
       (equal (fn-pfr-at 0 (fn-prstartup-peer-grant 268435456 nil *pfrst-core* 0 nil 0
                                                 *pfrst-plan* *pfrst-peer* nil nil)) :hold)
       (equal (+ (fn-prstartup-peer-protected nil *pfrst-core* 0 nil 0 *pfrst-plan* nil nil)
-                (fn-pfr-at 0 *pfrst-peer*)) 268435456)))
+                (fn-pfr-at 0 *pfrst-peer*))
+             (+ (fn-prstartup-serve-protected nil *pfrst-core* 0 nil 0 nil nil)
+                (fn-prstartup-launch-extra nil 4 8 "/tmp/store")
+                (fn-pfr-at 0 *pfrst-peer*)))))
 (assert-event
  (equal (fn-prstartup-default-plan-with-peer 268435456 67108864 nil *pfrst-core* 0 nil nil 0
                                             "/tmp/store" 4 8 256 nil nil nil)
         (fn-prstartup-plan 268435456 67108864
-                           (fn-prstartup-protected nil *pfrst-core* 0 nil 0 nil)
+                           (max (fn-prstartup-protected nil *pfrst-core* 0 nil 0 nil)
+                                (nfix (- 268435456 (fn-prstartup-launch-extra nil 4 8 "/tmp/store"))))
                            "/tmp/store" 4 (fn-heap-stack-octets nil) *fn-heap-thread-runtime-octets*
                            8 256 (fn-prstartup-read-reserve (fn-prstartup-read-extent nil) 4))))
 (assert-event
@@ -226,3 +230,44 @@
                 (root "/x") (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 256))))
                :fault "the output grant given the profile's whole store (the figure before L-RUN-LAUNCH), which the launched space does not hold"))
   :hints (("Goal" :by fn-mo-serve-output-pool-is-held)))
+
+
+;; K-L4d's positive witness is a funded plan, so a refused plan's empty budget cannot supply it.
+(assert-event
+ (let ((plan (fn-prstartup-default-plan-with-peer
+              *pfrst-sv-dyn* 60000000 *pfrst-sv-profile* *pfrst-sv-owner* *pfrst-sv-trigger* nil nil
+              31 "/x" 4 8 256 *pfrst-sv-peer* nil (list (pfrst-mib 256)))))
+   (and (equal (car plan) :admitted)
+        (posp (fn-prstartup-nth 0 (fn-prstartup-nth 1 plan))))))
+
+(defkeystone pfrst-serve-plan-is-held-to-the-pool
+ (<= (fn-prstartup-nth 0 (fn-prstartup-nth 1 (fn-prstartup-default-plan-with-peer dynamic occupied profile core nursery cold output
+                                                  max-connections root workers cache-limit fd-limit
+                                                  peer observed resident)))
+               (+ (fn-prstartup-launch-extra profile workers cache-limit root)
+                  (* (nfix workers) (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*))))
+ :rule-classes nil
+ :id "PRF-10015"
+ :restates fn-mo-serve-plan-is-held-to-the-pool
+ :subject fn-prstartup-default-plan-with-peer
+ :witness ((dynamic *pfrst-sv-dyn*) (occupied 60000000) (profile *pfrst-sv-profile*)
+            (core *pfrst-sv-owner*) (nursery *pfrst-sv-trigger*) (cold nil) (output nil)
+            (max-connections 31) (root "/x") (workers 4) (cache-limit 8) (fd-limit 256)
+            (peer *pfrst-sv-peer*) (observed nil) (resident (list (pfrst-mib 256))))
+ :breaks nil
+ :mutations ((plan-held-to-whole-remaining-dynamic-space
+              (:conclusion (<= (fn-prstartup-nth 0 (fn-prstartup-nth 1 (fn-prstartup-plan dynamic occupied
+                  (+ (fn-prstartup-serve-protected profile core nursery output max-connections observed
+                       (fn-prstartup-serve-limit profile output peer workers cache-limit root resident))
+                     (if peer (nfix (fn-pfr-at 0 peer)) 0))
+                  root workers (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*
+                  cache-limit fd-limit
+                  (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))))
+                   (+ (fn-prstartup-launch-extra profile workers cache-limit root)
+                      (* (nfix workers) (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*)))))
+              ((dynamic *pfrst-sv-dyn*) (occupied 60000000) (profile *pfrst-sv-profile*)
+            (core *pfrst-sv-owner*) (nursery *pfrst-sv-trigger*) (cold nil) (output nil)
+            (max-connections 31) (root "/x") (workers 4) (cache-limit 8) (fd-limit 256)
+            (peer *pfrst-sv-peer*) (observed nil) (resident (list (pfrst-mib 256))))
+              :fault "the pre-F2 protected runtime grants the plan the whole remaining dynamic space"))
+ :hints (("Goal" :by fn-mo-serve-plan-is-held-to-the-pool)))

@@ -406,9 +406,14 @@
 (defun hct-sv-reservation (core mib)
   (fn-mo-serve-reservation *hct-sv-profile* core (hct-sv-dynamic core mib) *hct-sv-pool-threads*))
 
-;; The pools: the DEFAULT pool's heap (its table and the reads in flight) and the peer flight's heap; the
+;; The pools: the DEFAULT pool's heap (its table and the reads in flight), the peer flight's heap and
+;; its workers' stacks and runtime;
 ;; threads the pools add are the peer flight's workers.
-(assert-event (equal *hct-sv-pools* (+ (fn-prstartup-launch-extra *hct-sv-profile* 4 8 "/x") (car *hct-sv-peer*))))
+(assert-event
+ (equal *hct-sv-pools*
+        (+ (fn-prstartup-launch-extra *hct-sv-profile* 4 8 "/x") (car *hct-sv-peer*)
+           (* (nfix (nth 3 *hct-sv-peer*))
+              (+ (fn-heap-stack-octets *hct-sv-profile*) *fn-heap-thread-runtime-octets*)))))
 (assert-event (equal *hct-sv-pool-threads* (nth 3 *hct-sv-peer*)))
 (assert-event (fn-mm-tot-p *hct-sv-tot*))
 

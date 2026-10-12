@@ -35,11 +35,15 @@
        (cold (list :refused :unpriced-complete-cold-profile))
        ((not (or (not output) (fn-orv-policy-p output)))
         (list :refused :invalid-output-resource-profile))
+       ; The plan's funded budget is the dynamic space past its protected runtime; the served run
+       ; deducted only the DEFAULT pool's need from its resident LIMIT (fn-mo-serve-pools), so the
+       ; plan is held to that need: whatever the launch's space holds beyond it is the store's.
        (t (fn-prstartup-plan dynamic occupied
-              (+ (fn-prstartup-serve-protected
-                  profile core nursery output max-connections observed
-                  (fn-prstartup-serve-limit profile output peer workers cache-limit root resident))
-                 (if peer (nfix (fn-pfr-at 0 peer)) 0))
+              (max (+ (fn-prstartup-serve-protected
+                       profile core nursery output max-connections observed
+                       (fn-prstartup-serve-limit profile output peer workers cache-limit root resident))
+                      (if peer (nfix (fn-pfr-at 0 peer)) 0))
+                   (nfix (- (nfix dynamic) (fn-prstartup-launch-extra profile workers cache-limit root))))
               root workers (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*
               cache-limit fd-limit
               (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))))
@@ -340,14 +344,31 @@
                 (<= ldo ldp)
                 (<= occ file) (<= file ldp))
            (and (<= occ dyn)
-                (<= (+ p peer0) dyn)
-                (<= extra (fn-prstartup-available dyn occ (+ p peer0)))))
+                (<= (+ p peer0) (nfix (- (nfix dyn) extra)))
+                (<= (max (+ p peer0) (nfix (- (nfix dyn) extra))) dyn)
+                (equal (fn-prstartup-available dyn occ (max (+ p peer0) (nfix (- (nfix dyn) extra))))
+                       extra)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-prstartup-available))))
 
 (defthm fn-mo-serve-peer-room
-  (implies (and (natp dyn) (natp occ) (natp p) (natp peer0) (<= (+ p peer0) dyn))
+  (implies (and (natp dyn) (natp occ) (natp p) (natp peer0) (natp extra)
+                (<= (+ p peer0) (nfix (- (nfix dyn) extra))) (<= extra dyn))
+           (<= (+ p (fn-prstartup-available dyn occ (max (+ p peer0) (nfix (- (nfix dyn) extra)))) peer0) dyn))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-prstartup-available))))
+
+(defthm fn-mo-serve-peer-room-without-the-cap
+  (implies (and (natp dyn) (natp occ) (natp p) (natp peer0)
+                (<= (+ p peer0) dyn))
            (<= (+ p (fn-prstartup-available dyn occ (+ p peer0)) peer0) dyn))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-prstartup-available))))
+
+(defthm fn-mo-serve-available-does-not-grow-with-the-cap
+  (implies (natp protected)
+           (<= (fn-prstartup-available dynamic occupied (max protected (nfix cap)))
+               (fn-prstartup-available dynamic occupied protected)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-prstartup-available))))
 
@@ -462,11 +483,13 @@
                                                        max-connections root workers cache-limit fd-limit
                                                        peer observed resident)
                   (fn-prstartup-plan dynamic occupied
-                                     (+ (fn-prstartup-serve-protected
-                                         profile core nursery output max-connections observed
-                                         (fn-prstartup-serve-limit profile output peer workers cache-limit root
-                                                                   resident))
-                                        (if peer (nfix (fn-pfr-at 0 peer)) 0))
+                                     (max (+ (fn-prstartup-serve-protected
+                                              profile core nursery output max-connections observed
+                                              (fn-prstartup-serve-limit profile output peer workers cache-limit root
+                                                                        resident))
+                                             (if peer (nfix (fn-pfr-at 0 peer)) 0))
+                                          (nfix (- (nfix dynamic)
+                                                   (fn-prstartup-launch-extra profile workers cache-limit root))))
                                      root workers (fn-heap-stack-octets profile)
                                      *fn-heap-thread-runtime-octets* cache-limit fd-limit
                                      (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))))
@@ -482,29 +505,29 @@
                 (<= p (+ ldo out0)) (<= ldo ldp) (<= occ file) (<= file ldp)
                 (<= (max 8 (+ 1 cache-limit)) fd-limit)
                 (fn-crl-table-supportedp (max 8 (+ 1 cache-limit))))
-           (and (equal (car (fn-prstartup-plan dyn occ (+ p peer0) root workers
+           (and (equal (car (fn-prstartup-plan dyn occ (max (+ p peer0) (nfix (- (nfix dyn) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers
                                                (fn-heap-stack-octets profile)
                                                *fn-heap-thread-runtime-octets* cache-limit fd-limit
                                                (fn-prstartup-read-reserve (fn-prstartup-read-extent profile)
                                                                           workers)))
                        :admitted)
-                (fn-prstartup-planp (fn-prstartup-plan dyn occ (+ p peer0) root workers
+                (fn-prstartup-planp (fn-prstartup-plan dyn occ (max (+ p peer0) (nfix (- (nfix dyn) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers
                                                        (fn-heap-stack-octets profile)
                                                        *fn-heap-thread-runtime-octets* cache-limit fd-limit
                                                        (fn-prstartup-read-reserve (fn-prstartup-read-extent profile)
                                                                                   workers)))
                 (equal (fn-prstartup-decoded-workers
-                        (fn-prstartup-plan dyn occ (+ p peer0) root workers (fn-heap-stack-octets profile)
+                        (fn-prstartup-plan dyn occ (max (+ p peer0) (nfix (- (nfix dyn) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                                            *fn-heap-thread-runtime-octets* cache-limit fd-limit
                                            (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
                        workers)
                 (equal (fn-prstartup-nth 0 (fn-prstartup-nth 1
-                        (fn-prstartup-plan dyn occ (+ p peer0) root workers (fn-heap-stack-octets profile)
+                        (fn-prstartup-plan dyn occ (max (+ p peer0) (nfix (- (nfix dyn) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                                            *fn-heap-thread-runtime-octets* cache-limit fd-limit
                                            (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))))
-                       (+ (fn-prstartup-available dyn occ (+ p peer0))
+                       (+ (fn-prstartup-available dyn occ (max (+ p peer0) (nfix (- (nfix dyn) (fn-prstartup-launch-extra profile workers cache-limit root)))))
                           (* workers (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*))))
-                (<= (+ p (fn-prstartup-available dyn occ (+ p peer0)) peer0) dyn)))
+                (<= (+ p (fn-prstartup-available dyn occ (max (+ p peer0) (nfix (- (nfix dyn) (fn-prstartup-launch-extra profile workers cache-limit root))))) peer0) dyn)))
   :rule-classes nil
   :hints (("Goal"
            :in-theory (disable fn-prstartup-plan fn-prstartup-launch-extra fn-prstartup-available
@@ -513,11 +536,11 @@
                                fn-prstartup-decoded-workers fn-prstartup-nth)
            :use ((:instance fn-mo-serve-launch-extra-is-the-plans-need)
                  (:instance fn-mo-serve-startup-room (extra (fn-prstartup-launch-extra profile workers cache-limit root)))
-                 (:instance fn-mo-serve-peer-room)
+                 (:instance fn-mo-serve-peer-room (extra (fn-prstartup-launch-extra profile workers cache-limit root)))
                  (:instance fn-mo-serve-read-reserve-is-natp
                   (extent (fn-prstartup-read-extent profile)))
                  (:instance fn-mo-serve-plan-is-held-when-funded
-                  (dynamic dyn) (occupied occ) (protected (+ p peer0))
+                  (dynamic dyn) (occupied occ) (protected (max (+ p peer0) (nfix (- (nfix dyn) (fn-prstartup-launch-extra profile workers cache-limit root)))))
                   (stack (fn-heap-stack-octets profile)) (runtime *fn-heap-thread-runtime-octets*)
                   (reserve (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))))))
 
@@ -546,16 +569,32 @@
   :rule-classes :type-prescription
   :hints (("Goal" :in-theory (enable fn-prstartup-launch-extra))))
 
-(defthm fn-mo-serve-pools-are-the-three-pools
+(defthm fn-mo-serve-stack-octets-natp
+  (natp (fn-heap-stack-octets profile))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-heap-stack-octets))))
+
+(defthm fn-mo-serve-peer-stacks-natp
+  (natp (* (nfix n) (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*)))
+  :rule-classes :type-prescription)
+
+(defthm fn-mo-serve-pools-is-natp
+ (natp (fn-mo-serve-pools profile cold output peer workers cache-limit root))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (enable fn-mo-serve-pools))))
+
+(defthm fn-mo-serve-pools-hold-the-three-pools
   (implies (and (or (not peer) (fn-pfr-policy-p peer)))
-           (equal (fn-mo-serve-pools profile nil output peer workers cache-limit root)
-                  (+ (fn-prstartup-launch-extra profile workers cache-limit root)
-                     (nfix (fn-crv-nth 0 output))
-                     (if peer (nfix (fn-pfr-at 0 peer)) 0))))
+           (<= (+ (fn-prstartup-launch-extra profile workers cache-limit root)
+                  (nfix (fn-crv-nth 0 output))
+                  (if peer (nfix (fn-pfr-at 0 peer)) 0))
+               (fn-mo-serve-pools profile nil output peer workers cache-limit root)))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-mo-serve-peer-pool-heap)
                         (:instance fn-mo-serve-output-pool-heap)
-                        (:instance fn-mo-serve-launch-extra-natp))
+                        (:instance fn-mo-serve-launch-extra-natp)
+                        (:instance fn-mo-serve-stack-octets-natp)
+                        (:instance fn-mo-serve-peer-stacks-natp (n (nth 3 (true-list-fix peer)))))
            :in-theory (union-theories '(fn-mo-serve-pools nfix natp) (theory 'minimal-theory)))))
 
 (defthm fn-mo-serve-owner-reservation-is-the-decided-one
@@ -628,8 +667,9 @@
            :in-theory (union-theories '(nfix natp) (theory 'minimal-theory))
            :use ((:instance fn-mo-serve-decided-space-covers-the-launch
                   (cold nil) (pools (fn-mo-serve-pools profile nil output peer workers cache-limit root)) (pool-threads (fn-mo-serve-pool-threads nil peer)))
-                 (:instance fn-mo-serve-pools-are-the-three-pools)
+                 (:instance fn-mo-serve-pools-hold-the-three-pools)
                  (:instance fn-mo-serve-room-natp)
+                 (:instance fn-mo-serve-pools-is-natp (cold nil))
                  (:instance fn-mo-serve-launch-extra-natp)))))
 
 (defthm fn-mo-serve-room-protected
@@ -714,28 +754,34 @@
                 (stringp root) (posp workers) (natp cache-limit) (natp fd-limit)
                 (<= (max 8 (+ 1 cache-limit)) fd-limit)
                 (fn-crl-table-supportedp (max 8 (+ 1 cache-limit))))
-           (and (equal (car (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) root workers (fn-heap-stack-octets profile)
+           (and (equal (car (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                         *fn-heap-thread-runtime-octets* cache-limit fd-limit
                         (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))) :admitted)
-                (fn-prstartup-planp (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) root workers (fn-heap-stack-octets profile)
+                (fn-prstartup-planp (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                         *fn-heap-thread-runtime-octets* cache-limit fd-limit
                         (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
-                (equal (fn-prstartup-decoded-workers (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) root workers (fn-heap-stack-octets profile)
+                (equal (fn-prstartup-decoded-workers (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                         *fn-heap-thread-runtime-octets* cache-limit fd-limit
                         (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))) workers)
-                (equal (fn-prstartup-nth 0 (fn-prstartup-nth 1 (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) root workers (fn-heap-stack-octets profile)
+                (equal (fn-prstartup-nth 0 (fn-prstartup-nth 1 (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                         *fn-heap-thread-runtime-octets* cache-limit fd-limit
                         (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))))
-                       (+ (fn-prstartup-available (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0))) (* workers (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*))))
+                       (+ (fn-prstartup-available (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root))))) (* workers (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*))))
                 (<= (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (fn-prstartup-available (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0))) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))))))
   :rule-classes nil
   :hints (("Goal"
            :in-theory (union-theories '(natp posp) (theory 'minimal-theory))
            :use ((:instance fn-mo-serve-room-natp)
+                 (:instance fn-mo-serve-launch-extra-natp)
                  (:instance fn-mo-serve-room-covers)
                  (:instance fn-mo-serve-room-protected)
                  (:instance fn-mo-serve-room-owner-launch)
                  (:instance fn-mo-serve-room-file)
+                 (:instance fn-mo-serve-peer-room-without-the-cap
+                  (dyn (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))))
+                  (occ occupied)
+                  (p (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)))
+                  (peer0 (if peer (nfix (fn-pfr-at 0 peer)) 0)))
                  (:instance fn-mo-serve-plan-is-admitted-by-the-room
                   (dyn (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (occ occupied) (p (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o))) (peer0 (if peer (nfix (fn-pfr-at 0 peer)) 0))
                   (out0 (nfix (fn-crv-nth 0 output))) (ldo (fn-mm-launch-dynamic (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o) owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery))) (ldp (fn-mm-launch-dynamic (fn-mo-serve-limit resident (fn-mo-serve-pools profile nil output peer workers cache-limit root)) (fn-prstartup-image-bound core) nursery))
@@ -753,7 +799,7 @@
                 (<= (max 8 (+ 1 cache-limit)) fd-limit)
                 (fn-crl-table-supportedp (max 8 (+ 1 cache-limit)))) peer)
            (equal (fn-pfr-at 0 (fn-prstartup-peer-grant (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections
-                                                       (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) root workers (fn-heap-stack-octets profile)
+                                                       (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                         *fn-heap-thread-runtime-octets* cache-limit fd-limit
                         (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)) peer observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)))
                   :hold))
@@ -762,13 +808,17 @@
            :in-theory (union-theories '(natp posp) (theory 'minimal-theory))
            :use ((:instance fn-mo-serve-startup-room-facts)
                  (:instance fn-mo-serve-room-natp)
+                 (:instance fn-mo-serve-available-does-not-grow-with-the-cap
+                  (dynamic (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (occupied occupied)
+                  (protected (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)))
+                  (cap (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root))))
                  (:instance fn-mo-serve-available-is-natp
-                  (dynamic (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (occupied occupied) (protected (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0))))
+                  (dynamic (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (occupied occupied) (protected (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root))))))
                  (:instance fn-mo-serve-peer-grant-holds
-                  (plan (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) root workers (fn-heap-stack-octets profile)
+                  (plan (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                         *fn-heap-thread-runtime-octets* cache-limit fd-limit
                         (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))) (dynamic (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (core owner) (nursery (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery)) (limit (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o))
-                  (avail (fn-prstartup-available (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)))) (w workers))))))
+                  (avail (fn-prstartup-available (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root)))))) (w workers))))))
 
 (defthm fn-mo-serve-startup-native-grant-holds
   (implies (and (and (equal (car (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))) :heap)
@@ -782,7 +832,7 @@
                 (<= (max 8 (+ 1 cache-limit)) fd-limit)
                 (fn-crl-table-supportedp (max 8 (+ 1 cache-limit)))) peer)
            (equal (car (fn-prstartup-peer-native-grant (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections
-                                                       (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) root workers (fn-heap-stack-octets profile)
+                                                       (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                         *fn-heap-thread-runtime-octets* cache-limit fd-limit
                         (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)) peer address observed workers cache-limit root
                                                        resident-o))
@@ -792,7 +842,7 @@
            :in-theory (union-theories '(natp posp) (theory 'minimal-theory))
            :use ((:instance fn-mo-serve-startup-peer-grant-holds)
                  (:instance fn-mo-serve-native-grant-holds
-                  (plan (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) root workers (fn-heap-stack-octets profile)
+                  (plan (fn-prstartup-plan (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) occupied (max (+ (fn-prstartup-serve-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery) output max-connections observed (fn-prstartup-serve-limit profile output peer workers cache-limit root resident-o)) (if peer (nfix (fn-pfr-at 0 peer)) 0)) (nfix (- (nfix (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (fn-prstartup-launch-extra profile workers cache-limit root)))) root workers (fn-heap-stack-octets profile)
                         *fn-heap-thread-runtime-octets* cache-limit fd-limit
                         (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))) (dynamic (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (core owner) (nursery (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery)) (resident resident-o))
                  (:instance fn-mo-serve-owner-reservation-is-the-decided-one)
@@ -877,12 +927,9 @@
  :rule-classes nil
  :hints (("Goal" :in-theory (union-theories '(fn-mo-serve-pools nfix natp) (theory 'minimal-theory))
           :use ((:instance fn-mo-serve-output-pool-heap)
-                (:instance fn-mo-serve-launch-extra-natp)))))
+                (:instance fn-mo-serve-launch-extra-natp)
+                (:instance fn-mo-serve-peer-stacks-natp (n (nth 3 (true-list-fix peer))))))))
 
-(defthm fn-mo-serve-pools-is-natp
- (natp (fn-mo-serve-pools profile cold output peer workers cache-limit root))
- :rule-classes :type-prescription
- :hints (("Goal" :in-theory (enable fn-mo-serve-pools))))
 
 (defthm fn-mo-serve-output-room
  (implies (and (rationalp sn) (rationalp l1) (rationalp l2) (rationalp pools) (rationalp dyn)
@@ -942,3 +989,86 @@
           :use (fn-mo-serve-output-pool-is-held-at-the-decision
                 (:instance fn-mo-serve-decide-heap-mb
                            (cold nil) (pools (fn-mo-serve-pools profile nil output peer workers cache-limit root)) (pool-threads (fn-mo-serve-pool-threads nil peer)))))))
+
+; KEYSTONE K-L4d (L-RUN-LAUNCH, Codex review F2): the served run's DEFAULT pool plan is funded with no more
+; than the pool's need the launch deducted from its resident LIMIT (fn-prstartup-launch-extra) and its
+; workers' native storage: the launch's dynamic space beyond it stays the store's.
+(defthm fn-mo-serve-available-within-the-cap
+ (implies (<= (nfix (- (nfix dynamic) (nfix extra))) (nfix protected))
+          (<= (fn-prstartup-available dynamic occupied protected) (nfix extra)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-prstartup-available))))
+
+(defthm fn-mo-serve-admitted-plan-budget
+ (implies (equal (car (fn-prstartup-plan dynamic occupied protected root workers stack runtime
+                                        cache-limit fd-limit reserve)) :admitted)
+          (equal (fn-prstartup-nth 0 (fn-prstartup-nth 1
+                   (fn-prstartup-plan dynamic occupied protected root workers stack runtime
+                                      cache-limit fd-limit reserve)))
+                 (+ (fn-prstartup-available dynamic occupied protected)
+                    (* (nfix workers) (+ (nfix stack) (nfix runtime))))))
+ :rule-classes nil
+ :hints (("Goal"
+          :in-theory (e/d (fn-prstartup-plan fn-prstartup-nth)
+                          (fn-prstartup-available fn-prstartup-affordable-capacity
+                           fn-prstartup-baseline-heap fn-prstartup-required-heap
+                           fn-crl-table-supportedp fn-cgb-capacity fn-prstartup-fd-bookkeeping)))))
+
+(defthm fn-mo-serve-plan-budget-within-available
+ (<= (fn-prstartup-nth 0 (fn-prstartup-nth 1
+       (fn-prstartup-plan dynamic occupied protected root workers stack runtime
+                          cache-limit fd-limit reserve)))
+     (+ (fn-prstartup-available dynamic occupied protected)
+        (* (nfix workers) (+ (nfix stack) (nfix runtime)))))
+ :rule-classes nil
+ :hints (("Goal"
+          :in-theory (e/d (fn-prstartup-plan fn-prstartup-nth)
+               (fn-prstartup-available fn-prstartup-affordable-capacity
+                fn-prstartup-baseline-heap fn-prstartup-required-heap
+                fn-crl-table-supportedp fn-cgb-capacity fn-prstartup-fd-bookkeeping)))))
+
+(defthm fn-mo-serve-atomic-refusal-budget-by-definition
+ (implies (atom reason)
+          (equal (fn-prstartup-nth 0 (fn-prstartup-nth 1 (list :refused reason))) nil))
+ :hints (("Goal" :in-theory (enable fn-prstartup-nth))))
+
+(defthm fn-mo-serve-plan-is-held-to-the-pool-at-the-decision
+ (let ((plan (fn-prstartup-default-plan-with-peer dynamic occupied profile core nursery cold output
+                                                  max-connections root workers cache-limit fd-limit
+                                                  peer observed resident)))
+  (<= (fn-prstartup-nth 0 (fn-prstartup-nth 1 plan))
+               (+ (fn-prstartup-launch-extra profile workers cache-limit root)
+                  (* (nfix workers) (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*)))))
+ :rule-classes nil
+ :hints (("Goal"
+          :in-theory (union-theories
+                       '(fn-prstartup-default-plan-with-peer fn-mo-serve-atomic-refusal-budget-by-definition
+                         natp nfix max fn-mo-serve-launch-extra-natp fn-mo-serve-stack-octets-natp
+                         fn-mo-serve-protected-is-natp fn-mo-serve-available-is-natp
+                         fn-mo-serve-peer-stacks-natp)
+                       (theory 'minimal-theory))
+          :use ((:instance fn-mo-serve-plan-budget-within-available
+                 (protected (max (+ (fn-prstartup-serve-protected
+                       profile core nursery output max-connections observed
+                       (fn-prstartup-serve-limit profile output peer workers cache-limit root resident))
+                      (if peer (nfix (fn-pfr-at 0 peer)) 0))
+                   (nfix (- (nfix dynamic) (fn-prstartup-launch-extra profile workers cache-limit root)))))
+                 (stack (fn-heap-stack-octets profile)) (runtime *fn-heap-thread-runtime-octets*)
+                 (reserve (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
+                (:instance fn-mo-serve-available-within-the-cap
+                 (extra (fn-prstartup-launch-extra profile workers cache-limit root))
+                 (protected (max (+ (fn-prstartup-serve-protected
+                       profile core nursery output max-connections observed
+                       (fn-prstartup-serve-limit profile output peer workers cache-limit root resident))
+                      (if peer (nfix (fn-pfr-at 0 peer)) 0))
+                   (nfix (- (nfix dynamic) (fn-prstartup-launch-extra profile workers cache-limit root))))))))))
+
+(defthm fn-mo-serve-plan-is-held-to-the-pool
+ (<= (fn-prstartup-nth 0 (fn-prstartup-nth 1 (fn-prstartup-default-plan-with-peer dynamic occupied profile core nursery cold output
+                                                  max-connections root workers cache-limit fd-limit
+                                                  peer observed resident)))
+               (+ (fn-prstartup-launch-extra profile workers cache-limit root)
+                  (* (nfix workers) (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (theory 'minimal-theory)
+          :use fn-mo-serve-plan-is-held-to-the-pool-at-the-decision)))

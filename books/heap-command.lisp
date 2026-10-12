@@ -847,7 +847,7 @@
 ; probe's, is held by the same figure (fn-mo-serve-holds-every-admitted-store).
 ;
 ; The pools the served run funds beside the model's terms: the DEFAULT pool's heap (or the explicit
-; cold policy's budget), the output pool's, the peer flight's.  The configure's LIMIT excludes them
+; cold policy's budget), the output pool's, the peer flight's heap and its workers' stacks.  The configure's LIMIT excludes them
 ; and the dynamic space adds them.
 (defun fn-mo-serve-pools (profile cold output peer workers cache-limit root)
   (declare (xargs :guard t))
@@ -855,7 +855,13 @@
          (nfix (car (fn-crv-pool-budget cold profile)))
        (nfix (fn-prstartup-launch-extra profile workers cache-limit root)))
      (if (consp output) (nfix (car output)) 0)
-     (if (consp peer) (nfix (car peer)) 0)))
+     (if (consp peer) (nfix (car peer)) 0)
+     ;; the peer flight's workers: their stacks and runtime are resident beside the heap (the cold
+     ;; policy's budget already holds its own, fn-crv-native-baseline)
+     (if (consp peer)
+         (* (nfix (nth 3 (true-list-fix peer)))
+            (+ (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*))
+       0)))
 
 ; The threads the pools run beside the node's own: the cold policy's workers and the peer flight's.
 (defun fn-mo-serve-pool-threads (cold peer)
