@@ -10,6 +10,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from tools.load.profile_common import sanitize_environment
+
 OPS = ("POST_2k", "ARTICLE_2k", "ARTICLE_128k", "HEAD", "STAT", "GROUP",
        "OVER40", "NEWNEWS", "LIST", "greeting")
 IO_KEYS = ("rchar", "wchar", "syscr", "syscw", "read_bytes", "write_bytes")
@@ -18,22 +20,53 @@ SYSCALLS = ("fsync", "fdatasync", "write", "pwrite64", "writev", "sendto", "read
             "openat", "rename", "renameat")
 
 
-def parse_sprof(text, limit=25):
+def parse_sprof(text, limit=25, *, thread_samples=None):
     """SBCL flat rows: rank, self count/%, cumulative count/%, calls or total, name.
 
     Names (including spaces and printed Lisp forms) are retained verbatim.
     """
+    if thread_samples is not None:
+        counts = {}
+        samples = parse_thread_samples(thread_samples)
+        total_header = re.search(r"Number of samples:\s*(\d+)", text)
+        if total_header and sum(row["count"] for row in samples) != int(total_header.group(1)):
+            raise ValueError("per-thread sample totals differ from the flat report; subtraction unavailable")
+        for row in samples:
+            if row["thread"] != "fn-load-prof":
+                counts[row["function"]] = counts.get(row["function"], 0) + row["count"]
+        total, cumulative = sum(counts.values()), 0
+        rows = []
+        for name, count in sorted(counts.items(), key=lambda item: (-item[1], item[0])):
+            cumulative += count
+            rows.append(dict(count=count, percent=100 * count / total if total else 0,
+                             cumulative_percent=100 * cumulative / total if total else 0, function=name))
+        return rows[:limit]
     rows = []
+    self_total_cumul = bool(re.search(r"Self\s+Total\s+Cumul", text))
     pattern = re.compile(r"^\s*\d+\s+(\d+)\s+([\d.]+)%?\s+\d+\s+([\d.]+)%?\s+(.+?)\s*$")
     for line in text.splitlines():
         match = pattern.match(line)
         if match:
             count, percent, cumulative, tail = match.groups()
+            if self_total_cumul:
+                # Current SBCL prints Self/Total/Cumul, older reports Self/Cumul/Total.
+                cumulative, tail = re.match(r"\d+\s+([\d.]+)%?\s+(.+)", tail).groups()
             # SBCL versions print either Calls (often '-') or Total Count/%.
             name = re.sub(r"^(?:\d+\s+[\d.]+%?\s+|(?:\d+|-)\s+)", "", tail)
             rows.append(dict(count=int(count), percent=float(percent),
                              cumulative_percent=float(cumulative), function=name))
     return rows[:limit]
+
+
+def parse_thread_samples(text):
+    rows = []
+    for line in text.splitlines():
+        row = json.loads(line)
+        if (not isinstance(row, dict) or not isinstance(row.get("thread"), str) or
+                not isinstance(row.get("function"), str) or type(row.get("count")) is not int or row["count"] < 0):
+            raise ValueError("invalid sprof per-thread sample row")
+        rows.append(row)
+    return rows
 
 
 def parse_strace(text, n):
@@ -63,11 +96,15 @@ def parse_strace(text, n):
 
 
 def parse_consed(text, n):
-    match = re.fullmatch(r"\s*consed_bytes (\d+) gc_ms ([\d.]+) gcs (\d+)\s*", text)
+    match = re.fullmatch(r"\s*consed_bytes (\d+) gc_ms ([\d.]+) gcs (\d+)"
+                         r"(?: window_ms ([\d.]+))?\s*", text)
     if not match or not n:
         raise ValueError("invalid consed.txt or no completed commands")
-    b, ms, gcs = match.groups()
-    return {"consed_bytes": int(b) / n, "gc_ms": float(ms) / n, "gcs": int(gcs) / n}
+    b, ms, gcs, window_ms = match.groups()
+    result = {"consed_bytes": int(b) / n, "gc_ms": float(ms) / n, "gcs": int(gcs) / n}
+    if window_ms is not None:
+        result["window_ms"] = float(window_ms)
+    return result
 
 
 def parse_calls(text, n):
@@ -99,9 +136,9 @@ def parse_calls(text, n):
             "barriers": totals(barriers), "fdatasyncs": totals(syncs)}
 
 
-def wait_file(path, seconds=15):
+def wait_file(path, seconds=15, *, nonempty=False):
     deadline = time.monotonic() + seconds
-    while not path.exists():
+    while not (path.exists() and (not nonempty or path.stat().st_size > 0)):
         if time.monotonic() >= deadline:
             raise RuntimeError("measurement hook did not produce %s" % path.name)
         time.sleep(0.01)
@@ -125,6 +162,25 @@ class Trace:
         self.proc = None
         self.budget = budget
         self.owner = owner
+        self.identity = None
+        self.not_measured = {}
+
+    def read_identity(self, pid):
+        stat = Path("/proc/%d/stat" % pid).read_text().rsplit(")", 1)[1].split()
+        cmdline = Path("/proc/%d/cmdline" % pid).read_bytes().rstrip(b"\0").split(b"\0")
+        again = Path("/proc/%d/stat" % pid).read_text().rsplit(")", 1)[1].split()
+        if stat[19] != again[19]:
+            raise RuntimeError("process identity changed while reading /proc")
+        return int(stat[19]), [arg.decode("utf-8", "surrogateescape") for arg in cmdline]
+
+    def tracer_identity(self, pid):
+        start, command = self.read_identity(pid)
+        if not command or Path(command[0]).name != "strace":
+            raise RuntimeError("PID %d is not strace; no signal sent" % pid)
+        if not any(command[k] == "-o" and command[k + 1] == str(self.summary)
+                   for k in range(len(command) - 1)):
+            raise RuntimeError("strace PID %d has a different output file; no signal sent" % pid)
+        return start
 
     def start(self):
         check = subprocess.run(["sudo", "-n", "true"], capture_output=True, text=True, timeout=10)
@@ -141,6 +197,12 @@ class Trace:
             if self.proc.poll() is not None:
                 raise RuntimeError("strace attach failed: " + self.errpath.read_text().strip())
             if self.pidfile.exists() and "attached" in self.errpath.read_text():
+                pid = int(self.pidfile.read_text().strip())
+                if pid <= 1:
+                    raise RuntimeError("invalid strace PID file; no signal sent")
+                self.identity = (pid, self.tracer_identity(pid))
+                (self.directory / "strace.identity.json").write_text(json.dumps(
+                    {"pid": pid, "start_time": self.identity[1], "output": str(self.summary)}))
                 return
             time.sleep(0.02)
         raise RuntimeError("strace did not acknowledge attachment: " + self.errpath.read_text().strip())
@@ -149,13 +211,17 @@ class Trace:
         if self.proc is None:
             return
         if self.proc.poll() is None:
-            if not self.pidfile.exists():
-                # No PID means no signal: bounded timeout owns cleanup.
+            try:
+                pid = int(self.pidfile.read_text().strip())
+                if self.identity is None or pid != self.identity[0] or self.tracer_identity(pid) != self.identity[1]:
+                    raise RuntimeError("strace identity/start time changed; no signal sent")
+            except (OSError, ValueError, IndexError, RuntimeError) as exc:
+                reason = "cannot verify tracer identity: %s; no signal sent" % exc
+                self.not_measured["syscalls.stop"] = reason
+                # No alternate PID or signal. The launcher's own timeout owns its
+                # process tree; wait for that bounded cleanup before owner restart.
                 self.proc.wait(timeout=self.budget + 35)
-                raise RuntimeError("strace PID file absent; no signal sent; tell the coordinator")
-            pid = int(self.pidfile.read_text().strip())
-            if pid <= 1:
-                raise RuntimeError("invalid strace PID file; no signal sent")
+                raise RuntimeError(reason) from exc
             p = subprocess.run(["sudo", "-n", "kill", "-INT", str(pid)],
                                capture_output=True, text=True, timeout=10)
             if p.returncode:
@@ -183,6 +249,62 @@ def clean_metrics(before, after, ts, stats):
             else:
                 missing["clean.%s.%s" % (field, key)] = "owner /proc counter unavailable or no completed commands"
     return clean, missing
+
+
+def measure_hook_overhead(run, driver, duration):
+    """One cell-level idle control matching the combined clean counter windows."""
+    record = {"requested_duration_s": duration, "not_measured": {},
+              "scope": "process-wide idle owner plus counter observer; no client commands"}
+    if duration <= 0:
+        record["not_measured"]["consed_bytes"] = "no completed clean counter windows to calibrate"
+        return record
+    node = run.node
+    env, launcher = sanitize_environment(node.env), node.target.path
+    directory = Path(tempfile.mkdtemp(prefix="hook-overhead-", dir=Path(run.args.out) / run.label))
+    record["artifacts"] = str(directory.relative_to(run.args.out))
+    try:
+        node.stop()
+        node.env = dict(env, FN_LOAD_CONSED_DIR=str(directory))
+        node.launcher, node.env = node.target.launcher(node.work, [driver.HOOKS / "op-consed.lisp"], node.env)
+        node.start()
+        (directory / "start").touch()
+        wait_file(directory / "ready", nonempty=True)
+        before = driver.proc_snapshot(node.pid)
+        started = time.monotonic()
+        deadline = started + duration
+        while time.monotonic() < deadline:
+            time.sleep(min(0.5, max(0, deadline - time.monotonic())))
+        (directory / "stop").touch()
+        after = driver.proc_snapshot(node.pid)
+        wait_file(directory / "done", 120)
+        record.update(parse_consed((directory / "consed.txt").read_text(), 1))
+        record["duration_s"] = record["window_ms"] / 1000
+        if before and after and before.get("cpu_s") is not None and after.get("cpu_s") is not None:
+            record["cpu_ms"] = (after["cpu_s"] - before["cpu_s"]) * 1000
+        else:
+            record["not_measured"]["cpu_ms"] = "idle owner /proc CPU unavailable"
+    except Exception as exc:
+        record["not_measured"]["calibration"] = "%s: %s" % (type(exc).__name__, exc)
+    finally:
+        node.stop()
+        node.env, node.launcher = env, launcher
+    (directory / "result.json").write_text(json.dumps(record, indent=1))
+    return record
+
+
+def apply_hook_overhead(operations, overhead):
+    for record in operations.values():
+        clean = record.get("clean", {})
+        n, seconds = clean.get("n", 0), clean.get("window_ms", 0) / 1000
+        if not n:
+            continue
+        clean["hook_correction"] = "idle-control rate times counter window / completed n; signed estimates, raw values retained"
+        for key in ("consed_bytes", "gc_ms", "gcs", "cpu_ms"):
+            corrected = key + "_corrected_estimate"
+            if key in clean and key in overhead and seconds > 0 and overhead.get("duration_s", 0) > 0:
+                clean[corrected] = clean[key] - overhead[key] * seconds / overhead["duration_s"] / n
+            else:
+                record["not_measured"]["clean." + corrected] = "idle calibration/counter window unavailable"
 
 
 def run(run, ph, driver):
@@ -213,7 +335,7 @@ def run(run, ph, driver):
     known, group = driver.discover_ids(node.port, want=40)
     if not known:
         raise driver.CellError("profile needs discoverable fixture articles")
-    base_env, base_launcher = dict(node.env), node.launcher
+    base_env, base_launcher = sanitize_environment(node.env), node.target.path
     result = {op: {"not_measured": {"op": why}} for op, why in skipped.items()}
     ops = [op for op in ops if op not in skipped]
     for op in ops:
@@ -259,10 +381,7 @@ def run(run, ph, driver):
             directory = Path(tempfile.mkdtemp(prefix=window + "-", dir=op_dir))
             # No profile hook from any earlier window survives this owner restart.
             node.stop()
-            node.env = dict(base_env)
-            for key in list(node.env):
-                if key.startswith("FN_LOAD_PROF") or key in ("FN_LOAD_CONSED_DIR", "XL_PROF_DIR", "XL_HOOK", "FN_LOAD_GC_LOG", "FN_LOAD_IDLE_GC"):
-                    node.env.pop(key)
+            node.env = sanitize_environment(base_env)
             hooks = []
             if window == "clean":
                 hooks = [driver.HOOKS / "op-consed.lisp"]
@@ -352,7 +471,7 @@ def run(run, ph, driver):
                         # uses the same settling interval before issuing commands.
                         time.sleep(0.5)
                     else:
-                        wait_file(directory / "ready")
+                        wait_file(directory / "ready", nonempty=window == "clean")
                 before = driver.proc_snapshot(node.pid)
                 ts, returned_ids = [], []
                 start = time.monotonic()
@@ -400,7 +519,13 @@ def run(run, ph, driver):
                     else:
                         flat = directory / "sprof.000.txt"
                         record["sprof"][window] = str(flat.relative_to(run.args.out))
-                        frames = parse_sprof(flat.read_text())
+                        sidecar = directory / "sprof.000.threads.jsonl"
+                        error = directory / "sprof.000.threads.error.txt"
+                        if error.exists():
+                            raise RuntimeError("per-thread samples unavailable: " + error.read_text().strip())
+                        frames = parse_sprof(flat.read_text(), thread_samples=sidecar.read_text())
+                        wr["controller_samples_removed"] = sum(row["count"] for row in
+                            parse_thread_samples(sidecar.read_text()) if row["thread"] == "fn-load-prof")
                         record["top_frames_" + window] = frames
                         if not frames:
                             record["not_measured"]["top_frames_" + window] = "flat report has no sample rows"
@@ -432,11 +557,22 @@ def run(run, ph, driver):
                     except Exception as exc:
                         record["not_measured"]["syscalls.stop"] = str(exc)
                         raise
+                if trace:
+                    record["not_measured"].update(trace.not_measured)
                 close_connection(c)
                 node.stop()
             # Keep a recoverable per-operation result even if a later setup fails.
             (directory.parent / "result.json").write_text(json.dumps(record, indent=1))
         node.env, node.launcher = dict(base_env), base_launcher
-    return {"op_profile": result, "not_measured": {
+    duration = sum(record.get("clean", {}).get("window_ms", 0) / 1000 for record in result.values())
+    overhead = measure_hook_overhead(run, driver, duration)
+    apply_hook_overhead(result, overhead)
+    for op, record in result.items():
+        directory = Path(run.args.out) / run.label / "op-profile" / op
+        if directory.exists():
+            (directory / "result.json").write_text(json.dumps(record, indent=1))
+    missing = {"hook_overhead." + key: why for key, why in overhead["not_measured"].items()}
+    missing.update({
         "%s.%s" % (op, key): reason for op, record in result.items()
-        for key, reason in record["not_measured"].items()}}
+        for key, reason in record["not_measured"].items()})
+    return {"op_profile": result, "hook_overhead": overhead, "not_measured": missing}

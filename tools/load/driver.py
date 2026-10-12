@@ -1473,6 +1473,10 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
     node = Node(target, work, wl.init_flags(data, spec["preset"]), spec["groups"], sbcl,
                 hooks, work / "gc.log", env_extra, spec.get("sampler_s", 1.0),
                 spec.get("heap", "decided"), None)
+    if cell.workload in ("op-prof", "pub-prof"):
+        from tools.load.profile_common import sanitize_environment
+        node.env = sanitize_environment(node.env)
+        node.launcher = target.path
     ctr = Counters()
     run = Run(node, spec, ctr, args)
     run.peers = None
@@ -1604,7 +1608,7 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
             cells_mod.attach_lock_metrics(cr["phases"], text)
         cr["metrics"], cr["not_measured"] = cells_mod.derive(cell.workload, cr["phases"])
         for phase in cr["phases"]:
-            for kind in ("op_profile", "floor", "pub_profile"):
+            for kind in ("op_profile", "floor", "pub_profile", "hook_overhead"):
                 if kind in phase:
                     cr[kind] = phase[kind]
         if spec.get("sprof") and not list(work.glob("sprof.*.txt")):

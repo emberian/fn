@@ -10,6 +10,7 @@
 ;;;                              acknowledge ready, stop on sibling stop, emit done.
 ;;;                              Without it the existing timed windows are unchanged.
 (in-package "ACL2")
+(load (merge-pathnames "profile-support.lisp" *load-truename*))
 (load (merge-pathnames "w13-idle-gc.lisp" (or *load-truename* *default-pathname-defaults*)))
 (let ((out (sb-ext:posix-getenv "FN_LOAD_PROF")))
   (when (and out (plusp (length out)))
@@ -33,6 +34,11 @@
                                                             (expt 10 (if dot (- (length interval) dot 1) 0)))
                                                          1.0))
                                                 0.01)
+                           ;; A snapshot thread list excluding this controller
+                           ;; would omit threads born later, notably per-batch
+                           ;; syncers. Keep :all and export self samples by thread
+                           ;; for parser subtraction when INTERVAL is supplied.
+                           ;; Unset new keys preserve existing reports/behaviour.
                            :threads :all)
                   (if (and trigger interval)
                       (progn
@@ -50,6 +56,13 @@
                                      :direction :output :if-exists :supersede)
                     (let ((*standard-output* s))
                       (funcall (intern "REPORT" "SB-SPROF") :type :flat :max 60)))
+                  (when interval
+                    (handler-case
+                        (fn-load-thread-samples (format nil "~a.~3,'0d.threads.jsonl" out k))
+                      (error (e)
+                        (with-open-file (s (format nil "~a.~3,'0d.threads.error.txt" out k)
+                                           :direction :output :if-exists :supersede)
+                          (format s "~a~%" e)))))
                   (when graph
                     (with-open-file (s (format nil "~a.~3,'0d.graph.txt" out k)
                                        :direction :output :if-exists :supersede)

@@ -1,11 +1,16 @@
 """Laptop controls for profile data and window isolation; no node image required."""
 import tempfile
 import unittest
+import json
+import os
+import shutil
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from tools.load import cells, driver, op_profile, pub_profile, workloads
+from tools.load.profile_common import sanitize_environment
 
 
 class ParserTests(unittest.TestCase):
@@ -43,6 +48,38 @@ class ParserTests(unittest.TestCase):
         for text, n in (("", 100), ("consed_bytes 10 gc_ms 0 gcs 0", 0)):
             with self.assertRaises(ValueError):
                 op_profile.parse_consed(text, n)
+
+    def test_counter_duration_and_idle_correction_are_visible(self):
+        self.assertEqual(op_profile.parse_consed("consed_bytes 6000 gc_ms 12.5 gcs 2 window_ms 2000", 100)["window_ms"], 2000)
+        operations = {"GROUP": {"clean": {"n": 10, "window_ms": 1000, "consed_bytes": 5}, "not_measured": {}}}
+        op_profile.apply_hook_overhead(operations, {"duration_s": 2, "consed_bytes": 400})
+        self.assertEqual(operations["GROUP"]["clean"]["consed_bytes"], 5)
+        self.assertEqual(operations["GROUP"]["clean"]["consed_bytes_corrected_estimate"], -15)
+        self.assertIn("clean.gc_ms_corrected_estimate", operations["GROUP"]["not_measured"])
+
+    def test_controller_subtraction_preserves_later_syncer_and_shared_frames(self):
+        sidecar = "\n".join(json.dumps(row) for row in (
+            dict(thread="fn-load-prof", function="SLEEP", count=60),
+            dict(thread="fn owner", function="SLEEP", count=10),
+            dict(thread="fn owner syncer", function="FDATASYNC", count=30)))
+        rows = op_profile.parse_sprof("raw flat report", thread_samples=sidecar)
+        self.assertEqual(rows[0], dict(count=30, percent=75.0, cumulative_percent=75.0, function="FDATASYNC"))
+        self.assertEqual(rows[1], dict(count=10, percent=25.0, cumulative_percent=100.0, function="SLEEP"))
+        with self.assertRaises(ValueError):
+            op_profile.parse_thread_samples('{"thread":"owner","function":"F","count":-1}')
+        with self.assertRaises(ValueError):
+            op_profile.parse_sprof("Number of samples: 101", thread_samples=sidecar)
+
+    def test_current_sbcl_flat_column_order(self):
+        text = "Self Total Cumul\n 1 60 60.0 80 80.0 60 60.0 - F\n 2 25 25.0 40 40.0 85 85.0 - G\n"
+        self.assertEqual(op_profile.parse_sprof(text)[1]["cumulative_percent"], 85)
+
+    def test_shared_environment_sanitizer(self):
+        env = {"XL_PROF": "1", "XL_PROF_SECONDS": "3", "XL_HOOK": "old", "XL_PROF_DIR": "old",
+               "FN_LOAD_PROF": "old", "FN_LOAD_CONSED_DIR": "old", "SBCL_USER_ARGS": "--heap", "PATH": "path"}
+        self.assertEqual(sanitize_environment(env), {"SBCL_USER_ARGS": "--heap", "PATH": "path"})
+        self.assertEqual(env["XL_PROF"], "1")  # caller's environment remains intact
+        self.assertIs(op_profile.sanitize_environment, pub_profile.sanitize_environment)
 
     def test_calls_separates_barrier_and_log_sync(self):
         text = '''window_ms 100 gc_ms 0 consed_mb 1
@@ -151,16 +188,153 @@ class PublicationParserTests(unittest.TestCase):
             self.assertEqual(cell.spec["phases"][0]["kind"], "pub_profile")
 
 
+class TracerIdentityTests(unittest.TestCase):
+    def test_stop_checks_start_time_and_command_before_sudo_signal(self):
+        with tempfile.TemporaryDirectory() as temp:
+            trace = op_profile.Trace(77, Path(temp), 1)
+            trace.pidfile.write_text("123")
+            trace.proc = Mock()
+            trace.proc.poll.return_value = None
+            trace.identity = (123, 456)
+            command = ["/usr/bin/strace", "-f", "-c", "-o", str(trace.summary)]
+            for actual in ((457, command), (456, ["sbcl", "-o", str(trace.summary)]),
+                           (456, ["strace", "-o", "another-window"])):
+                with patch.object(trace, "read_identity", return_value=actual), patch.object(op_profile.subprocess, "run") as signal:
+                    with self.assertRaises(RuntimeError):
+                        trace.stop()
+                    signal.assert_not_called()
+                    self.assertIn("syscalls.stop", trace.not_measured)
+            with patch.object(trace, "read_identity", return_value=(456, command)), \
+                 patch.object(op_profile.subprocess, "run", return_value=SimpleNamespace(returncode=0)) as signal:
+                trace.stop()
+                self.assertEqual(signal.call_args.args[0], ["sudo", "-n", "kill", "-INT", "123"])
+
+    def test_stat_start_time_field_handles_parentheses_in_comm(self):
+        with tempfile.TemporaryDirectory() as temp:
+            trace = op_profile.Trace(77, Path(temp), 1)
+            fields = ["S"] + ["0"] * 18 + ["98765"] + ["0"] * 3
+            stat = "123 (strace (worker)) " + " ".join(fields)
+            with patch.object(Path, "read_text", return_value=stat), \
+                 patch.object(Path, "read_bytes", return_value=b"/usr/bin/strace\0-o\0window\0"):
+                self.assertEqual(trace.read_identity(123), (98765, ["/usr/bin/strace", "-o", "window"]))
+
+
+@unittest.skipUnless(shutil.which("sbcl"), "SBCL unavailable for image-free hook controls")
+class HookRuntimeTests(unittest.TestCase):
+    def lisp(self, code, directory, **extra_env):
+        script = directory / "test.lisp"
+        script.write_text('(defpackage "ACL2" (:use "COMMON-LISP"))\n' + code)
+        env = sanitize_environment(os.environ)
+        env.update(extra_env)
+        result = subprocess.run([shutil.which("sbcl"), "--noinform", "--script", str(script)],
+                                cwd=Path(__file__).resolve().parents[1], env=env,
+                                capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, (result.stdout + result.stderr)[-4000:])
+        return result.stdout
+
+    def test_aborting_exit_forwards_when_all_reporting_files_fail(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            text = self.lisp('''
+(in-package "ACL2")
+(defun fnn-exit (&rest args) (throw 'forwarded args))
+(load "planning/evidence/load/hooks/exit-prof.lisp")
+(format t "FORWARDED ~s~%" (catch 'forwarded (fnn-exit 7 :abort t)))
+''', directory, FN_LOAD_EXITPROF=str(directory / "missing-parent" / "report"))
+            self.assertIn("FORWARDED (7 :ABORT T)", text)
+            self.assertFalse((directory / "missing-parent").exists())
+
+    def test_exit_baseline_excludes_profiler_and_observer_setup(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            self.lisp('''
+(in-package "ACL2")
+(require :sb-sprof)
+(defvar *setup* nil)
+(defvar *operation* nil)
+(sb-int:encapsulate 'sb-sprof:start-profiling 'test-setup
+ (lambda (fn &rest args)
+   (setf *setup* (make-array (* 32 1024 1024) :element-type '(unsigned-byte 8) :initial-element 1))
+   (apply fn args)))
+(defun fnn-exit (&rest args) (throw 'forwarded args))
+(load "planning/evidence/load/hooks/exit-prof.lisp")
+(setf *operation* (make-array (* 1024 1024) :element-type '(unsigned-byte 8) :initial-element 1))
+(catch 'forwarded (fnn-exit 0))
+''', directory, FN_LOAD_EXITPROF=str(directory / "report"), FN_LOAD_EXITPROF_STOP=str(directory / "stop"))
+            counters = pub_profile.parse_exit_consed((directory / "report.consed.txt").read_text())
+            self.assertGreater(counters["consed_bytes"], 0)
+            self.assertLess(counters["consed_bytes"], 2 * 1024 * 1024,
+                            "32 MiB profiler setup must be outside the 1 MiB operation window")
+
+    def test_trigger_poll_and_sleep_allocate_no_lisp_objects(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            text = self.lisp('''
+(in-package "ACL2")
+(load "planning/evidence/load/hooks/profile-support.lisp")
+(let ((name (fn-load-trigger-name (sb-ext:posix-getenv "FN_TEST_TRIGGER"))))
+ (dotimes (i 5) (fn-load-trigger-present-p name) (sleep 0.02))
+ (let ((before (sb-ext:get-bytes-consed)))
+   (dotimes (i 10000) (fn-load-trigger-present-p name))
+   (dotimes (i 10) (fn-load-trigger-present-p name) (sleep 0.02))
+   (let ((delta (- (sb-ext:get-bytes-consed) before)))
+     (format t "POLL-BYTES ~d~%" delta))))
+''', directory, FN_TEST_TRIGGER=str(directory / "absent"))
+            self.assertIn("POLL-BYTES 0", text)
+
+    def test_thread_sample_export_retains_a_later_created_syncer(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            self.lisp('''
+(in-package "ACL2")
+(load "planning/evidence/load/hooks/profile-support.lisp")
+(require :sb-sprof)
+(sb-sprof:start-profiling :mode :alloc :threads :all :max-samples 10000)
+(let ((thread (sb-thread:make-thread
+ (lambda () (let ((keep (make-array 1000)))
+              (dotimes (i 1000) (setf (aref keep i) (make-array 10000 :initial-element i)))))
+ :name "fn owner syncer")))
+ (sb-thread:join-thread thread))
+(sb-sprof:stop-profiling)
+(let ((*standard-output* (make-broadcast-stream))) (sb-sprof:report :type :flat :max 1))
+(fn-load-thread-samples (sb-ext:posix-getenv "FN_TEST_SIDECAR"))
+''', directory, FN_TEST_SIDECAR=str(directory / "threads.jsonl"))
+            rows = op_profile.parse_thread_samples((directory / "threads.jsonl").read_text())
+            self.assertTrue(any(row["thread"] == "fn owner syncer" and row["count"] > 0 for row in rows))
+
+
 class WindowTests(unittest.TestCase):
+    def test_cell_idle_calibration_issues_no_commands(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp)
+            (work / "test").mkdir()
+            target = SimpleNamespace(path="base", launcher=lambda work, hooks, env: ("hooked", env))
+            node = SimpleNamespace(work=work, env={}, target=target, pid=123, launcher="base", stop=Mock(), start=Mock())
+            run = SimpleNamespace(node=node, args=SimpleNamespace(out=str(work)), label="test", conn=Mock())
+            def ready(path, seconds=15, **kwargs):
+                path.write_text("1")
+                if path.name == "done":
+                    (path.parent / "consed.txt").write_text("consed_bytes 400 gc_ms 0 gcs 0 window_ms 2000")
+            with patch.object(op_profile, "wait_file", side_effect=ready), \
+                 patch.object(op_profile.time, "monotonic", side_effect=[10, 12]), \
+                 patch.object(driver, "proc_snapshot", side_effect=[{"cpu_s": 0}, {"cpu_s": .001}]):
+                control = op_profile.measure_hook_overhead(run, driver, 2)
+            run.conn.assert_not_called()
+            node.start.assert_called_once()
+            self.assertEqual(control["consed_bytes"], 400)
+            self.assertEqual(control["duration_s"], 2)
+            self.assertEqual(control["cpu_ms"], 1)
+
     def test_each_window_restarts_with_only_its_hook_and_warmup_is_excluded(self):
         with tempfile.TemporaryDirectory() as temp:
             work = Path(temp)
             launches, commands = [], []
             class Target:
+                path = "base"
                 def launcher(self, work, hooks, env):
                     launches.append((list(hooks), dict(env)))
                     return "launcher", env
-            node = SimpleNamespace(work=work, env={}, launcher="base", target=Target(), pid=123,
+            node = SimpleNamespace(work=work, env={"XL_PROF": "1", "XL_PROF_SECONDS": "3"}, launcher="base", target=Target(), pid=123,
                                    port=1234, stop=lambda: None, start=lambda: None)
             class Conn:
                 def __init__(self):
@@ -172,20 +346,23 @@ class WindowTests(unittest.TestCase):
             run = driver.Run(node, {}, driver.Counters(), SimpleNamespace(out=str(work), box="local"))
             run.label = "test"
             run.conn = Conn
-            def ready(path, seconds=15):
-                path.touch()
+            def ready(path, seconds=15, **kwargs):
+                path.write_text("1")
                 if path.name == "done":
-                    (path.parent / "consed.txt").write_text("consed_bytes 100 gc_ms 0 gcs 0\n")
+                    (path.parent / "consed.txt").write_text("consed_bytes 100 gc_ms 0 gcs 0 window_ms 1\n")
                     (path.parent / "timing.txt").write_text("window_ms 1 gc_ms 0 consed_mb 1\nacl2-entry ONE 2 1\n")
                     sample = Path(__file__).parent / "fixtures" / "load-sprof-flat.txt"
                     (path.parent / "sprof.000.txt").write_text(sample.read_text())
                     (path.parent / "sprof.000.graph.txt").write_text("graph")
+                    (path.parent / "sprof.000.threads.jsonl").write_text('{"thread":"fn owner","function":"F","count":1}\n')
             with patch.object(driver, "discover_ids", return_value=(["<fixture>"], "fn.test")), \
                  patch.object(driver, "proc_snapshot", return_value={"cpu_s": 1, "io": {}, "faults": {}}), \
                  patch.object(op_profile, "wait_file", side_effect=ready), \
-                 patch.object(op_profile.time, "sleep"):
+                 patch.object(op_profile.time, "sleep"), \
+                 patch.object(op_profile, "measure_hook_overhead", return_value={"duration_s": .001, "consed_bytes": 0, "not_measured": {}}) as overhead:
                 out = op_profile.run(run, {"ops": ["GROUP"], "reps": 3, "warmup": 50}, driver)
             self.assertEqual(len(launches), 4)
+            self.assertTrue(all("XL_PROF" not in env and "XL_PROF_SECONDS" not in env for _, env in launches))
             self.assertEqual([h[0][0].name for h in launches],
                              ["op-consed.lisp", "w6-prof.lisp", "w6-prof.lisp", "prof2.lisp"])
             self.assertEqual(len(commands), 4 * (1 + 50 + 3))
@@ -196,6 +373,8 @@ class WindowTests(unittest.TestCase):
             self.assertTrue((work / "test/op-profile/GROUP/result.json").exists())
             self.assertEqual(node.env, {})
             self.assertEqual(node.launcher, "base")
+            overhead.assert_called_once()
+            self.assertEqual(overhead.call_args.args[2], .001)
 
 
 if __name__ == "__main__":

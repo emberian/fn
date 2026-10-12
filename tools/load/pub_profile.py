@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 from tools.load.op_profile import parse_sprof, parse_strace, wait_file
+from tools.load.profile_common import sanitize_environment
 
 OPERATIONS = ("open_replay", "publish", "reopen_checkpoint")
 SYSCALLS = ("fsync", "fdatasync", "write", "pwrite64", "read", "pread64", "openat",
@@ -89,11 +90,6 @@ class ChildCommand:
         return ["timeout", "--signal=TERM", "--kill-after=30", str(seconds), *child]
 
 
-def base_environment(env):
-    return {key: value for key, value in env.items()
-            if not key.startswith("FN_LOAD_") and key not in ("XL_HOOK", "XL_PROF", "XL_PROF_SECONDS")}
-
-
 def collect_profile(prefix, record, report_timeout):
     wait_file(Path(str(prefix) + ".done"), report_timeout)
     error = Path(str(prefix) + ".error.txt")
@@ -112,7 +108,7 @@ def collect_profile(prefix, record, report_timeout):
 def run(run, ph, driver):
     node = run.node
     original = (node.store, node.launcher, dict(node.env), node.launcher_decides)
-    env = base_environment(node.env)
+    env = sanitize_environment(node.env)
     out = Path(run.args.out).resolve() / run.label / "pub-profile"
     out.mkdir(parents=True, exist_ok=True)
     operations = {op: {"windows": {}, "not_measured": {}} for op in OPERATIONS}
