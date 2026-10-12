@@ -30,6 +30,7 @@
 ; which Codex showed sizes nothing (physical octets bound neither expanded
 ; records nor memberships).
 (in-package "ACL2")
+(include-book "bp-session-profile")
 (include-book "memory-model")
 (include-book "admission-memory")
 
@@ -1293,3 +1294,149 @@
   :hints (("Goal" :in-theory (union-theories '(nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
            :use (fn-mo-serve-launch-fits-the-address-space-at-the-decision fn-mo-serve-decide-heap-mb))))
 
+
+; M22: one ACL2 decision for the run's installed resources.
+(defun fn-mo-serve-bp-need (bp-terms)
+  (declare (xargs :guard t))
+  (if (not bp-terms) 0
+    (let ((xs (true-list-fix bp-terms)))
+      (and (true-listp bp-terms) (equal (len bp-terms) 4)
+           (fn-bpsp-profilep (nth 0 xs))
+           (fn-bpnpf-node-profilep (nth 1 xs))
+           (posp (nth 2 xs)) (posp (nth 3 xs))
+           (fn-bpsp-node-capacity (nth 0 xs) (nth 1 xs)
+                                  (nth 2 xs) (nth 3 xs))))))
+
+(defun fn-mo-serve-total-pools
+  (profile cold output peer workers cache-limit root bp-terms)
+  (declare (xargs :guard t))
+  (let ((bp (fn-mo-serve-bp-need bp-terms)))
+    (and (natp bp)
+         (+ (fn-mo-serve-pools profile cold output peer workers cache-limit root)
+            bp))))
+
+(defun fn-mo-serve-run-limit
+  (resident profile cold output peer workers cache-limit root bp-terms)
+  (declare (xargs :guard t))
+  (let ((pools (fn-mo-serve-total-pools
+                 profile cold output peer workers cache-limit root bp-terms)))
+    (and (natp pools) (fn-mo-serve-limit resident pools))))
+
+(defun fn-mo-serve-run-decide
+  (profile img trigger live cold config resident address core nursery tot
+   output peer workers cache-limit root bp-terms)
+  (declare (xargs :guard t))
+  (let ((pools (fn-mo-serve-total-pools
+                 profile cold output peer workers cache-limit root bp-terms)))
+    (if (not (natp pools))
+        (list :refused :invalid-bp-session-terms 0 0)
+      (fn-mo-serve-decide profile img trigger live cold config resident address
+                          core nursery tot pools
+                          (fn-mo-serve-pool-threads cold peer)))))
+
+(defun fn-mo-serve-bp-store-need
+  (resident profile cold output peer workers cache-limit root bp-terms core nursery)
+  (declare (xargs :guard t))
+  (let ((limit (fn-mo-serve-run-limit resident profile cold output peer workers
+                                     cache-limit root bp-terms)))
+    ; Include every non-BP pool, which has already obtained authority beside
+    ; the Store; exclude ONLY the BP bank we are about to install. Never a
+    ; subtraction from the observed dynamic space (that would accept 85%).
+    (+ (fn-mm-launch-dynamic limit (fn-prstartup-image-bound core) nursery)
+       (fn-mo-serve-pools profile cold output peer workers cache-limit root))))
+
+(defun fn-mo-serve-owner-limit
+  (resident profile cold output peer workers cache-limit root bp-terms)
+  (declare (xargs :guard t))
+  (fn-mo-serve-run-limit resident profile cold output peer workers cache-limit root bp-terms))
+
+(defun fn-mo-serve-probe-limit
+  (resident profile cold output peer workers cache-limit root bp-terms)
+  (declare (xargs :guard t))
+  (fn-mo-serve-run-limit resident profile cold output peer workers cache-limit root bp-terms))
+
+; Approved M22 statements; only proof hints are added.
+(defthm fn-mo-serve-owner-limit-equals-probe-limit-by-definition
+  (equal (fn-mo-serve-owner-limit resident profile cold output peer workers cache-limit root bp-terms)
+         (fn-mo-serve-probe-limit resident profile cold output peer workers cache-limit root bp-terms))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-mo-serve-owner-limit fn-mo-serve-probe-limit))))
+
+(defthm fn-mo-serve-launch-conserves-the-resident-partition
+  (implies
+    (equal (car (fn-mo-serve-run-decide
+                   profile img trigger live cold config resident address core nursery tot
+                   output peer workers cache-limit root bp-terms)) :heap)
+    (let ((limit (fn-mo-serve-owner-limit
+                   resident profile cold output peer workers cache-limit root bp-terms))
+          (pools (fn-mo-serve-total-pools
+                   profile cold output peer workers cache-limit root bp-terms)))
+      (and (natp limit) (natp pools)
+           (equal (+ limit pools) (fn-mm-least-observation resident))
+           (equal pools
+             (+ (fn-mo-serve-pools profile cold output peer workers cache-limit root)
+                (fn-mo-serve-bp-need bp-terms))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mo-serve-run-decide fn-mo-serve-owner-limit fn-mo-serve-run-limit fn-mo-serve-total-pools fn-mo-serve-limit)
+(fn-mo-serve-decide fn-mo-serve-pools fn-mo-serve-bp-need fn-mm-least-observation))
+:use ((:instance fn-mo-serve-launch-holds-its-pools-at-the-decision
+(pools (fn-mo-serve-total-pools profile cold output peer workers cache-limit root bp-terms))
+(pool-threads (fn-mo-serve-pool-threads cold peer)))))))
+
+; The approved BP composition uses the run's captured charge and decided heap.
+(local (defthm fn-mo-serve-bp-need-is-the-capacity-by-definition
+ (implies (and bp-terms (natp (fn-mo-serve-bp-need bp-terms)))
+  (and (true-listp bp-terms)
+       (equal (fn-mo-serve-bp-need bp-terms)
+              (fn-bpsp-node-capacity (nth 0 bp-terms) (nth 1 bp-terms)
+                                    (nth 2 bp-terms) (nth 3 bp-terms)))))
+ :hints (("Goal" :in-theory (e/d (fn-mo-serve-bp-need)
+          (fn-bpsp-node-capacity fn-bpsp-profilep fn-bpnpf-node-profilep))))))
+
+(local (defthm fn-mo-serve-pools-natp-by-definition
+ (natp (fn-mo-serve-pools profile cold output peer workers cache-limit root))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (e/d (fn-mo-serve-pools)
+          (fn-crv-pool-budget fn-prstartup-launch-extra fn-heap-stack-octets))))))
+
+(local (defthm fn-mo-serve-store-dynamic-natp-by-definition
+ (natp (fn-mm-launch-dynamic limit core nursery))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (e/d (fn-mm-launch-dynamic) (fn-heap-with-nursery fn-heap-core-dynamic))))))
+
+(defthm fn-mo-serve-bp-launch-admits-its-startup
+  (implies
+    (and bp-terms
+      (equal (car (fn-mo-serve-run-decide
+                     profile img trigger live cold config resident address core nursery tot
+                     output peer workers cache-limit root bp-terms)) :heap))
+    (equal
+      (car (fn-bpsp-node-startup
+        (nth 0 bp-terms) (nth 1 bp-terms) (nth 2 bp-terms) (nth 3 bp-terms)
+        (* *fn-heap-mib*
+           (cadr (fn-mo-serve-run-decide
+                   profile img trigger live cold config resident address core nursery tot
+                   output peer workers cache-limit root bp-terms)))
+        (fn-mo-serve-bp-store-need resident profile cold output peer workers cache-limit root
+                                  bp-terms core nursery)))
+      :hold))
+  :rule-classes nil
+ :hints (("Goal"
+ :in-theory (e/d (fn-mo-serve-run-decide fn-mo-serve-total-pools fn-mo-serve-run-limit
+                 fn-mo-serve-bp-store-need fn-mo-serve-dynamic)
+    (fn-mo-serve-decide fn-mo-serve-limit fn-mo-serve-pools fn-mo-serve-bp-need
+     fn-mm-launch-dynamic fn-bpsp-node-startup fn-bpsp-node-capacity
+     fn-heap-mb-of fn-bpsp-node-startup-holds-the-capacity))
+ :use ((:instance fn-mo-serve-decide-heap-mb
+         (pools (fn-mo-serve-total-pools profile cold output peer workers cache-limit root bp-terms))
+         (pool-threads (fn-mo-serve-pool-threads cold peer)))
+       (:instance fn-bpsp-node-startup-holds-the-capacity
+         (profile (nth 0 bp-terms)) (node (nth 1 bp-terms))
+         (transfer-mru (nth 2 bp-terms)) (segment (nth 3 bp-terms))
+         (dynamic (* *fn-heap-mib* (cadr (fn-mo-serve-run-decide profile img trigger live cold config
+                     resident address core nursery tot output peer workers cache-limit root bp-terms))))
+         (store-need (fn-mo-serve-bp-store-need resident profile cold output peer workers cache-limit root bp-terms core nursery)))
+       (:instance fn-heap-mb-of-covers
+         (octets (fn-mo-serve-dynamic
+           (fn-mo-serve-limit resident (fn-mo-serve-total-pools profile cold output peer workers cache-limit root bp-terms))
+           core nursery (fn-mo-serve-total-pools profile cold output peer workers cache-limit root bp-terms))))))))

@@ -265,6 +265,8 @@
 ;; K-ADMIT: the memory gate the prepare applies (memory landing 3+4a).
 (include-book "../books/admission-memory")
 (include-book "../books/heap-command")
+(include-book "../books/owner-memory-holding")
+(include-book "../books/owner-memory-run")
 (include-book "../books/cold-read-reservation")
 ; PRF-986 (PKT-639): the TLS handshake admission (fn-owner-handshake-admit/
 ; -done/-leave) and the PROXY header on a trusted path (fn-owner-proxy-*);
@@ -640,6 +642,10 @@
     (fn-osb-install (fn-owner-core state) values)
     (if (equal verdict :installed)
         (let* ((state (fn-owner-replace-core next state))
+               ; Startup owns a fresh semantic carrier. Run authority has
+               ; already excluded a predecessor with outstanding resources.
+               (state (f-put-global 'fn-owner-memory-held-bank (fn-adm-hh-initial) state))
+               (state (f-put-global 'fn-owner-memory-lease-octets 0 state))
                (state (f-put-global 'fn-owner-store-profile values state))
                ; PRF-996: the carried (REQUESTED . FUNDED) the live status
                ; and health report (books/limits-live.lisp fn-lim-report-
@@ -1398,7 +1404,7 @@
 ; totals-extend under R, the fold for a valid cache by fn-ct-totals-extend-
 ; of-a-valid-cache).  Synced as fn-owner-record-octets syncs.
 (defun fn-owner-record-totals (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state) :verify-guards t))
   (let* ((s (fn-owner-store state))
          (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
          (cache (if (boundp-global 'fn-owner-record-totals state)
@@ -1712,54 +1718,49 @@
 ; install that computed it never returned, before the run's connection budget
 ; could refuse.  Answers the LIMIT and the CFG.
 (defun fn-owner-memory-configure-gate (img resident-obs trigger pub-trigger profile tlsp live
-                                           cold output peer workers cache-limit root window
-                                           config state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((least (fn-mm-resident-limit nil resident-obs))
-         (pools (fn-mo-serve-pools profile cold output peer workers cache-limit root))
-         (limit (and (natp least) (nfix (- least pools))))
-         (ocfg (fn-owner-config state))
-         (cfg (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
-                                   profile window (fn-oag-agent ocfg) (nfix config)))
-         (state (f-put-global 'fn-owner-memory-run
-                              (list img limit trigger pub-trigger profile tlsp live cold
-                                    window (nfix config) nil)
-                              state))
-         ; A-OVER-WINDOW-FIT: the OVER quantum the gate charges, which
-         ; the host serves (host/native/owner.lisp fnn-owner-over-window).
-         (state (f-put-global 'fn-owner-memory-over-window
-                              (fn-mm-over-window-fit profile cfg) state))
-         ; The octets of a NEWNEWS or LIST quantum (fn-mm-cursor-octets-fit,
-         ; within the same LARGE term: fn-mm-cursor-octets-fit-is-charged);
-         ; their visits stay the unfitted quantum (lane spans-newnews).
-         (state (f-put-global 'fn-owner-memory-cursor-octets
-                              (fn-mm-cursor-octets-fit profile cfg) state)))
-    (mv limit cfg state)))
+ cold output peer workers cache-limit root window config bp-terms core nursery state)
+ (declare (xargs :stobjs state :mode :program))
+ (let* ((limit (fn-mo-serve-run-limit resident-obs profile cold output peer workers cache-limit root bp-terms))
+        (ocfg (fn-owner-config state))
+        (cfg (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
+                                  profile window (fn-oag-agent ocfg) (nfix config)))
+        (state (f-put-global 'fn-owner-memory-envelope
+                 (fn-menv-make resident-obs output peer workers cache-limit root bp-terms core nursery) state))
+        (state (f-put-global 'fn-owner-memory-capacity nil state))
+        (state (f-put-global 'fn-owner-memory-run
+                 (list img limit trigger pub-trigger profile tlsp live cold window (nfix config) nil) state))
+        (state (f-put-global 'fn-owner-memory-over-window (fn-mm-over-window-fit profile cfg) state))
+        (state (f-put-global 'fn-owner-memory-cursor-octets (fn-mm-cursor-octets-fit profile cfg) state)))
+  (mv limit (fn-adm-priced-cfg cfg (fn-owner-memory-held state) nil) state)))
 
 (defun fn-owner-memory-gate-install (img resident-obs trigger pub-trigger profile tlsp live
-                                         cold output peer workers cache-limit root window
-                                         config state)
-  (declare (xargs :stobjs state :mode :program))
-  (mv-let (limit cfg state)
-    (fn-owner-memory-configure-gate img resident-obs trigger pub-trigger profile tlsp live
-                                    cold output peer workers cache-limit root window
-                                    config state)
-    (declare (ignore limit cfg))
-    (value :hold)))
+ cold output peer workers cache-limit root window config bp-terms core nursery state)
+ (declare (xargs :stobjs state :mode :program))
+ (mv-let (limit cfg state)
+  (fn-owner-memory-configure-gate img resident-obs trigger pub-trigger profile tlsp live
+   cold output peer workers cache-limit root window config bp-terms core nursery state)
+  (declare (ignore limit cfg)) (value :hold)))
 
 (definterface fn-owner-memory-gate-install
   :class ::program)
 
 (defun fn-owner-memory-configure (img resident-obs trigger pub-trigger profile tlsp live cold
                                       output peer workers cache-limit root window config
-                                      address-obs core nursery fn-hist state)
+                                      address-obs core nursery bp-terms quantum fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (mv-let (limit cfg state)
     (fn-owner-memory-configure-gate img resident-obs trigger pub-trigger profile tlsp live
                                     cold output peer workers cache-limit root window
-                                    config state)
+                                    config bp-terms core nursery state)
     (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
-      (let* ((cap (fn-adm-capacity profile img cfg limit tot))
+      (let* ((bare cfg)
+             (cfg (fn-adm-lease-startup-cfg profile img bare limit tot quantum))
+             (state (f-put-global 'fn-owner-memory-lease-cfg
+                      (fn-adm-lease-startup-bank-cfg profile img bare limit tot) state))
+             (state (f-put-global 'fn-owner-memory-lease-octets
+                      (if (natp quantum) (fn-adm-installed-lease-allocation profile
+                       (fn-adm-lease-startup-bank-cfg profile img bare limit tot) quantum) 0) state))
+             (cap (fn-adm-installed-capacity profile img cfg limit tot))
              ; The run's launch by the model at C' (books/heap-command.lisp
              ; fn-mo-run-decide): LIMIT is the configured figure (after the
              ; pools) and no resident observation remains, so the launch's
@@ -1773,7 +1774,7 @@
              (state (f-put-global 'fn-owner-memory-capacity-line
                                   (fn-record-string-octets
                                    (fn-mo-run-capacity-line
-                                    d (fn-adm-capacity-line profile img cfg limit tot)))
+                                    d (fn-adm-installed-capacity-line profile img cfg limit tot)))
                                   state)))
         (mv nil (if (equal (car d) :heap) :hold :refused) fn-hist state)))))
 
@@ -1783,7 +1784,7 @@
 ; The handshakes in flight now (fn-owner-handshake-admit's state), which a
 ; reconfiguration that lowered the live limit leaves outstanding.
 (defun fn-owner-memory-handshakes-in-flight (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t :verify-guards t))
   (if (boundp-global 'fn-owner-handshakes state)
       (len (fn-hsb-flight (f-get-global 'fn-owner-handshakes state)))
     0))
@@ -1792,33 +1793,24 @@
 ; connection count, and the handshake allowance the gate charges (the live
 ; limit, or the handshakes still in flight when a reconfiguration lowered it).
 (defun fn-owner-memory-run-cfg (r v cfg state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((full (fn-owner-memory-cfg v (nth 5 r) (nth 2 r) (nth 3 r) (nth 6 r) (nth 7 r)
-                                   (nth 4 r) (nth 8 r) (fn-oag-agent cfg) (nth 9 r))))
-    (fn-adm-cfg-holding-handshakes full (fn-owner-memory-handshakes-in-flight state))))
+  (declare (xargs :stobjs state :guard t :verify-guards t))
+  (let ((full (fn-owner-memory-cfg v (fn-exp-at 5 r) (fn-exp-at 2 r) (fn-exp-at 3 r) (fn-exp-at 6 r) (fn-exp-at 7 r)
+                                   (fn-exp-at 4 r) (fn-exp-at 8 r) (fn-oag-agent cfg) (fn-exp-at 9 r))))
+    (fn-adm-retained-runtime-cfg
+     (fn-adm-cfg-holding-handshakes full (fn-owner-memory-handshakes-in-flight state))
+     (if (boundp-global 'fn-owner-memory-lease-octets state)
+         (f-get-global 'fn-owner-memory-lease-octets state) 0))))
 
 ; (IMG CFG LIMIT): the CFG rebuilt from the live configuration; LIMIT NIL
 ; until a run configured it, so the gate (fn-mm-gate-p: LIMIT a natural)
 ; admits nothing a run did not configure.
 (defun fn-owner-memory-gate (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (and (boundp-global 'fn-owner-memory-run state)
-           (consp (f-get-global 'fn-owner-memory-run state)))
-      (let* ((r (f-get-global 'fn-owner-memory-run state))
-             (cfg (fn-owner-config state))
-             (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state))
-             (cap (nth 10 r)))
-        (list (nth 0 r)
-              ; ruling (b): the run's C' (fn-adm-capacity at configure, again
-              ; after each live reconfiguration: fn-owner-memory-recapacity)
-              ; bounds the connections the gate prices, as it bounds the readers
-              ; accepted (fn-owner-memory-max-conns); a live reconfiguration
-              ; below it lowers both.
-              (if (posp cap)
-                  (fn-adm-cfg-at full (min (fn-mm-cfg-connections full) cap))
-                full)
-              (nth 1 r)))
-    (list nil nil nil)))
+ (declare (xargs :stobjs state :mode :program))
+ (if (and (boundp-global 'fn-owner-memory-run state) (consp (f-get-global 'fn-owner-memory-run state)))
+  (let* ((r (f-get-global 'fn-owner-memory-run state)) (cfg (fn-owner-config state))
+         (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state)))
+   (list (nth 0 r) (fn-adm-priced-cfg full (fn-owner-memory-held state) (nth 10 r)) (nth 1 r)))
+  (list nil nil nil)))
 
 ; A LIVE RECONFIGURATION AND THE RUN'S CAPACITY (L-RUN-LAUNCH; PRF-223's
 ; statement, which books/connection-budget.lisp's resident model carried
@@ -1845,13 +1837,14 @@
            (c2 (fn-mm-cfg-connections next))
            (raises-c (< (fn-mm-cfg-connections now) c2))
            (raises-h (< (fn-mm-cfg-handshakes now) (fn-mm-cfg-handshakes next)))
-           (held (if (or raises-c (not (natp cap))) c2 (min c2 cap)))
+           (held (fn-owner-memory-held state))
+           (priced-cap (if raises-c nil cap))
            (profile (nth 4 r)) (img (nth 0 r)) (limit (nth 1 r)))
       (cond ((not (or raises-c raises-h)) nil)
-            ((fn-mm-gate-p profile img (fn-adm-cfg-at next held) limit tot) nil)
+            ((fn-mm-gate-p profile img (fn-adm-priced-cfg next held priced-cap) limit tot) nil)
             ((and raises-h
                   (fn-mm-gate-p profile img
-                                (fn-adm-cfg-at (update-nth 7 (fn-mm-cfg-handshakes now) next) held)
+                                (fn-adm-priced-cfg (update-nth 7 (fn-mm-cfg-handshakes now) next) held priced-cap)
                                 limit tot))
              :handshakes-exceed-memory)
             (t :connections-exceed-memory)))))
@@ -1862,25 +1855,24 @@
 ; configure's C' is at most the configured C (fn-adm-capacity-fits), so a
 ; raise is admitted only here.
 (defun fn-owner-memory-recapacity (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state) :verify-guards t
+                  :guard-hints (("Goal" :in-theory
+                   (disable fn-hist-totals-carried fn-hist-sync fn-owner-store
+                            fn-owner-memory-run-cfg fn-adm-installed-capacity
+                            fn-adm-installed-capacity-line fn-record-string-octets)))))
   (if (not (and (boundp-global 'fn-owner-memory-run state)
                 (consp (f-get-global 'fn-owner-memory-run state))))
       (mv fn-hist state)
     (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
-      (let* ((r (f-get-global 'fn-owner-memory-run state))
+      (let* ((r (true-list-fix (f-get-global 'fn-owner-memory-run state)))
              (cfg (fn-owner-config state))
              (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state))
-             (found (fn-adm-capacity (nth 4 r) (nth 0 r) full (nth 1 r) tot))
-             ; With no count the gate holds at (records admitted under the
-             ; previous configuration between staging and completion), the
-             ; least bound C' can state, one connection, and the gate refuses
-             ; every record until the store fits (Codex review F1).
-             (cap (if (posp found) found 1))
+             (cap (fn-adm-installed-capacity (nth 4 r) (nth 0 r) full (nth 1 r) tot))
              (state (f-put-global 'fn-owner-memory-run (update-nth 10 cap r) state))
              (state (f-put-global 'fn-owner-memory-capacity cap state))
              (state (f-put-global 'fn-owner-memory-capacity-line
                                   (fn-record-string-octets
-                                   (fn-adm-capacity-line (nth 4 r) (nth 0 r) full (nth 1 r) tot))
+                                   (fn-adm-installed-capacity-line (nth 4 r) (nth 0 r) full (nth 1 r) tot))
                                   state)))
         (mv fn-hist state)))))
 
@@ -1912,7 +1904,9 @@
 ; admits and fn-mm-cfg-holders pool buffers (HL4).
 (defun fn-owner-lease-cfg (state)
   (declare (xargs :stobjs state :mode :program))
-  (cadr (fn-owner-memory-gate state)))
+  (if (boundp-global 'fn-owner-memory-lease-cfg state)
+      (f-get-global 'fn-owner-memory-lease-cfg state)
+    (cadr (fn-owner-memory-gate state))))
 
 (definterface fn-owner-lease-cfg
   :class ::program)
@@ -1956,9 +1950,9 @@
                         ((not (fn-adm-handle-room-p (fn-arena-count fn-arena) 1))
                          :handle-space)
                         ((and (not (equal row :bad))
-                              (not (fn-adm-memory-admitp (fn-owner-store-profile state)
+                              (not (fn-adm-run-memory-admitp (fn-owner-store-profile state)
                                                          (first gate) (second gate)
-                                                         (third gate) tot row)))
+                                                         (third gate) tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state))))
                          :memory)
                         (t verdict))
                   fn-hist state))))))))
@@ -2410,9 +2404,9 @@
                  ; three, fn-adm-admitted-row-keeps-the-gate).
                  (gate (fn-owner-memory-gate state))
                  (budget (if (and row
-                                  (fn-adm-memory-admitp (fn-owner-store-profile state)
+                                  (fn-adm-run-memory-admitp (fn-owner-store-profile state)
                                                         (first gate) (second gate) (third gate)
-                                                        tot row))
+                                                        tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state)))
                              budget-tx
                            0))
                  (carry (fn-prc-refresh (fn-owner-retain-carry state)
@@ -2429,10 +2423,10 @@
                               ; K-ADMIT: T, then H, then :memory
                               ; (KEYSTONE fn-adm-article-word-under-the-
                               ; budget-names-the-resource).
-                              (cons (fn-adm-article-word
+                              (cons (fn-adm-run-article-word
                                      word (fn-owner-store-profile state)
                                      (first gate) (second gate) (third gate)
-                                     (fn-sbud-count s) bytes record debt tot row)
+                                     (fn-sbud-count s) bytes record debt tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state))
                                     next))))
                  (state (if (equal record :clock-unusable)
                             state
@@ -2618,9 +2612,9 @@
                  ; three, fn-adm-admitted-row-keeps-the-gate).
                  (gate (fn-owner-memory-gate state))
                  (budget (if (and row
-                                  (fn-adm-memory-admitp (fn-owner-store-profile state)
+                                  (fn-adm-run-memory-admitp (fn-owner-store-profile state)
                                                         (first gate) (second gate) (third gate)
-                                                        tot row))
+                                                        tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state)))
                              budget-tx
                            0))
                  ; The carried obligation-id trie, brought to the Store
@@ -2656,10 +2650,10 @@
                               ; K-ADMIT: T, then H, then :memory
                               ; (KEYSTONE fn-adm-article-word-under-the-
                               ; budget-names-the-resource).
-                              (cons (fn-adm-article-word
+                              (cons (fn-adm-run-article-word
                                      word (fn-owner-store-profile state)
                                      (first gate) (second gate) (third gate)
-                                     (fn-sbud-count s) bytes record debt tot row)
+                                     (fn-sbud-count s) bytes record debt tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state))
                                     next))))
                  (state (if (equal record :clock-unusable)
                             state
@@ -3568,7 +3562,8 @@
   (declare (xargs :stobjs state :verify-guards t
                   :guard (and (boundp-global 'fn-owner state)
                               (fn-cbor-octet-listp peer-octets))))
-  (fn-owner-callback-open-peer peer-octets state))
+  (mv-let (erp id state) (fn-owner-callback-open-peer peer-octets state)
+    (let ((state (fn-owner-memory-held-open id t state))) (mv erp id state))))
 
 (definterface fn-owner-open-peer
   :class :common-lisp-compliant
@@ -4852,7 +4847,8 @@
 (defun fn-owner-open (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
                   :verify-guards t))
-  (fn-owner-callback-open state))
+  (mv-let (erp id state) (fn-owner-callback-open state)
+    (let ((state (fn-owner-memory-held-open id nil state))) (mv erp id state))))
 
 (definterface fn-owner-open
   :class :common-lisp-compliant)
@@ -5113,7 +5109,8 @@
          (state (fn-owner-install-ocfg (fn-exp-open-ocfg r) state))
          (state (f-put-global 'fn-owner-exposure (fn-exp-open-state r) state)))
     (if (fn-exp-open-id r)
-        (let* ((state (fn-owner-install-effects (fn-exp-open-effects r) state))
+        (let* ((state (fn-owner-memory-held-open (fn-exp-open-id r) t state))
+               (state (fn-owner-install-effects (fn-exp-open-effects r) state))
                (state (f-put-global 'fn-owner-log-line
                                     (fn-olog-socket-connection-line
                                      (fn-owner-core state) id
@@ -5588,7 +5585,8 @@
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :guard (boundp-global 'fn-owner state)
                   :verify-guards t))
-  (fn-owner-callback-close id fn-arena state))
+  (mv-let (erp word state) (fn-owner-callback-close id fn-arena state)
+    (let ((state (fn-owner-memory-held-close id state))) (mv erp word state))))
 
 (definterface fn-owner-close
   :class :common-lisp-compliant)
@@ -5610,7 +5608,8 @@
 (defun fn-owner-fault (id state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
                   :verify-guards t))
-  (fn-owner-callback-fault id state))
+  (mv-let (erp word state) (fn-owner-callback-fault id state)
+    (let ((state (fn-owner-memory-held-close id state))) (mv erp word state))))
 
 (definterface fn-owner-fault
   :class :common-lisp-compliant)
@@ -6613,3 +6612,30 @@ itself."
 (definterface fn-owner-output-refusal-line-at
   :class :program
   :keystones ((fn-oadl-refusal-is-one-line :via fn-oadl-refusal-span)))
+
+(defun fn-owner-memory-physical-return (id state)
+ (declare (xargs :stobjs state :guard t :verify-guards t))
+ (let ((state (fn-owner-memory-held-return id state))) (value :returned)))
+(definterface fn-owner-memory-physical-return :class :common-lisp-compliant)
+(defun fn-owner-memory-physical-rearm (old-id new-id state)
+ (declare (xargs :stobjs state :guard t :verify-guards t))
+ (let ((state (fn-owner-memory-held-rearm old-id new-id state))) (value :rearmed)))
+(definterface fn-owner-memory-physical-rearm :class :common-lisp-compliant)
+(defun fn-owner-memory-lease-install (profile cfg quantum state)
+ (declare (xargs :stobjs state :guard t))
+ (let ((state (f-put-global 'fn-owner-memory-lease-octets
+                (fn-adm-installed-lease-allocation profile cfg quantum) state))) (value :held)))
+(definterface fn-owner-memory-lease-install :class :common-lisp-compliant)
+(defun fn-owner-memory-reclaim-complete (fn-hist state)
+ (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state) :verify-guards t))
+ (mv-let (fn-hist state) (fn-owner-memory-recapacity fn-hist state) (mv nil :refreshed fn-hist state)))
+(definterface fn-owner-memory-reclaim-complete :class :common-lisp-compliant)
+
+; Guard verification for the auxiliary memory decisions.
+(verify-guards fn-owner-record-totals)
+(verify-guards fn-owner-memory-handshakes-in-flight)
+(verify-guards fn-owner-memory-run-cfg)
+(verify-guards fn-owner-memory-physical-return)
+(verify-guards fn-owner-memory-physical-rearm)
+(verify-guards fn-owner-memory-recapacity)
+(verify-guards fn-owner-memory-reclaim-complete)

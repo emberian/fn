@@ -9,6 +9,7 @@
 (include-book "owner-reader-view")
 (include-book "owner-log")
 (include-book "store-octet-entry")
+(include-book "admission-memory")
 
 (defthm fn-owner-callback-owner-bound-of-other-put
   (implies (and (boundp-global 'fn-owner state)
@@ -51,19 +52,25 @@
 ; exposure total is at most C' (KEYSTONE
 ; fn-owner-callback-exposure-total-within-the-memory-capacity).  Before a run
 ; configured it, the owner's bound as before.
+(defun fn-owner-memory-capacity-read (state)
+  (declare (xargs :stobjs state :guard t))
+  (and (boundp-global 'fn-owner-memory-capacity state)
+       (f-get-global 'fn-owner-memory-capacity state)))
+
 (defun fn-owner-memory-max-conns (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((m (fn-own-max-conns (fn-owner-core state)))
         (c (and (boundp-global 'fn-owner-memory-capacity state)
                 (f-get-global 'fn-owner-memory-capacity state))))
-    (if (posp c) (min (nfix m) (1+ c)) m)))
+    (fn-adm-memory-owner-bound m c)))
 
 (defun fn-owner-callback-exposure-limits (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (fn-exp-limits (fn-cfg-value (fn-owner-config state))
+  (fn-adm-exposure-limits (fn-cfg-value (fn-owner-config state))
                  (fn-owner-memory-max-conns state)
                  (fn-owner-exposure-publicp state)
-                 (fn-auth-config-requiredp (fn-owner-auth state))))
+                 (fn-auth-config-requiredp (fn-owner-auth state))
+                 (fn-owner-memory-capacity-read state)))
 
 ; KEYSTONE: a run whose memory capacity is C' accepts at most C' readers (the
 ; exposure decision refuses at its total, fn-exp-open-refuses-exactly-at-the-

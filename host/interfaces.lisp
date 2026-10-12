@@ -228,7 +228,6 @@
 (definterface fn-rlo-output :class :common-lisp-compliant)
 (definterface fn-rlo-physical :class :common-lisp-compliant)
 (definterface fn-rlo-drainedp :class :common-lisp-compliant)
-(definterface fn-heap-figure-octets :class :common-lisp-compliant)
 (definterface fn-orv-startup-slots :class :common-lisp-compliant)
 (definterface fn-orv-startup-grant :class :common-lisp-compliant)
 
@@ -3014,22 +3013,11 @@
 ;; The served run's launch (books/heap-command.lisp, L-RUN-LAUNCH;
 ;; host/native/heap.lisp fnn-heap-serve-decision): the pools the run funds,
 ;; their threads, and the launch at the run's LIMIT.
-(definterface fn-mo-serve-decide
-  :class :common-lisp-compliant
-  :keystones (fn-mo-serve-holds-every-admitted-store
-              fn-mo-serve-refuses-only-by-the-model
-              fn-mo-serve-launch-fits-the-address-space))
 
-(definterface fn-mo-serve-pools
-  :class :common-lisp-compliant)
 
-(definterface fn-mo-serve-pool-threads
-  :class :common-lisp-compliant)
 
 ;; A BP served command's session capacity, one of the launch's pools
 ;; (books/bp-session-profile.lisp; host/native/heap.lisp fnn-heap-serve-decision).
-(definterface fn-bpsp-node-capacity
-  :class :common-lisp-compliant)
 
 (definterface fn-heap-command-growth
   :class :common-lisp-compliant)
@@ -4443,11 +4431,7 @@
 (definterface fn-pfr-policy-p :class :common-lisp-compliant)
 (definterface fn-pfr-operation-observes-p :class :common-lisp-compliant)
 
-(definterface fn-prstartup-default-plan-with-peer :class :common-lisp-compliant
-  :keystones (fn-mo-serve-startup-admits-the-pool))
-(definterface fn-prstartup-peer-native-grant :class :common-lisp-compliant)
-(definterface fn-prstartup-serve-store-need :class :common-lisp-compliant
-  :keystones (fn-mo-serve-output-pool-is-held))
+(definterface fn-prstartup-run-store-need :class :common-lisp-compliant)
 (definterface fn-prstartup-peer-native-refusal-line :class :common-lisp-compliant)
 
 ; Host-called entries the raw host dispatches and no declaration named
@@ -4510,3 +4494,11 @@
 (definterface fn-nco-wire-step :class :common-lisp-compliant
   :keystones (fn-nco-unknown-receipt-status))
 (definterface fn-nco-work-class :class :common-lisp-compliant)
+
+;; Shared launch subjects: all pool/pricing arithmetic belongs to ACL2.
+(definterface fn-mo-serve-run-decide :class :common-lisp-compliant
+ :keystones (fn-mo-serve-launch-conserves-the-resident-partition fn-mo-serve-bp-launch-admits-its-startup))
+(definterface fn-mo-serve-bp-store-need :class :common-lisp-compliant
+ :keystones (fn-mo-serve-bp-launch-admits-its-startup))
+(definterface fn-prstartup-run-default-plan :class :common-lisp-compliant)
+(definterface fn-prstartup-run-peer-native-grant :class :common-lisp-compliant)

@@ -934,6 +934,11 @@
                                (fn-prstartup-serve-limit profile output peer workers cache-limit root
                                                          resident)))
 
+(defun fn-prstartup-run-store-need (profile core nursery output peer workers cache-limit root resident bp-terms)
+ (declare (xargs :guard t))
+ (fn-prstartup-serve-protected profile core nursery nil nil nil
+  (fn-mo-serve-run-limit resident profile nil output peer workers cache-limit root bp-terms)))
+
 (defthm fn-mo-serve-output-within-the-pools
  (<= (nfix (fn-crv-nth 0 output)) (fn-mo-serve-pools profile nil output peer workers cache-limit root))
  :rule-classes nil
@@ -1084,3 +1089,44 @@
  :rule-classes nil
  :hints (("Goal" :in-theory (theory 'minimal-theory)
           :use fn-mo-serve-plan-is-held-to-the-pool-at-the-decision)))
+
+; BP shares the run's captured LIMIT and protects its session grant beside
+; the Store. Existing non-BP plan statements remain unchanged.
+(defun fn-prstartup-run-default-plan
+ (dynamic occupied profile core nursery cold output max-connections root workers cache-limit fd-limit peer
+  observed resident bp-terms)
+ (declare (xargs :guard t))
+ (if (not bp-terms)
+  (fn-prstartup-default-plan-with-peer dynamic occupied profile core nursery cold output max-connections
+    root workers cache-limit fd-limit peer observed resident)
+  (let ((bp (fn-mo-serve-bp-need bp-terms))
+        (limit (fn-mo-serve-run-limit resident profile cold output peer workers cache-limit root bp-terms)))
+   (cond ((not (natp bp)) (list :refused :invalid-bp-session-terms))
+         ((and peer (not (fn-pfr-policy-p peer))) (list :refused :invalid-peer-flight-profile))
+         (cold (list :refused :unpriced-complete-cold-profile))
+         ((not (or (not output) (fn-orv-policy-p output))) (list :refused :invalid-output-resource-profile))
+         (t (fn-prstartup-plan dynamic occupied
+          (max (+ (fn-prstartup-serve-protected profile core nursery output max-connections observed limit)
+                  (if peer (nfix (fn-pfr-at 0 peer)) 0) bp)
+               (nfix (- (nfix dynamic) (fn-prstartup-launch-extra profile workers cache-limit root))))
+          root workers (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*
+          cache-limit fd-limit (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))))))
+
+(defun fn-prstartup-run-peer-native-grant
+ (dynamic profile core nursery output max-connections plan peer address observed workers cache-limit root resident bp-terms)
+ (declare (xargs :guard t))
+ (if (not bp-terms)
+  (fn-prstartup-peer-native-grant dynamic profile core nursery output max-connections plan peer address
+    observed workers cache-limit root resident)
+  (let* ((bp (fn-mo-serve-bp-need bp-terms))
+         (limit (fn-mo-serve-run-limit resident profile nil output peer workers cache-limit root bp-terms))
+         (protected (+ (fn-prstartup-peer-protected profile core nursery output max-connections plan observed limit)
+                       (nfix bp)))
+         (grant (if (and (natp bp) (fn-prstartup-planp plan))
+                   (fn-pfr-startup-grant dynamic protected peer) (list :refused :default-pool-not-held)))
+         (addr (fn-mm-least-observation address)))
+   (if (not (eq (fn-pfr-at 0 grant) :hold)) grant
+    (if (and (natp addr) (< addr (fn-heap-reservation-octets (fn-heap-mb-of dynamic) core
+         (fn-heap-stack-kib profile) (+ (fn-heap-thread-count max-connections) (nfix (fn-pfr-at 3 peer))))))
+      (list :refused :peer-native-reservation-not-held)
+      (list :hold (list dynamic protected peer (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*)))))))

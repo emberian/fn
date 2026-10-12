@@ -71,6 +71,20 @@
   :hints (("Goal" :in-theory '(fn-owner-put-credits
                                fn-orh-retain-statep-of-other-global-put))))
 
+; The held bank is an auxiliary global, including after a logical close
+; while physical disposal is outstanding.  It frames the carried Store.
+(defthm fn-orh-retain-statep-of-held-open
+  (equal (fn-owner-retain-statep (fn-owner-memory-held-open id physical state))
+         (fn-owner-retain-statep state))
+  :hints (("Goal" :in-theory '(fn-owner-memory-held-open
+                               fn-orh-retain-statep-of-other-global-put))))
+
+(defthm fn-orh-retain-statep-of-held-close
+  (equal (fn-owner-retain-statep (fn-owner-memory-held-close id state))
+         (fn-owner-retain-statep state))
+  :hints (("Goal" :in-theory '(fn-owner-memory-held-close
+                               fn-orh-retain-statep-of-other-global-put))))
+
 ; -----------------------------------------------------------------------------
 ; The writers.
 
@@ -84,6 +98,7 @@
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-close id fn-arena state))))
   :hints (("Goal" :in-theory '(fn-owner-close fn-owner-callback-close
+                               fn-orh-retain-statep-of-held-close
                                mv-nth nth zp car-cons cdr-cons
                                (:executable-counterpart zp)
                                fn-orh-retain-statep-of-put-credits
@@ -99,6 +114,7 @@
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-fault id state))))
   :hints (("Goal" :in-theory '(fn-owner-fault fn-owner-callback-fault
+                               fn-orh-retain-statep-of-held-close
                                mv-nth nth zp car-cons cdr-cons
                                (:executable-counterpart zp)
                                fn-orh-retain-statep-of-put-credits
@@ -113,6 +129,7 @@
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-open-peer peer-octets state))))
   :hints (("Goal" :in-theory '(fn-owner-open-peer fn-owner-callback-open-peer
+                               fn-orh-retain-statep-of-held-open
                                mv-nth nth zp car-cons cdr-cons
                                (:executable-counterpart zp)
                                fn-orh-retain-statep-of-other-global-put
@@ -250,3 +267,47 @@
                                (:executable-counterpart zp)))))
 (assert-event (fn-owner-io-safep nil :log-reserve :ok))
 (assert-event (not (fn-owner-io-safep nil :no-such-operation :ok)))
+
+; New auxiliary memory writers frame the existing carried Store invariant.
+(defthm fn-owner-memory-physical-return-preserves-retain-state
+ (implies (fn-owner-retain-statep state)
+          (fn-owner-retain-statep (mv-nth 2 (fn-owner-memory-physical-return id state))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-physical-return fn-owner-memory-held-return fn-orh-retain-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+(defthm fn-owner-memory-physical-rearm-preserves-retain-state
+ (implies (fn-owner-retain-statep state)
+          (fn-owner-retain-statep (mv-nth 2 (fn-owner-memory-physical-rearm old-id new-id state))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-physical-rearm fn-owner-memory-held-rearm fn-orh-retain-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+(defthm fn-owner-memory-lease-install-preserves-retain-state
+ (implies (fn-owner-retain-statep state)
+          (fn-owner-retain-statep (mv-nth 2 (fn-owner-memory-lease-install profile cfg quantum state))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-lease-install fn-orh-retain-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+(defthm fn-owner-record-totals-preserves-retain-state
+ (implies (fn-owner-retain-statep state)
+          (fn-owner-retain-statep (mv-nth 2 (fn-owner-record-totals fn-hist state))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-record-totals fn-orh-retain-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+(defthm fn-owner-memory-recapacity-preserves-retain-state
+ (implies (fn-owner-retain-statep state)
+          (fn-owner-retain-statep (mv-nth 1 (fn-owner-memory-recapacity fn-hist state))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-recapacity fn-owner-record-totals fn-orh-retain-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+(defthm fn-owner-memory-reclaim-complete-preserves-retain-state
+ (implies (fn-owner-retain-statep state)
+          (fn-owner-retain-statep (mv-nth 3 (fn-owner-memory-reclaim-complete fn-hist state))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-reclaim-complete fn-owner-memory-recapacity fn-owner-record-totals fn-orh-retain-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))

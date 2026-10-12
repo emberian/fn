@@ -3,6 +3,7 @@
 ; claim.  FN-READER-INSTALL-RESULT is itself unaccounted: its installer is
 ; too large/has unresolved dependencies for this derivation's inliner.
 (in-package "ACL2")
+(include-book "../books/memory-run-cost")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
 (include-book "../books/payload-arena-attach")
@@ -174,3 +175,13 @@
 (def-cost fn-owner-cfg-capture)
 (def-cost fn-owner-held-verdicts)
 (def-cost fn-owner-sco-count :unaccounted (fn-sf-records-count))
+
+; Derived auxiliary memory writer costs, not declared ceilings.
+(def-cost fn-owner-memory-physical-return
+ :unaccounted (fn-owner-memory-held-return))
+(def-cost fn-owner-memory-physical-rearm
+ :unaccounted (fn-owner-memory-held-rearm))
+(def-cost fn-owner-memory-lease-install
+ :unaccounted (fn-adm-installed-lease-allocation))
+(def-cost fn-owner-memory-reclaim-complete
+ :unaccounted (fn-owner-memory-recapacity mv-nth))

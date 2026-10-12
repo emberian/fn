@@ -4,15 +4,15 @@
  "counts": {
   "proved": 6,
   "partial": 4,
-  "derived": 111,
-  "none": 1740
+  "derived": 115,
+  "none": 1737
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 4,
-   "derived": 110,
-   "none": 1024
+   "derived": 114,
+   "none": 1021
   },
   "ideal": {
    "proved": 0,
@@ -66,6 +66,7 @@
   ]
  },
  "undispatched_declarations": [
+  "fn-bpsp-node-capacity",
   "fn-clt-mv",
   "fn-clt-nested",
   "fn-clt-shadow",
@@ -98,9 +99,13 @@
   "fn-mo-digits",
   "fn-mo-drop-key",
   "fn-mo-prefixp",
+  "fn-mo-serve-decide",
+  "fn-mo-serve-pool-threads",
+  "fn-mo-serve-pools",
   "fn-mo-status-kib-octets",
   "fn-mo-tot-log-at-least",
   "fn-ncfg-nth",
+  "fn-prstartup-serve-store-need",
   "fn-rce-exercise-items",
   "fn-scat-group-low-top",
   "fn-scat-top-viewp",
@@ -3432,22 +3437,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-bpsp-node-capacity",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
-    "fn-bpnpf-adu-octets",
-    "fn-bpnpf-held-octets",
-    "fn-bpnpf-rows",
-    "fn-bpsp-capacity-octets",
-    "fn-bpsp-node-wire-span"
-   ],
-   "theorem": null,
-   "declared_in": "host/cost-host.lisp"
-  },
-  {
    "name": "fn-bpsp-node-startup",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -4438,16 +4427,6 @@
   },
   {
    "name": "fn-heap-decision-exit-code",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-heap-figure-octets",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -6630,47 +6609,32 @@
    "declared_in": "books/memory-entry-cost.lisp"
   },
   {
-   "name": "fn-mo-serve-decide",
+   "name": "fn-mo-serve-bp-store-need",
    "class": "common-lisp-compliant",
    "claim": "derived",
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-heap-profile-word",
-    "fn-mm-least-observation",
-    "fn-mm-reopen-need",
-    "fn-mo-serve-cfg",
-    "fn-mo-serve-dynamic",
-    "fn-mo-serve-limit"
+    "fn-mm-launch-dynamic",
+    "fn-mo-serve-pools",
+    "fn-mo-serve-run-limit"
    ],
    "theorem": null,
-   "declared_in": "host/cost-host.lisp"
+   "declared_in": "books/memory-run-cost.lisp"
   },
   {
-   "name": "fn-mo-serve-pool-threads",
+   "name": "fn-mo-serve-run-decide",
    "class": "common-lisp-compliant",
    "claim": "derived",
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "true-list-fix"
+    "fn-mo-serve-decide",
+    "fn-mo-serve-pool-threads",
+    "fn-mo-serve-total-pools"
    ],
    "theorem": null,
-   "declared_in": "host/cost-host.lisp"
-  },
-  {
-   "name": "fn-mo-serve-pools",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
-    "fn-crv-pool-budget",
-    "fn-prstartup-launch-extra",
-    "true-list-fix"
-   ],
-   "theorem": null,
-   "declared_in": "host/cost-host.lisp"
+   "declared_in": "books/memory-run-cost.lisp"
   },
   {
    "name": "fn-mxa-deferral-line",
@@ -12101,6 +12065,55 @@
    "declared_in": null
   },
   {
+   "name": "fn-owner-memory-lease-install",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-adm-installed-lease-allocation"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-owner-memory-physical-rearm",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-owner-memory-held-rearm"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-owner-memory-physical-return",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-owner-memory-held-return"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-owner-memory-reclaim-complete",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-owner-memory-recapacity",
+    "mv-nth"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
    "name": "fn-owner-moderation-plan",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -14653,16 +14666,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-prstartup-default-plan-with-peer",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-prstartup-file-capacity",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -14684,16 +14687,6 @@
   },
   {
    "name": "fn-prstartup-install-status",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-prstartup-peer-native-grant",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -14733,17 +14726,58 @@
    "declared_in": null
   },
   {
-   "name": "fn-prstartup-serve-store-need",
+   "name": "fn-prstartup-run-default-plan",
    "class": "common-lisp-compliant",
    "claim": "derived",
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-prstartup-serve-limit",
+    "fn-mo-serve-bp-need",
+    "fn-mo-serve-run-limit",
+    "fn-orv-policy-p",
+    "fn-pfr-at",
+    "fn-pfr-policy-p",
+    "fn-prstartup-default-plan-with-peer",
+    "fn-prstartup-launch-extra",
+    "fn-prstartup-plan",
+    "fn-prstartup-read-extent",
+    "fn-prstartup-read-reserve",
     "fn-prstartup-serve-protected"
    ],
    "theorem": null,
-   "declared_in": "host/cost-host.lisp"
+   "declared_in": "books/memory-run-cost.lisp"
+  },
+  {
+   "name": "fn-prstartup-run-peer-native-grant",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-mm-least-observation",
+    "fn-mo-serve-bp-need",
+    "fn-mo-serve-run-limit",
+    "fn-pfr-at",
+    "fn-pfr-startup-grant",
+    "fn-prstartup-peer-native-grant",
+    "fn-prstartup-peer-protected",
+    "fn-prstartup-planp"
+   ],
+   "theorem": null,
+   "declared_in": "books/memory-run-cost.lisp"
+  },
+  {
+   "name": "fn-prstartup-run-store-need",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-mo-serve-run-limit",
+    "fn-prstartup-serve-protected"
+   ],
+   "theorem": null,
+   "declared_in": "books/memory-run-cost.lisp"
   },
   {
    "name": "fn-prstartup-status",

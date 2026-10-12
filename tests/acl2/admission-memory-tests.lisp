@@ -506,3 +506,295 @@
 (assert-event (<= (cdr (adt-search-count *adt-p* *adt-img* *adt-cfg-4m* *adt-128m* *adt-empty*
                                             0 (1+ *adt-c-4m*)))
                   (+ 2 (integer-length *adt-c-4m*))))
+
+; M22 approved whole witnesses and old-behavior teeth, unchanged.
+(include-book "../../books/heap-command")
+(include-book "../../books/runtime-contract-host-pool")
+(include-book "../../books/catalog-record")
+(include-book "../../books/records-attach")
+(defconst *m22-profile* *fn-heap-small-profile*)
+
+(defconst *m22-img* '(104857600 24117248 1090519))
+
+(defconst *m22-cfg* '(32 t 8388608 8388608 nil 0 8388608 16 nil 64))
+
+(defconst *m22-empty* '(0 0 0 0 0 0 0 0 :resident))
+
+(defconst *m22-lowered-cfg* (fn-adm-cfg-at *m22-cfg* 1))
+
+(assert-event
+  (and (equal (fn-adm-priced-connections 32 1 1) 32)
+       (<= 32 (fn-adm-priced-connections 32 1 1))
+       (not (<= 32 (min 1 1)))))
+
+(assert-event
+  (and (<= 0 (fn-adm-reader-count 32 0))
+       (equal (fn-adm-priced-connections 0 32 0) (fn-adm-reader-count 32 0))
+       (equal (fn-adm-priced-connections 0 32 0) 0)
+       ; The old fn-owner-memory-gate's POSP branch returned configured C.
+       (not (equal (if (posp 0) (min 32 0) 32) 0))))
+
+(assert-event
+  (let* ((held 32)
+         (cfg (fn-adm-priced-cfg *m22-lowered-cfg* held 1))
+         (limit (max (fn-mm-sum *m22-profile* *m22-img* cfg *m22-empty*)
+                     (fn-mm-reopen-need *m22-profile* *m22-img* cfg *m22-empty*))))
+    (and (fn-mm-gate-p *m22-profile* *m22-img* cfg limit *m22-empty*)
+         (<= (fn-mm-need *m22-profile* *m22-img* cfg *m22-empty* held held
+                         (fn-heap-article-slots *m22-profile*)
+                         (fn-cbud-handshake-slots t 16) t)
+             limit))))
+
+(assert-event
+  (let* ((old *m22-lowered-cfg*)
+         (limit (max (fn-mm-sum *m22-profile* *m22-img* old *m22-empty*)
+                     (fn-mm-reopen-need *m22-profile* *m22-img* old *m22-empty*))))
+    (and (fn-mm-gate-p *m22-profile* *m22-img* old limit *m22-empty*)
+         ; Teeth: the OLD gate passes, but its actual held instant exceeds it.
+         (< limit (fn-mm-need *m22-profile* *m22-img* old *m22-empty* 32 32
+                              (fn-heap-article-slots *m22-profile*)
+                              (fn-cbud-handshake-slots t 16) t)))))
+
+(assert-event
+  (let* ((limit (* 128 *fn-heap-mib*))
+         (found (fn-adm-capacity *m22-profile* *m22-img* *m22-cfg* limit *m22-empty*))
+         (cap (fn-adm-installed-capacity *m22-profile* *m22-img* *m22-cfg* limit *m22-empty*)))
+    (and (null found) (natp cap) (equal cap 0)
+         (equal cap (if (natp found) found 0))
+         (or (equal cap 0)
+             (and (equal cap found) (<= cap 32)
+                  (fn-mm-gate-p *m22-profile* *m22-img*
+                                (fn-adm-cfg-at *m22-cfg* cap) limit *m22-empty*)))
+         (not (equal (if (posp found) found 1) cap)))))
+
+(assert-event
+  (let* ((limit (* 250 *fn-heap-mib*))
+         (found (fn-adm-capacity *m22-profile* *m22-img* *m22-cfg* limit *m22-empty*))
+         (cap (fn-adm-installed-capacity *m22-profile* *m22-img* *m22-cfg* limit *m22-empty*)))
+    (and (posp found) (natp cap) (equal cap found) (<= cap 32)
+         (fn-mm-gate-p *m22-profile* *m22-img* (fn-adm-cfg-at *m22-cfg* cap)
+                       limit *m22-empty*))))
+
+(assert-event
+  (let* ((xs (fn-exp-initial)) (address '(2 . (127 0 0 1)))
+         (limits (fn-adm-exposure-limits nil 1024 nil nil 0))
+         (old (fn-exp-limits nil 1024 nil nil))
+         (one (fn-exp-limits nil 1 nil nil)))
+    (and (equal (fn-exp-lim-total limits) 0)
+         (equal (car (fn-exp-admit-decision xs limits 0 address 0)) :refuse)
+         (equal (car (fn-exp-admit-decision xs old 0 address 0)) :admit)
+         (equal (car (fn-exp-admit-decision xs one 0 address 0)) :admit))))
+
+(defun m22-intern-row (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (row fn-arena)
+    (fn-cat-intern-list
+      (fn-record-make 2 1 4 "<adt-11@example.invalid>" nil
+                      '("fn.test" "fn.other") "o0" "s0" "e0" 4 841000011)
+      nil 0 fn-arena)
+    (mv row fn-arena)))
+
+(defun m22-held-row ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (row fn-arena) (m22-intern-row fn-arena) row)))
+
+(assert-event
+  (let ((row (m22-held-row)) (limit (* 4096 *fn-heap-mib*)))
+    (and (fn-held-p row)
+         (not (fn-adm-run-memory-admitp *m22-profile* *m22-img* *m22-cfg*
+                                       limit *m22-empty* row 0 0))
+         ; Teeth: the old POSP-as-absent projection prices full configured C
+         ; and actually admits this fitting VALID row despite installed 0.
+         (fn-adm-memory-admitp *m22-profile* *m22-img*
+           (fn-adm-cfg-at *m22-cfg* (if (posp 0) (min 32 0) 32))
+           limit *m22-empty* row))))
+
+(assert-event
+  (let* ((held 0) (cfg *m22-lowered-cfg*)
+         (lease (* 4096 (fn-hl-article-capl *m22-profile* 1048576)))
+         (bare (fn-adm-priced-cfg cfg held 1))
+         (charged (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease) held 1))
+         (limit (max (fn-mm-sum *m22-profile* *m22-img* charged *m22-empty*)
+                     (fn-mm-reopen-need *m22-profile* *m22-img* charged *m22-empty*)))
+         (old-limit (max (fn-mm-sum *m22-profile* *m22-img* bare *m22-empty*)
+                         (fn-mm-reopen-need *m22-profile* *m22-img* bare *m22-empty*)))
+         (instant (fn-mm-need *m22-profile* *m22-img* bare *m22-empty* held held
+                     (fn-heap-article-slots *m22-profile*)
+                     (fn-cbud-handshake-slots t 16) t)))
+    (and (natp lease) (posp lease)
+         (fn-mm-gate-p *m22-profile* *m22-img* charged limit *m22-empty*)
+         (<= (+ lease instant) limit)
+         ; Old behavior drops the bank's charge with no return receipt.
+         (fn-mm-gate-p *m22-profile* *m22-img* bare old-limit *m22-empty*)
+         (< old-limit (+ lease instant)))))
+
+(assert-event
+  (and (equal (fn-adm-reader-count 32 nil) 32)
+       (equal (fn-adm-reader-count 32 0) 0)
+       (equal (fn-adm-memory-owner-bound 1024 nil) 1024)
+       (equal (fn-adm-memory-owner-bound 1024 0) 0)
+       (equal (fn-adm-priced-connections 32 32 0) 32)
+       (not (equal (if (posp 0) (min 32 0) 32) 0))))
+
+(assert-event
+  (let* ((cfg (fn-adm-cfg-at *m22-cfg* 0))
+         (limit (* 250 *fn-heap-mib*))
+         (found (fn-adm-capacity *m22-profile* *m22-img* cfg limit *m22-empty*))
+         (cap (fn-adm-installed-capacity *m22-profile* *m22-img* cfg limit *m22-empty*))
+         (expected (concatenate 'string
+          "refused memory-cannot-hold-the-store capacity=0 of 0 bound-by="
+          (string-downcase (symbol-name
+            (fn-adm-capacity-binding *m22-profile* *m22-img* cfg limit *m22-empty*)))
+          " sum=" (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* cfg *m22-empty*))
+          " MB limit=" (fn-adm-mb-down limit) " MB")))
+    (and (equal found 0) (equal cap 0)
+         (equal (fn-adm-installed-capacity-line *m22-profile* *m22-img* cfg limit *m22-empty*) expected)
+         (not (equal (fn-adm-capacity-line *m22-profile* *m22-img* cfg limit *m22-empty*) expected)))))
+
+; M22 behavioral twins; the wiring equality is deliberately not an event.
+
+(defconst *m22-priced-cfg* (fn-adm-priced-cfg *m22-lowered-cfg* 32 1))
+(defconst *m22-held-limit* (max (fn-mm-sum *m22-profile* *m22-img* *m22-priced-cfg* *m22-empty*)
+                               (fn-mm-reopen-need *m22-profile* *m22-img* *m22-priced-cfg* *m22-empty*)))
+(defconst *m22-lease* (* 4096 (fn-hl-article-capl *m22-profile* 1048576)))
+(defconst *m22-lease-cfg* (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg *m22-lowered-cfg* *m22-lease*) 0 1))
+(defconst *m22-lease-limit* (max (fn-mm-sum *m22-profile* *m22-img* *m22-lease-cfg* *m22-empty*)
+                                (fn-mm-reopen-need *m22-profile* *m22-img* *m22-lease-cfg* *m22-empty*)))
+(defkeystone m22-adm-priced-connections-cover-held
+  (<= (nfix held) (fn-adm-priced-connections held configured capacity))
+ :rule-classes nil
+ :restates fn-adm-priced-connections-cover-held
+ :subject fn-adm-priced-connections
+ :witness ((held 32) (configured 1) (capacity 1))
+ :mutations ((old-behavior (:conclusion (<= (nfix held) (fn-adm-reader-count configured capacity))) ((held 32) (configured 1) (capacity 1)) :fault "the old min(C,Cprime) drops 31 held connections"))
+ :hints (("Goal" :by fn-adm-priced-connections-cover-held)))
+
+(defkeystone m22-adm-priced-connections-equal-reader-count-when-covered
+  (implies (<= (nfix held) (fn-adm-reader-count configured capacity))
+           (equal (fn-adm-priced-connections held configured capacity)
+                  (fn-adm-reader-count configured capacity)))
+ :rule-classes nil
+ :restates fn-adm-priced-connections-equal-reader-count-when-covered
+ :subject fn-adm-priced-connections
+ :witness ((held 0) (configured 32) (capacity 0))
+ :hyps (covered)
+ :breaks ((covered ((held 32) (configured 1) (capacity 1))))
+ :mutations ((old-behavior (:conclusion (equal (if (posp capacity) (min (nfix configured) capacity) (nfix configured)) (fn-adm-reader-count configured capacity))) ((held 0) (configured 32) (capacity 0)) :fault "POSP treats installed zero as absent"))
+ :hints (("Goal" :by fn-adm-priced-connections-equal-reader-count-when-covered)))
+
+(defkeystone m22-adm-priced-gate-bounds-the-held-instant
+(let ((priced (fn-adm-priced-cfg cfg held capacity)))
+    (implies (fn-mm-gate-p profile img priced limit tot)
+             (<= (fn-mm-need profile img priced tot
+                            (nfix held) (nfix held)
+                            (fn-heap-article-slots profile)
+                            (fn-cbud-handshake-slots
+                              (fn-mm-cfg-tlsp priced)
+                              (fn-mm-cfg-handshakes priced))
+                            publishing)
+                 limit)))
+ :rule-classes nil
+ :restates fn-adm-priced-gate-bounds-the-held-instant
+ :subject fn-adm-priced-cfg
+ :witness ((profile *m22-profile*) (img *m22-img*) (cfg *m22-lowered-cfg*) (tot *m22-empty*) (held 32) (capacity 1) (publishing t) (limit *m22-held-limit*))
+ :hyps (holding)
+ :breaks ((holding ((profile *m22-profile*) (img *m22-img*) (cfg *m22-lowered-cfg*) (tot *m22-empty*) (held 32) (capacity 1) (publishing t) (limit 0))))
+ :mutations ((old-behavior (:conclusion (<= (fn-mm-need profile img (fn-adm-cfg-at cfg (fn-adm-reader-count (fn-mm-cfg-connections cfg) capacity)) tot (nfix held) (nfix held) (fn-heap-article-slots profile) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg)) publishing)
+ (max (fn-mm-sum profile img (fn-adm-cfg-at cfg (fn-adm-reader-count (fn-mm-cfg-connections cfg) capacity)) tot) (fn-mm-reopen-need profile img cfg tot)))) ((profile *m22-profile*) (img *m22-img*) (cfg *m22-lowered-cfg*) (tot *m22-empty*) (held 32) (capacity 1) (publishing t) (limit *m22-held-limit*)) :fault "the old gate prices min(C,Cprime), admitting a bound below the held instant"))
+ :hints (("Goal" :by fn-adm-priced-gate-bounds-the-held-instant)))
+
+(defkeystone m22-adm-priced-gate-holds-the-retained-lease
+(let* ((bare (fn-adm-priced-cfg cfg held capacity))
+         (charged (fn-adm-priced-cfg
+                    (fn-adm-retained-runtime-cfg cfg lease-octets)
+                    held capacity)))
+    (implies (fn-mm-gate-p profile img charged limit tot)
+             (<= (+ (nfix lease-octets)
+                    (fn-mm-need profile img bare tot (nfix held) (nfix held)
+                      (fn-heap-article-slots profile)
+                      (fn-cbud-handshake-slots
+                        (fn-mm-cfg-tlsp bare) (fn-mm-cfg-handshakes bare))
+                      publishing))
+                 limit)))
+ :rule-classes nil
+ :restates fn-adm-priced-gate-holds-the-retained-lease
+ :subject fn-adm-priced-cfg
+ :witness ((profile *m22-profile*) (img *m22-img*) (cfg *m22-lowered-cfg*) (tot *m22-empty*) (held 0) (capacity 1) (publishing t) (lease-octets *m22-lease*) (limit *m22-lease-limit*))
+ :hyps (holding)
+ :breaks ((holding ((profile *m22-profile*) (img *m22-img*) (cfg *m22-lowered-cfg*) (tot *m22-empty*) (held 0) (capacity 1) (publishing t) (lease-octets *m22-lease*) (limit 0))))
+ :mutations ((old-behavior (:conclusion (<= (+ (nfix lease-octets) (fn-mm-need profile img (fn-adm-priced-cfg cfg held capacity) tot (nfix held) (nfix held) (fn-heap-article-slots profile) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg)) publishing))
+(max (fn-mm-sum profile img (fn-adm-priced-cfg cfg held capacity) tot) (fn-mm-reopen-need profile img (fn-adm-priced-cfg cfg held capacity) tot)))) ((profile *m22-profile*) (img *m22-img*) (cfg *m22-lowered-cfg*) (tot *m22-empty*) (held 0) (capacity 1) (publishing t) (lease-octets *m22-lease*) (limit *m22-lease-limit*)) :fault "the old gate erases the allocated lease bank when the reader limit falls"))
+ :hints (("Goal" :by fn-adm-priced-gate-holds-the-retained-lease)))
+
+(defkeystone m22-adm-installed-capacity-is-proved-or-zero
+  (let ((found (fn-adm-capacity profile img cfg limit tot))
+        (installed (fn-adm-installed-capacity profile img cfg limit tot)))
+    (and (natp installed)
+         (equal installed (if (natp found) found 0))
+         (or (equal installed 0)
+             (and (equal installed found)
+                  (<= installed (fn-mm-cfg-connections cfg))
+                  (fn-mm-gate-p profile img (fn-adm-cfg-at cfg installed)
+                                limit tot)))))
+ :rule-classes nil
+ :restates fn-adm-installed-capacity-is-proved-or-zero
+ :subject fn-adm-installed-capacity
+ :witness ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 128 *fn-heap-mib*)) (tot *m22-empty*))
+ :mutations ((old-behavior (:conclusion (equal (fn-adm-installed-capacity profile img cfg limit tot) (let ((found (fn-adm-capacity profile img cfg limit tot))) (if (posp found) found 1)))) ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 128 *fn-heap-mib*)) (tot *m22-empty*)) :fault "the old fallback installs 1 when no count fits"))
+ :hints (("Goal" :by fn-adm-installed-capacity-is-proved-or-zero)))
+
+(defkeystone m22-adm-zero-capacity-refuses-new-readers
+  (let ((limits (fn-adm-exposure-limits v maximum publicp auth-required 0)))
+    (and (equal (fn-exp-lim-total limits) 0)
+         (equal (car (fn-exp-admit-decision xs limits held address now))
+                :refuse)))
+ :rule-classes nil
+ :restates fn-adm-zero-capacity-refuses-new-readers
+ :subject fn-adm-exposure-limits
+ :witness ((v nil) (maximum 1024) (publicp nil) (auth-required nil) (xs (fn-exp-initial)) (held 0) (address '(2 . (127 0 0 1))) (now 0))
+ :mutations ((old-behavior (:conclusion (equal (car (fn-exp-admit-decision xs (fn-exp-limits v maximum publicp auth-required) held address now)) :refuse)) ((v nil) (maximum 1024) (publicp nil) (auth-required nil) (xs (fn-exp-initial)) (held 0) (address '(2 . (127 0 0 1))) (now 0)) :fault "the old reader policy treats zero capacity as absent"))
+ :hints (("Goal" :by fn-adm-zero-capacity-refuses-new-readers)))
+
+(defkeystone m22-adm-zero-capacity-refuses-records
+  (not (fn-adm-run-memory-admitp profile img cfg limit tot row held 0))
+ :rule-classes nil
+ :restates fn-adm-zero-capacity-refuses-records
+ :subject fn-adm-run-memory-admitp
+ :witness ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 4096 *fn-heap-mib*)) (tot *m22-empty*) (row (m22-held-row)) (held 0))
+ :mutations ((old-behavior (:conclusion (not (fn-adm-memory-admitp profile img cfg limit tot row))) ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 4096 *fn-heap-mib*)) (tot *m22-empty*) (row (m22-held-row)) (held 0)) :fault "the old gate admits a fitting valid row while capacity is zero"))
+ :hints (("Goal" :by fn-adm-zero-capacity-refuses-records)))
+
+(defkeystone m22-adm-absent-capacity-and-zero-are-distinct
+  (and (equal (fn-adm-reader-count configured nil) (nfix configured))
+       (equal (fn-adm-reader-count configured 0) 0)
+       (equal (fn-adm-memory-owner-bound maximum nil) (nfix maximum))
+       (equal (fn-adm-memory-owner-bound maximum 0) 0)
+       (equal (fn-adm-priced-connections held configured 0) (nfix held)))
+ :rule-classes nil
+ :restates fn-adm-absent-capacity-and-zero-are-distinct
+ :subject fn-adm-reader-count
+ :witness ((configured 32) (maximum 1024) (held 32))
+ :mutations ((old-behavior (:conclusion (equal (if (posp 0) (min (nfix configured) 0) (nfix configured)) 0)) ((configured 32) (maximum 1024) (held 32)) :fault "the old POSP projection returns configured C at installed zero"))
+ :hints (("Goal" :by fn-adm-absent-capacity-and-zero-are-distinct)))
+
+(defkeystone m22-adm-installed-zero-has-the-zero-diagnostic
+  (implies (equal (fn-adm-installed-capacity profile img cfg limit tot) 0)
+    (equal (fn-adm-installed-capacity-line profile img cfg limit tot)
+      (concatenate 'string
+        "refused memory-cannot-hold-the-store capacity=0 of "
+        (fn-heap-decimal (fn-mm-cfg-connections cfg))
+        " bound-by="
+        (string-downcase (symbol-name
+          (fn-adm-capacity-binding profile img cfg limit tot)))
+        " sum=" (fn-adm-mb-up
+          (fn-mm-sum profile img (fn-adm-cfg-at cfg 0) tot))
+        " MB limit=" (fn-adm-mb-down limit) " MB")))
+ :rule-classes nil
+ :restates fn-adm-installed-zero-has-the-zero-diagnostic
+ :subject fn-adm-installed-capacity-line
+ :witness ((profile *m22-profile*) (img *m22-img*) (cfg (fn-adm-cfg-at *m22-cfg* 0)) (limit (* 250 *fn-heap-mib*)) (tot *m22-empty*))
+ :hyps (zero)
+ :breaks ((zero ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 250 *fn-heap-mib*)) (tot *m22-empty*))))
+ :mutations ((old-behavior (:conclusion (equal (fn-adm-capacity-line profile img cfg limit tot) (fn-adm-installed-capacity-line profile img cfg limit tot))) ((profile *m22-profile*) (img *m22-img*) (cfg (fn-adm-cfg-at *m22-cfg* 0)) (limit (* 250 *fn-heap-mib*)) (tot *m22-empty*)) :fault "raw search result zero was described as a successful capacity"))
+ :hints (("Goal" :by fn-adm-installed-zero-has-the-zero-diagnostic)))

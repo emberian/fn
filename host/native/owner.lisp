@@ -229,7 +229,7 @@ not armed. Instrumentation has no semantic or admission role."
 
 
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
-  store lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
+  store lock listener stopping bp-terms launch-observed (exit-code +fnn-exit-ok+) (feeds nil)
   (workers nil) (actors nil) (clients nil) tls-context
   ;; Intrusive cold-read queue, guarded by owner mutex. Metadata remains
   ;; owned until worker relinquishment and atomic result settlement.
@@ -911,6 +911,7 @@ ARTICLE quantum; the caller holds the owner serialization, before any actor
 exists (fnn-mux-budget-install)."
   (let ((cfg (first (fnn-call 'fn-owner-lease-cfg *the-live-state*)))
         (profile (fnn-store-config (fnn-owner-service-store service))))
+    (fnn-owner-core 'fn-owner-memory-lease-install profile cfg (fnn-owner-article-window))
     (destructuring-bind (st okp left)
         (fnn-call 'fn-hld-init profile cfg (fnn-owner-article-window) (fnn-live-rtc-st))
       (declare (ignore st))
@@ -1781,7 +1782,7 @@ one ring, so the table's key and the served boundary's are one source."
     (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
                 (fnn-node-secret-directory store))))
 
-(defun fnn-owner-install (root max-connections &optional fault)
+(defun fnn-owner-install (root max-connections &optional fault bp-terms launch-observed)
   (multiple-value-bind (store count)
       (let ((*fnn-store-failed-open-custody*
               (lambda (store)
@@ -1844,7 +1845,7 @@ one ring, so the table's key and the served boundary's are one source."
             (let ((configured (fnn-owner-names 'fn-owner-feed-configure)))
               (setq service
                     (%make-fnn-owner-service
-                     :store store
+                     :store store :bp-terms bp-terms :launch-observed launch-observed
                      :lock (sb-thread:make-mutex :name "fn owner/store")
                      :gate (fnn-make-owner-gate)
                      :start-hooks *fnn-owner-start-hooks*
@@ -9038,6 +9039,10 @@ publication).  Answers the reply word."
                                      ;; (fn-orrd-a-post-after-the-swap-is-
                                      ;; taken-as-before).
                                      (fnn-owner-reclaim-barriers store)
+                                     ;; The committed swap invalidated the totals cache. Recompute
+                                     ;; only here, over the installed history and synced totals.
+                                     (unless (eq (fnn-owner-core 'fn-owner-memory-reclaim-complete) :refreshed)
+                                       (fnn-fault "reclaim memory capacity refresh refused"))
                                      (fnn-dev-held-verdicts-dump "reclaim"))
                                    w)))))
                        (case sw
@@ -9450,7 +9455,7 @@ fn-osd-drain-stops-by-the-deadline).  Nothing here compares times or counts."
               (t (fnn-fault "owner returned a malformed drain step ~a" step))))))
         (sleep (/ poll 1000))))))
 
-(defun fnn-owner-page-read-startup (root max-connections cold-resources output-resources retain)
+(defun fnn-owner-page-read-startup (root max-connections cold-resources output-resources retain &optional bp-terms launch-observed)
   "Install DEFAULT's partial pool before Store recovery registers any file.
 RETAIN records constructor custody immediately after the core installation;
 the caller joins any partial executor before relinquishing run authority."
@@ -9460,28 +9465,28 @@ the caller joins any partial executor before relinquishing run authority."
     (funcall retain)
     (fnn-indeterminate "cold startup: prior arena return remains unobserved"))
   (let* ((profile (fnn-heap-store-profile root))
-         (core (fnn-heap-image-observation))
-         (peer (fnn-peer-flight-profile root))
+         (core (if launch-observed (fifth launch-observed) (fnn-heap-image-observation)))
+         (peer (if launch-observed (sixth launch-observed) (fnn-peer-flight-profile root)))
+         (resident (if launch-observed (second launch-observed) (fnn-heap-resident-observations)))
          ;; The store on disk, observed as the launcher's probe observed it
          ;; (host/native/heap.lisp fnn-heap-operator-profile): its figure
          ;; sized the open by it, so the protected allowance is the same.
          (observed (and profile (fnn-heap-history-observation root profile)))
-         (plan (fnn-core 'fn-prstartup-default-plan-with-peer
+         (plan (fnn-core 'fn-prstartup-run-default-plan
                          (sb-ext:dynamic-space-size) (cdr core) profile core
                          (fnn-gc-nursery-octets) cold-resources output-resources
                          max-connections root (fnn-core 'fn-pio-direct-workers)
                          (fnn-extent-cache-limit)
                          ;; OS observation, not a profile/data ceiling. Linux
                          ;; numbers NOFILE7; Darwin and the BSDs number it8.
-                         (fnn-heap-rlimit #+linux 7 #-linux 8) peer observed
-                         (fnn-heap-resident-observations)))
+                         (fnn-heap-rlimit #+linux 7 #-linux 8) peer observed resident bp-terms))
          (peer-grant
            (when peer
-             (fnn-core 'fn-prstartup-peer-native-grant
+             (fnn-core 'fn-prstartup-run-peer-native-grant
                        (sb-ext:dynamic-space-size) profile core (fnn-gc-nursery-octets)
                        output-resources max-connections plan peer (fnn-heap-address-observations)
                        observed (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit) root
-                       (fnn-heap-resident-observations)))))
+                       resident bp-terms))))
     (case (fnn-core 'fn-prstartup-status plan)
       (:admitted
        (unless (fnn-core 'fn-prstartup-planp plan)

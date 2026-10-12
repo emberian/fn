@@ -1,0 +1,32 @@
+(in-package "ACL2")
+(include-book "../../books/owner-memory-holding")
+(include-book "../../books/defkeystone")
+(assert-event
+ (let* ((b0 (fn-adm-hh-initial))
+        (b1 (fn-adm-hh-open b0 7 t)) (b2 (fn-adm-hh-close b1 7))
+        (b3 (fn-adm-hh-return b2 7)) (b4 (fn-adm-hh-return b1 7))
+        (b5 (fn-adm-hh-open b2 8 nil)) (b6 (fn-adm-hh-rearm b5 7 8)))
+  (and (fn-adm-hhp b0) (fn-adm-hhp b1) (fn-adm-hhp b2) (fn-adm-hhp b3)
+       (fn-adm-hhp b4) (fn-adm-hhp b5) (fn-adm-hhp b6)
+       (fn-adm-hh-representsp b0) (fn-adm-hh-representsp b1) (fn-adm-hh-representsp b2)
+       (fn-adm-hh-representsp b3) (fn-adm-hh-representsp b4) (fn-adm-hh-representsp b5)
+       (fn-adm-hh-representsp b6)
+       (equal (fn-adm-hh-count b0) 0) (equal (fn-adm-hh-count b1) 1)
+       (equal (fn-adm-hh-count b2) 1) (equal (fn-adm-hh-count b3) 0)
+       (equal (fn-adm-hh-count b4) 1) (equal (fn-adm-hh-count b5) 2)
+       (equal (fn-adm-hh-count b6) 1))))
+
+(defkeystone fn-adm-hh-cached-union-keystone
+ (implies (fn-adm-hh-representsp bank)
+  (and (no-duplicatesp-equal (fn-adm-hh-present-ids (fn-adm-hh-rows bank)))
+       (equal (fn-adm-hh-count bank) (len (fn-adm-hh-present-ids (fn-adm-hh-rows bank))))))
+ :restates fn-adm-hh-cached-count-is-the-union-cardinality
+ :subject fn-adm-hh-count :hyps (representation)
+ :witness ((bank (fn-adm-hh-close (fn-adm-hh-open (fn-adm-hh-initial) 7 t) 7)))
+ :breaks ((representation ((bank (fn-adm-hh-make 0 '((7 nil t)))))))
+ :mutations ((logical-only-count
+  (:conclusion (and (no-duplicatesp-equal (fn-adm-hh-present-ids (fn-adm-hh-rows bank)))
+                    (equal 0 (len (fn-adm-hh-present-ids (fn-adm-hh-rows bank))))))
+  ((bank (fn-adm-hh-close (fn-adm-hh-open (fn-adm-hh-initial) 7 t) 7)))
+  :fault "a closed logical reader still owns physical disposal custody"))
+ :rule-classes nil)

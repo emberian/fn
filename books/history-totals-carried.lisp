@@ -38,6 +38,7 @@
 (include-book "history-columns-store")
 (include-book "charged-totals")
 
+
 (local (in-theory (disable (tau-system))))
 
 ; The per-record charged totals and their fold (fn-ct-row-log, fn-ct-row-
@@ -484,3 +485,8 @@
   :hints (("Goal" :in-theory (e/d (fn-ct-of-store fn-sbud-used)
                                   (fn-ct-charged fn-ct-of-records fn-ct-log-of-records
                                    fn-ct-history-of-events fn-ct-sum-lengths nfix)))))
+
+; The reclaim completion's host entry reads these carried totals in logic.
+; Verify the existing bounded reader, without changing its statement or fold.
+(verify-guards fn-hist-totals-advance)
+(verify-guards fn-hist-totals-carried)

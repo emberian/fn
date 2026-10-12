@@ -2,6 +2,28 @@
 (include-book "../../books/peer-flight-startup")
 (include-book "../../books/defkeystone")
 (include-book "std/testing/assert-bang" :dir :system)
+
+; The BP bank is protected beside DEFAULT and peer pools at the same LIMIT.
+(defconst *pfrst-bp-terms*
+ (list '(2 1 nil 30000 120000 600000)
+       (fn-bpnpf-node-profile-read nil nil) 1048576 1024))
+(defconst *pfrst-bp-peer* '(32768 65536 2 1 32768 20))
+(defconst *pfrst-bp-core* '(81046496 . 30081024))
+(defconst *pfrst-bp-resident* (list (* 2048 *fn-heap-mib*)))
+(defconst *pfrst-bp-decision*
+ (fn-mo-serve-run-decide *fn-bs-profile-development* '(81046496 30081024 1376256)
+  8388608 nil nil 119 *pfrst-bp-resident* nil *pfrst-bp-core* 8388608
+  '(0 0 0 0 0 0 0 0 :resident) nil *pfrst-bp-peer* 4 8 "/x" *pfrst-bp-terms*))
+(assert-event
+ (let* ((dynamic (* *fn-heap-mib* (cadr *pfrst-bp-decision*)))
+        (plan (fn-prstartup-run-default-plan dynamic 30081024 *fn-bs-profile-development*
+               *pfrst-bp-core* (fn-heap-nursery-trigger dynamic 8388608)
+               nil nil 1 "/x" 4 8 256 *pfrst-bp-peer* nil *pfrst-bp-resident* *pfrst-bp-terms*)))
+  (and (equal (car *pfrst-bp-decision*) :heap)
+       (equal (car plan) :admitted)
+       (equal (car (fn-prstartup-run-peer-native-grant dynamic *fn-bs-profile-development*
+               *pfrst-bp-core* (fn-heap-nursery-trigger dynamic 8388608) nil 1 plan *pfrst-bp-peer*
+               nil nil 4 8 "/x" *pfrst-bp-resident* *pfrst-bp-terms*)) :hold))))
 (defconst *pfrst-peer* '(32768 65536 2 1 32768 20))
 (defconst *pfrst-core* '(83886080 . 67108864))
 (defconst *pfrst-plan*

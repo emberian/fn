@@ -277,7 +277,7 @@
 ;;; ---------------------------------------------------------------------------
 ;;; One round
 
-(defun fnn-pull-local-open (service peer-octets)
+(defun fnn-pull-local-open (service peer-octets &optional prior-physical-id)
   "Open the logical transit connection of PEER; return (values cid greeting)."
   (fnn-owner-transit-serialized
    service nil
@@ -286,6 +286,8 @@
      (let ((cid (fnn-owner-core 'fn-owner-open-peer peer-octets)))
        (unless (and (integerp cid) (>= cid 0))
          (fnn-refuse "owner refused the pull transit connection"))
+       (when prior-physical-id
+         (fnn-owner-action 'fn-owner-memory-physical-rearm prior-physical-id cid))
        (fnn-owner-log)
        (values cid (fnn-owner-octets-global 'fn-owner-output))))))
 
@@ -397,7 +399,7 @@ acceptance (the owner is stopping or fenced then)."
   ;; the controller names by index j, as an alist (j . cid), and the index of
   ;; the exchange in flight (CID is that connection's cid).  Nothing here is
   ;; decided by the host: ACL2 names every j and the width of the window.
-  cids lj
+  cids lj physical-cids cleanup-debt
   ;; S054/S067: the round's ACL2 deadline (fn-prd-round-deadline).
   round-deadline)
 
@@ -445,7 +447,9 @@ acceptance (the owner is stopping or fenced then)."
         (release (lambda ()
                    (fnn-owner-transit-serialized
                     service nil (lambda () (fnn-owner-action 'fn-owner-close c)))))))
-    (when failure (error failure))))
+    (when failure
+      (setf (fnn-pull-flight-cleanup-debt flight) failure)
+      (error failure))))
 
 (defun fnn-pull-flight-dispose (flight)
   "Attempt all releases; preserve the first cleanup condition."
@@ -453,7 +457,7 @@ acceptance (the owner is stopping or fenced then)."
           (unless (fnn-pull-flight-closed flight)
             (setf (fnn-pull-flight-closed flight) t)
             t))
-    (let ((failure nil))
+    (let ((failure (fnn-pull-flight-cleanup-debt flight)))
       (flet ((release (thunk)
                (handler-case (funcall thunk)
                  (serious-condition (condition) (unless failure (setq failure condition))))))
@@ -461,7 +465,17 @@ acceptance (the owner is stopping or fenced then)."
         (release (lambda () (fnn-tls-close-channel (fnn-pull-flight-channel flight))))
         (release (lambda () (fnn-tls-close-context (fnn-pull-flight-context flight))))
         (release (lambda () (when (fnn-pull-flight-socket flight)
-                              (fnn-socket-shut (fnn-pull-flight-socket flight)))))
+                              (multiple-value-bind (ignored receipt condition)
+                                  (fnn-socket-shut (fnn-pull-flight-socket flight))
+                                (declare (ignore ignored))
+                                (unless (eq receipt :closed)
+                                  (if condition (error condition)
+                                    (fnn-fault "pull socket close returned no physical receipt")))))))
+        (unless failure
+          (dolist (row (fnn-pull-flight-physical-cids flight))
+            (release (lambda ()
+                       (fnn-owner-transit-serialized (fnn-pull-flight-service flight) nil
+                         (lambda () (fnn-owner-action 'fn-owner-memory-physical-return (cdr row))))))))
         (fnn-pull-flight-set-socket flight nil))
       (when failure (error failure)))))
 
@@ -539,8 +553,11 @@ the one connection (:local . octets)."
   "Open a logical transit connection; J, from a catch-up round's (:open-local j),
 is the window slot it fills."
   (multiple-value-bind (cid greeting)
-      (fnn-pull-local-open (fnn-pull-flight-service flight) (fnn-pull-flight-peer flight))
+      (fnn-pull-local-open (fnn-pull-flight-service flight) (fnn-pull-flight-peer flight)
+                          (cdr (assoc j (fnn-pull-flight-physical-cids flight))))
     (setf (fnn-pull-flight-cid flight) cid)
+    (setf (fnn-pull-flight-physical-cids flight)
+          (acons j cid (remove j (fnn-pull-flight-physical-cids flight) :key #'car)))
     (when j
       (setf (fnn-pull-flight-lj flight) j)
       (push (cons j cid) (fnn-pull-flight-cids flight)))

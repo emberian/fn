@@ -26,6 +26,7 @@
 ;   fn-adm-capacity-binding-configured-exactly-at-c
 
 (in-package "ACL2")
+(include-book "public-exposure")
 (include-book "store-capacity-vector")
 (include-book "memory-model")
 (include-book "history-totals-carried")
@@ -196,7 +197,7 @@
     :hints (("Goal" :in-theory (enable fn-adm-search-mid)))))
 
 (defun fn-adm-capacity-search (profile img cfg limit tot lo hi)
-  (declare (xargs :guard t :verify-guards nil :measure (nfix (- (nfix hi) (nfix lo)))
+  (declare (xargs :guard (and (natp lo) (natp hi)) :verify-guards nil :measure (nfix (- (nfix hi) (nfix lo)))
                   :hints (("Goal" :in-theory (disable fn-adm-search-mid fn-mm-gate-p fn-adm-cfg-at)
                            :use ((:instance fn-adm-search-mid-bounds))))))
   (if (< (nfix lo) (nfix hi))
@@ -839,3 +840,317 @@
                  (:instance kb-mono (a (len records)) (b (nfix (fn-bs-profile-max-transactions p)))
                             (c (nfix (fn-bs-profile-max-groups-per-article p))))))))
 )
+
+; M22: one ACL2 decision for the run's installed resources.
+(defun fn-adm-reader-count (configured capacity)
+  (declare (xargs :guard t))
+  (if (natp capacity) (min (nfix configured) capacity) (nfix configured)))
+
+(defun fn-adm-priced-connections (held configured capacity)
+  (declare (xargs :guard t))
+  (max (nfix held) (fn-adm-reader-count configured capacity)))
+
+(defun fn-adm-priced-cfg (cfg held capacity)
+  (declare (xargs :guard t))
+  ; All connections may hold the currently unleased OVER reply. The current
+  ; served CFG has NIL in field 10 already; do not invent a smaller P.
+  (update-nth 10 nil
+    (fn-adm-cfg-at cfg
+      (fn-adm-priced-connections held (fn-mm-cfg-connections cfg) capacity))))
+
+(defun fn-adm-retained-runtime-cfg (cfg lease-octets)
+  (declare (xargs :guard t))
+  (update-nth 6 (+ (fn-mm-cfg-cold cfg) (nfix lease-octets))
+                (true-list-fix cfg)))
+
+(defun fn-adm-installed-capacity (profile img cfg limit tot)
+  (declare (xargs :guard t :verify-guards nil))
+  (nfix (fn-adm-capacity profile img cfg limit tot)))
+
+(defun fn-adm-memory-owner-bound (maximum capacity)
+  (declare (xargs :guard t))
+  (cond ((not (natp capacity)) (nfix maximum))
+        ((equal capacity 0) 0)
+        (t (min (nfix maximum) (1+ capacity)))))
+
+(defun fn-adm-exposure-limits (v maximum publicp auth-required capacity)
+  (declare (xargs :guard t))
+  ; Keep the owner's private operator allowance separate from reader TOTAL.
+  ; fn-exp-socket-cap(1)=1, so merely setting maximum to C'+1 is insufficient.
+  (let ((limits (fn-exp-limits v maximum publicp auth-required)))
+    (update-nth 1 (fn-adm-reader-count (fn-exp-lim-total limits) capacity)
+                limits)))
+
+(defun fn-adm-run-memory-admitp (profile img cfg limit tot row held capacity)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (or (not (natp capacity)) (posp capacity))
+       (fn-adm-memory-admitp profile img
+                            (fn-adm-priced-cfg cfg held capacity)
+                            limit tot row)))
+
+(defun fn-adm-installed-capacity-line (profile img cfg limit tot)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((c (fn-adm-installed-capacity profile img cfg limit tot))
+         (word (fn-adm-capacity-binding profile img cfg limit tot))
+         (tail (concatenate 'string
+                 " of " (fn-heap-decimal (fn-mm-cfg-connections cfg))
+                 " bound-by=" (string-downcase (symbol-name word))
+                 " sum=" (fn-adm-mb-up
+                   (fn-mm-sum profile img (fn-adm-cfg-at cfg c) tot))
+                 " MB limit=" (fn-adm-mb-down limit) " MB")))
+    (concatenate 'string
+      (if (posp c) "memory capacity="
+        "refused memory-cannot-hold-the-store capacity=")
+      (fn-heap-decimal c) tail)))
+
+; Approved M22 statements; only proof hints are added.
+(defthm fn-adm-priced-connections-cover-held
+  (<= (nfix held) (fn-adm-priced-connections held configured capacity))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-adm-priced-connections))))
+
+(defthm fn-adm-priced-connections-equal-reader-count-when-covered
+  (implies (<= (nfix held) (fn-adm-reader-count configured capacity))
+           (equal (fn-adm-priced-connections held configured capacity)
+                  (fn-adm-reader-count configured capacity)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-adm-priced-connections))))
+
+(defthm fn-adm-priced-gate-bounds-the-held-instant
+  (let ((priced (fn-adm-priced-cfg cfg held capacity)))
+    (implies (fn-mm-gate-p profile img priced limit tot)
+             (<= (fn-mm-need profile img priced tot
+                            (nfix held) (nfix held)
+                            (fn-heap-article-slots profile)
+                            (fn-cbud-handshake-slots
+                              (fn-mm-cfg-tlsp priced)
+                              (fn-mm-cfg-handshakes priced))
+                            publishing)
+                 limit)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-adm-priced-cfg fn-adm-priced-connections fn-adm-reader-count fn-adm-cfg-at fn-mm-cfg-connections fn-mm-cfg-holders fn-mm-nat fn-mm-gate-p)
+(fn-mm-need fn-mm-sum fn-mm-reopen-need fn-heap-article-slots fn-cbud-handshake-slots))
+:use ((:instance fn-mm-need-within-the-sum
+(cfg (fn-adm-priced-cfg cfg held capacity)) (k (nfix held)) (j (nfix held))
+(s (fn-heap-article-slots profile))
+(h (fn-cbud-handshake-slots (fn-mm-cfg-tlsp (fn-adm-priced-cfg cfg held capacity)) (fn-mm-cfg-handshakes (fn-adm-priced-cfg cfg held capacity)))))))))
+
+(defthm fn-adm-installed-capacity-is-proved-or-zero
+  (let ((found (fn-adm-capacity profile img cfg limit tot))
+        (installed (fn-adm-installed-capacity profile img cfg limit tot)))
+    (and (natp installed)
+         (equal installed (if (natp found) found 0))
+         (or (equal installed 0)
+             (and (equal installed found)
+                  (<= installed (fn-mm-cfg-connections cfg))
+                  (fn-mm-gate-p profile img (fn-adm-cfg-at cfg installed)
+                                limit tot)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-adm-installed-capacity) (fn-adm-capacity fn-adm-cfg-at fn-mm-gate-p fn-mm-cfg-connections)) :use fn-adm-capacity-fits)))
+
+(defthm fn-adm-zero-capacity-refuses-new-readers
+  (let ((limits (fn-adm-exposure-limits v maximum publicp auth-required 0)))
+    (and (equal (fn-exp-lim-total limits) 0)
+         (equal (car (fn-exp-admit-decision xs limits held address now))
+                :refuse)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-adm-exposure-limits fn-adm-reader-count fn-exp-lim-total fn-exp-at fn-exp-admit-decision fn-exp-nat) (fn-exp-limits fn-exp-count-in fn-exp-window fn-exp-fails fn-exp-lim-auth-failures fn-exp-trusted-addressp fn-exp-count-address fn-exp-conns fn-exp-lim-per-address fn-exp-lim-trusted)))))
+
+(defthm fn-adm-zero-capacity-refuses-records
+  (not (fn-adm-run-memory-admitp profile img cfg limit tot row held 0))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-adm-run-memory-admitp))))
+
+(defthm fn-adm-absent-capacity-and-zero-are-distinct
+  (and (equal (fn-adm-reader-count configured nil) (nfix configured))
+       (equal (fn-adm-reader-count configured 0) 0)
+       (equal (fn-adm-memory-owner-bound maximum nil) (nfix maximum))
+       (equal (fn-adm-memory-owner-bound maximum 0) 0)
+       (equal (fn-adm-priced-connections held configured 0) (nfix held)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-adm-reader-count fn-adm-memory-owner-bound fn-adm-priced-connections))))
+
+(defthm fn-adm-installed-zero-has-the-zero-diagnostic
+  (implies (equal (fn-adm-installed-capacity profile img cfg limit tot) 0)
+    (equal (fn-adm-installed-capacity-line profile img cfg limit tot)
+      (concatenate 'string
+        "refused memory-cannot-hold-the-store capacity=0 of "
+        (fn-heap-decimal (fn-mm-cfg-connections cfg))
+        " bound-by="
+        (string-downcase (symbol-name
+          (fn-adm-capacity-binding profile img cfg limit tot)))
+        " sum=" (fn-adm-mb-up
+          (fn-mm-sum profile img (fn-adm-cfg-at cfg 0) tot))
+        " MB limit=" (fn-adm-mb-down limit) " MB")))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-adm-installed-capacity-line) (fn-adm-installed-capacity fn-adm-capacity-binding fn-adm-cfg-at fn-mm-sum fn-mm-cfg-connections fn-adm-mb-up fn-adm-mb-down fn-heap-decimal)))))
+
+; The retained bank changes only the fixed runtime allowance.
+(local (defthm m22-retained-cfg-fields-by-definition
+ (let ((bare (fn-adm-priced-cfg cfg held capacity)) (charged (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)))
+  (and   (equal (fn-mm-cfg-connections charged) (fn-mm-cfg-connections bare))
+  (equal (fn-mm-cfg-tlsp charged) (fn-mm-cfg-tlsp bare))
+  (equal (fn-mm-cfg-trigger charged) (fn-mm-cfg-trigger bare))
+  (equal (fn-mm-cfg-pub-trigger charged) (fn-mm-cfg-pub-trigger bare))
+  (equal (fn-mm-cfg-reclaim-live-p charged) (fn-mm-cfg-reclaim-live-p bare))
+  (equal (fn-mm-cfg-cache charged) (fn-mm-cfg-cache bare))
+  (equal (fn-mm-cfg-handshakes charged) (fn-mm-cfg-handshakes bare))
+  (equal (fn-mm-cfg-over-window charged) (fn-mm-cfg-over-window bare))
+  (equal (fn-mm-cfg-server-octets charged) (fn-mm-cfg-server-octets bare))
+  (equal (fn-mm-cfg-holders charged) (fn-mm-cfg-holders bare))
+  (equal (fn-mm-cfg-rho charged) (fn-mm-cfg-rho bare))
+  (equal (fn-mm-cfg-config charged) (fn-mm-cfg-config bare))
+       (equal (fn-mm-cfg-cold charged) (+ (nfix lease-octets) (fn-mm-cfg-cold bare)))))
+ :hints (("Goal" :in-theory (e/d
+   (fn-adm-priced-cfg fn-adm-retained-runtime-cfg fn-adm-cfg-at fn-mm-nat
+    fn-mm-cfg-connections fn-mm-cfg-tlsp fn-mm-cfg-trigger fn-mm-cfg-pub-trigger fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache fn-mm-cfg-handshakes fn-mm-cfg-over-window fn-mm-cfg-server-octets fn-mm-cfg-holders fn-mm-cfg-rho fn-mm-cfg-config fn-mm-cfg-cold)
+   (fn-adm-priced-connections fn-adm-reader-count))))))
+
+(local (defthm fn-mm-base-retained-by-definition
+ (equal (fn-mm-base img (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-base img (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-base img (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-base img (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition))))))
+
+(local (defthm fn-mm-collector-retained-by-definition
+ (equal (fn-mm-collector live (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-collector live (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-collector live (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-collector live (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition))))))
+
+(local (defthm fn-mm-payload-octets-retained-by-definition
+ (equal (fn-mm-payload-octets tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-payload-octets tot (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-payload-octets tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-payload-octets tot (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition))))))
+
+(local (defthm fn-mm-owner-retained-by-definition
+ (equal (fn-mm-owner tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-owner tot (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-owner tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-owner tot (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition))))))
+
+(local (defthm fn-mm-connection-fixed-retained-by-definition
+ (equal (fn-mm-connection-fixed profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-connection-fixed profile (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-connection-fixed profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-connection-fixed profile (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition))))))
+
+(local (defthm fn-mm-nov-line-octets-retained-by-definition
+ (equal (fn-mm-nov-line-octets profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-nov-line-octets profile (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-nov-line-octets profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-nov-line-octets profile (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition))))))
+
+(local (defthm fn-mm-over-window-fit-retained-by-definition
+ (equal (fn-mm-over-window-fit profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-over-window-fit profile (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-over-window-fit profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-over-window-fit profile (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition))))))
+
+(local (defthm fn-mm-over-window-octets-retained-by-definition
+ (equal (fn-mm-over-window-octets profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-over-window-octets profile (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-over-window-octets profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-over-window-octets profile (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition fn-mm-over-window-fit-retained-by-definition))))))
+
+(local (defthm fn-mm-large-reply-retained-by-definition
+ (equal (fn-mm-large-reply profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-large-reply profile (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-large-reply profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-large-reply profile (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition fn-mm-over-window-fit-retained-by-definition fn-mm-over-window-octets-retained-by-definition))))))
+
+(local (defthm fn-mm-maintenance-retained-by-definition
+ (equal (fn-mm-maintenance tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-maintenance tot (fn-adm-priced-cfg cfg held capacity)))
+ :hints (("Goal" :expand ((fn-mm-maintenance tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-maintenance tot (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition fn-mm-over-window-fit-retained-by-definition fn-mm-over-window-octets-retained-by-definition fn-mm-large-reply-retained-by-definition))))))
+
+(local (defthm m22-retained-need-terms-by-definition
+ (let ((bare (fn-adm-priced-cfg cfg held capacity)) (charged (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)))
+  (and (equal (fn-mm-base img charged) (fn-mm-base img bare))
+       (equal (fn-mm-collector live charged) (fn-mm-collector live bare))
+       (equal (fn-mm-need-live profile charged tot k j s h publishing)
+              (+ (nfix lease-octets) (fn-mm-need-live profile bare tot k j s h publishing)))))
+ :hints (("Goal"
+ :expand ((fn-mm-need-live profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity) tot k j s h publishing)
+          (fn-mm-need-live profile (fn-adm-priced-cfg cfg held capacity) tot k j s h publishing)
+          (fn-mm-cold-reads profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-cold-reads profile (fn-adm-priced-cfg cfg held capacity)))
+ :in-theory (union-theories (theory 'minimal-theory)
+ '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition fn-mm-over-window-fit-retained-by-definition fn-mm-over-window-octets-retained-by-definition fn-mm-large-reply-retained-by-definition fn-mm-maintenance-retained-by-definition default-+-1 default-+-2 associativity-of-+ commutativity-of-+ commutativity-2-of-+))))))
+
+(defthm fn-adm-priced-gate-holds-the-retained-lease
+  (let* ((bare (fn-adm-priced-cfg cfg held capacity))
+         (charged (fn-adm-priced-cfg
+                    (fn-adm-retained-runtime-cfg cfg lease-octets)
+                    held capacity)))
+    (implies (fn-mm-gate-p profile img charged limit tot)
+             (<= (+ (nfix lease-octets)
+                    (fn-mm-need profile img bare tot (nfix held) (nfix held)
+                      (fn-heap-article-slots profile)
+                      (fn-cbud-handshake-slots
+                        (fn-mm-cfg-tlsp bare) (fn-mm-cfg-handshakes bare))
+                      publishing))
+                 limit)))
+  :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn-mm-need)
+  (fn-adm-priced-cfg fn-adm-retained-runtime-cfg fn-mm-gate-p fn-mm-base fn-mm-need-live
+   fn-mm-collector fn-mm-cfg-tlsp fn-mm-cfg-handshakes fn-cbud-handshake-slots fn-heap-article-slots))
+ :use ((:instance fn-adm-priced-gate-bounds-the-held-instant
+        (cfg (fn-adm-retained-runtime-cfg cfg lease-octets)))
+       (:instance fn-mm-collector-monotone
+        (cfg (fn-adm-priced-cfg cfg held capacity))
+        (a (fn-mm-need-live profile (fn-adm-priced-cfg cfg held capacity) tot (nfix held) (nfix held)
+              (fn-heap-article-slots profile)
+              (fn-cbud-handshake-slots (fn-mm-cfg-tlsp (fn-adm-priced-cfg cfg held capacity)) (fn-mm-cfg-handshakes (fn-adm-priced-cfg cfg held capacity))) publishing))
+        (b (+ (nfix lease-octets)
+              (fn-mm-need-live profile (fn-adm-priced-cfg cfg held capacity) tot (nfix held) (nfix held)
+               (fn-heap-article-slots profile)
+               (fn-cbud-handshake-slots (fn-mm-cfg-tlsp (fn-adm-priced-cfg cfg held capacity)) (fn-mm-cfg-handshakes (fn-adm-priced-cfg cfg held capacity))) publishing))))))))
+
+; Guard verification for the shared served decisions. The search endpoints
+; are naturals at its initial call and every midpoint recursion.
+(verify-guards fn-adm-after)
+
+(verify-guards fn-adm-memory-admitp)
+
+(verify-guards fn-adm-capacity-search
+ :hints (("Goal" :in-theory (e/d (zp nfix natp) (fn-adm-search-mid fn-mm-gate-p fn-adm-cfg-at))
+          :use ((:instance fn-adm-search-mid-bounds)))))
+
+(verify-guards fn-adm-capacity-search-top)
+
+(verify-guards fn-adm-capacity)
+
+(verify-guards fn-adm-capacity-binding)
+
+(verify-guards fn-adm-installed-capacity)
+
+(verify-guards fn-adm-run-memory-admitp)
+
+(local (defthm m22-capacity-binding-symbolp-by-definition
+ (symbolp (fn-adm-capacity-binding profile img cfg limit tot))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (e/d (fn-adm-capacity-binding)
+   (fn-adm-capacity fn-mm-sum fn-mm-cfg-connections fn-mm-cfg-holders fn-mm-over-window-octets fn-bs-profile-max-article-octets))))))
+
+(local (defthm m22-decimal-stringp-by-definition
+ (stringp (fn-heap-decimal n))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (e/d (fn-heap-decimal) (fn-decimal-text))))))
+
+(local (defthm m22-up-stringp-by-definition
+ (stringp (fn-adm-mb-up n))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (e/d (fn-adm-mb-up) (fn-heap-decimal floor))))))
+
+(local (defthm m22-down-stringp-by-definition
+ (stringp (fn-adm-mb-down n))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (e/d (fn-adm-mb-down) (fn-heap-decimal floor))))))
+
+(verify-guards fn-adm-installed-capacity-line
+ :hints (("Goal" :in-theory (disable fn-adm-installed-capacity fn-adm-capacity-binding
+   fn-mm-cfg-connections fn-adm-mb-up fn-adm-mb-down fn-heap-decimal fn-mm-sum fn-adm-cfg-at string-downcase))))
+
+; Refusal diagnostics use the same zero-aware decision as the record budget.
+(defun fn-adm-run-article-word
+ (word profile img cfg limit used bytes-used record debt tot row held capacity)
+ (declare (xargs :guard t :verify-guards nil))
+ (let ((w (fn-cvec-article-refusal-word word profile used bytes-used record debt)))
+  (if (and (equal w :unaffordable)
+           (fn-cvec-article-transactions-admitp profile used debt)
+           (fn-cvec-article-history-admitp profile bytes-used
+             (fn-sbud-article-gate-figure (len (fn-record-payload record)) (len (fn-record-groups record))) debt)
+           (not (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity)))
+   :memory w)))

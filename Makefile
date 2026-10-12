@@ -258,6 +258,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-transaction-driver-tests \
 	books/owner-connection-state \
 	books/owner-connection-callbacks \
+	books/owner-memory-holding \
+	books/owner-memory-run \
+	books/memory-run-cost \
+	tests/acl2/owner-memory-holding-tests \
+	tests/acl2/owner-memory-run-tests \
+	tests/acl2/memory-run-cost-tests \
 	books/owner-connection-callback-refinement \
 	tests/acl2/owner-connection-callback-tests \
 	tests/acl2/owner-connection-callback-additional-tests \

@@ -448,22 +448,14 @@ share this boundary, including standalone BP owners."
 ;; TOTALS IMG CONFIG EXTENT): the totals, image and configuration octets the decision read.
 (defun fnn-heap-serve-decision (profile root core cold-resources output-resources peer reclaim-live
                                 &optional bp-terms)
-  (multiple-value-bind (totals extent) (fnn-heap-charged-totals root profile)
-    (let* ((img (and profile (fnn-heap-img-observation profile)))
-           (config (fnn-heap-config-octets root profile))
-           (bp-need (and bp-terms
-                         (fnn-core 'fn-bpsp-node-capacity (first bp-terms) (second bp-terms)
-                                   (third bp-terms) (fourth bp-terms))))
-           (pools (+ (fnn-core 'fn-mo-serve-pools profile cold-resources output-resources peer
-                               (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit) root)
-                     (or bp-need 0))))
-      (values (if (and bp-terms (null bp-need))
-                  (list :refused :invalid-bp-session-terms 0 0)
-                (fnn-core 'fn-mo-serve-decide profile img +fnn-owner-service-nursery-octets+
-                          reclaim-live cold-resources config (fnn-heap-resident-observations)
-                          (fnn-heap-address-observations) core +fnn-gc-nursery-octets+ totals pools
-                          (fnn-core 'fn-mo-serve-pool-threads cold-resources peer)))
-              totals img config extent))))
+ (multiple-value-bind (totals extent) (fnn-heap-charged-totals root profile)
+  (let ((img (and profile (fnn-heap-img-observation profile)))
+        (config (fnn-heap-config-octets root profile)))
+   (values (fnn-core 'fn-mo-serve-run-decide profile img +fnn-owner-service-nursery-octets+
+     reclaim-live cold-resources config (fnn-heap-resident-observations)
+     (fnn-heap-address-observations) core +fnn-gc-nursery-octets+ totals
+     output-resources peer (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit) root bp-terms)
+    totals img config extent))))
 
 ;; What the model reads beside today's observations (books/heap-command.lisp):
 ;; the resident observations (physical memory, memory.max) apart from the

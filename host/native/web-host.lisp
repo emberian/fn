@@ -54,7 +54,7 @@
   socket fd ssl channel in out deadline job (closedp nil) (semantic-ended nil) (semantic-disposal :idle)
   (phase :head) (want :input) (from 0) request end
   flow event private-begin post-form post-source post-cursor post-active post-done (events 0) (opened nil) (answered nil)
-  cid leased response-capture (cmd-at 0) (cmd-end 0) pending plan closing await completion
+  cid leased physical-id (socket-returned nil) response-capture (cmd-at 0) (cmd-end 0) pending plan closing await completion
   cold cold-word (line-since nil) (resume-at 0)
   send-state (send-handed 0)
   wire (wire-at 0) (body-at 0) (body-end 0)
@@ -95,7 +95,7 @@
 ;;; ---------------------------------------------------------------------------
 ;;; The owner side of a session: open, feed, close.
 
-(defun fnn-web-open (service family address protected)
+(defun fnn-web-open (service family address protected &optional prior-physical-id)
   "A logical reader connection for the browser at FAMILY/ADDRESS: the owner's
 exposure admission decides (the id, or NIL when it refused)."
   (let* ((seed (fnn-owner-sasl-seed))
@@ -105,6 +105,8 @@ exposure admission decides (the id, or NIL when it refused)."
            (lambda ()
              (fnn-owner-advance-clock)
              (let ((id (fnn-owner-core 'fn-owner-exposure-open family address nil)))
+               (when (and id prior-physical-id)
+                 (fnn-owner-action 'fn-owner-memory-physical-rearm prior-physical-id id))
                (when id (fnn-owner-log))
                ;; The session's SASL context (books/nntp-auth.lisp): a fresh
                ;; seed and no channel binding (the browser's TLS layer is not
@@ -215,7 +217,18 @@ exposure admission decides (the id, or NIL when it refused)."
     (sb-thread:with-mutex ((fnn-web-face-lock face))
       (unless (find conn (fnn-web-face-cleanup-debts face) :key #'first :test #'eq)
         (setf (fnn-web-conn-leased conn) nil (fnn-web-conn-semantic-ended conn) t
-              (fnn-web-conn-semantic-disposal conn) :returned)))))
+              (fnn-web-conn-semantic-disposal conn) :returned)))
+    (when (fnn-web-conn-socket-returned conn)
+      (fnn-web-memory-return face conn))))
+
+(defun fnn-web-memory-return (face conn)
+ (when (and (fnn-web-conn-physical-id conn) (fnn-web-conn-socket-returned conn)
+            (fnn-web-conn-semantic-ended conn)
+            (sb-thread:with-mutex ((fnn-web-face-lock face))
+              (not (find conn (fnn-web-face-cleanup-debts face) :key #'first :test #'eq))))
+  (fnn-web-cleanup face conn :memory-physical-return
+   (lambda () (fnn-quantum-web-finish (fnn-web-face-service face) nil
+    (lambda () (fnn-owner-action 'fn-owner-memory-physical-return (fnn-web-conn-physical-id conn))) :reader)))))
 
 (defun fnn-web-finish (face conn)
   (let ((first nil) (eligible nil))
@@ -242,7 +255,9 @@ exposure admission decides (the id, or NIL when it refused)."
             (declare (ignore ignored))
             (unless (eq receipt :closed)
               (if condition (error condition)
-                (fnn-fault "web socket close returned no physical receipt")))))))))
+                (fnn-fault "web socket close returned no physical receipt")))
+            (setf (fnn-web-conn-socket-returned conn) t))))
+      (when (fnn-web-conn-semantic-ended conn) (fnn-web-memory-return face conn)))))
 
 (defun fnn-web-wake-locked (face)
   (unless (fnn-web-face-wake-closed face)
@@ -471,8 +486,9 @@ exposure admission decides (the id, or NIL when it refused)."
                  (fnn-core 'fn-web-host-health-observe (fnn-owner-sched-snapshot service)
                            *the-live-state*)) :reader))))
       (:open (destructuring-bind (family address protected next) (rest action)
-               (let ((cid (fnn-web-open service family address protected)))
-                 (when cid (push cid (fnn-web-conn-opened conn)))
+               (let ((cid (fnn-web-open service family address protected (fnn-web-conn-physical-id conn))))
+                 (when cid (push cid (fnn-web-conn-opened conn))
+                   (setf (fnn-web-conn-physical-id conn) cid))
                  (setf (fnn-web-conn-flow conn) next (fnn-web-conn-event conn) (list :opened cid)))))
       (:send (destructuring-bind (cid start end next) (rest action)
                (setf (fnn-web-conn-cid conn) cid (fnn-web-conn-cmd-at conn) start

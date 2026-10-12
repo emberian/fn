@@ -26,10 +26,12 @@ never announces.
 import re
 import unittest
 
-from tests.native_harness import (EXIT, Node, environment, free_port, executable, native_image,
+from tests.native_harness import (Acl2Session, EXIT, Node, acl2_boolean, environment, free_port, executable, native_image,
                                   requires, run, start)
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
+from tests.bp_producer import post_articles
+
 DTN = native_image("FN_NATIVE_DTN_DEVELOPER_HOST")
 # The presets as `operator CONFIG init` takes them: the small preset is the
 # development profile under its named fields (tests/test_native_heap_from_profile.py
@@ -98,6 +100,58 @@ class StartEveryPresetTests(unittest.TestCase):
                          "{}: the open's history root refresh was refused".format(words[0]))
         return process
 
+    def bp_durable_exchange(self, node, words, process):
+        """A3: canonical article handoff and exact durable receipt, not a TCPCL ACK."""
+        sender = node.root / "sizing-sender"
+        init = run([str(DEVELOPER), "--fn", "store", str(sender), "init", GROUP],
+                   env=environment(), timeout=120)
+        self.assertEqual(init.returncode, EXIT.OK, init.stderr)
+        msgid = b"<bp-sizing-100@example.invalid>"
+        article = (b"Path: sender.bp.gate.invalid!not-for-mail\r\n"
+                   b"From: sender@example.invalid\r\nNewsgroups: fn.test\r\n"
+                   b"Subject: BP at decided heap\r\nDate: Mon, 12 Oct 2026 12:00:00 +0000\r\n"
+                   b"Message-ID: " + msgid + b"\r\n\r\nDurable sizing exchange\r\n")
+        article = post_articles(self, DEVELOPER, sender, [(msgid, article)])[msgid]
+        request = node.root / "sizing-request.adu"
+        with Acl2Session(DEVELOPER) as bridge:
+            request.write_bytes(bridge.bp_request(
+                [b"work-sizing", bridge.subject(msgid, article), b"dtn://sender/", b"dtn://receiver/",
+                 b"native-policy", b"origin-native", b"wire-auth", b"terms-native"], article))
+        sent = run([str(DEVELOPER), "--fn", "bp-service", "run", "127.0.0.1", str(words[2]),
+                    str(request), str(node.root / "sizing-sender-fnbs"), "dtn://sender/", "dtn://receiver/",
+                    "work-sizing", "work-sizing-attempt", "0", "3600000", "2", "32", "1048576", "0", "0"],
+                   env=environment(), timeout=120)
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        process.output_until(b"BP node delivery request-accepted", timeout=120)
+        self.assertIn(b"BP application handoff durable", process.stdout.since(0))
+        process.stop(grace=5)
+        readback = run([str(DEVELOPER), "--fn", "store", str(node.store_path), "status", "--replay"],
+                       env=environment(), timeout=300)
+        self.assertEqual(readback.returncode, EXIT.OK, readback.stderr)
+        self.assertRegex(readback.stdout, rb"transactions=\d+ articles=1 ")
+        receipt = run([str(DEVELOPER), "--fn", "app-journal", "receipt-replay", str(node.store_path),
+                       str(words[5]), str(request)], env=environment(), timeout=120)
+        self.assertEqual(receipt.returncode, EXIT.OK, receipt.stderr)
+        encoded = re.search(rb"receipt replay octets=(\d+) hex=([0-9a-f]+)", receipt.stdout)
+        self.assertIsNotNone(encoded, receipt.stdout)
+        receipt_octets = bytes.fromhex(encoded.group(2).decode("ascii"))
+        self.assertEqual(len(receipt_octets), int(encoded.group(1)))
+        with Acl2Session(DEVELOPER) as bridge:
+            # The journal's exact canonical receipt binds the request that
+            # was accepted, including its content identity and receipt ID.
+            self.assertTrue(acl2_boolean(bridge.call(
+                "(let* ((decoded (fn-bpa-decode-exact '" + bridge.literal(receipt_octets)
+                + ")) (receipt (fn-bpa-result-message decoded))"
+                + " (request (fn-bpaj-request '" + bridge.literal(request.read_bytes()) + ")))"
+                + " (and (fn-bpa-result-okp decoded) (fn-bpa-receiptp receipt)"
+                + " (equal (fn-bpa-receipt-id receipt) (fn-bpaj-receipt-id request))"
+                + " (equal (fn-bpa-receipt-work-id receipt) (fn-bpa-request-work-id request))"
+                + " (equal (fn-bpa-receipt-subject receipt) (fn-bpa-request-subject request))))")))
+        inspected = run([str(DEVELOPER), "--fn", "store", str(node.store_path), "inspect",
+                         msgid.decode("ascii")], env=environment(), timeout=120)
+        self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr)
+        self.assertEqual(inspected.stdout, article)
+
     def test_the_served_run_starts_at_every_preset(self):
         for preset in PRESETS:
             with self.subTest(preset=preset):
@@ -150,6 +204,9 @@ class StartEveryPresetTests(unittest.TestCase):
             return ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=" + limit,
                     "-p", "MemorySwapMax=0"]
         bp = self.bp_words(node, free_port())
+        node.operator("policy", "set", "path-identity", "receiver.bp.gate.invalid", expect=EXIT.OK)
+        node.operator("bp-boundary", "add", "sender-boundary", "sender.bp.gate.invalid",
+                      "dtn://sender/", bp[2], GROUP, "32768", "16", "contact", bp[13], expect=EXIT.OK)
         held = run(scope("1G") + [str(DEVELOPER), "--fn", "heap", "--", *[str(w) for w in bp]],
                    env=environment(), timeout=120)
         self.assertNotEqual(held.returncode, 0)
@@ -166,14 +223,38 @@ class StartEveryPresetTests(unittest.TestCase):
                 figure = re.match(r"heap=(\d+) MB", text)
                 self.assertIsNotNone(figure, text + done.stderr.decode("utf-8", "replace"))
                 heap = int(figure.group(1))
+                if label == "bp node":
+                    stack = re.search(r"stack=(\d+) KB", text)
+                    self.assertIsNotNone(stack, text)
+                    full = start(scope(limit) + [str(DEVELOPER), "--fn", *[str(w) for w in words]],
+                                 cwd=node.root, env=environment({"SBCL_USER_ARGS":
+                                 "--dynamic-space-size {}MB --control-stack-size {}KB".format(heap, stack.group(1))}))
+                    self.addCleanup(full.stop, 5)
+                    full.announcement(b"BP NODE LISTENING ", timeout=120)
+                    self.assertIn(b"BP session funding installed", full.stdout.since(0))
+                    probe_limit = re.search(r"machine=(\d+) MB", text)
+                    self.assertIsNotNone(probe_limit, text)
+                    startup = full.stdout.since(0) + full.stderr.since(0)
+                    capacity = re.search(rb"memory capacity=(\d+) of \d+ bound-by=\S+ sum=\d+ MB limit=(\d+) MB", startup)
+                    self.assertIsNotNone(capacity, startup)
+                    self.assertGreater(int(capacity.group(1)), 0)
+                    self.assertEqual(int(capacity.group(2)), int(probe_limit.group(1)),
+                                     "BP owner and probe must install the same LIMIT")
+                    self.bp_durable_exchange(node, words, full)
                 process = start(scope(limit) + [str(DEVELOPER), "--fn", *[str(w) for w in words]], cwd=node.root,
                                 env=environment({"SBCL_USER_ARGS":
-                                                 "--dynamic-space-size {}MB".format(heap * 85 // 100)}))
+                                                 "--dynamic-space-size {}MB".format(heap * 85 // 100)
+                                                 + (" --control-stack-size {}KB".format(stack.group(1))
+                                                    if label == "bp node" else "")}))
                 self.addCleanup(process.stop, 5)
                 status = process.wait(timeout=120)
                 self.assertNotEqual(status, 0)
                 self.assertNotIn(b"LISTENING", process.stdout.since(0))
                 self.assertIn(refusal, process.stderr.since(0))
+                if label == "bp node":
+                    self.assertRegex(process.stderr.since(0),
+                        rb"cold startup refused: the process heap does not hold the store's protected runtime"
+                        rb"|BP session funding refused \(:REFUSED :BP-SESSION-CAPACITY-NOT-HELD\)")
 
 if __name__ == "__main__":
     unittest.main()

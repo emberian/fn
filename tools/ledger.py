@@ -1476,6 +1476,9 @@ def defkeystone_claim(name: Sym, term: object, options: dict) -> list | None:
     """The claim a defkeystone form states, from TERM's source
     ``implies``/``and`` and its ``:hyps`` labels (`fn-dk-claim-of`); None
     where the labels do not number the hypotheses."""
+    if head(term) in {"let", "let*"} and len(term) == 3:
+        inner = defkeystone_claim(name, term[2], options)
+        return [term[0], term[1], inner] if inner is not None else None
     implies = (isinstance(term, list) and len(term) == 3 and head(term) == "implies")
     if implies:
         hyps = term[1][1:] if head(term[1]) == "and" else [term[1]]

@@ -618,3 +618,126 @@
                        (pools *hct-sv-over-pools*) (pool-threads *hct-sv-pool-threads*))
                :fault "the pre-fix decision clips LIMIT to zero and admits pools above the resident observation"))
   :hints (("Goal" :by fn-mo-serve-launch-holds-its-pools)))
+
+; M22 approved whole witnesses and old-behavior teeth, unchanged.
+
+(defconst *m22-profile* *fn-heap-small-profile*)
+
+(defconst *m22-img* '(104857600 24117248 1090519))
+
+(defconst *m22-cfg* '(32 t 8388608 8388608 nil 0 8388608 16 nil 64))
+
+(defconst *m22-empty* '(0 0 0 0 0 0 0 0 :resident))
+
+(defconst *m22-lowered-cfg* (fn-adm-cfg-at *m22-cfg* 1))
+
+(defconst *m22-bp-terms*
+  (list '(2 1 nil 30000 120000 600000)
+        (fn-bpnpf-node-profile-read nil nil) 1048576 1024))
+
+(defconst *m22-bp-resident* (list (* 2048 *fn-heap-mib*)))
+
+(defconst *m22-bp-core* '(81046496 . 30081024))
+
+(defconst *m22-bp-img* '(81046496 30081024 1376256))
+
+(defconst *m22-bp-nursery* 8388608)
+
+(defconst *m22-bp-pools*
+  (fn-mo-serve-total-pools *fn-bs-profile-development* nil nil nil 4 8 "/x" *m22-bp-terms*))
+
+(defconst *m22-bp-decision*
+  (fn-mo-serve-run-decide *fn-bs-profile-development* *m22-bp-img* 8388608 nil nil 119
+                        *m22-bp-resident* nil *m22-bp-core* *m22-bp-nursery* *m22-empty*
+                        nil nil 4 8 "/x" *m22-bp-terms*))
+
+(assert-event
+  (let* ((owner (fn-mo-serve-owner-limit *m22-bp-resident* *fn-bs-profile-development*
+                   nil nil nil 4 8 "/x" *m22-bp-terms*))
+         (probe (fn-mo-serve-probe-limit *m22-bp-resident* *fn-bs-profile-development*
+                   nil nil nil 4 8 "/x" *m22-bp-terms*))
+         (old (fn-mo-serve-limit *m22-bp-resident*
+                 (fn-mo-serve-pools *fn-bs-profile-development* nil nil nil 4 8 "/x"))))
+    (and (natp owner) (equal owner probe)
+         (posp (fn-mo-serve-bp-need *m22-bp-terms*))
+         (not (equal old probe)))))
+
+(assert-event
+  (let* ((limit (fn-mo-serve-owner-limit *m22-bp-resident* *fn-bs-profile-development*
+                  nil nil nil 4 8 "/x" *m22-bp-terms*))
+         (base (fn-mo-serve-pools *fn-bs-profile-development* nil nil nil 4 8 "/x"))
+         (bp (fn-mo-serve-bp-need *m22-bp-terms*)))
+    (and (equal (car *m22-bp-decision*) :heap)
+         (natp limit) (natp *m22-bp-pools*)
+         (equal (+ limit *m22-bp-pools*) (fn-mm-least-observation *m22-bp-resident*))
+         (equal *m22-bp-pools* (+ base bp))
+         (not (equal (+ (fn-mo-serve-limit *m22-bp-resident* base) *m22-bp-pools*)
+                     (fn-mm-least-observation *m22-bp-resident*))))))
+
+(assert-event
+  (let* ((terms *m22-bp-terms*)
+         (dynamic (* *fn-heap-mib* (cadr *m22-bp-decision*)))
+         (need (fn-mo-serve-bp-store-need *m22-bp-resident* *fn-bs-profile-development*
+                   nil nil nil 4 8 "/x" terms *m22-bp-core* *m22-bp-nursery*))
+         (old (fn-heap-figure-octets *fn-bs-profile-development*
+                                    (fn-heap-core-file *m22-bp-core*) *m22-bp-nursery*)))
+    (and terms (equal (car *m22-bp-decision*) :heap)
+         (equal (car (fn-bpsp-node-startup (nth 0 terms) (nth 1 terms)
+                          (nth 2 terms) (nth 3 terms) dynamic need)) :hold)
+         (equal (fn-bpsp-node-startup (nth 0 terms) (nth 1 terms)
+                          (nth 2 terms) (nth 3 terms) dynamic old)
+                '(:refused :bp-session-capacity-not-held))
+         (equal (fn-bpsp-node-startup (nth 0 terms) (nth 1 terms)
+                          (nth 2 terms) (nth 3 terms) (floor (* 85 dynamic) 100) need)
+                '(:refused :bp-session-capacity-not-held)))))
+
+; M22 behavioral twins; the wiring equality is deliberately not an event.
+(defkeystone m22-mo-serve-launch-conserves-the-resident-partition
+  (implies
+    (equal (car (fn-mo-serve-run-decide
+                   profile img trigger live cold config resident address core nursery tot
+                   output peer workers cache-limit root bp-terms)) :heap)
+    (let ((limit (fn-mo-serve-owner-limit
+                   resident profile cold output peer workers cache-limit root bp-terms))
+          (pools (fn-mo-serve-total-pools
+                   profile cold output peer workers cache-limit root bp-terms)))
+      (and (natp limit) (natp pools)
+           (equal (+ limit pools) (fn-mm-least-observation resident))
+           (equal pools
+             (+ (fn-mo-serve-pools profile cold output peer workers cache-limit root)
+                (fn-mo-serve-bp-need bp-terms))))))
+ :rule-classes nil
+ :restates fn-mo-serve-launch-conserves-the-resident-partition
+ :subject fn-mo-serve-run-decide
+ :witness ((profile *fn-bs-profile-development*) (img *m22-bp-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident *m22-bp-resident*) (address nil) (core *m22-bp-core*) (nursery *m22-bp-nursery*) (tot *m22-empty*) (output nil) (peer nil) (workers 4) (cache-limit 8) (root "/x") (bp-terms *m22-bp-terms*))
+ :hyps (accepted)
+ :breaks ((accepted ((profile *fn-bs-profile-development*) (img *m22-bp-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident nil) (address nil) (core *m22-bp-core*) (nursery *m22-bp-nursery*) (tot *m22-empty*) (output nil) (peer nil) (workers 4) (cache-limit 8) (root "/x") (bp-terms *m22-bp-terms*))))
+ :mutations ((old-behavior (:conclusion (equal (+ (fn-mo-serve-limit resident (fn-mo-serve-pools profile cold output peer workers cache-limit root)) (fn-mo-serve-total-pools profile cold output peer workers cache-limit root bp-terms)) (fn-mm-least-observation resident))) ((profile *fn-bs-profile-development*) (img *m22-bp-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident *m22-bp-resident*) (address nil) (core *m22-bp-core*) (nursery *m22-bp-nursery*) (tot *m22-empty*) (output nil) (peer nil) (workers 4) (cache-limit 8) (root "/x") (bp-terms *m22-bp-terms*)) :fault "the old owner LIMIT omits the BP charge"))
+ :hints (("Goal" :by fn-mo-serve-launch-conserves-the-resident-partition)))
+
+(defkeystone m22-mo-serve-bp-launch-admits-its-startup
+  (implies
+    (and bp-terms
+      (equal (car (fn-mo-serve-run-decide
+                     profile img trigger live cold config resident address core nursery tot
+                     output peer workers cache-limit root bp-terms)) :heap))
+    (equal
+      (car (fn-bpsp-node-startup
+        (nth 0 bp-terms) (nth 1 bp-terms) (nth 2 bp-terms) (nth 3 bp-terms)
+        (* *fn-heap-mib*
+           (cadr (fn-mo-serve-run-decide
+                   profile img trigger live cold config resident address core nursery tot
+                   output peer workers cache-limit root bp-terms)))
+        (fn-mo-serve-bp-store-need resident profile cold output peer workers cache-limit root
+                                  bp-terms core nursery)))
+      :hold))
+ :rule-classes nil
+ :restates fn-mo-serve-bp-launch-admits-its-startup
+ :subject fn-mo-serve-run-decide
+ :witness ((profile *fn-bs-profile-development*) (img *m22-bp-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident *m22-bp-resident*) (address nil) (core *m22-bp-core*) (nursery *m22-bp-nursery*) (tot *m22-empty*) (output nil) (peer nil) (workers 4) (cache-limit 8) (root "/x") (bp-terms *m22-bp-terms*))
+ :hyps (bp accepted)
+ :breaks ((bp ((profile *fn-bs-profile-development*) (img *m22-bp-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident *m22-bp-resident*) (address nil) (core *m22-bp-core*) (nursery *m22-bp-nursery*) (tot *m22-empty*) (output nil) (peer nil) (workers 4) (cache-limit 8) (root "/x") (bp-terms nil))) (accepted ((profile *fn-bs-profile-development*) (img *m22-bp-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident *m22-bp-resident*) (address '(1)) (core *m22-bp-core*) (nursery *m22-bp-nursery*) (tot *m22-empty*) (output nil) (peer nil) (workers 4) (cache-limit 8) (root "/x") (bp-terms *m22-bp-terms*)) :logical "the refused decision has a reason keyword instead of H; the omitted accepted hypothesis is its runtime type boundary"))
+ :mutations ((old-whole-profile-floor (:conclusion (equal (car (fn-bpsp-node-startup (nth 0 bp-terms) (nth 1 bp-terms) (nth 2 bp-terms) (nth 3 bp-terms)
+ (* *fn-heap-mib* (cadr (fn-mo-serve-run-decide profile img trigger live cold config resident address core nursery tot output peer workers cache-limit root bp-terms)))
+ (fn-heap-figure-octets profile (fn-heap-core-file core) nursery))) :hold)) ((profile *fn-bs-profile-development*) (img *m22-bp-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident *m22-bp-resident*) (address nil) (core *m22-bp-core*) (nursery *m22-bp-nursery*) (tot *m22-empty*) (output nil) (peer nil) (workers 4) (cache-limit 8) (root "/x") (bp-terms *m22-bp-terms*)) :fault "the old BP startup refuses the probe's accepted 100 percent heap using the whole profile floor"))
+ :hints (("Goal" :by fn-mo-serve-bp-launch-admits-its-startup)))
