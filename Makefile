@@ -941,6 +941,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-transaction-sim \
 	books/post-transaction-layer \
 	tests/acl2/post-transaction-tests \
+	tests/acl2/post-transaction-host-rely-tests \
 	books/post-context \
 	tests/acl2/post-context-tests \
 	books/post-acceptance \

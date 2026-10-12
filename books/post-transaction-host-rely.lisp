@@ -90,9 +90,12 @@
     nil))
 
 (defun-sk fn-pth-reachablep (s)
-  (exists (cfg ops0 q0)
-    (and (fn-rtc-configp cfg) (natp q0) (<= 1 (fn-rtc-nstatic cfg))
-         (equal s (fn-pth-host-run (mv-nth 0 (fn-pth-init cfg)) ops0 q0)))))
+  (exists (profile mcfg ops0 q0)
+    (let ((cfg (fn-hl-rtc-config profile mcfg q0 *fn-pth-nstatic* 0 0
+                                *fn-pth-qs* *fn-pth-cs*)))
+      (and (fn-rtc-configp cfg) (natp q0)
+           (<= 1 (fn-rtc-nstatic cfg))
+           (equal s (fn-pth-host-run (mv-nth 0 (fn-pth-init cfg)) ops0 q0))))))
 
 ; Local frames and normal forms for the definition ties.
 (local
@@ -316,8 +319,31 @@
                       (:executable-counterpart zp) (:executable-counterpart natp))))))
 
 
+(defthm fn-pth-host-config-holds-the-workspace
+  (let ((c (fn-hl-rtc-config profile mcfg q
+                           *fn-pth-nstatic* 0 0 *fn-pth-qs* *fn-pth-cs*)))
+    (and (fn-rtc-configp c)
+         (equal (fn-rtc-nstatic-home c) *fn-pth-qs*)
+         (iff (and (natp h) (< h (fn-rtc-nbufs c))
+                   (equal (fn-rtc-home h c) 1))
+              (and (natp h) (< h *fn-pth-qs*)))
+         (implies (and (natp h) (< h *fn-pth-qs*))
+                  (equal (fn-rtc-buf-cap h c) (fn-rtc-capf-static c)))
+         (equal (fn-rtc-capf-static c) *fn-pth-cs*)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-hl-rtc-config-is-a-config
+                               (cfg mcfg) (nstatic *fn-pth-nstatic*)
+                               (qfixed 0) (capf 0) (qs *fn-pth-qs*) (cs *fn-pth-cs*)))
+           :in-theory (enable fn-hl-rtc-config fn-rtc-nstatic-home fn-rtc-nbufs
+                              fn-rtc-nstatic fn-rtc-qfixed-static fn-rtc-nconnections
+                              fn-rtc-qfixed fn-rtc-nconnection-home fn-rtc-nhome
+                              fn-rtc-home fn-rtc-buf-cap fn-rtc-capf-static fn-rtc-get))))
+
 ; A small nonempty reachable-state witness; the :opened use has op 0.
-(defconst *fn-pth-rely-cfg* '(3 9 128 1 4 1 256 4 128))
+(defconst *fn-pth-rely-mcfg* '(1 nil 0 0 nil 0 0 0 nil 0 1))
+(defconst *fn-pth-rely-cfg*
+  (fn-hl-rtc-config *fn-bs-profile-development* *fn-pth-rely-mcfg* 100000
+                    *fn-pth-nstatic* 0 0 *fn-pth-qs* *fn-pth-cs*))
 (defconst *fn-pth-rely-events0*
   (list (list :opened 1 1 0 '(:done 0)
               (list (list 0 (make-list 32 :initial-element 0) 0 1 0)
@@ -327,7 +353,7 @@
 (defconst *fn-pth-rely-state*
   (fn-rtc-make *fn-pth-rely-cfg*
                '((0 :live nil) (1 :live 0) (0 :free nil))
-               (fn-rtc-free-pool 9) '((:accept 0 0 1 nil))
+               (fn-rtc-free-pool 4) '((:accept 0 0 1 nil))
                (list nil (fn-ptx-opened (car (fn-rtc-e-data (car *fn-pth-rely-events0*)))
                                         0 '(1 256 256)) nil) 2))
 
@@ -348,7 +374,7 @@
                    (:executable-counterpart fn-ptx-wfp) (:executable-counterpart fn-ptx-wf-cost)))))
            :use ((:instance fn-pth-reachablep-suff
                                   (s *fn-pth-rely-state*)
-                                  (cfg *fn-pth-rely-cfg*)
+                                  (profile *fn-bs-profile-development*) (mcfg *fn-pth-rely-mcfg*)
                                   (ops0 *fn-pth-rely-ops0*) (q0 100000))
                  (:instance fn-ptx-size-pos (x (fn-ptx-acc-begin 0)))
                  (:instance fn-ptx-acc-begin-bounded (txid 0))))))
