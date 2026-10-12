@@ -645,3 +645,191 @@
  (defthm sct-teeth-vh-without-view
    (sct-vh-agree (sct-session "fn.test") (sct-vh-args ":fn-verified" "1-10") (sct-vh-arch-other) *sct-c*)
    :rule-classes nil))
+
+(include-book "../../books/defkeystone")
+
+; The native positive witnesses build the same three rows by commit and
+; seal their three payloads. Logical removals use explicit corrupt snapshots,
+; never install them in the native arrays.
+(defun sct-teeth-live-cat (fn-cat)
+  (declare (xargs :stobjs fn-cat :guard t))
+  (let* ((fn-cat (fn-cat-clear fn-cat))
+         (fn-cat (fn-cat-commit *sct-r0* fn-cat))
+         (fn-cat (fn-cat-commit *sct-r1* fn-cat)))
+    (fn-cat-commit *sct-r2* fn-cat)))
+
+; With duplicate number 1, the index selects withdrawn row 0; the archive
+; still contains row 2 at number 1. Both low and summary differ. Row 2's
+; negative payload handle also fails fn-cat-p: this logical removal is
+; outside the subject's stobj guard, not merely an unreachable fixture.
+(defconst *sct-teeth-dup-hidden*
+  (list (fn-held-with-withdrawn *sct-r0* '(0 . 0))
+        *sct-r1* (sct-held *sct-w2* -1 '(("fn.test" . 1)))))
+
+(local
+ (defthm sct-teeth-logical-removals-outside-catalog-guard
+   (and (not (fn-cat-p *sct-teeth-dup-hidden*))
+        (not (fn-cat-p *sct-c-atom*)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-cat-p-is-rowsp fn-cat-rowp)))))
+
+(defun sct-teeth-cat (fixture fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (equal fixture :live)))
+  (mbe :logic (if (equal fixture :live)
+                  (sct-teeth-live-cat fn-cat)
+                (non-exec (if (equal fixture :atom)
+                              *sct-c-atom*
+                            *sct-teeth-dup-hidden*)))
+       :exec (sct-teeth-live-cat fn-cat)))
+
+(defun sct-teeth-arena (fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let* ((fn-arena (fn-arena-seal-list *sct-p0* fn-arena))
+         (fn-arena (fn-arena-seal-list *sct-p1* fn-arena)))
+    (fn-arena-seal-list *sct-p2* fn-arena)))
+
+; A native snapshot for the list-only freshness predicate. The local lemmas
+; justify the exact stobj-check rather than trusting a fixture flag.
+(defun sct-teeth-rows (n fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (natp n) (<= n (fn-cat-count fn-cat)))
+                  :verify-guards nil :measure (nfix n)))
+  (if (zp n) nil
+    (append (sct-teeth-rows (1- n) fn-cat)
+            (list (fn-cat-at (1- n) fn-cat)))))
+
+(local
+ (defthm sct-teeth-rows-is-take
+   (implies (natp n) (equal (sct-teeth-rows n fn-cat) (take n fn-cat)))
+   :hints (("Goal" :induct (sct-teeth-rows n fn-cat)
+            :in-theory (enable sct-teeth-rows fn-cat-at-is-nth)))))
+
+(local
+ (defthm sct-teeth-take-len-is-true-list-fix
+   (equal (take (len c) c) (true-list-fix c))
+   :hints (("Goal" :induct (len c)
+            :in-theory (enable take true-list-fix)))))
+
+(local
+ (defthm sct-teeth-above-p-of-true-list-fix
+   (equal (fn-cnx-above-p group b (true-list-fix rest))
+          (fn-cnx-above-p group b rest))
+   :hints (("Goal" :induct (fn-cnx-above-p group b rest)
+            :in-theory (enable fn-cnx-above-p)))))
+
+(local
+ (defthm sct-teeth-row-below-p-of-true-list-fix
+   (equal (fn-cnx-row-below-p keys h (true-list-fix rest))
+          (fn-cnx-row-below-p keys h rest))
+   :hints (("Goal" :induct (fn-cnx-row-below-p keys h rest)
+            :in-theory (enable fn-cnx-row-below-p)))))
+
+(local
+ (defthm sct-teeth-freshp-of-true-list-fix
+   (equal (fn-cnx-freshp (true-list-fix c)) (fn-cnx-freshp c))
+   :hints (("Goal" :induct (fn-cnx-freshp c)
+            :in-theory (enable fn-cnx-freshp fn-cnx-row-below-p fn-cnx-above-p)))))
+
+(defun sct-teeth-fresh-check (fn-cat)
+  (declare (xargs :stobjs fn-cat :guard t :verify-guards nil))
+  (mv (fn-cnx-freshp (sct-teeth-rows (fn-cat-count fn-cat) fn-cat)) fn-cat))
+
+; Build the expected archive articles with the canonical constructor;
+; defconst cannot execute a stobj reader on a logical list snapshot.
+(defmacro sct-teeth-article (row)
+  `(fn-make-article (fn-record-msgid ,row) (fn-record-payload ,row)
+                    (fn-record-groups ,row) (fn-held-numbers ,row)
+                    t (fn-record-stamp ,row)))
+
+(defconst *sct-teeth-archive2*
+  (fn-make-state '("fn.test" "fn.other") '(("fn.test" . 3) ("fn.other" . 2))
+                 (list (sct-teeth-article *sct-r1*) (sct-teeth-article *sct-r0*))
+                 1 nil nil))
+(defconst *sct-teeth-archive-dup*
+  (fn-make-state '("fn.test" "fn.other") '(("fn.test" . 4) ("fn.other" . 2))
+                 (list (sct-teeth-article (nth 2 *sct-teeth-dup-hidden*))
+                       (sct-teeth-article *sct-r1*))
+                 1 nil nil))
+(defconst *sct-teeth-archive-atom*
+  (fn-make-state nil nil (list (sct-teeth-article (car *sct-c-atom*))) 1 nil nil))
+
+; The pinned view contains two live articles, and excludes the third commit.
+(defun sct-teeth-live-positive (fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (and (equal (fn-scat-group-summary *sct-teeth-archive2* "fn.test" 2 fn-cat) '(2 1 2))
+       (equal (fn-scat-group-low "fn.test" 2 fn-cat) 1)
+       (equal (len (fn-cat-view-articles 2 fn-arena fn-cat)) 2)
+       (not (fn-find-article "<c@x>" (fn-cat-view-articles 2 fn-arena fn-cat)))))
+(defun sct-teeth-positive ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn-arena
+   (mv-let (ok fn-arena)
+     (with-local-stobj fn-cat
+       (mv-let (ok fn-arena fn-cat)
+         (let* ((fn-arena (sct-teeth-arena fn-arena))
+                (fn-cat (sct-teeth-live-cat fn-cat)))
+           (mv (sct-teeth-live-positive fn-arena fn-cat) fn-arena fn-cat))
+         (mv ok fn-arena)))
+     ok)))
+(assert-event (sct-teeth-positive))
+
+(defteeth fn-scat-group-summary-is-archive
+  :claim (((fresh (fn-cnx-freshp fn-cat))
+           (group-present group)
+           (archive-is-view (equal (fn-state-articles archive)
+                                   (fn-cat-view-articles v fn-arena fn-cat))))
+          (equal (fn-scat-group-summary archive group v fn-cat)
+                 (fn-nntp-group-summary archive group)))
+  :subject fn-scat-group-summary
+  :witness ((fixture :live) (archive *sct-teeth-archive2*) (group "fn.test") (v 2))
+  :stobjs ((fn-cat (sct-teeth-cat fixture fn-cat))
+           (fn-arena (sct-teeth-arena fn-arena)))
+  :stobj-checks
+  (((fn-cnx-freshp fn-cat) (sct-teeth-fresh-check fn-cat)
+    :hints (("Goal" :in-theory (enable sct-teeth-fresh-check fn-cat-count-is-len)))))
+  :breaks ((fresh ((fixture :duplicate) (archive *sct-teeth-archive-dup*) (v 3))
+                  :logical "The duplicate-number row has payload handle -1, which fails fn-cat-p and the subject's stobj guard.")
+           (group-present ((fixture :atom) (archive *sct-teeth-archive-atom*) (group nil) (v 1))
+                          :logical "The atom in the numbers alist fails fn-cat-p and cannot inhabit a guarded native catalog.")
+           (archive-is-view ((archive nil))))
+  :mutations ((ignores-pinned-view
+               (:conclusion (equal (fn-scat-group-summary archive group (fn-cat-count fn-cat) fn-cat)
+                                   (fn-nntp-group-summary archive group)))
+               () :fault "GROUP summarizes the current catalog count instead of the connection's pinned view."))
+  :hints ((and stable-under-simplificationp
+               '(:expand ((:free (x) (hide x))
+                          (:free (i v fn-arena fn-cat)
+                                 (fn-cat-view-below i v fn-arena fn-cat))
+                          (:free (seq fn-arena fn-cat)
+                                 (fn-cat-row-article seq fn-arena fn-cat)))))
+          ("Goal" :in-theory (disable fn-cnx-view-range-is-walk
+                                      (:executable-counterpart fn-cat-view-below)
+                                      (:executable-counterpart fn-cat-row-article)))))
+
+(defteeth fn-scat-group-low-is-archive
+  :claim (((fresh (fn-cnx-freshp fn-cat)) (group-present group))
+          (equal (fn-scat-group-low group v fn-cat)
+                 (fn-nntp-group-low group (fn-cat-view-articles v fn-arena fn-cat))))
+  :subject fn-scat-group-low
+  :witness ((fixture :live) (group "fn.test") (v 2))
+  :stobjs ((fn-cat (sct-teeth-cat fixture fn-cat))
+           (fn-arena (sct-teeth-arena fn-arena)))
+  :stobj-checks
+  (((fn-cnx-freshp fn-cat) (sct-teeth-fresh-check fn-cat)
+    :hints (("Goal" :in-theory (enable sct-teeth-fresh-check fn-cat-count-is-len)))))
+  :breaks ((fresh ((fixture :duplicate) (v 3))
+                  :logical "The duplicate-number row has payload handle -1, which fails fn-cat-p and the subject's stobj guard.")
+           (group-present ((fixture :atom) (group nil) (v 1))
+                          :logical "The atom in the numbers alist fails fn-cat-p and cannot inhabit a guarded native catalog."))
+  :mutations ((low-from-high
+               (:conclusion (equal (nfix (- (fn-cat-group-next group fn-cat) 1))
+                                   (fn-nntp-group-low group (fn-cat-view-articles v fn-arena fn-cat))))
+               () :fault "GROUP returns the allocated high number (next minus one) for its low article number."))
+  :hints ((and stable-under-simplificationp
+               '(:expand ((:free (x) (hide x))
+                          (:free (i v fn-arena fn-cat)
+                                 (fn-cat-view-below i v fn-arena fn-cat))
+                          (:free (seq fn-arena fn-cat)
+                                 (fn-cat-row-article seq fn-arena fn-cat)))))
+          ("Goal" :in-theory (disable fn-cnx-view-range-is-walk
+                                      (:executable-counterpart fn-cat-view-below)
+                                      (:executable-counterpart fn-cat-row-article)))))
