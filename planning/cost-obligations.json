@@ -4,15 +4,15 @@
  "counts": {
   "proved": 6,
   "partial": 1,
-  "derived": 104,
-  "none": 1745
+  "derived": 102,
+  "none": 1753
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 1,
-   "derived": 103,
-   "none": 1030
+   "derived": 101,
+   "none": 1037
   },
   "ideal": {
    "proved": 0,
@@ -24,7 +24,7 @@
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 571
+   "none": 572
   }
  },
  "families": {
@@ -68,7 +68,10 @@
  "undispatched_declarations": [
   "fn-cur-at",
   "fn-heap-command-line",
+  "fn-lgb-descriptor",
+  "fn-lgb-slice",
   "fn-lgb-slice-acc",
+  "fn-lgb-span",
   "fn-lxc-capped-p",
   "fn-lxc-digits-value",
   "fn-lxc-words",
@@ -4995,6 +4998,76 @@
    "declared_in": null
   },
   {
+   "name": "fn-hld-begin",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-end",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-init",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-quantum",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-sent",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-window-base",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-workspace",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-hrecs$s-dispose",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -5365,36 +5438,16 @@
    "declared_in": null
   },
   {
-   "name": "fn-lgb-descriptor",
+   "name": "fn-lgb-next-record",
    "class": "common-lisp-compliant",
    "claim": "derived",
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-arx-attach-trailers-buffer"
-   ],
-   "theorem": null,
-   "declared_in": "books/store-log-buffer-cost.lisp"
-  },
-  {
-   "name": "fn-lgb-slice",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
+    "fn-arx-attach-trailers-buffer",
+    "mv-nth",
     "unsigned-byte-p"
    ],
-   "theorem": null,
-   "declared_in": "books/store-log-buffer-cost.lisp"
-  },
-  {
-   "name": "fn-lgb-span",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
    "theorem": null,
    "declared_in": "books/store-log-buffer-cost.lisp"
   },
@@ -11853,6 +11906,16 @@
   {
    "name": "fn-owner-known-abort",
    "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-owner-lease-cfg",
+   "class": "program",
    "claim": "none",
    "bound": null,
    "sizes": [],
