@@ -45,7 +45,8 @@ if name == "world" and os.environ.get("STUB_WORLD"):
     if os.path.exists("books/image-world-part-1.lisp"):
         os.remove("books/image-world-part-1.lisp")
 if name == "premise_audit" and mode == "json":
-    print(os.environ.get("STUB_PREMISES", "{}"))
+    every = "--all" in args and "STUB_PREMISES_ALL" in os.environ
+    print(os.environ["STUB_PREMISES_ALL"] if every else os.environ.get("STUB_PREMISES", "{}"))
 if mode == "write" and name == "resource_contract" and os.environ.get("STUB_CONTRACT"):
     os.makedirs("docs", exist_ok=True)
     with open("docs/resource-contract.md", "a") as f:
@@ -264,7 +265,10 @@ class TrainBase(unittest.TestCase):
         sh(self.seed, "git", "fetch", "-q", "origin")
         sh(self.seed, "git", "checkout", "-q", "-B", "lane/" + name, base)
         for path, text in files.items():
-            (self.seed / path).write_text(text)
+            if text is None:  # the lane deletes the file
+                (self.seed / path).unlink()
+            else:
+                (self.seed / path).write_text(text)
         sha = self.commit(self.seed, "lane " + name)
         sh(self.seed, "git", "push", "-q", "origin", "HEAD:lane/" + name)
         return sha
@@ -1425,6 +1429,77 @@ class PremiseBaselineTests(TrainBase):
         _, record = self.gate({})
         self.assertEqual((record["rc"], record["dropped"]), (0, []))
         self.assertNotIn("premise_audit --json", self.stub_log())
+
+
+class PremiseTermBaselineTests(TrainBase):
+    """planning/premise-term-baseline.json (premises assumed only of a term,
+    D12's lane/d-premise-args) gets the same union and the same shrink-only
+    gate, judged against premise_audit --json --all."""
+
+    TERM = "planning/premise-term-baseline.json"
+    baseline = PremiseBaselineTests.baseline
+    on_dev = PremiseBaselineTests.on_dev
+
+    def on_dev_terms(self, bare, terms):
+        self.advance_dev({"planning/premise-baseline.json": self.baseline(*bare),
+                          self.TERM: self.baseline(*terms)})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+
+    def gate_terms(self, bare_premises, all_premises):
+        g = self.train("gate", extra_env={"STUB_PREMISES": json.dumps(bare_premises),
+                                          "STUB_PREMISES_ALL": json.dumps(all_premises)})
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        return g, st["gates"]["premise_baseline"]
+
+    def test_a_term_conflict_takes_the_union(self):
+        self.on_dev_terms(["a"], ["t1", "t2"])
+        sha = self.lane("p", {self.TERM: self.baseline("t1", "t3")})
+        self.advance_dev({self.TERM: self.baseline("t2", "t4")})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+        m = self.train("merge", f"p@{sha}")
+        self.assertEqual(m.returncode, 0, m.stdout + m.stderr)
+        merged = json.loads((self.work / self.TERM).read_text())
+        self.assertEqual(sorted(merged["accepted"]), ["t1", "t2", "t3", "t4"])
+
+    def test_a_dropped_term_still_a_finding_refuses(self):
+        self.on_dev_terms(["a"], ["t1", "t2", "t3"])
+        sha = self.lane("p", {self.TERM: self.baseline("t1"), "tools/x.py": "x\n"})
+        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
+        # the bare audit says nothing of t2: only --all sees a term premise
+        lost, record = self.gate_terms({}, {"t2": {"class": "never concluded"},
+                                            "t3": {"class": "established by a hosted entry"}})
+        self.assertNotEqual(lost.returncode, 0)
+        self.assertEqual(record["rc"], 1)
+        self.assertEqual((record["term"]["dropped"], record["term"]["lost"]), (["t2", "t3"], ["t2"]))
+        self.assertIn("premise term baseline LOST an entry that is still a finding "
+                      "(never concluded): t2", lost.stdout)
+        self.assertIn("premise_audit --json --all", self.stub_log())
+
+    def test_a_term_entry_moved_to_the_bare_baseline_is_carried(self):
+        self.on_dev_terms(["a"], ["t1", "t2"])
+        sha = self.lane("p", {"planning/premise-baseline.json": self.baseline("a", "t2"),
+                              self.TERM: self.baseline("t1")})
+        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
+        g, record = self.gate_terms({}, {"t2": {"class": "never concluded"}})
+        self.assertEqual(record["rc"], 0, g.stdout)
+        self.assertEqual(record["term"]["lost"], [])
+
+    def test_the_term_file_gone_at_head_refuses(self):
+        self.on_dev_terms(["a"], ["t1"])
+        sha = self.lane("p", {self.TERM: None})
+        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
+        g, record = self.gate_terms({}, {})
+        self.assertEqual(record["rc"], 1, g.stdout)
+        self.assertIn("premise-term-baseline.json is gone at HEAD", g.stdout)
+
+    def test_no_term_file_on_dev_is_skipped(self):
+        self.on_dev("a")
+        sha = self.lane("p", {self.TERM: self.baseline("t1")})
+        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
+        g, record = self.gate_terms({}, {})
+        self.assertEqual((record["rc"], record["term"]), (0, {"skipped": True}), g.stdout)
 
 
 class AsciiGateTests(unittest.TestCase):
