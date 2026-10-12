@@ -948,6 +948,7 @@
   "op-prof": {
    "about": "Per-command owner profile: isolated clean, CPU sampling, allocation sampling, prof2 calls and optional strace windows, each after 50 warmup commands. Hooks never share an owner.",
    "preset": "scale-1m",
+   "strace": true,
    "groups": [
     "fn.test"
    ],
