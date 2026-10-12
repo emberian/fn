@@ -945,6 +945,70 @@
     "window_s": 60
    }
   },
+  "op-prof": {
+   "about": "Per-command owner profile: isolated clean, CPU sampling, allocation sampling, prof2 calls and optional strace windows, each after 50 warmup commands. Hooks never share an owner.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 10000,
+    "octets": 2048,
+    "fixture": "curve/n{N}",
+    "require_fixture": true
+   },
+   "op_variants": [
+    "POST_2k",
+    "ARTICLE_2k",
+    "ARTICLE_128k",
+    "HEAD",
+    "STAT",
+    "GROUP",
+    "OVER40",
+    "NEWNEWS",
+    "LIST",
+    "greeting"
+   ],
+   "phases": [
+    {
+     "name": "op-profile",
+     "kind": "op_profile",
+     "measure": true,
+     "ops": [
+      "POST_2k",
+      "ARTICLE_2k",
+      "ARTICLE_128k",
+      "HEAD",
+      "STAT",
+      "GROUP",
+      "OVER40",
+      "NEWNEWS",
+      "LIST",
+      "greeting"
+     ],
+     "budget_s": 60,
+     "warmup": 50
+    }
+   ]
+  },
+  "floor": {
+   "about": "C loopback TCP and local filesystem floors on the cell work path; no node is started.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "floor",
+     "kind": "floor",
+     "measure": true,
+     "reps": 300
+    }
+   ]
+  },
   "greeting-prof": {
    "about": "C's ask (2026-10-08): sb-sprof of the owner (all threads, one 60 s window) while one client loops TCP connect to the greeting (T-CMD greeting is superlinear in store size on g41). Variant /alloc samples allocation instead of CPU. Run as GREET-PROF@25k.",
    "preset": "scale-1m",
@@ -1517,6 +1581,8 @@
   "W15": "mem-vs-size",
   "conn-capacity": "conn-capacity",
   "T-OPS": "prof-ops",
+  "OPPROF": "op-prof",
+  "FLOOR": "floor",
   "W6b": "peers-feed",
   "W6c": "peers-catchup-load",
   "W8S": "publish-stall",

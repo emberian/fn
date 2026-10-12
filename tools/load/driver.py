@@ -90,14 +90,16 @@ def proc_snapshot(pid):
     if "VmRSS" not in st:
         return None
     sm = read_kv("/proc/%d/smaps_rollup" % pid, {"Rss", "Pss", "Anonymous"})
-    io = read_kv("/proc/%d/io" % pid, {"read_bytes", "write_bytes", "rchar", "wchar"})
+    io = read_kv("/proc/%d/io" % pid, {"read_bytes", "write_bytes", "rchar", "wchar", "syscr", "syscw"})
     cpu = None
+    faults = {}
     with contextlib.suppress(OSError, IndexError, ValueError):
         fields = Path("/proc/%d/stat" % pid).read_text().rsplit(")", 1)[1].split()
         cpu = (int(fields[11]) + int(fields[12])) / CLK
+        faults = {"minor": int(fields[7]), "major": int(fields[9])}
     return {"vmrss": st.get("VmRSS"), "hwm": st.get("VmHWM"), "anon": st.get("RssAnon", sm.get("Anonymous")),
             "file": st.get("RssFile"), "pss": sm.get("Pss"), "smaps_rss": sm.get("Rss"),
-            "threads": st.get("Threads"), "cpu_s": cpu, "io": io}
+            "threads": st.get("Threads"), "cpu_s": cpu, "io": io, "faults": faults}
 
 
 def loadavg():
@@ -307,6 +309,7 @@ class Node:
         t0 = time.monotonic()
         self.proc = subprocess.Popen(self.argv("run"), env=self.env, stdout=subprocess.PIPE, stderr=err)
         self.pid = self.proc.pid
+        (self.work / "owner.pid").write_text("%d\n" % self.pid)
         deadline = t0 + timeout
         while True:
             if not select.select([self.proc.stdout], [], [], max(0.1, deadline - time.monotonic()))[0]:
@@ -327,6 +330,8 @@ class Node:
     def stop(self, grace=300):
         if not self.proc:
             return None
+        if int((self.work / "owner.pid").read_text()) != self.proc.pid:
+            raise CellError("owner PID file does not identify our child")
         if self.proc.poll() is None:
             self.proc.terminate()
         try:
@@ -404,18 +409,26 @@ def shaped_article(r, i, octets, shape=None):
     return art
 
 
-def post_one(conn, ctr, octets, retries=40, shape=None):
+def post_one(conn, ctr, octets, retries=40, shape=None, deadline=None):
     """One POST that counts its refusals by name and retries a refused POST command; seconds or None."""
     m, r = _clients()
     i = ctr.next_id()
+    def remaining_timeout():
+        if deadline is not None:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise TimeoutError("POST exceeded command deadline")
+            conn.sock.settimeout(left)
     for _ in range(retries):
         t0 = time.perf_counter()
+        remaining_timeout()
         first = conn.line("POST")
         if not first.startswith(b"340"):
             ctr.refuse(first)
             time.sleep(0.25)
             continue
         conn.stream.write(shaped_article(r, i, octets, shape) + b".\r\n")
+        remaining_timeout()
         final = conn.readline()
         dt_ = time.perf_counter() - t0
         if final.startswith(b"240"):
@@ -1149,6 +1162,14 @@ class Run:
                 res[name]["hooked_cpu_ms_per_cmd"] = round((cpu1 - cpu0) * 1000 / K, 3)
         return {"prof": res, "reps": K, "hooked": True}
 
+    def phase_op_profile(self, ph):
+        from tools.load import op_profile
+        return op_profile.run(self, ph, sys.modules[__name__])
+
+    def phase_floor(self, ph):
+        from tools.load import floor
+        return {"floor": floor.run(self.node.work, reps=ph.get("reps", 300))}
+
     def phase_conn_capacity(self, ph):
         """Per preset: the decided default cap (no key in fn.toml), then the largest `[server] max_connections` the image
         admits (doubling, then 3 bisection steps), the RSS per held connection and the refusal line past the cap."""
@@ -1283,6 +1304,8 @@ def prepare_store(node, run, spec, cache_dir, key):
         return {}
     n, octets = st["preload"], st.get("octets", 2048)
     fixture = Path(run.args.fixtures) / st["fixture"].format(N=n) / "store" if st.get("fixture") else None
+    if st.get("require_fixture") and (fixture is None or not fixture.is_dir()):
+        raise CellError("required fixture store unavailable: %s" % fixture)
     if fixture is not None and fixture.is_dir():
         shutil.copytree(fixture, node.store, symlinks=True)
         node.write_config()
@@ -1525,6 +1548,10 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
             text = lock_log_text(work)
             cells_mod.attach_lock_metrics(cr["phases"], text)
         cr["metrics"], cr["not_measured"] = cells_mod.derive(cell.workload, cr["phases"])
+        for phase in cr["phases"]:
+            for kind in ("op_profile", "floor"):
+                if kind in phase:
+                    cr[kind] = phase[kind]
         if spec.get("sprof") and not list(work.glob("sprof.*.txt")):
             cr["not_measured"]["sprof"] = "owner produced no CPU flat profile"
         st = (cr.get("site") or {}).get("write4k_fdatasync") or {}
@@ -1543,6 +1570,11 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         with contextlib.suppress(OSError):
             (work / "samples.json").write_text(json.dumps(node.sampler.series))
         cr["raw_artifacts"] = collect_measurement_artifacts(work, args.out, label)
+        if cell.workload in ("op-prof", "floor"):
+            dest = Path(args.out) / label
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / "result.json").write_text(json.dumps(
+                {"schema": 1, "label": args.label, "rev": args.rev, "cells": [cr]}, indent=1))
         write()
         if not args.keep:
             shutil.rmtree(work / "store", ignore_errors=True)
