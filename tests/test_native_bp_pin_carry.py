@@ -26,7 +26,8 @@ class NativeBpPinCarryTests(unittest.TestCase):
                       r"PIN-COUNTS ([a-z-]+) scans=(\d+) builds=(\d+) queries=(\d+)", output)}
         self.assertGreater(counts["cold"][0], 0)
         self.assertGreater(counts["cold"][1], 0)
-        for phase in ("owner-alternating", "sync-forward", "standalone-gate"):
+        for phase in ("first-ion-after-install", "owner-alternating",
+                      "sync-forward", "standalone-gate"):
             self.assertEqual(counts[phase][:2], (0, 0), (phase, counts))
             self.assertGreater(counts[phase][2], 0, (phase, counts))
         self.assertGreater(counts["replay-distinct-release"][0], 0)

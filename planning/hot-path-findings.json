@@ -854,19 +854,19 @@
       "packet": "CHECK-C5-HOT-PATH-CT",
       "note": "[d-check-c5, 10-12: made executable by a54996b31 (lane/vertical); fn-owner-record-totals' cache fallback at books/history-totals-carried.lisp:82 folds every retained record; owner builder-M]"
     },
-    "fn-prc-pin-ids-rev recursion N": {
-      "class": "unexpected",
-      "note": "CHECK-C5-HOT-PATH-BPRL (lane d-bprl-pin, books/retain-carried.lisp): the mark check inside fn-prc-refresh's REBUILD (fn-prc-build -> fn-prc-ledger-findsp) collects the ledger's ids once (a reverse-accumulator loop, tail-recursive) to test uniqueness and disjointness. It is the same phase and class as fn-prc-add-pins and fn-prc-add-releases: it runs only when a carry names a ledger no forward delta reaches, which is an owner open, an install-replay, or a recovery. Since the one-carry-per-lineage ruling (coordinator, 10-12), each carry moves only forward (the owner carry on the live Store ledger, the BP carry on the workflow snapshot's ledger, the standalone Store carry on fn-store-sn's), so a steady-state served step does not rebuild. tests/test_native_bp_pin_carry.py asserts 0 builds and 0 scans across alternating served entries.",
-      "packet": "open"
-    },
-    "fn-prc-release-ids-rev recursion N": {
-      "class": "unexpected",
-      "note": "CHECK-C5-HOT-PATH-BPRL (lane d-bprl-pin, books/retain-carried.lisp): the mark check inside fn-prc-refresh's REBUILD (fn-prc-build -> fn-prc-ledger-findsp) collects the ledger's ids once (a reverse-accumulator loop, tail-recursive) to test uniqueness and disjointness. It is the same phase and class as fn-prc-add-pins and fn-prc-add-releases: it runs only when a carry names a ledger no forward delta reaches, which is an owner open, an install-replay, or a recovery. Since the one-carry-per-lineage ruling (coordinator, 10-12), each carry moves only forward (the owner carry on the live Store ledger, the BP carry on the workflow snapshot's ledger, the standalone Store carry on fn-store-sn's), so a steady-state served step does not rebuild. tests/test_native_bp_pin_carry.py asserts 0 builds and 0 scans across alternating served entries.",
-      "packet": "open"
-    },
     "fn-prc-new-releases-clearedp recursion N": {
       "class": "unexpected",
       "note": "CHECK-C5-HOT-PATH-BPRL (lane d-bprl-pin, books/retain-carried.lisp): fn-prc-refresh's DELTA checks that each NEW release id cleared a pin record the walk skipped. It walks the new releases down to the carried releases' shared tail, so it is O(new releases) with O(depth) trie work each. It is the same delta-prefix class as fn-prc-add-new-releases.",
+      "packet": "open"
+    },
+    "fn-prc-pin-ids-loop recursion N": {
+      "class": "unexpected",
+      "note": "CHECK-C5-HOT-PATH-BPRL (lane d-bprl-pin, books/retain-carried.lisp): the mark check inside fn-prc-refresh's REBUILD (fn-prc-build -> fn-prc-ledger-findsp) collects the ledger's ids once (a def-loop :map loop, tail-recursive) to test uniqueness and disjointness. It is the same phase and class as fn-prc-add-pins and fn-prc-add-releases: it runs only when a carry names a ledger no forward delta reaches, which is an owner open, an install-replay, or a recovery. Since the one-carry-per-lineage ruling (coordinator, 10-12), each carry moves only forward (the owner carry on the live Store ledger, the BP carry on the workflow snapshot's ledger, the standalone Store carry on fn-store-sn's), so a steady-state served step does not rebuild. tests/test_native_bp_pin_carry.py asserts 0 builds and 0 scans across alternating served entries.",
+      "packet": "open"
+    },
+    "fn-prc-release-ids-loop recursion N": {
+      "class": "unexpected",
+      "note": "CHECK-C5-HOT-PATH-BPRL (lane d-bprl-pin, books/retain-carried.lisp): the mark check inside fn-prc-refresh's REBUILD (fn-prc-build -> fn-prc-ledger-findsp) collects the ledger's ids once (a def-loop :map loop, tail-recursive) to test uniqueness and disjointness. It is the same phase and class as fn-prc-add-pins and fn-prc-add-releases: it runs only when a carry names a ledger no forward delta reaches, which is an owner open, an install-replay, or a recovery. Since the one-carry-per-lineage ruling (coordinator, 10-12), each carry moves only forward (the owner carry on the live Store ledger, the BP carry on the workflow snapshot's ledger, the standalone Store carry on fn-store-sn's), so a steady-state served step does not rebuild. tests/test_native_bp_pin_carry.py asserts 0 builds and 0 scans across alternating served entries.",
       "packet": "open"
     }
   },

@@ -711,6 +711,6 @@
       (equal (guard 'fn-prc-release-ids nil (w state)) '(quote t))
       (eq (symbol-class 'fn-prc-pin-ids (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-prc-release-ids (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-prc-pin-ids-rev (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-prc-release-ids-rev (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-pin-ids-loop (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-release-ids-loop (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-prc-refresh (w state)) :common-lisp-compliant)))

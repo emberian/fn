@@ -8,7 +8,8 @@
   (let ((wanted '(*rl-groups* *rl-payload* *rl-node-empty* *rl-node-prepared*
                   *rl-node-committed* *rl-config* *rl-empty* *rl-enqueued*
                   *rl-work* *rl-undertaken* *rl-delivered* *rl-receipt*
-                  *rl-receipt-pending* *rl-receipted*)))
+                  *rl-receipt-pending* *rl-receipted*
+                  *rl-config-record* *rl-enqueue-record*)))
     (with-open-file (in "tests/acl2/bp-release-tests.lisp")
       (loop for form = (read in nil :eof) until (eq form :eof)
             when (and (consp form) (eq (car form) 'defconst)
@@ -80,19 +81,15 @@
        (actual-find (symbol-function 'fn-prc-find-pin))
        (scans 0) (builds 0) (queries 0)
        (expected-ledger nil) (check-seam nil))
-  ;; Warm every cache outside measurement. BP and Store share L0 initially.
+  ;; Arena setup precedes the measured native calls. BP and owner later
+  ;; share L0; the standalone Store installs its distinct L1 cache cold.
   (assert (not (equal ledger0 ledger1)))
   (fn-arena-clear (fnn-live-stobj 'fn-arena))
   (fn-arn-seal-many '((72 105 13 10) (72 105 13 10)) (fnn-live-stobj 'fn-arena))
-  (d14-owner-at-node node0)
-  (f-put-global 'fn-workflow-state workflow *the-live-state*)
-  (f-put-global 'fn-workflow-ion-state (fn-bpiw-initial) *the-live-state*)
-  (fn-workflow-pin-carry-put
-   (fn-prc-refresh (fn-workflow-pin-carry-of *the-live-state*) ledger0) *the-live-state*)
-  (d14-owner-store-refresh)
   (f-put-global 'fn-store-sn (d14-store-at-node node1) *the-live-state*)
-  (fn-workflow-store-pin-carry-put
-   (fn-prc-refresh (fn-workflow-store-pin-carry-of *the-live-state*) ledger1) *the-live-state*)
+  ;; A fresh process must exercise install from the lazy reader's nil default.
+  ;; Do not manually prewarm the standalone Store carry in this fixture.
+  (assert (not (boundp-global 'fn-workflow-store-pin-carry *the-live-state*)))
   (unwind-protect
       (progn
         (setf (symbol-function 'fn-prc-find-scan)
@@ -112,6 +109,31 @@
         (fn-bprl-work-pin workflow *rl-work* nil)
         (assert (plusp scans)) (assert (plusp builds))
         (format t "PIN-COUNTS cold scans=~d builds=~d queries=~d~%" scans builds queries)
+        ;; Cold install must pay the initial S rebuild, then the FIRST served
+        ;; gate must find a marked, correctly anchored cache without rebuilding.
+        (setf scans 0 builds 0 queries 0)
+        (assert (eq (fnn-core-state 'fn-workflow-install-replay
+                                   (list *rl-config-record* *rl-enqueue-record*
+                                         '(:outcome 10 0 :ordinary :durable))) :ready))
+        (assert (plusp builds))
+        (assert (eq (car (fn-workflow-store-pin-carry-of *the-live-state*)) ledger1))
+        (setf scans 0 builds 0 queries 0 check-seam t expected-ledger ledger1)
+        (let ((plan (fnn-core-state 'fn-workflow-ion-attempt-plan
+                                   30 0 "work-1" "first-after-install")))
+          (assert (consp plan))
+          (assert (not (eq (car plan) :refused))))
+        (assert (plusp queries)) (assert (zerop scans)) (assert (zerop builds))
+        (format t "PIN-COUNTS first-ion-after-install scans=~d builds=~d queries=~d~%"
+                scans builds queries)
+        ;; Warm the owner/BP fixture outside its measured interval. S remains
+        ;; the value installed by the actual cold entry, with no fixture put.
+        (setf check-seam nil)
+        (d14-owner-at-node node0)
+        (f-put-global 'fn-workflow-state workflow *the-live-state*)
+        (f-put-global 'fn-workflow-ion-state (fn-bpiw-initial) *the-live-state*)
+        (fn-workflow-pin-carry-put
+         (fn-prc-refresh (fn-workflow-pin-carry-of *the-live-state*) ledger0) *the-live-state*)
+        (d14-owner-store-refresh)
         (setf scans 0 builds 0 queries 0 check-seam t)
         (flet ((bp-projection ()
                  (setf expected-ledger

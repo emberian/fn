@@ -76,6 +76,12 @@
     (if (not (car answer))
         (value :fault)
       (let* ((workflow (fn-bp-journal-nth 1 answer))
+             ; Pay the standalone Store trie's initial build during cold
+             ; installation, before the first served ION canonical gate.
+             (state (fn-workflow-store-pin-carry-put
+                     (fn-prc-refresh (fn-workflow-store-pin-carry-of state)
+                       (fn-node-retention (fn-sn-node (f-get-global 'fn-store-sn state))))
+                     state))
              (state (f-put-global 'fn-workflow-state workflow state))
              (state (fn-workflow-pin-carry-put
                      (fn-prc-refresh pin-carry
@@ -96,6 +102,15 @@
 (defun fn-workflow-reset (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((pin-carry (fn-workflow-pin-carry-of state))
+         ; An empty standalone journal opens through reset, not replay.
+         ; The owner's reset delegate leaves the standalone Store cache alone.
+         (state (if (and (not (boundp-global 'fn-owner state))
+                         (boundp-global 'fn-store-sn state))
+                    (fn-workflow-store-pin-carry-put
+                     (fn-prc-refresh (fn-workflow-store-pin-carry-of state)
+                       (fn-node-retention (fn-sn-node (f-get-global 'fn-store-sn state))))
+                     state)
+                  state))
          (state (f-put-global 'fn-workflow-state nil state))
          (state (fn-workflow-pin-carry-put
                  (fn-prc-refresh pin-carry (fn-node-retention (fn-bp-state-node nil))) state))

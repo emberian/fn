@@ -476,68 +476,18 @@
 
 ; Total ID collectors for mark construction; the model collectors have
 ; obligation-list guards and cannot run on arbitrary refresh inputs.
-; Like retention's collectors, keep the logical recursion but execute a
-; reverse-accumulator walk. No frame is retained for each collected ID.
-(local
- (defthm fn-prc-revappend-revappend
-   (equal (revappend (revappend x y) z)
-          (revappend y (append x z)))))
-(local
- (defthm fn-prc-append-nil-when-true-listp
-   (implies (true-listp x) (equal (append x nil) x))))
-(local
- (defthm fn-prc-true-listp-of-revappend
-   (implies (true-listp y) (true-listp (revappend x y)))))
+; The map generator owns each accumulator walk, refinement and guard proof.
+; Its nil tail preserves total behavior on atoms and dotted input lists.
+(def-loop fn-prc-pin-ids (pins)
+  :shape :map :over pins :elt pin
+  :guard t
+  :body (fn-retain-obligation-id pin))
 
-(defun fn-prc-pin-ids-rev (pins acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp pins)
-      (fn-prc-pin-ids-rev (cdr pins)
-                         (cons (fn-retain-obligation-id (car pins)) acc))
-    acc))
-(defun fn-prc-pin-ids (pins)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp pins)
-           (cons (fn-retain-obligation-id (car pins)) (fn-prc-pin-ids (cdr pins)))
-         nil)
-       :exec (reverse (fn-prc-pin-ids-rev pins nil))))
-(encapsulate ()
- (local
-  (defthm fn-prc-pin-ids-rev-is-revappend
-    (equal (fn-prc-pin-ids-rev pins acc)
-           (revappend (fn-prc-pin-ids pins) acc))
-    :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
- (local
-  (defthm fn-prc-true-listp-of-pin-ids
-    (true-listp (fn-prc-pin-ids pins))))
- (verify-guards fn-prc-pin-ids
-   :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
+(def-loop fn-prc-release-ids (releases)
+  :shape :map :over releases :elt release
+  :guard t
+  :body (fn-retain-release-id release))
 
-(defun fn-prc-release-ids-rev (releases acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp releases)
-      (fn-prc-release-ids-rev (cdr releases)
-                         (cons (fn-retain-release-id (car releases)) acc))
-    acc))
-(defun fn-prc-release-ids (releases)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp releases)
-           (cons (fn-retain-release-id (car releases)) (fn-prc-release-ids (cdr releases)))
-         nil)
-       :exec (reverse (fn-prc-release-ids-rev releases nil))))
-(encapsulate ()
- (local
-  (defthm fn-prc-release-ids-rev-is-revappend
-    (equal (fn-prc-release-ids-rev releases acc)
-           (revappend (fn-prc-release-ids releases) acc))
-    :hints (("Goal" :in-theory (disable fn-retain-release-id)))))
- (local
-  (defthm fn-prc-true-listp-of-release-ids
-    (true-listp (fn-prc-release-ids releases))))
- (verify-guards fn-prc-release-ids
-   :hints (("Goal" :in-theory (disable fn-retain-release-id)))))
 (defthm fn-prc-pin-ids-is-obligation-ids
   (equal (fn-prc-pin-ids pins) (fn-retain-obligation-ids pins)))
 (defthm fn-prc-release-ids-is-release-ids
