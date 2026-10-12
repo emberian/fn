@@ -300,13 +300,25 @@ class AdoptionRaceTests(unittest.TestCase):
 @requires(DEVELOPER)
 class IdleTimerTests(unittest.TestCase):
     """r71 F11 (host/native/mux.lisp fnn-mux-timers): while a response plan
-    waits on its cursor resume, the idle check is not eligible to fire, but
-    its expired deadline was still scheduled, so the loop polled with a zero
-    timeout until the resume: every cursor yield of a response longer than
-    the idle second was a busy poll.  The loop's passes between two yields
-    (the OVER trace, FN_NATIVE_OVER_WINDOW) count it."""
+    waits (on its cursor resume or on the send window), the idle check is not
+    eligible to fire, but its expired deadline was still scheduled, so the
+    loop polled with a zero timeout until the wait ended: every wait of a
+    response longer than the idle second was a busy poll.  The loop's passes
+    between two yields (the OVER trace, FN_NATIVE_OVER_WINDOW) count it.
+
+    The reply outlives the idle second by being held, not by being slow: the
+    client reads nothing for HOLD seconds, so the kernel's buffers fill and
+    the plan waits on the send window (fnn-mux-plan-window-wait, POLLOUT
+    under TCP_NOTSENT_LOWAT) with its idle deadline expired.  Since
+    over-resume (fn-asto-resume-ms: no delay after a quantum that produced
+    octets) a cursor reply is never slow enough by itself; the hold depends
+    on no resume delay.  Each row carries a long Subject so the reply
+    (about COUNT x 560 octets) is far larger than what loopback buffers and
+    the 64 KiB send window absorb."""
 
     COUNT = 2000
+    HOLD = 2.5
+    SUBJECT = "idle " + "s" * 480
 
     def test_a_long_cursor_reply_does_not_busy_poll_between_quanta(self):
         node = Node(self, DEVELOPER)
@@ -317,7 +329,8 @@ class IdleTimerTests(unittest.TestCase):
         def post(chunk):
             with Client(node.port, timeout=120) as client:
                 for message_id in chunk:
-                    first, final = client.post(article(message_id, body=b"x\r\n"))
+                    first, final = client.post(article(message_id, subject=self.SUBJECT,
+                                                       body=b"x\r\n"))
                     assert final.startswith(b"240"), final
 
         workers = [threading.Thread(target=post, args=(ids[k::8],)) for k in range(8)]
@@ -327,31 +340,47 @@ class IdleTimerTests(unittest.TestCase):
             w.join()
         node.stop(process=owner)
         owner = node.start(env={"FN_NATIVE_OVER_WINDOW": "1"})
+        yielded = re.compile(rb"OVER (?:cursor|empty)-yield cid=\d+ passes=(\d+)")
         with node.log_on_failure(owner):
             with Client(node.port, timeout=120) as client:
                 status = client.command(b"GROUP fn.test")
                 self.assertTrue(status.startswith(b"211 "), status)
                 low, high = status.split()[2:4]
+                at = len(owner.stderr.since(0))
                 started = time.monotonic()
-                status = client.command(b"OVER " + low + b"-" + high)
+                client.send(b"OVER " + low + b"-" + high + b"\r\n")
+                time.sleep(self.HOLD)
+                held = len(yielded.findall(owner.stderr.since(0)[at:]))
+                status = client.line()
                 self.assertTrue(status.startswith(b"224"), status)
                 rows = client.block().count(b"\r\n")
                 seconds = time.monotonic() - started
             self.assertEqual(rows, self.COUNT)
             time.sleep(1)
-            passes = [int(m) for m in re.findall(rb"OVER (?:cursor|empty)-yield cid=\d+ passes=(\d+)",
-                                                  owner.stderr.since(0))]
+            passes = [int(m) for m in yielded.findall(owner.stderr.since(0)[at:])]
             # OVER is served on the cursor arm (the case ran and passed on
             # hbox's qual-eef2e87 and drain-c0e35e156 images), so a reply
             # with no cursor yield is a regression of that arm, not a skip.
             self.assertTrue(passes, "no cursor yield: OVER did not reach the cursor arm")
+            # The premise: the reply was still in flight when the idle
+            # second had passed (the hold stopped it part way), not
+            # complete before the client looked.
             self.assertGreater(seconds, 2.0, "the reply was too short to outlive the idle second")
+            self.assertGreater(held, 0, "no quantum before the hold")
+            self.assertLess(held, self.COUNT, "the reply was not held: it finished inside the kernel's buffers")
             self.assertGreater(len(passes), self.COUNT // 2)
-            later = passes[len(passes) // 2:]
-            deltas = [b - a for a, b in zip(later, later[1:])]
+            deltas = [b - a for a, b in zip(passes, passes[1:])]
+            later = deltas[len(deltas) // 2:]
             # One pass for the resume timer, at most a few for the window's
             # write; a busy poll is hundreds per millisecond of wait.
-            self.assertLess(statistics.median(deltas), 10, deltas[:50])
+            self.assertLess(statistics.median(later), 10, later[:50])
+            # The held wait is the one long delta.  On the correct image it
+            # measured 272-364 passes for holds of 2.5-6 s (hbox, 2266e7be1:
+            # about 250 fixed, about 26 per held second; the send looks at
+            # +fnn-mux-tick-ms+ are 4 of them); a zero-timeout poll over the
+            # HOLD - 1 expired seconds is orders of magnitude more (835,315
+            # with the eligibility guard removed, run over-resume-idle-mutant).
+            self.assertLess(max(deltas), 2000, sorted(deltas)[-10:])
             node.stop(process=owner, expect=EXIT.OK)
 
 

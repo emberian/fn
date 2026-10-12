@@ -521,6 +521,7 @@
 (include-book "../../books/payload-extent")
 (include-book "../../books/payload-arena-extent")
 (include-book "../../books/served-columns")
+(include-book "../../books/store-log-open-scan")
 (include-book "../../books/owner-commit-held")
 (include-book "../../books/owner-reconfig-lock")
 (include-book "../../books/bp-node-progress-bridge")

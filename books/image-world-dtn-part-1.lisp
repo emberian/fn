@@ -132,6 +132,7 @@
 (include-book "heap-reservation")
 (include-book "heap-command")
 (include-book "heap-log-extent-cap")
+(include-book "store-log-open-scan")
 (include-book "bp-heap-command")
 (include-book "cold-read-reservation")
 (include-book "reclaim-reservation")
@@ -171,5 +172,3 @@
 (include-book "store-log-damage")
 (include-book "store-log-entry-bound")
 (include-book "store-log-lineage")
-(include-book "store-log-buffer")
-(include-book "store-log-walk-once")

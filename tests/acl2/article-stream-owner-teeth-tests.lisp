@@ -12,6 +12,7 @@
 (in-package "ACL2")
 (include-book "../../books/article-stream-owner")
 (include-book "served-catalog-chain-tests")
+(include-book "served-plan-cursor-tests")
 
 ; The fixture's view 3 articles, as the served-catalog tests build them.
 (defconst *aot-articles*
@@ -471,35 +472,78 @@
                     (:free (a b c) (fn-asx-prefix-equalp a b c))))))
 
 
-; ---- fn-asto-resume-ms (books/article-stream-owner.lisp): a LIST quantum is
-; due on the loop's next pass, an OVER/NEWNEWS quantum waits ACL2's delay.
+;; ---- fn-asto-resume-ms (books/article-stream-owner.lisp): a quantum that
+;; produced octets, and a LIST, ARTICLE or preflight plan, are due on the loop's
+;; next timer pass; only an OVER/NEWNEWS quantum that produced nothing waits
+;; ACL2's delay.  The OVER plan is a SERVED residual: the plan the host yields
+;; after one W = 1 quantum of OVER 1-10 on served-plan-cursor-tests' catalog
+;; has been rendered (its window, the status and line 1, sent), the next
+;; cursor at the front.  An empty quantum's residual has the same shape (a
+;; cursor at the front, nothing to render); PRODUCEDP is what tells them
+;; apart, which is the point of the rule.  The real sparse quantum is the
+;; native tooth (tests/test_native_over_pins.py, the window "1" arm: every
+;; empty-yield waits ms >= 1, every cursor-yield ms = 0).
+(defconst *aot-over-cursor* (fn-ovw-cursor "fn.test" 2 3 3 nil nil nil))
+(defconst *aot-over-plan* (list nil (fn-ovw-cursor-effect *aot-over-cursor*)))
 (defconst *aot-lst-plan* '(nil (:list-cursor (nil (x)))))
-(defconst *aot-over-plan* '(nil (:over-cursor (x))))
 (defconst *aot-article-plan* '(nil (:article-cursor x)))
 (defconst *aot-preflight-plan* '(nil (:article-preflight x)))
 
+; The OVER residual is the served one: the cursor step of the arm's own plan
+; answers :ok with a nonempty window in front of exactly this cursor, a well
+; formed one.
+(defthm aot-over-plan-is-a-served-residual
+  (let* ((s (spct-session "fn.test"))
+         (p (spct-plan s *spct-range* nil))
+         (r (fn-qplan-cursor-step p 1 *fn-splan-cursor-window* *fn-splan-cursor-window* *spct-a* *spct-c*))
+         (next (mv-nth 1 r)))
+    (and (equal (mv-nth 0 r) :ok)
+         (posp (fn-qplan-window-size next))
+         (equal (cons (fn-splan-cur next) (cdr (fn-splan-rest next))) *aot-over-plan*)
+         (fn-ovw-cursorp *aot-over-cursor*)
+         (fn-qplan-at-cursorp *aot-over-plan*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-qplan-cursor-step fn-qplan-rest-cursor-step
+                                     fn-qplan-window-size))))
+
 (defteeth fn-asto-resume-ms-lst-is-immediate
   :claim (((lst (fn-qplan-lst-cursorp plan)))
-          (equal (fn-asto-resume-ms plan) 0))
+          (equal (fn-asto-resume-ms plan producedp) 0))
   :subject fn-asto-resume-ms
-  :witness ((plan *aot-lst-plan*))
-  :breaks ((lst ((plan *aot-over-plan*))))
+  :witness ((plan *aot-lst-plan*) (producedp nil))
+  :breaks ((lst ((plan *aot-over-plan*) (producedp nil))))
   :mutations ((lst-waits
-               (:conclusion (equal (fn-asto-resume-ms plan) 1))
-               ((plan *aot-lst-plan*))
+               (:conclusion (equal (fn-asto-resume-ms plan producedp) 1))
+               ((plan *aot-lst-plan*) (producedp nil))
                :fault "a LIST yield that idles for the OVER delay")))
 
+; Behaviour change 2026-10-11 (OVER-40): the delay is owed only by empty
+; progress; NOT-PRODUCED is the new hypothesis and its removal is the
+; regression's own call, the served residual after a sent window.
 (defteeth fn-asto-resume-ms-over-waits
-  :claim (((not-article (not (fn-asto-plan-articlep plan)))
+  :claim (((not-produced (not producedp))
+           (not-article (not (fn-asto-plan-articlep plan)))
            (not-preflight (not (fn-asto-preflight-planp plan)))
            (not-lst (not (fn-qplan-lst-cursorp plan))))
-          (posp (fn-asto-resume-ms plan)))
+          (posp (fn-asto-resume-ms plan producedp)))
   :subject fn-asto-resume-ms
-  :witness ((plan *aot-over-plan*))
-  :breaks ((not-article ((plan *aot-article-plan*)))
-           (not-preflight ((plan *aot-preflight-plan*)))
-           (not-lst ((plan *aot-lst-plan*))))
+  :witness ((plan *aot-over-plan*) (producedp nil))
+  :breaks ((not-produced ((plan *aot-over-plan*) (producedp t)))
+           (not-article ((plan *aot-article-plan*) (producedp nil)))
+           (not-preflight ((plan *aot-preflight-plan*) (producedp nil)))
+           (not-lst ((plan *aot-lst-plan*) (producedp nil))))
   :mutations ((over-immediate
-               (:conclusion (equal (fn-asto-resume-ms plan) 0))
-               ((plan *aot-over-plan*))
-               :fault "an OVER quantum with no delay, rescanning a sparse range in one event")))
+               (:conclusion (equal (fn-asto-resume-ms plan producedp) 0))
+               ((plan *aot-over-plan*) (producedp nil))
+               :fault "a sparse range's empty quanta re-run with no wait: the loop's poll timeout stays zero across the gaps")))
+
+(defteeth fn-asto-resume-ms-produced-is-immediate
+  :claim (((produced producedp))
+          (equal (fn-asto-resume-ms plan producedp) 0))
+  :subject fn-asto-resume-ms
+  :witness ((plan *aot-over-plan*) (producedp t))
+  :breaks ((produced ((plan *aot-over-plan*) (producedp nil))))
+  :mutations ((produced-waits
+               (:conclusion (equal (fn-asto-resume-ms plan producedp) (fn-splan-cursor-resume-ms)))
+               ((plan *aot-over-plan*) (producedp t))
+               :fault "the pre-fix host: the served residual after a sent OVER window idles for the delay (OVER-40: 39 delayed yields at W' = 1)")))
