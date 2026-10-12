@@ -664,14 +664,157 @@
 (local
  (defthm fn-pacc-fix-append-l (equal (true-list-fix (append x y)) (append x (true-list-fix y))) :hints (("Goal" :in-theory (enable true-list-fix append)))))
 
+; Coordinator ruling 12:40: proof support for the reduced hypotheses.
+(local
+ (defthm fn-pacc-parse-requires-octets-l
+ (implies (fn-article-result-okp (fn-article-parse art)) (fn-cbor-octet-listp art))
+ :hints (("Goal" :do-not-induct t :in-theory
+ (union-theories (theory 'ground-zero)
+ '(fn-article-parse fn-article-parse-under fn-article-result-okp fn-article-error))))))
+
+(local
+ (defthm fn-pacc-cbor-is-octets-l
+ (equal (fn-cbor-octet-listp x) (fn-octet-listp x))
+ :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp fn-octet-listp fn-octetp)))))
+
+(local
+ (defthm fn-pacc-injection-requires-octets-l
+ (implies (fn-pacc-injectionp inj art) (fn-octet-listp art))
+ :hints (("Goal" :use ((:instance fn-pacc-injection-decision-l)
+ (:instance fn-pacc-success-parse-l (config (fn-pctx-get 5 inj)) (obs (fn-pctx-get 6 inj)))
+ (:instance fn-pacc-parse-requires-octets-l))
+ :in-theory (union-theories (theory 'ground-zero) '(fn-pacc-cbor-is-octets-l))))))
+
+(local
+ (defthm fn-pacc-carried-facts-shape-l
+ (fn-hf-p (fn-apc-held-facts-of bytes carry))
+ :hints (("Goal" :in-theory (e/d (fn-apc-held-facts-of fn-hf-p fn-hf-internals fn-hf-startp)
+ (fn-apc-control-of fn-hnov-of-parsed fn-hf-control-with-nov fn-hf-split-index fn-hf-body-lines-of))))))
+
+(local
+ (defthm fn-pacc-verified-statement-shape-l
+ (implies (fn-prin-verifiedp s keyring) (fn-stmt-p s))
+ :hints (("Goal" :in-theory (enable fn-prin-verifiedp)))))
+
+(local
+ (defthm fn-pacc-carried-context-shape-l
+ (implies (natp generation) (fn-hc-p (fn-apc-held-context-of bytes keyring generation carry)))
+ :hints (("Goal" :in-theory (e/d (fn-apc-held-context-of fn-hc-p fn-hc-internals fn-hc-anyp fn-hc-verdictp fn-stx-verifiedp fn-stx-verdict fn-stx-make-verdict fn-stx-verdict-token fn-stx-verdict-generation)
+ (fn-apc-stx-parse fn-stx-statement-of fn-stx-field fn-stx-parse-header fn-stx-reattach))))))
+
+(local
+ (defthm fn-pacc-carried-row-held-l
+ (implies (and (fn-record-p w) (natp generation) (natp h))
+ (fn-held-p (fn-apc-intern-row-at w keyring generation h carry)))
+ :hints (("Goal" :in-theory (e/d (fn-apc-intern-row-at fn-record-p fn-held-p fn-record-internals fn-held-internals)
+ (fn-apc-held-facts-of fn-apc-held-context-of))))))
+
+(local
+ (defthm fn-pacc-carried-row-alpha-l
+ (implies (fn-record-shapep w)
+ (equal (fn-held-wire (fn-apc-intern-row-at w keyring generation h carry) (fn-record-payload w)) w))
+ :hints (("Goal" :in-theory (e/d (fn-held-wire fn-apc-intern-row-at)
+ (fn-apc-held-facts-of fn-apc-held-context-of))))))
+
+(local
+ (defthm fn-pacc-carried-row-handle-l
+ (equal (fn-record-payload (fn-apc-intern-row-at w keyring generation h carry)) h)
+ :hints (("Goal" :in-theory (enable fn-apc-intern-row-at)))))
+
+(local
+ (defthm fn-pacc-direct-intern-materializes-l
+ (implies (and (fn-record-p w) (natp generation))
+  (equal (fn-row-wire-of
+           (fn-apc-intern-row-at w keyring generation (fn-arena-count fn-arena) carry)
+           (fn-arena-seal-list (fn-record-payload w) fn-arena)) w))
+ :hints (("Goal" :in-theory
+ (e/d (fn-row-wire-of fn-row-bytes)
+      (fn-apc-intern-row-at fn-held-p fn-held-wire fn-arena-payload-is-nth
+       fn-arena-count-is-len fn-arena-seal-list-is-append
+       fn-pacc-carried-row-held-l fn-pacc-carried-row-alpha-l fn-arena-seal-new-handle))
+ :use ((:instance fn-pacc-carried-row-held-l (h (fn-arena-count fn-arena)))
+       (:instance fn-pacc-carried-row-alpha-l (h (fn-arena-count fn-arena)))
+       (:instance fn-arena-seal-new-handle (xs (fn-record-payload w))))))))
+
+(local
+ (defthm fn-pacc-held-make-is-not-event-l
+ (implies (natp sequence)
+ (equal (fn-rcon-store-event-encode
+ (fn-held-make sequence txid generation msgid payload groups oid subject evidence charge stamp facts context numbers withdrawn)) nil))
+ :hints (("Goal" :in-theory (e/d
+ (fn-rcon-store-event-encode fn-rcon-record-p-is-record-p fn-record-p fn-record-shapep
+ fn-held-internals fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
+ fn-stxe-internals fn-stxk-internals fn-stxa-internals fn-cpe-eventp fn-th-topic-eventp)
+ (fn-store-retention-event-encode fn-stxe-encode fn-stxk-encode fn-stxa-encode fn-cpe-encode fn-th-topic-event-encode))))))
+
+(local
+ (defthm fn-pacc-carried-row-event-nil-l
+ (implies (natp (fn-record-sequence w))
+ (equal (fn-rcon-store-event-encode (fn-apc-intern-row-at w keyring generation h carry)) nil))
+ :hints (("Goal" :in-theory (e/d (fn-apc-intern-row-at) (fn-apc-held-context-of fn-apc-held-facts-of))))))
+
+(local
+ (defthm fn-pacc-numeric-event-is-record-codec-l
+ (implies (and (fn-record-shapep w) (natp (fn-record-sequence w)))
+ (equal (fn-rcon-store-event-encode w) (fn-record-encode w)))
+ :hints (("Goal" :in-theory (e/d
+ (fn-rcon-store-event-encode fn-rcon-record-p-is-record-p fn-record-sequence fn-record-shapep fn-th-local-admin-eventp fn-th-at
+ fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
+ fn-stxe-internals fn-stxk-internals fn-stxa-internals fn-cpe-eventp fn-th-topic-eventp)
+ (fn-record-p fn-store-retention-event-encode fn-stxe-encode fn-stxk-encode fn-stxa-encode fn-cpe-encode fn-th-topic-event-encode))))))
+
+(local
+ (defthm fn-pacc-carried-row-not-composite-l
+ (not (fn-hstxa-p (fn-apc-intern-row-at w keyring generation h carry)))
+ :hints (("Goal" :in-theory (e/d (fn-apc-intern-row-at fn-hstxa-p fn-held-internals)
+ (fn-apc-held-facts-of fn-apc-held-context-of fn-stxa-p fn-held-p))))))
+
+(local
+ (defthm fn-pacc-encoded-intern-materializes-l
+ (implies (and (fn-record-shapep w) (natp (fn-record-sequence w)) (natp generation))
+  (equal (fn-rcon-store-event-encode (fn-row-wire-of
+           (fn-apc-intern-row-at w keyring generation (fn-arena-count fn-arena) carry)
+           (fn-arena-seal-list (fn-record-payload w) fn-arena))) (fn-record-encode w)))
+ :hints (("Goal" :cases ((fn-record-p w)) :in-theory
+ (e/d (fn-row-wire-of fn-row-bytes)
+      (fn-apc-intern-row-at fn-held-p fn-held-wire fn-arena-payload-is-nth
+       fn-arena-count-is-len fn-arena-seal-list-is-append fn-record-p fn-rcon-record-p
+       fn-pacc-carried-row-alpha-l fn-arena-seal-new-handle))
+ :use ((:instance fn-pacc-carried-row-alpha-l (h (fn-arena-count fn-arena)))
+       (:instance fn-arena-seal-new-handle (xs (fn-record-payload w))))))))
+
+(local
+ (defthm fn-pacc-state-identity-next-l
+ (implies (fn-sn-statep s) (natp (fn-sn-identity-next s)))
+ :hints (("Goal" :in-theory '(fn-sn-statep)))))
+
+(local
+ (defthm fn-pacc-article-wire-shape-l
+ (implies (natp (fn-record-stamp-of-observation obs))
+ (and (fn-record-shapep (fn-sn-article-record s obs msgid payload groups oid subject evidence charge))
+ (equal (fn-record-sequence (fn-sn-article-record s obs msgid payload groups oid subject evidence charge))
+ (fn-sn-identity-next s))))
+ :hints (("Goal" :in-theory (enable fn-sn-article-record)))))
+
+(local
+ (defthm fn-pacc-clock-unusable-intern-l
+ (equal (fn-rcon-store-event-encode
+ (fn-row-wire-of (fn-apc-intern-row-at :clock-unusable keyring generation h carry) arena)) nil)
+ :hints (("Goal" :in-theory (e/d
+ (fn-rcon-store-event-encode fn-apc-intern-row-at fn-row-wire-of fn-record-internals
+ fn-held-internals fn-held-p fn-hstxa-p fn-rcon-record-p-is-record-p fn-record-p
+ fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p fn-stxe-internals fn-stxk-internals fn-stxa-internals fn-cpe-eventp fn-th-topic-eventp)
+ (fn-store-retention-event-encode fn-stxe-encode fn-stxk-encode fn-stxa-encode fn-cpe-encode fn-th-topic-event-encode))))))
+
 (defthm fn-pacc-stored-payload-is-one-splice
-  (implies (and (fn-octet-listp art) (fn-pacc-injectionp inj art))
+  (implies (fn-pacc-injectionp inj art)
            (mv-let (p0 ins ioff) (fn-pacc-splice art inj)
              (and (natp ioff) (<= ioff (len art))
                   (equal (fn-pacc-stored-payload art inj)
                          (append p0 (take ioff art) ins (nthcdr ioff art))))))
  :hints (("Goal" :do-not-induct t
- :use ((:instance fn-ipp-injected-octets-carry-the-parameters
+ :use ((:instance fn-pacc-injection-requires-octets-l)
+       (:instance fn-ipp-injected-octets-carry-the-parameters
        (source art) (config (fn-pctx-get 5 inj)) (obs (fn-pctx-get 6 inj))
        (secret (fn-pctx-get 1 inj)) (login (fn-pctx-get 2 inj)) (cfg (fn-pctx-get 3 inj)))
        (:instance fn-pacc-injection-decision-l)
@@ -691,12 +834,12 @@
 
 (defthm fn-pacc-batch-record-is-the-encoded-record
   (let ((rec (fn-sn-article-record s obs msgid (fn-pacc-stored-payload art inj) groups oid subject evidence charge)))
-    (implies (and (fn-sn-statep s) (fn-record-p rec) (fn-octet-listp art) (fn-pacc-injectionp inj art))
+    (implies (fn-sn-statep s)
              (equal (fn-pacc-batch-record-octets s obs art inj (list msgid groups oid subject evidence charge) fn-arena)
                     (fn-record-encode rec))))
   :hints (("Goal" :in-theory
     (union-theories (theory 'ground-zero)
-      '(fn-pacc-batch-record-octets fn-pctx-get nfix zp fn-rcon-store-event-encode
-        fn-rcon-record-p-is-record-p fn-pacc-intern-materializes-l
+      '(fn-pacc-batch-record-octets fn-pctx-get nfix zp
+        fn-rcon-record-p-is-record-p fn-pacc-encoded-intern-materializes-l fn-pacc-state-identity-next-l fn-pacc-article-wire-shape-l fn-pacc-clock-unusable-intern-l fn-record-encode-domain fn-sn-article-record fn-record-shapep fn-record-sequence fn-record-make (:executable-counterpart fn-record-p)
         fn-pacc-state-generation-l fn-pacc-injection-carry-l)))))
 
