@@ -15,10 +15,11 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py push [--label N]
     train.py status
 
-`lane-check` fetches origin before merging onto origin/dev. It checks
-committed lane HEAD (ignoring dirty source edits) in an owned scratch worktree,
-runs its own train.py regen and gate --local subprocesses, and prints their
-BOX decisions. FN_TRAIN_BASE pins every comparison to the fetched dev SHA.
+`lane-check` fetches dev into private refs without moving origin's tracking
+refs. It checks committed lane HEAD (ignoring dirty source edits) in an owned
+scratch worktree, runs its own train.py regen and gate --local subprocesses,
+and prints their BOX decisions. FN_TRAIN_BASE, FN_LEDGER_BASE and FN_HOST_CHECK_BASE pin
+the train and its child tools to the fetched dev SHA.
 Its log is copied to the lane's build/lane-check/; --clean removes only that
 scratch worktree.
 The verdict names the dev SHA merged onto. A local PASS leaves the printed
@@ -122,6 +123,7 @@ import re
 import shlex
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Callable
 
@@ -190,10 +192,11 @@ TEETH_MANIFEST = "build/teeth-obligations.json"
 # reaches dev with them unrun.
 CERT_WORLD_BOOKS = ("books/image-world", "books/image-world-dtn")
 CERT_WORLD_CMD = "FN_CERT_WORLD_REQUIRED=1 python3 -m unittest tests.test_cert_world_checks"
+BOX_CERT_BOOKS = ("books/wire-export", *CERT_WORLD_BOOKS)
 
 BOX_CMD = (
-    "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export "
-    + " ".join(CERT_WORLD_BOOKS) + " && "
+    "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 "
+    + " ".join(BOX_CERT_BOOKS) + " && "
     "python3 tools/interface_emit.py --write && python3 tools/interface_emit.py --check && "
     "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check && "
     "python3 tools/extract/world.py --check && python3 tools/host_check.py --build-lists && "
@@ -353,9 +356,9 @@ def toplevel(start: Path) -> Path:
     return Path(p.stdout.strip())
 
 
-def train_base(*, live: bool = False) -> str:
+def train_base() -> str:
     """One base for every train comparison; lane-check pins it to a commit."""
-    pinned = None if live else os.environ.get("FN_TRAIN_BASE")
+    pinned = os.environ.get("FN_TRAIN_BASE")
     if pinned is not None and not re.fullmatch(r"[0-9a-fA-F]{40}", pinned):
         raise TrainError("FN_TRAIN_BASE must be a full commit SHA")
     return pinned or "origin/dev"
@@ -922,7 +925,7 @@ def certify_selection(t: Train) -> dict:
     witnesses = _critical_witness_roots(t.root, books)
     added = _added_roots(t)
     return {"books": books, "added": added,
-            "roots": list(dict.fromkeys(["books/wire-export", *CERT_WORLD_BOOKS,
+            "roots": list(dict.fromkeys([*BOX_CERT_BOOKS,
                                           *books, *tests, *witnesses, *added]))}
 
 
@@ -1590,15 +1593,15 @@ def _lock_delta_gate(t: Train) -> tuple[int, dict]:
         return rc, {'added': added, 'gone': gone, 'unowned': unowned, 'closed_items': closed, 'owned_reds': reds}
 
 
-def _secrets_gate(t: Train) -> tuple[int, dict]:
-    files = changed_paths(t)
+def _secrets_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
+    files = changed_paths(t) if files is None else files
     if files:
         return t.run("gate-secrets", [PY3, "tools/secrets_check.py", *files]), {}
     return 0, {"skipped": True}
 
 
-def _unit_gate(t: Train) -> tuple[int, dict]:
-    files = changed_paths(t)
+def _unit_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
+    files = changed_paths(t) if files is None else files
     unit = unit_tests(t.root, files)
     results = {}
     for test in unit:
@@ -1610,9 +1613,9 @@ def _unit_gate(t: Train) -> tuple[int, dict]:
     return (0 if all(v == 0 for v in results.values()) else 1), {"tests": results}
 
 
-def _image_gate(t: Train) -> tuple[int, dict]:
+def _image_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
     head, st = t.head(), t.load()
-    files = changed_paths(t)
+    files = changed_paths(t) if files is None else files
     need = image_modules(files)
     def changed_since(source: str) -> list[str] | None:
         diff = git(t.root, "diff", "--name-only", source, head, check=False)
@@ -1667,8 +1670,14 @@ def cmd_gate(t: Train, args) -> int:
     gates: dict = {}
     st["gates"] = gates
     dev = git(t.root, "rev-parse", train_base()).stdout.strip()
+    files = None
     for name in GATES:
-        rc, extra = GATE_FUNCTIONS[name](t)
+        if name == "secrets":
+            # Dev computed this once, immediately before secrets, and used
+            # the same paths after unit tests for the image obligations.
+            files = changed_paths(t)
+        rc, extra = (GATE_FUNCTIONS[name](t, files) if name in ("secrets", "unit", "image")
+                     else GATE_FUNCTIONS[name](t))
         gates[name] = {"rc": rc, "head": head, "dev": dev, **extra}
         t.save(st)
     report = getattr(args, "report", None)
@@ -1676,7 +1685,7 @@ def cmd_gate(t: Train, args) -> int:
         path = t.root / report
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"head": head, "dev": dev, "gates": gates,
-                                    "box_commands": lane_check_box_commands(t, gates)}, indent=2) + "\n")
+                                    "box_commands": lane_check_box_commands(t, gates, files)}, indent=2) + "\n")
     bad = [n for n, g in gates.items() if g["rc"] != 0]
     say(f"gates at {head[:9]}: " + ", ".join(f"{n}={g['rc']}" for n, g in gates.items()))
     return 1 if bad else 0
@@ -1742,7 +1751,8 @@ def lane_check_tree(t: Train, name: str, dev: str) -> Train:
     return scratch
 
 
-def lane_check_box_commands(t: Train, gates: dict | None = None) -> dict[str, tuple[str, str]]:
+def lane_check_box_commands(t: Train, gates: dict | None = None,
+                            files: list[str] | None = None) -> dict[str, tuple[str, str]]:
     """BOX decisions from real gate results, under this checkout's policy."""
     if gates is None:
         rc, record = GATE_FUNCTIONS["box_step"](t)
@@ -1754,19 +1764,27 @@ def lane_check_box_commands(t: Train, gates: dict | None = None) -> dict[str, tu
     if box_gate["rc"] == 0:
         reason = (f"box step inherits: {box_gate['inherits_from']} ({box_gate['box']})"
                   if "inherits_from" in box_gate else f"box step ran at HEAD on {box_gate['ran_on']}")
-        commands = {"certify": ("NONE", reason), "box_step": ("NONE", reason)}
+        commands = {"box_step": ("NONE", reason)}
     else:
-        commands = {"certify": ("BOX", shlex.join(["timeout", "3600", *certify_command(t, "hbox")])),
-                    "box_step": ("BOX", shlex.join(["timeout", "3600", PY, "tools/train.py", "boxstep", "hbox"]))}
+        commands = {"box_step": ("BOX", shlex.join(["timeout", "3600", PY, "tools/train.py", "boxstep", "hbox"]))}
         reason = box_gate.get("error", "box step failed")
-    for name, command in (*EMIT_STEPS,
-                          ("reach", "python3 tools/reach_check.py --summary --strict"),
+    selection = certify_selection(t)
+    covered = set(BOX_CERT_BOOKS)
+    additional = [root for root in selection["roots"] if root not in covered]
+    certify = (("BOX", shlex.join(["timeout", "3600", *certify_command(t, "hbox", selection)]))
+               if box_gate["rc"] != 0 or additional else ("NONE", reason))
+    commands = {"certify": certify, **commands}
+    for name, command in EMIT_STEPS:
+        commands["box_" + name] = (("NONE", reason) if box_gate["rc"] == 0 else
+                                  ("BOX", shlex.join(["timeout", "3600", "sh", "tools/remote_check.sh",
+                                                     "hbox", "--no-dirty", "--install-certs", "--cmd", command])))
+    # Neither boxstep nor certify's emits records either of these checks.
+    # A box-step record therefore cannot discharge their obligations.
+    for name, command in (("reach", "python3 tools/reach_check.py --summary --strict"),
                           ("keystone_cert", shlex.join(GATE_COMMANDS["keystone"]))):
-        gate = "box_" + name if name in dict(EMIT_STEPS) else name
-        commands[gate] = (("NONE", reason) if box_gate["rc"] == 0 else
-                          ("BOX", shlex.join(["timeout", "3600", "sh", "tools/remote_check.sh",
-                                             "hbox", "--no-dirty", "--install-certs", "--cmd", command])))
-    changed = changed_paths(t)
+        commands[name] = ("BOX", shlex.join(["timeout", "3600", "sh", "tools/remote_check.sh",
+                                            "hbox", "--no-dirty", "--install-certs", "--cmd", command]))
+    changed = changed_paths(t) if files is None else files
     modules = sorted(image_modules(changed))
     if image_gate["rc"] != 0 and modules:
         commands["image"] = ("BOX", shlex.join(["timeout", "7200", "sh", "tools/hbox_native.sh",
@@ -1780,11 +1798,27 @@ def lane_check_box_commands(t: Train, gates: dict | None = None) -> dict[str, tu
 
 def cmd_lane_check(t: Train, args) -> int:
     """Run the train's local decisions on a disposable merge; no source writes."""
-    fetched = io.StringIO()
-    with contextlib.redirect_stdout(fetched):
-        t.fetch()
-    dev = git(t.root, "rev-parse", train_base(live=True)).stdout.strip()
-    name, sha, source = lane_check_target(t, args.lane)
+    namespace = "refs/lane-check/" + uuid.uuid4().hex + "/"
+    try:
+        fetched = io.StringIO()
+        with contextlib.redirect_stdout(fetched):
+            # --refmap= disables the configured origin/* tracking updates,
+            # including Git's opportunistic updates for explicit refspecs.
+            say("$ git fetch origin into " + namespace)
+            git(t.root, "fetch", "--no-tags", "--no-write-fetch-head", "--refmap=", "origin",
+                "+refs/heads/*:" + namespace + "heads/*")
+        dev = git(t.root, "rev-parse", namespace + "heads/dev").stdout.strip()
+        name, sha, source = lane_check_target(t, args.lane)
+        return _locked_lane_check(t, args, name, sha, source, dev, fetched.getvalue())
+    finally:
+        # Only this run's private refs, never refs/remotes/origin or FETCH_HEAD.
+        refs = git(t.root, "for-each-ref", "--format=%(refname)", namespace).stdout.splitlines()
+        for ref in refs:
+            git(t.root, "update-ref", "-d", ref)
+
+
+def _locked_lane_check(t: Train, args, name: str, sha: str, source: Path,
+                       dev: str, fetch_log: str) -> int:
     common = Path(git(t.root, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
     # Serialize reset/run/cleanup for this lane across all worktrees.
     locks = common.parent / "build" / "lanes"
@@ -1794,7 +1828,7 @@ def cmd_lane_check(t: Train, args) -> int:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as error:
             raise TrainError(f"lane-check for {name} is already running") from error
-        return _run_lane_check(t, args, name, sha, source, dev, fetched.getvalue())
+        return _run_lane_check(t, args, name, sha, source, dev, fetch_log)
 
 
 def _run_lane_check(t: Train, args, name: str, sha: str, source: Path,
@@ -1843,7 +1877,7 @@ def _run_lane_check(t: Train, args, name: str, sha: str, source: Path,
     merged = run("merge", lambda: 0 if merge_one(scratch, scratch.load(), name, sha) else 1,
                  f"git merge --no-ff {sha}") == 0
     if merged:
-        env = dict(os.environ, FN_TRAIN_BASE=dev)
+        env = dict(os.environ, FN_TRAIN_BASE=dev, FN_LEDGER_BASE=dev, FN_HOST_CHECK_BASE=dev)
 
         def child(argv: list[str]) -> int:
             say("$ " + shlex.join(argv))

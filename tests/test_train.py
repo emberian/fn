@@ -3,6 +3,7 @@
 TRAIN_SCRIPT may point at an alternative copy of train.py (used to show a test
 red against a variant that skips a rule).
 """
+import ast
 import json
 import os
 import shutil
@@ -258,7 +259,8 @@ class TrainBase(unittest.TestCase):
         self.log = self.tmp / "stub.log"
         self.env = dict(os.environ, STUB_LOG=str(self.log), TRAIN_PY=sys.executable,
                         TRAIN_PY3=sys.executable)
-        self.env.pop("FN_TRAIN_BASE", None)
+        for variable in ("FN_TRAIN_BASE", "FN_LEDGER_BASE", "FN_HOST_CHECK_BASE"):
+            self.env.pop(variable, None)
 
     def cfg(self, d):
         sh(d, "git", "config", "user.email", "t@example.org")
@@ -395,11 +397,13 @@ class LaneCheckTests(TrainBase):
         train.save_box_record(scratch, {"sha": self.head(), "ran_at": self.head(), "box": "persvati"})
         p = self.train("lane-check", str(self.seed))
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn("lane-check verdict: PASS (1 box gates owed)", p.stdout)
+        self.assertIn("lane-check verdict: PASS (3 box gates owed)", p.stdout)
         for name in train.GATES:
             self.assertIn(f"lane-check {name}: PASS {sys.executable} tools/train.py gate --local", p.stdout)
-        for name in ("certify", "box_host_world", "reach", "keystone_cert", "image"):
+        for name in ("certify", "box_host_world", "image"):
             self.assertIn(f"lane-check {name}: NONE (", p.stdout)
+        for name in ("reach", "keystone_cert"):
+            self.assertIn(f"lane-check {name}: BOX ", p.stdout)
         self.assertIn(f"dev={dev}", p.stdout)
         self.assertIn("lane-check certify: NONE (box step inherits:", p.stdout)
         self.assertIn("lane-check extraction: BOX", p.stdout)
@@ -431,7 +435,8 @@ class LaneCheckTests(TrainBase):
         self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), old_dev)
         p = self.check_lane("reuse", sha)
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn(f"lane-check verdict: PASS (1 box gates owed) dev={dev}", p.stdout)
+        self.assertIn(f"lane-check verdict: PASS (3 box gates owed) dev={dev}", p.stdout)
+        self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), old_dev)
         self.assertTrue((self.scratch("reuse") / "dev-event").is_file())
         self.assertEqual((self.scratch("reuse") / "planning/proofs.json").read_text().count("regen"), 1)
         p = self.check_lane("reuse", sha, "--clean")
@@ -491,7 +496,7 @@ class LaneCheckTests(TrainBase):
         self.assertEqual(train.image_modules(["host/owner-host.lisp"]), {})
         self.assertIn("lane-check image: NONE (no native module obliged)", p.stdout)
         self.assertIn("lane-check extraction: BOX", p.stdout)
-        self.assertIn("lane-check verdict: PASS (1 box gates owed)", p.stdout)
+        self.assertIn("lane-check verdict: PASS (3 box gates owed)", p.stdout)
 
     def test_local_box_check_failure_blocks_inheritance_and_verdict(self):
         sha = self.lane("local-red", {"tools/x.py": "x\n"})
@@ -589,10 +594,14 @@ class LaneCheckTests(TrainBase):
         self.assertEqual(report["gates"]["fetched_policy"]["rc"], 7)
 
     def test_cmd_gate_preserves_names_order_output_and_return_codes(self):
+        # Literal order from 9fe40c34a, independent of this implementation.
+        baseline_gates = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
+                          "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
+        self.assertEqual(train.GATES, baseline_gates)
         for rc in (0, 7):
             p = self.train("gate", extra_env={"STUB_RC_ledger_check": str(rc)})
             st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
-            expected = {name: rc if name == "ledger" else 0 for name in train.GATES}
+            expected = {name: rc if name == "ledger" else 0 for name in baseline_gates}
             self.assertEqual({name: entry["rc"] for name, entry in st["gates"].items()}, expected)
             self.assertEqual(p.returncode, 1 if rc else 0, p.stdout + p.stderr)
             summary = "gates at " + self.head()[:9] + ": " + ", ".join(f"{n}={v}" for n, v in expected.items())
@@ -603,6 +612,143 @@ class LaneCheckTests(TrainBase):
                 "lock_discipline_check --json", "test_ledger ", "test_keystone_emit ",
                 "test_keystone_critical ", "test_train ", "test_farm "])
             self.log.unlink()
+
+    def test_review1_private_fetch_preserves_other_trains_tracking_refs(self):
+        observer = self.tmp / "observer"
+        sh(self.work, "git", "worktree", "add", "-q", "-b", "integrate/observer", str(observer), self.head())
+        before = sh(observer, "git", "for-each-ref", "--format=%(refname) %(objectname)",
+                    "refs/remotes/origin/").stdout
+        fetch_head = self.work / ".git/FETCH_HEAD"
+        fetch_before = fetch_head.read_bytes() if fetch_head.exists() else None
+        self.advance_dev({"dev-event": "remote dev advances\n"})
+        dev = self.origin_rev("dev")
+        sha = self.lane("private-fetch", {"tools/x.py": "lane\n"})
+        p = self.check_lane("private-fetch", sha)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn(f"dev={dev}", p.stdout)
+        self.assertTrue((self.scratch("private-fetch") / "dev-event").is_file())
+        self.assertEqual(sh(observer, "git", "for-each-ref", "--format=%(refname) %(objectname)",
+                            "refs/remotes/origin/").stdout, before)
+        self.assertEqual(fetch_head.read_bytes() if fetch_head.exists() else None, fetch_before)
+        self.assertEqual(sh(self.work, "git", "for-each-ref", "refs/lane-check/").stdout, "")
+
+    def test_review2_ledger_drop_uses_pinned_base_after_shared_ref_moves(self):
+        # Exercise the ledger's actual fork/retirement decisions without its
+        # unrelated book analysis. Expectations remain the explicit lost R.
+        source = (REPO / "tools/ledger.py").read_text()
+        functions = "\n\n".join(ast.get_source_segment(source, node)
+                                 for node in ast.parse(source).body
+                                 if isinstance(node, ast.FunctionDef)
+                                 and node.name in ("fork_point_ids", "retirement_problems"))
+        ledger = ('import json, os, subprocess, sys\nfrom pathlib import Path\nROOT = Path.cwd()\n'
+                  + functions + '\nif "--check" in sys.argv:\n'
+                  '    current = {r["id"] for r in json.loads(Path("planning/proofs.json").read_text())["proofs"]}\n'
+                  '    problems = retirement_problems(fork_point_ids(), current, {})\n'
+                  '    print("\\n".join(problems))\n'
+                  '    sys.exit(bool(problems))\n')
+        self.advance_dev({"planning/proofs.json": '{"proofs": [{"id": "R"}]}',
+                          "planning/proof-events.json": '{"targets": [{"id": "R"}]}'})
+        pinned = self.origin_rev("dev")
+        mover = STUB.replace('sys.exit(int(os.environ.get(',
+            'if name == "resource_contract" and mode == "write":\n'
+            '    import subprocess\n'
+            '    subprocess.run(["git", "-C", os.getcwd(), "update-ref", "refs/remotes/origin/dev", os.environ["MOVE_DEV"]], check=True)\n'
+            'sys.exit(int(os.environ.get(')
+        host = STUB.replace('sys.exit(int(os.environ.get(',
+            'if name == "host_check" and os.environ.get("FN_HOST_CHECK_BASE") != os.environ["PINNED"]:\n'
+            '    sys.exit("host base was not pinned")\n'
+            'sys.exit(int(os.environ.get(')
+        sha = self.lane("ledger-base", {"planning/proofs.json": '{"proofs": []}',
+            "planning/proof-events.json": '{"targets": []}', "tools/ledger.py": ledger,
+            "tools/resource_contract.py": mover, "tools/host_check.py": host})
+        p = self.check_lane("ledger-base", sha, extra_env={"MOVE_DEV": sha, "PINNED": pinned})
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check ledger: FAIL", p.stdout)
+        self.assertIn("lane-check box_step: PASS", p.stdout)
+        log = self.work / "build/lane-check" / f"ledger-base-{sha[:9]}.log"
+        self.assertIn("R: a row of planning/proofs.json at the fork point is gone", log.read_text())
+        scratch = self.scratch("ledger-base")
+        env = dict(self.env, MOVE_DEV=sha, PINNED=pinned)
+        live = sh(scratch, sys.executable, "tools/ledger.py", "--check", env=env)
+        self.assertEqual(live.returncode, 0)
+        pinned_check = sh(scratch, sys.executable, "tools/ledger.py", "--check",
+                          env=dict(env, FN_LEDGER_BASE=pinned), check=False)
+        self.assertEqual(pinned_check.returncode, 1)
+        report = json.loads((scratch / "build/lane-check/gates.json").read_text())
+        self.assertEqual(report["gates"]["ledger"]["dev"], pinned)
+
+    def test_review2_host_check_base_override_preserves_default_and_explicit_base(self):
+        from tools import host_check
+        base = self.head()
+        (self.work / "host").mkdir()
+        (self.work / "host/a.lisp").write_text("; changed\n")
+        head = self.commit(self.work, "host changes")
+        sh(self.work, "git", "update-ref", "refs/remotes/origin/dev", head)
+        with mock.patch.dict(os.environ):
+            os.environ.pop("FN_HOST_CHECK_BASE", None)
+            self.assertEqual(host_check.touched_host_files(self.work), [])
+            os.environ["FN_HOST_CHECK_BASE"] = base
+            self.assertEqual(host_check.touched_host_files(self.work), ["host/a.lisp"])
+            self.assertEqual(host_check.touched_host_files(self.work, head), [])
+
+    def test_review3_ordinary_gate_keeps_image_paths_when_unit_moves_dev(self):
+        mover = STUB.replace('sys.exit(int(os.environ.get(',
+            'if name == "test_ledger":\n'
+            '    import subprocess\n'
+            '    subprocess.run(["git", "-C", os.getcwd(), "update-ref", "refs/remotes/origin/dev", os.environ["MOVE_DEV"]], check=True)\n'
+            'sys.exit(int(os.environ.get(')
+        (self.work / "tests/test_ledger.py").write_text(mover)
+        (self.work / "packaging").mkdir()
+        (self.work / "packaging/launcher-decide.sh").write_text("# launcher\n")
+        head = self.commit(self.work, "launcher changes")
+        p = self.train("gate", extra_env={"MOVE_DEV": head})
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), head)
+        gates = json.loads((self.work / "build/train/integrate__t1.json").read_text())["gates"]
+        self.assertEqual(gates["unit"]["rc"], 0)
+        self.assertEqual(gates["image"]["rc"], 1)
+        self.assertNotIn("skipped", gates["image"])
+        self.assertIn("tests.test_native_operator_verbs", gates["image"]["need"])
+        self.assertIn("no image run recorded", gates["image"]["error"])
+        self.assertIn("packaging/launcher-decide.sh", next(l for l in self.stub_log() if l.startswith("secrets_check ")))
+
+    def test_review4_added_makefile_root_owes_certify_despite_box_inheritance(self):
+        (self.seed / "books").mkdir()
+        self.advance_dev({"Makefile": "ACL2_BOOKS = books/wire-export\n",
+                          "books/unselected.lisp": '(defthm impossible nil)\n'})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
+        sha = self.lane("added-root", {"Makefile": "ACL2_BOOKS = books/wire-export books/unselected\n"})
+        p = self.check_lane("added-root", sha)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        report = json.loads((self.scratch("added-root") / "build/lane-check/gates.json").read_text())
+        self.assertEqual(report["gates"]["box_step"]["rc"], 0)
+        self.assertIn("inherits_from", report["gates"]["box_step"])
+        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check certify: BOX"))
+        self.assertIn("books/unselected", line)
+        self.assertNotIn("--affected-by", line)
+        self.assertNotIn("lane-check certify: NONE", p.stdout)
+
+    def test_review5_box_record_cannot_cover_unrun_reach_check(self):
+        sha = self.lane("reach-owed", {"tools/reach_check.py": "raise SystemExit(7)\n"})
+        p = self.check_lane("reach-owed", sha)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("lane-check box_step: PASS", p.stdout)
+        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check reach: BOX"))
+        self.assertIn("tools/reach_check.py --summary --strict", line)
+        self.assertIn("--install-certs", line)
+        self.assertNotIn("lane-check reach: NONE", p.stdout)
+
+    def test_review5_box_record_cannot_cover_certificate_keystone_check(self):
+        sha = self.lane("keystone-owed", {"tools/x.py": "lane\n"})
+        p = self.check_lane("keystone-owed", sha, extra_env={"STUB_RC_keystone_emit_check": "7"})
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check box_step: PASS", p.stdout)
+        self.assertIn("lane-check keystone: FAIL", p.stdout)
+        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check keystone_cert: BOX"))
+        self.assertIn("tools/keystone_emit.py --check", line)
+        self.assertIn("--install-certs", line)
+        self.assertNotIn("lane-check keystone_cert: NONE", p.stdout)
 
 
 class MergeTests(TrainBase):
