@@ -27,6 +27,7 @@
 
 (in-package "ACL2")
 (include-book "bp-workflow-records")
+(include-book "retain-carried")
 (include-book "assumptions")
 
 ; -----------------------------------------------------------------------------
@@ -143,31 +144,28 @@
   (declare (xargs :guard t))
   (fn-retain-pins (fn-node-retention (fn-bp-state-node s))))
 
-; The pin lookup is guard t: a host call hands the whole workflow image, and
-; fn-retain-find-id's guard (an obligation list) would be a whole-pins walk.
-; The :exec twin reads each pin through the total record accessor and is the
-; recursion itself (equal for every input, proved below).
-(defun fn-bprl-find-pin (id pins)
+; Guard-t lookup uses the carried trie; its cold fallback has the same value.
+; Served entries refresh against the queried ledger before passing pin-carry.
+(defun fn-bprl-work-pin (s work pin-carry)
   (declare (xargs :guard t))
-  (if (consp pins)
-      (if (equal id (fn-retain-obligation-id (car pins)))
-          (car pins)
-        (fn-bprl-find-pin id (cdr pins)))
-    nil))
+  (fn-prc-find-pin (fn-bp-work-obligation-id work)
+                   (fn-node-retention (fn-bp-state-node s)) pin-carry))
 
-(defthm fn-bprl-find-pin-is-find-id
-  (equal (fn-bprl-find-pin id pins) (fn-retain-find-id id pins)))
-
-(defun fn-bprl-work-pin (s work)
-  (declare (xargs :guard t))
-  (mbe :logic (fn-retain-find-id (fn-bp-work-obligation-id work) (fn-bprl-pins s))
-       :exec (fn-bprl-find-pin (fn-bp-work-obligation-id work) (fn-bprl-pins s))))
+(defthm fn-bprl-work-pin-is-find-id
+  (implies (fn-prc-carryp pin-carry)
+           (equal (fn-bprl-work-pin s work pin-carry)
+                  (fn-retain-find-id (fn-bp-work-obligation-id work) (fn-bprl-pins s))))
+  :hints (("Goal" :in-theory (enable fn-bprl-work-pin fn-bprl-pins)
+           :use ((:instance fn-prc-find-pin-is-find-id
+                            (id (fn-bp-work-obligation-id work))
+                            (ledger (fn-node-retention (fn-bp-state-node s)))
+                            (carry pin-carry))))))
 
 ; The :forward pin for this work is present with the required evidence.
-(defun fn-bprl-work-pinnedp (s work)
+(defun fn-bprl-work-pinnedp (s work pin-carry)
   (declare (xargs :guard t))
   (fn-retain-matching-releasep
-   (fn-bprl-work-pin s work)
+   (fn-bprl-work-pin s work pin-carry)
    (fn-bp-work-obligation-id work) (fn-bp-work-subject work) :forward
    (fn-bprl-required-evidence (fn-bp-state-config s) work)))
 
@@ -247,7 +245,7 @@
 ;                                          unauthorized, insufficient (terms)
 ;   pin present with required evidence     duplicated (second decision)
 ;   stage null, id not an archive binding  node invariant guards
-(defun fn-bprl-release-okp (s receipt work)
+(defun fn-bprl-release-okp (s receipt work pin-carry)
   (declare (xargs :guard t))
   (and (fn-bp-statep s)
        (not (consp (fn-bp-state-pending s)))
@@ -261,7 +259,7 @@
        (not (member-equal (fn-bp-work-obligation-id work)
                           (fn-node-binding-ids
                            (fn-node-bindings (fn-bp-state-node s)))))
-       (fn-bprl-work-pinnedp s work)))
+       (fn-bprl-work-pinnedp s work pin-carry)))
 
 ; Result: (okp state evidence).
 (defun fn-bprl-decision-okp (d) (declare (xargs :guard t)) (fn-bp-nth 0 d))
@@ -269,13 +267,13 @@
 (defun fn-bprl-decision-evidence (d) (declare (xargs :guard t)) (fn-bp-nth 2 d))
 
 (defthm fn-bprl-release-okp-statep
-  (implies (fn-bprl-release-okp s receipt work) (fn-bp-statep s))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-release-okp s receipt work pin-carry)) (fn-bp-statep s))
   :rule-classes :forward-chaining)
 
-(defun fn-bprl-release-decision (s receipt-id)
+(defun fn-bprl-release-decision (s receipt-id pin-carry)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :do-not-induct t
-                                 :in-theory (disable fn-bp-statep fn-bprl-release-okp)
+                                 :in-theory (e/d (fn-bprl-release-okp) (fn-bp-statep))
                                  :use ((:instance fn-bprl-release-okp-statep
                                                   (receipt (fn-bprl-find-receipt
                                                             receipt-id (fn-bp-state-receipts s)))
@@ -288,7 +286,7 @@
   (let* ((receipt (fn-bprl-find-receipt receipt-id (fn-bp-state-receipts s)))
          (work (fn-bp-find-work (fn-bp-receipt-work-id receipt)
                                 (fn-bp-state-works s))))
-    (if (not (fn-bprl-release-okp s receipt work))
+    (if (not (fn-bprl-release-okp s receipt work pin-carry))
         (list nil s nil)
       (let ((evidence (fn-bprl-receipt-evidence receipt)))
         (list t
@@ -344,11 +342,11 @@
 ; A release record whose evidence fields disagree with the decision ACL2
 ; computes from the state is refused: the record does not carry authority,
 ; it carries what the decision was, and replay recomputes it.
-(defun fn-bprl-apply-journal-record (s r)
+(defun fn-bprl-apply-journal-record (s r pin-carry)
   (declare (xargs :guard t))
   (cond
    ((fn-bprl-release-recordp r)
-    (let ((d (fn-bprl-release-decision s (fn-bp-journal-nth 1 r))))
+    (let ((d (fn-bprl-release-decision s (fn-bp-journal-nth 1 r) pin-carry)))
       (if (and (fn-bprl-decision-okp d)
                (equal (fn-bprl-decision-evidence d) (fn-bprl-record-evidence r)))
           (list t (fn-bprl-decision-state d)
@@ -369,9 +367,9 @@
 ; only what this book and books/bp-workflow already define.
 ; ACL2 authors the exact durable release record from the committed receipt and
 ; current pin.  The host never copies fields from an untrusted receipt ADU.
-(defun fn-bprl-release-record (s receipt-id)
+(defun fn-bprl-release-record (s receipt-id pin-carry)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((d (fn-bprl-release-decision s receipt-id)))
+  (let ((d (fn-bprl-release-decision s receipt-id pin-carry)))
     (if (not (fn-bprl-decision-okp d))
         nil
       (let ((e (fn-bprl-decision-evidence d)))
@@ -385,7 +383,7 @@
               (fn-bprl-evidence-incarnation e))))))
 
 
-(defun fn-bprl-replay-records (s records effects)
+(defun fn-bprl-replay-records (s records effects pin-carry)
   ; This book defers guards (every recognizer and step above is
   ; `:verify-guards nil'); the two replay functions keep that posture.
   (declare (xargs :guard t :verify-guards nil :measure (acl2-count records)))
@@ -393,14 +391,14 @@
       (let ((answer (fn-bp-step s (fn-bp-restart-event))))
         (list t (fn-bp-result-state answer)
               (append effects (fn-bp-result-effects answer))))
-    (let ((answer (fn-bprl-apply-journal-record s (car records))))
+    (let ((answer (fn-bprl-apply-journal-record s (car records) pin-carry)))
       (if (not (car answer))
           (list nil s effects)
         (fn-bprl-replay-records
          (fn-bp-journal-nth 1 answer) (cdr records)
-         (append effects (fn-bp-journal-nth 2 answer)))))))
+         (append effects (fn-bp-journal-nth 2 answer)) pin-carry)))))
 
-(defun fn-bprl-replay-journal (node records)
+(defun fn-bprl-replay-journal (node records pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (if (or (endp records) (not (fn-bp-config-recordp (car records))))
       (list nil nil nil)
@@ -408,4 +406,4 @@
                                   (fn-bp-config-from-record (car records)))))
       (if (not (fn-bp-statep s))
           (list nil nil nil)
-        (fn-bprl-replay-records s (cdr records) nil)))))
+        (fn-bprl-replay-records s (cdr records) nil pin-carry)))))

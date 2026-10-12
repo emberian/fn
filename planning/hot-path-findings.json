@@ -465,11 +465,6 @@
       "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's rebuild (fn-prc-build). The owner open (fn-owner-install-extended) builds the carry for the ledger it opens with (hbox REPL, 10,000 pins: 4.8 MB, 0.02 s), so on the served POST (fn-owner-prepare-buffer) it runs only when the carry names a ledger no retention delta reaches, which no host-selected owner step produces between an open and a POST (a reopen goes through the open).",
       "packet": "open"
     },
-    "fn-prc-all-released recursion N": {
-      "class": "unexpected",
-      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build).",
-      "packet": "open"
-    },
     "fn-prc-pins-walk recursion N": {
       "class": "unexpected",
       "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build).",
@@ -854,15 +849,25 @@
       "packet": "HOT-PATH-SERVED-WALKS-N",
       "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/store-files.lisp:601 (a walk of N, retained Store history), reached via fn-reader-use-store -> fn-rdc-store-selection -> fn-sn-statep -> fn-sf-statep -> fn-sf-success-listp -> fn-sf-success-listp-ks -> fn-sf-success-listp-scan [recursion]; owning book books/store-files.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
     },
-    "fn-bprl-find-pin recursion N": {
-      "class": "unexpected",
-      "packet": "CHECK-C5-HOT-PATH-BPRL",
-      "note": "[d-check-c5, 10-12: made executable by 6162b6f43 (lane/d-release-guards); fn-owner-workflow-forward-pinnedp walks the retained pins to the work's obligation id; owner builder-D]"
-    },
     "fn-ct-charged-acc recursion N": {
       "class": "unexpected",
       "packet": "CHECK-C5-HOT-PATH-CT",
       "note": "[d-check-c5, 10-12: made executable by a54996b31 (lane/vertical); fn-owner-record-totals' cache fallback at books/history-totals-carried.lisp:82 folds every retained record; owner builder-M]"
+    },
+    "fn-prc-pin-ids-rev recursion N": {
+      "class": "unexpected",
+      "note": "CHECK-C5-HOT-PATH-BPRL (lane d-bprl-pin, books/retain-carried.lisp): the mark check inside fn-prc-refresh's REBUILD (fn-prc-build -> fn-prc-ledger-findsp) collects the ledger's ids once (a reverse-accumulator loop, tail-recursive) to test uniqueness and disjointness. It is the same phase and class as fn-prc-add-pins and fn-prc-add-releases: it runs only when a carry names a ledger no forward delta reaches, which is an owner open, an install-replay, or a recovery. Since the one-carry-per-lineage ruling (coordinator, 10-12), each carry moves only forward (the owner carry on the live Store ledger, the BP carry on the workflow snapshot's ledger, the standalone Store carry on fn-store-sn's), so a steady-state served step does not rebuild. tests/test_native_bp_pin_carry.py asserts 0 builds and 0 scans across alternating served entries.",
+      "packet": "open"
+    },
+    "fn-prc-release-ids-rev recursion N": {
+      "class": "unexpected",
+      "note": "CHECK-C5-HOT-PATH-BPRL (lane d-bprl-pin, books/retain-carried.lisp): the mark check inside fn-prc-refresh's REBUILD (fn-prc-build -> fn-prc-ledger-findsp) collects the ledger's ids once (a reverse-accumulator loop, tail-recursive) to test uniqueness and disjointness. It is the same phase and class as fn-prc-add-pins and fn-prc-add-releases: it runs only when a carry names a ledger no forward delta reaches, which is an owner open, an install-replay, or a recovery. Since the one-carry-per-lineage ruling (coordinator, 10-12), each carry moves only forward (the owner carry on the live Store ledger, the BP carry on the workflow snapshot's ledger, the standalone Store carry on fn-store-sn's), so a steady-state served step does not rebuild. tests/test_native_bp_pin_carry.py asserts 0 builds and 0 scans across alternating served entries.",
+      "packet": "open"
+    },
+    "fn-prc-new-releases-clearedp recursion N": {
+      "class": "unexpected",
+      "note": "CHECK-C5-HOT-PATH-BPRL (lane d-bprl-pin, books/retain-carried.lisp): fn-prc-refresh's DELTA checks that each NEW release id cleared a pin record the walk skipped. It walks the new releases down to the carried releases' shared tail, so it is O(new releases) with O(depth) trie work each. It is the same delta-prefix class as fn-prc-add-new-releases.",
+      "packet": "open"
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."

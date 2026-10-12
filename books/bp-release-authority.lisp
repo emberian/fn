@@ -213,11 +213,11 @@
 ; the live configuration, this Store's keyring, the host's two primitive
 ; observations and the recovered workflow image; nil publishes nothing and
 ; releases nothing.  The workflow reads the receipt ADU the payload carries.
-(defun fn-bpah-receipt-release-record (view cfg wf snapshots obs)
+(defun fn-bpah-receipt-release-record (view cfg wf snapshots obs pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bprl-receipt-auto-record
    wf (fn-bpah-view-adu-octets view)
-   (if (fn-bpah-view-release-authorizedp view cfg wf snapshots obs) t nil)))
+   (if (fn-bpah-view-release-authorizedp view cfg wf snapshots obs) t nil) pin-carry))
 
 ; What the host verifies at A: (preimage ed25519-key ml-dsa-65-key
 ; signatures) for a signed receipt whose principal this Store has enrolled,
@@ -276,14 +276,14 @@
       (or (fn-bpah-receipt-signature-verdict view cfg snapshots obs) base))))
 
 ; The verdict the kind-7 delivery row keeps (`fn-bpah-release-detail').
-(defun fn-bpah-receipt-release-verdict (view cfg wf snapshots obs)
+(defun fn-bpah-receipt-release-verdict (view cfg wf snapshots obs pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (let ((v (fn-bpah-receipt-issuer-verdict view cfg snapshots obs)))
     (cond ((not (member-equal v '(:self-issued :listed-issuer :signed-issuer)))
            v)
           ((not (fn-bpah-view-release-authorizedp view cfg wf snapshots obs))
            :obligation-mismatch)
-          ((not (fn-bpah-receipt-release-record view cfg wf snapshots obs))
+          ((not (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry))
            :workflow-refused)
           (t v))))
 
@@ -301,7 +301,7 @@
        (string-append " issuer=" (if (stringp issuer) issuer "")))))))
 
 (local (defthm fn-bpah-auto-record-unauthorized-is-nil
-  (equal (fn-bprl-receipt-auto-record s octets nil) nil)
+  (implies (fn-prc-carryp pin-carry) (equal (fn-bprl-receipt-auto-record s octets nil pin-carry) nil))
   :hints (("Goal" :in-theory (enable fn-bprl-receipt-auto-record
                                      fn-bprl-receipt-intent-record)))))
 
@@ -311,8 +311,8 @@
   :hints (("Goal" :in-theory (union-theories '(fn-bpah-view-release-authorizedp) (theory 'minimal-theory))))))
 
 (local (defthm fn-bpah-release-record-needs-gate
-  (implies (not (fn-bpah-receipt-gatep view cfg snapshots obs))
-           (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs)
+  (implies (and (fn-prc-carryp pin-carry) (not (fn-bpah-receipt-gatep view cfg snapshots obs)))
+           (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry)
                   nil))
   :hints (("Goal" :in-theory (union-theories '(fn-bpah-receipt-release-record
                                fn-bpah-auto-record-unauthorized-is-nil
@@ -332,13 +332,13 @@
 ; releases nothing: no record, so the workflow image and the pin are
 ; unchanged.  A signed receipt is the third way's (keystones 5 and 6).
 (defthm fn-bpah-unauthorized-issuer-releases-nothing
-  (implies (and (not (fn-bpah-view-signed view))
+  (implies (and (fn-prc-carryp pin-carry) (not (fn-bpah-view-signed view))
                 (not (fn-bpah-release-issuer-authorizedp
                       cfg (fn-bpah-view-carrier view)
                       (fn-bpah-view-generation view)
                       (fn-bpaj-issuer-eid (fn-bpn-nth 6 view)))))
            (and (not (fn-bpah-receipt-gatep view cfg snapshots obs))
-                (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs)
+                (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry)
                        nil)))
   :hints (("Goal" :in-theory (union-theories '(fn-bpah-unauthorized-issuer-never-authorizes-receipt
                                fn-bpah-unsigned-gate-is-trust
@@ -368,7 +368,7 @@
 ; a releases-for row for the issuer of a bare receipt.  Its carried list is
 ; not a hypothesis: carrying the issuer's EID releases nothing.
 (defthm fn-bpah-carrier-without-release-row-releases-nothing
-  (let ((rows (fn-cfg-peers (fn-cfg-value cfg)))
+  (implies (fn-prc-carryp pin-carry) (let ((rows (fn-cfg-peers (fn-cfg-value cfg)))
         (name (fn-record-octets-string (fn-bpah-view-carrier view)))
         (issuer (fn-bpn-nth 6 view)))
     (implies (and (not (fn-bpah-view-signed view))
@@ -378,8 +378,8 @@
                                                "bp-boundary-releases-for"
                                                issuer 0)))
              (and (not (fn-bpah-receipt-gatep view cfg snapshots obs))
-                  (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs)
-                         nil))))
+                  (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry)
+                         nil)))))
   :hints (("Goal" :in-theory (union-theories '(fn-bpah-unauthorized-issuer-releases-nothing) (theory 'minimal-theory))
            :use ((:instance fn-bpah-no-row-no-release-authority
                             (carrier (fn-bpah-view-carrier view))
@@ -387,18 +387,18 @@
                             (issuer (fn-bpn-nth 6 view)))))))
 
 (local (defthm fn-bpah-release-record-needs-authorization
-  (implies (fn-bpah-receipt-release-record view cfg wf snapshots obs)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry))
            (fn-bpah-view-release-authorizedp view cfg wf snapshots obs))
   :hints (("Goal" :in-theory (union-theories '(fn-bpah-receipt-release-record
                                fn-bpah-auto-record-unauthorized-is-nil) (theory 'minimal-theory))))))
 
 (local (defthm fn-bpah-release-record-is-the-authorized-intent
-  (implies (fn-bpah-receipt-release-record view cfg wf snapshots obs)
-           (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry))
+           (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry)
                   (fn-bprl-receipt-intent-record
                    wf (fn-bpah-view-adu-octets view)
                    (+ 1 (fn-bprl-max-used-txid (fn-bp-state-used-txs wf) 0))
-                   0 t)))
+                   0 t pin-carry)))
   :hints (("Goal" :in-theory (union-theories '(fn-bpah-receipt-release-record
                                fn-bprl-receipt-auto-record
                                fn-bpah-auto-record-unauthorized-is-nil) (theory 'minimal-theory))
@@ -411,14 +411,15 @@
                                           view cfg wf snapshots obs))))))))
 
 (local (defthm fn-bpah-intent-record-work-id
-  (implies (fn-bprl-receipt-intent-record s octets txid generation t)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-receipt-intent-record s octets txid generation t pin-carry))
            (equal (fn-bp-journal-nth
-                   4 (fn-bprl-receipt-intent-record s octets txid generation t))
+                   4 (fn-bprl-receipt-intent-record s octets txid generation t pin-carry))
                   (fn-bp-receipt-work-id
                    (fn-bprl-receipt-from-adu
                     (fn-bpa-result-message (fn-bpa-decode-exact octets))))))
   :hints (("Goal" :in-theory (e/d (fn-bprl-receipt-intent-record)
                                   (fn-bprl-apply-journal-record
+                                   fn-bp-apply-journal-record
                                    fn-bp-journal-recordp
                                    fn-bprl-receipt-from-adu
                                    fn-bp-receipt-work-id
@@ -445,7 +446,7 @@
 ; the workflow's exact-term check holds for it, and the record carries that
 ; work's id and the workflow image admits it.
 (defthm fn-bpah-released-receipt-names-exactly-its-obligation
-  (let* ((r (fn-bpah-receipt-release-record view cfg wf snapshots obs))
+  (implies (fn-prc-carryp pin-carry) (let* ((r (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry))
          (receipt (fn-bpah-view-receipt view))
          (work (fn-bpah-receipt-obligation wf receipt))
          (signed (fn-bpah-view-signed view))
@@ -463,7 +464,7 @@
                   (fn-bp-authorized-receiptp (fn-bp-state-config wf) work
                                              (fn-bprl-receipt-from-adu receipt))
                   (equal (fn-bp-journal-nth 4 r) (fn-bp-work-id work))
-                  (car (fn-bprl-apply-journal-record wf r)))))
+                  (car (fn-bprl-apply-journal-record wf r pin-carry))))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpah-view-release-authorizedp
                                 fn-bpah-receipt-authorizes-releasep
@@ -505,7 +506,7 @@
 ; issued it and whoever signed it: for a signed receipt these are the
 ; signed fields.
 (defthm fn-bpah-receipt-naming-other-terms-releases-nothing
-  (let* ((receipt (fn-bpah-view-receipt view))
+  (implies (fn-prc-carryp pin-carry) (let* ((receipt (fn-bpah-view-receipt view))
          (work (fn-bpah-receipt-obligation wf receipt)))
     (implies (or (not (fn-bp-work-outstandingp work))
                  (not (equal (fn-bpa-receipt-subject receipt)
@@ -514,8 +515,8 @@
                              (fn-bp-work-policy-id work)))
                  (not (equal (fn-bpa-receipt-terms-id receipt)
                              (fn-bp-work-terms-id work))))
-             (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs)
-                    nil)))
+             (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry)
+                    nil))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpah-view-release-authorizedp
                                 fn-bpah-receipt-authorizes-releasep)
@@ -535,7 +536,7 @@
 ; receipt names the held obligation the authorization is t and the record
 ; is the workflow's (reachable witness 5 in the test book).
 (defthm fn-bpah-signed-receipt-releases-through-any-carrier
-  (let* ((receipt (fn-bpah-view-receipt view))
+  (implies (fn-prc-carryp pin-carry) (let* ((receipt (fn-bpah-view-receipt view))
          (signed (fn-bpah-view-signed view)))
     (implies (and signed
                   (fn-bpah-receipt-shapep view)
@@ -543,11 +544,11 @@
                    cfg snapshots (fn-bpah-view-generation view)
                    (fn-bpaj-issuer-eid (fn-bpn-nth 6 view))
                    (fn-bpn-nth 7 view) signed obs))
-             (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs)
+             (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry)
                     (fn-bprl-receipt-auto-record
                      wf (fn-bpsr-adu signed)
                      (fn-bpah-receipt-names-obligationp
-                      wf receipt (fn-bpah-receipt-obligation wf receipt))))))
+                      wf receipt (fn-bpah-receipt-obligation wf receipt)) pin-carry)))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpah-receipt-release-record
                                 fn-bpah-view-release-authorizedp
@@ -567,7 +568,7 @@
 ; issuer's enrollment releases nothing, whoever delivered it: a direct
 ; neighbour or a listed relay does not rescue it.
 (defthm fn-bpah-unverified-signed-receipt-releases-nothing
-  (let ((signed (fn-bpah-view-signed view)))
+  (implies (fn-prc-carryp pin-carry) (let ((signed (fn-bpah-view-signed view)))
     (implies (and signed
                   (not (fn-bpah-receipt-signature-verifiedp
                         cfg snapshots (fn-bpah-view-generation view)
@@ -575,8 +576,8 @@
                         (fn-bpn-nth 7 view) signed obs)))
              (and (not (fn-bpah-receipt-gatep view cfg snapshots obs))
                   (equal (fn-bpah-receipt-release-record
-                          view cfg wf snapshots obs)
-                         nil))))
+                          view cfg wf snapshots obs pin-carry)
+                         nil)))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpah-receipt-gatep
                                 fn-bpah-release-record-needs-gate)
@@ -613,17 +614,17 @@
 ; obligation releases too (witness 2).  Unless the carrier requires signed receipts:
 ; KEYSTONE 9.
 (defthm fn-bpah-trusted-bare-receipt-releases
-  (let ((receipt (fn-bpah-view-receipt view)))
+  (implies (fn-prc-carryp pin-carry) (let ((receipt (fn-bpah-view-receipt view)))
     (implies (and (not (fn-bpah-view-signed view))
                   (not (fn-bpah-require-signed-receiptsp
                         cfg (fn-bpah-view-carrier view)
                         (fn-bpah-view-generation view)))
                   (fn-bpah-receipt-trustedp view cfg))
-             (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs)
+             (equal (fn-bpah-receipt-release-record view cfg wf snapshots obs pin-carry)
                     (fn-bprl-receipt-auto-record
                      wf (fn-bpn-nth 3 view)
                      (fn-bpah-receipt-names-obligationp
-                      wf receipt (fn-bpah-receipt-obligation wf receipt))))))
+                      wf receipt (fn-bpah-receipt-obligation wf receipt)) pin-carry)))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpah-receipt-release-record
                                 fn-bpah-view-release-authorizedp
@@ -643,13 +644,13 @@
 ; neighbour's boundary, a bare receipt releases nothing, whoever issued it
 ; and whatever the carrier's release list says.
 (defthm fn-bpah-required-signature-refuses-bare-receipts
-  (implies (and (not (fn-bpah-view-signed view))
+  (implies (and (fn-prc-carryp pin-carry) (not (fn-bpah-view-signed view))
                 (fn-bpah-require-signed-receiptsp
                  cfg (fn-bpah-view-carrier view)
                  (fn-bpah-view-generation view)))
            (and (not (fn-bpah-receipt-gatep view cfg snapshots obs))
                 (equal (fn-bpah-receipt-release-record
-                        view cfg wf snapshots obs)
+                        view cfg wf snapshots obs pin-carry)
                        nil)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-bpah-unsigned-gate-is-trust

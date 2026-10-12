@@ -12,8 +12,8 @@
 
 (local
  (defthm fn-bprq-bpiw-apply-of-recovery-outcome
-   (implies (fn-bpiw-recovery-outcomep r)
-            (equal (fn-bpiw-apply bp ion r fn-arena)
+   (implies (and (fn-prc-carryp pin-carry) (fn-bpiw-recovery-outcomep r))
+            (equal (fn-bpiw-apply bp ion r pin-carry fn-arena)
                    (let ((a (fn-bp-apply-journal-record bp r)))
                      (list (car a) (nth 1 a) (nth 2 a) ion))))
    :hints (("Goal" :in-theory (e/d (fn-bpiw-apply fn-bprl-apply-journal-record
@@ -24,19 +24,19 @@
 
 (local
  (defthm fn-bprq-bpiw-apply-parts-of-recovery-outcome
-   (implies (fn-bpiw-recovery-outcomep r)
-            (and (equal (car (fn-bpiw-apply bp ion r fn-arena))
+   (implies (and (fn-prc-carryp pin-carry) (fn-bpiw-recovery-outcomep r))
+            (and (equal (car (fn-bpiw-apply bp ion r pin-carry fn-arena))
                         (car (fn-bp-apply-journal-record bp r)))
-                 (equal (nth 1 (fn-bpiw-apply bp ion r fn-arena))
+                 (equal (nth 1 (fn-bpiw-apply bp ion r pin-carry fn-arena))
                         (nth 1 (fn-bp-apply-journal-record bp r)))
-                 (equal (nth 3 (fn-bpiw-apply bp ion r fn-arena)) ion)))
+                 (equal (nth 3 (fn-bpiw-apply bp ion r pin-carry fn-arena)) ion)))
    :hints (("Goal" :in-theory (disable fn-bpiw-apply
                                        fn-bp-apply-journal-record)))))
 
 (local
  (defthm fn-bprq-bprl-apply-of-recovery-outcome
-   (implies (fn-bpiw-recovery-outcomep r)
-            (equal (fn-bprl-apply-journal-record bp r)
+   (implies (and (fn-prc-carryp pin-carry) (fn-bpiw-recovery-outcomep r))
+            (equal (fn-bprl-apply-journal-record bp r pin-carry)
                    (fn-bp-apply-journal-record bp r)))
    :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record
                                     fn-bprl-release-recordp
@@ -47,10 +47,10 @@
 ; A recovery plan's record is a recovery outcome the image accepts.
 (local
  (defthm fn-bprq-recovery-plan-record-is-accepted
-   (implies (equal (car (fn-bprq-recovery-plan s work-id attempt-id outcome))
-                   :recover)
+   (implies (and (fn-prc-carryp pin-carry) (equal (car (fn-bprq-recovery-plan s work-id attempt-id outcome pin-carry))
+                   :recover))
             (let ((r (nth 1 (fn-bprq-recovery-plan s work-id attempt-id
-                                                   outcome))))
+                                                   outcome pin-carry))))
               (and (fn-bpiw-recovery-outcomep r)
                    (equal r (fn-bprq-recovery-record s outcome))
                    (car (fn-bp-apply-journal-record s r)))))
@@ -74,7 +74,8 @@
               (not (fn-bp-state-fenced n)))))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-bp-recover fn-bp-apply-pending
-                                    fn-bp-make-result fn-bp-result-state)
+                                    fn-bp-make-result fn-bp-result-state
+                                    fn-bp-state-pending fn-bp-state-fenced)
                                    (fn-bp-statep fn-bp-pending-matchesp
                                     fn-bp-recovery-pending
                                     fn-bp-effect-for-pending))))))
@@ -141,11 +142,11 @@
 ; gate admits what the live gate admitted); and the next open installs
 ; exactly the live image after its one restart, ION state unchanged.
 (defthm fn-bprq-recovery-plan-unfences-and-reopens-as-live
-  (let* ((open (fn-bpiw-replay-journal node records fn-arena))
-         (plan (fn-bprq-recovery-plan (nth 1 open) work-id attempt-id outcome))
+  (implies (fn-prc-carryp pin-carry) (let* ((open (fn-bpiw-replay-journal node records pin-carry fn-arena))
+         (plan (fn-bprq-recovery-plan (nth 1 open) work-id attempt-id outcome pin-carry))
          (r (nth 1 plan))
-         (live (fn-bpiw-apply (nth 1 open) (nth 3 open) r fn-arena))
-         (reopen (fn-bpiw-replay-journal node (append records (list r)) fn-arena)))
+         (live (fn-bpiw-apply (nth 1 open) (nth 3 open) r pin-carry fn-arena))
+         (reopen (fn-bpiw-replay-journal node (append records (list r)) pin-carry fn-arena)))
     (implies (and (car open)
                   (equal (car plan) :recover))
              (and (car live)
@@ -153,21 +154,21 @@
                   (not (fn-bp-state-fenced (nth 1 live)))
                   (car reopen)
                   (equal (nth 1 reopen) (fn-bp-restart (nth 1 live)))
-                  (equal (nth 3 reopen) (nth 3 live)))))
+                  (equal (nth 3 reopen) (nth 3 live))))))
   :hints (("Goal"
            :use ((:instance fn-bprq-recovery-plan-record-is-accepted
-                            (s (nth 1 (fn-bpiw-replay-journal node records fn-arena))))
+                            (s (nth 1 (fn-bpiw-replay-journal node records pin-carry fn-arena))))
                  (:instance fn-bprq-accepted-recovery-unfences
-                            (s (nth 1 (fn-bpiw-replay-journal node records fn-arena)))
+                            (s (nth 1 (fn-bpiw-replay-journal node records pin-carry fn-arena)))
                             (r (nth 1 (fn-bprq-recovery-plan
                                        (nth 1 (fn-bpiw-replay-journal
-                                               node records fn-arena))
-                                       work-id attempt-id outcome))))
+                                               node records pin-carry fn-arena))
+                                       work-id attempt-id outcome pin-carry))))
                  (:instance fn-bpiw-reopen-after-live-recovery-is-the-live-image-restarted
                             (r (nth 1 (fn-bprq-recovery-plan
                                        (nth 1 (fn-bpiw-replay-journal
-                                               node records fn-arena))
-                                       work-id attempt-id outcome)))))
+                                               node records pin-carry fn-arena))
+                                       work-id attempt-id outcome pin-carry)))))
            :in-theory (union-theories
                        '(fn-bprq-bpiw-apply-parts-of-recovery-outcome)
                        (theory 'minimal-theory)))))

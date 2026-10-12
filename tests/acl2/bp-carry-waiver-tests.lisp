@@ -25,16 +25,16 @@
     10 0 :durable)))
 (defconst *cw-bp* (fn-bprl-undertake *cw-enqueued* "work-1" 3))
 (defconst *cw-work* (fn-bp-find-work "work-1" (fn-bp-state-works *cw-bp*)))
-(assert-event (fn-bprl-work-pinnedp *cw-bp* *cw-work*))
+(assert-event (fn-bprl-work-pinnedp *cw-bp* *cw-work* nil))
 (assert-event (fn-retain-statep (fn-node-retention (fn-bp-state-node *cw-bp*))))
 
 (defconst *cw-waiver* '(:waive "abandon" "work-1" "peer retired" "uid:1000"))
 (defconst *cw-drop* '(:carry "drop" "work-1" "peer retired"))
 (assert-event (fn-bpcc-waiver-recordp *cw-waiver*))
 (assert-event (equal (fn-bpcc-operator-principal 1000) "uid:1000"))
-(assert-event (null (fn-bpcc-waiver-refusal *cw-bp* (fn-bpcc-initial) *cw-waiver*)))
+(assert-event (null (fn-bpcc-waiver-refusal *cw-bp* (fn-bpcc-initial) *cw-waiver* nil)))
 (defconst *cw-c* (fn-bpcc-apply (fn-bpcc-initial) *cw-waiver*))
-(defconst *cw-event* (fn-bpcc-waiver-release-event *cw-bp* *cw-c* "work-1"))
+(defconst *cw-event* (fn-bpcc-waiver-release-event *cw-bp* *cw-c* "work-1" nil))
 (defconst *cw-next* (fn-bpcw-after-release *cw-bp* *cw-event*))
 
 ; fn-bpcw-admitted-waiver-authors-its-release: the pin's own id, subject and
@@ -57,12 +57,12 @@
 (assert-event (equal (fn-bprl-pins *cw-next*)
                      (fn-retain-remove-id "forward-1" (fn-bprl-pins *cw-bp*))))
 (assert-event (null (fn-retain-find-id "forward-1" (fn-bprl-pins *cw-next*))))
-(assert-event (not (fn-bprl-work-pinnedp *cw-next* *cw-work*)))
-(assert-event (null (fn-bpcc-waiver-release-event *cw-next* *cw-c* "work-1")))
-(assert-event (not (fn-bprl-release-okp *cw-next* '(:any) *cw-work*)))
+(assert-event (not (fn-bprl-work-pinnedp *cw-next* *cw-work* nil)))
+(assert-event (null (fn-bpcc-waiver-release-event *cw-next* *cw-c* "work-1" nil)))
+(assert-event (not (fn-bprl-release-okp *cw-next* '(:any) *cw-work* nil)))
 ; The recovery arm: pending before the Store event, none after.
-(assert-event (equal (fn-bpcc-pending-waivers *cw-bp* *cw-c*) '("work-1")))
-(assert-event (null (fn-bpcc-pending-waivers *cw-next* *cw-c*)))
+(assert-event (equal (fn-bpcc-pending-waivers *cw-bp* *cw-c* nil) '("work-1")))
+(assert-event (null (fn-bpcc-pending-waivers *cw-next* *cw-c* nil)))
 
 ; Hypothesis removal (the event): a drop WITHOUT --abandon authors no
 ; release and keeps the pin; the retention hypothesis holds, the event and
@@ -70,10 +70,10 @@
 (defconst *cw-dropped* (fn-bpcc-apply (fn-bpcc-initial) *cw-drop*))
 (assert-event (null (fn-bpcc-refusal *cw-bp* (fn-bpcc-initial) *cw-drop*)))
 (assert-event (equal (fn-bpcc-work-state *cw-dropped* "work-1") :dropped))
-(assert-event (null (fn-bpcc-waiver-release-event *cw-bp* *cw-dropped* "work-1")))
+(assert-event (null (fn-bpcc-waiver-release-event *cw-bp* *cw-dropped* "work-1" nil)))
 (assert-event (not (consp (fn-bpcc-waiver-entry *cw-dropped* "work-1"))))
-(assert-event (fn-bprl-work-pinnedp *cw-bp* *cw-work*))
-(assert-event (null (fn-bpcc-pending-waivers *cw-bp* *cw-dropped*)))
+(assert-event (fn-bprl-work-pinnedp *cw-bp* *cw-work* nil))
+(assert-event (null (fn-bpcc-pending-waivers *cw-bp* *cw-dropped* nil)))
 
 ; Hypothesis removal (retention's state), CORRUPTED-STATE witness: a ledger
 ; holding the pin twice.  The event stands; one release leaves the second
@@ -89,40 +89,40 @@
                                 (fn-retain-pins *cw-ret*))
                           (fn-retain-releases *cw-ret*)))))
 (assert-event (not (fn-retain-statep (fn-node-retention (fn-bp-state-node *cw-dup-bp*)))))
-(assert-event (fn-bpcc-waiver-release-event *cw-dup-bp* *cw-c* "work-1"))
+(assert-event (fn-bpcc-waiver-release-event *cw-dup-bp* *cw-c* "work-1" nil))
 ; (The corrupted ledger violates fn-retain-release's guard, so it runs
 ; without guard checking: the logical function is the claim's.)
 (assert-event (with-guard-checking
                :none
                (fn-bprl-work-pinnedp
                 (fn-bpcw-after-release *cw-dup-bp*
-                                       (fn-bpcc-waiver-release-event *cw-dup-bp* *cw-c* "work-1"))
-                *cw-work*)))
+                                       (fn-bpcc-waiver-release-event *cw-dup-bp* *cw-c* "work-1" nil))
+                *cw-work* nil)))
 (must-fail-checked
  (defthm cw-release-without-retention-state
-   (implies (fn-bpcc-waiver-release-event bp c w)
+   (implies (and (fn-prc-carryp pin-carry) (fn-bpcc-waiver-release-event bp c w pin-carry))
             (not (fn-bprl-work-pinnedp
-                  (fn-bpcw-after-release bp (fn-bpcc-waiver-release-event bp c w))
-                  (fn-bp-find-work w (fn-bp-state-works bp)))))
+                  (fn-bpcw-after-release bp (fn-bpcc-waiver-release-event bp c w pin-carry))
+                  (fn-bp-find-work w (fn-bp-state-works bp)) pin-carry)))
    :rule-classes nil))
 
 ; fn-bpcw-waiver-of-an-unheld-obligation-is-refused: by name.  Before the
 ; undertaking (no pin), after the release (a fresh overlay), an unknown work,
 ; and a second waiver.
-(assert-event (equal (fn-bpcc-waiver-refusal *cw-enqueued* (fn-bpcc-initial) *cw-waiver*)
+(assert-event (equal (fn-bpcc-waiver-refusal *cw-enqueued* (fn-bpcc-initial) *cw-waiver* nil)
                      :not-held))
-(assert-event (equal (fn-bpcc-waiver-refusal *cw-next* (fn-bpcc-initial) *cw-waiver*)
+(assert-event (equal (fn-bpcc-waiver-refusal *cw-next* (fn-bpcc-initial) *cw-waiver* nil)
                      :not-held))
 (assert-event (equal (fn-bpcc-waiver-refusal
                       *cw-bp* (fn-bpcc-initial)
-                      '(:waive "abandon" "work-9" "peer retired" "uid:1000"))
+                      '(:waive "abandon" "work-9" "peer retired" "uid:1000") nil)
                      :unknown-work))
-(assert-event (equal (fn-bpcc-waiver-refusal *cw-bp* *cw-c* *cw-waiver*) :already-waived))
+(assert-event (equal (fn-bpcc-waiver-refusal *cw-bp* *cw-c* *cw-waiver* nil) :already-waived))
 ; Hypothesis removal (the pin is held): with the pin, no refusal.
 (must-fail-checked
  (defthm cw-waiver-always-refused
-   (implies (fn-bpcc-waiver-recordp record)
-            (fn-bpcc-waiver-refusal bp c record))
+   (implies (and (fn-prc-carryp pin-carry) (fn-bpcc-waiver-recordp record))
+            (fn-bpcc-waiver-refusal bp c record pin-carry))
    :rule-classes nil))
 
 ; fn-bpcw-only-a-waiver-waives, hypothesis removal: the waiver of W itself
@@ -131,7 +131,7 @@
 (assert-event (consp (fn-bpcc-waiver-entry (fn-bpcc-apply (fn-bpcc-initial) *cw-waiver*)
                                            "work-1")))
 ; A drop, then a waiver of the dropped work: the first drop's reason stays.
-(assert-event (null (fn-bpcc-waiver-refusal *cw-bp* *cw-dropped* *cw-waiver*)))
+(assert-event (null (fn-bpcc-waiver-refusal *cw-bp* *cw-dropped* *cw-waiver* nil)))
 (assert-event (equal (fn-bpcc-dropped-reason (fn-bpcc-apply *cw-dropped* *cw-waiver*) "work-1")
                      "peer retired"))
 

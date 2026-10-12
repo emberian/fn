@@ -47,11 +47,11 @@
 
 ; Before undertaking there is no :forward pin at all.
 (assert-event (equal (fn-retain-find-id "forward-1" (fn-bprl-pins *rl-enqueued*)) nil))
-(assert-event (not (fn-bprl-work-pinnedp *rl-enqueued* *rl-work*)))
+(assert-event (not (fn-bprl-work-pinnedp *rl-enqueued* *rl-work* nil)))
 
 (defconst *rl-undertaken* (fn-bprl-undertake *rl-enqueued* "work-1" 3))
 (assert-event (not (equal *rl-undertaken* *rl-enqueued*)))
-(assert-event (fn-bprl-work-pinnedp *rl-undertaken* *rl-work*))
+(assert-event (fn-bprl-work-pinnedp *rl-undertaken* *rl-work* nil))
 (assert-event (fn-node-statep (fn-bp-state-node *rl-undertaken*)))
 (assert-event (fn-bp-binding-statep *rl-undertaken*))
 (assert-event (equal (fn-retain-obligation-kind
@@ -64,6 +64,31 @@
  (equal (fn-retain-obligation-evidence
          (fn-retain-find-id "forward-1" (fn-bprl-pins *rl-undertaken*)))
         "fn-forward-release/1|work-1|subject-rl|receipt-authority|policy-1|terms-1|home-incarnation-1"))
+
+ ; fn-bprl-work-pin-is-find-id: whole antecedent/conclusion, live trie arm.
+(defconst *rl-pin-ledger* (fn-node-retention (fn-bp-state-node *rl-undertaken*)))
+(defconst *rl-pin-carry* (fn-prc-refresh nil *rl-pin-ledger*))
+(assert-event
+ (and (fn-bp-statep *rl-undertaken*)
+      (equal (fn-retain-obligation-kind
+              (fn-retain-find-id "forward-1" (fn-bprl-pins *rl-undertaken*))) :forward)
+      (fn-prc-carryp *rl-pin-carry*)
+      (consp *rl-pin-carry*)
+      (equal (car *rl-pin-carry*) *rl-pin-ledger*)
+      (fn-prc-carry-findsp *rl-pin-carry*)
+      (consp (fn-bprl-work-pin *rl-undertaken* *rl-work* *rl-pin-carry*))
+      (equal (fn-bprl-work-pin *rl-undertaken* *rl-work* *rl-pin-carry*)
+             (fn-retain-find-id (fn-bp-work-obligation-id *rl-work*)
+                                (fn-bprl-pins *rl-undertaken*)))))
+; Remove carryp: a forged marked empty trie names the right ledger yet lies.
+(defconst *rl-forged-pin-carry* (cons *rl-pin-ledger* (fn-prc-mark nil t)))
+(assert-event
+ (and (fn-prc-carry-findsp *rl-forged-pin-carry*)
+      (equal (car *rl-forged-pin-carry*) *rl-pin-ledger*)
+      (not (fn-prc-carryp *rl-forged-pin-carry*))
+      (not (equal (fn-bprl-work-pin *rl-undertaken* *rl-work* *rl-forged-pin-carry*)
+                  (fn-retain-find-id (fn-bp-work-obligation-id *rl-work*)
+                                     (fn-bprl-pins *rl-undertaken*))))))
 
 (defconst *rl-delivered*
   (fn-bp-observe-transport
@@ -85,9 +110,9 @@
 (assert-event (not (fn-bp-work-outstandingp
                     (fn-bp-find-work "work-1" (fn-bp-state-works *rl-receipted*)))))
 ; The receipt closed the work, and the pin is STILL there: this is the gap.
-(assert-event (fn-bprl-work-pinnedp *rl-receipted* *rl-work*))
+(assert-event (fn-bprl-work-pinnedp *rl-receipted* *rl-work* nil))
 
-(defconst *rl-decision* (fn-bprl-release-decision *rl-receipted* "receipt-1"))
+(defconst *rl-decision* (fn-bprl-release-decision *rl-receipted* "receipt-1" nil))
 (defconst *rl-released* (fn-bprl-decision-state *rl-decision*))
 (assert-event (equal (fn-bprl-decision-okp *rl-decision*) t))
 (assert-event (equal (fn-bprl-decision-evidence *rl-decision*)
@@ -120,15 +145,15 @@
 ; -----------------------------------------------------------------------------
 ; Teeth: RET-004 adjectives, each a ground refusal of the decision
 
-(defun rl-refused (s receipt-id)
-  (and (not (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id)))
-       (equal (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id)) s)))
+(defun rl-refused (s receipt-id pin-carry)
+  (and (not (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry)))
+       (equal (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id pin-carry)) s)))
 
 ; stale: the receipt is prepared but not committed; and an unknown id.
-(assert-event (rl-refused *rl-receipt-pending* "receipt-1"))
-(assert-event (rl-refused *rl-receipted* "receipt-never-seen"))
+(assert-event (rl-refused *rl-receipt-pending* "receipt-1" nil))
+(assert-event (rl-refused *rl-receipted* "receipt-never-seen" nil))
 ; duplicated: the same committed receipt cannot release twice.
-(assert-event (rl-refused *rl-released* "receipt-1"))
+(assert-event (rl-refused *rl-released* "receipt-1" nil))
 ; not undertaken: a committed authorized receipt for a work with no forward pin.
 (defconst *rl-unpinned-receipted*
   (fn-bp-result-state
@@ -142,7 +167,7 @@
      12 0 *rl-receipt* t)
     12 0 :durable)))
 (assert-event (equal (fn-bp-state-receipts *rl-unpinned-receipted*) (list *rl-receipt*)))
-(assert-event (rl-refused *rl-unpinned-receipted* "receipt-1"))
+(assert-event (rl-refused *rl-unpinned-receipted* "receipt-1" nil))
 
 ; Fabricated histories isolate fn-bp-authorized-receiptp's clauses.  Each
 ; state is structurally valid (fn-bp-statep) and carries the bad receipt both
@@ -161,7 +186,7 @@
                        "dtn://peer/fn" "policy-1" "home-incarnation-1"
                        "authorization-context-1" "terms-1")))
 (assert-event (fn-bp-statep *rl-wrong-subject*))
-(assert-event (rl-refused *rl-wrong-subject* "receipt-1"))
+(assert-event (rl-refused *rl-wrong-subject* "receipt-1" nil))
 (defconst *rl-unauthorized*
   (rl-with-history-receipt
    *rl-delivered*
@@ -169,7 +194,7 @@
                        "dtn://peer/fn" "policy-1" "home-incarnation-1"
                        "authorization-context-1" "terms-1")))
 (assert-event (fn-bp-statep *rl-unauthorized*))
-(assert-event (rl-refused *rl-unauthorized* "receipt-1"))
+(assert-event (rl-refused *rl-unauthorized* "receipt-1" nil))
 (defconst *rl-wrong-incarnation*
   (rl-with-history-receipt
    *rl-delivered*
@@ -177,7 +202,7 @@
                        "dtn://peer/fn" "policy-1" "home-incarnation-0"
                        "authorization-context-1" "terms-1")))
 (assert-event (fn-bp-statep *rl-wrong-incarnation*))
-(assert-event (rl-refused *rl-wrong-incarnation* "receipt-1"))
+(assert-event (rl-refused *rl-wrong-incarnation* "receipt-1" nil))
 (defconst *rl-insufficient-terms*
   (rl-with-history-receipt
    *rl-delivered*
@@ -185,7 +210,7 @@
                        "dtn://peer/fn" "policy-1" "home-incarnation-1"
                        "authorization-context-1" "terms-weaker")))
 (assert-event (fn-bp-statep *rl-insufficient-terms*))
-(assert-event (rl-refused *rl-insufficient-terms* "receipt-1"))
+(assert-event (rl-refused *rl-insufficient-terms* "receipt-1" nil))
 ; wrong-work: a committed receipt in history that names another work.
 (defconst *rl-wrong-work*
   (fn-bp-make-state
@@ -196,7 +221,7 @@
                              "authorization-context-1" "terms-1"))
    nil nil (fn-bp-state-used-txs *rl-delivered*)))
 (assert-event (fn-bp-statep *rl-wrong-work*))
-(assert-event (rl-refused *rl-wrong-work* "receipt-1"))
+(assert-event (rl-refused *rl-wrong-work* "receipt-1" nil))
 ; A receipt in history that the work does not carry (committed for nothing).
 (defconst *rl-orphan-receipt*
   (fn-bp-make-state
@@ -204,7 +229,7 @@
    (fn-bp-state-works *rl-delivered*) (list *rl-receipt*)
    nil nil (fn-bp-state-used-txs *rl-delivered*)))
 (assert-event (fn-bp-statep *rl-orphan-receipt*))
-(assert-event (rl-refused *rl-orphan-receipt* "receipt-1"))
+(assert-event (rl-refused *rl-orphan-receipt* "receipt-1" nil))
 
 ; -----------------------------------------------------------------------------
 ; Teeth: node-shape and capacity guards of the undertaking
@@ -244,7 +269,7 @@
              "policy-1" "terms-1" "home-incarnation-1"))
 (assert-event (fn-bprl-release-recordp *rl-release-record*))
 (assert-event (not (fn-bp-journal-recordp *rl-release-record*)))
-(assert-event (equal (fn-bprl-apply-journal-record *rl-receipted* *rl-release-record*)
+(assert-event (equal (fn-bprl-apply-journal-record *rl-receipted* *rl-release-record* nil)
                      (list t *rl-released* '((:released "work-1")))))
 ; The host-called function refuses the record it does not know.
 (assert-event (equal (car (fn-bp-apply-journal-record *rl-receipted* *rl-release-record*)) nil))
@@ -252,25 +277,25 @@
 (assert-event (equal (fn-bprl-apply-journal-record
                       *rl-receipted*
                       '(:release "receipt-1" "work-1" "subject-other" "receipt-authority"
-                                 "policy-1" "terms-1" "home-incarnation-1"))
+                                 "policy-1" "terms-1" "home-incarnation-1") nil)
                      (list nil *rl-receipted* nil)))
 ; Replaying the release twice is refused the second time.
-(assert-event (equal (car (fn-bprl-apply-journal-record *rl-released* *rl-release-record*)) nil))
-(assert-event (equal (fn-bprl-apply-journal-record *rl-enqueued* '(:undertake "work-1" 3))
+(assert-event (equal (car (fn-bprl-apply-journal-record *rl-released* *rl-release-record* nil)) nil))
+(assert-event (equal (fn-bprl-apply-journal-record *rl-enqueued* '(:undertake "work-1" 3) nil)
                      (list t *rl-undertaken* '((:undertaken "work-1")))))
-(assert-event (equal (car (fn-bprl-apply-journal-record *rl-undertaken* '(:undertake "work-1" 3))) nil))
+(assert-event (equal (car (fn-bprl-apply-journal-record *rl-undertaken* '(:undertake "work-1" 3) nil)) nil))
 ; An ordinary fn-bp record goes to the host-called function unchanged.
 (defconst *rl-transport-record* '(:transport "work-1" "attempt-0" 0 :forwarded))
 (assert-event (fn-bp-journal-recordp *rl-transport-record*))
-(assert-event (equal (fn-bprl-apply-journal-record *rl-undertaken* *rl-transport-record*)
+(assert-event (equal (fn-bprl-apply-journal-record *rl-undertaken* *rl-transport-record* nil)
                      (fn-bp-apply-journal-record *rl-undertaken* *rl-transport-record*)))
 
 ; These are the native workflow-host constructor subjects.  The frame and
 ; journal preflight never receive a record the ACL2 interpreter refused.
-(assert-event (equal (fn-bprl-undertake-record *rl-enqueued* "work-1" 3)
+(assert-event (equal (fn-bprl-undertake-record *rl-enqueued* "work-1" 3 nil)
                      '(:undertake "work-1" 3)))
-(assert-event (null (fn-bprl-undertake-record *rl-enqueued* "work-1" 100)))
-(assert-event (null (fn-bprl-undertake-record *rl-undertaken* "work-1" 3)))
+(assert-event (null (fn-bprl-undertake-record *rl-enqueued* "work-1" 100 nil)))
+(assert-event (null (fn-bprl-undertake-record *rl-undertaken* "work-1" 3 nil)))
 (defconst *rl-receipt-adu*
   (fn-bpa-make-receipt "receipt-1" "work-1" "subject-rl"
                        "receipt-authority" "dtn://peer/fn" "policy-1"
@@ -282,23 +307,23 @@
                       (fn-bp-state-used-txs *rl-delivered*) 0)
                      11))
 (assert-event (equal (fn-bprl-receipt-auto-record
-                      *rl-delivered* *rl-receipt-octets* t)
+                      *rl-delivered* *rl-receipt-octets* t nil)
                      '(:receipt-intent 12 0 "receipt-1" "work-1" "subject-rl"
                        "receipt-authority" "dtn://peer/fn" "policy-1"
                        "home-incarnation-1" "authorization-context-1"
                        "terms-1")))
 (assert-event (null (fn-bprl-receipt-auto-record
-                     *rl-delivered* *rl-receipt-octets* nil)))
+                     *rl-delivered* *rl-receipt-octets* nil nil)))
 (assert-event (equal (fn-bprl-receipt-intent-record
-                      *rl-delivered* *rl-receipt-octets* 12 0 t)
+                      *rl-delivered* *rl-receipt-octets* 12 0 t nil)
                      '(:receipt-intent 12 0 "receipt-1" "work-1" "subject-rl"
                        "receipt-authority" "dtn://peer/fn" "policy-1"
                        "home-incarnation-1" "authorization-context-1"
                        "terms-1")))
 (assert-event (null (fn-bprl-receipt-intent-record
-                     *rl-delivered* *rl-receipt-octets* 12 0 nil)))
+                     *rl-delivered* *rl-receipt-octets* 12 0 nil nil)))
 (assert-event (null (fn-bprl-receipt-intent-record
-                     *rl-delivered* '(0 1 2) 12 0 t)))
+                     *rl-delivered* '(0 1 2) 12 0 t nil)))
 ; Wrong work and authority are decoded successfully, then refused by the
 ; stateful receipt decision. A duplicate after durable completion is refused.
 (assert-event
@@ -309,7 +334,7 @@
                               "receipt-authority" "dtn://peer/fn" "policy-1"
                               "home-incarnation-1" "authorization-context-1"
                               "terms-1"))
-        12 0 t)))
+        12 0 t nil)))
 (assert-event
  (null (fn-bprl-receipt-intent-record
         *rl-delivered*
@@ -318,16 +343,16 @@
                               "other-authority" "dtn://peer/fn" "policy-1"
                               "home-incarnation-1" "authorization-context-1"
                               "terms-1"))
-        12 0 t)))
+        12 0 t nil)))
 (assert-event (null (fn-bprl-receipt-intent-record
-                     *rl-receipted* *rl-receipt-octets* 13 0 t)))
+                     *rl-receipted* *rl-receipt-octets* 13 0 t nil)))
 (assert-event (equal (fn-bprl-release-record-for-journal
-                      *rl-receipted* "receipt-1")
+                      *rl-receipted* "receipt-1" nil)
                      *rl-release-record*))
 (assert-event (null (fn-bprl-release-record-for-journal
-                     *rl-released* "receipt-1")))
+                     *rl-released* "receipt-1" nil)))
 (assert-event (null (fn-bprl-release-record-for-journal
-                     *rl-receipted* "receipt-other")))
+                     *rl-receipted* "receipt-other" nil)))
 
 ; Actual host replay, with both appended record kinds, reaches the same
 ; receipted work answer and preserves the independent archive pin.  A failed
@@ -353,7 +378,7 @@
           "home-incarnation-1" "authorization-context-1" "terms-1")
         '(:outcome 12 0 :ordinary :durable) *rl-release-record*))
 (defconst *rl-replayed* (fn-bprl-replay-journal *rl-node-committed*
-                                                 *rl-replay-records*))
+                                                 *rl-replay-records* nil))
 (assert-event (car *rl-replayed*))
 (assert-event (equal (fn-bp-work-status
                       "work-1" (fn-bp-state-works (fn-bp-journal-nth 1 *rl-replayed*)))
@@ -369,15 +394,15 @@
         *rl-attempt-record* '(:outcome 11 0 :ordinary :durable)
         '(:not-a-workflow-record)))
 (assert-event (not (car (fn-bprl-replay-journal *rl-node-committed*
-                                                *rl-broken-replay-records*))))
+                                                *rl-broken-replay-records* nil))))
 (must-fail-checked
  (defthm rl-teeth-failed-replay-is-not-restarted-status
-   (equal
+   (implies (fn-prc-carryp pin-carry) (equal
     (fn-bp-work-status
      "work-1" (fn-bp-state-works
                (fn-bp-journal-nth 1
                 (fn-bprl-replay-journal
-                 *rl-node-committed* *rl-broken-replay-records*))))
+                 *rl-node-committed* *rl-broken-replay-records* pin-carry))))
     (fn-bp-work-status-after-restart
      (fn-bp-work-status
       "work-1" (fn-bp-state-works
@@ -385,7 +410,7 @@
                  (fn-bp-initial-state
                   *rl-node-committed*
                   (fn-bp-config-from-record *rl-config-record*))
-                 (cdr *rl-broken-replay-records*))))))))
+                 (cdr *rl-broken-replay-records*) pin-carry))))))))
 
 ; -----------------------------------------------------------------------------
 ; must-fail siblings
@@ -410,7 +435,7 @@
 ; The decision without its pin premise: the unpinned receipted state.
 (must-fail-checked
  (defthm rl-teeth-no-pin-no-release
-   (fn-bprl-decision-okp (fn-bprl-release-decision *rl-unpinned-receipted* "receipt-1"))))
+   (implies (fn-prc-carryp pin-carry) (fn-bprl-decision-okp (fn-bprl-release-decision *rl-unpinned-receipted* "receipt-1" pin-carry)))))
 ; The undertaking without the stage guard would have to change a staged node.
 (must-fail-checked
  (defthm rl-teeth-staged-node-refuses
