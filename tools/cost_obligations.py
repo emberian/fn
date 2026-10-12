@@ -266,12 +266,21 @@ def load_baseline(root: Path = ROOT) -> set[str]:
     return set(json.loads(path.read_text(encoding="utf-8")).get("undeclared", []))
 
 
-def shrunk_baseline(old: set[str], doc: dict) -> list[str]:
-    """The baseline's shrink: the listed names the tree still leaves undeclared.
+def shrunk_baseline(old: set[str], doc: dict, base: dict | None = None) -> list[str]:
+    """The baseline's rows: the listed names the tree still leaves undeclared,
+    plus, when BASE (the protected base's obligations) is given, every entry
+    check() calls new (absent from the base, guard-verified, no def-cost).
     A name declared or no longer dispatched leaves; an entry undeclared on the
-    protected base was never new, so it was never listed and is not added."""
+    protected base was never new, so it was never listed and is not added.
+    A new entry is a raise: tools/ratchet.py refuses it without an ACK."""
     undeclared = {r["name"] for r in doc["entries"] if r["claim"] == "none"}
-    return sorted(n for n in old if n in undeclared)
+    rows = {n for n in old if n in undeclared}
+    if base is not None:
+        base_names = {r["name"] for r in base.get("entries", [])}
+        rows |= {r["name"] for r in doc["entries"]
+                 if r["claim"] == "none" and r["class"] == "common-lisp-compliant"
+                 and r["name"] not in base_names}
+    return sorted(rows)
 
 
 def check(root: Path = ROOT, base: dict | None = None, base_contracts: dict | None = None,
@@ -349,7 +358,7 @@ def main(argv=None) -> int:
     if args.baseline:
         doc = build()
         old = load_baseline()
-        names = shrunk_baseline(old, doc)
+        names = shrunk_baseline(old, doc, base_copy(OBLIGATIONS, ROOT) or {"entries": []})
         if ratchet.report("cost_obligations", ratchet.refused(
                 "cost_obligations", ratchet.old_rows("cost_obligations", BASELINE, lambda: {n: 1 for n in old}),
                 {n: 1 for n in names})):
