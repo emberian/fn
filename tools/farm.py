@@ -629,39 +629,66 @@ def record_path(root: Path, identifier: str) -> Path:
     return root / "build" / "farm" / f"{identifier}.json"
 
 
-def refuse_a_running_run_in_the_same_tree(host: str, root: Path, remote: Path,
-                                          runner=None) -> None:
-    """Refuse a submit whose mirror would overwrite a tree a run on the same
-    box is still certifying: the push rewrites the sources under the running
-    ACL2 processes (batch AZ, 2026-09-28: a second submit from the same
-    worktree mid-run turned 375 books of the first into include-book errors).
-    The runs are this worktree's records from the last 12 hours on HOST at
-    REMOTE; one whose status file the box has not written is running."""
-    import time
-    horizon = time.time() - 12 * 3600
-    candidates = []
-    for path in sorted((root / "build" / "farm").glob("run-*.json")):
-        try:
-            if path.stat().st_mtime < horizon:
-                continue
-            record = json.loads(path.read_text())
-        except (OSError, ValueError):
-            continue
-        if (isinstance(record, dict) and record.get("host") == host
-                and str(record.get("remote_path")) == str(remote)):
-            candidates.append(record.get("run_id") or path.stem)
-    if not candidates:
-        return
+def remote_running_runs_script(remote: Path) -> str:
+    """Snapshot runners in this box path, independent of local run records."""
     where = remote_quote(remote)
-    script = "; ".join(f"test -s {where}/build/farm/{name}.status || echo RUNNING {name}"
-                       for name in candidates)
-    done = (runner or ssh)(host, script, check=False)
-    running = [line.split()[1] for line in (done.stdout or "").splitlines()
-               if line.startswith("RUNNING ")]
+    return (
+        f": FN_FARM_RUNS_CHECK; for record in {where}/build/farm/run-*.pid; do "
+        '[ -f "$record" ] || continue; base=${record%.pid}; '
+        '[ ! -e "$base.status" ] || continue; '
+        'name=${base##*/}; pid=$(cat "$record") || exit 9; '
+        'case "$pid" in ""|0|*[!0-9]*) '
+        'echo "UNKNOWN $name invalid runner PID"; exit 9;; esac; '
+        'if kill -0 "$pid" 2>/dev/null; then echo "RUNNING $name"; '
+        'else echo "DEAD $name $pid"; fi; done; '
+        f'for record in {where}/build/farm/run-*.log; do '
+        '[ -f "$record" ] || continue; base=${record%.log}; '
+        '[ ! -e "$base.status" ] && [ ! -e "$base.pid" ] || continue; '
+        'name=${base##*/}; '
+        f'recent=$(find "$record" -maxdepth 0 -mmin -{SUBMIT_LOCK_STALE_MINUTES} -print) '
+        '|| exit 9; '
+        'if [ -n "$recent" ]; then echo "LEGACY $name"; '
+        'else echo "STALE $name"; fi; done')
+
+
+def refuse_a_running_run_in_the_same_tree(host: str, remote: Path, runner=None) -> None:
+    """Under the submit lock, refuse to rewrite a live runner's sources.
+
+    The remote wrapper writes its own PID before certifying and its status
+    after certifying. A dead wrapper without a status is reported, not kept
+    live by a local worktree's record or an age cutoff. Older wrappers have
+    no PID file: a recently modified log conservatively blocks mirroring;
+    a stale legacy log is reported and does not block.
+    """
+    done = (runner or ssh)(host, remote_running_runs_script(remote), check=False)
+    running = []
+    legacy = []
+    for line in (done.stdout or "").splitlines():
+        words = line.split()
+        if len(words) == 2 and words[0] == "RUNNING":
+            running.append(words[1])
+        elif len(words) == 2 and words[0] == "LEGACY":
+            legacy.append(words[1])
+        elif len(words) == 2 and words[0] == "STALE":
+            print(f"{words[1]} on {host}:{remote}: stale legacy run with no PID or status file; "
+                  f"its log was not modified in the last {SUBMIT_LOCK_STALE_MINUTES} min; "
+                  "allowing submission", file=sys.stderr)
+        elif len(words) == 3 and words[0] == "DEAD":
+            print(f"{words[1]} on {host}:{remote}: dead runner PID {words[2]} "
+                  "with no status file; it is no longer certifying", file=sys.stderr)
+    if done.returncode != 0:
+        raise FarmError(f"no farm run started: could not check runners in {host}:{remote}: "
+                        f"ssh exited {done.returncode}: {done.stdout.strip() or '(no output)'}")
     if running:
         raise FarmError(f"no farm run started: {', '.join(running)} is still certifying "
                         f"in {host}:{remote}; a new push would rewrite its sources "
                         f"(wait for it, or submit to the other box)")
+    if legacy:
+        raise FarmError(f"no farm run started: {', '.join(legacy)} is a legacy run "
+                        f"in {host}:{remote} with no PID or status file; its log was modified "
+                        f"in the last {SUBMIT_LOCK_STALE_MINUTES} min and it may still be "
+                        "certifying; a new push would rewrite its sources "
+                        "(wait for it, or submit to another path or box)")
 
 
 # One submit at a time per box path (C15/C16, 2026-10-11: two submits to one
@@ -669,8 +696,9 @@ def refuse_a_running_run_in_the_same_tree(host: str, root: Path, remote: Path,
 # failed unlinking a .cert the other had already removed).  The lock is a
 # directory beside the tree (never inside it: the mirror's --delete would
 # remove it), taken by an atomic mkdir before the push and given back once
-# the runner has started; a run in progress is then refuse_a_running_run_
-# in_the_same_tree's.  A lock older than SUBMIT_LOCK_STALE_MINUTES is a
+# the runner has started. While holding it, every submit checks the remote
+# runner PID/status files before mirroring, including other worktrees' runs.
+# A lock older than SUBMIT_LOCK_STALE_MINUTES is a
 # crashed submit's and is reclaimed by an atomic rename, so two reclaimers
 # cannot both win.
 SUBMIT_LOCK_STALE_MINUTES = 120
@@ -1006,6 +1034,7 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
     log = f"build/farm/{identifier}.log"
     status_file = f"build/farm/{identifier}.status"
     inner = (
+        f"echo $$ > build/farm/{identifier}.pid || exit 11; "
         f"FN_ACL2={acl2_shell_word(host, acl2)} "
         f"FN_ACL2_TIMEOUT_SECONDS={timeout_seconds} "
         f"FN_CERT_CACHE={settings['cache']} "
@@ -1082,7 +1111,6 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     refuse_unbalanced_sources(root)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
-    refuse_a_running_run_in_the_same_tree(host, root, remote)
     take_submit_lock(host, remote, identifier, root)
     try:
         return _submit_locked(host, root, books, jobs, timeout_seconds, affected_by,
@@ -1097,6 +1125,7 @@ def _submit_locked(host, root, books, jobs, timeout_seconds, affected_by, remote
                    closure, cache, acl2, no_publish, prepare, pcert, budget_seconds,
                    require_origin, recertify, images, lane, roots, identifier) -> str:
     """submit's mirror, cache install and runner start, under the submit lock."""
+    refuse_a_running_run_in_the_same_tree(host, remote)
     push(host, root, remote)
     if prepare is not None:
         prepare(host, remote)

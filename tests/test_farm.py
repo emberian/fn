@@ -1289,10 +1289,11 @@ class SubmitLockTests(unittest.TestCase):
             order = [" ".join(c) for c in fake.commands]
             take = next(i for i, c in enumerate(order) if "FN_FARM_LOCK_TAKE" in c)
             mirror = next(i for i, c in enumerate(order) if c.startswith("rsync"))
+            check = next(i for i, c in enumerate(order) if "FN_FARM_RUNS_CHECK" in c)
             preflight = next(i for i, c in enumerate(order) if "tools/certs.py" in c)
             start = next(i for i, c in enumerate(order) if "nohup sh -c" in c)
             give = next(i for i, c in enumerate(order) if "FN_FARM_LOCK_GIVE" in c)
-            self.assertTrue(take < mirror < preflight < start < give, order)
+            self.assertTrue(take < check < mirror < preflight < start < give, order)
 
     def test_a_held_lock_refuses_before_any_mirror_and_a_failed_push_still_gives_it_back(self):
         fake = Fake([], codes={"FN_FARM_LOCK_TAKE": farm.SUBMIT_LOCK_HELD})
@@ -1310,6 +1311,138 @@ class SubmitLockTests(unittest.TestCase):
                 farm.submit("hbox", root, ["books/alpha"], jobs=4, timeout_seconds=900,
                             affected_by=[])
             self.assertTrue([c for c in fake.scripts() if "FN_FARM_LOCK_GIVE" in c])
+
+    def foreign_run(self, remote, finished=False, dead=False, legacy=False):
+        """A foreign wrapper publishes its own PID; no local run record exists."""
+        records = remote / "build/farm"
+        records.mkdir(parents=True)
+        if legacy:
+            log = records / "run-foreign.log"
+            log.write_text("legacy certification in progress\n")
+            if dead:
+                stale = time.time() - (farm.SUBMIT_LOCK_STALE_MINUTES + 5) * 60
+                os.utime(log, (stale, stale))
+            return
+        pid_file = records / "run-foreign.pid"
+        child = subprocess.Popen(
+            ["timeout", "30", "sh", "-c",
+             'echo $$ > "$1"; echo ready; read finish', "runner", str(pid_file)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        self.assertEqual(child.stdout.readline().strip(), "ready")
+        def finish():
+            if child.stdin is not None and not child.stdin.closed:
+                child.stdin.close()
+            child.wait(timeout=5)
+            child.stdout.close()
+        self.addCleanup(finish)
+        if finished:
+            pid_file.with_suffix(".status").write_text("0\n")
+        if dead:
+            finish()
+
+    def submit_with_foreign_run(self, finished=False, dead=False, legacy=False):
+        with tempfile.TemporaryDirectory() as directory:
+            # Spaces also exercise quoting in the exact remote scripts.
+            root = Path(directory) / "second worktree"
+            root.mkdir()
+            remote = Path(directory) / "box tree"
+            self.foreign_run(remote, finished, dead, legacy)
+            test = self
+            class RemoteRuns(Fake):
+                def __call__(self, command, **kwargs):
+                    if command[0] == "ssh" and any(marker in command[-1] for marker in (
+                            "FN_FARM_LOCK_TAKE", "FN_FARM_RUNS_CHECK", "FN_FARM_LOCK_GIVE")):
+                        self.commands.append(list(command))
+                        if "FN_FARM_RUNS_CHECK" in command[-1]:
+                            test.assertTrue(Path(farm.submit_lock_path(remote)).is_dir())
+                        return subprocess.run(["sh", "-c", command[-1]],
+                                              capture_output=True, text=True, timeout=5)
+                    return super().__call__(command, **kwargs)
+            fake = RemoteRuns([])
+            err = io.StringIO()
+            with driving(fake, root / "cache"), contextlib.redirect_stderr(err):
+                if not (finished or dead):
+                    message = "run-foreign.*legacy run" if legacy else "run-foreign.*still certifying"
+                    with self.assertRaisesRegex(farm.FarmError, message):
+                        farm.submit("hbox", root, ["books/alpha"], jobs=2,
+                                    timeout_seconds=60, affected_by=[], remote=remote)
+                else:
+                    farm.submit("hbox", root, ["books/alpha"], jobs=2,
+                                timeout_seconds=60, affected_by=[], remote=remote)
+            self.assertFalse(Path(farm.submit_lock_path(remote)).exists())
+            self.assertFalse((root / "build/farm/run-foreign.json").exists())
+            return fake, err.getvalue()
+
+    def test_a_live_foreign_run_refuses_before_any_mirror(self):
+        fake, _ = self.submit_with_foreign_run()
+        self.assertEqual(fake.rsyncs(), [])
+        self.assertFalse([s for s in fake.scripts() if "tools/certs.py" in s])
+        self.assertFalse([s for s in fake.scripts() if "nohup sh -c" in s])
+
+    def test_a_finished_foreign_run_does_not_refuse(self):
+        fake, err = self.submit_with_foreign_run(finished=True)
+        self.assertEqual(len(fake.rsyncs()), 1)
+        self.assertNotIn("dead runner", err)
+
+    def test_a_dead_foreign_runner_does_not_refuse_and_is_named(self):
+        fake, err = self.submit_with_foreign_run(dead=True)
+        self.assertEqual(len(fake.rsyncs()), 1)
+        self.assertIn("run-foreign", err)
+        self.assertIn("dead runner PID", err)
+        self.assertIn("no status file", err)
+
+    def test_a_recent_legacy_run_refuses_before_any_mirror(self):
+        fake, _ = self.submit_with_foreign_run(legacy=True)
+        self.assertEqual(fake.rsyncs(), [])
+        self.assertFalse([s for s in fake.scripts() if "tools/certs.py" in s])
+        self.assertFalse([s for s in fake.scripts() if "nohup sh -c" in s])
+
+    def test_a_stale_legacy_run_does_not_refuse_and_is_named(self):
+        fake, err = self.submit_with_foreign_run(legacy=True, dead=True)
+        self.assertEqual(len(fake.rsyncs()), 1)
+        self.assertIn("run-foreign", err)
+        self.assertIn("stale legacy run", err)
+        self.assertIn("no PID or status file", err)
+        self.assertIn(str(farm.SUBMIT_LOCK_STALE_MINUTES), err)
+
+    def test_a_failed_remote_liveness_check_refuses_before_any_mirror(self):
+        fake = Fake([], codes={"FN_FARM_RUNS_CHECK": 9})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"), self.assertRaisesRegex(
+                    farm.FarmError, "could not check runners"):
+                farm.submit("hbox", root, ["books/alpha"], jobs=2,
+                            timeout_seconds=60, affected_by=[])
+        self.assertEqual(fake.rsyncs(), [])
+        self.assertTrue([s for s in fake.scripts() if "FN_FARM_LOCK_GIVE" in s])
+
+    def test_the_detached_wrapper_records_its_own_remote_pid(self):
+        script = farm.remote_script("hbox", Path("/box/tree"), "run-own", [],
+                                    2, 60, [], False, None, None, False)
+        self.assertIn("echo $$ > build/farm/run-own.pid", script)
+        self.assertLess(script.index("echo $$"), script.index("FN_ACL2="))
+        # The write belongs to the quoted inner shell, before its runner,
+        # rather than to the ssh wrapper or the submitter's process.
+        inner = shlex.split(script.split("nohup sh -c ", 1)[1])[0]
+        self.assertTrue(inner.startswith("echo $$ > build/farm/run-own.pid || exit 11; "))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "build/farm").mkdir(parents=True)
+            (root / "tools").mkdir()
+            (root / "tools/certify_books.py").write_text(
+                "import os\nfrom pathlib import Path\n"
+                "Path('observed-wrapper.pid').write_text(str(os.getppid()))\n")
+            with mock.patch.dict(farm.HOSTS["hbox"], {"wrap": ""}):
+                script = farm.remote_script("hbox", root, "run-own", [],
+                                            2, 60, [], False, None, None, False)
+            inner = shlex.split(script.split("nohup sh -c ", 1)[1])[0]
+            result = subprocess.run(["sh", "-c", inner], cwd=root,
+                                    capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((root / "build/farm/run-own.pid").read_text().strip(),
+                             (root / "observed-wrapper.pid").read_text())
+            self.assertEqual((root / "build/farm/run-own.status").read_text(), "0\n")
+
 
 
 class CertifyIdTests(unittest.TestCase):
@@ -1507,11 +1640,11 @@ class FrictionTests(unittest.TestCase):
             running = lambda host, script, check=False: SimpleNamespace(
                 stdout="RUNNING run-a\n", returncode=0)
             with self.assertRaises(farm.FarmError):
-                farm.refuse_a_running_run_in_the_same_tree("hbox", root, root, running)
+                farm.refuse_a_running_run_in_the_same_tree("hbox", root, running)
             finished = lambda host, script, check=False: SimpleNamespace(stdout="", returncode=0)
-            farm.refuse_a_running_run_in_the_same_tree("hbox", root, root, finished)
+            farm.refuse_a_running_run_in_the_same_tree("hbox", root, finished)
             # another box's tree is another tree
-            farm.refuse_a_running_run_in_the_same_tree("persvati", root, root, running)
+            farm.refuse_a_running_run_in_the_same_tree("persvati", root, finished)
 
     def test_an_empty_selection_is_refused_without_all(self):
         calls = []
