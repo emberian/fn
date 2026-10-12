@@ -47,6 +47,12 @@ def tree(entries: list[dict], books: dict[str, str], hosts: dict[str, str]) -> P
         (root / "books" / name).write_text(text)
     for name, text in hosts.items():
         (root / "host" / name).write_text(text)
+    (root / "books" / "cost-final-world.lisp").write_text(
+        '(in-package "ACL2")\n' + "".join(
+            '(include-book "{}")\n'.format(Path(name).with_suffix("").as_posix())
+            for name in books) + "".join(
+            '(include-book "../host/{}")\n'.format(Path(name).with_suffix("").as_posix())
+            for name in hosts) + '(def-cost-check-all)\n')
     return root
 
 
@@ -98,6 +104,51 @@ class TariffFamiliesTests(unittest.TestCase):
 
 
 class CostObligationsTests(unittest.TestCase):
+    def test_final_world_includes_every_declaring_book(self):
+        root = tree([], {
+            "included.lisp": "(def-cost fn-included)\n",
+            "missing.lisp": "(def-cost fn-missing)\n(def-cost fn-missing-too)\n",
+            "macros.lisp": '; (def-cost fn-comment)\n'
+                           '(defmacro example () `(def-cost fn-macro))\n'
+                           "'(def-cost fn-quoted)\n"
+                           '(encapsulate () (def-cost fn-nested))\n',
+        }, {"cost-host.lisp": "(def-cost fn-host)\n"})
+        (root / "tests").mkdir()
+        (root / "tests" / "cost.lisp").write_text("(def-cost fn-test)\n")
+        (root / "books" / "cost-final-world.lisp").write_text(
+            '(in-package "ACL2")\n'
+            '(include-book "included")\n'
+            '(include-book "../host/cost-host")\n'
+            '; (include-book "missing")\n'
+            '(local (include-book "missing"))\n'
+            '(include-book "missing" :dir :system)\n'
+            '(def-cost-check-all)\n')
+        doc = cost_obligations.build(root)
+        cdoc = cost_obligations.build_contracts(root)
+        (root / "planning" / "cost-obligations.json").write_text(cost_obligations.render(doc))
+        (root / "planning" / "cost-contracts.json").write_text(cost_obligations.render(cdoc))
+        self.assertEqual(cost_obligations.check(root, base=doc, base_contracts=cdoc, baseline=set()),
+                         ["books/missing.lisp: top-level def-cost declarations are not included "
+                          "by books/cost-final-world.lisp"])
+
+    def test_final_world_requires_the_aggregate_check(self):
+        root = tree([], {"included.lisp": "(def-cost fn-included)\n"}, {})
+        final = root / "books" / "cost-final-world.lisp"
+        self.assertEqual(cost_obligations.final_world_findings(root), [])
+        final.write_text(final.read_text().replace('(def-cost-check-all)\n', ''))
+        self.assertEqual(cost_obligations.final_world_findings(root), [
+            "books/cost-final-world.lisp: last top-level form must be exactly "
+            "(def-cost-check-all), after every include-book"])
+
+    def test_final_world_check_must_follow_the_includes(self):
+        root = tree([], {"included.lisp": "(def-cost fn-included)\n"}, {})
+        final = root / "books" / "cost-final-world.lisp"
+        final.write_text('(in-package "ACL2")\n(def-cost-check-all)\n'
+                         '(include-book "included")\n')
+        self.assertEqual(cost_obligations.final_world_findings(root), [
+            "books/cost-final-world.lisp: last top-level form must be exactly "
+            "(def-cost-check-all), after every include-book"])
+
     def test_rows_claims_and_contracts(self):
         root = tree(
             [entry("fn-a"), entry("fn-b"), entry("fn-c", "program"), entry("fn-d", "ideal"),
@@ -175,6 +226,17 @@ class CostObligationsTests(unittest.TestCase):
         doc = cost_obligations.build(root)
         self.assertEqual(cost_obligations.shrunk_baseline({"fn-listed", "fn-gone", "fn-vanished"}, doc),
                          ["fn-listed"])
+
+    def test_a_new_entry_is_a_raise_and_a_base_entry_is_not(self):
+        # with the protected base given, fn-new (absent from the base, no
+        # def-cost) joins as the raise tools/ratchet.py judges; fn-old,
+        # undeclared on the base and never listed, still does not
+        root = tree([entry("fn-listed"), entry("fn-old"), entry("fn-new")], {}, {})
+        doc = cost_obligations.build(root)
+        base = {"entries": [{"name": "fn-listed"}, {"name": "fn-old"}]}
+        self.assertEqual(cost_obligations.shrunk_baseline({"fn-listed"}, doc, base),
+                         ["fn-listed", "fn-new"])
+        self.assertEqual(cost_obligations.shrunk_baseline({"fn-listed"}, doc), ["fn-listed"])
 
     def test_contracts_are_a_reviewed_base(self):
         root = tree([entry("fn-a")], {}, {})

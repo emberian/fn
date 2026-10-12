@@ -77,7 +77,8 @@ class NativeRecoveryKeyringCheckpointTests(checkpoint_auto.AutoCheckpointFixture
         # Critical host path: the full replay (open=full-replay) streams the
         # log through fnn-log-stream-segment under *fnn-log-stream-finish*,
         # stepping by fn-lgw-step-buf-nf-count and binding each record's
-        # extent descriptor from fn-lgb-descriptor for the replay's seals.
+        # extent descriptor from fn-lgb-next-record (fn-lgb-descriptor over
+        # fn-lgb-span's window) for the replay's seals.
         self.init_development()
         principal = self.root / "principal.bin"
         principal.write_bytes(bytes([85]) * 32)
@@ -204,7 +205,11 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
                             keys / "ed-public.bin", keys / "ml-public.pem", expect=EXIT_OK)
                 if generation == 1:
                     self.post(node, before)
-                    # The expired article is the record the pass rewrites.
+                    # The expired article is the record the pass rewrites
+                    # (fn-orc-rewrite-rows, pass 3's chunk rewrite); the rows
+                    # after it keep the fold contexts the prediction reads
+                    # (KEYSTONE fn-rfc-the-rewrite-keeps-the-fold-contexts,
+                    # books/reclaim-fold-contexts.lisp).
                     self.post(node, expiring, expiry.article("rk", expiry.GROUP, expiry.PAST))
                 else:
                     self.post(node, after)

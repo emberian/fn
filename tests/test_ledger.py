@@ -20,6 +20,9 @@ import unittest
 import weakref
 from unittest import mock
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests.scratch_git import run as scratch_git
+
 # Reuse the scanners' ledger module: replacing sys.modules["ledger"] leaves
 # earlier imports holding a different Sym class, so their readers disagree.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
@@ -365,6 +368,33 @@ class EventTests(unittest.TestCase):
 
     def test_a_theorem_inside_must_fail_is_not_a_theorem(self):
         self.assertNotIn("never", self.tree.theorems)
+
+    def test_dir_nil_is_local_for_book_host_and_nonlocal_include_consumers(self):
+        source = '(include-book "target" :dir nil)\n' \
+                 '(local (include-book "local-target" :dir nil))\n' \
+                 '(include-book "system-target" :dir :system)\n'
+        book = ledger.Book("books/root.lisp")
+        host = ledger.HostFile("host/root.lisp")
+        for form, line in ledger.Reader(source).top_level():
+            ledger.record(book, form, line, local=False, suppressed=False)
+            ledger.host_record(host, form, line)
+        self.assertEqual(book.includes, ["target", "local-target"])
+        self.assertEqual(book.nonlocal_includes, [(1, "target")])
+        self.assertEqual(book.system_includes, ["system-target"])
+        self.assertEqual(host.includes, ["target", "local-target"])
+
+    def test_default_reader_record_and_source_events_keep_conditional_host_definitions(self):
+        source = '#+linux\n(defun conditional-host (x) (#-linux f x))\n'
+        forms = ledger.Reader(source).top_level()
+        self.assertEqual(forms[0], (ledger.Sym("#+linux"), 1))
+        definition = [ledger.Sym("defun"), ledger.Sym("conditional-host"),
+                      [ledger.Sym("x")], [ledger.Sym("#-linux"), ledger.Sym("f"), ledger.Sym("x")]]
+        self.assertEqual(forms[1], (definition, 2))
+        self.assertIn((definition, 2), list(ledger.source_events(forms)))
+        book = ledger.Book("host/root.lisp")
+        for form, line in forms:
+            ledger.record(book, form, line, local=False, suppressed=False)
+        self.assertEqual([function.name for function in book.functions], ["conditional-host"])
 
     def test_guard_status_distinguishes_four_states(self):
         states = {f.name: f.guard_status for f in self.book.functions}
@@ -915,24 +945,47 @@ class TreeCacheTests(unittest.TestCase):
         self.addCleanup(setattr, ledger, "_TREE_CACHE", None)
 
     def test_a_later_process_reads_the_tree_an_earlier_one_analysed(self):
-        first = ledger.load_tree()
-        entries = list(self.cache.glob("*.pickle"))
-        self.assertEqual(len(entries), 1)
-        ledger._TREE_CACHE = None          # what a new process starts with
-        reads = []
-        genuine_read = ledger._tree_cache_read
-
-        def counted(directory, key):
-            tree = genuine_read(directory, key)
-            reads.append(tree is not None)
-            return tree
-
-        with mock.patch.object(ledger, "_tree_cache_read", counted):
-            second = ledger.load_tree()
-        self.assertEqual(reads, [True])
-        self.assertIsNot(second, first)
-        self.assertEqual(json.dumps(ledger.build_ledger(second), sort_keys=True),
-                         json.dumps(ledger.build_ledger(first), sort_keys=True))
+        import subprocess
+        root = self.cache / "fixture"
+        sources = {
+            "books/a.lisp": '(in-package "ACL2")\n(defun f (x) x)\n',
+            "tests/acl2/a-tests.lisp": '(include-book "../../books/a")\n'
+                                       '(assert-event (equal (f 3) 3))\n',
+            "host/a.lisp": '(defun host-f (x) (acl2::f x))\n',
+        }
+        for relative, source in sources.items():
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source)
+        (root / "Makefile").write_text("ACL2_BOOKS = tests/acl2/a-tests\n")
+        first = ledger.load_tree(root=root)
+        self.assertEqual(set(first.books), {"books/a.lisp", "tests/acl2/a-tests.lisp"})
+        self.assertEqual(set(first.hosts), {"host/a.lisp"})
+        self.assertEqual(first.roots, ["tests/acl2/a-tests"])
+        self.assertEqual(len(list(self.cache.glob("*.pickle"))), 1)
+        # A fresh interpreter must read the earlier process's persisted Tree.
+        code = """
+import json, os, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import ledger
+reads = []
+genuine_read = ledger._tree_cache_read
+def counted(directory, key):
+    tree = genuine_read(directory, key)
+    reads.append(tree is not None)
+    return tree
+ledger._tree_cache_read = counted
+tree = ledger.load_tree(root=Path(sys.argv[2]))
+print(json.dumps({"reads": reads, "ledger": ledger.build_ledger(tree), "pid": os.getpid()}))
+"""
+        result = subprocess.run(
+            [sys.executable, "-c", code, str(Path(ledger.__file__).parent), str(root)],
+            capture_output=True, text=True, check=True, timeout=20)
+        second = json.loads(result.stdout)
+        self.assertNotEqual(second["pid"], os.getpid())
+        self.assertEqual(second["reads"], [True])
+        self.assertEqual(second["ledger"], ledger.build_ledger(first))
 
     def test_an_entry_is_valid_only_under_its_own_name(self):
         tree = tree_from({"books/a.lisp": "(defun f (x) x)"}, roots=["books/a"])
@@ -2162,7 +2215,7 @@ class ProofRetirementTests(unittest.TestCase):
         repo = self.dir / "repo"
         (repo / "planning").mkdir(parents=True)
         def git(*a):
-            subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True)
+            scratch_git(["git", "-C", str(repo), *a], check=True, capture_output=True)
         def commit(ids, msg):
             ledger._dump(repo / "planning/proofs.json", {"proofs": [{"id": i} for i in ids]})
             git("add", "-A"); git("commit", "-q", "-m", msg)

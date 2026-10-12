@@ -497,6 +497,23 @@
   (declare (xargs :guard (fn-cat$ap fn-cat$a)))
   (fn-cat-raw-first group 1 (fn-cat-group-high group fn-cat$a) fn-cat$a))
 
+;; A live number's live neighbours in its group (0 at an end, and for a number
+;; that is not live): the doubly linked live list the paged catalog keeps
+;; (books/catalog-live-links.lisp fn-cpl-next-of, fn-cpl-prev-of).  Births
+;; happen only at a group's top (fn-cat-assign), so the list is exact.
+(defun fn-cat$a-live-next (group k fn-cat$a)
+  (declare (xargs :guard (fn-cat$ap fn-cat$a)))
+  (if (fn-cat-live-numberp group k fn-cat$a)
+      (fn-cat-live-first group (+ 1 (nfix k)) (fn-cat-group-high group fn-cat$a) fn-cat$a)
+    0))
+
+(defun fn-cat$a-live-prev (group k fn-cat$a)
+  (declare (xargs :guard (fn-cat$ap fn-cat$a)))
+  (if (fn-cat-live-numberp group k fn-cat$a)
+      (fn-cat-live-last group (nfix (- (nfix k) 1)) fn-cat$a)
+    0))
+
+
 ;; Off the recognizer the horizon is past the count, so a reader that
 ;; takes the fast path when the horizon is at most the count learns that the
 ;; rows are well formed (books/served-catalog.lisp).
@@ -1042,6 +1059,21 @@
   (declare (xargs :stobjs fn-cat$c))
   (let ((ge (fn-cat$c-groups-get group fn-cat$c)))
     (nfix (- (if (consp ge) (nfix (cdr ge)) 1) 1))))
+
+;; The reference's neighbours: scans, never executed in an image (the paged
+;; catalog answers from its link tables, fn-cat$p-next and fn-cat$p-prev).
+(defun fn-cat$c-live-next (group k fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
+  (if (fn-cat$c-live-at-p group k fn-cat$c)
+      (fn-cat$c-scan-up group (+ 1 (nfix k)) (fn-cat$c-group-top group fn-cat$c) fn-cat$c)
+    0))
+
+(defun fn-cat$c-live-prev (group k fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
+  (if (fn-cat$c-live-at-p group k fn-cat$c)
+      (fn-cat$c-scan-down group (nfix (- (nfix k) 1)) fn-cat$c)
+    0))
+
 
 (defun fn-cat$c-raw-at-p (group k fn-cat$c)
   (declare (xargs :stobjs fn-cat$c :guard (fn-cat$c-wfp fn-cat$c)))
@@ -4073,6 +4105,30 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cat$corr) (fn-cat$corr-base fn-cat$c-group-live-high)))))
 
+(defthm fn-cat-live-next{correspondence-bl}
+  (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-live-next group k fn-cat$c)
+                  (fn-cat$a-live-next group k fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cat$corr fn-cat$c-group-top)
+                                  (fn-cat$corr-base fn-cat$c-live-at-p fn-cat-live-numberp))
+           :use ((:instance fn-cat-group-next{correspondence-bl})))))
+
+(defthm fn-cat-live-prev{correspondence-bl}
+  (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-live-prev group k fn-cat$c)
+                  (fn-cat$a-live-prev group k fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cat$corr)
+                                  (fn-cat$corr-base fn-cat$c-live-at-p fn-cat-live-numberp)))))
+
+(defthm fn-cat-live-next{guard-thm-bl}
+  (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (fn-cat$c-wfp fn-cat$c))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-ctg-open))))
+
+
 (defthm fn-cat-horizon{correspondence-bl}
   (implies (fn-cat$corr fn-cat$c fn-cat)
            (equal (fn-cat$c-horizon fn-cat$c) (fn-cat$a-horizon fn-cat)))
@@ -5838,6 +5894,37 @@
   :rule-classes nil
   :hints (("Goal" :use fn-cat-group-live-high{correspondence-bl}
            :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-live-next{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-live-next group k fn-cat$c)
+                  (fn-cat$a-live-next group k fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-live-next{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-live-prev{correspondence}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (equal (fn-cat$c-live-prev group k fn-cat$c)
+                  (fn-cat$a-live-prev group k fn-cat)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-live-prev{correspondence-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-live-next{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (fn-cat$c-wfp fn-cat$c))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-live-next{guard-thm-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
+(defthm fn-cat-live-prev{guard-thm}
+  (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-cat$ap fn-cat))
+           (fn-cat$c-wfp fn-cat$c))
+  :rule-classes nil
+  :hints (("Goal" :use fn-cat-live-next{guard-thm-bl}
+           :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
+
 
 (defthm fn-cat-group-raw-low{correspondence}
   (implies (and (fn-cat$corr-w fn-cat$c fn-cat) (fn-cat$ap fn-cat))

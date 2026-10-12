@@ -24,6 +24,9 @@ Resolved besides a definition (PKT-446): a record's own name
 Literal backquoted defstobj, defun and defthm names in a macro also resolve
 when a book invokes that macro at the start of a line -- the same book, or
 any other (a generator macro defined in one book and invoked in another).
+Names concatenated from a definer's first argument also resolve when its
+source helpers emit them in definition positions. Unsupported name
+expressions and unknown conditions remain unresolved.
 Named exemptions (tools/spec_cite_exemptions.json `exemptions`) are names a
 person judged are not definitions, each with a reason.  The `stale` section
 names, per packet, the citations known to be stale and not yet repaired,
@@ -178,6 +181,248 @@ def macro_generated_definitions(text: str, corpus: str | None = None) -> set[str
     return {name.lower() for name in names}
 
 
+def concatenated_macro_definitions(text: str, calls=None) -> set[str]:
+    """Read definition names constructed from a definer's first argument.
+
+    This is a deliberately limited, source-only expansion of name/list
+    expressions, not a Lisp runner. Helpers and constants come from the
+    definer's book. Unknown operations/conditions stay unknown; we never
+    union conditional branches or treat a referenced name as a definition.
+    Definition bodies are opaque: only their name slots matter here.
+    """
+    from ledger import Reader, Sym, head
+
+    class Prefix(Sym):
+        pass
+
+    class NameText(str):
+        pass
+
+    class JoinedNameText(NameText):
+        pass
+
+    class BuiltName(Prefix):
+        pass
+
+    unknown = object()
+    forms = [form for form, _ in Reader(text).top_level()]
+    functions = {str(f[1]): f for f in forms
+                 if head(f) in ("defun", "defmacro") and len(f) >= 4}
+    constants = {str(f[1]): f[2] for f in forms
+                 if head(f) == "defconst" and len(f) == 3}
+    declarations = {"defun", "defun-nx", "defthm", "defconst", "defstobj"}
+    steps = 0
+
+    def nilp(x):
+        return x == [] or isinstance(x, Sym) and x == "nil"
+
+    def truth(x):
+        return unknown if x is unknown else not nilp(x)
+
+    def equal(a, b):
+        if a is unknown or b is unknown:
+            return unknown
+        if nilp(a) or nilp(b):
+            return nilp(a) and nilp(b)
+        if isinstance(a, Sym) != isinstance(b, Sym):
+            return False
+        if isinstance(a, list) and isinstance(b, list):
+            parts = [equal(x, y) for x, y in zip(a, b)]
+            return unknown if unknown in parts else len(a) == len(b) and all(parts)
+        return a == b
+
+    def car(x):
+        return unknown if x is unknown else x[0] if isinstance(x, list) and x else []
+
+    def cdr(x):
+        if x is unknown:
+            return unknown
+        if not isinstance(x, list) or not x:
+            return []
+        return x[2] if len(x) == 3 and x[1] == Sym(".") else x[1:]
+
+    def template(x, env):
+        if not isinstance(x, list):
+            return x
+        if head(x) == "unquote":
+            return evaluate(x[1], env)
+        # Do not descend into a theorem's statement/hints or a function's
+        # implementation: a DEFUN mentioned there is not an emitted event.
+        if head(x) in declarations:
+            return [x[0], template(x[1], env)]
+        if head(x) == "quasiquote":
+            return unknown  # nested template levels are not modelled
+        result = []
+        for item in x:
+            if head(item) == "unquote-splicing":
+                value = evaluate(item[1], env)
+                result.extend(value if isinstance(value, list) else [unknown])
+            else:
+                result.append(template(item, env))
+        return result
+
+    def evaluate(x, env):
+        nonlocal steps
+        steps += 1
+        if steps > 100000:
+            raise ValueError("name expansion exceeded its work budget")
+        if isinstance(x, Sym):
+            if x in env:
+                return env[x]
+            if x in constants:
+                return evaluate(constants[x], env)
+            return x if x in ("nil", "t") or x.startswith(":") else unknown
+        if not isinstance(x, list) or not x:
+            return x
+        op, args = head(x), x[1:]
+        if op == "quote":
+            return args[0]
+        if op == "quasiquote":
+            return template(args[0], env)
+        if op in ("let", "let*"):
+            scope = dict(env)
+            for binding in args[0]:
+                scope[binding[0]] = evaluate(binding[1], scope if op == "let*" else env)
+            return evaluate(args[-1], scope)
+        if op == "if":
+            condition = truth(evaluate(args[0], env))
+            return unknown if condition is unknown else evaluate(args[1] if condition else args[2], env)
+        if op == "cond":
+            for clause in args:
+                condition = truth(evaluate(clause[0], env))
+                if condition is unknown:
+                    return unknown
+                if condition:
+                    return evaluate(clause[-1], env)
+            return []
+        if op in ("and", "or"):
+            value = Sym("t") if op == "and" else []
+            for arg in args:
+                value = evaluate(arg, env)
+                condition = truth(value)
+                if condition is unknown or condition == (op == "or"):
+                    break
+            return value
+        values = [evaluate(arg, env) for arg in args]
+        if op in functions:
+            function = functions[op]
+            if len(values) != len(function[2]) or any(str(a).startswith("&") for a in function[2]):
+                return unknown
+            return evaluate(function[-1], dict(zip(function[2], values)))
+        if op == "list":
+            return values
+        if op == "cons":
+            a, b = values
+            return [a] + b if isinstance(b, list) else [a] if nilp(b) else [a, Sym("."), b]
+        if op == "append":
+            if any(v is unknown or not (isinstance(v, list) or nilp(v)) for v in values):
+                return unknown
+            return [item for v in values if isinstance(v, list) for item in v]
+        if re.fullmatch(r"c[ad]+r", op):
+            value = values[0]
+            for letter in reversed(op[1:-1]):
+                value = car(value) if letter == "a" else cdr(value)
+            return value
+        if any(v is unknown for v in values):
+            return unknown
+        if op in ("endp", "null", "not", "atom", "consp", "symbolp"):
+            value = values[0]
+            answer = {"endp": not isinstance(value, list) or not value,
+                      "null": not truth(value), "not": not truth(value),
+                      "atom": not isinstance(value, list) or not value,
+                      "consp": isinstance(value, list) and bool(value),
+                      "symbolp": isinstance(value, Sym) or value == []}[op]
+            return Sym("t") if answer else []
+        if op in ("eq", "equal", "eql"):
+            answer = equal(*values)
+            return unknown if answer is unknown else Sym("t") if answer else []
+        if op in ("assoc-eq", "assoc-equal"):
+            for row in [] if nilp(values[1]) else values[1]:
+                answer = equal(car(row), values[0])
+                if answer is unknown:
+                    return unknown
+                if answer:
+                    return row
+            return []
+        if op in ("member-eq", "member-equal"):
+            for i, item in enumerate([] if nilp(values[1]) else values[1]):
+                answer = equal(item, values[0])
+                if answer is unknown:
+                    return unknown
+                if answer:
+                    return values[1][i:]
+            return []
+        if op == "strip-cdrs":
+            return [cdr(row) for row in values[0]]
+        if op == "symbol-name" and isinstance(values[0], Sym):
+            value = str(values[0]).upper()
+            return NameText(value) if isinstance(values[0], Prefix) else value
+        if (op == "concatenate" and values[0] == Sym("string")
+                and all(isinstance(v, str) and not isinstance(v, Sym) for v in values[1:])):
+            value = "".join(values[1:])
+            return JoinedNameText(value) if any(isinstance(v, NameText) for v in values[1:]) else value
+        if op in ("length", "len"):
+            return len(values[0])
+        if op == "subseq":
+            return values[0][values[1]:values[2] if len(values) > 2 else None]
+        if op == "intern-in-package-of-symbol" and isinstance(values[0], str) and not isinstance(values[0], Sym):
+            return BuiltName(values[0].lower()) if isinstance(values[0], JoinedNameText) else Sym(values[0].lower())
+        return unknown
+
+    def emitted(x):
+        if head(x) in declarations:
+            return {str(x[1])} if isinstance(x[1], BuiltName) and SYMBOL.fullmatch(x[1]) else set()
+        if head(x) in ("progn", "encapsulate"):
+            return set().union(*(emitted(y) for y in x[1:]))
+        return set()
+
+    names = set()
+    for call in forms if calls is None else calls:
+        macro = functions.get(head(call))
+        if not macro or head(macro) != "defmacro" or len(call) < 2 or not isinstance(call[1], Sym):
+            continue
+        # Bind the actual macro arguments, including keyword arguments as
+        # unevaluated source forms. Only the first argument carries provenance.
+        formals = macro[2]
+        if not formals or not isinstance(formals[0], Sym) or formals[0].startswith("&"):
+            continue
+        env = {formals[0]: Prefix(call[1])}
+        rest = call[2:]
+        try:
+            keywords = False
+            keyword_values = {}
+            keyword_formals = set()
+            for formal in formals[1:]:
+                if formal == Sym("&key"):
+                    keywords = True
+                    if len(rest) % 2:
+                        raise ValueError("unpaired keyword argument")
+                    for key, value in zip(rest[::2], rest[1::2]):
+                        if not isinstance(key, Sym):
+                            raise ValueError("non-symbol keyword argument")
+                        keyword_values.setdefault(key, value)
+                    continue
+                if not isinstance(formal, Sym) or formal.startswith("&"):
+                    raise ValueError("unsupported macro argument")
+                if keywords:
+                    key = Sym(":" + formal)
+                    keyword_formals.add(key)
+                    env[formal] = keyword_values.get(key, [])
+                else:
+                    env[formal], rest = rest[0], rest[1:]
+            if (keywords and keyword_values.keys() - keyword_formals) or (not keywords and rest):
+                raise ValueError("unexpected macro argument")
+            steps = 0
+            expansion = evaluate(macro[-1], env)
+            if head(expansion) == "make-event":
+                expansion = evaluate(expansion[1], {})
+            names |= emitted(expansion)
+        except (ValueError, TypeError, IndexError, RecursionError):
+            # Unsupported source is unresolved, never an exemption.
+            continue
+    return names
+
+
 def defined_names() -> set:
     sys.path.insert(0, str(ROOT / "tools"))
     import ledger  # noqa: E402
@@ -192,6 +437,17 @@ def defined_names() -> set:
     books = sorted((ROOT / "books").glob("*.lisp"))
     book_texts = [path.read_text(encoding="utf-8", errors="replace") for path in books]
     books_corpus = "\n".join(book_texts)
+    # Restrict helper expansion to books which construct names, and actual
+    # top-level invocations. Comments, quoted examples and function bodies
+    # cannot manufacture a definer invocation.
+    definers = [text for text in book_texts
+                if re.search(r"\(defmacro\s", text, re.I) and re.search(r"\(concatenate\s", text, re.I)]
+    macro_names = {str(form[1]) for text in definers
+                   for form, _ in ledger.Reader(text).top_level() if ledger.head(form) == "defmacro"}
+    calls = [form for text in book_texts for form, _ in ledger.Reader(text).top_level()
+             if ledger.head(form) in macro_names]
+    for text in definers:
+        names |= concatenated_macro_definitions(text, calls)
     for text in book_texts:
         names |= set(re.findall(r"^\s*\(fn-defrecord\s+([^\s()]+)", text, re.M | re.I))
         names |= macro_generated_definitions(text, books_corpus)

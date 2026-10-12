@@ -73,7 +73,8 @@ def acl2_environment() -> dict[str, str]:
 def run(executable: Path, arguments: list[str], timeout: float | None) -> int:
     """Run ACL2 with the caller's stdio, returning the exit code to report."""
     process = subprocess.Popen([str(executable), *arguments],
-                               env=acl2_environment())
+                               env=acl2_environment(),
+                               pass_fds=acl2_slots.inherited_run_lock_fds())
 
     def forward(number: int, _frame: object) -> None:
         # The lane pressing ctrl-C means ACL2, not the wrapper: pass the signal
