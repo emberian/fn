@@ -33,6 +33,8 @@
             (fn-cat-group-raw-low :logic fn-cat$a-group-raw-low :exec fn-cat$c-group-raw-low)
             (fn-cat-group-live-high :logic fn-cat$a-group-live-high
                                     :exec fn-cat$c-group-live-high)
+            (fn-cat-live-next :logic fn-cat$a-live-next :exec fn-cat$c-live-next)
+            (fn-cat-live-prev :logic fn-cat$a-live-prev :exec fn-cat$c-live-prev)
             (fn-cat-horizon :logic fn-cat$a-horizon :exec fn-cat$c-horizon)
             (fn-cat-commit :logic fn-cat$a-commit :exec fn-cat$c-commit-w :protect t)
             (fn-cat-withdraw :logic fn-cat$a-withdraw :exec fn-cat$c-withdraw-w :protect t)
@@ -131,6 +133,20 @@
   (equal (fn-cat-group-live-high g fn-cat)
          (fn-cat-live-last g (fn-cat-group-high g fn-cat) fn-cat)))
 
+; A live number's live neighbours in its group, 0 at an end and for a number
+; that is not live: one probe each in the paged catalog (its link tables).
+(defthm fn-cat-live-next-is-first
+  (equal (fn-cat-live-next g k fn-cat)
+         (if (fn-cat-live-numberp g k fn-cat)
+             (fn-cat-live-first g (+ 1 (nfix k)) (fn-cat-group-high g fn-cat) fn-cat)
+           0)))
+
+(defthm fn-cat-live-prev-is-last
+  (equal (fn-cat-live-prev g k fn-cat)
+         (if (fn-cat-live-numberp g k fn-cat)
+             (fn-cat-live-last g (nfix (- (nfix k) 1)) fn-cat)
+           0)))
+
 (defthm fn-cat-horizon-is-horizon-of
   (equal (fn-cat-horizon fn-cat)
          (if (fn-cat-rowsp fn-cat) (fn-cat-horizon-of fn-cat) (+ 1 (len fn-cat)))))
@@ -144,6 +160,7 @@
                     fn-cat-withdraw fn-cat-redecide fn-cat-clear
                     fn-cat-clear-keyed fn-cat-msgid-saturatedp fn-cat-index-health
                     fn-cat-group-live-count fn-cat-group-live-low fn-cat-group-live-high fn-cat-group-raw-low
+                    fn-cat-live-next fn-cat-live-prev
                     fn-cat-horizon fn-cat-withdrawn-at
                     fn-cat-p-is-rowsp fn-cat-assign fn-cat-visiblep
                     fn-cat-mark-withdrawn fn-held-with-numbers

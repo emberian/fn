@@ -361,6 +361,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-keyset-check-tests \
 	books/def-cost \
 	tests/acl2/def-cost-tests \
+	books/def-cost-lambda-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -725,6 +726,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/charged-totals-header \
 	books/charged-totals-header-writes \
 	books/charged-totals-header-cost \
+	books/runtime-contract-host-lease-cost \
 	tests/acl2/charged-totals-header-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
@@ -920,6 +922,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/reclaim-chunked-seal \
 	books/reclaim-chunked-cost \
 	books/reclaim-fold-contexts \
+	books/reclaim-fold-contexts-live \
 	books/catalog-may-seal \
 	books/catalog-root-incarnation \
 	tests/acl2/catalog-root-incarnation-tests \
@@ -1622,6 +1625,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nov-column-window \
 	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
+	books/served-catalog-group-low-cost \
 	books/served-catalog-chain \
 	books/served-catalog-dispatch \
 	books/served-catalog-owner \
@@ -1711,6 +1715,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/over-render-bound \
 	tests/acl2/over-render-bound-tests \
 	tests/acl2/served-catalog-view-tests \
+	tests/acl2/served-catalog-view-linear-tests \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-source-scan-tests \
@@ -2307,6 +2312,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/reclaim-chunked-walk-tests \
 	tests/acl2/reclaim-chunked-seal-tests \
 	tests/acl2/reclaim-fold-contexts-tests \
+	tests/acl2/reclaim-fold-contexts-live-tests \
 	tests/acl2/reclaim-chunked-load-teeth-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \

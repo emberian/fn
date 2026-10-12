@@ -526,6 +526,13 @@
    "mutation": "tests/acl2/reader-open-carried-tests.lisp::drop-verdicts",
    "provenance": "keystone_critical.py --declare sha256:8c31a8d5277047b1d09ab9bdcd39d14d14fd51a26d6cf15bc5a9c8b5047bfbab"
   },
+  "fn-rfc-the-rewrite-keeps-the-fold-contexts": {
+   "subject": "fn-orc-rewrite-rows",
+   "host_test": "tests/test_native_recovery.py::test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves",
+   "trace_witness": "tests/acl2/reclaim-fold-contexts-tests.lisp::fn-rfc-the-rewrite-keeps-the-fold-contexts",
+   "mutation": "tests/acl2/reclaim-fold-contexts-tests.lisp::rewrite-tombstones-a-keyring-event",
+   "provenance": "keystone_critical.py --declare sha256:d185cb1c66dcaf0fb46b40831afd463bcca5f54c96a29e239368ea40103cf200"
+  },
   "fn-sbud-article-verdict-keeps-history": {
    "subject": "fn-sbud-article-verdict-at",
    "host_test": "tests/test_native_capacity_vector.py::test_store_post_admits_to_the_last_octet_of_h_and_the_last_transaction_of_t",

@@ -91,10 +91,9 @@
 (defun fnn-owner-cursor-step-serialized (service cid thunk class)
   (declare (ignore service cid class))
   (let ((*held* t)) (funcall thunk)))
-;; The recording fnn-call below ignores these scalar budgets; the extracted
-;; cursor step now supplies the fitted window, visit quantum and octet budget.
-;; Keep the original window input and provide the two added dispatch inputs.
 (defun fnn-owner-over-window () 1)
+;; The cursor step's visit and octet budgets (lane spans-newnews): this
+;; harness's fnn-call ignores them.
 (defun fnn-owner-over-quantum () 1)
 (defun fnn-owner-cursor-octets () 1)
 (defun fnn-live-stobj (name) (assert *held*) name)
@@ -131,7 +130,7 @@
   (setf *poll-args* (list read first-miss since))
   (values *poll-word* since *clock* nil))
 (defun fnn-mux-queue (loop conn octets op after &optional end start)
-  (declare (ignore loop conn end start)) (push (list octets op after) *queued*))
+  (declare (ignore loop conn)) (push (list octets op after end start) *queued*))
 (defun fnn-mux-after (loop conn after)
   (declare (ignore loop conn after)) (setf *after-called* t))
 (defun fnn-mux-work (loop conn)
@@ -157,15 +156,14 @@
 (defun fnn-owner-handle-chunk (&rest args)
   (declare (ignore args)) (values :original nil nil 1))
 (defun fnn-owner-join-octets (parts) (apply #'concatenate 'vector parts))
+;; This cursor-only service has no installed ARTICLE lease pool.
+(defun fnn-owner-service-lease-ready (service)
+  (assert (eq service :service)) nil)
 ;; No output ledger is installed on this service (the host's
 ;; fnn-owner-output-issue answers NIL then): no output grant.
 (defun fnn-owner-output-issue (service identity &optional capture)
   (declare (ignore service identity capture))
   nil)
-;; This recording service has no configured ARTICLE lease runtime, just as
-;; it has no output ledger.  Cursor plans still take the actual cursor path.
-(defun fnn-owner-service-lease-ready (service)
-  (declare (ignore service)) nil)
 ;; The response's identity (the owner's fn-rid-response reservation): one
 ;; response of this connection; nothing here reads it.
 (defun fnn-owner-response-identity (service connection class)
@@ -231,7 +229,7 @@
   ;; Returned read resumes exactly the held plan, never the input step.
   (setf *cold* nil) (fnn-mux-cold-check loop conn)
   (assert (null (fnn-mux-conn-cold conn))) (assert (null *worked*))
-  (assert (equalp *queued* '((#(65 13 10) :send-reply :whole-response-after))))
+  (assert (equalp *queued* '((#(65 13 10) :send-reply :whole-response-after 3 nil))))
   (assert (null *after-called*))
   ;; A new response resets its dependency clock. Refusal adds no body line.
   (setf *queued* nil *cold* t *clock* 2000)

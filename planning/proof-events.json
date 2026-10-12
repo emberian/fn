@@ -18186,6 +18186,10 @@
         {
           "kind": "theorem",
           "name": "fn-orcs-predict-seal-refines-intern"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfc-the-rewrite-keeps-the-fold-contexts"
         }
       ]
     },
