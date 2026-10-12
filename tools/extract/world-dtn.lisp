@@ -255,6 +255,7 @@
 (include-book "../../books/owner-readers-state")
 (include-book "../../books/owner-authority-state")
 (include-book "../../books/history-root-status")
+(include-book "../../books/filed-stored")
 (include-book "../../books/owner-report-capture")
 (include-book "../../books/index-writer-ticket")
 (include-book "../../books/catalog-may-seal")

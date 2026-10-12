@@ -1,6 +1,6 @@
 ; OVER's lease-capacity term: one NOV line within its stored header plus
-; CRLF plus the framing, over the server name's octet count. It replaces
-; fn-mm-over-window-octets at landing 2 (builder-M's deletion, not P-A).
+; CRLF plus the framing, over the server name's octet count.  The memory
+; equation charges it per holder (books/memory-model.lisp fn-ovr-over-capl-of).
 ;
 ; Include only over-render-quantum: it owns fn-ovr-frame-max and brings
 ; nntp-syntax's decimal encoder/width and nntp-xref's field-name octets.

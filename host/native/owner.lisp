@@ -746,26 +746,19 @@ range), which the caller runs under the owner mutex
 ;;; fn-ovw-run-is-over-range-cat that is the unbounded reader's reply.
 (defun fnn-owner-over-quantum ()
   "ACL2's cursor quantum, the developer selector's override passed through:
-the window the memory gate's configure fits (fn-owner-memory-configure)."
+the work bound of each OVER cursor step."
   (let ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")))
     (fnn-core 'fn-splan-cursor-window
               (and raw (> (length raw) 0) (every #'digit-char-p raw) (parse-integer raw)))))
 
-(defvar *fnn-owner-over-window-fit* nil
-  "The run's W' (A-OVER-WINDOW-FIT), published by
-fnn-owner-memory-configure-locked (host/native/mux.lisp) before any actor
-exists; NIL until a configure.")
-
 (defun fnn-owner-over-window ()
-  "ACL2's cursor quantum (fnn-owner-over-quantum); under a configured run, the run's W' (A-OVER-WINDOW-FIT: books/memory-model.lisp fn-mm-over-window-fit, installed by host/owner-host.lisp fn-owner-memory-configure and published in *fnn-owner-over-window-fit*), at most that quantum."
-  (let ((w (fnn-owner-over-quantum))
-        (fit *fnn-owner-over-window-fit*))
-    (if (and (integerp fit) (plusp fit)) (min w fit) w)))
+  "ACL2's cursor quantum, served without a memory-window clamp."
+  (fnn-owner-over-quantum))
 
 (defvar *fnn-owner-cursor-octets-fit* nil
   "The run's NEWNEWS/LIST quantum octets (books/memory-model.lisp
-fn-mm-cursor-octets-fit, the octets of W' NOV lines), published with
-*fnn-owner-over-window-fit* by fnn-owner-memory-configure-locked; NIL until
+fn-mm-cursor-octets-fit, charged within LARGE), published by
+fnn-owner-memory-configure-locked; NIL until
 a configure.")
 
 (defun fnn-owner-cursor-octets ()

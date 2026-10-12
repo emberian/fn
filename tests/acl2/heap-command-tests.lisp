@@ -244,6 +244,13 @@
 (defconst *hct-run-img* (list (* 100 1048576) (* 23 1048576) 1090519))
 (defconst *hct-run-cfg* (list 32 t 8388608 8388608 nil 0 8388608 16 nil 64))
 (defconst *hct-run-empty* (fn-mm-make-tot 0 0 0 0 0 0 0 0 :resident))
+; The exact funded edge at eighteen holders, to keep the configured-C mutant failing.
+(defconst *hct-run-edge*
+  (max (fn-mm-sum *hct-small* *hct-run-img* (fn-adm-cfg-at *hct-run-cfg* 18) *hct-run-empty*)
+       (fn-mm-reopen-need *hct-small* *hct-run-img* (fn-adm-cfg-at *hct-run-cfg* 18) *hct-run-empty*)))
+(defun hct-run-at-edge (address)
+  (fn-mo-run-decide *hct-small* *hct-run-img* *hct-run-cfg* nil (list *hct-run-edge*) address
+                    *hct-core* *hct-nur* *hct-run-empty*))
 (defun hct-mib (n) (* n 1048576))
 (defun hct-run (mb address)
   (fn-mo-run-decide *hct-small* *hct-run-img* *hct-run-cfg* nil (list (hct-mib mb)) address *hct-core*
@@ -253,20 +260,24 @@
 (assert-event (equal (hct-run 2048 nil) '(:heap 2174 "small" 2048 1024 35)))
 (assert-event (equal (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* (hct-mib 2048) *hct-run-empty*)
                      32))
-;; 230 MiB: C' is 18 of 32 and the run launches at it ...
-(assert-event (equal (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* (hct-mib 230) *hct-run-empty*)
+; With the configured one-line OVER term, 230 MiB now holds all 32.
+(assert-event (equal (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg*
+                                     (hct-mib 230) *hct-run-empty*) 32))
+(assert-event (equal (nth 5 (hct-run 230 nil)) (fn-heap-thread-count 32)))
+;; At the exact eighteen-holder edge, C' is 18 of 32 and the run launches at it ...
+(assert-event (equal (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* *hct-run-edge* *hct-run-empty*)
                      18))
-(assert-event (equal (car (hct-run 230 nil)) :heap))
-(assert-event (equal (nth 5 (hct-run 230 nil)) (fn-heap-thread-count 18)))
+(assert-event (equal (car (hct-run-at-edge nil)) :heap))
+(assert-event (equal (nth 5 (hct-run-at-edge nil)) (fn-heap-thread-count 18)))
 ;; ... where the launch decided at the configured C refuses: "the launch at C
 ;; always agrees with the launch at C'" is false.
-(assert-event (equal (car (fn-mm-launch-decide *hct-small* *hct-run-img* *hct-run-cfg* nil (list (hct-mib 230))
+(assert-event (equal (car (fn-mm-launch-decide *hct-small* *hct-run-img* *hct-run-cfg* nil (list *hct-run-edge*)
                                                nil *hct-core* *hct-nur* *hct-run-empty*))
                      :refused))
 (assert-event (not (equal (car (fn-mm-launch-decide *hct-small* *hct-run-img* *hct-run-cfg* nil
-                                                    (list (hct-mib 230)) nil *hct-core* *hct-nur*
+                                                    (list *hct-run-edge*) nil *hct-core* *hct-nur*
                                                     *hct-run-empty*))
-                          (car (hct-run 230 nil)))))
+                          (car (hct-run-at-edge nil)))))
 ;; 128 MiB: no connection count holds the store; read's refusal shape, MB figures
 (assert-event (null (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* (hct-mib 128) *hct-run-empty*)))
 (assert-event (equal (hct-run 128 nil) '(:refused :machine-cannot-hold-the-store 204 128)))
@@ -306,7 +317,7 @@
   :hyps (accepted)
   :subject fn-mo-run-decide
   :witness ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
-            (resident (list (hct-mib 230))) (address (list (* 1024 1048576 1024))) (core *hct-core*)
+            (resident (list *hct-run-edge*)) (address (list (* 1024 1048576 1024))) (core *hct-core*)
             (nursery *hct-nur*) (tot *hct-run-empty*))
   :breaks ((accepted ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
                       (resident (list (hct-mib 128))) (address (list (* 1024 1048576 1024))) (core *hct-core*)
@@ -316,7 +327,7 @@
                                    (c (fn-adm-capacity profile img cfg limit tot)))
                               (and (posp c) (<= (fn-mm-sum profile img cfg tot) limit))))
                ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
-                (resident (list (hct-mib 230))) (address (list (* 1024 1048576 1024))) (core *hct-core*) (nursery *hct-nur*)
+                (resident (list *hct-run-edge*)) (address (list (* 1024 1048576 1024))) (core *hct-core*) (nursery *hct-nur*)
                 (tot *hct-run-empty*))
                :fault "a launch held to the store's sum at the configured C, which the capacity line does not promise"))
   :hints (("Goal" :in-theory (theory 'minimal-theory)
@@ -339,7 +350,7 @@
   :hyps (capacity address-space)
   :subject fn-mo-run-decide
   :witness ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
-            (resident (list (hct-mib 230))) (address nil) (core *hct-core*) (nursery *hct-nur*)
+            (resident (list *hct-run-edge*)) (address nil) (core *hct-core*) (nursery *hct-nur*)
             (tot *hct-run-empty*))
   :breaks ((capacity ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
                       (resident (list (hct-mib 128))) (address nil) (core *hct-core*) (nursery *hct-nur*)

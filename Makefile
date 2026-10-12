@@ -716,6 +716,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/memory-model \
 	books/memory-entry-cost \
 	tests/acl2/memory-model-tests \
+	tests/acl2/owner-memory-cfg-tests \
+	tests/acl2/runtime-contract-host-pool-tests \
 	tests/acl2/admission-memory-tests \
 	tests/acl2/history-totals-carried-tests \
 	tests/acl2/heap-command-tests \

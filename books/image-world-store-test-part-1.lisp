@@ -96,6 +96,7 @@
 (include-book "owner-readers-state")
 (include-book "owner-authority-state")
 (include-book "history-root-status")
+(include-book "filed-stored")
 (include-book "owner-report-capture")
 (include-book "index-writer-ticket")
 (include-book "catalog-may-seal")
@@ -167,4 +168,3 @@
 (include-book "owner-prepare-carried")
 (include-book "post-identity-index")
 (include-book "post-identity-catalog")
-(include-book "post-prepare-catalog")
