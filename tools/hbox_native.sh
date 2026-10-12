@@ -108,6 +108,9 @@
 # only those units, including their children in independent sessions.
 # --allow-certify permits missing-book and certify-origin closure certification.
 # Without it, either plan needing books finishes with status 16 (certify refused).
+# Status 143 means stopped by TERM, INT or HUP. run.sh alone writes status:
+# before finish is available it writes 143 directly; afterwards it finishes
+# with SHA256SUMS, gate_walls and 143. Status/attach display stopped (143).
 # hbox_native does not coordinate with farm runs: farm locks are per mirror.
 # Lanes should certify through python3 tools/farm.py submit BOX --affected-by ...
 # first, publishing to the cache, then rerun native; coordinate any allowed certify.
@@ -270,6 +273,7 @@ def stop_run(pid, starttime, run_dir, proc_root=Path("/proc")):
         if fd is not None:
             os.close(fd)
     print(f"hbox_native: sent TERM through pidfd to pgid {pid} ({run_dir}/run.sh)", flush=True)
+    print("hbox_native: run.sh writes status 143 when it exits", flush=True)
     try:
         units = list(dict.fromkeys((run_dir / "scopes").read_text().splitlines()))
     except OSError as error:
@@ -333,7 +337,7 @@ attach_run() {
     fi
     if [ "$1" = status ]; then
         cat "$record"
-        ssh -n "$HOST" "if /bin/kill -0 -- $PROBE 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi; if [ -f $S/status ]; then echo \"status \$(cat $S/status)\"; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
+        ssh -n "$HOST" "if /bin/kill -0 -- $PROBE 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi; if [ -f $S/status ]; then status=\$(cat $S/status); case \$status in 143) echo 'status: stopped (143)' ;; *) echo \"status \$status\" ;; esac; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
         exit $?
     fi
     DEADLINE=${3:-$DEADLINE}
@@ -349,7 +353,10 @@ attach_run() {
         exit 124
     fi
     status=$(ssh -n "$HOST" "cat $S/status")
-    echo "hbox_native: status $status ($HOST:$S)"
+    case $status in
+        143) echo "hbox_native: stopped (143) ($HOST:$S)" ;;
+        *) echo "hbox_native: status $status ($HOST:$S)" ;;
+    esac
     exit "$status"
 }
 case ${1:-} in
@@ -615,6 +622,8 @@ box_script() {
 #!/bin/sh
 set -u
 S=$S
+trap 'echo 143 > \$S/status; exit 143' TERM INT HUP
+STOPPED=0
 T=$TREE_EXPR
 L=\$S/logs
 cat > \$S/process.py <<'PROCESS'
@@ -655,6 +664,7 @@ step() {
     echo "== \$name \$(date -u +%H:%M:%SZ)"
     "\$@" > \$L/\$name.log 2>&1
     rc=\$?
+    [ \$STOPPED -eq 0 ] || rc=143
     echo "   \$name exit \$rc (\$L/\$name.log)"
     if [ \$rc -ne 0 ]; then
         tail -n 15 \$L/\$name.log | sed 's/^/   | /'
@@ -701,13 +711,28 @@ need() {
     [ -x "\$3" ] || { echo "hbox_native: \$1 reads \$2: \$3 is not in the tree (build it with --images)"; finish 2; }
 }
 finish() {
+    # Further stop signals during artifact collection mark cancellation;
+    # they must not recursively enter finish or restore the step's exit code.
+    trap 'STOPPED=1' TERM INT HUP
+    finish_status=\$1
+    finish_stopped=\$STOPPED
     echo "== load at end: \$(uptime)"
-    (cd \$S && find tree/build -maxdepth 1 -name 'fn-host*' -type f -exec sha256sum {} + ; sha256sum logs/*.log) > \$S/SHA256SUMS 2>/dev/null
-    python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null
-    echo \$1 > \$S/status
-    echo "== done status \$1; \$S/SHA256SUMS"
-    exit \$1
+    finish_artifacts() {
+        (cd \$S && find tree/build -maxdepth 1 -name 'fn-host*' -type f -exec sha256sum {} + ; sha256sum logs/*.log) > \$S/SHA256SUMS 2>/dev/null
+        python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null
+    }
+    finish_artifacts
+    # A first stop during normal finish also terminates its foreground helper.
+    # Recollect that interrupted snapshot after the signal has been handled.
+    if [ \$finish_stopped -eq 0 ] && [ \$STOPPED -ne 0 ]; then finish_artifacts; fi
+    # Close the final write/exit window with the direct status trap as well.
+    trap 'echo 143 > \$S/status; exit 143' TERM INT HUP
+    [ \$STOPPED -eq 0 ] || finish_status=143
+    echo \$finish_status > \$S/status
+    echo "== done status \$finish_status; \$S/SHA256SUMS"
+    exit \$finish_status
 }
+trap 'STOPPED=1; finish 143' TERM INT HUP
 echo "== source $SOURCE"
 # The images' source record (tools/build_native_host.sh writes it beside each
 # image; tools/image_set.py publish requires \`commit SHA\`): this tree is a

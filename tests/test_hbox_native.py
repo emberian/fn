@@ -1176,6 +1176,178 @@ def install_from_cache(roots, toolchain, acl2):
             self.assertIn("cannot read closure", result.stderr)
 
 
+class NativeStopStatusTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import re
+        import shutil
+        answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
+        if answer.returncode:
+            raise AssertionError(answer.stdout + answer.stderr)
+        # All trap, flag, step and finish code comes from the generated script.
+        cls.prefix = answer.stdout.split("cat > $S/process.py <<'PROCESS'", 1)[0]
+        cls.step = re.search(r"^step\(\) \{.*?^\}\n", answer.stdout, re.S | re.M).group(0)
+        cls.finish = re.search(r"^finish\(\) \{.*?^\}\ntrap [^\n]+\n",
+                               answer.stdout, re.S | re.M).group(0)
+        cls.shells = ["/bin/sh"]
+        if dash := shutil.which("dash"):
+            cls.shells.append(dash)
+
+    def prepare(self, root, full):
+        import re
+        import shlex
+        import shutil
+        tree = root / "tree"
+        (tree / "tools").mkdir(parents=True)
+        (tree / "build").mkdir()
+        (tree / "build/fn-host-stop-fixture").write_bytes(b"stop checksum witness\n")
+        shutil.copy(ROOT / "tools/gate_walls.py", tree / "tools/gate_walls.py")
+        (root / "logs").mkdir()
+        prefix = re.sub(r"^S=.*$", "S=" + shlex.quote(str(root)), self.prefix, count=1, flags=re.M)
+        # This PID file is written by the process the test launches, before work.
+        return (prefix + '\nexport S\necho $$ > "$S/test.pid"\n'
+                + (self.step + self.finish if full else ""))
+
+    def assert_group_stop(self, shell, root, script):
+        import signal
+        import time
+        script_path = root / "test-run.sh"
+        script_path.write_text(script)
+        pid_file = root / "test.pid"
+        with (root / "run.log").open("w") as log:
+            child = subprocess.Popen([shell, str(script_path)], start_new_session=True,
+                                     stdout=log, stderr=subprocess.STDOUT)
+            try:
+                deadline = time.monotonic() + 10
+                while not (root / "ready").exists() and child.poll() is None and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue((root / "ready").exists(), (root / "run.log").read_text())
+                pid = int(pid_file.read_text())
+                self.assertEqual(pid, child.pid)
+                self.assertEqual(os.getpgid(pid), pid)
+                # Only the group of this test's process, from its own PID file.
+                os.killpg(pid, signal.SIGTERM)
+                self.assertEqual(child.wait(timeout=10), 143, (root / "run.log").read_text())
+            finally:
+                if child.poll() is None and pid_file.exists():
+                    pid = int(pid_file.read_text())
+                    if pid == child.pid:
+                        os.killpg(pid, signal.SIGKILL)
+                        child.wait(timeout=5)
+        self.assertEqual((root / "status").read_text(), "143\n")
+        self.assertFalse((root / "later").exists())
+
+    def test_group_term_during_foreground_step_finishes_143_before_step_rc(self):
+        import hashlib
+        import json
+        import tempfile
+        body = '''
+step long timeout --foreground 20 /bin/sh -c 'echo $$ > "$S/child.pid"; touch "$S/ready"; exec sleep 60'
+step later touch "$S/later"
+finish 0
+'''
+        for shell in self.shells:
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory(prefix="fn-stop-step-") as directory:
+                root = Path(directory)
+                script = self.prepare(root, full=True) + body
+                self.assert_group_stop(shell, root, script)
+                hashes = (root / "SHA256SUMS").read_text()
+                self.assertIn(hashlib.sha256(b"stop checksum witness\n").hexdigest(), hashes)
+                self.assertIn("logs/long.log", hashes)
+                self.assertIsInstance(json.loads((root / "gate_walls.json").read_text()), dict)
+                log = (root / "run.log").read_text()
+                self.assertIn("== done status 143", log)
+                self.assertNotIn("   long exit", log)  # trap finished before step's rc report
+
+    def test_group_term_before_identity_or_finish_leaves_early_143(self):
+        import tempfile
+        body = '''
+timeout --foreground 20 /bin/sh -c 'echo $$ > "$S/child.pid"; touch "$S/ready"; exec sleep 60'
+touch "$S/later"
+'''
+        for shell in self.shells:
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory(prefix="fn-stop-early-") as directory:
+                root = Path(directory)
+                script = self.prepare(root, full=False) + body
+                lines = script.splitlines()
+                s_line = next(i for i, line in enumerate(lines) if line.startswith("S="))
+                self.assertEqual(lines[s_line + 1], "trap 'echo 143 > $S/status; exit 143' TERM INT HUP")
+                self.assert_group_stop(shell, root, script)
+                self.assertFalse((root / "SHA256SUMS").exists())
+
+    def test_term_during_finish_marks_cancellation_without_recursive_finish(self):
+        import hashlib
+        import json
+        import tempfile
+        body = '''
+# Pause the metadata command inside the real extracted finish implementation.
+python3() {
+    if [ -f "$S/metadata-interrupted" ]; then
+        printf '%s\n' '{"recollected": true}'
+        return 0
+    fi
+    touch "$S/ready"
+    timeout --foreground 20 sleep 60
+    touch "$S/metadata-interrupted"
+    return 1
+}
+finish 0
+touch "$S/later"
+'''
+        for shell in self.shells:
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory(prefix="fn-stop-finish-") as directory:
+                root = Path(directory)
+                self.assert_group_stop(shell, root, self.prepare(root, full=True) + body)
+                self.assertIn(hashlib.sha256(b"stop checksum witness\n").hexdigest(),
+                              (root / "SHA256SUMS").read_text())
+                self.assertEqual(json.loads((root / "gate_walls.json").read_text()), {"recollected": True})
+                self.assertEqual((root / "run.log").read_text().count("== load at end:"), 1)
+
+    def test_stop_flag_overrides_a_step_failure_code(self):
+        import tempfile
+        body = '''
+STOPPED=1
+step failure /bin/sh -c 'exit 7'
+step later touch "$S/later"
+finish 0
+'''
+        for shell in self.shells:
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory(prefix="fn-stop-flag-") as directory:
+                root = Path(directory)
+                script = root / "test-run.sh"
+                script.write_text(self.prepare(root, full=True) + body)
+                with (root / "run.log").open("w") as log:
+                    result = subprocess.run([shell, str(script)], stdout=log, stderr=subprocess.STDOUT, timeout=30)
+                self.assertEqual(result.returncode, 143)
+                self.assertEqual((root / "status").read_text(), "143\n")
+                self.assertIn("failure exit 143", (root / "run.log").read_text())
+                self.assertFalse((root / "later").exists())
+
+    def test_status_and_attach_display_stopped_without_a_deadline_wait(self):
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="fn-stop-display-") as directory:
+            root = Path(directory)
+            ssh = root / "ssh"
+            # Existing transport commands run locally; no real SSH is reached.
+            ssh.write_text('#!/bin/sh\n[ "$1" != -n ] || shift\nshift\nexec /bin/sh -c "$1"\n')
+            ssh.chmod(0o755)
+            (root / "status").write_text("143\n")
+            (root / "run.log").write_text("== done status 143\n")
+            (root / "SHA256SUMS").write_text("fixture hashes\n")
+            label = f"stop-display-{os.getpid()}"
+            record = ROOT / "build/hbox-native" / (label + ".run")
+            record.parent.mkdir(parents=True, exist_ok=True)
+            record.write_text(f"box=stub\ndir={root}\npid=4242\npgid=4242\nstarttime=888\n")
+            self.addCleanup(lambda: record.unlink(missing_ok=True))
+            env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]}
+            for mode, code in (("status", 0), ("attach", 143)):
+                done = subprocess.run(["sh", str(SCRIPT), mode, label], cwd=ROOT, env=env,
+                                      capture_output=True, text=True, timeout=10, stdin=subprocess.DEVNULL)
+                self.assertEqual(done.returncode, code, done.stdout + done.stderr)
+                self.assertIn("stopped (143)", done.stdout)
+                self.assertNotIn("none yet", done.stdout)
+
+
 class NativeStopTests(unittest.TestCase):
     def setUp(self):
         import tempfile
@@ -1245,6 +1417,8 @@ class NativeStopTests(unittest.TestCase):
         self.assertLess(next(i for i, e in enumerate(self.events) if e[0] == "signal"),
                         next(i for i, e in enumerate(self.events) if e[0] == "scope"))
         self.assertIn("sent TERM through pidfd", out)
+        self.assertIn("run.sh writes status 143 when it exits", out)
+        self.assertFalse((self.run_dir / "status").exists())  # stop is not a status writer
         self.assertNotIn("os.kill", self.code)
         self.assertNotIn("killpg", self.code)
 
