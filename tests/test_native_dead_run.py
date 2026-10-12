@@ -56,7 +56,14 @@ D = int(os.environ.get("FN_DEAD_RUN_D", "1200"))
 R = int(os.environ.get("FN_DEAD_RUN_R", "400"))
 WINDOW = 200
 COUNT_FACTOR = 16
-COUNT_NAMES = ("FN-CAT-LIVE-PREV", "FN-CAT-LIVE-NEXT", "FN-SCV-IN-XP")
+# The live-link exports are defabsstobj exports: their raw-Lisp calls go to
+# the attached implementation's :exec functions, the paged catalog's in every
+# image (books/catalog-paged.lisp fn-cat$p-live-next/-prev), the reference
+# catalog's (fn-cat$c-*) only where none is attached.  Those are counted.
+LINK_NAMES = ("FN-CAT$P-LIVE-PREV", "FN-CAT$P-LIVE-NEXT",
+              "FN-CAT$C-LIVE-PREV", "FN-CAT$C-LIVE-NEXT")
+COUNT_NAMES = LINK_NAMES + ("FN-SCV-IN-XP",)
+REQUIRED_WRAPS = ("FN-CAT$P-LIVE-PREV", "FN-CAT$P-LIVE-NEXT", "FN-SCV-IN-XP")
 KEY = base64.b64encode(hashlib.sha256(b"dead run poster").digest())
 LOCK = base64.b64encode(hashlib.sha256(KEY).digest())
 
@@ -194,7 +201,7 @@ class NativeDeadRun(unittest.TestCase):
                         package, name = symbol.split("::")
                         if package in ("ACL2", "ACL2_*1*_ACL2") and name in COUNT_NAMES:
                             counts[symbol] = int(value)
-                    for name in COUNT_NAMES:
+                    for name in REQUIRED_WRAPS:
                         self.assertIn("ACL2::" + name, counts,
                                       "count hook did not wrap " + name)
                     return {name: sum(value for symbol, value in counts.items()
@@ -247,7 +254,7 @@ class NativeDeadRun(unittest.TestCase):
                         # number-wise scans cannot hide among pre-START polls.
                         self.assertLessEqual(probes, COUNT_FACTOR * 2,
                                              "a GROUP pair probed the dead numbers")
-                        observed = any(now[name] > previous[name] for name in COUNT_NAMES[:2])
+                        observed = any(now[name] > previous[name] for name in LINK_NAMES)
                         previous = now
                         if observed:
                             break
@@ -263,7 +270,7 @@ class NativeDeadRun(unittest.TestCase):
         delta = {name: final[name] - initial[name] for name in COUNT_NAMES}
         print("DEAD-RUN-COUNTS d={} r={} groups={} counts={} factor={}".format(
             D, R, groups, delta, COUNT_FACTOR), flush=True)
-        self.assertGreater(delta["FN-CAT-LIVE-PREV"] + delta["FN-CAT-LIVE-NEXT"], 0,
+        self.assertGreater(sum(delta[name] for name in LINK_NAMES), 0,
                            "RED-2 lagging-view live-link branch never ran")
         self.assertGreater(delta["FN-SCV-IN-XP"], 0, "membership calls were not observed")
         self.assertLessEqual(delta["FN-SCV-IN-XP"], COUNT_FACTOR * (groups + R),
