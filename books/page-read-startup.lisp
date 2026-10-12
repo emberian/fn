@@ -169,27 +169,15 @@
  (+ (fn-heap-runtime-protected-octets profile core nursery obs)
     (nfix (fn-crv-nth 0 output))))
 
-; A run's protected runtime is the FULL store's, whatever the store on disk
-; holds (OBSERVED is not read): the launcher decides the run's heap the same
-; way (books/heap-figure.lisp fn-heap-operation-figure-octets-of-a-run), so a
-; heap below the decided figure is refused here by name and a decided heap
-; reopens every store the run grows (ADMISSION-RESERVES-NOT-REOPEN).
+; The profile's bound on a run's protected runtime: the FULL store's,
+; whatever the store on disk holds (OBSERVED is not read).  It is one of the
+; two bounds the served run's owner protects the smaller of
+; (books/peer-flight-startup.lisp fn-prstartup-serve-protected); the other is
+; the run's launch (L-RUN-LAUNCH), which the memory gate keeps every store the
+; run grows within (ADMISSION-RESERVES-NOT-REOPEN).
 (defun fn-prstartup-protected (profile core nursery output max-connections observed)
  (declare (xargs :guard t) (ignore max-connections observed))
  (fn-prstartup-protected-at profile core nursery output nil))
-
-(defun fn-prstartup-default-plan
-  (dynamic occupied profile core nursery cold output max-connections root workers cache-limit fd-limit
-   observed)
- (declare (xargs :guard t))
- (cond (cold (list :refused :unpriced-complete-cold-profile))
-       ((not (or (not output) (fn-orv-policy-p output)))
-        (list :refused :invalid-output-resource-profile))
-       (t (fn-prstartup-plan dynamic occupied
-            (fn-prstartup-protected profile core nursery output max-connections observed)
-            root workers (fn-heap-stack-octets profile)
-            *fn-heap-thread-runtime-octets* cache-limit fd-limit
-            (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))))
 
 (defun fn-prstartup-planp (plan)
  (declare (xargs :guard t))
@@ -334,8 +322,9 @@
 ; beyond its installed baseline, the registration quantum of every file the
 ; table admits and RESERVE -- for the default plan, WORKERS reads of the
 ; profile's largest extent (fn-prstartup-read-reserve).  Scope: the plan's
-; own coordinates; the launched heap's room for it is the launcher's
-; extension below (fn-prstartup-extend-default-reservation adds it).
+; own coordinates; the launched heap's room for it is the served run's
+; DEFAULT pool (fn-prstartup-launch-extra, one of books/heap-command.lisp
+; fn-mo-serve-pools).
 (defthm fn-prstartup-plan-holds-the-reads-in-flight
  (let* ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve))
         (budget (fn-prstartup-nth 1 plan))
@@ -470,268 +459,21 @@
                    fn-prstartup-file-capacity fn-prstartup-read-token-octets)))))
 )
 
-; Named equality bridge from the actual native subject to the numerical core.
-; This definitional bridge is not a separate funding keystone.
-(defthm fn-prstartup-default-plan-refines-plan-by-definition
- (equal (fn-prstartup-default-plan dynamic occupied profile core nursery cold output
-                                   max-connections root workers cache-limit fd-limit observed)
-        (cond (cold (list :refused :unpriced-complete-cold-profile))
-              ((not (or (not output) (fn-orv-policy-p output)))
-               (list :refused :invalid-output-resource-profile))
-              (t (fn-prstartup-plan dynamic occupied
-                   (fn-prstartup-protected profile core nursery output max-connections observed)
-                   root workers (fn-heap-stack-octets profile)
-                   *fn-heap-thread-runtime-octets* cache-limit fd-limit
-                   (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))))
- :hints (("Goal" :in-theory (union-theories '(fn-prstartup-default-plan) (theory 'minimal-theory)))))
-
-; DEFAULT's fixed backing is a real launcher contribution. The existing base
-; already reserves its direct-worker threads; add only the selected heap
-; minimum, before the independent explicit output contribution.
-;
-; The launched owner checks the Store's protected runtime against its own
-; heap (fn-prstartup-protected) over ITS image observation, while the base
-; figure was solved over the probe's: each is the calling process's dynamic
-; usage, and the owner's is the larger (scenarios-2, set 6107ceb56: 23 of 23
-; installed starts refused).  So the served run's figure is first raised to
-; the protected runtime at the image FILE's bound, an observation every
-; process of the image shares and no dynamic usage exceeds
-; (fn-heap-core-dynamic-is-at-most-the-file), for the store the probe
-; OBSERVED (PROFILE, OBSERVED: the base decision's own arguments).
+; The image FILE's bound on a process's core content: every process of the
+; image shares it and no dynamic usage exceeds it
+; (fn-heap-core-dynamic-is-at-most-the-file).  The served run's launch
+; charges the core's content at it (books/heap-command.lisp
+; fn-mo-serve-dynamic), so the owner, whose content at startup exceeds the
+; probe's, is held by the probe's figure.
 (defun fn-prstartup-image-bound (core)
  (declare (xargs :guard t))
  (cons (fn-heap-core-file core) (fn-heap-core-file core)))
 
-(defun fn-prstartup-launch-floor-at (profile core obs)
- (declare (xargs :guard t))
- (fn-heap-with-nursery
-  (fn-heap-store-base-octets profile (fn-prstartup-image-bound core) obs)
-  (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
-
-; The decided run's floor: the full store's (OBSERVED is not read).
-(defun fn-prstartup-launch-floor (profile core observed)
- (declare (xargs :guard t) (ignore observed))
- (fn-prstartup-launch-floor-at profile core nil))
-
-; What the served run adds to its figure for the pool: the smallest table
-; the plan admits and its workers' reads in flight (the plan's two checks,
-; fn-prstartup-plan).
+; What the DEFAULT pool needs of the heap: the smallest table the plan admits
+; and its workers' reads in flight (the plan's two checks, fn-prstartup-plan).
+; The served run's launch funds it as one of its pools
+; (books/heap-command.lisp fn-mo-serve-pools).
 (defun fn-prstartup-launch-extra (profile workers cache-limit root)
  (declare (xargs :guard t))
  (+ (fn-prstartup-required-heap (max 8 (+ 1 (nfix cache-limit))) workers root)
     (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
-
-(defun fn-prstartup-extend-default-reservation
- (base cold root workers cache-limit core observations profile observed)
- (declare (xargs :guard t))
- (cond (cold base)
-       ((not (eq (fn-prstartup-nth 0 base) :heap)) base)
-       ((not (and (stringp root) (posp workers) (natp cache-limit)
-                  (fn-crl-table-supportedp (max 8 (+ 1 cache-limit)))))
-        (list :refused :invalid-default-pool-capture 0 (fn-prstartup-nth 3 base)))
-       (t
-        (let* ((octets (fn-heap-grow-runtime-dynamic
-                          (max (* *fn-heap-mib* (nfix (fn-prstartup-nth 1 base)))
-                               (fn-prstartup-launch-floor profile core observed))
-                          (fn-prstartup-launch-extra profile workers cache-limit root)
-                          (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
-               (mb (fn-heap-mb-of octets))
-               (stack (nfix (fn-prstartup-nth 4 base)))
-               (threads (nfix (fn-prstartup-nth 5 base)))
-               (total (fn-heap-reservation-octets mb core stack threads)))
-         (if (<= total (fn-heap-machine-octets observations))
-             (list :heap mb (fn-prstartup-nth 2 base) (fn-prstartup-nth 3 base) stack threads)
-           (list :refused :machine-cannot-hold-threads (fn-heap-mb-of total)
-                 (fn-prstartup-nth 3 base)))))))
-
-(defthm fn-prstartup-nursery-trigger-at-least-the-least
- (<= *fn-heap-nursery-least-octets* (fn-heap-nursery-trigger d nursery))
- :rule-classes :linear
- :hints (("Goal" :in-theory (enable fn-heap-nursery-trigger))))
-
-(defthm fn-prstartup-launch-floor-at-holds-owner
- (implies (and (natp dyn)
-               (<= (fn-prstartup-launch-floor-at profile core observed) dyn)
-               (equal (fn-heap-core-file owner-core) (fn-heap-core-file core)))
-          (<= (fn-prstartup-protected-at
-               profile owner-core
-               (fn-heap-nursery-trigger dyn (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))
-               nil observed)
-              dyn))
- :rule-classes nil
- :hints (("Goal"
-          :in-theory (e/d (fn-prstartup-protected-at fn-heap-runtime-protected-octets
-                           fn-prstartup-launch-floor-at fn-prstartup-image-bound
-                           fn-heap-store-base-octets fn-heap-core-dynamic fn-heap-core-file)
-                          (fn-heap-with-nursery fn-heap-nursery-trigger
-                           fn-heap-store-state-bound fn-heap-store-open-octets
-                           fn-heap-open-octets-bound fn-heap-open-records-bound
-                           fn-heap-store-inflight-octets fn-heap-articles-octets))
-          :use ((:instance fn-heap-with-nursery-monotone
-                 (b1 (fn-heap-store-base-octets profile owner-core observed))
-                 (b2 (fn-heap-store-base-octets profile (fn-prstartup-image-bound core) observed))
-                 (nursery (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
-                (:instance fn-heap-with-nursery-holds-the-trigger
-                 (d dyn)
-                 (base (fn-heap-store-base-octets profile owner-core observed))
-                 (nursery (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))))))
-
-(defthm fn-prstartup-launch-floor-holds-owner
- (implies (and (natp dyn)
-               (<= (fn-prstartup-launch-floor profile core observed) dyn)
-               (equal (fn-heap-core-file owner-core) (fn-heap-core-file core)))
-          (<= (fn-prstartup-protected
-               profile owner-core
-               (fn-heap-nursery-trigger dyn (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))
-               nil max-connections observed)
-              dyn))
- :rule-classes nil
- :hints (("Goal" :in-theory (e/d (fn-prstartup-protected fn-prstartup-launch-floor)
-                                 (fn-prstartup-launch-floor-at fn-prstartup-protected-at))
-          :use ((:instance fn-prstartup-launch-floor-at-holds-owner (observed nil))))))
-
-;; THE CHECK AND THE DECISION AGREE.  fn-heap-with-nursery is the figure for
-;; BASE within 16 octets (the trigger is a sixteenth of the space, rounded
-;; down): a space 16 octets under it does not hold BASE and its trigger.
-(encapsulate ()
- (local (include-book "arithmetic-5/top" :dir :system))
- (local (defthm fn-prstartup-floor-16-bounds
-   (implies (natp d) (and (<= (* 16 (floor d 16)) d) (< d (+ 16 (* 16 (floor d 16))))))
-   :rule-classes :linear))
- (local (defthm fn-prstartup-ceiling-7-bounds
-   (implies (natp b) (and (<= (* 8 b) (* 7 (ceiling (* 8 b) 7)))
-                          (< (* 7 (ceiling (* 8 b) 7)) (+ 7 (* 8 b)))))
-   :rule-classes :linear))
- (defthm fn-heap-with-nursery-is-nearly-the-least
-  (implies (and (natp d) (natp b) (natp n)
-                (< (+ d 16) (fn-heap-with-nursery b n)))
-           (< d (+ b (* 2 (fn-heap-nursery-trigger d n)))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-heap-with-nursery fn-heap-nursery-trigger max min)
-                                  (floor ceiling))
-           :cases ((<= (floor d 16) n))))))
-
-;; The cold-startup check is the decision's own figure (a run's protected
-;; runtime is over no observation, as is the run's figure): a heap at the
-;; decided figure starts, and one more than 16 octets under it is refused by
-;; name (:default-pool-heap-not-held), for every preset (PROFILE).
-(defthm fn-prstartup-run-starts-at-the-decided-figure
- (implies (and (natp dyn)
-               (<= (fn-heap-operation-figure-octets :run profile core cap observed) dyn))
-          (<= (fn-prstartup-protected profile core (fn-heap-nursery-trigger dyn cap)
-                                      nil max-connections later)
-              dyn))
- :rule-classes nil
- :hints (("Goal" :in-theory (e/d (fn-prstartup-protected fn-prstartup-protected-at
-                                  fn-heap-runtime-protected-octets
-                                  fn-heap-operation-figure-octets-of-a-run
-                                  fn-heap-store-figure-octets)
-                                 (fn-heap-with-nursery fn-heap-nursery-trigger
-                                  fn-heap-store-base-octets))
-          :use ((:instance fn-heap-with-nursery-holds-the-trigger (d dyn)
-                           (base (fn-heap-store-base-octets profile core nil))
-                           (nursery cap))
-                (:instance fn-heap-nursery-trigger-natp (d dyn) (nursery cap))
-                (:instance fn-prstartup-nursery-trigger-at-least-the-least (d dyn) (nursery cap))))))
-
-(defthm fn-prstartup-run-refuses-below-the-decided-figure
- (implies (and (natp dyn) (natp cap)
-               (< (+ dyn 16) (fn-heap-operation-figure-octets :run profile core cap observed)))
-          (< dyn (fn-prstartup-protected profile core (fn-heap-nursery-trigger dyn cap)
-                                         nil max-connections later)))
- :rule-classes nil
- :hints (("Goal" :in-theory (e/d (fn-prstartup-protected fn-prstartup-protected-at
-                                  fn-heap-runtime-protected-octets
-                                  fn-heap-operation-figure-octets-of-a-run
-                                  fn-heap-store-figure-octets)
-                                 (fn-heap-with-nursery fn-heap-nursery-trigger
-                                  fn-heap-store-base-octets))
-          :use ((:instance fn-heap-with-nursery-is-nearly-the-least
-                           (b (fn-heap-store-base-octets profile core nil)) (n cap) (d dyn))
-                (:instance fn-prstartup-nursery-trigger-at-least-the-least (d dyn) (nursery cap))))))
-
-(local (defthm fn-prstartup-max-bounds
- (implies (and (rationalp a) (rationalp b)) (and (<= a (max a b)) (<= b (max a b))))
- :rule-classes nil))
-
-(defthm fn-prstartup-extended-covers-launch-floor
- (let ((d (fn-prstartup-extend-default-reservation base nil root workers cache-limit
-                                                    core observations profile observed)))
-  (implies (equal (fn-prstartup-nth 0 d) :heap)
-           (and (natp (* *fn-heap-mib* (fn-prstartup-nth 1 d)))
-                (<= (fn-prstartup-launch-floor profile core observed)
-                    (* *fn-heap-mib* (fn-prstartup-nth 1 d))))))
- :rule-classes nil
- :hints (("Goal" :in-theory (e/d (fn-prstartup-extend-default-reservation fn-prstartup-nth)
-                                 (fn-prstartup-launch-floor fn-heap-grow-runtime-dynamic
-                                  fn-prstartup-required-heap fn-prstartup-launch-extra
-                                  fn-heap-reservation-octets
-                                  fn-heap-machine-octets fn-crl-table-supportedp fn-heap-mb-of max min))
-          :use ((:instance fn-prstartup-max-bounds
-                 (a (* *fn-heap-mib* (nfix (fn-prstartup-nth 1 base))))
-                 (b (fn-prstartup-launch-floor profile core observed)))
-                (:instance fn-heap-grow-runtime-dynamic-covers-addition
-                 (dynamic (max (* *fn-heap-mib* (nfix (fn-prstartup-nth 1 base)))
-                               (fn-prstartup-launch-floor profile core observed)))
-                 (extra (fn-prstartup-launch-extra profile workers cache-limit root))
-                 (nursery-cap (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))
-                (:instance fn-heap-mb-of-covers
-                 (octets (fn-heap-grow-runtime-dynamic
-                          (max (* *fn-heap-mib* (nfix (fn-prstartup-nth 1 base)))
-                               (fn-prstartup-launch-floor profile core observed))
-                          (fn-prstartup-launch-extra profile workers cache-limit root)
-                          (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))))))))
-
-; KEYSTONE: the launcher's served-run figure admits the launched owner's
-; protected-runtime check, for every store the probe observed and every
-; image observation the owner takes of the same core file, at the collector
-; trigger the owner sets in that heap (host/native/io.lisp
-; fnn-gc-nursery-octets).  Scope: absent explicit cold and output policies
-; and no peer flight profile (those compose their own allowances).
-(defthm fn-prstartup-launch-admits-owner-protected
- (let* ((d (fn-prstartup-extend-default-reservation base nil root workers cache-limit
-                                                     core observations profile observed))
-        (dyn (* *fn-heap-mib* (fn-prstartup-nth 1 d))))
-  (implies (and (equal (fn-prstartup-nth 0 d) :heap)
-                (equal (fn-heap-core-file owner-core) (fn-heap-core-file core)))
-           (<= (fn-prstartup-protected
-                profile owner-core
-                (fn-heap-nursery-trigger dyn (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))
-                nil max-connections observed)
-               dyn)))
- :rule-classes nil
- :hints (("Goal" :in-theory (theory 'minimal-theory)
-          :use ((:instance fn-prstartup-extended-covers-launch-floor)
-                (:instance fn-prstartup-launch-floor-holds-owner
-                 (dyn (* *fn-heap-mib* (fn-prstartup-nth 1
-                        (fn-prstartup-extend-default-reservation base nil root workers cache-limit
-                                                                 core observations profile observed)))))))))
-
-(defthm fn-prstartup-accepted-default-launch-fits-machine
- (implies (and (not cold)
-               (equal (fn-prstartup-nth 0
-                        (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed)) :heap))
-  (let ((d (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed)))
-   (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) core
-                                  (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d))
-       (fn-heap-machine-octets observations))))
- :rule-classes nil
- :hints (("Goal" :in-theory (e/d (fn-prstartup-extend-default-reservation fn-prstartup-nth)
-                          (fn-heap-mb-of fn-heap-machine-octets fn-heap-reservation-octets
-                           fn-prstartup-required-heap fn-prstartup-launch-extra fn-crl-table-supportedp
-                           fn-prstartup-launch-floor fn-heap-grow-runtime-dynamic)))))
-
-(defun fn-prstartup-extend-operation-reservation
- (base action cold root workers cache-limit core observations profile observed)
- (declare (xargs :guard t))
- (if (eq action :run)
-     (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed)
-   base))
-
-(defthm fn-prstartup-operation-extension-refines-default-by-definition
- (equal (fn-prstartup-extend-operation-reservation base action cold root workers cache-limit core observations profile observed)
-        (if (eq action :run)
-            (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed)
-          base))
- :hints (("Goal" :in-theory (e/d (fn-prstartup-extend-operation-reservation)
-                               (fn-prstartup-extend-default-reservation)))))

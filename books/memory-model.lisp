@@ -969,19 +969,36 @@
 ; observation, and a dynamic space holding the core's content and every
 ; heap within the limit.
 (defthm fn-mm-launch-holds-the-store-and-the-reservation
-  (let ((d (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
-                                core nursery obs))
-        (r (fn-mm-least-observation resident-obs))
-        (a (fn-mm-least-observation address-obs)))
-    (implies (equal (car d) :launch)
-             (and (natp (cadr d))
-                  (<= (fn-mm-sum profile img cfg obs) (cadr d))
-                  (<= (fn-mm-reopen-need profile img cfg obs) (cadr d))
-                  (implies (natp configured) (<= (cadr d) configured))
-                  (implies (natp r) (<= (cadr d) r))
-                  (implies (natp a)
-                           (<= (fn-mm-launch-reservation (cadr d) core nursery cfg profile) a))
-                  (<= (+ (fn-heap-core-dynamic core) (cadr d)) (caddr d)))))
+  (implies (equal (car (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                            core nursery obs))
+                  :launch)
+           (and (natp (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                 core nursery obs)))
+                (<= (fn-mm-sum profile img cfg obs)
+                    (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                               core nursery obs)))
+                (<= (fn-mm-reopen-need profile img cfg obs)
+                    (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                               core nursery obs)))
+                (implies (natp configured)
+                         (<= (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                        core nursery obs))
+                             configured))
+                (implies (natp (fn-mm-least-observation resident-obs))
+                         (<= (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                        core nursery obs))
+                             (fn-mm-least-observation resident-obs)))
+                (implies (natp (fn-mm-least-observation address-obs))
+                         (<= (fn-mm-launch-reservation
+                              (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                         core nursery obs))
+                              core nursery cfg profile)
+                             (fn-mm-least-observation address-obs)))
+                (<= (+ (fn-heap-core-dynamic core)
+                       (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                  core nursery obs)))
+                    (caddr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                core nursery obs)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mm-launch-decide fn-mm-gate-p)
                                   (fn-mm-sum fn-mm-reopen-need fn-mm-launch-reservation
@@ -994,14 +1011,14 @@
 ; address-space observation, launches (L-FRESH's mechanism: a
 ; reservation compared with a resident limit, retired).
 (defthm fn-mm-launch-refuses-only-by-the-model
-  (let ((limit (fn-mm-resident-limit configured resident-obs))
-        (a (fn-mm-least-observation address-obs)))
-    (implies (and (fn-mm-gate-p profile img cfg limit obs)
-                  (or (not (natp a))
-                      (<= (fn-mm-launch-reservation limit core nursery cfg profile) a)))
-             (equal (car (fn-mm-launch-decide profile img cfg configured resident-obs
-                                              address-obs core nursery obs))
-                    :launch)))
+  (implies (and (fn-mm-gate-p profile img cfg (fn-mm-resident-limit configured resident-obs) obs)
+                (or (not (natp (fn-mm-least-observation address-obs)))
+                    (<= (fn-mm-launch-reservation (fn-mm-resident-limit configured resident-obs)
+                                                  core nursery cfg profile)
+                        (fn-mm-least-observation address-obs))))
+           (equal (car (fn-mm-launch-decide profile img cfg configured resident-obs
+                                            address-obs core nursery obs))
+                  :launch))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mm-launch-decide)
                                   (fn-mm-gate-p fn-mm-sum fn-mm-reopen-need fn-mm-launch-reservation

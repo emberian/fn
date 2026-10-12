@@ -1,0 +1,25 @@
+== 1 core
+core: 20957 units, 27 runtime names
+== 1b manifest
+manifest: world 9750abec76b73cd9; 20957 units -> /tank/fn/scratch/memory-run-launch/native-m20-lrl-2/tree/build/extract/check/extraction-manifest.json
+== 1c invariant-risk
+invariant-risk: PASS (1903 declared, 6 marked and baselined, 39 marked but guard-verified, 8 not in the IR, unmeasured)
+== 2 transcripts
+transcripts: 9 of 9 identical (image, core)
+== 2b rtc-exercise
+rtc-exercise: 17 steps, invariant held, stale completions 10 and 12 discarded; the four injected faults reported; core identical
+== 3 probes
+core probes: 19 of 19 identical; image outcomes {'host-entry-guard': 5, 'returned': 12, 'fault': 2}
+== 3b obligations
+obligations: 3499 items compared (ENTRY 2043, GLOBAL 152, VAR 1302, WORLD 2), 4 excluded, 0 differ
+== 4 store
+store-read over the store: 39842 bytes IDENTICAL (image, core)
+reader-commands over the store: 31176 bytes IDENTICAL (image, core)
+session-200 over the store: 5263 bytes IDENTICAL (image, core)
+== 5 stateful
+stateful core: 40 cases, 208 steps agree; classes damage,failed-write,guard,interrupted,key-change,late-completion,malformed,page-fault,post,recover-cut,restart
+== 5b owner
+owner: stalled-owner-late-completion, 7 observations agree
+== 6 faults
+faults: 11 cases agree
+extract-check: PASS

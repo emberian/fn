@@ -1453,49 +1453,9 @@
    "class": "parser-boundary",
    "statement_digest": "fa0717ea46f6f04231941d2df76501df66149726a94e6ff094b6228d27064de5"
   },
-  "fn-cbud-admitted-connections-fit-the-machine": {
-   "class": "resource-reservation",
-   "statement_digest": "5836b99b9aaaf20d0555f2d49130c437be6e9895dfbc7fe224a990daf2cd0650"
-  },
-  "fn-cbud-bound-holds-its-connections": {
-   "class": "resource-reservation",
-   "statement_digest": "1e5e330d15348b9ef78451ee4ac15db724ddc57ed0b2c85dbc4f2931cffb01df"
-  },
-  "fn-cbud-bound-is-the-most": {
-   "class": "resource-reservation",
-   "statement_digest": "e8d48eceb813214d56bdd338518f667168b9787a20dbca9f165ea7fc5fb0960c"
-  },
-  "fn-cbud-deltas-refusal-keeps-the-machine-held": {
-   "class": "resource-reservation",
-   "statement_digest": "4bd5b381199af9baff313bbdabcd3bf388d6b3e8e889a7c69e3abf8500d897a3"
-  },
-  "fn-cbud-limit-holds-its-connections": {
-   "class": "resource-reservation",
-   "statement_digest": "030e419b7348c5579258ee7859daeb3892451c1c0463d23c2656e79bbe9fe1bf"
-  },
-  "fn-cbud-limit-is-the-most": {
-   "class": "resource-reservation",
-   "statement_digest": "41e8d6534743cfe81e606995fca9c57f85c2ec6ed3e670c7bcf74f159ed44a58"
-  },
-  "fn-cbud-live-held-charges-current-and-active": {
-   "class": "resource-reservation",
-   "statement_digest": "483416d87f14aa44372d6c4d0247e1359464ff59feb20054e66e4aed362a02f5"
-  },
-  "fn-cbud-live-held-releases-only-unneeded-slots": {
-   "class": "resource-reservation",
-   "statement_digest": "a81ed25dd9c766bc858e5b66236c4b26a25bd9591a035f9557056910853e2d53"
-  },
   "fn-cbud-read-covers-the-step": {
    "class": "resource-reservation",
    "statement_digest": "1d1f6879b3e96c4c0edcfbeb0bfc4ead8052223d54d8f1316b662b5c4d1a2353"
-  },
-  "fn-cbud-run-decide-holds-the-capacity": {
-   "class": "resource-reservation",
-   "statement_digest": "a4b54a22cbe30dbf263a4a8aca8939e0028c8483edb0745d5d18573b761aec2a"
-  },
-  "fn-cbud-run-decide-refuses-exactly-past-the-limit": {
-   "class": "resource-reservation",
-   "statement_digest": "663f3b8ffffa3fd1377cbc28eb047c8c399d04beb6cc928fbb85fa82bf469ab9"
   },
   "fn-cei-build-append": {
    "class": "durability",
@@ -1616,14 +1576,6 @@
   "fn-cpr-loop-append": {
    "class": "durability",
    "statement_digest": "f1f6cc1695837d1e7c92518edf4163bc09b3f1f5af316dc4c5fc513a16d502cd"
-  },
-  "fn-crv-accepted-launch-fits-observed-machine": {
-   "class": "resource-reservation",
-   "statement_digest": "c42f5c17fec6eebe74810433dba2cafc134a8e6636bae6a1edcc4c38f7a86d9d"
-  },
-  "fn-crv-accepted-launch-funds-pool-dynamic-allowance": {
-   "class": "resource-reservation",
-   "statement_digest": "4a2636868b5e437a4abba12055b966aa53e94a188d8f76462714830e7b963b26"
   },
   "fn-csp-framer-window-accounts-for-every-octet": {
    "class": "parser-boundary",
@@ -4280,10 +4232,6 @@
   "fn-provp-of-string": {
    "class": "identity-binding",
    "statement_digest": "d3c031ca69c21b799dd14564445ff0a1b5608daed0d8a13cdbbc3b13c2f8e8e9"
-  },
-  "fn-prstartup-accepted-default-launch-fits-machine": {
-   "class": "resource-reservation",
-   "statement_digest": "b324545a8950fe5e5c6f1bc2cce7835b784aa77c5b293186eae51a5999dc4eb8"
   },
   "fn-prstartup-admitted-capacity-is-funded": {
    "class": "resource-reservation",

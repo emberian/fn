@@ -1,0 +1,58 @@
+== /tank/fn/scratch/integrate-20261011a/native-3119f7d3253e/tree/build/core/fn-core.core fc 256 350
+fc 256 no LISTENING after 1s
+refused connections-exceed-memory capacity=31 holds=0 per-connection=425 KiB machine=256 MB base-exceeds-machine heap-figure=543 MB dynamic=350 MB fixed=253 MB
+refused operator run refused connections-exceed-memory capacity=31 holds=0 per-connection=425 KiB machine=256 MB base-exceeds-machine heap-figure=543 MB dynamic=350 MB fixed=253 MB
+== /tank/fn/scratch/integrate-20261011a/native-3119f7d3253e/tree/build/core/fn-core.core fc 1024 1118
+greet 200 fn-nntp experimental server ready
+post? 340 send article to be posted
+post 240 article received OK
+article 220 0 <m20-1791741401853743577@fresh.invalid> article follows
+VmHWM: 61176 kB VmRSS: 48152 kB RssAnon: 17476 kB RssFile: 30676 kB 
+memory capacity=31 of 31 bound-by=configured sum=223 MB limit=1019 MB
+== /tank/fn/scratch/integrate-20261011c/native-meas-ce629789b/tree/build/fn-host.core fh 1024 1278
+fh 1024 no LISTENING after 1s
+refused connections-exceed-memory capacity=31 holds=0 per-connection=425 KiB machine=1024 MB base-exceeds-machine heap-figure=704 MB dynamic=1278 MB fixed=413 MB
+refused operator run refused connections-exceed-memory capacity=31 holds=0 per-connection=425 KiB machine=1024 MB base-exceeds-machine heap-figure=704 MB dynamic=1278 MB fixed=413 MB
+== /tank/fn/scratch/integrate-20261011c/native-meas-ce629789b/tree/build/fn-host.core fh 256 1278
+fh 256 no LISTENING after 1s
+refused connections-exceed-memory capacity=31 holds=0 per-connection=425 KiB machine=256 MB base-exceeds-machine heap-figure=704 MB dynamic=1278 MB fixed=413 MB
+refused operator run refused connections-exceed-memory capacity=31 holds=0 per-connection=425 KiB machine=256 MB base-exceeds-machine heap-figure=704 MB dynamic=1278 MB fixed=413 MB
+## e1-1872109.log
+(:PROTECTED-ORIGINAL 530542458)
+(:PROTECTED-ORIGINAL 530542458)
+(:PEER-GRANT-ORIGINAL (:REFUSED :PEER-NATIVE-RESERVATION-NOT-HELD))
+(:PROTECTED-ORIGINAL 530542458)
+(:PROTECTED-ORIGINAL 530542458)
+(:PROTECTED-ORIGINAL 530542458)
+(:PEER-GRANT-ADDR (:HOLD (367001600 324636176 (11728 917504 2 1 458752 33554432) 1048576 4194304)))
+(:CBUD ((:REFUSED :CONNECTIONS-EXCEED-MEMORY 31 0) (31 268435456 367001600 569223530 81046496 35 1048576 0 32768 NIL)))
+## e1-1872217.log
+(:PROTECTED-ORIGINAL 526281370)
+(:PROTECTED-ORIGINAL 526281370)
+(:PEER-GRANT-ORIGINAL (:REFUSED :PEER-NATIVE-RESERVATION-NOT-HELD))
+(:PROTECTED-ORIGINAL 526281370)
+(:PROTECTED-ORIGINAL 526281370)
+(:PROTECTED-ORIGINAL 526281370)
+(:PEER-GRANT-ADDR (:HOLD (1172307968 1134203632 (11728 917504 2 1 458752 33554432) 1048576 4194304)))
+(:CBUD ((:HOLD 551) (31 1073741824 1172307968 569223530 81046496 35 1048576 0 32768 NIL)))
+(:CAPLINE ("memory capacity=31 of 31 bound-by=configured sum=223 MB limit=1019 MB" ((102 110 45 115 116 111 114 101 45 49 48) 16384 8388608 196608 32768 16 256 128 1048576 1048576 1048576 1048576 1048576 64 256 16384) (81046496 30081024 1376256) (31 NIL 8388608 8388608 NIL 0 0 0 256 18 NIL NIL 119) 1069471672 (0 0 0 0 0 0 0 0 :RESIDENT)))
+## e1-1872361.log
+(:PROTECTED-ORIGINAL 622612970)
+(:PROTECTED-ORIGINAL 622612970)
+(:PEER-GRANT-ORIGINAL (:REFUSED :PEER-NATIVE-RESERVATION-NOT-HELD))
+(:PROTECTED-ORIGINAL 622612970)
+(:PROTECTED-ORIGINAL 622612970)
+(:PROTECTED-ORIGINAL 622612970)
+(:PEER-GRANT-ADDR (:HOLD (1340080128 1205644192 (11728 917504 2 1 458752 33554432) 1048576 4194304)))
+(:CBUD ((:REFUSED :CONNECTIONS-EXCEED-MEMORY 31 0) (31 1073741824 1340080128 737287202 249110168 35 1048576 0 32768 NIL)))
+## e1-1872630.log
+(:PROTECTED-ORIGINAL 622612906)
+(:PROTECTED-ORIGINAL 622612906)
+(:PEER-GRANT-ORIGINAL (:REFUSED :PEER-NATIVE-RESERVATION-NOT-HELD))
+(:PROTECTED-ORIGINAL 622612906)
+(:PROTECTED-ORIGINAL 622612906)
+(:PROTECTED-ORIGINAL 622612906)
+(:PEER-GRANT-ADDR (:HOLD (1340080128 1205644256 (11728 917504 2 1 458752 33554432) 1048576 4194304)))
+(:CBUD ((:REFUSED :CONNECTIONS-EXCEED-MEMORY 31 0) (31 268435456 1340080128 737287202 249110168 35 1048576 0 32768 NIL)))
+
+[exited with code 0]

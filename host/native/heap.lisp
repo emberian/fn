@@ -165,23 +165,16 @@ there or ACL2 names a refusal. Corruption and internal faults propagate."
     (fnn-store-error (condition) (fnn-heap-profile-refusal condition))))
 
 (defun fnn-heap-print-store-line (root &optional cold-resources output-resources reclaim-live)
-  "The next configured run's reservation, including selected fixed backing.
-CORE and MACHINE are each captured once for both ACL2 reservation steps."
+  "The next configured run's launch, as its probe will decide it (fnn-heap-serve-decision)."
   (when (stringp root)
     (let* ((absolute-root (fnn-absolute root))
-           (profile (fnn-heap-store-profile absolute-root))
-           (core (fnn-heap-image-observation))
-           (machine (fnn-heap-observations))
-           (observed (and profile (fnn-core 'fn-heap-operation-observes-p :run)
-                          (fnn-heap-history-observation absolute-root profile)))
-           (base (fnn-core 'fn-heap-status-decide profile core
-                           +fnn-gc-nursery-octets+ machine observed)))
-      (fnn-out "~a" (fnn-core 'fn-heap-reserve-report-line
-                              (fnn-heap-extend-reservation base :run cold-resources
-                                                          output-resources absolute-root
-                                                          core machine profile observed
-                                                          (fnn-peer-flight-profile absolute-root)
-                                                          reclaim-live))))))
+           (profile (fnn-heap-store-profile absolute-root)))
+      (when profile
+        (fnn-out "~a" (fnn-core 'fn-heap-reserve-report-line
+                                (fnn-heap-serve-decision profile absolute-root (fnn-heap-image-observation)
+                                                         cold-resources output-resources
+                                                         (fnn-peer-flight-profile absolute-root)
+                                                         reclaim-live)))))))
 
 (defun fnn-lim-print-values (root)
   "With no process running, `status' prints each live limit's three values
@@ -444,37 +437,33 @@ share this boundary, including standalone BP owners."
               (fnn-peer-flight-profile root))
             reclaim-live command replayp)))
 
-;; The whole reservation (books/heap-reservation.lisp
-;; fn-heap-reserve-operation-decide, HST-025, PKT-686): heap-figure's heap for
-;; the command ACTION names (the compaction verbs' operation figure, every
-;; other command's fn-heap-reserve-decide), then the thread stacks the node's
-;; threads reserve beside it; the launcher passes `--control-stack-size KB'
-;; too. The explicit cold-pool extension adds heap and persistent executor
-;; native storage to this same observed machine decision. DEFAULT adds the
-;; selected fixed backing only for a served run, before output allocation;
-;; ACL2 chooses both the scope and the reservation.
-(defun fnn-heap-extend-reservation (base action cold-resources output-resources root core machine
-                                    profile observed &optional peer reclaim-live bp-terms)
-  "The same policy extensions for the launch probe and next-run diagnostics.
-PROFILE and OBSERVED are the base decision's: the served run's figure holds
-the owner's protected runtime for that observed store (books/page-read-startup.lisp
-fn-prstartup-launch-admits-owner-protected).  The live reclaim's reserve (the
-operator's opt-in, `[resources] reclaim_live', books/reclaim-reservation.lisp)
-extends the store decision first, so the cold and output allowances are added
-to a space that already holds it."
-  (fnn-core 'fn-orv-extend-reservation
-            (fnn-core 'fn-bph-extend-reservation
-            (fnn-core 'fn-pfr-extend-operation-reservation
-                      (fnn-core 'fn-prstartup-extend-operation-reservation
-                                (fnn-core 'fn-crv-extend-reservation
-                                          (fnn-core 'fn-rrv-extend-reservation base reclaim-live
-                                                    profile observed core machine)
-                                          cold-resources core machine)
-                                action cold-resources root (fnn-core 'fn-pio-direct-workers)
-                                (fnn-extent-cache-limit) core machine profile observed)
-                      action peer core machine)
-            bp-terms core machine)
-            output-resources core machine))
+;; THE SERVED RUN'S LAUNCH (L-RUN-LAUNCH; books/heap-command.lisp fn-mo-serve-decide): the
+;; dynamic space the run's LIMIT needs (the least resident observation less the pools the run funds:
+;; DEFAULT's or the cold policy's, the output pool's, the peer flight's, and a BP served command's
+;; session capacity, books/bp-session-profile.lisp fn-bpsp-node-capacity), plus those pools, refused
+;; by name when the pools exceed the least resident observation, the observed store's reopen exceeds
+;; LIMIT, or the reservation exceeds the address space; a BP command whose session terms price
+;; nothing is refused by name.  The run's capacity C'
+;; is its configure's (host/owner-host.lisp fn-owner-memory-configure).  Answers (values DECISION
+;; TOTALS IMG CONFIG EXTENT): the totals, image and configuration octets the decision read.
+(defun fnn-heap-serve-decision (profile root core cold-resources output-resources peer reclaim-live
+                                &optional bp-terms)
+  (multiple-value-bind (totals extent) (fnn-heap-charged-totals root profile)
+    (let* ((img (and profile (fnn-heap-img-observation profile)))
+           (config (fnn-heap-config-octets root profile))
+           (bp-need (and bp-terms
+                         (fnn-core 'fn-bpsp-node-capacity (first bp-terms) (second bp-terms)
+                                   (third bp-terms) (fourth bp-terms))))
+           (pools (+ (fnn-core 'fn-mo-serve-pools profile cold-resources output-resources peer
+                               (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit) root)
+                     (or bp-need 0))))
+      (values (if (and bp-terms (null bp-need))
+                  (list :refused :invalid-bp-session-terms 0 0)
+                (fnn-core 'fn-mo-serve-decide profile img +fnn-owner-service-nursery-octets+
+                          reclaim-live cold-resources config (fnn-heap-resident-observations)
+                          (fnn-heap-address-observations) core +fnn-gc-nursery-octets+ totals pools
+                          (fnn-core 'fn-mo-serve-pool-threads cold-resources peer)))
+              totals img config extent))))
 
 ;; What the model reads beside today's observations (books/heap-command.lisp):
 ;; the resident observations (physical memory, memory.max) apart from the
@@ -627,26 +616,29 @@ one protected history boundary)."
   #+gencgc sb-vm:gencgc-card-bytes
   #-gencgc nil)
 
-;; The command's decision (books/heap-command.lisp fn-heap-command-decide) and
-;; what it read: (values DECISION TOTALS IMG CONFIG-OCTETS CARD EXTENT).
+;; The command's decision (books/heap-command.lisp fn-heap-command-decide; a served run's,
+;; fnn-heap-serve-decision) and what it read: (values DECISION TOTALS IMG CONFIG-OCTETS CARD EXTENT).
 (defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources root peer reclaim-live
                              bp-terms command replayp)
   (let* ((core (fnn-heap-image-observation))
-         (machine (fnn-heap-observations))
-         (class (fnn-core 'fn-heap-command-growth action command replayp))
-         (reads (eq class :reads))
-         (observation (and reads (multiple-value-list (fnn-heap-charged-totals root profile))))
-         (totals (first observation))
-         (extent (second observation))
-         (img (and reads profile (fnn-heap-img-observation profile)))
-         (config (and (member class '(:reads :header)) (fnn-heap-config-octets root profile)))
-         (card (and reads (fnn-heap-card-octets)))
-         (base (fnn-core 'fn-heap-command-decide action command replayp profile core
-                         +fnn-gc-nursery-octets+ machine connections observed totals img config card
-                         (fnn-heap-resident-observations) (fnn-heap-address-observations))))
-    (values (fnn-heap-extend-reservation base action cold-resources output-resources root core machine
-                                         profile observed peer reclaim-live bp-terms)
-            totals img config card extent)))
+         (class (fnn-core 'fn-heap-command-growth action command replayp)))
+    (if (and (eq class :serves) profile)
+        (multiple-value-bind (decision totals img config extent)
+            (fnn-heap-serve-decision profile root core cold-resources output-resources peer reclaim-live
+                                     bp-terms)
+          (values decision totals img config nil extent))
+      (let* ((machine (fnn-heap-observations))
+             (reads (eq class :reads))
+             (observation (and reads (multiple-value-list (fnn-heap-charged-totals root profile))))
+             (totals (first observation))
+             (extent (second observation))
+             (img (and reads profile (fnn-heap-img-observation profile)))
+             (config (and (member class '(:reads :header)) (fnn-heap-config-octets root profile)))
+             (card (and reads (fnn-heap-card-octets))))
+        (values (fnn-core 'fn-heap-command-decide action command replayp profile core
+                          +fnn-gc-nursery-octets+ machine connections observed totals img config card
+                          (fnn-heap-resident-observations) (fnn-heap-address-observations))
+                totals img config card extent)))))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")

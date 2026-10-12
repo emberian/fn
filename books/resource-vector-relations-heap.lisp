@@ -1,6 +1,7 @@
 ; fn: ONE accounting, the heap and connection projections (lane
 ; resource-ledger, 2026-10-01): the launcher's reservation (PRF-198,
-; HST-013) and the connection budget (PRF-223) as funded roots of the
+; HST-013) and the run's connection capacity (PRF-223: the memory gate's C'
+; since L-RUN-LAUNCH) as funded roots of the
 ; resource vector.  Split from books/resource-vector-relations.lisp because
 ; these two books' include closure is the owner's (fifty-odd books), which
 ; the farm certifies; the relations the served path will cite first (Codex's
@@ -9,7 +10,7 @@
 (in-package "ACL2")
 (include-book "resource-vector")
 (include-book "heap-reservation")
-(include-book "connection-budget")
+(include-book "admission-memory")
 
 (local (include-book "arithmetic-5/top" :dir :system))
 
@@ -45,29 +46,27 @@
                             fn-bs-profile-admittedp)))))
 
 ; -----------------------------------------------------------------------------
-; PRF-223's connection budget funds the root's :resident coordinate for
-; CAPACITY connections.
+; PRF-223: the run's capacity C' (books/admission-memory.lisp fn-adm-capacity,
+; the most connections at which the memory gate holds at the resident LIMIT)
+; funds the root's :resident coordinate: the serving sum at C' is within LIMIT.
 
-(defun fn-rv-connections-root (capacity machine dynamic hneed core threads stack hs article tlsp)
-  (declare (xargs :guard t))
-  (let ((octets (fn-cbud-resident-octets dynamic hneed core threads stack hs article tlsp
-                                         capacity)))
-    (fn-rv-make (list (nfix machine) 0 0 0 0 0 0 0 0)
+(defun fn-rv-connections-root (profile img cfg limit tot)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((octets (fn-mm-sum profile img
+                           (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg limit tot)))
+                           tot)))
+    (fn-rv-make (list (nfix limit) 0 0 0 0 0 0 0 0)
                 (list octets 0 0 0 0 0 0 0 0)
                 (list (list* 1 0 (list octets 0 0 0 0 0 0 0 0))))))
 
-(defthm fn-rv-connection-budget-funds-the-root
-  (let ((d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack hs
-                               article tlsp)))
-    (implies (equal (car d) :hold)
-             (and (fn-rv-okp (fn-rv-connections-root capacity machine dynamic hneed core threads
-                                                     stack hs article tlsp))
-                  (fn-rv-fundedp (fn-rv-connections-root capacity machine dynamic hneed core
-                                                         threads stack hs article tlsp)))))
-  :hints (("Goal" :use fn-cbud-run-decide-holds-the-capacity
+(defthm fn-rv-connection-capacity-funds-the-root
+  (implies (posp (fn-adm-capacity profile img cfg limit tot))
+           (and (fn-rv-okp (fn-rv-connections-root profile img cfg limit tot))
+                (fn-rv-fundedp (fn-rv-connections-root profile img cfg limit tot))))
+  :hints (("Goal" :use fn-adm-capacity-fits
            :in-theory (e/d (fn-rv-okp fn-rv-bankp fn-rv-fundedp fn-rv-outstanding
                             fn-rv-row-demand fn-rv-rowsp fn-rv-rowp fn-rv-vectorp
-                            fn-rv-nats-p fn-rv-below fn-rv-plus fn-rv-keep fn-rv-drop)
-                           (fn-cbud-run-decide-holds-the-capacity fn-cbud-run-decide
-                            fn-cbud-resident-octets fn-cbud-limit fn-cbud-held-bound
-                            fn-cbud-base-fitsp)))))
+                            fn-rv-nats-p fn-rv-below fn-rv-plus fn-rv-keep fn-rv-drop
+                            fn-mm-gate-p)
+                           (fn-adm-capacity-fits fn-adm-capacity fn-adm-cfg-at fn-mm-sum
+                            fn-mm-reopen-need)))))

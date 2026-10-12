@@ -98,7 +98,7 @@ calls `fn-owner-page-read-install-baseline` and supplies the data needed for
 keys `cold_heap_octets`, `cold_workers`, `cold_descriptors`, `cold_read_ids`
 and `cold_file_ids` are parsed by `books/native-config.lisp`, but an explicit
 cold policy is refused as `:unpriced-complete-cold-profile` by
-`fn-prstartup-default-plan` in `books/page-read-startup.lisp`; they are not
+`fn-prstartup-default-plan-with-peer` in `books/peer-flight-startup.lisp`; they are not
 an enable switch. Leave them absent. If the running image does not observe
 a funded default pool, W is NOT-MEASURED with that reason, never forced by
 changing a pool mode in the hook. A funded pool alone does not prove the

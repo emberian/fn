@@ -296,11 +296,19 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Not bounded: every allocation site that does not acquire a credit.
 
 **M7** -- a served connection's memory, named.
-- Bounded: per-connection native octets (buffers, the TLS context) times the
-  configured capacity against the machine; a capacity the machine cannot
-  hold is refused by name at start, and a read step's octets are bounded.
-- Mechanism: `fn-cbud-run-decide`; the refusal line
-  `refused connections-exceed-memory capacity=... per-connection=K KiB`.
+- Bounded: per-connection heap and native octets (buffers, the TLS context)
+  are terms of the memory equation, and the run's capacity is the most
+  connections at which its gate holds at the resident limit (C'); a run no
+  connection fits is refused by name at start, a live raise the gate does not
+  hold is refused by name, and a read step's octets are bounded.
+- Mechanism: `fn-adm-capacity` (`books/admission-memory.lisp`) at the run's
+  configure and after each live reconfiguration (`host/owner-host.lisp`
+  `fn-owner-memory-configure`, `fn-owner-memory-recapacity`,
+  `fn-owner-memory-candidate-refusal`); the lines `memory capacity=C' of C
+  bound-by=TERM ...` and `refused memory-cannot-hold-the-store capacity=0
+  ...`, and the live refusal `connections-exceed-memory`.  Since
+  L-RUN-LAUNCH; before it, `fn-cbud-run-decide`'s own resident model (the
+  profile's whole store and every thread's runtime against the machine).
 - Evidence: THEOREM over MEASURED constants (PRF-223): the theorem's
   arithmetic is proved; its inputs (`*fn-cbud-tls-octets*` 128 KiB; 1,458 KiB
   a connection with TLS, 1,330 KiB without) are measurements of the runtime's
@@ -330,14 +338,16 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Not bounded: all three, until measured; then bounded only as measured.
 
 **M9** -- the page pool (P12).
-- Bounded: under an explicit cold-resource policy the launch decision adds
-  the pool's heap and its executor threads' stacks and runtime to the
-  reservation of **M1**, and refuses by name when the machine cannot hold
-  them.
-- Mechanism: `fn-crv-extend-reservation` (`books/cold-read-reservation.lisp`),
-  called by `fnn-heap-reservation` (`host/native/heap.lisp`).
-- Evidence: THEOREM (`fn-crv-accepted-launch-fits-observed-machine`; no
-  proof id registered). DEFAULT now has a partial startup consumer:
+- Bounded: under an explicit cold-resource policy the served run's launch
+  funds the pool as one of its pools: the resident limit excludes its budget
+  and the dynamic space adds it, its executor threads are the launch's pool
+  threads, and the whole reservation is held to the address-space
+  observations.
+- Mechanism: `fn-mo-serve-pools`, `fn-mo-serve-decide`
+  (`books/heap-command.lisp`), called by `fnn-heap-serve-decision`
+  (`host/native/heap.lisp`); L-RUN-LAUNCH.
+- Evidence: THEOREM (`fn-mo-serve-holds-every-admitted-store`,
+  `fn-mo-serve-launch-fits-the-address-space`). DEFAULT now has a partial startup consumer:
   `fnn-owner-page-read-startup` installs ACL2's admitted plan and calls
   `fnn-extent-pool-storage-start`, prepares the guard cache and starts the
   executor before `fnn-owner-install` opens recovery files. The plan protects
@@ -1000,9 +1010,9 @@ not on this tree yet; its citations are checked once they land.
 | M5 | `books/owner-article-slots`: `fn-oas-read-span-admits-within-the-slots`; `books/owner-article-held`: `fn-oah-read-span-leaves-the-others-article-mode`; `books/heap-store-figure`: `fn-heap-article-slots-are-held`, `fn-heap-article-slots-bounds` | PRF-377 | `planning/records/zero-copy-commit-2026-09-28.md` |  |
 | M5b | `books/owner-article-slots`: `fn-oas-refusal-line-follows-the-disk-unfolds` | PRF-377 | `planning/records/credits-stall-2026-09-28.md` |  |
 | M6 | `books/memory-credits`: `fn-mcr-transitions-keep-funded`, `fn-mcr-acquire-refuses-exactly-past-the-budget`, `fn-mcr-grow-within-the-reserve-is-admitted`, `fn-mcr-overdraw-is-within-the-completion-reserve`; `books/owner-credits`: `fn-mca-read-span-keeps-funded`, `fn-mca-commit-steps-keep-funded`, `fn-mca-initial-funds-exactly-the-articles` | PRF-380 | `planning/records/f8-reservation-2026-09-28.md`, `planning/records/credits-2026-09-28.md` |  |
-| M7 | `books/connection-budget`: `fn-cbud-run-decide-refuses-exactly-past-the-limit`, `fn-cbud-deltas-refusal-keeps-the-machine-held`; `books/connection-read-quantum`: `fn-cbud-step-read-octets-is-bounded` | PRF-223 | `planning/records/connection-multiplexing-2026-09-26.md` |  |
+| M7 | `books/admission-memory`: `fn-adm-capacity-fits`, `fn-adm-capacity-is-the-most`; `books/connection-read-quantum`: `fn-cbud-step-read-octets-is-bounded`; `books/resource-vector-relations-heap`: `fn-rv-connection-capacity-funds-the-root` | PRF-223 | `planning/records/connection-multiplexing-2026-09-26.md` |  |
 | M8 | none (measured or open) | none | `planning/records/f8-reservation-2026-09-28.md` |  |
-| M9 | `books/cold-read-reservation`: `fn-crv-accepted-launch-fits-observed-machine` | none | none |  |
+| M9 | `books/heap-command`: `fn-mo-serve-holds-every-admitted-store`, `fn-mo-serve-launch-fits-the-address-space` | none | none |  |
 | M10 | none (measured or open) | none | none |  |
 | M11 | `books/owner-obligation-state`: `fn-owner-install-keeps-the-obligation-view`, `fn-owner-open-keeps-the-obligation-view`; `books/heap-figure`: `fn-heap-small-run-base-of-an-empty-store` | PRF-198 | none |  |
 | W1 | `books/wire`: `fn-wire-feed-byte-retained-input-is-bounded` | PRF-218 | none |  |

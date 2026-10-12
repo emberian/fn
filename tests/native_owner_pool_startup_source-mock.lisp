@@ -283,7 +283,12 @@
 (defun fnn-heap-image-observation () '(54321 . 1234))
 (defun fnn-heap-rlimit (resource) (assert (= resource #+linux 7 #-linux 8)) 1024)
 (defun fnn-extent-cache-limit () 32)
-(defun fnn-heap-observations () '(8589934592))
+;; the resident limits the restated protected runtime reads (the run's LIMIT,
+;; books/peer-flight-startup.lisp fn-prstartup-serve-limit) and the address-
+;; space limits the peer grant holds its reservation to (L-RUN-LAUNCH); the
+;; machine's comparison is retired, so it is never observed here.
+(defun fnn-heap-resident-observations () '(268435456))
+(defun fnn-heap-address-observations () '(1153433600))
 ;; The store on disk as the launcher's probe observes it (cold-start, 10-04).
 (defun fnn-heap-history-observation (root profile)
   (assert (and (equal root "/scratch") (eq profile :profile))) '(4096 . 2))
@@ -291,11 +296,12 @@
   (case name
     (fn-pio-direct-workers 4)
     (fn-prstartup-default-plan-with-peer
-     (assert (equal (cdr args) (append '(1234 :profile (54321 . 1234) 1048576 nil nil 2 "/scratch" 4 32 1024) (list *peer-policy* '(4096 . 2)))))
+     (assert (equal (cdr args) (append '(1234 :profile (54321 . 1234) 1048576 nil nil 2 "/scratch" 4 32 1024) (list *peer-policy* '(4096 . 2) '(268435456)))))
      (assert (plusp (first args)))
      (push :preflight *events*) *plan*)
     (fn-prstartup-peer-native-grant
-     (assert (equal (cdr args) (list :profile '(54321 . 1234) 1048576 nil 2 *plan* *peer-policy* '(8589934592) '(4096 . 2))))
+     (assert (equal (cdr args) (list :profile '(54321 . 1234) 1048576 nil 2 *plan* *peer-policy* '(1153433600) '(4096 . 2)
+                                     4 32 "/scratch" '(268435456))))
      (push :peer-check *events*) *peer-grant*)
     (fn-prstartup-peer-native-refusal-line "peer native reservation not held")
     (fn-prstartup-status (first *plan*))

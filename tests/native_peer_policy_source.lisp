@@ -27,12 +27,15 @@
 ;;; ---- derived stubs: END ----
 (defmacro verify-guards (&rest args) (declare (ignore args)) nil)
 (defparameter *fn-rl-word-max* (1- (expt 2 64)))
+(defun true-list-fix (x) (if (consp x) (cons (car x) (true-list-fix (cdr x))) nil))
+(load "books/profile-limits.lisp")
+(load "books/cold-read-layout.lisp")
+(load "books/decoded-worker-backing.lisp")
 (selected-source "books/heap-store-figure.lisp" '(*fn-heap-nursery-least-octets* fn-heap-nursery-trigger fn-heap-with-nursery fn-heap-grow-runtime-dynamic))
 (selected-source "books/peer-flight-reservation.lisp"
- '(fn-pfr-at fn-pfr-slots fn-pfr-bookkeeping fn-pfr-fixed-backing fn-pfr-policy-p
-   fn-pfr-extend-reservation))
-(selected-source "books/peer-flight-startup.lisp"
- '(fn-pfr-operation-observes-p fn-pfr-extend-operation-reservation))
+ '(fn-pfr-at fn-pfr-slots fn-pfr-bookkeeping fn-pfr-fixed-backing fn-pfr-policy-p))
+(selected-source "books/peer-flight-startup.lisp" '(fn-pfr-operation-observes-p))
+(selected-source "books/heap-command.lisp" '(fn-mo-serve-pool-threads))
 (selected-source "books/cbor.lisp" '(fn-cbor-octetp fn-cbor-octet-listp))
 (load "books/peer-u64-codec.lisp")
 (selected-source "books/peer-flight-profile.lisp"
@@ -55,7 +58,10 @@
 (defun fnn-core (name &rest args)
   (case name
     ((fn-pfp-file-name fn-pfp-read-bound fn-pfp-read fn-pfp-refusal-line fn-pfr-policy-p
-      fn-pfr-operation-observes-p fn-pfr-extend-operation-reservation)
+      fn-pfr-operation-observes-p)
+     (apply (symbol-function name) args))
+    (fn-mo-serve-pool-threads
+     (push (list :pool-threads (apply (symbol-function name) args)) *calls*)
      (apply (symbol-function name) args))
     (otherwise (apply *heap-core* name args))))
 (defparameter *policy* '(16777216 67108864 2 1 8388608 4096))
@@ -71,7 +77,8 @@
          (assert (null (fnn-peer-flight-profile root)))
          (write-bytes path (fn-pfp-write *policy*))
          (assert (equal (fnn-peer-flight-profile root) *policy*))
-         ; Full launcher caller propagates the exact policy and grows threads.
+         ; Full launcher caller propagates the exact policy: the served run's
+         ; pools carry it and its workers are the launch's pool threads.
          (let ((original (symbol-function 'fnn-heap-command-profile-base)))
            (unwind-protect
                 (progn
@@ -82,9 +89,11 @@
                                          (fnn-heap-command-profile '("operator" "CONFIG" "run"))))
                                  *policy*)))
              (setf (symbol-function 'fnn-heap-command-profile-base) original)))
-         (let ((decision (fnn-heap-reservation :profile 4 :run nil nil nil root *policy*)))
-           (assert (> (second decision) 257))
-           (assert (= (sixth decision) 17)))
+         (let ((*calls* nil))
+           (fnn-heap-reservation :profile 4 :run nil nil nil root *policy*)
+           (assert (equal (fourth (call-of *calls* :pools)) *policy*))
+           (assert (equal (call-of *calls* :pool-threads) (list (fn-pfr-at 3 *policy*))))
+           (assert (equal (car (last (call-of *calls* :serve))) (fn-pfr-at 3 *policy*))))
          (dolist (bytes (list '(70 78) (append (fn-pfp-write *policy*) '(0))
                              (make-list 54 :initial-element 0)))
            (write-bytes path bytes)

@@ -9473,13 +9473,15 @@ the caller joins any partial executor before relinquishing run authority."
                          (fnn-extent-cache-limit)
                          ;; OS observation, not a profile/data ceiling. Linux
                          ;; numbers NOFILE7; Darwin and the BSDs number it8.
-                         (fnn-heap-rlimit #+linux 7 #-linux 8) peer observed))
+                         (fnn-heap-rlimit #+linux 7 #-linux 8) peer observed
+                         (fnn-heap-resident-observations)))
          (peer-grant
            (when peer
              (fnn-core 'fn-prstartup-peer-native-grant
                        (sb-ext:dynamic-space-size) profile core (fnn-gc-nursery-octets)
-                       output-resources max-connections plan peer (fnn-heap-observations)
-                       observed))))
+                       output-resources max-connections plan peer (fnn-heap-address-observations)
+                       observed (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit) root
+                       (fnn-heap-resident-observations)))))
     (case (fnn-core 'fn-prstartup-status plan)
       (:admitted
        (unless (fnn-core 'fn-prstartup-planp plan)

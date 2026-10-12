@@ -136,7 +136,6 @@
 (include-book "store-log-open-scan")
 (include-book "bp-heap-command")
 (include-book "cold-read-reservation")
-(include-book "reclaim-reservation")
 (include-book "resource-output")
 (include-book "served-plan-line-buffer")
 (include-book "mux-accept-slot")

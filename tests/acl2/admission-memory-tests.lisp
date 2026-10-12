@@ -443,3 +443,66 @@
                (:conclusion (unsigned-byte-p 64 (+ count n 1)))
                ((count (- *adt-u64-top* 1)) (n 1))
                :fault "a decision with no spare handle: the batch that ends at the largest u64 count would be called one handle short")))
+
+; L-RUN-LAUNCH (PRF-1268's statement since the connection budget retired): the gate's handshake allowance
+; is the live limit or the handshakes still in flight, the larger.  Witness: a TLS run whose limit was
+; lowered to 4 with 12 handshakes in flight.  Mutation: the live limit alone, which releases the eight
+; still-active handshakes' scratch.
+(defconst *admt-hs-cfg* '(32 t 8388608 8388608 nil 0 0 4 nil 64 nil nil 0))
+(defkeystone admt-holding-handshakes-charges-every-handshake
+  (<= (* (nfix h) (if (fn-mm-cfg-tlsp cfg) *fn-cbud-handshake-scratch-octets* 0))
+      (fn-cbud-handshake-octets (fn-mm-cfg-tlsp (fn-adm-cfg-holding-handshakes cfg h))
+                                (fn-mm-cfg-handshakes (fn-adm-cfg-holding-handshakes cfg h))))
+  :id "PRF-1268"
+  :restates fn-adm-cfg-holding-handshakes-charges-every-handshake
+  :subject fn-adm-cfg-holding-handshakes
+  :witness ((cfg *admt-hs-cfg*) (h 12))
+  :mutations ((the-live-limit-alone
+               (:conclusion (<= (* (nfix h) (if (fn-mm-cfg-tlsp cfg) *fn-cbud-handshake-scratch-octets* 0))
+                                (fn-cbud-handshake-octets (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
+               ((cfg *admt-hs-cfg*) (h 12))
+               :fault "a lowered limit releases the still-active handshakes' scratch (the held record's job before L-RUN-LAUNCH)"))
+  :hints (("Goal" :by fn-adm-cfg-holding-handshakes-charges-every-handshake)))
+
+; K-RUN-LAUNCH: the run's capacity is found by halving, not by walking from C.  At
+; C = 4,000,000 the walk spends C - C' + 1 gate evaluations (the owner was killed
+; walking it at configure); the search spends at most (+ 2 (integer-length C)).
+; Nothing is pinned: C' is derived by the search and by the walk, and the two are
+; compared, and the evaluations are counted by a logic-only twin of the search.
+(defconst *adt-c-4m* 4000000)
+(defconst *adt-cfg-4m* (fn-adm-cfg-at *adt-cfg* *adt-c-4m*))
+
+(defun adt-search-count (profile img cfg limit tot lo hi)
+  (declare (xargs :guard t :verify-guards nil :measure (nfix (- (nfix hi) (nfix lo)))
+                  :hints (("Goal" :in-theory (disable fn-adm-search-mid fn-mm-gate-p fn-adm-cfg-at)
+                           :use ((:instance fn-adm-search-mid-bounds))))))
+  (if (< (nfix lo) (nfix hi))
+      (let ((r (if (fn-mm-gate-p profile img (fn-adm-cfg-at cfg (fn-adm-search-mid lo hi)) limit tot)
+                   (adt-search-count profile img cfg limit tot (1+ (fn-adm-search-mid lo hi)) hi)
+                 (adt-search-count profile img cfg limit tot lo (fn-adm-search-mid lo hi)))))
+        (cons (car r) (1+ (cdr r))))
+    (cons (if (zp lo) nil (1- lo)) 0)))
+
+(defconst *adt-search-4m*
+  (fn-adm-capacity *adt-p* *adt-img* *adt-cfg-4m* *adt-230m* *adt-empty*))
+(defconst *adt-count-4m*
+  (adt-search-count *adt-p* *adt-img* *adt-cfg-4m* *adt-230m* *adt-empty* 0 (1+ *adt-c-4m*)))
+; the twin counts the search it twins
+(assert-event (equal (car *adt-count-4m*) *adt-search-4m*))
+; the search found a capacity, below the configured 4,000,000 (the limit binds)
+(assert-event (and (natp *adt-search-4m*) (< *adt-search-4m* *adt-c-4m*)))
+; the gate holds at C' and fails at C' + 1 (the walk's C', by antitonicity)
+(assert-event (fn-mm-gate-p *adt-p* *adt-img* (fn-adm-cfg-at *adt-cfg-4m* *adt-search-4m*) *adt-230m* *adt-empty*))
+(assert-event (not (fn-mm-gate-p *adt-p* *adt-img* (fn-adm-cfg-at *adt-cfg-4m* (1+ *adt-search-4m*))
+                                 *adt-230m* *adt-empty*)))
+; the walk answers the same
+(assert-event (equal (fn-adm-capacity-walk *adt-p* *adt-img* *adt-cfg-4m* *adt-230m* *adt-empty*)
+                     *adt-search-4m*))
+; and the search spent at most (+ 2 (integer-length C)) gate evaluations; each descent is one gate
+; evaluation and the closing step evaluates none
+(assert-event (<= (cdr *adt-count-4m*) (+ 2 (integer-length *adt-c-4m*))))
+; no capacity at all is also found in the same bound
+(assert-event (null (fn-adm-capacity *adt-p* *adt-img* *adt-cfg-4m* *adt-128m* *adt-empty*)))
+(assert-event (<= (cdr (adt-search-count *adt-p* *adt-img* *adt-cfg-4m* *adt-128m* *adt-empty*
+                                            0 (1+ *adt-c-4m*)))
+                  (+ 2 (integer-length *adt-c-4m*))))

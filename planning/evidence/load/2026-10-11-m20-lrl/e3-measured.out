@@ -1,0 +1,6 @@
+e3 (hbox, no cgroup, fn-core 3119, overrides as e2): MemTotal 126288 MiB, LIMIT = MemTotal - pools,
+--dynamic-space-size 126370MB: POST 240, ARTICLE 220
+VmHWM: 237492 kB VmRSS: 223932 kB RssAnon: 155184 kB RssFile: 68748 kB
+memory capacity=31 of 31 bound-by=configured sum=357 MB limit=126284 MB
+(compare e2 fn-core 1024 MB: VmHWM 63504 kB RssAnon 17768 kB, sum=223 MB): SBCL's page and card
+tables grow with the dynamic space; the owner's configure observes them in its RssAnon (img).

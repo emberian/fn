@@ -125,22 +125,45 @@ class StartEveryPresetTests(unittest.TestCase):
         developer store owner (the pool or the store's protected runtime), the
         BP node (its session funding).
 
-        The store owner's probe once decided 3026 MB against about 1850 MB its
-        cold start needs (1700 refused for read headroom, 1600 for protected
-        runtime), so 85% still started.  Cause: the probe left OBSERVED nil,
-        which sizes the history by the profile's whole bound; the operator's
-        run observes the store on disk (host/native/heap.lisp
-        fnn-heap-command-profile-base, the owner clause), and now the owner's
-        probe does too (1934 MB).  Connections do not move the figure."""
+        Since L-RUN-LAUNCH the probe launches at the run's resident LIMIT
+        (books/heap-command.lisp fn-mo-serve-decide: the core's content and
+        LIMIT, plus the pools) and the owner protects the smaller of the
+        profile's store and that launch (books/peer-flight-startup.lisp
+        fn-prstartup-serve-protected).  Under a limit below the development
+        profile's store the protected runtime is the launch's own, so the
+        decided figure is tight again: every case runs under
+        `systemd-run --scope -p MemoryMax=1G' (probe and start alike); under a
+        generous limit the profile's bound is the smaller and 85% of the
+        decided heap still holds it (by design: the dynamic space is address
+        space, the gate keeps the resident set within LIMIT).
+
+        The BP node's pools (its session funding, about 1 GB at the
+        development profile) exceed 1G, so under 1G its probe refuses by name
+        (machine-cannot-hold-the-pools, books/heap-command.lisp K-L2p) and its
+        85% case runs under 2G."""
         node = self.node(DEVELOPER, "development")
-        for label, words, refusal in (
-                ("served run", self.served_words(node), b"cold startup refused"),
-                ("store owner", self.owner_words(node), b"cold startup refused"),
-                ("bp node", self.bp_words(node, free_port()), b"refused")):
+
+        def scope(limit):
+            return ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=" + limit,
+                    "-p", "MemorySwapMax=0"]
+        bp = self.bp_words(node, free_port())
+        held = run(scope("1G") + [str(DEVELOPER), "--fn", "heap", "--", *[str(w) for w in bp]],
+                   env=environment(), timeout=120)
+        self.assertNotEqual(held.returncode, 0)
+        self.assertIn("refused machine-cannot-hold-the-pools",
+                      held.stdout.decode("utf-8", "replace") + held.stderr.decode("utf-8", "replace"))
+        for label, words, refusal, limit in (
+                ("served run", self.served_words(node), b"cold startup refused", "1G"),
+                ("store owner", self.owner_words(node), b"cold startup refused", "1G"),
+                ("bp node", bp, b"refused", "2G")):
             with self.subTest(command=label):
-                heap, text = probe(DEVELOPER, words)
-                self.assertIsNotNone(heap, text)
-                process = start([str(DEVELOPER), "--fn", *[str(w) for w in words]], cwd=node.root,
+                done = run(scope(limit) + [str(DEVELOPER), "--fn", "heap", "--", *[str(w) for w in words]],
+                           env=environment(), timeout=120)
+                text = done.stdout.decode("utf-8", "replace")
+                figure = re.match(r"heap=(\d+) MB", text)
+                self.assertIsNotNone(figure, text + done.stderr.decode("utf-8", "replace"))
+                heap = int(figure.group(1))
+                process = start(scope(limit) + [str(DEVELOPER), "--fn", *[str(w) for w in words]], cwd=node.root,
                                 env=environment({"SBCL_USER_ARGS":
                                                  "--dynamic-space-size {}MB".format(heap * 85 // 100)}))
                 self.addCleanup(process.stop, 5)
@@ -148,7 +171,6 @@ class StartEveryPresetTests(unittest.TestCase):
                 self.assertNotEqual(status, 0)
                 self.assertNotIn(b"LISTENING", process.stdout.since(0))
                 self.assertIn(refusal, process.stderr.since(0))
-
 
 if __name__ == "__main__":
     unittest.main()

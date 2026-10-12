@@ -1,0 +1,8 @@
+L-FRESH, built fn-host at a99ba80e3 (hbox native-m20-lrl-2), fresh small store on /dev/shm, launcher's own probe:
+== fn-host 256
+probe: heap=510 MB profile=small machine=251 MB stack=1024 KB threads=36
+refused operator run refused memory-cannot-hold-the-store capacity=0 of 31 bound-by=store sum=345 MB limit=251 MB
+== fn-host 1024
+probe: heap=1278 MB profile=small machine=1019 MB stack=1024 KB threads=36
+POST 240, ARTICLE 220; VmHWM: 78544 kB VmRSS: 69044 kB RssAnon: 17956 kB RssFile: 51088 kB
+memory capacity=31 of 31 bound-by=configured sum=383 MB limit=1019 MB

@@ -1,5 +1,7 @@
 ; Teeth for books/memory-model (Builder M, landing 1, revision 3): each of
-; K1-K5 carries a defteeth bound to the book's theorem, with one reachable
+; K1-K5 is a defkeystone restating the book's theorem (K4 and K5 since
+; L-RUN-LAUNCH, item MEMORY-RUN-LAUNCH-MODEL: the run's configure reaches
+; them through fn-mo-run-decide), with one reachable
 ; witness (every hypothesis and the conclusion hold), per hypothesis a
 ; removal witness (the others hold, it fails, and the conclusion fails), and
 ; one checked mutation naming the fault it models.  The figures are the small preset's over the production
@@ -175,21 +177,41 @@
 ; conjunct runs under its guards); the removal: a configured 128 MiB the
 ; store does not fit is refused and states no limit.
 (assert-event (< *mmt-1g* (fn-mm-launch-reservation *mmt-1g* *mmt-core* *mmt-nur* *mmt-cfg1* *mmt-p*)))
-(defteeth fn-mm-launch-holds-the-store-and-the-reservation
-  :claim (let ((d (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
-                                core nursery obs))
-        (r (fn-mm-least-observation resident-obs))
-        (a (fn-mm-least-observation address-obs)))
-    (((launch (equal (car d) :launch)))
-             (and (natp (cadr d))
-                  (<= (fn-mm-sum profile img cfg obs) (cadr d))
-                  (<= (fn-mm-reopen-need profile img cfg obs) (cadr d))
-                  (implies (natp configured) (<= (cadr d) configured))
-                  (implies (natp r) (<= (cadr d) r))
-                  (implies (natp a)
-                           (<= (fn-mm-launch-reservation (cadr d) core nursery cfg profile) a))
-                  (<= (+ (fn-heap-core-dynamic core) (cadr d)) (caddr d)))))
+(defkeystone mmt-launch-holds-the-store-and-the-reservation
+  (implies (equal (car (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                            core nursery obs))
+                  :launch)
+           (and (natp (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                 core nursery obs)))
+                (<= (fn-mm-sum profile img cfg obs)
+                    (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                               core nursery obs)))
+                (<= (fn-mm-reopen-need profile img cfg obs)
+                    (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                               core nursery obs)))
+                (implies (natp configured)
+                         (<= (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                        core nursery obs))
+                             configured))
+                (implies (natp (fn-mm-least-observation resident-obs))
+                         (<= (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                        core nursery obs))
+                             (fn-mm-least-observation resident-obs)))
+                (implies (natp (fn-mm-least-observation address-obs))
+                         (<= (fn-mm-launch-reservation
+                              (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                         core nursery obs))
+                              core nursery cfg profile)
+                             (fn-mm-least-observation address-obs)))
+                (<= (+ (fn-heap-core-dynamic core)
+                       (cadr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                  core nursery obs)))
+                    (caddr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                                core nursery obs)))))
   :subject fn-mm-launch-decide
+  :id "PRF-10008"
+  :restates fn-mm-launch-holds-the-store-and-the-reservation
+  :hyps (launch)
   :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured *mmt-2g*)
             (resident-obs (list *mmt-1g*)) (address-obs (list *mmt-1t*)) (core *mmt-core*)
             (nursery *mmt-nur*) (obs *mmt-t1k*))
@@ -198,11 +220,17 @@
                     (obs *mmt-t1k*))
             :logical "a refused decision's second field is its reason, not a limit, so the conclusion's comparisons are evaluated for their logical value"))
   :mutations ((reservation-against-the-resident-limit
-               (:conclusion (<= (fn-mm-launch-reservation (cadr d) core nursery cfg profile) (cadr d)))
+               (:conclusion (<= (fn-mm-launch-reservation
+                                 (cadr (fn-mm-launch-decide profile img cfg configured resident-obs
+                                                            address-obs core nursery obs))
+                                 core nursery cfg profile)
+                                (cadr (fn-mm-launch-decide profile img cfg configured resident-obs
+                                                           address-obs core nursery obs))))
                ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured *mmt-2g*)
                 (resident-obs (list *mmt-1g*)) (address-obs (list *mmt-1t*)) (core *mmt-core*)
                 (nursery *mmt-nur*) (obs *mmt-t1k*))
-               :fault "a launch that compares the address-space reservation with a resident limit (L-FRESH's refusals at 256 MB and 1 GB)")))
+               :fault "a launch that compares the address-space reservation with a resident limit (L-FRESH's refusals at 256 MB and 1 GB)"))
+  :hints (("Goal" :by fn-mm-launch-holds-the-store-and-the-reservation)))
 
 ; K5.  A 1 GiB cgroup launches; removals: a 256 MiB cgroup the store does
 ; not pass the gate under, and a 1 GiB address-space limit under the
@@ -211,16 +239,19 @@
 ; the larger), which the launch refuses.
 (defconst *mmt-sum0* (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg0* *mmt-t1k*))
 (assert-event (< *mmt-sum0* *mmt-limit*))
-(defteeth fn-mm-launch-refuses-only-by-the-model
-  :claim (let ((limit (fn-mm-resident-limit configured resident-obs))
-        (a (fn-mm-least-observation address-obs)))
-    (((gate (fn-mm-gate-p profile img cfg limit obs))
-      (address (or (not (natp a))
-                   (<= (fn-mm-launch-reservation limit core nursery cfg profile) a))))
-             (equal (car (fn-mm-launch-decide profile img cfg configured resident-obs
-                                              address-obs core nursery obs))
-                    :launch)))
+(defkeystone mmt-launch-refuses-only-by-the-model
+  (implies (and (fn-mm-gate-p profile img cfg (fn-mm-resident-limit configured resident-obs) obs)
+                (or (not (natp (fn-mm-least-observation address-obs)))
+                    (<= (fn-mm-launch-reservation (fn-mm-resident-limit configured resident-obs)
+                                                  core nursery cfg profile)
+                        (fn-mm-least-observation address-obs))))
+           (equal (car (fn-mm-launch-decide profile img cfg configured resident-obs
+                                            address-obs core nursery obs))
+                  :launch))
   :subject fn-mm-launch-decide
+  :id "PRF-10009"
+  :restates fn-mm-launch-refuses-only-by-the-model
+  :hyps (gate address)
   :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured nil)
             (resident-obs (list *mmt-1g*)) (address-obs nil) (core *mmt-core*) (nursery *mmt-nur*)
             (obs *mmt-t1k*))
@@ -231,11 +262,13 @@
                      (resident-obs (list *mmt-1g*)) (address-obs (list *mmt-1g*)) (core *mmt-core*)
                      (nursery *mmt-nur*) (obs *mmt-t1k*))))
   :mutations ((gate-without-the-reopen
-               (:hypothesis gate (<= (fn-mm-sum profile img cfg obs) limit))
+               (:hypothesis gate (<= (fn-mm-sum profile img cfg obs)
+                                     (fn-mm-resident-limit configured resident-obs)))
                ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (configured *mmt-sum0*)
                 (resident-obs nil) (address-obs nil) (core *mmt-core*) (nursery *mmt-nur*)
                 (obs *mmt-t1k*))
-               :fault "a launch admitted by the serving sum alone, the store's reopen unchecked")))
+               :fault "a launch admitted by the serving sum alone, the store's reopen unchecked"))
+  :hints (("Goal" :by fn-mm-launch-refuses-only-by-the-model)))
 
 ; Beside the keystones: a resident observation of 0 is a limit, not an
 ; absent one (Codex F8); the tooth against today's decision; L-FRESH.
