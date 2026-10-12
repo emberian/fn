@@ -2,7 +2,8 @@
 ; Enrollment is recovered and reserved before either entry; the arena is a
 ; fresh real local stobj.  Equality of the complete diagnostic results checks
 ; every antecedent, actual staging (:prepared), a retained candidate, one
-; seal, and the conclusion.  Signature observations in the fixture remain
+; seal, and the conclusion for LV-2h/LV-3. LV-2k prepares and aborts without
+; sealing. Signature observations in the fixture remain
 ; within the fixture's documented crypto trust boundary.
 (in-package "ACL2")
 (include-book "../../books/reclaim-fold-contexts-live")
@@ -179,3 +180,39 @@
         '(:before (:retained t :okp t :generation 1) :composite t
           :row-generation 0 :changed t :phase :record-staged :after-okp nil
           :published-finished-okp nil)))
+
+(defun rfcllive-known-abort (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((oc (rfcllive-ready-owner fn-arena))
+         (s (fn-sbud-oc-store oc))
+         (row (fn-intern-row-at *rfcllive-wire* (fn-sn-keyring s)
+                               (fn-sn-keyring-generation s) (fn-arena-count fn-arena)))
+         (before (list :owner (fn-own-relation (fn-ocfg-owner oc))
+                       :retained (fn-osr-retainedp s) :record (fn-record-p *rfcllive-wire*)
+                       :okp (fn-rfcl-okp s fn-arena)
+                       :arena (fn-arena-p fn-arena) :count (fn-arena-count fn-arena))))
+    (mv-let (word oc2)
+      (fn-pout-prepare-article oc row 100
+        (fn-prc-refresh nil (fn-node-retention (fn-sn-node s))))
+      (mv-let (abort-word oc3) (fn-pout-known-abort oc2 fn-arena)
+        (mv (list :before before :word word
+                  :staged-phase (fn-sf-phase (fn-sn-files (fn-sbud-oc-store oc2)))
+                  :unsealed-okp (fn-rfcl-okp (fn-sbud-oc-store oc2) fn-arena)
+                  :abort-word abort-word
+                  :after-phase (fn-sf-phase (fn-sn-files (fn-sbud-oc-store oc3)))
+                  :after-okp (fn-rfcl-okp (fn-sbud-oc-store oc3) fn-arena)
+                  :count (fn-arena-count fn-arena))
+            fn-arena)))))
+
+(defun rfcllive-run-known-abort ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (answer fn-arena) (rfcllive-known-abort fn-arena) answer)))
+
+; LV-2k: all antecedents hold; the staged candidate has no sealed payload.
+; Known abort restores the invariant and leaves the real arena empty.
+(assert-event
+ (equal (rfcllive-run-known-abort)
+        '(:before (:owner t :retained t :record t :okp t :arena t :count 0)
+          :word :prepared :staged-phase :record-staged :unsealed-okp nil
+          :abort-word :aborted :after-phase :ready :after-okp t :count 0)))

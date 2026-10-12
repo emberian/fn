@@ -1,8 +1,13 @@
 ; Carry the open's reclaim fold-context premise through live reference entries
 ; and their atomic payload seals to the reclaim capture (Builder L14).
-; The native buffer POST has additional catalog conditions and a may-seal
-; gate; this book proves LV-2h's fn-pout reference entry, not that differing
-; catalog composition or the interval before its seal.  See the lane report.
+; The served POST is host/owner-host.lisp fn-owner-prepare-buffer: its row is
+; fn-apc-intern-row-at (fn-intern-row-at under fn-apc-p,
+; fn-apc-intern-row-at-is-reference) and its prepare
+; fn-ppc-pout-prepare-article-cat, equal to fn-pout-prepare-article under
+; fn-ocl-relation and fn-scj-invp (fn-ppc-pout-prepare-article-cat-of-live-
+; owner, books/post-prepare-catalog.lisp).  The host then either seals the
+; payload once (LV-2h) or, when the catalog's may-seal gate refuses, aborts
+; the staged row unsealed (host/native/owner.lisp:3562, LV-2k).
 ; LV-6 covers fn-sn-crash's choices only, not the separate rollback
 ; constructors.  fn-sn-set-keyring is outside the native composition
 ; (books/catalog-commit.lisp:751).
@@ -761,3 +766,130 @@
 (defthm fn-rfcl-crash-keeps-okp
   (implies (fn-rfcl-okp s fn-arena)
            (fn-rfcl-okp (fn-sn-crash s frontier-choice record-choice) fn-arena)))
+
+; A staged POST refused before its seal drops the candidate, retaining
+; exactly the prior records. Binding establishes the node state needed by
+; known-abort, even without a hypothesis about the supplied retention carry.
+(local
+ (defthm rfcl-bindsp-is-node-statep
+  (implies (fn-rcon-sn-record-bindsp node row) (fn-node-statep node))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories
+     '(fn-rcon-sn-record-bindsp fn-sn-record-bindsp fn-node-pending-matchesp)
+     (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-update-statep
+  (implies (and (fn-sn-statep s) (fn-sf-statep files) (fn-node-statep node))
+           (fn-sn-statep (fn-sn-update s files node)))
+  :hints (("Goal" :in-theory (union-theories
+     '(fn-sn-statep fn-sn-update fn-sn-fields-of-fn-sn-make-v6)
+     (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-stage-files-facts
+  (implies (fn-sf-statep files)
+           (and (fn-sf-statep (fn-pcar-stage-record files row))
+                (equal (fn-sf-records (fn-pcar-stage-record files row))
+                       (fn-sf-records files))
+                (implies (equal (fn-sf-phase files) :reserved)
+                         (equal (fn-sf-record-candidate (fn-pcar-stage-record files row))
+                                (if (fn-pcar-files-candidatep row files) row
+                                  (fn-sf-record-candidate files))))))
+  :hints (("Goal" :in-theory (union-theories
+    '(fn-pcar-stage-record fn-pcar-files-candidatep-is-candidatep
+      fn-sf-statep fn-sf-shape-fields-canonical fn-sf-phase-shapep fn-pcar-candidatep-is-candidatep
+      fn-sf-shapep-of-fn-sf-make-fields fn-sf-successes-of-fn-sf-make-fields-kept
+      (:e fn-sf-phasep) (:e fn-sf-frontier-phasep) (:e fn-sf-record-phasep)
+      (:e fn-sf-completion-phasep) fn-sf-scalars-of-fn-sf-make-fields
+      fn-sf-records-of-fn-sf-make-fields-kept)
+    (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-stage-noncandidate-is-no-op
+  (implies (not (fn-pcar-files-candidatep row files))
+           (equal (fn-pcar-stage-record files row) files))
+  :hints (("Goal" :in-theory (union-theories '(fn-pcar-stage-record)
+                                           (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-prc-prepared-facts
+  (let ((next (fn-prc-spc-prepare s row view carry)))
+    (implies (not (equal next s))
+             (and (fn-sn-statep next)
+                  (fn-sn-known-abort-enabledp next)
+                  (equal (fn-sf-records (fn-sn-files next))
+                         (fn-sf-records (fn-sn-files s))))))
+  :hints (("Goal"
+    :use ((:instance rfcl-bindsp-is-node-statep
+           (node (fn-prc-sn-prepare-node (fn-sn-node s) row view carry))))
+    :in-theory (union-theories
+     '(fn-prc-spc-prepare fn-sn-known-abort-enabledp
+       fn-cstp-sn-update-fields rfcl-update-statep
+       rfcl-stage-files-facts rfcl-stage-noncandidate-is-no-op fn-cstp-sn-statep-files
+       fn-rcon-sn-record-bindsp-is-sn-record-bindsp)
+     (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-pout-prepared-facts
+  (let* ((out (fn-pout-prepare-article oc row budget carry))
+         (s (fn-sbud-oc-store oc))
+         (next (fn-sbud-oc-store (mv-nth 1 out))))
+    (implies (equal (mv-nth 0 out) :prepared)
+             (and (fn-sn-known-abort-enabledp next)
+                  (equal (fn-sf-records (fn-sn-files next))
+                         (fn-sf-records (fn-sn-files s))))))
+  :hints (("Goal"
+    :use ((:instance fn-pout-store-of-psrv-prepare (record row))
+          (:instance rfcl-prc-prepared-facts (s (fn-sbud-oc-store oc))
+                     (view (fn-own-view (fn-ocfg-owner oc)))))
+    :in-theory (union-theories
+      '(fn-pout-prepare-article fn-pout-stagedp fn-psrv-refusal-kind fn-sbud-refusal-kind mv-nth car-cons cdr-cons
+        (:e zp) (:e binary-+) (:e unary--))
+      (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-abort-restores-records-okp
+  (implies (and (fn-rfcl-okp s fn-arena)
+                (fn-sn-known-abort-enabledp next)
+                (equal (fn-sf-records (fn-sn-files next))
+                       (fn-sf-records (fn-sn-files s))))
+           (fn-rfcl-okp (fn-sn-known-abort next) fn-arena))
+  :hints (("Goal"
+    :use ((:instance rfcl-fok-has-records (f (fn-sn-files s)) (h (fn-arena-count fn-arena)))
+          (:instance fn-pout-known-abort-reaches-ready (s next))
+          (:instance fn-snrt-known-abort-keeps-records (s next)))
+    :in-theory (union-theories
+      '(rfcl-okp-is-fok rfcl-fok rfcl-file-rows (:e fn-rfcl-pending-phasep))
+      (theory 'minimal-theory))))))
+
+(local
+ (defthm rfcl-pout-prepare-then-abort
+  (let* ((out (fn-pout-prepare-article oc row budget carry))
+         (ab (fn-pout-known-abort (mv-nth 1 out) fn-arena)))
+    (implies (and (fn-rfcl-okp (fn-sbud-oc-store oc) fn-arena)
+                  (equal (mv-nth 0 out) :prepared))
+             (fn-rfcl-okp (fn-sbud-oc-store (mv-nth 1 ab)) fn-arena)))
+  :hints (("Goal"
+    :use ((:instance rfcl-pout-prepared-facts)
+          (:instance rfcl-abort-restores-records-okp
+            (s (fn-sbud-oc-store oc))
+            (next (fn-sbud-oc-store (mv-nth 1 (fn-pout-prepare-article oc row budget carry))))))
+    :in-theory (union-theories
+      '(fn-pout-known-abort fn-pout-store-of-store-step fn-snrt-step
+        mv-nth car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--))
+      (theory 'minimal-theory))))))
+
+(local (in-theory (union-theories '(rfcl-pout-prepare-then-abort) (theory 'minimal-theory))))
+(defthm fn-rfcl-known-abort-after-prepare-keeps-okp
+  (let* ((s (fn-sbud-oc-store oc))
+         (row (fn-intern-row-at record (fn-sn-keyring s) (fn-sn-keyring-generation s)
+                                (fn-arena-count fn-arena)))
+         (out (fn-pout-prepare-article oc row budget carry))
+         (ab (fn-pout-known-abort (mv-nth 1 out) fn-arena)))
+    (implies (and (fn-own-relation (fn-ocfg-owner oc))
+                  (fn-osr-retainedp s)
+                  (fn-record-p record)
+                  (equal (mv-nth 0 out) :prepared)
+                  (fn-rfcl-okp s fn-arena))
+             (fn-rfcl-okp (fn-sbud-oc-store (mv-nth 1 ab)) fn-arena))))
