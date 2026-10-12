@@ -1624,6 +1624,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nov-column-window \
 	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
+	books/served-catalog-group-low-cost \
 	books/served-catalog-chain \
 	books/served-catalog-dispatch \
 	books/served-catalog-owner \
