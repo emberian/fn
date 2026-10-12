@@ -128,6 +128,19 @@ class StatementRouteTests(unittest.TestCase):
             with self.subTest(helper=helper), self.assertRaises(AssertionError):
                 native_cuts.verify_statement_commit_routes(self.WRAPPER + helper)
 
+    def test_refusal_wrapper_preserves_fencing_and_commit_arguments(self):
+        call = "(fnn-owner-identity-commit-or-word service event)"
+        helper = self.HELPER.replace("(fnn-owner-identity-commit service event)", call)
+        refusal = "(defun fnn-owner-identity-commit-or-word (service event) (handler-case (fnn-owner-identity-commit service event) (refused () :refused)))"
+        native_cuts.verify_statement_commit_routes(self.WRAPPER + helper + refusal)
+        for broken in (helper.replace("(fnn-owner-statement-committed service event", "(progn"),
+                       helper.replace(call, "(fnn-owner-identity-commit-or-word service other)")):
+            with self.subTest(helper=broken), self.assertRaises(AssertionError):
+                native_cuts.verify_statement_commit_routes(self.WRAPPER + broken + refusal)
+        with self.assertRaises(AssertionError):
+            native_cuts.verify_statement_commit_routes(
+                self.WRAPPER + helper + refusal.replace("commit service event", "commit service other"))
+
 
 class UnbalancedFormTests(unittest.TestCase):
     """PKT-345: an unbalanced form is located, never a bare StopIteration."""
