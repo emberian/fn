@@ -2395,6 +2395,13 @@ def source_events(forms, *, include_local: bool = True):
             yield form, origin
 
 
+def include_is_external(form: list) -> bool:
+    """ACL2's :dir nil (also ()) selects an ordinary local include."""
+    directory = keyword_plist(form[2:]).get(":dir")
+    return (directory is not None and directory != []
+            and not (isinstance(directory, Sym) and directory == "nil"))
+
+
 def record(book: Book, form: object, line: int, *, local: bool,
            suppressed: bool, generated: bool = False) -> None:
     name = head(form)
@@ -2480,7 +2487,7 @@ def record(book: Book, form: object, line: int, *, local: bool,
         book.verify_guards.append(str(form[1]))
         return
     if name == "include-book" and len(form) >= 2 and isinstance(form[1], str):
-        if ":dir" in keyword_plist(form[2:]):
+        if include_is_external(form):
             book.system_includes.append(form[1])
         else:
             book.includes.append(form[1])
@@ -4153,7 +4160,7 @@ def host_record(host: HostFile, form: object, line: int) -> None:
             host_record(host, item, line)
         return
     if name == "include-book" and len(form) >= 2 and isinstance(form[1], str):
-        if ":dir" not in keyword_plist(form[2:]):
+        if not include_is_external(form):
             host.includes.append(form[1])
         return
     if name in ("ld", "load") and len(form) >= 2 and isinstance(form[1], str):

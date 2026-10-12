@@ -73,6 +73,58 @@ class BookRootsCheckTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("books/nested/child.lisp is outside", output)
 
+    def review_shape(self, include, excluded=None):
+        """The reviewer's books/root -> books/target fixture shape."""
+        root = self.root / "review-shape"
+        (root / "books").mkdir(parents=True, exist_ok=True)
+        (root / "books/root.lisp").write_text('(in-package "ACL2")\n' + include + '\n')
+        (root / "books/target.lisp").write_text('(in-package "ACL2")\n')
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            rc = book_roots_check.main(root, roots=["books/root"],
+                                      excluded={} if excluded is None else excluded)
+        return rc, output.getvalue()
+
+    def test_reader_conditionals_are_unanalyzable_and_never_cover_the_target(self):
+        for marker in ("#+", "#-"):
+            with self.subTest(marker=marker):
+                rc, output = self.review_shape(
+                    marker + 'fn-review-feature-not-present\n(include-book "target")')
+                self.assertEqual(rc, 1, output)
+                self.assertIn("UNANALYZABLE: books/root.lisp:2: reader conditional", output)
+                self.assertIn("1 of 2 books/**/*.lisp are covered", output)
+
+    def test_dir_nil_covers_the_ordinary_local_include(self):
+        rc, output = self.review_shape('(include-book "target" :dir nil)')
+        self.assertEqual(rc, 0, output)
+        self.assertIn("2 of 2 books/**/*.lisp are covered", output)
+        self.assertIn("0 unanalyzable", output)
+
+    def test_make_event_include_is_unanalyzable_even_when_the_target_is_excluded(self):
+        # With the orphan excused, only the uncertain include can fail this.
+        rc, output = self.review_shape("(make-event '(include-book \"target\"))",
+                                       {"books/target.lisp": "fixture: parked target"})
+        self.assertEqual(rc, 1, output)
+        self.assertIn("UNANALYZABLE: books/root.lisp:2: make-event", output)
+        self.assertIn("1 of 2 books/**/*.lisp are covered", output)
+        self.assertIn("0 unlisted orphan(s); 1 unanalyzable", output)
+
+    def test_conditional_include_is_unanalyzable_even_when_the_target_is_excluded(self):
+        rc, output = self.review_shape('#+fixture-feature\n(include-book "target")',
+                                       {"books/target.lisp": "fixture: parked target"})
+        self.assertEqual(rc, 1, output)
+        self.assertIn("0 unlisted orphan(s); 1 unanalyzable", output)
+
+    def test_comment_string_and_quoted_include_controls_are_not_unanalyzable(self):
+        rc, output = self.review_shape(
+            '; #+feature (include-book "target")\n'
+            '#| (make-event \'(include-book "target")) |#\n'
+            '(value-triple "#+feature (include-book target)")\n'
+            '\'(make-event (include-book "target"))\n'
+            '(include-book "target")')
+        self.assertEqual(rc, 0, output)
+        self.assertIn("0 unanalyzable", output)
+
 
 if __name__ == "__main__":
     unittest.main()

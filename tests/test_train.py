@@ -1577,18 +1577,23 @@ from unittest import mock
 sys.path.insert(0, {str(REPO)!r})
 from tools import book_roots_check
 with mock.patch.object(book_roots_check.ledger, "ROOT", Path.cwd()):
-    sys.exit(book_roots_check.main(Path.cwd()))
+    sys.exit(book_roots_check.main(Path.cwd(), excluded={{}}))
 '''
         (self.work / "tools/book_roots_check.py").write_text(script)
         (self.work / "Makefile").write_text("ACL2_BOOKS =\n")
         (self.work / "books").mkdir()
         (self.work / "books/orphan.lisp").write_text("")
         self.commit(self.work, "orphan production book")
+        head = self.head()
+        (self.work / "build/train/box-step.json").write_text(
+            json.dumps({"sha": head, "ran_at": head, "box": "persvati"}))
         g = self.train("gate")
         self.assertNotEqual(g.returncode, 0, g.stdout + g.stderr)
         self.assertIn("books/orphan.lisp is outside", g.stdout)
         record = json.loads((self.work / "build/train/integrate__t1.json").read_text())
         self.assertEqual(record["gates"]["book_roots"]["rc"], 1)
+        self.assertTrue(all(gate["rc"] == 0 for name, gate in record["gates"].items()
+                            if name != "book_roots"), g.stdout + g.stderr)
 
     def test_gates_lists_book_roots(self):
         self.assertIn("book_roots", train.GATES)
