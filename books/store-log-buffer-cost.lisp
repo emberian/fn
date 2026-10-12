@@ -12,6 +12,8 @@
 (def-cost fn-lgb-slice-acc :unaccounted (unsigned-byte-p))
 (def-cost fn-lgb-slice :unaccounted (unsigned-byte-p))
 (def-cost fn-lgb-descriptor :unaccounted (fn-arx-attach-trailers-buffer))
+(def-cost fn-lgb-next-record
+  :unaccounted (mv-nth unsigned-byte-p fn-arx-attach-trailers-buffer))
 (def-cost fn-lgw-step-buf-count
   :unaccounted (fn-lgb-decide-count mv-nth fn-lgb-broken fn-lgb-trailer fn-lgb-next-fold-spans))
 (def-cost fn-lgw-step-buf-nf-count
@@ -21,5 +23,6 @@
 (def-cost-check fn-lgb-slice-acc)
 (def-cost-check fn-lgb-slice)
 (def-cost-check fn-lgb-descriptor)
+(def-cost-check fn-lgb-next-record)
 (def-cost-check fn-lgw-step-buf-count)
 (def-cost-check fn-lgw-step-buf-nf-count)

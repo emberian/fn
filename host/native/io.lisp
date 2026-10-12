@@ -7825,8 +7825,10 @@ buffer), and ACL2's step over the buffer (fn-lgw-step-buf-count,
 books/store-log-buffer.lisp: KEYSTONE fn-lgw-step-buf-count-is-step, the list
 step on the buffer's octets with its records answered by their count); each
 record the step takes (one, or a batch entry's several) is sliced from the
-buffer by ACL2's cursor one at a time (fn-lgb-span, fn-lgb-slice: KEYSTONES
-fn-lgb-span-records-are-the-records, fn-lgb-span-within-max), goes to SINK
+buffer by ACL2's fused cursor call one at a time (fn-lgb-next-record:
+KEYSTONES NR-S2 fn-lgb-next-record-yields-the-records, NR-S4
+fn-lgb-next-record-within-max; NR-S5
+fn-lgb-next-record-descriptor-is-the-attached-place names its extent place), goes to SINK
 and is not kept here.  One entry's octets at a time, never the segment (KEYSTONE fn-lgw-run-is-the-open: the
 records are the recovered kernel's committed records and the kernel is its
 fn-lgc-of).  At the stop, ACL2's probe of the rest of the segment
@@ -7867,34 +7869,26 @@ the open proceeds on (:complete, :torn or :repaired)."
                ;; COUNT: a rotation entry is taken with no record.
                (when (and took *fnn-log-stream-copy*)
                  (funcall *fnn-log-stream-copy* pos e (- (fnn-nat (fnn-core 'fn-lgw-pos next)) pos)))
-               ;; The step's COUNT records, one at a time by ACL2's cursor
-               ;; (fn-lgb-span from 42: KEYSTONE fn-lgb-span-records-are-the-
-               ;; records), each sliced from the buffer (fn-lgb-slice) only
-               ;; while SINK has it: at most MAX octets of list live
-               ;; (KEYSTONE fn-lgb-span-within-max).
+               ;; COUNT calls from 42, each returning one record and the next
+               ;; cursor (fn-lgb-next-record: NR-S2 yields-the-records,
+               ;; NR-S4 within-max). Only SINK holds the current record.
                (when took
                  (let ((i 42))
                    (dotimes (j (fnn-nat count))
                      (declare (ignorable j))
-                     (destructuring-bind (start len i2) (fnn-call 'fn-lgb-span i buf)
-                       (let ((record (fnn-core 'fn-lgb-slice start len buf)))
-                         (if *fnn-extent-file*
-                             ;; The full replay's extent seals (PRF-294): the
-                             ;; record's descriptor, its place in this entry with
-                             ;; the entry's COMMITMENT attached (ACL2's
-                             ;; fn-lgb-descriptor: KEYSTONE fn-lgb-descriptor-is-
-                             ;; the-attached-place, the place fn-arx-list-places
-                             ;; gives the record with fn-arx-attach-trailers-
-                             ;; buffer's trailer; lane extent-identity, PRF-994),
-                             ;; bound for the sink as *fnn-log-record-place*
-                             ;; (FILE . DESCRIPTOR), or NIL.
-                             (let* ((desc (fnn-core 'fn-lgb-descriptor pos start len buf))
-                                    (*fnn-log-record-place*
-                                      (and desc (cons *fnn-extent-file* desc)))
-                                    (*fnn-log-record-stored* record))
-                               (funcall sink (fnn-log-read-record record)))
-                           (let ((*fnn-log-record-stored* record))
-                             (funcall sink (fnn-log-read-record record)))))
+                     (destructuring-bind (record desc i2)
+                         (fnn-call 'fn-lgb-next-record i pos (and *fnn-extent-file* t) buf)
+                       (if *fnn-extent-file*
+                           ;; The replay's extent seal (PRF-294): NR-S5
+                           ;; fn-lgb-next-record-descriptor-is-the-attached-place
+                           ;; returns the record's place with this entry's
+                           ;; COMMITMENT attached (PRF-994), bound for SINK.
+                           (let ((*fnn-log-record-place*
+                                   (and desc (cons *fnn-extent-file* desc)))
+                                 (*fnn-log-record-stored* record))
+                             (funcall sink (fnn-log-read-record record)))
+                         (let ((*fnn-log-record-stored* record))
+                           (funcall sink (fnn-log-read-record record))))
                        (setq i (fnn-nat i2))))))
                (setq st next))))
       (setf (svref buf 1) 0

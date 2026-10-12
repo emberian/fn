@@ -620,3 +620,290 @@
                   fn-lgb-broken-is-broken-slice fn-lgb-span-records-are-the-records
                   fn-lgb-span-within-max fn-lgb-descriptor-is-the-attached-place
                   fn-lg-entry-okp-holds-the-chain-field fn-lgb-descriptor-of-an-accepted-record))
+
+; Fused subject: NR-S2, NR-CUR, NR-S4, NR-S5, NR-C4.
+; Every witness buffer is a live fn-octets.
+(defun slbnr-claims (j pos extentp prev max unit fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
+  (mv-let (ok k) (fn-lgb-decide-count prev max fn-octets)
+    (mv-let (record desc next)
+      (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)
+      (list ok k
+            (< (nfix j) k)
+            (equal record (mv-let (took records) (fn-lgw-decide (fn-octets-list fn-octets) prev max)
+                            (declare (ignore took)) (nth j records)))
+            (equal next (fn-lgb-span-cursor (+ 1 (nfix j)) 42 fn-octets))
+            (<= (+ 32 (len record)) (nfix max))
+            (equal desc (nth j (fn-arx-attach-trailers-buffer
+                               (fn-arx-list-places (fn-octets-list fn-octets) pos k unit 0 0 nil 0 0 nil)
+                               pos fn-octets)))
+            (consp desc)
+            (if extentp (consp desc) (equal desc nil))))))
+
+; Whole antecedents/conclusions for NR-S2, NR-CUR, NR-S4 and the
+; EXTENTP=T NR-S5/NR-C4, plus the NIL descriptor in EXTENTP=NIL mode.
+(with-guard-checking-event
+ :all
+ (assert-event
+  (let ((fn-octets (fn-octets-from-list (slbt-batch3) fn-octets)))
+    (mv (and
+         (equal (slbnr-claims 0 17 t *fn-lg-genesis* 4096 4 fn-octets) '(t 3 t t t t t t t))
+         (equal (slbnr-claims 1 17 t *fn-lg-genesis* 4096 4 fn-octets) '(t 3 t t t t t t t))
+         (equal (slbnr-claims 2 17 t *fn-lg-genesis* 4096 4 fn-octets) '(t 3 t t t t t t t))
+         (equal (slbnr-claims 0 17 nil *fn-lg-genesis* 4096 4 fn-octets) '(t 3 t t t t nil nil t))
+         (equal (slbnr-claims 1 17 nil *fn-lg-genesis* 4096 4 fn-octets) '(t 3 t t t t nil nil t))
+         (equal (slbnr-claims 2 17 nil *fn-lg-genesis* 4096 4 fn-octets) '(t 3 t t t t nil nil t)))
+        fn-octets))
+  :stobjs-out '(nil fn-octets)))
+
+; Count removals for NR-S2, NR-S4 and NR-S5: refused kind-1 frame.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (let ((fn-octets (fn-octets-from-list (slbt-b75) fn-octets)))
+    (mv (equal (slbnr-claims 0 17 t nil 0 4 fn-octets) '(nil 0 nil nil t nil nil t t))
+        fn-octets))
+  :stobjs-out '(nil fn-octets)))
+
+; Count removal for NR-C4: refused frame below the chain-field floor.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (let ((fn-octets (fn-octets-from-list (slbt-empty) fn-octets)))
+    (mv (equal (slbnr-claims 0 17 t *fn-lg-genesis* 4096 4 fn-octets)
+               '(nil 0 nil t t t t nil nil))
+        fn-octets))
+  :stobjs-out '(nil fn-octets)))
+
+; POS removal for NR-S5: all other hypotheses hold, but the places walk
+; fixes POS and the descriptor retains the negative offset (logical input).
+(with-guard-checking-event
+ :none
+ (assert-event
+  (let ((fn-octets (fn-octets-from-list (slbt-batch3) fn-octets)))
+    (mv (equal (slbnr-claims 0 -4 t *fn-lg-genesis* 4096 4 fn-octets)
+               '(t 3 t t t t nil t t))
+        fn-octets))
+  :stobjs-out '(nil fn-octets)))
+
+; EXTENTP removals for NR-S5 and NR-C4 are exactly the three NIL-mode
+; calls in the positive trace: count/POS hold and both conclusions fail.
+
+; Mutants of the fused answer, each checked with a satisfiable antecedent.
+; S2 batch-window-includes-the-prefix; CUR next-one-too-far;
+; S4 bound-one-below-max; S5 descriptor-length-is-the-record;
+; C4 every-record-is-non-empty (the original mutation labels).
+(with-guard-checking-event
+ :all
+ (assert-event
+  (let ((fn-octets (fn-octets-from-list (slbt-batch3) fn-octets)))
+    (mv (mv-let (ok k) (fn-lgb-decide-count *fn-lg-genesis* 4096 fn-octets)
+          (mv-let (start len next) (fn-lgb-span 42 fn-octets)
+            (declare (ignore next))
+            (mv-let (record desc i2) (fn-lgb-next-record 42 17 t fn-octets)
+              (and ok (equal k 3) (natp 17)
+                   ; S2 mutant copies the length prefix with the record.
+                   (not (equal record (fn-lgb-slice (- start 4) (+ len 4) fn-octets)))
+                   ; CUR mutant advances one octet beyond the next span.
+                   (not (equal (+ 1 i2) (fn-lgb-span-cursor 1 42 fn-octets)))
+                   ; S5 mutant substitutes record length for entry length.
+                   (not (equal (update-nth 1 (len record) desc)
+                               (nth 0 (fn-arx-attach-trailers-buffer
+                                       (fn-arx-list-places (fn-octets-list fn-octets) 17 k 4 0 0 nil 0 0 nil)
+                                       17 fn-octets))))))))
+        fn-octets))
+  :stobjs-out '(nil fn-octets)))
+
+(with-guard-checking-event
+ :all
+ (assert-event
+  (let ((fn-octets (fn-octets-from-list (slbt-one) fn-octets)))
+    (mv (mv-let (ok k) (fn-lgb-decide-count *fn-lg-genesis* 33 fn-octets)
+          (mv-let (record desc next) (fn-lgb-next-record 42 17 t fn-octets)
+            (declare (ignore desc next))
+            (and ok (equal k 1) (equal (+ 32 (len record)) 33)
+                 (not (<= (+ 32 (len record)) (1- 33))))))
+        fn-octets))
+  :stobjs-out '(nil fn-octets)))
+
+(with-guard-checking-event
+ :all
+ (assert-event
+  (let ((fn-octets (fn-octets-from-list (slbt-e74) fn-octets)))
+    (mv (mv-let (ok k) (fn-lgb-decide-count *fn-lg-genesis* 32 fn-octets)
+          (mv-let (record desc next) (fn-lgb-next-record 42 17 t fn-octets)
+            (declare (ignore next))
+            (and ok (equal k 1) (consp desc) (equal record nil)
+                 (not (and (consp desc) (< 0 (len record)))))))
+        fn-octets))
+  :stobjs-out '(nil fn-octets)))
+
+; Native checks for defteeth's exact world-bound claims. The generator
+; emits assert-events under guard checking and records all five packages.
+(defun slbnr-teeth-check (key j pos extentp prev max unit fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
+  (mv
+   (case key
+     (0 (nth 2 (slbnr-claims j pos extentp prev max unit fn-octets)))
+     (1 (nth 3 (slbnr-claims j pos extentp prev max unit fn-octets)))
+     (2 (nth 4 (slbnr-claims j pos extentp prev max unit fn-octets)))
+     (3 (nth 5 (slbnr-claims j pos extentp prev max unit fn-octets)))
+     (4 (nth 6 (slbnr-claims j pos extentp prev max unit fn-octets)))
+     (5 (nth 7 (slbnr-claims j pos extentp prev max unit fn-octets)))
+     (otherwise
+      (mv-let (record desc next)
+        (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)
+        (case key
+          (8 (mv-let (ok records) (fn-lgw-decide (fn-octets-list fn-octets) prev max)
+               (declare (ignore ok)) (equal record (cons 0 (nth j records)))))
+          (9 (equal (+ 1 next) (fn-lgb-span-cursor (+ 1 (nfix j)) 42 fn-octets)))
+          (10 (<= (+ 32 (len record)) (1- max)))
+          (11 (mv-let (ok k) (fn-lgb-decide-count prev max fn-octets)
+                (declare (ignore ok))
+                (equal (update-nth 1 (len record) desc)
+                       (nth j (fn-arx-attach-trailers-buffer
+                               (fn-arx-list-places (fn-octets-list fn-octets) pos k unit 0 0 nil 0 0 nil)
+                               pos fn-octets)))))
+          (otherwise (and (consp desc) (< 0 (len record))))))))
+   fn-octets))
+
+(defteeth fn-lgb-next-record-yields-the-records
+  :claim (((below-count (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))))
+          (equal (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)) (nth j (mv-nth 1 (fn-lgw-decide fn-octets prev max)))))
+  :subject fn-lgb-next-record
+  :witness ((j 1) (pos 17) (extentp t) (prev *fn-lg-genesis*) (max 4096) (unit 4) (buffer (slbt-batch3)))
+  :stobjs ((fn-octets (fn-octets-from-list buffer fn-octets)))
+  :stobj-checks
+  (   ((< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
+    (slbnr-teeth-check 0 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory)))))
+   ((equal (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)) (nth j (mv-nth 1 (fn-lgw-decide fn-octets prev max))))
+    (slbnr-teeth-check 1 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory)))))
+   ((equal (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)) (cons 0 (nth j (mv-nth 1 (fn-lgw-decide fn-octets prev max)))))
+    (slbnr-teeth-check 8 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory))))))
+  :breaks ((below-count ((j 0) (prev nil) (max 0) (buffer (slbt-b75)))))
+  :mutations ((batch-window-includes-the-prefix
+               (:conclusion (equal (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)) (cons 0 (nth j (mv-nth 1 (fn-lgw-decide fn-octets prev max))))))
+               ()
+               :fault "the fused record includes a leading prefix octet")))
+
+(defteeth fn-lgb-next-record-advances-the-cursor
+  :claim (()
+          (equal (mv-nth 2 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)) (fn-lgb-span-cursor (+ 1 (nfix j)) 42 fn-octets)))
+  :subject fn-lgb-next-record
+  :witness ((j 1) (pos 17) (extentp t) (prev *fn-lg-genesis*) (max 4096) (unit 4) (buffer (slbt-batch3)))
+  :stobjs ((fn-octets (fn-octets-from-list buffer fn-octets)))
+  :stobj-checks
+  (
+   ((equal (mv-nth 2 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)) (fn-lgb-span-cursor (+ 1 (nfix j)) 42 fn-octets))
+    (slbnr-teeth-check 2 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory)))))
+   ((equal (+ 1 (mv-nth 2 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))) (fn-lgb-span-cursor (+ 1 (nfix j)) 42 fn-octets))
+    (slbnr-teeth-check 9 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory))))))
+  :breaks ()
+  :mutations ((next-one-too-far
+               (:conclusion (equal (+ 1 (mv-nth 2 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))) (fn-lgb-span-cursor (+ 1 (nfix j)) 42 fn-octets)))
+               ()
+               :fault "the fused next cursor is one octet too far")))
+
+(defteeth fn-lgb-next-record-within-max
+  :claim (((below-count (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))))
+          (<= (+ 32 (len (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)))) (nfix max)))
+  :subject fn-lgb-next-record
+  :witness ((j 1) (pos 17) (extentp t) (prev *fn-lg-genesis*) (max 4096) (unit 4) (buffer (slbt-batch3)))
+  :stobjs ((fn-octets (fn-octets-from-list buffer fn-octets)))
+  :stobj-checks
+  (   ((< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
+    (slbnr-teeth-check 0 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory)))))
+   ((<= (+ 32 (len (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)))) (nfix max))
+    (slbnr-teeth-check 3 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory)))))
+   ((<= (+ 32 (len (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)))) (1- max))
+    (slbnr-teeth-check 10 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory))))))
+  :breaks ((below-count ((j 0) (prev nil) (max 0) (buffer (slbt-b75)))))
+  :mutations ((bound-one-below-max
+               (:conclusion (<= (+ 32 (len (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)))) (1- max)))
+               ((max 33) (j 0) (buffer (slbt-one)))
+               :fault "the fused record bound is one octet short")))
+
+(defteeth fn-lgb-next-record-descriptor-is-the-attached-place
+  :claim (((pos (natp pos)) (extentp extentp) (below-count (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))))
+          (equal (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)) (nth j (fn-arx-attach-trailers-buffer (fn-arx-list-places fn-octets pos (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)) unit 0 0 nil 0 0 nil) pos fn-octets))))
+  :subject fn-lgb-next-record
+  :witness ((j 1) (pos 17) (extentp t) (prev *fn-lg-genesis*) (max 4096) (unit 4) (buffer (slbt-batch3)))
+  :stobjs ((fn-octets (fn-octets-from-list buffer fn-octets)))
+  :stobj-checks
+  (   ((< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
+    (slbnr-teeth-check 0 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory)))))
+   ((equal (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)) (nth j (fn-arx-attach-trailers-buffer (fn-arx-list-places fn-octets pos (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)) unit 0 0 nil 0 0 nil) pos fn-octets)))
+    (slbnr-teeth-check 4 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory)))))
+   ((equal (update-nth 1 (len (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))) (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))) (nth j (fn-arx-attach-trailers-buffer (fn-arx-list-places fn-octets pos (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)) unit 0 0 nil 0 0 nil) pos fn-octets)))
+    (slbnr-teeth-check 11 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory))))))
+  :breaks ((pos ((pos -4)) :logical "negative POS is outside the fused entry guard")
+           (extentp ((extentp nil)))
+           (below-count ((j 0) (prev nil) (max 0) (buffer (slbt-b75)))))
+  :mutations ((descriptor-length-is-the-record
+               (:conclusion (equal (update-nth 1 (len (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))) (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))) (nth j (fn-arx-attach-trailers-buffer (fn-arx-list-places fn-octets pos (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)) unit 0 0 nil 0 0 nil) pos fn-octets))))
+               ()
+               :fault "the fused descriptor names the record length as entry length")))
+
+(defteeth fn-lgb-next-record-has-a-descriptor
+  :claim (((extentp extentp) (below-count (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))))
+          (consp (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))))
+  :subject fn-lgb-next-record
+  :witness ((j 1) (pos 17) (extentp t) (prev *fn-lg-genesis*) (max 4096) (unit 4) (buffer (slbt-batch3)))
+  :stobjs ((fn-octets (fn-octets-from-list buffer fn-octets)))
+  :stobj-checks
+  (   ((< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
+    (slbnr-teeth-check 0 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory)))))
+   ((consp (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)))
+    (slbnr-teeth-check 5 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory)))))
+   ((and (consp (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))) (< 0 (len (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)))))
+    (slbnr-teeth-check 12 j pos extentp prev max unit fn-octets)
+    :hints (("Goal" :in-theory (union-theories
+              '(slbnr-teeth-check slbnr-claims nth zp car-cons cdr-cons nth-0-cons nth-add1 mv-list fn-oct-list-is-identity)
+              (theory 'minimal-theory))))))
+  :breaks ((extentp ((extentp nil)))
+           (below-count ((j 0) (buffer (slbt-empty)))))
+  :mutations ((every-record-is-non-empty
+               (:conclusion (and (consp (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))) (< 0 (len (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))))))
+               ((max 32) (j 0) (buffer (slbt-e74)))
+               :fault "the fused record is incorrectly required to be nonempty")))
+
+(defteeth-check (fn-lgb-next-record-yields-the-records fn-lgb-next-record-advances-the-cursor fn-lgb-next-record-within-max fn-lgb-next-record-descriptor-is-the-attached-place fn-lgb-next-record-has-a-descriptor))
