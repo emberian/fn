@@ -5,14 +5,14 @@
   "proved": 6,
   "partial": 1,
   "derived": 104,
-  "none": 1745
+  "none": 1753
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 1,
    "derived": 103,
-   "none": 1030
+   "none": 1037
   },
   "ideal": {
    "proved": 0,
@@ -24,7 +24,7 @@
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 571
+   "none": 572
   }
  },
  "families": {
@@ -4987,6 +4987,76 @@
   {
    "name": "fn-hl-host-store-history",
    "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-begin",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-end",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-init",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-quantum",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-sent",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-window-base",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hld-workspace",
+   "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
    "sizes": [],
@@ -11853,6 +11923,16 @@
   {
    "name": "fn-owner-known-abort",
    "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-owner-lease-cfg",
+   "class": "program",
    "claim": "none",
    "bound": null,
    "sizes": [],
