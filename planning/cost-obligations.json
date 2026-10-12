@@ -66,6 +66,8 @@
   ]
  },
  "undispatched_declarations": [
+  "fn-clt-nested",
+  "fn-clt-single",
   "fn-cur-at",
   "fn-heap-command-line",
   "fn-lgb-slice-acc",
