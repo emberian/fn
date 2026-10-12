@@ -97,6 +97,14 @@
    "item": "A-OVER-WINDOW-FIT",
    "owner": "builder-C",
    "ruling": "coordinator 2026-10-10 (rule 6b-3): carried in READYs and STATE but absent from the baseline, so an obliged image gate refused the merge of lane/spans onto train 89's head; enters by amendment, owner builder-C, retired by landing O1 (O's pool lease)"
+  },
+  {
+   "kind": "check",
+   "subject": "check:cost_obligations",
+   "dev_sha": "402b65786",
+   "item": "LEASE-DISPATCH-COST-ROWS",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-12 (C8): vertical-header-cost leaves C8; cost_obligations stays red on dev until it lands; carried as a known red, amended, owner builder-A, retired by lane/vertical-header-cost in the next train"
   }
  ]
 }
