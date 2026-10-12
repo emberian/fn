@@ -29,6 +29,7 @@ class ScalarMVTests(unittest.TestCase):
   (error 'fnn-store-fault :message (apply #'format nil control args)))
 (defvar *the-live-state* nil)
 (defun w (state) state)
+(defun table-alist (name wrld) (declare (ignore name wrld)) nil)
 (defun getpropc (name key default wrld)
   (declare (ignore wrld))
   (if (and (eq key 'formals) (eq name 'raw-input-next)) '(token controller pool) default))
