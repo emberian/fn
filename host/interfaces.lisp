@@ -569,7 +569,7 @@
 (definterface fn-arx-list-places
   :class :common-lisp-compliant
   :kinds ((tail true-listp) (p natp) (count natp) (ep natp) (en natp) (qtail true-listp) (q natp) (qend natp) (acc true-listp))
-  :keystones (fn-lgb-descriptor-is-the-attached-place))
+  :keystones (fn-lgb-next-record-descriptor-is-the-attached-place))
 
 (definterface fn-b3-left-chunks
   :class :common-lisp-compliant
@@ -665,19 +665,10 @@
 (definterface fn-lgb-decode-next
   :class :common-lisp-compliant)
 
-(definterface fn-lgb-span
+(definterface fn-lgb-next-record
   :class :common-lisp-compliant
-  :kinds ((i natp))
-  :keystones (fn-lgb-span-within-max fn-lgb-descriptor-is-the-attached-place))
-
-(definterface fn-lgb-slice
-  :class :common-lisp-compliant
-  :kinds ((start natp) (len natp)))
-
-(definterface fn-lgb-descriptor
-  :class :common-lisp-compliant
-  :kinds ((pos natp) (start natp) (len natp))
-  :keystones (fn-lgb-descriptor-is-the-attached-place))
+  :kinds ((i natp) (pos natp))
+  :keystones (fn-lgb-next-record-within-max fn-lgb-next-record-descriptor-is-the-attached-place))
 
 (definterface fn-lgc-acked
   :class :common-lisp-compliant

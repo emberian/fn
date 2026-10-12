@@ -1416,6 +1416,99 @@
                  (:instance fn-lgb-frame-open-declared (e fn-octets) (b (fn-lg-open-bound fn-octets max)))
                  (:instance fn-lgb-u32-at-is-u32 (i 6))))))
 
+; The host's fused record entry: one slice, optional place, next cursor.
+; The fixed statements use local default hints to preserve their exact bytes.
+(encapsulate
+ ()
+(local (set-default-hints
+ '((quote (:do-not-induct t
+           :in-theory (e/d (fn-octets-len) (fn-lgb-span))
+           :use ((:instance fn-lgb-span-bounds)))))))
+(defun fn-lgb-next-record (i pos extentp fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (natp pos) (< (fn-octets-len fn-octets) (expt 2 59)))))
+  (mv-let (start len next) (fn-lgb-span i fn-octets)
+    (mv (fn-lgb-slice start len fn-octets)
+        (if extentp (fn-lgb-descriptor pos start len fn-octets) nil)
+        next)))
+
+(verify-guards fn-lgb-next-record)
+
+(local (set-default-hints nil))
+
+(local
+ (defthm fn-lgb-span-cursor-successor
+   (implies (natp i)
+            (equal (fn-lgb-span-cursor (+ 1 (nfix j)) i fn-octets)
+                   (mv-nth 2 (fn-lgb-span (fn-lgb-span-cursor j i fn-octets) fn-octets))))
+   :hints (("Goal" :induct (fn-lgb-span-cursor j i fn-octets)
+            :expand ((fn-lgb-span-cursor 1 i fn-octets))
+            :in-theory (e/d (fn-lgb-span-cursor) (fn-lgb-span))))))
+
+(local (set-default-hints
+ '((quote (:do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory) '(fn-lgb-next-record fn-lgb-slice mv-nth natp nfix fn-lgb-decide-count-natp))
+           :use ((:instance fn-lgb-span-records-are-the-records)
+                 (:instance fn-lgb-nth-span-records (i 42)
+                            (k (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))))))))))
+
+; KEYSTONE (NR-S2): the fused call yields the decision's J-th record.
+(defthm fn-lgb-next-record-yields-the-records
+  (implies (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
+           (equal (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))
+                  (nth j (mv-nth 1 (fn-lgw-decide fn-octets prev max))))))
+
+(local (set-default-hints
+ '((quote (:do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory) '(fn-lgb-next-record fn-lgb-slice mv-nth natp nfix fn-lgb-decide-count-natp))
+           :use ((:instance fn-lgb-span-cursor-successor (i 42))))))))
+
+; KEYSTONE (NR-CUR): the fused call advances to the following cursor.
+(defthm fn-lgb-next-record-advances-the-cursor
+  (equal (mv-nth 2 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))
+         (fn-lgb-span-cursor (+ 1 (nfix j)) 42 fn-octets)))
+
+(local (set-default-hints
+ '((quote (:do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory) '(fn-lgb-next-record fn-lgb-slice mv-nth natp nfix fn-lgb-decide-count-natp))
+           :use ((:instance fn-lgb-span-within-max)
+                 (:instance fn-lgb-len-slice-of-span (i (fn-lgb-span-cursor j 42 fn-octets)))))))))
+
+; KEYSTONE (NR-S4): one live record with its chain field fits MAX.
+(defthm fn-lgb-next-record-within-max
+  (implies (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
+           (<= (+ 32 (len (mv-nth 0 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets)
+                                                        pos extentp fn-octets))))
+               (nfix max))))
+
+(local (set-default-hints
+ '((quote (:do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory) '(fn-lgb-next-record fn-lgb-slice mv-nth natp nfix fn-lgb-decide-count-natp))
+           :use ((:instance fn-lgb-descriptor-is-the-attached-place)))))))
+
+; KEYSTONE (NR-S5): the fused descriptor is the J-th attached place.
+(defthm fn-lgb-next-record-descriptor-is-the-attached-place
+  (implies (and (natp pos) extentp
+                (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))))
+           (equal (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets))
+                  (nth j (fn-arx-attach-trailers-buffer
+                          (fn-arx-list-places fn-octets pos
+                                              (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))
+                                              unit 0 0 nil 0 0 nil)
+                          pos fn-octets)))))
+
+(local (set-default-hints
+ '((quote (:do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory) '(fn-lgb-next-record fn-lgb-slice mv-nth natp nfix fn-lgb-decide-count-natp))
+           :use ((:instance fn-lgb-descriptor-of-an-accepted-record)))))))
+
+; KEYSTONE (NR-C4): every accepted record has a descriptor in extent mode.
+(defthm fn-lgb-next-record-has-a-descriptor
+  (implies (and extentp (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))))
+           (consp (mv-nth 1 (fn-lgb-next-record (fn-lgb-span-cursor j 42 fn-octets) pos extentp fn-octets)))))
+
+(local (set-default-hints nil)))
+
 ; -----------------------------------------------------------------------------
 ; 5. The step the host calls: the list step with its records answered by
 ;    their count.  The buffer holds the octets fn-lgw-entry-len named, read
