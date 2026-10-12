@@ -847,7 +847,7 @@ class ImageSweepTests(unittest.TestCase):
         cells = [c for ln in data['lanes'] for c in ln['cells']]
         for c in cells:
             workloads.resolve(c['cell'])
-        self.assertEqual(len(cells), 26)
+        self.assertEqual(len(cells), 29)
         for ln in hbox:
             self.assertTrue(all(c.get('memory', ln['memory']) == ln['memory'] for c in ln['cells']))
             self.assertNotIn(' &', sweep.queue_script(self.args(), ln, data))
