@@ -1,0 +1,7 @@
+Profiling stopped.
+Number of samples: 100
+Flat profile:
+  Nr  Count     %   Cumul Count     %    Calls  Function
+   1     60  60.0            60  60.0        -  ACL2::FNN-CALL
+   2     25  25.0            85  85.0       25  (SB-VM::OPTIMIZED-DATA-VECTOR-REF T)
+   3     15  15.0           100 100.0        -  SB-KERNEL::ALLOCATE-VECTOR

@@ -32,6 +32,8 @@ PHASE_KINDS = {
     "census": set(),
     "roots": set(),
     "prof": {"article_kib", "reps"},
+    "op_profile": {"ops", "reps", "budget_s", "warmup"},
+    "floor": {"reps"},
     "publish": set(),
     "publish_live": {"rate_per_s", "octets", "before_s", "after_s", "max_wait_s"},
     "read": {"readers", "count", "duration_s", "cmd", "poster"},
@@ -73,6 +75,8 @@ def validate(data):
             raise WorkloadError("%s: roots needs census (its hook polls the census directory)" % name)
         if "lockwait" in w and not isinstance(w["lockwait"], bool):
             raise WorkloadError("%s: lockwait must be boolean" % name)
+        if "strace" in w and not isinstance(w["strace"], bool):
+            raise WorkloadError("%s: strace must be boolean" % name)
         if "sprof" in w:
             prof = w["sprof"]
             window = prof.get("window_s") if isinstance(prof, dict) else None
@@ -116,7 +120,7 @@ class Cell:
 
 def resolve(cell_id, data=None):
     data = data or load()
-    m = re.fullmatch(r"([A-Za-z0-9-]+)(?:@([0-9a-z]+))?(?:/([A-Za-z0-9]+))?", cell_id)
+    m = re.fullmatch(r"([A-Za-z0-9-]+)(?:@([0-9a-z]+))?(?:/([A-Za-z0-9_]+))?", cell_id)
     if not m:
         raise WorkloadError("bad cell id %r (WORKLOAD[@STORE][/variant])" % cell_id)
     head, store, variant = m.groups()
@@ -131,7 +135,11 @@ def resolve(cell_id, data=None):
         store_n = data["stores"][store]
         spec.setdefault("store", {})["preload"] = store_n
     if variant:
-        if variant in spec.get("variants", ()):
+        if variant in spec.get("op_variants", ()):
+            for phase in spec["phases"]:
+                if phase["kind"] == "op_profile":
+                    phase["ops"] = [variant]
+        elif variant in spec.get("variants", ()):
             spec["preset"] = variant
             if variant in spec.get("variant_preload", {}):
                 spec.setdefault("store", {})["preload"] = spec["variant_preload"][variant]
