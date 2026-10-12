@@ -16,6 +16,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from tests.scratch_git import run as scratch_git
 
 from tools import coverage  # noqa: E402
 
@@ -390,7 +391,7 @@ class TwinsTests(unittest.TestCase):
         import subprocess
         # Hermetic: a global commit.gpgsign (1Password signing on the
         # laptop) made the fixture's commit exit 128 (CONVERGE-2 row 12).
-        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t",
+        scratch_git(["git", "-c", "user.name=t", "-c", "user.email=t@t",
                         "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", *args],
                        cwd=root, check=True, capture_output=True)
 

@@ -9,12 +9,16 @@ import subprocess
 import tempfile
 import unittest
 from unittest import mock
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests.scratch_git import run as scratch_git
 
 from tools import throughput_gate as tg
 
 
 def git(root, *args):
-    return subprocess.run(["git", "-C", str(root)] + list(args), check=True, stdout=subprocess.PIPE,
+    return scratch_git(["git", "-C", str(root)] + list(args), check=True, stdout=subprocess.PIPE,
                           text=True, env={"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x",
                                           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x",
                                           "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"}).stdout.strip()

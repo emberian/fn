@@ -8,13 +8,10 @@
 (in-package "ACL2")
 
 
-(defvar *fnn-hybrid-control-handler* nil)
-
-;;; (FRAME . OCTET-LIST) for the frame the handler chain is deciding, built
-;;; at most once however many handlers decode it (sweep S029; bound by
-;;; fnn-control-handle-client around the chain).  ACL2 never mutates an
-;;; argument, so the handlers share it.
-(defvar *fnn-control-frame-list* nil)
+;;; The handler chain's hook, *fnn-hybrid-control-handler*, and the frame
+;;; it decides, *fnn-control-frame-list*, are defined in
+;;; host/native/control-transport.lisp: bp-control.lisp reads both, and the
+;;; DTN build loads it without this file.
 
 (defun fnn-control-frame-octet-list (frame)
   (if (and (consp *fnn-control-frame-list*)

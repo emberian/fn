@@ -161,4 +161,4 @@
       (*fnn-extent-window-cache* nil))
   (catch 'fnn-extent-cold (fn-arena-get-span-into 0 0 100 *arena* buf))
   (assert (equal (buf-list buf) '(1 2 3))))
-(format t "native_arena_span_into_raw: ok~%")
+(format t "native_arena_span_into_raw: PASS~%")

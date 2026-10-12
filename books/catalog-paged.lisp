@@ -1166,6 +1166,16 @@
   (declare (xargs :stobjs fn-cat$p))
   (nfix (fn-cat$p-lprev-get (cons group k) fn-cat$p)))
 
+; The generic's neighbour exports (fn-cat-live-next, fn-cat-live-prev): one
+; liveness probe and one link read; 0 for a number that is not live.
+(defun fn-cat$p-live-next (group k fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p))
+  (if (fn-cat$p-livep group k fn-cat$p) (fn-cat$p-next group k fn-cat$p) 0))
+
+(defun fn-cat$p-live-prev (group k fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p))
+  (if (fn-cat$p-livep group k fn-cat$p) (fn-cat$p-prev group k fn-cat$p) 0))
+
 (defun fn-cat$p-drop-entry (group k fn-cat$p)
   (declare (xargs :stobjs fn-cat$p))
   (let* ((count (fn-cat$p-group-live-count group fn-cat$p))
@@ -3374,6 +3384,34 @@
                  (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
            :in-theory (disable fn-cp-corr-facts))))
 
+(defthm fn-cat-paged-live-next{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+               (fn-cat$ap fn-cat-paged)
+             'nil)
+           (equal (fn-cat$p-live-next group k fn-cat$p)
+                  (fn-cat$a-live-next group k fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat$p-livep-is-live (fn-cat$a fn-cat-paged) (g group))
+                 (:instance fn-cat$p-next-is-probe (fn-cat$a fn-cat-paged) (g group)))
+           :in-theory (e/d (fn-cat$p-live-next fn-cat$a-live-next fn-cpl-next-of)
+                           (fn-cat$p-livep-is-live fn-cat$p-next-is-probe fn-cat$p-livep fn-cat$p-next
+                            fn-cat-live-numberp fn-cat-live-first fn-cat$pcorr)))))
+
+(defthm fn-cat-paged-live-prev{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+               (fn-cat$ap fn-cat-paged)
+             'nil)
+           (equal (fn-cat$p-live-prev group k fn-cat$p)
+                  (fn-cat$a-live-prev group k fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat$p-livep-is-live (fn-cat$a fn-cat-paged) (g group))
+                 (:instance fn-cat$p-prev-is-probe (fn-cat$a fn-cat-paged) (g group)))
+           :in-theory (e/d (fn-cat$p-live-prev fn-cat$a-live-prev fn-cpl-prev-of)
+                           (fn-cat$p-livep-is-live fn-cat$p-prev-is-probe fn-cat$p-livep fn-cat$p-prev
+                            fn-cat-live-numberp fn-cat-live-last fn-cat$pcorr)))))
+
 (defthm fn-cat-paged-horizon{correspondence}
   (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
                 (equal (fn-cat$p-horizon fn-cat$p)
@@ -3714,6 +3752,8 @@
             (fn-cat-paged-group-live-low :logic fn-cat$a-group-live-low :exec fn-cat$p-group-live-low)
             (fn-cat-paged-group-raw-low :logic fn-cat$a-group-raw-low :exec fn-cat$p-group-raw-low)
             (fn-cat-paged-group-live-high :logic fn-cat$a-group-live-high :exec fn-cat$p-group-live-high)
+            (fn-cat-paged-live-next :logic fn-cat$a-live-next :exec fn-cat$p-live-next)
+            (fn-cat-paged-live-prev :logic fn-cat$a-live-prev :exec fn-cat$p-live-prev)
             (fn-cat-paged-horizon :logic fn-cat$a-horizon :exec fn-cat$p-horizon)
             (fn-cat-paged-commit :logic fn-cat$a-commit :exec fn-cat$p-commit-w :protect t)
             (fn-cat-paged-withdraw :logic fn-cat$a-withdraw :exec fn-cat$p-withdraw-w :protect t)

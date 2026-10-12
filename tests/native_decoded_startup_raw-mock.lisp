@@ -47,8 +47,6 @@
 (defun fnn-extent-window-p (token)
   (declare (ignorable token))
   (harness-stub-reached 'fnn-extent-window-p "host/native/extent.lisp"))
-(defun fnn-heap-collector-policy-stop ()
-  (harness-stub-reached 'fnn-heap-collector-policy-stop "host/native/heap.lisp"))
 (defun fnn-log-offer (destination octets)
   (declare (ignorable destination octets))
   (harness-stub-reached 'fnn-log-offer "host/native/io.lisp"))
@@ -235,6 +233,8 @@
 ;; Even an empty owner read queue cannot hide independent roster custody.
 ;; The actual shutdown gate must prevent Store teardown with that debt.
 (defvar +fnn-exit-ok+ 0)
+(load-deployed-forms "host/native/heap.lisp"
+ '((defvar *fnn-heap-collector-thread*) (defun fnn-heap-collector-policy-stop)))
 (load-deployed-forms "host/native/owner.lisp"
  '((defstruct (fnn-owner-service (:constructor %make-fnn-owner-service)))
    (defun fnn-owner-cold-shutdown)))
