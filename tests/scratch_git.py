@@ -10,10 +10,15 @@ def run(command, **kwargs):
     """Run Git with isolated config; persist unsigned commits/tags on init/clone.
 
     Keep the caller's environment (identities, merge drivers and test stubs),
-    replacing only the global/system config sources. Local settings also cover
-    tools under test that invoke Git themselves in the resulting repository.
+    removing inherited command-scope overrides and global/system config sources.
+    Local settings also cover tools under test that invoke Git themselves
+    in the resulting repository.
     """
     env = dict(os.environ if kwargs.get("env") is None else kwargs["env"])
+    for name in list(env):
+        if (name in ("GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS")
+                or name.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_"))):
+            del env[name]
     env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull,
                GIT_CONFIG_NOSYSTEM="1")
     kwargs["env"] = env

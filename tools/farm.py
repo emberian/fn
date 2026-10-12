@@ -630,20 +630,18 @@ def record_path(root: Path, identifier: str) -> Path:
 
 
 def remote_running_runs_script(remote: Path) -> str:
-    """Snapshot runners in this box path, independent of local run records."""
+    """Snapshot run locks in this box path, independent of local records/PIDs."""
     where = remote_quote(remote)
     return (
-        f": FN_FARM_RUNS_CHECK; for record in {where}/build/farm/run-*.pid; do "
-        '[ -f "$record" ] || continue; base=${record%.pid}; '
-        '[ ! -e "$base.status" ] || continue; '
-        'name=${base##*/}; pid=$(cat "$record") || exit 9; '
-        'case "$pid" in ""|0|*[!0-9]*) '
-        'echo "UNKNOWN $name invalid runner PID"; exit 9;; esac; '
-        'if kill -0 "$pid" 2>/dev/null; then echo "RUNNING $name"; '
-        'else echo "DEAD $name $pid"; fi; done; '
+        ': FN_FARM_RUNS_CHECK; test -x /usr/bin/flock || exit 9; '
+        f'for record in {where}/build/farm/run-*.lock; do '
+        '[ -f "$record" ] || continue; base=${record%.lock}; '
+        '[ ! -e "$base.status" ] || continue; name=${base##*/}; '
+        'if /usr/bin/flock -n "$record" true; then echo "DEAD $name"; '
+        'else echo "RUNNING $name"; fi; done; '
         f'for record in {where}/build/farm/run-*.log; do '
         '[ -f "$record" ] || continue; base=${record%.log}; '
-        '[ ! -e "$base.status" ] && [ ! -e "$base.pid" ] || continue; '
+        '[ ! -e "$base.status" ] && [ ! -e "$base.lock" ] || continue; '
         'name=${base##*/}; '
         f'recent=$(find "$record" -maxdepth 0 -mmin -{SUBMIT_LOCK_STALE_MINUTES} -print) '
         '|| exit 9; '
@@ -654,11 +652,10 @@ def remote_running_runs_script(remote: Path) -> str:
 def refuse_a_running_run_in_the_same_tree(host: str, remote: Path, runner=None) -> None:
     """Under the submit lock, refuse to rewrite a live runner's sources.
 
-    The remote wrapper writes its own PID before certifying and its status
-    after certifying. A dead wrapper without a status is reported, not kept
-    live by a local worktree's record or an age cutoff. Older wrappers have
-    no PID file: a recently modified log conservatively blocks mirroring;
-    a stale legacy log is reported and does not block.
+    The wrapper and its children inherit the same locked descriptor. PIDs
+    are diagnostic only: a lock stays held until its last holder exits.
+    Older wrappers have no lock file: a recently modified log conservatively
+    blocks mirroring; a stale legacy log is reported and does not block.
     """
     done = (runner or ssh)(host, remote_running_runs_script(remote), check=False)
     running = []
@@ -670,12 +667,12 @@ def refuse_a_running_run_in_the_same_tree(host: str, remote: Path, runner=None) 
         elif len(words) == 2 and words[0] == "LEGACY":
             legacy.append(words[1])
         elif len(words) == 2 and words[0] == "STALE":
-            print(f"{words[1]} on {host}:{remote}: stale legacy run with no PID or status file; "
+            print(f"{words[1]} on {host}:{remote}: stale legacy run with no run lock or status file; "
                   f"its log was not modified in the last {SUBMIT_LOCK_STALE_MINUTES} min; "
                   "allowing submission", file=sys.stderr)
-        elif len(words) == 3 and words[0] == "DEAD":
-            print(f"{words[1]} on {host}:{remote}: dead runner PID {words[2]} "
-                  "with no status file; it is no longer certifying", file=sys.stderr)
+        elif len(words) == 2 and words[0] == "DEAD":
+            print(f"{words[1]} on {host}:{remote}: dead run (run lock is free) "
+                  "with no status file; no process holds its run lock", file=sys.stderr)
     if done.returncode != 0:
         raise FarmError(f"no farm run started: could not check runners in {host}:{remote}: "
                         f"ssh exited {done.returncode}: {done.stdout.strip() or '(no output)'}")
@@ -685,7 +682,7 @@ def refuse_a_running_run_in_the_same_tree(host: str, remote: Path, runner=None) 
                         f"(wait for it, or submit to the other box)")
     if legacy:
         raise FarmError(f"no farm run started: {', '.join(legacy)} is a legacy run "
-                        f"in {host}:{remote} with no PID or status file; its log was modified "
+                        f"in {host}:{remote} with no run lock or status file; its log was modified "
                         f"in the last {SUBMIT_LOCK_STALE_MINUTES} min and it may still be "
                         "certifying; a new push would rewrite its sources "
                         "(wait for it, or submit to another path or box)")
@@ -697,12 +694,13 @@ def refuse_a_running_run_in_the_same_tree(host: str, remote: Path, runner=None) 
 # directory beside the tree (never inside it: the mirror's --delete would
 # remove it), taken by an atomic mkdir before the push and given back once
 # the runner has started. While holding it, every submit checks the remote
-# runner PID/status files before mirroring, including other worktrees' runs.
+# run locks/status files before mirroring, including other worktrees' runs.
 # A lock older than SUBMIT_LOCK_STALE_MINUTES is a
 # crashed submit's and is reclaimed by an atomic rename, so two reclaimers
 # cannot both win.
 SUBMIT_LOCK_STALE_MINUTES = 120
 SUBMIT_LOCK_HELD = 75
+RUN_START_WAIT_SECONDS = 30
 
 
 def submit_lock_path(remote: Path) -> str:
@@ -1033,8 +1031,17 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
             runner = swarm_memory(os.environ.get("FN_FARM_MEM_MAX", "")) + runner
     log = f"build/farm/{identifier}.log"
     status_file = f"build/farm/{identifier}.status"
+    started_file = f"build/farm/{identifier}.started"
     inner = (
+        f"exec 9>build/farm/{identifier}.lock || exit 11; "
+        "/usr/bin/flock -x 9 || exit 11; "
+        "export FN_FARM_RUN_LOCK_FD=9; "
+        # A starter delayed past the acknowledgement deadline must not begin
+        # after its submit has released (or lost) ownership of the tree.
+        f'[ "$(cut -d\' \' -f1 {remote_quote(submit_lock_path(root))}/owner 2>/dev/null)" '
+        f'= {shlex.quote(identifier)} ] || exit 12; '
         f"echo $$ > build/farm/{identifier}.pid || exit 11; "
+        f": > {started_file} || exit 11; "
         f"FN_ACL2={acl2_shell_word(host, acl2)} "
         f"FN_ACL2_TIMEOUT_SECONDS={timeout_seconds} "
         f"FN_CERT_CACHE={settings['cache']} "
@@ -1058,8 +1065,10 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         f"mkdir -p build/farm || "
         f"{{ echo \"fn-farm: cannot write build/farm under {root}\" >&2; exit 11; }}; "
         f"nohup sh -c {shlex.quote(inner)} >/dev/null 2>&1 & "
-        f"pid=$!; sleep 2; "
-        f"if ! kill -0 $pid 2>/dev/null && [ ! -s {status_file} ]; then "
+        f"pid=$!; remaining={RUN_START_WAIT_SECONDS}; "
+        f"while [ ! -e {started_file} ] && [ \"$remaining\" -gt 0 ]; do "
+        'sleep 1; remaining=$((remaining - 1)); done; '
+        f"if [ ! -e {started_file} ]; then "
         f"echo \"fn-farm: the runner for {identifier} did not start\" >&2; "
         f"tail -c 400 {log} >&2 2>/dev/null; exit 12; fi; "
         f"echo FN_FARM_STARTED {identifier} $pid"

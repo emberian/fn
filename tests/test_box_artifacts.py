@@ -125,6 +125,36 @@ class ScratchGitSigning(unittest.TestCase):
                 for setting in ("commit.gpgsign", "tag.gpgsign"):
                     self.assertEqual(git(clone, "config", "--local", "--get", setting), "false")
 
+    def test_inherited_command_scope_signing_cannot_override_the_scratch_repo(self):
+        import os
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            inherited = {
+                "GIT_CONFIG_COUNT": "3",
+                "GIT_CONFIG_KEY_0": "commit.gpgsign", "GIT_CONFIG_VALUE_0": "true",
+                "GIT_CONFIG_KEY_1": "tag.gpgsign", "GIT_CONFIG_VALUE_1": "true",
+                "GIT_CONFIG_KEY_2": "gpg.program", "GIT_CONFIG_VALUE_2": "/signer-must-not-run",
+                "GIT_CONFIG_PARAMETERS": "'commit.gpgsign'='true' 'tag.gpgsign'='true'",
+                "GIT_CONFIG_KEY_99": "fixture.orphan", "GIT_CONFIG_VALUE_99": "must-be-cleared",
+            }
+            with mock.patch.dict(os.environ, inherited):
+                git(repo, "init", "-q")
+                git(repo, "config", "user.name", "t")
+                git(repo, "config", "user.email", "t@example.invalid")
+                control = subprocess.run(
+                    ["git", "-C", str(repo), "config", "--get", "commit.gpgsign"],
+                    capture_output=True, text=True, check=True, timeout=10)
+                self.assertEqual(control.stdout.strip(), "true")
+                git(repo, "commit", "-q", "--allow-empty", "-m", "unsigned")
+                git(repo, "tag", "unsigned")
+                self.assertEqual(git(repo, "log", "-1", "--format=%G?"), "N")
+                self.assertEqual(git(repo, "config", "--get", "commit.gpgsign"), "false")
+                self.assertEqual(git(repo, "config", "--get", "tag.gpgsign"), "false")
+                probe = scratch_git(["git", "-C", str(repo), "config", "--get",
+                                     "fixture.orphan"], capture_output=True)
+                self.assertEqual(probe.returncode, 1)
+
 
 
 class TeethManifest(unittest.TestCase):
