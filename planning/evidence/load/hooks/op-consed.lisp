@@ -28,14 +28,20 @@
                  (sb-sys:with-pinned-objects (ready-byte)
                    (sb-unix:unix-write ready-fd (sb-sys:vector-sap ready-byte) 0 1))
                  (loop until (fn-load-trigger-present-p stop) do (sleep 0.02))
-                 (let ((window-ms (* 1000.0 (/ (- (get-internal-real-time) ticks)
-                                               internal-time-units-per-second)))
-                       (delta (- (sb-ext:get-bytes-consed) bytes))
-                       (gc-delta (- sb-ext:*gc-run-time* gc-time))
-                       (count-delta (- gcs gc-count)))
-                   (with-open-file (s out :direction :output :if-exists :supersede)
-                     (format s "consed_bytes ~d gc_ms ~,6f gcs ~d window_ms ~,6f~%" delta
-                             (* 1000.0 (/ gc-delta internal-time-units-per-second)) count-delta window-ms)))
+                 ;; Snapshot every raw counter before any arithmetic: even
+                 ;; conversion of ticks to milliseconds can allocate a ratio.
+                 (let ((end-bytes (sb-ext:get-bytes-consed))
+                       (end-gc-time sb-ext:*gc-run-time*)
+                       (end-gc-count gcs)
+                       (end-ticks (get-internal-real-time)))
+                   (let ((delta (- end-bytes bytes))
+                         (gc-delta (- end-gc-time gc-time))
+                         (count-delta (- end-gc-count gc-count))
+                         (window-ms (* 1000.0 (/ (- end-ticks ticks)
+                                                internal-time-units-per-second))))
+                     (with-open-file (s out :direction :output :if-exists :supersede)
+                       (format s "consed_bytes ~d gc_ms ~,6f gcs ~d window_ms ~,6f~%" delta
+                               (* 1000.0 (/ gc-delta internal-time-units-per-second)) count-delta window-ms))))
                  (with-open-file (s done :direction :output :if-exists :supersede)
                    (write-line "done" s))))
            (close ready)))

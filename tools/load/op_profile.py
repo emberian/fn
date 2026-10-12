@@ -274,8 +274,8 @@ def measure_hook_overhead(run, driver, duration):
         deadline = started + duration
         while time.monotonic() < deadline:
             time.sleep(min(0.5, max(0, deadline - time.monotonic())))
-        (directory / "stop").touch()
         after = driver.proc_snapshot(node.pid)
+        (directory / "stop").touch()
         wait_file(directory / "done", 120)
         record.update(parse_consed((directory / "consed.txt").read_text(), 1))
         record["duration_s"] = record["window_ms"] / 1000

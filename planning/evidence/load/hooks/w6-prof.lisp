@@ -15,42 +15,51 @@
 (let ((out (sb-ext:posix-getenv "FN_LOAD_PROF")))
   (when (and out (plusp (length out)))
     (require :sb-sprof)
-    (let ((win (parse-integer (or (sb-ext:posix-getenv "FN_LOAD_PROF_WINDOW") "120")))
-          (trigger (sb-ext:posix-getenv "FN_LOAD_PROF_START"))
-          (interval (sb-ext:posix-getenv "FN_LOAD_PROF_INTERVAL"))
-          (graph (equal (sb-ext:posix-getenv "FN_LOAD_PROF_GRAPH") "1"))
-          (mode (if (equal (sb-ext:posix-getenv "FN_LOAD_PROF_MODE") "alloc") :alloc :cpu)))
+    (let* ((win (parse-integer (or (sb-ext:posix-getenv "FN_LOAD_PROF_WINDOW") "120")))
+           (trigger (sb-ext:posix-getenv "FN_LOAD_PROF_START"))
+           (interval (sb-ext:posix-getenv "FN_LOAD_PROF_INTERVAL"))
+           (graph (equal (sb-ext:posix-getenv "FN_LOAD_PROF_GRAPH") "1"))
+           (mode (if (equal (sb-ext:posix-getenv "FN_LOAD_PROF_MODE") "alloc") :alloc :cpu))
+           (controlled (and trigger interval))
+           (ready (when controlled (merge-pathnames "ready" trigger)))
+           (stop (when controlled
+                   (fn-load-trigger-name (namestring (merge-pathnames "stop" trigger)))))
+           (done (when controlled (merge-pathnames "done" trigger)))
+           ;; Parse the decimal without the Lisp reader; encode paths once,
+           ;; before any sampling window.
+           (sample-interval (if interval
+                                (let* ((dot (position #\. interval))
+                                       (digits (remove #\. interval)))
+                                  (float (/ (parse-integer digits)
+                                            (expt 10 (if dot (- (length interval) dot 1) 0)))
+                                         1.0))
+                                0.01)))
       (sb-thread:make-thread
        (lambda ()
          (when trigger (loop until (probe-file trigger) do (sleep 0.05)))
          (loop for k from 0
-               do (funcall (intern "START-PROFILING" "SB-SPROF")
-                           :max-samples 400000 :mode mode
-                           :sample-interval (if interval
-                                                ;; Parse a decimal without invoking the Lisp reader.
-                                                (let* ((dot (position #\. interval))
-                                                       (digits (remove #\. interval)))
-                                                  (float (/ (parse-integer digits)
-                                                            (expt 10 (if dot (- (length interval) dot 1) 0)))
-                                                         1.0))
-                                                0.01)
-                           ;; A snapshot thread list excluding this controller
-                           ;; would omit threads born later, notably per-batch
-                           ;; syncers. Keep :all and export self samples by thread
-                           ;; for parser subtraction when INTERVAL is supplied.
-                           ;; Unset new keys preserve existing reports/behaviour.
-                           :threads :all)
-                  (if (and trigger interval)
-                      (progn
-                        (with-open-file (s (merge-pathnames "ready" trigger)
-                                           :direction :output :if-exists :supersede)
-                          (write-line "ready" s))
-                        (loop with deadline = (+ (get-internal-real-time)
-                                                 (* win internal-time-units-per-second))
-                              until (or (probe-file (merge-pathnames "stop" trigger))
+               do (let ((deadline nil))
+                    (when controlled
+                      ;; Readiness I/O and deadline arithmetic must not appear
+                      ;; in this controller's samples or allocation profile.
+                      (with-open-file (s ready :direction :output :if-exists :supersede)
+                        (write-line "ready" s))
+                      (setf deadline (+ (get-internal-real-time)
+                                        (* win internal-time-units-per-second))))
+                    (funcall (intern "START-PROFILING" "SB-SPROF")
+                             :max-samples 400000 :mode mode
+                             :sample-interval sample-interval
+                             ;; A snapshot thread list excluding this controller
+                             ;; would omit threads born later, notably per-batch
+                             ;; syncers. Keep :all and export self samples by thread
+                             ;; for parser subtraction when INTERVAL is supplied.
+                             ;; Unset new keys preserve existing reports/behaviour.
+                             :threads :all)
+                    (if controlled
+                        (loop until (or (fn-load-trigger-present-p stop)
                                         (>= (get-internal-real-time) deadline))
-                              do (sleep 0.001)))
-                      (sleep win))
+                              do (sleep 0.001))
+                        (sleep win)))
                   (funcall (intern "STOP-PROFILING" "SB-SPROF"))
                   (with-open-file (s (format nil "~a.~3,'0d.txt" out k)
                                      :direction :output :if-exists :supersede)
@@ -69,9 +78,8 @@
                       (let ((*standard-output* s))
                         (funcall (intern "REPORT" "SB-SPROF") :type :graph :max 40))))
                   (funcall (intern "RESET" "SB-SPROF"))
-                  (when (and trigger interval)
-                    (with-open-file (s (merge-pathnames "done" trigger)
-                                       :direction :output :if-exists :supersede)
+                  (when controlled
+                    (with-open-file (s done :direction :output :if-exists :supersede)
                       (write-line "done" s)))
                   (when trigger (return))))
        :name "fn-load-prof"))))

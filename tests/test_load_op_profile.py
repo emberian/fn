@@ -282,6 +282,108 @@ class HookRuntimeTests(unittest.TestCase):
 ''', directory, FN_TEST_TRIGGER=str(directory / "absent"))
             self.assertIn("POLL-BYTES 0", text)
 
+    def test_consed_end_counters_precede_tick_read_and_report_arithmetic(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            (directory / "start").touch()
+            (directory / "stop").touch()
+            self.lisp('''
+(in-package "ACL2")
+(defvar *controller* nil)
+(defvar *tick-reads* 0)
+(defvar *tick-work* nil)
+(sb-int:encapsulate 'sb-thread:make-thread 'capture-controller
+ (lambda (fn &rest args) (setf *controller* (apply fn args))))
+(sb-int:encapsulate 'get-internal-real-time 'end-tick-work
+ (lambda (fn)
+   (when (and (equal (sb-thread:thread-name sb-thread:*current-thread*) "fn-load-consed")
+              (= (incf *tick-reads*) 2))
+     ;; Make contamination observable even with SBCL allocation regions. The
+     ;; tick read and everything after it must be outside the raw counters.
+     (setf *tick-work* (make-array (* 32 1024 1024)
+                                  :element-type '(unsigned-byte 8) :initial-element 1))
+     (sb-ext:gc :full t))
+   (funcall fn)))
+(load "planning/evidence/load/hooks/op-consed.lisp")
+(sb-thread:join-thread *controller*)
+(assert *tick-work*)
+''', directory, FN_LOAD_CONSED_DIR=str(directory))
+            counters = op_profile.parse_consed((directory / "consed.txt").read_text(), 1)
+            self.assertLess(counters["consed_bytes"], 2 * 1024 * 1024,
+                            "final tick conversion/reporting work must not enter the byte delta")
+            self.assertEqual(counters["gcs"], 0)
+            self.assertEqual(counters["gc_ms"], 0)
+
+    def test_w6_legacy_and_triggered_controller_windows(self):
+        for controlled in (False, True):
+            with self.subTest(controlled=controlled), tempfile.TemporaryDirectory() as temp:
+                directory = Path(temp)
+                trigger = directory / "start"
+                trigger.touch()
+                env = {"FN_LOAD_PROF": str(directory / "report"),
+                       "FN_LOAD_PROF_START": str(trigger)}
+                if controlled:
+                    env.update(FN_LOAD_PROF_INTERVAL="0.001", FN_LOAD_PROF_GRAPH="1",
+                               FN_LOAD_PROF_MODE="alloc", FN_LOAD_PROF_WINDOW="0")
+                text = self.lisp('''
+(in-package "ACL2")
+(require :sb-sprof)
+(defvar *controller* nil)
+(defvar *sampling* nil)
+(defvar *events* nil)
+(defvar *controlled* (sb-ext:posix-getenv "FN_LOAD_PROF_INTERVAL"))
+(defvar *ready* (merge-pathnames "ready" (sb-ext:posix-getenv "FN_LOAD_PROF_START")))
+(sb-int:encapsulate 'sb-thread:make-thread 'capture-controller
+ (lambda (fn &rest args) (setf *controller* (apply fn args))))
+(sb-int:encapsulate 'sb-sprof:start-profiling 'observe-start
+ (lambda (fn &rest args)
+   (declare (ignore fn))
+   (assert (eql (not (null (probe-file *ready*))) (not (null *controlled*))))
+   (push (cons :start args) *events*)
+   (setf *sampling* t)))
+(sb-int:encapsulate 'probe-file 'no-sampled-pathname-probes
+ (lambda (fn &rest args) (assert (not *sampling*)) (apply fn args)))
+(sb-int:encapsulate 'merge-pathnames 'no-sampled-pathname-building
+ (lambda (fn &rest args) (assert (not *sampling*)) (apply fn args)))
+(sb-int:encapsulate 'sleep 'observe-timed-window
+ (lambda (fn seconds)
+   (if *sampling*
+       (progn (assert (not *controlled*)) (push (list :sleep seconds) *events*))
+       (funcall fn seconds))))
+(sb-int:encapsulate 'sb-sprof:stop-profiling 'observe-stop
+ (lambda (fn) (declare (ignore fn)) (setf *sampling* nil) (push :stop *events*)))
+(sb-int:encapsulate 'sb-sprof:report 'observe-report
+ (lambda (fn &rest args)
+   (declare (ignore fn)) (push (cons :report args) *events*) (write-line "test report")))
+(sb-int:encapsulate 'sb-sprof:reset 'observe-reset
+ (lambda (fn) (declare (ignore fn)) (push :reset *events*)))
+(sb-int:encapsulate 'sb-sprof:map-traces 'empty-test-samples
+ (lambda (fn &rest args) (declare (ignore fn args))))
+(load "planning/evidence/load/hooks/w6-prof.lisp")
+(sb-thread:join-thread *controller*)
+(format t "EVENTS ~s~%" (reverse *events*))
+''', directory, **env)
+                text = " ".join(text.split())
+                self.assertIn(":MAX-SAMPLES 400000", text)
+                self.assertIn(":THREADS :ALL", text)
+                self.assertIn(":REPORT :TYPE :FLAT :MAX 60", text)
+                self.assertEqual(text.count(":START "), 1)
+                self.assertEqual(text.count(":STOP"), 1)
+                self.assertEqual(text.count(":RESET"), 1)
+                if controlled:
+                    self.assertIn(":MODE :ALLOC :SAMPLE-INTERVAL 0.001", text)
+                    self.assertIn(":REPORT :TYPE :GRAPH :MAX 40", text)
+                    self.assertTrue((directory / "done").exists())
+                    self.assertTrue((directory / "report.000.threads.jsonl").exists())
+                else:
+                    self.assertIn(":MODE :CPU :SAMPLE-INTERVAL 0.01", text)
+                    self.assertIn("(:SLEEP 120)", text)
+                    self.assertNotIn(":TYPE :GRAPH", text)
+                    self.assertFalse((directory / "ready").exists())
+                    self.assertFalse((directory / "done").exists())
+                    self.assertFalse((directory / "report.000.threads.jsonl").exists())
+                self.assertTrue((directory / "report.000.txt").exists())
+
     def test_thread_sample_export_retains_a_later_created_syncer(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
@@ -315,15 +417,23 @@ class WindowTests(unittest.TestCase):
                 path.write_text("1")
                 if path.name == "done":
                     (path.parent / "consed.txt").write_text("consed_bytes 400 gc_ms 0 gcs 0 window_ms 2000")
+            snapshots = []
+            def snapshot(pid):
+                # Both CPU reads precede stop: stop-file handling belongs to
+                # neither the idle CPU delta nor the command-window CPU delta.
+                self.assertFalse(any((work / "test").glob("hook-overhead-*/stop")))
+                snapshots.append(pid)
+                return {"cpu_s": 0 if len(snapshots) == 1 else .001}
             with patch.object(op_profile, "wait_file", side_effect=ready), \
                  patch.object(op_profile.time, "monotonic", side_effect=[10, 12]), \
-                 patch.object(driver, "proc_snapshot", side_effect=[{"cpu_s": 0}, {"cpu_s": .001}]):
+                 patch.object(driver, "proc_snapshot", side_effect=snapshot):
                 control = op_profile.measure_hook_overhead(run, driver, 2)
             run.conn.assert_not_called()
             node.start.assert_called_once()
             self.assertEqual(control["consed_bytes"], 400)
             self.assertEqual(control["duration_s"], 2)
             self.assertEqual(control["cpu_ms"], 1)
+            self.assertEqual(snapshots, [123, 123])
 
     def test_each_window_restarts_with_only_its_hook_and_warmup_is_excluded(self):
         with tempfile.TemporaryDirectory() as temp:
