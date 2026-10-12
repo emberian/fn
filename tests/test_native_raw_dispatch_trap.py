@@ -209,15 +209,10 @@ DRIVER = r"""
 ;; calls, and callback 31,997,600 below plain 32,015,808 over 1M).  One page
 ;; is the resolution; one extra word per call over 100k calls is 800,000.
 (defun consed (thunk)
-  ;; The least of three runs: sb-ext:get-bytes-consed moves by whole
-  ;; allocation regions (64 KiB), so one run can read a region boundary
-  ;; that the call itself did not cause; an allocation per call shows in
-  ;; every run (100k calls x 16 octets is 1.6 MB).
   (funcall thunk)
-  (loop repeat 3
-        minimize (let ((before (sb-ext:get-bytes-consed)))
-                   (funcall thunk)
-                   (- (sb-ext:get-bytes-consed) before))))
+  (let ((before (sb-ext:get-bytes-consed)))
+    (funcall thunk)
+    (- (sb-ext:get-bytes-consed) before)))
 (defun fn-sub-plain (x y) (values (- x y) (list x y)))
 (compile 'fn-sub-plain)
 (let* ((sub (fnn-fixed-raw-callback 'fn-sub))
