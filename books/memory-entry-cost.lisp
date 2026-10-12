@@ -9,6 +9,7 @@
 ; outside its consp ruler) and the four heap decisions fn-heap-command-decide
 ; dispatches to, each its own book's figure.
 (in-package "ACL2")
+(include-book "image-world")
 (include-book "def-cost")
 (include-book "heap-command")
 (include-book "heap-reservation")

@@ -4,6 +4,8 @@
 ; is UNACCOUNTED, never zero; a declared bound is a theorem about the derived
 ; cost; the route is read from the final world; a served guard whose cost
 ; depends on a whole-state size is refused, not charged).
+; Rows are checked in the final world by books/cost-final-world.lisp, after
+; the interface declarations and every callee's cost row are present.
 ;
 ;   (def-cost NAME
 ;     [:visits BOUND :sizes ((S TERM) ...)]  ; BOUND over the size names S; TERM over
@@ -727,38 +729,62 @@
 
 ; Re-derive in the current world and compare with the row: a changed body,
 ; guard or interface declaration refuses.
+(defun fn-cost-check-problem (fn w)
+  (declare (xargs :mode :program))
+  (let ((row (cdr (assoc-eq fn (table-alist 'fn-cost w)))))
+    (if (null row)
+        (msg "no cost row for ~x0 in this world" fn)
+      (mv-let (msg route rcost bcost unaccounted)
+        (fn-cost-derive fn w)
+        (cond (msg (msg "~x0: ~@1" fn msg))
+              ((not (eq route (fn-cost-get :route row)))
+               (msg "~x0: the route is now ~x1, the row says ~x2"
+                    fn route (fn-cost-get :route row)))
+              ((not (and (equal rcost (fn-cost-get :route-cost row))
+                         (equal bcost (fn-cost-get :body-cost row))))
+               (msg "~x0: the derived cost is now ~x1 at the entry and ~
+                          ~x2 in the body; the row holds ~x3 and ~x4"
+                    fn rcost bcost (fn-cost-get :route-cost row) (fn-cost-get :body-cost row)))
+              ((not (and (subsetp-eq unaccounted (fn-cost-get :unaccounted row))
+                         (subsetp-eq (fn-cost-get :unaccounted row) unaccounted)))
+               (msg "~x0: the unaccounted callees are now ~x1; the row says ~x2"
+                    fn unaccounted (fn-cost-get :unaccounted row)))
+              (t
+               (if (not (fn-cost-get :cons-twin row))
+                   nil
+                 (mv-let (cmsg croute crc cbc cun)
+                   (fn-cost-derive-dimension fn w :conses)
+                   (if (and (null cmsg) (eq croute route)
+                            (equal crc (fn-cost-get :cons-route-cost row))
+                            (equal cbc (fn-cost-get :cons-body-cost row))
+                            (subsetp-eq cun (fn-cost-get :cons-unaccounted row))
+                            (subsetp-eq (fn-cost-get :cons-unaccounted row) cun))
+                       nil
+                     (msg "~x0: logical cons derivation changed" fn))))))))))
+
 (defmacro def-cost-check (fn)
   `(make-event
-    (let ((row (cdr (assoc-eq ',fn (table-alist 'fn-cost (w state))))))
-      (if (null row)
-          (er soft 'def-cost-check "no cost row for ~x0 in this world" ',fn)
-        (mv-let (msg route rcost bcost unaccounted)
-          (fn-cost-derive ',fn (w state))
-          (cond (msg (er soft 'def-cost-check "~x0: ~@1" ',fn msg))
-                ((not (eq route (fn-cost-get :route row)))
-                 (er soft 'def-cost-check "~x0: the route is now ~x1, the row says ~x2"
-                     ',fn route (fn-cost-get :route row)))
-                ((not (and (equal rcost (fn-cost-get :route-cost row))
-                           (equal bcost (fn-cost-get :body-cost row))))
-                 (er soft 'def-cost-check "~x0: the derived cost is now ~x1 at the entry and ~
-                                           ~x2 in the body; the row holds ~x3 and ~x4"
-                     ',fn rcost bcost (fn-cost-get :route-cost row) (fn-cost-get :body-cost row)))
-                ((not (and (subsetp-eq unaccounted (fn-cost-get :unaccounted row))
-                           (subsetp-eq (fn-cost-get :unaccounted row) unaccounted)))
-                 (er soft 'def-cost-check "~x0: the unaccounted callees are now ~x1; the row says ~x2"
-                     ',fn unaccounted (fn-cost-get :unaccounted row)))
-                (t
-                 (if (not (fn-cost-get :cons-twin row))
-                     (value '(value-triple ',fn))
-                   (mv-let (cmsg croute crc cbc cun)
-                     (fn-cost-derive-dimension ',fn (w state) :conses)
-                     (if (and (null cmsg) (eq croute route)
-                              (equal crc (fn-cost-get :cons-route-cost row))
-                              (equal cbc (fn-cost-get :cons-body-cost row))
-                              (subsetp-eq cun (fn-cost-get :cons-unaccounted row))
-                              (subsetp-eq (fn-cost-get :cons-unaccounted row) cun))
-                         (value '(value-triple ',fn))
-                       (er soft 'def-cost-check "~x0: logical cons derivation changed" ',fn)))))))))))
+    (let ((problem (fn-cost-check-problem ',fn (w state))))
+      (if problem
+          (er soft 'def-cost-check "~@0" problem)
+        (value '(value-triple ',fn))))))
+
+(defun fn-cost-check-all-problem (rows w)
+  (declare (xargs :mode :program))
+  (if (atom rows) nil
+    (let ((problem (fn-cost-check-problem (caar rows) w))
+          (rest (fn-cost-check-all-problem (cdr rows) w)))
+      (cond ((and problem rest) (msg "~@0~%~@1" problem rest))
+            (problem problem)
+            (t rest)))))
+
+(defmacro def-cost-check-all ()
+  `(make-event
+    (let* ((rows (table-alist 'fn-cost (w state)))
+           (problem (fn-cost-check-all-problem rows (w state))))
+      (if problem
+          (er soft 'def-cost-check-all "~@0" problem)
+        (value `(value-triple ,(len rows)))))))
 
 ; The operation validator runs after costs exist, so the entry route was
 ; read from its final interface declaration.  It consumes the one existing

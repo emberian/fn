@@ -3,6 +3,7 @@
 ; fnn-owner-reclaim-pass creates for passes 2 and 3, its init, the per-chunk
 ; canonical and prediction steps, and the finish.
 (in-package "ACL2")
+(include-book "image-world")
 (include-book "def-cost")
 (include-book "reclaim-chunked-seal")
 ; Each wrapper is costed partial over the value function it stores

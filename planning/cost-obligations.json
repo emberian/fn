@@ -3994,6 +3994,7 @@
     "fn-cth-header-tot",
     "fn-cth-segment-bound",
     "fn-mm-checkpoint-load-octets",
+    "fn-scc-octet-listp",
     "fn-scc-parse-header"
    ],
    "theorem": "fn-cth-header-open-visits-bound",
@@ -4010,16 +4011,8 @@
    ],
    "unaccounted": [
     "fn-cth-status-field",
-    "fn-mm-tot-arena",
-    "fn-mm-tot-charge",
-    "fn-mm-tot-events",
-    "fn-mm-tot-hcharge",
-    "fn-mm-tot-history",
-    "fn-mm-tot-log",
-    "fn-mm-tot-memberships",
-    "fn-mm-tot-paged-p",
-    "fn-mm-tot-records",
-    "fn-nls-text"
+    "fn-nls-text",
+    "true-list-fix"
    ],
    "theorem": "fn-cth-status-text-visits-bound",
    "declared_in": "books/charged-totals-header-cost.lisp"
@@ -5087,6 +5080,7 @@
     "fn-hld-fuel",
     "fn-hld-settle",
     "fn-hll-x-step*",
+    "fn-rtc-outcomep",
     "mv-nth",
     "true-list-fix"
    ],
@@ -5506,6 +5500,7 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
+    "expt",
     "unsigned-byte-p"
    ],
    "theorem": null,
@@ -5918,7 +5913,8 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-lgo-add"
+    "fn-lgo-add",
+    "fn-lzr-dictsp"
    ],
    "theorem": null,
    "declared_in": "books/store-log-open-scan-cost.lisp"
