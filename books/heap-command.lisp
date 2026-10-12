@@ -418,6 +418,9 @@
     (cond ((equal (nth 1 d) :machine-cannot-hold-the-store)
            (concatenate 'string "refused machine-cannot-hold-the-store need="
                         (fn-heap-decimal (nth 2 d)) " MB machine=" (fn-heap-decimal (nth 3 d)) " MB"))
+          ((equal (nth 1 d) :machine-cannot-hold-the-pools)
+           (concatenate 'string "refused machine-cannot-hold-the-pools need="
+                        (fn-heap-decimal (nth 2 d)) " MB machine=" (fn-heap-decimal (nth 3 d)) " MB"))
           (t (concatenate 'string "refused address-space-cannot-hold-the-reservation reservation="
                           (fn-heap-decimal (nth 2 d)) " MB address-space="
                           (fn-heap-decimal (nth 3 d)) " MB")))))
@@ -475,6 +478,7 @@
   (concatenate 'string
                (if (and (consp decision) (equal (car decision) :refused) (consp (cdr decision))
                         (member-equal (cadr decision) '(:machine-cannot-hold-the-store
+                                                        :machine-cannot-hold-the-pools
                                                         :address-space-cannot-hold-the-reservation)))
                    (fn-mo-read-refusal-line decision)
                  (fn-heap-reserve-report-line decision))
@@ -921,6 +925,9 @@
          (reservation (fn-mo-serve-reservation profile core dynamic pool-threads))
          (addr (fn-mm-least-observation address)))
     (cond ((not (natp limit)) (list :refused :machine-memory-unobserved 0 0))
+          ((< (fn-mm-least-observation resident) (nfix pools))
+           (list :refused :machine-cannot-hold-the-pools
+                 (fn-heap-mb-of (nfix pools)) (floor (fn-mm-least-observation resident) *fn-heap-mib*)))
           ((and (fn-mm-tot-p tot) (< limit (fn-mm-reopen-need profile img cfg tot)))
            (list :refused :machine-cannot-hold-the-store
                  (fn-heap-mb-of (fn-mm-reopen-need profile img cfg tot)) (floor limit *fn-heap-mib*)))
@@ -979,11 +986,13 @@
 
 ; The decision's cases, over abstract terms: the proofs of the keystones below never expand the
 ; decision's let* (a clause that size defeats the prover's subsumption).
-(defthm fn-mo-serve-decide-cases-launch
+(defthm fn-mo-serve-decide-pool-cases-launch-by-definition
   (implies (and (natp limit)
+                (not poolbad)
                 (or (not totp) (<= need limit))
                 (or (not (natp addr)) (<= res addr)))
            (equal (car (cond ((not (natp limit)) (list :refused :machine-memory-unobserved 0 0))
+                             (poolbad (list :refused :machine-cannot-hold-the-pools j k))
                              ((and totp (< limit need)) (list :refused :machine-cannot-hold-the-store a b))
                              ((and (natp addr) (< addr res))
                               (list :refused :address-space-cannot-hold-the-reservation c d))
@@ -991,14 +1000,16 @@
                   :heap))
   :rule-classes nil)
 
-(defthm fn-mo-serve-decide-cases-heap
+(defthm fn-mo-serve-decide-pool-cases-heap-by-definition
   (let ((d (cond ((not (natp limit)) (list :refused :machine-memory-unobserved 0 0))
+                 (poolbad (list :refused :machine-cannot-hold-the-pools j k))
                  ((and totp (< limit need)) (list :refused :machine-cannot-hold-the-store a b))
                  ((and (natp addr) (< addr res))
                   (list :refused :address-space-cannot-hold-the-reservation c d0))
                  (t (list :heap e f g h i)))))
     (implies (equal (car d) :heap)
              (and (natp limit)
+                  (not poolbad)
                   (implies totp (<= need limit))
                   (implies (natp addr) (<= res addr))
                   (equal d (list :heap e f g h i)))))
@@ -1023,8 +1034,11 @@
                                  (fn-mo-serve-threads pool-threads))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-mo-serve-decide) (theory 'minimal-theory))
-           :use ((:instance fn-mo-serve-decide-cases-heap
+           :use ((:instance fn-mo-serve-decide-pool-cases-heap-by-definition
                   (limit (fn-mo-serve-limit resident pools))
+                  (poolbad (< (fn-mm-least-observation resident) (nfix pools)))
+                  (j (fn-heap-mb-of (nfix pools)))
+                  (k (floor (fn-mm-least-observation resident) *fn-heap-mib*))
                   (totp (fn-mm-tot-p tot))
                   (need (fn-mm-reopen-need profile img
                           (fn-mo-serve-cfg trigger
@@ -1072,6 +1086,17 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons) (theory 'minimal-theory))
            :use ((:instance fn-mo-serve-decide-heap-facts)))))
+
+; KEYSTONE K-L2p (L-RUN-LAUNCH, native m21-lrl-2): a launch's pools are within its
+; least resident observation.
+(defthm fn-mo-serve-launch-holds-its-pools
+  (implies (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap)
+           (and (natp (fn-mm-least-observation resident))
+                (<= (nfix pools) (fn-mm-least-observation resident))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (union-theories '(fn-mo-serve-decide fn-mo-serve-limit car-cons natp nfix)
+                                      (theory 'minimal-theory)))))
 
 (defthm fn-mo-serve-decide-heap-reservation
   (implies (and (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core
@@ -1151,9 +1176,10 @@
            :use (fn-mo-serve-holds-every-admitted-store-at-the-decision fn-mo-serve-decide-heap-mb))))
 
 
-; KEYSTONE K-L3: the launch refuses only by the model: with a resident observation, the observed store's
-; reopen within the limit (or the totals unseen), and the reservation within the address space (or none
-; observed), it launches.  No comparison of the reservation with a resident limit remains.
+; KEYSTONE K-L3: the launch refuses only by the model: with a resident observation, the pools within
+; that observation, the observed store's reopen within the limit (or the totals unseen), and the
+; reservation within the address space (or none observed), it launches.  The pools beyond the resident
+; limit join the model's refusals.  No comparison of the reservation with a resident limit remains.
 (defthm fn-mo-serve-refuses-only-by-the-model-at-the-decision
   (let* ((limit (fn-mo-serve-limit resident pools))
          (dynamic (fn-mo-serve-dynamic limit core nursery pools))
@@ -1162,6 +1188,7 @@
                                live cold profile config))
          (addr (fn-mm-least-observation address)))
     (implies (and (natp limit)
+                  (<= (nfix pools) (fn-mm-least-observation resident))
                   (or (not (fn-mm-tot-p tot)) (<= (fn-mm-reopen-need profile img cfg tot) limit))
                   (or (not (natp addr))
                       (<= (fn-mo-serve-reservation profile core dynamic pool-threads) addr)))
@@ -1170,8 +1197,10 @@
                     :heap)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-mo-serve-decide car-cons) (theory 'minimal-theory))
-           :use ((:instance fn-mo-serve-decide-cases-launch
+           :use ((:instance fn-mo-serve-decide-pool-cases-launch-by-definition
                   (limit (fn-mo-serve-limit resident pools))
+                  (poolbad (< (fn-mm-least-observation resident) (nfix pools)))
+                  (j 0) (k 0)
                   (totp (fn-mm-tot-p tot))
                   (need (fn-mm-reopen-need profile img
                           (fn-mo-serve-cfg trigger
@@ -1189,6 +1218,7 @@
 ; decision written out.
 (defthm fn-mo-serve-refuses-only-by-the-model
   (implies (and (natp (fn-mo-serve-limit resident pools))
+                (<= (nfix pools) (fn-mm-least-observation resident))
                 (or (not (fn-mm-tot-p tot))
                     (<= (fn-mm-reopen-need profile img (fn-mo-serve-cfg trigger (fn-heap-nursery-trigger (* *fn-heap-mib* (fn-heap-mb-of (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools))) nursery) live cold profile config) tot) (fn-mo-serve-limit resident pools)))
                 (or (not (natp (fn-mm-least-observation address)))

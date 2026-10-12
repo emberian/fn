@@ -414,6 +414,13 @@
    "mutation": "tests/acl2/heap-command-tests.lisp::reservation-held-to-the-resident-limit",
    "provenance": "keystone_critical.py --declare sha256:3d54ddd0e0ba3a573bbe9b8868f2d3aa4d7dd4f8a953cef4793732682c55949a"
   },
+  "fn-mo-serve-launch-holds-its-pools": {
+   "subject": "fn-mo-serve-decide",
+   "host_test": "tests/test_native_heap_from_profile.py::test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-serve-launch-holds-its-pools",
+   "mutation": "tests/acl2/heap-command-tests.lisp::decision-without-the-pool-refusal",
+   "provenance": "keystone_critical.py --declare sha256:24bfb844a8df5a5cf1077066180a273a9f467415f35f3789b24b96efe7c5aa96"
+  },
   "fn-mo-serve-refuses-only-by-the-model": {
    "subject": "fn-mo-serve-decide",
    "host_test": "tests/test_native_heap_from_profile.py::test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",

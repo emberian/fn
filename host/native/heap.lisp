@@ -441,8 +441,9 @@ share this boundary, including standalone BP owners."
 ;; dynamic space the run's LIMIT needs (the least resident observation less the pools the run funds:
 ;; DEFAULT's or the cold policy's, the output pool's, the peer flight's, and a BP served command's
 ;; session capacity, books/bp-session-profile.lisp fn-bpsp-node-capacity), plus those pools, refused
-;; by name when the observed store's reopen exceeds LIMIT or the reservation exceeds the address
-;; space; a BP command whose session terms price nothing is refused by name.  The run's capacity C'
+;; by name when the pools exceed the least resident observation, the observed store's reopen exceeds
+;; LIMIT, or the reservation exceeds the address space; a BP command whose session terms price
+;; nothing is refused by name.  The run's capacity C'
 ;; is its configure's (host/owner-host.lisp fn-owner-memory-configure).  Answers (values DECISION
 ;; TOTALS IMG CONFIG EXTENT): the totals, image and configuration octets the decision read.
 (defun fnn-heap-serve-decision (profile root core cold-resources output-resources peer reclaim-live
