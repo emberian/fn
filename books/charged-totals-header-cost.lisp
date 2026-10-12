@@ -9,7 +9,6 @@
 (include-book "def-cost")
 (include-book "charged-totals-header")
 
-(def-cost fn-cth-empty-suffix :unaccounted (fn-mm-tot-paged-p))
 
 (def-cost fn-cth-status-text
   :unaccounted (fn-mm-tot-records fn-mm-tot-arena fn-mm-tot-hcharge fn-mm-tot-memberships
