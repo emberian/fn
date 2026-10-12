@@ -2031,8 +2031,12 @@ sys.exit(1 if findings else 0)
             (self.seed / "books/def-cost.lisp").write_text(generator)
             obligations = cost_obligations.render(cost_obligations.build(self.seed))
             contracts = cost_obligations.render(cost_obligations.build_contracts(self.seed))
+        # vertical-cost-route: every tree carries the final-world aggregate,
+        # its last form (def-cost-check-all); this fixture declares no row.
+        final_world = '(in-package "ACL2")\n(def-cost-check-all)\n'
         self.advance_dev({"tools/cost_obligations.py": script,
                           "books/def-cost.lisp": generator,
+                          "books/cost-final-world.lisp": final_world,
                           "planning/dispatched.json": '{"entries": []}\n',
                           "planning/cost-obligations.json": obligations,
                           "planning/cost-contracts.json": contracts})
