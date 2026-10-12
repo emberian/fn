@@ -63,8 +63,9 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertIn("(fn-native-admin-plan-deltas-over plan "
                       "(fn-cfg-peers (fn-cfg-value (fn-owner-config state))))",
                       " ".join(body.split()))
-        # (the arena threaded through since the records flip)
-        self.assertIn("(fn-owner-reconfigure-deltas id deltas fn-arena state)", body)
+        # (the arena threaded through since the records flip; the history
+        # since L-RUN-LAUNCH, so a raise is priced over the synced totals)
+        self.assertIn("(fn-owner-reconfigure-deltas id deltas fn-arena fn-hist state)", body)
         # No delta constructor and no octet/string conversion in the bridge:
         # the labels' type is decided once, in the book.
         for forbidden in ("fn-cfg-create-group", "fn-cfg-remove-group",
