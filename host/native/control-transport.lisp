@@ -5,6 +5,19 @@
 
 (defconstant +fnn-control-io-seconds+ 10)
 
+;;; The control handler chain shared by the NNTP owner (control.lisp, whose
+;;; hybrid-control, keys and login-bindings handlers push onto it) and the
+;;; serialized BP control owner (bp-control.lisp, which answers FNCT :read
+;;; requests through it).  NIL until a handler installs itself; the DTN
+;;; build loads no handler, so its BP owner takes its own turn plan.
+(defvar *fnn-hybrid-control-handler* nil)
+
+;;; (FRAME . OCTET-LIST) for the frame the handler chain is deciding, built
+;;; at most once however many handlers decode it (sweep S029; bound by
+;;; fnn-control-handle-client around the chain).  ACL2 never mutates an
+;;; argument, so the handlers share it.
+(defvar *fnn-control-frame-list* nil)
+
 (defstruct (fnn-control-state (:constructor %make-fnn-control-state))
   path listener accept-thread service
   (lock (sb-thread:make-mutex :name "fn local control"))
