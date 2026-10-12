@@ -98,7 +98,8 @@
              "own-pin:pit")
       (prct-delta-okp *prct-carry0* *prct-r1*)
       (equal *prct-carry1*
-             (cons *prct-r1* (fn-prc-add "own-pin:pit" (cdr *prct-carry0*))))
+             (cons *prct-r1* (fn-prc-add-pin (car (fn-retain-pins *prct-r1*))
+                                             (cdr *prct-carry0*))))
       (fn-prc-has "own-pin:pit" (cdr *prct-carry1*))
       (fn-rii-knownp "own-pin:pit" *prct-r1*)))
 
@@ -209,9 +210,9 @@
 ; Retention steps between POSTs.  NU is node1 after a forwarding undertaking
 ; of "fwd-pin:pit" and NR is NU after its release, each the Store's own
 ; retention transition (fn-replay-apply-retention-event); RU and RR are their
-; ledgers.  Every refresh takes the delta branch (no rebuild): the
-; undertaking puts one id, the release puts none (the released id is still
-; known, now through the releases), and the two steps at once put one.
+; ledgers. The undertaking and release each take the delta branch.
+; Undertaking puts a pin record; release replaces it with the id string.
+; If both happen between refreshes the old trie has no such pin: rebuild.
 
 (defconst *prct-tx1* (fn-state-next-txid (fn-node-acceptance *prct-node1*)))
 (defconst *prct-nu*
@@ -244,14 +245,16 @@
       ; The undertaking: delta, one put.
       (prct-delta-okp *prct-carry1* *prct-ru*)
       (equal *prct-carry-u*
-             (cons *prct-ru* (fn-prc-add "fwd-pin:pit" (cdr *prct-carry1*))))
-      ; The release: delta, the trie unchanged.
+             (cons *prct-ru* (fn-prc-add-pin (car (fn-retain-pins *prct-ru*))
+                                            (cdr *prct-carry1*))))
+      ; The release: delta, the pin leaf replaced by its id.
       (prct-delta-okp *prct-carry-u* *prct-rr*)
-      (equal *prct-carry-ur* (cons *prct-rr* (cdr *prct-carry-u*)))
-      ; Both steps between two POSTs: delta, one put.
-      (prct-delta-okp *prct-carry1* *prct-rr*)
+      (equal *prct-carry-ur*
+             (cons *prct-rr* (fn-prc-release-put "fwd-pin:pit" (cdr *prct-carry-u*))))
+      ; Both steps between two POSTs: no old pin to skip; rebuild.
+      (not (prct-delta-okp *prct-carry1* *prct-rr*))
       (equal *prct-carry-r*
-             (cons *prct-rr* (fn-prc-add "fwd-pin:pit" (cdr *prct-carry1*))))
+             (cons *prct-rr* (fn-prc-build *prct-rr*)))
       (fn-prc-carryp *prct-carry-u*)
       (fn-prc-carryp *prct-carry-ur*)
       (fn-prc-carryp *prct-carry-r*)))
@@ -371,3 +374,367 @@
       (fn-prc-set-okp (car *prct-carry-r*) (cdr *prct-carry-r*))
       (not (prct-delta-okp *prct-carry-r* *prct-r0*))
       (not (fn-prc-set-okp *prct-r0* (prct-delta-trie *prct-carry-r* *prct-r0*)))))
+
+; D14 Part A: concrete find witnesses, reached through retention transitions.
+; Subject and archive evidence are bp-release-tests' concrete values.
+(defconst *d14-prct-l0*
+  (fn-retain-release
+   (fn-retain-admit (fn-retain-initial-state 100)
+                    "c3" "subject-rl" :archive "operator-release" 4)
+   "c3" "subject-rl" :archive "operator-release"))
+(defconst *d14-prct-l1*
+  (fn-retain-admit
+   (fn-retain-admit *d14-prct-l0* "a1" "subject-rl" :archive "operator-release" 4)
+   "b2" "subject-rl" :archive "operator-release" 4))
+(defconst *d14-prct-c1* (fn-prc-refresh nil *d14-prct-l1*))
+(defconst *d14-prct-a1* (fn-retain-find-id "a1" (fn-retain-pins *d14-prct-l1*)))
+(defconst *d14-prct-b2* (fn-retain-find-id "b2" (fn-retain-pins *d14-prct-l1*)))
+; SAT: whole antecedent, mark, and pin/released/unknown conclusions.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and (fn-retain-statep *d14-prct-l0*) (fn-retain-statep *d14-prct-l1*)
+       (fn-prc-carryp *d14-prct-c1*) (fn-prc-carry-findsp *d14-prct-c1*)
+       (consp *d14-prct-a1*) (consp *d14-prct-b2*)
+       (equal (fn-prc-find-pin "a1" *d14-prct-l1* *d14-prct-c1*) *d14-prct-a1*)
+       (equal (fn-prc-find-pin "c3" *d14-prct-l1* *d14-prct-c1*)
+              (fn-retain-find-id "c3" (fn-retain-pins *d14-prct-l1*)))
+       (equal (fn-prc-find-pin "zz" *d14-prct-l1* *d14-prct-c1*)
+              (fn-retain-find-id "zz" (fn-retain-pins *d14-prct-l1*)))
+       (not (fn-prc-find-pin "c3" *d14-prct-l1* *d14-prct-c1*))
+       (not (fn-prc-find-pin "zz" *d14-prct-l1* *d14-prct-c1*)))) )
+(defconst *d14-prct-l2*
+  (fn-retain-release *d14-prct-l1* "a1" "subject-rl" :archive "operator-release"))
+(defconst *d14-prct-c2* (fn-prc-refresh *d14-prct-c1* *d14-prct-l2*))
+; DELTA: MV-LET is the executable spelling of (mv-nth 0 (fn-prc-delta c L)).
+(with-guard-checking-event
+ :none
+ (assert-event
+  (mv-let (ok trie) (fn-prc-delta *d14-prct-c1* *d14-prct-l2*)
+    (and (equal ok t) (equal *d14-prct-c2* (cons *d14-prct-l2* trie))
+         (fn-retain-statep *d14-prct-l2*)
+         (fn-prc-carryp *d14-prct-c2*) (fn-prc-carry-findsp *d14-prct-c2*)
+         (equal (fn-prc-find-pin "a1" *d14-prct-l2* *d14-prct-c2*) nil)
+         (equal (fn-prc-find-pin "b2" *d14-prct-l2* *d14-prct-c2*) *d14-prct-b2*)))))
+(defconst *d14-prct-l3*
+  (fn-retain-admit *d14-prct-l1* "d4" "subject-rl" :archive "operator-release" 4))
+(defconst *d14-prct-c3* (fn-prc-refresh *d14-prct-c1* *d14-prct-l3*))
+; COMMIT: same positive delta requirement; the shared old pin tail is kept.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (mv-let (ok trie) (fn-prc-delta *d14-prct-c1* *d14-prct-l3*)
+    (and (equal ok t) (equal *d14-prct-c3* (cons *d14-prct-l3* trie))
+         (fn-retain-statep *d14-prct-l3*)
+         (fn-prc-carryp *d14-prct-c3*) (fn-prc-carry-findsp *d14-prct-c3*)
+         (consp (fn-prc-find-pin "d4" *d14-prct-l3* *d14-prct-c3*))
+         (equal (fn-prc-find-pin "d4" *d14-prct-l3* *d14-prct-c3*)
+                (fn-retain-find-id "d4" (fn-retain-pins *d14-prct-l3*)))))))
+(defconst *d14-prct-id-only*
+  (cons *d14-prct-l1*
+        (fn-prc-mark (fn-prc-add "a1" (fn-prc-add "b2" (fn-prc-add "c3" nil))) t)))
+; T-FIND and T-HYP: membership alone admits a marked PRF-289 string trie.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and (fn-prc-set-okp *d14-prct-l1* (cdr *d14-prct-id-only*))
+       (not (fn-prc-carryp *d14-prct-id-only*))
+       (equal (fn-prc-find-pin "a1" *d14-prct-l1* *d14-prct-id-only*) nil)
+       (not (equal (fn-prc-find-pin "a1" *d14-prct-l1* *d14-prct-id-only*)
+                   (fn-retain-find-id "a1" (fn-retain-pins *d14-prct-l1*)))))))
+; T-LEDGER: a valid carry cannot simply be renamed to a ledger with more pins.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and (fn-prc-carryp (fn-prc-refresh nil *d14-prct-l0*))
+       (not (fn-prc-carryp
+             (cons *d14-prct-l1* (cdr (fn-prc-refresh nil *d14-prct-l0*))))))))
+; T-MUT exact mutated release writer:
+; (defun fn-prc-release-put (id trie)
+;   (declare (xargs :guard t))
+;   (fn-prc-add id trie))
+; This keeps a released pin leaf. The release-cleared check then rejects
+; the delta, so DELTA's (equal ok t) fails. Without that check the marked
+; trie would return the released pin, the PRF-289 mutation in the spec.
+
+; RED 1 and L16: record/branch/bucket recognizer boundaries, with evaluated
+; fn-rit-hasp-of-leaf/-of-branch/-of-atom and strings lemma instances.
+(defconst *d14-prct-record* '("a1" "subject-rl" :archive "operator-release" 4))
+(defconst *d14-prct-branch* (fn-rit-lift *d14-prct-record* 0))
+(defconst *d14-prct-bucket* (list :end *d14-prct-record*))
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and
+   ; Leaf recognizer: record accepted; branch rejected.
+   (fn-rit-leafp *d14-prct-record*) (not (fn-rit-leafp *d14-prct-branch*))
+   (equal (fn-rit-hasp "a1" 0 *d14-prct-record*)
+          (equal (fn-rit-leaf-id *d14-prct-record*) "a1"))
+   (implies (fn-rit-leafp *d14-prct-branch*)
+            (equal (fn-rit-hasp "a1" 0 *d14-prct-branch*)
+                   (equal (fn-rit-leaf-id *d14-prct-branch*) "a1")))
+   ; Removing the leaf hypothesis makes this same instance false.
+   (not (equal (fn-rit-hasp "a1" 0 *d14-prct-branch*)
+               (equal (fn-rit-leaf-id *d14-prct-branch*) "a1")))
+   ; Branch recognizer: lifted record accepted; record rejected.
+   (fn-rit-branchp *d14-prct-branch*) (not (fn-rit-branchp *d14-prct-record*))
+   (equal (fn-rit-hasp "a1" 0 *d14-prct-branch*)
+          (fn-rit-hasp "a1" 1 (fn-midx-branch-get #\a *d14-prct-branch*)))
+   (implies (fn-rit-branchp *d14-prct-record*)
+            (equal (fn-rit-hasp "a1" 0 *d14-prct-record*)
+                   (fn-rit-hasp "a1" 1 (fn-midx-branch-get #\a *d14-prct-record*))))
+   ; RED 1: the old CONSP hypothesis accepts the record and gives t /= nil.
+   (consp *d14-prct-record*)
+   (equal (fn-rit-hasp "a1" 0 *d14-prct-record*) t)
+   (equal (fn-rit-hasp "a1" 1 (fn-midx-branch-get #\a *d14-prct-record*)) nil)
+   ; Bucket tag: accepted on the bucket; rejected on a record.
+   (equal (car *d14-prct-bucket*) :end)
+   (not (equal (car *d14-prct-record*) :end))
+   (not (fn-rit-leafp *d14-prct-bucket*))
+   (not (fn-rit-branchp *d14-prct-bucket*))
+   (not (fn-rit-hasp "a1" 0 *d14-prct-bucket*))
+   (implies (and (not (fn-rit-leafp *d14-prct-record*))
+                 (not (fn-rit-branchp *d14-prct-record*)))
+            (not (fn-rit-hasp "a1" 0 *d14-prct-record*)))
+   ; End bucket lookup and leaf-ID enumeration through its branch.
+   (equal (fn-rit-hasp "a1" 2 (list (cons :end *d14-prct-bucket*))) t)
+   (equal (fn-rit-strings (list (cons :end *d14-prct-bucket*))) '("a1"))
+   (equal (fn-rit-strings *d14-prct-record*) '("a1"))
+   (equal (fn-rit-strings *d14-prct-bucket*) nil))))
+; RED 2: uniqueness and disjointness alone let the non-string pin ID through.
+(defconst *d14-prct-nonstring-pin* '(7 "subject-rl" :archive "operator-release" 4))
+(defconst *d14-prct-nonstring-ledger*
+  (fn-retain-make-state 16 4 (list *d14-prct-nonstring-pin*) nil))
+(with-guard-checking-event
+ :none
+ (assert-event
+  (let ((carry (fn-prc-refresh nil *d14-prct-nonstring-ledger*)))
+    (and (fn-retain-no-duplicatesp '(7)) (fn-retain-ids-disjointp '(7) nil)
+         (not (fn-prc-ledger-findsp *d14-prct-nonstring-ledger*))
+         (fn-prc-carryp carry) (not (fn-prc-carry-findsp carry))
+         (equal (fn-prc-find 7 (cdr carry)) nil)
+         (equal (fn-prc-find-pin 7 *d14-prct-nonstring-ledger* carry)
+                *d14-prct-nonstring-pin*)
+         (not (equal (fn-prc-find 7 (cdr carry))
+                     (fn-retain-find-id 7 (fn-retain-pins *d14-prct-nonstring-ledger*))))))))
+
+; RED 3: the original A3 recognizer admits duplicate pins.
+; A3's two find-agreement scans, without the draft's extra uniqueness test.
+(defun d14-a3-carryp (carry)
+  (declare (xargs :guard t))
+  (or (atom carry)
+      (and (fn-prc-set-okp (car carry) (cdr carry))
+           (implies
+            (fn-prc-carry-findsp carry)
+            (and (not (fn-prc-find-miss
+                       (fn-prc-pin-ids (fn-retain-pins (car carry)))
+                       (fn-retain-pins (car carry)) (cdr carry)))
+                 (not (fn-prc-find-miss
+                       (fn-rit-strings (cdr carry))
+                       (fn-retain-pins (car carry)) (cdr carry))))))))
+(defconst *d14-red3-pin* '("a1" "subject-rl" :archive "operator-release" 4))
+(defconst *d14-red3-old*
+  (fn-retain-make-state 100 8 (list *d14-red3-pin* *d14-red3-pin*) nil))
+(defconst *d14-red3-new*
+  (fn-retain-make-state 100 5 (list *d14-red3-pin*)
+                        (list '("a1" "subject-rl" :archive "operator-release"))))
+; Deliberately forged carry; the theorem quantifies over all carries that
+; satisfy its recognizer, not just carries reachable from refresh.
+(defconst *d14-red3-carry*
+  (cons *d14-red3-old* (fn-prc-mark *d14-red3-pin* t)))
+(defconst *d14-red3-refreshed*
+  (fn-prc-refresh *d14-red3-carry* *d14-red3-new*))
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and (d14-a3-carryp *d14-red3-carry*)
+       (fn-prc-carry-findsp *d14-red3-carry*)
+       (mv-let (ok trie) (fn-prc-delta *d14-red3-carry* *d14-red3-new*)
+         (declare (ignore trie))
+         (equal ok t))
+       (fn-prc-carry-findsp *d14-red3-refreshed*)
+       (equal (fn-prc-find-pin "a1" *d14-red3-new* *d14-red3-refreshed*) nil)
+       (equal (fn-retain-find-id "a1" (fn-retain-pins *d14-red3-new*))
+              *d14-red3-pin*)
+       (not (d14-a3-carryp *d14-red3-refreshed*))
+       ; The RED 3 amendment now requires this fit condition.
+       (not (fn-prc-carryp *d14-red3-carry*)))) )
+(value-triple :d14-red3-confirmed)
+
+; RED 3 amendment: duplicate releases force an unmarked rebuild, and a
+; forged mark on an overlapping ledger cannot satisfy the recognizer.
+(defconst *d14-prct-double-release*
+  (fn-retain-make-state
+   100 (fn-retain-reserved *d14-prct-l2*) (fn-retain-pins *d14-prct-l2*)
+   (cons (car (fn-retain-releases *d14-prct-l2*))
+         (fn-retain-releases *d14-prct-l2*))))
+(with-guard-checking-event
+ :none
+ (assert-event
+  (let ((carry (fn-prc-refresh *d14-prct-c1* *d14-prct-double-release*)))
+    (and (mv-let (ok trie) (fn-prc-delta *d14-prct-c1* *d14-prct-double-release*)
+           (declare (ignore trie)) (equal ok nil))
+         (not (fn-prc-carry-findsp carry)) (fn-prc-carryp carry)
+         (not (fn-prc-carryp
+               (cons *d14-prct-double-release* (fn-prc-mark (cdr carry) t))))
+         (not (fn-prc-carryp
+               (cons *d14-red3-new* (fn-prc-mark *d14-red3-pin* t))))))))
+; A1: release strings are inserted first; a pin replaces a release at the
+; same ID, and the first pin wins even on a ledger whose mark is false.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (let* ((second '("a1" "other-subject" :archive "other-evidence" 8))
+         (ledger (fn-retain-make-state
+                  100 13 (list *d14-prct-a1* second)
+                  (list '("a1" "subject-rl" :archive "operator-release"))))
+         (carry (fn-prc-refresh nil ledger)))
+    (and (fn-prc-carryp carry) (not (fn-prc-carry-findsp carry))
+         (equal (fn-prc-find "a1" (cdr carry)) *d14-prct-a1*)
+         (equal (fn-prc-find-pin "a1" ledger carry) *d14-prct-a1*)))))
+; T-MUT's retained-record mechanism and the delta's rejection of it.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (let ((mutated (fn-prc-add "a1" (cdr *d14-prct-c1*))))
+    (and (equal (fn-prc-find "a1" mutated) *d14-prct-a1*)
+         (not (fn-prc-new-releases-clearedp
+               (fn-retain-releases *d14-prct-l2*) (fn-retain-releases *d14-prct-l1*)
+               (cdr *d14-prct-c1*) mutated))))))
+; The new readers, like the served membership path, have guard t and are
+; compiled/guard-verified; the recognizer remains an executable test only.
+(assert-event
+ (and (equal (guard 'fn-prc-find nil (w state)) '(quote t))
+      (equal (guard 'fn-prc-find-scan nil (w state)) '(quote t))
+      (equal (guard 'fn-prc-find-pin nil (w state)) '(quote t))
+      (eq (symbol-class 'fn-prc-find (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-find-scan (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-find-pin (w state)) :common-lisp-compliant)))
+
+; BEGIN D14 GENERATED T-MUT (build/d14/make_mutation_test.py)
+; Exact mutation at every release writer in the copied walk/adder:
+; (fn-prc-release-put id trie) -> (fn-prc-add id trie).
+; This is PRF-289's insert-if-absent step: it keeps the released pin.
+; The unchanged release-cleared check rejects the mutant's delta, breaking
+; DELTA's required success flag. If that check were removed, its marked
+; walk result would return the released pin. Control: the real delta is t.
+(local
+ (encapsulate ()
+(defun d14-mut-add-new-releases (r1 r0 trie)
+  (declare (xargs :guard t))
+  (cond ((equal r1 r0) trie)
+        ((atom r1) trie)
+        (t (d14-mut-add-new-releases
+            (cdr r1) r0 (fn-prc-add (fn-retain-release-id (car r1)) trie)))))
+
+(defun d14-mut-pins-walk (p1 p0 rtrie trie check)
+  (declare (xargs :guard t :measure (+ (len p1) (len p0))))
+  (cond ((and check (equal p1 p0)) (mv t trie))
+        ((and (atom p1) (atom p0)) (mv t trie))
+        ((and (consp p1) (consp p0) (equal (car p1) (car p0)))
+         (d14-mut-pins-walk (cdr p1) (cdr p0) rtrie trie nil))
+        ((and (consp p0)
+              (fn-prc-has (fn-retain-obligation-id (car p0)) rtrie))
+         (let ((id (fn-retain-obligation-id (car p0))))
+           (if (and (consp (car p0))
+                    (equal (fn-prc-find id trie) (car p0)))
+               (d14-mut-pins-walk p1 (cdr p0) rtrie
+                                 (fn-prc-add id trie) t)
+             (mv nil trie))))
+        ((consp p1)
+         (let ((id (fn-retain-obligation-id (car p1))))
+           (if (and (stringp id) (not (fn-prc-has id trie)))
+               (d14-mut-pins-walk (cdr p1) p0 rtrie
+                                 (fn-prc-add-pin (car p1) trie) t)
+             (mv nil trie))))
+        (t (mv nil trie))))
+
+(defun d14-mut-delta (carry ledger)
+  (declare (xargs :guard (consp carry)))
+  (let* ((l0 (car carry))
+         (r0 (fn-retain-releases l0))
+         (r1 (fn-retain-releases ledger)))
+    (if (and (fn-prc-carry-findsp carry) (fn-prc-releases-tailp r1 r0))
+        (mv-let (ok trie)
+          (d14-mut-pins-walk (fn-retain-pins ledger) (fn-retain-pins l0)
+                            (d14-mut-add-new-releases r1 r0 nil)
+                            (cdr carry) t)
+          (if (and ok (fn-prc-new-releases-clearedp r1 r0 (cdr carry) trie))
+              (mv t (d14-mut-add-new-releases r1 r0 trie))
+            (mv nil nil)))
+      (mv nil nil))))
+(with-guard-checking-event
+ :none
+ (assert-event
+  (mv-let (real-ok real-trie) (fn-prc-delta *d14-prct-c1* *d14-prct-l2*)
+   (mv-let (mut-ok mut-trie) (d14-mut-delta *d14-prct-c1* *d14-prct-l2*)
+    (declare (ignore mut-trie))
+    (mv-let (walk-ok walk-trie)
+      (d14-mut-pins-walk
+       (fn-retain-pins *d14-prct-l2*) (fn-retain-pins *d14-prct-l1*)
+       (fn-prc-add-new-releases (fn-retain-releases *d14-prct-l2*)
+                                (fn-retain-releases *d14-prct-l1*) nil)
+       (cdr *d14-prct-c1*) t)
+     (and (equal real-ok t) (equal mut-ok nil) (equal walk-ok t)
+          (fn-prc-carry-findsp (cons *d14-prct-l2* real-trie))
+          (equal (fn-prc-find-pin "a1" *d14-prct-l2* (cons *d14-prct-l2* real-trie)) nil)
+          (fn-prc-carry-findsp (cons *d14-prct-l2* walk-trie))
+          (equal (fn-prc-find-pin "a1" *d14-prct-l2* (cons *d14-prct-l2* walk-trie))
+                 *d14-prct-a1*)
+          (not (fn-prc-carryp (cons *d14-prct-l2* walk-trie)))))))))
+))
+; END D14 GENERATED T-MUT
+
+; Phase 3: total collectors preserve order even on malformed ledger fields.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and (equal (fn-prc-pin-ids '(("a1" . 7) 3 ("b2") . end)) '("a1" nil "b2"))
+       (equal (fn-prc-release-ids '(("c3") 3 ("d4" . 7) . end)) '("c3" nil "d4"))
+       (equal (fn-prc-pin-ids (fn-retain-pins *d14-prct-l1*))
+              (fn-retain-obligation-ids (fn-retain-pins *d14-prct-l1*)))
+       (equal (fn-prc-release-ids (fn-retain-releases *d14-prct-l1*))
+              (fn-retain-release-ids (fn-retain-releases *d14-prct-l1*))))))
+; Re-anchoring is value-preserving and keeps the old trie. Physical EQ of
+; a separately allocated equal ledger is checked by build/d14/phase3-raw.lsp.
+(assert-event
+ (let* ((ledger (fn-retain-make-state
+                 (fn-retain-capacity *d14-prct-l1*) (fn-retain-reserved *d14-prct-l1*)
+                 (fn-retain-pins *d14-prct-l1*) (fn-retain-releases *d14-prct-l1*)))
+        (refreshed (fn-prc-refresh *d14-prct-c1* ledger)))
+   (and (equal refreshed *d14-prct-c1*)
+        (equal (car refreshed) ledger)
+        (equal (cdr refreshed) (cdr *d14-prct-c1*))
+        (fn-prc-carryp refreshed))))
+(assert-event
+ (and (equal (guard 'fn-prc-pin-ids nil (w state)) '(quote t))
+      (equal (guard 'fn-prc-release-ids nil (w state)) '(quote t))
+      (eq (symbol-class 'fn-prc-pin-ids (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-release-ids (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-pin-ids-loop (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-release-ids-loop (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-refresh (w state)) :common-lisp-compliant)))
+
+; Host-premise establishment: nonempty record/release reads, the bucket
+; reader, empty/nonempty built roots, and both build and delta refreshes.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (mv-let (ok delta-trie) (fn-prc-delta *d14-prct-c1* *d14-prct-l2*)
+   (let* ((trie (fn-prc-build *d14-prct-l1*))
+         (pin (fn-rit-get "a1" 0 trie))
+         (release (fn-rit-get "c3" 0 trie))
+         (bucket (fn-rit-bucket-find "a1" (list 7 *d14-prct-a1*)))
+         (built (fn-prc-refresh nil *d14-prct-l1*))
+         (delta (fn-prc-refresh *d14-prct-c1* *d14-prct-l2*)))
+    (and pin (equal pin *d14-prct-a1*) (fn-rit-leafp pin)
+         release (equal release "c3") (fn-rit-leafp release)
+         bucket (equal bucket *d14-prct-a1*) (fn-rit-leafp bucket)
+         (not (fn-rit-get "zz" 0 trie))
+         (fn-rit-branchp trie)
+         (fn-rit-branchp (fn-prc-build (fn-retain-initial-state 100)))
+         (fn-prc-carryp nil) (fn-prc-carryp *d14-prct-c1*)
+         (equal ok t) (equal delta (cons *d14-prct-l2* delta-trie))
+         (fn-prc-carry-findsp built) (fn-prc-carry-findsp delta)
+         (fn-prc-ledger-findsp (car built))
+         (fn-prc-ledger-findsp (car delta)))))))

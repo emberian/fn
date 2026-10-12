@@ -213,6 +213,8 @@
 ; the live configuration, this Store's keyring, the host's two primitive
 ; observations and the recovered workflow image; nil publishes nothing and
 ; releases nothing.  The workflow reads the receipt ADU the payload carries.
+; fn-bprl-receipt-auto-record-pin-carry-independent proves that this
+; receipt-intent preflight ignores any pin carry; its original entry uses nil.
 (defun fn-bpah-receipt-release-record (view cfg wf snapshots obs)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bprl-receipt-auto-record
@@ -419,6 +421,8 @@
                     (fn-bpa-result-message (fn-bpa-decode-exact octets))))))
   :hints (("Goal" :in-theory (e/d (fn-bprl-receipt-intent-record)
                                   (fn-bprl-apply-journal-record
+                                   fn-bprl-apply-journal-record-with-pin-carry
+                                   fn-bp-apply-journal-record
                                    fn-bp-journal-recordp
                                    fn-bprl-receipt-from-adu
                                    fn-bp-receipt-work-id

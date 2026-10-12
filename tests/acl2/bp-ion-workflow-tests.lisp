@@ -7,15 +7,15 @@
 ; runs over an arena holding *bpo-payloads* (tests/acl2/arena-lift.lisp).
 (bpr-lift fn-bpiw-route-record 7)
 (bpr-lift fn-bpiw-observation-record 8)
-(bpr-lift fn-bpiw-apply 3)
-(bpr-lift fn-bpiw-replay-journal 2)
+(bpr-lift fn-bpiw-apply 4 :pin-carry)
+(bpr-lift fn-bpiw-replay-journal 3 :pin-carry)
 
 (defconst *bpiw-route*
   '(:ion-route "work:out" "attempt:out" 0
                "dtn://destination/" "ipn:2.1" "ipn:1.1"))
 (assert-event
  (equal (fn-bprq-attempt-record
-         (nth 1 *bpo-enqueued*) 11 0 "work:out" "attempt:out")
+         (nth 1 *bpo-enqueued*) 11 0 "work:out" "attempt:out" nil)
         *bpo-attempt-record*))
 (assert-event
  (equal (in-arena-fn-bpiw-route-record *bpo-payloads*
@@ -23,7 +23,7 @@
          "ipn:2.1" "ipn:1.1")
         *bpiw-route*))
 (defconst *bpiw-routed*
-  (in-arena-fn-bpiw-apply *bpo-payloads* *bpo-state* (fn-bpiw-initial) *bpiw-route*))
+  (in-arena-fn-bpiw-apply *bpo-payloads* *bpo-state* (fn-bpiw-initial) *bpiw-route* nil))
 (assert-event (car *bpiw-routed*))
 (assert-event
  (equal (car (fn-bpiw-status (nth 3 *bpiw-routed*)
@@ -33,7 +33,7 @@
 
 (defconst *bpiw-observed*
   (in-arena-fn-bpiw-apply *bpo-payloads* *bpo-state* (nth 3 *bpiw-routed*)
-                 (cadr *bpio-bound*)))
+                 (cadr *bpio-bound*) nil))
 (assert-event (car *bpiw-observed*))
 (assert-event
  (equal (car (fn-bpiw-status (nth 3 *bpiw-observed*)
@@ -53,21 +53,21 @@
 ; cannot turn transport evidence into a different durable attempt.
 (assert-event
  (not (car (in-arena-fn-bpiw-apply *bpo-payloads* *bpo-state* (fn-bpiw-initial)
-                           (cadr *bpio-bound*)))))
+                           (cadr *bpio-bound*) nil))))
 (assert-event
  (not (car (in-arena-fn-bpiw-apply *bpo-payloads* *bpo-state* (nth 3 *bpiw-observed*)
-                           (cadr *bpio-bound*)))))
+                           (cadr *bpio-bound*) nil))))
 (assert-event
  (not (car (in-arena-fn-bpiw-apply *bpo-payloads*
             *bpo-state* (fn-bpiw-initial)
             '(:ion-route "work:out" "attempt:out" 0
-                         "dtn://wrong/" "ipn:2.1" "ipn:1.1")))))
+                         "dtn://wrong/" "ipn:2.1" "ipn:1.1") nil))))
 (assert-event
  (not (car (in-arena-fn-bpiw-apply *bpo-payloads*
             *bpo-state* (nth 3 *bpiw-routed*)
             '(:ion-observed "work:out" "attempt:out" 0
                             "dtn://destination/" "ipn:3.1" "ipn:1.1"
-                            843544024799 4)))))
+                            843544024799 4) nil))))
 
 ; Recovery reconstructs the observation only after replaying the durable
 ; attempt and route. A second observation for that attempt faults the image.
@@ -78,13 +78,13 @@
         '(:outcome 11 0 :ordinary :durable)
         *bpiw-route* (cadr *bpio-bound*)))
 (defconst *bpiw-recovered*
-  (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* *bpiw-prefix*))
+  (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* *bpiw-prefix* nil))
 (assert-event (car *bpiw-recovered*))
 ; The route gate reads the attempt's request through the arena: over an
 ; arena that has not sealed the article, the durable route record is refused
 ; and the open faults (the Store's open interns before the journal replays).
 (assert-event
- (not (car (in-arena-fn-bpiw-replay-journal nil *bpo-node* *bpiw-prefix*))))
+ (not (car (in-arena-fn-bpiw-replay-journal nil *bpo-node* *bpiw-prefix* nil))))
 (assert-event
  (equal (fn-bpiw-find-key
          '("work:out" "attempt:out" 0)
@@ -95,4 +95,4 @@
                               "work:out" "attempt:out" 0)) :observed))
 (assert-event
  (not (car (in-arena-fn-bpiw-replay-journal *bpo-payloads*
-            *bpo-node* (append *bpiw-prefix* (list (cadr *bpio-bound*)))))))
+            *bpo-node* (append *bpiw-prefix* (list (cadr *bpio-bound*))) nil))))

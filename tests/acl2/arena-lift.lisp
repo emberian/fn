@@ -10,8 +10,10 @@
 (defun bpr-lift-vars (n)
   (declare (xargs :mode :program))
   (if (zp n) nil (append (bpr-lift-vars (1- n)) (list (packn (list 'x n))))))
-(defmacro bpr-lift (fn nargs)
-  (let ((xs (bpr-lift-vars nargs))
+(defmacro bpr-lift (fn nargs &optional pin-carry-p)
+  (let ((xs (if pin-carry-p
+                (append (bpr-lift-vars (1- nargs)) (list 'pin-carry))
+              (bpr-lift-vars nargs)))
         (a (packn (list 'in-arena-a- fn)))
         (b (packn (list 'in-arena- fn))))
     `(progn
