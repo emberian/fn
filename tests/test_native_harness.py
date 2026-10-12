@@ -28,8 +28,8 @@ time.sleep(600)
 
 REFUSES = r"""
 import sys
-sys.stderr.write("owner refused: connections-exceed-memory\n")
-sys.exit(4)
+sys.stderr.write("refused memory-cannot-hold-the-store capacity=0 of 31 bound-by=store sum=327 MB limit=251 MB\n")
+sys.exit(1)
 """
 
 
@@ -60,8 +60,8 @@ class DrainingStartTests(unittest.TestCase):
         with self.assertRaises(AssertionError) as caught:
             node.announcement(b"LISTENING ", timeout=30)
         message = str(caught.exception)
-        self.assertIn("connections-exceed-memory", message)
-        self.assertIn("exit=4", message)
+        self.assertIn("memory-cannot-hold-the-store capacity=0", message)
+        self.assertIn("exit=1", message)
         self.assertTrue(node.stopped)
 
     def test_output_until_advances_a_cursor(self):
@@ -86,7 +86,8 @@ class DrainingStartTests(unittest.TestCase):
 # The Popen-shaped start the older modules use (was tests/test_native_process.py):
 # a start that fails says why, from stderr (feed-queue's ask, 2026-09-27),
 # the refusal line first whatever the breakdown's length.
-REFUSAL = "fn: refused machine-cannot-hold-profile reservation=35034 MB budget=24576 MB"
+# A current probe refusal, preserved verbatim whatever the diagnostic tail.
+REFUSAL = "fn: refused machine-cannot-hold-the-pools need=327 MB machine=251 MB"
 
 
 def stand_in(breakdown_lines: int, announce: bool = False) -> subprocess.Popen:
@@ -226,7 +227,7 @@ class FailedTestStderrTests(unittest.TestCase):
             def test_refusal(self):
                 process = native_harness.start(
                     [sys.executable, "-c",
-                     "import sys; sys.stderr.write('owner refused: heap figure 802 GB\\n')"])
+                     "import sys; sys.stderr.write('refused memory-cannot-hold-the-store capacity=0\\n')"])
                 process.wait(timeout=30)
                 process.stop()
                 self.fail("the owner did not start")
@@ -270,7 +271,7 @@ class FailedTestStderrTests(unittest.TestCase):
         from pathlib import Path
         with tempfile.TemporaryDirectory() as keep:
             out = self.run_cases(keep)
-            self.assertIn("owner refused: heap figure 802 GB", out)
+            self.assertIn("refused memory-cannot-hold-the-store capacity=0", out)
             self.assertIn("filed refusal line", out)
             self.assertNotIn("test_passes process", out)
             kept = sorted(path.name for path in Path(keep).iterdir())
@@ -307,9 +308,9 @@ class StableStatusLinesTests(unittest.TestCase):
 
 
 FAKE_IMAGE = """#!/bin/sh
-# A stand-in image: the heap probe answers a figure, a run prints what it got.
+# A stand-in image: the reservation exceeds resident LIMIT, as a run's does.
 if [ "$1 $2" = "--fn heap" ]; then
-    echo "heap=777 MB profile=custom machine=4096 MB stack=1536 KB threads=3"
+    echo "heap=4777 MB profile=custom machine=4096 MB stack=1536 KB threads=3"
     exit 0
 fi
 echo "ran SBCL_USER_ARGS=${SBCL_USER_ARGS:-} args=$*"
@@ -341,11 +342,17 @@ class InstalledLaunchTests(unittest.TestCase):
 
     def test_an_owner_run_goes_through_the_installed_launcher_at_the_decided_heap(self):
         node = native_harness.Node(self, self.image, root=self.tmp / "node")
+        probe = node.invoke("heap", "--", "operator", node.config, "run")
+        import re
+        figure = re.search(rb"heap=(\d+) MB .*machine=(\d+) MB stack=(\d+) KB", probe.stdout)
+        self.assertIsNotNone(figure, probe.stdout)
+        heap, limit, stack = (value.decode() for value in figure.groups())
+        self.assertGreater(int(heap), int(limit))
         result = node.invoke("operator", node.config, "run", "--once",
                              env={"FN_NATIVE_HOST": "/elsewhere"})
         out = result.stdout.decode()
         self.assertEqual(result.returncode, 0, out + result.stderr.decode())
-        self.assertIn("SBCL_USER_ARGS=--dynamic-space-size 777 --control-stack-size 1536KB", out)
+        self.assertIn("SBCL_USER_ARGS=--dynamic-space-size {} --control-stack-size {}KB".format(heap, stack), out)
         self.assertIn("args=--fn operator {} run --once".format(node.config), out)
         launcher = native_harness.installed_launcher(self.image)
         self.assertEqual(launcher.read_bytes(),
@@ -355,10 +362,10 @@ class InstalledLaunchTests(unittest.TestCase):
         node = native_harness.Node(self, self.image, root=self.tmp / "named",
                                    image_heap="the subject is the image's own figure")
         out = node.invoke("operator", node.config, "run").stdout.decode()
-        self.assertNotIn("--dynamic-space-size 777", out)
+        self.assertNotIn("--dynamic-space-size 4777", out)  # not the probe's figure
         plain = native_harness.Node(self, self.image, root=self.tmp / "plain")
         out = plain.invoke("operator", plain.config, "status").stdout.decode()
-        self.assertNotIn("--dynamic-space-size 777", out)
+        self.assertNotIn("--dynamic-space-size 4777", out)  # not the probe's figure
         self.assertIn("args=--fn operator {} status".format(plain.config), out)
 
 
