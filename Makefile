@@ -2903,6 +2903,8 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/check_scaffold.py
 # Every tests/acl2/*-tests.lisp is a certification root (Q7j).
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
+# Every production book is in a root's closure or an explicit work item.
+	@$(CHECK_STEP) $(PYTHON) tools/book_roots_check.py
 # Every command the docs name exists with the grammar the docs give (NNT-032):
 # operator invocations are judged by ACL2's grammar in the generated book
 # tests/acl2/docs-operator-grammar-tests.lisp, which this fails on when it is
