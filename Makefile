@@ -1708,8 +1708,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-raw-availability-tests tests/acl2/served-catalog-load-identity-tests \
 	tests/acl2/served-incremental-tests \
 	tests/acl2/over-window-tests \
+	books/over-render-pool \
 	books/over-render-quantum \
+	books/over-render-lease \
 	tests/acl2/over-render-tests \
+	tests/acl2/over-render-lease-tests \
 	books/over-render-bound \
 	tests/acl2/over-render-bound-tests \
 	books/over-render-capl \
