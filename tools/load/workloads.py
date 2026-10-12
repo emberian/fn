@@ -33,6 +33,7 @@ PHASE_KINDS = {
     "roots": set(),
     "prof": {"article_kib", "reps"},
     "op_profile": {"ops", "reps", "budget_s", "warmup"},
+    "pub_profile": {"open_timeout_s", "publish_timeout_s", "report_timeout_s", "sample_interval"},
     "floor": {"reps"},
     "publish": set(),
     "publish_live": {"rate_per_s", "octets", "before_s", "after_s", "max_wait_s"},

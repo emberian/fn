@@ -945,6 +945,31 @@
     "window_s": 60
    }
   },
+  "pub-prof": {
+   "about": "Profile owner replay to LISTENING, offline checkpoint publication, and checkpoint reopen to LISTENING in CPU, allocation and child-strace processes. Each mode starts from a fresh curve fixture copy; heap probes and filesystem rebinding are unprofiled.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "store": {
+    "preload": 50000,
+    "octets": 2048,
+    "fixture": "curve/n{N}",
+    "require_fixture": true
+   },
+   "phases": [
+    {
+     "name": "pub-profile",
+     "kind": "pub_profile",
+     "measure": true,
+     "open_timeout_s": 1800,
+     "publish_timeout_s": 3600,
+     "report_timeout_s": 120,
+     "sample_interval": "0.005"
+    }
+   ]
+  },
   "op-prof": {
    "about": "Per-command owner profile: isolated clean, CPU sampling, allocation sampling, prof2 calls and optional strace windows, each after 50 warmup commands. Hooks never share an owner.",
    "preset": "scale-1m",
@@ -1583,6 +1608,7 @@
   "conn-capacity": "conn-capacity",
   "T-OPS": "prof-ops",
   "OPPROF": "op-prof",
+  "PUBPROF": "pub-prof",
   "FLOOR": "floor",
   "W6b": "peers-feed",
   "W6c": "peers-catchup-load",
