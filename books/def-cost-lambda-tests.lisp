@@ -1,7 +1,8 @@
-; Lambda-bound unknown costs must be closed over the entry's formals.
-; These zero-accounted bounds were false before the collector substituted
-; lambda actuals.  The nested case also charges an unknown call in an actual.
-; Repeated calls retain multiplicity in both visits and conses bounds.
+; Tests for simultaneous lambda substitution, nested/shadowed/MV-LET bindings,
+; and one unknown-cost summand per occurrence in both visits and conses bounds.
+; Pin collected terms, generated bounds, callee-name sets and closure refusals.
+; Concrete natural-valued cost models refute the former substitution and
+; multiplicity bugs without attaching the constrained functions.
 (in-package "ACL2")
 (include-book "def-cost")
 

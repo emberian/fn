@@ -68,6 +68,11 @@
 ; bound is always PARTIAL over them, stated as such (the row's :unaccounted
 ; must equal the derived list, else refused), and complete when the list is
 ; empty.  The default hints open the twin and induct on it when it recurs.
+; Unaccounted bound terms form a bag: each occurrence contributes one summand,
+; including occurrences in different IF branches, in both cost dimensions.
+; At each lambda application, simultaneous actual-for-formal substitution in
+; collected body terms composes through nested lambdas, retaining the actuals'
+; own unaccounted terms.
 ; The owed teeth row (lanedumps/generators-2.md, contract v1) names the claim
 ; and the subject; the teeth book states the witness (an executable twin is
 ; evaluated; a defun-nx twin takes a :witness-lemma).
@@ -663,6 +668,7 @@
                  (xargs :verify-guards nil
                         ,@(and measure (list :measure measure))
                         ,@(and rel (list :well-founded-relation rel))
+                        ,@(and recursive (list :ruler-extenders :all))
                         ,@(and (fn-cost-get :measure-hints kvs)
                                (list :hints (fn-cost-get :measure-hints kvs)))))
         ,bcost)
