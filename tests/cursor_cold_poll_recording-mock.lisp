@@ -48,13 +48,9 @@
 (defun fnn-owner-connection-call (service operation thunk)
   (declare (ignorable service operation thunk))
   (harness-stub-reached 'fnn-owner-connection-call "host/native/owner.lisp"))
-(defun fnn-owner-cursor-octets ()
-  (harness-stub-reached 'fnn-owner-cursor-octets "host/native/owner.lisp"))
 (defun fnn-owner-lease-article-step (cid lease plan)
   (declare (ignorable cid lease plan))
   (harness-stub-reached 'fnn-owner-lease-article-step "host/native/owner.lisp"))
-(defun fnn-owner-over-quantum ()
-  (harness-stub-reached 'fnn-owner-over-quantum "host/native/owner.lisp"))
 (defun fnn-owner-peer-read-class (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-peer-read-class "host/native/owner.lisp"))
@@ -95,7 +91,12 @@
 (defun fnn-owner-cursor-step-serialized (service cid thunk class)
   (declare (ignore service cid class))
   (let ((*held* t)) (funcall thunk)))
+;; The recording fnn-call below ignores these scalar budgets; the extracted
+;; cursor step now supplies the fitted window, visit quantum and octet budget.
+;; Keep the original window input and provide the two added dispatch inputs.
 (defun fnn-owner-over-window () 1)
+(defun fnn-owner-over-quantum () 1)
+(defun fnn-owner-cursor-octets () 1)
 (defun fnn-live-stobj (name) (assert *held*) name)
 (defun fnn-call (name plan window &rest live-stobjs)
   ;; The two dispatches this harness reaches: fn-qplan-cursor-step with the
@@ -129,8 +130,8 @@
   (declare (ignore service class))
   (setf *poll-args* (list read first-miss since))
   (values *poll-word* since *clock* nil))
-(defun fnn-mux-queue (loop conn octets op after &optional end)
-  (declare (ignore loop conn end)) (push (list octets op after) *queued*))
+(defun fnn-mux-queue (loop conn octets op after &optional end start)
+  (declare (ignore loop conn end start)) (push (list octets op after) *queued*))
 (defun fnn-mux-after (loop conn after)
   (declare (ignore loop conn after)) (setf *after-called* t))
 (defun fnn-mux-work (loop conn)
@@ -161,6 +162,10 @@
 (defun fnn-owner-output-issue (service identity &optional capture)
   (declare (ignore service identity capture))
   nil)
+;; This recording service has no configured ARTICLE lease runtime, just as
+;; it has no output ledger.  Cursor plans still take the actual cursor path.
+(defun fnn-owner-service-lease-ready (service)
+  (declare (ignore service)) nil)
 ;; The response's identity (the owner's fn-rid-response reservation): one
 ;; response of this connection; nothing here reads it.
 (defun fnn-owner-response-identity (service connection class)
@@ -183,7 +188,7 @@
 (defvar *fnn-extent-window-worker* nil)
 (defvar *fnn-extent-window-token* nil)
 (load-selected "host/native/owner.lisp"
-               '(fnn-owner-window-activation fnn-owner-ready-plan-step fnn-owner-cursor-step
+               '(fnn-lease fnn-owner-window-activation fnn-owner-ready-plan-step fnn-owner-cursor-step
                  fnn-owner-render-next-quantum fnn-owner-feed-logical))
 (load-selected "host/native/mux.lisp"
                '(fnn-mux-loop fnn-mux-conn +fnn-mux-cold-poll-ms+ fnn-mux-service

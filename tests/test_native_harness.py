@@ -361,6 +361,17 @@ class InstalledLaunchTests(unittest.TestCase):
         self.assertEqual(launcher.read_bytes(),
                          (native_harness.ROOT / "packaging" / "fn").read_bytes())
 
+    def test_the_fixture_passes_the_linux_openssl_prefix_check_on_every_platform(self):
+        # macOS skips this installed-layout check in packaging/fn.  Execute
+        # its actual shell condition here too, so an empty prefix fails locally.
+        launcher = (native_harness.ROOT / "packaging" / "fn").read_text()
+        begin = launcher.index('    if [ ! -s "$FN_OPENSSL_PREFIX/lib/libssl.so.3" ]')
+        end = launcher.index("    fi", begin) + len("    fi")
+        result = subprocess.run(["sh", "-c", launcher[begin:end]],
+                                capture_output=True, timeout=30, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertGreater((self.tmp / "openssl" / "lib" / "libcrypto.so.3").stat().st_size, 0)
+
     def test_a_named_heap_opts_out_and_other_verbs_run_the_image(self):
         node = native_harness.Node(self, self.image, root=self.tmp / "named",
                                    image_heap="the subject is the image's own figure")
