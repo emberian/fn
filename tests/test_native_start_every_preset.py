@@ -135,22 +135,35 @@ class StartEveryPresetTests(unittest.TestCase):
         `systemd-run --scope -p MemoryMax=1G' (probe and start alike); under a
         generous limit the profile's bound is the smaller and 85% of the
         decided heap still holds it (by design: the dynamic space is address
-        space, the gate keeps the resident set within LIMIT)."""
+        space, the gate keeps the resident set within LIMIT).
+
+        The BP node's pools (its session funding, about 1 GB at the
+        development profile) exceed 1G, so under 1G its probe refuses by name
+        (machine-cannot-hold-the-pools, books/heap-command.lisp K-L2p) and its
+        85% case runs under 2G."""
         node = self.node(DEVELOPER, "development")
-        scope = ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=1G",
-                 "-p", "MemorySwapMax=0"]
-        for label, words, refusal in (
-                ("served run", self.served_words(node), b"cold startup refused"),
-                ("store owner", self.owner_words(node), b"cold startup refused"),
-                ("bp node", self.bp_words(node, free_port()), b"refused")):
+
+        def scope(limit):
+            return ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=" + limit,
+                    "-p", "MemorySwapMax=0"]
+        bp = self.bp_words(node, free_port())
+        held = run(scope("1G") + [str(DEVELOPER), "--fn", "heap", "--", *[str(w) for w in bp]],
+                   env=environment(), timeout=120)
+        self.assertNotEqual(held.returncode, 0)
+        self.assertIn("refused machine-cannot-hold-the-pools",
+                      held.stdout.decode("utf-8", "replace") + held.stderr.decode("utf-8", "replace"))
+        for label, words, refusal, limit in (
+                ("served run", self.served_words(node), b"cold startup refused", "1G"),
+                ("store owner", self.owner_words(node), b"cold startup refused", "1G"),
+                ("bp node", bp, b"refused", "2G")):
             with self.subTest(command=label):
-                done = run(scope + [str(DEVELOPER), "--fn", "heap", "--", *[str(w) for w in words]],
+                done = run(scope(limit) + [str(DEVELOPER), "--fn", "heap", "--", *[str(w) for w in words]],
                            env=environment(), timeout=120)
                 text = done.stdout.decode("utf-8", "replace")
                 figure = re.match(r"heap=(\d+) MB", text)
                 self.assertIsNotNone(figure, text + done.stderr.decode("utf-8", "replace"))
                 heap = int(figure.group(1))
-                process = start(scope + [str(DEVELOPER), "--fn", *[str(w) for w in words]], cwd=node.root,
+                process = start(scope(limit) + [str(DEVELOPER), "--fn", *[str(w) for w in words]], cwd=node.root,
                                 env=environment({"SBCL_USER_ARGS":
                                                  "--dynamic-space-size {}MB".format(heap * 85 // 100)}))
                 self.addCleanup(process.stop, 5)
