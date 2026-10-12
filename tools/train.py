@@ -10,9 +10,22 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py certify BOX             # ONE farm run (install, certify), then emits
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
     train.py image [--label L]       # read HEAD's image run (tools/hbox_native.sh) for the image gate
-    train.py gate
+    train.py gate [--local] [--report PATH]
+    train.py lane-check WORKTREE|LANE@SHA [--clean]  # local train gates on a scratch merge
     train.py push [--label N]
     train.py status
+
+`lane-check` fetches dev into private refs without moving origin's tracking
+refs. It checks committed lane HEAD (ignoring dirty source edits) in an owned
+scratch worktree, runs its own train.py regen and gate --local subprocesses,
+and prints their BOX decisions. FN_TRAIN_BASE, FN_LEDGER_BASE and FN_HOST_CHECK_BASE pin
+the train and its child tools to the fetched dev SHA.
+Unit suites run without those pins so their repository fixtures use their own base.
+Its log is copied to the lane's build/lane-check/; --clean removes only that
+scratch worktree.
+The verdict names the dev SHA merged onto. A local PASS leaves the printed
+box gates owed. Box and image gates use their actual records; missing
+records fail. Inherited gates print NONE with their reason.
 
 Pipelined trains.  A second batch tree may start the next train from this
 train's integrate HEAD while this one waits on its image gate.  `push`
@@ -98,6 +111,9 @@ other case refuses: the train runs `boxstep` first.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
+import io
 import fnmatch
 import json
 import os
@@ -108,6 +124,7 @@ import re
 import shlex
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Callable
 
@@ -176,10 +193,11 @@ TEETH_MANIFEST = "build/teeth-obligations.json"
 # reaches dev with them unrun.
 CERT_WORLD_BOOKS = ("books/image-world", "books/image-world-dtn")
 CERT_WORLD_CMD = "FN_CERT_WORLD_REQUIRED=1 python3 -m unittest tests.test_cert_world_checks"
+BOX_CERT_BOOKS = ("books/wire-export", *CERT_WORLD_BOOKS)
 
 BOX_CMD = (
-    "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export "
-    + " ".join(CERT_WORLD_BOOKS) + " && "
+    "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 "
+    + " ".join(BOX_CERT_BOOKS) + " && "
     "python3 tools/interface_emit.py --write && python3 tools/interface_emit.py --check && "
     "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check && "
     "python3 tools/extract/world.py --check && python3 tools/host_check.py --build-lists && "
@@ -327,17 +345,28 @@ def say(msg: str) -> None:
 
 
 def git(root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
-    p = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+    p = subprocess.run(["git", "-C", str(root), *args], cwd=root, capture_output=True, text=True)
     if check and p.returncode != 0:
         raise TrainError(f"git {' '.join(args)} failed rc {p.returncode}: {p.stderr.strip()}")
     return p
 
 
 def toplevel(start: Path) -> Path:
-    p = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=start, capture_output=True, text=True)
+    p = subprocess.run(["git", "-C", str(start), "rev-parse", "--show-toplevel"], cwd=start, capture_output=True, text=True)
     if p.returncode != 0:
         raise TrainError("not inside a git work tree")
     return Path(p.stdout.strip())
+
+
+BASE_PIN_VARS = ("FN_TRAIN_BASE", "FN_LEDGER_BASE", "FN_HOST_CHECK_BASE")
+
+
+def train_base() -> str:
+    """One base for every train comparison; lane-check pins it to a commit."""
+    pinned = os.environ.get("FN_TRAIN_BASE")
+    if pinned is not None and not re.fullmatch(r"[0-9a-fA-F]{40}", pinned):
+        raise TrainError("FN_TRAIN_BASE must be a full commit SHA")
+    return pinned or "origin/dev"
 
 
 class Train:
@@ -369,11 +398,12 @@ class Train:
         return bool(git(self.root, "status", "--porcelain").stdout.strip())
 
     # ---- running commands
-    def run(self, step: str, argv: list[str], cwd: Path | None = None) -> int:
+    def run(self, step: str, argv: list[str], cwd: Path | None = None,
+            *, env: dict[str, str] | None = None) -> int:
         say("$ " + " ".join(argv))
         self.logs.mkdir(parents=True, exist_ok=True)
         log = self.logs / f"{step}.log"
-        p = subprocess.run(argv, cwd=cwd or self.root, capture_output=True, text=True)
+        p = subprocess.run(argv, cwd=cwd or self.root, env=env, capture_output=True, text=True)
         out = p.stdout + p.stderr
         log.write_text(out)
         if p.returncode != 0:
@@ -549,7 +579,7 @@ def _premise_baseline_gate(t: Train) -> tuple[int, dict]:
         key = "term" if path == PREMISE_TERM_BASELINE else "bare"
         label = "premise term baseline" if key == "term" else "premise baseline"
         try:
-            dev = accepted_at("origin/dev", path)
+            dev = accepted_at(train_base(), path)
             head = accepted_at("HEAD", path)
         except ValueError as error:
             say(f"{label}: does not parse: {error}")
@@ -774,8 +804,12 @@ def cmd_boxstep(t: Train, args) -> int:
     return 0
 
 
+def box_paths_changed(t: Train, source: str | None = None) -> list[str]:
+    return git(t.root, "diff", "--name-only", source or train_base(), "HEAD", "--", *BOX_PATHS).stdout.split()
+
+
 def _changed_roots(t: Train, prefix: str) -> list[str]:
-    out = git(t.root, "diff", "--name-only", "--diff-filter=AM", "origin/dev", "HEAD", "--", prefix).stdout.split()
+    out = git(t.root, "diff", "--name-only", "--diff-filter=AM", train_base(), "HEAD", "--", prefix).stdout.split()
     return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
 
 
@@ -796,7 +830,7 @@ def _added_roots(t: "Train") -> list[str]:
     head = t.root / "Makefile"
     if not head.is_file():
         return []  # no Makefile, no roots
-    shown = git(t.root, "show", "origin/dev:Makefile", check=False)
+    shown = git(t.root, "show", f"{train_base()}:Makefile", check=False)
     # a Makefile new in this train makes every root it lists new
     before = set(makefile_root_list(shown.stdout)) if shown.returncode == 0 else set()
     return [r for r in makefile_root_list(head.read_text(encoding="utf-8")) if r not in before]
@@ -890,28 +924,37 @@ def emit_remote_command(tree: str, envs: str, box: str, seed: str) -> str:
             f"{wrap + ' ' if wrap else ''}timeout {EMIT_TIMEOUT_SECONDS} sh -c {shlex.quote(body)}")
 
 
+def certify_selection(t: Train) -> dict:
+    """The train's changed inputs, affected roots and critical witnesses."""
+    books = _changed_roots(t, "books")
+    tests = _changed_roots(t, "tests/acl2")
+    witnesses = _critical_witness_roots(t.root, books)
+    added = _added_roots(t)
+    return {"books": books, "added": added,
+            "roots": list(dict.fromkeys([*BOX_CERT_BOOKS,
+                                          *books, *tests, *witnesses, *added]))}
+
+
+def certify_command(t: Train, box: str, selection: dict | None = None) -> list[str]:
+    """The train's farm submit command, also used by lane-check."""
+    selection = certify_selection(t) if selection is None else selection
+    added = selection["added"]
+    if added:
+        say(f"certify: {len(added)} root(s) new in the Makefile: " + ", ".join(added))
+    argv = [PY, "tools/farm.py"]
+    for book in selection["books"]:
+        argv += ["--affected-by", book]
+    argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", box, *selection["roots"]]
+    return argv
+
+
 def cmd_certify(t: Train, args) -> int:
     if t.dirty():
         # farm ships the worktree (rsync without .git/ and build/), so an
         # untracked file would be certified and emitted as if it were HEAD
         raise TrainError("working tree is dirty (untracked files included); the box step ships HEAD")
     ran_at = t.head()
-    books = _changed_roots(t, "books")
-    tests = _changed_roots(t, "tests/acl2")
-    # critical witness tests whose theorem closure changed: always, since a
-    # stale witness fails keystone_emit's critical gate (trains 52 and 55
-    # needed a hand certify of them)
-    witnesses = _critical_witness_roots(t.root, books)
-    added = _added_roots(t)
-    if added:
-        say(f"certify: {len(added)} root(s) new in the Makefile: " + ", ".join(added))
-    roots = list(dict.fromkeys(["books/wire-export", *CERT_WORLD_BOOKS, *books, *tests,
-                                *witnesses, *added]))
-    argv = [PY, "tools/farm.py"]
-    # the affected closure: every Makefile root a changed book reaches
-    for b in books:
-        argv += ["--affected-by", b]
-    argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", args.box, *roots]
+    argv = certify_command(t, args.box)
     t0 = time.monotonic()
     say("$ " + " ".join(argv))
     sub = subprocess.run(argv, cwd=t.root, capture_output=True, text=True)
@@ -1084,7 +1127,7 @@ def _ascii_gate(t: Train) -> int:
     """ascii_check refusals in files this train changes (books/, host/).  The
     tree carries older refusals (make check's debt); a train must add none:
     U+2019 in host docstrings broke the ASCII-reading natives (lock-io-out)."""
-    changed = set(git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "books", "host").stdout.split())
+    changed = set(git(t.root, "diff", "--name-only", train_base(), "HEAD", "--", "books", "host").stdout.split())
     if not changed:
         say("books/ and host/ unchanged vs origin/dev: ascii_check skipped")
         return 0
@@ -1106,9 +1149,9 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
     itself).  The amendments are append-only and each names a present row."""
     try:
         head_rows = known_reds_at(t, "HEAD")
-        dev_rows = known_reds_at(t, "origin/dev")
+        dev_rows = known_reds_at(t, train_base())
         head_amend = amendments_at(t, "HEAD")
-        dev_amend = amendments_at(t, "origin/dev")
+        dev_amend = amendments_at(t, train_base())
     except TrainError as error:
         say(f"baseline: {error}")
         return 1, {"error": str(error)}
@@ -1473,81 +1516,81 @@ def unit_tests(root: Path, changed: list[str]) -> list[str]:
     return tests
 
 
-def cmd_gate(t: Train, args) -> int:
-    if t.dirty():
-        raise TrainError("working tree is dirty; gates must run at a committed HEAD")
-    t.fetch()
-    st = t.load()
-    head = t.head()
-    gates: dict = {}
-    st["gates"] = gates
-    # the dev every gate measured against: push refuses when dev has moved
-    dev = git(t.root, "rev-parse", "origin/dev").stdout.strip()
+def changed_paths(t: Train) -> list[str]:
+    return git(t.root, "diff", "--name-only", train_base(), "HEAD").stdout.split()
 
-    def rec(name: str, rc: int, **extra) -> None:
-        gates[name] = {"rc": rc, "head": head, "dev": dev, **extra}
-        t.save(st)
 
-    anc = git(t.root, "merge-base", "--is-ancestor", "origin/dev", "HEAD", check=False).returncode
-    say(f"origin/dev is ancestor of HEAD: {'yes' if anc == 0 else 'NO'}")
-    rec("ancestor", anc)
-    rec("ledger", t.run("gate-ledger", [PY, "tools/ledger.py", "--check"]))
-    rec("current_view", t.run("gate-current_view", [PY, "tools/current_view.py", "--check"]))
-    # check-fast's main_last_check: a test file whose __main__ block is not last
-    # silently skips every class after it (dev d67a244fa, tests/test_image_set.py)
-    rec("main_last", t.run("gate-main_last", [PY, "tools/main_last_check.py"]))
-    # the teeth gate: a new toothless keystone or a stale teeth manifest
-    # (train 41: a lane's new keystones without teeth, caught by hand)
-    rec("keystone", t.run("gate-keystone", [PY, "tools/keystone_emit.py", "--check"]))
+# Simple gates have one command; both drivers call the same functions below.
+GATE_COMMANDS = {
+    "ledger": [PY, "tools/ledger.py", "--check"],
+    "current_view": [PY, "tools/current_view.py", "--check"],
+    "main_last": [PY, "tools/main_last_check.py"],
+    "keystone": [PY, "tools/keystone_emit.py", "--check"],
+}
 
-    host = git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "host").stdout.split()
+
+def _command_gate(t: Train, name: str) -> tuple[int, dict]:
+    return t.run("gate-" + name, GATE_COMMANDS[name]), {}
+
+
+def _ancestor_gate(t: Train) -> tuple[int, dict]:
+    rc = git(t.root, "merge-base", "--is-ancestor", train_base(), "HEAD", check=False).returncode
+    say(f"origin/dev is ancestor of HEAD: {'yes' if rc == 0 else 'NO'}")
+    return rc, {}
+
+
+def _host_load_gate(t: Train) -> tuple[int, dict]:
+    host = git(t.root, "diff", "--name-only", train_base(), "HEAD", "--", "host").stdout.split()
     if host:
-        rec("host_load", t.run("gate-host_load", [PY, "tools/host_check.py", "--load"]))
+        return t.run("gate-host_load", [PY, "tools/host_check.py", "--load"]), {}
     else:
         say("host unchanged vs origin/dev: host_check --load skipped")
-        rec("host_load", 0, skipped=True)
+        return 0, {"skipped": True}
 
-    rec("ascii", _ascii_gate(t))
-    rec("cost_obligations", _reported_check_gate(
-        t, "cost_obligations", ["tools/cost_obligations.py", "--check"]))
-    rec("book_roots", _reported_check_gate(
-        t, "book_roots", ["tools/book_roots_check.py"]))
 
+def _box_step_gate(t: Train) -> tuple[int, dict]:
+    head = t.head()
     box = load_branch_box_record(t)
     if box is None:
         say("box_step: no box step recorded; run `train.py boxstep BOX`")
-        rec("box_step", 1, error="no box step recorded")
+        return 1, {'error': "no box step recorded"}
     elif box["sha"] == head:
         say(f"box_step: ran at HEAD on {box['box']}")
-        rec("box_step", 0, ran_on=box["box"])
+        return 0, {'ran_on': box["box"]}
     elif git(t.root, "merge-base", "--is-ancestor", box["sha"], "HEAD", check=False).returncode != 0:
         say(f"box_step: the recorded box step {box['sha'][:9]} is not an ancestor of HEAD; run `train.py boxstep BOX`")
-        rec("box_step", 1, error="box step not an ancestor", box_sha=box["sha"])
+        return 1, {'error': "box step not an ancestor", 'box_sha': box["sha"]}
     else:
-        changed = git(t.root, "diff", "--name-only", box["sha"], "HEAD", "--", *BOX_PATHS).stdout.split()
-        if changed:
-            say(f"box_step: {len(changed)} file(s) under {', '.join(BOX_PATHS)} changed since the box step at "
-                f"{box['sha'][:9]} (first: {changed[0]}); run `train.py boxstep BOX`")
-            rec("box_step", 1, error="box paths changed since the box step", box_sha=box["sha"], changed=changed)
-        else:
-            local = {name: t.run(f"gate-box-{name}", [PY, *argv]) for name, argv in LOCAL_BOX_CHECKS}
-            rc = 0 if all(v == 0 for v in local.values()) else 1
-            say(f"box_step: inherits {box['sha'][:9]} ({box['box']}); local checks "
-                + ", ".join(f"{k}={v}" for k, v in local.items()))
-            rec("box_step", rc, inherits_from=box["sha"], box=box["box"], local_checks=local)
+        return box_step_inheritance(t, box["sha"], box["box"])
 
+
+def box_step_inheritance(t: Train, source: str, box: str) -> tuple[int, dict]:
+    changed = box_paths_changed(t, source)
+    if changed:
+        say(f"box_step: {len(changed)} file(s) under {', '.join(BOX_PATHS)} changed since the box step at "
+            f"{source[:9]} (first: {changed[0]}); run `train.py boxstep BOX`")
+        return 1, {'error': "box paths changed since the box step", 'box_sha': source, 'changed': changed}
+    else:
+        local = {name: t.run(f"gate-box-{name}", [PY, *argv]) for name, argv in LOCAL_BOX_CHECKS}
+        rc = 0 if all(v == 0 for v in local.values()) else 1
+        say(f"box_step: inherits {source[:9]} ({box}); local checks "
+            + ", ".join(f"{k}={v}" for k, v in local.items()))
+        return rc, {'inherits_from': source, 'box': box, 'local_checks': local}
+
+
+def _lock_delta_gate(t: Train) -> tuple[int, dict]:
+    t.dir.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix="dev-", dir=str(t.dir)))
     wt = tmp / "dev"
     try:
-        git(t.root, "worktree", "add", "--detach", str(wt), "origin/dev")
+        git(t.root, "worktree", "add", "--detach", str(wt), train_base())
         old, why_old = _lock_keys(t, wt)
     finally:
         git(t.root, "worktree", "remove", "--force", str(wt), check=False)
         shutil.rmtree(tmp, ignore_errors=True)
     new, why_new = _lock_keys(t, t.root)
     if old is None or new is None:
-        rec("lock_delta", 1, error="lock_discipline_check failed its contract",
-            dev_error=why_old, head_error=why_new)
+        return 1, {'error': "lock_discipline_check failed its contract", 'dev_error': why_old, 'head_error': why_new}
     else:
         # Ruling 21: the only green is "this train adds no key relative to
         # dev".  Dev's existing keys are the recorded red list, each owned by
@@ -1569,30 +1612,37 @@ def cmd_gate(t: Train, args) -> int:
             say(f"  lock key persists but its items are closed: {k} "
                 + ", ".join(i["item"] for i in owners[k]))
         rc = 1 if (added or unowned or closed) else 0
-        rec("lock_delta", rc, added=added, gone=gone, unowned=unowned,
-            closed_items=closed, owned_reds=reds)
+        return rc, {'added': added, 'gone': gone, 'unowned': unowned, 'closed_items': closed, 'owned_reds': reds}
 
-    base_rc, base_record = _baseline_gate(t)
-    rec("baseline", base_rc, **base_record)
-    premise_rc, premise_record = _premise_baseline_gate(t)
-    rec("premise_baseline", premise_rc, **premise_record)
 
-    files = git(t.root, "diff", "--name-only", "origin/dev", "HEAD").stdout.split()
+def _secrets_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
+    files = changed_paths(t) if files is None else files
     if files:
-        rec("secrets", t.run("gate-secrets", [PY3, "tools/secrets_check.py", *files]))
-    else:
-        rec("secrets", 0, skipped=True)
+        return t.run("gate-secrets", [PY3, "tools/secrets_check.py", *files]), {}
+    return 0, {"skipped": True}
 
+
+def _unit_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
+    files = changed_paths(t) if files is None else files
     unit = unit_tests(t.root, files)
+    # Pins describe this train's repository, never a suite's throwaway repos.
+    # Apply at the runner boundary so every selected/future suite is covered.
+    env = dict(os.environ)
+    for variable in BASE_PIN_VARS:
+        env.pop(variable, None)
     results = {}
     for test in unit:
         if not (t.root / test).is_file():
             say(f"unit: {test} is missing")
             results[test] = 1
         else:
-            results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test])
-    rec("unit", 0 if all(v == 0 for v in results.values()) else 1, tests=results)
+            results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test], env=env)
+    return (0 if all(v == 0 for v in results.values()) else 1), {"tests": results}
 
+
+def _image_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
+    head, st = t.head(), t.load()
+    files = changed_paths(t) if files is None else files
     need = image_modules(files)
     def changed_since(source: str) -> list[str] | None:
         diff = git(t.root, "diff", "--name-only", source, head, check=False)
@@ -1615,11 +1665,298 @@ def cmd_gate(t: Train, args) -> int:
                 "only planning/ and docs/ differ")
     else:
         say("image: no change obliges an image module")
-    rec("image", image_rc, **image_record)
+    return image_rc, {**image_record}
 
+
+GATE_FUNCTIONS = {
+    "ancestor": _ancestor_gate,
+    **{name: (lambda t, name=name: _command_gate(t, name)) for name in GATE_COMMANDS},
+    "host_load": _host_load_gate,
+    "ascii": lambda t: (_ascii_gate(t), {}),
+    "cost_obligations": lambda t: (_reported_check_gate(
+        t, "cost_obligations", ["tools/cost_obligations.py", "--check"]), {}),
+    "book_roots": lambda t: (_reported_check_gate(
+        t, "book_roots", ["tools/book_roots_check.py"]), {}),
+    "box_step": _box_step_gate,
+    "lock_delta": _lock_delta_gate,
+    "baseline": _baseline_gate,
+    "premise_baseline": _premise_baseline_gate,
+    "secrets": _secrets_gate,
+    "unit": _unit_gate,
+    "image": _image_gate,
+}
+
+
+def gate_tree_ready(t: Train) -> None:
+    if t.dirty():
+        raise TrainError("working tree is dirty; gates must run at a committed HEAD")
+
+
+def cmd_gate(t: Train, args) -> int:
+    gate_tree_ready(t)
+    if not getattr(args, "local", False):
+        t.fetch()
+    st = t.load()
+    head = t.head()
+    gates: dict = {}
+    st["gates"] = gates
+    dev = git(t.root, "rev-parse", train_base()).stdout.strip()
+    files = None
+    for name in GATES:
+        if name == "secrets":
+            # Dev computed this once, immediately before secrets, and used
+            # the same paths after unit tests for the image obligations.
+            files = changed_paths(t)
+        rc, extra = (GATE_FUNCTIONS[name](t, files) if name in ("secrets", "unit", "image")
+                     else GATE_FUNCTIONS[name](t))
+        gates[name] = {"rc": rc, "head": head, "dev": dev, **extra}
+        t.save(st)
+    report = getattr(args, "report", None)
+    if report:
+        path = t.root / report
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"head": head, "dev": dev, "gates": gates,
+                                    "box_commands": lane_check_box_commands(t, gates, files)}, indent=2) + "\n")
     bad = [n for n, g in gates.items() if g["rc"] != 0]
     say(f"gates at {head[:9]}: " + ", ".join(f"{n}={g['rc']}" for n, g in gates.items()))
     return 1 if bad else 0
+
+
+# --------------------------------------------------------------------------- lane-check
+
+def lane_check_target(t: Train, spec: str) -> tuple[str, str, Path]:
+    """Resolve committed lane input and its log destination without fetching."""
+    path = Path(spec).expanduser()
+    if path.is_dir():
+        source = toplevel(path.resolve())
+        branch = git(source, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        name = branch.removeprefix("lane/")
+        sha = git(source, "rev-parse", "HEAD").stdout.strip()
+    else:
+        if "@" not in spec:
+            raise TrainError("lane-check expects a lane worktree or LANE@SHA")
+        name, sha = spec.rsplit("@", 1)
+        name = name.removeprefix("lane/")
+        source = t.root
+        # Prefer the lane's checked-out worktree for the READY log copy.
+        for entry in git(t.root, "worktree", "list", "--porcelain").stdout.split("\n\n"):
+            fields = dict(line.split(" ", 1) for line in entry.splitlines() if " " in line)
+            if fields.get("branch") == "refs/heads/lane/" + name:
+                source = Path(fields["worktree"])
+                break
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name) or ".." in name:
+        raise TrainError(f"unsafe lane name: {name!r}")
+    # The merge must be possible in this repository, even for a supplied path.
+    sha = git(t.root, "rev-parse", "--verify", "--end-of-options", sha + "^{commit}").stdout.strip()
+    return name, sha, source
+
+
+def lane_check_tree(t: Train, name: str, dev: str) -> Train:
+    """Create/reset only this driver's owned scratch tree on the fetched dev SHA."""
+    common = Path(git(t.root, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
+    path = common.parent / "build" / "lanes" / ("lane-check-" + name)
+    branch = "integrate/lane-check-" + name
+    owner = path / "build" / "lane-check" / "owner.json"
+    identity = {"branch": branch, "common": str(common)}
+    if path.exists():
+        try:
+            owned = json.loads(owner.read_text()) == identity
+        except (OSError, ValueError):
+            owned = False
+        if not owned or Train(path).branch != branch:
+            raise TrainError(f"refusing to reset unowned scratch tree {path}")
+        git(path, "reset", "--hard", dev)
+        # Only this driver's scratch source files; ignored build logs/caches stay.
+        git(path, "clean", "-fd")
+    else:
+        if git(t.root, "show-ref", "--verify", "refs/heads/" + branch, check=False).returncode == 0:
+            raise TrainError(f"refusing to overwrite existing branch {branch} without its owned scratch tree")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        git(t.root, "worktree", "add", "-b", branch, str(path), dev)
+        owner.parent.mkdir(parents=True, exist_ok=True)
+        owner.write_text(json.dumps(identity) + "\n")
+    scratch = Train(path)
+    state = scratch.load()
+    state.update(branch=branch, lanes=[], regen=[], gates={})
+    scratch.save(state)
+    return scratch
+
+
+def lane_check_box_commands(t: Train, gates: dict | None = None,
+                            files: list[str] | None = None) -> dict[str, tuple[str, str]]:
+    """BOX decisions from real gate results, under this checkout's policy."""
+    if gates is None:
+        rc, record = GATE_FUNCTIONS["box_step"](t)
+        box_gate = {"rc": rc, **record}
+        rc, record = GATE_FUNCTIONS["image"](t)
+        image_gate = {"rc": rc, **record}
+    else:
+        box_gate, image_gate = gates["box_step"], gates["image"]
+    if box_gate["rc"] == 0:
+        reason = (f"box step inherits: {box_gate['inherits_from']} ({box_gate['box']})"
+                  if "inherits_from" in box_gate else f"box step ran at HEAD on {box_gate['ran_on']}")
+        commands = {"box_step": ("NONE", reason)}
+    else:
+        commands = {"box_step": ("BOX", shlex.join(["timeout", "3600", PY, "tools/train.py", "boxstep", "hbox"]))}
+        reason = box_gate.get("error", "box step failed")
+    selection = certify_selection(t)
+    covered = set(BOX_CERT_BOOKS)
+    additional = [root for root in selection["roots"] if root not in covered]
+    certify = (("BOX", shlex.join(["timeout", "3600", *certify_command(t, "hbox", selection)]))
+               if box_gate["rc"] != 0 or additional else ("NONE", reason))
+    commands = {"certify": certify, **commands}
+    for name, command in EMIT_STEPS:
+        commands["box_" + name] = (("NONE", reason) if box_gate["rc"] == 0 else
+                                  ("BOX", shlex.join(["timeout", "3600", "sh", "tools/remote_check.sh",
+                                                     "hbox", "--no-dirty", "--install-certs", "--cmd", command])))
+    # Neither boxstep nor certify's emits records either of these checks.
+    # A box-step record therefore cannot discharge their obligations.
+    for name, command in (("reach", "python3 tools/reach_check.py --summary --strict"),
+                          ("keystone_cert", shlex.join(GATE_COMMANDS["keystone"]))):
+        commands[name] = ("BOX", shlex.join(["timeout", "3600", "sh", "tools/remote_check.sh",
+                                            "hbox", "--no-dirty", "--install-certs", "--cmd", command]))
+    changed = changed_paths(t) if files is None else files
+    modules = sorted(image_modules(changed))
+    if image_gate["rc"] != 0 and modules:
+        commands["image"] = ("BOX", shlex.join(["timeout", "7200", "sh", "tools/hbox_native.sh",
+                                                "--box", "hbox", t.head(), *modules]))
+    else:
+        commands["image"] = ("NONE", "image gate passed" if modules else "no native module obliged")
+    commands["extraction"] = (("BOX", f"timeout 7200 sh tools/extract/remote_check.sh {t.head()}")
+                              if image_inputs_changed(changed) else ("NONE", "no image input changed"))
+    return commands
+
+
+def cmd_lane_check(t: Train, args) -> int:
+    """Run the train's local decisions on a disposable merge; no source writes."""
+    namespace = "refs/lane-check/" + uuid.uuid4().hex + "/"
+    try:
+        fetched = io.StringIO()
+        with contextlib.redirect_stdout(fetched):
+            # --refmap= disables the configured origin/* tracking updates,
+            # including Git's opportunistic updates for explicit refspecs.
+            say("$ git fetch origin into " + namespace)
+            git(t.root, "fetch", "--no-tags", "--no-write-fetch-head", "--refmap=", "origin",
+                "+refs/heads/*:" + namespace + "heads/*")
+        dev = git(t.root, "rev-parse", namespace + "heads/dev").stdout.strip()
+        name, sha, source = lane_check_target(t, args.lane)
+        return _locked_lane_check(t, args, name, sha, source, dev, fetched.getvalue())
+    finally:
+        # Only this run's private refs, never refs/remotes/origin or FETCH_HEAD.
+        refs = git(t.root, "for-each-ref", "--format=%(refname)", namespace).stdout.splitlines()
+        for ref in refs:
+            git(t.root, "update-ref", "-d", ref)
+
+
+def _locked_lane_check(t: Train, args, name: str, sha: str, source: Path,
+                       dev: str, fetch_log: str) -> int:
+    common = Path(git(t.root, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
+    # Serialize reset/run/cleanup for this lane across all worktrees.
+    locks = common.parent / "build" / "lanes"
+    locks.mkdir(parents=True, exist_ok=True)
+    with (locks / (".lane-check-" + name + ".lock")).open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise TrainError(f"lane-check for {name} is already running") from error
+        return _run_lane_check(t, args, name, sha, source, dev, fetch_log)
+
+
+def _run_lane_check(t: Train, args, name: str, sha: str, source: Path,
+                    dev: str, fetch_log: str) -> int:
+    destination = source / "build" / "lane-check" / f"{name}-{sha[:9]}.log"
+    try:
+        scratch = lane_check_tree(t, name, dev)
+    except (TrainError, OSError) as error:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        line = f"lane-check setup: FAIL (log: {destination})"
+        verdict = f"lane-check verdict: FAIL (0 box gates owed) dev={dev}"
+        destination.write_text(fetch_log + str(error) + "\n" + line + "\n" + verdict + "\n")
+        say(line)
+        say(verdict)
+        return 1
+    log = scratch.root / "build" / "lane-check" / destination.name
+    transcript = io.StringIO()
+    transcript.write(fetch_log)
+    transcript.write(f"lane-check base: origin/dev {dev}\n")
+    failed = False
+    owed = 0
+
+    def report(gate: str, rc: int, command: str = ""):
+        nonlocal failed
+        failed |= rc != 0
+        line = f"lane-check {gate}: {'FAIL' if rc else 'PASS'}"
+        if command:
+            line += " " + command
+        if rc:
+            line += " (log: " + str(destination) + ")"
+        say(line)
+        transcript.write(line + "\n")
+
+    def run(gate: str, action, command: str = "") -> int:
+        with contextlib.redirect_stdout(transcript):
+            try:
+                rc = action()
+            except (TrainError, OSError) as error:
+                say(str(error))
+                rc = 1
+        report(gate, rc, command)
+        return rc
+
+    # merge_one is cmd_merge's merge/conflict policy; the scratch base is
+    # the dev SHA captured immediately after this run fetched origin.
+    merged = run("merge", lambda: 0 if merge_one(scratch, scratch.load(), name, sha) else 1,
+                 f"git merge --no-ff {sha}") == 0
+    if merged:
+        env = dict(os.environ)
+        env.update(dict.fromkeys(BASE_PIN_VARS, dev))
+
+        def child(argv: list[str]) -> int:
+            say("$ " + shlex.join(argv))
+            result = subprocess.run(argv, cwd=scratch.root, env=env, capture_output=True, text=True)
+            say(result.stdout + result.stderr)
+            return result.returncode
+
+        regenerated = run("regen", lambda: child([PY3, "tools/train.py", "regen", "--label", "lane-check"]),
+                          f"{PY3} tools/train.py regen --label lane-check") == 0
+        if regenerated:
+            report_path = scratch.root / "build" / "lane-check" / "gates.json"
+            # This driver's own report file; a failed child cannot reuse stale PASS.
+            report_path.unlink(missing_ok=True)
+            with contextlib.redirect_stdout(transcript):
+                gate_rc = child([PY3, "tools/train.py", "gate", "--local", "--report", str(report_path)])
+            try:
+                result = json.loads(report_path.read_text())
+                if result["head"] != scratch.head() or result["dev"] != dev:
+                    raise TrainError("scratch gate report is for another HEAD or base")
+                for gate, record in result["gates"].items():
+                    if record["head"] != result["head"] or record["dev"] != dev:
+                        raise TrainError(f"scratch gate {gate} reported another HEAD or base")
+                    report(gate, record["rc"], shlex.join([PY3, "tools/train.py", "gate", "--local"]))
+                for gate, (status, command) in result["box_commands"].items():
+                    if status not in ("BOX", "NONE"):
+                        raise TrainError(f"scratch gate {gate}: unknown box status {status}")
+                    line = (f"lane-check {gate}: BOX {command}" if status == "BOX" else
+                            f"lane-check {gate}: NONE ({command})")
+                    say(line)
+                    transcript.write(line + "\n")
+                    owed += status == "BOX"
+                # The child exit code remains authoritative even if a future
+                # policy fails outside the individual gate records.
+                failed |= gate_rc != 0
+            except (OSError, ValueError, KeyError, TypeError, TrainError) as error:
+                transcript.write(str(error) + "\n")
+                report("gate", 1)
+    verdict = f"lane-check verdict: {'FAIL' if failed else 'PASS'} ({owed} box gates owed) dev={dev}"
+    transcript.write(verdict + "\n")
+    log.write_text(transcript.getvalue())
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(log, destination)
+    if args.clean:
+        git(t.root, "worktree", "remove", "--force", str(scratch.root))
+        git(t.root, "branch", "-D", scratch.branch)
+    say(verdict)
+    return 1 if failed else 0
 
 
 # --------------------------------------------------------------------------- push
@@ -1642,9 +1979,9 @@ def cmd_push(t: Train, args) -> int:
         if g["rc"] != 0:
             raise TrainError(f"gate {name} failed (rc {g['rc']}); push refused")
     t.fetch()
-    if git(t.root, "merge-base", "--is-ancestor", "origin/dev", "HEAD", check=False).returncode != 0:
+    if git(t.root, "merge-base", "--is-ancestor", train_base(), "HEAD", check=False).returncode != 0:
         raise TrainError("origin/dev is no longer an ancestor of HEAD; re-merge and re-gate")
-    old = git(t.root, "rev-parse", "origin/dev").stdout.strip()
+    old = git(t.root, "rev-parse", train_base()).stdout.strip()
     moved = sorted({g.get("dev", "?")[:9] for g in gates.values() if g.get("dev") != old})
     if moved:
         raise TrainError(f"the gates measured against dev {', '.join(moved)}, and origin/dev is now "
@@ -1681,7 +2018,7 @@ def _stacked_on(t: "Train") -> list[str]:
     a merge into an integrate/ branch is a train's; a merge into a lane
     branch is that lane's content (the Fungus tree, lane/fungus-*, is the
     base a train is formed on, COORDINATION section 5, and lands with it)."""
-    log = git(t.root, "log", "--first-parent", "--merges", "--format=%s", "origin/dev..HEAD").stdout
+    log = git(t.root, "log", "--first-parent", "--merges", "--format=%s", f"{train_base()}..HEAD").stdout
     mine = t.branch if t.branch.startswith("integrate/") else f"integrate/{t.branch}"
     others = []
     for subject in log.splitlines():
@@ -1787,7 +2124,7 @@ def cmd_status(t: Train, args) -> int:
         say("  verdict: " + verdict_words(known_reds_at(t, "HEAD"), amendments_at(t, "HEAD")))
     except TrainError as error:
         say(f"  verdict: {error}")
-    fork = git(t.root, "merge-base", "HEAD", "origin/dev", check=False).stdout.strip()
+    fork = git(t.root, "merge-base", "HEAD", train_base(), check=False).stdout.strip()
     say("  " + (shrink_words(t, fork, head) if fork else "shrink: unavailable (no fork point with origin/dev)"))
     say("  " + census_words(st.get("census"), head))
     for n in GATES:
@@ -1810,7 +2147,12 @@ def main(argv=None) -> int:
     b.add_argument("box", choices=("hbox", "persvati"))
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
+    lc = sub.add_parser("lane-check")
+    lc.add_argument("lane", metavar="WORKTREE|LANE@SHA")
+    lc.add_argument("--clean", action="store_true", help="remove the owned scratch tree after copying its log")
     g = sub.add_parser("gate")
+    g.add_argument("--local", action="store_true", help="run every gate without fetching; FN_TRAIN_BASE pins the base")
+    g.add_argument("--report", help="write gate records and BOX commands from this tree's policy")
     i = sub.add_parser("image")
     i.add_argument("--label", help="the run's label (default: HEAD's first 12 hex digits); "
                    "each run read at HEAD adds its modules to HEAD's image record")
@@ -1822,7 +2164,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     try:
         t = Train(toplevel(Path.cwd()))
-        rc = {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
+        rc = {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate, "lane-check": cmd_lane_check,
               "image": cmd_image, "census": cmd_census, "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
     except TrainError as e:
         say(f"train: {e}")
