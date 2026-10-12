@@ -3,6 +3,10 @@ import os
 import subprocess
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests.scratch_git import run as scratch_git
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "tools" / "hbox_native.sh"
@@ -718,10 +722,10 @@ class FromTrainDryRunTests(unittest.TestCase):
                # objects, past gc.auto: a detached auto-gc then packs them
                # into .git/objects while tearDownClass removes the repo
                "-c", "gc.auto=0", "-c", "maintenance.auto=false"]
-        subprocess.run([*git, "init", "-q", "-b", "lane/x"], check=True)
-        subprocess.run([*git, "add", "."], check=True, capture_output=True)
-        subprocess.run([*git, "commit", "-q", "-m", "c"], check=True, capture_output=True)
-        cls.rev = subprocess.run([*git, "rev-parse", "HEAD"], check=True, capture_output=True,
+        scratch_git([*git, "init", "-q", "-b", "lane/x"], check=True)
+        scratch_git([*git, "add", "."], check=True, capture_output=True)
+        scratch_git([*git, "commit", "-q", "-m", "c"], check=True, capture_output=True)
+        cls.rev = scratch_git([*git, "rev-parse", "HEAD"], check=True, capture_output=True,
                                  text=True).stdout.strip()
 
     @classmethod
