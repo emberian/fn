@@ -1596,6 +1596,67 @@
   :hints (("Goal" :in-theory (disable fn-prc-delta fn-prc-set-okp fn-prc-build
                                      fn-prc-carryp fn-prc-find-okp mv-nth))))
 
+(local
+ (defthm fn-prc-find-okp-is-find-scan
+   (implies (fn-prc-find-okp ledger trie)
+            (equal (fn-prc-find id trie)
+                   (fn-prc-find-scan id (fn-retain-pins ledger))))
+   :hints (("Goal" :in-theory (union-theories '(fn-prc-find-okp)
+                                              (theory 'minimal-theory))
+            :use ((:instance fn-prc-find-okp-no-extras)
+                  (:instance fn-prc-fit-find-scan (pins (fn-retain-pins ledger)))
+                  (:instance fn-prc-fit-scan-member (pins (fn-retain-pins ledger))))))))
+
+(defthm fn-prc-find-pin-is-find-id
+    (implies (fn-prc-carryp carry)
+             (equal (fn-prc-find-pin id ledger carry)
+                    (fn-retain-find-id id (fn-retain-pins ledger))))
+    :hints (("Goal" :in-theory
+             (e/d (fn-prc-find-pin fn-prc-carryp fn-prc-find-scan-is-find-id)
+                  (fn-prc-find fn-prc-find-scan fn-prc-find-okp fn-prc-set-okp)))))
+
+(defthm fn-prc-find-pin-of-refresh-is-find-id
+  (implies (fn-prc-carryp carry)
+           (equal (fn-prc-find-pin id ledger (fn-prc-refresh carry ledger))
+                  (fn-retain-find-id id (fn-retain-pins ledger))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-prc-carryp-of-refresh)
+                 (:instance fn-prc-find-pin-is-find-id
+                            (carry (fn-prc-refresh carry ledger)))))))
+
+(local
+ (defthm fn-prc-obligation-ids-are-strings
+   (implies (fn-retain-obligation-listp pins)
+            (fn-retain-string-listp (fn-retain-obligation-ids pins)))
+   :hints (("Goal" :in-theory (enable fn-retain-obligationp
+                                     fn-retain-obligation-listp)))))
+(local
+ (defthm fn-prc-statep-implies-ledger-findsp
+   (implies (fn-retain-statep ledger) (fn-prc-ledger-findsp ledger))
+   :hints (("Goal" :in-theory (enable fn-retain-statep fn-prc-ledger-findsp)))))
+(local
+ (defthm fn-prc-mark-ignores-ledger-name
+   (equal (fn-prc-carry-findsp (cons ledger (cdr carry)))
+          (fn-prc-carry-findsp carry))
+   :hints (("Goal" :in-theory (enable fn-prc-carry-findsp)))))
+(local
+ (defthm fn-prc-delta-preserves-mark
+   (implies (mv-nth 0 (fn-prc-delta carry ledger))
+            (fn-prc-carry-findsp (cons ledger (mv-nth 1 (fn-prc-delta carry ledger)))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-prc-delta)
+                 (fn-prc-carry-findsp fn-prc-pins-walk fn-prc-add-new-releases
+                  fn-prc-new-releases-clearedp mv-nth))))))
+(defthm fn-prc-refresh-keeps-the-mark-on-a-fit-ledger
+  (implies (and (fn-prc-carryp carry)
+                (or (atom carry) (fn-prc-carry-findsp carry))
+                (fn-retain-statep ledger))
+           (fn-prc-carry-findsp (fn-prc-refresh carry ledger)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-prc-refresh)
+                (fn-prc-carryp fn-prc-carry-findsp fn-prc-delta fn-prc-build
+                 fn-prc-ledger-findsp fn-retain-statep mv-nth)))))
+
 (defthm fn-prc-refresh-names-the-ledger
   (and (consp (fn-prc-refresh carry ledger))
        (equal (car (fn-prc-refresh carry ledger)) ledger)))

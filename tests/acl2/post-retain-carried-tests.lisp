@@ -610,3 +610,77 @@
       (eq (symbol-class 'fn-prc-find (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-prc-find-scan (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-prc-find-pin (w state)) :common-lisp-compliant)))
+
+; BEGIN D14 GENERATED T-MUT (build/d14/make_mutation_test.py)
+; Exact mutation at every release writer in the copied walk/adder:
+; (fn-prc-release-put id trie) -> (fn-prc-add id trie).
+; This is PRF-289's insert-if-absent step: it keeps the released pin.
+; The unchanged release-cleared check rejects the mutant's delta, breaking
+; DELTA's required success flag. If that check were removed, its marked
+; walk result would return the released pin. Control: the real delta is t.
+(local
+ (encapsulate ()
+(defun d14-mut-add-new-releases (r1 r0 trie)
+  (declare (xargs :guard t))
+  (cond ((equal r1 r0) trie)
+        ((atom r1) trie)
+        (t (d14-mut-add-new-releases
+            (cdr r1) r0 (fn-prc-add (fn-retain-release-id (car r1)) trie)))))
+
+(defun d14-mut-pins-walk (p1 p0 rtrie trie check)
+  (declare (xargs :guard t :measure (+ (len p1) (len p0))))
+  (cond ((and check (equal p1 p0)) (mv t trie))
+        ((and (atom p1) (atom p0)) (mv t trie))
+        ((and (consp p1) (consp p0) (equal (car p1) (car p0)))
+         (d14-mut-pins-walk (cdr p1) (cdr p0) rtrie trie nil))
+        ((and (consp p0)
+              (fn-prc-has (fn-retain-obligation-id (car p0)) rtrie))
+         (let ((id (fn-retain-obligation-id (car p0))))
+           (if (and (consp (car p0))
+                    (equal (fn-prc-find id trie) (car p0)))
+               (d14-mut-pins-walk p1 (cdr p0) rtrie
+                                 (fn-prc-add id trie) t)
+             (mv nil trie))))
+        ((consp p1)
+         (let ((id (fn-retain-obligation-id (car p1))))
+           (if (and (stringp id) (not (fn-prc-has id trie)))
+               (d14-mut-pins-walk (cdr p1) p0 rtrie
+                                 (fn-prc-add-pin (car p1) trie) t)
+             (mv nil trie))))
+        (t (mv nil trie))))
+
+(defun d14-mut-delta (carry ledger)
+  (declare (xargs :guard (consp carry)))
+  (let* ((l0 (car carry))
+         (r0 (fn-retain-releases l0))
+         (r1 (fn-retain-releases ledger)))
+    (if (and (fn-prc-carry-findsp carry) (fn-prc-releases-tailp r1 r0))
+        (mv-let (ok trie)
+          (d14-mut-pins-walk (fn-retain-pins ledger) (fn-retain-pins l0)
+                            (d14-mut-add-new-releases r1 r0 nil)
+                            (cdr carry) t)
+          (if (and ok (fn-prc-new-releases-clearedp r1 r0 (cdr carry) trie))
+              (mv t (d14-mut-add-new-releases r1 r0 trie))
+            (mv nil nil)))
+      (mv nil nil))))
+(with-guard-checking-event
+ :none
+ (assert-event
+  (mv-let (real-ok real-trie) (fn-prc-delta *d14-prct-c1* *d14-prct-l2*)
+   (mv-let (mut-ok mut-trie) (d14-mut-delta *d14-prct-c1* *d14-prct-l2*)
+    (declare (ignore mut-trie))
+    (mv-let (walk-ok walk-trie)
+      (d14-mut-pins-walk
+       (fn-retain-pins *d14-prct-l2*) (fn-retain-pins *d14-prct-l1*)
+       (fn-prc-add-new-releases (fn-retain-releases *d14-prct-l2*)
+                                (fn-retain-releases *d14-prct-l1*) nil)
+       (cdr *d14-prct-c1*) t)
+     (and (equal real-ok t) (equal mut-ok nil) (equal walk-ok t)
+          (fn-prc-carry-findsp (cons *d14-prct-l2* real-trie))
+          (equal (fn-prc-find-pin "a1" *d14-prct-l2* (cons *d14-prct-l2* real-trie)) nil)
+          (fn-prc-carry-findsp (cons *d14-prct-l2* walk-trie))
+          (equal (fn-prc-find-pin "a1" *d14-prct-l2* (cons *d14-prct-l2* walk-trie))
+                 *d14-prct-a1*)
+          (not (fn-prc-carryp (cons *d14-prct-l2* walk-trie)))))))))
+))
+; END D14 GENERATED T-MUT
