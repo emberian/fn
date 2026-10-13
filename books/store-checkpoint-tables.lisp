@@ -721,9 +721,6 @@
 
 ; (:ok PROGRAM REST) or the codec's refusal (:header, :segment, :truncated),
 ; or :sequence when the run's header does not carry S.
-; Preserve the header-count lemma’s NTH vocabulary during guard proof.
-(local (in-theory (disable adt-nth-0 adt-nth-1+)))
-
 (defun fn-sct-run-decode (segs s)
   (declare (xargs :guard (fn-scc-segment-listp segs)
                   :guard-hints (("Goal" :expand ((fn-scc-segment-listp segs))

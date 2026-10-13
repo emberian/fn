@@ -1723,9 +1723,6 @@
                             fn-bs-rename fn-bs-fence-dir fn-bs-fencedp
                             fn-bs-store-relation)))))
 
-; Preserve the NTH state vocabulary of the fenced-entry rewrite.
-(local (in-theory (disable adt-nth-0 adt-nth-1+)))
-
 (defthm fn-bs-k0-frontier-dir-cut-preserves-fenced-list
   (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)

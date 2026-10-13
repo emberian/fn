@@ -521,9 +521,6 @@
                  (:instance fn-rcl-four-list-is-its-elements
                             (x (fn-rcl-summary-in rule now h verdicts articles fn-arena)))))))
 
-; Keep summary fields and triples in their own vocabulary.
-(local (in-theory (disable adt-nth-0 adt-nth-1+ pgs-x-mk-entry-intro)))
-
 (verify-guards fn-rcl-summary-in
   :hints (("Goal" :in-theory (e/d (fn-rcl-summary-loop-is-the-summary)
                                   (fn-rcl-summary-in fn-rcl-summary-loop fn-rcl-verdict-in

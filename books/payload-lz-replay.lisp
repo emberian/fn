@@ -62,9 +62,6 @@
                       nil nil)
         fn-arena)))
 
-; Keep the consuming proof vocabulary at this event.
-(local (in-theory (disable adt-nth-0 adt-nth-1+)))
-
 (defun fn-lzr-intern-event (w z position file dicts keyring generation fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (natp file) (fn-lzr-dictsp dicts)

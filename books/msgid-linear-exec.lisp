@@ -2751,6 +2751,9 @@
   (equal (nthcdr 0 l) l)
   :hints (("Goal" :in-theory (enable nthcdr)))))
 
+; Preserve key-field NTH terms for the recognizer and NTHCDR lemmas.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+
 (defthm fn-mlh-key-from-is-nthcdr
   (implies (and (fn-mlhp fn-mlh) (natp i))
            (equal (fn-mlh-key-from i fn-mlh) (nthcdr i (nth *fn-mlh-keyi* fn-mlh))))

@@ -239,8 +239,7 @@
   (implies (and (natp lo) (natp hi) (< lo hi))
            (equal (pcks-res lo hi pgs-mem)
                   (and (pcks-writable lo pgs-mem) (pcks-res (1+ lo) hi pgs-mem))))
-  :hints (("Goal" :expand ((pcks-res lo hi pgs-mem))
-           :in-theory (disable adt-tp-npages-open))))
+  :hints (("Goal" :expand ((pcks-res lo hi pgs-mem)))))
 
 (defthm pcks-res-done
   (implies (and (natp lo) (natp hi) (<= hi lo)) (pcks-res lo hi pgs-mem))
@@ -370,9 +369,6 @@
            (pcks-res lo2 hi2 pgs-mem))
   :hints (("Goal" :use ((:instance pcks-res-lo) (:instance pcks-res-hi (lo lo2) (hi hi)))
            :in-theory (disable pcks-res-lo pcks-res-hi pcks-res))))
-
-; Keep the encoded row symbolic while exposing one stage step.
-(local (in-theory (disable fn-pck-x-encode-row)))
 
 (defthm pcks-stage-open
   (implies (consp rows)
@@ -573,7 +569,7 @@
 
 (defthm pcks-pad-multiple
   (implies (natp m) (equal (adt-tp-pad (* 2048 m)) 0))
-  :hints (("Goal" :induct (pcks-ind 0 m) :in-theory (e/d (adt-tp-pad) (pckx-npk-step)))))
+  :hints (("Goal" :induct (pcks-ind 0 m) :in-theory (enable adt-tp-pad))))
 
 (defthm pcks-nthcdr-too-long
   (implies (and (true-listp w) (natp n) (<= (len w) n)) (equal (nthcdr n w) nil))
@@ -592,9 +588,6 @@
            :use ((:instance adt-tp-pages-long (w (append w (adt-tp-zeros (adt-tp-pad (len w))))))
                  pcks-pages-short)))
   :rule-classes nil)
-
-; Keep the page-boundary NTH term available to the slice lemmas.
-(local (in-theory (disable adt-nth-1+)))
 
 (defthm pcks-pages-of-padded
   (implies (true-listp w)
@@ -661,9 +654,6 @@
 
 (defthm pcks-floor-plus-2048
   (implies (natp y) (equal (floor (+ 2048 y) 2048) (+ 1 (floor y 2048)))))
-
-; Avoid recursive packing backchains during page-count arithmetic.
-(local (in-theory (disable pckx-npk-step)))
 
 (defthm pcks-npages-closed
   (implies (natp x) (equal (adt-tp-npages x) (floor (+ x 2047) 2048)))

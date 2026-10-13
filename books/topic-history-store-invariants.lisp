@@ -324,9 +324,6 @@
                             fn-sti-completed-prefixp fn-th-topic-eventp
                             fn-th-prefix-step fn-sn-statep fn-sf-statep)))))
 
-; Preserve the supplied TAKE boundary facts until the topic prefix matches.
-(local (in-theory (disable adt-take-len-self)))
-
 (defthm fn-sti-current-records-topic-ok
   (implies (and (fn-sti-livep s)
                 (not (equal (fn-sf-phase (fn-sn-files s)) :completed)))

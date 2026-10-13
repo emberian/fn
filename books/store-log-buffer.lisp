@@ -406,9 +406,6 @@
 ; The acceptance, (mv OK KIND END), END the trailer's start.  The trailer
 ; check comes last: a wrong chain link or kind is refused before any digest
 ; is computed.
-; Keep the consuming proof vocabulary at this event.
-(local (in-theory (disable adt-nth-0 adt-nth-1+)))
-
 (defun fn-lgb-accept (prev max fn-octets)
   (declare (xargs :stobjs fn-octets :guard (fn-lgb-fast-range-p max fn-octets)
                   :guard-hints (("Goal" :in-theory (enable fn-octets-len)))))

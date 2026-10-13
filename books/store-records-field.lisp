@@ -31,9 +31,22 @@
 ;; book above that includes one of them again: the include is redundant.)
 (include-book "snoc-list")
 (include-book "assumptions")
-(include-book "history-columns")
+(include-book "history-columns-foundation")
 (include-book "sha256")
 (include-book "store-checkpoint-buffer")
+; Keep the generic foundation and history-columns' own rules in the
+; exported theory, without inheriting the resident implementation's closure.
+; Preloading history-paged makes its include in history-columns redundant;
+; the universal snapshot then separates columns' own events structurally.
+(deftheory fn-sfr-theory-before-paged (current-theory :here))
+(include-book "history-paged")
+(deftheory fn-sfr-theory-before-columns (universal-theory :here))
+(include-book "history-columns")
+(in-theory
+ (union-theories
+  (theory 'fn-sfr-theory-before-paged)
+  (set-difference-theories (current-theory :here)
+                           (theory 'fn-sfr-theory-before-columns))))
 (deftheory fn-sfr-theory-before-disk (current-theory :here))
 (include-book "history-records-disk")
 (deftheory fn-sfr-theory-after-disk (current-theory :here))

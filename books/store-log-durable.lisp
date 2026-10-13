@@ -172,9 +172,6 @@
  (defthm fn-lgu-max-at-or-above-linear
    (implies (and (natp o) (integerp y)) (<= o (nfix (max o y))))
    :rule-classes :linear))
-; Keep the consuming proof vocabulary at this event.
-(local (in-theory (disable adt-nth-0 adt-nth-1+ pgs-x-nfix-when-natp)))
-
 (local
  (defthm fn-lgu-tear-write-at-or-above
    (implies (or (not (equal (nth 1 op) ino)) (<= (nfix f) (nfix (nth 2 op))))

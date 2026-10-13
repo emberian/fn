@@ -36,6 +36,9 @@
 
 ; The result includes the physical candidate/yield schedule and exact residual
 ; fuel. Final semantic selection is a separate query invariant over captured rows.
+; Keep indexed word reads symbolic during the layout-step refinement.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+
 (defthm fn-mpr-next-is-operational-layout-step
   (implies (and (natp tag) (fn-mpxt-wfp fn-mpxt)
                 (fn-mpr-cursorp cursor (fn-mpxt-pages fn-mpxt))

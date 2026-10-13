@@ -106,9 +106,6 @@
             (equal (fn-rcls-fold events ctx acc) acc))))
 
 ;; The fold from the start, read as the whole-history quantities.
-; Keep the consuming proof vocabulary at this event.
-(local (in-theory (disable adt-nth-0)))
-
 (defthm fn-rcls-fold-of-init
   (implies (true-listp records)
            (let ((acc (fn-rcls-fold records ctx (fn-rcls-init))))

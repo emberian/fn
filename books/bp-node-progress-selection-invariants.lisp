@@ -221,9 +221,6 @@
                  fn-bpp-eidp fn-bpb-bundlep fn-bpnf-heldp
                  fn-bpnp-true-listp-backchain)))))
 
-; Preserve the operation-key field vocabulary through progress branches.
-(local (in-theory (disable adt-nth-0 adt-nth-1+)))
-
 (defthm fn-bpnp-step-progress-issued-unchanged-or-pending-dispatch
   (implies (equal (fn-cbor-ag-car event) :progress)
            (let ((issued (fn-bpnf-issued

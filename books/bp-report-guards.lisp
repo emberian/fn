@@ -134,9 +134,6 @@
            :in-theory (disable fn-bpn-report-outbox-view fn-bpn-nth
                                fn-bpn-report-outbox-view-arrival-is-natp
                                fn-bpn-report-outbox-view-arrival-is-a-natural-nth))))
-; Keep the consuming proof vocabulary at this event.
-(local (in-theory (disable adt-nth-0 adt-nth-1+)))
-
 (verify-guards fn-bpn-report-outbox-next-aux
   :hints (("Goal" :in-theory (disable fn-bpn-report-outbox-view))))
 (verify-guards fn-bpn-report-outbox-next)

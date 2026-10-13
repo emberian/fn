@@ -136,9 +136,6 @@
 ; `(FN-CBOR-DECODE-BYTES-BOUNDED ADDITIONAL TAIL 65535)' with it closed
 ; (hbox certify-20260922T145811Z-3032393).  books/checkpoint-codec has not
 ; certified since.
-; Preserve the NTHCDR term for the local linear remainder bound.
-(local (in-theory (disable pgs-len-of-nthcdr)))
-
 (local
  (defthm fn-cpc-decode-bytes-rest-len
    (implies (equal (car (fn-cbor-decode-bytes additional tail)) :ok)

@@ -459,9 +459,6 @@
 ; of an observer), every field but LOG exactly, LOG when the log's records
 ; are within their charges (O-LOG).  The history image's events are the
 ; store's records.
-; Preserve NTH terms for KT-OF-RECORDS-NATS.
-(local (in-theory (disable adt-nth-0 adt-nth-1+)))
-
 (defthm fn-ct-charged-covers-the-store
   (implies (<= (fn-ct-sum-lengths lens) (fn-ct-log-of-records (fn-sf-records (fn-sn-files s))))
            (fn-mm-tot-le (fn-ct-of-store s lens (fn-sf-records (fn-sn-files s)) residency)
