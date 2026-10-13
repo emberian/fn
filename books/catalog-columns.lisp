@@ -84,6 +84,7 @@
   (fn-lbc-nov-store :type fn-lbc-nov)
   (fn-lbc-summary-groups :type t :initially nil)
   (fn-lbc-escape-store :type (hash-table eql))
+  (fn-lbc-slot-escape-keys :type t :initially nil)
   :renaming ((fn-lbcp fn-lbc-p)))
 
 ; Bit positions are shared by writers and readers.  RECLAIMED is checked
@@ -320,7 +321,8 @@
     (fn-lbc (stobj-let ((fn-dmap (fn-lbc-number-store fn-lbc)))
                 (fn-dmap) (fn-dmap-clear fn-dmap) fn-lbc))
 
-    (fn-lbc (fn-lbc-escape-store-clear fn-lbc)))
+    (fn-lbc (fn-lbc-escape-store-clear fn-lbc))
+    (fn-lbc (update-fn-lbc-slot-escape-keys nil fn-lbc)))
     (update-fn-lbc-summary-groups nil fn-lbc)))
 ; END LB SCHEMA ACCESSOR DISPATCHES
 
@@ -851,13 +853,59 @@
   (stobj-let ((fn-lbc-msgid-slots (fn-lbc-slot-store fn-lbc)))
     (n) (fn-lbc-msgid-slots-count fn-lbc-msgid-slots) n))
 
+; The largest u64 word marks an escaped slot ordinal.  Escape records
+; remain keyed by the row sequence; this small key directory provides the
+; inverse lookup needed only on the unsupported-profile escape path.
+(defconst *fn-lbc-slot-escape-word* 18446744073709551615)
+
+(defun fn-lbc-escaped-slot-word (slot keys fn-lbc)
+  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (if (consp keys)
+      (let ((position (fn-lbc-escape (car keys) :msgid-slot fn-lbc)))
+        (if (and position (equal (cdr position) slot))
+            (+ 1 (nfix (car keys)))
+          (fn-lbc-escaped-slot-word slot (cdr keys) fn-lbc)))
+    0))
+
 (defun fn-lbc-slot-word (slot fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
   (stobj-let ((fn-lbc-msgid-slots (fn-lbc-slot-store fn-lbc)))
     (word)
     (if (and (natp slot) (< slot (fn-lbc-msgid-slots-count fn-lbc-msgid-slots)))
         (fn-lbc-msgid-slots-get-word slot fn-lbc-msgid-slots) 0)
-    word))
+    (if (equal word *fn-lbc-slot-escape-word*)
+        (fn-lbc-escaped-slot-word slot (fn-lbc-slot-escape-keys fn-lbc) fn-lbc)
+      word)))
+
+(defun fn-lbc-slot-put (slot ordinal fn-lbc)
+  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (if (not (and (natp slot) (< slot (fn-lbc-slot-count fn-lbc)))) fn-lbc
+    (let* ((ordinal (nfix ordinal))
+           (escaped (<= *fn-lbc-slot-escape-word* ordinal))
+           (seq (if (zp ordinal) 0 (- ordinal 1)))
+           (fn-lbc
+             (if escaped
+                 (let* ((old (fn-lbc-escape-store-get seq fn-lbc))
+                        (fn-lbc (fn-lbc-escape-store-put seq
+                                   (acons :msgid-slot slot old) fn-lbc)))
+                   (update-fn-lbc-slot-escape-keys
+                     (if (member-equal seq (fn-lbc-slot-escape-keys fn-lbc))
+                         (fn-lbc-slot-escape-keys fn-lbc)
+                       (cons seq (fn-lbc-slot-escape-keys fn-lbc))) fn-lbc))
+               fn-lbc))
+           (fn-lbc
+             (if (and escaped (< seq (fn-lbc-count fn-lbc)))
+                 (stobj-let ((fn-lbc-rowwords (fn-lbc-row-store fn-lbc)))
+                   (fn-lbc-rowwords)
+                   (fn-lbc-rowwords-set-flags seq
+                     (logior (fn-lbc-rowwords-get-flags seq fn-lbc-rowwords) 8)
+                     fn-lbc-rowwords) fn-lbc)
+               fn-lbc)))
+      (stobj-let ((fn-lbc-msgid-slots (fn-lbc-slot-store fn-lbc)))
+        (fn-lbc-msgid-slots)
+        (fn-lbc-msgid-slots-set-word slot
+          (if escaped *fn-lbc-slot-escape-word* ordinal) fn-lbc-msgid-slots)
+        fn-lbc))))
 
 (defun fn-lbc-reserve-slots (n fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (natp n) :measure (nfix n)
@@ -874,10 +922,7 @@
                   :verify-guards nil))
   (cond ((zp fuel) fn-lbc)
         ((equal (fn-lbc-slot-word slot fn-lbc) 0)
-         (stobj-let ((fn-lbc-msgid-slots (fn-lbc-slot-store fn-lbc)))
-           (fn-lbc-msgid-slots)
-           (fn-lbc-msgid-slots-set-word slot (fn-lbc-u64 (+ 1 (nfix i))) fn-lbc-msgid-slots)
-           fn-lbc))
+         (fn-lbc-slot-put slot (+ 1 (nfix i)) fn-lbc))
         (t (fn-lbc-slot-insert i (mod (+ 1 (nfix slot))
                                      (max 1 (fn-lbc-slot-count fn-lbc)))
                                (- fuel 1) fn-lbc))))
@@ -913,6 +958,58 @@
   (let ((hash (fn-lbc-msgid-hash msgid)) (capacity (fn-lbc-slot-count fn-lbc)))
     (fn-lbc-msgid-probe msgid hash (mod hash (max 1 capacity)) capacity fn-lbc)))
 
+; Independent canonical linear-probing table over full logical Message-IDs.
+(defun fn-lbc-canonical-slot-insert (ordinal slot fuel table)
+  (declare (xargs :guard t :measure (nfix fuel) :verify-guards nil))
+  (cond ((zp fuel) table)
+        ((equal (nth (nfix slot) table) 0) (update-nth (nfix slot) ordinal table))
+        (t (fn-lbc-canonical-slot-insert ordinal
+              (mod (+ 1 (nfix slot)) (max 1 (len table))) (- fuel 1) table))))
+
+(defun fn-lbc-canonical-slots-from (rows i table)
+  (declare (xargs :guard t :measure (acl2-count rows) :verify-guards nil))
+  (if (consp rows)
+      (fn-lbc-canonical-slots-from (cdr rows) (+ 1 (nfix i))
+        (fn-lbc-canonical-slot-insert (+ 1 (nfix i))
+          (mod (fn-lbc-msgid-hash (fn-record-msgid (car rows))) (max 1 (len table)))
+          (len table) table))
+    table))
+
+(defun fn-lbc-canonical-slots (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-lbc-canonical-slots-from rows 0 (make-list (+ 1 (* 2 (len rows))) :initial-element 0)))
+
+(defun fn-lbc-slot-cells-corr (table slot fn-lbc)
+  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (if (consp table)
+      (and (equal (fn-lbc-slot-word slot fn-lbc) (car table))
+           (fn-lbc-slot-cells-corr (cdr table) (+ 1 (nfix slot)) fn-lbc))
+    t))
+
+(defun fn-lbc-slots-corr (fn-lbc rows)
+  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (let* ((capacity (fn-lbc-slot-count fn-lbc))
+         (table (fn-lbc-canonical-slots-from rows 0
+                   (make-list capacity :initial-element 0))))
+    (and (or (and (null rows) (equal capacity 0))
+             (< (len rows) capacity))
+         (fn-lbc-slot-cells-corr table 0 fn-lbc))))
+
+(defun fn-lbc-number-keys-covered (numbers rows fn-lbc)
+  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (if (consp numbers)
+      (and (equal (fn-lbc-number-get (caar numbers) (cdar numbers) fn-lbc)
+                  (fn-cat-number-seq (caar numbers) (cdar numbers) rows 0))
+           (fn-lbc-number-keys-covered (cdr numbers) rows fn-lbc))
+    t))
+
+(defun fn-lbc-number-rows-covered (rest rows fn-lbc)
+  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (if (consp rest)
+      (and (fn-lbc-number-keys-covered (fn-held-numbers (car rest)) rows fn-lbc)
+           (fn-lbc-number-rows-covered (cdr rest) rows fn-lbc))
+    t))
+
 (defun fn-lbc-open-rebuild (rows log fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (fn-cat$ap rows) :verify-guards nil))
   (let* ((fn-lbc (fn-lbc-clear-columns fn-lbc))
@@ -947,6 +1044,8 @@
          (equal offset (nth 3 entry)) (equal length (nth 4 entry))
          (equal (fn-lbc-served-row i fn-lbc) (fn-cat-served-projection row))
          (equal (fn-lbc-value i :prefix-max fn-lbc) prefix-max)
+         (equal (fn-lbc-word :msgid-hash i fn-lbc)
+                (fn-lbc-msgid-hash (fn-record-msgid row)))
          (equal (fn-lbc-flag i *fn-lbc-reclaimed-bit* fn-lbc) reclaimed)
          (equal (fn-lbc-directory-value i :entry-ordinal fn-lbc) (nth 0 entry))
          (equal (fn-lbc-value i :head-length fn-lbc)
@@ -1025,4 +1124,6 @@
        (equal (fn-lbc-summary-groups fn-lbc) (fn-lbc-row-group-keys rows))
        (fn-lbc-rows-corr 0 rows 0 fn-lbc log)
        (fn-lbc-tables-corr fn-lbc rows)
+       (fn-lbc-number-rows-covered rows rows fn-lbc)
+       (fn-lbc-slots-corr fn-lbc rows)
        (fn-lbc-summaries-corr (fn-lbc-row-group-keys rows) rows fn-lbc)))

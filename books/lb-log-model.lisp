@@ -103,7 +103,10 @@
        (natp (nth 3 entry)) (natp (nth 4 entry)) (natp (nth 5 entry))
        (fn-cbor-octet-listp (nth 6 entry))
        (true-listp (nth 7 entry)) (equal (len (nth 7 entry)) 5)
-       (fn-record-uint64p (nth 8 entry))))
+       (fn-record-uint64p (nth 8 entry))
+       (<= (nth 1 entry) (nth 3 entry))
+       (<= (+ (nth 3 entry) (nth 4 entry))
+           (+ (nth 1 entry) (nth 2 entry)))))
 
 (defun fn-lb-log-model-entriesp (entries)
   (declare (xargs :guard t :verify-guards nil))
@@ -136,12 +139,27 @@
         (fn-lb-log-model-entry entry (cdr entries)))
     nil))
 
+; A range read is from one committed entry, including its trailer.
+; Directory entries are parser results, not arbitrary uncommitted tail
+; bytes.  The stored article range itself lies in the protected prefix.
+(defun fn-lb-log-model-range-in-entries (offset length entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp entries)
+      (or (and (fn-lb-log-model-entryp (car entries))
+               (natp offset) (natp length)
+               (<= (nth 1 (car entries)) offset)
+               (<= (+ offset length)
+                   (+ (nth 1 (car entries)) (nth 2 (car entries)) 32)))
+          (fn-lb-log-model-range-in-entries offset length (cdr entries)))
+    nil))
+
 (defun fn-lb-log-model-read-range (segment offset length segs)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((seg (fn-lb-log-model-segment segment segs))
          (bytes (cadr seg)))
     (if (and seg (natp offset) (natp length)
-             (<= (+ offset length) (len bytes)))
+             (<= (+ offset length) (len bytes))
+             (fn-lb-log-model-range-in-entries offset length (caddr seg)))
         (take length (nthcdr offset bytes))
       :bad)))
 
