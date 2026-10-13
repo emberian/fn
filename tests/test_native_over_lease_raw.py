@@ -15,3 +15,6 @@ class OverLeaseRawTests(unittest.TestCase):
                                 stderr=subprocess.STDOUT, timeout=30)
         self.assertEqual(result.returncode, 0, result.stdout[-6000:])
         self.assertIn('OVER pool lease host sequence: PASS', result.stdout)
+        self.assertIn('OVER false routing uses generic entry: PASS', result.stdout)
+        self.assertIn('OVER false routing retains ARTICLE entry: PASS', result.stdout)
+        self.assertIn('OVER refused window faults before a send: PASS', result.stdout)
