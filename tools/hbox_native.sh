@@ -2,7 +2,7 @@
 # Build a native image on a build box and run named test modules against it.
 #
 # The box is --box BOX (hbox, persvati or auto; default $FN_HBOX, else auto).
-# Each box's row (item 67, obstructions-7): its scratch BASE (hbox
+# Each box's row: its scratch BASE (hbox
 # /tank/fn/scratch, persvati ~/fn-gates), its certificate cache and build
 # wrapper (tools/farm.py HOSTS: hbox /tank/fn/certcache under swarm-build,
 # persvati ~/fn-certcache with none), its test OpenSSL (hbox the 3.5.8 test
@@ -11,8 +11,6 @@
 # core (tools/boxes.sh --pick), except that --image-set and --reuse-image
 # take hbox, where the sets and the earlier runs live; name --box to
 # override.  The record (build/hbox-native/LABEL.run here) names the box.
-# Before 2026-09-29 the cache and wrapper were hbox's whatever FN_HBOX said,
-# so a persvati run could not work (compress-8).
 #
 #   tools/hbox_native.sh [options] REV MODULE...
 #
@@ -43,11 +41,7 @@
 #      PROFILING developer image (tools/profile/build_native_profile.sh,
 #      build/fn-host-prof; sb-sprof when FN_PROF_OUT is set), a measurement
 #      tool and never a release or test subject.  It needs this run's own
-#      full certify and acquire (steps 1-2): copying another native tree and
-#      building only the image failed because that tree's certified set
-#      lacked books the profiling entry's world loads (served-columns,
-#      native-n1: outcome-class, replay, node).  Build it here, in the run
-#      that certifies, not by hand in a copied tree;
+#      full certify and acquire (steps 1-2) for the profiling entry's world;
 #   4. runs each MODULE (a MemoryMax of 40G or more waits on one box-wide flock,
 #      /tank/fn/scratch/.hbox-native-bigmem.lock, so two such scopes never
 #      overlap) under systemd-run --user --scope -p MemoryMax (the module's
@@ -79,12 +73,10 @@
 #      `status` holding the first failing step's exit code, 0 if none.
 #      run.log carries the box's load (`uptime`) at the start and the end
 #      and the load average before each module, so a timing taken on a
-#      loaded box can be judged (feed-queue: 20.9 s against 2.7 s for one
-#      case at load 19-37).
+#      loaded box can be judged.
 #
 # It prints the scratch path and returns once the box run has started
-# (DETACHED by default, obstructions-7 item 58: a run must survive its lane's
-# death; ll5d died with limits-live-5 and lost its 20-minute install step).
+# (detached by default, so it survives the launcher's death).
 # The record build/hbox-native/LABEL.run names the box, the run directory,
 # the detached pid and the log, and
 #
@@ -93,16 +85,18 @@
 #   tools/hbox_native.sh attach LABEL   re-attaches: waits for `status`
 #                                        (tools/wait_for.sh, --deadline S),
 #                                        prints the run log, exits with status
+#   tools/hbox_native.sh adopt LABEL   complete a pending launch identity
+#   tools/hbox_native.sh status LABEL --dir prints the recorded box:directory
 #   tools/hbox_native.sh stop LABEL [--grace S] TERM the recorded process group only
 #                                        through a pidfd after checking its
 #                                        leader, start time and exact run.sh;
 #                                        then stop its recorded module scopes
 #
-# from any later session.  --wait keeps the old behaviour (start, then attach
-# at once; start it with run_in_background).  --detach is accepted and is the
+# from any later session.  --wait starts, then attaches
+# at once.  --detach is accepted and is the
 # default.  The box run survives a dropped ssh (nohup, its own setsid group).
 # Records name pgid and the same pid for older readers; status/attach use pgid.
-# New records also name starttime (Linux /proc/PID/stat field 22). Stop refuses
+# Records name starttime (Linux /proc/PID/stat field 22). Stop refuses
 # records lacking it and systems lacking pidfd group signals; no numeric kill
 # fallback. Module scopes have run-specific names in RUN/scopes; stop names
 # only those units, including their children in independent sessions.
@@ -111,8 +105,8 @@
 # Stop sends TERM, then pidfd group KILL after --grace S (default 90 seconds).
 # Status 143 with RUN/stopped means TERM cancellation; without it, status 143
 # is an ordinary step exit. TERM is the only cancellation signal. run.sh alone writes status:
-# before finish is available it writes 143 directly; afterwards it finishes
-# with SHA256SUMS, gate_walls and 143. Status/attach require RUN/stopped to
+# before finish is available it writes 143 directly; afterwards it writes
+# 143 before collecting SHA256SUMS and gate_walls. Status/attach require RUN/stopped to
 # display stopped (143). After cancellation the leader stays alive while
 # any other process remains in its group, preserving the pidfd KILL anchor.
 # Artifact helpers have 120-second timeouts with a 5-second KILL backstop.
@@ -125,17 +119,13 @@
 # Options: --box hbox|persvati|auto (above), --name NAME, --label LABEL, --images LIST, --mem SIZE,
 # --image-acl2 PATH (the ACL2 wrapper the IMAGES are built with; certification
 # keeps the toolchain's.  Default /tank/fn/toolchains/w28/acl2-literal-4g-tls64k,
-# the w28 launcher at --tls-limit 65536 (coordinator decision 2026-09-27): the
-# served image's load exhausted SBCL's thread-local storage at 16384 on
-# 2026-09-27 (batch AV's native-av-bb1a and recover-memory-2); give the
-# toolchain's own path to build at 16384),
+# the w28 launcher at --tls-limit 65536; use the toolchain's own path for 16384),
 # --jobs N (modules run N at a time against the one image set, default 1:
 # each is its own process, its own MemoryMax scope and its own ports; a
 # group of 20 modules at 4 jobs on hbox takes about a quarter of the serial
 # time), --certify-jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
 # scratch tree -- the one --label names; refused before anything ships when
-# it lacks one, naming the runs of NAME that hold them; the re-ship keeps the tree's .cert/.port/.fasl files, which it
-# used to delete, leaving REPL sessions there refusing include-book),
+# it lacks one, naming the runs of NAME that hold them; re-shipping preserves .cert/.port/.fasl),
 # --image-set SHA (no certify and no build: link the prebuilt images the batch
 # published for dev commit SHA from hbox:/tank/fn/images/SHA, verified by its
 # SHA256SUMS; layout and publishing in tools/image_set.py; --images names
@@ -170,15 +160,8 @@
 # A box reserved for a measurement (tools/boxes.sh reserve) is waited for before
 # anything ships (the holder's own worktree passes).
 #
-# Replaces the hand-rolled rsync + image.sh + OpenSSL exports 145 lanes wrote
-# (friction review 2026-09-26 section 5).  Never touches /tank/fn/node.
 set -eu
-# Copy-then-run (lane tooling-leftovers, 2026-09-27): sh reads a script as it
-# runs it, and a run waits here for an hour or more, so a merge or an edit
-# of this file in the worktree mid-run changed the commands the running
-# instance read next.  The first thing it does is copy itself and
-# tools/wait_for.sh into a private directory and exec the copy; nothing
-# after this block reads the worktree's copy of either.
+# Run an immutable private launcher copy so worktree edits cannot change it.
 if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
     FN_HBOX_NATIVE_HERE=$(cd "$(dirname "$0")/.." && pwd)
     FN_HBOX_NATIVE_COPY=$(mktemp -d "${TMPDIR:-/tmp}/hbox_native.XXXXXX") || exit 3
@@ -191,17 +174,12 @@ if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
     export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
     exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
 fi
-cleanup_launcher() {
-    if [ "${RESERVATION_STARTED:-0}" = 1 ] && [ "${HANDED_OFF:-0}" = 0 ]; then
-        timeout 10 ssh -n "$HOST" "touch $TOKEN.abort" >/dev/null 2>&1 || true
-    fi
-    rm -rf "$FN_HBOX_NATIVE_COPY"
-}
-trap cleanup_launcher EXIT
+trap 'rm -rf "$FN_HBOX_NATIVE_COPY"' EXIT
 HERE=$FN_HBOX_NATIVE_HERE
+ORIGINAL_ARGS=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1:]))' "$@")
 BOX=${FN_HBOX:-auto}
 NAME=$(basename "$HERE")
-LABEL=
+LABEL=${FN_NATIVE_LAUNCH_LABEL:-}
 IMAGES=developer
 MEM=
 ALLOW_CERTIFY=
@@ -230,6 +208,7 @@ native_process_script() {
 import errno
 import fcntl
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -273,14 +252,30 @@ def scope_prefix(run_dir, pid, starttime):
     return f"fn-native-{digest}-{pid}-{starttime}"
 
 
-def write_identity(pid, run_dir):
+def write_identity(pid, run_dir, launch_id):
     pgid, starttime = process_stat(pid)
     if pgid != pid or starttime <= 0:
         raise ValueError("launch process is not a live group leader")
     (run_dir / "scope-prefix").write_text(scope_prefix(run_dir, pid, starttime) + "\n")
     print(scope_prefix(run_dir, pid, starttime), flush=True)
-    # Write last: readback waits for this before recording the launch.
     (run_dir / "run.starttime").write_text(str(starttime) + "\n")
+    pending = run_dir / f"run.identity.{pid}.tmp"
+    pending.write_text(f"{launch_id} {pid} {starttime} {scope_prefix(run_dir, pid, starttime)}\n")
+    pending.replace(run_dir / "run.identity")
+
+
+def publish_identity(record, launch_id, identity):
+    fields = dict(line.split("=", 1) for line in record.read_text().splitlines())
+    parts = identity.split()
+    if fields.get("launch_id") != launch_id or len(parts) != 4 or parts[0] != launch_id:
+        raise ValueError("launch identity mismatch; record not published")
+    pid, starttime = map(int, parts[1:3])
+    if pid <= 1 or starttime <= 0 or parts[3] != scope_prefix(Path(fields["dir"]), pid, starttime):
+        raise ValueError("unsafe or mismatched leader identity; record not published")
+    fields.update(pid=str(pid), pgid=str(pid), starttime=str(starttime))
+    pending = record.with_name(record.name + ".tmp")
+    pending.write_text("".join(f"{key}={value}\n" for key, value in fields.items()))
+    pending.replace(record)
 
 
 def leader_exited(fd, seconds=0):
@@ -411,7 +406,23 @@ def stop_run(pid, starttime, run_dir, proc_root=Path("/proc"), grace=90):
 
 if __name__ == "__main__":
     if sys.argv[1] == "identity":
-        write_identity(int(sys.argv[2]), Path(sys.argv[3]))
+        write_identity(int(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])
+    elif sys.argv[1] == "publish":
+        try:
+            publish_identity(Path(sys.argv[2]), sys.argv[3], sys.argv[4])
+        except (OSError, ValueError, KeyError) as error:
+            sys.exit(f"hbox_native: {error}")
+    elif sys.argv[1] == "lock-launch":
+        fd = os.open(sys.argv[2], os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            sys.exit("hbox_native: same-label launch already in progress: " + sys.argv[2])
+        os.dup2(fd, 7, inheritable=True)
+        os.environ["FN_NATIVE_LABEL_LOCK"] = sys.argv[2]
+        os.environ["FN_NATIVE_LABEL_LOCK_OWNER"] = str(os.getpid())
+        os.environ["FN_NATIVE_LAUNCH_LABEL"] = Path(sys.argv[2]).stem
+        os.execvp("sh", ["sh", sys.argv[3], *json.loads(sys.argv[4])])
     elif sys.argv[1] == "group-members":
         print(" ".join(map(str, group_members(int(sys.argv[2])))))
     elif sys.argv[1] == "stop":
@@ -420,31 +431,22 @@ if __name__ == "__main__":
         sys.exit("hbox_native: unknown process operation")
 PROCESS
 }
-# A unique launch reservation holds run.lock across every shipping connection.
-# It execs run.sh without releasing fd 8 or changing the session leader PID.
-launch_reservation_script() {
-    cat <<'RESERVATION'
-#!/bin/sh
-set -eu
-S=$1
-TOKEN=$2
-exec 8> "$S/run.lock"
-if ! flock -n 8; then
-    echo "hbox_native: launch refused: run.lock held by live leader $(cat "$S/run.pid" 2>/dev/null || echo unknown)" > "$TOKEN.state"
-    exit 2
-fi
-echo $$ > "$S/run.pid" || exit 3
-[ ! -f "$TOKEN.abort" ] || exit 3
-echo ready > "$TOKEN.state"
-while [ "$(cat "$TOKEN.state" 2>/dev/null || true)" != go ]; do
-    # Do not expire a shipping lease: the old client could still be writing.
-    [ ! -f "$TOKEN.abort" ] || exit 3
-    sleep 1
-done
-export FN_NATIVE_LOCK_HELD=1
-# The PID written after lock acquisition is still this execing leader.
-exec sh "$S/run.sh" > "$S/run.log" 2>&1
-RESERVATION
+# Local launch/adopt writers share one lock through record publication.
+lock_label() {
+    lock=$HERE/build/hbox-native/$LABEL.lock
+    [ "${FN_NATIVE_LABEL_LOCK:-}" != "$lock" ] || [ "${FN_NATIVE_LABEL_LOCK_OWNER:-}" != "$$" ] || return 0
+    mkdir -p "$HERE/build/hbox-native"
+    native_process_script | python3 - lock-launch "$lock" "$0" "$ORIGINAL_ARGS"
+    exit $?
+}
+# Shipping children cannot keep the local launcher lock alive.
+ssh() { command ssh "$@" 7>&-; }
+rsync() { command rsync "$@" 7>&-; }
+readback_identity() {
+    if IDENTITY=$(ssh -n "$HOST" "remaining=5; while [ \$remaining -gt 0 ]; do identity=\$(cat $S/run.identity 2>/dev/null || true); case \"\$identity\" in '$LAUNCH_ID '*) printf '%s\\n' \"\$identity\"; exit 0 ;; esac; sleep 1; remaining=\$((remaining - 1)); done; cat $S/run.identity") &&
+       native_process_script | python3 - publish "$record" "$LAUNCH_ID" "$IDENTITY"; then return 0; fi
+    echo "hbox_native: identity readback failed for $HOST:$S; use status $LABEL --dir or adopt $LABEL to re-run readback" >&2
+    return 3
 }
 # status / attach / stop LABEL: read the record this worktree's start wrote.
 attach_run() {
@@ -453,16 +455,19 @@ attach_run() {
     [ -f "$record" ] || { echo "hbox_native: no record $record (runs started here: $(ls "$HERE/build/hbox-native" 2>/dev/null | sed 's/\.run$//' | tr '\n' ' '))" >&2; exit 2; }
     HOST=$(sed -n 's/^box=//p' "$record")
     S=$(sed -n 's/^dir=//p' "$record")
-    PID=$(sed -n 's/^pgid=//p' "$record")
-    PROBE=-$PID
-    if [ -z "$PID" ]; then
-        PID=$(sed -n 's/^pid=//p' "$record")
-        PROBE=$PID  # old launchers did not create a group of their own
-    fi
     [ -n "$HOST" ] && [ -n "$S" ] || { echo "hbox_native: $record names no box or dir" >&2; exit 2; }
-    case $PID in ''|*[!0-9]*|0|1) echo "hbox_native: $record names no safe process group" >&2; exit 2 ;; esac
     case $S in /*) ;; *) echo "hbox_native: bad run directory in $record" >&2; exit 2 ;; esac
     case $S in *[!A-Za-z0-9_./-]*) echo "hbox_native: bad run directory in $record" >&2; exit 2 ;; esac
+    if [ "$1" = adopt ]; then LABEL=$2; lock_label; fi
+    if [ "$1:${3:-}" = status:--dir ]; then echo "$HOST:$S"; exit 0; fi
+    if [ "$1" = adopt ]; then
+        LAUNCH_ID=$(sed -n 's/^launch_id=//p' "$record")
+        case $LAUNCH_ID in ''|*[!0-9a-f]*) echo "hbox_native: record lacks a launch id" >&2; exit 2 ;; esac
+        readback_identity || exit $?
+        echo "hbox_native: adopted $LABEL ($HOST:$S)"; exit 0
+    fi
+    PID=$(sed -n 's/^pgid=//p' "$record")
+    case $PID in ''|*[!0-9]*|0|1) echo "hbox_native: $record names no safe process group; use adopt $2 (directory: $HOST:$S)" >&2; exit 2 ;; esac
     if [ "$1" = stop ]; then
         STARTTIME=$(sed -n 's/^starttime=//p' "$record")
         case $STARTTIME in ''|*[!0-9]*|0) echo "hbox_native: refused stop: $record lacks a safe starttime" >&2; exit 2 ;; esac
@@ -473,12 +478,12 @@ attach_run() {
     fi
     if [ "$1" = status ]; then
         cat "$record"
-        ssh -n "$HOST" "if /bin/kill -0 -- $PROBE 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi; if [ -f $S/status ]; then status=\$(cat $S/status); case \$status in 143) if [ -f $S/stopped ]; then echo 'status: stopped (143)'; else echo 'status 143'; fi ;; *) echo \"status \$status\" ;; esac; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
+        ssh -n "$HOST" "if /bin/kill -0 -- -$PID 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi; if [ -f $S/status ]; then status=\$(cat $S/status); case \$status in 143) if [ -f $S/stopped ]; then echo 'status: stopped (143)'; else echo 'status 143'; fi ;; *) echo \"status \$status\" ;; esac; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
         exit $?
     fi
     DEADLINE=${3:-$DEADLINE}
     echo "hbox_native: attached to $HOST:$S (pgid $PID)"
-    ssh -n "$HOST" "if /bin/kill -0 -- $PROBE 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi"
+    ssh -n "$HOST" "if /bin/kill -0 -- -$PID 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi"
     set +e
     sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
     waited=$?
@@ -498,11 +503,12 @@ attach_run() {
     exit "$status"
 }
 case ${1:-} in
-    status|attach|stop)
+    status|attach|stop|adopt)
         [ $# -ge 2 ] || usage
         case "$1:${3:-}" in
             stop:--grace|attach:--deadline) [ $# -eq 4 ] || usage; set -- "$1" "$2" "$4" ;;
-            stop:|attach:|status:) [ $# -eq 2 ] || usage ;;
+            status:--dir) [ $# -eq 3 ] || usage ;;
+            stop:|attach:|status:|adopt:) [ $# -eq 2 ] || usage ;;
             *) usage ;;
         esac
         attach_run "$@" ;;
@@ -576,7 +582,7 @@ while [ $# -gt 0 ]; do
             ENVS="$ENVS $2"; shift 2 ;;
         -h|--help) usage ;;
         -*) echo "hbox_native: unknown option $1" >&2; usage ;;
-        # An option may follow REV or a module (PKT-490 (3)): positionals are
+        # An option may follow REV or a module: positionals are
         # collected and every option still applies.  REV and module names
         # hold no blank (each is validated below), so the list re-splits.
         *) POSITIONAL="$POSITIONAL $1"; shift ;;
@@ -601,8 +607,7 @@ done
 case $NAME in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: bad --name $NAME" >&2; exit 2 ;; esac
 # Without --images, the list is what the modules read, over developer
 # (tools/native_env.py images): a module reading FN_NATIVE_HOST gets the
-# production image built instead of a refusal (three lanes lost a launch each,
-# 2026-09-29).  An explicit --images is taken as given, and a module reading
+# production image built. An explicit --images is taken as given; a module reading
 # an image it leaves out is refused by name below.
 if [ "$IMAGES_GIVEN" = 0 ]; then
     DERIVE_ENV=
@@ -647,7 +652,7 @@ fi
 if [ $DTN_DEVELOPER -eq 1 ] && [ $DTN_PRODUCTION -eq 0 ]; then
     case " $ENVS" in *" FN_NATIVE_BP_HOST="*) ;; *) ENVS="FN_NATIVE_BP_HOST=\$T/build/fn-host-dtn-developer$ENVS" ;; esac
 fi
-# What each module reads, against what this run builds (PKT-437 (2)).
+# What each module reads, against what this run builds.
 ENVARGS=
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
 if [ -n "$BUILD_ONLY" ]; then PLAN=
@@ -658,8 +663,7 @@ else
     PLAN=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-plan) || exit 2
 fi
 if [ "$REV" = . ]; then
-    # The image's declared source: HEAD, marked +dirty for uncommitted edits
-    # (before 2026-09-27 FN_NATIVE_IMAGE_SOURCE_SHA was the literal ".").
+    # The image's declared source: HEAD, marked +dirty for uncommitted edits.
     SOURCE_ID=$(git -C "$HERE" rev-parse HEAD)$(git -C "$HERE" diff --quiet HEAD -- 2>/dev/null || echo '+dirty')
     SOURCE="worktree $SOURCE_ID"
     [ -n "$LABEL" ] || LABEL=wt-$(date -u +%Y%m%dT%H%M%SZ)
@@ -764,14 +768,12 @@ box_script() {
 #!/bin/sh
 set -u
 S=$S
-trap 'if [ \${RUN_OWNS_DIRECTORY:-\${FN_NATIVE_LOCK_HELD:-0}} = 1 ]; then printf "TERM %s\\n" "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" > \$S/stopped; echo 143 > \$S/status; if command -v wait_group >/dev/null 2>&1; then trap "STOPPED=1" TERM; wait_group; fi; fi; exit 143' TERM
+trap 'if [ \${RUN_OWNS_DIRECTORY:-0} = 1 ]; then printf "TERM %s\\n" "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" > \$S/stopped; echo 143 > \$S/status; if command -v wait_group >/dev/null 2>&1; then trap "STOPPED=1" TERM; wait_group; fi; fi; exit 143' TERM
 STOPPED=0
-# Only the leader holds fd 8. The launch reservation passes this same open
-# description through exec, so shipping and run identity are one generation.
-if [ \${FN_NATIVE_LOCK_HELD:-0} != 1 ]; then exec 8> \$S/run.lock; fi
+# Only a live run.sh holds this remote lock; children close fd 8.
+exec 8> \$S/run.lock
 flock -n 8 || { echo "hbox_native: run already locked by leader \$(cat \$S/run.pid 2>/dev/null)" >&2; exit 2; }
 RUN_OWNS_DIRECTORY=1
-STEP_PID=
 wait_group() {
     polls=0
     while :; do
@@ -791,7 +793,7 @@ L=\$S/logs
 cat > \$S/process.py <<'PROCESS'
 $(native_process_script)
 PROCESS
-FN_NATIVE_SCOPE_PREFIX=\$(python3 \$S/process.py identity \$\$ \$S 8>&-) || { echo 3 > \$S/status; exit 3; }
+FN_NATIVE_SCOPE_PREFIX=\$(python3 \$S/process.py identity \$\$ \$S \$FN_NATIVE_LAUNCH_ID 8>&-) || { echo 3 > \$S/status; exit 3; }
 export FN_NATIVE_SCOPE_PREFIX
 ACL2=$CERT_ACL2  # the certify launcher (tools/farm.py HOSTS)
 CACHE=$CACHE  # this box's (tools/farm.py HOSTS)
@@ -825,10 +827,8 @@ step() {
     name=\$1; shift
     echo "== \$name \$(date -u +%H:%M:%SZ)"
     ( exec 8>&-; case \$(command -v "\$1") in /*) exec "\$@" ;; *) "\$@" ;; esac ) > \$L/\$name.log 2>&1 &
-    STEP_PID=\$!
-    wait \$STEP_PID
+    wait \$!
     rc=\$?
-    STEP_PID=
     [ \$STOPPED -eq 0 ] || rc=143
     echo "   \$name exit \$rc (\$L/\$name.log)"
     if [ \$rc -ne 0 ]; then
@@ -881,21 +881,35 @@ finish() {
     trap 'STOPPED=1' TERM
     finish_status=\$1
     finish_stopped=\$STOPPED
+    mark_stopped() {
+        STOPPED=1
+        COLLECT_INTERRUPTED=1
+        printf 'TERM %s\\n' "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" > \$S/stopped
+        echo 143 > \$S/status
+    }
+    trap mark_stopped TERM
+    [ \$STOPPED -eq 0 ] || mark_stopped
     echo "== load at end: \$(uptime)"
+    collect() {
+        ( exec 8>&-; exec "\$@" ) &
+        collector=\$!
+        while :; do
+            COLLECT_INTERRUPTED=0
+            wait \$collector || :
+            [ \$COLLECT_INTERRUPTED -ne 0 ] || break
+        done
+    }
     finish_artifacts() {
-        timeout --foreground -k 5 120 sh -c 'cd "\$1" && { find tree/build -maxdepth 1 -name "fn-host*" -type f -exec sha256sum {} + ; sha256sum logs/*.log; }' sh \$S > \$S/SHA256SUMS 2>/dev/null 8>&-
-        timeout --foreground -k 5 120 python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null 8>&-
+        collect timeout -k 5 120 sh -c 'cd "\$1" && { find tree/build -maxdepth 1 -name "fn-host*" -type f -exec sha256sum {} + ; sha256sum logs/*.log; }' sh \$S > \$S/SHA256SUMS 2>/dev/null
+        collect timeout -k 5 120 python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null
     }
     finish_artifacts
-    # A first stop during normal finish also terminates its foreground helper.
-    # Recollect that interrupted snapshot after the signal has been handled.
+    # Recollect the snapshot if normal finish became cancellation.
     if [ \$finish_stopped -eq 0 ] && [ \$STOPPED -ne 0 ]; then finish_artifacts; fi
     cancel_finished_run() {
         # Repeated TERM must never release the group-signal anchor.
         trap 'STOPPED=1' TERM
-        STOPPED=1
-        printf 'TERM %s\\n' "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" > \$S/stopped
-        echo 143 > \$S/status
+        mark_stopped
         echo "== done status 143; \$S/SHA256SUMS"
         wait_group
         exit 143
@@ -916,9 +930,7 @@ echo "== source $SOURCE"
 FN_NATIVE_SOURCE="$SOURCE"; export FN_NATIVE_SOURCE
 echo "== load at start: \$(uptime)"
 # The toolchain SBCL (tools/farm.py HOSTS) first on PATH and as FN_SBCL:
-# hbox's system /usr/bin/sbcl is 2.2.9, and a test running \`sbcl\` by name
-# got it (tooling-truth-2's KNOWN_RED list).  A bare sbcl that is not the
-# toolchain's is refused before any step (obstructions-5 item 41).
+# Refuse a bare sbcl outside that toolchain before any step.
 eval "\$(python3 tools/native_env.py sbcl --export)"
 step sbcl-check python3 tools/native_env.py sbcl-check
 BOX
@@ -935,10 +947,7 @@ sort -u -o \$L/roots.txt \$L/roots.txt
 BOX
         fi
         cat <<BOX
-# The static pre-image gates first (seconds; make host-convert-check runs
-# them with the ACL2 ones): a stale umbrella or interface registry used to
-# surface only after the certify step, in acquire or the image build
-# (limits-live-5, decision-keystones-3; obstructions-5 item 34).
+# Run static pre-image gates before certification, acquire and image building.
 static_gate() {
     gate=\$1; shift
     if [ -f tools/native_preflight.py ]; then
@@ -954,7 +963,7 @@ step interfaces-check static_gate interfaces-check tools/interface_emit.py --che
 # Reject a missing native entry before spending time on certification.
 step host-books static_gate host-books tools/host_check.py --books
 # A certified host file attaches the image's stobj implementation before the
-# generic it implements (CONVERGE-1 red 1; tools/host_check.py --attach-order).
+# generic it implements (tools/host_check.py --attach-order).
 step attach-order static_gate attach-order tools/host_check.py --attach-order
 BOX
         if [ -n "$REUSE_TREE" ]; then
@@ -985,17 +994,9 @@ step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CE
 # books/wire-export (test_native_store_identity reads it).  A revision before
 # the registers left git has neither the tool nor the need.
 if [ -f tools/box_artifacts.py ]; then step box-wire $WRAP python3 tools/protocol_emit.py --wire --write; fi
-# acquire demands ONE complete origin in the cache.  The cache holds pairs
-# from many origins (runs before and after merges, partial recertifies), and
-# the incremental certify above installs what composes and certifies only the
-# misses, so this tree need not be a complete origin (2026-10-07: "none of the
-# 108 candidate artifact sets is complete", best 1062/1161).  When, and only
-# when, acquire exits 3 (proof_artifacts.NO_SET: no complete set could be
-# installed; it used to be recognised by its message, which changed and
-# silently disabled this retry), certify the whole closure of the
-# roots in THIS tree once (certify_books.py --closure publishes every book
-# under this tree as one origin) and acquire again.  acquire's coherence check
-# is unchanged; a second failure, or any other failure, stops the run.
+# Acquire needs one complete cache origin; incremental certification may leave
+# none. On NO_SET (exit 3) only, allow-certify permits one whole-closure
+# certification in this tree and another acquire. Any further failure stops.
 ORIGIN_DONE=0
 acquire_step() {
     name=\$1; profile=\$2
@@ -1026,8 +1027,7 @@ BOX
 step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 # The ld host files in the image's order, before any image build: statically
 # (a call before its definition, seconds), then through ACL2 in the certified
-# world (tools/host_check.py's default).  limits-live-4 and online-reclaim-4
-# each lost an image build to a forward reference in host/owner-host.lisp.
+# world (tools/host_check.py's default).
 step host-forward python3 tools/host_check.py --forward
 # Check the requested image prefixes explicitly. host_check.py without a mode
 # also demands the DTN prefix, whose certificates a default-only run does not
@@ -1044,9 +1044,7 @@ BOX
         fi
         # More than one image: build the foreign libraries once, then every
         # save at once (pstep/pwait); one image keeps the plain step.
-        # `grep -c` exits 1 on a count of 0 (--images prof alone): under set -e
-        # that ended box_script after host-ld, shipping a run.sh with no image
-        # step and no finish (C15, 2026-10-11).  The count is still printed.
+        # grep -c prints 0 but exits 1; tolerate that under set -e.
         NIMG=$(echo "$IMAGES" | tr ',' '\n' | grep -vc '^prof$' || true)
         if [ "$NIMG" -gt 1 ] && [ "${FN_NATIVE_SERIAL_IMAGES:-}" != 1 ]; then
             ISTEP=pstep
@@ -1166,8 +1164,7 @@ BOX
         done
     done
     # A scope of 40G or more waits for every other such scope on the box
-    # (one flock, held for the module): two 80G open_depth runs collided on
-    # hbox's 123 GiB (2026-09-28).  Smaller scopes run as before.
+    # (one flock, held for the module).
     # The modules run from $S/module.sh, one process per module, --jobs at
     # a time (xargs -P; 1 keeps the old serial order).  Each writes its exit
     # code to $S/rc/test-MODULE and prints its verdict as one line when it
@@ -1277,15 +1274,17 @@ if [ $DRY -eq 1 ]; then
     exit 0
 fi
 
+lock_label
+LAUNCH_ID=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
+record=$HERE/build/hbox-native/$LABEL.run
 # A box reserved for a measurement (tools/boxes.sh reserve) waits here, printing
 # who holds it and until when; the holder's own runs (this worktree) pass.
-FN_BOX_AS=${FN_BOX_AS:-$(basename "$HERE")} sh "$FN_HBOX_NATIVE_COPY/boxes.sh" wait "$HOST" || exit 3
-# Read-only early refusal also precedes the no-build image preflight. The
-# reservation below rechecks under an exclusive lock before any shipping.
+FN_BOX_AS=${FN_BOX_AS:-$(basename "$HERE")} sh "$FN_HBOX_NATIVE_COPY/boxes.sh" wait "$HOST" 7>&- || exit 3
+# Refuse a live run before any remote mutation. Local exclusion serializes
+# all launchers for this worktree/label across shipping and record publication.
 ssh -n "$HOST" "if [ -f $S/run.lock ]; then if ! flock -n $S/run.lock true; then echo \"hbox_native: launch refused: run.lock held by live leader \$(cat $S/run.pid 2>/dev/null || echo unknown)\" >&2; exit 2; fi; fi" || exit 2
-# --no-build reuses THIS label's tree (item 74): a tree without the images the
-# run needs used to fail at the first module's `need`, after the re-ship.
-# Refuse up front, naming the runs of NAME on the box that hold them (a
+# --no-build requires this label's images before shipping; refuse naming
+# the runs of NAME on the box that hold them (a
 # worktree run's default label is a fresh wt-TIMESTAMP: pass --label).
 if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
     NEEDED=
@@ -1315,14 +1314,6 @@ if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
         fi
     fi
 fi
-# Acquire before any shared generation file or tree is touched. Only the
-# reservation's unique handshake files may be written on a refused launch.
-TOKEN=$S/launch-${FN_HBOX_NATIVE_COPY##*/}
-RESERVATION_STARTED=1
-HANDED_OFF=0
-launch_reservation_script | ssh "$HOST" "mkdir -p $S; cat > $TOKEN.guard; nohup setsid sh $TOKEN.guard $S $TOKEN > $TOKEN.log 2>&1 < /dev/null &" || exit 3
-ssh -n "$HOST" "remaining=5; while [ ! -s $TOKEN.state ] && [ \$remaining -gt 0 ]; do sleep 1; remaining=\$((remaining - 1)); done; if [ \"\$(cat $TOKEN.state 2>/dev/null)\" != ready ]; then cat $TOKEN.state >&2; exit 2; fi" || { echo "hbox_native: launch reservation refused or unavailable ($TOKEN)" >&2; exit 2; }
-
 # The local record names the images' identity source.  A reused run's is the
 # one its run.log names (the box script reads it from build/REUSED_SOURCE,
 # which link-run writes later), so read it here; train.py image compares it
@@ -1333,6 +1324,9 @@ if [ -n "$REUSE" ]; then
         | sed -nE 's/^== source (commit|worktree) ([^ ]+) *$/\2/p' | head -n 1)
     [ -n "$RECORD_SOURCE" ] || { echo "hbox_native: --reuse-image $REUSE: its run.log names no \`== source\` line on $HOST; its images' source is unknown" >&2; exit 2; }
 fi
+# Persist a recoverable launch handle before the first shipping mutation.
+printf 'box=%s\ndir=%s\nlaunch_id=%s\nlog=%s\nstatus=%s\nsource=%s\ntree=%s\n' "$HOST" "$S" "$LAUNCH_ID" "$S/run.log" "$S/status" "$RECORD_SOURCE" "$TREE_ID" > "$record.tmp"
+mv "$record.tmp" "$record"
 # --from-train: prove, on the box and just before the start, that the farm
 # tree is this commit and holds the cache pair of every book of the image's
 # roots (tools/native_reuse.py verify).  Reading only; a difference of any
@@ -1375,9 +1369,8 @@ if [ -n "$REUSE_LINKED" ]; then
     echo "hbox_native: $SOURCE -> the train's tree $HOST:$REUSE_TREE (farm run $REUSE_RUN); nothing shipped"
 else
 ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create $S on $HOST" >&2; exit 3; }
-# --no-build keeps the tree's certificates: its images and any REPL session
-# there were made against them, and a re-ship that deleted them left those
-# sessions refusing include-book (2026-09-28).  A build run re-installs them.
+# --no-build preserves the certificates used by the images and REPL sessions.
+# A build run re-installs them.
 # Compress the complete immutable archive at level 1. Historical evidence is
 # part of that tree too: compressing its transport retains every tracked path
 # while avoiding repeated uncompressed transfers before the detached run starts.
@@ -1408,20 +1401,11 @@ if [ -n "$OVERLAY" ]; then
     tar -C "$OVERLAY_DIR" -cf - . | ssh "$HOST" "tar -xf - -C $S/overlay" || exit 3
     ssh "$HOST" "cat > $S/bin/native_overlay.py" < "$FN_HBOX_NATIVE_COPY/native_overlay.py" || exit 3
 fi
-ssh -n "$HOST" "rm -f $S/status $S/stopped $S/run.starttime; : > $S/scopes; echo go > $TOKEN.state" || exit 3
-HANDED_OFF=1
-# Read the leader's own file in a second ssh, never the ssh wrapper's $!.
-IDENTITY=$(ssh -n "$HOST" "remaining=5; while { [ ! -s $S/run.pid ] || [ ! -s $S/run.starttime ]; } && [ \$remaining -gt 0 ]; do sleep 1; remaining=\$((remaining - 1)); done; cat $S/run.pid $S/run.starttime") || exit 3
-PID=$(printf '%s\n' "$IDENTITY" | sed -n '1p')
-STARTTIME=$(printf '%s\n' "$IDENTITY" | sed -n '2p')
-case $PID in ''|*[!0-9]*|0|1) echo "hbox_native: box run wrote no safe leader PID ($S/run.pid)" >&2; exit 3 ;; esac
-case $STARTTIME in ''|*[!0-9]*|0) echo "hbox_native: box run wrote no safe starttime ($S/run.starttime)" >&2; exit 3 ;; esac
+ssh -n "$HOST" "rm -f $S/status $S/stopped $S/run.starttime; : > $S/scopes; nohup setsid env FN_NATIVE_LAUNCH_ID=$LAUNCH_ID sh -c 'echo \$\$ > $S/run.pid || exit 3; exec sh $S/run.sh' > $S/run.log 2>&1 < /dev/null &" || { echo "hbox_native: ambiguous launch at $HOST:$S; use status $LABEL --dir or adopt $LABEL" >&2; exit 3; }
+readback_identity || exit $?
+PID=$(sed -n 's/^pgid=//p' "$record")
 echo "hbox_native: started; progress in $HOST:$S/run.log"
 [ -z "$REUSE_LINKED" ] || ssh -n "$HOST" "python3 $S/bin/native_reuse.py claim --root $REUSE_TREE --owner $S --pid $PID" >/dev/null 2>&1 || true
-# The record here names the box (item 67): status and re-attach read it.
-mkdir -p "$HERE/build/hbox-native"
-printf 'box=%s\ndir=%s\npid=%s\npgid=%s\nstarttime=%s\nlog=%s\nstatus=%s\nsource=%s\ntree=%s\n' "$HOST" "$S" "$PID" "$PID" "$STARTTIME" "$S/run.log" "$S/status" "$RECORD_SOURCE" "$TREE_ID" \
-    > "$HERE/build/hbox-native/$LABEL.run"
 if [ $DETACH -eq 1 ]; then
     echo "hbox_native: detached (pgid $PID on $HOST); re-attach with: tools/hbox_native.sh attach $LABEL   (status: tools/hbox_native.sh status $LABEL)"
     exit 0

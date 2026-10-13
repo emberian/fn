@@ -12,6 +12,36 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "tools" / "hbox_native.sh"
 
 
+
+def cleanup_recorded_group(process, pid_file):
+    """Reap this test's group; macOS EPERM can mean only zombies remain."""
+    import signal
+    if process.poll() is not None or not pid_file.exists():
+        return
+    pid = int(pid_file.read_text())
+    assert pid == process.pid, (pid, process.pid)
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    except PermissionError:
+        if sys.platform != "darwin":
+            raise
+    process.wait(timeout=5)
+
+
+def install_identity_stub(root):
+    (root / "fakeidentity.py").write_text('''import hashlib, os, re, sys
+command = sys.argv[1]
+launch_id = re.search(r"in '([0-9a-f]{32}) '", command).group(1)
+run_dir = re.search(r"cat ([^ ]+)/run.identity", command).group(1)
+if os.environ.get("FN_TEST_ID_MISMATCH"):
+    launch_id = "b" * 32 if launch_id != "b" * 32 else "c" * 32
+prefix = "fn-native-" + hashlib.sha256(os.fsencode(run_dir)).hexdigest() + "-4242-888"
+print(launch_id + " 4242 888 " + prefix)
+''')
+
+
 def dry(*args, env=None):
     return subprocess.run(
         ["sh", str(SCRIPT), "--dry-run", "--name", "t", "--label", "l", *args],
@@ -24,6 +54,25 @@ def image_lines(out):
     lines; the shared foreign-library step before parallel saves is not one."""
     return [line[1:] if line.startswith("pstep ") else line for line in out.splitlines()
             if line.startswith(("step image-", "pstep image-")) and not line.startswith("step image-libs")]
+
+
+class RecordedGroupCleanupTests(unittest.TestCase):
+    def test_macos_zombie_group_is_reaped_and_other_permission_errors_propagate(self):
+        import tempfile
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            recorded = Path(directory) / "test.pid"
+            recorded.write_text("4242")
+            for platform, error in (("darwin", PermissionError()), ("linux", ProcessLookupError())):
+                process = Mock(pid=4242); process.poll.return_value = None
+                with self.subTest(platform=platform), patch.object(sys, "platform", platform), \
+                     patch.object(os, "killpg", side_effect=error):
+                    cleanup_recorded_group(process, recorded)
+                    process.wait.assert_called_once_with(timeout=5)
+            process = Mock(pid=4242); process.poll.return_value = None
+            with patch.object(sys, "platform", "linux"), patch.object(os, "killpg", side_effect=PermissionError()):
+                with self.assertRaises(PermissionError): cleanup_recorded_group(process, recorded)
+                process.wait.assert_not_called()
 
 
 class HboxNativeDryRunTests(unittest.TestCase):
@@ -124,9 +173,6 @@ class HboxNativeDryRunTests(unittest.TestCase):
                          answer.stdout + answer.stderr)
 
     def test_the_prof_image_alone_builds_and_finishes(self):
-        # C15, 2026-10-11: `grep -vc` counted 0 non-prof images and exited 1
-        # under set -e, so box_script stopped after host-ld (no image step, no
-        # finish) and run.sh shipped truncated.
         answer = dry("--box", "hbox", "--build-only", "--images", "prof", "HEAD")
         self.assertEqual(answer.returncode, 0, answer.stdout[-2000:] + answer.stderr)
         lines = answer.stdout.splitlines()
@@ -374,15 +420,14 @@ echo REACHED
             self.assertIn(why, refused.stderr)
 
     def test_no_build_reships_the_tree_but_keeps_its_certificates(self):
-        # A --no-build re-ship deleted the tree's .cert files; REPL sessions
-        # there then refused include-book (2026-09-28).
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / "calls"
             for tool in ("ssh", "rsync"):
                 stub = Path(directory) / tool
-                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) echo 4242; echo 888;; esac\ncat > /dev/null\nexit 0\n'
+                install_identity_stub(Path(directory))
+                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) python3 "$(dirname "$0")/fakeidentity.py" "$*";; esac\ncat > /dev/null\nexit 0\n'
                                 % (tool, log))
                 stub.chmod(0o755)
             env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}"}
@@ -584,7 +629,7 @@ echo REACHED
         script = answer.stdout
         self.assertIn('echo "== load at start: $(uptime)"', script)
         finish = script[script.index("finish() {"):]
-        self.assertIn('echo "== load at end: $(uptime)"', finish.split("}")[0])
+        self.assertIn('echo "== load at end: $(uptime)"', finish.split("\n}")[0])
         tstep = script[script.index("tstep() {"):]
         self.assertIn("/proc/loadavg", tstep.split("\n}")[0])
 
@@ -593,8 +638,9 @@ echo REACHED
         self.assertEqual(answer.returncode, 0, answer.stderr)
         finish = answer.stdout[answer.stdout.index("finish() {"):].split("\n}")[0]
         self.assertIn("python3 $T/tools/gate_walls.py $S > $S/gate_walls.json 2>/dev/null", finish)
-        # before the status file and the done line: a failed run still gets its walls
-        self.assertLess(finish.index("gate_walls.py"), finish.index("> $S/status"))
+        # Cancellation is published first; normal completion still follows collection.
+        self.assertLess(finish.index("echo 143 > $S/status"), finish.index("gate_walls.py"))
+        self.assertLess(finish.index("gate_walls.py"), finish.index("echo $finish_status > $S/status"))
         self.assertLess(finish.index("gate_walls.py"), finish.index("== done status"))
 
     def test_explicit_env_is_exported_and_wins(self):
@@ -614,17 +660,12 @@ echo REACHED
 
 
     def test_options_may_follow_rev_and_modules(self):
-        # PKT-490 (3): `hbox_native.sh HEAD MODULE --images ...` was refused
-        # as a bad module name.
         after = dry("HEAD", "tests.test_bp_service_native", "--images", "dtn-developer")
         before = dry("--images", "dtn-developer", "HEAD", "tests.test_bp_service_native")
         self.assertEqual(after.returncode, 0, after.stderr)
         self.assertEqual(after.stdout, before.stdout)
 
     def test_without_images_the_list_is_what_the_modules_read(self):
-        # This module reads FN_NATIVE_HOST (the production image): without
-        # --images the run builds it rather than refusing (three lanes lost a
-        # launch each to the refusal, 2026-09-29).
         answer = dry("HEAD", "tests.test_native_hybrid_author")
         self.assertEqual(answer.returncode, 0, answer.stderr)
         self.assertIn("images derived from what the modules read: --images "
@@ -636,8 +677,6 @@ echo REACHED
         self.assertNotIn("images derived", plain.stderr)
 
     def test_a_reader_of_an_unbuilt_image_is_refused_by_name(self):
-        # PKT-437 (2): an explicit --images developer, and this module reads
-        # FN_NATIVE_HOST (the production image).
         answer = dry("--images", "developer", "HEAD", "tests.test_native_hybrid_author")
         self.assertEqual(answer.returncode, 2, answer.stdout)
         self.assertEqual(answer.stdout, "")
@@ -666,9 +705,6 @@ echo REACHED
         self.assertLess(need, lines.index(hybrid))
 
     def test_an_image_read_through_an_imported_helper_is_set_and_never_refused(self):
-        # PKT-490 (2): tests.test_native_bounds_join reads FN_NATIVE_HOST only
-        # through test_native_operator_verbs' IMAGE (exposure-reply-size set it
-        # by hand).  Built: it is set.  Not built: a note, not a refusal.
         both = dry("--images", "developer,production", "--allow-skips", "HEAD",
                    "tests.test_native_bounds_join")
         self.assertEqual(both.returncode, 0, both.stderr)
@@ -676,10 +712,7 @@ echo REACHED
                     if line.startswith("tstep test-tests.test_native_bounds_join "))
         self.assertIn("FN_NATIVE_HOST=$T/build/fn-host ", join)
         self.assertIn("FN_NATIVE_DEVELOPER_HOST=$T/build/fn-host-developer ", join)
-        # Since dev 96b3eb2e4 the module USES tests.native_profile_fixture's
-        # IMAGE (FN_NATIVE_HOST), so the derived list adds production; the
-        # dtn-developer image it reads only through an imported helper stays
-        # a note, never a refusal.
+        # Used helper images affect derivation; incidental imports stay notes.
         derived = dry("--allow-skips", "HEAD", "tests.test_native_bounds_join")
         self.assertEqual(derived.returncode, 0, derived.stderr)
         text = derived.stdout + derived.stderr
@@ -933,7 +966,7 @@ class HarnessBudgetTests(unittest.TestCase):
                                     "--", "tools", "tests", "host", "books"],
                                    cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(env_named.stdout, "")
-        # No harness types the figure itself (four did, 2026-09-27).
+        # Harnesses share the declared budget.
         typed = subprocess.run(["git", "grep", "-n", "-E", "--budget.{0,40}9830[4]",
                                 "--", "tools", "tests"],
                                cwd=ROOT, capture_output=True, text=True)
@@ -1049,7 +1082,8 @@ class DetachedByDefaultTests(unittest.TestCase):
             log = Path(directory) / "calls"
             for tool in ("ssh", "rsync"):
                 stub = Path(directory) / tool
-                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) echo 4242; echo 888 ;; '
+                install_identity_stub(Path(directory))
+                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) python3 "$(dirname "$0")/fakeidentity.py" "$*" ;; '
                                 'esac\ncat > /dev/null\nexit 0\n'
                                 % (tool, log))
                 stub.chmod(0o755)
@@ -1069,9 +1103,9 @@ class DetachedByDefaultTests(unittest.TestCase):
             self.assertEqual(fields["pgid"], "4242")
             self.assertEqual(fields["starttime"], "888")
             commands = log.read_text()
-            self.assertIn("nohup setsid sh ", commands)
-            self.assertIn("echo go > " + fields["dir"] + "/launch-", commands)
-            self.assertIn(f"cat {fields['dir']}/run.pid {fields['dir']}/run.starttime", commands)
+            self.assertIn("nohup setsid env FN_NATIVE_LAUNCH_ID=", commands)
+            self.assertIn("FN_NATIVE_LAUNCH_ID=" + fields["launch_id"], commands)
+            self.assertIn(f"cat {fields['dir']}/run.identity", commands)
             self.assertEqual(fields["dir"], f"/tank/fn/scratch/t/native-{label}")
             self.assertEqual(fields["log"], fields["dir"] + "/run.log")
             # No wait_for poll happened: the start did not attach.
@@ -1091,7 +1125,8 @@ class DetachedByDefaultTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 for tool in ("ssh", "rsync"):
                     stub = Path(directory) / tool
-                    stub.write_text('#!/bin/sh\ncase "$*" in *"remaining=5"*) echo 4242; echo 888 ;; '
+                    install_identity_stub(Path(directory))
+                    stub.write_text('#!/bin/sh\ncase "$*" in *"remaining=5"*) python3 "$(dirname "$0")/fakeidentity.py" "$*" ;; '
                                     '*run.log*) printf "%%s\\n" "== load 1" %r ;; esac\n'
                                     'cat > /dev/null\nexit 0\n' % log_line)
                     stub.chmod(0o755)
@@ -1119,7 +1154,7 @@ class DetachedByDefaultTests(unittest.TestCase):
         self.assertEqual(answer.returncode, 2)
         self.assertIn("no record", answer.stderr)
         self.assertIn("no-such-label.run", answer.stderr)
-        # --wait keeps the old attach-at-once behaviour; the dry run takes it.
+        # --wait attaches at once; dry-run also accepts it.
         self.assertEqual(dry("--wait", "HEAD", "tests.test_native_owner").returncode, 0)
 
 
@@ -1201,30 +1236,6 @@ if args:
 
 
 class NativeGenerationLockTests(unittest.TestCase):
-    def test_overlap_refuses_before_mutating_any_generation_file(self):
-        import fcntl
-        import tempfile
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            install_flock(root)
-            guard = root / "guard.sh"
-            source = SCRIPT.read_text().split("    cat <<'RESERVATION'\n", 1)[1].split("\nRESERVATION\n", 1)[0]
-            guard.write_text(source)
-            protected = ("scope-prefix", "scopes", "status", "run.pid", "run.starttime")
-            for name in protected:
-                (root / name).write_text(str(os.getpid()) if name == "run.pid" else "untouched")
-            before = {name: (root / name).read_bytes() for name in protected}
-            with (root / "run.lock").open("a") as held:
-                fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                token = root / "contender"
-                result = subprocess.run(["/bin/sh", str(guard), str(root), str(token)],
-                    env={**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]},
-                    capture_output=True, text=True, timeout=10)
-                self.assertEqual(result.returncode, 2, result.stderr)
-                self.assertIn("live leader " + str(os.getpid()), (root / "contender.state").read_text())
-                self.assertNotEqual((root / "contender.state").read_text().strip(), "ready")
-                self.assertEqual(before, {name: (root / name).read_bytes() for name in protected})
-
     def test_full_launcher_overlap_refusal_leaves_live_generation_untouched(self):
         import fcntl
         import tempfile
@@ -1264,46 +1275,108 @@ raise SystemExit(subprocess.call(["/bin/sh", "-c", command]))
                 self.assertIn("live leader " + str(os.getpid()), done.stderr)
                 self.assertEqual(before, {name: (run_dir / name).read_bytes() for name in protected})
 
-    def test_reservation_transfers_leader_pid_and_lock_through_exec(self):
-        import fcntl
+    def launch_fixture(self, root):
+        install_identity_stub(root)
+        ssh = root / "ssh"
+        ssh.write_text("#!" + sys.executable + "\n" + '''import os, subprocess, sys, time
+from pathlib import Path
+args = sys.argv[1:]
+command = args[-1]
+root = Path(__file__).parent
+with (root / "calls").open("a") as out: out.write(command + "\\n")
+if "cat > " in command and "/run.sh" in command and os.environ.get("BLOCK_SHIPPING"):
+    (root / "shipping").touch()
+    until = time.monotonic() + 10
+    while not (root / "release").exists():
+        if time.monotonic() >= until: raise SystemExit(3)
+        time.sleep(.01)
+if "remaining=5" in command:
+    raise SystemExit(subprocess.call([sys.executable, str(root / "fakeidentity.py"), command]))
+sys.stdin.buffer.read()
+''')
+        ssh.chmod(0o755)
+        return {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]}
+
+    def test_concurrent_same_label_launch_refuses_locally_and_preserves_pending_record(self):
+        import signal
+        import tempfile
+        import time
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            env = self.launch_fixture(root)
+            label = "local-overlap-" + str(os.getpid())
+            record = ROOT / "build/hbox-native" / (label + ".run")
+            self.addCleanup(lambda: record.unlink(missing_ok=True))
+            self.addCleanup(lambda: record.with_suffix(".lock").unlink(missing_ok=True))
+            args = ["--box", "hbox", "--name", "t", "--label", label, "--no-build", "HEAD", "tests.test_native_owner"]
+            pid_file = root / "launcher.pid"
+            with (root / "launcher.log").open("w") as log:
+                first = subprocess.Popen(["sh", "-c", 'echo $$ > "$1"; shift; exec sh "$@"',
+                    "launch-test", str(pid_file), str(SCRIPT), *args],
+                    cwd=ROOT, env={**env, "BLOCK_SHIPPING": "1"}, stdout=log, stderr=log, start_new_session=True)
+                try:
+                    until = time.monotonic() + 10
+                    while not (root / "shipping").exists() and first.poll() is None and time.monotonic() < until:
+                        time.sleep(.01)
+                    self.assertTrue((root / "shipping").exists(), (root / "launcher.log").read_text())
+                    pending = record.read_bytes()
+                    self.assertIn(b"launch_id=", pending)
+                    self.assertNotIn(b"pgid=", pending)
+                    second = subprocess.run(["sh", str(SCRIPT), *args], cwd=ROOT, env=env,
+                        capture_output=True, text=True, timeout=15)
+                    self.assertNotEqual(second.returncode, 0)
+                    self.assertIn("same-label launch already in progress", second.stderr)
+                    self.assertEqual(record.read_bytes(), pending)
+                    (root / "release").touch()
+                    self.assertEqual(first.wait(timeout=10), 0, (root / "launcher.log").read_text())
+                    self.assertIn("pgid=4242", record.read_text())
+                finally:
+                    cleanup_recorded_group(first, pid_file)
+
+    def test_successor_readback_never_publishes_and_pending_record_is_recoverable(self):
         import tempfile
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            install_flock(root)
-            guard = root / "guard.sh"
-            guard.write_text(SCRIPT.read_text().split("    cat <<'RESERVATION'\n", 1)[1].split("\nRESERVATION\n", 1)[0])
-            (root / "run.sh").write_text('''#!/bin/sh
-flock -n 8 || exit 7
-echo $$ > "$1"
-python3 -c 'import time; time.sleep(.1)' 8>&-
-'''.replace('"$1"', '"' + str(root / "own.pid") + '"'))
-            import signal
-            import time
-            with (root / "guard.log").open("w") as log:
-                child = subprocess.Popen(["/bin/sh", str(guard), str(root), str(root / "start")],
-                    env={**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]},
-                    stdout=log, stderr=log, start_new_session=True)
-                try:
-                    deadline = time.monotonic() + 5
-                    while not (root / "start.state").exists() and time.monotonic() < deadline:
-                        time.sleep(.01)
-                    self.assertEqual((root / "start.state").read_text().strip(), "ready")
-                    self.assertEqual(int((root / "run.pid").read_text()), child.pid)
-                    with (root / "run.lock").open("a") as contender:
-                        with self.assertRaises(BlockingIOError):
-                            fcntl.flock(contender, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    (root / "start.state").write_text("go\n")
-                    self.assertEqual(child.wait(timeout=5), 0, (root / "guard.log").read_text())
-                finally:
-                    if child.poll() is None and (root / "run.pid").exists():
-                        pid = int((root / "run.pid").read_text())
-                        self.assertEqual(pid, child.pid)
-                        os.killpg(pid, signal.SIGKILL)
-                        child.wait(timeout=5)
-            self.assertFalse((root / "start.pid").exists())
-            self.assertEqual((root / "run.pid").read_text(), (root / "own.pid").read_text())
-            with (root / "run.lock").open("a") as released:
-                fcntl.flock(released, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            env = self.launch_fixture(root)
+            label = "mismatch-" + str(os.getpid())
+            record = ROOT / "build/hbox-native" / (label + ".run")
+            self.addCleanup(lambda: record.unlink(missing_ok=True))
+            self.addCleanup(lambda: record.with_suffix(".lock").unlink(missing_ok=True))
+            done = subprocess.run(["sh", str(SCRIPT), "--box", "hbox", "--name", "t", "--label", label,
+                "--no-build", "HEAD", "tests.test_native_owner"], cwd=ROOT,
+                env={**env, "FN_TEST_ID_MISMATCH": "1"}, capture_output=True, text=True, timeout=30)
+            self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+            self.assertIn("identity mismatch", done.stderr)
+            self.assertIn("status " + label + " --dir", done.stderr)
+            pending = record.read_text()
+            self.assertIn("launch_id=", pending)
+            self.assertNotIn("pgid=", pending)
+            directory = subprocess.run(["sh", str(SCRIPT), "status", label, "--dir"], cwd=ROOT,
+                env=env, capture_output=True, text=True, timeout=10)
+            self.assertEqual(directory.returncode, 0, directory.stderr)
+            self.assertIn("hbox:/tank/fn/scratch/t/native-" + label, directory.stdout)
+            adopted = subprocess.run(["sh", str(SCRIPT), "adopt", label], cwd=ROOT, env=env,
+                capture_output=True, text=True, timeout=15)
+            self.assertEqual(adopted.returncode, 0, adopted.stdout + adopted.stderr)
+            self.assertIn("adopted", adopted.stdout)
+            self.assertIn("pgid=4242", record.read_text())
+            self.assertEqual(next(l for l in pending.splitlines() if l.startswith("launch_id=")),
+                             next(l for l in record.read_text().splitlines() if l.startswith("launch_id=")))
+
+    def test_publication_cannot_replace_a_successor_local_record(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            api = {"__name__": "identity_test"}
+            code = SCRIPT.read_text().split("    cat <<'PROCESS'\n", 1)[1].split("\nPROCESS\n", 1)[0]
+            exec(code, api)
+            record = root / "record"
+            record.write_text("box=hbox\ndir=" + str(root) + "\nlaunch_id=" + "b" * 32 + "\n")
+            before = record.read_bytes()
+            with self.assertRaisesRegex(ValueError, "identity mismatch"):
+                api["publish_identity"](record, "a" * 32,
+                    "a" * 32 + " 4242 888 " + api["scope_prefix"](root, 4242, 888))
+            self.assertEqual(record.read_bytes(), before)
 
 
 
@@ -1360,6 +1433,41 @@ print(" ".join(map(str, sorted(set(members)))))
         return (prefix + '\nexport S\necho $$ > "$S/test.pid"\n'
                 + (self.step + self.finish if full else ""))
 
+    def escalation_fixture(self, root, process, run):
+        import signal
+        import time
+        from types import SimpleNamespace
+        pid = int((root / "test.pid").read_text())
+        self.assertEqual(pid, process.pid)
+        api = {"__name__": "test_process"}
+        exec(SCRIPT.read_text().split("    cat <<'PROCESS'\n", 1)[1].split("\nPROCESS\n", 1)[0], api)
+        (root / "run.starttime").write_text("888\n")
+        (root / "scope-prefix").write_text(api["scope_prefix"](root, pid, 888) + "\n")
+        (root / "scopes").write_text("")
+        proc = root / "proc" / str(pid); proc.mkdir(parents=True)
+        fields = ["S", "0", str(pid)] + ["0"] * 16 + ["888"]
+        (proc / "stat").write_text(f"{pid} (sh) " + " ".join(fields))
+        (proc / "cmdline").write_bytes(b"sh\0" + os.fsencode(run) + b"\0")
+        signals = []
+        def deliver(fd, sig, info, flags):
+            self.assertEqual((fd, flags), (701, 4))
+            self.assertIsNone(process.poll())
+            self.assertEqual(int((root / "test.pid").read_text()), process.pid)
+            signals.append(sig)
+            os.killpg(process.pid, sig)
+        def exited(fd, seconds=0):
+            deadline = time.monotonic() + seconds
+            while process.poll() is None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return False
+                time.sleep(min(remaining, .01))
+            return True
+        api.update(os=SimpleNamespace(fsencode=os.fsencode, pidfd_open=lambda p: 701, close=lambda fd: None),
+                   signal=SimpleNamespace(SIGTERM=signal.SIGTERM, SIGKILL=signal.SIGKILL,
+                                          pidfd_send_signal=deliver), leader_exited=exited)
+        return api, pid, signals
+
     def assert_group_stop(self, shell, root, script):
         import signal
         import time
@@ -1381,11 +1489,7 @@ print(" ".join(map(str, sorted(set(members)))))
                 os.killpg(pid, signal.SIGTERM)
                 self.assertEqual(child.wait(timeout=10), 143, (root / "run.log").read_text())
             finally:
-                if child.poll() is None and pid_file.exists():
-                    pid = int(pid_file.read_text())
-                    if pid == child.pid:
-                        os.killpg(pid, signal.SIGKILL)
-                        child.wait(timeout=5)
+                cleanup_recorded_group(child, pid_file)
         self.assertEqual((root / "status").read_text(), "143\n")
         self.assertFalse((root / "later").exists())
 
@@ -1442,7 +1546,7 @@ touch "$S/later"
                 fake.write_text('''#!/bin/sh
 case "$1" in *gate_walls.py)
 if [ -f "$S/metadata-interrupted" ]; then echo '{"recollected": true}'; exit 0; fi
-touch "$S/metadata-interrupted"; echo $$ > "$S/metadata.pid"; touch "$S/ready"; exec sleep 60 ;;
+touch "$S/metadata-interrupted"; echo $$ > "$S/metadata.pid"; touch "$S/ready"; sleep .3; exit 1 ;;
 *) exec REAL_PYTHON "$@" ;;
 esac
 '''.replace("REAL_PYTHON", str(sys.executable)))
@@ -1453,25 +1557,24 @@ esac
                 self.assertEqual(json.loads((root / "gate_walls.json").read_text()), {"recollected": True})
                 self.assertEqual((root / "run.log").read_text().count("== load at end:"), 1)
 
-    def test_stop_flag_overrides_a_step_failure_code(self):
+    def test_step_143_distinguishes_stop_flag_from_unsignalled_failure(self):
         import tempfile
-        body = '''
-STOPPED=1
-step failure /bin/sh -c 'exit 7'
-step later touch "$S/later"
-finish 0
-'''
         for shell in self.shells:
-            with self.subTest(shell=shell), tempfile.TemporaryDirectory(prefix="fn-stop-flag-") as directory:
-                root = Path(directory)
-                script = root / "test-run.sh"
-                script.write_text(self.prepare(root, full=True) + body)
-                with (root / "run.log").open("w") as log:
-                    result = subprocess.run([shell, str(script)], stdout=log, stderr=subprocess.STDOUT, timeout=30)
-                self.assertEqual(result.returncode, 143)
-                self.assertEqual((root / "status").read_text(), "143\n")
-                self.assertIn("failure exit 143", (root / "run.log").read_text())
-                self.assertFalse((root / "later").exists())
+            for stopped, rc in ((True, 7), (False, 143)):
+                with self.subTest(shell=shell, stopped=stopped), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    script = root / "test-run.sh"
+                    body = f"STOPPED={int(stopped)}\nstep failure /bin/sh -c 'exit {rc}'\n"
+                    script.write_text(self.prepare(root, full=True) + body
+                                      + 'step later touch "$S/later"\nfinish 0\n')
+                    with (root / "run.log").open("w") as log:
+                        result = subprocess.run([shell, str(script)], stdout=log, stderr=subprocess.STDOUT, timeout=30)
+                    self.assertEqual(result.returncode, 143)
+                    self.assertEqual((root / "status").read_text(), "143\n")
+                    self.assertEqual((root / "stopped").exists(), stopped)
+                    if stopped:
+                        self.assertIn("failure exit 143", (root / "run.log").read_text())
+                    self.assertFalse((root / "later").exists())
 
     def test_status_and_attach_display_stopped_without_a_deadline_wait(self):
         import tempfile
@@ -1503,26 +1606,10 @@ finish 0
                         self.assertNotIn("stopped (143)", done.stdout)
                     self.assertNotIn("none yet", done.stdout)
 
-    def test_unsignalled_step_143_has_no_cancellation_marker(self):
-        import tempfile
-        for shell in self.shells:
-            with self.subTest(shell=shell), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory)
-                run = root / "run.sh"
-                run.write_text(self.prepare(root, full=True) + "step failure sh -c 'exit 143'\n"
-                               + 'touch "$S/later"\n')
-                done = subprocess.run([shell, str(run)], capture_output=True, text=True, timeout=10)
-                self.assertEqual(done.returncode, 143, done.stdout + done.stderr)
-                self.assertEqual((root / "status").read_text(), "143\n")
-                self.assertFalse((root / "stopped").exists())
-                self.assertFalse((root / "later").exists())
-
     def test_term_ignoring_child_writes_status_promptly_then_owned_group_escalation(self):
         import signal
         import tempfile
         import time
-        from unittest import mock
-        from types import SimpleNamespace
         for shell in self.shells:
             with self.subTest(shell=shell), tempfile.TemporaryDirectory(prefix="fn-ignore-term-") as directory:
                 root = Path(directory)
@@ -1542,29 +1629,7 @@ finish 0
                         pid = int((root / "test.pid").read_text())
                         self.assertEqual(pid, process.pid)
                         child_pid = int((root / "child.pid").read_text())
-                        code = SCRIPT.read_text().split("    cat <<'PROCESS'\n", 1)[1].split("\nPROCESS\n", 1)[0]
-                        api = {"__name__": "test_process"}
-                        exec(code, api)
-                        (root / "run.starttime").write_text("888\n")
-                        (root / "scope-prefix").write_text(api["scope_prefix"](root, pid, 888) + "\n")
-                        (root / "scopes").write_text("")
-                        proc = root / "proc" / str(pid)
-                        proc.mkdir(parents=True)
-                        fields = ["S", "0", str(pid)] + ["0"] * 16 + ["888"]
-                        (proc / "stat").write_text(f"{pid} (sh) " + " ".join(fields))
-                        (proc / "cmdline").write_bytes(b"sh\0" + os.fsencode(run) + b"\0")
-                        signals = []
-                        def deliver(fd, sig, info, flags):
-                            self.assertEqual((fd, flags), (701, 4))
-                            self.assertIsNone(process.poll())
-                            signals.append(sig)
-                            os.killpg(int((root / "test.pid").read_text()), sig)
-                        def exited(fd, seconds=0):
-                            time.sleep(min(seconds, 0.01))
-                            return process.poll() is not None
-                        api.update(os=SimpleNamespace(fsencode=os.fsencode, pidfd_open=lambda p: 701, close=lambda fd: None),
-                                   signal=SimpleNamespace(SIGTERM=signal.SIGTERM, SIGKILL=signal.SIGKILL,
-                                                          pidfd_send_signal=deliver), leader_exited=exited)
+                        api, pid, signals = self.escalation_fixture(root, process, run)
                         began = time.monotonic()
                         self.assertEqual(api["stop_run"](pid, 888, root, root / "proc", grace=2), 0)
                         self.assertLess(time.monotonic() - began, 5)
@@ -1573,19 +1638,9 @@ finish 0
                         self.assertTrue((root / "SHA256SUMS").is_file())
                         self.assertTrue((root / "stopped").read_text().startswith("TERM "))
                         self.assertFalse((root / "later").exists())
-                        # Look only at the exact child whose PID file it wrote.
-                        for _ in range(100):
-                            try:
-                                os.kill(child_pid, 0)
-                            except ProcessLookupError:
-                                break
-                            time.sleep(0.01)
-                        else:
-                            self.fail("recorded TERM-ignoring child survived escalation")
+                        self.assert_pid_gone(child_pid)
                     finally:
-                        if process.poll() is None and (root / "test.pid").exists():
-                            os.killpg(int((root / "test.pid").read_text()), signal.SIGKILL)
-                            process.wait(timeout=5)
+                        cleanup_recorded_group(process, root / "test.pid")
                         if (root / "child.pid").exists():
                             try:
                                 os.kill(int((root / "child.pid").read_text()), signal.SIGKILL)
@@ -1596,7 +1651,6 @@ finish 0
         import signal
         import tempfile
         import time
-        from types import SimpleNamespace
         for shell in self.shells:
             with self.subTest(shell=shell), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
@@ -1639,43 +1693,15 @@ touch "$S/later"
                             os.kill(int((root / "parent.pid").read_text()), 0)
                         self.assertIsNone(leader.poll())
                         os.kill(child, 0)
-                        code = SCRIPT.read_text().split("    cat <<'PROCESS'\n", 1)[1].split("\nPROCESS\n", 1)[0]
-                        api = {"__name__": "test_process"}
-                        exec(code, api)
-                        (root / "run.starttime").write_text("888\n")
-                        (root / "scope-prefix").write_text(api["scope_prefix"](root, pid, 888) + "\n")
-                        (root / "scopes").write_text("")
-                        proc = root / "proc" / str(pid)
-                        proc.mkdir(parents=True)
-                        fields = ["S", "0", str(pid)] + ["0"] * 16 + ["888"]
-                        (proc / "stat").write_text(f"{pid} (sh) " + " ".join(fields))
-                        (proc / "cmdline").write_bytes(b"sh\0" + os.fsencode(run) + b"\0")
-                        signals = []
-                        def deliver(fd, sig, info, flags):
-                            self.assertEqual((fd, flags), (701, 4))
-                            self.assertIsNone(leader.poll())
-                            signals.append(sig)
-                            os.killpg(int((root / "test.pid").read_text()), sig)
-                        def exited(fd, seconds=0):
-                            time.sleep(min(seconds, .01))
-                            return leader.poll() is not None
-                        api.update(os=SimpleNamespace(fsencode=os.fsencode, pidfd_open=lambda p: 701, close=lambda fd: None),
-                                   signal=SimpleNamespace(SIGTERM=signal.SIGTERM, SIGKILL=signal.SIGKILL,
-                                                          pidfd_send_signal=deliver), leader_exited=exited)
+                        api, pid, signals = self.escalation_fixture(root, leader, run)
                         self.assertEqual(api["stop_run"](pid, 888, root, root / "proc", grace=1), 0)
                         self.assertEqual(signals, [signal.SIGTERM, signal.SIGKILL])
                         self.assertIsNotNone(leader.poll())
                         with self.assertRaises(ProcessLookupError): os.kill(pid, 0)
-                        for _ in range(100):
-                            try: os.kill(child, 0)
-                            except ProcessLookupError: break
-                            time.sleep(.01)
-                        else: self.fail("recorded group member survived escalation")
+                        self.assert_pid_gone(child)
                         self.assertFalse((root / "later").exists())
                     finally:
-                        if leader.poll() is None and (root / "test.pid").exists():
-                            os.killpg(int((root / "test.pid").read_text()), signal.SIGKILL)
-                            leader.wait(timeout=5)
+                        cleanup_recorded_group(leader, root / "test.pid")
                         if (root / "child.pid").exists():
                             try: os.kill(int((root / "child.pid").read_text()), signal.SIGKILL)
                             except ProcessLookupError: pass
@@ -1699,10 +1725,10 @@ root = Path(os.environ["S"])
 args = sys.argv[1:]
 with (root / "timeouts.jsonl").open("a") as out:
     out.write(json.dumps(args) + "\\n")
-assert args[:4] == ["--foreground", "-k", "5", "120"]
-name = "hash.pid" if args[4] == "sh" else "walls.pid"
+assert args[:3] == ["-k", "5", "120"]
+name = "hash.pid" if args[3] == "sh" else "walls.pid"
 command = 'trap "" TERM; echo $$ > "$S/' + name + '"; exec sleep 30'
-os.execv(REAL_TIMEOUT, [REAL_TIMEOUT, "--foreground", "-k", "0.1", "0.1", "sh", "-c", command])
+os.execv(REAL_TIMEOUT, [REAL_TIMEOUT, "-k", "0.1", "0.1", "sh", "-c", command])
 '''.replace("REAL_TIMEOUT", repr(shutil.which("timeout"))))
             shim.chmod(0o755)
             run.write_text(prepared + 'STOPPED=1\nfinish 143\ntouch "$S/later"\n')
@@ -1716,20 +1742,120 @@ os.execv(REAL_TIMEOUT, [REAL_TIMEOUT, "--foreground", "-k", "0.1", "0.1", "sh", 
                     self.assertTrue((root / "stopped").is_file())
                     calls = [json.loads(line) for line in (root / "timeouts.jsonl").read_text().splitlines()]
                     self.assertEqual(len(calls), 2)
-                    self.assertEqual([call[4] for call in calls], ["sh", "python3"])
+                    self.assertEqual([call[3] for call in calls], ["sh", "python3"])
                     for name in ("hash.pid", "walls.pid"):
                         with self.assertRaises(ProcessLookupError): os.kill(int((root / name).read_text()), 0)
                     self.assertFalse((root / "later").exists())
                 finally:
-                    if leader.poll() is None and (root / "test.pid").exists():
-                        pid = int((root / "test.pid").read_text())
-                        self.assertEqual(pid, leader.pid)
-                        os.killpg(pid, signal.SIGKILL)
-                        leader.wait(timeout=5)
+                    cleanup_recorded_group(leader, root / "test.pid")
                     for name in ("hash.pid", "walls.pid"):
                         if (root / name).exists():
                             try: os.kill(int((root / name).read_text()), signal.SIGKILL)
                             except ProcessLookupError: pass
+
+    def collector_probe(self, root, slow=False):
+        import shutil
+        # Record timeout's own PID before exec; plain timeout then creates
+        # its own group. Keep the production arguments but shorten this probe.
+        (root / "timeout").write_text("#!" + sys.executable + "\n" + '''import os, sys
+from pathlib import Path
+args = sys.argv[1:]
+assert args[:3] == ["-k", "5", "120"]
+root = Path(os.environ["S"])
+name = "hash" if args[3] == "sh" else "walls"
+(root / (name + "-timeout.pid")).write_text(str(os.getpid()))
+os.execv(REAL_TIMEOUT, [REAL_TIMEOUT, "-k", "0.1", DURATION, *args[3:]])
+'''.replace("REAL_TIMEOUT", repr(shutil.which("timeout"))).replace("DURATION", repr("30" if slow else "0.1")))
+        (root / "timeout").chmod(0o755)
+        (root / "sleeper.sh").write_text('#!/bin/sh\necho $$ > "$S/sleep.pid"\nexec sleep 600\n')
+        body = 'exec sleep 600' if slow else '''sh -c 'echo $$ > "$S/descendant.pid"; sh "$S/sleeper.sh" & wait' & wait'''
+        (root / "sh").write_text('''#!/bin/sh
+case "$1:$2" in -c:*sha256sum*)
+    trap "" TERM
+    echo $$ > "$S/collector.pid"
+    touch "$S/collector-started"
+    BODY
+    ;;
+esac
+exec /bin/sh "$@"
+'''.replace("BODY", body))
+        (root / "sh").chmod(0o755)
+
+    def assert_pid_gone(self, pid):
+        import time
+        for _ in range(100):
+            try: os.kill(pid, 0)
+            except ProcessLookupError: return
+            time.sleep(.01)
+        self.fail(f"recorded process {pid} survived")
+
+    def clean_recorded_collectors(self, root):
+        import signal
+        for name in ("hash-timeout.pid", "walls-timeout.pid", "collector.pid", "descendant.pid", "sleep.pid"):
+            recorded = root / name
+            if recorded.exists():
+                try: os.kill(int(recorded.read_text()), signal.SIGKILL)
+                except ProcessLookupError: pass
+
+    def test_cancellation_status_precedes_slow_collection_and_survives_grace_kill(self):
+        import signal
+        import tempfile
+        import time
+        for shell in self.shells:
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                prepared = self.prepare(root, True)
+                self.collector_probe(root, slow=True)
+                run = root / "run.sh"
+                run.write_text(prepared + 'finish 0\ntouch "$S/later"\n')
+                with (root / "run.log").open("w") as log:
+                    leader = subprocess.Popen([shell, str(run)], start_new_session=True, stdout=log, stderr=log)
+                    try:
+                        until = time.monotonic() + 5
+                        while not (root / "collector-started").exists() and time.monotonic() < until:
+                            time.sleep(.01)
+                        self.assertTrue((root / "collector-started").exists(), (root / "run.log").read_text())
+                        self.assertFalse((root / "status").exists())
+                        self.assertIsNone(leader.poll())
+                        api, pid, signals = self.escalation_fixture(root, leader, run)
+                        original_signal = api["signal"].pidfd_send_signal
+                        def checked_signal(fd, sig, info, flags):
+                            if sig == signal.SIGKILL:
+                                self.assertEqual((root / "status").read_text(), "143\n")
+                                self.assertTrue((root / "stopped").read_text().startswith("TERM "))
+                            original_signal(fd, sig, info, flags)
+                        api["signal"].pidfd_send_signal = checked_signal
+                        self.assertEqual(api["stop_run"](pid, 888, root, root / "proc", grace=.2), 0)
+                        self.assertEqual(signals, [signal.SIGTERM, signal.SIGKILL])
+                        self.assertEqual((root / "status").read_text(), "143\n")
+                        self.assertTrue((root / "stopped").exists())
+                        self.assertFalse((root / "later").exists())
+                    finally:
+                        cleanup_recorded_group(leader, root / "test.pid")
+                        self.clean_recorded_collectors(root)
+
+    def test_normal_finish_timeout_removes_collector_descendant_before_return(self):
+        import signal
+        import tempfile
+        for shell in self.shells:
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                prepared = self.prepare(root, True)
+                self.collector_probe(root)
+                run = root / "run.sh"
+                run.write_text(prepared + 'finish 0\n')
+                with (root / "run.log").open("w") as log:
+                    leader = subprocess.Popen([shell, str(run)], start_new_session=True, stdout=log, stderr=log)
+                    try:
+                        self.assertEqual(leader.wait(timeout=8), 0, (root / "run.log").read_text())
+                        self.assertEqual((root / "status").read_text(), "0\n")
+                        self.assertFalse((root / "stopped").exists())
+                        for name in ("collector.pid", "descendant.pid", "sleep.pid", "hash-timeout.pid", "walls-timeout.pid"):
+                            self.assertTrue((root / name).exists(), name)
+                            self.assert_pid_gone(int((root / name).read_text()))
+                    finally:
+                        cleanup_recorded_group(leader, root / "test.pid")
+                        self.clean_recorded_collectors(root)
 
     def test_step_can_execute_a_shell_function_after_closing_the_lock_fd(self):
         import tempfile
@@ -1818,10 +1944,13 @@ class NativeStopTests(unittest.TestCase):
         import io
         printed = io.StringIO()
         with contextlib.redirect_stdout(printed):
-            self.api["write_identity"](4242, self.run_dir)
+            self.api["write_identity"](4242, self.run_dir, "a" * 32)
         self.assertEqual((self.run_dir / "run.starttime").read_text(), "888\n")
         prefix = (self.run_dir / "scope-prefix").read_text().strip()
         self.assertEqual(printed.getvalue(), prefix + "\n")
+        self.assertEqual((self.run_dir / "run.identity").read_text(),
+                         "a" * 32 + " 4242 888 " + prefix + "\n")
+        self.assertFalse((self.run_dir / "run.identity.4242.tmp").exists())
         self.assertTrue(self.units[0].startswith(prefix + "-"))
         self.assertNotEqual(prefix, self.api["scope_prefix"](self.run_dir, 4242, 889))
         self.assertNotEqual(prefix, self.api["scope_prefix"](self.root / "other", 4242, 888))
@@ -2098,16 +2227,19 @@ else:
         self.assertIn("nonnegative integer", invalid.stderr)
         self.assertEqual(command.read_text(), "")
         command.write_text("")
-        record.write_text(f"box=hbox\ndir={self.run_dir}\npid=4242\n")
+        record.write_text(f"box=hbox\ndir={self.run_dir}\npid=4242\npgid=4242\n")
         refused = subprocess.run(["sh", str(SCRIPT), "stop", label], cwd=ROOT, env=env,
                                  capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
         self.assertEqual(refused.returncode, 2)
         self.assertIn("lacks a safe starttime", refused.stderr)
         self.assertEqual(command.read_text(), "")
-        status = subprocess.run(["sh", str(SCRIPT), "status", label], cwd=ROOT, env=env,
-                                capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
-        self.assertEqual(status.returncode, 0, status.stderr)
-        self.assertIn("/bin/kill -0 -- 4242", command.read_text())
+        record.write_text(f"box=hbox\ndir={self.run_dir}\npid=4242\n")
+        for mode in ("status", "attach", "stop"):
+            refused = subprocess.run(["sh", str(SCRIPT), mode, label], cwd=ROOT, env=env,
+                                     capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
+            self.assertEqual(refused.returncode, 2, refused.stdout + refused.stderr)
+            self.assertIn("use adopt " + label, refused.stderr)
+            self.assertEqual(command.read_text(), "")
 
 
 class HelperImageUseTests(unittest.TestCase):
