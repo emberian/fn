@@ -267,18 +267,58 @@
         (fn-lb-log-model-payload-segment handle (cdr segs)))
     nil))
 
+; Sequence identifies a retained row independently of its payload handle.
+; The handle distinguishes the sealed tombstone incarnation after reclaim.
+; Equal handles on different sequences never alias a row's log home.
+(defun fn-lb-log-model-row-entry-in (sequence handle entries)
+  (declare (xargs :guard (true-list-listp (true-list-fix entries))
+                  :verify-guards nil))
+  (if (consp entries)
+      (if (and (equal sequence (nth 8 (car entries)))
+               (equal handle (nth 5 (car entries))))
+          (car entries)
+        (fn-lb-log-model-row-entry-in sequence handle (cdr entries)))
+    nil))
+
+(defun fn-lb-log-model-row-entry (row log)
+  (declare (xargs :guard (fn-lb-log-entries-guardp log) :verify-guards nil))
+  (if (consp log)
+      (or (fn-lb-log-model-row-entry-in (fn-record-sequence row)
+                (fn-record-payload row) (caddar log))
+          (fn-lb-log-model-row-entry row (cdr log)))
+    nil))
+
+(defun fn-lb-log-model-row-segment (row log)
+  (declare (xargs :guard (fn-lb-log-entries-guardp log) :verify-guards nil))
+  (if (consp log)
+      (if (fn-lb-log-model-row-entry-in (fn-record-sequence row)
+                (fn-record-payload row) (caddar log))
+          (caar log)
+        (fn-lb-log-model-row-segment row (cdr log)))
+    nil))
+
 (defun fn-lb-log-payload (row log)
   (declare (xargs :guard (fn-lb-log-entries-guardp log) :verify-guards nil))
-  (nth 6 (fn-lb-log-model-payload-entry (fn-record-payload row) log)))
+  (nth 6 (fn-lb-log-model-row-entry row log)))
+
+; ENTRY in LB4/LB5c is the served range's byte offset, not its ordinal.
+; The locator supplies this key without a home or directory read.
+(defun fn-lb-log-model-range-entry (offset entries)
+  (declare (xargs :guard (true-list-listp (true-list-fix entries))
+                  :verify-guards nil))
+  (if (consp entries)
+      (if (equal offset (nth 3 (car entries))) (car entries)
+        (fn-lb-log-model-range-entry offset (cdr entries)))
+    nil))
 
 (defun fn-lb-entry-protected-len (seg entry log)
   (declare (xargs :guard (fn-lb-log-entries-guardp log) :verify-guards nil))
-  (nfix (nth 2 (fn-lb-log-model-entry entry
+  (nfix (nth 2 (fn-lb-log-model-range-entry entry
                       (caddr (fn-lb-log-model-segment seg log))))))
 
 (defun fn-lb-entry-octets (seg entry log)
   (declare (xargs :guard (fn-lb-log-read-guardp log) :verify-guards nil))
-  (let ((e (fn-lb-log-model-entry entry
+  (let ((e (fn-lb-log-model-range-entry entry
                 (caddr (fn-lb-log-model-segment seg log)))))
     (if e
         (fn-lb-log-model-read-range seg (nth 1 e)

@@ -1,4 +1,4 @@
-; LB4: verification belongs to a segment incarnation and entry ordinal,
+; LB4: verification belongs to a segment incarnation and served byte offset,
 ; never to an article handle or a payload-window cache.  LC does not reuse
 ; segment identifiers.  Recycle removes every bit of the victim identifier.
 (in-package "ACL2")
@@ -23,8 +23,8 @@
   (if (consp bits)
       (and (implies (equal (cdar bits) t)
                     (fn-arx-entry-ok
-                      (fn-lb-entry-octets (caar bits) (cdaar bits) log)
-                      (fn-lb-entry-protected-len (caar bits) (cdaar bits) log)))
+                      (fn-lb-entry-octets (caaar bits) (cdaar bits) log)
+                      (fn-lb-entry-protected-len (caaar bits) (cdaar bits) log)))
            (fn-lb-verified-entries-invp (cdr bits) log))
     t))
 

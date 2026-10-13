@@ -106,7 +106,7 @@
          (i (cadr selected)))
     (and (fn-lbc-selected-reads-entry-p selected kind server v fn-lbc)
          (equal seg (fn-loc-segment (fn-lbc-loc0 i fn-lbc) (fn-lbc-loc1 i fn-lbc)))
-         (equal entry (fn-lbc-directory-value i :entry-ordinal fn-lbc)))))
+         (equal entry (fn-loc-offset (fn-lbc-loc0 i fn-lbc) (fn-lbc-loc1 i fn-lbc))))))
 
 (defun fn-lb-log-model-unwire (bytes startp)
   (declare (xargs :guard t :verify-guards nil))
@@ -174,7 +174,7 @@
     (if (equal (car selected) :refusal)
         (fn-nntp-single session (cadr selected))
       (let ((seg (fn-loc-segment (fn-lbc-loc0 i fn-lbc) (fn-lbc-loc1 i fn-lbc)))
-            (entry (fn-lbc-directory-value i :entry-ordinal fn-lbc)))
+            (entry (fn-loc-offset (fn-lbc-loc0 i fn-lbc) (fn-lbc-loc1 i fn-lbc))))
         (if (and (fn-lbc-selected-reads-entry-p selected kind server v fn-lbc)
                  (not (fn-lb-verified-bit seg entry fn-lb-vmap))
                  (not (fn-arx-entry-ok (fn-lb-entry-octets seg entry log)

@@ -56,7 +56,7 @@
   (render-nov-start :u64) (render-nov-length :u64)
   (groups-start :u64) (groups-count :u64)
   (numbers-start :u64) (numbers-count :u64)
-  (entry-ordinal :u64) (article-ok :bool) (head-ok :bool)
+  (article-ok :bool) (head-ok :bool)
   (body-ok :bool) (raw-head-length :u64) (framed :bool)
   :pages t)
 
@@ -217,7 +217,6 @@
           (:groups-count (fn-lbc-directory-get-groups-count i fn-lbc-directory))
           (:numbers-start (fn-lbc-directory-get-numbers-start i fn-lbc-directory))
           (:numbers-count (fn-lbc-directory-get-numbers-count i fn-lbc-directory))
-          (:entry-ordinal (fn-lbc-directory-get-entry-ordinal i fn-lbc-directory))
           (:article-ok (fn-lbc-directory-get-article-ok i fn-lbc-directory))
           (:head-ok (fn-lbc-directory-get-head-ok i fn-lbc-directory))
           (:body-ok (fn-lbc-directory-get-body-ok i fn-lbc-directory))
@@ -638,8 +637,8 @@
 ; for a row absent from LOG.  The open and commit adapters use this worker.
 (defun fn-lbc-row-log-guardp (row log)
   (declare (xargs :guard (fn-lb-log-read-guardp log) :verify-guards nil))
-  (let ((entry (fn-lb-log-model-payload-entry (fn-record-payload row) log))
-        (segment (fn-lb-log-model-payload-segment (fn-record-payload row) log)))
+  (let ((entry (fn-lb-log-model-row-entry row log))
+        (segment (fn-lb-log-model-row-segment row log)))
     (and (unsigned-byte-p 64 segment)
          (unsigned-byte-p 32 (nth 3 entry))
          (unsigned-byte-p 32 (nth 4 entry)))))
@@ -662,8 +661,8 @@
   (declare (xargs :stobjs fn-lbc :guard (and (fn-cat-rowp row) (fn-lb-log-read-guardp log) (fn-lbc-row-log-guardp row log) (fn-lbc-escape-cellsp 0 fn-lbc))
                   :verify-guards nil))
   (let* ((i (fn-lbc-count fn-lbc))
-         (entry (fn-lb-log-model-payload-entry (fn-record-payload row) log))
-         (segment (fn-lb-log-model-payload-segment (fn-record-payload row) log))
+         (entry (fn-lb-log-model-row-entry row log))
+         (segment (fn-lb-log-model-row-segment row log))
          (payload (nth 6 entry))
          (facts (fn-held-facts row)) (nov (fn-hf-nov facts))
          (nov-small (fn-lbc-nov-smallp nov))
@@ -695,22 +694,22 @@
                  :msgid-offset :msgid-length :withdrawal-at :withdrawal-by
                  :overview-offset :sequence :facts-octets :body-start :body-lines
                  :nov-start :render-nov-start :groups-start :groups-count
-                 :numbers-start :numbers-count :entry-ordinal :raw-head-length)
+                 :numbers-start :numbers-count :raw-head-length)
                (list (fn-record-payload row) head-length (fn-record-stamp row) max-stamp
                      (fn-record-txid row) (fn-record-generation row) (fn-record-charge row)
                      msgid-offset (len msgid-bytes) (nfix (car w)) (nfix (cdr w)) i
                      (fn-record-sequence row) (fn-hf-octets facts)
                      (nfix (fn-hf-body-start facts)) (fn-hf-body-lines facts)
                      nov-start render-start groups-start (len (fn-record-groups row))
-                     numbers-start (len (fn-held-numbers row)) (nth 0 entry) raw-head-length))
+                     numbers-start (len (fn-held-numbers row)) raw-head-length))
              (if (and nov (not nov-small)) (list (cons :nov nov)) nil)
              (if numbers-small nil (list (cons :numbers (fn-held-numbers row))))))
          (flags (+ (if (and (fn-hnov-p nov) (fn-hnov-ok nov)) 1 0)
                    (if (and (fn-hnov-p nov) (fn-hnov-tomb nov)) 2 0)
                    (if w 4 0) (if escape 8 0)
                    (if (fn-arx-entry-ok
-                         (fn-lb-entry-octets segment (nth 0 entry) log)
-                         (fn-lb-entry-protected-len segment (nth 0 entry) log)) 16 0)
+                         (fn-lb-entry-octets segment (nth 3 entry) log)
+                         (fn-lb-entry-protected-len segment (nth 3 entry) log)) 16 0)
                    (if (fn-rcl-tombstonep payload) 32 0))))
     (mv-let (loc0 loc1) (fn-loc-make segment (nth 3 entry) (nth 4 entry))
       (let* ((words
@@ -731,7 +730,6 @@
                      (fn-lbc-u64 render-start) 1
                      (fn-lbc-u64 groups-start) (fn-lbc-u64 (len (fn-record-groups row)))
                      (fn-lbc-u64 numbers-start) (fn-lbc-u64 (len (fn-held-numbers row)))
-                     (fn-lbc-u64 (nth 0 entry))
                      (equal (car (fn-nntp-section-of-bytes payload :article)) :ok)
                      (equal (car (fn-nntp-section-of-bytes payload :head)) :ok)
                      (equal (car (fn-nntp-section-of-bytes payload :body)) :ok)
@@ -787,7 +785,8 @@
 (defun fn-lbc-newnews-candidatep (groups numbers)
   (declare (xargs :guard (or (atom groups) (alistp numbers)) :verify-guards nil))
   (if (consp groups)
-      (or (posp (cdr (assoc-equal (car groups) numbers)))
+      (or (let ((number (fn-nntp-membership-number (car groups) numbers)))
+            (and (posp number) (<= number *fn-nntp-max-article-number*)))
           (fn-lbc-newnews-candidatep (cdr groups) numbers))
     nil))
 
@@ -800,6 +799,8 @@
              (rest (fn-lbc-newnews-tail groups threshold v lo i fn-lbc)))
         (if (and (fn-lbc-visiblep i v fn-lbc)
                  (not (fn-lbc-flag i *fn-lbc-reclaimed-bit* fn-lbc))
+                 (fn-nntp-article-idp
+                   (fn-make-article (fn-lbc-msgid i fn-lbc) 0 nil nil t 0))
                  (fn-lbc-newnews-candidatep groups (fn-lbc-numbers i fn-lbc))
                  (fn-ng-less-equal threshold
                    (* 1000 (fn-lbc-value i :stamp fn-lbc))))
@@ -936,7 +937,7 @@
   (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
   (if (consp keys)
       (let ((position (fn-lbc-escape (car keys) :msgid-slot fn-lbc)))
-        (if (and position (equal (cdr position) slot))
+        (if (and position (member-equal slot (cdr position)))
             (+ 1 (nfix (car keys)))
           (fn-lbc-escaped-slot-word slot (cdr keys) fn-lbc)))
     0))
@@ -951,17 +952,41 @@
         (fn-lbc-escaped-slot-word slot (fn-lbc-slot-escape-keys fn-lbc) fn-lbc)
       word)))
 
+; Remove the current slot's inverse ownership and all stale copies before
+; a write.  Other escaped slots retain their sequence-keyed records.
+(defun fn-lbc-slot-drop-owner (slot keys fn-lbc)
+  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (if (consp keys)
+      (let* ((key (car keys))
+             (cell (fn-lbc-escape-store-get key fn-lbc))
+             (position (assoc-eq :msgid-slot cell))
+             (drop (and position (member-equal slot (cdr position))))
+             (remaining (remove-equal slot (cdr position)))
+             (fn-lbc (if drop
+                         (fn-lbc-escape-store-put key
+                           (if remaining (put-assoc-eq :msgid-slot remaining cell)
+                             (remove-assoc-eq :msgid-slot cell)) fn-lbc)
+                       fn-lbc)))
+        (mv-let (rest fn-lbc)
+          (fn-lbc-slot-drop-owner slot (cdr keys) fn-lbc)
+          (mv (if (and drop (not remaining)) rest (cons key rest)) fn-lbc)))
+    (mv nil fn-lbc)))
+
 (defun fn-lbc-slot-put (slot ordinal fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
   (if (not (and (natp slot) (< slot (fn-lbc-slot-count fn-lbc)))) fn-lbc
-    (let* ((ordinal (nfix ordinal))
+    (mv-let (keys fn-lbc)
+      (fn-lbc-slot-drop-owner slot (fn-lbc-slot-escape-keys fn-lbc) fn-lbc)
+    (let* ((fn-lbc (update-fn-lbc-slot-escape-keys keys fn-lbc))
+           (ordinal (nfix ordinal))
            (escaped (<= *fn-lbc-slot-escape-word* ordinal))
            (seq (if (zp ordinal) 0 (- ordinal 1)))
            (fn-lbc
              (if escaped
                  (let* ((old (fn-lbc-escape-store-get seq fn-lbc))
                         (fn-lbc (fn-lbc-escape-store-put seq
-                                   (acons :msgid-slot slot old) fn-lbc)))
+                                   (put-assoc-eq :msgid-slot
+                                     (cons slot (cdr (assoc-eq :msgid-slot old))) old) fn-lbc)))
                    (update-fn-lbc-slot-escape-keys
                      (if (member-equal seq (fn-lbc-slot-escape-keys fn-lbc))
                          (fn-lbc-slot-escape-keys fn-lbc)
@@ -979,7 +1004,7 @@
         (fn-lbc-msgid-slots)
         (fn-lbc-msgid-slots-set-word slot
           (if escaped *fn-lbc-slot-escape-word* ordinal) fn-lbc-msgid-slots)
-        fn-lbc))))
+        fn-lbc)))))
 
 (defun fn-lbc-reserve-slots (n fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (natp n) :measure (nfix n)
@@ -1110,8 +1135,8 @@
          ; ingest seal.  A corrupt trailer with a clear vmap bit is still a
          ; typed fault input to retrieval, but is not this correspondence.
          (fn-lbc-flag i *fn-lbc-ingest-verified-bit* fn-lbc)
-         (fn-arx-entry-ok (fn-lb-entry-octets segment (nth 0 entry) log)
-                          (fn-lb-entry-protected-len segment (nth 0 entry) log))
+         (fn-arx-entry-ok (fn-lb-entry-octets segment offset log)
+                          (fn-lb-entry-protected-len segment offset log))
          (equal (nth 5 entry) (fn-record-payload row))
          (equal (nth 8 entry) (fn-record-sequence row))
          (equal (nth 7 entry) (fn-lb-log-model-homes row))
@@ -1121,7 +1146,6 @@
          (equal (fn-lbc-word :msgid-hash i fn-lbc)
                 (fn-lbc-msgid-hash (fn-record-msgid row)))
          (equal (fn-lbc-flag i *fn-lbc-reclaimed-bit* fn-lbc) reclaimed)
-         (equal (fn-lbc-directory-value i :entry-ordinal fn-lbc) (nth 0 entry))
          (equal (fn-lbc-value i :head-length fn-lbc)
                 (len (fn-nntp-stuffed-section :head payload)))
          (equal (fn-lbc-directory-value i :raw-head-length fn-lbc)
