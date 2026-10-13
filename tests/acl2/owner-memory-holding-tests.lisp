@@ -19,7 +19,7 @@
 
 ; Supporting teeth for fn-adm-hh-cached-count-is-the-union-cardinality.
 ; M24: the cached record accessor is plumbing, beneath the hosted held-bound claims.
-(defteeth fn-adm-hh-cached-union-keystone
+(defteeth fn-adm-hh-cached-count-is-the-union-cardinality
  :claim (((representation (fn-adm-hh-representsp bank)))
   (and (no-duplicatesp-equal (fn-adm-hh-present-ids (fn-adm-hh-rows bank)))
        (equal (fn-adm-hh-count bank) (len (fn-adm-hh-present-ids (fn-adm-hh-rows bank))))))

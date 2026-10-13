@@ -223,10 +223,13 @@ def subject_findings(keystones: list[Keystone]) -> tuple[list[str], dict[str, st
 
 
 def registry_findings(keystones: list[Keystone], write: bool,
-                      only_ids: set[str] | None = None) -> list[str]:
+                      only_ids: set[str] | None = None,
+                      registration: dict | None = None) -> list[str]:
     """The citation and keystone_subjects findings; with WRITE, the writes
     (the caller validates everything before passing write=True)."""
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
+    if registration is not None:
+        registry["proofs"].append(registration)
     curated = json.loads(PROOF_EVENTS.read_text(encoding="utf-8"))
     rows = {row["id"]: row for row in registry["proofs"]}
     targets = {target["id"]: target for target in curated["targets"]}
@@ -707,31 +710,30 @@ def claim(keystone: Keystone, lane: str, milestone: str, title: str) -> str:
     return ident
 
 
-def register_claimed(keystone: Keystone, lane: str, milestone: str, title: str) -> list[str]:
-    """Register an ID already allocated by the coordinator; never allocate.
+def register_claimed(keystone: Keystone, lane: str, milestone: str,
+                     title: str) -> tuple[dict | None, list[str]]:
+    """Prepare a row for an ID allocated by the coordinator; never write or allocate.
 
-    Read the shared claims ledger only. The resulting proof row is written
-    in this tree by the same writer/stamp as a newly claimed keystone.
+    Read the shared claims ledger only. Registry validation sees this staged
+    row; registry_findings persists it only after the write is approved.
     """
     import next_id
     ident = keystone.ident
     claimed = next_id.claims_by_id(next_id.read_ledger(next_id.ledger_path()))
     row = claimed.get(ident)
     if row is None or row.get("lane") != lane:
-        return [f"{ident}: no existing claim for lane {lane}; coordinator must allocate it"]
+        return None, [f"{ident}: no existing claim for lane {lane}; coordinator must allocate it"]
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
     if any(r["id"] == ident for r in registry["proofs"]):
-        return [f"{ident}: already registered; use --write to regenerate its citations"]
-    registry["proofs"].append(ledger.stamped_evidence({
+        return None, [f"{ident}: already registered; use --write to regenerate its citations"]
+    registration = ledger.stamped_evidence({
         "id": ident, "title": title,
         "statement": (f"{keystone.registry_name} (defkeystone {keystone.name}, "
                       f"{keystone.book}); subject {keystone.subject}."),
         "milestone": milestone, "requirements": [], "depends_on": [],
         "assumptions": [], "status": "planned", "evidence": [keystone.book]},
-        [keystone.book]))
-    PROOFS.write_text(json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
-                      encoding="utf-8")
-    return []
+        [keystone.book])
+    return registration, []
 
 
 def retire(name: str, successor: str | None, ruling: str | None, item: str | None,
@@ -824,6 +826,7 @@ def main(argv: list[str] | None = None) -> int:
     wellformed = [k for k in keystones if k.parts is not None]
     problems = [f"{k.where}: {k.name}: the form is one books/defkeystone.lisp "
                 f"refuses (certification names the reason)" for k in refused]
+    registration = None
     if arguments.register_id:
         if not (arguments.write and not arguments.claim and arguments.register_name
                 and arguments.milestone and arguments.title):
@@ -832,12 +835,12 @@ def main(argv: list[str] | None = None) -> int:
                     and k.registry_name == arguments.register_name]
         if len(selected) != 1:
             parser.error("--register-name must identify exactly one keystone with --register-id")
-        errors = register_claimed(selected[0], arguments.lane, arguments.milestone, arguments.title)
+        registration, errors = register_claimed(
+            selected[0], arguments.lane, arguments.milestone, arguments.title)
         if errors:
             for error in errors:
                 print(f"keystone_emit: {error}")
             return 1
-        print(f"keystone_emit: registered existing claim {arguments.register_id}; no ID allocated")
     if arguments.write and arguments.claim:
         for keystone in wellformed:
             if keystone.ident is None:
@@ -852,7 +855,7 @@ def main(argv: list[str] | None = None) -> int:
     # Validate fully first, each gate on its own: the registry findings
     # without writing, then the manifest gate.
     scope = {arguments.id} if arguments.id else None
-    registry_problems = registry_findings(wellformed, False, scope) if scope else registry_findings(wellformed, False)
+    registry_problems = registry_findings(wellformed, False, scope, registration)
     registry_writable = {p for p in registry_problems
                          if "does not cite" in p or "run --write" in p}
     # Certification availability gates the manifest, not a validated
@@ -874,10 +877,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"keystone_emit: --write refused: {len(registry_blocking) + len(subject_problems) + len(refused)} "
                   f"registry finding(s) to fix first; nothing written")
         else:
-            if scope:
-                registry_findings(wellformed, True, scope)
-            else:
-                registry_findings(wellformed, True)
+            registry_findings(wellformed, True, scope, registration)
+            if registration is not None:
+                print(f"keystone_emit: registered existing claim {arguments.register_id}; no ID allocated")
             print("keystone_emit: wrote the citations and keystone_subjects")
     else:
         problems += sorted(registry_writable)
