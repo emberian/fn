@@ -71,7 +71,8 @@ entry-guards-2) asks that every call an extracted function makes reaches a
 hand stub, an extracted function or a derived stub (`--write-stubs` writes
 the blocks: the host's lambda list and a body that signals
 `harness-stub-reached', a serious-condition no `handler-case' on `error'
-swallows).
+swallows). test-stubs also forbids test drivers loading strip-world.lisp or
+defining/setting the build-only fnn-save-world-flavor marker.
 
     python3 tools/harness_check.py            # every lint, human output
     python3 tools/harness_check.py --json build/harness.json
@@ -2079,19 +2080,39 @@ HOST_LOAD = re.compile(
 # build.lisp, build-dtn.lisp and build-store-test.lisp load it just before
 # save-exec; no test loads it (the Python source-runner fixture is text only).
 # tools/native_source_runner.py removes that load and call from source runs.
-# Unlike io.lisp, which bare-SBCL harnesses load whole, this marks a built image.
-IMAGE_PROBE_GUARD = """(unless (fboundp 'acl2::fnn-save-world-flavor)
-  (error "fn: this probe runs only inside a built fn-host image"))"""
+# refuses accidental standalone loads; a driver that loads build-only sources
+# deliberately is out of scope, and tests/ cannot contain one (test-stubs finding).
+IMAGE_PROBE_GUARD = """(cl:unless (cl:fboundp 'acl2::fnn-save-world-flavor)
+  (cl:error "fn: this probe runs only inside a built fn-host image"))"""
 
 
 def image_probe_guard(text: str) -> tuple[bool, bool]:
     """(Valid first guard, misplaced/duplicate guard), comparing source spans."""
     from tools import ledger
     def normalized(source):
-        return b" ".join(source.encode("utf-8").split())
+        # Standard Common Lisp whitespace: space, tab, linefeed, return, page.
+        return re.sub(rb"[ \t\n\r\f]+", b" ", source.encode("utf-8"))
     guard = normalized(IMAGE_PROBE_GUARD)
     spans = []
     class SpanReader(ledger.Reader):
+        def skip_space(self):
+            # Reader's general isspace() is broader than CL standard syntax.
+            while self.pos < len(self.source):
+                if self.source[self.pos] in " \t\n\r\f":
+                    self.pos += 1
+                elif self.source[self.pos] == ";":
+                    end = self.source.find("\n", self.pos)
+                    self.pos = len(self.source) if end < 0 else end + 1
+                elif self.source.startswith("#|", self.pos):
+                    depth, self.pos = 1, self.pos + 2
+                    while depth and self.pos < len(self.source):
+                        pair = self.source[self.pos:self.pos + 2]
+                        depth += (pair == "#|") - (pair == "|#")
+                        self.pos += 2 if pair in {"#|", "|#"} else 1
+                    if depth:
+                        raise ledger.ReadError("unterminated block comment")
+                else:
+                    break
         def form(self):
             self.skip_space()
             start = self.pos
@@ -2118,7 +2139,7 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
     extracts nothing (or loads whole host files)."""
     from tools import ledger
     if image_probe_guard(text)[0]:
-        return None  # the runtime guard requires the real host before any probe code runs
+        return None  # the runtime guard refuses accidental standalone probe loads
     if re.search(r'\(load\s+"host/', text):
         return None  # it loads whole host files: nothing is stubbed in their place
     if re.search(r'\(defparameter \*roots\*', text):
@@ -2234,13 +2255,81 @@ def harness_scans(root: Path) -> list[tuple[Path, str, str, dict]]:
     return out
 
 
+# One named text-only Python fixture, not an executable loader. runner.prefix
+# (tools/native_source_runner.py) strips this load before executing source runs.
+# Only this exact form, on this line and inside a string literal, is exempt.
+BUILD_ONLY_TEST_FIXTURE = ("tests/test_native_source_runner.py", 23,
+                          '(load "host/native/strip-world.lisp")')
+
+
+def build_only_test_findings(root: Path) -> list[dict]:
+    """Ban build-only source loads and marker definitions/mutations in tests/."""
+    from tools import ledger
+    heads = re.compile(r"\((?:[\w-]+:{1,2})?(load|defun|defmacro|defgeneric|defmethod|"
+                       r"defvar|defparameter|defconstant|defstruct|defclass|define-condition|"
+                       r"defsetf|define-setf-expander|define-symbol-macro|compile|fmakunbound|"
+                       r"setf|psetf|setq|psetq|set|fset)(?=[ \t\n\r\f()'\"`;])", re.I)
+    cli = re.compile(r'''--(?:load|script)(?:[ \t\n\r\f]+|=)["']?(?:[^ \t\n\r\f"']*/)?host/native/strip-world\.lisp''', re.I)
+    marker, source = "fnn-save-world-flavor", "host/native/strip-world.lisp"
+    def leaves(form):
+        if isinstance(form, list):
+            return [leaf for part in form for leaf in leaves(part)]
+        return [str(form).lower()]
+    findings = []
+    for path in sorted((root / "tests").rglob("*")):
+        if not path.is_file():
+            continue
+        text = path.read_bytes().decode("utf-8", errors="replace")
+        relative = path.relative_to(root).as_posix()
+        literals = []
+        if path.suffix == ".py":
+            try:
+                literals = [node for node in ast.walk(ast.parse(text))
+                            if isinstance(node, ast.Constant) and isinstance(node.value, str)]
+            except SyntaxError:
+                pass
+        candidates = [(1, text)] + [(node.lineno, node.value) for node in literals]
+        unquoted = text.replace('\\"', '"').replace("\\'", "'")
+        if unquoted != text:
+            candidates.append((1, unquoted))  # Quoted --eval forms in shell/other drivers.
+        for base, candidate in candidates:
+            if marker not in candidate.lower() and "strip-world" not in candidate.lower():
+                continue
+            hits = [(match.start(), "build-only source load", None) for match in cli.finditer(candidate)]
+            for match in heads.finditer(candidate):
+                reader = ledger.Reader(candidate)
+                reader.pos = match.start()
+                try:
+                    form = reader.form()
+                except ledger.ReadError:
+                    continue  # Escaped driver strings are also checked decoded above.
+                op = match.group(1).lower()
+                if op == "load":
+                    bad = any(source in leaf for leaf in leaves(form[1:]))
+                    problem = "build-only source load"
+                else:
+                    targets = form[1::2] if op in {"setf", "psetf", "setq", "psetq"} else form[1:2]
+                    bad = any(leaf.rsplit(":", 1)[-1] == marker for leaf in leaves(targets))
+                    problem = "build-only marker definition or mutation"
+                if bad:
+                    hits.append((match.start(), problem, candidate[match.start():reader.pos]))
+            for offset, problem, span in hits:
+                line = base + candidate.count("\n", 0, offset)
+                if (relative, line, span) == BUILD_ONLY_TEST_FIXTURE and any(
+                        node.lineno <= line <= node.end_lineno and span in node.value for node in literals):
+                    continue
+                findings.append({"lint": "test-stubs", "where": f"{relative}:{line}",
+                                 "callee": marker, "problem": problem + " is forbidden under tests/"})
+    return findings
+
+
 def test_stub_findings(root: Path) -> tuple[list[dict], dict]:
     """A raw test harness EXTRACTS named host functions (it reads the host
     file's forms and evaluates the defuns it names) and STUBS the rest.  Each
     call an extracted function makes to a raw host function must reach a
     hand stub with an arity it accepts, another extracted function, or a
     DERIVED stub in the harness's generated block, which must be current."""
-    findings: list[dict] = []
+    findings: list[dict] = build_only_test_findings(root)
     reach: list[dict] = []
     counts = {"stub_files": 0, "extracted": 0, "stubs": 0, "calls_checked": 0,
               "derived_stubs": 0}
