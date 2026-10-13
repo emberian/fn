@@ -1,6 +1,7 @@
 ; Whole live invariant and each independent conjunct removal.
 (in-package "ACL2")
 (include-book "../../books/owner-retain-live")
+(include-book "../../host/owner-served-carried")
 (include-book "../../books/owner-retain-livep")
 (include-book "reclaim-fold-contexts-live-tests")
 
@@ -112,7 +113,20 @@
     (fn-owner-prepare-topic . fn-owner-retain-topic-prepare-keeps-live)
     (fn-owner-install-extended . fn-owner-retain-live-established-at-recovery)
     (fn-owner-retain-post-quantum . fn-owner-post-quantum-keeps-retain-live)
-    (fn-owner-retain-identity-quantum . fn-owner-identity-quantum-keeps-retain-live)))
+    (fn-owner-retain-identity-quantum . fn-owner-identity-quantum-keeps-retain-live)
+    (fn-owner-cfg-capture . fn-owner-retain-cfg-capture-keeps-live)
+    (fn-owner-refuse-reservation . fn-owner-retain-refuse-reservation-keeps-live)
+    (fn-owner-known-abort . fn-owner-retain-known-abort-keeps-live)
+    (fn-owner-io . fn-owner-retain-io-keeps-live)
+    (fn-owner-take . fn-owner-retain-take-keeps-live)
+    (fn-owner-control-submit . fn-owner-retain-control-submit-keeps-live)
+    (fn-owner-prepare-retention . fn-owner-retain-prepare-retention-keeps-live)
+    (fn-owner-install-effects . fn-owner-retain-install-effects-keeps-live)
+    (fn-owner-close . fn-owner-retain-close-keeps-live)
+    (fn-owner-fault . fn-owner-retain-fault-keeps-live)
+    (fn-owner-open-peer . fn-owner-retain-open-peer-keeps-live)
+    (fn-owner-install-node-secret . fn-owner-retain-install-node-secret-keeps-live)
+    (fn-owner-apply-limit-profile . fn-owner-retain-apply-limit-profile-keeps-live)))
 
 (defun fn-owner-retain-tree-mentionsp (symbol tree)
   (declare (xargs :guard t))
@@ -133,7 +147,7 @@
 
 (assert-event
  (let* ((world (w state))
-        (row (cdr (assoc-eq 'fn-owner-retain-retained-carried
+        (row (cdr (assoc-eq 'fn-owner-served-carried
                             (table-alist 'fn-carried world))))
         (writers (append (strip-cars (fn-cd-get :established row))
                          (strip-cars (fn-cd-get :transitions row)))))
@@ -221,3 +235,54 @@
        (list 'assert-event (list 'equal (list 'quote (nth 2 answer)) ''(:memory-refused :unaffordable :memory :budget 0 :iff t)))
        (list 'assert-event (list 'equal (list 'quote (nth 3 answer)) ''(:finish :durable :input-retained t :word :durable :output-retained t)))
        (list 'assert-event (list 'equal (list 'quote (nth 4 answer)) ''(:finish :fault :input-retained t :word :fault :output-retained t))))))))
+
+
+; R-POST-1: the existing RFCL fixture with fresh local arena/catalog.
+; FN-SCJ-INVP is DEFUN-NX: prove its ground value in ACL2 rather than
+; creating an executable twin. The other antecedents and both equalities
+; are evaluated on exactly the captured owner and fresh stobjs.
+(defun fn-owner-retain-rpost1-witness-in (fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
+  (let* ((oc (rfcllive-ready-owner fn-arena))
+         (s (fn-sbud-oc-store oc))
+         (row (fn-apc-intern-row-at *rfcllive-wire* (fn-sn-keyring s)
+                 (fn-sn-keyring-generation s) (fn-arena-count fn-arena) nil))
+         (carry (fn-prc-refresh nil (fn-node-retention (fn-sn-node s)))))
+    (mv-let (host-word host-oc)
+      (fn-ppc-pout-prepare-article-cat oc row 100 carry fn-arena fn-cat)
+      (mv-let (word next)
+        (fn-pout-prepare-article oc
+          (fn-intern-row-at *rfcllive-wire* (fn-sn-keyring s)
+            (fn-sn-keyring-generation s) (fn-arena-count fn-arena)) 100 carry)
+        (mv (list oc (fn-ocl-relation oc) (fn-apc-p nil)
+                  (equal host-word word) (equal host-oc next)
+                  host-word (fn-arena-count fn-arena) (fn-cat-count fn-cat))
+            fn-arena fn-cat)))))
+
+(defun fn-owner-retain-rpost1-witness ()
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (answer fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (answer fn-arena fn-cat)
+          (fn-owner-retain-rpost1-witness-in fn-arena fn-cat)
+          (mv answer fn-arena)))
+      answer)))
+
+(with-guard-checking-event :none
+ (make-event
+  (let* ((answer (fn-owner-retain-rpost1-witness))
+         (claim (list 'fn-scj-invp (list 'fn-ocfg-owner (list 'quote (car answer)))
+                      '(create-fn-arena$a) '(create-fn-cat$a))))
+    (value
+     (list 'progn
+       (list 'defthm 'fn-owner-retain-rpost1-fixture-scj claim
+         :hints '(("Goal" :in-theory (enable fn-scj-invp fn-scj-joinp
+                   fn-scj-rows-invp fn-scj-vvp fn-scj-live-okp fn-scj-conns-pinp
+                   fn-scj-marks-below fn-scj-seqs-below fn-scj-arts-map
+                   fn-scr-live-catalogp fn-scr-fields-catalogp fn-scr-catalogp))))
+       (list 'assert-event
+         (list 'and
+           (list 'equal (list 'quote (cdr answer)) '(quote (t t t t :prepared 0 0)))
+           (list 'equal (list 'getpropc '(quote fn-owner-retain-rpost1-fixture-scj)
+                             '(quote theorem) nil '(w state)) (list 'quote claim)))))))))

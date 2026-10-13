@@ -1,8 +1,7 @@
 ; K1 live owner retention: completed-cut invariant and host writer frames.
 (in-package "ACL2")
-; The unary pilot is declared in the model world. Attachment headers must
-; precede the shared arena predicate; the later host-world owed enumeration
-; reports every returning entry not covered by that pilot.
+; Attachment headers precede the shared arena predicate. K1 supports the
+; existing served row; there is no second retained-state carried row.
 (include-book "payload-arena-attach")
 (include-book "history-paged-attach")
 (include-book "catalog-paged-attach")
@@ -378,34 +377,9 @@
 ; As in the existing pilot, the installer input premise is discharged at
 ; both actual recovery producers under their existing named assumptions.
 ; This model-world row is followed by host-world owed enumeration below.
-(def-carried fn-owner-retain-retained-carried
-  :invariant fn-owner-retain-retained-statep
-  :established ((fn-owner-install-extended
-                 fn-owner-retain-install-establishes-retained-state
-                 :ok (equal (mv-nth 1 _) :recovering)
-                 :hyps ((or (equal oc :fault)
-                            (and (fn-lgoc-invariantp oc)
-                                 (fn-osr-retainedp (fn-sbud-oc-store oc)))))
-                 :produced ((fn-ock-recover-extended
-                             fn-owner-retain-recovery-produces-retained-input
-                             :assuming ((fn-assume-capture-extensionp extended configs)))
-                            (fn-ock-install
-                             fn-owner-retain-store-open-produces-retained-input
-                             :assuming ((fn-assume-store-open-pairp replayed opened))))
-                 :witness ((fn-owner-retain-witness-oc) nil (make-list 32 :initial-element 0)
-                           (create-fn-arena$a) (create-fn-cat$a) (create-fn-hist$a)
-                           (fn-owner-retain-witness-state))))
-  :transitions ((fn-owner-prepare-identity fn-owner-retain-identity-keeps-retained-state)
-                (fn-owner-prepare-consumer fn-owner-retain-consumer-keeps-retained-state)
-                (fn-owner-prepare-topic fn-owner-retain-topic-keeps-retained-state))
-  :concludes ((fn-sn-statep fn-owner-retain-retained-statep-implies-entry-guard)
-              (fn-prc-carryp fn-owner-retain-retained-statep-implies-entry-guard)))
 
-(defthm fn-owner-retain-retained-statep-implies-lgoc
-  (implies (fn-owner-retain-retained-statep state)
-           (fn-lgoc-invariantp (fn-owner-ocfg state)))
-  :hints (("Goal" :use fn-owner-retain-statep-implies-lgoc
-           :in-theory '(fn-owner-retain-retained-statep))))
+
+
 (defthm fn-owner-retain-retained-statep-of-other-global-put
   (implies (and (not (equal key 'fn-owner))
                 (not (equal key 'fn-owner-retain-carry)))
@@ -421,28 +395,12 @@
   :hints (("Goal" :in-theory '(fn-owner-retain-retained-statep
               fn-orh-retain-statep-of-install-ocfg fn-owner-store-is-configured-store-by-definition fn-sbud-oc-store
               fn-owner-ocfg-of-install-ocfg))))
-(defthm fn-owner-retain-retained-statep-of-retain-carry-put
-  (implies (and (fn-owner-retain-retained-statep state) (fn-prc-carryp carry))
-           (fn-owner-retain-retained-statep (fn-owner-retain-carry-put carry state)))
-  :hints (("Goal" :in-theory '(fn-owner-retain-retained-statep
-              fn-orh-retain-statep-of-retain-carry-put fn-owner-store-is-configured-store-by-definition fn-sbud-oc-store
-              fn-owner-ocfg-of-retain-carry-put))))
 
-(def-carried-profile fn-owner-retain-retained
-  :invariant fn-owner-retain-retained-statep
-  :installers (fn-owner-install-ocfg fn-owner-retain-carry-put)
-  :carried-globals (fn-owner fn-owner-retain-carry)
-  :at ((oc (fn-owner-ocfg state)))
-  :bridge fn-owner-retain-retained-statep-implies-lgoc
-  :frame (fn-owner-retain-retained-statep-of-other-global-put
-          fn-owner-retain-retained-statep-of-install-ocfg
-          fn-owner-retain-retained-statep-of-retain-carry-put)
-  :row fn-owner-retain-retained-carried
-  :theory (mv-nth nth zp car-cons cdr-cons (:e zp) (:e equal)))
 
-; V1E-UNARY-ROW-INSERTION
-(deflabel fn-owner-retain-unary-pilot-end)
+
+
 (include-book "../host/owner-host")
+(include-book "../host/owner-retain-host")
 
 
 
@@ -2522,6 +2480,907 @@
                         mv-nth nth zp endp car-cons cdr-cons (:e zp)
                         (:e binary-+) (:e unary--)))))
 
-(def-carried-writers-owed fn-owner-retain-retained :from fn-owner-retain-retained-carried)
+; A23: world-derived returning writers. Deletion debt is explicit below.
+(defthm fn-owner-retain-barrier-limits-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-barrier-limits state))))
+ :hints (("Goal" :in-theory '(fn-owner-barrier-limits fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-barrier-limits-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-barrier-limits state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-barrier-limits fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-bound-commit-gate-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-bound-commit-gate received group-octets state))))
+ :hints (("Goal" :in-theory '(fn-owner-bound-commit-gate fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-bound-commit-gate-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-bound-commit-gate received group-octets state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-bound-commit-gate fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-bp-transit-raw-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-bp-transit-raw state))))
+ :hints (("Goal" :in-theory '(fn-owner-bp-transit-raw fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-bp-transit-raw-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-bp-transit-raw state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-bp-transit-raw fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-cat-may-seal-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-cat-may-seal state))))
+ :hints (("Goal" :in-theory '(fn-owner-cat-may-seal fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-cat-prepare-sealed-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-cat-prepare-sealed fn-arena fn-cat state))))
+ :hints (("Goal" :in-theory '(fn-owner-cat-prepare-sealed fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--) fn-owner-cat-prepare-sealed-produced))))
+
+(defthm fn-owner-retain-catchup-plans-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-catchup-plans state))))
+ :hints (("Goal" :in-theory '(fn-owner-catchup-plans fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-catchup-plans-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-catchup-plans state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-catchup-plans fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-cfg-capture-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-cfg-capture state))))
+ :hints (("Goal" :in-theory '(fn-owner-cfg-capture fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-checkpoint-clone-phase-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-checkpoint-clone-phase marker-octets state))))
+ :hints (("Goal" :in-theory '(fn-owner-checkpoint-clone-phase fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-checkpoint-clone-phase-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-checkpoint-clone-phase marker-octets state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-checkpoint-clone-phase fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-clock-observation-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-clock-observation state))))
+ :hints (("Goal" :in-theory '(fn-owner-clock-observation fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-clock-observation-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-clock-observation state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-clock-observation fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-compress-min-octets-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-compress-min-octets state))))
+ :hints (("Goal" :in-theory '(fn-owner-compress-min-octets fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-compress-min-octets-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-compress-min-octets state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-compress-min-octets fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-config-generation-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-config-generation state))))
+ :hints (("Goal" :in-theory '(fn-owner-config-generation fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-config-generation-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-config-generation state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-config-generation fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-ack-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-consumer-local-ack cursor-octets state))))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-ack fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-ack-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-consumer-local-ack cursor-octets state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-ack fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-bootstrap-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-consumer-local-bootstrap history incarnation state))))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-bootstrap fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-bootstrap-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-consumer-local-bootstrap history incarnation state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-bootstrap fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-position-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-consumer-local-position consumer state))))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-position fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-position-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-consumer-local-position consumer state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-position fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-status-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-consumer-local-status consumer state))))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-status fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-status-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-consumer-local-status consumer state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-status fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-unregister-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-consumer-local-unregister consumer state))))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-unregister fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-unregister-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-consumer-local-unregister consumer state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-unregister fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-wait-admit-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-consumer-local-wait-admit waiters state))))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-wait-admit fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-consumer-local-wait-admit-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-consumer-local-wait-admit waiters state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-consumer-local-wait-admit fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-control-filing-buffer-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-control-filing-buffer group-octets fn-octets state))))
+ :hints (("Goal" :in-theory '(fn-owner-control-filing-buffer fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-control-filing-buffer-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-control-filing-buffer group-octets fn-octets state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-control-filing-buffer fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-exposure-install-set-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-exposure-install-set projections state))))
+ :hints (("Goal" :in-theory '(fn-owner-exposure-install-set fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-hybrid-current-enrollment-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-hybrid-current-enrollment generation state))))
+ :hints (("Goal" :in-theory '(fn-owner-hybrid-current-enrollment fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-hybrid-current-enrollment-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-hybrid-current-enrollment generation state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-hybrid-current-enrollment fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-hybrid-snapshots-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-hybrid-snapshots state))))
+ :hints (("Goal" :in-theory '(fn-owner-hybrid-snapshots fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-hybrid-snapshots-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-hybrid-snapshots state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-hybrid-snapshots fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-key-statement-log-line-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-key-statement-log-line plan outcome at-open state))))
+ :hints (("Goal" :in-theory '(fn-owner-key-statement-log-line fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-key-statement-log-line-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-key-statement-log-line plan outcome at-open state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-key-statement-log-line fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-key-statement-redecide-log-line-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-key-statement-redecide-log-line plan outcome state))))
+ :hints (("Goal" :in-theory '(fn-owner-key-statement-redecide-log-line fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-key-statement-redecide-log-line-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-key-statement-redecide-log-line plan outcome state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-key-statement-redecide-log-line fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-key-statement-request-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-key-statement-request event state))))
+ :hints (("Goal" :in-theory '(fn-owner-key-statement-request fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-key-statement-request-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-key-statement-request event state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-key-statement-request fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-live-post-config-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-live-post-config state))))
+ :hints (("Goal" :in-theory '(fn-owner-live-post-config fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-live-post-config-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-live-post-config state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-live-post-config fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-log-bounds-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-log-bounds state))))
+ :hints (("Goal" :in-theory '(fn-owner-log-bounds fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-log-bounds-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-log-bounds state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-log-bounds fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-log-reopen-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-log-reopen configured handled requested state))))
+ :hints (("Goal" :in-theory '(fn-owner-log-reopen fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-log-reopen-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-log-reopen configured handled requested state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-log-reopen fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-login-bindings-plan-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-login-bindings-plan bindings state))))
+ :hints (("Goal" :in-theory '(fn-owner-login-bindings-plan fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-login-bindings-plan-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-login-bindings-plan bindings state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-login-bindings-plan fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-login-gate-buffer-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-login-gate-buffer fn-octets state))))
+ :hints (("Goal" :in-theory '(fn-owner-login-gate-buffer fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-moderation-plan-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-moderation-plan op login id reason fn-arena state))))
+ :hints (("Goal" :in-theory '(fn-owner-moderation-plan fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-moderation-plan-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-moderation-plan op login id reason fn-arena state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-moderation-plan fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-next-store-coordinates-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-next-store-coordinates state))))
+ :hints (("Goal" :in-theory '(fn-owner-next-store-coordinates fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-next-store-coordinates-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-next-store-coordinates state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-next-store-coordinates fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-next-txid-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-next-txid state))))
+ :hints (("Goal" :in-theory '(fn-owner-next-txid fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-next-txid-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-next-txid state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-next-txid fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-operator-refusal-reason-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-operator-refusal-reason msgid-octets group-octets payload fn-arena state))))
+ :hints (("Goal" :in-theory '(fn-owner-operator-refusal-reason fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-operator-refusal-reason-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-operator-refusal-reason msgid-octets group-octets payload fn-arena state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-operator-refusal-reason fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-peer-carrier-form-buffer-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-peer-carrier-form-buffer fn-octets state))))
+ :hints (("Goal" :in-theory '(fn-owner-peer-carrier-form-buffer fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-peer-carrier-form-buffer-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-peer-carrier-form-buffer fn-octets state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-peer-carrier-form-buffer fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-pending-sequence-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-pending-sequence state))))
+ :hints (("Goal" :in-theory '(fn-owner-pending-sequence fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-pending-sequence-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-pending-sequence state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-pending-sequence fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-prov-post-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-prov-post state))))
+ :hints (("Goal" :in-theory '(fn-owner-prov-post fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-prov-post-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-prov-post state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-prov-post fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-pull-plans-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-pull-plans state))))
+ :hints (("Goal" :in-theory '(fn-owner-pull-plans fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-pull-plans-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-pull-plans state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-pull-plans fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-queue-head-served-p-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-queue-head-served-p state))))
+ :hints (("Goal" :in-theory '(fn-owner-queue-head-served-p fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-queue-head-served-p-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-queue-head-served-p state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-queue-head-served-p fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-served-carried-word-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-served-carried-word word detail state))))
+ :hints (("Goal" :in-theory '(fn-owner-served-carried-word fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-served-carried-word-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-served-carried-word word detail state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-served-carried-word fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-served-post-word-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-served-post-word word detail state))))
+ :hints (("Goal" :in-theory '(fn-owner-served-post-word fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-served-post-word-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-served-post-word word detail state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-served-post-word fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-set-auth-config-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-set-auth-config acfg state))))
+ :hints (("Goal" :in-theory '(fn-owner-set-auth-config fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-set-auth-config-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-set-auth-config acfg state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-set-auth-config fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-snapshot-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-snapshot state))))
+ :hints (("Goal" :in-theory '(fn-owner-snapshot fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-snapshot-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-snapshot state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-snapshot fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-space-need-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-space-need state))))
+ :hints (("Goal" :in-theory '(fn-owner-space-need fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-space-need-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-space-need state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-space-need fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-stamp-status-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-stamp-status state))))
+ :hints (("Goal" :in-theory '(fn-owner-stamp-status fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-stamp-status-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-stamp-status state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-stamp-status fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-statement-fence-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-statement-fence event state))))
+ :hints (("Goal" :in-theory '(fn-owner-statement-fence fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-statement-fence-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-statement-fence event state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-statement-fence fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-topic-propose-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-topic-propose operation source-sequence observed-uid entropy-id quota state))))
+ :hints (("Goal" :in-theory '(fn-owner-topic-propose fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-topic-propose-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-topic-propose operation source-sequence observed-uid entropy-id quota state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-topic-propose fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-transit-evidence-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-transit-evidence state))))
+ :hints (("Goal" :in-theory '(fn-owner-transit-evidence fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-transit-evidence-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-transit-evidence state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-transit-evidence fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-transit-log-line-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-transit-log-line id kind reason word detail verdict state))))
+ :hints (("Goal" :in-theory '(fn-owner-transit-log-line fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-transit-reason-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-transit-reason state))))
+ :hints (("Goal" :in-theory '(fn-owner-transit-reason fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-transit-reason-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-transit-reason state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-transit-reason fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-transit-verdict-buffer-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-transit-verdict-buffer transitp ed ml fn-octets state))))
+ :hints (("Goal" :in-theory '(fn-owner-transit-verdict-buffer fn-owner-retain-retained-statep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-transit-verdict-buffer-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-transit-verdict-buffer transitp ed ml fn-octets state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-transit-verdict-buffer fn-owner-retain-livep-of-other-global-put
+                  mv-nth nth car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-apply-limit-profile-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-apply-limit-profile values state))))
+:hints (("Goal"
+           :use ((:instance fn-ohr-osb-install-preserves-carried-relation
+                            (oc (fn-owner-ocfg state)) (profile values)))
+           :in-theory
+           '(fn-owner-apply-limit-profile fn-owner-replace-core fn-owner-ocfg
+             fn-owner-core-is-configured-owner-by-definition
+             fn-owner-retain-retained-statep fn-owner-retain-statep
+             fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-retained-statep-of-other-global-put
+             fn-owner-retain-store-projection fn-owner-retain-lgoc-owner-shape
+             fn-sbud-oc-store fn-ocfg-with-owner fn-ocfg-owner-of-fn-ocfg-make
+             fn-ohr-osb-install-keeps-control
+             mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-close-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-close id fn-arena state))))
+ :hints (("Goal" :use (fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-step-close-preserves-carried-relation (oc (fn-owner-ocfg state))) (:instance fn-ohr-close-keeps-store (oc (fn-owner-ocfg state))) (:instance fn-owner-callback-close-branch-unfolds (oc (fn-owner-ocfg state)))) :in-theory '(fn-owner-close fn-owner-callback-close fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-retain-store-projection fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-retained-statep-of-install-ocfg fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-close-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-close id fn-arena state)) fn-arena))
+ :hints (("Goal" :use (fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-step-close-preserves-carried-relation (oc (fn-owner-ocfg state))) (:instance fn-ohr-close-keeps-store (oc (fn-owner-ocfg state))) (:instance fn-owner-callback-close-branch-unfolds (oc (fn-owner-ocfg state)))) :in-theory '(fn-owner-close fn-owner-callback-close fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-livep fn-owner-retain-statep fn-owner-retain-store-projection fn-owner-retain-livep-of-other-global-put fn-owner-retain-livep-of-install-frame fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-fault-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-fault id state))))
+ :hints (("Goal" :use (fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-fault-preserves-carried-relation (oc (fn-owner-ocfg state))) (:instance fn-ohr-fault-keeps-store (oc (fn-owner-ocfg state)))) :in-theory '(fn-owner-fault fn-owner-callback-fault fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-retain-store-projection fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-retained-statep-of-install-ocfg fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-fault-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-fault id state)) fn-arena))
+ :hints (("Goal" :use (fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-fault-preserves-carried-relation (oc (fn-owner-ocfg state))) (:instance fn-ohr-fault-keeps-store (oc (fn-owner-ocfg state)))) :in-theory '(fn-owner-fault fn-owner-callback-fault fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-livep fn-owner-retain-statep fn-owner-retain-store-projection fn-owner-retain-livep-of-other-global-put fn-owner-retain-livep-of-install-frame fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-install-node-secret-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-install-node-secret ring state))))
+:hints (("Goal"
+           :use ((:instance fn-ohr-with-node-secret-preserves-carried-relation
+                            (oc (fn-owner-ocfg state)) (secret ring)))
+           :in-theory
+           '(fn-owner-install-node-secret fn-owner-replace-core fn-owner-ocfg
+             fn-owner-core-is-configured-owner-by-definition
+             fn-owner-retain-retained-statep fn-owner-retain-statep
+             fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-store-projection
+             fn-sbud-oc-store fn-ocfg-with-owner fn-own-with-node-secret
+             fn-ocfg-owner-of-fn-ocfg-make fn-own-store-of-fn-own-make
+             mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-observe-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-observe monotonic wall wall-error has-wall state))))
+:hints (("Goal" :in-theory
+           '(fn-owner-observe fn-owner-retain-retained-statep fn-owner-retain-statep
+             fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-store-projection
+             fn-owner-retain-observe-model-frame
+             mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-open-peer-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-open-peer peer-octets state))))
+ :hints (("Goal" :use (fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-open-peer-preserves-carried-relation (oc (fn-owner-ocfg state)) (peer (fn-store-octets->string peer-octets)) (acfg (fn-owner-auth state))) (:instance fn-ohr-open-peer-keeps-store-and-view (oc (fn-owner-ocfg state)) (peer (fn-store-octets->string peer-octets)) (acfg (fn-owner-auth state)))) :in-theory '(fn-owner-open-peer fn-owner-callback-open-peer fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-retain-store-projection fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-retained-statep-of-install-ocfg fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-open-peer-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-open-peer peer-octets state)) fn-arena))
+ :hints (("Goal" :use (fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-open-peer-preserves-carried-relation (oc (fn-owner-ocfg state)) (peer (fn-store-octets->string peer-octets)) (acfg (fn-owner-auth state))) (:instance fn-ohr-open-peer-keeps-store-and-view (oc (fn-owner-ocfg state)) (peer (fn-store-octets->string peer-octets)) (acfg (fn-owner-auth state)))) :in-theory '(fn-owner-open-peer fn-owner-callback-open-peer fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-livep fn-owner-retain-statep fn-owner-retain-store-projection fn-owner-retain-livep-of-other-global-put fn-owner-retain-livep-of-install-frame fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-reconfigure-unstage-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-reconfigure-unstage state))))
+:hints (("Goal" :use ((:instance fn-psrv-unstage-preserves-invariant
+                                  (oc (fn-owner-ocfg state))))
+           :in-theory
+           '(fn-owner-reconfigure-unstage fn-owner-authority-proposal-clear
+             fn-owner-retain-retained-statep fn-owner-retain-statep
+             fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-retained-statep-of-other-global-put
+             fn-owner-ocfg-of-other-global-put fn-owner-retain-store-projection
+             fn-psrv-unstage fn-sbud-oc-store fn-ocfg-owner-of-fn-ocfg-make
+             mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-reconfigure-unstage-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-reconfigure-unstage state)) fn-arena))
+:hints (("Goal" :use ((:instance fn-psrv-unstage-preserves-invariant
+                                  (oc (fn-owner-ocfg state))))
+           :in-theory
+           '(fn-owner-reconfigure-unstage fn-owner-authority-proposal-clear
+             fn-owner-retain-livep fn-owner-retain-statep
+             fn-owner-retain-livep-of-install-frame fn-owner-retain-livep-of-other-global-put
+             fn-owner-ocfg-of-other-global-put fn-owner-retain-store-projection
+             fn-psrv-unstage fn-sbud-oc-store fn-ocfg-owner-of-fn-ocfg-make
+             mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--)))))
+
+
+
+
+
+
+
+; Strengthened preservation for the existing served row, with the same writers.
+(local
+ (defthm fn-owner-retain-refuse-model-retained
+   (let* ((out (fn-pout-refuse-reservation oc fn-arena))
+          (s (fn-sbud-oc-store oc)) (next (fn-sbud-oc-store (mv-nth 1 out))))
+     (implies (and (fn-lgoc-invariantp oc) (fn-osr-retainedp s))
+              (fn-osr-retainedp next)))
+   :hints (("Goal"
+            :use (fn-pout-refuse-reservation-preserves-owner-invariant
+                  (:instance fn-lgoc-ocl-relation-cst
+                             (oc (mv-nth 1 (fn-pout-refuse-reservation oc fn-arena))))
+                  (:instance fn-pout-store-of-store-step
+                             (ev (list :refuse-reservation
+                                       (1- (fn-sf-frontier (fn-sn-files (fn-sbud-oc-store oc)))))))
+                  (:instance fn-owner-retain-sn-refuse-keeps-retained
+                             (s (fn-sbud-oc-store oc))
+                             (txid (1- (fn-sf-frontier (fn-sn-files (fn-sbud-oc-store oc)))))))
+            :in-theory
+            '(fn-pout-refuse-reservation fn-lgoc-invariantp fn-sbud-oc-store fn-snrt-step
+              fn-rfcl-okp fn-owner-retain-sn-refuse-rfcl-rows-frame
+              mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--))))))
+
+(local (defthm fn-owner-retain-io-retained-without-arena
+  (implies (fn-owner-retain-retained-statep state)
+    (fn-osr-retainedp (fn-owner-store (mv-nth 2 (fn-owner-io op result state)))))
+  :hints (("Goal" :in-theory
+           '(fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-io fn-owner-io-safep
+             fn-olr-ocfg-reserve fn-olr-ocfg-order
+             fn-owner-retain-rcon-io-keeps-retained fn-psrv-rcon-io-preserves-invariant
+             fn-psrv-io-safep fn-cstp-reserve-opp fn-lgoc-log-reserve-preserves-invariant
+             fn-psrv-log-order-preserves-invariant
+             fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg
+             member-equal mv-nth nth endp zp car-cons cdr-cons
+             (:e member-equal) (:e equal) (:e zp) (:e binary-+) (:e unary--))))))
+
+(defthm fn-owner-retain-refuse-reservation-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state)
+          (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-refuse-reservation fn-arena state))))
+ :hints (("Goal" :use (fn-owner-refuse-reservation-preserves-retain-state (:instance fn-owner-retain-refuse-model-retained (oc (fn-owner-ocfg state))) fn-owner-retain-statep-implies-lgoc)
+ :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-refuse-reservation
+  fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
+  mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-known-abort-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state)
+          (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-known-abort fn-arena state))))
+ :hints (("Goal" :use (fn-owner-known-abort-preserves-retain-state fn-owner-retain-known-abort-retained fn-owner-retain-statep-implies-lgoc)
+ :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-known-abort
+  fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
+  mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-io-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state)
+          (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-io op result state))))
+ :hints (("Goal" :use ((:instance fn-owner-io-preserves-retain-state (operation op)) fn-owner-retain-io-retained-without-arena fn-owner-retain-statep-implies-lgoc)
+ :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-io
+  fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
+  mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
+
+(local
+ (defthm fn-owner-retain-rcon-io-keeps-rfcl
+  (implies (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc))) (fn-rfcl-okp (fn-own-store (fn-ocfg-owner oc)) fn-arena))
+           (fn-rfcl-okp (fn-own-store (fn-ocfg-owner (fn-rcon-ocfg-io oc operation result))) fn-arena))
+  :hints (("Goal" :use ((:instance fn-rfcl-io-keeps-okp (s (fn-own-store (fn-ocfg-owner oc)))))
+           :in-theory '(fn-sbud-oc-store fn-lgoc-store-of-rcon-io)))))
+
+(defthm fn-owner-retain-io-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 2 (fn-owner-io op result state)) fn-arena))
+ :hints (("Goal" :use ((:instance fn-owner-io-preserves-retain-state (operation op)) fn-owner-retain-io-keeps-retained-store fn-owner-retain-statep-implies-entry-guard)
+ :in-theory '(fn-owner-retain-livep fn-owner-io fn-owner-io-safep fn-olr-ocfg-reserve fn-olr-ocfg-order
+  fn-owner-retain-rcon-io-keeps-rfcl fn-rcon-ocfg-io-keeps-the-store-a-state
+  fn-sbud-oc-store fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg
+  member-equal mv-nth nth endp zp car-cons cdr-cons (:e member-equal) (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
+
+(local (defthm fn-owner-retain-step-take-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (fn-owner-step (list :take) fn-arena state)))
+  :hints (("Goal" :use ((:instance fn-ohr-step-take-preserves-carried-relation
+                                  (oc (fn-owner-ocfg state))))
+           :in-theory
+           '(fn-owner-step fn-owner-retain-retained-statep fn-owner-retain-statep
+             fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-store-projection
+             fn-owner-retain-step-take-store-frame)))))
+
+(defthm fn-owner-retain-take-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state) (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-take fn-arena state))))
+ :hints (("Goal" :in-theory '(fn-owner-take fn-owner-put-credits fn-owner-retain-retained-statep-of-other-global-put
+   fn-owner-retain-step-take-keeps-retained-state mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-take-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena) (fn-owner-retain-livep (mv-nth 2 (fn-owner-take fn-arena state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-take fn-owner-put-credits fn-owner-retain-livep-of-other-global-put
+   fn-owner-retain-step-take-keeps-live mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
+
+(local (defthm fn-owner-retain-step-control-submit-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (fn-owner-step (list :control-submit msgid groups octets) fn-arena state)))
+  :hints (("Goal" :use ((:instance fn-ohr-step-control-submit-preserves-carried-relation
+                                  (oc (fn-owner-ocfg state))))
+           :in-theory
+           '(fn-owner-step fn-owner-retain-retained-statep fn-owner-retain-statep
+             fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-store-projection
+             fn-owner-retain-step-control-submit-store-frame)))))
+
+(defthm fn-owner-retain-control-submit-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state) (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-control-submit msgid-octets group-octets payload fn-arena state))))
+ :hints (("Goal" :in-theory '(fn-owner-control-submit fn-owner-put-credits fn-owner-retain-retained-statep-of-other-global-put
+   fn-owner-retain-step-control-submit-keeps-retained-state mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-control-submit-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena) (fn-owner-retain-livep (mv-nth 2 (fn-owner-control-submit msgid-octets group-octets payload fn-arena state)) fn-arena))
+ :hints (("Goal" :in-theory '(fn-owner-control-submit fn-owner-put-credits fn-owner-retain-livep-of-other-global-put
+   fn-owner-retain-step-control-submit-keeps-live mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-install-effects-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep (fn-owner-install-effects effects state)))
+  :hints (("Goal" :in-theory
+           '(fn-owner-install-effects fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-retain-retained-statep-of-other-global-put
+             mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--)))))
+
+(local
+ (defthm fn-owner-retain-retention-not-topic
+   (implies (fn-store-retention-event-p e) (not (fn-th-topic-eventp e)))
+   :hints (("Goal" :use ((:instance fn-th-topic-event-has-topic-tag (event e)))
+            :in-theory '(fn-store-retention-event-p fn-store-event-nth nth zp car-cons cdr-cons
+                         member-equal (:e member-equal) (:e equal) (:e zp)
+                         (:e binary-+) (:e unary--))))))
+
+(local
+ (defthm fn-owner-retain-pdc-retention-view-frame
+   (equal (fn-osr-retained-view (fn-pdc-sn-prepare-retention s e)) (fn-osr-retained-view s))
+   :hints (("Goal" :in-theory '(fn-osr-retained-view fn-pdc-sn-prepare-retention
+              fn-cstp-sn-update-fields fn-owner-retain-update-selectors
+              fn-pcar-stage-record fn-sf-records-of-fn-sf-make-fields-kept
+              car-cons cdr-cons)))))
+
+(local
+ (defthm fn-owner-retain-pdc-retention-keeps-cursor
+   (implies (fn-sn-identity-sequencep s)
+            (fn-sn-identity-sequencep (fn-pdc-sn-prepare-retention s e)))
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-pdc-sn-prepare-retention fn-sn-identity-sequencep fn-pcar-stage-record
+         fn-cstp-sn-update-fields fn-owner-retain-update-selectors
+         fn-sf-records-of-fn-sf-make-fields-kept fn-sf-scalars-of-fn-sf-make-fields
+         fn-sf-completion-phasep natp member-equal car-cons cdr-cons
+         (:e member-equal) (:e equal)))))))
+
+(local
+ (defthm fn-owner-retain-pdc-retention-keeps-retained
+   (implies (and (fn-osr-retainedp s) (fn-cst-relation (fn-pdc-sn-prepare-retention s e)))
+            (fn-osr-retainedp (fn-pdc-sn-prepare-retention s e)))
+   :hints (("Goal"
+            :use (fn-owner-retain-pdc-retention-keeps-cursor
+                  fn-owner-retain-retention-not-topic
+                  (:instance fn-osr-retained-view-connects-full-carry
+                       (a s) (b (fn-pdc-sn-prepare-retention s e)))
+                  (:instance fn-cstp-relation-is-statep (st (fn-pdc-sn-prepare-retention s e))))
+            :in-theory '(fn-owner-retain-pdc-retention-view-frame fn-pdc-sn-prepare-retention
+              fn-osr-retainedp fn-osr-livep fn-sti-livep fn-csi-livep
+              fn-sti-completed-prefixp fn-csi-completed-prefixp fn-csi-completion-lastp
+              fn-osr-identity-prefixp fn-sn-identity-context
+              fn-cstp-sn-update-fields fn-owner-retain-update-selectors fn-pcar-stage-record
+              fn-sf-records-of-fn-sf-make-fields-kept fn-sf-scalars-of-fn-sf-make-fields
+              fn-sf-completion-phasep fn-ccar-cpe-projection-step-is-cpe-projection-step
+              member-equal car-cons cdr-cons
+              (:e member-equal) (:e equal))))) )
+
+(local
+ (defthm fn-owner-retain-pdc-pout-retention-keeps-retained
+   (implies (and (fn-lgoc-invariantp oc) (fn-osr-retainedp (fn-sbud-oc-store oc)))
+            (fn-osr-retainedp (fn-sbud-oc-store
+              (mv-nth 1 (fn-pdc-pout-prepare-retention oc e)))))
+   :hints (("Goal"
+            :use ((:instance fn-pdc-store-of-owner-prepares)
+                  (:instance fn-pdc-ocfg-prepare-retention-preserves-invariant)
+                  (:instance fn-lgoc-ocl-relation-cst (oc (fn-pdc-ocfg-prepare-retention oc e)))
+                  (:instance fn-owner-retain-pdc-retention-keeps-retained
+                       (s (fn-sbud-oc-store oc))))
+            :in-theory '(fn-pdc-pout-prepare-retention fn-lgoc-invariantp
+              fn-sbud-oc-store mv-nth nth zp endp car-cons cdr-cons
+              (:e zp) (:e binary-+) (:e unary--))))) )
+
+(local
+ (defthm fn-owner-retain-idrp-keeps-retained
+  (implies (and (fn-lgoc-invariantp oc) (fn-osr-retainedp (fn-sbud-oc-store oc)))
+           (fn-osr-retainedp (fn-sbud-oc-store (mv-nth 1 (fn-idrp-prepare-retention oc event grant fn-arena)))))
+  :hints (("Goal" :use ((:instance fn-owner-retain-pdc-pout-retention-keeps-retained (e event)))
+           :in-theory '(fn-idrp-prepare-retention mv-nth nth endp zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--))))))
+
+(defthm fn-owner-retain-prepare-retention-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state) (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-prepare-retention kind id-octets subject-octets evidence-octets charge fn-arena state))))
+ :hints (("Goal" :use (fn-owner-prepare-retention-preserves-retain-state fn-owner-retain-statep-implies-lgoc)
+ :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-prepare-retention fn-owner-retain-idrp-keeps-retained fn-owner-idrp-install-preserves-lgoc
+  fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
+  fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-livep-of-other-global-put
+  fn-rfcl-idrp-prepare-retention-keeps-okp mv-nth nth endp zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(defthm fn-owner-retain-prepare-retention-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena) (fn-owner-retain-livep (mv-nth 2 (fn-owner-prepare-retention kind id-octets subject-octets evidence-octets charge fn-arena state)) fn-arena))
+ :hints (("Goal" :use (fn-owner-prepare-retention-preserves-retain-state fn-owner-retain-statep-implies-lgoc (:instance fn-rfcl-idrp-prepare-retention-keeps-okp (oc (fn-owner-ocfg state)) (event (fn-store-retention-event-make kind (fn-sn-identity-next (fn-owner-store state)) (fn-state-next-txid (fn-node-acceptance (fn-sn-node (fn-owner-store state)))) (fn-state-next-txid (fn-node-acceptance (fn-sn-node (fn-owner-store state)))) (fn-store-octets->string id-octets) (fn-store-octets->string subject-octets) (fn-store-octets->string evidence-octets) charge))))
+ :in-theory '(fn-owner-retain-livep fn-owner-retain-statep fn-owner-prepare-retention fn-owner-retain-idrp-keeps-retained fn-owner-idrp-install-preserves-lgoc
+  fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
+  fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-livep-of-other-global-put
+  fn-rfcl-idrp-prepare-retention-keeps-okp mv-nth nth endp zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+(local
+ (defthm fn-owner-retain-sn-known-abort-keeps-rfcl
+  (implies (fn-rfcl-okp s fn-arena)
+           (fn-rfcl-okp (fn-sn-known-abort s) fn-arena))
+  :hints (("Goal" :cases ((fn-sn-known-abort-enabledp s))
+    :use ((:instance rfcl-abort-restores-records-okp (next s)))
+    :in-theory '(fn-sn-known-abort)))))
+
+(defthm fn-owner-retain-known-abort-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 2 (fn-owner-known-abort fn-arena state)) fn-arena))
+ :hints (("Goal"
+  :use (fn-owner-known-abort-preserves-retain-state fn-owner-retain-known-abort-retained
+        fn-owner-retain-statep-implies-lgoc
+        (:instance fn-owner-retain-sn-known-abort-keeps-rfcl (s (fn-owner-store state)))
+        (:instance fn-pout-store-of-store-step (oc (fn-owner-ocfg state)) (ev (list :known-abort))))
+  :in-theory '(fn-owner-retain-livep fn-owner-retain-statep fn-owner-known-abort fn-pout-known-abort
+     fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
+     fn-snrt-step fn-sbud-oc-store fn-lgoc-invariantp
+     mv-nth nth endp zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+
+; DEF-CARRIED instantiates by the writer's actual formal names.
+(defthm fn-owner-retain-io-preserves-retained-state
+ (implies (fn-owner-retain-retained-statep state)
+          (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-io operation result state))))
+ :hints (("Goal" :use ((:instance fn-owner-retain-io-keeps-retained-state (op operation)))
+          :in-theory nil)))
 
 (in-theory (disable fn-owner-retain-livep fn-owner-retain-identity-quantum))
