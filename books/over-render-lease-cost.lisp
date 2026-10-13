@@ -21,4 +21,4 @@
   :unaccounted (fn-ovr-rest-cursor fn-ovr-rest-next))
 
 (def-cost fn-ovr-plan-lease-quantum
-  :unaccounted (fn-ovr-rest-cursor fn-rtc-nbufs fn-rtc-x-live-p fn-rtc-kind-out-p fn-rtc-buf-cap fn-ovr-quantum fn-rtc-x-request mv-nth))
+  :unaccounted (unsigned-byte-p fn-ovr-rest-cursor fn-rtc-nbufs fn-rtc-x-live-p fn-rtc-kind-out-p fn-rtc-buf-cap fn-ovr-quantum fn-rtc-x-request mv-nth))

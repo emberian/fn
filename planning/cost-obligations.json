@@ -10617,7 +10617,8 @@
     "fn-rtc-nbufs",
     "fn-rtc-x-live-p",
     "fn-rtc-x-request",
-    "mv-nth"
+    "mv-nth",
+    "unsigned-byte-p"
    ],
    "theorem": null,
    "declared_in": "books/over-render-lease-cost.lisp"
