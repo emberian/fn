@@ -2075,114 +2075,32 @@ HOST_LOAD = re.compile(
 
 
 
-def test_file_loaders(root: Path, fixtures: dict[str, dict[str, str]]) -> dict:
-    """Only exact literal image calls plus exclusive occurrences permit removal.
+# Every built host loads io.lisp's startup boundary; standalone probes do not.
+IMAGE_PROBE_GUARD = """(unless (fboundp 'acl2::fnn-native-startup)
+  (error "fn: this probe runs only inside a built fn-host image"))"""
 
-    Unknown launchers give no exemption.  Any other filename occurrence is
-    ambiguity, including opaque runners, comments, binary files and data.
-    """
+
+def image_probe_guard(text: str) -> tuple[bool, bool]:
+    """(Valid first guard, misplaced/duplicate guard), comparing reader forms."""
     from tools import ledger
-    evidence = {}
-    for path in sorted((root / "tests").glob("*.py")):
-        data = path.read_bytes()
-        tree = ast.parse(data.decode("utf-8"))
-        binding = {alias for node in tree.body if isinstance(node, ast.ImportFrom)
-                   and node.module == "tests.test_native_entry_guard" and not node.level
-                   for alias in node.names if alias.name == "image_command"
-                   and alias.asname in (None, "image_command")}
-        own = [node for node in tree.body if isinstance(node, ast.FunctionDef)
-               and node.name == "image_command"] if path.name == "test_native_entry_guard.py" else []
-        if not binding and len(own) != 1:
-            continue
-        if any((isinstance(node, ast.Name) and node.id == "image_command"
-                and isinstance(node.ctx, (ast.Store, ast.Del)))
-               or "image_command" in (getattr(node, "name", None), getattr(node, "rest", None))
-               and node not in own[:1] and node not in binding
-               or isinstance(node, ast.arg) and node.arg == "image_command"
-               or isinstance(node, (ast.Global, ast.Nonlocal)) and "image_command" in node.names
-               or isinstance(node, ast.alias) and node not in binding
-               and (node.asname or node.name.split(".")[0]) in {"image_command", "*"}
-               for node in ast.walk(tree)):
-            continue
-        lines = data.splitlines(keepends=True)
-        relative = path.relative_to(root).as_posix()
-        for call in ast.walk(tree):
-            if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
-                    and call.func.id == "image_command" and call.args
-                    and isinstance(call.args[0], (ast.List, ast.Tuple))
-                    and all(isinstance(item, ast.Constant) and type(item.value) is str
-                            for item in call.args[0].elts)):
-                continue
-            for item in call.args[0].elts:
-                try:
-                    forms = ledger.Reader(item.value).top_level()
-                except ledger.ReadError:
-                    continue
-                if (len(forms) == 1 and ledger.head(forms[0][0]) == "load"
-                        and len(forms[0][0]) == 2 and type(forms[0][0][1]) is str):
-                    target = forms[0][0][1]
-                    if target in fixtures:
-                        evidence.setdefault(target, []).append((relative,
-                            sum(map(len, lines[:call.lineno - 1])) + call.col_offset,
-                            sum(map(len, lines[:call.end_lineno - 1])) + call.end_col_offset))
-    if not evidence:
-        return {}
-    active = set(evidence)
-    for parent in list(active):
-        active.update(fixtures.get(parent, {}))
-    corpus = {path.relative_to(root).as_posix(): path.read_bytes()
-              for path in (root / "tests").rglob("*") if path.is_file()}
-    for parent in sorted(active):
-        reader = ledger.Reader(corpus[parent].decode("utf-8"))
-        while reader.pos < len(reader.source):
-            reader.skip_space()
-            start = reader.pos
-            if start == len(reader.source):
-                break
-            form = reader.form()
-            if ledger.head(form) == "load" and len(form) == 2 and type(form[1]) is str and form[1] in active:
-                evidence.setdefault(form[1], []).append((parent,
-                    len(reader.source[:start].encode()), len(reader.source[:reader.pos].encode())))
-    # Execute the runner's OWN discovery definitions, including the call to
-    # runners_of, with this ROOT; do not duplicate its glob or launch setup.
-    runner = root / "tests/test_native_raw_scripts.py"
-    if not runner.is_file():
-        runner = ROOT / "tests/test_native_raw_scripts.py"
-    discovery = [node for node in ast.parse(runner.read_text()).body
-                 if getattr(node, "name", None) == "runners_of" or isinstance(node, ast.Assign)
-                 and any(isinstance(t, ast.Name) and t.id in {"HARNESSES", "DIRECT"} for t in node.targets)]
-    scope = {"ROOT": root, "__file__": str(runner), "pathlib": __import__("pathlib")}
-    exec(compile(ast.Module(body=discovery, type_ignores=[]), str(runner), "exec"), scope)
-    direct = {path.relative_to(root).as_posix() for path in scope["DIRECT"]}
-    out = {}
-    for target in sorted(active):
-        sites = set(evidence.get(target, []))
-        others = set()
-        for source, data in corpus.items():
-            for _path, start, end in sorted((site for site in sites if site[0] == source), reverse=True):
-                data = data[:start] + data[end:]
-            if source != target and (Path(target).name.encode() in data or target.encode() in data):
-                others.add(source + " (filename occurrence)")
-        if target in direct or re.fullmatch(r"native_.*_raw.*\.lisp", Path(target).name):
-            others.add("tests/test_native_raw_scripts.py / native_*_raw*.lisp (runner inventory or uncertain selection)")
-        out[target] = {"image": {site[0] + " (literal load)" for site in sites} or {"image fixture closure"},
-                       "standalone": others}
-    for parent in sorted(active):
-        if out[parent]["standalone"]:
-            for child in fixtures.get(parent, {}).keys() - {parent}:
-                out[child]["standalone"].add(parent + " (ambiguous fixture loader)")
-    return out
+    guard = ledger.Reader(IMAGE_PROBE_GUARD).top_level()[0][0]
+    forms = [form for form, _ in ledger.Reader(text).top_level()]
+    first = next((form for form in forms if form != [ledger.Sym("in-package"), "ACL2"]), None)
+    def count(form):
+        return 1 if form == guard else sum(map(count, form)) if isinstance(form, list) else 0
+    total = sum(map(count, forms))
+    valid = first == guard and total == 1
+    return valid, total > 0 and not valid
 
 
 def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
-                 origins: dict, fixture_sources: dict[str, str] | None = None,
-                 image_loaded: bool = False) -> dict | None:
+                 origins: dict, fixture_sources: dict[str, str] | None = None) -> dict | None:
     """One harness: its stale hand stubs, the calls it leaves unresolved,
     and its derived block (expected and current).  None when the harness
     extracts nothing (or loads whole host files)."""
     from tools import ledger
-    if image_loaded:
-        return None  # a built image already has the real host: nothing is extracted or stubbed
+    if image_probe_guard(text)[0]:
+        return None  # the runtime guard requires the real host before any probe code runs
     if re.search(r'\(load\s+"host/', text):
         return None  # it loads whole host files: nothing is stubbed in their place
     if re.search(r'\(defparameter \*roots\*', text):
@@ -2277,31 +2195,22 @@ def harness_scans(root: Path) -> list[tuple[Path, str, str, dict]]:
                 name = str(form[1]).lower()
                 bodies.setdefault(name, form)
                 origins.setdefault(name, (form[2], relative))
-    files = {}
+    out = []
     for path in sorted((root / "tests").glob("*.lisp")):
         relative = path.relative_to(root).as_posix()
         text = path.read_text(encoding="utf-8")
-        files[relative] = (path, text, harness_fixture_sources(root, relative, text))
-    loaders = test_file_loaders(root, {name: entry[2] for name, entry in files.items()})
-    out = []
-    for relative, (path, text, fixtures) in files.items():
-        kinds = loaders.get(relative, {"image": set(), "standalone": set()})
-        ambiguous = kinds["image"] and kinds["standalone"]
-        scan = harness_scan(relative, text, rawdefs, bodies, origins, fixtures,
-                            image_loaded=bool(kinds["image"]))
+        guarded, misplaced = image_probe_guard(text)
         _hand, current = split_stub_block(text)
-        if ambiguous or (kinds["image"] and current is not None):
-            # Keep non-extracting probes visible to check/write for a stale
-            # block.  Mixed loaders are a finding, and regeneration refuses
-            # to choose a block for them (preserve the current text).
+        if misplaced or (guarded and current is not None):
             scan = {"stale": [], "unresolved": {}, "callers": {},
-                    "expected": current if ambiguous else None, "current": current,
+                    "expected": current if misplaced else None, "current": current,
                     "extracted": set(), "stubs": {}, "checked": 0}
-            if ambiguous:
-                scan["stale"].append({
-                    "lint": "test-stubs", "where": relative, "callee": "",
-                    "problem": "ambiguous test loaders: image: " + "; ".join(sorted(kinds["image"]))
-                               + "; standalone: " + "; ".join(sorted(kinds["standalone"]))})
+            if misplaced:
+                scan["stale"].append({"lint": "test-stubs", "where": relative, "callee": "",
+                    "problem": "misplaced guard: IMAGE_PROBE_GUARD must be the single first form after in-package ACL2"})
+        else:
+            fixtures = None if guarded else harness_fixture_sources(root, relative, text)
+            scan = harness_scan(relative, text, rawdefs, bodies, origins, fixtures)
         if scan is not None:
             out.append((path, relative, text, scan))
     return out
