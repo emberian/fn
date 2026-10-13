@@ -3456,5 +3456,34 @@ class SourcePrefixTests(unittest.TestCase):
             self.assertTrue(kwargs["pass_fds"])
 
 
+class CacheSlotNestingTests(unittest.TestCase):
+    def test_runner_cache_probe_reuses_one_slot_and_releases_it(self):
+        slots = proof_repl.acl2_slots
+        with tempfile.TemporaryDirectory() as temporary:
+            report = SimpleNamespace(uncached=[], uncompiled=[])
+            entered = []
+
+            def install(*args, **kwargs):
+                with slots.tree_slot("certificate-alist probe"):
+                    entered.append(slots.inherited_tree_slot())
+                return report
+
+            with mock.patch.dict(os.environ, {
+                "FN_ACL2_SLOT_DIR": temporary, "FN_ACL2_SLOTS": "1",
+                "FN_ACL2_SLOT_WAIT": "0.02",
+            }):
+                os.environ.pop(slots.SLOT_HOLDER_VARIABLE, None)
+                with mock.patch.object(proof_repl.certs, "install_partial", side_effect=install):
+                    result = proof_repl.runner_closure(
+                        "books/example", {"books/example": ["books/base"]}, False,
+                        pathlib.Path(temporary), "identity", pathlib.Path("acl2"))
+                self.assertIs(result, report)
+                self.assertEqual(entered, [True])
+                self.assertNotIn(slots.SLOT_HOLDER_VARIABLE, os.environ)
+                # Both reservations returned; a one-slot pool admits another.
+                with slots.tree_slot("next probe"):
+                    self.assertTrue(slots.inherited_tree_slot())
+
+
 if __name__ == "__main__":
     unittest.main()
