@@ -8,6 +8,7 @@ import contextlib
 import io
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -581,6 +582,34 @@ class NewFixtureTests(unittest.TestCase):
         self.assertIn("lane-check box_step: FAIL", p.stdout)
         self.assertIn("lane-check image: NONE (no native module obliged)", p.stdout)
         self.assertIn("lane-check extraction: BOX", p.stdout)
+
+    def test_box_certify_for_a_changed_test_matches_the_train_command(self):
+        (self.seed / "tests/acl2").mkdir(parents=True, exist_ok=True)
+        manifest_stub = STUB.replace('sys.exit(int(os.environ.get(',
+            'if name == "keystone_emit" and mode == "write-manifest":\n'
+            '    os.makedirs("build", exist_ok=True)\n'
+            '    with open("build/teeth-obligations.json", "w") as f: json.dump({"entries": []}, f)\n'
+            'sys.exit(int(os.environ.get(')
+        self.advance_dev({
+            "Makefile": "ACL2_BOOKS = tests/acl2/base-tests tests/acl2/consumer-tests\n",
+            "tests/acl2/base-tests.lisp": '(in-package "ACL2")\n',
+            "tests/acl2/consumer-tests.lisp": '(include-book "base-tests")\n',
+            "tools/keystone_emit.py": manifest_stub,
+        })
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
+        sha = self.lane("test-book", {
+            "tests/acl2/base-tests.lisp": '(in-package "ACL2")\n; changed\n'})
+        p = self.check_lane("test-book", sha)
+        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check certify: BOX"))
+        command = shlex.split(line.removeprefix("lane-check certify: BOX "))
+        with mock.patch.object(train, "PY", sys.executable):
+            self.assertEqual(command, ["timeout", "3600",
+                *train.certify_command(train.Train(self.scratch("test-book")), "hbox")])
+        self.assertIn("--affected-by", command)
+        self.assertEqual(command[command.index("--affected-by") + 1], "tests/acl2/base-tests")
+        self.assertEqual(command[command.index("hbox") + 1:],
+                         [*train.BOX_CERT_BOOKS, "tests/acl2/base-tests"])
 
     def test_f1_missing_box_record_is_a_real_gate_failure(self):
         sha = self.lane("no-record", {"tools/x.py": "x\n"})
@@ -1440,7 +1469,7 @@ class CertifyTests(TrainBase):
         farm = [l for l in self.stub_log() if l.startswith("farm ")]
         self.assertEqual(len(farm), 2, farm)
         sub = farm[0]
-        for word in ("--affected-by books/b", "--timeout-seconds 1800",
+        for word in ("--affected-by books/b", "--affected-by tests/acl2/t", "--timeout-seconds 1800",
                      "submit hbox", "books/wire-export", "books/image-world", "books/image-world-dtn",
                      "books/b", "tests/acl2/t"):
             self.assertIn(word, sub)
@@ -1449,6 +1478,77 @@ class CertifyTests(TrainBase):
         self.assertNotIn("books/b.lisp", sub)
         self.assertTrue(farm[1].startswith("farm --root") or "wait hbox run-stub-1" in farm[1], farm[1])
         self.assertNotIn("remote_check", " ".join(self.stub_log()))
+
+    def test_certify_test_only_change_selects_its_includers(self):
+        from tools import certs
+
+        (self.seed / "tests/acl2").mkdir(parents=True, exist_ok=True)
+        self.advance_dev({
+            "Makefile": "ACL2_BOOKS = tests/acl2/base-tests tests/acl2/consumer-tests\n",
+            "tests/acl2/base-tests.lisp": '(in-package "ACL2")\n',
+            "tests/acl2/consumer-tests.lisp": '(include-book "base-tests")\n',
+        })
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
+        self.merge({"tests/acl2/base-tests.lisp": '(in-package "ACL2")\n; changed\n'})
+        self.assertIn("tests/acl2/base-tests", certs.closure(self.work, "tests/acl2/consumer-tests"))
+        result = self.train("certify", "hbox")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        submit = next(line for line in self.stub_log() if line.startswith("farm "))
+        self.assertEqual(shlex.split(submit), [
+            "farm", "--affected-by", "tests/acl2/base-tests", "--timeout-seconds", "1800",
+            "submit", "hbox", *train.BOX_CERT_BOOKS, "tests/acl2/base-tests"])
+
+    def test_certify_books_only_command_is_unchanged(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        self.merge({"books/b.lisp": '(in-package "ACL2")\n'})
+        result = self.train("certify", "hbox")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        submit = next(line for line in self.stub_log() if line.startswith("farm "))
+        self.assertEqual(shlex.split(submit), [
+            "farm", "--affected-by", "books/b", "--timeout-seconds", "1800",
+            "submit", "hbox", *train.BOX_CERT_BOOKS, "books/b"])
+
+    def host_book_train(self, book="host/owner-host", listed=False, changes=None):
+        (self.seed / "books").mkdir(exist_ok=True)
+        (self.seed / book).parent.mkdir(parents=True, exist_ok=True)
+        (self.seed / "host/native").mkdir(parents=True, exist_ok=True)
+        self.advance_dev({
+            "Makefile": "ACL2_BOOKS = books/consumer" + (" " + book if listed else "") + "\n",
+            "books/consumer.lisp": f'(include-book "../{book}")\n',
+            book + ".lisp": '(in-package "ACL2")\n',
+            "host/unreferenced.lisp": '(in-package "ACL2")\n',
+            "host/native/io.lisp": '(in-package "CL-USER")\n',
+        })
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
+        self.merge(changes if changes is not None else {
+            book + ".lisp": '(in-package "ACL2")\n; changed\n'})
+        result = self.train("certify", "hbox")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        submit = next(line for line in self.stub_log() if line.startswith("farm "))
+        return shlex.split(submit)
+
+    def test_certify_host_dependency_change_selects_its_includers(self):
+        self.assertEqual(self.host_book_train(), [
+            "farm", "--affected-by", "host/owner-host", "--timeout-seconds", "1800",
+            "submit", "hbox", *train.BOX_CERT_BOOKS])
+
+    def test_certify_changed_host_makefile_root_is_also_named(self):
+        self.assertEqual(self.host_book_train(listed=True), [
+            "farm", "--affected-by", "host/owner-host", "--timeout-seconds", "1800",
+            "submit", "hbox", *train.BOX_CERT_BOOKS, "host/owner-host"])
+
+    def test_certify_nested_host_book_in_makefile_closure_is_selected(self):
+        self.assertEqual(self.host_book_train(book="host/library/adapter"), [
+            "farm", "--affected-by", "host/library/adapter", "--timeout-seconds", "1800",
+            "submit", "hbox", *train.BOX_CERT_BOOKS])
+
+    def test_certify_raw_native_and_unreferenced_host_changes_add_nothing(self):
+        self.assertEqual(self.host_book_train(changes={
+            "host/native/io.lisp": '(in-package "CL-USER")\n; changed\n',
+            "host/unreferenced.lisp": '(in-package "ACL2")\n; changed\n',
+        }), ["farm", "--timeout-seconds", "1800", "submit", "hbox", *train.BOX_CERT_BOOKS])
 
     def test_certify_has_no_lane_mode_to_choose(self):
         self.books_train()
