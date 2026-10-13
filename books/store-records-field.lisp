@@ -40,6 +40,9 @@
 ; the universal snapshot then separates columns' own events structurally.
 (deftheory fn-sfr-theory-before-paged (current-theory :here))
 (include-book "history-paged")
+; The pre-export disk snapshot needs the implementation's enabled theory,
+; even when its later includes find these books already loaded.
+(deftheory fn-sfr-theory-paged-import (current-theory :here))
 (deftheory fn-sfr-theory-before-columns (universal-theory :here))
 (include-book "history-columns")
 (in-theory
@@ -48,6 +51,13 @@
   (set-difference-theories (current-theory :here)
                            (theory 'fn-sfr-theory-before-columns))))
 (deftheory fn-sfr-theory-before-disk (current-theory :here))
+; Keep the public baseline above; restore the enabled import snapshot for
+; the disk's proof theory before recording fn-sfr-theory-after-disk.
+(in-theory
+ (union-theories
+  (theory 'fn-sfr-theory-paged-import)
+  (set-difference-theories (current-theory :here)
+                           (theory 'fn-sfr-theory-before-columns))))
 (include-book "history-records-disk")
 (deftheory fn-sfr-theory-after-disk (current-theory :here))
 

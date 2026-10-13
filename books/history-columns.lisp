@@ -2,7 +2,11 @@
 (in-package "ACL2")
 (include-book "history-columns-foundation")
 
+; Preserve the foundation's enabled theory separately from the concrete
+; implementation.  The final export adds only this book's enabled events.
+(deftheory fn-hist-theory-before-paged (current-theory :here))
 (include-book "history-paged")
+(deftheory fn-hist-theory-after-paged (universal-theory :here))
 (attach-stobj fn-hist fn-hist-paged)
 
 (defabsstobj fn-hist
@@ -172,3 +176,11 @@
   :hints (("Goal" :cases ((stringp msgid))
            :in-theory (disable fn-cei-correspondencep fn-cei-msgid-records))
           ("Subgoal 2" :in-theory (enable fn-cei-msgid-records fn-cei-trie-records))))
+
+; The generic exports its foundation and its own theory, without exporting
+; the resident implementation's dependencies.
+(in-theory
+ (union-theories
+  (theory 'fn-hist-theory-before-paged)
+  (set-difference-theories (current-theory :here)
+                           (theory 'fn-hist-theory-after-paged))))
