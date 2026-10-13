@@ -55,7 +55,8 @@
   (fn-lb-log-model-read-home-frame position segs))
 
 (defun fn-lc-expected-home-frame (row)
-  (declare (xargs :guard (fn-held-p row) :verify-guards nil))
+  (declare (xargs :guard (and (fn-held-p row)
+                              (fn-lb-value-treep (fn-lb-log-model-homes row))) :verify-guards nil))
   (fn-lb-log-model-home-frame row))
 
 ;; The stored range of a row's payload (LA, P10 10-12): an article is stored in wire
@@ -72,14 +73,16 @@
 (defun fn-lc-bound-row (i fn-lbc segs)
   (declare (xargs :stobjs fn-lbc
                   :guard (and (fn-lbc-p fn-lbc) (natp i)
-                              (< i (fn-lc-count fn-lbc)) (fn-lc-segsp segs))
+                              (< i (fn-lc-count fn-lbc)) (fn-lc-segsp segs)
+                              (fn-lbc-lc-guardp segs fn-lbc))
                   :verify-guards nil))
   (fn-lbc-at i fn-lbc segs))
 
 (defun fn-lc-locator-resolves (fn-lbc i segs)
   (declare (xargs :stobjs fn-lbc
                   :guard (and (fn-lbc-p fn-lbc) (natp i)
-                              (< i (fn-lc-count fn-lbc)) (fn-lc-segsp segs))
+                              (< i (fn-lc-count fn-lbc)) (fn-lc-segsp segs)
+                              (fn-lbc-lc-guardp segs fn-lbc))
                   :verify-guards nil))
   (let* ((a (fn-lbc-loc0 i fn-lbc)) (b (fn-lbc-loc1 i fn-lbc))
          (row (fn-lc-bound-row i fn-lbc segs)))
@@ -94,7 +97,8 @@
 (defun fn-lc-resolve-from (i fn-lbc segs)
   (declare (xargs :stobjs fn-lbc
                   :guard (and (fn-lbc-p fn-lbc) (natp i)
-                              (<= i (fn-lc-count fn-lbc)) (fn-lc-segsp segs))
+                              (<= i (fn-lc-count fn-lbc)) (fn-lc-segsp segs)
+                              (fn-lbc-lc-guardp segs fn-lbc))
                   :measure (nfix (- (fn-lc-count fn-lbc) (nfix i)))
                   :verify-guards nil))
   (if (and (natp i) (< i (fn-lc-count fn-lbc)))
@@ -104,12 +108,13 @@
 
 (defun fn-lc-locators-resolve (fn-lbc segs)
   (declare (xargs :stobjs fn-lbc
-                  :guard (and (fn-lbc-p fn-lbc) (fn-lc-segsp segs))
+                  :guard (and (fn-lbc-p fn-lbc) (fn-lc-segsp segs)
+                              (fn-lbc-lc-guardp segs fn-lbc))
                   :verify-guards nil))
   (fn-lc-resolve-from 0 fn-lbc segs))
 
 (defun fn-lc-pin-tokens (fn-lc-pins)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (alistp fn-lc-pins) :verify-guards nil))
   (if (consp fn-lc-pins)
       (cons (caar fn-lc-pins) (fn-lc-pin-tokens (cdr fn-lc-pins)))
     nil))
