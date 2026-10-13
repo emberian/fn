@@ -269,6 +269,9 @@
          (fn-lzr-frame dict-id 0 0 r nil))
         (t r)))
 
+; Preserve the NTH vocabulary of the parse and decode shape lemmas.
+(local (in-theory (disable adt-nth-0 adt-nth-1+ pgs-x-nfix-when-natp)))
+
 (defun fn-lzr-expand (dicts z)
   (declare (xargs :guard (and (fn-lzr-dictsp dicts) (fn-cbor-octet-listp z))
                   :guard-hints (("Goal" :in-theory (disable fn-pzd-decode take nthcdr assoc-equal
@@ -464,6 +467,9 @@
    (implies (<= (nfix j) (len z))
             (equal (- (len z) (len (nthcdr j z))) (nfix j)))
    :hints (("Goal" :in-theory (enable nthcdr)))))
+
+; Keep the local LEN/NTHCDR facts in the supplied vocabulary.
+(local (in-theory (disable pgs-len-of-nthcdr)))
 
 (defthm fn-lzr-parse-c-is-the-tail
   (implies (fn-lzr-parse z)

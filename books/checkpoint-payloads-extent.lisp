@@ -116,6 +116,9 @@
          :hints (("Goal" :induct (nthcdr a x)))))
 
 ; The payload octets of a frame in a file, read at the ref's absolute offset.
+; Keep the exact append boundary facts supplied by :USE.
+(local (in-theory (disable adt-nthcdr-of-append-less)))
+
 (local
  (defthm cpl-payload-in-file
    (implies (and (true-listp pre) (true-listp post) (fn-cpl-payloadp p))
@@ -138,6 +141,9 @@
 ; payload: the new handle's payload is the octets the durable file holds at
 ; [OFF, OFF+LEN), which are the payload the plan appended (the file FILE holds
 ; the model file from offset 0: A-DURABLE-EXTENT's octets, named).
+; CPL-E-NTHCDR-SUM orients the nested slice in the opposite direction.
+(local (in-theory (disable fn-hp-nthcdr-nthcdr)))
+
 (defthm fn-cpl-seal-reads-back-the-payload
   (implies (and (true-listp pre) (true-listp post) (fn-cpl-payloadp p) (natp file)
                 (fn-cpl-holdsp file (append pre (fn-cpl-frame p) post) 0))

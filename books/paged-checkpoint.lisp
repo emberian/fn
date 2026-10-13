@@ -131,6 +131,9 @@
 ; closure disable executable counterparts, so enable the two for the instance.
 (local (in-theory (enable (:executable-counterpart adt-schemap)
                           (:executable-counterpart adt-ncols))))
+; Keep the generated pool/row shape lemmas in NTH vocabulary.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+
 (def-representation fn-pck-row (prog :tree) :pages t)
 
 (defconst *fn-pck-root-pages* 8)
