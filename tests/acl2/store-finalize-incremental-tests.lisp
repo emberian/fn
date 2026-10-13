@@ -405,3 +405,118 @@
         (not (member-eq 'fn-rii-ix-of entry))
         (not (member-eq 'fn-cnode-statep drain))
         (member-eq 'fn-cnode-statep fault))))
+
+; Open u64 exhaustion: crafted checkpoint, exact boundary, and earlier gates.
+(defun sfi-o-checkpoint (next)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((base (fn-sco-capture (list *fn-cfg-default-record*) nil)))
+    (fn-sco-make (fn-sco-records base) (fn-sco-cpr base)
+                 (update-nth 1 next (fn-sco-identity base))
+                 (fn-sco-consumer base) (fn-sco-topic base)
+                 (fn-sco-event-index base))))
+(defun sfi-o-replayed (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-sco-cpr-finish (fn-sco-cpr c) (list *fn-cfg-default-record*)))
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((configs (list *fn-cfg-default-record*))
+         (c (sfi-o-checkpoint (expt 2 64)))
+         (replayed (sfi-o-replayed c)))
+   (and (fn-sn-observed-historyp 0 (fn-sco-records c)) (equal (fn-replay-result-kind replayed) :ok) (fn-cnode-statep (fn-replay-result-node replayed)) (fn-replay-advance-okp (fn-cnode-node (fn-replay-result-node replayed)) 0) (equal (fn-stxk-context-next (fn-sco-identity c)) (expt 2 64)) (fn-sfi-historyp-extend 0 0 0 nil) (equal (fn-sfi-finalize-carried replayed c configs 0 0 nil 0) (fn-sn-open-error :identity)) (equal (fn-rii-sco-finalize-configured replayed c configs 0) (fn-sn-open-error :identity)) (equal (fn-sfi-finalize-carried replayed c configs 0 0 nil 0) (fn-rii-sco-finalize-configured replayed c configs 0))))))
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((configs (list *fn-cfg-default-record*))
+         (c (sfi-o-checkpoint (1- (expt 2 64))))
+         (replayed (sfi-o-replayed c)))
+   (and (fn-sn-observed-historyp 0 (fn-sco-records c)) (equal (fn-replay-result-kind replayed) :ok) (fn-cnode-statep (fn-replay-result-node replayed)) (fn-replay-advance-okp (fn-cnode-node (fn-replay-result-node replayed)) 0) (equal (fn-stxk-context-next (fn-sco-identity c)) (1- (expt 2 64))) (fn-sfi-historyp-extend 0 0 0 nil) (equal (fn-sn-open-kind (fn-sfi-finalize-carried replayed c configs 0 0 nil 0)) :ok) (equal (fn-sn-identity-next (fn-sn-open-state (fn-sfi-finalize-carried replayed c configs 0 0 nil 0))) (1- (expt 2 64))) (equal (fn-sn-open-kind (fn-rii-sco-finalize-configured replayed c configs 0)) :ok) (equal (fn-sn-identity-next (fn-sn-open-state (fn-rii-sco-finalize-configured replayed c configs 0))) (1- (expt 2 64))) (equal (fn-sfi-finalize-carried replayed c configs 0 0 nil 0) (fn-rii-sco-finalize-configured replayed c configs 0))))))
+
+; MUTATION: the old gate opens the crafted oversized checkpoint.
+(local
+ (defun fn-sfi-finalize-carried-old-for-teeth (replayed c configs count next suffix frontier)
+  (declare (xargs :guard (and (natp count) (natp next)
+                              (or (not (equal (fn-replay-result-kind replayed) :ok))
+                                  (fn-cnode-statep (fn-replay-result-node replayed))))
+                  :verify-guards nil))
+  (let ((events (fn-sco-records c)))
+    (if (or (null configs)
+            (not (fn-sfi-historyp-extend count next frontier suffix)))
+        (fn-sn-open-error :history)
+      (if (not (equal (fn-replay-result-kind replayed) :ok))
+          (fn-sn-open-error :replay)
+        (let* ((cn (fn-replay-result-node replayed))
+               (node (fn-cnode-node cn)))
+          (if (not (fn-rii-advance-idlep node frontier))
+              (fn-sn-open-error :frontier)
+            (let* ((advanced (fn-replay-advance-txid node frontier))
+                   (config (fn-cnode-config cn))
+                   (identity (fn-sco-identity c))
+                   (consumer (fn-sco-consumer c))
+                   (topic (fn-sco-topic c))
+                   (files (fn-sf-make :recovering frontier nil events
+                                      nil nil nil 0))
+                   (seed (fn-sn-observed-seed
+                          (fn-cnode-domain-of config)
+                          (fn-cfg-capacity (fn-cfg-value config))
+                          frontier events))
+                   (opened (fn-sn-with-event-index
+                            (fn-sn-with-topic
+                             (fn-sn-with-consumer
+                              (fn-cpo-install
+                               (fn-sn-update-replayed
+                                seed files advanced
+                                ; the frozen row deltas, as the configured
+                                ; finalize installs them: no payload is
+                                ; reinterned under the reopened keyring
+                                (fn-sn-index-of-rows events)
+                                identity)
+                               (fn-cnode-make advanced config) configs)
+                              (fn-cp-nth 1 consumer))
+                             topic)
+                            nil)))
+              (if (and (equal (fn-stxk-context-kind identity) :ok)
+                       (consp consumer) (eq (car consumer) :ok)
+                       (eq (fn-th-at 0 topic) :ok)
+                       (fn-sfi-sn-statep-carried opened))
+                  (fn-sn-open-ok opened)
+                (fn-sn-open-error :identity))))))))))
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((configs (list *fn-cfg-default-record*))
+         (c (sfi-o-checkpoint (expt 2 64)))
+         (replayed (sfi-o-replayed c))
+         (r (fn-sfi-finalize-carried-old-for-teeth replayed c configs 0 0 nil 0)))
+   (and (equal (fn-sn-open-kind r) :ok)
+        (not (fn-record-uint64p (fn-sn-identity-next (fn-sn-open-state r))))))))
+
+; Replay reaches exactly 2^64, but the actual earlier history gate rejects
+; this high sequence. The suffix count is zero, not the crafted identity NEXT.
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((configs (list *fn-cfg-default-record*))
+         (c (sfi-o-checkpoint (1- (expt 2 64))))
+         (wire (fn-record-make (1- (expt 2 64)) 0 0 "<open@example>" '(65)
+                  '("fn.test") "id" "subject" "evidence" 1 1))
+         (suffix (list (fn-held-plain wire 0)))
+         (extended (fn-sco-extend c configs suffix))
+         (replayed (sfi-o-replayed extended)))
+   (and (fn-record-p wire)
+        (equal (fn-stxk-context-kind (fn-sco-identity extended)) :ok)
+        (equal (fn-stxk-context-next (fn-sco-identity extended)) (expt 2 64))
+        (not (fn-sn-observed-historyp 1 (fn-sco-records extended)))
+        (equal (fn-sfi-finalize-carried replayed extended configs 0 0 suffix 1) (fn-sn-open-error :history))))))
+
+; Same ground identity context, both full and suffix paths, either side of
+; the u64 boundary. No suffix is needed to reach the final gate.
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((configs (list *fn-cfg-default-record*))
+         (low (sfi-o-checkpoint (1- (expt 2 64))))
+         (high (sfi-o-checkpoint (expt 2 64)))
+         (lo-full (fn-sco-finalize low configs 0))
+         (hi-full (fn-sco-finalize high configs 0))
+         (lo-suffix (fn-sfi-finalize-carried (sfi-o-replayed low) low configs 0 0 nil 0))
+         (hi-suffix (fn-sfi-finalize-carried (sfi-o-replayed high) high configs 0 0 nil 0)))
+   (and (equal (fn-sn-open-kind lo-full) :ok)
+        (equal (fn-sn-open-kind lo-suffix) :ok)
+        (equal hi-full (fn-sn-open-error :identity))
+        (equal hi-suffix (fn-sn-open-error :identity))))))
