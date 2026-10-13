@@ -147,6 +147,26 @@ class KnownRedsTests(TrainBase):
             with self.subTest(subject=subject):
                 self.assertIn('native subject', self.refuse_add(subject=subject))
 
+    def test_add_accepts_an_errored_fixture(self):
+        (self.work / 'tests').mkdir(exist_ok=True)
+        (self.work / 'tests/test_native_fixture_set.py').write_text('')
+        for subject in ('setUpClass (tests.test_native_fixture_set.ReleaseTests)',
+                        'tearDownClass (tests.test_native_fixture_set.ReleaseTests)',
+                        'setUpModule (tests.test_native_fixture_set)'):
+            with self.subTest(subject=subject):
+                self.assertEqual(known_reds.native_module(self.work, subject),
+                                 'tests.test_native_fixture_set')
+        rc, _, err = self.add(subject='setUpClass (tests.test_native_fixture_set.ReleaseTests)')
+        self.assertEqual(rc, 0, err)
+
+    def test_refuses_an_errored_fixture_without_its_module_or_shape(self):
+        for subject in ('setUpClass (tests.test_native_absent.ReleaseTests)',
+                        'setUpClass tests.test_native_fixture_set.ReleaseTests',
+                        'setUpClass (tests.test_native_fixture_set)',
+                        'setUpModule (tests.test_native_fixture_set.ReleaseTests)'):
+            with self.subTest(subject=subject):
+                self.assertIn('native subject', self.refuse_add(subject=subject))
+
     def test_refuses_noncommit_shas(self):
         blob = sh(self.work, 'git', '-C', str(self.work), 'rev-parse', 'HEAD:src.txt').stdout.strip()
         sh(self.work, 'git', '-C', str(self.work), 'tag', '-a', 'fixture-tag', '-m', 'fixture tag')

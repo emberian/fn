@@ -26,6 +26,12 @@ NATIVE_ID = re.compile(r'tests\.test_native_[A-Za-z0-9_]+\.[A-Za-z_][A-Za-z0-9_]
 # unittest.loader._FailedTest.<module>: the red a control run most needs to
 # hold.  Its real module is tests/<module>.py, which must exist here.
 FAILED_IMPORT_ID = re.compile(r'unittest\.loader\._FailedTest\.(test_[A-Za-z0-9_]+)')
+# A class or module fixture that errors is recorded as one case named
+# 'setUpClass (tests.<module>.<Class>)' (likewise tearDownClass,
+# setUpModule (tests.<module>), tearDownModule): every test under it is
+# unrun, so the fixture is the red.
+FIXTURE_ID = re.compile(r'(?:(?:setUp|tearDown)Class \((tests\.(test_[A-Za-z0-9_]+))\.[A-Za-z_][A-Za-z0-9_]*\)'
+                        r'|(?:setUp|tearDown)Module \((tests\.(test_[A-Za-z0-9_]+))\))')
 DECODER = json.JSONDecoder()
 
 
@@ -127,8 +133,15 @@ def native_module(root: Path, subject: str) -> str:
         if not (root / 'tests' / (failed[1] + '.py')).is_file():
             raise train.TrainError(f'native subject names no module tests/{failed[1]}.py: {subject}')
         return 'tests.' + failed[1]
-    raise train.TrainError('native subject must be tests.test_native_*.Class.method or '
-                           'unittest.loader._FailedTest.<test module> (a module that failed to import)')
+    fixture = FIXTURE_ID.fullmatch(subject)
+    if fixture:
+        module, name = (fixture[1], fixture[2]) if fixture[1] else (fixture[3], fixture[4])
+        if not (root / 'tests' / (name + '.py')).is_file():
+            raise train.TrainError(f'native subject names no module tests/{name}.py: {subject}')
+        return module
+    raise train.TrainError('native subject must be tests.test_native_*.Class.method, '
+                           'unittest.loader._FailedTest.<test module> (a module that failed to import) '
+                           'or setUpClass (tests.<module>.<Class>) and the like (a fixture that errored)')
 
 
 def item_state(root: Path, item: str):
