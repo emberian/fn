@@ -1274,7 +1274,10 @@ function supplied no observation at all, which is a defect here."
 
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
-  (fnn-owner-core 'fn-owner-finish-submission))
+  ;; FN_OWNER_MEASURE: the completion is also its own class, nested inside the
+  ;; commit hold, which stays inclusive (classes overlap; never add them).
+  (fnn-owner-measured (:commit-complete)
+    (fnn-owner-core 'fn-owner-finish-submission)))
 
 ;;; The typed results (books/owner-results.lisp; wave 5 adapter retirement).
 ;;; A wrapper that used to answer a keyword and leave the rest of its result

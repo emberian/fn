@@ -135,6 +135,18 @@ HELPERS = r"""
      (let ((word (handler-case (progn (fn-arena-get-span-into h at n arena out) :accepted)
                    (fnn-extent-fault () :refused))))
        (list word (fn-octets-list out)))))
+ ;; Exact payload comparison, with the exported payload as the oracle on
+ ;; this same handle. No host comparator participates in the served decision.
+ (defun fn-spi-payload-equal (arena h)
+   (let* ((payload (fn-arena-payload h arena))
+          (cases (list payload (cons (logxor 1 (car payload)) (cdr payload))
+                       (butlast payload) (append payload (list 0))))
+          (answers (list t nil nil nil)) (fails nil))
+     (loop for x in cases for answer in answers for i from 0 do
+       (let ((actual (fn-arena-payload-equal-p h x arena)))
+         (unless (and (eq actual answer) (eq actual (equal payload x)))
+           (push (list :fail h i actual answer) fails))))
+     (list :counts (list (cons (fn-spi-kind arena h) 4)) :fails fails)))
  ;; The window mode with no worker and no cache: a stretch no route holds
  ;; throws fnn-extent-cold; either way the buffer holds the prefix, then the
  ;; whole span or nothing.
@@ -291,6 +303,21 @@ class ArenaSpanIntoImageTests(verbs.NativeOperatorVerbFixture):
         for kind in KINDS:
             # a forgotten handle has the empty payload: its one case is (0 . 0)
             self.assertGreater(got.get(kind, 0), 0, "{} not covered: {}".format(kind, got))
+
+    def test_payload_equal_on_staged_extent_and_lz_handles(self):
+        self.open_owner()
+        self.repl("(progn (defparameter *fn-spi-s* (fn-spi-scratch {})) t)".format(self.LIVE))
+        held = survey(self.repl("(fn-spi-survey *fn-spi-s*)"))
+        seen = set()
+        for h, kind, n in held:
+            if kind not in {"staged", "extent", "lz"}:
+                continue
+            self.assertGreater(n, 0, (h, kind, n))
+            text = self.repl("(fn-spi-payload-equal *fn-spi-s* {})".format(h), timeout=900)
+            self.assertEqual(failures(text), [], text)
+            self.assertEqual(counts(text), {kind: 4}, text)
+            seen.add(kind)
+        self.assertEqual(seen, {"staged", "extent", "lz"})
 
     def test_a_span_crossing_run_boundaries_is_covered_for_the_big_extent_and_lz_handles(self):
         self.open_owner()

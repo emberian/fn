@@ -2074,12 +2074,51 @@ HOST_LOAD = re.compile(
     r'\(load\s+(?:\(or\s+\([^()]*\)\s+)?"(host/[^"]+\.lisp)"')
 
 
+
+# fnn-save-world-flavor is defined only in host/native/strip-world.lisp.
+# build.lisp, build-dtn.lisp and build-store-test.lisp load it just before
+# save-exec; no test loads it (the Python source-runner fixture is text only).
+# tools/native_source_runner.py removes that load and call from source runs.
+# Unlike io.lisp, which bare-SBCL harnesses load whole, this marks a built image.
+IMAGE_PROBE_GUARD = """(unless (fboundp 'acl2::fnn-save-world-flavor)
+  (error "fn: this probe runs only inside a built fn-host image"))"""
+
+
+def image_probe_guard(text: str) -> tuple[bool, bool]:
+    """(Valid first guard, misplaced/duplicate guard), comparing source spans."""
+    from tools import ledger
+    def normalized(source):
+        return b" ".join(source.encode("utf-8").split())
+    guard = normalized(IMAGE_PROBE_GUARD)
+    spans = []
+    class SpanReader(ledger.Reader):
+        def form(self):
+            self.skip_space()
+            start = self.pos
+            result = super().form()
+            spans.append(normalized(self.source[start:self.pos]))
+            return result
+    reader, top = SpanReader(text), []
+    while True:
+        reader.skip_space()
+        start = reader.pos
+        if start == len(text):
+            break
+        reader.form()  # Only boundaries matter: Reader folds case and escapes.
+        top.append(normalized(text[start:reader.pos]))
+    total = spans.count(guard)
+    valid = top[:2] == [b'(in-package "ACL2")', guard] and total == 1
+    return valid, total > 0 and not valid
+
+
 def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
                  origins: dict, fixture_sources: dict[str, str] | None = None) -> dict | None:
     """One harness: its stale hand stubs, the calls it leaves unresolved,
     and its derived block (expected and current).  None when the harness
     extracts nothing (or loads whole host files)."""
     from tools import ledger
+    if image_probe_guard(text)[0]:
+        return None  # the runtime guard requires the real host before any probe code runs
     if re.search(r'\(load\s+"host/', text):
         return None  # it loads whole host files: nothing is stubbed in their place
     if re.search(r'\(defparameter \*roots\*', text):
@@ -2178,8 +2217,18 @@ def harness_scans(root: Path) -> list[tuple[Path, str, str, dict]]:
     for path in sorted((root / "tests").glob("*.lisp")):
         relative = path.relative_to(root).as_posix()
         text = path.read_text(encoding="utf-8")
-        fixtures = harness_fixture_sources(root, relative, text)
-        scan = harness_scan(relative, text, rawdefs, bodies, origins, fixtures)
+        guarded, misplaced = image_probe_guard(text)
+        _hand, current = split_stub_block(text)
+        if misplaced or (guarded and current is not None):
+            scan = {"stale": [], "unresolved": {}, "callers": {},
+                    "expected": current if misplaced else None, "current": current,
+                    "extracted": set(), "stubs": {}, "checked": 0}
+            if misplaced:
+                scan["stale"].append({"lint": "test-stubs", "where": relative, "callee": "",
+                    "problem": 'misplaced guard: first two forms must be exactly (in-package "ACL2") and IMAGE_PROBE_GUARD, with no other guard'})
+        else:
+            fixtures = None if guarded else harness_fixture_sources(root, relative, text)
+            scan = harness_scan(relative, text, rawdefs, bodies, origins, fixtures)
         if scan is not None:
             out.append((path, relative, text, scan))
     return out
