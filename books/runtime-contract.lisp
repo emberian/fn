@@ -1089,12 +1089,15 @@
 ; than the sender's, and a static one when the sender is not static, so that
 ; connections pass octets only through the owner and a connection's hand
 ; never learns whether another connection is live.  The target's liveness is
-; checked when the hand completes.
+; checked when the hand completes.  Hands run between instance slots only:
+; the sender is one too (slot 0, the listener, never hands), so the target's
+; answering hand back to its sender is always admissible (P's R9 S1, 10-12).
 (defun fn-rtc-hand-target-okp (extra id s)
   (declare (xargs :guard t))
   (let ((to (fn-rtc-get 0 extra)) (tinc (fn-rtc-get 1 extra))
         (ns (fn-rtc-nstatic (fn-rtc-config s))))
     (and (natp to) (natp tinc)
+         (<= 1 (nfix id))
          (<= 1 to) (< to (fn-rtc-nslots (fn-rtc-config s)))
          (not (equal to (nfix id)))
          (implies (< ns (nfix id)) (<= to ns)))))

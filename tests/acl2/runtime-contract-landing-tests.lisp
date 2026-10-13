@@ -177,3 +177,12 @@
 (assert! (and (rtcz-model-invp *rtcz-pinned-pool*) (fn-rtc-in-leased-p 0 *rtcz-pinned-pool*)
               (not (fn-rtc-splice-okp 0 0 '(42) *rtcz-pinned-pool*))
               (equal (fn-rtc-st$a-splice 0 0 '(42) *rtcz-pinned-pool*) *rtcz-pinned-pool*)))
+
+; R9 S1 (P's lane/post c6, 10-12): slot 0, the listener, never hands.  Before
+; the sender conjunct its hand to the static owner was admitted and the
+; owner's answering hand back to slot 0 was refused (the contract requires a
+; positive target).  Config of R9's counterexample: nslots 3, nstatic 1.
+(defconst *rtcz-r9-cfg* '(3 4 0 1 0 1 66560 3 65663))
+(assert! (not (fn-rtc-hand-target-okp '(1 1) 0 (list *rtcz-r9-cfg*))))
+(assert! (fn-rtc-hand-target-okp '(1 1) 2 (list *rtcz-r9-cfg*)))
+(assert! (fn-rtc-hand-target-okp '(2 1) 1 (list *rtcz-r9-cfg*)))

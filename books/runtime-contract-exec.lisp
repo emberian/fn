@@ -295,6 +295,7 @@
   (let ((to (fn-rtc-get 0 extra)) (tinc (fn-rtc-get 1 extra))
         (cfg (fn-rtc-st-config fn-rtc-st)))
     (and (natp to) (natp tinc)
+         (<= 1 (nfix id))
          (<= 1 to) (< to (fn-rtc-nslots cfg))
          (not (equal to (nfix id)))
          (implies (< (fn-rtc-nstatic cfg) (nfix id)) (<= to (fn-rtc-nstatic cfg))))))
