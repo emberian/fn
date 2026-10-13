@@ -12,26 +12,30 @@ caller figure first runs `fn-core --fn heap -- ARGV' (the core's own,
 ACL2-decided figure, at the core's size plus two nurseries) and starts at the
 heap and control stack it prints, or stops with its refusal.  The exec line's
 heap and stack are what a start that names no command (or `heap' itself) runs
-at.  The decision finds the core as "$0.core", so the launcher and its core are
-NAME and NAME.core side by side (tools/extract/core.sh).
+at.  The decision resolves the launcher before finding its adjacent core, so
+symlinks (including relative links and chains) reach the same core. The launcher
+and core remain NAME and NAME.core side by side (tools/extract/core.sh).
 """
 import argparse
 from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[2]
-BEGIN, END = "# BEGIN fn_decide_heap", "# END fn_decide_heap"
+BLOCKS = ("fn_resolve_path", "fn_decide_heap")
 
 
 def decision_prelude(root=ROOT):
     """The shell lines a launcher runs before its exec: packaging/fn's
-    fn_decide_heap and packaging/launcher-decide.sh, verbatim."""
+    path resolver, fn_decide_heap and packaging/launcher-decide.sh, verbatim."""
     lines = Path(root, "packaging/fn").read_text().splitlines(keepends=True)
-    starts = [i for i, line in enumerate(lines) if line.startswith(BEGIN)]
-    ends = [i for i, line in enumerate(lines) if line.startswith(END)]
-    if len(starts) != 1 or len(ends) != 1 or ends[0] < starts[0]:
-        raise ValueError("packaging/fn has no single fn_decide_heap block")
-    return "".join(lines[starts[0]:ends[0] + 1]) + Path(root, "packaging/launcher-decide.sh").read_text()
+    blocks = []
+    for name in BLOCKS:
+        starts = [i for i, line in enumerate(lines) if line.startswith("# BEGIN " + name)]
+        ends = [i for i, line in enumerate(lines) if line.startswith("# END " + name)]
+        if len(starts) != 1 or len(ends) != 1 or ends[0] < starts[0]:
+            raise ValueError("packaging/fn has no single %s block" % name)
+        blocks.append("".join(lines[starts[0]:ends[0] + 1]))
+    return "".join(blocks) + Path(root, "packaging/launcher-decide.sh").read_text()
 
 
 def launcher(runtime, home, core, heap, stack, tls=None, prelude=None):
@@ -63,7 +67,7 @@ def main():
     parser.add_argument("--tls")
     args = parser.parse_args()
     if Path(args.core).resolve() != Path(str(args.output) + ".core").resolve():
-        parser.error("the core must be OUTPUT.core (the decision reads \"$0.core\")")
+        parser.error("the core must be OUTPUT.core (beside the resolved launcher)")
     text = launcher(args.runtime, args.home, args.core, args.heap, args.stack, args.tls)
     args.output.write_text(text)
     args.output.chmod(0o755)
