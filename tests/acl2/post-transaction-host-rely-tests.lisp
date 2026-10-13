@@ -282,3 +282,206 @@
 (value-triple
  (cw "R5 TEETH: s=(pthrt-reading-state), host cfg=~x0 q=100000 ops=(~x1); delivered event=~x2; reading->hashing; old POST-ST:=ST relies NIL; real whole-delivery POST-ST relies T; runtime refused NIL. Checked acceptance is the encapsulate's local witness.~%"
   *fn-pth-rely-cfg* *pthrt-r1-op* *pthrt-r1-ev*))
+
+; R8: full R6 HOST ops, old acceptance and the actual bounded-extent machine.
+; The only old mutation removes the approved extent conjunct; every dispatch
+; and executor body is taken from its actual source event.
+(defconst *pthrt-r6-open-data*
+ (list (list 0 (make-list 32 :initial-element 0) 18446744073709551616 1 0)
+       18446744073709555712 '(1 256 256)))
+(defun pthrt-r6-completion (a)
+ (let ((e (pthrt-completion a)))
+  (if (equal (car a) :opened) (update-nth 5 *pthrt-r6-open-data* e) e)))
+(defun pthrt-r8-rename (tree alist)
+ (declare (xargs :guard t :measure (acl2-count tree)))
+ (if (consp tree)
+  (cons (pthrt-r8-rename (car tree) alist) (pthrt-r8-rename (cdr tree) alist))
+  (let ((pair (assoc-equal tree alist))) (if pair (cdr pair) tree))))
+(defun pthrt-r8-remove-extent (tree)
+ (declare (xargs :guard t :measure (acl2-count tree)))
+ (if (consp tree)
+  (if (equal (car tree) '(< (nfix (fn-rtc-get 1 d)) (expt 2 64)))
+   (pthrt-r8-remove-extent (cdr tree))
+   (cons (pthrt-r8-remove-extent (car tree)) (pthrt-r8-remove-extent (cdr tree)))) tree))
+(defun pthrt-r8-count-extent (tree)
+ (declare (xargs :guard t :measure (acl2-count tree)))
+ (if (equal tree '(< (nfix (fn-rtc-get 1 d)) (expt 2 64))) 1
+  (if (consp tree) (+ (pthrt-r8-count-extent (car tree)) (pthrt-r8-count-extent (cdr tree))) 0)))
+(make-event
+ (let ((event (get-event 'fn-ptx-step1 (w state))))
+  (if (equal (pthrt-r8-count-extent event) 1)
+   (value '(value-triple :one-authorized-conjunct))
+   (er soft 'pthrt-r8-old-open "Expected exactly one extent conjunct."))))
+(defun pthrt-r8-copy-events (events alist)
+ (declare (xargs :guard t :measure (acl2-count events)))
+ (if (consp events)
+  (let ((event (car events)))
+   (cons (pthrt-r8-rename
+          (if (equal (cadr event) 'fn-ptx-step1) (pthrt-r8-remove-extent event) event) alist)
+         (pthrt-r8-copy-events (cdr events) alist))) nil))
+(make-event
+ (let* ((world (w state))
+       (alist '((fn-ptx-step1 . pthrt-r6-old-step1) (fn-ptx-step . pthrt-r6-old-step)
+               (fn-pthm-step . pthrt-r6-old-machine) (fn-pth-x-deliver . pthrt-r6-old-deliver)
+               (fn-pth-x-step* . pthrt-r6-old-layer) (pthrt-drive-op . pthrt-r6-old-drive)
+               (pthrt-completion . pthrt-r6-completion) (pthrt-drain . pthrt-r6-old-drain)
+               (pthrt-execute . pthrt-r6-old-execute) (pthrt-local . pthrt-r6-old-local)))
+       (events (list
+          (get-event 'fn-ptx-step1 world)
+          (get-event 'fn-ptx-step world)
+          (get-event 'fn-pthm-step world)
+          (get-event 'fn-pth-x-deliver world)
+          (get-event 'fn-pth-x-step* world)
+          (get-event 'pthrt-drive-op world)
+          (get-event 'pthrt-drain world)
+          (get-event 'pthrt-execute world)
+          (get-event 'pthrt-local world)
+          )))
+  (cons 'progn (pthrt-r8-copy-events events alist))))
+(make-event (value `(defconst *pthrt-r6-old-observations* ',(pthrt-r6-old-local *fn-pth-rely-cfg*))))
+(defconst *pthrt-r6-same-ops* (pthrt-ops *pthrt-r6-old-observations*))
+(defun pthrt-r8-run-ops (ops fn-rtc-st)
+ (declare (xargs :stobjs fn-rtc-st :guard t))
+ (if (consp ops)
+  (mv-let (fn-rtc-st obs acts) (pthrt-drive-op (car ops) 100000 fn-rtc-st)
+   (declare (ignore acts))
+   (mv-let (fn-rtc-st rest) (pthrt-r8-run-ops (cdr ops) fn-rtc-st)
+    (mv fn-rtc-st (cons obs rest)))) (mv fn-rtc-st nil)))
+(defun pthrt-r8-fixed-execute (ops fn-rtc-st)
+ (declare (xargs :stobjs fn-rtc-st :guard t))
+ (mv-let (fn-rtc-st acts) (fn-pth-x-init *fn-pth-rely-cfg* fn-rtc-st)
+  (declare (ignore acts)) (pthrt-r8-run-ops ops fn-rtc-st)))
+(defun pthrt-r8-fixed-local (ops)
+ (declare (xargs :guard t :verify-guards nil))
+ (with-local-stobj fn-rtc-st (mv-let (fn-rtc-st obs) (pthrt-r8-fixed-execute ops fn-rtc-st) obs)))
+(make-event (value `(defconst *pthrt-r6-new-observations* ',(pthrt-r8-fixed-local *pthrt-r6-same-ops*))))
+(defthm pthrt-r6-old-open-submits-the-refused-pwrite
+ (let ((o (nth 7 *pthrt-r6-old-observations*)))
+  (and (nth 3 o)
+       (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates (nth 1 o)))) :hashing)
+       (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates (nth 2 o)))) :payload-writing)
+       (equal (nth 5 o) '((:submit :pwrite (0 1 0 42) (2 18446744073709551616)))))))
+(defun pthrt-r8-closed-observations-p (obs)
+ (if (consp obs)
+  (and (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates (nth 2 (car obs))))) :closed)
+       (pthrt-r8-closed-observations-p (cdr obs))) t))
+(defthm pthrt-r6-new-open-stays-closed-on-the-same-run
+ (and (equal (pthrt-ops *pthrt-r6-new-observations*) *pthrt-r6-same-ops*)
+      (pthrt-r8-closed-observations-p *pthrt-r6-new-observations*)))
+(defconst *pthrt-r8-open-at-bound*
+ (list :opened '(:done 0) 1 1
+       (list (list 0 (make-list 32 :initial-element 0) 0 1 0) 18446744073709551616 '(1 256 256))))
+(defconst *pthrt-r8-open-below-bound*
+ (list :opened '(:done 0) 1 1
+       (list (list 0 (make-list 32 :initial-element 0) 0 1 0) 18446744073709551615 '(1 256 256))))
+(defthm pthrt-open-at-2^64-stays-closed
+ (equal (fn-ptx-ph (mv-nth 0 (fn-ptx-step1 (fn-ptx-closed) *pthrt-r8-open-at-bound* nil 0))) :closed)
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories '(fn-ptx-step1 fn-ptx-wfp fn-ptx-fields-fit fn-ptx-closed
+                     fn-ptx-opened fn-ptx-mk pthrt-nil-acc-fits car-cons cdr-cons)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-ptx-step1) (:executable-counterpart fn-ptx-wfp)
+       (:executable-counterpart fn-ptx-fields-fit))))))))
+(defthm pthrt-open-below-2^64-is-idle
+ (equal (fn-ptx-ph (mv-nth 0 (fn-ptx-step1 (fn-ptx-closed) *pthrt-r8-open-below-bound* nil 0))) :idle)
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories '(fn-ptx-step1 fn-ptx-wfp fn-ptx-fields-fit fn-ptx-closed
+                     fn-ptx-opened fn-ptx-mk pthrt-nil-acc-fits car-cons cdr-cons)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-ptx-step1) (:executable-counterpart fn-ptx-wfp)
+       (:executable-counterpart fn-ptx-fields-fit))))))))
+; R7's exact ground refutation of the old unfolding formula remains a test fact.
+(defthm pthrt-old-step1-0-formula-is-false
+ (not (equal (mv-nth 0 (fn-ptx-step1 (fn-ptx-closed) '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))) nil 0))
+         (let* ((id (fn-rtc-ev-id '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (inc (fn-rtc-ev-inc '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (kind (fn-rtc-get 0 '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (out (fn-rtc-get 1 '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (tag (fn-rtc-get 0 out)) (n (fn-rtc-get 1 out)) (ph (fn-ptx-ph (fn-ptx-closed))) (kd (fn-ptx-kd (fn-ptx-closed))) (ext (fn-ptx-ext (fn-ptx-closed))) (nxt (fn-ptx-nxt (fn-ptx-closed))) (m0 (fn-ptx-chg (fn-ptx-closed) :committed nil))) (cond ((eq kind :opened) (if (and (eq ph :closed) (eq tag :done)) (let* ((d (fn-rtc-ev-opened-data '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (m1 (fn-ptx-opened (fn-rtc-get 0 d) (nfix (fn-rtc-get 1 d)) (fn-rtc-get 2 d)))) (if (and (fn-ptx-wfp m1) (<= (fn-ptx-fmax m1) *fn-frame-max-payload*) (equal (len (fn-ptx-kd-last (fn-ptx-kd m1))) 32)) m1 m0)) m0)) ((eq kind :handed) (let* ((hd (fn-rtc-get 6 '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (p (list (fn-ptx-atom (fn-rtc-get 4 '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (fn-ptx-atom (fn-rtc-get 5 '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (fn-rtc-h-buf hd) (fn-rtc-h-len hd)))) (cond ((member-eq ph '(:fenced :closed)) m0) ((eq ph :idle) (mv-nth 0 (fn-ptx-start p nil kd ext (fn-ptx-geo (fn-ptx-closed)) nil))) ((< (len (fn-ptx-q (fn-ptx-closed))) *fn-ptx-k*) (fn-ptx-chg m0 :q (append (true-list-fix (fn-ptx-q (fn-ptx-closed))) (list p)))) (t m0)))) ((and (eq ph :reading) (eq kind :timer)) (mv-nth 0 (fn-ptx-read (fn-ptx-closed) 0 id inc nil))) ((and (eq ph :hashing) (eq kind :timer)) (mv-nth 0 (fn-ptx-hash (fn-ptx-closed) 0 id inc nil))) ((and (eq ph :extending) (eq kind :extend)) (if (eq tag :done) (fn-ptx-chg m0 :ph :extsyncing :evd (fn-ptx-evd+ (fn-ptx-closed) '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (mv-nth 0 (fn-ptx-end m0 :refused kd ext t nil id inc nil)))) ((and (eq ph :extsyncing) (eq kind :fsync)) (if (eq tag :done) (let ((m1 (fn-ptx-chg m0 :ph :payload-writing :k 0 :evd (fn-ptx-evd+ (fn-ptx-closed) '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))))) m1) (mv-nth 0 (fn-ptx-end m0 :refused kd ext t nil id inc nil)))) ((and (eq ph :payload-writing) (eq kind :pwrite)) (let ((k (fn-ptx-k (fn-ptx-closed)))) (cond ((not (and (eq tag :done) (equal n (fn-ptx-span-n k (fn-ptx-closed))))) (mv-nth 0 (fn-ptx-end m0 :uncertain kd ext t nil id inc nil))) (t (let ((m1 (fn-ptx-chg m0 :ph (if (< (+ k 2) (fn-ptx-nspans (fn-ptx-closed))) :payload-writing :log-writing) :k (+ k 1) :evd (fn-ptx-evd+ (fn-ptx-closed) '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))))) m1))))) ((and (eq ph :log-writing) (eq kind :pwrite)) (if (and (eq tag :done) (equal n (fn-ptx-span-n (fn-ptx-k (fn-ptx-closed)) (fn-ptx-closed)))) (fn-ptx-chg m0 :ph :committing :evd (fn-ptx-evd+ (fn-ptx-closed) '(:opened (:done 0) 1 1 ((0 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) 18446744073709551616 1 0) 18446744073709555712 (1 256 256))))) (mv-nth 0 (fn-ptx-end m0 :uncertain kd ext t nil id inc nil)))) ((and (eq ph :committing) (eq kind :fsync)) (if (eq tag :done) (mv-nth 0 (fn-ptx-end m0 :posted (fn-ptx-kd-commit kd (fn-rtc-get 1 (fn-ptx-hs (fn-ptx-closed))) (fn-ptx-elen (fn-ptx-closed))) nxt nil t id inc nil)) (mv-nth 0 (fn-ptx-end m0 :uncertain kd ext t nil id inc nil)))) ((eq kind :hand) m0) (t m0)))))
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories '(fn-ptx-step1 fn-ptx-wfp fn-ptx-fields-fit fn-ptx-closed
+                     fn-ptx-opened fn-ptx-mk pthrt-nil-acc-fits car-cons cdr-cons)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-ptx-step1) (:executable-counterpart fn-ptx-wfp)
+       (:executable-counterpart fn-ptx-fields-fit))))))))
+(value-triple (cw "R8 TEETH: full same R6 ops: OLD submits pwrite at 2^64, refused; NEW stays CLOSED. Ext=2^64 CLOSED, ext=2^64-1 IDLE. Old step1-0 formula ground instance refuted.~%"))
+
+; R9 tooth: remove ONLY the chain-octet conjunct, count checked on the source.
+(defconst *pthrt-r9-chain-conjunct* '(fn-cbor-octet-listp (fn-ptx-kd-last (fn-ptx-kd m1))))
+(defconst *pthrt-r9-open-data*
+ (list (list 0 (make-list 32 :initial-element 256) 0 1 0) 0 '(1 256 256)))
+(defun pthrt-r9-completion (a)
+ (let ((e (pthrt-completion a)))
+  (if (equal (car a) :opened) (update-nth 5 *pthrt-r9-open-data* e) e)))
+(defun pthrt-r9-count-conjunct (tree conjunct)
+ (declare (xargs :guard t :measure (acl2-count tree)))
+ (if (equal tree conjunct) 1
+  (if (consp tree) (+ (pthrt-r9-count-conjunct (car tree) conjunct)
+                       (pthrt-r9-count-conjunct (cdr tree) conjunct)) 0)))
+(defun pthrt-r9-remove-conjunct (tree conjunct)
+ (declare (xargs :guard t :measure (acl2-count tree)))
+ (if (consp tree)
+  (if (equal (car tree) conjunct) (pthrt-r9-remove-conjunct (cdr tree) conjunct)
+   (cons (pthrt-r9-remove-conjunct (car tree) conjunct)
+         (pthrt-r9-remove-conjunct (cdr tree) conjunct))) tree))
+(defun pthrt-r9-copy-events (events alist)
+ (declare (xargs :guard t :measure (acl2-count events)))
+ (if (consp events)
+  (cons (pthrt-r8-rename
+          (if (equal (cadr (car events)) 'fn-ptx-step1)
+           (pthrt-r9-remove-conjunct (car events) *pthrt-r9-chain-conjunct*) (car events)) alist)
+        (pthrt-r9-copy-events (cdr events) alist)) nil))
+(make-event
+ (let* ((world (w state)) (step1 (get-event 'fn-ptx-step1 world))
+        (alist '((fn-ptx-step1 . pthrt-r9-old-step1) (fn-ptx-step . pthrt-r9-old-step)
+                 (fn-pthm-step . pthrt-r9-old-machine) (fn-pth-x-deliver . pthrt-r9-old-deliver)
+                 (fn-pth-x-step* . pthrt-r9-old-layer) (pthrt-drive-op . pthrt-r9-old-drive)
+                 (pthrt-completion . pthrt-r9-completion) (pthrt-drain . pthrt-r9-old-drain)
+                 (pthrt-execute . pthrt-r9-old-execute) (pthrt-local . pthrt-r9-old-local)))
+        (events (list step1 (get-event 'fn-ptx-step world) (get-event 'fn-pthm-step world)
+                  (get-event 'fn-pth-x-deliver world) (get-event 'fn-pth-x-step* world)
+                  (get-event 'pthrt-drive-op world) (get-event 'pthrt-drain world)
+                  (get-event 'pthrt-execute world) (get-event 'pthrt-local world))))
+  (if (equal (pthrt-r9-count-conjunct step1 *pthrt-r9-chain-conjunct*) 1)
+   (value (cons 'progn (pthrt-r9-copy-events events alist)))
+   (er soft 'pthrt-r9-old-chain "Expected exactly one chain-octet conjunct."))))
+(make-event (value `(defconst *pthrt-r9-old-observations* ',(pthrt-r9-old-local *fn-pth-rely-cfg*))))
+(defconst *pthrt-r9-same-ops* (pthrt-ops *pthrt-r9-old-observations*))
+(make-event (value `(defconst *pthrt-r9-new-observations* ',(pthrt-r8-fixed-local *pthrt-r9-same-ops*))))
+(defconst *pthrt-r9-bad-header*
+ (append '(70 78 76 71 1 1 0 0 0 152) (make-list 32 :initial-element 256)))
+(defthm pthrt-r9-old-chain-makes-a-request-that-is-not-data-ok
+ (let* ((o (nth 6 *pthrt-r9-old-observations*))
+        (r (list :write 0 1 0 *pthrt-r9-bad-header*)))
+  (and (nth 3 o)
+       (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates (nth 1 o)))) :reading)
+       (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates (nth 2 o)))) :hashing)
+       (equal (nth 5 o) (list r))
+       (not (fn-pth-req-data-okp r)))))
+(defthm pthrt-r9-non-octet-chain-new-open-stays-closed-on-the-same-run
+ (and (equal (pthrt-ops *pthrt-r9-new-observations*) *pthrt-r9-same-ops*)
+      (pthrt-r8-closed-observations-p *pthrt-r9-new-observations*)))
+(defconst *pthrt-r9-bad-open* (list :opened '(:done 0) 1 1 *pthrt-r9-open-data*))
+(defthm pthrt-r9-open-violates-only-the-added-chain-conjunct
+ (let ((m1 (fn-ptx-opened (fn-rtc-get 0 *pthrt-r9-open-data*)
+                         (nfix (fn-rtc-get 1 *pthrt-r9-open-data*))
+                         (fn-rtc-get 2 *pthrt-r9-open-data*))))
+  (and (fn-ptx-wfp m1) (<= (fn-ptx-fmax m1) *fn-frame-max-payload*)
+       (< (nfix (fn-rtc-get 1 *pthrt-r9-open-data*)) (expt 2 64))
+       (equal (len (fn-ptx-kd-last (fn-ptx-kd m1))) 32)
+       (not (fn-cbor-octet-listp (fn-ptx-kd-last (fn-ptx-kd m1))))))
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories '(fn-ptx-wfp fn-ptx-fields-fit fn-ptx-opened fn-ptx-mk
+                     pthrt-nil-acc-fits car-cons cdr-cons)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-ptx-wfp) (:executable-counterpart fn-ptx-fields-fit))))))))
+(defthm pthrt-r9-non-octet-chain-open-stays-closed
+ (equal (fn-ptx-ph (mv-nth 0 (fn-ptx-step1 (fn-ptx-closed) *pthrt-r9-bad-open* nil 0))) :closed)
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories '(fn-ptx-step1 fn-ptx-wfp fn-ptx-fields-fit fn-ptx-closed
+                     fn-ptx-opened fn-ptx-mk pthrt-nil-acc-fits car-cons cdr-cons)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-ptx-step1) (:executable-counterpart fn-ptx-wfp)
+       (:executable-counterpart fn-ptx-fields-fit))))))))
+(value-triple (cw "R9 CHAIN TEETH: exactly one octet conjunct removed; all other open checks hold; OLD request data predicate NIL; NEW same-run owner CLOSED.~%"))

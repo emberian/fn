@@ -6,6 +6,158 @@
 (set-verify-guards-eagerness 0)
 (set-ignore-ok t)
 
+; R9: the request validator's state-independent checks and its complement.
+; These are factored by the equalities below, not a second admissibility check.
+(defun fn-pth-req-data-okp (r)
+ (case (fn-rtc-get 0 r)
+  ((:acquire :release) (natp (fn-rtc-get 1 r)))
+  (:write (and (natp (fn-rtc-get 1 r)) (natp (fn-rtc-get 3 r))
+               (fn-cbor-octet-listp (fn-rtc-get 4 r))))
+  (:close t)
+  (:cancel (and (member-eq (fn-rtc-get 1 r) *fn-rtc-machine-kinds*)
+                (not (member-eq (fn-rtc-get 1 r) '(:hand :pool)))))
+  (:submit
+   (let ((kind (fn-rtc-get 1 r)) (hd (fn-rtc-get 2 r)) (extra (fn-rtc-get 3 r)))
+    (and (member-eq kind *fn-rtc-machine-kinds*)
+         (fn-rtc-kind-extrap kind extra)
+         (implies (eq kind :hand)
+                  (and (natp (fn-rtc-get 0 extra)) (natp (fn-rtc-get 1 extra))
+                       (<= 1 (fn-rtc-get 0 extra))))
+         (cond ((eq kind :pool) (and (null hd) (null extra)))
+               ((not (fn-rtc-buffered-kind-p kind)) (null hd))
+               (t (and (fn-rtc-handlep hd)
+                       (implies (eq kind :hand) (equal (fn-rtc-h-off hd) 0))))))))
+  (otherwise nil)))
+(defun fn-pth-reqs-data-okp (rs)
+ (if (consp rs) (and (fn-pth-req-data-okp (car rs)) (fn-pth-reqs-data-okp (cdr rs))) t))
+(defun fn-pth-req-state-okp (r id inc s)
+ (let* ((h (fn-rtc-get 1 r)) (g (fn-rtc-get 2 r)) (off (fn-rtc-get 3 r))
+        (b (fn-rtc-buffer h s)))
+  (case (fn-rtc-get 0 r)
+   (:acquire (and (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                  (equal (fn-rtc-home h (fn-rtc-config s)) (nfix id))
+                  (equal (fn-rtc-b-owner b) '(:free))))
+   (:write (and (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                (equal (fn-rtc-b-owner b) (list :workspace id inc))
+                (equal (fn-rtc-b-gen b) g)
+                (<= off (len (fn-rtc-b-bytes b)))
+                (<= (+ off (len (fn-rtc-get 4 r))) (fn-rtc-buf-cap h (fn-rtc-config s)))))
+   (:release (and (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                  (equal (fn-rtc-b-owner b) (list :workspace id inc))
+                  (equal (fn-rtc-b-gen b) g)))
+   (:close (and (fn-rtc-live-p id inc s) (< (fn-rtc-nstatic (fn-rtc-config s)) (nfix id))))
+   (:cancel (and (fn-rtc-current-p id inc s)
+                 (fn-rtc-kind-out-p (fn-rtc-get 1 r) id inc (fn-rtc-uses s))))
+   (:submit
+    (let* ((kind (fn-rtc-get 1 r)) (hd (fn-rtc-get 2 r)) (extra (fn-rtc-get 3 r))
+           (h (fn-rtc-h-buf hd)) (b (fn-rtc-buffer h s)) (o (fn-rtc-b-owner b))
+           (own (equal o (list :workspace id inc))))
+     (and (fn-rtc-live-p id inc s)
+          (implies (eq kind :hand)
+                   (and (< (fn-rtc-get 0 extra) (fn-rtc-nslots (fn-rtc-config s)))
+                        (not (equal (fn-rtc-get 0 extra) (nfix id)))
+                        (implies (< (fn-rtc-nstatic (fn-rtc-config s)) (nfix id))
+                                 (<= (fn-rtc-get 0 extra) (fn-rtc-nstatic (fn-rtc-config s))))))
+          (or (eq kind :hand)
+              (not (fn-rtc-kind-out-p (if (eq kind :pool) :wait kind) id inc (fn-rtc-uses s))))
+          (if (or (eq kind :pool) (not (fn-rtc-buffered-kind-p kind))) t
+            (and (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                 (equal (fn-rtc-b-gen b) (fn-rtc-h-gen hd))
+                 (cond ((member-eq kind *fn-rtc-in-kinds*)
+                        (and own (<= (fn-rtc-h-off hd) (len (fn-rtc-b-bytes b)))
+                             (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
+                                 (fn-rtc-buf-cap h (fn-rtc-config s)))))
+                       ((eq kind :hand) (and own (equal (fn-rtc-h-len hd) (len (fn-rtc-b-bytes b)))))
+                       (t (and (or own (equal o (list :leased id inc :out)))
+                               (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd)) (len (fn-rtc-b-bytes b)))
+                               (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
+                                   (fn-rtc-buf-cap h (fn-rtc-config s)))))))))))
+   (otherwise nil))))
+
+(defthm fn-pth-req-acquire-factors
+ (implies (equal (fn-rtc-get 0 r) :acquire)
+  (iff (not (mv-nth 2 (fn-rtc-req-acquire r id inc s)))
+       (and (fn-pth-req-data-okp r) (fn-pth-req-state-okp r id inc s))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-req-data-okp fn-pth-req-state-okp fn-rtc-req-acquire
+    fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-submit
+    fn-rtc-req-cancel fn-rtc-request fn-rtc-submit-okp fn-rtc-hand-target-okp
+    car-cons cdr-cons mv-nth (:executable-counterpart fn-rtc-get)
+    (:executable-counterpart equal) (:executable-counterpart member-equal)
+    (:executable-counterpart fn-rtc-buffered-kind-p)
+    (:executable-counterpart zp) (:executable-counterpart nfix))))))
+(defthm fn-pth-req-write-factors
+ (implies (equal (fn-rtc-get 0 r) :write)
+  (iff (not (mv-nth 2 (fn-rtc-req-write r id inc s)))
+       (and (fn-pth-req-data-okp r) (fn-pth-req-state-okp r id inc s))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-req-data-okp fn-pth-req-state-okp fn-rtc-req-acquire
+    fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-submit
+    fn-rtc-req-cancel fn-rtc-request fn-rtc-submit-okp fn-rtc-hand-target-okp
+    car-cons cdr-cons mv-nth (:executable-counterpart fn-rtc-get)
+    (:executable-counterpart equal) (:executable-counterpart member-equal)
+    (:executable-counterpart fn-rtc-buffered-kind-p)
+    (:executable-counterpart zp) (:executable-counterpart nfix))))))
+(defthm fn-pth-req-release-factors
+ (implies (equal (fn-rtc-get 0 r) :release)
+  (iff (not (mv-nth 2 (fn-rtc-req-release r id inc s)))
+       (and (fn-pth-req-data-okp r) (fn-pth-req-state-okp r id inc s))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-req-data-okp fn-pth-req-state-okp fn-rtc-req-acquire
+    fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-submit
+    fn-rtc-req-cancel fn-rtc-request fn-rtc-submit-okp fn-rtc-hand-target-okp
+    car-cons cdr-cons mv-nth (:executable-counterpart fn-rtc-get)
+    (:executable-counterpart equal) (:executable-counterpart member-equal)
+    (:executable-counterpart fn-rtc-buffered-kind-p)
+    (:executable-counterpart zp) (:executable-counterpart nfix))))))
+(defthm fn-pth-req-close-factors
+ (implies (equal (fn-rtc-get 0 r) :close)
+  (iff (not (mv-nth 2 (fn-rtc-req-close r id inc s)))
+       (and (fn-pth-req-data-okp r) (fn-pth-req-state-okp r id inc s))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-req-data-okp fn-pth-req-state-okp fn-rtc-req-acquire
+    fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-submit
+    fn-rtc-req-cancel fn-rtc-request fn-rtc-submit-okp fn-rtc-hand-target-okp
+    car-cons cdr-cons mv-nth (:executable-counterpart fn-rtc-get)
+    (:executable-counterpart equal) (:executable-counterpart member-equal)
+    (:executable-counterpart fn-rtc-buffered-kind-p)
+    (:executable-counterpart zp) (:executable-counterpart nfix))))))
+(defthm fn-pth-req-submit-factors
+ (implies (equal (fn-rtc-get 0 r) :submit)
+  (iff (not (mv-nth 2 (fn-rtc-req-submit r id inc s)))
+       (and (fn-pth-req-data-okp r) (fn-pth-req-state-okp r id inc s))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-req-data-okp fn-pth-req-state-okp fn-rtc-req-acquire
+    fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-submit
+    fn-rtc-req-cancel fn-rtc-request fn-rtc-submit-okp fn-rtc-hand-target-okp
+    car-cons cdr-cons mv-nth (:executable-counterpart fn-rtc-get)
+    (:executable-counterpart equal) (:executable-counterpart member-equal)
+    (:executable-counterpart fn-rtc-buffered-kind-p)
+    (:executable-counterpart zp) (:executable-counterpart nfix))))))
+(defthm fn-pth-req-cancel-factors
+ (implies (equal (fn-rtc-get 0 r) :cancel)
+  (iff (not (mv-nth 2 (fn-rtc-req-cancel r id inc s)))
+       (and (fn-pth-req-data-okp r) (fn-pth-req-state-okp r id inc s))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-req-data-okp fn-pth-req-state-okp fn-rtc-req-acquire
+    fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-submit
+    fn-rtc-req-cancel fn-rtc-request fn-rtc-submit-okp fn-rtc-hand-target-okp
+    car-cons cdr-cons mv-nth (:executable-counterpart fn-rtc-get)
+    (:executable-counterpart equal) (:executable-counterpart member-equal)
+    (:executable-counterpart fn-rtc-buffered-kind-p)
+    (:executable-counterpart zp) (:executable-counterpart nfix))))))
+(defthm fn-pth-request-factors
+ (iff (not (mv-nth 2 (fn-rtc-request r id inc s)))
+      (and (fn-pth-req-data-okp r) (fn-pth-req-state-okp r id inc s)))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-req-data-okp fn-pth-req-state-okp fn-rtc-req-acquire
+    fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-submit
+    fn-rtc-req-cancel fn-rtc-request fn-rtc-submit-okp fn-rtc-hand-target-okp
+    car-cons cdr-cons mv-nth (:executable-counterpart fn-rtc-get)
+    (:executable-counterpart equal) (:executable-counterpart member-equal)
+    (:executable-counterpart fn-rtc-buffered-kind-p)
+    (:executable-counterpart zp) (:executable-counterpart nfix))))))
+
 ; Project the actual dispatch tree, retaining its branch tests, bindings and
 ; event arguments.  No second encoding of the delivery event lives here.
 ; Slot 1's incarnation is 1 on section R's reachable states; the projection
@@ -44,6 +196,65 @@
                                         (mv nil nil)))
                                   (mv nil nil)))
                            '(mv nil nil))))))))))))
+
+; The actual request list, projected from the same delivery calls as above.
+(make-event
+ (let* ((body (car (last (get-event 'fn-pth-step* (w state)))))
+        (dispatch (cadddr (caddr body)))
+        (bindings (cadr dispatch))
+        (clauses (cdr (caddr dispatch)))
+        (accept-body (car (last (get-event 'fn-pth-accept-branch (w state)))))
+        (accept-if (caddr accept-body))
+        (accept-let (caddr accept-if))
+        (accept-call (caddr (caddr accept-let))))
+   `(defun fn-pth-owner-requests (s e q)
+      (declare (xargs :guard t))
+      (if (not (fn-rtc-acts-on-p s e)) nil
+        (let* ,(remove-assoc-eq 'base bindings)
+          (cond
+           ,@(loop$ for clause in clauses collect
+               (let* ((arm (cadr clause))
+                      (wrapped (eq (car arm) 'let*))
+                      (delivery (if wrapped (caddr arm) arm))
+                      (call (caddr delivery)))
+                 (list (car clause)
+                       (if (eq (car call) 'fn-pth-deliver)
+                           (let ((answer `(if (equal ,(caddr call) 1)
+                                   (mv-nth 1
+                                    (fn-pth-m-step (fn-rtc-mstate ,(caddr call) ,(cadr call))
+                                     ,(car (cddddr call))
+                                     (fn-rtc-view-state ,(caddr call) ,(cadddr call) ,(cadr call))
+                                     (nfix ,(cadr (cddddr call))))) nil)))
+                             (if wrapped `(let* ,(cadr arm) ,answer) answer))
+                         (if (eq (car call) 'fn-pth-accept-branch)
+                             `(let ,(cadr accept-body)
+                                (if ,(cadr accept-if)
+                                    (let* ,(cadr accept-let)
+                                      (if (equal ,(caddr accept-call) 1)
+                                          (mv-nth 1
+                                   (fn-pth-m-step (fn-rtc-mstate ,(caddr accept-call) ,(cadr accept-call))
+                                    ,(car (cddddr accept-call))
+                                    (fn-rtc-view-state ,(caddr accept-call) ,(cadddr accept-call) ,(cadr accept-call))
+                                    (nfix ,(cadr (cddddr accept-call)))))
+                                        nil))
+                                  nil))
+                           'nil)))))))))))
+
+; The projected list is the list actually processed by the delivery, at its
+; own post-end-use state. This unfolding equality gives the projection teeth.
+(defthm fn-pth-deliver-processes-its-machine-requests-by-definition
+ (equal (mv-nth 2 (fn-pth-deliver s id inc ev q))
+        (mv-nth 2
+         (fn-rtc-requests
+          (mv-nth 1 (fn-pth-m-step (fn-rtc-mstate id s) ev
+                                  (fn-rtc-view-state id inc s) (nfix q))) id inc
+          (fn-rtc-with-mstate id
+           (mv-nth 0 (fn-pth-m-step (fn-rtc-mstate id s) ev
+                                   (fn-rtc-view-state id inc s) (nfix q))) s))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                          '(fn-pth-deliver fn-rtc-view-state mv-nth car-cons cdr-cons
+                            (:executable-counterpart zp) (:executable-counterpart nfix))))))
 
 (defun fn-pth-fo (e)
   (declare (xargs :guard t))
