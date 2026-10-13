@@ -11,6 +11,16 @@
 (defun pbtt-event-octets (row)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn-arena (mv-let (e fn-arena) (pbtt-encode-row row fn-arena) e)))
+; Capture executable multiple values before using them in ground events.
+(defun pbtt-prepare-retention (oc event)
+ (declare (xargs :verify-guards nil))
+ (mv-let (answer next) (fn-pdc-pout-prepare-retention oc event)
+  (list answer next)))
+(defun pbtt-end-okp (a blen)
+ (declare (xargs :guard t :verify-guards nil))
+ (mv-let (ok pre ins ioff sufhead suf) (fn-pacc-end a blen)
+  (declare (ignore pre ins ioff sufhead suf))
+  ok))
 (defun pbtt-reserve-owner (o events)
  (declare (xargs :verify-guards nil))
  (if (consp events)
@@ -26,8 +36,9 @@
 (defconst *pbtt-id* (fn-stxk-make 0 0 0 1 '(102 110) '(7)))
 (defconst *pbtt-consumer* (fn-cpe-make 0 0 0 (list :bootstrap '(1) '(2))))
 (defconst *pbtt-topic* (list :topic-admin-install 0 0 0 0 (make-list 32 :initial-element 7)))
-(defconst *pbtt-answer* (mv-nth 0 (fn-pdc-pout-prepare-retention *pbtt-oc* *pbtt-ret*)))
-(defconst *pbtt-prepared* (mv-nth 1 (fn-pdc-pout-prepare-retention *pbtt-oc* *pbtt-ret*)))
+(defconst *pbtt-prepare-result* (pbtt-prepare-retention *pbtt-oc* *pbtt-ret*))
+(defconst *pbtt-answer* (nth 0 *pbtt-prepare-result*))
+(defconst *pbtt-prepared* (nth 1 *pbtt-prepare-result*))
 (defconst *pbtt-after* (fn-sbud-oc-store *pbtt-prepared*))
 (defconst *pbtt-row* (fn-sf-record-candidate (fn-sn-files *pbtt-after*)))
 (defconst *pbtt-ctx* (fn-pctx-of-batch *pbtt-row*))
@@ -42,26 +53,26 @@
       (fn-store-retention-event-p *pbtt-row*) (fn-pctx-p *pbtt-ctx*)
       (equal (fn-rcon-store-event-txid *pbtt-row*) *pbtt-next*)
       (<= (len *pbtt-e*) *fn-pbatch-max*)
-      (mv-nth 0 (fn-pacc-end
+      (pbtt-end-okp
                  (fn-pacc-feed* (fn-pacc-begin (list *pbtt-next* *pbtt-ctx*))
-                  (list (take 7 *pbtt-e*) (nthcdr 7 *pbtt-e*))) (len *pbtt-e*)))))
+                  (list (take 7 *pbtt-e*) (nthcdr 7 *pbtt-e*))) (len *pbtt-e*))))
 ; The draft-3 six-field counterexample is the old/new-context tooth.
 (assert-event
  (and (not (fn-pctx-p (list (fn-rcon-store-event-txid *pbtt-row*) nil nil 0 nil nil)))
       (fn-pctx-p *pbtt-ctx*)
-      (not (mv-nth 0 (fn-pacc-end
+      (not (pbtt-end-okp
         (fn-pacc-feed*
          (fn-pacc-begin (list *pbtt-next* (list (fn-rcon-store-event-txid *pbtt-row*) nil nil 0 nil nil)))
          (list *pbtt-e*))
-        (len *pbtt-e*))))))
+        (len *pbtt-e*)))))
 ; A2 stale refuses, matching lays out: dropping its inequality breaks refusal.
 (assert-event
  (and (not (equal (1+ *pbtt-next*) (nth 0 *pbtt-ctx*)))
-      (not (mv-nth 0 (fn-pacc-end (fn-pacc-feed*
-       (fn-pacc-begin (list (1+ *pbtt-next*) *pbtt-ctx*)) (list *pbtt-e*)) (len *pbtt-e*))))
+      (not (pbtt-end-okp (fn-pacc-feed*
+       (fn-pacc-begin (list (1+ *pbtt-next*) *pbtt-ctx*)) (list *pbtt-e*)) (len *pbtt-e*)))
       (equal *pbtt-next* (nth 0 *pbtt-ctx*))
-      (mv-nth 0 (fn-pacc-end (fn-pacc-feed*
-       (fn-pacc-begin (list *pbtt-next* *pbtt-ctx*)) (list *pbtt-e*)) (len *pbtt-e*)))))
+      (pbtt-end-okp (fn-pacc-feed*
+       (fn-pacc-begin (list *pbtt-next* *pbtt-ctx*)) (list *pbtt-e*)) (len *pbtt-e*))))
 ; Structural store recognition admits a frontier gap; the real producer stages
 ; txid 1, but the kernel-next 0 acceptance refuses it. A4c's ok hypothesis is
 ; necessary: its txid-equality conclusion is false on this refused input.
@@ -78,9 +89,9 @@
       (fn-pout-stagedp *pbtt-gap* *pbtt-gap-after*)
       (fn-pctx-p (fn-pctx-of-batch *pbtt-gap-row*))
       (not (equal (fn-rcon-store-event-txid *pbtt-gap-row*) *pbtt-gap-next*))
-      (not (mv-nth 0 (fn-pacc-end
+      (not (pbtt-end-okp
        (fn-pacc-begin (list *pbtt-gap-next* (fn-pctx-of-batch *pbtt-gap-row*)))
-       (len (pbtt-event-octets *pbtt-gap-row*)))))))
+       (len (pbtt-event-octets *pbtt-gap-row*))))))
 
 ; retention whole antecedent/conclusion, then success-hypothesis removal.
 (assert-event
