@@ -139,14 +139,21 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(openssl, str(base / "openssl"))
         # The catalog is recorded beside the image (tools/image_set.py reads it).
         self.assertEqual(self.catalog_text, "paged\n")
-        # So is the source the image was built from (S057): this checkout's
-        # HEAD, `commit` only when nothing differs from it.
-        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
-                              text=True, check=True).stdout.strip()
-        clean = not subprocess.run(["git", "status", "--porcelain", "--untracked-files=normal"],
-                                   cwd=ROOT, capture_output=True, text=True).stdout.strip()
-        self.assertEqual(self.source_text,
-                         (f"commit {head}" if clean else f"worktree {head}+dirty") + "\n")
+        # So is the source the image was built from (S057): in its own git
+        # checkout, that checkout's HEAD, `commit` only when nothing differs
+        # from it; in a tree that is not one (hbox_native's `git archive` run
+        # tree), the FN_NATIVE_SOURCE its shipper names, else `unknown`.
+        top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=ROOT,
+                             capture_output=True, text=True)
+        if top.returncode == 0 and top.stdout.strip() == str(ROOT.resolve()):
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                                  text=True, check=True).stdout.strip()
+            clean = not subprocess.run(["git", "status", "--porcelain", "--untracked-files=normal"],
+                                       cwd=ROOT, capture_output=True, text=True).stdout.strip()
+            expected = f"commit {head}" if clean else f"worktree {head}+dirty"
+        else:
+            expected = os.environ.get("FN_NATIVE_SOURCE") or "unknown"
+        self.assertEqual(self.source_text, expected + "\n")
 
     def test_the_probe_names_the_small_preset_of_the_heap_book(self):
         """The script's probe flags are books/heap-figure.lisp's
