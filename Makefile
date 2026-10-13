@@ -2767,6 +2767,9 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/book-name-relative-tests \
     tests/acl2/book-name-provenance-tests \
     tests/acl2/runtime-contract-echo-tests \
+    books/runtime-contract-exhaustion \
+    books/runtime-contract-u64 \
+    tests/acl2/runtime-contract-u64-tests \
     tests/acl2/runtime-contract-landing-tests \
     tests/acl2/runtime-contract-host-send-tests \
     books/runtime-contract-host-lease \

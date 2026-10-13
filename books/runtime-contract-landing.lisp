@@ -109,6 +109,17 @@
            :in-theory (union-theories (theory 'minimal-theory)
                         '(fn-rtc-uses-okp fn-rtc-use-okp-of-grown-buffer subsetp-equal))))))
 
+(local (defthm fn-rtc-landing-with-buffer-basic-frame
+  (and (true-listp (fn-rtc-with-buffer h b s))
+       (equal (len (fn-rtc-with-buffer h b s)) 6)
+       (equal (fn-rtc-get 5 (fn-rtc-with-buffer h b s)) (fn-rtc-next-op s)))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-with-buffer fn-rtc-make fn-rtc-get-of-cons
+               car-cons cdr-cons len true-listp
+               (:executable-counterpart zp) (:executable-counterpart nfix)
+               (:executable-counterpart binary-+) (:executable-counterpart fn-rtc-get)))))))
+
 (local (defthm fn-rtc-core-invp-of-grown-buffer
   (implies (and (fn-rtc-core-invp s) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
                 (fn-rtc-splice-target-p h (fn-rtc-b-owner (fn-rtc-buffer h s)) (fn-rtc-uses s))
@@ -118,9 +129,12 @@
                 (fn-rtc-buffer-okp h b s))
            (fn-rtc-core-invp (fn-rtc-with-buffer h b s)))
   :hints (("Goal" :in-theory
-           (disable fn-rtc-buf-cap fn-rtc-nbufs fn-rtc-nslots fn-rtc-nstatic fn-rtc-configp fn-rtc-slots-okp fn-rtc-pool-okp-unfolds
-                    fn-rtc-uses-okp fn-rtc-mstates-okp fn-rtc-draining-okp
-                    fn-rtc-get fn-rtc-leasedp fn-rtc-buffer-okp fn-rtc-splice-target-p)))))
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-core-invp fn-rtc-with-accessors fn-rtc-landing-with-buffer-basic-frame
+               fn-rtc-pool-okp-of-with-buffer fn-rtc-pool-okp-set fn-rtc-len-of-set
+               fn-rtc-next-op fn-rtc-subset-reflexive natp nfix
+               unicity-of-0 fix commutativity-of-+))
+           :use ((:instance fn-rtc-uses-okp-of-grown-buffer (uses (fn-rtc-uses s))))))))
 
 (local (defthm fn-rtc-core-invp-bytes
   (implies (and (fn-rtc-core-invp s) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s))))
@@ -141,9 +155,9 @@
            (and (equal (fn-rtc-get 0 (fn-rtc-buffer h s)) (fn-rtc-b-gen (fn-rtc-buffer h s)))
                 (equal (fn-rtc-get 1 (fn-rtc-buffer h s)) (fn-rtc-b-owner (fn-rtc-buffer h s)))))
   :hints (("Goal" :use fn-rtc-core-invp-buffer
-           :in-theory (e/d (fn-rtc-buffer-okp fn-rtc-bufferp fn-rtc-b-gen fn-rtc-b-owner)
-                           (fn-rtc-core-invp fn-rtc-core-invp-buffer fn-rtc-ownerp fn-cbor-octet-listp
-                            fn-rtc-holds-p fn-rtc-slot))))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                         '(fn-rtc-buffer-okp fn-rtc-bufferp fn-rtc-b-gen
+                           fn-rtc-b-owner natp nfix))))))
 
 (local (defthm fn-rtc-st-splice-under-core-invp
   (implies (fn-rtc-core-invp st)
@@ -203,15 +217,20 @@
 
 (local (defthm fn-rtc-uses-of-st-splice
   (equal (fn-rtc-uses (fn-rtc-st-splice h off data st)) (fn-rtc-uses st))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-st-splice fn-rtc-st$a-splice) (fn-rtc-splice-okp fn-rtc-splice))))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-st-splice fn-rtc-st$a-splice fn-rtc-with-accessors
+               fn-rtc-next-op-of-with))))))
 
 (local (defthm fn-rtc-st-splice-tables
   (and (equal (fn-rtc-config (fn-rtc-st-splice h off data st)) (fn-rtc-config st))
        (equal (fn-rtc-slots (fn-rtc-st-splice h off data st)) (fn-rtc-slots st))
        (equal (fn-rtc-mstates (fn-rtc-st-splice h off data st)) (fn-rtc-mstates st))
        (equal (fn-rtc-next-op (fn-rtc-st-splice h off data st)) (fn-rtc-next-op st)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-st-splice fn-rtc-st$a-splice) (fn-rtc-splice-okp fn-rtc-splice
-                                                                          fn-rtc-st-splice-under-core-invp))))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-st-splice fn-rtc-st$a-splice fn-rtc-with-accessors
+               fn-rtc-next-op-of-with))))))
 
 (defthm fn-rtc-splice-keeps-invp
   (implies (fn-rtc-invp st)
@@ -309,8 +328,8 @@
 (local (defthm fn-rtc-core-invp-bytes-true-listp
   (implies (and (fn-rtc-core-invp s) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s))))
            (true-listp (fn-rtc-bytes h s)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-bytes) (fn-rtc-core-invp fn-rtc-core-invp-bytes fn-cbor-octet-listp))
-           :use fn-rtc-core-invp-bytes))))
+  :hints (("Goal" :use fn-rtc-core-invp-bytes
+           :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-bytes))))))
 
 (local (defthm fn-rtc-landed-octets-of-st-splice
   (implies (and (fn-rtc-core-invp st) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config st)))
@@ -487,6 +506,8 @@
                 (fn-cbor-octet-listp data))
            (equal (fn-rtc-delivered-outcome u (fn-rtc-with-data e data)) (fn-rtc-e-outcome e)))
   :hints (("Goal" :in-theory (e/d (fn-rtc-delivered-outcome) (fn-rtc-octets-n-p fn-cbor-octet-listp fn-rtc-with-data))))))
+
+
 
 (local (defthm fn-rtc-buffer-is-its-fields
   (implies (and (fn-rtc-core-invp st) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config st))))

@@ -54,6 +54,9 @@
 (defun fnn-owner-peer-read-class (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-peer-read-class "host/native/owner.lisp"))
+(defun fnn-refuse (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-refuse "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 ;;; Actual native cursor/mux functions with mocked I/O and ACL2 dispatch.
 ;;; This discriminates poll/control flow, not ACL2 semantics or image custody.
