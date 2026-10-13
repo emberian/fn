@@ -495,3 +495,40 @@
                                                     *rii-t-frontier*)))))
    (and (equal (fn-sn-open-kind opened) :ok)
         (equal (fn-sn-index (fn-sn-open-state opened)) (fn-stx-index-empty)))))
+
+; Open u64 exhaustion: crafted checkpoint, exact boundary, and earlier gates.
+(defun rii-o-checkpoint (next)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((base (fn-sco-capture (list *fn-cfg-default-record*) nil)))
+    (fn-sco-make (fn-sco-records base) (fn-sco-cpr base)
+                 (update-nth 1 next (fn-sco-identity base))
+                 (fn-sco-consumer base) (fn-sco-topic base)
+                 (fn-sco-event-index base))))
+(defun rii-o-replayed (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-sco-cpr-finish (fn-sco-cpr c) (list *fn-cfg-default-record*)))
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((configs (list *fn-cfg-default-record*))
+         (c (rii-o-checkpoint (expt 2 64)))
+         (replayed (rii-o-replayed c)))
+   (and (fn-sn-observed-historyp 0 (fn-sco-records c)) (equal (fn-replay-result-kind replayed) :ok) (fn-cnode-statep (fn-replay-result-node replayed)) (fn-replay-advance-okp (fn-cnode-node (fn-replay-result-node replayed)) 0) (equal (fn-stxk-context-next (fn-sco-identity c)) (expt 2 64)) (equal (fn-rii-sco-finalize-configured replayed c configs 0) (fn-sn-open-error :identity))))))
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((configs (list *fn-cfg-default-record*))
+         (c (rii-o-checkpoint (1- (expt 2 64))))
+         (replayed (rii-o-replayed c)))
+   (and (fn-sn-observed-historyp 0 (fn-sco-records c)) (equal (fn-replay-result-kind replayed) :ok) (fn-cnode-statep (fn-replay-result-node replayed)) (fn-replay-advance-okp (fn-cnode-node (fn-replay-result-node replayed)) 0) (equal (fn-stxk-context-next (fn-sco-identity c)) (1- (expt 2 64))) (equal (fn-sn-open-kind (fn-rii-sco-finalize-configured replayed c configs 0)) :ok) (equal (fn-sn-identity-next (fn-sn-open-state (fn-rii-sco-finalize-configured replayed c configs 0))) (1- (expt 2 64)))))))
+; A single maximum-sequence record advances the seeded identity to 2^64,
+; but cannot be a contiguous history from 0 under the u32 frontier gate.
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((wire (fn-record-make (1- (expt 2 64)) 0 0 "<open@example>" '(65)
+                               '("fn.test") "id" "subject" "evidence" 1 1))
+         (ctx (fn-stxk-context :ok (1- (expt 2 64)) nil nil 0 nil))
+         (row (fn-held-plain wire 0))
+         (advanced (fn-replay-identity-step ctx row)))
+   (and (fn-record-p wire) (fn-held-p row)
+        (equal (fn-stxk-context-kind advanced) :ok)
+        (equal (fn-stxk-context-next advanced) (expt 2 64))
+        (not (fn-rii-observed-historyp 1 (list row)))))))

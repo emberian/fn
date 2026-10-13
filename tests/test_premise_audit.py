@@ -4,6 +4,11 @@ box's)."""
 import pathlib
 import sys
 import unittest
+import contextlib
+import io
+import json
+import tempfile
+from unittest import mock
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "tools"))
 
@@ -160,6 +165,298 @@ class Classification(unittest.TestCase):
         self.assertIn("3 premises at hosted entries, 3 unestablished (4 theorems)", line)
         self.assertIn("1 never concluded", line)
         self.assertIn("2 established off the host path", line)
+
+
+class EstablishmentFixture(unittest.TestCase):
+    predicate = "fn-ovr-plan-cursor"
+    entry = "fn-ovr-plan-lease-quantum"
+    theorem = "fn-ovr-plan-lease-quantum-taken-is-over"
+    form = """(defthm fn-ovr-plan-lease-quantum-taken-is-over
+  (implies (posp (mv-nth 0 (fn-ovr-plan-lease-quantum plan w h id inc s fn-arena fn-cat)))
+           (and (fn-ovr-plan-cursor plan)
+                (fn-ovw-cursorp (fn-ovr-plan-cursor plan)))))"""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.path = pathlib.Path(directory.name) / "premise-establishments.json"
+        with contextlib.redirect_stdout(io.StringIO()):
+            premise_audit.initialize_establishments(self.path)
+
+    def audit(self, form=None, reachable=True, hosted_heads=(), stobj_names=(),
+              definitions=(), predicate=None, local=(), missing=False):
+        predicate = predicate or self.predicate
+        graph = StubGraph()
+        graph.book_defs.update(dict.fromkeys(
+            [predicate, self.entry, "fn-ovw-cursorp", *definitions], 1))
+        if reachable:
+            graph.reachable.add(self.entry)
+        graph.reachable.update(hosted_heads)
+        graph.stobj_names.update(stobj_names)
+        forms = {
+            self.theorem: ("books/fixture.lisp", form or self.form),
+            "fn-over-serve": ("books/fixture.lisp",
+                              f"(defthm fn-over-serve (implies ({predicate} plan)"
+                              " (equal (fn-serve plan) :ok)))"),
+        }
+        if missing:
+            forms.pop(self.theorem)
+        with mock.patch.object(reach_check, "theorem_forms", return_value=forms), \
+                mock.patch.object(reach_check, "record_definitions", return_value={}), \
+                mock.patch.object(premise_audit, "local_theorems", return_value=set(local)), \
+                mock.patch.object(reach_check.Subject, "hosted",
+                                  lambda self, graph: bool(set(self.functions) & graph.reachable)):
+            return premise_audit.Audit(graph, establishments_path=self.path)
+
+    def command(self, audit, args):
+        output = io.StringIO()
+        def baseline(path=None):
+            findings = audit.term_findings() if path == premise_audit.TERM_BASELINE else audit.findings()
+            return {"accepted": dict.fromkeys(findings, "fixture")}
+        with mock.patch.object(premise_audit, "ESTABLISHMENTS", self.path), \
+                mock.patch.object(reach_check, "Graph", return_value=audit.graph), \
+                mock.patch.object(premise_audit, "native_guard_model", return_value=None), \
+                mock.patch.object(premise_audit, "Audit", return_value=audit), \
+                mock.patch.object(premise_audit, "load_baseline", side_effect=baseline), \
+                contextlib.redirect_stdout(output):
+            status = premise_audit.main(args)
+        return status, output.getvalue()
+
+    def register(self, audit, predicate=None, call=None, theorem=None):
+        return self.command(audit, ["--register-establishment", predicate or self.predicate,
+                                    theorem or self.theorem, call or self.entry])
+
+    def assert_hosted(self, audit):
+        self.assertEqual(audit.classify(self.predicate), premise_audit.HOSTED)
+        self.assertEqual(audit.premises()[self.predicate]["class"], premise_audit.HOSTED)
+        self.assertNotIn(self.predicate, audit.findings())
+        self.assertEqual(audit.concluded[self.predicate], [
+            (self.theorem, "books/fixture.lisp", [self.entry], True)])
+
+    def assert_off_host(self, audit, heads=(), predicate=None):
+        predicate = predicate or self.predicate
+        self.assertEqual(audit.classify(predicate), premise_audit.OFF_HOST)
+        self.assertIn(predicate, audit.findings())
+        self.assertEqual(audit.concluded[predicate], [
+            (self.theorem, "books/fixture.lisp", list(heads), False)])
+
+    def assert_refused(self, audit, condition, predicate=None, call=None):
+        before = self.path.read_bytes() if self.path.exists() else None
+        with mock.patch.object(premise_audit, "_write_establishments",
+                               wraps=premise_audit._write_establishments) as writer:
+            status, output = self.register(audit, predicate, call)
+            writer.assert_not_called()
+        self.assertEqual(status, 1)
+        self.assertIn(condition, output)
+        self.assertIn(self.theorem, output)
+        self.assertEqual(self.path.read_bytes() if self.path.exists() else None, before)
+        self.assertNotEqual(audit.classify(predicate or self.predicate), premise_audit.HOSTED)
+
+    def shape(self, hypothesis, argument, predicate=None):
+        return (f"(defthm {self.theorem} (implies {hypothesis}"
+                f" ({predicate or self.predicate} {argument})))")
+
+
+class RegisteredEstablishments(EstablishmentFixture):
+    def test_exact_over_requires_a_registered_row(self):
+        self.assert_off_host(self.audit())
+        status, output = self.register(self.audit())
+        self.assertEqual(status, 0, output)
+        expected = [{"premise": self.predicate, "theorem": self.theorem, "call": self.entry}]
+        self.assertEqual(json.loads(self.path.read_text()), expected)
+        self.assertEqual(self.path.read_text(), json.dumps(expected, indent=2, sort_keys=True) + "\n")
+        registered = self.audit()
+        self.assert_hosted(registered)
+        status, output = self.command(registered, ["--explain", self.predicate])
+        self.assertEqual(status, 0)
+        self.assertIn(f"established by registered row {self.theorem} via {self.entry}", output)
+
+    def test_log_prefix_term_is_refused_without_writing(self):
+        predicate = "fn-lgp-relp"
+        heads = ["fn-lgrc-attempt", "fn-lgrc-final"]
+        form = self.shape("(not (fn-bsc-lookup s stg stage))",
+                          "(fn-lgrc-final (fn-lgrc-attempt s j k) s)", predicate)  # acl2-arity-fixture: fn-lgrc-attempt synthetic term shape; the audit reads only the definitions this test supplies
+        audit = self.audit(form, definitions=[*heads, "fn-bsc-lookup"],
+                           hosted_heads=["fn-bsc-lookup"], predicate=predicate)
+        self.assert_off_host(audit, heads, predicate)
+        self.assert_refused(audit, "single bare variable", predicate, "fn-bsc-lookup")
+
+    def test_recognizer_root_is_refused_without_writing(self):
+        predicate = "fn-his-cursors-apart"
+        form = self.shape("(fn-his-cellsp cells)", "cells", predicate)
+        audit = self.audit(form, definitions=["fn-his-cellsp"],
+                           hosted_heads=["fn-his-cellsp"], predicate=predicate)
+        self.assert_refused(audit, "primitive conjunct root", predicate, "fn-his-cellsp")
+
+    def test_call_below_a_book_function_is_refused_without_writing(self):
+        predicate = "fn-ptx-wfp"
+        form = self.shape("(<= (fn-rtc-size (fn-rtc-get i m)) 1)", "m", predicate)
+        audit = self.audit(form, definitions=["fn-rtc-size", "fn-rtc-get"],
+                           hosted_heads=["fn-rtc-size", "fn-rtc-get"], predicate=predicate)
+        self.assert_refused(audit, "nested book calls excluded", predicate, "fn-rtc-get")
+
+    def test_different_variable_is_refused_without_writing(self):
+        audit = self.audit(self.form.replace(f"({self.entry} plan", f"({self.entry} other"))
+        self.assert_refused(audit, "matching direct bare variable")
+
+    def test_concluded_term_containing_variable_is_refused_without_writing(self):
+        audit = self.audit(self.form.replace("(fn-ovr-plan-cursor plan)",
+                                             "(fn-ovr-plan-cursor (nth 0 plan))"))
+        self.assert_refused(audit, "single bare variable")
+
+    def test_unreachable_call_is_refused_without_writing(self):
+        self.assert_refused(self.audit(reachable=False), "not host-reachable")
+
+    def test_stobj_call_is_refused_without_writing(self):
+        self.assert_refused(self.audit(stobj_names=[self.entry]), "stobj name")
+
+    def test_same_predicate_call_is_refused_without_writing(self):
+        audit = self.audit(self.form.replace(self.entry + " plan", self.predicate + " plan"),
+                           hosted_heads=[self.predicate])
+        self.assert_refused(audit, "concluded predicate R", call=self.predicate)
+
+    def test_local_theorem_is_refused_without_writing(self):
+        self.assert_refused(self.audit(local=[self.theorem]), "theorem is local")
+
+    def test_missing_theorem_is_refused_without_writing(self):
+        self.path = self.path.with_name("absent-register.json")
+        self.assert_refused(self.audit(missing=True), "theorem is missing")
+
+    def test_constants_terms_and_quoted_calls_are_refused(self):
+        for value in ("t", "nil", ":plan", "0", "fn-ovw-cursorp", "'plan", "(nth 0 plan)"):
+            with self.subTest(concluded=value):
+                self.assert_refused(self.audit(self.form.replace(" plan", f" {value}")),
+                                    "single bare variable")
+        for hypothesis in (f"'({self.entry} plan)", f"(posp ({self.entry} 'plan))"):
+            with self.subTest(hypothesis=hypothesis):
+                self.assert_refused(self.audit(self.shape(hypothesis, "plan")),
+                                    "matching direct bare variable")
+
+    def test_stale_row_is_refused_and_strict_fails_without_writing(self):
+        self.assertEqual(self.register(self.audit())[0], 0)
+        before = self.path.read_bytes()
+        stale = self.audit(self.form.replace(f"({self.entry} plan", f"({self.entry} other"))
+        self.assert_off_host(stale)
+        self.assertEqual(len(stale.refused_establishments), 1)
+        status, output = self.command(stale, ["--strict", "--summary"])
+        self.assertEqual(status, 1)
+        self.assertIn(f"refused registered row {self.predicate} {self.theorem} via {self.entry}", output)
+        self.assertIn("matching direct bare variable", output)
+        self.assertNotIn("NEW unestablished", output)  # the refused row alone makes strict red
+        self.assertEqual(self.path.read_bytes(), before)
+        missing = self.audit(missing=True)
+        self.assertIn("theorem is missing", missing.refused_establishments[0])
+        self.assertNotEqual(missing.classify(self.predicate), premise_audit.HOSTED)
+        for kwargs, condition in (({"reachable": False}, "not host-reachable"),
+                                  ({"local": [self.theorem]}, "theorem is local"),
+                                  ({"stobj_names": [self.entry]}, "stobj name")):
+            with self.subTest(current_tree=kwargs):
+                invalid = self.audit(**kwargs)
+                self.assert_off_host(invalid)
+                self.assertIn(condition, invalid.refused_establishments[0])
+                self.assertEqual(self.path.read_bytes(), before)
+
+    def test_unregister_removes_row_and_absent_unregister_refuses(self):
+        self.assertEqual(self.register(self.audit())[0], 0)
+        status, output = self.command(self.audit(), ["--unregister-establishment", self.predicate, self.theorem])
+        self.assertEqual(status, 0, output)
+        self.assertEqual(self.path.read_text(), "[]\n")
+        self.assert_off_host(self.audit())
+        before = self.path.read_bytes()
+        status, output = self.command(self.audit(), ["--unregister-establishment", self.predicate, self.theorem])
+        self.assertEqual(status, 1)
+        self.assertIn("no such registered row", output)
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_rows_are_sorted_and_duplicate_register_does_not_write(self):
+        audit = self.audit()
+        audit.theorems["a-first"] = ("books/fixture.lisp", self.form.replace(self.theorem, "a-first"))
+        self.assertEqual(self.register(audit)[0], 0)
+        self.assertEqual(self.register(audit, theorem="a-first")[0], 0)
+        rows = json.loads(self.path.read_text())
+        self.assertEqual([row["theorem"] for row in rows], ["a-first", self.theorem])
+        before = self.path.read_bytes()
+        status, output = self.register(audit)
+        self.assertEqual(status, 1)
+        self.assertIn("already registered", output)
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_register_operation_cannot_bypass_strict_audit(self):
+        before = self.path.read_bytes()
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+            self.command(self.audit(), ["--strict", "--register-establishment",
+                                        self.predicate, self.theorem, self.entry])
+        self.assertEqual(error.exception.code, 2)
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_shape_two_is_used_to_check_register_rows(self):
+        form = (f"(defthm {self.theorem} (if (posp ({self.entry} plan))"
+                f" ({self.predicate} plan) t))")
+        audit = self.audit(form)
+        self.assert_off_host(audit)
+        self.assertEqual(self.register(audit)[0], 0)
+        self.assert_hosted(self.audit(form))
+
+    def test_preservation_cannot_be_registered_as_establishment(self):
+        form = (f"(defthm {self.theorem} (implies ({self.predicate} plan)"
+                f" (if (posp ({self.entry} plan)) ({self.predicate} plan) t)))")
+        audit = self.audit(form)
+        self.assertEqual(audit.classify(self.predicate), premise_audit.PRESERVED)
+        self.assert_refused(audit, "preservation, not establishment")
+
+
+class ConditionalConclusions(EstablishmentFixture):
+    predicate = "fn-owner-retain-statep"
+    entry = "fn-owner-install-extended"
+    theorem = "fn-owner-install-extended-establishes-when-recovering"
+    form = """(defthm fn-owner-install-extended-establishes-when-recovering
+  (implies (or (equal oc :fault) (fn-lgoc-invariantp oc))
+           (if (equal (mv-nth 1 (fn-owner-install-extended oc extended key fn-arena fn-cat fn-hist state)) :recovering)
+               (fn-owner-retain-statep (mv-nth 5 (fn-owner-install-extended oc extended key fn-arena fn-cat fn-hist state)))
+             t)))"""
+
+    def test_exact_carried_ok_shape_is_hosted_without_a_row(self):
+        self.assertEqual(self.path.read_text(), "[]\n")
+        audit = self.audit()
+        self.assert_hosted(audit)
+        hyps, conclusion = premise_audit.statement(self.form)
+        branches = premise_audit.conclusion_branches(hyps, conclusion)
+        self.assertEqual(len(branches), 1)
+        effective, result = branches[0]
+        self.assertEqual(effective, hyps + [conclusion[1]])
+        flat = reach_check.flatten(["defthm", self.theorem, ["implies", ["and", *effective], result]])
+        equivalent = self.audit(flat)
+        self.assertEqual(audit.concluded, equivalent.concluded)
+        self.assertEqual(audit.assumed, equivalent.assumed)
+        self.assertEqual(audit.preserving, equivalent.preserving)
+
+    def test_non_true_else_is_not_an_establishment(self):
+        audit = self.audit(self.form.replace("             t)))", "             nil)))"))
+        self.assertEqual(audit.classify(self.predicate), premise_audit.NEVER)
+        self.assertIn(self.predicate, audit.findings())
+
+    def test_if_branch_carries_its_condition_as_a_preservation_hypothesis(self):
+        form = (f"(defthm {self.theorem} (if ({self.predicate} s)"
+                f" ({self.predicate} ({self.entry} s)) t))")
+        audit = self.audit(form)
+        self.assertEqual(audit.classify(self.predicate), premise_audit.PRESERVED)
+        self.assertEqual(audit.preserving[self.predicate], [self.theorem])
+        self.assertEqual(audit.concluded.get(self.predicate, []), [])
+
+    def test_original_hypothesis_still_makes_if_conclusion_a_preservation(self):
+        form = (f"(defthm {self.theorem} (implies ({self.predicate} s)"
+                f" (if (posp ({self.entry} s)) ({self.predicate} ({self.entry} s)) t)))")
+        audit = self.audit(form)
+        self.assertEqual(audit.classify(self.predicate), premise_audit.PRESERVED)
+        self.assertEqual(audit.preserving[self.predicate], [self.theorem])
+
+    def test_conditional_hypothesis_does_not_contaminate_an_and_sibling(self):
+        form = (f"(defthm {self.theorem} (and"
+                f" (if ({self.predicate} s) ({self.predicate} ({self.entry} s)) t)"
+                f" ({self.predicate} ({self.entry} other))))")
+        audit = self.audit(form)
+        self.assert_hosted(audit)
+        self.assertEqual(audit.preserving[self.predicate], [self.theorem])
 
 
 def _defs(**forms):

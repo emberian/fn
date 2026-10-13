@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "foreign_format_open's red was inside a subTest; tools/test_budget.py recorded no red case, so the image gate reports the module failed without a red case and no known-red row can match. Traced in the triage (DEVCTL-TRIAGE-20261013.md, 'subTest reds disappear').",
+ "file": "tools/test_budget.py",
+ "id": "TEST-BUDGET-SUBTEST-LEDGER",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "medium",
+ "source": "devctl-150e2d6f48a0",
+ "state": "open",
+ "title": "test_budget records no red case for a failure inside a subTest",
+ "updated": "2026-10-13T13:33:49Z"
+}

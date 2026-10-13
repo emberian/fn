@@ -313,6 +313,8 @@ if [ "$1 $2" = "--fn heap" ]; then
     exit 0
 fi
 echo "ran SBCL_USER_ARGS=${SBCL_USER_ARGS:-} args=$*"
+echo "image FN_OPENSSL_PREFIX=${FN_OPENSSL_PREFIX:-unset}"
+exit "${FN_TEST_IMAGE_EXIT:-0}"
 """
 
 
@@ -330,17 +332,27 @@ class InstalledLaunchTests(unittest.TestCase):
         self.image.write_text(FAKE_IMAGE)
         self.image.chmod(0o755)
         (self.tmp / "fn-host.core").write_bytes(b"core" * 1024)
-        # The installed layout carries a shipped OpenSSL prefix (D64: never
-        # the system pair).  The fake image loads no library, so its own
-        # fixture files satisfy the launcher's Linux package-presence check;
-        # the fake image never opens either file as a library.
+        # The harness needs a prefix directory to construct the installed
+        # layout.  The launcher exports it; the image decides availability
+        # (D59/D64).  This stand-in image needs no library files.
         (self.tmp / "openssl" / "lib").mkdir(parents=True)
-        for library in ("libssl.so.3", "libcrypto.so.3"):
-            (self.tmp / "openssl" / "lib" / library).write_bytes(b"fake image library fixture\n")
+        commands = self.tmp / "commands"
+        commands.mkdir()
+        uname = commands / "uname"
+        uname.write_text("#!/bin/sh\necho Linux\n")
+        uname.chmod(0o755)
         from unittest import mock
-        patch = mock.patch.dict(os.environ, {"FN_OPENSSL_PREFIX": str(self.tmp / "openssl")})
+        patch = mock.patch.dict(os.environ, {
+            "FN_OPENSSL_PREFIX": str(self.tmp / "openssl"),
+            "PATH": str(commands) + os.pathsep + os.environ["PATH"],
+        })
         patch.start()
         self.addCleanup(patch.stop)
+        # These shell fixtures never listen; give Node a fixed port rather
+        # than probing the network for one while testing prefix forwarding.
+        ports = mock.patch.object(native_harness, "free_port", return_value=119)
+        ports.start()
+        self.addCleanup(ports.stop)
 
     def test_an_owner_run_goes_through_the_installed_launcher_at_the_decided_heap(self):
         node = native_harness.Node(self, self.image, root=self.tmp / "node")
@@ -353,6 +365,26 @@ class InstalledLaunchTests(unittest.TestCase):
         launcher = native_harness.installed_launcher(self.image)
         self.assertEqual(launcher.read_bytes(),
                          (native_harness.ROOT / "packaging" / "fn").read_bytes())
+
+    def test_missing_default_prefix_reaches_the_image(self):
+        node = native_harness.Node(self, self.image, root=self.tmp / "default-prefix")
+        launcher = native_harness.installed_launcher(self.image)
+        prefix = launcher.parent.parent / "libexec" / "fn" / "openssl"
+        result = node.invoke("operator", node.config, "run", "--once",
+                             env={"FN_OPENSSL_PREFIX": None})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(("image FN_OPENSSL_PREFIX=" + str(prefix)).encode(), result.stdout)
+        self.assertFalse((prefix / "lib" / "libssl.so.3").exists())
+
+    def test_missing_operator_prefix_keeps_the_images_refusal_exit(self):
+        node = native_harness.Node(self, self.image, root=self.tmp / "operator-prefix")
+        missing = self.tmp / "no-such-openssl"
+        result = node.invoke("operator", node.config, "run", "--once",
+                             env={"FN_OPENSSL_PREFIX": str(missing), "FN_TEST_IMAGE_EXIT": "1"})
+        self.assertFalse(missing.exists())
+        self.assertEqual(result.returncode, native_harness.EXIT.REFUSED,
+                         result.stdout + result.stderr)
+        self.assertIn(("image FN_OPENSSL_PREFIX=" + str(missing)).encode(), result.stdout)
 
     def test_a_named_heap_opts_out_and_other_verbs_run_the_image(self):
         node = native_harness.Node(self, self.image, root=self.tmp / "named",
@@ -374,11 +406,13 @@ class Acl2SessionHeapTests(unittest.TestCase):
     def launched_args(self, user_args):
         import os, tempfile
         decide = (native_harness.ROOT / "packaging" / "launcher-decide.sh").read_text()
+        fn = (native_harness.ROOT / "packaging" / "fn").read_text()
+        resolver = fn[fn.index("# BEGIN fn_resolve_path"):fn.index("# END fn_resolve_path")]
         with tempfile.TemporaryDirectory() as work:
             launcher = os.path.join(work, "image")
             with open(launcher, "w") as out:
-                out.write("#!/bin/sh\n"
-                          "fn_decide_heap() { SBCL_USER_ARGS='--dynamic-space-size 1024 "
+                out.write("#!/bin/sh\n" + resolver)
+                out.write("fn_decide_heap() { SBCL_USER_ARGS='--dynamic-space-size 1024 "
                           "--control-stack-size 1024KB'; }\n")
                 out.write(decide)
                 out.write('\nprintf %s "$SBCL_USER_ARGS"\n')
@@ -386,7 +420,7 @@ class Acl2SessionHeapTests(unittest.TestCase):
             env = dict(os.environ, SBCL_USER_ARGS=user_args)
             env.pop("FN_TEST_HEAP_MB", None)
             return subprocess.run([launcher, "--fn", "acl2", "session"], env=env,
-                                  capture_output=True, text=True, check=True).stdout.split()
+                                  capture_output=True, text=True, check=True, timeout=10).stdout.split()
 
     def test_the_session_runs_at_its_own_heap_not_the_store_less_decision(self):
         args = self.launched_args(native_harness.acl2_session_user_args())

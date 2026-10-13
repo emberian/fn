@@ -327,6 +327,7 @@ if [ -n "$STACK_KIB" ]; then
     # FN_TEST_HEAP_MB is the tests' named override.
     {
         echo '#!/bin/sh'
+        sed -n '/^# BEGIN fn_resolve_path/,/^# END fn_resolve_path/p' packaging/fn
         sed -n '/^# BEGIN fn_decide_heap/,/^# END fn_decide_heap/p' packaging/fn
         cat packaging/launcher-decide.sh
         sed 1d "$IMAGE"

@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Case: tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock. rows under DEV-CONTROL-UNTRACED-20261013 (a row's item is fixed at its first amendment record; the owner moves by known_reds.py transfer); triage build/coordinator/tools-builder-b/b24/DEVCTL-TRIAGE-20261013.md",
+ "file": "tests/test_native_raw_scripts.py",
+ "id": "DEVCTL-POST-SEAL-GATE-CLASSIFIER",
+ "notes": [],
+ "owner": "builder-P",
+ "severity": "medium",
+ "source": "devctl-150e2d6f48a0",
+ "state": "open",
+ "title": "raw post_seal_gate refusal mock: the classifier reads the new refusal constant",
+ "updated": "2026-10-13T13:33:48Z"
+}
