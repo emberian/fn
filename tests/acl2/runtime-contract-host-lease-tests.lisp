@@ -769,3 +769,34 @@
              (not (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2)))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-hll-deliver fn-hll-m-step fn-hlm-step))))
+
+; A live instance can already have spent the slot's final incarnation.
+(defun fn-a27-host-live-max-scene (fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st :verify-guards nil))
+  (mv-let (fn-rtc-st okp left)
+    (fn-hld-init *fn-bs-profile-development* '(1 nil 0 0 nil 0 0 0 nil 0 2) 4 fn-rtc-st)
+    (declare (ignore left))
+    (let* ((fn-rtc-st (fn-rtc-st-set-slot 2 '(18446744073709551615 :live 7) fn-rtc-st))
+           (fn-rtc-st (fn-rtc-st-set-uses nil fn-rtc-st))
+           (before (fn-rtc-x-state fn-rtc-st)))
+      (mv-let (fn-rtc-st id inc left) (fn-hld-begin 7 fn-rtc-st)
+        (mv (list okp before (fn-rtc-x-state fn-rtc-st) id inc left) fn-rtc-st)))))
+(defun fn-a27-host-live-max-fixture ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-rtc-st
+    (mv-let (result fn-rtc-st) (fn-a27-host-live-max-scene fn-rtc-st) result)))
+(with-guard-checking-event nil
+ (make-event
+  `(defconst *fn-a27-host-live-max* ',(fn-a27-host-live-max-fixture))))
+(with-guard-checking-event nil
+ (assert-event
+  (let* ((r *fn-a27-host-live-max*) (s (nth 1 r)) (s2 (nth 2 r)))
+    (and (nth 0 r) (fn-hll-invp s) (fn-hll-invp s2)
+         (equal (fn-rtc-nslots (fn-rtc-config s)) 3)
+         (equal (fn-rtc-nstatic (fn-rtc-config s)) 1)
+         (equal (fn-rtc-s-status (fn-rtc-slot 2 s)) :live)
+         (equal (fn-rtc-s-inc (fn-rtc-slot 2 s)) 18446744073709551615)
+         (not (fn-rtc-inc-roomp (fn-rtc-slot 2 s)))
+         (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config s)) (fn-rtc-slots s))
+         (equal s2 s) (equal (nth 3 r) nil)
+         (equal (nth 4 r) :rtc-slots-exhausted) (equal (nth 5 r) nil)))))

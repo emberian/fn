@@ -1,6 +1,6 @@
 ; fn: structural permanent exhaustion and bounded state preservation.
 (in-package "ACL2")
-(include-book "runtime-contract-invariant")
+(include-book "runtime-contract-invariant-facts")
 (local (make-event
   (if (getpropc 'fn-rtc-c-set-is-update-nth 'theorem nil (w state))
       '(in-theory (disable fn-rtc-c-set-is-update-nth))
@@ -142,14 +142,7 @@
            :in-theory (e/d (fn-rtc-free-slot fn-rtc-slots-exhaustedp
                              fn-rtc-slot-selectablep)
                            (fn-rtc-inc-roomp fn-rtc-s-status)))))
-(defthm fn-rtc-invp-has-static-records
-  (implies (fn-rtc-invp s)
-           (fn-rtc-statics-okp 1 (fn-rtc-nstatic (fn-rtc-config s)) (fn-rtc-slots s)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-rtc-invp)
-                (fn-rtc-invp-is-core-and-admission fn-rtc-statics-okp
-                 fn-rtc-configp fn-rtc-slots-okp fn-rtc-pool-okp fn-rtc-uses-okp
-                 fn-rtc-draining-okp fn-rtc-mstates-okp fn-rtc-nslots fn-rtc-nbufs)))))
+
 (defthm fn-rtc-exhausted-means-no-free-slot
   (implies (and (fn-rtc-invp s)
                 (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config s))
@@ -172,11 +165,7 @@
                    (j 1) (n (fn-rtc-nstatic (fn-rtc-config s)))
                    (k (fn-rtc-free-slot 0 (fn-rtc-slots s)))
                    (slots (fn-rtc-slots s)))))))
-(defthm fn-rtc-u64-requests-config-frame
-  (equal (fn-rtc-config (mv-nth 0 (fn-rtc-requests reqs id inc s))) (fn-rtc-config s))
-  :hints (("Goal" :induct (fn-rtc-requests reqs id inc s)
-           :in-theory (e/d (fn-rtc-requests fn-rtc-request-config-frame)
-                           (mv-nth fn-rtc-request)))))
+
 (defthm fn-rtc-step*-config-frame
   (equal (fn-rtc-config (mv-nth 0 (fn-rtc-step* s e q))) (fn-rtc-config s))
   :hints (("Goal" :in-theory
@@ -184,4 +173,4 @@
       '(fn-rtc-step*-state-is-step-state fn-rtc-step-state fn-rtc-deliver
         fn-rtc-accept-branch fn-rtc-close-branch fn-rtc-grant-frame
         fn-rtc-end-use-config fn-rtc-rearm-frame fn-rtc-make-accessors
-        fn-rtc-with-accessors fn-rtc-u64-requests-config-frame car-cons cdr-cons)))))
+        fn-rtc-with-accessors fn-rtc-requests-config-frame car-cons cdr-cons)))))

@@ -37,11 +37,7 @@
            (union-theories (theory 'minimal-theory)
              '(fn-rtc-x-step*-is fn-rtc-step*-keeps-slot-incarnation-u64)))))
 
-(local (defthm fn-rtc-u64-nthcdr-parts
-  (and (equal (car (nthcdr h l)) (nth h l))
-       (equal (cdr (nthcdr h l)) (nthcdr (+ 1 (nfix h)) l))
-       (implies (true-listp l) (iff (consp (nthcdr h l)) (< (nfix h) (len l)))))
-  :hints (("Goal" :in-theory (enable nth nthcdr)))))
+(local (in-theory (enable fn-rtc-nthcdr-parts)))
 (local (defthm fn-rtc-u64-st-slots-shape
   (implies (fn-rtc-st-p fn-rtc-st)
            (and (true-listp (fn-rtc-slots fn-rtc-st))
@@ -62,7 +58,7 @@
            (union-theories (theory 'minimal-theory)
              '(fn-rtc-x-slots-exhausted-loop fn-rtc-slots-exhaustedp
                fn-rtc-st-slot fn-rtc-st$a-slot fn-rtc-slot fn-rtc-c-get-is-nth
-               fn-rtc-u64-st-slots-shape fn-rtc-u64-nthcdr-parts
+               fn-rtc-u64-st-slots-shape fn-rtc-nthcdr-parts
                natp nfix zp car-cons cdr-cons unicity-of-0 fix
                commutativity-of-+ fold-consts-in-+ default-+-1 default-+-2
                (:type-prescription fn-rtc-nslots) (:type-prescription nfix)

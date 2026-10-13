@@ -77,7 +77,8 @@ class RtcU64HostTests(unittest.TestCase):
 """ + case + """
         (error "terminal returned instead of refusing")))
   (fnn-store-error (c)
-    (assert (search "rtc-slots-exhausted:" (fnn-message c)))))
+    (assert (equal "rtc-slots-exhausted: every dynamic runtime slot has spent its final incarnation"
+                   (fnn-message c)))))
 (assert (zerop *yield-count*))
 (let ((result (multiple-value-list
                 (block fnn-owner-render-next-quantum

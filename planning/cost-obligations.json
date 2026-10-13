@@ -5016,9 +5016,11 @@
     "fn-hld-fuel",
     "fn-hld-settle",
     "fn-hll-x-step*",
+    "fn-rtc-inc-roomp",
     "fn-rtc-kind-op",
     "fn-rtc-kind-out-p",
     "fn-rtc-s-inc",
+    "fn-rtc-x-slots-exhaustedp",
     "mv-nth",
     "true-list-fix"
    ],

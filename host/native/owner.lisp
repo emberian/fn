@@ -1015,7 +1015,7 @@ yield while no pool buffer is free."
                  (if (member (car attempt) '(:warm :wait :refused)) attempt
                    (list :cold (fnn-owner-cold-issue-locked service cid attempt))))) class)))
       (case (car article)
-        (:refused (fnn-refuse "rtc-slots-exhausted: all dynamic runtime slots are retired"))
+        (:refused (fnn-refuse "rtc-slots-exhausted: every dynamic runtime slot has spent its final incarnation"))
         (:cold (return-from fnn-owner-render-next-quantum
                  (values (fnn-make-octets 0) plan nil nil (second article) 0)))
         (:wait (return-from fnn-owner-render-next-quantum

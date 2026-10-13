@@ -568,7 +568,8 @@
            :use ((:instance fn-hld-quantum-state-cases)
                  (:instance fn-hld-hll-invp-st-p (s st))))))
 
-; Permanent retirement is a terminal begin result; temporary occupancy remains NIL.
+; Every dynamic slot has spent its final incarnation: terminal begin result.
+; Temporary occupancy of slots with incarnation room remains NIL.
 (defthm fn-hld-begin-exhausted-iff
   (implies (and (fn-rtc-st-p fn-rtc-st) (fn-rtc-invp fn-rtc-st))
            (iff (equal (mv-nth 2 (fn-hld-begin r fn-rtc-st)) :rtc-slots-exhausted)

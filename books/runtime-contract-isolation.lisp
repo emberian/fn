@@ -1,6 +1,6 @@
 ; Runtime contract v2: ownership transfer and instance isolation.
 (in-package "ACL2")
-(include-book "runtime-contract-invariant")
+(include-book "runtime-contract-invariant-facts")
 (include-book "runtime-contract-budget")
 
 (defun fn-rtc-of-slot-p (o j)
@@ -1487,11 +1487,7 @@
                   fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen
                   fn-rtc-h-off fn-rtc-h-len fn-rtc-splice fn-cbor-octet-listp))))))
 
-(local
- (defthm fn-rtc-requests-config-is-constant
-   (equal (fn-rtc-config (mv-nth 0 (fn-rtc-requests reqs id inc s))) (fn-rtc-config s))
-   :hints (("Goal" :induct (fn-rtc-requests reqs id inc s)
-            :in-theory (e/d (fn-rtc-requests) (mv-nth fn-rtc-request))))))
+(local (in-theory (enable fn-rtc-requests-config-frame)))
 
 (local
  (defun fn-rtc-buffer-transfer-frame-p (j cfg h b1 b2)
@@ -3300,7 +3296,7 @@
  (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
  '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-deliver fn-rtc-accept-branch
    fn-rtc-grant-frame fn-rtc-close-branch fn-rtc-end-use-config fn-rtc-rearm-frame
-   fn-rtc-make-accessors fn-rtc-with-accessors fn-rtc-requests-config-is-constant
+   fn-rtc-make-accessors fn-rtc-with-accessors fn-rtc-requests-config-frame
    car-cons cdr-cons))))))
 
 ; T19 static instances stay live at incarnation 1

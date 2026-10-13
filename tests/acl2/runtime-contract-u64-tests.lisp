@@ -194,3 +194,86 @@
                 (fn-rtc-issue (list :opened id inc (fn-rtc-next-op s) nil) s)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-rtc-issue))))
+
+; Each positive witness asserts the helper's entire bounded antecedent and result.
+(defthm fn-a27-fresh-unbuffered-use-u64-witness
+  (let* ((s '((2 0 0 0 0 0 0) ((0 :live nil) (1 :live 7)) nil nil (nil nil) 0))
+         (kind :timer) (id 1) (inc 1))
+    (and (member-eq kind '(:fsync :close :accept :timer :extend))
+         (natp id) (fn-rtc-u64p inc) (< id (fn-rtc-nslots (fn-rtc-config s)))
+         (fn-rtc-current-p id inc s)
+         (iff (eq kind :accept) (equal id 0))
+         (implies (eq kind :close) (eq (fn-rtc-s-status (fn-rtc-slot id s)) :closing))
+         (fn-rtc-use-okp (list kind id inc (fn-rtc-next-op s) nil)
+           (fn-rtc-issue (list kind id inc (fn-rtc-next-op s) nil) s))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-rtc-issue))))
+(defthm fn-a27-fresh-wait-use-u64-witness
+  (let* ((s '((2 0 0 0 0 0 0) ((0 :live nil) (1 :live 7)) nil nil (nil nil) 0))
+         (id 1) (inc 1))
+    (and (natp id) (not (equal id 0)) (fn-rtc-u64p inc)
+         (< id (fn-rtc-nslots (fn-rtc-config s))) (fn-rtc-current-p id inc s)
+         (fn-rtc-use-okp (list :wait id inc (fn-rtc-next-op s) nil)
+           (fn-rtc-issue (list :wait id inc (fn-rtc-next-op s) nil) s))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-rtc-issue))))
+(defthm fn-a27-activate-slot-u64-witness
+  (let* ((s '((2 0 0 0 0 0 0) ((0 :live nil) (0 :free nil)) nil nil (nil nil) 0))
+         (id 1) (inc 1) (r 7))
+    (and (fn-rtc-core-invp s) (posp id) (fn-rtc-u64p inc) (natp r) (< r (expt 2 64))
+         (equal (fn-rtc-s-status (fn-rtc-slot id s)) :free)
+         (fn-rtc-core-invp (fn-rtc-with-slot id (list inc :live r) s))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rtc-core-invp fn-rtc-with-slot)
+     ((:executable-counterpart fn-rtc-core-invp) (:executable-counterpart fn-rtc-mstates-okp))))))
+(defthm fn-a27-hand-submit-u64-witness
+  (let* ((s '((3 1 1 1 0 1 1)
+              ((0 :live nil) (1 :live 0) (0 :free nil))
+              ((0 (:workspace 1 1) nil)) nil (nil nil nil) 0))
+         (id 1) (inc 1) (hd '(0 0 0 0)) (extra '(2 1)))
+    (and (fn-rtc-core-invp s)
+         (fn-rtc-instance-active-p id inc s)
+         (fn-rtc-live-p id inc s)
+         (fn-rtc-submit-okp :hand hd id inc s)
+         (fn-rtc-hand-target-okp extra id s)
+         (fn-rtc-kind-extrap :hand extra)
+         (fn-rtc-core-invp (fn-rtc-hand-submit-state hd extra id inc s))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rtc-core-invp fn-rtc-hand-submit-state fn-rtc-issue)
+    ((:executable-counterpart fn-rtc-core-invp) (:executable-counterpart fn-rtc-mstates-okp))))))
+(defthm fn-a27-fresh-opened-use-u64-witness
+  (let* ((s '((2 0 0 1 0 0 0) ((0 :live nil) (1 :live 7)) nil nil (nil nil) 0))
+         (id 1) (inc 1))
+    (and (natp id) (fn-rtc-u64p inc) (<= 1 id)
+         (<= id (fn-rtc-nstatic (fn-rtc-config s)))
+         (< id (fn-rtc-nslots (fn-rtc-config s))) (fn-rtc-current-p id inc s)
+         (fn-rtc-use-okp (list :opened id inc (fn-rtc-next-op s) nil)
+           (fn-rtc-issue (list :opened id inc (fn-rtc-next-op s) nil) s))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-rtc-issue))))
+(defthm fn-a27-free-slotp-u64-max-witness
+  (and (fn-rtc-u64p 18446744073709551615)
+       (fn-rtc-slotp '(18446744073709551615 :free nil)))
+  :rule-classes nil)
+(defthm fn-a27-set-free-selectable-arm-witness
+  (let ((i 0) (k 1) (slots '((0 :live nil) (0 :free nil))) (slot '(1 :free nil)))
+    (and (natp i) (natp k) (fn-rtc-free-slot i slots)
+         (equal (fn-rtc-s-status slot) :free)
+         (or (fn-rtc-slot-selectablep slot)
+             (not (fn-rtc-slot-selectablep (fn-rtc-get k slots))))
+         (fn-rtc-slot-selectablep slot)
+         (fn-rtc-slot-selectablep (fn-rtc-get k slots))
+         (fn-rtc-free-slot i (fn-rtc-set k slot slots))))
+  :rule-classes nil)
+(defthm fn-a27-set-free-old-not-selectable-arm-witness
+  (let ((i 0) (k 1)
+        (slots '((0 :live nil) (18446744073709551615 :free nil) (0 :free nil)))
+        (slot '(18446744073709551615 :free nil)))
+    (and (natp i) (natp k) (fn-rtc-free-slot i slots)
+         (equal (fn-rtc-s-status slot) :free)
+         (or (fn-rtc-slot-selectablep slot)
+             (not (fn-rtc-slot-selectablep (fn-rtc-get k slots))))
+         (not (fn-rtc-slot-selectablep slot))
+         (not (fn-rtc-slot-selectablep (fn-rtc-get k slots)))
+         (fn-rtc-free-slot i (fn-rtc-set k slot slots))))
+  :rule-classes nil)
