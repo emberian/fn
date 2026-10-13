@@ -485,3 +485,74 @@
      '((:executable-counterpart fn-ptx-step1) (:executable-counterpart fn-ptx-wfp)
        (:executable-counterpart fn-ptx-fields-fit))))))))
 (value-triple (cw "R9 CHAIN TEETH: exactly one octet conjunct removed; all other open checks hold; OLD request data predicate NIL; NEW same-run owner CLOSED.~%"))
+
+; R10: the R9 listener run under the exact old/new hand-target check.
+(defconst *pthrt-r10-sender-conjunct* '(<= 1 (nfix id)))
+(defconst *pthrt-r10-r9-ops* '((:REQUEST 0 0 ((:SUBMIT :POOL NIL NIL)))
+ (:COMPLETE (:ACCEPT 0 0 1 (:DONE 0)))
+ (:COMPLETE (:GRANT 0 0 4 (:DONE 0)))
+ (:COMPLETE (:POOL 0 0 2 (:DONE 0)))
+ (:REQUEST 0 0
+           ((:WRITE 3 2 0
+                    (1 0 0 0
+                       0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+                       0 0 0 0 0 70 114 111 109 58 97 13 10 68
+                       97 116 101 58 84 104 117 44 32 49 32 74
+                       97 110 32 49 57 55 48 32 48 48 58 48 48
+                       58 48 48 32 43 48 48 48 48 13 10 78 101
+                       119 115 103 114 111 117 112 115 58 120
+                       13 10 83 117 98 106 101 99 116 58 120
+                       13 10 77 101 115 115 97 103 101 45 73
+                       68 58 60 120 64 121 62 13 10 13 10 120))
+            (:SUBMIT :HAND (3 2 0 120) (1 1))))
+ (:COMPLETE (:HAND 0 0 5 (:DONE 0)))))
+(defun pthrt-r10-copy-old-hand-events (events alist)
+ (declare (xargs :guard t :measure (acl2-count events)))
+ (if (consp events)
+  (cons (pthrt-r8-rename
+          (if (member-eq (cadr (car events)) '(fn-rtc-hand-target-okp fn-rtc-x-hand-target-okp))
+           (pthrt-r9-remove-conjunct (car events) *pthrt-r10-sender-conjunct*)
+           (car events)) alist)
+        (pthrt-r10-copy-old-hand-events (cdr events) alist)) nil))
+(make-event
+ (let* ((world (w state))
+        (logical (get-event 'fn-rtc-hand-target-okp world))
+        (executable (get-event 'fn-rtc-x-hand-target-okp world))
+        (alist '((fn-rtc-hand-target-okp . pthrt-r10-old-hand-target)
+                 (fn-rtc-x-hand-target-okp . pthrt-r10-old-x-hand-target)
+                 (fn-rtc-x-req-submit . pthrt-r10-old-submit)
+                 (fn-rtc-x-request . pthrt-r10-old-request)
+                 (fn-rtc-x-requests . pthrt-r10-old-requests)
+                 (fn-pth-x-deliver . pthrt-r10-old-deliver)
+                 (fn-pth-x-step* . pthrt-r10-old-step)
+                 (pthrt-drive-op . pthrt-r10-old-drive)
+                 (pthrt-r8-run-ops . pthrt-r10-old-run-ops)
+                 (pthrt-r8-fixed-execute . pthrt-r10-old-execute)
+                 (pthrt-r8-fixed-local . pthrt-r10-old-local)))
+        (events (list logical executable (get-event 'fn-rtc-x-req-submit world)
+                 (get-event 'fn-rtc-x-request world) (get-event 'fn-rtc-x-requests world)
+                 (get-event 'fn-pth-x-deliver world) (get-event 'fn-pth-x-step* world)
+                 (get-event 'pthrt-drive-op world) (get-event 'pthrt-r8-run-ops world)
+                 (get-event 'pthrt-r8-fixed-execute world) (get-event 'pthrt-r8-fixed-local world))))
+  (if (and (equal (pthrt-r9-count-conjunct logical *pthrt-r10-sender-conjunct*) 1)
+           (equal (pthrt-r9-count-conjunct executable *pthrt-r10-sender-conjunct*) 1))
+   (value (cons 'progn (pthrt-r10-copy-old-hand-events events alist)))
+   (er soft 'pthrt-r10-old-hand "Expected one sender conjunct in each hand check."))))
+(make-event (value `(defconst *pthrt-r10-old-observations* ',(pthrt-r10-old-local *pthrt-r10-r9-ops*))))
+(make-event (value `(defconst *pthrt-r10-new-observations* ',(pthrt-r8-fixed-local *pthrt-r10-r9-ops*))))
+(defthm pthrt-r10-old-hand-check-reproduces-r9-refused-owner-reply
+ (let ((o (nth 5 *pthrt-r10-old-observations*)))
+  (and (nth 3 o)
+       (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates (nth 1 o)))) :closed)
+       (equal (nth 5 o) '((:submit :hand (3 3 0 120) (0 0)))))))
+(defun pthrt-r10-no-owner-refused-p (obs)
+ (if (consp obs)
+  (and (implies (nth 3 (car obs)) (not (nth 5 (car obs))))
+       (pthrt-r10-no-owner-refused-p (cdr obs))) t))
+(defthm pthrt-r10-new-hand-check-refuses-the-listener-before-owner-delivery
+ (and (equal (pthrt-ops *pthrt-r10-new-observations*) *pthrt-r10-r9-ops*)
+      (equal (nth 5 (nth 4 *pthrt-r10-new-observations*))
+             '((:submit :hand (3 2 0 120) (1 1))))
+      (not (nth 3 (nth 5 *pthrt-r10-new-observations*)))
+      (pthrt-r10-no-owner-refused-p *pthrt-r10-new-observations*)))
+(value-triple (cw "R10 R9 TOOTH: exact sender conjunct removed in logical and exec copies, count checked; OLD owner reply refused; NEW listener submit refused, no owner delivery/refusal.~%"))
