@@ -15,6 +15,7 @@
 (include-book "../../books/native-admin")
 (include-book "../../books/account-list")
 (include-book "must-fail-checked")
+(include-book "post-acceptance-tests")
 
 (defun mdt-o (s) (declare (xargs :guard (stringp s))) (fn-nntp-string-octets s))
 (defconst *mdt-crlf* (coerce '(#\Return #\Newline) 'string))
@@ -533,3 +534,82 @@
                (:conclusion (not (member-equal g (fn-state-groups archive))))
                ((as *mdt-as-carol*) (config *mdt-cfg*) (archive *mdt-state*) (g "fn.queue"))
                :fault "the view judged against the unrestricted archive")))
+
+(with-guard-checking-event :none
+ (encapsulate ()
+
+(defconst *mdt-forward-removed-conjunct-count* 1)
+(assert-event (equal *mdt-forward-removed-conjunct-count* 1))
+(defun mdt-new-forward (n queue)
+  (let* ((art (pa1-long-mod-art n)) (cfg (pa1-long-icfg n queue))
+         (decision (fn-inj-decide art cfg *pc4-obs*)))
+    (fn-mod-forward art cfg *pc4-obs* decision (fn-mod-facts art cfg)
+                    (car (fn-inj-config-closed cfg)))))
+(assert-event (fn-inj-injectedp
+  (mdt-new-forward 256 (fn-record-string-octets *m2-max-queue*))))
+(assert-event (equal (mdt-new-forward 256 (make-list 257 :initial-element 113))
+                    (fn-inj-refuse :moderation-unavailable)))
+(assert-event (equal (mdt-new-forward 256
+                      (append (fn-record-string-octets *m2-max-queue*) '(10)))
+                    (fn-inj-refuse :moderation-unavailable)))
+(assert-event (equal (mdt-new-forward 256
+                      (append (fn-record-string-octets *m2-max-queue*) '(13)))
+                    (fn-inj-refuse :moderation-unavailable)))
+(assert-event (and (fn-inj-injectedp *mod-d*)
+                  (fn-inj-injectedp (car *m2-max-inj*))
+                  (fn-inj-injectedp (car *pa1-max-inj*))))
+(defconst *mdt-red-art* (pa1-long-mod-art 966))
+(defconst *mdt-red-icfg*
+  (pa1-long-icfg 966 (fn-record-string-octets *m2-max-queue*)))
+(defconst *mdt-red-decision* (fn-inj-decide *mdt-red-art* *mdt-red-icfg* *pc4-obs*))
+(defconst *mdt-red-queue*
+  (append (fn-record-string-octets *m2-max-queue*) '(13 10)
+          (fn-inj-message-id-line
+            (fn-mod-envelope-msgid (fn-inj-decision-msgid *mdt-red-decision*)))
+          '(13 10) (make-list 10000 :initial-element 120) '(13 10)))
+(defconst *mdt-red-cfg* (pa1-long-icfg 966 *mdt-red-queue*))
+
+(local (encapsulate ()
+(defun mdt-old-forward (source config observation decision facts entry)
+  (declare (xargs :guard t))
+  (if (not (and 
+                (fn-clock-observationp observation)
+                (fn-clock-has-wall observation)))
+      (fn-inj-refuse :moderation-unavailable)
+    (let* ((msgid (fn-inj-decision-msgid decision))
+           (date (fn-inj-date-octets
+                  (fn-inj-instant-of (fn-clock-wall observation))))
+           (envelope (fn-mod-envelope-source
+                      (fn-inj-config-agent config)
+                      (fn-mod-entry-group entry) (fn-mod-entry-queue entry)
+                      msgid
+                      (fn-mod-forwarded-source source facts msgid date)))
+           (d (fn-inj-decide envelope config observation)))
+      (if (and (fn-inj-injectedp d)
+               (equal (fn-inj-decision-msgid d) (fn-mod-envelope-msgid msgid))
+               (not (fn-mod-some-gatedp (fn-inj-decision-groups d)
+                                        (fn-inj-config-closed config))))
+          d
+        (fn-inj-refuse :moderation-unavailable)))))
+(defconst *mdt-old-red-decision*
+  (mdt-old-forward *mdt-red-art* *mdt-red-cfg* *pc4-obs* *mdt-red-decision*
+                   (fn-mod-facts *mdt-red-art* *mdt-red-cfg*)
+                   (car (fn-inj-config-closed *mdt-red-cfg*))))
+(defun mdt-red-inj ()
+  (let* ((sub (fn-own-sub-make-author 1 1 :local *mdt-old-red-decision*
+                                      *pc4-login* *pc4-login* nil))
+         (take (fn-apc-take *pa1-line-cfg* sub *m2-max-ring*)))
+    (list *mdt-old-red-decision* *m2-max-ring* *pc4-login* *pa1-line-cfg*
+          (cdr take) *mdt-red-cfg* *pc4-obs*)))
+(assert-event
+  (let* ((inj (mdt-red-inj))
+         (rec (fn-pacc-prepared-record *m2-max-s* *pc4-obs* *mdt-red-art* inj))
+         (ctx (fn-pctx-of-prepared *m2-max-s* rec *mdt-red-art* inj)))
+    (and (fn-inj-injectedp *mdt-old-red-decision*)
+         (fn-record-p rec)
+         (equal (len (nth 1 ctx)) 13646)
+         (equal (mdt-new-forward 966 *mdt-red-queue*)
+                (fn-inj-refuse :moderation-unavailable)))))
+
+))
+))

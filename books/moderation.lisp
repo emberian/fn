@@ -56,6 +56,7 @@
 (include-book "injection")
 (include-book "control-classify")
 (include-book "nntp-responses")
+(include-book "records-shape")
 
 ; "approved", compared case-insensitively as every field name is.
 (defconst *fn-mod-approved-name* '(97 112 112 114 111 118 101 100))
@@ -229,12 +230,25 @@
          *fn-inj-crlf*
          forwarded)))
 
+(defun fn-mod-name-well-formedp (x)
+  (declare (xargs :guard t))
+  (and (fn-cbor-octet-listp x) (consp x)
+       (<= (len x) *fn-record-max-group-name*)
+       (not (member-equal 13 x)) (not (member-equal 10 x))
+       (fn-af-newsgroup-namep x)))
+(defun fn-mod-entry-well-formedp (e)
+  (declare (xargs :guard t))
+  (and (fn-nntp-moderated-entryp e)
+       (fn-mod-name-well-formedp (fn-mod-entry-group e))
+       (fn-mod-name-well-formedp (fn-mod-entry-queue e))))
+
 ; The forward: the envelope's injection into ENTRY's queue, or the refusal
 ; :moderation-unavailable when it is not injected or names a closed or
 ; moderated group.
 (defun fn-mod-forward (source config observation decision facts entry)
   (declare (xargs :guard t))
-  (if (not (and (fn-clock-observationp observation)
+  (if (not (and (fn-mod-entry-well-formedp entry)
+                (fn-clock-observationp observation)
                 (fn-clock-has-wall observation)))
       (fn-inj-refuse :moderation-unavailable)
     (let* ((msgid (fn-inj-decision-msgid decision))
@@ -252,6 +266,12 @@
                                         (fn-inj-config-closed config))))
           d
         (fn-inj-refuse :moderation-unavailable)))))
+
+(defthm fn-mod-forward-refuses-a-malformed-entry
+  (implies (not (fn-mod-entry-well-formedp entry))
+           (equal (fn-mod-forward source config observation decision facts entry)
+                  (fn-inj-refuse :moderation-unavailable)))
+  :hints (("Goal" :in-theory (enable fn-mod-forward))))
 
 ; -----------------------------------------------------------------------------
 ; The gate

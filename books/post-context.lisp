@@ -1,4 +1,4 @@
-; POST prepare context, version 1: encoding, prefix decoding, and the
+; POST prepare context, version 2: encoding, prefix decoding, and the
 ; approved Section C round-trip and resource bounds.
 (in-package "ACL2")
 (include-book "post-acceptance-bound")
@@ -9,16 +9,17 @@
 (defconst *fn-pctx-sufhead-max* 9)
 (defconst *fn-ptx-sufhead-max* *fn-pctx-sufhead-max*)
 (defconst *fn-pctx-max*
-  (+ 1 8 (* 4 5) (* 3 (fn-adm-acc-out-max)) *fn-pctx-sufhead-max*))
+  (+ 1 8 (* 4 6) (* 3 (fn-adm-acc-out-max)) *fn-pctx-sufhead-max*))
 
 (defun fn-pctx-p (ctx)
-  (and (true-listp ctx) (equal (len ctx) 6)
+  (and (true-listp ctx) (equal (len ctx) 7)
        (natp (nth 0 ctx)) (< (nth 0 ctx) (expt 2 64))
        (fn-cbor-octet-listp (nth 1 ctx)) (<= (len (nth 1 ctx)) (fn-adm-acc-out-max))
        (fn-cbor-octet-listp (nth 2 ctx)) (<= (len (nth 2 ctx)) (fn-adm-acc-out-max))
        (natp (nth 3 ctx)) (< (nth 3 ctx) (expt 2 32))
        (fn-cbor-octet-listp (nth 4 ctx)) (<= (len (nth 4 ctx)) *fn-ptx-sufhead-max*)
-       (fn-cbor-octet-listp (nth 5 ctx)) (<= (len (nth 5 ctx)) (fn-adm-acc-out-max))))
+       (fn-cbor-octet-listp (nth 5 ctx)) (<= (len (nth 5 ctx)) (fn-adm-acc-out-max))
+       (natp (nth 6 ctx)) (< (nth 6 ctx) (expt 2 32))))
 (verify-guards fn-pctx-p)
 
 ; Total access and concatenation also accept dotted lists and atoms.
@@ -51,7 +52,7 @@
 
 (defun fn-pctx-encode (ctx)
   (declare (xargs :guard t))
-  (cons 1
+  (cons 2
         (fn-pctx-cat
          (fn-pctx-uint-be (fn-pctx-get 0 ctx) 8)
          (fn-pctx-cat
@@ -62,7 +63,8 @@
             (fn-pctx-uint-be (fn-pctx-get 3 ctx) 4)
             (fn-pctx-cat
              (fn-pctx-encode-field (fn-pctx-get 4 ctx))
-             (fn-pctx-encode-field (fn-pctx-get 5 ctx)))))))))
+             (fn-pctx-cat (fn-pctx-encode-field (fn-pctx-get 5 ctx))
+                          (fn-pctx-uint-be (fn-pctx-get 6 ctx) 4)))))))))
 
 ; Read exactly n octets, leaving the suffix untouched, even when it is
 ; not an octet list.  No length scan of the suffix is needed.
@@ -101,19 +103,20 @@
 
 (defun fn-pctx-decode (x)
   (declare (xargs :guard t))
-  (if (and (consp x) (equal (car x) 1))
+  (if (and (consp x) (equal (car x) 2))
       (let* ((tx (fn-pctx-read-uint 8 (cdr x)))
              (pre (fn-pctx-read-field (fn-pctx-get 2 tx) (fn-adm-acc-out-max)))
              (ins (fn-pctx-read-field (fn-pctx-get 2 pre) (fn-adm-acc-out-max)))
              (ioff (fn-pctx-read-uint 4 (fn-pctx-get 2 ins)))
              (sh (fn-pctx-read-field (fn-pctx-get 2 ioff) *fn-pctx-sufhead-max*))
              (st (fn-pctx-read-field (fn-pctx-get 2 sh) (fn-adm-acc-out-max)))
+             (gl (fn-pctx-read-uint 4 (fn-pctx-get 2 st)))
              (ctx (list (fn-pctx-get 1 tx) (fn-pctx-get 1 pre) (fn-pctx-get 1 ins)
-                        (fn-pctx-get 1 ioff) (fn-pctx-get 1 sh) (fn-pctx-get 1 st))))
+                        (fn-pctx-get 1 ioff) (fn-pctx-get 1 sh) (fn-pctx-get 1 st) (fn-pctx-get 1 gl))))
         (if (and (fn-pctx-get 0 tx) (fn-pctx-get 0 pre) (fn-pctx-get 0 ins)
-                 (fn-pctx-get 0 ioff) (fn-pctx-get 0 sh) (fn-pctx-get 0 st)
+                 (fn-pctx-get 0 ioff) (fn-pctx-get 0 sh) (fn-pctx-get 0 st) (fn-pctx-get 0 gl)
                  (fn-pctx-p ctx))
-            (list t ctx (+ 1 8 (* 4 5) (len (fn-pctx-get 1 pre))
+            (list t ctx (+ 1 8 (* 4 6) (len (fn-pctx-get 1 pre))
                            (len (fn-pctx-get 1 ins)) (len (fn-pctx-get 1 sh))
                            (len (fn-pctx-get 1 st))))
           (list nil nil 0)))
@@ -138,7 +141,7 @@
 (local (defthm pctx-encode-length
   (implies (fn-pctx-p ctx)
            (equal (len (fn-pctx-encode ctx))
-                  (+ 29 (len (nth 1 ctx)) (len (nth 2 ctx))
+                  (+ 33 (len (nth 1 ctx)) (len (nth 2 ctx))
                         (len (nth 4 ctx)) (len (nth 5 ctx)))))
   :hints (("Goal" :in-theory
            (e/d (fn-pctx-p fn-pctx-encode fn-pctx-encode-field fn-pctx-octets)
@@ -195,8 +198,8 @@
   :hints (("Goal" :in-theory (e/d (fn-pctx-get) (pctx-get-is-nth))))))
 
 (local (defthm pctx-spans-bounded
-  (implies (fn-pctx-p (list tx pre ins ioff sh st))
-           (<= (+ 29 (len pre) (len ins) (len sh) (len st)) *fn-pctx-max*))
+  (implies (fn-pctx-p (list tx pre ins ioff sh st glen))
+           (<= (+ 33 (len pre) (len ins) (len sh) (len st)) *fn-pctx-max*))
   :rule-classes :linear
   :hints (("Goal" :in-theory (enable fn-pctx-p)))))
 
@@ -211,7 +214,8 @@
 (:instance pctx-read-field-length (x (caddr (fn-pctx-read-field (caddr (fn-pctx-read-uint 8 (cdr x))) (fn-adm-acc-out-max)))) (bound (fn-adm-acc-out-max)))
 (:instance pctx-read-uint-length (x (caddr (fn-pctx-read-field (caddr (fn-pctx-read-field (caddr (fn-pctx-read-uint 8 (cdr x))) (fn-adm-acc-out-max))) (fn-adm-acc-out-max)))) (width 4))
 (:instance pctx-read-field-length (x (caddr (fn-pctx-read-uint 4 (caddr (fn-pctx-read-field (caddr (fn-pctx-read-field (caddr (fn-pctx-read-uint 8 (cdr x))) (fn-adm-acc-out-max))) (fn-adm-acc-out-max)))))) (bound *fn-pctx-sufhead-max*))
-(:instance pctx-read-field-length (x (caddr (fn-pctx-read-field (caddr (fn-pctx-read-uint 4 (caddr (fn-pctx-read-field (caddr (fn-pctx-read-field (caddr (fn-pctx-read-uint 8 (cdr x))) (fn-adm-acc-out-max))) (fn-adm-acc-out-max))))) *fn-pctx-sufhead-max*))) (bound (fn-adm-acc-out-max))))))))
+(:instance pctx-read-field-length (x (caddr (fn-pctx-read-field (caddr (fn-pctx-read-uint 4 (caddr (fn-pctx-read-field (caddr (fn-pctx-read-field (caddr (fn-pctx-read-uint 8 (cdr x))) (fn-adm-acc-out-max))) (fn-adm-acc-out-max))))) *fn-pctx-sufhead-max*))) (bound (fn-adm-acc-out-max)))
+(:instance pctx-read-uint-length (width 4) (x (caddr (fn-pctx-read-field (caddr (fn-pctx-read-field (caddr (fn-pctx-read-uint 4 (caddr (fn-pctx-read-field (caddr (fn-pctx-read-field (caddr (fn-pctx-read-uint 8 (cdr x))) (fn-adm-acc-out-max))) (fn-adm-acc-out-max))))) *fn-pctx-sufhead-max*)) (fn-adm-acc-out-max))))))))))
 
 (local (defthm pctx-encode-field-length
   (implies (fn-cbor-octet-listp x)
@@ -351,6 +355,10 @@
   :hints (("Goal" :in-theory (e/d (fn-pctx-read-uint)
                                  (fn-pctx-read-octets fn-pctx-uint-be fn-pctx-octets-uint))))))
 
+(local (defthm pctx-append-associative
+  (equal (append (append a b) c) (append a b c))
+  :hints (("Goal" :induct (append a b) :in-theory (enable append)))))
+
 (local (defthm pctx-read-field-round-trip
   (implies (and (fn-cbor-octet-listp xs) (< (len xs) (expt 2 32))
                 (<= (len xs) (nfix bound)))
@@ -361,25 +369,25 @@
                 (fn-pctx-read-uint fn-pctx-uint-be fn-pctx-cat fn-pctx-read-octets
                  fn-cbor-octet-listp (:executable-counterpart fn-pctx-uint-be)))))))
 
-(local (defthm pctx-six-field-reconstruction
-  (implies (and (true-listp ctx) (equal (len ctx) 6))
+(local (defthm pctx-seven-field-reconstruction
+  (implies (and (true-listp ctx) (equal (len ctx) 7))
            (equal (list (nth 0 ctx) (nth 1 ctx) (nth 2 ctx)
-                        (nth 3 ctx) (nth 4 ctx) (nth 5 ctx)) ctx))
+                        (nth 3 ctx) (nth 4 ctx) (nth 5 ctx) (nth 6 ctx)) ctx))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable nth) :do-not-induct t
            :expand ((len ctx) (len (cdr ctx)) (len (cddr ctx))
                     (len (cdddr ctx)) (len (cddddr ctx))
-                    (len (cdr (cddddr ctx))) (len (cddr (cddddr ctx)))
+                    (len (cdr (cddddr ctx))) (len (cddr (cddddr ctx))) (len (cdddr (cddddr ctx)))
                     (true-listp ctx) (true-listp (cdr ctx))
                     (true-listp (cddr ctx)) (true-listp (cdddr ctx))
                     (true-listp (cddddr ctx)) (true-listp (cdr (cddddr ctx)))
-                    (true-listp (cddr (cddddr ctx))))))))
+                    (true-listp (cddr (cddddr ctx))) (true-listp (cdddr (cddddr ctx))))))))
 
 (local (defthm pctx-round-trip-proof
   (implies (fn-pctx-p ctx)
            (equal (fn-pctx-decode (append (fn-pctx-encode ctx) rest))
                   (list t ctx (len (fn-pctx-encode ctx)))))
-  :hints (("Goal" :use (pctx-six-field-reconstruction) :in-theory
+  :hints (("Goal" :use (pctx-seven-field-reconstruction) :in-theory
            (e/d (fn-pctx-p fn-pctx-decode fn-pctx-encode nth)
                 (fn-pctx-read-uint fn-pctx-read-field fn-pctx-read-octets
                  fn-pctx-uint-be fn-pctx-encode-field fn-pctx-cat fn-pctx-get
@@ -402,3 +410,6 @@
     (implies (car d)
              (and (fn-pctx-p (cadr d)) (natp (caddr d))
                   (<= (caddr d) (len x)) (<= (caddr d) *fn-pctx-max*)))))
+
+(defthm fn-pctx-max-is-derived
+  (equal *fn-pctx-max* 10359) :rule-classes nil)
