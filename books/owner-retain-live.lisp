@@ -159,6 +159,25 @@
               fn-owner-ocfg-of-retain-carry-put fn-owner-ocfg-of-other-global-put
               mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--))))))
 
+; The establishment in implication form, without the :fault case: the
+; recovering install makes the retained state hold (the form premise_audit
+; reads as an establishment; the row below cites the :ok form).
+(defthm fn-owner-retain-install-recovering-establishes-retained-state
+  (implies (and (fn-lgoc-invariantp oc)
+                (fn-osr-retainedp (fn-sbud-oc-store oc))
+                (equal (mv-nth 1 (fn-owner-install-extended
+                                   oc extended key fn-arena fn-cat fn-hist state))
+                       :recovering))
+           (fn-owner-retain-retained-statep
+            (mv-nth 5 (fn-owner-install-extended
+                        oc extended key fn-arena fn-cat fn-hist state))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-owner-install-extended-establishes-when-recovering
+                 fn-owner-install-extended-word-when-refused)
+           :in-theory '(fn-owner-retain-retained-statep
+                        fn-owner-retain-install-store-when-recovering))))
+
 ; Retained input of the cold installer, discharged at its existing producers.
 (defthm fn-owner-retain-install-establishes-retained-state
   (implies (or (equal oc :fault)
