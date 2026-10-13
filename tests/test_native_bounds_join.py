@@ -23,6 +23,7 @@ from tests.native_harness import (
 from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
 MIB4 = 4 * 1024 * 1024
+NATIVE_MEMORY = "40G"
 # The store these cases need, named: a capacity-free init sizes to the
 # process budget (PKT-582, image-floor), whose 8 MiB of history the 6 MiB of
 # large articles and the long-References POSTs exceed (the 805th POST was

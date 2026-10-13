@@ -18,6 +18,7 @@ from tests.native_harness import executable, native_image
 
 CELLS = os.environ.get("FN_LOAD_CELLS", "")
 IMAGE = native_image("FN_NATIVE_HOST")
+NATIVE_MEMORY = "16G"
 
 
 @unittest.skipUnless(CELLS, "FN_LOAD_CELLS names the cells to run")

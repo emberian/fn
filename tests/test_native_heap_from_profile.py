@@ -55,6 +55,7 @@ from pathlib import Path
 from tests.native_harness import (
     EXIT_OK, EXIT_REFUSED, EXIT_USAGE, ROOT, Client, Node, article, environment, native_image,
     node_log_on_failure, run)
+NATIVE_MEMORY = "2G"
 
 IMAGE = str(native_image("FN_NATIVE_HOST"))
 SMALL_FLAGS = ("--profile", "development", "--max-transactions", "16384",
