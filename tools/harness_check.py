@@ -2074,12 +2074,262 @@ HOST_LOAD = re.compile(
     r'\(load\s+(?:\(or\s+\([^()]*\)\s+)?"(host/[^"]+\.lisp)"')
 
 
+
+# These are launcher APIs, not a roster of exempt probes.  File membership
+# comes only from their form arguments (including imported aliases), or from
+# --load/--eval on the runtime words read from a built fn-host wrapper.
+IMAGE_COMMAND = "tests.test_native_entry_guard.image_command"
+IMAGE_SESSION = "tests.native_harness.Acl2Session"
+_IMAGE_TEXT, _IMAGE_LINES, _IMAGE_EXEC, _IMAGE_WORDS, _IMAGE_RUNTIME, _SESSION = (
+    object() for _ in range(6))
+
+
+@dataclass(frozen=True)
+class _LoaderName:
+    target: str
+
+
+def test_file_loaders(root: Path) -> dict[str, dict[str, set[str]]]:
+    """Literal loader provenance in tests' Python, without executing it.
+
+    Follow lexical assignments, imports, literal form lists and ROOT paths.
+    Unknown expressions provide no image evidence.  In particular a string
+    mentioning LOAD, or an unrelated function named image_command, exempts
+    nothing.  Lisp fixture edges are propagated by harness_scans below.
+    """
+    from tools import ledger
+    loaders: dict[str, dict[str, set[str]]] = {}
+
+    def record(target, kind, where):
+        if (isinstance(target, str) and target.startswith("tests/")
+                and target.endswith(".lisp") and ".." not in Path(target).parts):
+            loaders.setdefault(target, {"image": set(), "standalone": set()})[kind].add(where)
+
+    def forms(value, kind, where):
+        if isinstance(value, list):
+            for item in value:
+                forms(item, kind, where)
+        elif isinstance(value, str):
+            try:
+                events = ledger.source_events(ledger.Reader(value).top_level())
+                for form, _ in events:
+                    if ledger.head(form) == "load" and len(form) > 1 and type(form[1]) is str:
+                        record(form[1], kind, where)
+            except ledger.ReadError:
+                pass  # opaque/generated forms are not evidence of a literal load
+
+    for path in sorted((root / "tests").rglob("*.py")):
+        relative = path.relative_to(root).as_posix()
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative)
+        module_name = dotted_name(relative)
+
+        def name(node, env):
+            if isinstance(node, ast.Name):
+                value = env.get(node.id)
+                return value.target if isinstance(value, _LoaderName) else None
+            if isinstance(node, ast.Attribute):
+                base = name(node.value, env)
+                return base + "." + node.attr if base else None
+            return None
+
+        def value(node, env):
+            if isinstance(node, ast.Constant):
+                return node.value
+            if isinstance(node, ast.Name):
+                return env.get(node.id)
+            if isinstance(node, (ast.List, ast.Tuple)):
+                return [value(item, env) for item in node.elts]
+            if isinstance(node, ast.BinOp):
+                a, b = value(node.left, env), value(node.right, env)
+                if isinstance(node.op, ast.Add):
+                    if a is _IMAGE_RUNTIME and isinstance(b, list):
+                        return [_IMAGE_RUNTIME] + b
+                    if isinstance(a, type(b)) and isinstance(a, (list, str)):
+                        return a + b
+                if isinstance(node.op, ast.Div) and isinstance(a, str) and isinstance(b, str):
+                    return (Path(a) / b).as_posix()
+            if isinstance(node, ast.Call):
+                callee = name(node.func, env)
+                args = [value(arg, env) for arg in node.args]
+                if callee == "tests.native_harness.native_image":
+                    return "build/fn-host"  # the API returns a built fn-host wrapper
+                if callee == IMAGE_SESSION:
+                    return _SESSION
+                if callee in {"str", "pathlib.Path", "Path"} and args:
+                    return args[0]
+                if callee == "os.environ.get" and len(args) > 1:
+                    return args[1]
+                if callee == "next" and node.args and isinstance(node.args[0], ast.GeneratorExp):
+                    gen = node.args[0]
+                    # Compare ASTs rather than object identity for the generator variable.
+                    if (len(gen.generators) == 1 and value(gen.generators[0].iter, env) is _IMAGE_LINES
+                            and isinstance(gen.elt, ast.Name)
+                            and isinstance(gen.generators[0].target, ast.Name)
+                            and gen.elt.id == gen.generators[0].target.id
+                            and len(gen.generators[0].ifs) == 1):
+                        test = gen.generators[0].ifs[0]
+                        if (isinstance(test, ast.Call) and isinstance(test.func, ast.Attribute)
+                                and isinstance(test.func.value, ast.Name)
+                                and test.func.value.id == gen.elt.id and test.func.attr == "startswith"
+                                and len(test.args) == 1 and value(test.args[0], env) == "exec "):
+                            return _IMAGE_EXEC
+                if callee == "shlex.split" and args and args[0] is _IMAGE_EXEC:
+                    return _IMAGE_WORDS
+                if isinstance(node.func, ast.Attribute):
+                    receiver = value(node.func.value, env)
+                    if node.func.attr == "resolve" and isinstance(receiver, str):
+                        return receiver
+                    if (node.func.attr == "read_text" and isinstance(receiver, str)
+                            and receiver.startswith("build/fn-host")):
+                        return _IMAGE_TEXT
+                    if node.func.attr == "splitlines" and receiver is _IMAGE_TEXT:
+                        return _IMAGE_LINES
+                    if (node.func.attr == "replace" and receiver is _IMAGE_EXEC
+                            and args == ["${SBCL_USER_ARGS}", ""]):
+                        return _IMAGE_EXEC
+            if isinstance(node, ast.Attribute) and node.attr == "parent":
+                receiver = value(node.value, env)
+                if isinstance(receiver, str):
+                    return Path(receiver).parent.as_posix()
+            if (isinstance(node, ast.Subscript) and isinstance(node.value, ast.Attribute)
+                    and node.value.attr == "parents"):
+                receiver, index = value(node.value.value, env), value(node.slice, env)
+                if isinstance(receiver, str) and isinstance(index, int) and index >= 0:
+                    parents = Path(receiver).parents
+                    return parents[index].as_posix() if index < len(parents) else None
+            if isinstance(node, ast.Subscript) and value(node.value, env) is _IMAGE_WORDS:
+                cut = node.slice
+                if isinstance(cut, ast.Slice) and cut.step is None:
+                    if value(cut.lower, env) == 1 and cut.upper is None:
+                        return _IMAGE_WORDS
+                    upper = cut.upper
+                    if (cut.lower is None and isinstance(upper, ast.BinOp)
+                            and isinstance(upper.op, ast.Add) and value(upper.right, env) == 1
+                            and isinstance(upper.left, ast.Call)
+                            and isinstance(upper.left.func, ast.Attribute)
+                            and upper.left.func.attr == "index"
+                            and value(upper.left.func.value, env) is _IMAGE_WORDS
+                            and [value(arg, env) for arg in upper.left.args] == ["--end-runtime-options"]):
+                        return _IMAGE_RUNTIME
+            return None
+
+        def inspect(node, env):
+            if node is None:
+                return
+            for call in ast.walk(node):
+                if not isinstance(call, ast.Call):
+                    continue
+                callee = name(call.func, env)
+                argument = call.args[0] if call.args else next(
+                    (kw.value for kw in call.keywords if kw.arg in {"forms", "form", "args"}), None)
+                val = value(argument, env)
+                where = f"{relative}:{call.lineno} ({callee or ast.unparse(call.func)})"
+                if callee == IMAGE_COMMAND and isinstance(val, list):
+                    for form in val:
+                        if isinstance(form, str):
+                            forms(form, "image", where)
+                elif (isinstance(call.func, ast.Attribute) and call.func.attr == "call"
+                        and value(call.func.value, env) is _SESSION and isinstance(val, str)):
+                    forms(val, "image", where)
+                elif callee in {"subprocess.run", "subprocess.Popen", "subprocess.call",
+                                "subprocess.check_call", "subprocess.check_output",
+                                "tests.native_harness.run", "tests.native_harness.start"} and isinstance(val, list):
+                    kind = "image" if any(item is _IMAGE_RUNTIME for item in val) else "standalone"
+                    for option, arg in zip(val, val[1:]):
+                        if option in ("--load", "--script"):
+                            record(arg, kind, where)
+                        elif option == "--eval" and isinstance(arg, str):
+                            forms(arg, kind, where)
+
+        def walk(statements, env):
+            for node in statements:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    env[node.name] = _LoaderName(module_name + "." + node.name)
+                    child = env.copy()
+                    if not isinstance(node, ast.ClassDef):
+                        for arg in (node.args.posonlyargs + node.args.args + node.args.kwonlyargs
+                                    + ([node.args.vararg] if node.args.vararg else [])
+                                    + ([node.args.kwarg] if node.args.kwarg else [])):
+                            child.pop(arg.arg, None)
+                        # Python binds assignments locally even before their
+                        # statement executes.  They cannot borrow an import
+                        # of the same name from the containing scope.
+                        for local in ast.walk(node):
+                            for target in _targets(local):
+                                child.pop(target, None)
+                    walk(node.body, child)
+                    continue
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        env[alias.asname or alias.name.split(".")[0]] = _LoaderName(
+                            alias.name if alias.asname else alias.name.split(".")[0])
+                elif isinstance(node, ast.ImportFrom):
+                    for alias in node.names:
+                        env[alias.asname or alias.name] = _LoaderName(f"{node.module}.{alias.name}")
+                elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                    inspect(node.value, env)
+                    val = value(node.value, env)
+                    for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
+                        if isinstance(target, ast.Name):
+                            env[target.id] = val
+                elif isinstance(node, ast.AugAssign):
+                    inspect(node.value, env)
+                    if isinstance(node.target, ast.Name):
+                        env[node.target.id] = value(ast.BinOp(
+                            left=node.target, op=node.op, right=node.value), env)
+                elif isinstance(node, ast.With):
+                    child = env.copy()
+                    for item in node.items:
+                        inspect(item.context_expr, env)
+                        if isinstance(item.optional_vars, ast.Name):
+                            child[item.optional_vars.id] = value(item.context_expr, env)
+                    walk(node.body, child)
+                else:
+                    # Branches get their own bindings: a conditional assignment
+                    # cannot establish image provenance after the branch.
+                    for field_name, field_value in ast.iter_fields(node):
+                        if field_name in {"body", "orelse", "finalbody"} and isinstance(field_value, list):
+                            child = env.copy()
+                            for target in _targets(node):
+                                child.pop(target, None)
+                            walk(field_value, child)
+                        elif isinstance(field_value, ast.AST):
+                            inspect(field_value, env)
+                    if any(hasattr(node, field) for field in ("body", "orelse", "finalbody")):
+                        for nested in ast.walk(node):
+                            for target in _targets(nested):
+                                env.pop(target, None)
+        walk(tree.body, {"__file__": relative, "str": _LoaderName("str"),
+                         "next": _LoaderName("next")})
+    # Literal raw SBCL shell runners are standalone loaders too.  A --core
+    # command is not evidence of a plain SBCL harness (it may be an image).
+    import shlex
+    for path in sorted((root / "tests").glob("*.sh")):
+        source = path.read_text(encoding="utf-8").replace("\\\n", " ")
+        for line_number, line in enumerate(source.splitlines(), 1):
+            try:
+                words = shlex.split(line, comments=True)
+            except ValueError:
+                continue
+            if "--core" in words:
+                continue
+            for option, target in zip(words, words[1:]):
+                if option in {"--script", "--load"}:
+                    prefix = words[:words.index(option)]
+                    if any(Path(word).name == "sbcl" or "FN_SBCL" in word for word in prefix):
+                        record(target, "standalone", f"{path.relative_to(root)}:{line_number} (SBCL script)")
+    return loaders
+
+
 def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
-                 origins: dict, fixture_sources: dict[str, str] | None = None) -> dict | None:
+                 origins: dict, fixture_sources: dict[str, str] | None = None,
+                 image_loaded: bool = False) -> dict | None:
     """One harness: its stale hand stubs, the calls it leaves unresolved,
     and its derived block (expected and current).  None when the harness
     extracts nothing (or loads whole host files)."""
     from tools import ledger
+    if image_loaded:
+        return None  # a built image already has the real host: nothing is extracted or stubbed
     if re.search(r'\(load\s+"host/', text):
         return None  # it loads whole host files: nothing is stubbed in their place
     if re.search(r'\(defparameter \*roots\*', text):
@@ -2174,12 +2424,44 @@ def harness_scans(root: Path) -> list[tuple[Path, str, str, dict]]:
                 name = str(form[1]).lower()
                 bodies.setdefault(name, form)
                 origins.setdefault(name, (form[2], relative))
-    out = []
+    files = {}
     for path in sorted((root / "tests").glob("*.lisp")):
         relative = path.relative_to(root).as_posix()
         text = path.read_text(encoding="utf-8")
-        fixtures = harness_fixture_sources(root, relative, text)
-        scan = harness_scan(relative, text, rawdefs, bodies, origins, fixtures)
+        files[relative] = (path, text, harness_fixture_sources(root, relative, text))
+    loaders = test_file_loaders(root)
+    # An image fixture's literal descendants run in that same image.  Every
+    # other harness supplies standalone provenance for the fixtures it loads.
+    image_files = {name for name, kinds in loaders.items() if kinds["image"]}
+    for name in list(image_files):
+        if name in files:
+            image_files.update(files[name][2])
+    for relative, (_path, _text, fixtures) in files.items():
+        for nested in fixtures.keys() - {relative}:
+            kinds = loaders.setdefault(nested, {"image": set(), "standalone": set()})
+            kind = "image" if relative in image_files else "standalone"
+            kinds[kind].add(f"{relative} (fixture load)")
+            if loaders.get(relative, {}).get("standalone"):
+                kinds["standalone"].add(f"{relative} (standalone fixture load)")
+    out = []
+    for relative, (path, text, fixtures) in files.items():
+        kinds = loaders.get(relative, {"image": set(), "standalone": set()})
+        ambiguous = kinds["image"] and kinds["standalone"]
+        scan = harness_scan(relative, text, rawdefs, bodies, origins, fixtures,
+                            image_loaded=bool(kinds["image"]))
+        _hand, current = split_stub_block(text)
+        if ambiguous or (kinds["image"] and current is not None):
+            # Keep non-extracting probes visible to check/write for a stale
+            # block.  Mixed loaders are a finding, and regeneration refuses
+            # to choose a block for them (preserve the current text).
+            scan = {"stale": [], "unresolved": {}, "callers": {},
+                    "expected": current if ambiguous else None, "current": current,
+                    "extracted": set(), "stubs": {}, "checked": 0}
+            if ambiguous:
+                scan["stale"].append({
+                    "lint": "test-stubs", "where": relative, "callee": "",
+                    "problem": "ambiguous test loaders: image: " + "; ".join(sorted(kinds["image"]))
+                               + "; standalone: " + "; ".join(sorted(kinds["standalone"]))})
         if scan is not None:
             out.append((path, relative, text, scan))
     return out
