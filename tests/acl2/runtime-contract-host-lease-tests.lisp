@@ -597,7 +597,7 @@
     (and (nth 0 r) (fn-hll-invp s) (fn-hll-invp s2)
          (not (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))
          (equal (fn-rtc-config s)
-                (fn-hl-rtc-config *fn-bs-profile-development* '(1 nil 0 0 nil 0 0 0 nil 0 2) 4 1 0 0))
+                (fn-hl-rtc-config *fn-bs-profile-development* '(1 nil 0 0 nil 0 0 0 nil 0 2) 4 1 0 0 0 0))
          (equal (fn-rtc-s-status (fn-rtc-slot 2 s)) :draining)
          (member-equal u (fn-rtc-uses s))
          (equal (fn-rtc-get 1 u) 2)
