@@ -15,14 +15,12 @@
 ; -- and needs a carried invariant that implies the guard and that every
 ; writer of the carried state preserves.
 ;
-; WHAT IS PROVED.  fn-owner-retain-statep (books/owner-retain-transitions.lisp)
-; implies each such guard (fn-owner-retain-statep-implies-entry-guard); it is
-; established at the recovery install under A-RECOVERED-OPEN (the pilot row
-; fn-owner-retain-carried, books/owner-retain-carried.lisp, whose open this
-; row repeats verbatim and def-carried re-checks); and it is preserved by the
-; thirteen writers listed as :transitions below: STAGE-5B's tier A
-; (host/owner-retain-host.lisp, frozen at f98e1ff1b) and the pilot's three
-; prepares.  def-carried generates each NAME-FN-carries statement from the
+; WHAT IS PROVED.  fn-owner-retain-retained-statep (books/owner-retain-livep.lisp)
+; implies each such guard (fn-owner-retain-retained-statep-implies-entry-guard); it is
+; established at the recovery install by K1's retained establishment and
+; its two recovery producers under their existing named assumptions. The
+; same sixteen served writers are preserved, now for the stronger unary
+; invariant (books/owner-retain-live.lisp).  def-carried generates each NAME-FN-carries statement from the
 ; world and proves it from the named theorem.
 ;
 ; WHAT IS TEMPORARILY TRUSTED AT NATIVE DISPATCH: A-OWNER-INVARIANT-CARRIED (specs/failures.md).  The carried
@@ -61,43 +59,44 @@
 (include-book "../books/owner-retain-carried") ; the pilot row and its open
 (include-book "../books/owner-post-carried") ; actual refusal/known-abort writers
 (include-book "owner-retain-host")
+(include-book "../books/owner-retain-live")
 
 (def-carried fn-owner-served-carried
-  :invariant fn-owner-retain-statep
-  ; the pilot's open, verbatim (books/owner-retain-carried.lisp)
+  :invariant fn-owner-retain-retained-statep
+  ; K1 retained establishment; the same recovery producers and assumptions.
   :established ((fn-owner-install-extended
-                 fn-owner-install-extended-establishes-when-recovering
+                 fn-owner-retain-install-establishes-retained-state
                  :ok (equal (mv-nth 1 _) :recovering)
-                 :hyps ((or (equal oc :fault) (fn-lgoc-invariantp oc)))
+                 :hyps ((or (equal oc :fault)
+                            (and (fn-lgoc-invariantp oc)
+                                 (fn-osr-retainedp (fn-sbud-oc-store oc)))))
                  :produced ((fn-ock-recover-extended
-                             fn-owner-recover-extended-produces-invariant
+                             fn-owner-retain-recovery-produces-retained-input
                              :assuming ((fn-assume-capture-extensionp extended configs)))
                             (fn-ock-install
-                             fn-owner-store-open-install-produces-invariant
+                             fn-owner-retain-store-open-produces-retained-input
                              :assuming ((fn-assume-store-open-pairp replayed opened))))
                  :witness ((fn-owner-retain-witness-oc) nil (make-list 32 :initial-element 0)
                            (create-fn-arena$a) (create-fn-cat$a) (create-fn-hist$a)
                            (fn-owner-retain-witness-state))))
-  :transitions ((fn-owner-cfg-capture fn-owner-cfg-capture-state-by-definition)
-                ; the pilot's (books/owner-retain-carried.lisp)
-                (fn-owner-prepare-identity fn-owner-prepare-identity-preserves-retain-state)
-                (fn-owner-prepare-consumer fn-owner-prepare-consumer-preserves-retain-state)
-                (fn-owner-prepare-topic fn-owner-prepare-topic-preserves-retain-state)
-                (fn-owner-refuse-reservation fn-owner-refuse-reservation-preserves-retain-state)
-                (fn-owner-known-abort fn-owner-known-abort-preserves-retain-state)
-                ; STAGE-5B tier A (host/owner-retain-host.lisp)
-                (fn-owner-io fn-owner-io-preserves-retain-state)
-                (fn-owner-take fn-owner-take-preserves-retain-state)
-                (fn-owner-control-submit fn-owner-control-submit-preserves-retain-state)
-                (fn-owner-prepare-retention fn-owner-prepare-retention-preserves-retain-state)
-                (fn-owner-install-effects fn-owner-install-effects-preserves-retain-state)
-                (fn-owner-close fn-owner-close-preserves-retain-state)
-                (fn-owner-fault fn-owner-fault-preserves-retain-state)
-                (fn-owner-open-peer fn-owner-open-peer-preserves-retain-state)
-                (fn-owner-install-node-secret fn-owner-install-node-secret-preserves-retain-state)
-                (fn-owner-apply-limit-profile fn-owner-apply-limit-profile-preserves-retain-state))
-  :concludes ((fn-sn-statep fn-owner-retain-statep-implies-entry-guard)
-              (fn-prc-carryp fn-owner-retain-statep-implies-entry-guard))
+  :transitions ((fn-owner-cfg-capture fn-owner-retain-cfg-capture-keeps-retained-state)
+                (fn-owner-prepare-identity fn-owner-retain-identity-keeps-retained-state)
+                (fn-owner-prepare-consumer fn-owner-retain-consumer-keeps-retained-state)
+                (fn-owner-prepare-topic fn-owner-retain-topic-keeps-retained-state)
+                (fn-owner-refuse-reservation fn-owner-retain-refuse-reservation-keeps-retained-state)
+                (fn-owner-known-abort fn-owner-retain-known-abort-keeps-retained-state)
+                (fn-owner-io fn-owner-retain-io-preserves-retained-state)
+                (fn-owner-take fn-owner-retain-take-keeps-retained-state)
+                (fn-owner-control-submit fn-owner-retain-control-submit-keeps-retained-state)
+                (fn-owner-prepare-retention fn-owner-retain-prepare-retention-keeps-retained-state)
+                (fn-owner-install-effects fn-owner-retain-install-effects-keeps-retained-state)
+                (fn-owner-close fn-owner-retain-close-keeps-retained-state)
+                (fn-owner-fault fn-owner-retain-fault-keeps-retained-state)
+                (fn-owner-open-peer fn-owner-retain-open-peer-keeps-retained-state)
+                (fn-owner-install-node-secret fn-owner-retain-install-node-secret-keeps-retained-state)
+                (fn-owner-apply-limit-profile fn-owner-retain-apply-limit-profile-keeps-retained-state))
+  :concludes ((fn-sn-statep fn-owner-retain-retained-statep-implies-entry-guard)
+              (fn-prc-carryp fn-owner-retain-retained-statep-implies-entry-guard))
   :incomplete (A-OWNER-INVARIANT-CARRIED
                ; every other state-returning host writer, by name: the
                ; fn-interfaces entries, and the owner entries the raw host

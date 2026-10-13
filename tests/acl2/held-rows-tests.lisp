@@ -198,7 +198,13 @@
 (defconst *hrt-r1*
   (fn-record-make 1 1 1 "<hrt1@example.invalid>" '(66 13 10) '("fn.test")
                   "hrt-pin-1" "hrt-content-1" "hrt-release-1" 3 841000000))
-(defconst *hrt-rows* (fn-hrt-rows (list *hrt-r0* *hrt-r1*) nil 0))
+; The value is computed at expansion and stored as a literal, so the compiled
+; file evaluates nothing at load: a defconst initializer that runs
+; with-local-stobj fn-arena re-runs when the FASL loads, and in a session
+; where payload-arena-attach has attached the arena it builds the generic's
+; list foundation and hands it to the extent's exports (A24, 10-13).
+(make-event `(defconst *hrt-rows* ',(fn-hrt-rows (list *hrt-r0* *hrt-r1*) nil 0)))
+(assert-event (equal *hrt-rows* (fn-hrt-rows (list *hrt-r0* *hrt-r1*) nil 0)))
 (assert-event (and (fn-held-p (car *hrt-rows*)) (fn-held-p (cadr *hrt-rows*))))
 (assert-event (equal (fn-record-payload (car *hrt-rows*)) 0))
 (assert-event (equal (fn-record-payload (cadr *hrt-rows*)) 1))
