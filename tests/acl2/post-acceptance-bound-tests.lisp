@@ -9,6 +9,8 @@
 (include-book "../../books/post-acceptance-bound")
 (include-book "../../books/post-context")
 (include-book "../../books/stx-keyring-records")
+(include-book "../../books/byte-store-frame")
+(include-book "../../books/article")
 
 (defconst *pabt-agent* (make-list *fn-inj-max-agent-octets* :initial-element 97))
 (defconst *pabt-config*
