@@ -99,7 +99,7 @@ class Fake:
 
     def runner_script(self) -> str:
         started = [s for s in self.scripts()
-                   if "certify_books.py" in s and "nohup sh -c" in s]
+                   if "certify_books.py" in s and "nohup setsid sh -c" in s]
         assert len(started) == 1, started
         return started[0]
 
@@ -147,7 +147,7 @@ class SubmitTests(unittest.TestCase):
             self.assertEqual(mirror[-2:], [f"{root}/", f"persvati:{root}/"])
             script = fake.runner_script()
             self.assertIn(f"cd {root}", script)
-            self.assertIn("nohup sh -c", script)
+            self.assertIn("nohup setsid sh -c", script)
             self.assertIn("tools/certify_books.py", script)
             self.assertIn("--jobs 12", script)
             self.assertIn("books/alpha", script)
@@ -291,7 +291,7 @@ class FailureTests(unittest.TestCase):
                 farm.refuse_unmerged_source(root)
 
     def test_a_runner_that_did_not_start_fails_the_submit(self):
-        fake = Fake([], codes={"nohup sh -c": 9})
+        fake = Fake([], codes={"nohup setsid sh -c": 9})
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             with driving(fake, root / "cache"):
@@ -313,7 +313,7 @@ class FailureTests(unittest.TestCase):
             self.assertNotIn("certify_books.py", " ".join(fake.scripts()))
 
     def test_main_exits_non_zero_and_says_so(self):
-        fake = Fake([], codes={"nohup sh -c": 9})
+        fake = Fake([], codes={"nohup setsid sh -c": 9})
         errors = io.StringIO()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -405,7 +405,7 @@ class CacheTests(unittest.TestCase):
                                          remote=Path("/home/ember/fn-lanes/w5"))
             scripts = fake.scripts()
             install = next(i for i, s in enumerate(scripts) if "tools/certs.py" in s)
-            runner = next(i for i, s in enumerate(scripts) if "nohup sh -c" in s)
+            runner = next(i for i, s in enumerate(scripts) if "nohup setsid sh -c" in s)
             self.assertLess(install, runner)  # certify only what is not cached
             self.assertIn('--cache "$HOME"/fn-certcache', scripts[install])
             # A plain-roots run installs whatever of the roots' closure is
@@ -438,7 +438,7 @@ class CacheTests(unittest.TestCase):
                 identifier = farm.submit("persvati", root, ["books/alpha"], jobs=4,
                                          timeout_seconds=60, affected_by=[],
                                          remote=Path("/home/ember/fn-gates/lane"))
-            self.assertIn("nohup sh -c", fake.runner_script())
+            self.assertIn("nohup setsid sh -c", fake.runner_script())
             record = json.loads(farm.record_path(root, identifier).read_text())
             self.assertEqual(record["cache_install"]["origin"], "composed")
             self.assertEqual(record["cache_install"]["origins"],
@@ -552,7 +552,7 @@ class CacheTests(unittest.TestCase):
             install = next(s for s in fake.scripts() if "tools/certs.py" in s)
             self.assertIn("--require-origin /tank/fn/gate --dependencies-only "
                           "install-set $roots", install)
-            self.assertFalse(any("nohup sh -c" in script for script in fake.scripts()))
+            self.assertFalse(any("nohup setsid sh -c" in script for script in fake.scripts()))
 
     def test_require_origin_runs_without_incremental_when_the_set_is_whole(self):
         fake = Fake([], certs=INSTALLED)
@@ -586,7 +586,8 @@ class CacheTests(unittest.TestCase):
             quoted = shlex.quote(override)
             self.assertIn("acl2=" + quoted, install)
             runner_words = shlex.split(runner)
-            inner = runner_words[runner_words.index("-c") + 1]
+            leader = runner_words[runner_words.index("-c") + 1]
+            inner = shlex.split(leader.split("exec sh -c ", 1)[1])[0]
             self.assertIn("FN_ACL2=" + quoted, inner)
             self.assertNotIn("FN_ACL2=" + override, inner)
             identifier = next((root / "build" / "farm").glob("*.json")).stem
@@ -605,7 +606,7 @@ class CacheTests(unittest.TestCase):
                                 remote=Path("/tank/fn/tree"))
             self.assertIn("ACL2 was not started", str(refused.exception))
             self.assertIn("no such cache", str(refused.exception))
-            self.assertFalse(any("nohup sh -c" in script
+            self.assertFalse(any("nohup setsid sh -c" in script
                                  for script in fake.scripts()))
 
     def test_closure_is_the_explicit_recertification_plan_on_a_set_miss(self):
@@ -1019,7 +1020,7 @@ class CancelAndUnionTests(unittest.TestCase):
         class Started(Fake):
             def __call__(self, command, **kwargs):
                 result = super().__call__(command, **kwargs)
-                if command[0] == "ssh" and "nohup sh -c" in command[-1]:
+                if command[0] == "ssh" and "nohup setsid sh -c" in command[-1]:
                     result.stdout = "FN_FARM_STARTED run-x 4242\n"
                 if command[0] == "ssh" and "kill -TERM" in command[-1]:
                     result.stdout = "CANCELLED 3\n"
@@ -1251,9 +1252,18 @@ class SubmitLockTests(unittest.TestCase):
         cls.flock = LocalFlock()
         cls.addClassCleanup(cls.flock.close)
         print(f"farm shell lock tests: {cls.flock.description}", file=sys.stderr)
+        # The fake Linux box runs locally on macOS too. This stand-in uses
+        # the real setsid syscall and exec, without util-linux's optional fork.
+        cls.session_tools = tempfile.TemporaryDirectory(prefix="farm-setsid-")
+        cls.addClassCleanup(cls.session_tools.cleanup)
+        cls.setsid = Path(cls.session_tools.name) / "setsid"
+        cls.setsid.write_text('#!' + sys.executable + '\nimport os, sys\n'
+                              'os.setsid()\nos.execvp(sys.argv[1], sys.argv[1:])\n')
+        cls.setsid.chmod(0o755)
 
     def sh(self, script, **kwargs):
-        return subprocess.run(["sh", "-c", self.flock.script(script)],
+        script = self.flock.script(script).replace("nohup setsid ", "nohup " + shlex.quote(str(self.setsid)) + " ")
+        return subprocess.run(["sh", "-c", script],
                               capture_output=True, text=True, timeout=10, **kwargs)
 
     def test_take_hold_and_give_back_only_by_its_owner(self):
@@ -1304,7 +1314,7 @@ class SubmitLockTests(unittest.TestCase):
             mirror = next(i for i, c in enumerate(order) if c.startswith("rsync"))
             check = next(i for i, c in enumerate(order) if "FN_FARM_RUNS_CHECK" in c)
             preflight = next(i for i, c in enumerate(order) if "tools/certs.py" in c)
-            start = next(i for i, c in enumerate(order) if "nohup sh -c" in c)
+            start = next(i for i, c in enumerate(order) if "nohup setsid sh -c" in c)
             give = next(i for i, c in enumerate(order) if "FN_FARM_LOCK_GIVE" in c)
             self.assertTrue(take < check < mirror < preflight < start < give, order)
 
@@ -1395,13 +1405,13 @@ class SubmitLockTests(unittest.TestCase):
         fake, _ = self.submit_with_foreign_run()
         self.assertEqual(fake.rsyncs(), [])
         self.assertFalse([s for s in fake.scripts() if "tools/certs.py" in s])
-        self.assertFalse([s for s in fake.scripts() if "nohup sh -c" in s])
+        self.assertFalse([s for s in fake.scripts() if "nohup setsid sh -c" in s])
 
     def test_a_status_file_cannot_hide_a_held_run_lock(self):
         fake, _ = self.submit_with_foreign_run(status_held=True)
         self.assertEqual(fake.rsyncs(), [])
         self.assertFalse([s for s in fake.scripts() if "tools/certs.py" in s])
-        self.assertFalse([s for s in fake.scripts() if "nohup sh -c" in s])
+        self.assertFalse([s for s in fake.scripts() if "nohup setsid sh -c" in s])
 
     def test_a_finished_foreign_run_does_not_refuse(self):
         fake, err = self.submit_with_foreign_run(finished=True)
@@ -1420,7 +1430,7 @@ class SubmitLockTests(unittest.TestCase):
         fake, _ = self.submit_with_foreign_run(legacy=True)
         self.assertEqual(fake.rsyncs(), [])
         self.assertFalse([s for s in fake.scripts() if "tools/certs.py" in s])
-        self.assertFalse([s for s in fake.scripts() if "nohup sh -c" in s])
+        self.assertFalse([s for s in fake.scripts() if "nohup setsid sh -c" in s])
 
     def test_a_stale_legacy_run_does_not_refuse_and_is_named(self):
         fake, err = self.submit_with_foreign_run(legacy=True, dead=True)
@@ -1480,9 +1490,9 @@ class SubmitLockTests(unittest.TestCase):
                 def __call__(self, command, **kwargs):
                     if command[0] == "ssh" and ("FN_FARM_LOCK_" in command[-1]
                             or "FN_FARM_RUNS_CHECK" in command[-1]
-                            or "nohup sh -c" in command[-1]):
+                            or "nohup setsid sh -c" in command[-1]):
                         self.commands.append(list(command))
-                        if "nohup sh -c" in command[-1]:
+                        if "nohup setsid sh -c" in command[-1]:
                             lock = remote / "build/farm/run-delayed.lock"
                             lock.parent.mkdir(parents=True, exist_ok=True)
                             holder = lock.open("w")
@@ -1634,9 +1644,13 @@ class SubmitLockTests(unittest.TestCase):
         self.assertLess(script.index("echo $$"), script.index("FN_ACL2="))
         # The write belongs to the quoted inner shell, before its runner,
         # rather than to the ssh wrapper or the submitter's process.
-        inner = shlex.split(script.split("nohup sh -c ", 1)[1])[0]
-        self.assertTrue(inner.startswith("exec 9>build/farm/run-own.lock || exit 11; "))
-        self.assertLess(inner.index("/usr/bin/flock -x 9"), inner.index("run-own.started"))
+        inner = shlex.split(script.split("nohup setsid sh -c ", 1)[1])[0]
+        self.assertTrue(inner.startswith("echo $$ > build/farm/run-own.pid || exit 11; exec sh -c "))
+        worker = shlex.split(inner.split("exec sh -c ", 1)[1])[0]
+        self.assertTrue(worker.startswith("exec 9>build/farm/run-own.lock || exit 11; "))
+        self.assertLess(worker.index("/usr/bin/flock -x 9"), worker.index("run-own.started"))
+        self.assertIn("export FN_FARM_RUN_LOCK_FD=9", worker)
+        self.assertNotIn("pid=$!", script)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "build/farm").mkdir(parents=True)
@@ -1649,12 +1663,28 @@ class SubmitLockTests(unittest.TestCase):
             with mock.patch.dict(farm.HOSTS["hbox"], {"wrap": ""}):
                 script = farm.remote_script("hbox", root, "run-own", [],
                                             2, 60, [], False, None, None, False)
-            inner = shlex.split(script.split("nohup sh -c ", 1)[1])[0]
+            inner = shlex.split(script.split("nohup setsid sh -c ", 1)[1])[0]
             result = self.sh(inner, cwd=root)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual((root / "build/farm/run-own.pid").read_text().strip(),
                              (root / "observed-wrapper.pid").read_text())
             self.assertEqual((root / "build/farm/run-own.status").read_text(), "0\n")
+
+    def test_detached_pid_is_the_session_and_group_leader(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "build/farm").mkdir(parents=True)
+            self.assertEqual(self.sh(farm.submit_lock_take_script(
+                root, "run-group", "local test")).returncode, 0)
+            self.seed_runner(root,
+                "import os\nfrom pathlib import Path\n"
+                "Path('observed').write_text(f'{os.getppid()} {os.getpgrp()} {os.getsid(0)}')\n")
+            result = self.sh(self.local_start_script(root, "run-group"))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.wait_for(lambda: (root / "build/farm/run-group.status").exists(), "runner did not finish")
+            pid = int((root / "build/farm/run-group.pid").read_text())
+            self.assertEqual((root / "observed").read_text(), f"{pid} {pid} {pid}")
+            self.assertIn(f"FN_FARM_STARTED run-group {pid}", result.stdout)
 
 
 
