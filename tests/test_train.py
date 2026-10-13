@@ -244,6 +244,18 @@ class TrainBase(unittest.TestCase):
             p = self.seed / s
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(STUB)
+        # train imports ledger's reader to derive BP host obligations. Keep
+        # CLI gates stubbed while imports use the real, non-evaluating reader.
+        (self.seed / "tools/ledger.py").write_text(
+            'if __name__ == "__main__":\n' + textwrap.indent(STUB, "    ")
+            + 'else:\n'
+              '    import importlib.util, sys\n'
+            + f'    spec = importlib.util.spec_from_file_location("train_fixture_ledger", {str(REPO / "tools/ledger.py")!r})\n'
+              '    module = importlib.util.module_from_spec(spec)\n'
+              '    sys.modules[spec.name] = module\n'
+              '    spec.loader.exec_module(module)\n'
+              '    Reader, ReadError, head = module.Reader, module.ReadError, module.head\n'
+              '    source_events, include_is_external = module.source_events, module.include_is_external\n')
         # The gate imports the finding classes after querying this tool.
         # Importing its CLI stub must not terminate the scratch train process.
         (self.seed / "tools/premise_audit.py").write_text(
@@ -2168,6 +2180,75 @@ class ImageModuleTests(unittest.TestCase):
         return {"source": source or self.HEAD, "dir": "/box/run",
                 "modules": {m: {"rc": 0, "cases": {m + ".T.test_ok": "ok"}} for m in modules}}
 
+    def test_bp_host_adapters_oblige_the_bp_native_modules(self):
+        expected = {"tests.test_bp_app_native", "tests.test_bp_obligation_native",
+                    "tests.test_native_ion_workflow", "tests.test_native_bp_pin_carry",
+                    "tests.test_native_bp_carry_abandon"}
+        for path in ("host/bp-release-owner-host.lisp", "host/workflow-host.lisp"):
+            with self.subTest(path=path):
+                self.assertEqual(train.image_modules([path], REPO), {m: [path] for m in expected})
+        self.assertEqual(train.image_modules(["host/owner-host.lisp"], REPO), {})
+
+    def test_bp_host_derivation_uses_local_includes_not_names_comments_or_quotes(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "host").mkdir()
+            path = "host/new-adapter.lisp"
+            file = root / path
+            file.write_text('(in-package "ACL2")\n(include-book "../books/bp-release")\n')
+            self.assertEqual(train.image_modules([path], root), {m: [path] for m in train.BP_NATIVES})
+            file.write_text('; (include-book "../books/bp-release")\n'
+                            '\'(include-book "../books/bp-release")\n'
+                            '(local (include-book "../books/bp-release"))\n'
+                            '(include-book "../books/bp-release" :dir :system)\n'
+                            '(defun bp-looking-name () nil)\n')
+            self.assertEqual(train.image_modules([path], root), {})
+            file.write_text('(include-book "../books/bp-release"')
+            with self.assertRaisesRegex(train.TrainError, "cannot derive image obligations"):
+                train.image_modules([path], root)
+
+    def test_drop_matches_box_and_dir_and_preserves_other_runs(self):
+        first = train.merge_image_run(None, self.HEAD, "hbox", "/s/native-standin", self.ran(["a"])["modules"], "b" * 40)
+        prior = train.merge_image_run(first, self.HEAD, "persvati", "/s/native-real", self.ran(["b"])["modules"], "c" * 40)
+        before = json.dumps(prior, sort_keys=True)
+        with self.assertRaisesRegex(train.TrainError, "no image module entry"):
+            train.drop_image_run(prior, "standin", {"box": "persvati", "dir": "/s/native-standin"})
+        after, dropped, directory = train.drop_image_run(prior, "standin", {"box": "hbox", "dir": "/s/native-standin"})
+        self.assertEqual((dropped, directory), (["a"], "/s/native-standin"))
+        self.assertEqual(after, {"source": self.HEAD, "runs": {"/s/native-real": "persvati"},
+                                 "modules": {"b": prior["modules"]["b"]},
+                                 "images_from": {"/s/native-real": "c" * 40}})
+        self.assertEqual(json.dumps(prior, sort_keys=True), before)
+        with self.assertRaisesRegex(train.TrainError, "no image module entry"):
+            train.drop_image_run(after, "standin", {"box": "hbox", "dir": directory})
+
+    def test_drop_without_record_requires_one_exact_native_label_directory(self):
+        prior = train.merge_image_run(None, self.HEAD, "hbox", "/s/native-one", self.ran(["a"])["modules"])
+        prior = train.merge_image_run(prior, self.HEAD, "hbox", "/s/native-one-more", self.ran(["b"])["modules"])
+        after, dropped, _ = train.drop_image_run(prior, "one", None)
+        self.assertEqual(dropped, ["a"])
+        self.assertEqual(after["modules"], {"b": prior["modules"]["b"]})
+        self.assertEqual(after["runs"], {"/s/native-one-more": "hbox"})
+        with self.assertRaisesRegex(train.TrainError, "no recorded image run"):
+            train.drop_image_run(prior, "missing", None)
+        ambiguous = train.merge_image_run(prior, self.HEAD, "persvati", "/other/native-one", self.ran(["c"])["modules"])
+        with self.assertRaisesRegex(train.TrainError, "ambiguous"):
+            train.drop_image_run(ambiguous, "one", None)
+
+    def test_drop_refuses_an_empty_run_and_removes_last_run_provenance(self):
+        prior = train.merge_image_run(None, self.HEAD, "hbox", "/s/native-empty", {})
+        with self.assertRaisesRegex(train.TrainError, "no image module entry"):
+            train.drop_image_run(prior, "empty", None)
+        prior = train.merge_image_run(prior, self.HEAD, "hbox", "/s/native-one", self.ran(["a"])["modules"], "b" * 40)
+        after, _, _ = train.drop_image_run(prior, "one", None)
+        self.assertEqual(after, {"source": self.HEAD, "runs": {"/s/native-empty": "hbox"}, "modules": {}})
+
+    def test_drop_supports_a_single_run_record_and_keeps_unrelated_state(self):
+        prior = dict(self.ran(["a"]), box="hbox", dir="/s/native-one", extra="keep")
+        after, dropped, _ = train.drop_image_run(prior, "one", None)
+        self.assertEqual(dropped, ["a"])
+        self.assertEqual(after, dict(prior, modules={}))
+
     def test_a_module_log_with_a_non_text_octet_still_reads_its_cases(self):
         # train 86: a NUL in test_native_key_statements' log made grep call it
         # a binary file and print nothing, so the module read with no case
@@ -2458,6 +2539,165 @@ class ImageGateTests(TrainBase):
             (records / f"{d.rsplit('/', 1)[-1]}.run").write_text(
                 f"box=hbox\ndir={d}\nsource={self.head()}\n")
         return {"PATH": f"{stubs}:{os.environ['PATH']}"}
+
+    def test_drop_removes_one_run_without_ssh_and_allows_its_replacement(self):
+        self.launcher_train()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        replaced = need[0]
+        env = self.image_runs({"/s/native-standin": {replaced: (0, "ok")},
+                               "/s/native-real": {m: (0, "ok") for m in need[1:]}})
+        for label in ("native-standin", "native-real"):
+            self.assertEqual(self.train("image", "--label", label, extra_env=env).returncode, 0)
+        t = train.Train(self.work)
+        before = t.load()
+        # The record's label need not match the directory's basename.
+        (self.work / "build/hbox-native/standin.run").write_text("box=hbox\ndir=/s/native-standin\n")
+        marker = self.tmp / "unexpected-ssh"
+        (self.tmp / "stubs/ssh").write_text(f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(marker)!r}).touch()\nraise SystemExit(99)\n")
+        p = self.train("image", "--drop", "standin", extra_env=env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn(f"image dropped standin (/s/native-standin): {replaced}", p.stdout)
+        self.assertFalse(marker.exists())
+        after = t.load()
+        self.assertEqual(after, dict(before, image={"source": self.head(),
+                         "runs": {"/s/native-real": "hbox"},
+                         "modules": {m: before["image"]["modules"][m] for m in need[1:]}}))
+        g, rec = self.gate()
+        self.assertNotEqual(g.returncode, 0)
+        self.assertEqual(rec["missing"], [replaced])
+        state_bytes = t.state_path.read_bytes()
+        p = self.train("image", "--drop", "standin", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("no image module entry", p.stdout)
+        self.assertEqual(t.state_path.read_bytes(), state_bytes)
+        self.assertFalse(marker.exists())
+        env = self.image_runs({"/s/replacement": {replaced: (0, "ok")}})
+        self.assertEqual(self.train("image", "--label", "replacement", extra_env=env).returncode, 0)
+        self.assertEqual(self.gate()[0].returncode, 0)
+
+    def test_drop_with_missing_record_is_local_and_unknown_label_preserves_state(self):
+        t = train.Train(self.work)
+        st = t.load()
+        st["image"] = train.merge_image_run(None, self.head(), "hbox", "/s/native-old", {"a": {"rc": 0, "cases": {"a.T.a": "ok"}}})
+        t.save(st)
+        # A mocked subprocess proves neither accepted nor refused drops reach ssh.
+        for label, rc in (("unknown", 2), ("old", 0)):
+            before = t.state_path.read_bytes()
+            with mock.patch.object(train.subprocess, "run", side_effect=AssertionError("no subprocess on drop")):
+                with mock.patch.object(t, "head", return_value=st["image"]["source"]):
+                    with contextlib.redirect_stdout(io.StringIO()) as output:
+                        if rc:
+                            with self.assertRaisesRegex(train.TrainError, "no recorded image run"):
+                                train.cmd_image(t, SimpleNamespace(drop=label))
+                        else:
+                            self.assertEqual(train.cmd_image(t, SimpleNamespace(drop=label)), 0)
+            if rc:
+                self.assertEqual(t.state_path.read_bytes(), before)
+            else:
+                self.assertIn("image dropped old", output.getvalue())
+        self.assertEqual(t.load()["image"]["modules"], {})
+
+    def test_image_label_and_drop_are_mutually_exclusive(self):
+        p = self.train("image", "--label", "one", "--drop", "two")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("not allowed with argument", p.stderr)
+
+    def test_neutral_tree_changes_accept_run_with_or_without_image_reuse(self):
+        self.launcher_train()
+        built = self.head()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        (self.work / "tests/new_helper.py").write_text("value = 1\n")
+        self.commit(self.work, "suite differs from image source")
+        tree = self.head()
+        env = self.image_runs({"/s/reuse": {m: (0, "ok") for m in need}})
+        record = self.work / "build/hbox-native/reuse.run"
+        (self.work / "docs").mkdir(exist_ok=True)
+        (self.work / "docs/image.md").write_text("doc\n")
+        (self.work / "planning").mkdir(exist_ok=True)
+        (self.work / "planning/image.md").write_text("plan\n")
+        self.commit(self.work, "only verdict-neutral changes from run tree")
+        for source, tree_line in ((built, f"tree={tree}\n"), (tree, ""), (self.head(), f"tree={tree}\n")):
+            with self.subTest(source=source, tree_line=tree_line):
+                record.write_text(f"box=hbox\ndir=/s/reuse\nsource={source}\n{tree_line}")
+                p = self.train("image", "--label", "reuse", extra_env=env)
+                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+                self.assertIn(f"image run tree {tree} accepted at HEAD {self.head()}", p.stdout)
+                st = train.Train(self.work).load()
+                self.assertEqual(st["image"]["source"], self.head())
+                self.assertEqual(st["image"].get("images_from", {}), {"/s/reuse": source} if source != self.head() else {})
+                if source != self.head():
+                    self.assertIn(f"reuses the images of {source[:9]}", p.stdout)
+                self.assertEqual(self.gate()[0].returncode, 0)
+
+    def test_tree_changes_to_suites_or_host_refuse_before_ssh_even_when_source_is_head(self):
+        for path in ("tests/new_helper.py", "host/new-adapter.lisp"):
+            with self.subTest(path=path):
+                tree = self.head()
+                (self.work / path).parent.mkdir(exist_ok=True)
+                (self.work / path).write_text("changed\n")
+                self.commit(self.work, "non-neutral run tree")
+                records = self.work / "build/hbox-native"
+                records.mkdir(parents=True, exist_ok=True)
+                (records / "old.run").write_text(f"box=hbox\ndir=/s/old\nsource={self.head()}\ntree={tree}\n")
+                t = train.Train(self.work)
+                before = t.load()
+                with mock.patch.object(train.subprocess, "run", wraps=subprocess.run) as run:
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        with self.assertRaisesRegex(train.TrainError, f"first: {path}"):
+                            train.cmd_image(t, SimpleNamespace(label="old"))
+                self.assertFalse(any("ssh" in call.args[0] for call in run.call_args_list))
+                self.assertEqual(t.load(), before)
+
+    def test_neutral_tree_reuse_still_refuses_an_image_input_changed_from_source(self):
+        self.launcher_train()
+        built = self.head()
+        (self.work / "packaging/launcher-decide.sh").write_text("# new image input\n")
+        self.commit(self.work, "changed source input")
+        tree = self.head()
+        env = self.image_runs({"/s/reuse": {"a": (0, "ok")}})
+        (self.work / "docs").mkdir(exist_ok=True)
+        (self.work / "docs/image.md").write_text("neutral\n")
+        self.commit(self.work, "only neutral tree change")
+        (self.work / "build/hbox-native/reuse.run").write_text(f"box=hbox\ndir=/s/reuse\nsource={built}\ntree={tree}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("first: packaging/launcher-decide.sh", p.stdout)
+
+    def test_image_run_with_unknown_tree_refuses(self):
+        env = self.image_runs({"/s/reuse": {"a": (0, "ok")}})
+        (self.work / "build/hbox-native/reuse.run").write_text(f"box=hbox\ndir=/s/reuse\nsource={self.head()}\ntree={'f' * 40}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("its tree fffffffff is not a commit here", p.stdout)
+
+    def test_deleted_bp_adapter_is_derived_from_the_train_base(self):
+        path = "host/new-adapter.lisp"
+        # Advance the fixture's base with an adapter, then delete it in the train.
+        (self.seed / "host").mkdir(exist_ok=True)
+        self.advance_dev({path: '(include-book "../books/bp-release")\n'})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "origin/dev")
+        (self.work / path).write_text('(include-book "../books/store-node")\n')
+        self.assertEqual(train.image_modules([path], self.work), {m: [path] for m in train.BP_NATIVES})
+        (self.work / path).unlink()
+        self.commit(self.work, "delete BP adapter")
+        self.assertEqual(train.image_modules([path], self.work), {m: [path] for m in train.BP_NATIVES})
+
+    def test_bp_adapter_gate_uses_its_own_tree_and_requires_the_bp_modules(self):
+        path = "host/new-adapter.lisp"
+        (self.work / "host").mkdir(exist_ok=True)
+        (self.work / path).write_text('(include-book "../books/bp-release")\n')
+        self.commit(self.work, "BP adapter")
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 1, g.stdout + g.stderr)
+        self.assertEqual(rec["need"], sorted(train.BP_NATIVES))
+        self.assertIn(path, g.stdout)
+        t = train.Train(self.work)
+        command = train.lane_check_box_commands(t, t.load()["gates"], [path])["image"]
+        self.assertEqual(command[0], "BOX")
+        self.assertEqual(command[1].split()[7:], sorted(train.BP_NATIVES))
+        self.set_image(train.BP_NATIVES)
+        self.assertEqual(self.gate()[0].returncode, 0)
 
     def test_a_run_on_heads_tree_reuses_a_ready_image_only_when_no_image_input_differs(self):
         self.launcher_train()
