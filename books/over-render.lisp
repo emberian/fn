@@ -6,11 +6,133 @@
 (include-book "over-window")
 
 (include-book "def-span-scan-window")
-(include-book "over-render-pool")
+
 
 (include-book "decimal-text")
 
 (local (include-book "arithmetic-5/top" :dir :system))
+; Pool rules come from C20; these helpers express OVER's absolute budget.
+(local (in-theory (union-theories (theory 'fn-dsw-pool-theory) (current-theory :here))))
+; Keep splice as the state refinement; opt into puts equalities only in hints.
+(local (in-theory (disable fn-dsw-splice-is-puts fn-dsw-puts-is-splice
+                           fn-dsw-append-loop-is-puts)))
+(defthm fn-ovrqp-pool-length
+ (implies (fn-rtc-st$ap s) (equal (len (fn-rtc-pool s)) (fn-rtc-nbufs (fn-rtc-config s))))
+ :hints (("Goal" :in-theory (union-theories '(fn-rtc-st$ap fn-rtc-shapep) (theory 'minimal-theory)))))
+(defthm fn-ovrqp-splice-preserves-ap
+ (implies (fn-rtc-st$ap s) (fn-rtc-st$ap (fn-rtc-st$a-splice h j data s)))
+ :hints (("Goal" :use ((:instance fn-rtc-st-splice{preserved} (fn-rtc-st s) (off j)))
+          :in-theory (theory 'minimal-theory))))
+(defun fn-ovrqp-roomp (h j limit s)
+ (declare (xargs :verify-guards nil))
+ (and (fn-rtc-st$ap s) (natp j) (natp limit) (<= j limit)
+      (<= limit (fn-rtc-buf-cap h (fn-rtc-config s))) (fn-rtc-splice-okp h j nil s)))
+(defthm fn-ovrqp-splice-frames
+ (implies (and (fn-rtc-st$ap s) (fn-rtc-splice-okp h j data s))
+   (and (equal (fn-rtc-config (fn-rtc-st$a-splice h j data s)) (fn-rtc-config s))
+        (equal (fn-rtc-uses (fn-rtc-st$a-splice h j data s)) (fn-rtc-uses s))
+        (equal (fn-rtc-b-owner (fn-rtc-buffer h (fn-rtc-st$a-splice h j data s)))
+               (fn-rtc-b-owner (fn-rtc-buffer h s)))
+        (equal (fn-rtc-b-bytes (fn-rtc-buffer h (fn-rtc-st$a-splice h j data s)))
+               (fn-rtc-splice (fn-rtc-b-bytes (fn-rtc-buffer h s)) j data))))
+ :hints (("Goal" :in-theory
+  (union-theories '(fn-rtc-st$a-splice fn-rtc-splice-okp fn-rtc-b-owner fn-rtc-b-bytes fn-rtc-get
+                   fn-dsw-with-buffer-accessors fn-ovrqp-pool-length fn-dsw-state-buffer-shape
+                   natp nfix zp car-cons cdr-cons len)
+                  (theory 'minimal-theory)))))
+(defthm fn-ovrqp-room-after-splice
+ (implies (and (fn-ovrqp-roomp h j limit s) (fn-cbor-octet-listp data) (<= (+ j (len data)) limit))
+   (and (fn-rtc-splice-okp h j data s)
+        (fn-ovrqp-roomp h (+ j (len data)) limit (fn-rtc-st$a-splice h j data s))))
+ :hints (("Goal" :do-not-induct t :in-theory
+   (union-theories '(fn-ovrqp-roomp fn-rtc-splice-okp
+      fn-ovrqp-splice-frames fn-ovrqp-splice-preserves-ap fn-dsw-state-buffer-shape
+      fn-rtc-c-l-splice-length fn-cbor-octet-listp-implies-true-listp
+      natp nfix max len zp car-cons cdr-cons (:type-prescription len)
+      (:executable-counterpart fn-cbor-octet-listp))
+      (theory 'minimal-theory)))))
+(local (defthm fn-ovrqp-nfix-natural (implies (natp x) (equal (nfix x) x))))
+(local (defthm fn-ovrqp-natural-nfix (natp (nfix x)) :rule-classes :type-prescription))
+(local (defthm fn-ovrqp-len-append
+ (equal (len (append a b)) (+ (len a) (len b)))
+ :hints (("Goal" :induct (append a b) :in-theory (enable binary-append len)))))
+(defthm fn-ovrqp-puts-compose
+ (implies (natp j)
+  (equal (fn-rtc-st$a-puts h (+ j (len a)) b (fn-rtc-st$a-puts h j a s))
+         (fn-rtc-st$a-puts h j (append a b) s)))
+ :hints (("Goal" :induct (fn-rtc-st$a-puts h j a s)
+    :in-theory (e/d (fn-rtc-st$a-puts binary-append) (fn-rtc-st$a-put fn-rtc-st$a-splice fn-rtc-splice)))))
+(defthm fn-ovrqp-room-properties
+ (implies (fn-ovrqp-roomp h j limit s)
+   (and (fn-rtc-st$ap s) (natp j) (natp limit)))
+ :rule-classes (:rewrite :forward-chaining)
+ :hints (("Goal" :in-theory (union-theories '(fn-ovrqp-roomp) (theory 'minimal-theory)))))
+(defthm fn-ovrqp-splice-compose
+ (implies (and (fn-ovrqp-roomp h j limit s) (fn-cbor-octet-listp a) (fn-cbor-octet-listp b)
+               (<= (+ j (len a) (len b)) limit))
+   (equal (fn-rtc-st$a-splice h (+ j (len a)) b (fn-rtc-st$a-splice h j a s))
+          (fn-rtc-st$a-splice h j (append a b) s)))
+ :hints (("Goal" :do-not-induct t
+   :use ((:instance fn-ovrqp-room-after-splice (data a))
+         (:instance fn-ovrqp-room-after-splice (data b) (j (+ j (len a)))
+                    (s (fn-rtc-st$a-splice h j a s)))
+         (:instance fn-dsw-splice-is-puts (data a))
+         (:instance fn-dsw-splice-is-puts (data b) (j (+ j (len a)))
+                    (s (fn-rtc-st$a-splice h j a s)))
+         (:instance fn-dsw-splice-is-puts (data (append a b))))
+   :in-theory (union-theories '(fn-ovrqp-room-properties fn-ovrqp-room-after-splice
+                  fn-ovrqp-splice-preserves-ap fn-ovrqp-len-append fn-ovrqp-puts-compose
+                  fn-rtc-c-l-octets-append natp nfix (:type-prescription len))
+                 (theory 'minimal-theory)))))
+(defthm fn-ovrqp-empty-append-keeps-state
+ (equal (mv-nth 2 (fn-dsw-append h j nil st)) st)
+ :hints (("Goal" :in-theory (union-theories '(fn-dsw-append fn-dsw-append-loop mv-nth car-cons cdr-cons
+                (:executable-counterpart fn-cbor-octet-listp) len) (theory 'minimal-theory)))))
+(defthm fn-ovrqp-empty-append-position
+ (implies (natp j) (equal (mv-nth 1 (fn-dsw-append h j nil st)) j))
+ :hints (("Goal" :in-theory (union-theories '(fn-dsw-append fn-dsw-append-loop mv-nth car-cons cdr-cons
+                (:executable-counterpart fn-cbor-octet-listp) len default-+-1 default-+-2)
+                (fn-dss-measure-theory)))))
+(defthm fn-ovrqp-empty-splice
+ (implies (and (fn-rtc-st$ap st) (fn-rtc-splice-okp h j nil st))
+   (equal (fn-rtc-st$a-splice h j nil st) st))
+ :hints (("Goal" :use ((:instance fn-dsw-append-is-splice (data nil) (s st))
+                      fn-ovrqp-empty-append-keeps-state)
+    :in-theory (union-theories '(mv-nth car-cons cdr-cons zp len) (theory 'minimal-theory)))))
+(defthm fn-ovrqp-room-at-splice-position
+ (implies (and (fn-ovrqp-roomp h j limit s) (fn-cbor-octet-listp data)
+               (equal j2 (+ j (len data))) (<= j2 limit))
+  (fn-ovrqp-roomp h j2 limit (fn-rtc-st$a-splice h j data s)))
+ :hints (("Goal" :use fn-ovrqp-room-after-splice :in-theory (theory 'minimal-theory))))
+(defthm fn-ovrqp-compose-at-splice-position
+ (implies (and (fn-ovrqp-roomp h j limit s) (fn-cbor-octet-listp a) (fn-cbor-octet-listp b)
+               (equal j2 (+ j (len a))) (<= (+ j2 (len b)) limit))
+   (equal (fn-rtc-st$a-splice h j2 b (fn-rtc-st$a-splice h j a s))
+          (fn-rtc-st$a-splice h j (append a b) s)))
+ :hints (("Goal" :use fn-ovrqp-splice-compose :in-theory
+    (union-theories '(associativity-of-+) (theory 'minimal-theory)))))
+(local (defthm fn-ovrqp-append-associates
+ (equal (append (append a b) c) (append a (append b c)))
+ :hints (("Goal" :induct (append a b) :in-theory (enable binary-append)))))
+(local (defthm fn-ovrqp-fold-sums
+ (implies (syntaxp (and (quotep a) (quotep b)))
+  (equal (+ a b x) (+ (+ a b) x)))
+ :hints (("Goal" :use ((:instance associativity-of-+ (x a) (y b) (z x)))
+  :in-theory (theory 'minimal-theory)))))
+(defthm fn-ovrqp-room-bounds
+ (implies (fn-ovrqp-roomp h j limit s)
+  (and (<= j limit) (<= limit (fn-rtc-buf-cap h (fn-rtc-config s))) (fn-rtc-splice-okp h j nil s)))
+ :hints (("Goal" :in-theory (union-theories '(fn-ovrqp-roomp) (theory 'minimal-theory)))))
+(local (defthm fn-ovrqp-octets-append
+ (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
+  (fn-cbor-octet-listp (append a b)))
+ :hints (("Goal" :induct (append a b)
+   :in-theory (union-theories '(fn-cbor-octet-listp binary-append car-cons cdr-cons) (theory 'minimal-theory))))))
+(local (defthm fn-ovrqp-octets-cons
+ (equal (fn-cbor-octet-listp (cons x xs))
+        (and (fn-cbor-octetp x) (fn-cbor-octet-listp xs)))
+ :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
 
 (defun fn-ovr-probe-octets (group j server v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp j) (natp v)) :verify-guards nil))
@@ -1869,3 +1991,212 @@
  :rule-classes (:rewrite :linear)
  :hints (("Goal" :do-not-induct t
     :in-theory (union-theories '(fn-ovrup-octets-advance fn-ovrup-string-advance fn-ovrup-decimal-advance fn-ovrup-decimal-field-advance fn-ovrup-xref-advance fn-ovrup-decimal-field-tab-advance fn-ovrup-decimal-tab-advance fn-ovrup-fields-advance fn-ovrup-served-xref-advance fn-ovrup-column-line-advance fn-ovrup-number-advance fn-cbor-octet-listp-implies-true-listp (:type-prescription len) mv-nth car-cons cdr-cons zp fn-ovrqp-fold-sums associativity-of-+ commutativity-of-+ commutativity-2-of-+ fix fn-ovr-xref-len-natp fn-ovr-string-len-natp fn-ovr-decimal-field-len-natp fn-ovr-decimal-len-natp unicity-of-0 default-+-1 default-+-2 fn-ovrqp-octets-position-linear fn-ovrup-string-position-linear fn-ovrup-decimal-field-position-linear fn-ovrup-decimal-position-linear fn-ovrup-xref-position-linear fn-ovrup-decimal-field-tab-position-linear fn-ovrup-decimal-tab-position-linear fn-ovrup-fields-position-linear fn-ovrup-served-xref-position-linear fn-ovrup-column-line-position-linear fn-ovrup-number-position-linear natp-compound-recognizer fn-ovrqp-nfix-natural fn-ovrqp-natural-nfix fn-ovr-put-probe fn-ovr-probe-len fn-ovrqp-octets-position fn-ovrup-string-position fn-ovrup-decimal-field-position fn-ovrup-decimal-position fn-ovrup-xref-position fn-ovrup-decimal-field-tab-position fn-ovrup-decimal-tab-position fn-ovrup-fields-position fn-ovrup-served-xref-position fn-ovrup-column-line-position fn-ovrup-number-position ) (set-difference-theories (fn-dss-measure-theory) '(natp nfix))))))
+
+; Scalar workspace refinement also covers logical states before correspondence.
+(local (include-book "runtime-contract-host-lease-run"))
+(defun fn-ovra-roomp (h j limit s)
+ (declare (xargs :verify-guards nil))
+ (and (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s))) (< h (len (fn-rtc-pool s)))
+      (equal (fn-rtc-get 0 (fn-rtc-b-owner (fn-rtc-buffer h s))) :workspace)
+      (natp j) (natp limit) (<= j limit) (<= j (len (fn-rtc-b-bytes (fn-rtc-buffer h s))))
+      (<= limit (fn-rtc-buf-cap h (fn-rtc-config s)))))
+(defthm fn-ovra-room-properties
+ (implies (fn-ovra-roomp h j limit s)
+          (and (natp h) (natp j) (natp limit) (<= j limit)
+               (<= limit (fn-rtc-buf-cap h (fn-rtc-config s)))))
+ :rule-classes (:rewrite :forward-chaining)
+ :hints (("Goal" :in-theory (union-theories '(fn-ovra-roomp) (theory 'minimal-theory)))))
+(defthm fn-ovra-room-after-puts
+ (implies (and (fn-ovra-roomp h j limit s) (fn-cbor-octet-listp data)
+               (<= (+ j (len data)) limit))
+          (fn-ovra-roomp h (+ j (len data)) limit (fn-rtc-st$a-puts h j data s)))
+ :hints (("Goal" :use ((:instance fn-hlr-puts-frame (off j) (w data) (k h))
+                      (:instance fn-hlr-puts-len2 (off j) (w data)))
+ :in-theory (union-theories '(fn-ovra-roomp natp nfix (:type-prescription len))
+ (fn-dss-measure-theory)))))
+(defthm fn-ovra-append-is-puts
+ (implies (and (fn-ovra-roomp h j limit s) (fn-cbor-octet-listp data)
+               (<= (+ j (len data)) limit))
+          (equal (fn-dsw-append h j data s)
+                 (mv :done (+ j (len data)) (fn-rtc-st$a-puts h j data s))))
+ :hints (("Goal" :in-theory (union-theories '(fn-dsw-append fn-dsw-roomp
+ fn-rtc-st-config fn-rtc-st$a-config fn-rtc-st-owner fn-rtc-st$a-owner
+ fn-rtc-st-uses fn-rtc-st$a-uses fn-rtc-st-fill fn-rtc-st$a-fill fn-rtc-bytes
+ fn-rtc-splice-target-p fn-ovra-roomp fn-dsw-append-loop-is-puts
+ fn-rtc-get fn-rtc-b-owner natp nfix len car-cons cdr-cons
+ (:executable-counterpart fn-rtc-get)) (fn-dss-measure-theory)))))
+(defthm fn-ovra-room-at-puts-position
+ (implies (and (fn-ovra-roomp h j limit s) (fn-cbor-octet-listp data)
+               (equal j2 (+ j (len data))) (<= j2 limit))
+          (fn-ovra-roomp h j2 limit (fn-rtc-st$a-puts h j data s)))
+ :hints (("Goal" :use fn-ovra-room-after-puts :in-theory (theory 'minimal-theory))))
+(defthm fn-ovra-compose-at-puts-position
+ (implies (and (fn-ovra-roomp h j limit s) (equal j2 (+ j (len a))))
+  (equal (fn-rtc-st$a-puts h j2 b (fn-rtc-st$a-puts h j a s))
+         (fn-rtc-st$a-puts h j (append a b) s)))
+ :hints (("Goal" :use fn-ovrqp-puts-compose
+  :in-theory (union-theories '(fn-ovra-room-properties) (theory 'minimal-theory)))))
+(defthm fn-ovra-octets-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (fn-cbor-octet-listp data) (<= (+ j (len data)) limit))
+  (equal (fn-ovr-put-octets data h j limit st)
+         (mv :done (+ j (len data)) (fn-rtc-st$a-puts h j data st))))
+ :hints (("Goal" :use ((:instance fn-ovra-room-after-puts (s st)))
+   :in-theory (union-theories '(fn-ovr-put-octets fn-ovra-append-is-puts fn-ovra-room-properties
+           fn-ovrqp-nfix-natural) (theory 'minimal-theory)))))
+(local (defthm fn-ovra-string-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (<= (+ j (len (fn-nntp-string-octets text))) limit))
+  (equal (fn-ovr-put-string text h j limit st)
+         (mv :done (+ j (len (fn-nntp-string-octets text)))
+                   (fn-rtc-st$a-puts h j (fn-nntp-string-octets text) st))))
+ :hints (("Goal" :use ((:instance fn-ovra-room-after-puts (data (fn-nntp-string-octets text)) (s st)))
+    :in-theory (union-theories '(fn-ovr-put-string fn-ovr-wcopy-string fn-ovr-wcopy-string-list-is-identity
+       fn-ovrqp-slice-whole fn-ovrqp-string-octets fn-ovrqp-string-aux-octets fn-cbor-octet-listp-implies-true-listp fn-ovra-room-properties fn-ovrqp-nfix-natural
+       fn-ovr-string-len-is-len fn-ovrqp-string-length fn-ovra-append-is-puts
+       fn-nntp-string-octets (:type-prescription len) (:type-prescription natp) (:executable-counterpart len) (:executable-counterpart fn-cbor-octet-listp) unicity-of-0)
+      (theory 'minimal-theory))))))
+(local (defthm fn-ovra-decimal-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (<= (+ j (len (fn-nntp-decimal n))) limit))
+  (equal (fn-ovr-put-decimal n h j limit st)
+         (mv :done (+ j (len (fn-nntp-decimal n))) (fn-rtc-st$a-puts h j (fn-nntp-decimal n) st))))
+ :hints (("Goal" :use ((:instance fn-ovra-room-after-puts (data (fn-nntp-decimal n)) (s st)))
+  :in-theory (union-theories '(fn-ovr-put-decimal fn-dsw-decimal fn-ovra-append-is-puts fn-ovrqp-decimal-count-is-length
+      fn-ovrqp-decimal-octets fn-ovrqp-decimal-field-octets fn-ovra-room-properties fn-ovrqp-nfix-natural) (theory 'minimal-theory))))))
+(local (defthm fn-ovra-decimal-field-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (<= (+ j (len (fn-nntp-decimal-field n))) limit))
+  (equal (fn-ovr-put-decimal-field n h j limit st)
+         (mv :done (+ j (len (fn-nntp-decimal-field n))) (fn-rtc-st$a-puts h j (fn-nntp-decimal-field n) st))))
+ :hints (("Goal" :use ((:instance fn-ovra-room-after-puts (data (fn-nntp-decimal-field n)) (s st)))
+  :in-theory (union-theories '(fn-ovr-put-decimal-field fn-nntp-decimal-field fn-ovrqp-decimal-token fn-ovrqp-decimal-non-natural fn-dsw-decimal
+       fn-ovra-append-is-puts fn-ovrqp-decimal-count-is-length fn-ovr-decimal-field-len-is-len
+       fn-ovrqp-decimal-octets fn-ovrqp-decimal-field-octets fn-ovra-room-properties fn-ovrqp-nfix-natural natp len car-cons cdr-cons
+       (:executable-counterpart fn-cbor-octet-listp)) (theory 'minimal-theory))))))
+(local (defthm fn-ovra-decimal-field-tab-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (<= (+ j (len (append (fn-nntp-decimal-field n) '(9)))) limit))
+  (equal (fn-ovr-put-decimal-field-tab n h j limit st)
+         (mv :done (+ j (len (append (fn-nntp-decimal-field n) '(9))))
+            (fn-rtc-st$a-puts h j (append (fn-nntp-decimal-field n) '(9)) st))))
+ :hints (("Goal" :do-not-induct t :in-theory (union-theories
+   '(fn-ovr-put-decimal-field-tab fn-ovra-decimal-field-is-puts fn-ovra-octets-is-puts
+     fn-ovra-room-after-puts fn-ovra-room-properties fn-ovrqp-puts-compose
+     fn-ovrqp-decimal-octets fn-ovrqp-decimal-field-octets
+     fn-ovrqp-len-append fn-ovrqp-nfix-natural
+     associativity-of-+ commutativity-of-+ commutativity-2-of-+ unicity-of-0 default-+-1 default-+-2 mv-nth zp car-cons cdr-cons len (:type-prescription len)
+     (:executable-counterpart fn-cbor-octet-listp)) (theory 'minimal-theory))))))
+(local (defthm fn-ovra-decimal-tab-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (<= (+ j (len (append (fn-nntp-decimal n) '(9)))) limit))
+  (equal (fn-ovr-put-decimal-tab n h j limit st)
+         (mv :done (+ j (len (append (fn-nntp-decimal n) '(9))))
+            (fn-rtc-st$a-puts h j (append (fn-nntp-decimal n) '(9)) st))))
+ :hints (("Goal" :do-not-induct t :in-theory (union-theories
+   '(fn-ovr-put-decimal-tab fn-ovra-decimal-is-puts fn-ovra-octets-is-puts
+     fn-ovra-room-after-puts fn-ovra-room-properties fn-ovrqp-puts-compose
+     fn-ovrqp-decimal-octets fn-ovrqp-decimal-field-octets
+     fn-ovrqp-len-append fn-ovrqp-nfix-natural
+     associativity-of-+ commutativity-of-+ commutativity-2-of-+ unicity-of-0 default-+-1 default-+-2 mv-nth zp car-cons cdr-cons len (:type-prescription len)
+     (:executable-counterpart fn-cbor-octet-listp)) (theory 'minimal-theory))))))
+(defthm fn-ovra-empty-puts (equal (fn-rtc-st$a-puts h j nil s) s)
+ :hints (("Goal" :in-theory (union-theories '(fn-rtc-st$a-puts) (theory 'minimal-theory)))))
+(local (defthm fn-ovra-fields-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (<= (+ j (len (fn-ovrqp-fields-octets fields))) limit))
+  (equal (fn-ovr-put-fields fields h j limit st)
+    (mv :done (+ j (len (fn-ovrqp-fields-octets fields)))
+        (fn-rtc-st$a-puts h j (fn-ovrqp-fields-octets fields) st))))
+ :hints (("Goal" :induct (fn-ovr-put-fields fields h j limit st)
+    :in-theory (union-theories '(fn-ovr-put-fields fn-ovrqp-fields-octets fn-ovrqp-fields-octets-type
+      fn-ovra-string-is-puts fn-ovrqp-string-octets fn-ovra-octets-is-puts fn-ovrqp-empty-splice
+      fn-ovra-room-properties fn-ovra-empty-puts fn-ovra-room-after-puts fn-ovra-compose-at-puts-position fn-ovra-room-at-puts-position fn-ovrqp-append-associates natp-compound-recognizer fix fn-ovrqp-len-append
+      fn-ovrqp-nfix-natural fn-cbor-octet-listp-implies-true-listp fn-rtc-c-l-octets-append
+      associativity-of-+ commutativity-of-+ commutativity-2-of-+ unicity-of-0 default-+-1 default-+-2
+      mv-nth zp car-cons cdr-cons len binary-append (:type-prescription len)
+      (:executable-counterpart fn-cbor-octet-listp)) (theory 'minimal-theory))))))
+(local (defthm fn-ovra-xref-is-puts
+ (implies (and (fn-ovra-roomp h j limit st)
+               (<= (+ j (len (fn-xref-locations (fn-xref-pairs-of ms article)))) limit))
+  (equal (fn-ovr-put-xref ms (fn-article-memberships article)
+                            (fn-scat-msgid-idp (fn-article-msgid article)) h j limit st)
+   (mv :done (+ j (len (fn-xref-locations (fn-xref-pairs-of ms article))))
+       (fn-rtc-st$a-puts h j (fn-xref-locations (fn-xref-pairs-of ms article)) st))))
+ :hints (("Goal" :induct (fn-ovr-put-xref ms (fn-article-memberships article)
+                           (fn-scat-msgid-idp (fn-article-msgid article)) h j limit st)
+  :in-theory (union-theories '(fn-ovr-put-xref fn-xref-pairs-of fn-xref-locations fn-ag-car fn-ag-cdr
+      fn-ovr-xref-wordp-is-wordp fn-ovr-article-number-is-number fn-ovr-xref-len-is-len
+      fn-ovra-octets-is-puts fn-ovra-string-is-puts fn-ovra-decimal-field-is-puts
+      fn-ovrqp-string-octets fn-ovrqp-decimal-field-octets fn-ovrqp-xref-octets fn-ovrqp-empty-splice
+      fn-ovra-room-properties fn-ovra-empty-puts fn-ovra-room-after-puts fn-ovra-room-at-puts-position
+      fn-ovra-compose-at-puts-position fn-ovrqp-append-associates fn-ovrqp-len-append
+      fn-ovrqp-nfix-natural fn-ovrqp-octets-cons (:executable-counterpart fn-cbor-octetp) fn-cbor-octet-listp-implies-true-listp fn-rtc-c-l-octets-append
+      associativity-of-+ commutativity-of-+ commutativity-2-of-+ unicity-of-0 default-+-1 default-+-2
+      natp-compound-recognizer fix mv-nth zp car-cons cdr-cons len binary-append (:type-prescription len)
+      (:executable-counterpart fn-cbor-octet-listp)) (theory 'minimal-theory))))))
+(local (defthm fn-ovra-served-xref-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (fn-cbor-octet-listp server)
+  (<= (+ j (len (if server (cons 9 (fn-xref-field server (fn-xref-pairs article))) nil))) limit))
+  (equal (fn-ovr-put-served-xref server (fn-article-memberships article)
+             (fn-scat-msgid-idp (fn-article-msgid article)) h j limit st)
+   (mv :done (+ j (len (if server (cons 9 (fn-xref-field server (fn-xref-pairs article))) nil)))
+    (fn-rtc-st$a-puts h j (if server (cons 9 (fn-xref-field server (fn-xref-pairs article))) nil) st))))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (union-theories '(fn-ovr-put-served-xref fn-xref-field fn-xref-pairs
+      fn-ovra-octets-is-puts fn-ovra-xref-is-puts fn-ovrqp-xref-octets fn-ovrqp-empty-splice
+      fn-ovra-room-properties fn-ovra-empty-puts fn-ovra-room-after-puts fn-ovra-room-at-puts-position
+      fn-ovra-compose-at-puts-position fn-ovrqp-append-associates fn-ovrqp-len-append
+      fn-ovrqp-nfix-natural fn-ovrqp-octets-cons fn-cbor-octet-listp-implies-true-listp fn-rtc-c-l-octets-append
+      fn-ovrqp-fold-sums associativity-of-+ commutativity-of-+ commutativity-2-of-+ unicity-of-0 default-+-1 default-+-2
+      natp-compound-recognizer fix mv-nth zp car-cons cdr-cons len binary-append (:type-prescription len)
+      (:executable-counterpart fn-cbor-octet-listp) (:executable-counterpart fn-cbor-octetp))
+     (theory 'minimal-theory))))))
+(local (defthm fn-ovra-column-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (fn-cbor-octet-listp server)
+   (<= (+ j (len (fn-nntp-crlf (fn-nov-served-line n (fn-ovr-column-over nov octets body) server article)))) limit))
+  (equal (fn-ovr-put-column-line n nov octets body server
+                   (fn-article-memberships article) (fn-scat-msgid-idp (fn-article-msgid article)) h j limit st)
+    (mv :done (+ j (len (fn-nntp-crlf (fn-nov-served-line n (fn-ovr-column-over nov octets body) server article))))
+      (fn-rtc-st$a-puts h j (fn-nntp-crlf (fn-nov-served-line n (fn-ovr-column-over nov octets body) server article)) st))))
+ :hints (("Goal" :do-not-induct t :in-theory (union-theories
+  '(fn-ovr-put-column-line fn-ovr-column-line-len-is-len fn-ovrqp-column-octets fn-ovr-record-octets-is-nntp-octets
+    fn-ovra-decimal-field-tab-is-puts fn-ovra-fields-is-puts fn-ovrqp-fields-octets
+    fn-ovra-decimal-tab-is-puts fn-ovra-decimal-is-puts fn-ovra-served-xref-is-puts
+    fn-ovra-octets-is-puts fn-ovrqp-string-octets fn-ovrqp-decimal-octets fn-ovrqp-decimal-field-octets
+    fn-ovrqp-fields-octets-type fn-ovrqp-served-xref-octets fn-ovrqp-xref-octets fn-ovrqp-xref-field-octets
+    fn-nntp-crlf fn-nov-served-line fn-nov-line fn-ovr-column-over
+    fn-nov-subject fn-nov-from fn-nov-date fn-nov-msgid fn-nov-references fn-nov-bytes fn-nov-lines
+    fn-nntp-append-pieces
+    fn-ovra-room-properties fn-ovra-empty-puts fn-ovra-room-after-puts fn-ovra-room-at-puts-position
+    fn-ovra-compose-at-puts-position fn-ovrqp-append-associates fn-ovrqp-len-append
+    fn-ovrqp-nfix-natural fn-ovrqp-octets-cons fn-cbor-octet-listp-implies-true-listp fn-rtc-c-l-octets-append
+    fn-ovrqp-fold-sums associativity-of-+ commutativity-of-+ commutativity-2-of-+ unicity-of-0 default-+-1 default-+-2
+    natp-compound-recognizer fix mv-nth zp car-cons cdr-cons len binary-append (:type-prescription len)
+    (:executable-counterpart fn-cbor-octet-listp) (:executable-counterpart fn-cbor-octetp))
+    (theory 'minimal-theory))))))
+(local (defthm fn-ovra-number-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (natp v) (fn-cbor-octet-listp server)
+  (<= (+ j (len (fn-nntp-stuff-lines
+      (if server (fn-nov-served-lines-for-numbers-cat group (list n) server v fn-arena fn-cat)
+        (fn-nov-lines-for-numbers-cat group (list n) v fn-arena fn-cat))))) limit))
+  (equal (fn-ovr-put-number group n server v h j limit st fn-arena fn-cat)
+   (mv :done (+ j (len (fn-nntp-stuff-lines
+      (if server (fn-nov-served-lines-for-numbers-cat group (list n) server v fn-arena fn-cat)
+        (fn-nov-lines-for-numbers-cat group (list n) v fn-arena fn-cat)))))
+     (fn-rtc-st$a-puts h j (fn-nntp-stuff-lines
+      (if server (fn-nov-served-lines-for-numbers-cat group (list n) server v fn-arena fn-cat)
+        (fn-nov-lines-for-numbers-cat group (list n) v fn-arena fn-cat))) st))))
+ :hints (("Goal" :in-theory (e/d (fn-ovra-room-properties fn-ovra-room-after-puts fn-ovra-empty-puts fn-ovr-put-number fn-nov-served-lines-for-numbers-cat
+       fn-nov-lines-for-numbers-cat fn-scol-tombstonep fn-ovr-number-len-is-len)
+    (fn-ovr-put-column-line fn-ovr-put-octets fn-nov-served-line fn-nov-line fn-nov-overview fn-hf-nov
+      fn-scol-facts fn-scat-available-article fn-ovr-available-article fn-nntp-article-tombstonep
+      fn-nntp-stuff-lines fn-nntp-crlf fn-scol-overview-of fn-ovr-column-over fn-nntp-article-length
+      fn-ovr-msgid-okp fn-ovr-number-len fn-rtc-st$ap fn-rtc-shapep fn-rtc-st$a-puts
+      fn-rtc-splice-okp fn-ovra-roomp))))))
+(defthm fn-ovra-probe-is-puts
+ (implies (and (fn-ovra-roomp h j limit st) (natp v) (natp number) (fn-cbor-octet-listp server)
+              (<= (+ j (len (fn-ovr-probe-octets group number server v fn-arena fn-cat))) limit))
+  (equal (fn-ovr-put-probe group number server v h j limit st fn-arena fn-cat)
+   (mv :done (+ j (len (fn-ovr-probe-octets group number server v fn-arena fn-cat)))
+    (fn-rtc-st$a-puts h j (fn-ovr-probe-octets group number server v fn-arena fn-cat) st))))
+ :hints (("Goal" :in-theory (e/d (fn-ovra-room-properties fn-ovra-room-after-puts fn-ovra-empty-puts fn-ovr-put-probe fn-ovr-probe-octets fn-ovw-lines fn-scat-range-keep
+                                  fn-ovr-msgid-okp-is-idp fn-ovr-probe-len-is-the-length)
+      (fn-ovr-put-number fn-nov-served-lines-for-numbers-cat fn-nov-lines-for-numbers-cat
+       fn-cnx-view-seq fn-held-number-in fn-scat-msgid-idp fn-ovr-msgid-okp fn-nntp-stuff-lines
+       fn-ovr-probe-len fn-ovr-number-len fn-rtc-st$ap fn-rtc-shapep fn-rtc-st$a-puts fn-rtc-splice-okp fn-ovra-roomp))
+  :expand ((fn-cnx-range-aux group number number v fn-cat)
+           (fn-cnx-range-aux group (+ 1 number) number v fn-cat)))))

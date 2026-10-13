@@ -2,7 +2,6 @@
 ; payload-parse, tombstone, visibility, framing and greedy-capacity controls.
 (in-package "ACL2")
 (include-book "over-render-lease-tests")
-(set-guard-checking nil)
 (set-ignore-ok t)
 (defconst *ovrt-p0* (append (fn-record-string-octets "Subject: a") '(13 10 13 10 65 13 10)))
 

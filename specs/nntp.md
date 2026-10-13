@@ -2191,13 +2191,13 @@ measurement remain open; no complete long-row scheduling claim is made.
 NOV `:bytes` and `:lines` metadata render their complete decimal natural
 values in `fn-nov-line`, including values above ten digits (RFC 3977
 §8.3.2 and D27). The initial NNTP status-line number renderer keeps its
-separate width rule. `fn-npw-column-pieces` captures five cached strings
-and resumable numeric references with a fixed number of pieces; under
-cached field shape and natural metadata its complete abstraction equals
-the existing cached-row renderer, including arbitrary-width counts.
-`nov-metadata-tests` checks exact wide and ordinary rows and semantic block
-framing; `nov-column-pieces-tests` checks continuation and literal premise
-removals. `tests.test_native_nov_metadata` distinguishes a real saved-image
+separate width rule. Served OVER writes these fields in place into its runtime
+pool lease: `over-render` supplies the writers, `over-render-quantum` selects
+and fills a whole window, and `over-render-lease` submits that window for
+sending. `over-render-plan` selects and advances the served plan's cursor.
+`over-render-tests` and `over-render-lease-tests` check exact rows, framing,
+progress and capacity refusal. `nov-metadata-tests` checks exact wide and
+ordinary rows and semantic block framing. `tests.test_native_nov_metadata` distinguishes a real saved-image
 scalar renderer fixture from a socket fixture over an actual retained
 article. Its matching-image result remains a separate qualification step.
 

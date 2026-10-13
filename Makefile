@@ -729,6 +729,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/charged-totals-header-writes \
 	books/charged-totals-header-cost \
 	books/runtime-contract-host-lease-cost \
+	books/over-render-lease-cost \
 	tests/acl2/charged-totals-header-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
@@ -1611,8 +1612,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
-	books/nov-column-pieces \
-	tests/acl2/nov-column-pieces-tests \
 	tests/acl2/nov-metadata-tests \
 	books/nov-piece-window \
 	tests/acl2/nov-piece-window-tests \
@@ -1622,10 +1621,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nov-decimal-window-tests \
 	books/nov-byte-window \
 	tests/acl2/nov-byte-window-tests \
-	books/nov-row-facts \
-	tests/acl2/nov-row-facts-tests \
-	books/nov-column-window \
-	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
 	books/served-catalog-group-low-cost \
 	books/served-catalog-chain \
@@ -1712,11 +1707,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-raw-availability-tests tests/acl2/served-catalog-load-identity-tests \
 	tests/acl2/served-incremental-tests \
 	tests/acl2/over-window-tests \
-	books/over-render-pool \
 	books/over-render-quantum \
 	books/over-render-lease \
+	books/over-render-plan \
 	tests/acl2/over-render-tests \
 	tests/acl2/over-render-lease-tests \
+	tests/acl2/over-render-plan-tests \
 	books/over-render-bound \
 	tests/acl2/over-render-bound-tests \
 	books/over-render-capl \

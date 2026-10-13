@@ -321,6 +321,9 @@
 ;; owner.lisp's host lease (fnn-owner-lease-*, installed by mux.lisp's
 ;; budget install), as in build.lisp.
 (include-book "books/runtime-contract-host-lease")
+;; owner.lisp's leased OVER step (fnn-owner-lease-over-step), whose
+;; book entries host/interfaces.lisp includes for the default world.
+(include-book "books/over-render-plan")
 ;; MEM-003: fnn-owner-maybe-collect-idle (owner.lisp), as in build.lisp.
 (include-book "books/idle-collection")
 (include-book "books/heap-reservation")

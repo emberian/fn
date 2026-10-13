@@ -4,14 +4,14 @@
  "counts": {
   "proved": 6,
   "partial": 4,
-  "derived": 111,
+  "derived": 114,
   "none": 1740
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 4,
-   "derived": 110,
+   "derived": 113,
    "none": 1024
   },
   "ideal": {
@@ -10639,6 +10639,49 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-ovr-lease-quantum",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-ovr-quantum",
+    "fn-rtc-buf-cap",
+    "fn-rtc-kind-out-p",
+    "fn-rtc-nbufs",
+    "fn-rtc-x-live-p",
+    "fn-rtc-x-request",
+    "mv-nth"
+   ],
+   "theorem": null,
+   "declared_in": "books/over-render-lease-cost.lisp"
+  },
+  {
+   "name": "fn-ovr-plan-cursor",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-ovr-rest-cursor"
+   ],
+   "theorem": null,
+   "declared_in": "books/over-render-lease-cost.lisp"
+  },
+  {
+   "name": "fn-ovr-plan-next",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-ovr-rest-cursor",
+    "fn-ovr-rest-next"
+   ],
+   "theorem": null,
+   "declared_in": "books/over-render-lease-cost.lisp"
   },
   {
    "name": "fn-own-bp-transit-kind-word",

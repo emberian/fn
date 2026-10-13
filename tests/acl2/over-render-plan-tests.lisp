@@ -1,0 +1,20 @@
+; Pool OVER dispatch selects only an ordinary OVER cursor at the plan head.
+(in-package "ACL2")
+(include-book "../../books/over-render-plan")
+(defconst *ovrpt-cur* (fn-ovw-cursor "fn.test" 1 3 3 nil t "s"))
+(defconst *ovrpt-next* (fn-ovw-cursor "fn.test" 2 3 3 nil nil "s"))
+(defconst *ovrpt-effect* (fn-ovw-cursor-effect *ovrpt-cur*))
+(defconst *ovrpt-plan* (cons nil (list '(:yield) *ovrpt-effect* '(:reply (46 13 10)))))
+(assert-event (equal (fn-ovr-plan-cursor *ovrpt-plan*) *ovrpt-cur*))
+(assert-event (equal (fn-ovr-plan-next *ovrpt-plan* *ovrpt-next*)
+                     (cons nil (list '(:yield) (fn-ovw-cursor-effect *ovrpt-next*) '(:reply (46 13 10))))))
+(assert-event (equal (fn-ovr-plan-next *ovrpt-plan* nil)
+                     '(nil (:yield) (:reply (46 13 10)))))
+; Pending bytes, HDR, NEWNEWS and LIST stay on their existing dispatch.
+(assert-event (not (fn-ovr-plan-cursor (cons '(65) (cdr *ovrpt-plan*)))))
+(assert-event (not (fn-ovr-plan-cursor (cons nil (cons '(:reply (65)) (cdr *ovrpt-plan*))))))
+(assert-event (not (fn-ovr-plan-cursor
+                   (cons nil (list (fn-ovw-cursor-effect (fn-ovw-hdr-cursor "fn.test" 1 3 3 t :subject)))))))
+(assert-event (not (fn-ovr-plan-cursor (cons nil (list '(:newnews-cursor (1)) *ovrpt-effect*)))))
+(assert-event (not (fn-ovr-plan-cursor (cons nil (list '(:list-cursor (1)) *ovrpt-effect*)))))
+(assert-event (equal (fn-ovr-plan-next '(nil (:reply (65))) *ovrpt-next*) '(nil (:reply (65)))))

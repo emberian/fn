@@ -1,10 +1,12 @@
 ; OVER pool-lease witnesses, draft 3b. Actual live stobj observations.
+; WITH-GUARD-CHECKING-EVENT exercises the logical refusal arms outside
+; verified BASE/LIMIT guards for the accepted premise-removal teeth.
+; All assertion predicates and closed scene arguments remain unchanged.
 (in-package "ACL2")
 (include-book "../../books/over-render-lease")
 
 (set-verify-guards-eagerness 0)
 
-(set-guard-checking nil)
 
 (set-ignore-ok t)
 
@@ -494,9 +496,11 @@
        (pc1-all-true (update-nth i t (car check)))
        (not (cadr check))))
 
-(defconst *pc1-cur* (fn-ovw-cursor "fn.test" 1 3 3 nil t '(110 102)))
+(with-guard-checking-event nil
+ (defconst *pc1-cur* (fn-ovw-cursor "fn.test" 1 3 3 nil t '(110 102))))
 
-(defconst *pc1-q* (pc1-run-scene :quantum nil 1000 *pc1-cur* 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+(with-guard-checking-event nil
+ (defconst *pc1-q* (pc1-run-scene :quantum nil 1000 *pc1-cur* 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (value-triple (list :quantum *pc1-q*))
 
@@ -505,7 +509,8 @@
                    (pc1-positive (nth 2 *pc1-q*)) (pc1-positive (nth 3 *pc1-q*))
                    (pc1-positive (nth 4 *pc1-q*)) (pc1-positive (nth 5 *pc1-q*))))
 
-(defconst *pc1-free* (pc1-run-scene :quantum :free 1000 *pc1-cur* 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+(with-guard-checking-event nil
+ (defconst *pc1-free* (pc1-run-scene :quantum :free 1000 *pc1-cur* 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (value-triple (list :draft2-counterexample *pc1-free*))
 
@@ -513,62 +518,74 @@
 
 (assert-event (pc1-removal (nth 4 *pc1-free*) 7))
 
-(defconst *pc1-base-past* (pc1-run-scene :quantum nil 1000 *pc1-cur* 3 1 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+(with-guard-checking-event nil
+ (defconst *pc1-base-past* (pc1-run-scene :quantum nil 1000 *pc1-cur* 3 1 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 4 *pc1-base-past*) 8))
 
-(defconst *pc1-KL2-tooth* (pc1-run-scene :quantum nil 1000 *pc1-cur* 3 1 0 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+(with-guard-checking-event nil
+ (defconst *pc1-KL2-tooth* (pc1-run-scene :quantum nil 1000 *pc1-cur* 3 1 0 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 2 *pc1-KL2-tooth*) 0))
 
-(defconst *pc1-header* (pc1-run-scene :quantum nil 1000 (append *pc1-cur* '(t)) 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+(with-guard-checking-event nil
+ (defconst *pc1-header* (pc1-run-scene :quantum nil 1000 (append *pc1-cur* '(t)) 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (value-triple (list :header *pc1-header*))
 
 (assert-event (pc1-removal (nth 4 *pc1-header*) 2))
 
-(defconst *pc1-bad-server* (pc1-run-scene :quantum nil 1000 (update-nth 6 '(300) *pc1-cur*) 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+(with-guard-checking-event nil
+ (defconst *pc1-bad-server* (pc1-run-scene :quantum nil 1000 (update-nth 6 '(300) *pc1-cur*) 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 4 *pc1-bad-server*) 3))
 
-(defconst *pc1-run* (pc1-run-scene :run nil 1000 *pc1-cur* 1 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+(with-guard-checking-event nil
+ (defconst *pc1-run* (pc1-run-scene :run nil 1000 *pc1-cur* 1 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (value-triple (list :run *pc1-run*))
 
 (assert-event (and (pc1-positive (nth 0 *pc1-run*)) (pc1-positive (nth 1 *pc1-run*))))
 
-(defconst *pc1-lease* (pc1-run-scene :lease nil 1000 *pc1-cur* 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+(with-guard-checking-event nil
+ (defconst *pc1-lease* (pc1-run-scene :lease nil 1000 *pc1-cur* 3 0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (and (posp (car (nth 1 *pc1-lease*))) (pc1-positive (nth 0 *pc1-lease*))))
 
-(defconst *pc1-bound-run*
+(with-guard-checking-event nil
+ (defconst *pc1-bound-run*
   (pc1-run-scene :run nil 10000 (fn-ovw-cursor "fn.test" 1 4 4 nil t *ovrbt-server*) 3
-              0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*))
+              0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*)))
 
 (value-triple (list :KL7 *pc1-bound-run*))
 
 (assert-event (pc1-positive (nth 2 *pc1-bound-run*)))
 
-(defconst *pc1-one* (fn-ovw-cursor "fn.test" 1 1 3 nil t '(110 102)))
+(with-guard-checking-event nil
+ (defconst *pc1-one* (fn-ovw-cursor "fn.test" 1 1 3 nil t '(110 102))))
 
-(defconst *pc1-first-len*
+(with-guard-checking-event nil
+ (defconst *pc1-first-len*
   (fn-ovr-column-line-len 1 (fn-hf-nov (fn-held-facts *ovrs-r0*)) (len *ovrs-p0*)
                           (fn-hf-body-lines (fn-held-facts *ovrs-r0*)) '(110 102)
-                          (fn-held-numbers *ovrs-r0*) t))
+                          (fn-held-numbers *ovrs-r0*) t)))
 
-(defconst *pc1-tight-cap* (+ *pc1-first-len* (len (fn-ovr-status-octets)) 3 -1))
+(with-guard-checking-event nil
+ (defconst *pc1-tight-cap* (+ *pc1-first-len* (len (fn-ovr-status-octets)) 3 -1)))
 
-(defconst *pc1-cap-tooth*
+(with-guard-checking-event nil
+ (defconst *pc1-cap-tooth*
   (pc1-run-scene :run nil *pc1-tight-cap* *pc1-one* 3 0 *pc1-tight-cap* *pc1-first-len* 10
-              100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (value-triple (list :first-line *pc1-first-len* :tight-cap *pc1-tight-cap* :KL6-cap *pc1-cap-tooth*))
 
 (assert-event (pc1-removal (nth 1 *pc1-cap-tooth*) 9))
 
-(defconst *pc1-limit-past-cap*
+(with-guard-checking-event nil
+ (defconst *pc1-limit-past-cap*
   (pc1-run-scene :quantum nil *pc1-tight-cap* *pc1-one* 3 0 (+ *pc1-tight-cap* *pc1-first-len*)
-              *pc1-first-len* 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              *pc1-first-len* 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 4 *pc1-limit-past-cap*) 9))
 
@@ -579,113 +596,133 @@
 
 (assert-event (pc1-positive (nth 1 *pc1-base-past*)))
 
-(defconst *pc1-probe-tooth*
+(with-guard-checking-event nil
+ (defconst *pc1-probe-tooth*
   (pc1-run-scene :run nil (+ 1 (fn-ovr-frame-max)) *pc1-one* 3 0 (+ 1 (fn-ovr-frame-max)) 1 10
-              100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 1 *pc1-probe-tooth*) 8))
 
-(defconst *pc1-recv*
+(with-guard-checking-event nil
+ (defconst *pc1-recv*
   (pc1-run-scene :quantum :recv 1000 *pc1-cur* 3 0 1000 100 10 100 100
-              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (value-triple (list :KL1v-recv *pc1-recv*))
 
 (assert-event (pc1-removal (nth 1 *pc1-recv*) 2))
 
-(defconst *pc1-send*
+(with-guard-checking-event nil
+ (defconst *pc1-send*
   (pc1-run-scene :quantum :send 1000 *pc1-cur* 3 0 1000 100 10 100 100
-              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (and (pc1-all-true (update-nth 2 t (car (nth 1 *pc1-send*))))
                    (not (nth 2 (car (nth 1 *pc1-send*))))
                    (equal (car (nth 6 *pc1-send*)) 0) (cadr (nth 1 *pc1-send*))))
 
-(defconst *pc1-KL12-tooth*
+(with-guard-checking-event nil
+ (defconst *pc1-KL12-tooth*
   (pc1-run-scene :lease :bad-mstate 1000 *pc1-cur* 3 0 1000 100 10 100 100
-              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (car *pc1-KL12-tooth*) 0))
 
-(defconst *pc1-base-negative*
+(with-guard-checking-event nil
+ (defconst *pc1-base-negative*
   (pc1-run-scene :quantum nil 1000 *pc1-cur* 3 -1 1000 100 10 100 100
-              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 4 *pc1-base-negative*) 4))
 
-(defconst *pc1-limit-nonnat*
+(with-guard-checking-event nil
+ (defconst *pc1-limit-nonnat*
   (pc1-run-scene :quantum nil 1000 (fn-ovw-cursor "fn.missing" 1 3 3 nil nil nil) 1 0 "x" 100 10 100 100
-              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 4 *pc1-limit-nonnat*) 5))
 
-(defconst *pc1-KL6-header*
+(with-guard-checking-event nil
+ (defconst *pc1-KL6-header*
   (pc1-run-scene :run nil 1000 (append *pc1-cur* '(t)) 3 0 1000 100 10 100 100
-              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 1 *pc1-KL6-header*) 5))
 
-(defconst *pc1-KL6-server*
+(with-guard-checking-event nil
+ (defconst *pc1-KL6-server*
   (pc1-run-scene :run nil 1000 (update-nth 6 '(300) *pc1-cur*) 3 0 1000 100 10 100 100
-              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 1 *pc1-KL6-server*) 6))
 
-(defconst *pc1-KL6-k*
+(with-guard-checking-event nil
+ (defconst *pc1-KL6-k*
   (pc1-run-scene :run nil 1000 *pc1-cur* 1 0 1000 100 1 100 100
-              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+              (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 1 *pc1-KL6-k*) 10))
 
-(defconst *pc1-KL7-header*
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-header*
   (pc1-run-scene :run nil 10000 (append (fn-ovw-cursor "fn.test" 1 4 4 nil t *ovrbt-server*) '(t)) 3
-              0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*))
+              0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*)))
 
 (assert-event (pc1-removal (nth 2 *pc1-KL7-header*) 5))
 
-(defconst *pc1-KL7-server*
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-server*
   (pc1-run-scene :run nil 10000 (fn-ovw-cursor "fn.test" 1 4 4 nil t '(300)) 3
-              0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*))
+              0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*)))
 
 (assert-event (pc1-removal (nth 2 *pc1-KL7-server*) 6))
 
-(defconst *pc1-KL7-cap*
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-cap*
   (pc1-run-scene :run nil 1 (fn-ovw-cursor "fn.test" 1 4 4 nil t *ovrbt-server*) 3
-              0 1 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*))
+              0 1 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*)))
 
 (assert-event (pc1-removal (nth 2 *pc1-KL7-cap*) 11))
 
-(defconst *pc1-KL7-k*
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-k*
   (pc1-run-scene :run nil 10000 (fn-ovw-cursor "fn.test" 1 4 4 nil t *ovrbt-server*) 1
-              0 10000 100 1 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*))
+              0 10000 100 1 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*)))
 
 (assert-event (pc1-removal (nth 2 *pc1-KL7-k*) 12))
 
-(defconst *pc1-long-payload* (ovrbt-article "fn.test" (coerce (make-list 500 :initial-element #\s) 'string) "A"))
+(with-guard-checking-event nil
+ (defconst *pc1-long-payload* (ovrbt-article "fn.test" (coerce (make-list 500 :initial-element #\s) 'string) "A")))
 
-(defconst *pc1-long-specs* (list (list "<long@x>" *pc1-long-payload* '("fn.test") :column)))
+(with-guard-checking-event nil
+ (defconst *pc1-long-specs* (list (list "<long@x>" *pc1-long-payload* '("fn.test") :column))))
 
-(defconst *pc1-long-a* (ovrbt-arena *pc1-long-specs*))
+(with-guard-checking-event nil
+ (defconst *pc1-long-a* (ovrbt-arena *pc1-long-specs*)))
 
-(defconst *pc1-long-c* (ovrbt-cat-from 0 *pc1-long-specs* nil))
+(with-guard-checking-event nil
+ (defconst *pc1-long-c* (ovrbt-cat-from 0 *pc1-long-specs* nil)))
 
-(defconst *pc1-KL7-row*
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-row*
   (pc1-run-scene :run nil (fn-ovr-over-capl 0 1000 2) (fn-ovw-cursor "fn.test" 1 1 1 nil t *ovrbt-server*) 1
-              0 (fn-ovr-over-capl 0 1000 2) 1000 10 0 1000 (fn-article-limits 10 10 0) *pc1-long-a* *pc1-long-c*))
+              0 (fn-ovr-over-capl 0 1000 2) 1000 10 0 1000 (fn-article-limits 10 10 0) *pc1-long-a* *pc1-long-c*)))
 
 (value-triple (list :KL7-overlong-row *pc1-KL7-row*))
 
 (assert-event (pc1-removal (nth 2 *pc1-KL7-row*) 8))
 
-(defconst *pc1-cursor-tooth*
+(with-guard-checking-event nil
+ (defconst *pc1-cursor-tooth*
   (pc1-run-scene :quantum nil 1000 (update-nth 3 -1 *pc1-cur*) 1 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) nil nil))
+                (fn-article-limits 10 10 100) nil nil)))
 
 (assert-event (pc1-removal (nth 0 *pc1-cursor-tooth*) 0))
 
-(defconst *pc1-prefix*
+(with-guard-checking-event nil
+ (defconst *pc1-prefix*
   (pc1-run-scene :quantum :prefix 1000 *pc1-cur* 3 0 80 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (and (posp (car (nth 6 *pc1-prefix*)))
                    (< (nth 2 (nth 6 *pc1-prefix*)) 200)
@@ -694,31 +731,35 @@
                    (pc1-positive (nth 2 *pc1-prefix*)) (pc1-positive (nth 3 *pc1-prefix*))
                    (pc1-positive (nth 4 *pc1-prefix*))))
 
-(defconst *pc1-positive-without-LIMIT-premise*
+(with-guard-checking-event nil
+ (defconst *pc1-positive-without-LIMIT-premise*
   (pc1-run-scene :quantum nil 1000 *pc1-cur* 3 0 1001 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-positive (nth 1 *pc1-positive-without-LIMIT-premise*)))
 
-(defconst *pc1-invp-tooth*
+(with-guard-checking-event nil
+ (defconst *pc1-invp-tooth*
   (pc1-run-scene :quantum :bad-use 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (value-triple (list :KL1v-invp *pc1-invp-tooth*))
 
 (assert-event (pc1-removal (nth 1 *pc1-invp-tooth*) 1))
 
-(defconst *pc1-run-other-send*
+(with-guard-checking-event nil
+ (defconst *pc1-run-other-send*
   (pc1-run-scene :run :other-send 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (value-triple (list :KL6-other-send *pc1-run-other-send*))
 
 (assert-event (pc1-removal (nth 1 *pc1-run-other-send*) 3))
 
-(defconst *pc1-bound-other-send*
+(with-guard-checking-event nil
+ (defconst *pc1-bound-other-send*
   (pc1-run-scene :run :other-send 10000 (fn-ovw-cursor "fn.test" 1 4 4 nil t *ovrbt-server*) 3
-                0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*))
+                0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*)))
 
 (assert-event (pc1-removal (nth 2 *pc1-bound-other-send*) 3))
 
@@ -728,10 +769,11 @@
 
 (assert-event (pc1-removal (nth 0 *pc1-KL6-k*) 5))
 
-(defconst *pc1-frame-less-one*
+(with-guard-checking-event nil
+ (defconst *pc1-frame-less-one*
   (pc1-run-scene :run nil (+ *pc1-first-len* (fn-ovr-frame-max) -1) *pc1-one* 3
                 0 (+ *pc1-first-len* (fn-ovr-frame-max) -1) *pc1-first-len* 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (and (not (nth 9 (car (nth 1 *pc1-frame-less-one*))))
                    (pc1-all-true (update-nth 9 t (car (nth 1 *pc1-frame-less-one*))))
@@ -743,16 +785,18 @@
 
 (assert-event (and (pc1-all-true (nth 9 *pc1-q*)) (nth 10 *pc1-q*)))
 
-(defconst *pc1-KL5a-corr-tooth*
+(with-guard-checking-event nil
+ (defconst *pc1-KL5a-corr-tooth*
   (pc1-run-scene :quantum :bad-c 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (and (pc1-all-true (car (nth 5 *pc1-KL5a-corr-tooth*)))
                    (pc1-removal (list (nth 9 *pc1-KL5a-corr-tooth*) (nth 10 *pc1-KL5a-corr-tooth*)) 2)))
 
-(defconst *pc1-KL5a-empty-window*
+(with-guard-checking-event nil
+ (defconst *pc1-KL5a-empty-window*
   (pc1-run-scene :quantum nil 1000 (fn-ovw-cursor "missing" 1 3 3 nil nil nil) 1 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (and (pc1-all-true (car (nth 5 *pc1-KL5a-empty-window*)))
                    (not (nth 1 (nth 9 *pc1-KL5a-empty-window*)))
@@ -765,29 +809,33 @@
 
 (assert-event (pc1-removal (nth 5 *pc1-recv*) 1))
 
-(defconst *pc1-KL5a-other-send*
+(with-guard-checking-event nil
+ (defconst *pc1-KL5a-other-send*
   (pc1-run-scene :quantum :other-send 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 5 *pc1-KL5a-other-send*) 3))
 
-(defconst *pc1-KL5a-closing*
+(with-guard-checking-event nil
+ (defconst *pc1-KL5a-closing*
   (pc1-run-scene :quantum :closing 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (assert-event (pc1-removal (nth 5 *pc1-KL5a-closing*) 2))
 
-(defconst *pc1-KL6-closing*
+(with-guard-checking-event nil
+ (defconst *pc1-KL6-closing*
   (pc1-run-scene :run :closing 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 
 (value-triple (list :KL6-closing *pc1-KL6-closing*))
 
 (assert-event (pc1-removal (nth 1 *pc1-KL6-closing*) 2))
 
-(defconst *pc1-KL7-closing*
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-closing*
   (pc1-run-scene :run :closing 10000 (fn-ovw-cursor "fn.test" 1 4 4 nil t *ovrbt-server*) 3
-                0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*))
+                0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*)))
 
 (assert-event (pc1-removal (nth 2 *pc1-KL7-closing*) 2))
 
@@ -804,58 +852,74 @@
                    (cadr (nth 4 *pc1-cursor-tooth*))))
 
 ; extra-invariant-witnesses.lisp
-(defconst *pc1-KL6-invp*
+(with-guard-checking-event nil
+ (defconst *pc1-KL6-invp*
   (pc1-run-scene :run :bad-use 1000 *pc1-cur* 1 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL6-invp *pc1-KL6-invp*))
 (assert-event (pc1-removal (nth 1 *pc1-KL6-invp*) 0))
-(defconst *pc1-KL7-invp*
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-invp*
   (pc1-run-scene :run :bad-use 10000 (fn-ovw-cursor "fn.test" 1 4 4 nil t *ovrbt-server*) 1
-                0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*))
+                0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*)))
 (assert-event (pc1-removal (nth 2 *pc1-KL7-invp*) 0))
-(defconst *pc1-KL5-no-invp*
+(with-guard-checking-event nil
+ (defconst *pc1-KL5-no-invp*
   (pc1-run-scene :run :bad-mstate 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (assert-event (and (not (nth 0 (car (nth 0 *pc1-KL5-no-invp*))))
                    (pc1-all-true (update-nth 0 t (car (nth 0 *pc1-KL5-no-invp*))))
                    (cadr (nth 0 *pc1-KL5-no-invp*))))
 
 ; extra-bound-fixed.lisp
-(defconst *pc1-lie2-base* (ovrbt-held 0 (list "<a@x>" (ovrbt-article "fn.test" "a" "A") '("fn.test") :column)))
-(defconst *pc1-lie2-facts*
+(with-guard-checking-event nil
+ (defconst *pc1-lie2-base* (ovrbt-held 0 (list "<a@x>" (ovrbt-article "fn.test" "a" "A") '("fn.test") :column))))
+(with-guard-checking-event nil
+ (defconst *pc1-lie2-facts*
   (let ((f (fn-held-facts *pc1-lie2-base*)))
     (fn-hf-make (fn-hf-octets f) (fn-hf-body-start f) (fn-hf-body-lines f)
                 (fn-hf-control-with-nov (fn-hf-control f)
-                  (fn-hnov-make nil t (coerce (make-list 2000 :initial-element #\s) 'string) "" "" "" "")))))
-(defconst *pc1-lie2-row* (update-nth 11 *pc1-lie2-facts* *pc1-lie2-base*))
-(defconst *pc1-lie2-a* (list (ovrbt-article "fn.test" "a" "A")))
-(defconst *pc1-lie2-c* (list (fn-cat-assign *pc1-lie2-row* nil)))
-(defconst *pc1-KL7-F2*
+                  (fn-hnov-make nil t (coerce (make-list 2000 :initial-element #\s) 'string) "" "" "" ""))))))
+(with-guard-checking-event nil
+ (defconst *pc1-lie2-row* (update-nth 11 *pc1-lie2-facts* *pc1-lie2-base*)))
+(with-guard-checking-event nil
+ (defconst *pc1-lie2-a* (list (ovrbt-article "fn.test" "a" "A"))))
+(with-guard-checking-event nil
+ (defconst *pc1-lie2-c* (list (fn-cat-assign *pc1-lie2-row* nil))))
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-F2*
   (pc1-run-scene :run nil (fn-ovr-over-capl 100 100 2) (fn-ovw-cursor "fn.test" 1 1 1 nil t *ovrbt-server*) 1
-                0 (fn-ovr-over-capl 100 100 2) 100 10 100 100 *ovrbt-limits* *pc1-lie2-a* *pc1-lie2-c*))
+                0 (fn-ovr-over-capl 100 100 2) 100 10 100 100 *ovrbt-limits* *pc1-lie2-a* *pc1-lie2-c*)))
 (value-triple (list :KL7-F2 *pc1-KL7-F2*))
 (assert-event (pc1-removal (nth 2 *pc1-KL7-F2*) 7))
-(defconst *pc1-header2-specs* (list (list "<a@x>" *pc1-long-payload* '("fn.test") :column)))
-(defconst *pc1-header2-a* (ovrbt-arena *pc1-header2-specs*))
-(defconst *pc1-header2-c* (ovrbt-cat-from 0 *pc1-header2-specs* nil))
-(defconst *pc1-KL7-HDR2*
+(with-guard-checking-event nil
+ (defconst *pc1-header2-specs* (list (list "<a@x>" *pc1-long-payload* '("fn.test") :column))))
+(with-guard-checking-event nil
+ (defconst *pc1-header2-a* (ovrbt-arena *pc1-header2-specs*)))
+(with-guard-checking-event nil
+ (defconst *pc1-header2-c* (ovrbt-cat-from 0 *pc1-header2-specs* nil)))
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-HDR2*
   (pc1-run-scene :run nil (fn-ovr-over-capl 0 5000 2) (fn-ovw-cursor "fn.test" 1 1 1 nil t *ovrbt-server*) 1
-                0 (fn-ovr-over-capl 0 5000 2) 5000 10 0 5000 (fn-article-limits 10 10 4000) *pc1-header2-a* *pc1-header2-c*))
+                0 (fn-ovr-over-capl 0 5000 2) 5000 10 0 5000 (fn-article-limits 10 10 4000) *pc1-header2-a* *pc1-header2-c*)))
 (value-triple (list :KL7-HDR2 *pc1-KL7-HDR2*))
 (assert-event (pc1-removal (nth 2 *pc1-KL7-HDR2*) 9))
-(defconst *pc1-KL6-free*
+(with-guard-checking-event nil
+ (defconst *pc1-KL6-free*
   (pc1-run-scene :run :free 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (assert-event (pc1-removal (nth 1 *pc1-KL6-free*) 1))
-(defconst *pc1-KL7-free*
+(with-guard-checking-event nil
+ (defconst *pc1-KL7-free*
   (pc1-run-scene :run :free 10000 (fn-ovw-cursor "fn.test" 1 4 4 nil t *ovrbt-server*) 3
-                0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*))
+                0 10000 100 10 100 100 *ovrbt-limits* *ovrbt-a* *ovrbt-c*)))
 (assert-event (pc1-removal (nth 2 *pc1-KL7-free*) 1))
 
 ; extra-empty-witnesses.lisp
-(defconst *pc1-empty-range*
+(with-guard-checking-event nil
+ (defconst *pc1-empty-range*
   (pc1-run-scene :quantum nil 1000 (fn-ovw-cursor "fn.test" 5 3 3 nil t '(110 102)) 3
-                0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                0 1000 100 10 100 100 (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (assert-event (and (equal (car (nth 6 *pc1-empty-range*)) 1)
                    (null (nth 1 (nth 6 *pc1-empty-range*)))
                    (pc1-positive (nth 0 *pc1-empty-range*))
@@ -875,39 +939,45 @@
          :UNCHANGED (equal (nth 3 (nth 6 r)) (nth 7 r)))))
 
 ; Draft 3 count model: actual leased executor, with the stobj returned.
-(defconst *pc1-Q-W1*
+(with-guard-checking-event nil
+ (defconst *pc1-Q-W1*
   (pc1-run-scene :quanta nil 1000 *pc1-cur* 1 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL11-W1 (car *pc1-Q-W1*) :COUNT (cadr *pc1-Q-W1*)))
-(defconst *pc1-Q-W3*
+(with-guard-checking-event nil
+ (defconst *pc1-Q-W3*
   (pc1-run-scene :quanta nil 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL11-W3 (car *pc1-Q-W3*) :COUNT (cadr *pc1-Q-W3*)))
 (assert-event (and (pc1-positive (car *pc1-Q-W1*)) (pc1-positive (car *pc1-Q-W3*))
                    (equal (cadr *pc1-Q-W1*) 3) (equal (cadr *pc1-Q-W3*) 1)
                    (< (ceiling 3 3) (cadr *pc1-Q-W1*))))
 ; Actual maximum row is 44 octets, including Xref: nf fn.test:2 fn.other:1.
 ; Capacity=44+65 permits one-row-with-framing, but is below L=100+65.
-(defconst *pc1-Q-capacity*
+(with-guard-checking-event nil
+ (defconst *pc1-Q-capacity*
   (pc1-run-scene :quanta nil (+ 44 (fn-ovr-frame-max)) *pc1-cur* 3 0 (+ 44 (fn-ovr-frame-max)) 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL11-capacity (car *pc1-Q-capacity*) :COUNT (cadr *pc1-Q-capacity*)))
 (assert-event (pc1-removal (car *pc1-Q-capacity*) 11))
-(defconst *pc1-Q-inv*
+(with-guard-checking-event nil
+ (defconst *pc1-Q-inv*
   (pc1-run-scene :quanta :bad-use 1000 *pc1-cur* 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL11-inv (car *pc1-Q-inv*) :COUNT (cadr *pc1-Q-inv*)))
 (assert-event (and (not (nth 0 (caar *pc1-Q-inv*)))
                    (pc1-all-true (update-nth 0 t (caar *pc1-Q-inv*)))
                    (cadar *pc1-Q-inv*)))
-(defconst *pc1-Q-probe*
+(with-guard-checking-event nil
+ (defconst *pc1-Q-probe*
   (pc1-run-scene :quanta nil 100 *pc1-cur* 3 0 100 1 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL11-probe (car *pc1-Q-probe*) :COUNT (cadr *pc1-Q-probe*)))
 (assert-event (pc1-removal (car *pc1-Q-probe*) 10))
-(defconst *pc1-Q-range*
+(with-guard-checking-event nil
+ (defconst *pc1-Q-range*
   (pc1-run-scene :quanta nil 1000 (fn-ovw-cursor "fn.test" 5 3 3 nil t '(110 102)) 3 0 1000 100 10 100 100
-                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+                (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL11-range (car *pc1-Q-range*) :COUNT (cadr *pc1-Q-range*)))
 (assert-event (pc1-removal (car *pc1-Q-range*) 12))
 (value-triple (list :DRAFT3B-KL1v (nth 1 *pc1-q*) :DRAFT3B-KL5a (nth 5 *pc1-q*)
@@ -915,9 +985,10 @@
 (assert-event (and (pc1-positive (nth 1 *pc1-q*)) (pc1-positive (nth 5 *pc1-q*))
                    (pc1-all-true (nth 9 *pc1-q*)) (posp (car (nth 6 *pc1-q*)))))
 
-(defconst *pc1-Q-negative-L*
+(with-guard-checking-event nil
+ (defconst *pc1-Q-negative-L*
   (pc1-run-scene :quanta nil 1000 *pc1-cur* 3 0 1000 -1 10 100 100
-                (fn-article-limits 10 10 100) nil nil))
+                (fn-article-limits 10 10 100) nil nil)))
 (value-triple (list :KL11-L (car *pc1-Q-negative-L*) :COUNT (cadr *pc1-Q-negative-L*)))
 (assert-event (pc1-removal (car *pc1-Q-negative-L*) 9))
 
@@ -948,17 +1019,20 @@
 (defun pc1-admission-run-scene (kind scenario cap cur w base limit l k hdr a limits payloads rows)
   (declare (xargs :verify-guards nil))
   (pc1-admission-scene kind scenario cap cur w base limit l k hdr a limits payloads rows))
-(defconst *pc1-KL1o-positive*
+(with-guard-checking-event nil
+ (defconst *pc1-KL1o-positive*
  (pc1-admission-run-scene :quantum nil 1000 *pc1-cur* 3 0 1000 100 10 100 100
-  (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+  (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL1o-positive *pc1-KL1o-positive*))
-(defconst *pc1-KL1o-free*
+(with-guard-checking-event nil
+ (defconst *pc1-KL1o-free*
  (pc1-admission-run-scene :quantum :free 1000 *pc1-cur* 3 0 1000 100 10 100 100
-  (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+  (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL1o-free *pc1-KL1o-free*))
-(defconst *pc1-KL1o-past-fill*
+(with-guard-checking-event nil
+ (defconst *pc1-KL1o-past-fill*
  (pc1-admission-run-scene :quantum nil 1000 *pc1-cur* 3 1 1000 100 10 100 100
-  (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*))
+  (fn-article-limits 10 10 100) *ovrs-a* *ovrs-c*)))
 (value-triple (list :KL1o-past-fill *pc1-KL1o-past-fill*))
 (assert-event (and (nth 0 *pc1-KL1o-positive*) (nth 1 *pc1-KL1o-positive*)
  (nth 2 *pc1-KL1o-positive*) (nth 3 *pc1-KL1o-positive*) (nth 4 *pc1-KL1o-positive*)))

@@ -7,8 +7,34 @@
 (include-book "runtime-contract-host-lease")
 (include-book "runtime-contract-host-lease-run")
 
+; Generic list/arithmetic helpers are local to this proof world.
+(local (defthm fn-ovrqp-nfix-natural (implies (natp x) (equal (nfix x) x))))
+(local (defthm fn-ovrqp-natural-nfix (natp (nfix x)) :rule-classes :type-prescription))
+(local (defthm fn-ovrqp-len-append
+ (equal (len (append a b)) (+ (len a) (len b)))
+ :hints (("Goal" :induct (append a b) :in-theory (enable binary-append len)))))
+(local (defthm fn-ovrqp-append-associates
+ (equal (append (append a b) c) (append a (append b c)))
+ :hints (("Goal" :induct (append a b) :in-theory (enable binary-append)))))
+(local (defthm fn-ovrqp-fold-sums
+ (implies (syntaxp (and (quotep a) (quotep b)))
+  (equal (+ a b x) (+ (+ a b) x)))
+ :hints (("Goal" :use ((:instance associativity-of-+ (x a) (y b) (z x)))
+  :in-theory (theory 'minimal-theory)))))
+(local (defthm fn-ovrqp-octets-append
+ (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
+  (fn-cbor-octet-listp (append a b)))
+ :hints (("Goal" :induct (append a b)
+   :in-theory (union-theories '(fn-cbor-octet-listp binary-append car-cons cdr-cons) (theory 'minimal-theory))))))
+(local (defthm fn-ovrqp-octets-cons
+ (equal (fn-cbor-octet-listp (cons x xs))
+        (and (fn-cbor-octetp x) (fn-cbor-octet-listp xs)))
+ :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
 (defun fn-ovr-lease-quantum (cur w h id inc fn-rtc-st fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-rtc-st fn-arena fn-cat) :verify-guards nil))
+  (declare (xargs :stobjs (fn-rtc-st fn-arena fn-cat) :verify-guards nil
+                  :guard (and (fn-ovw-cursorp cur)
+                    (unsigned-byte-p 59 (fn-rtc-buf-cap h (fn-rtc-st-config fn-rtc-st))))))
   (let ((cfg (fn-rtc-st-config fn-rtc-st)))
     (if (and (natp h) (< h (fn-rtc-nbufs cfg))
              (equal (fn-rtc-st-owner h fn-rtc-st) (list :workspace id inc))
@@ -68,6 +94,29 @@
               (fn-ovr-lease-run-quanta next w (- k 1) h id inc fn-rtc-st fn-arena fn-cat)
               (mv (+ 1 m) fn-rtc-st))))))))
 
+(local (defthm fn-ovrlp-kl5a
+  (implies (and (fn-ovw-cursorp cur)
+                (fn-hl-render-ready-p h id inc s) (fn-rtc-live-p id inc s)
+                (not (fn-rtc-kind-out-p :send id inc (fn-rtc-uses s))))
+           (mv-let (n next j s2) (fn-ovr-quantum cur w h 0 limit s fn-arena fn-cat)
+             (declare (ignore next s2))
+             (let ((out (mv-nth 0 (fn-ovw-step cur n fn-arena fn-cat))))
+               (implies (and (posp n) (< 0 j)
+                             (fn-rtc-st$corr c (fn-hl-quantum-state h out id inc s)))
+                        (and (member-equal (list :send id inc (fn-rtc-next-op s)
+                                                 (list h (fn-rtc-get 0 (fn-rtc-buffer h s)) 0 j))
+                                           (fn-rtc-uses (fn-hl-quantum-state h out id inc s)))
+                             (equal (fn-rtc-c-octets (fn-rtc-buf-base h (fn-rtc-config s)) j
+                                                     (nth *fn-rtc-c-bytesi* c))
+                                    out))))))
+ :hints (("Goal" :do-not-induct t
+ :use ((:instance fn-ovr-workspace-quantum-position (base 0))
+ (:instance fn-ovr-workspace-quantum-capacity (base 0))
+ (:instance fn-hl-leased-quantum-sends-the-window
+ (out (mv-nth 0 (fn-ovw-step cur (mv-nth 0 (fn-ovr-quantum cur w h 0 limit s fn-arena fn-cat)) fn-arena fn-cat)))))
+ :in-theory (union-theories '(mv-nth zp posp car-cons cdr-cons fn-hlr-fix-len unicity-of-0
+ (:type-prescription fn-ovr-quantum) (:type-prescription fn-ovw-step)) (theory 'minimal-theory))))))
+(local (set-default-hints '((quote (:use fn-ovrlp-kl5a :in-theory (theory 'minimal-theory))))))
 (defthm fn-ovr-leased-quantum-sends-the-step
   (implies (and (fn-ovw-cursorp cur)
                 (fn-hl-render-ready-p h id inc s) (fn-rtc-live-p id inc s)
@@ -83,6 +132,7 @@
                              (equal (fn-rtc-c-octets (fn-rtc-buf-base h (fn-rtc-config s)) j
                                                      (nth *fn-rtc-c-bytesi* c))
                                     out)))))))
+(local (set-default-hints nil))
 
 ; Invariant and metadata proofs follow the window/write composition.
 (local (defthm fn-ovrlp-splice-mstates
@@ -446,7 +496,7 @@
  :hints (("Goal" :induct (fn-ovr-st-view h i j s)
  :expand ((:free (a d n) (take n (cons a d))))
  :in-theory (union-theories '(fn-ovr-st-view fn-rtc-st-byte fn-rtc-st$a-byte fn-rtc-bytes
- fn-ovrqp-buffer-shape fn-cbor-octet-listp-implies-true-listp fn-ovrqp-nfix-natural
+ fn-dsw-state-buffer-shape fn-cbor-octet-listp-implies-true-listp fn-ovrqp-nfix-natural
  natp-compound-recognizer fn-rtc-c-nthcdr-is-cons take (:type-prescription len)
  nth (:type-prescription nthcdr) true-listp nthcdr mv-nth zp car-cons cdr-cons
  (:executable-counterpart natp) (:executable-counterpart binary-+)
@@ -512,7 +562,7 @@
  fn-hld-hll-invp-is-generic-invp fn-ovrlp-hll-is-ap fn-ovrlp-cap-natural
  fn-hlr-puts-frame fn-hlr-puts-len2 fn-hlr-live-of-puts
  fn-rtc-b-gen fn-ovrqp-nfix-natural fn-ovrqp-puts-compose fn-ovrlp-puts-bytes
- fn-rtc-issue-frame fn-rtc-buffer-of-with fn-ovrqp-get-of-set fn-ovrqp-buffer-shape
+ fn-rtc-issue-frame fn-rtc-buffer-of-with fn-dsw-get-of-set fn-dsw-state-buffer-shape
  fn-rtc-b-bytes fn-rtc-b-owner fn-rtc-get-of-cons fn-rtc-get nfix natp zp
  fn-cbor-octet-listp-implies-true-listp fn-hlr-fix-len fn-rtc-with-accessors fn-rtc-request-config-frame
  mv-nth car-cons cdr-cons len unicity-of-0
@@ -847,6 +897,40 @@
            (mv-nth 0 (fn-ovr-lease-run cur w k h id inc st fn-arena fn-cat))))
 (local (set-default-hints nil))
 
+(local (defthm fn-ovrlp-len-tlf (equal (len (true-list-fix x)) (len x))
+ :hints (("Goal" :induct (len x) :in-theory (union-theories '(len true-list-fix car-cons cdr-cons) (fn-dss-measure-theory))))))
+(local (defthm fn-ovrlp-capl-is-bound-plus-frame
+ (equal (fn-ovr-over-capl hdr a (len server))
+        (+ 2 (fn-ovr-nov-line-header-bound hdr a server) (fn-ovr-frame-max)))
+ :hints (("Goal" :in-theory (union-theories '(fn-ovr-over-capl fn-ovr-nov-line-header-bound fn-ovrlp-len-tlf fn-ovrqp-nfix-natural
+ natp fn-ovrqp-fold-sums associativity-of-+ commutativity-of-+ commutativity-2-of-+
+ default-+-1 default-+-2 unicity-of-0 (:type-prescription len)) (fn-dss-measure-theory))))))
+(local (defthm fn-ovrlp-bound-natural
+ (natp (+ 2 (fn-ovr-nov-line-header-bound hdr a server)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (union-theories '(fn-ovr-nov-line-header-bound max natp nfix len
+ default-+-1 default-+-2 default-*-1 default-*-2 (:type-prescription len)) (fn-dss-measure-theory))))))
+(local (defthm fn-ovrlp-kl7
+  (implies (and (fn-hll-invp st)
+                (fn-hl-render-ready-p h id inc st)
+                (fn-rtc-live-p id inc st)
+                (not (fn-rtc-kind-out-p :send id inc (fn-rtc-uses st)))
+                (fn-ovw-cursorp cur) (not (nth 7 cur)) (fn-cbor-octet-listp (nth 6 cur))
+                (fn-scol-okp fn-arena fn-cat)
+                (fn-ovr-rows-within-header a limits fn-arena fn-cat)
+                (<= (nfix (fn-article-limit-octets limits)) (nfix hdr))
+                (unsigned-byte-p 59 (fn-rtc-buf-cap h (fn-rtc-config st)))
+                (<= (fn-ovr-over-capl hdr a (len (nth 6 cur))) (fn-rtc-buf-cap h (fn-rtc-config st)))
+                (< (fn-ovw-remaining cur) (nfix k)))
+           (mv-nth 0 (fn-ovr-lease-run cur w k h id inc st fn-arena fn-cat)))
+ :hints (("Goal" :use ((:instance fn-ovr-lease-run-progresses
+ (l (+ 2 (fn-ovr-nov-line-header-bound hdr a (nth 6 cur)))))
+ (:instance fn-ovr-probes-within-the-header-bound (group (nth 0 cur))
+ (k (nfix (nth 1 cur))) (top (nfix (nth 2 cur))) (server (nth 6 cur)) (v (nfix (nth 3 cur)))))
+ :in-theory (union-theories '(fn-ovrlp-capl-is-bound-plus-frame fn-ovrlp-bound-natural fn-ovrqp-nfix-natural fn-ovrqp-natural-nfix natp-compound-recognizer
+ fn-ovrlp-len-tlf fn-ovrqp-fold-sums associativity-of-+ commutativity-of-+ commutativity-2-of-+ unicity-of-0 default-+-1 default-+-2
+ (:type-prescription len) (:type-prescription fn-nntp-decimal)) (set-difference-theories (fn-dss-measure-theory) '(natp nfix)))))))
+(local (set-default-hints '((quote (:use fn-ovrlp-kl7 :in-theory (theory 'minimal-theory))))))
 (defthm fn-ovr-over-capl-progresses
   (implies (and (fn-hll-invp st)
                 (fn-hl-render-ready-p h id inc st)
@@ -860,7 +944,88 @@
                 (<= (fn-ovr-over-capl hdr a (len (nth 6 cur))) (fn-rtc-buf-cap h (fn-rtc-config st)))
                 (< (fn-ovw-remaining cur) (nfix k)))
            (mv-nth 0 (fn-ovr-lease-run cur w k h id inc st fn-arena fn-cat))))
+(local (set-default-hints nil))
 
+; Count attempts, including truncated fuel, against the geometric ceiling.
+(local (include-book "arithmetic-5/top" :dir :system))
+(local (defthm fn-ovrk-ceiling-positive
+ (implies (and (posp r) (posp q)) (<= 1 (ceiling r q)))
+ :hints (("Goal" :in-theory (enable posp)))))
+(local (defthm fn-ovrk-ceiling-next
+ (implies (and (posp r) (posp q) (natp n) (<= q n) (< n r))
+          (<= (+ 1 (ceiling (- r n) q)) (ceiling r q)))
+ :hints (("Goal" :in-theory (enable posp natp)))))
+(local (defthm fn-ovrk-remaining-is-range
+ (implies (and (consp cur) (<= (nfix (nth 1 cur)) (nfix (nth 2 cur))))
+ (and (equal (fn-ovw-remaining cur) (+ 1 (- (nfix (nth 2 cur)) (nfix (nth 1 cur)))))
+      (posp (fn-ovw-remaining cur))))
+ :hints (("Goal" :in-theory (enable fn-ovw-remaining posp)))))
+(local (defthm fn-ovrlp-count-bound
+ (implies (and (fn-hll-invp st) (fn-hl-render-ready-p h id inc st)
+ (fn-rtc-live-p id inc st) (not (fn-rtc-kind-out-p :send id inc (fn-rtc-uses st)))
+ (fn-ovw-cursorp cur) (consp cur) (not (nth 7 cur)) (fn-cbor-octet-listp (nth 6 cur))
+ (unsigned-byte-p 59 (fn-rtc-buf-cap h (fn-rtc-config st)))
+ (posp l) (fn-ovr-probes-within (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur))
+  (nth 6 cur) (nfix (nth 3 cur)) l fn-arena fn-cat)
+ (<= (+ l (fn-ovr-frame-max)) (fn-rtc-buf-cap h (fn-rtc-config st)))
+ (<= (nfix (nth 1 cur)) (nfix (nth 2 cur))))
+ (<= (mv-nth 0 (fn-ovr-lease-run-quanta cur w k h id inc st fn-arena fn-cat))
+     (ceiling (fn-ovw-remaining cur) (fn-ovr-lines-that-fit w (fn-rtc-buf-cap h (fn-rtc-config st)) l))))
+ :hints (("Goal" :induct (fn-ovr-lease-run-quanta cur w k h id inc st fn-arena fn-cat)
+ :in-theory (union-theories '(fn-ovr-lease-run-quanta (:induction fn-ovr-lease-run-quanta)
+ fn-ovrlp-hll-is-ap fn-ovrlp-cap-natural fn-ovrlp-executor-window
+ fn-ovrqp-natural-nfix fn-ovrqp-nfix-natural fn-ovrlp-remaining-natural natp-compound-recognizer
+ fn-ovrk-remaining-is-range min posp mv-nth zp car-cons cdr-cons fix unicity-of-0
+ (:type-prescription fn-ovr-lease-quantum) (:type-prescription fn-hld-sent)
+ (:type-prescription fn-ovw-step) (:executable-counterpart nfix) (:executable-counterpart natp))
+ (set-difference-theories (fn-dss-measure-theory) '(natp nfix))))
+ ("Subgoal *1/5" :use ((:instance fn-ovr-quantum-progress-under-probes (s st))
+ (:instance fn-ovr-quantum-line-window-lower-bound (s st))
+ (:instance fn-ovrlp-executor-positions (s st)) (:instance fn-ovrlp-executor-window (s st))
+ (:instance fn-ovr-lines-that-fit-properties (cap (fn-rtc-buf-cap h (fn-rtc-config st))))
+ (:instance fn-ovr-step-keeps-probe-bound (n (mv-nth 0 (fn-ovr-lease-quantum cur w h id inc st fn-arena fn-cat))))
+ (:instance fn-ovr-step-consumes-numbers (n (mv-nth 0 (fn-ovr-lease-quantum cur w h id inc st fn-arena fn-cat))))
+ (:instance fn-ovrk-ceiling-positive (r (fn-ovw-remaining cur)) (q (fn-ovr-lines-that-fit w (fn-rtc-buf-cap h (fn-rtc-config st)) l)))
+ (:instance fn-ovrk-ceiling-next (r (fn-ovw-remaining cur)) (q (fn-ovr-lines-that-fit w (fn-rtc-buf-cap h (fn-rtc-config st)) l))
+ (n (mv-nth 0 (fn-ovr-lease-quantum cur w h id inc st fn-arena fn-cat))))))
+ ("Subgoal *1/4" :use ((:instance fn-ovr-quantum-progress-under-probes (s st))
+ (:instance fn-ovr-quantum-line-window-lower-bound (s st))
+ (:instance fn-ovrlp-executor-positions (s st)) (:instance fn-ovrlp-executor-window (s st))
+ (:instance fn-ovr-lines-that-fit-properties (cap (fn-rtc-buf-cap h (fn-rtc-config st))))
+ (:instance fn-ovr-step-keeps-probe-bound (n (mv-nth 0 (fn-ovr-lease-quantum cur w h id inc st fn-arena fn-cat))))
+ (:instance fn-ovr-step-consumes-numbers (n (mv-nth 0 (fn-ovr-lease-quantum cur w h id inc st fn-arena fn-cat))))
+ (:instance fn-ovrk-ceiling-positive (r (fn-ovw-remaining cur)) (q (fn-ovr-lines-that-fit w (fn-rtc-buf-cap h (fn-rtc-config st)) l)))
+ (:instance fn-ovrk-ceiling-next (r (fn-ovw-remaining cur)) (q (fn-ovr-lines-that-fit w (fn-rtc-buf-cap h (fn-rtc-config st)) l))
+ (n (mv-nth 0 (fn-ovr-lease-quantum cur w h id inc st fn-arena fn-cat))))))
+ ("Subgoal *1/3" :use ((:instance fn-ovr-quantum-progress-under-probes (s st))
+ (:instance fn-ovrlp-executor-positions (s st))
+ (:instance fn-ovr-lines-that-fit-properties (cap (fn-rtc-buf-cap h (fn-rtc-config st))))
+ (:instance fn-ovrk-ceiling-positive (r (fn-ovw-remaining cur)) (q (fn-ovr-lines-that-fit w (fn-rtc-buf-cap h (fn-rtc-config st)) l)))))
+ ("Subgoal *1/2" :use ((:instance fn-ovr-lines-that-fit-properties (cap (fn-rtc-buf-cap h (fn-rtc-config st))))
+ (:instance fn-ovrk-ceiling-positive (r (fn-ovw-remaining cur)) (q (fn-ovr-lines-that-fit w (fn-rtc-buf-cap h (fn-rtc-config st)) l)))))
+ ("Subgoal *1/1" :use ((:instance fn-ovr-lines-that-fit-properties (cap (fn-rtc-buf-cap h (fn-rtc-config st))))
+ (:instance fn-ovrk-ceiling-positive (r (fn-ovw-remaining cur)) (q (fn-ovr-lines-that-fit w (fn-rtc-buf-cap h (fn-rtc-config st)) l))))))))
+(local (defthm fn-ovrlp-kl11
+  (implies (and (fn-hll-invp st)
+                (fn-hl-render-ready-p h id inc st)
+                (fn-rtc-live-p id inc st)
+                (not (fn-rtc-kind-out-p :send id inc (fn-rtc-uses st)))
+                (fn-ovw-cursorp cur) (consp cur) (not (nth 7 cur)) (fn-cbor-octet-listp (nth 6 cur))
+                (unsigned-byte-p 59 (fn-rtc-buf-cap h (fn-rtc-config st)))
+                (posp l)
+                (fn-ovr-probes-within (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur)) (nth 6 cur)
+                                      (nfix (nth 3 cur)) l fn-arena fn-cat)
+                (<= (+ l (fn-ovr-frame-max)) (fn-rtc-buf-cap h (fn-rtc-config st)))
+                (<= (nfix (nth 1 cur)) (nfix (nth 2 cur)))
+                (< (fn-ovw-remaining cur) (nfix k)))
+           (<= (mv-nth 0 (fn-ovr-lease-run-quanta cur w k h id inc st fn-arena fn-cat))
+               (ceiling (+ 1 (- (nfix (nth 2 cur)) (nfix (nth 1 cur))))
+                        (min (if (posp w) w 1)
+                             (floor (- (fn-rtc-buf-cap h (fn-rtc-config st)) (fn-ovr-frame-max)) l)))))
+ :hints (("Goal" :use fn-ovrlp-count-bound
+ :in-theory (union-theories '(fn-ovrk-remaining-is-range fn-ovr-lines-that-fit)
+ (theory 'minimal-theory))))))
+(local (set-default-hints '((quote (:use fn-ovrlp-kl11 :in-theory (theory 'minimal-theory))))))
 (defthm fn-ovr-lease-run-quanta-within-the-line-count
   (implies (and (fn-hll-invp st)
                 (fn-hl-render-ready-p h id inc st)
@@ -878,3 +1043,28 @@
                (ceiling (+ 1 (- (nfix (nth 2 cur)) (nfix (nth 1 cur))))
                         (min (if (posp w) w 1)
                              (floor (- (fn-rtc-buf-cap h (fn-rtc-config st)) (fn-ovr-frame-max)) l))))))
+(local (set-default-hints nil))
+
+; The host calls this executor directly; only its approved xargs guard
+; differs from the seat model. Its body is unchanged.
+(local (defthm fn-ovrlp-quantum-keeps-ap
+ (implies (and (fn-ovw-cursorp cur) (fn-rtc-st$ap s))
+ (fn-rtc-st$ap (mv-nth 3 (fn-ovr-quantum cur w h base limit s fn-arena fn-cat))))
+ :hints (("Goal" :use fn-ovr-quantum-is-the-step
+ :in-theory (union-theories '(fn-ovrqp-splice-preserves-ap mv-nth zp car-cons cdr-cons
+ (:type-prescription fn-ovr-quantum)) (theory 'minimal-theory))))))
+(local (defthm fn-ovrlp-quantum-position-natural
+ (implies (and (fn-ovw-cursorp cur) (fn-rtc-st$ap s))
+ (natp (mv-nth 2 (fn-ovr-quantum cur w h base limit s fn-arena fn-cat))))
+ :hints (("Goal" :use fn-ovr-quantum-is-the-step
+ :in-theory (union-theories '(fn-ovrqp-natural-nfix natp-compound-recognizer
+ mv-nth zp car-cons cdr-cons (:type-prescription len) (:type-prescription fn-ovr-quantum))
+ (theory 'minimal-theory))))))
+(verify-guards fn-ovr-lease-quantum
+ :hints (("Goal" :use ((:instance fn-ovrlp-quantum-keeps-ap (s fn-rtc-st)
+ (base 0) (limit (fn-rtc-buf-cap h (fn-rtc-st-config fn-rtc-st))))
+ (:instance fn-ovrlp-quantum-position-natural (s fn-rtc-st)
+ (base 0) (limit (fn-rtc-buf-cap h (fn-rtc-st-config fn-rtc-st)))))
+ :in-theory (union-theories '(fn-dsw-st-p-is-abstract-recognizer fn-ovrlp-cap-natural fn-rtc-nbufs
+ unsigned-byte-p integer-range-p natp nfix fn-rtc-st-config fn-rtc-st$a-config
+ mv-nth zp car-cons cdr-cons (:executable-counterpart natp)) (fn-dss-measure-theory)))))
