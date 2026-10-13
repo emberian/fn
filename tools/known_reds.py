@@ -22,6 +22,16 @@ ROOT = Path(__file__).resolve().parents[1]
 ORIGINAL_ROW = ('original baseline row: no admission record to transfer from; '
                 'an owner change for it is a train commit under a coordinator ruling')
 NATIVE_ID = re.compile(r'tests\.test_native_[A-Za-z0-9_]+\.[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*')
+# A module that fails to import is recorded by unittest as one case,
+# unittest.loader._FailedTest.<module>: the red a control run most needs to
+# hold.  Its real module is tests/<module>.py, which must exist here.
+FAILED_IMPORT_ID = re.compile(r'unittest\.loader\._FailedTest\.(test_[A-Za-z0-9_]+)')
+# A class or module fixture that errors is recorded as one case named
+# 'setUpClass (tests.<module>.<Class>)' (likewise tearDownClass,
+# setUpModule (tests.<module>), tearDownModule): every test under it is
+# unrun, so the fixture is the red.
+FIXTURE_ID = re.compile(r'(?:(?:setUp|tearDown)Class \((tests\.(test_[A-Za-z0-9_]+))\.[A-Za-z_][A-Za-z0-9_]*\)'
+                        r'|(?:setUp|tearDown)Module \((tests\.(test_[A-Za-z0-9_]+))\))')
 DECODER = json.JSONDecoder()
 
 
@@ -114,6 +124,26 @@ def retire_rows(text: str, item: str) -> str:
     return text
 
 
+def native_module(root: Path, subject: str) -> str:
+    """The test module a native row's SUBJECT names, or a refusal."""
+    if NATIVE_ID.fullmatch(subject):
+        return subject.rsplit('.', 2)[0]
+    failed = FAILED_IMPORT_ID.fullmatch(subject)
+    if failed:
+        if not (root / 'tests' / (failed[1] + '.py')).is_file():
+            raise train.TrainError(f'native subject names no module tests/{failed[1]}.py: {subject}')
+        return 'tests.' + failed[1]
+    fixture = FIXTURE_ID.fullmatch(subject)
+    if fixture:
+        module, name = (fixture[1], fixture[2]) if fixture[1] else (fixture[3], fixture[4])
+        if not (root / 'tests' / (name + '.py')).is_file():
+            raise train.TrainError(f'native subject names no module tests/{name}.py: {subject}')
+        return module
+    raise train.TrainError('native subject must be tests.test_native_*.Class.method, '
+                           'unittest.loader._FailedTest.<test module> (a module that failed to import) '
+                           'or setUpClass (tests.<module>.<Class>) and the like (a fixture that errored)')
+
+
 def item_state(root: Path, item: str):
     if not item or Path(item).name != item or item in ('.', '..'):
         raise train.TrainError(f'invalid repair item: {item}')
@@ -180,8 +210,8 @@ def operate(root: Path, args) -> int:
             print(f'known reds: {len(rows)} rows, {len(records)} amendment records; valid')
             return 0
         if args.command == 'add':
-            if args.kind == 'native' and not NATIVE_ID.fullmatch(args.subject):
-                raise train.TrainError('native subject must be tests.test_native_*.Class.method')
+            if args.kind == 'native':
+                native_module(root, args.subject)
             if any((r['kind'], r['subject']) == (args.kind, args.subject) for r in rows):
                 raise train.TrainError(f'row already exists: {args.kind} {args.subject}')
             if item_state(root, args.item) in train.CLOSED_ITEM_STATES:
