@@ -191,15 +191,12 @@
 ;; bound alone (the store figure the grant was given before L-RUN-LAUNCH) does not fit that space.
 (defconst *pfrst-sv-output* '(16777216 1048576))
 (defconst *pfrst-sv-od*
-  (fn-mo-serve-decide *pfrst-sv-profile* *pfrst-sv-core-img* 8388608 nil nil 119 (list (pfrst-mib 256)) nil
-                      *pfrst-sv-core* *pfrst-sv-nursery* *pfrst-sv-tot*
-                      (fn-mo-serve-pools *pfrst-sv-profile* nil *pfrst-sv-output* *pfrst-sv-peer* 4 8 "/x")
-                      (fn-mo-serve-pool-threads nil *pfrst-sv-peer*)))
+  (fn-mo-serve-run-decide *pfrst-sv-profile* *pfrst-sv-core-img* 8388608 nil nil 119 (list (pfrst-mib 256)) nil *pfrst-sv-core* *pfrst-sv-nursery* *pfrst-sv-tot* *pfrst-sv-output* *pfrst-sv-peer* 4 8 "/x" nil))
 (defconst *pfrst-sv-odyn* (* *fn-heap-mib* (cadr *pfrst-sv-od*)))
 (defconst *pfrst-sv-need*
-  (fn-prstartup-serve-store-need *pfrst-sv-profile* *pfrst-sv-owner*
+  (fn-prstartup-run-store-need *pfrst-sv-profile* *pfrst-sv-owner*
                                  (fn-heap-nursery-trigger *pfrst-sv-odyn* *pfrst-sv-nursery*)
-                                 *pfrst-sv-output* *pfrst-sv-peer* 4 8 "/x" (list (pfrst-mib 256))))
+                                 *pfrst-sv-output* *pfrst-sv-peer* 4 8 "/x" (list (pfrst-mib 256)) nil))
 (assert-event
  (and (equal (car *pfrst-sv-od*) :heap)
       (fn-orv-policy-p *pfrst-sv-output*)
@@ -212,47 +209,66 @@
        (car *pfrst-sv-output*))))
 
 (defkeystone pfrst-serve-output-pool-is-held
-  (implies (and (equal (car (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))) :heap)
-                (equal (fn-heap-core-file owner) (fn-heap-core-file core))
-                (and (natp (fn-mm-least-observation resident-o))
-                     (<= (fn-mm-least-observation resident-o) (fn-mm-least-observation resident))))
-           (<= (+ (fn-prstartup-serve-store-need profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery)
-                                                 output peer workers cache-limit root resident-o)
-                  (nfix (fn-crv-nth 0 output)))
-               (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))))))
+ (implies (and (equal (car (fn-mo-serve-run-decide profile img trigger live nil config resident address core nursery tot
+                                                     output peer workers cache-limit root bp-terms))
+                      :heap)
+               (equal (fn-heap-core-file owner) (fn-heap-core-file core))
+               (and (natp (fn-mm-least-observation resident-o))
+                    (<= (fn-mm-least-observation resident-o) (fn-mm-least-observation resident))))
+          (<= (+ (fn-prstartup-run-store-need profile owner
+                   (fn-heap-nursery-trigger
+                    (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-run-decide profile img trigger live nil config resident address
+                                                                          core nursery tot output peer workers cache-limit
+                                                                          root bp-terms))))
+                    nursery)
+                   output peer workers cache-limit root resident-o bp-terms)
+                 (nfix (fn-crv-nth 0 output)))
+              (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-run-decide profile img trigger live nil config resident address
+                                                                    core nursery tot output peer workers cache-limit
+                                                                    root bp-terms))))))
   :rule-classes nil
   :id "PRF-10014"
   :restates fn-mo-serve-output-pool-is-held
   :hyps (accepted same-core owner-observed)
-  :subject fn-prstartup-serve-store-need
+  :subject fn-prstartup-run-store-need
   :witness ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119)
             (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*)
             (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
-            (root "/x") (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 256))))
+            (root "/x") (bp-terms nil) (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 256))))
   :breaks ((accepted ((profile *pfrst-sv-profile*) (img *pfrst-sv-host-img*) (trigger 8388608) (live nil) (config 119)
                       (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-host-core*) (nursery *pfrst-sv-nursery*)
                       (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
-                      (root "/x") (owner *pfrst-sv-host-core*) (resident-o (list (pfrst-mib 256))))
+                      (root "/x") (bp-terms nil) (owner *pfrst-sv-host-core*) (resident-o (list (pfrst-mib 256))))
             :logical "a refused decision's second field is its reason, not a figure, so the conclusion is evaluated for its logical value")
            (same-core ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119)
                        (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*)
                        (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
-                       (root "/x") (owner (cons 999999999999 999999999999)) (resident-o (list (pfrst-mib 256)))))
+                       (root "/x") (bp-terms nil) (owner (cons 999999999999 999999999999)) (resident-o (list (pfrst-mib 256)))))
            (owner-observed ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119)
                             (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*)
                             (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
-                            (root "/x") (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 100000))))))
+                            (root "/x") (bp-terms nil) (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 100000))))))
   :mutations ((need-at-the-profile-bound
-               (:conclusion (<= (+ (fn-prstartup-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery) nil 31 nil)
+               (:conclusion (<= (+ (fn-prstartup-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-run-decide profile img trigger live nil config resident address core nursery tot output peer workers cache-limit root bp-terms)))) nursery) nil 31 nil)
                                    (nfix (fn-crv-nth 0 output)))
-                                (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))))))
+                                (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-run-decide profile img trigger live nil config resident address core nursery tot output peer workers cache-limit root bp-terms))))))
                ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119)
                 (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*)
                 (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
-                (root "/x") (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 256))))
+                (root "/x") (bp-terms nil) (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 256))))
                :fault "the output grant given the profile's whole store (the figure before L-RUN-LAUNCH), which the launched space does not hold"))
   :hints (("Goal" :by fn-mo-serve-output-pool-is-held)))
 
+
+
+;; Non-nil BP witness: every antecedent and the complete conclusion, not an implication alone.
+(assert-event
+ (let ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119)
+ (resident (list (pfrst-mib 2048))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*)
+ (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
+ (root "/x") (bp-terms *pfrst-bp-terms*) (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 2048))))
+  (and (and (equal (car (fn-mo-serve-run-decide profile img trigger live nil config resident address core nursery tot output peer workers cache-limit root bp-terms)) :heap) (equal (fn-heap-core-file owner) (fn-heap-core-file core)) (and (natp (fn-mm-least-observation resident-o)) (<= (fn-mm-least-observation resident-o) (fn-mm-least-observation resident))))
+       (<= (+ (fn-prstartup-run-store-need profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-run-decide profile img trigger live nil config resident address core nursery tot output peer workers cache-limit root bp-terms)))) nursery) output peer workers cache-limit root resident-o bp-terms) (nfix (fn-crv-nth 0 output))) (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-run-decide profile img trigger live nil config resident address core nursery tot output peer workers cache-limit root bp-terms))))))))
 
 ;; K-L4d's positive witness is a funded plan, so a refused plan's empty budget cannot supply it.
 (assert-event

@@ -435,12 +435,26 @@
    "mutation": "tests/acl2/heap-command-tests.lisp::zero-connections-taken-as-a-capacity",
    "provenance": "keystone_critical.py --declare sha256:2a5fccf38b3bf430b0cfb0dc2c3d9eb3eca503eb7b4f742bd4b44457c67ce1d8"
   },
+  "fn-mo-serve-bp-launch-admits-its-startup": {
+   "subject": "fn-mo-serve-run-decide",
+   "host_test": "tests/test_native_start_every_preset.py::test_the_bp_node_starts_at_every_preset",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::m22-mo-serve-bp-launch-admits-its-startup",
+   "mutation": "tests/acl2/heap-command-tests.lisp::old-whole-profile-floor",
+   "provenance": "keystone_critical.py --declare sha256:c856a0b3423fd84c2a4ec1c6c8f141fdce9d2fbb6917381bda6ba1b38f3b632d"
+  },
   "fn-mo-serve-holds-every-admitted-store": {
    "subject": "fn-mo-serve-decide",
    "host_test": "tests/test_native_heap_from_profile.py::test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
    "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-serve-holds-every-admitted-store",
    "mutation": "tests/acl2/heap-command-tests.lisp::gate-reduced-to-a-numeric-limit",
    "provenance": "keystone_critical.py --declare sha256:31cad9c81253f6922aad595817309cb2c9cdeafc5534dea72c1f623d3db50fb5"
+  },
+  "fn-mo-serve-launch-conserves-the-resident-partition": {
+   "subject": "fn-mo-serve-total-pools",
+   "host_test": "tests/test_native_start_every_preset.py::test_the_bp_node_starts_at_every_preset",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::m22-mo-serve-launch-conserves-the-resident-partition",
+   "mutation": "tests/acl2/heap-command-tests.lisp::old-behavior",
+   "provenance": "keystone_critical.py --declare sha256:40adf8c70f1baf128df91e21bf449c84e37d0b43fb4e8ce65b3309fd09276843"
   },
   "fn-mo-serve-launch-fits-the-address-space": {
    "subject": "fn-mo-serve-decide",

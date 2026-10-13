@@ -2335,7 +2335,7 @@ in the service log."
                   ;; output pool; the need is the served run's protected
                   ;; runtime without the output pool, at the run's LIMIT
                   ;; (books/peer-flight-startup.lisp
-                  ;; fn-prstartup-serve-store-need, KEYSTONE
+                  ;; fn-prstartup-run-store-need, KEYSTONE
                   ;; fn-mo-serve-output-pool-is-held).
                   (fnn-owner-output-install
                    service (sb-ext:dynamic-space-size)

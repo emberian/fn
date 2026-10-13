@@ -3608,12 +3608,14 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; history budget's :history-exhausted (fn-cvec-article-refusal-word), the
 ;; memory gate's :memory (fn-adm-article-word), or :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
-  (case prepared
-    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memory :handle-space
-      :history-exhausted :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
-     prepared)
-    (:invalid :malformed)
-    (t (fnn-fault "owner prepare returned ~a" prepared))))
+  (if (member prepared *fn-sn-article-record-refusals*)
+      prepared
+    (case prepared
+      ((:duplicate :conflict :refused :unaffordable :memory :handle-space
+        :history-exhausted :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
+       prepared)
+      (:invalid :malformed)
+      (t (fnn-fault "owner prepare returned ~a" prepared)))))
 
 (defmacro fnn-owner-attempt-handlers (store &body body)
   "Classify one Store attempt's conditions into its outcome word.

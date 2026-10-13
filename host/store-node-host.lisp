@@ -1508,7 +1508,8 @@ reopen predicate, writer-lock observation and observed final namespace."
                           (fn-store-octets->string id-octets)
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
-                          charge)))
+                          charge))
+                 (recordp (fn-record-p record)))
             ; The carried prepare (books/store-prepare-carried.lisp): the
             ; row interned at the arena's count, staged by fn-pcar-spc-prepare;
             ; no replay of the history.  The entry READS the arena only, so it
@@ -1520,8 +1521,8 @@ reopen predicate, writer-lock observation and observed final namespace."
             ; calls are the carried entry) and
             ; fn-store-prepare-interned-carried-is-prepare-interned (under
             ; fn-snt-relation, books/store-intern.lisp's entry).
-            (if (equal record :clock-unusable)
-                (mv nil :clock-unusable fn-arena state)
+            (if (not recordp)
+                (mv nil record fn-arena state)
               (let ((next (fn-psrv-store-prepare-next
                            (f-get-global 'fn-store-cfg state)
                            s record (fn-arena-count fn-arena))))

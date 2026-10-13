@@ -316,14 +316,21 @@
       nil
     (cons (list (car labels) (car hyps)) (fn-dk-pairs (cdr labels) (cdr hyps)))))
 
+(defun fn-dk-scoped-impliesp (term)
+ (declare (xargs :mode :program))
+ (cond ((and (consp term) (member-eq (car term) '(let let*))
+             (true-listp term) (equal (len term) 3))
+        (fn-dk-scoped-impliesp (caddr term)))
+       (t (and (consp term) (eq (car term) 'implies)
+               (true-listp term) (equal (len term) 3)))))
+
 (defun fn-dk-claim-of (name term kvs)
  (declare (xargs :mode :program))
  ; Split a scoped implication, while retaining the bindings for its teeth.
  ; A hypothesis-free LET is the whole conclusion, as before LET support.
  (if (and (consp term) (member-eq (car term) '(let let*))
           (true-listp term) (equal (len term) 3)
-          (consp (caddr term)) (eq (car (caddr term)) 'implies)
-          (true-listp (caddr term)) (equal (len (caddr term)) 3))
+          (fn-dk-scoped-impliesp (caddr term)))
   (list (car term) (cadr term) (fn-dk-claim-of name (caddr term) kvs))
   (let* ((hyps (fn-dk-source-hyps term))
          (labels (if (assoc-keyword :hyps kvs) (fn-dk-get :hyps kvs)

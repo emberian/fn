@@ -168,6 +168,10 @@ class StartEveryPresetTests(unittest.TestCase):
                 self.started(self.owner_words(node), b"LISTENING ", DEVELOPER, node)
 
     def test_the_bp_node_starts_at_every_preset(self):
+        # The image probe calls fn-mo-serve-run-decide, which composes
+        # fn-mo-serve-total-pools with this BP run's captured session charge.
+        # Native startup then checks fn-bpsp-node-startup at that heap; the
+        # started() exercise performs a durable BP request/receipt exchange.
         for image in [i for i in (DEVELOPER, DTN) if executable(i)]:
             for preset in PRESETS:
                 with self.subTest(image=image.name, preset=preset):

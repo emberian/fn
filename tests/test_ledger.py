@@ -1628,6 +1628,20 @@ class DefkeystoneExpansionTests(unittest.TestCase):
         self.assertEqual(ledger.head(parts["claim"]), "let*")
         self.assertEqual(ledger.head(parts["hyps"][0]), "let*")
 
+    def test_nested_let_let_star_claim_matches_the_acl2_literal(self):
+        constants, forms = self.constants()
+        term = constants["*fn-dkt-nested-term*"][1]
+        expected = constants["*fn-dkt-nested-claim*"][1]
+        self.assertEqual(ledger.defkeystone_claim(ledger.Sym("fn-dkt-nested-scope"), term,
+                                                {":hyps": [ledger.Sym("positive")]}), expected)
+        form = next(f for f in forms if ledger.head(f) == "defkeystone"
+                    and str(f[1]) == "fn-dkt-nested-scope")
+        parts = ledger.defkeystone_parts(form)
+        self.assertIsNotNone(parts)
+        self.assertEqual(parts["claim"], expected)
+        self.assertEqual(ledger.head(parts["hyps"][0]), "let")
+        self.assertEqual(ledger.head(parts["hyps"][0][-1]), "let*")
+
     BOOK = Path(__file__).resolve().parents[1] / "tests/acl2/defkeystone-tests.lisp"
 
     def constants(self) -> dict:
@@ -1660,7 +1674,8 @@ class DefkeystoneExpansionTests(unittest.TestCase):
         admitted = [form for form in forms if ledger.head(form) == "defkeystone"]
         lexical = [form for form in admitted if str(form[1]) == "fn-dkt-lexical-scope"]
         self.assertEqual(len(lexical), 1)
-        self.assertEqual([form for form in admitted if str(form[1]) != "fn-dkt-lexical-scope"],
+        self.assertEqual([form for form in admitted if str(form[1]) not in
+                          {"fn-dkt-lexical-scope", "fn-dkt-nested-scope"}],
                          [constants["*fn-dkt-sample*"][1]])
 
     def test_the_book_sees_the_keystone_and_its_teeth(self):
@@ -1692,7 +1707,7 @@ class DefkeystoneExpansionTests(unittest.TestCase):
                           "fn-dkt-assumed-one", "fn-dkt-scoped",
                           "fn-dkt-cell-positive", "fn-dkt-two-cells",
                           "fn-dkt-two-cells-built", "fn-dkt-snapshot",
-                          "fn-dkt-sk-positive", "fn-dkt-lexical-scope"})
+                          "fn-dkt-sk-positive", "fn-dkt-lexical-scope", "fn-dkt-nested-scope"})
         # a bound :derived-by a def-cost row is a theorem of its book too
         self.assertIn("fn-dkt-walk-of-true-list-visits-steps", names)
         self.assertEqual(set(book.teeth_owed), {"fn-dkt-add-adds-source"})

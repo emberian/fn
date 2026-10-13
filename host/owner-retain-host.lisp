@@ -137,25 +137,33 @@
   (fn-lgoc-invariantp (cdr (fn-exp-at 1
     (fn-adm-held-open :peer oc xs lim acfg peer address now bank configured capacity)))))
  :hints (("Goal" :use fn-ohr-open-peer-preserves-carried-relation
-  :in-theory (e/d (fn-adm-held-open fn-adm-held-open-refusal fn-exp-at)
-   (fn-lgoc-invariantp fn-ocfg-open-peer fn-adm-held-open-roomp
-    fn-own-next-id fn-ocfg-owner fn-own-find-conn fn-own-conns))))))
+ :in-theory (union-theories '(fn-adm-held-open fn-adm-held-open-refusal fn-exp-at-of-cons
+   car-cons cdr-cons (:executable-counterpart fn-exp-at)
+   (:executable-counterpart posp) (:executable-counterpart member-equal))
+  (theory 'minimal-theory))))))
 
 (local (defthm m24-rollback-owner-by-definition
  (equal (fn-exp-at 1 (update-nth 3 peak (update-nth 2 bank r))) (fn-exp-at 1 r))
  :hints (("Goal" :expand ((update-nth 3 peak (update-nth 2 bank r))
-                          (update-nth 2 bank r) (fn-exp-at 1 r))
-                  :in-theory (enable fn-exp-at update-nth)))))
+ (update-nth 2 bank r) (fn-exp-at 1 r))
+ :in-theory (union-theories '(fn-exp-at update-nth car-cons cdr-cons fn-cstp-car-update-nth fn-cstp-cdr-update-nth adt-consp-of-update-nth
+   (:executable-counterpart zp) (:executable-counterpart binary-+))
+  (theory 'minimal-theory))))))
 
 (local (defthm m24-peer-transfer-owner-preserves-carried-relation
  (implies (fn-lgoc-invariantp oc)
   (fn-lgoc-invariantp (cdr (fn-exp-at 1
     (fn-adm-transport-rearm :peer oc xs lim acfg peer address now
                             bank old-id configured capacity)))))
- :hints (("Goal" :in-theory (e/d
-  (fn-adm-transport-rearm fn-adm-held-open-refusal fn-exp-at update-nth)
-  (fn-adm-held-open fn-lgoc-invariantp fn-adm-hh-return fn-adm-hh-count
-   fn-adm-hh-rows fn-exp-lookup))))))
+ :hints (("Goal" :use ((:instance m24-rollback-owner-by-definition
+    (r (fn-adm-held-open :peer oc xs lim acfg peer address now
+                         (fn-adm-hh-return bank old-id) configured capacity))
+    (peak (nfix (fn-adm-hh-count bank))))) :in-theory (union-theories
+ '(fn-adm-transport-rearm fn-adm-held-open-refusal fn-exp-at-of-cons
+   m24-rollback-owner-by-definition m24-peer-open-owner-preserves-carried-relation
+   car-cons cdr-cons (:executable-counterpart fn-exp-at)
+   (:executable-counterpart posp) (:executable-counterpart member-equal))
+ (theory 'minimal-theory))))))
 
 (defthm fn-owner-open-peer-preserves-retain-state
   (implies (fn-owner-retain-statep state)
@@ -189,10 +197,11 @@
  (equal (fn-own-store (fn-ocfg-owner (fn-exp-open-ocfg
           (fn-ocar-exp-open oc xs lim acfg peer address now))))
         (fn-own-store (fn-ocfg-owner oc)))
- :hints (("Goal" :in-theory (e/d (fn-ocar-exp-open fn-exp-open-ocfg fn-exp-at)
-  (fn-ocar-ocfg-open fn-ocfg-open-peer fn-own-store fn-ocfg-owner
-   fn-own-next-id fn-exp-admit-decision fn-exp-register fn-exp-pinned-acfg
-   fn-own-find-conn fn-own-conns fn-exp-with fn-exp-counters-bump))))))
+ :hints (("Goal" :in-theory (union-theories
+ '(fn-ocar-exp-open fn-exp-open-ocfg fn-exp-at-of-cons car-cons cdr-cons
+   fn-ocar-ocfg-open-keeps-store fn-ohr-open-peer-keeps-store-and-view
+   (:executable-counterpart fn-exp-at) (:executable-counterpart posp))
+ (theory 'minimal-theory))))))
 
 (local (defthm m24-legacy-exposure-preserves-carried-relation
  (implies (fn-lgoc-invariantp oc)
@@ -203,14 +212,14 @@
         (:instance fn-ohr-carried-implies-ocl-relation)
         (:instance fn-ohr-exposure-open-preserves-ocl-relation)
         (:instance m24-legacy-exposure-keeps-store-by-definition))
-  :in-theory (theory 'minimal-theory)))))
+  :in-theory (union-theories nil (theory 'minimal-theory))))))
 
 ; Selector wiring only: the exposure owner accessor is field one.
 (local (defthm m24-legacy-exposure-owner-at-preserves-carried-relation-by-definition
  (implies (fn-lgoc-invariantp oc)
   (fn-lgoc-invariantp (fn-exp-at 1 (fn-ocar-exp-open oc xs lim acfg peer address now))))
  :hints (("Goal" :use m24-legacy-exposure-preserves-carried-relation
-  :in-theory '(fn-exp-open-ocfg)))))
+  :in-theory (union-theories '(fn-exp-open-ocfg) (theory 'minimal-theory))))))
 
 (local (defthm m24-exposure-admission-preserves-carried-relation
  (implies (fn-lgoc-invariantp oc)
@@ -231,13 +240,16 @@
   (fn-lgoc-invariantp (fn-exp-at 1 (fn-exp-at 1
    (fn-adm-held-open :exposure oc xs lim acfg peer address now bank configured capacity)))))
  :hints (("Goal" :use m24-exposure-admission-preserves-carried-relation
-  :in-theory '(fn-exp-open-ocfg)))))
+  :in-theory (union-theories '(fn-exp-open-ocfg) (theory 'minimal-theory))))))
 
 (local (defthm m24-exposure-transfer-preserves-carried-relation
  (implies (fn-lgoc-invariantp oc)
   (fn-lgoc-invariantp (fn-exp-open-ocfg (fn-exp-at 1
    (fn-adm-transport-rearm :exposure oc xs lim acfg peer address now bank old-id configured capacity)))))
- :hints (("Goal" :in-theory (union-theories
+ :hints (("Goal" :use ((:instance m24-rollback-owner-by-definition
+    (r (fn-adm-held-open :exposure oc xs lim acfg peer address now
+                         (fn-adm-hh-return bank old-id) configured capacity))
+    (peak (nfix (fn-adm-hh-count bank))))) :in-theory (union-theories
   '(fn-adm-transport-rearm fn-adm-held-open-refusal fn-exp-open-ocfg
     fn-exp-at-of-cons m24-rollback-owner-by-definition
     m24-exposure-admission-owner-at-preserves-carried-relation-by-definition
@@ -252,7 +264,7 @@
    (fn-adm-transport-rearm :exposure oc xs lim acfg peer address now
                            bank old-id configured capacity)))))
  :hints (("Goal" :use m24-exposure-transfer-preserves-carried-relation
-  :in-theory '(fn-exp-open-ocfg)))))
+  :in-theory (union-theories '(fn-exp-open-ocfg) (theory 'minimal-theory))))))
 
 (defthm fn-owner-exposure-rearm-preserves-retain-state
  (implies (fn-owner-retain-statep state)

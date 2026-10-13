@@ -2397,6 +2397,7 @@
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
                           charge))
+                 (recordp (fn-record-p record))
                  ; fn-opc-prepare is equal to the former fn-ocfg-step event
                  ; under fn-own-relation, established by observed recovery
                  ; and preserved by every live owner transition.
@@ -2424,7 +2425,7 @@
                              (fn-sf-records-count (fn-sn-files s))
                              bytes record debt))
                  (before (fn-owner-ocfg state))
-                 (row (if (equal record :clock-unusable)
+                 (row (if (not recordp)
                           nil
                         ; fn-apc-intern-row-at-is-reference: the row's
                         ; held context reads the take's parse.
@@ -2453,7 +2454,7 @@
                  ; as the buffer entry below) and its word, :prepared when it
                  ; staged the row, else fn-psrv-refusal-kind (KEYSTONE
                  ; fn-pout-prepare-article-answers-the-store-change).
-                 (outcome (if (equal record :clock-unusable)
+                 (outcome (if (not recordp)
                               nil
                             (mv-let (word next)
                               (fn-pout-prepare-article before row budget carry)
@@ -2465,12 +2466,12 @@
                                      (first gate) (second gate) (third gate)
                                      (fn-sbud-count s) bytes record debt tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state))
                                     next))))
-                 (state (if (equal record :clock-unusable)
+                 (state (if (not recordp)
                             state
                           (let ((state (fn-owner-retain-carry-put carry state)))
                             (fn-owner-install-ocfg (cdr outcome) state)))))
-            (if (equal record :clock-unusable)
-                (mv nil :clock-unusable fn-arena fn-hist state)
+            (if (not recordp)
+                (mv nil record fn-arena fn-hist state)
               (if (not (equal (car outcome) :prepared))
                 (mv nil (car outcome) fn-arena fn-hist state)
               ; The entry reads the arena only (no invariant-risk: it runs
@@ -2618,6 +2619,7 @@
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
                           charge))
+                 (recordp (fn-record-p record))
                  ; Packet 1: the history gate at the article's own figure
                  ; (books/store-budget-article.lisp), and PRF-138: 0 unless
                  ; the capacity vector (a release per open undertaking and
@@ -2632,7 +2634,7 @@
                              (fn-sf-records-count (fn-sn-files s))
                              bytes record debt))
                  (before (fn-owner-ocfg state))
-                 (row (if (equal record :clock-unusable)
+                 (row (if (not recordp)
                           nil
                         ; fn-apc-intern-row-at-is-reference: the row's
                         ; held context reads the take's parse.
@@ -2672,7 +2674,7 @@
                  ; fn-psrv-refusal-kind (KEYSTONE
                  ; fn-pout-prepare-article-answers-the-store-change); the host
                  ; relays it.
-                 (outcome (if (equal record :clock-unusable)
+                 (outcome (if (not recordp)
                               nil
                             ; join-f2-midx: the same prepare with its duplicate
                             ; test decided from the catalog
@@ -2692,12 +2694,12 @@
                                      (first gate) (second gate) (third gate)
                                      (fn-sbud-count s) bytes record debt tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state))
                                     next))))
-                 (state (if (equal record :clock-unusable)
+                 (state (if (not recordp)
                             state
                           (let ((state (fn-owner-retain-carry-put carry state)))
                             (fn-owner-install-ocfg (cdr outcome) state)))))
-            (if (equal record :clock-unusable)
-                (mv nil :clock-unusable fn-arena fn-hist state)
+            (if (not recordp)
+                (mv nil record fn-arena fn-hist state)
               (if (not (equal (car outcome) :prepared))
                 (mv nil (car outcome) fn-arena fn-hist state)
               ; Reads the arena and the buffer only (no invariant-risk; see
