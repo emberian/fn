@@ -158,7 +158,7 @@ case $cmd in
             fi
         done
         printf '%s\n' "$tokens" | while read -r name rest; do
-            [ -n "$name" ] && echo "token     $(describe "$name" "$rest")"
+            if [ -n "$name" ]; then echo "token     $(describe "$name" "$rest")"; fi
         done ;;
     --pick)
         waited=0

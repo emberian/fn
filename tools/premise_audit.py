@@ -23,8 +23,14 @@ table's method over the whole tree, generated:
 
   R is ESTABLISHED when some theorem concludes `(R (F ...))' (a conjunct of
   its conclusion, or `(equal (R ...) t)') without assuming R itself, and F,
-  or a function inside R's argument, is host-reachable: the actual open,
-  init or recovery makes R true.  R is ESTABLISHED OFF THE HOST PATH when
+  or a function inside R's argument, is host-reachable.  A hypothesis call
+  receives no automatic credit.  A checked row in
+  planning/premise-establishments.json can explicitly credit `(R v)' via
+  a reachable outermost hypothesis call taking v directly.  Rows are
+  written only by --register-establishment / --unregister-establishment
+  and rechecked on every audit; invalid rows count for nothing.
+  A conclusion `(if OK X t)' is read as X under the extra hypothesis OK.
+  R is ESTABLISHED OFF THE HOST PATH when
   every such theorem's F is unreachable (a model establishes it, nothing
   the host calls does).  R is PRESERVED ONLY when every theorem concluding
   R also assumes it (`(implies (R s) (R (step s)))' with no base case).
@@ -117,6 +123,7 @@ BASELINE = ROOT / "planning" / "premise-baseline.json"
 # their own shrink-only baseline, so --strict sees them too (coordinator,
 # 10-11, rule 6.4: a check that skips them silently is vacuous).
 TERM_BASELINE = ROOT / "planning" / "premise-term-baseline.json"
+ESTABLISHMENTS = ROOT / "planning" / "premise-establishments.json"
 
 NEVER, PRESERVED, OFF_HOST, HOSTED = (
     "never concluded", "preserved only", "established off the host path",
@@ -230,6 +237,70 @@ def statement(form: str):
             continue
         break
     return hyps, _substitute(term, env)
+
+
+def conclusion_branches(hyps, conclusion) -> list:
+    """Normalize `(if OK X t)' to X under OK, scoped to that branch.
+    Leave an ordinary conclusion intact (including its subject grouping)."""
+    def conditional(term):
+        return (isinstance(term, list) and len(term) == 4
+                and term[0] == "if" and term[3] == "t")
+
+    if conditional(conclusion):
+        return conclusion_branches(hyps + [conclusion[1]], conclusion[2])
+    if isinstance(conclusion, list) and conclusion and conclusion[0] == "and":
+        ordinary, branches = [], []
+        for term in conjuncts(conclusion):
+            if conditional(term):
+                branches.extend(conclusion_branches(hyps, term))
+            else:
+                ordinary.append(term)
+        if branches:
+            if ordinary:
+                branches.insert(0, (hyps, ["and", *ordinary]))
+            return branches
+    return [(hyps, conclusion)]
+
+
+def load_establishments(path):
+    """Rows and format refusals; a missing register is empty, never written."""
+    if not path.exists():
+        return [], []
+    try:
+        rows = json.loads(path.read_text())
+    except (OSError, ValueError) as error:
+        return [], [f"premise_audit: refused establishment register {path}: {error}"]
+    if not isinstance(rows, list):
+        return [], [f"premise_audit: refused establishment register {path}: expected a row list"]
+    valid, errors, seen = [], [], set()
+    for i, row in enumerate(rows):
+        if (not isinstance(row, dict) or set(row) != {"premise", "theorem", "call"}
+                or not all(isinstance(value, str) and value for value in row.values())):
+            errors.append(f"premise_audit: refused registered row #{i + 1}: expected premise/theorem/call symbols")
+            continue
+        key = row["premise"], row["theorem"]
+        if key in seen:
+            errors.append(f"premise_audit: refused registered row {key[0]} {key[1]} via {row['call']}: duplicate premise/theorem")
+        seen.add(key)
+        valid.append(row)
+    # An ambiguous or malformed register grants no credit.
+    return ([], errors) if errors else (valid, [])
+
+
+def _write_establishments(path, rows):
+    """The register writer, called only by the tool's register operations."""
+    rows = sorted(rows, key=lambda row: (row["premise"], row["theorem"], row["call"]))
+    path.write_text(json.dumps(rows, indent=2, sort_keys=True) + "\n")
+
+
+def initialize_establishments(path) -> int:
+    """Bootstrap an empty register without changing any existing rows."""
+    if path.exists():
+        print(f"premise_audit: refused initialization of {path}: register already exists")
+        return 1
+    _write_establishments(path, [])
+    print(f"premise_audit: initialized empty establishment register {path}")
+    return 0
 
 
 
@@ -354,6 +425,28 @@ def _applications(term, name):
     return out
 
 
+def _outermost_hypothesis_calls(hyps, defined):
+    """First book calls beneath primitive conjunct roots, never below a
+    book call or inside quoted data."""
+    out, work = [], []
+    for hyp in hyps:
+        for term in conjuncts(hyp):
+            if (isinstance(term, list) and term and isinstance(term[0], str)
+                    and term[0] not in defined):
+                work.append(term)
+    while work:
+        term = work.pop()
+        if not (isinstance(term, list) and term and isinstance(term[0], str)):
+            continue
+        if term[0] == "quote":
+            continue
+        if term[0] in defined:
+            out.append(term)
+        else:
+            work.extend(term[1:])
+    return out
+
+
 def native_guard_model(graph) -> GuardModel:
     """The model over the tree: the native files the image loads, the
     declared entries, the host ACL2 files' definitions."""
@@ -378,14 +471,25 @@ def native_guard_model(graph) -> GuardModel:
 
 
 class Audit:
-    def __init__(self, graph: reach_check.Graph, guard: "GuardModel | None" = None) -> None:
+    def __init__(self, graph: reach_check.Graph, guard: "GuardModel | None" = None,
+                 establishments_path=None) -> None:
         self.graph = graph
         self.guard = guard
         self.book_defs = set(graph.book_defs)
         self.generated = set(reach_check.record_definitions(graph.books))
         self.theorems = reach_check.theorem_forms(graph.books)
         self.local = local_theorems(graph.books)
-        # R -> [(theorem, book, argument-heads, hosted-establishment?)]
+        self.establishments_path = establishments_path or ESTABLISHMENTS
+        rows, self.refused_establishments = load_establishments(self.establishments_path)
+        self.registered: dict[tuple[str, str], str] = {}
+        for row in rows:
+            r, t, f = row["premise"], row["theorem"], row["call"]
+            problem = self.establishment_problem(r, t, f)
+            if problem:
+                self.refused_establishments.append(self.row_refusal(r, t, f, problem))
+            else:
+                self.registered[r, t] = f
+        # R -> [(theorem, book, establishment-heads, hosted-establishment?)]
         self.concluded: dict[str, list] = collections.defaultdict(list)
         # R -> [theorem]: concluded under its own assumption (a preservation)
         self.preserving: dict[str, list] = collections.defaultdict(list)
@@ -400,49 +504,146 @@ class Audit:
                 and name not in self.generated
                 and name not in self.graph.stobj_names)
 
+    def assumed_heads(self, hyps) -> set:
+        out = set()
+        for hyp in hyps:
+            for conjunct in conjuncts(hyp):
+                app = predicate_application(conjunct)
+                if app is not None and self.predicate(app[0]):
+                    out.add(app[0])
+        return out
+
+    def registered_match(self, r, f, hyps, conjunct) -> bool:
+        app = predicate_application(conjunct)
+        if app is None or app[0] != r or len(app[1]) != 1:
+            return False
+        var = variable_argument(app[1], self.book_defs)
+        return var is not None and any(call[0] == f and var in call[1:]
+                                       for call in _outermost_hypothesis_calls(hyps, self.book_defs))
+
+    def establishment_problem(self, r, t, f) -> str | None:
+        if t not in self.theorems:
+            return "theorem is missing from the tree"
+        if t in self.local:
+            return "theorem is local"
+        if not self.predicate(r):
+            return "premise is not an audited book predicate"
+        if f not in self.book_defs:
+            return "call is not a book function"
+        if f in self.graph.stobj_names:
+            return "call is a stobj name"
+        if f == r:
+            return "call is the concluded predicate R"
+        if f not in self.graph.reachable:
+            return "call is not host-reachable"
+        hyps, conclusion = statement(self.theorems[t][1])
+        bare, preserving, shared = False, False, False
+        for branch_hyps, branch in conclusion_branches(hyps, conclusion):
+            assumed = self.assumed_heads(branch_hyps)
+            for conjunct in conjuncts(branch):
+                app = predicate_application(conjunct)
+                if app is None or app[0] != r or len(app[1]) != 1:
+                    continue
+                var = variable_argument(app[1], self.book_defs)
+                if var is None:
+                    continue
+                bare = True
+                if r in assumed:
+                    preserving = True
+                    continue
+                if self.registered_match(r, f, branch_hyps, conjunct):
+                    return None
+                shared |= any(var in call[1:] for hyp in branch_hyps for call in _applications(hyp, f))
+        if not bare:
+            return "conclusion has no (R v) with a single bare variable"
+        if preserving:
+            return "concluded premise is also assumed (preservation, not establishment)"
+        if shared:
+            return "call is not outermost below a primitive conjunct root (book roots and nested book calls excluded)"
+        return "hypothesis call has no matching direct bare variable argument"
+
+    @staticmethod
+    def row_refusal(r, t, f, problem) -> str:
+        return f"premise_audit: refused registered row {r} {t} via {f}: {problem}"
+
+    def register_establishment(self, r, t, f) -> int:
+        r, t, f = r.lower(), t.lower(), f.lower()
+        problem = self.establishment_problem(r, t, f)
+        if problem:
+            print(self.row_refusal(r, t, f, problem))
+            return 1
+        rows, errors = load_establishments(self.establishments_path)
+        if errors:
+            print("\n".join(errors))
+            return 1
+        if any(row["premise"] == r and row["theorem"] == t for row in rows):
+            print(self.row_refusal(r, t, f, "premise/theorem is already registered; unregister it first"))
+            return 1
+        _write_establishments(self.establishments_path, rows + [{"premise": r, "theorem": t, "call": f}])
+        print(f"premise_audit: registered establishment {r} {t} via {f}")
+        return 0
+
+    def unregister_establishment(self, r, t) -> int:
+        r, t = r.lower(), t.lower()
+        rows, errors = load_establishments(self.establishments_path)
+        if errors:
+            print("\n".join(errors))
+            return 1
+        kept = [row for row in rows if (row["premise"], row["theorem"]) != (r, t)]
+        if len(kept) == len(rows):
+            print(f"premise_audit: refused unregister {r} {t}: no such registered row")
+            return 1
+        _write_establishments(self.establishments_path, kept)
+        print(f"premise_audit: unregistered establishment {r} {t}")
+        return 0
+
     def scan(self) -> None:
         reachable = self.graph.reachable
         for name, (book, form) in self.theorems.items():
-            hyps, conclusion = statement(form)
-            if conclusion is None:
+            original_hyps, original_conclusion = statement(form)
+            for hyps, conclusion in conclusion_branches(original_hyps, original_conclusion):
+                self.scan_branch(name, book, form, hyps, conclusion,
+                                 hyps != original_hyps or conclusion != original_conclusion, reachable)
+
+    def scan_branch(self, name, book, form, hyps, conclusion, normalized, reachable) -> None:
+        if conclusion is None:
+            return
+        assumed_heads = self.assumed_heads(hyps)
+        for conjunct in conjuncts(conclusion):
+            app = predicate_application(conjunct)
+            if app is None or not self.predicate(app[0]):
                 continue
-            assumed_heads = set()
-            for hyp in hyps:
-                for conjunct in conjuncts(hyp):
-                    app = predicate_application(conjunct)
-                    if app is None or not self.predicate(app[0]):
-                        continue
-                    assumed_heads.add(app[0])
-            for conjunct in conjuncts(conclusion):
+            r, args = app
+            if r in assumed_heads:
+                self.preserving[r].append(name)
+                continue  # a preservation, not an establishment
+            # Every argument: an index-first predicate (R 0 (F ...)) is
+            # established by its F as (R (F ...)) is (A17).
+            heads = (reach_check.tree_symbols(args) & self.book_defs) - self.graph.stobj_names
+            registered = self.registered.get((r, name))
+            if registered and self.registered_match(r, registered, hyps, conjunct):
+                heads = {registered}
+            hosted = bool(heads & reachable)
+            self.concluded[r].append((name, book, sorted(heads), hosted))
+        if not hyps or not assumed_heads or name in self.local:
+            return
+        if normalized:
+            form = reach_check.flatten(["defthm", name, ["implies", ["and", *hyps], conclusion]])
+        subject = reach_check.Subject(self.graph, name, form)
+        self.subjects[name] = subject
+        hosted_subject = subject.hosted(self.graph)
+        for hyp in hyps:
+            for conjunct in conjuncts(hyp):
                 app = predicate_application(conjunct)
                 if app is None or not self.predicate(app[0]):
                     continue
                 r, args = app
-                if r in assumed_heads:
-                    self.preserving[r].append(name)
-                    continue  # a preservation, not an establishment
-                # Every argument: an index-first predicate (R 0 (F ...)) is
-                # established by its F as (R (F ...)) is (A17).
-                heads = (reach_check.tree_symbols(args) & self.book_defs) - self.graph.stobj_names
-                hosted = bool(heads & reachable)
-                self.concluded[r].append((name, book, sorted(heads), hosted))
-            if not hyps or not assumed_heads or name in self.local:
-                continue
-            subject = reach_check.Subject(self.graph, name, form)
-            self.subjects[name] = subject
-            hosted_subject = subject.hosted(self.graph)
-            for hyp in hyps:
-                for conjunct in conjuncts(hyp):
-                    app = predicate_application(conjunct)
-                    if app is None or not self.predicate(app[0]):
-                        continue
-                    r, args = app
-                    var = variable_argument(args, self.book_defs)
-                    bare = var is not None
-                    guarded = (self.guard.establishes(r, var, conclusion, subject.functions)
-                               if self.guard is not None and bare and hosted_subject
-                               else None)
-                    self.assumed[r].append((name, book, hosted_subject, bare, guarded))
+                var = variable_argument(args, self.book_defs)
+                bare = var is not None
+                guarded = (self.guard.establishes(r, var, conclusion, subject.functions)
+                           if self.guard is not None and bare and hosted_subject
+                           else None)
+                self.assumed[r].append((name, book, hosted_subject, bare, guarded))
 
     def classify(self, r: str) -> str:
         rows = self.concluded.get(r, [])
@@ -557,10 +758,11 @@ def lower_stale(findings: dict, baseline: dict, path=None) -> list[str]:
     return stale
 
 
-def strict_verdict(findings: dict, accepted: dict, terms: dict, term_accepted: dict):
+def strict_verdict(findings: dict, accepted: dict, terms: dict, term_accepted: dict,
+                   refused_establishments=()):
     """(lines, rc) of --strict: a finding of a bare variable or of a term not
     in its baseline, or a baseline entry of either that is no longer one."""
-    lines = []
+    lines = list(refused_establishments)
     for r in sorted(r for r in findings if r not in accepted):
         lines.append(f"premise_audit: NEW unestablished premise {r} ({findings[r]['class']}): "
                      f"assumed by {', '.join(t for t, _ in findings[r]['theorems'][:3])}")
@@ -625,14 +827,35 @@ def main(argv=None) -> int:
                         help="count premises applied to a term as well as to a bare variable")
     parser.add_argument("--json", action="store_true", help="every premise, machine-readable")
     parser.add_argument("--explain", metavar="R", help="every theorem assuming or concluding R")
+    register = parser.add_mutually_exclusive_group()
+    register.add_argument("--register-establishment", nargs=3, metavar=("R", "T", "F"),
+                          help="register a checked establishment of R by theorem T via call F")
+    register.add_argument("--unregister-establishment", nargs=2, metavar=("R", "T"),
+                          help="remove a registered establishment; refuse an absent row")
+    register.add_argument("--init-establishments", action="store_true",
+                          help="create an empty register only if it does not exist")
     parser.add_argument("--pattern", metavar="REGEX",
                         help="the listing, --markdown and --json: only premises whose name matches "
                              "(e.g. the relation-shaped ones: 'inv|relation|okp|statep|carried'); "
                              "never applied to --strict or --baseline")
     arguments = parser.parse_args(argv)
 
+    if arguments.strict and (arguments.init_establishments or arguments.register_establishment
+                             or arguments.unregister_establishment):
+        parser.error("run register operations separately from --strict audits")
+    if arguments.init_establishments:
+        return initialize_establishments(ESTABLISHMENTS)
     graph = reach_check.Graph()
     audit = Audit(graph, native_guard_model(graph))
+    for line in audit.refused_establishments:
+        print(line)
+    refusal_status = int(bool(audit.refused_establishments))
+    if arguments.register_establishment:
+        return audit.register_establishment(*arguments.register_establishment)
+    if arguments.unregister_establishment:
+        return audit.unregister_establishment(*arguments.unregister_establishment)
+    if refusal_status and (arguments.baseline or arguments.baseline_terms or arguments.lower_stale):
+        return 1
 
     if arguments.explain:
         r = arguments.explain.lower()
@@ -640,11 +863,14 @@ def main(argv=None) -> int:
         for t, b, heads, hosted in audit.concluded.get(r, []):
             print(f"  concluded by {t} ({b}) of {', '.join(heads) or 'a variable'}: "
                   f"{'HOSTED' if hosted else 'not hosted'}")
+        for (premise, t), f in sorted(audit.registered.items()):
+            if premise == r:
+                print(f"  established by registered row {t} via {f}")
         for t, b, hosted, bare, guarded in audit.assumed.get(r, []):
             print(f"  assumed by {t} ({b}): subject {'hosted' if hosted else 'not hosted'}, "
                   f"of {'a bare variable' if bare else 'a term'}"
                   + (f", held by the checked guard of {guarded}" if guarded else ""))
-        return 0
+        return refusal_status
 
     premises = audit.premises(all_arguments=arguments.all)
     findings = audit.findings(all_arguments=arguments.all)
@@ -683,10 +909,10 @@ def main(argv=None) -> int:
         findings = {r: row for r, row in findings.items() if chosen.search(r)}
     if arguments.json:
         print(json.dumps(premises, indent=2, sort_keys=True))
-        return 0
+        return refusal_status
     if arguments.markdown:
         print(markdown(findings, premises))
-        return 0
+        return refusal_status
 
     line = summary_line(findings, premises, baseline,
                         None if arguments.all else terms, term_baseline)
@@ -714,11 +940,13 @@ def main(argv=None) -> int:
         print(line)
     if arguments.strict:
         lines, rc = strict_verdict(findings, accepted, {} if arguments.all else terms,
-                                   {} if arguments.all else term_accepted)
+                                   {} if arguments.all else term_accepted,
+                                   audit.refused_establishments)
         for text in lines:
-            print(text)
+            if text not in audit.refused_establishments:
+                print(text)
         return rc
-    return 0
+    return refusal_status
 
 
 if __name__ == "__main__":

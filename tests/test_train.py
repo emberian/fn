@@ -244,6 +244,17 @@ class TrainBase(unittest.TestCase):
             p = self.seed / s
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(STUB)
+        # train imports ledger's reader to derive BP host obligations. Keep
+        # CLI gates stubbed while imports use the real, non-evaluating reader.
+        (self.seed / "tools/ledger.py").write_text(
+            'if __name__ == "__main__":\n' + textwrap.indent(STUB, "    ")
+            + 'else:\n'
+              '    import importlib.util, sys\n'
+            + f'    spec = importlib.util.spec_from_file_location("train_fixture_ledger", {str(REPO / "tools/ledger.py")!r})\n'
+              '    module = importlib.util.module_from_spec(spec)\n'
+              '    sys.modules[spec.name] = module\n'
+              '    spec.loader.exec_module(module)\n'
+              '    globals().update({k: v for k, v in vars(module).items() if not k.startswith("__")})\n')
         # The gate imports the finding classes after querying this tool.
         # Importing its CLI stub must not terminate the scratch train process.
         (self.seed / "tools/premise_audit.py").write_text(
@@ -2168,6 +2179,157 @@ class ImageModuleTests(unittest.TestCase):
         return {"source": source or self.HEAD, "dir": "/box/run",
                 "modules": {m: {"rc": 0, "cases": {m + ".T.test_ok": "ok"}} for m in modules}}
 
+    def test_native_pin_carry_probe_obliges_its_module_with_negative_control(self):
+        path = "tests/native_bp_pin_carry.lisp"
+        need = train.image_modules([path], REPO)
+        self.assertIn("tests.test_native_bp_pin_carry", need)
+        self.assertEqual(need["tests.test_native_bp_pin_carry"], [path])
+        self.assertEqual(train.image_modules(["tests/unreferenced-B22-probe.lisp"], REPO), {})
+
+    def test_probe_derivation_finds_all_consumers_and_changed_native_suites(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "tests").mkdir()
+            (root / "tests/test_native_a.py").write_text('probe = "tests/shared-probe.lisp"\n')
+            (root / "tests/test_native_b.py").write_text('probe = "shared-probe.lisp"\n')
+            (root / "tests/test_other_image.py").write_text('from tests.native_harness import run\nprobe = "tests/shared-probe.lisp"\n')
+            (root / "tests/test_ordinary.py").write_text('probe = "tests/shared-probe.lisp"\n')
+            expected = {f"tests.{m}": ["tests/shared-probe.lisp"]
+                        for m in ("test_native_a", "test_native_b", "test_other_image")}
+            self.assertEqual(train.image_modules(["tests/shared-probe.lisp"], root), expected)
+            self.assertEqual(train.image_modules(["tests/shared-probe.lisp-more.lisp"], root), {})
+            for name in ("test_native_a", "test_other_image"):
+                path = f"tests/{name}.py"
+                self.assertEqual(train.image_modules([path], root), {f"tests.{name}": [path]})
+            self.assertEqual(train.image_modules(["tests/test_ordinary.py"], root), {})
+
+    def test_include_directories_resolve_nil_fn_and_exclude_system(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "host").mkdir()
+            (root / "acl2-projects").write_text(':FN "."\n')
+            path = "host/new-adapter.lisp"
+            expected = {m: [path] for m in train.BP_NATIVES}
+            for include in ('(include-book "../books/bp-release" :dir nil)',
+                            '(include-book "../books/bp-release" :dir ())',
+                            '(include-book "books/bp-release" :dir :fn)'):
+                with self.subTest(include=include):
+                    (root / path).write_text(include)
+                    self.assertEqual(train.image_modules([path], root), expected)
+            (root / path).write_text('(include-book "books/bp-release" :dir :system)')
+            self.assertEqual(train.image_modules([path], root), {})
+
+    def test_unsupported_include_directories_or_fn_contract_refuse(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "host").mkdir()
+            path = "host/new-adapter.lisp"
+            (root / path).write_text('(include-book "books/bp-release" :dir :other)')
+            with self.assertRaisesRegex(train.TrainError, "unsupported include-book :dir :other"):
+                train.image_modules([path], root)
+            (root / path).write_text('(include-book "books/bp-release" :dir :fn)')
+            with self.assertRaisesRegex(train.TrainError, "cannot resolve :dir :fn"):
+                train.image_modules([path], root)
+            (root / "acl2-projects").write_text(':FN "elsewhere"\n')
+            with self.assertRaisesRegex(train.TrainError, "unsupported.*contract"):
+                train.image_modules([path], root)
+
+    def test_literal_make_event_and_nested_event_containers_derive_bp_includes(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "host").mkdir()
+            path = "host/new-adapter.lisp"
+            for event in ('(make-event \'(include-book "../books/bp-release"))',
+                          '(progn (encapsulate () (make-event \'(progn (include-book "../books/bp-release")))))',
+                          '(progn! (encapsulate () (include-book "../books/bp-release")))'):
+                with self.subTest(event=event):
+                    (root / path).write_text(event)
+                    self.assertEqual(train.image_modules([path], root), {m: [path] for m in train.BP_NATIVES})
+            (root / path).write_text('(defconst *template* \'(include-book "../books/bp-release"))')
+            self.assertEqual(train.image_modules([path], root), {})
+
+    def test_computed_make_event_refuses_even_inside_containers(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "host").mkdir()
+            path = "host/new-adapter.lisp"
+            for event in ('(make-event (compute-event state))',
+                          '(progn (encapsulate () (make-event (compute-event state))))',
+                          '(make-event \'(progn (make-event (compute-event state))))'):
+                with self.subTest(event=event):
+                    (root / path).write_text(event)
+                    with self.assertRaisesRegex(train.TrainError, "new-adapter.lisp: unresolved make-event"):
+                        train.image_modules([path], root)
+
+    def test_bp_host_adapters_oblige_the_bp_native_modules(self):
+        expected = {"tests.test_bp_app_native", "tests.test_bp_obligation_native",
+                    "tests.test_native_ion_workflow", "tests.test_native_bp_pin_carry",
+                    "tests.test_native_bp_carry_abandon"}
+        for path in ("host/bp-release-owner-host.lisp", "host/workflow-host.lisp"):
+            with self.subTest(path=path):
+                self.assertEqual(train.image_modules([path], REPO), {m: [path] for m in expected})
+        self.assertEqual(train.image_modules(["host/owner-host.lisp"], REPO), {})
+
+    def test_bp_host_derivation_uses_local_includes_not_names_comments_or_quotes(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "host").mkdir()
+            path = "host/new-adapter.lisp"
+            file = root / path
+            file.write_text('(in-package "ACL2")\n(include-book "../books/bp-release")\n')
+            self.assertEqual(train.image_modules([path], root), {m: [path] for m in train.BP_NATIVES})
+            file.write_text('; (include-book "../books/bp-release")\n'
+                            '\'(include-book "../books/bp-release")\n'
+                            '(local (include-book "../books/bp-release"))\n'
+                            '(include-book "../books/bp-release" :dir :system)\n'
+                            '(defun bp-looking-name () nil)\n')
+            self.assertEqual(train.image_modules([path], root), {})
+            file.write_text('(include-book "../books/bp-release"')
+            with self.assertRaisesRegex(train.TrainError, "cannot derive image obligations"):
+                train.image_modules([path], root)
+
+    def test_drop_matches_box_and_dir_and_preserves_other_runs(self):
+        first = train.merge_image_run(None, self.HEAD, "hbox", "/s/native-standin", self.ran(["a"])["modules"], "b" * 40)
+        prior = train.merge_image_run(first, self.HEAD, "persvati", "/s/native-real", self.ran(["b"])["modules"], "c" * 40)
+        before = json.dumps(prior, sort_keys=True)
+        with self.assertRaisesRegex(train.TrainError, "no image module entry"):
+            train.drop_image_run(prior, "standin", {"box": "persvati", "dir": "/s/native-standin"})
+        after, dropped, directory = train.drop_image_run(prior, "standin", {"box": "hbox", "dir": "/s/native-standin"})
+        self.assertEqual((dropped, directory), (["a"], "/s/native-standin"))
+        self.assertEqual(after, {"source": self.HEAD, "runs": {"/s/native-real": "persvati"},
+                                 "modules": {"b": prior["modules"]["b"]},
+                                 "images_from": {"/s/native-real": "c" * 40}})
+        self.assertEqual(json.dumps(prior, sort_keys=True), before)
+        with self.assertRaisesRegex(train.TrainError, "no image module entry"):
+            train.drop_image_run(after, "standin", {"box": "hbox", "dir": directory})
+
+    def test_drop_without_record_requires_one_exact_native_label_directory(self):
+        prior = train.merge_image_run(None, self.HEAD, "hbox", "/s/native-one", self.ran(["a"])["modules"])
+        prior = train.merge_image_run(prior, self.HEAD, "hbox", "/s/native-one-more", self.ran(["b"])["modules"])
+        after, dropped, _ = train.drop_image_run(prior, "one", None)
+        self.assertEqual(dropped, ["a"])
+        self.assertEqual(after["modules"], {"b": prior["modules"]["b"]})
+        self.assertEqual(after["runs"], {"/s/native-one-more": "hbox"})
+        with self.assertRaisesRegex(train.TrainError, "no recorded image run"):
+            train.drop_image_run(prior, "missing", None)
+        ambiguous = train.merge_image_run(prior, self.HEAD, "persvati", "/other/native-one", self.ran(["c"])["modules"])
+        with self.assertRaisesRegex(train.TrainError, "ambiguous"):
+            train.drop_image_run(ambiguous, "one", None)
+
+    def test_drop_refuses_an_empty_run_and_removes_last_run_provenance(self):
+        prior = train.merge_image_run(None, self.HEAD, "hbox", "/s/native-empty", {})
+        with self.assertRaisesRegex(train.TrainError, "no image module entry"):
+            train.drop_image_run(prior, "empty", None)
+        prior = train.merge_image_run(prior, self.HEAD, "hbox", "/s/native-one", self.ran(["a"])["modules"], "b" * 40)
+        after, _, _ = train.drop_image_run(prior, "one", None)
+        self.assertEqual(after, {"source": self.HEAD, "runs": {"/s/native-empty": "hbox"}, "modules": {}})
+
+    def test_drop_supports_a_single_run_record_and_keeps_unrelated_state(self):
+        prior = dict(self.ran(["a"]), box="hbox", dir="/s/native-one", extra="keep")
+        after, dropped, _ = train.drop_image_run(prior, "one", None)
+        self.assertEqual(dropped, ["a"])
+        self.assertEqual(after, dict(prior, modules={}))
+
     def test_a_module_log_with_a_non_text_octet_still_reads_its_cases(self):
         # train 86: a NUL in test_native_key_statements' log made grep call it
         # a binary file and print nothing, so the module read with no case
@@ -2459,6 +2621,294 @@ class ImageGateTests(TrainBase):
                 f"box=hbox\ndir={d}\nsource={self.head()}\n")
         return {"PATH": f"{stubs}:{os.environ['PATH']}"}
 
+    def test_green_gate_then_drop_blocks_push_without_an_intervening_gate(self):
+        self.launcher_train()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        env = self.image_runs({"/s/good": {m: (0, "ok") for m in need}})
+        self.assertEqual(self.train("image", "--label", "good", extra_env=env).returncode, 0)
+        self.assertEqual(self.gate()[0].returncode, 0)
+        t = train.Train(self.work)
+        before = t.load()
+        origin = self.origin_rev("dev")
+        self.assertEqual(self.train("image", "--drop", "good", extra_env=env).returncode, 0)
+        self.assertNotIn("image", t.load()["gates"])
+        self.assertEqual(t.load()["gates"], {k: v for k, v in before["gates"].items() if k != "image"})
+        p = self.train("push")
+        self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+        self.assertIn("gate image has not run; push refused", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), origin)
+
+    def test_successful_import_and_reread_invalidate_green_image_gate(self):
+        self.launcher_train()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        self.set_image(need)
+        self.assertEqual(self.gate()[0].returncode, 0)
+        t = train.Train(self.work)
+        for rc, case in ((0, "ok"), (1, "FAIL")):
+            with self.subTest(rc=rc):
+                env = self.image_runs({"/s/good": {m: (rc, case) for m in need}})
+                self.assertEqual(self.train("image", "--label", "good", extra_env=env).returncode, 0)
+                self.assertNotIn("image", t.load()["gates"])
+                p = self.train("push")
+                self.assertEqual(p.returncode, 2, p.stdout)
+                self.assertIn("gate image has not run", p.stdout)
+                if rc == 0:
+                    self.assertEqual(self.gate()[0].returncode, 0)
+
+    def test_refused_import_preserves_cached_gate_and_evidence(self):
+        self.launcher_train()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        env = self.image_runs({"/s/good": {m: (0, "ok") for m in need}, "/s/duplicate": {need[0]: (0, "ok")}})
+        self.assertEqual(self.train("image", "--label", "good", extra_env=env).returncode, 0)
+        self.assertEqual(self.gate()[0].returncode, 0)
+        t = train.Train(self.work)
+        before = t.state_path.read_bytes()
+        p = self.train("image", "--label", "duplicate", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("already read from another run", p.stdout)
+        self.assertEqual(t.state_path.read_bytes(), before)
+
+    def test_move_of_input_into_docs_refuses_tree_and_source_reuse(self):
+        path = "tests/native-probe.lisp"
+        (self.work / path).write_text("(value-triple :probe)\n")
+        self.commit(self.work, "probe input")
+        source = self.head()
+        env = self.image_runs({"/s/old": {"tests.test_native_probe": (0, "ok")}})
+        (self.work / "docs").mkdir(exist_ok=True)
+        (self.work / path).rename(self.work / "docs/native-probe.lisp")
+        self.commit(self.work, "move input into docs")
+        # Control: normal Git rename detection hides the deleted input.
+        normal = sh(self.work, "git", "diff", "--name-only", source, self.head()).stdout.splitlines()
+        self.assertEqual(normal, ["docs/native-probe.lisp"])
+        record = self.work / "build/hbox-native/old.run"
+        for tree, words in ((source, "verdict input(s)"), (self.head(), "image input(s)")):
+            with self.subTest(tree=tree):
+                record.write_text(f"box=hbox\ndir=/s/old\nsource={source}\ntree={tree}\n")
+                before = train.Train(self.work).load()
+                p = self.train("image", "--label", "old", extra_env=env)
+                self.assertEqual(p.returncode, 2, p.stdout)
+                self.assertIn(words, p.stdout)
+                self.assertIn(f"first: {path}", p.stdout)
+                self.assertEqual(train.Train(self.work).load(), before)
+
+    def test_move_of_input_into_docs_refuses_carried_verdict(self):
+        self.launcher_train()
+        path = "tests/native-probe.lisp"
+        (self.work / path).write_text("(value-triple :probe)\n")
+        self.commit(self.work, "probe input")
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        self.set_image(need)
+        self.assertEqual(self.gate()[0].returncode, 0)
+        (self.work / "docs").mkdir(exist_ok=True)
+        (self.work / path).rename(self.work / "docs/native-probe.lisp")
+        self.commit(self.work, "move verdict input into docs")
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 1, g.stdout)
+        self.assertEqual(rec["rc"], 1)
+        self.assertIn(f"first: {path}", rec["error"])
+
+    def test_obligation_diff_keeps_a_book_moved_into_docs(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        self.advance_dev({"books/heap-figure.lisp": "(value-triple :heap)\n"})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "origin/dev")
+        (self.work / "docs").mkdir(exist_ok=True)
+        (self.work / "books/heap-figure.lisp").rename(self.work / "docs/heap-figure.lisp")
+        self.commit(self.work, "move heap input into docs")
+        changed = train.changed_paths(train.Train(self.work))
+        self.assertEqual(changed, ["books/heap-figure.lisp", "docs/heap-figure.lisp"])
+        need = train.image_modules(changed, self.work)
+        self.assertIn("tests.test_native_heap_from_profile", need)
+        self.assertEqual(need["tests.test_native_heap_from_profile"], ["books/heap-figure.lisp"])
+
+    def test_probe_only_train_requires_pin_carry_module(self):
+        path = "tests/native_bp_pin_carry.lisp"
+        suite = "tests/test_native_bp_pin_carry.py"
+        self.advance_dev({path: "(value-triple :old-probe)\n", suite: (REPO / suite).read_text()})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "origin/dev")
+        (self.work / path).write_text("(value-triple :new-probe)\n")
+        self.commit(self.work, "only the Lisp probe changed")
+        self.assertEqual(train.changed_paths(train.Train(self.work)), [path])
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 1, g.stdout + g.stderr)
+        self.assertEqual(rec["need"], ["tests.test_native_bp_pin_carry"])
+        self.assertIn("no image run recorded", rec["error"])
+        self.set_image(rec["need"])
+        self.assertEqual(self.gate()[0].returncode, 0)
+
+    def test_removing_a_probe_reference_does_not_erase_its_obligation(self):
+        path, suite = "tests/shared-probe.lisp", "tests/test_native_probe.py"
+        self.advance_dev({path: "old\n", suite: 'probe = "tests/shared-probe.lisp"\n'})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "origin/dev")
+        (self.work / path).write_text("new\n")
+        (self.work / suite).write_text("probe = None\n")
+        self.commit(self.work, "remove probe reference while changing probe")
+        self.assertEqual(train.image_modules([path], self.work), {"tests.test_native_probe": [path]})
+        (self.work / suite).unlink()
+        self.commit(self.work, "delete consumer")
+        self.assertEqual(train.image_modules([path, suite], self.work), {"tests.test_native_probe": [path, suite]})
+
+    def test_drop_removes_one_run_without_ssh_and_allows_its_replacement(self):
+        self.launcher_train()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        replaced = need[0]
+        env = self.image_runs({"/s/native-standin": {replaced: (0, "ok")},
+                               "/s/native-real": {m: (0, "ok") for m in need[1:]}})
+        for label in ("native-standin", "native-real"):
+            self.assertEqual(self.train("image", "--label", label, extra_env=env).returncode, 0)
+        t = train.Train(self.work)
+        before = t.load()
+        # The record's label need not match the directory's basename.
+        (self.work / "build/hbox-native/standin.run").write_text("box=hbox\ndir=/s/native-standin\n")
+        marker = self.tmp / "unexpected-ssh"
+        (self.tmp / "stubs/ssh").write_text(f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(marker)!r}).touch()\nraise SystemExit(99)\n")
+        p = self.train("image", "--drop", "standin", extra_env=env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn(f"image dropped standin (/s/native-standin): {replaced}", p.stdout)
+        self.assertFalse(marker.exists())
+        after = t.load()
+        self.assertEqual(after, dict(before, image={"source": self.head(),
+                         "runs": {"/s/native-real": "hbox"},
+                         "modules": {m: before["image"]["modules"][m] for m in need[1:]}}))
+        g, rec = self.gate()
+        self.assertNotEqual(g.returncode, 0)
+        self.assertEqual(rec["missing"], [replaced])
+        state_bytes = t.state_path.read_bytes()
+        p = self.train("image", "--drop", "standin", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("no image module entry", p.stdout)
+        self.assertEqual(t.state_path.read_bytes(), state_bytes)
+        self.assertFalse(marker.exists())
+        env = self.image_runs({"/s/replacement": {replaced: (0, "ok")}})
+        self.assertEqual(self.train("image", "--label", "replacement", extra_env=env).returncode, 0)
+        self.assertEqual(self.gate()[0].returncode, 0)
+
+    def test_drop_with_missing_record_is_local_and_unknown_label_preserves_state(self):
+        t = train.Train(self.work)
+        st = t.load()
+        st["image"] = train.merge_image_run(None, self.head(), "hbox", "/s/native-old", {"a": {"rc": 0, "cases": {"a.T.a": "ok"}}})
+        t.save(st)
+        # A mocked subprocess proves neither accepted nor refused drops reach ssh.
+        for label, rc in (("unknown", 2), ("old", 0)):
+            before = t.state_path.read_bytes()
+            with mock.patch.object(train.subprocess, "run", side_effect=AssertionError("no subprocess on drop")):
+                with mock.patch.object(t, "head", return_value=st["image"]["source"]):
+                    with contextlib.redirect_stdout(io.StringIO()) as output:
+                        if rc:
+                            with self.assertRaisesRegex(train.TrainError, "no recorded image run"):
+                                train.cmd_image(t, SimpleNamespace(drop=label))
+                        else:
+                            self.assertEqual(train.cmd_image(t, SimpleNamespace(drop=label)), 0)
+            if rc:
+                self.assertEqual(t.state_path.read_bytes(), before)
+            else:
+                self.assertIn("image dropped old", output.getvalue())
+        self.assertEqual(t.load()["image"]["modules"], {})
+
+    def test_image_label_and_drop_are_mutually_exclusive(self):
+        p = self.train("image", "--label", "one", "--drop", "two")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("not allowed with argument", p.stderr)
+
+    def test_neutral_tree_changes_accept_run_with_or_without_image_reuse(self):
+        self.launcher_train()
+        built = self.head()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        (self.work / "tests/new_helper.py").write_text("value = 1\n")
+        self.commit(self.work, "suite differs from image source")
+        tree = self.head()
+        env = self.image_runs({"/s/reuse": {m: (0, "ok") for m in need}})
+        record = self.work / "build/hbox-native/reuse.run"
+        (self.work / "docs").mkdir(exist_ok=True)
+        (self.work / "docs/image.md").write_text("doc\n")
+        (self.work / "planning").mkdir(exist_ok=True)
+        (self.work / "planning/image.md").write_text("plan\n")
+        self.commit(self.work, "only verdict-neutral changes from run tree")
+        for source, tree_line in ((built, f"tree={tree}\n"), (tree, ""), (self.head(), f"tree={tree}\n")):
+            with self.subTest(source=source, tree_line=tree_line):
+                record.write_text(f"box=hbox\ndir=/s/reuse\nsource={source}\n{tree_line}")
+                p = self.train("image", "--label", "reuse", extra_env=env)
+                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+                self.assertIn(f"image run tree {tree} accepted at HEAD {self.head()}", p.stdout)
+                st = train.Train(self.work).load()
+                self.assertEqual(st["image"]["source"], self.head())
+                self.assertEqual(st["image"].get("images_from", {}), {"/s/reuse": source} if source != self.head() else {})
+                if source != self.head():
+                    self.assertIn(f"reuses the images of {source[:9]}", p.stdout)
+                self.assertEqual(self.gate()[0].returncode, 0)
+
+    def test_tree_changes_to_suites_or_host_refuse_before_ssh_even_when_source_is_head(self):
+        for path in ("tests/new_helper.py", "host/new-adapter.lisp"):
+            with self.subTest(path=path):
+                tree = self.head()
+                (self.work / path).parent.mkdir(exist_ok=True)
+                (self.work / path).write_text("changed\n")
+                self.commit(self.work, "non-neutral run tree")
+                records = self.work / "build/hbox-native"
+                records.mkdir(parents=True, exist_ok=True)
+                (records / "old.run").write_text(f"box=hbox\ndir=/s/old\nsource={self.head()}\ntree={tree}\n")
+                t = train.Train(self.work)
+                before = t.load()
+                with mock.patch.object(train.subprocess, "run", wraps=subprocess.run) as run:
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        with self.assertRaisesRegex(train.TrainError, f"first: {path}"):
+                            train.cmd_image(t, SimpleNamespace(label="old"))
+                self.assertFalse(any("ssh" in call.args[0] for call in run.call_args_list))
+                self.assertEqual(t.load(), before)
+
+    def test_neutral_tree_reuse_still_refuses_an_image_input_changed_from_source(self):
+        self.launcher_train()
+        built = self.head()
+        (self.work / "packaging/launcher-decide.sh").write_text("# new image input\n")
+        self.commit(self.work, "changed source input")
+        tree = self.head()
+        env = self.image_runs({"/s/reuse": {"a": (0, "ok")}})
+        (self.work / "docs").mkdir(exist_ok=True)
+        (self.work / "docs/image.md").write_text("neutral\n")
+        self.commit(self.work, "only neutral tree change")
+        (self.work / "build/hbox-native/reuse.run").write_text(f"box=hbox\ndir=/s/reuse\nsource={built}\ntree={tree}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("first: packaging/launcher-decide.sh", p.stdout)
+
+    def test_image_run_with_unknown_tree_refuses(self):
+        env = self.image_runs({"/s/reuse": {"a": (0, "ok")}})
+        (self.work / "build/hbox-native/reuse.run").write_text(f"box=hbox\ndir=/s/reuse\nsource={self.head()}\ntree={'f' * 40}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("its tree fffffffff is not a commit here", p.stdout)
+
+    def test_deleted_bp_adapter_is_derived_from_the_train_base(self):
+        path = "host/new-adapter.lisp"
+        # Advance the fixture's base with an adapter, then delete it in the train.
+        (self.seed / "host").mkdir(exist_ok=True)
+        self.advance_dev({path: '(include-book "../books/bp-release")\n'})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "origin/dev")
+        (self.work / path).write_text('(include-book "../books/store-node")\n')
+        self.assertEqual(train.image_modules([path], self.work), {m: [path] for m in train.BP_NATIVES})
+        (self.work / path).unlink()
+        self.commit(self.work, "delete BP adapter")
+        self.assertEqual(train.image_modules([path], self.work), {m: [path] for m in train.BP_NATIVES})
+
+    def test_bp_adapter_gate_uses_its_own_tree_and_requires_the_bp_modules(self):
+        path = "host/new-adapter.lisp"
+        (self.work / "host").mkdir(exist_ok=True)
+        (self.work / path).write_text('(include-book "../books/bp-release")\n')
+        self.commit(self.work, "BP adapter")
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 1, g.stdout + g.stderr)
+        self.assertEqual(rec["need"], sorted(train.BP_NATIVES))
+        self.assertIn(path, g.stdout)
+        t = train.Train(self.work)
+        command = train.lane_check_box_commands(t, t.load()["gates"], [path])["image"]
+        self.assertEqual(command[0], "BOX")
+        self.assertEqual(command[1].split()[7:], sorted(train.BP_NATIVES))
+        self.set_image(train.BP_NATIVES)
+        self.assertEqual(self.gate()[0].returncode, 0)
+
     def test_a_run_on_heads_tree_reuses_a_ready_image_only_when_no_image_input_differs(self):
         self.launcher_train()
         built = self.head()
@@ -2510,6 +2960,83 @@ class ImageGateTests(TrainBase):
         self.assertIn("already read from another run at HEAD", p.stdout)
         g, rec = self.gate()
         self.assertEqual(g.returncode, 0, g.stdout)
+
+
+class RunIdentityTests(TrainBase):
+    """Generation checks at both result-import boundaries; ssh is mocked."""
+
+    def run_record(self, metadata):
+        t = train.Train(self.work)
+        head = self.head()
+        path = self.work / "build/hbox-native/run.run"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"box=hbox\ndir=/s/run\nsource={head}\ntree={head}\n" + metadata)
+        st = t.load()
+        st["image"] = {"source": head, "runs": {}, "modules": {}}
+        st["census"] = {"source": "unchanged"}
+        st["gates"] = {"image": {"head": head, "rc": 0}, "other": {"rc": 0}}
+        t.save(st)
+        return t, head
+
+    def results(self, command):
+        if command == train.cmd_image:
+            return ('RC tests.test_native_probe 0\nFN_TEST_BUDGET_RESULT '
+                    + json.dumps({"module": "tests.test_native_probe", "cases": [["probe.T.ok", "ok"]]}) + "\n")
+        return train.CENSUS_DONE + "\nCENSUS-LINE\n" + CensusTests.LINE
+
+    def test_pending_image_and_census_records_refuse_before_ssh(self):
+        for command in (train.cmd_image, train.cmd_census):
+            with self.subTest(command=command.__name__):
+                t, head = self.run_record("launch_id=new-generation\n")
+                before = t.state_path.read_bytes()
+                with mock.patch.object(t, "head", return_value=head), mock.patch.object(train.subprocess, "run") as ssh:
+                    with self.assertRaisesRegex(train.TrainError, "pending; adopt: tools/hbox_native.sh adopt run"):
+                        command(t, SimpleNamespace(label="run"))
+                ssh.assert_not_called()
+                self.assertEqual(t.state_path.read_bytes(), before)
+
+    def test_mismatched_missing_and_duplicate_identities_preserve_state(self):
+        for command in (train.cmd_image, train.cmd_census):
+            for identity in ("TRAIN-RUN-IDENTITY old-generation 1 2 scope\n", "",
+                             "TRAIN-RUN-IDENTITY new-generation 1 2 scope\n" * 2):
+                with self.subTest(command=command.__name__, identity=identity):
+                    t, head = self.run_record("launch_id=new-generation\npgid=42\n")
+                    before = t.state_path.read_bytes()
+                    result = subprocess.CompletedProcess([], 0, identity + self.results(command), "")
+                    with mock.patch.object(t, "head", return_value=head), mock.patch.object(train.subprocess, "run", return_value=result) as ssh:
+                        with self.assertRaisesRegex(train.TrainError, "run.identity launch_id.*expected 'new-generation'"):
+                            command(t, SimpleNamespace(label="run"))
+                    self.assertIn("run.identity", ssh.call_args.args[0][-1])
+                    self.assertEqual(t.state_path.read_bytes(), before)
+
+    def test_matching_identity_imports_image_and_census(self):
+        for command in (train.cmd_image, train.cmd_census):
+            with self.subTest(command=command.__name__):
+                t, head = self.run_record("launch_id=new-generation\npgid=42\npid=43\nstarttime=99\n")
+                result = subprocess.CompletedProcess([], 0, "TRAIN-RUN-IDENTITY new-generation 43 99 scope\n" + self.results(command), "")
+                with mock.patch.object(t, "head", return_value=head), mock.patch.object(train.subprocess, "run", return_value=result) as ssh:
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(command(t, SimpleNamespace(label="run")), 0)
+                self.assertIn("run.identity", ssh.call_args.args[0][-1])
+                st = t.load()
+                if command == train.cmd_image:
+                    self.assertEqual(st["image"]["modules"]["tests.test_native_probe"]["rc"], 0)
+                    self.assertNotIn("image", st["gates"])
+                    self.assertEqual(st["census"], {"source": "unchanged"})
+                else:
+                    self.assertEqual(st["census"]["figures"]["units"], 23068)
+                    self.assertEqual(st["census"]["source"], head)
+                    self.assertIn("image", st["gates"])
+
+    def test_older_launcher_records_keep_their_identity_free_behavior(self):
+        for command in (train.cmd_image, train.cmd_census):
+            with self.subTest(command=command.__name__):
+                t, head = self.run_record("pid=43\n")
+                result = subprocess.CompletedProcess([], 0, self.results(command), "")
+                with mock.patch.object(t, "head", return_value=head), mock.patch.object(train.subprocess, "run", return_value=result) as ssh:
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(command(t, SimpleNamespace(label="run")), 0)
+                self.assertNotIn("run.identity", ssh.call_args.args[0][-1])
 
 
 if __name__ == "__main__":
