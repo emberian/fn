@@ -1857,6 +1857,56 @@ class BaselineGateTests(TrainBase):
         ok = dict(first, owner="builder-M", transfer_from=first["owner"])
         self.assertEqual(len(train.parse_amendments(self.amendments(first, ok))), 2)
 
+    def test_parser_accepts_refile_with_same_owner_and_measured_sha(self):
+        first = self.amendment("t.a")
+        second = dict(first, item="KR-TARGET", item_from="KR-X", ruling="re-file ruling")
+        self.assertEqual(train.parse_amendments(self.amendments(first, second)), [first, second])
+
+    def test_parser_refuses_invalid_refiles_and_transfer_changing_item(self):
+        first = self.amendment("t.a")
+        refile = dict(first, item="KR-TARGET", item_from="KR-X")
+        bad = [dict(refile, owner="builder-M"), dict(refile, item_from="WRONG"),
+               dict(refile, dev_sha="0000000"), dict(refile, item="KR-X"),
+               dict(first, transfer_from="builder-B", owner="builder-M", item="KR-TARGET")]
+        for second in bad:
+            with self.subTest(record=second), self.assertRaises(train.TrainError):
+                train.parse_amendments(self.amendments(first, second))
+        with self.assertRaises(train.TrainError):
+            train.parse_amendments(self.amendments(refile))
+
+    def test_refile_gate_refuses_closed_missing_or_differently_owned_target(self):
+        self.on_dev(self.rows("t.a"))
+        first = self.amendment("t.new")
+        refile = dict(first, item="KR-TARGET", item_from="KR-X")
+        target = self.work / "planning/repair/items/KR-TARGET.json"
+        rows = json.loads(self.rows("t.a", "t.new"))
+        rows["rows"][1]["item"] = "KR-TARGET"
+        for item, message in [(None, "missing"),
+                              ({"state": "closed", "owner": "builder-B"}, "closed"),
+                              ({"state": "open", "owner": "builder-M"}, "owner")]:
+            with self.subTest(item=item):
+                if item is not None:
+                    target.write_text(json.dumps(item))
+                g, rec = self.gate_amended(json.dumps(rows), self.amendments(first, refile))
+                self.assertEqual(rec["rc"], 1, g.stdout)
+                self.assertEqual(len(rec["invalid_refiles"]), 1)
+                self.assertIn(message, rec["invalid_refiles"][0])
+        target.write_text('{"state": "open", "owner": "builder-B"}\n')
+        g, rec = self.gate_amended(json.dumps(rows), self.amendments(first, refile))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+
+    def test_refile_gate_accepts_closed_umbrella_as_history(self):
+        self.on_dev(self.rows("t.new"))
+        first = self.amendment("t.new")
+        refile = dict(first, item="KR-TARGET", item_from="KR-X")
+        (self.work / "planning/repair/items/KR-TARGET.json").write_text(
+            '{"state": "open", "owner": "builder-B"}\n')
+        (self.work / "planning/repair/items/KR-X.json").write_text('{"state": "closed"}\n')
+        g, rec = self.gate_amended(self.rows("t.new", item="KR-TARGET"), self.amendments(first, refile))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertFalse(rec["dangling_amendments"])
+        self.assertFalse(rec["invalid_refiles"])
+
     def test_a_malformed_amendments_file_fails(self):
         self.on_dev(self.rows("t.a"))
         for text in ("not json\n", '{"amendments": {}}\n', '{"amendments": [{"kind": "native"}]}\n',
