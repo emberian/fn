@@ -268,7 +268,8 @@ IMAGE_RULES = (
     ("the heap probe, a launcher or host/native/",
      ("books/heap-figure.lisp", "packaging/fn", "packaging/launcher-decide.sh",
       "tools/build_native_host.sh", "tools/extract/core_launcher.py", "host/native/"),
-     ("tests.test_native_operator_verbs", "tests.test_native_heap_from_profile") + SERVED_NATIVES),
+     ("tests.test_native_operator_verbs", "tests.test_native_heap_from_profile",
+      "tests.test_native_nntp_post_probe") + SERVED_NATIVES),
     # The store's memory and reservation model: what a full store admits and
     # keeps for its maintenance work (train 89: a charge change let the store
     # fill until the reserved BP transfer was refused; the module passed on
