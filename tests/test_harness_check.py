@@ -1082,7 +1082,7 @@ class ImageProbeGuardTests(unittest.TestCase):
 
     def test_exact_source_allows_only_whitespace_and_comments_between_forms(self):
         guard = harness_check.IMAGE_PROBE_GUARD
-        reformatted = guard.replace('(unless ', '(unless\n\t ').replace('\n  ', '\r\n\t')
+        reformatted = guard.replace('(cl:unless ', '(cl:unless\n\t ').replace('\n  ', '\r\n\t\f')
         for text in (self.guarded().replace(guard, reformatted),
                      self.guarded().replace('(in-package ', '(in-package\n\t '),
                      '; before\n#| leading comment |#\n' + self.guarded(),
@@ -1094,7 +1094,7 @@ class ImageProbeGuardTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(harness_check.image_probe_guard(text), (False, True))
         for text in (self.hand + ';; ' + guard.replace('\n', '\n;; '),
-                     self.guarded().replace('(unless ', '(unless ; internal comment\n '),
+                     self.guarded().replace('(cl:unless ', '(cl:unless ; internal comment\n '),
                      self.guarded().replace('fboundp', 'boundp'),
                      self.guarded().replace('only inside', 'inside'),
                      self.guarded().replace('unless', 'when')):
@@ -1102,7 +1102,7 @@ class ImageProbeGuardTests(unittest.TestCase):
                 self.assertEqual(harness_check.image_probe_guard(text), (False, False))
 
     def test_reader_equivalent_escaped_symbols_and_case_do_not_exempt_probe(self):
-        for old, new in (('fboundp', '|fboundp|'),
+        for old, new in (('cl:fboundp', '|cl:fboundp|'),
                          ('acl2::fnn-save-world-flavor', '|acl2::fnn-save-world-flavor|'),
                          ('in-package', '|in-package|'), ('fboundp', 'FBOUNDP'),
                          ('"ACL2"', '"AC\\L2"')):
@@ -1119,6 +1119,45 @@ class ImageProbeGuardTests(unittest.TestCase):
                     self.assertEqual(scan['expected'], self.block)
                 self.assertEqual(harness_check.write_derived_stubs(self.root), [])
                 self.assertEqual(self.probe.read_text(), text + self.block)
+
+    def test_non_cl_whitespace_and_unqualified_operators_preserve_stubs(self):
+        guard = harness_check.IMAGE_PROBE_GUARD
+        variants = [self.guarded().replace('cl:', '')]
+        for character in ('\v', '\x1c', '\u00a0'):
+            variants.extend((self.guarded().replace('cl:fboundp ', 'cl:fboundp' + character + ' '),
+                             character + self.guarded(),
+                             self.guarded().replace(guard, character + guard),
+                             self.guarded().replace('in-package ', 'in-package' + character + ' ')))
+        for text in variants:
+            with self.subTest(text=text):
+                self.probe.write_text(text + self.block)
+                self.assertFalse(harness_check.image_probe_guard(text)[0])
+                scan = harness_check.harness_scans(self.root)[0][3]
+                self.assertEqual(scan['expected'], self.block)
+                self.assertEqual(harness_check.write_derived_stubs(self.root), [])
+                self.assertEqual(self.probe.read_text(), text + self.block)
+
+    def test_shadowed_acl2_fboundp_cannot_bypass_guard_in_bare_sbcl(self):
+        import shutil
+        import subprocess
+        sbcl = shutil.which('sbcl')
+        if sbcl is None:
+            self.skipTest('SBCL is required for the runtime guard control')
+        self.probe.write_text(self.guarded('(in-package "ACL2")\n(format t "PROBE-BODY~%")'))
+        driver = self.root / 'driver.lisp'
+        driver.write_text(textwrap.dedent('''\
+            (defpackage "ACL2" (:use "CL"))
+            (shadow "FBOUNDP" "ACL2")
+            (defun acl2::fboundp (x) (declare (ignore x)) t)
+            (cl:assert (acl2::fboundp 'acl2::fnn-save-world-flavor))
+            (cl:assert (not (cl:fboundp 'acl2::fnn-save-world-flavor)))
+        ''') + '(handler-case (load "' + str(self.probe) + '")\n'
+            + '  (cl:error (c) (format t "~a~%" c) (sb-ext:exit :code 17)))\n')
+        result = subprocess.run([sbcl, '--noinform', '--disable-debugger', '--script', str(driver)],
+                                cwd=self.root, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+        self.assertIn('this probe runs only inside a built fn-host image', result.stdout)
+        self.assertNotIn('PROBE-BODY', result.stdout)
 
     def test_each_fixture_requires_its_own_first_guard(self):
         child = self.root / "tests/child.lisp"
@@ -1224,6 +1263,65 @@ class ImageProbeGuardTests(unittest.TestCase):
         rows = harness_check.harness_scans(self.root)
         self.assertEqual(set(rows[0][3]["unresolved"]), expected_callees)
         self.assertEqual(rows[0][3]["expected"], block)
+
+
+class BuildOnlyTestDriverTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix='build-only-driver-')
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / 'tests/subdir').mkdir(parents=True)
+        # Deliberate bypass data is constructed only in the temporary corpus.
+        self.marker = 'fnn-' + 'save-world-flavor'
+        self.source = 'host/native/' + 'strip-world.lisp'
+
+    def findings(self):
+        with mock.patch.object(harness_check, 'harness_scans', return_value=[]):
+            return harness_check.test_stub_findings(self.root)[0]
+
+    def test_recursive_every_file_type_reports_loads_definitions_and_mutations(self):
+        bodies = {
+            'load.lisp': '(cl:load "' + self.source + '")',
+            'driver.sh': 'sbcl --load "' + self.source + '"',
+            'absolute.sh': 'sbcl --script "/synthetic-tree/' + self.source + '"',
+            'quoted.sh': 'sbcl --eval "(load \\"' + self.source + '\\")"',
+            'driver.py': 'run("(load \\"' + self.source + '\\")")',
+            'encoded.py': 'run("(load \\"' + self.source.replace('strip', r'stri\u0070') + '\\")")',
+            'driver.data': '(load (merge-pathnames "' + self.source + '" base))',
+            'def.txt': '(defun acl2::' + self.marker + ' (x y) (declare (ignore x y)) nil)',
+            'compile.raw': "(cl:compile 'acl2::" + self.marker + ' (lambda () nil))',
+            'constructor.inc': '(defstruct (object (:constructor ' + self.marker + ')))',
+            'set.unknown': "(setf (symbol-function 'acl2::" + self.marker + ') (lambda () nil))',
+            'fdefinition.conf': '(cl:setf (cl:fdefinition (intern "' + self.marker.upper() + '" "ACL2")) (lambda () nil))',
+            'variable.cfg': "(setq " + self.marker + ' nil)',
+        }
+        for name, body in bodies.items():
+            (self.root / 'tests/subdir' / name).write_text(body)
+        findings = self.findings()
+        self.assertEqual(len(findings), len(bodies), findings)
+        self.assertEqual({row['where'] for row in findings},
+                         {'tests/subdir/' + name + ':1' for name in bodies})
+        self.assertTrue(all(row['lint'] == 'test-stubs' and 'forbidden under tests/' in row['problem']
+                            for row in findings))
+
+    def test_named_exception_is_one_text_only_python_literal_not_a_file_waiver(self):
+        relative, line, form = harness_check.BUILD_ONLY_TEST_FIXTURE
+        path = self.root / relative
+        text = '\n' * (line - 2) + "source = '''\n" + form + "\n'''\n"
+        path.write_text(text)
+        self.assertEqual(self.findings(), [])
+        (self.root / 'tests/subdir/copied.py').write_text(text)
+        self.assertEqual(len(self.findings()), 1)
+        path.write_text(text + 'run("(load \\"' + self.source + '\\")")\n')
+        self.assertEqual(len(self.findings()), 2)
+        path.write_text('\n' * (line - 1) + form + '\n')
+        self.assertEqual(len(self.findings()), 2)
+
+    def test_reading_the_marker_and_describing_source_dependencies_is_allowed(self):
+        (self.root / 'tests/subdir/read.lisp').write_text(
+            harness_check.IMAGE_PROBE_GUARD + "\n(defun observer () (cl:fboundp 'acl2::" + self.marker + '))')
+        (self.root / 'tests/subdir/dependencies.tsv').write_text(self.source + '\tALL\n')
+        self.assertEqual(self.findings(), [])
 
 
 class RawMacroTemplateTests(unittest.TestCase):
