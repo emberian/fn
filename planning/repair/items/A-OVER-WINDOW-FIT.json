@@ -2,11 +2,14 @@
  "detail": "tests.test_native_mux's connections_cost case is red on the developer and production images from memory landing 3+4a on: the memory gate prices the OVER reply with the named adapter A-OVER-WINDOW-FIT (books/memory-model.lisp fn-mm-window-fit, fn-mm-over-window-fit, fn-mm-article-reply-octets; host/owner-host.lisp fn-owner-memory-configure installs fn-owner-memory-over-window; host/native/owner.lisp fnn-owner-over-window serves min(W, W')), and at the run's C' the test's extra connection is answered \"400 too many connections\". Measured: hbox m15-r3 at lane/memory e6aab64bb (2/4; refused_at_start ok on both images), persvati at train 89's head a8685dab1. The adapter was agreed by C, the coordinator and A (build/ready/memory-l34a.md, Named adapters). Retirement: landing O1, Builder O's OVER rendered into one pool lease, which deletes M's granted fn-mm-*over-window* terms; the two native rows are the subjects.",
  "file": "books/memory-model.lisp",
  "id": "A-OVER-WINDOW-FIT",
- "notes": [],
+ "notes": [
+  "10-12 22:20 10-13 02:10Z test_native_mux 4/4 on the developer and production images at lane/over@3ca7f5ce9 (hbox native-l2-o6-1): both connections_cost cases pass. OVER landing 2 deleted the window terms (P-B, fn-mm-*over-window*) and renders leased OVER in place into the pool lease; the two known-reds rows are deleted. OVER without a lease (compressed connections) keeps the shared window path (fnn-owner-over-window); it retires with LB (C22), coordinator ruling 10-12."
+ ],
  "owner": "builder-C",
  "severity": "medium",
+ "sha": "3ca7f5ce9",
  "source": "Coordinator 2026-10-10: the Fungus faerie's merge of lane/spans@96326e1ff onto train 89's head",
- "state": "open",
+ "state": "landed",
  "title": "test_native_mux connections_cost is red at C' under the OVER-window adapter until O1",
- "updated": "2026-10-11T01:30:00Z"
+ "updated": "2026-10-13T02:20:19Z"
 }
