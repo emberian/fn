@@ -493,6 +493,65 @@ class NewWitnessClasses(unittest.TestCase):
         self.assertEqual(reached, {})
         self.assertEqual(len(problems), 1)
 
+    def test_subject_findings_follow_declared_binders_and_literal_positions(self):
+        peer = "(fn-adm-peer-open v nil nil nil 1 1)"
+        store = ("(fn-prstartup-run-store-need profile core nursery output peer "
+                 "workers cache-limit root resident bp-terms)")
+        cases = [
+            ("declared-mv-variable-is-not-a-call",
+             "(<= 0 (mv-let (fn-adm-peer-open y) (mv 0 (nfix x)) "
+             "(declare (ignore fn-adm-peer-open)) y))", "fn-adm-peer-open", False),
+            ("declared-let-producer-is-reached",
+             "(natp (let ((a " + store + ")) (declare (ignorable a)) a))",
+             "fn-prstartup-run-store-need", True),
+            ("lambda-unused-call-after-string-is-not-a-subject",
+             '(equal ((lambda (x y) (declare (ignore y)) x) "fixed" '
+             + peer + ') "fixed")', "fn-adm-peer-open", False),
+            ("declared-mv-producer-is-reached",
+             "(natp (mv-let (unused value) (mv 0 " + store + ") "
+             "(declare (ignore unused)) value))", "fn-prstartup-run-store-need", True),
+            ("plain-mv-producer-is-reached",
+             "(equal (mv-let (unused value) (mv 0 " + peer + ") value) nil)",
+             "fn-adm-peer-open", True),
+            ("declared-let-star-producer-is-reached",
+             "(natp (let* ((a " + store + ") (b a)) "
+             "(declare (ignorable a)) b))", "fn-prstartup-run-store-need", True),
+            ("lambda-used-call-after-string-is-reached",
+             '(equal ((lambda (x y) (declare (ignore x)) y) "fixed" '
+             + peer + ') nil)', "fn-adm-peer-open", True),
+            ("literal-matching-a-binding-name-is-inert",
+             '(let ((a ' + peer + ')) (equal ((lambda (x) x) "a") "a"))',
+             "fn-adm-peer-open", False),
+        ]
+        defined = {"nfix", "fn-adm-peer-open", "fn-prstartup-run-store-need"}
+        graph = SimpleNamespace(books={}, book_defs=defined, stobj_names=set(),
+                                reachable=defined)
+        for label, claim, subject, expected in cases:
+            for from_theorem in (False, True):
+                with self.subTest(case=label, from_theorem=from_theorem):
+                    form = ke.ledger.read_forms(
+                        '(defkeystone scoped ' + claim + ' :subject ' + subject
+                        + ' :witness ((x 1)) :breaks nil :mutations '
+                        + '((off (:conclusion (< 1 (nfix x))) ((x 1)) :fault "off")))')[0]
+                    stone = ke.Keystone("tests/acl2/k.lisp", 1, form)
+                    self.assertIsNotNone(stone.parts)
+                    original = ke.render(form)
+                    theorems = ({"scoped": ("books/k.lisp", ke.render([
+                        ke.Sym("defthm"), ke.Sym("scoped"), form[2]]))}
+                        if from_theorem else {})
+                    with mock.patch("reach_check.Graph", return_value=graph), \
+                            mock.patch("reach_check.theorem_forms", return_value=theorems), \
+                            mock.patch.object(ke, "host_line", return_value="host/a.lisp:1"):
+                        problems, reached = ke.subject_findings([stone])
+                    self.assertEqual(ke.render(form), original)
+                    if expected:
+                        self.assertEqual(problems, [])
+                        self.assertEqual(reached, {"scoped": "host/a.lisp:1"})
+                    else:
+                        self.assertEqual(reached, {})
+                        self.assertEqual(len(problems), 1)
+                        self.assertIn("is not a function", problems[0])
+
     def test_call_heads_follow_parallel_sequential_and_shadowed_bindings(self):
         parallel = ke.ledger.read_forms("(let ((a (f x)) (b (g a))) (h b))")[0]
         sequential = ke.ledger.read_forms("(let* ((a (f x)) (b (g a))) (h b))")[0]

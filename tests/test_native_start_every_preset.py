@@ -170,8 +170,9 @@ class StartEveryPresetTests(unittest.TestCase):
     def test_the_bp_node_starts_at_every_preset(self):
         # The image probe calls fn-mo-serve-run-decide, which composes
         # fn-mo-serve-total-pools with this BP run's captured session charge.
-        # Native startup then checks fn-bpsp-node-startup at that heap; the
-        # started() exercise performs a durable BP request/receipt exchange.
+        # Native startup then checks fn-bpsp-node-startup at that heap.
+        # started() checks listening and history-root readiness. The durable
+        # BP exchange is in test_a_heap_below_the_decided_figure_is_refused_by_name.
         for image in [i for i in (DEVELOPER, DTN) if executable(i)]:
             for preset in PRESETS:
                 with self.subTest(image=image.name, preset=preset):
@@ -200,11 +201,16 @@ class StartEveryPresetTests(unittest.TestCase):
 
         The BP node's pools (its session funding, about 1 GB at the
         development profile) exceed 1G, so under 1G its probe refuses by name
-        (machine-cannot-hold-the-pools, books/heap-command.lisp K-L2p) and its
-        85% case runs under 2G."""
+        (machine-cannot-hold-the-pools, books/heap-command.lisp K-L2p).
+        A 2G limit can still refuse the replayed store at capacity zero: the resident
+        partition does not imply an unobserved store fits. The positive BP
+        start and 85% tooth use the machine observations, rather than a fixed
+        2G assumption about the developer image."""
         node = self.node(DEVELOPER, "development")
 
         def scope(limit):
+            if limit is None:
+                return []
             return ["systemd-run", "--user", "--scope", "--quiet", "-p", "MemoryMax=" + limit,
                     "-p", "MemorySwapMax=0"]
         bp = self.bp_words(node, free_port())
@@ -216,10 +222,33 @@ class StartEveryPresetTests(unittest.TestCase):
         self.assertNotEqual(held.returncode, 0)
         self.assertIn("refused machine-cannot-hold-the-pools",
                       held.stdout.decode("utf-8", "replace") + held.stderr.decode("utf-8", "replace"))
+        # The 2G probe has no charged-totals header for this freshly initialized
+        # store. Its owner replays the totals and refuses when even C'=0 cannot
+        # fit. Validate ACL2's diagnostic relation, without pinning the figures.
+        two_g = run(scope("2G") + [str(DEVELOPER), "--fn", "heap", "--", *[str(w) for w in bp]],
+                    env=environment(), timeout=120)
+        two_text = two_g.stdout.decode("utf-8", "replace")
+        two_heap = re.match(r"heap=(\d+) MB", two_text)
+        two_stack = re.search(r"stack=(\d+) KB", two_text)
+        self.assertIsNotNone(two_heap, two_text + two_g.stderr.decode("utf-8", "replace"))
+        self.assertIsNotNone(two_stack, two_text)
+        too_small = start(scope("2G") + [str(DEVELOPER), "--fn", *[str(w) for w in bp]],
+                          cwd=node.root, env=environment({"SBCL_USER_ARGS":
+                          "--dynamic-space-size {}MB --control-stack-size {}KB".format(
+                              two_heap.group(1), two_stack.group(1))}))
+        self.addCleanup(too_small.stop, 5)
+        self.assertNotEqual(too_small.wait(timeout=120), 0)
+        refusal_text = too_small.stdout.since(0) + too_small.stderr.since(0)
+        self.assertNotIn(b"LISTENING", refusal_text)
+        capacity = re.search(rb"refused memory-cannot-hold-the-store capacity=0 of \d+ "
+                             rb"bound-by=store sum=(\d+) MB limit=(\d+) MB", refusal_text)
+        self.assertIsNotNone(capacity, refusal_text)
+        self.assertGreater(int(capacity.group(1)), int(capacity.group(2)),
+                           "the zero-reader store itself exceeds ACL2's LIMIT")
         for label, words, refusal, limit in (
                 ("served run", self.served_words(node), b"cold startup refused", "1G"),
                 ("store owner", self.owner_words(node), b"cold startup refused", "1G"),
-                ("bp node", bp, b"refused", "2G")):
+                ("bp node", bp, b"refused", None)):
             with self.subTest(command=label):
                 done = run(scope(limit) + [str(DEVELOPER), "--fn", "heap", "--", *[str(w) for w in words]],
                            env=environment(), timeout=120)
@@ -228,6 +257,9 @@ class StartEveryPresetTests(unittest.TestCase):
                 self.assertIsNotNone(figure, text + done.stderr.decode("utf-8", "replace"))
                 heap = int(figure.group(1))
                 if label == "bp node":
+                    # This image probe drives fn-mo-serve-run-decide; native
+                    # fn-bpsp-node-startup must hold at its 100% heap before
+                    # bp_durable_exchange exercises the persisted request/receipt.
                     stack = re.search(r"stack=(\d+) KB", text)
                     self.assertIsNotNone(stack, text)
                     full = start(scope(limit) + [str(DEVELOPER), "--fn", *[str(w) for w in words]],

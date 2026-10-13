@@ -295,13 +295,13 @@
 (defun fnn-core (name &rest args)
   (case name
     (fn-pio-direct-workers 4)
-    (fn-prstartup-default-plan-with-peer
-     (assert (equal (cdr args) (append '(1234 :profile (54321 . 1234) 1048576 nil nil 2 "/scratch" 4 32 1024) (list *peer-policy* '(4096 . 2) '(268435456)))))
+    (fn-prstartup-run-default-plan
+     (assert (equal (cdr args) (append '(1234 :profile (54321 . 1234) 1048576 nil nil 2 "/scratch" 4 32 1024) (list *peer-policy* '(4096 . 2) '(268435456) nil))))
      (assert (plusp (first args)))
      (push :preflight *events*) *plan*)
-    (fn-prstartup-peer-native-grant
+    (fn-prstartup-run-peer-native-grant
      (assert (equal (cdr args) (list :profile '(54321 . 1234) 1048576 nil 2 *plan* *peer-policy* '(1153433600) '(4096 . 2)
-                                     4 32 "/scratch" '(268435456))))
+                                     4 32 "/scratch" '(268435456) nil)))
      (push :peer-check *events*) *peer-grant*)
     (fn-prstartup-peer-native-refusal-line "peer native reservation not held")
     (fn-prstartup-status (first *plan*))
