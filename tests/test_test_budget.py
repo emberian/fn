@@ -133,7 +133,7 @@ class NodeDeadResultTests(unittest.TestCase):
             self.assertEqual(len(harness.node_start_failures(self.id())), 1)
             old.poll.return_value = 1
             with self.assertRaises(harness.NodeDead):
-                harness.observe_node_greeting(1234, b"200 stale\r\n", process=old)
+                harness.observe_node_greeting(1234, b"", process=old)
         finally:
             harness._NODE_GREETINGS.pop(self.id(), None)
             harness._NODE_DEAD.pop(self.id(), None)
@@ -355,9 +355,14 @@ class NodeDeadResultTests(unittest.TestCase):
                 harness._NODE_DEAD.pop(self.id(), None)
 
             harness.require_node_greeting(process, 1234)
+            process.poll.return_value = 0
+            self.assertTrue(harness.observe_tool_greeting(1234, b"200 buffered before exit\r\n"))
+            self.assertEqual(harness.node_start_failures(self.id()), [])
+            process.poll.return_value = None
+            harness.require_node_greeting(process, 1234)
             process.poll.return_value = 1
-            with self.assertRaisesRegex(harness.NodeDead, "exited before its greeting"):
-                harness.observe_tool_greeting(1234, b"200 stale\r\n")
+            self.assertFalse(harness.observe_tool_greeting(1234, b""))
+            self.assertTrue(harness.node_start_failures(self.id()))
         finally:
             harness._NODE_GREETINGS.pop(self.id(), None)
             harness._NODE_DEAD.pop(self.id(), None)

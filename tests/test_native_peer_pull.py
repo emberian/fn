@@ -398,11 +398,15 @@ class NativePeerPullTests(unittest.TestCase):
 
     def start(self, node):
         image = None
+        lifecycle = {}
         if "FN_PULL_TEST_KILL" in self.env:
             if DEVELOPER is None or not os.access(DEVELOPER, os.X_OK):
                 self.skipTest("set FN_NATIVE_DEVELOPER_HOST: the FN_PULL_TEST_KILL cuts")
             image = DEVELOPER
-        node.start(image=image, env=dict(self.env))
+            cut, append = self.env["FN_PULL_TEST_KILL"].split(":")
+            lifecycle["death_cut"] = (-signal.SIGKILL,
+                "pull: developer kill at {} of append {}".format(cut, append).encode("ascii"))
+        node.start(image=image, env=dict(self.env), **lifecycle)
 
     def stop(self, node):
         node.stop(expect=None)

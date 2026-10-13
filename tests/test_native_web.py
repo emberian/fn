@@ -286,7 +286,7 @@ class FaceCases:
             self.assertEqual(trace.count(b"DECODED-WINDOW release "), issued, trace[-8192:])
             self.assertIn(b":PARTIAL-FIXED-STORAGE", trace)
             self.assertIn(b"word=:RELEASED", trace)
-        self.node.start()  # Keep the class's other existing browser cases usable.
+        self.node.start(intent="restart-only")  # Reset for the class's later browser cases.
 
     def test_1_a_friend_makes_an_account_reads_posts_and_removes(self):
         b = self.browser()

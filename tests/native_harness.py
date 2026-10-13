@@ -315,32 +315,91 @@ def node_dead(reason, *, test_id=None):
     raise NodeDead(message)
 
 
+def _validate_death_cut(death_cut):
+    if death_cut is not None:
+        status, marker = death_cut
+        if (not isinstance(status, int) or status >= 0 or not isinstance(marker, bytes)
+                or not marker or b"\n" in marker):
+            raise ValueError("a process-death cut needs a signal exit and one exact marker line")
+
+
+def _node_terminal_evidence(process, death_cut=None):
+    """A reaped owner's named result, never a readiness line or bare exit."""
+    status = process.poll()
+    if status is None:
+        return None
+    if isinstance(process, NativeProcess):
+        # wait()/poll() can beat the drain threads to the last result line.
+        process.finish()
+    stderr = _stderr_bytes(process, getattr(process, "stderr", None))
+    stdout = _stdout_bytes(process)
+    stderr = stderr if isinstance(stderr, bytes) else b""
+    stdout = stdout if isinstance(stdout, bytes) else b""
+    lines = stderr.splitlines()
+    if status == EXIT.OK and b"accepted operator run" in lines:
+        return "completed operator run"
+    if status == EXIT.UNCERTAIN and b"uncertain operator run" in lines:
+        return "completed uncertain operator run"
+    refusal_prefixes = (b"refused operator run ", b"usage operator run ", b"fn: refused ")
+    if status in (EXIT.REFUSED, EXIT.USAGE) and any(line.startswith(refusal_prefixes) for line in lines):
+        return "startup refusal"
+    if death_cut is not None:
+        expected_status, marker = death_cut
+        if status == expected_status and marker in (stdout + b"\n" + stderr).splitlines():
+            return "observed process-death cut"
+    return None
+
+
+def _node_control_path(process, fallback):
+    """Use the owner's announced endpoint; ACL2 owns a missing config default."""
+    stdout = _stdout_bytes(process)
+    if isinstance(stdout, bytes):
+        for line in stdout.splitlines():
+            if line.startswith(b"CONTROL "):
+                return os.fsdecode(line[len(b"CONTROL "):])
+    return str(fallback) if fallback is not None else None
+
+
 def require_node_greeting(process, port, *, control=None, config=None, ports=(), web_port=None,
-                          refusal=None, intent="serve"):
-    """Register one start; only the test's own response can acknowledge it."""
+                          refusal=None, intent="serve", death_cut=None):
+    """Register a start: its response or a named terminal outcome is owed."""
     if intent not in ("serve", "restart-only", "connection-refusal"):
         raise ValueError("unknown node start intent: " + intent)
+    _validate_death_cut(death_cut)
+    terminal = _node_terminal_evidence(process, death_cut)
     exited = process.poll() is not None
+    if exited and terminal is None:
+        terminal = _node_terminal_evidence(process, death_cut)
     if refusal is not None:
         named = any(line.startswith(("refused operator run", "usage operator run",
                                      "fn: refused ")) for line in refusal.splitlines())
         if not exited or process.returncode == 0 or not named:
             node_dead(f"pid {process.pid} supplied no explicit startup refusal")
-    elif exited:
+    elif exited and terminal is None:
         node_dead(f"pid {process.pid} exited before its first response")
     _NODE_GREETINGS.setdefault(current_test_id(), []).append({
         "process": process, "ports": {p for p in (port, *ports) if p is not None},
-        "control": str(control) if control is not None else None,
+        "control": _node_control_path(process, control),
         "config": str(config) if config is not None else None,
         "web_port": web_port,
+        "death_cut": death_cut,
         "evidence": ("startup refusal" if refusal is not None else
-                     "explicit " + intent if intent != "serve" else None),
+                     terminal or ("explicit " + intent if intent != "serve" else None)),
     })
 
 
+def _refresh_node_start(entry):
+    entry["control"] = _node_control_path(entry["process"], entry["control"])
+    if not entry["evidence"]:
+        entry["evidence"] = _node_terminal_evidence(entry["process"], entry["death_cut"])
+
+
 def _pending_node_starts(test_id=None):
-    return [entry for key in {test_id or current_test_id(), None}
-            for entry in _NODE_GREETINGS.get(key, []) if not entry["evidence"]]
+    entries = [entry for key in {test_id or current_test_id(), None}
+               for entry in _NODE_GREETINGS.get(key, [])]
+    for entry in entries:
+        _refresh_node_start(entry)
+    return [entry for entry in entries if not entry["evidence"]]
 
 
 def require_observed_node_response(port):
@@ -352,41 +411,47 @@ def require_observed_node_response(port):
                   "(outside-in b01 before b04)")
 
 
+def _response_entries(entries, process=None):
+    """Do not credit an unanswered predecessor with a replacement's bytes."""
+    if process is not None:
+        return [entry for entry in entries if entry["process"] is process]
+    live = [entry for entry in entries if entry["process"].poll() is None]
+    if live:
+        return live
+    # A buffered response from one exited owner is unambiguous. Multiple
+    # exited generations need the reader's exact process, not a reused port.
+    return entries if len(entries) == 1 else []
+
+
 def observe_node_greeting(port, greeting, *, process=None, test_id=None):
     """Acknowledge an existing connection, never open a probe connection."""
-    entries = [entry for entry in _pending_node_starts(test_id) if port in entry["ports"]
-               and (process is None or entry["process"] is process)]
+    entries = _response_entries([entry for entry in _pending_node_starts(test_id)
+                                 if port in entry["ports"]], process)
     if not entries and process is None:
         return  # Later connections retain their own expected outcome.
     if greeting[:3] not in (b"200", b"201"):
         node_dead(f"port {port} never greeted: {greeting!r}", test_id=test_id)
-    owners = [process] if process is not None else [entry["process"] for entry in entries]
-    for owner in owners:
-        if owner.poll() is not None:
-            node_dead(f"pid {owner.pid} exited before its greeting was read", test_id=test_id)
+    # Bytes from this connection prove the response preceded the exit.
+    # poll() after a buffered read cannot put that exit before the greeting.
     for entry in entries:
         entry["evidence"] = "NNTP greeting"
 
 
 def observe_control_reply(path, reply, *, process=None):
     """Record a reply to a control request the test already made."""
-    entries = [entry for entry in _pending_node_starts() if entry["control"] == str(path)
-               and (process is None or entry["process"] is process)]
+    entries = _response_entries([entry for entry in _pending_node_starts()
+                                 if entry["control"] == str(path)], process)
     if not reply:
         return
     for entry in entries:
-        owner = entry["process"]
-        if owner.poll() is not None:
-            node_dead(f"pid {owner.pid} exited before its control reply was read")
         entry["evidence"] = "control reply"
 
 
 def observe_web_reply(port, status, *, test_id=None):
     """The test's HTTP response is the web owner's first response."""
-    for entry in _pending_node_starts(test_id):
-        if entry["web_port"] == port and 100 <= status <= 599:
-            if entry["process"].poll() is not None:
-                node_dead(f"pid {entry['process'].pid} exited before its HTTP reply was read", test_id=test_id)
+    if 100 <= status <= 599:
+        for entry in _response_entries([entry for entry in _pending_node_starts(test_id)
+                                        if entry["web_port"] == port]):
             entry["evidence"] = "HTTP reply"
 
 
@@ -477,6 +542,7 @@ def observe_cli_reply(argv, result):
 def node_start_failures(test_id):
     failures = list(_NODE_DEAD.get(test_id, []))
     for entry in _NODE_GREETINGS.get(test_id, []):
+        _refresh_node_start(entry)
         if not entry["evidence"]:
             failures.append(f"node dead: pid {entry['process'].pid} never answered its test's first request")
     return failures
@@ -1469,15 +1535,19 @@ class Node:
         return [installed_launcher(image or self.image), *words], self.environment(merged)
 
     def start(self, *, image=None, env=None, ready=b"LISTENING ", timeout=180, verb=("run",),
-              limit=DEFAULT_LIMIT, intent="serve"):
+              limit=DEFAULT_LIMIT, intent="serve", death_cut=None):
         """`operator CONFIG run`, drained (LIMIT octets kept per stream),
-        returned once READY is on stdout. Ordinary starts owe a response.
+        returned once READY is on stdout; READY=None returns immediately.
+        Ordinary starts owe a response or a named terminal run outcome.
+        DEATH_CUT pairs an expected signal exit with its exact progress line;
+        the pair must actually be observed, including a cut before READY.
         `restart-only` declares a start stopped without requests;
         `connection-refusal` declares requests deliberately denied a greeting.
-        Both still require a live process and its readiness announcement.
+        Without a named terminal outcome, both require a live process and READY.
         """
         if intent not in ("serve", "restart-only", "connection-refusal"):
             raise ValueError("unknown node start intent: " + intent)
+        _validate_death_cut(death_cut)
         argv, launch_env = self.launch(image, ("operator", self.config, *verb), env)
         process = start(argv, cwd=ROOT, env=launch_env, limit=limit)
         self.processes.append(process)
@@ -1498,12 +1568,8 @@ class Node:
                     self.case.assertEqual(line, "LISTENING {}\n".format(self.port).encode(),
                                           "{} announced {!r}".format(self.name, line))
         except AssertionError as error:
-            node_dead(error)
-        if not ready:
-            marker = b"LISTENING " if self.port is not None else b"CONTROL "
-            _, end = process.stdout.wait_for(_line_starting(marker), 0, time.monotonic() + timeout)
-            if end is None:
-                node_dead(f"pid {process.pid} never announced {marker!r}")
+            if _node_terminal_evidence(process, death_cut) is None:
+                node_dead(error)
         # Alias listeners (including implicit TLS) belong to this same start.
         import tomllib
         config = tomllib.loads(self.config.read_text())
@@ -1512,7 +1578,7 @@ class Node:
                               ports=(listener.get("port"), self.tls_port,
                                      listener.get("tls_port"), config.get("tls_port")),
                               web_port=config.get("web", {}).get("port", config.get("web_port")),
-                              intent=intent)
+                              intent=intent, death_cut=death_cut)
         return process
 
     def start_store_owner(self, *, once=True, fault=None, connections=8, env=None, image=None):
