@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.12
-"""Write known-red admissions, owner transfers and closed-item retirements.
+"""Write known-red admissions, owner transfers, re-files and closed-item retirements.
 
 Validate with train's parsers; retirement leaves append-only amendments intact.
 """
@@ -144,7 +144,7 @@ def native_module(root: Path, subject: str) -> str:
                            'or setUpClass (tests.<module>.<Class>) and the like (a fixture that errored)')
 
 
-def item_state(root: Path, item: str):
+def item_data(root: Path, item: str) -> dict:
     if not item or Path(item).name != item or item in ('.', '..'):
         raise train.TrainError(f'invalid repair item: {item}')
     path = root / 'planning/repair/items' / (item + '.json')
@@ -152,9 +152,13 @@ def item_state(root: Path, item: str):
         data = json.loads(path.read_text(encoding='utf-8'))
         if not isinstance(data, dict) or not isinstance(data.get('state'), str):
             raise ValueError('missing state')
-        return data['state']
+        return data
     except (OSError, ValueError) as error:
         raise train.TrainError(f'no valid repair item {path}: {error}') from error
+
+
+def item_state(root: Path, item: str):
+    return item_data(root, item)['state']
 
 
 def validate(root: Path, rows_text: str, amendments_text: str) -> tuple[list, list]:
@@ -173,6 +177,10 @@ def validate(root: Path, rows_text: str, amendments_text: str) -> tuple[list, li
                 raise train.TrainError(f'amendment names no row: {key}')
         elif (row['item'], row['owner']) != (record['item'], record['owner']):
             raise train.TrainError(f'amendment disagrees with row: {key}')
+        if row is not None and 'item_from' in record:
+            error = train.refile_item_error(record, item_data(root, record['item']))
+            if error:
+                raise train.TrainError(error)
     context = SimpleNamespace(root=root)
     before = train.amendments_at(context, train.train_base())
     if records[:len(before)] != before:
@@ -191,7 +199,7 @@ def operate(root: Path, args) -> int:
     with rows_path.open('r', encoding='utf-8', newline='') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         rows_text = lock.read()
-        amendments_text = amendments_path.read_text(encoding='utf-8')
+        amendments_text = amendments_path.read_bytes().decode('utf-8')
         if args.command == 'retire':
             if item_state(root, args.item) not in train.CLOSED_ITEM_STATES:
                 raise train.TrainError(f'close the item first: {args.item}')
@@ -223,25 +231,36 @@ def operate(root: Path, args) -> int:
         else:
             matches = [r for r in rows if r['subject'] == args.subject]
             if len(matches) != 1:
-                raise train.TrainError('transfer subject must name exactly one row')
+                raise train.TrainError(f'{args.command} subject must name exactly one row')
             row = matches[0]
             previous = [r for r in records if (r['kind'], r['subject']) == (row['kind'], row['subject'])]
             if not previous:
                 raise train.TrainError(ORIGINAL_ROW)
-            record = dict(previous[-1], owner=args.owner, ruling=args.ruling, transfer_from=row['owner'])
+            if args.command == 'refile':
+                if args.item == row['item']:
+                    raise train.TrainError('re-file target must differ from the row item')
+                record = dict(previous[-1], item=args.item, item_from=row['item'], ruling=args.ruling)
+                error = train.refile_item_error(record, item_data(root, args.item))
+                if error:
+                    raise train.TrainError(error)
+                field, value = 'item', args.item
+            else:
+                record = dict(previous[-1], owner=args.owner, ruling=args.ruling, transfer_from=row['owner'])
+                field, value = 'owner', args.owner
             _, _, entries = array_entries(rows_text, 'rows')
             row_start = next(start for value, start, _ in entries if value == row)
-            owner_span = [(start, end) for key, _, start, end in members(rows_text, row_start) if key == 'owner']
-            if len(owner_span) != 1:
-                raise train.TrainError('expected exactly one row owner')
-            start, end = owner_span[0]
-            new_rows = rows_text[:start] + json.dumps(args.owner, ensure_ascii=False) + rows_text[end:]
+            field_span = [(start, end) for key, _, start, end in members(rows_text, row_start) if key == field]
+            if len(field_span) != 1:
+                raise train.TrainError(f'expected exactly one row {field}')
+            start, end = field_span[0]
+            new_rows = rows_text[:start] + json.dumps(value, ensure_ascii=False) + rows_text[end:]
         new_amendments = append_entry(amendments_text, 'amendments', record)
         validate(root, new_rows, new_amendments)
         # All refusals occur before either write. One write per destination.
         rows_path.write_bytes(new_rows.encode('utf-8'))
         amendments_path.write_bytes(new_amendments.encode('utf-8'))
-        print(f'{args.command}: {row["kind"]} {row["subject"]}')
+        suffix = f' {row["item"]} -> {args.item}' if args.command == 'refile' else ''
+        print(f'{args.command}: {row["kind"]} {row["subject"]}{suffix}')
         return 0
 
 
@@ -255,6 +274,9 @@ def main(argv=None, *, root: Path = ROOT) -> int:
     transfer = commands.add_parser('transfer')
     for field in ('subject', 'owner', 'ruling'):
         transfer.add_argument('--' + field, required=True)
+    refile = commands.add_parser('refile')
+    for field in ('subject', 'item', 'ruling'):
+        refile.add_argument('--' + field, required=True)
     retire = commands.add_parser('retire')
     retire.add_argument('--item', required=True)
     commands.add_parser('check')
