@@ -362,7 +362,7 @@
              fn-hld-mv-nth-0-cons)
            (theory 'minimal-theory))
            :use ((:instance fn-hll-init-establishes-invp
-                    (cfg (fn-hl-rtc-config profile cfg q 1 0 0)))))))
+                    (cfg (fn-hl-rtc-config profile cfg q 1 0 0 0 0)))))))
 
 (defthm fn-hld-init-establishes-invp
   (implies (mv-nth 1 (fn-hld-init profile cfg q st))
