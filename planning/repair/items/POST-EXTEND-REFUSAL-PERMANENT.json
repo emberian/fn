@@ -1,0 +1,14 @@
+{
+ "detail": "The landing-1 POST machine (dev origin/dev books/post-transaction.lisp:545 :extending arm, :549 :extsyncing arm; lane/post :858/:862) ends a transaction whose :extend or its extent fsync completes not-:done with (fn-ptx-end m0 :refused ...), a generic refusal word. Nothing is stored at that point (no payload or log pwrite has been issued), and the cause is a log that cannot grow NOW (ENOSPC, filesystem quota, the extent bound), a try-later condition. Once landing 2b hosts this machine, a generic :refused on transit renders 437 (IHAVE) / 439 (TAKETHIS), PERMANENT (books/peer-inbound.lisp fn-peer-transit-code), so a peer would drop an article it should retry. TRIGGERS: the store's filesystem fills (or hits quota) between the owner's statvfs observation and the extend, or the extent reaches the log's bound. NOT LIVE ON DEV: the machine has no host caller until 2b; dev's served path sheds at admission when free space is below ACL2's need (books/owner-time-model.lisp:350-366: IHAVE 436, CHECK 431, POST 440) and treats an ENOSPC at the append as a recovery event (store fenced, every member uncertain: 436 and a close, books/owner.lisp:2705, protocol-table.lisp:1073). Retired by 2b: the machine carries a named try-later word from the completion for a refused extend (and extent fsync), and the owner answers it transient (POST 441 with text, transit 436 / TAKETHIS retry), with a tooth; stated before 2b's run.",
+ "file": "books/post-transaction.lisp",
+ "id": "POST-EXTEND-REFUSAL-PERMANENT",
+ "line": "545",
+ "notes": [],
+ "owner": "builder-P",
+ "retired_by": "POST landing 2b",
+ "severity": "medium",
+ "source": "L20 (LC3K site review, 2026-10-13), filed by P10 at the coordinator's request",
+ "state": "open",
+ "title": "POST machine ends a refused log extend as a generic :refused, which transit would answer as permanent 437/439",
+ "updated": "2026-10-13T02:43:37Z"
+}
