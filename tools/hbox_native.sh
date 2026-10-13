@@ -93,7 +93,7 @@
 #   tools/hbox_native.sh attach LABEL   re-attaches: waits for `status`
 #                                        (tools/wait_for.sh, --deadline S),
 #                                        prints the run log, exits with status
-#   tools/hbox_native.sh stop LABEL     TERM the recorded process group only
+#   tools/hbox_native.sh stop LABEL [--grace S] TERM the recorded process group only
 #                                        through a pidfd after checking its
 #                                        leader, start time and exact run.sh;
 #                                        then stop its recorded module scopes
@@ -108,9 +108,14 @@
 # only those units, including their children in independent sessions.
 # --allow-certify permits missing-book and certify-origin closure certification.
 # Without it, either plan needing books finishes with status 16 (certify refused).
-# Status 143 means stopped by TERM, INT or HUP. run.sh alone writes status:
+# Stop sends TERM, then pidfd group KILL after --grace S (default 90 seconds).
+# Status 143 with RUN/stopped means TERM cancellation; without it, status 143
+# is an ordinary step exit. TERM is the only cancellation signal. run.sh alone writes status:
 # before finish is available it writes 143 directly; afterwards it finishes
-# with SHA256SUMS, gate_walls and 143. Status/attach display stopped (143).
+# with SHA256SUMS, gate_walls and 143. Status/attach require RUN/stopped to
+# display stopped (143). After cancellation the leader stays alive while
+# any other process remains in its group, preserving the pidfd KILL anchor.
+# Artifact helpers have 120-second timeouts with a 5-second KILL backstop.
 # hbox_native does not coordinate with farm runs: farm locks are per mirror.
 # Lanes should certify through python3 tools/farm.py submit BOX --affected-by ...
 # first, publishing to the cache, then rerun native; coordinate any allowed certify.
@@ -186,7 +191,13 @@ if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
     export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
     exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
 fi
-trap 'rm -rf "$FN_HBOX_NATIVE_COPY"' EXIT
+cleanup_launcher() {
+    if [ "${RESERVATION_STARTED:-0}" = 1 ] && [ "${HANDED_OFF:-0}" = 0 ]; then
+        timeout 10 ssh -n "$HOST" "touch $TOKEN.abort" >/dev/null 2>&1 || true
+    fi
+    rm -rf "$FN_HBOX_NATIVE_COPY"
+}
+trap cleanup_launcher EXIT
 HERE=$FN_HBOX_NATIVE_HERE
 BOX=${FN_HBOX:-auto}
 NAME=$(basename "$HERE")
@@ -216,13 +227,17 @@ usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exi
 # Shared by launch identity capture and stop, streamed from this private copy.
 native_process_script() {
     cat <<'PROCESS'
+import errno
+import fcntl
 import hashlib
 import os
 from pathlib import Path
 import re
+import select
 import signal
 import subprocess
 import sys
+import time
 
 
 def process_stat(pid, proc_root=Path("/proc")):
@@ -234,52 +249,57 @@ def process_stat(pid, proc_root=Path("/proc")):
     return int(fields[2]), int(fields[19])  # fields 5 (pgrp), 22 (starttime)
 
 
-def scope_prefix(run_dir, starttime):
+def group_members(pgid, proc_root=Path("/proc"), helper_pid=None):
+    """Read-only membership check; its output is never a signal target."""
+    helper_pid = os.getpid() if helper_pid is None else helper_pid
+    members = []
+    for entry in proc_root.iterdir():
+        if not entry.name.isdecimal():
+            continue
+        pid = int(entry.name)
+        if pid in (pgid, helper_pid):
+            continue
+        try:
+            pgrp, _ = process_stat(pid, proc_root)
+        except (FileNotFoundError, ProcessLookupError):
+            continue  # A process disappeared during the read-only snapshot.
+        if pgrp == pgid:
+            members.append(pid)
+    return sorted(members)
+
+
+def scope_prefix(run_dir, pid, starttime):
     digest = hashlib.sha256(os.fsencode(str(run_dir))).hexdigest()
-    return f"fn-native-{digest}-{starttime}"
+    return f"fn-native-{digest}-{pid}-{starttime}"
 
 
 def write_identity(pid, run_dir):
     pgid, starttime = process_stat(pid)
     if pgid != pid or starttime <= 0:
         raise ValueError("launch process is not a live group leader")
-    (run_dir / "scope-prefix").write_text(scope_prefix(run_dir, starttime) + "\n")
+    (run_dir / "scope-prefix").write_text(scope_prefix(run_dir, pid, starttime) + "\n")
+    print(scope_prefix(run_dir, pid, starttime), flush=True)
     # Write last: readback waits for this before recording the launch.
     (run_dir / "run.starttime").write_text(str(starttime) + "\n")
 
 
-def stop_run(pid, starttime, run_dir, proc_root=Path("/proc")):
-    fd = None
-    try:
-        if pid <= 1 or starttime <= 0:
-            raise ValueError("record lacks a safe PID/starttime")
-        fd = os.pidfd_open(pid)
-        pgid, observed_start = process_stat(pid, proc_root)
-        if pgid != pid:
-            raise ValueError("recorded process is not a group leader")
-        if observed_start != starttime:
-            raise ValueError("leader start time does not match the launch record")
-        cmdline = (proc_root / str(pid) / "cmdline").read_bytes()
-        script = os.fsencode(str(run_dir / "run.sh"))
-        if cmdline not in (b"sh\0" + script + b"\0", b"/bin/sh\0" + script + b"\0"):
-            raise ValueError("leader command line is not exactly this run's run.sh")
-        # Linux >=6.9. The fd still names the opened leader if its PID is reused.
-        signal.pidfd_send_signal(fd, signal.SIGTERM, None,
-                                getattr(signal, "PIDFD_SIGNAL_PROCESS_GROUP", 4))
-    except (AttributeError, OSError, ValueError, IndexError) as error:
-        print(f"hbox_native: refused stop: {error}", file=sys.stderr)
-        return 2
-    finally:
-        if fd is not None:
-            os.close(fd)
-    print(f"hbox_native: sent TERM through pidfd to pgid {pid} ({run_dir}/run.sh)", flush=True)
-    print("hbox_native: run.sh writes status 143 when it exits", flush=True)
-    try:
-        units = list(dict.fromkeys((run_dir / "scopes").read_text().splitlines()))
-    except OSError as error:
-        print(f"hbox_native: cannot read recorded scopes: {error}", file=sys.stderr)
-        return 2
-    pattern = re.compile(re.escape(scope_prefix(run_dir, starttime)) + r"-[1-9][0-9]*\.scope")
+def leader_exited(fd, seconds=0):
+    poller = select.poll()
+    poller.register(fd, select.POLLIN)
+    return bool(poller.poll(max(0, int(seconds * 1000))))
+
+
+def recorded_generation(pid, starttime, run_dir):
+    if (run_dir / "run.starttime").read_text().strip() != str(starttime):
+        raise ValueError("run directory start time does not match the record")
+    if (run_dir / "scope-prefix").read_text().strip() != scope_prefix(run_dir, pid, starttime):
+        raise ValueError("run directory scope prefix does not match the recorded leader")
+
+
+def stop_scopes(pid, starttime, run_dir):
+    recorded_generation(pid, starttime, run_dir)
+    units = list(dict.fromkeys((run_dir / "scopes").read_text().splitlines()))
+    pattern = re.compile(re.escape(scope_prefix(run_dir, pid, starttime)) + r"-[1-9][0-9]*\.scope")
     failed = False
     for unit in units:
         if not pattern.fullmatch(unit):
@@ -303,14 +323,102 @@ def stop_run(pid, starttime, run_dir, proc_root=Path("/proc")):
     return 2 if failed else 0
 
 
+def stop_run(pid, starttime, run_dir, proc_root=Path("/proc"), grace=90):
+    fd = None
+    generation_lock = None
+    try:
+        if pid <= 1 or starttime <= 0 or grace < 0:
+            raise ValueError("record lacks a safe PID/starttime or grace")
+        try:
+            fd = os.pidfd_open(pid)
+        except OSError as error:
+            if error.errno != errno.ESRCH:
+                raise
+            # Pin the directory generation while retrying scope cleanup. A new
+            # launch cannot replace its identity or scopes during this retry.
+            generation_lock = (run_dir / "run.lock").open("a")
+            fcntl.flock(generation_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            recorded_generation(pid, starttime, run_dir)
+            print(f"hbox_native: leader {pid} was already gone; retrying recorded scopes", flush=True)
+            return stop_scopes(pid, starttime, run_dir)
+        pgid, observed_start = process_stat(pid, proc_root)
+        if pgid != pid:
+            raise ValueError("recorded process is not a group leader")
+        if observed_start != starttime:
+            raise ValueError("leader start time does not match the launch record")
+        cmdline = (proc_root / str(pid) / "cmdline").read_bytes()
+        script = os.fsencode(str(run_dir / "run.sh"))
+        if cmdline not in (b"sh\0" + script + b"\0", b"/bin/sh\0" + script + b"\0"):
+            raise ValueError("leader command line is not exactly this run's run.sh")
+        recorded_generation(pid, starttime, run_dir)
+        flags = getattr(signal, "PIDFD_SIGNAL_PROCESS_GROUP", 4)
+        signal.pidfd_send_signal(fd, signal.SIGTERM, None, flags)
+        print(f"hbox_native: sent TERM through pidfd to pgid {pid} ({run_dir}/run.sh)", flush=True)
+        print("hbox_native: run.sh writes status 143 when it exits", flush=True)
+        deadline = time.monotonic() + grace
+        status_reported = False
+        while not leader_exited(fd):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                signal.pidfd_send_signal(fd, signal.SIGKILL, None, flags)
+                print(f"hbox_native: grace {grace}s expired; sent KILL through the same pidfd to pgid {pid}", flush=True)
+                if not leader_exited(fd, 5):
+                    raise ValueError("leader did not exit within 5s after pidfd KILL")
+                break
+            # Read status while polling the pinned leader; only run.sh writes it.
+            if not status_reported and (run_dir / "status").exists():
+                print("hbox_native: observed status " + (run_dir / "status").read_text().strip(), flush=True)
+                status_reported = True
+            leader_exited(fd, min(0.1, remaining))
+        if not (run_dir / "status").exists():
+            print("hbox_native: leader exited without a status file", file=sys.stderr)
+        return stop_scopes(pid, starttime, run_dir)
+    except (AttributeError, OSError, ValueError, IndexError) as error:
+        print(f"hbox_native: refused stop: {error}", file=sys.stderr)
+        return 2
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if generation_lock is not None:
+            generation_lock.close()
+
+
 if __name__ == "__main__":
     if sys.argv[1] == "identity":
         write_identity(int(sys.argv[2]), Path(sys.argv[3]))
+    elif sys.argv[1] == "group-members":
+        print(" ".join(map(str, group_members(int(sys.argv[2])))))
     elif sys.argv[1] == "stop":
-        sys.exit(stop_run(int(sys.argv[2]), int(sys.argv[3]), Path(sys.argv[4])))
+        sys.exit(stop_run(int(sys.argv[2]), int(sys.argv[3]), Path(sys.argv[4]), grace=int(sys.argv[5])))
     else:
         sys.exit("hbox_native: unknown process operation")
 PROCESS
+}
+# A unique launch reservation holds run.lock across every shipping connection.
+# It execs run.sh without releasing fd 8 or changing the session leader PID.
+launch_reservation_script() {
+    cat <<'RESERVATION'
+#!/bin/sh
+set -eu
+S=$1
+TOKEN=$2
+exec 8> "$S/run.lock"
+if ! flock -n 8; then
+    echo "hbox_native: launch refused: run.lock held by live leader $(cat "$S/run.pid" 2>/dev/null || echo unknown)" > "$TOKEN.state"
+    exit 2
+fi
+echo $$ > "$S/run.pid" || exit 3
+[ ! -f "$TOKEN.abort" ] || exit 3
+echo ready > "$TOKEN.state"
+while [ "$(cat "$TOKEN.state" 2>/dev/null || true)" != go ]; do
+    # Do not expire a shipping lease: the old client could still be writing.
+    [ ! -f "$TOKEN.abort" ] || exit 3
+    sleep 1
+done
+export FN_NATIVE_LOCK_HELD=1
+# The PID written after lock acquisition is still this execing leader.
+exec sh "$S/run.sh" > "$S/run.log" 2>&1
+RESERVATION
 }
 # status / attach / stop LABEL: read the record this worktree's start wrote.
 attach_run() {
@@ -332,12 +440,14 @@ attach_run() {
     if [ "$1" = stop ]; then
         STARTTIME=$(sed -n 's/^starttime=//p' "$record")
         case $STARTTIME in ''|*[!0-9]*|0) echo "hbox_native: refused stop: $record lacks a safe starttime" >&2; exit 2 ;; esac
-        native_process_script | ssh "$HOST" "python3 - stop $PID $STARTTIME $S"
+        GRACE=${3:-90}
+        case $GRACE in ''|*[!0-9]*) echo "hbox_native: --grace takes seconds (a nonnegative integer)" >&2; exit 2 ;; esac
+        native_process_script | ssh "$HOST" "python3 - stop $PID $STARTTIME $S $GRACE"
         exit $?
     fi
     if [ "$1" = status ]; then
         cat "$record"
-        ssh -n "$HOST" "if /bin/kill -0 -- $PROBE 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi; if [ -f $S/status ]; then status=\$(cat $S/status); case \$status in 143) echo 'status: stopped (143)' ;; *) echo \"status \$status\" ;; esac; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
+        ssh -n "$HOST" "if /bin/kill -0 -- $PROBE 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi; if [ -f $S/status ]; then status=\$(cat $S/status); case \$status in 143) if [ -f $S/stopped ]; then echo 'status: stopped (143)'; else echo 'status 143'; fi ;; *) echo \"status \$status\" ;; esac; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
         exit $?
     fi
     DEADLINE=${3:-$DEADLINE}
@@ -354,7 +464,9 @@ attach_run() {
     fi
     status=$(ssh -n "$HOST" "cat $S/status")
     case $status in
-        143) echo "hbox_native: stopped (143) ($HOST:$S)" ;;
+        143) if ssh -n "$HOST" "[ -f $S/stopped ]"; then
+            echo "hbox_native: stopped (143) ($HOST:$S)"
+        else echo "hbox_native: status 143 ($HOST:$S)"; fi ;;
         *) echo "hbox_native: status $status ($HOST:$S)" ;;
     esac
     exit "$status"
@@ -362,7 +474,11 @@ attach_run() {
 case ${1:-} in
     status|attach|stop)
         [ $# -ge 2 ] || usage
-        case ${3:-} in --deadline) set -- "$1" "$2" "${4:?--deadline S}" ;; '') ;; *) usage ;; esac
+        case "$1:${3:-}" in
+            stop:--grace|attach:--deadline) [ $# -eq 4 ] || usage; set -- "$1" "$2" "$4" ;;
+            stop:|attach:|status:) [ $# -eq 2 ] || usage ;;
+            *) usage ;;
+        esac
         attach_run "$@" ;;
 esac
 while [ $# -gt 0 ]; do
@@ -622,15 +738,35 @@ box_script() {
 #!/bin/sh
 set -u
 S=$S
-trap 'echo 143 > \$S/status; exit 143' TERM INT HUP
+trap 'if [ \${RUN_OWNS_DIRECTORY:-\${FN_NATIVE_LOCK_HELD:-0}} = 1 ]; then printf "TERM %s\\n" "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" > \$S/stopped; echo 143 > \$S/status; if command -v wait_group >/dev/null 2>&1; then trap "STOPPED=1" TERM; wait_group; fi; fi; exit 143' TERM
 STOPPED=0
+# Only the leader holds fd 8. The launch reservation passes this same open
+# description through exec, so shipping and run identity are one generation.
+if [ \${FN_NATIVE_LOCK_HELD:-0} != 1 ]; then exec 8> \$S/run.lock; fi
+flock -n 8 || { echo "hbox_native: run already locked by leader \$(cat \$S/run.pid 2>/dev/null)" >&2; exit 2; }
+RUN_OWNS_DIRECTORY=1
+STEP_PID=
+wait_group() {
+    polls=0
+    while :; do
+        # exec eliminates the command-substitution shell; only the
+        # Python polling helper joins the group and excludes itself.
+        members=\$(exec 8>&-; exec python3 \$S/process.py group-members \$\$ 2>/dev/null) || members="membership scan failed; retaining anchor"
+        [ -n "\$members" ] || break
+        if [ \$((polls % 60)) -eq 0 ]; then
+            echo "hbox_native: waiting for group members: \$members"
+        fi
+        sleep 1 8>&-
+        polls=\$((polls + 1))
+    done
+}
 T=$TREE_EXPR
 L=\$S/logs
 cat > \$S/process.py <<'PROCESS'
 $(native_process_script)
 PROCESS
-python3 \$S/process.py identity \$\$ \$S || { echo 3 > \$S/status; exit 3; }
-export FN_NATIVE_SCOPE_PREFIX=\$(cat \$S/scope-prefix)
+FN_NATIVE_SCOPE_PREFIX=\$(python3 \$S/process.py identity \$\$ \$S 8>&-) || { echo 3 > \$S/status; exit 3; }
+export FN_NATIVE_SCOPE_PREFIX
 ACL2=$CERT_ACL2  # the certify launcher (tools/farm.py HOSTS)
 CACHE=$CACHE  # this box's (tools/farm.py HOSTS)
 export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
@@ -662,8 +798,11 @@ cd \$T || { echo 9 > \$S/status; exit 9; }
 step() {
     name=\$1; shift
     echo "== \$name \$(date -u +%H:%M:%SZ)"
-    "\$@" > \$L/\$name.log 2>&1
+    ( exec 8>&-; case \$(command -v "\$1") in /*) exec "\$@" ;; *) "\$@" ;; esac ) > \$L/\$name.log 2>&1 &
+    STEP_PID=\$!
+    wait \$STEP_PID
     rc=\$?
+    STEP_PID=
     [ \$STOPPED -eq 0 ] || rc=143
     echo "   \$name exit \$rc (\$L/\$name.log)"
     if [ \$rc -ne 0 ]; then
@@ -688,7 +827,7 @@ pstep() {
     for p in \$PPIDS; do n=\$((n + 1)); [ -n "\$first" ] || first=\$p; done
     if [ \$n -ge \$PMAX ]; then wait \$first; PPIDS=\${PPIDS#* \$first}; fi
     echo "== \$name \$(date -u +%H:%M:%SZ) (parallel, at most \$PMAX)"
-    ( "\$@" > \$L/\$name.log 2>&1; echo \$? > \$L/\$name.rc ) &
+    ( exec 8>&-; "\$@" > \$L/\$name.log 2>&1; echo \$? > \$L/\$name.rc ) &
     PPIDS="\$PPIDS \$!"
     PSTEPS="\$PSTEPS \$name"
 }
@@ -713,26 +852,37 @@ need() {
 finish() {
     # Further stop signals during artifact collection mark cancellation;
     # they must not recursively enter finish or restore the step's exit code.
-    trap 'STOPPED=1' TERM INT HUP
+    trap 'STOPPED=1' TERM
     finish_status=\$1
     finish_stopped=\$STOPPED
     echo "== load at end: \$(uptime)"
     finish_artifacts() {
-        (cd \$S && find tree/build -maxdepth 1 -name 'fn-host*' -type f -exec sha256sum {} + ; sha256sum logs/*.log) > \$S/SHA256SUMS 2>/dev/null
-        python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null
+        timeout --foreground -k 5 120 sh -c 'cd "\$1" && { find tree/build -maxdepth 1 -name "fn-host*" -type f -exec sha256sum {} + ; sha256sum logs/*.log; }' sh \$S > \$S/SHA256SUMS 2>/dev/null 8>&-
+        timeout --foreground -k 5 120 python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null 8>&-
     }
     finish_artifacts
     # A first stop during normal finish also terminates its foreground helper.
     # Recollect that interrupted snapshot after the signal has been handled.
     if [ \$finish_stopped -eq 0 ] && [ \$STOPPED -ne 0 ]; then finish_artifacts; fi
-    # Close the final write/exit window with the direct status trap as well.
-    trap 'echo 143 > \$S/status; exit 143' TERM INT HUP
-    [ \$STOPPED -eq 0 ] || finish_status=143
+    cancel_finished_run() {
+        # Repeated TERM must never release the group-signal anchor.
+        trap 'STOPPED=1' TERM
+        STOPPED=1
+        printf 'TERM %s\\n' "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" > \$S/stopped
+        echo 143 > \$S/status
+        echo "== done status 143; \$S/SHA256SUMS"
+        wait_group
+        exit 143
+    }
+    # Cover TERM in the final normal-finish window too. The cancellation
+    # handler writes its own marker/status and retains the same anchor.
+    trap cancel_finished_run TERM
+    [ \$STOPPED -eq 0 ] || cancel_finished_run
     echo \$finish_status > \$S/status
     echo "== done status \$finish_status; \$S/SHA256SUMS"
     exit \$finish_status
 }
-trap 'STOPPED=1; finish 143' TERM INT HUP
+trap 'STOPPED=1; finish 143' TERM
 echo "== source $SOURCE"
 # The images' source record (tools/build_native_host.sh writes it beside each
 # image; tools/image_set.py publish requires \`commit SHA\`): this tree is a
@@ -824,7 +974,7 @@ ORIGIN_DONE=0
 acquire_step() {
     name=\$1; profile=\$2
     echo "== \$name \$(date -u +%H:%M:%SZ)"
-    python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1
+    python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1 8>&-
     rc=\$?
     echo "   \$name exit \$rc (\$L/\$name.log)"
     if [ \$rc -eq 3 ] && [ \$ORIGIN_DONE -eq 0 ]; then
@@ -834,7 +984,7 @@ acquire_step() {
         mv \$L/\$name.log \$L/\$name-first.log
         step certify-origin $WRAP python3 tools/certify_books.py --closure --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
         echo "== \$name-retry \$(date -u +%H:%M:%SZ)"
-        python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1
+        python3 tools/proof_artifacts.py acquire --profile \$profile --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/\$name.log 2>&1 8>&-
         rc=\$?
         echo "   \$name-retry exit \$rc (\$L/\$name.log)"
     fi
@@ -1009,6 +1159,7 @@ cat > $S/scope.sh <<'SCOPERUN'
 set -eu
 # Called after the bigmem flock is acquired, immediately before the unit starts.
 printf '%s\n' "$FN_NATIVE_SCOPE_UNIT" >> "$S/scopes"
+exec 8>&-
 exec systemd-run --user --scope --unit="$FN_NATIVE_SCOPE_UNIT" "$@"
 SCOPERUN
 export FN_NATIVE_SCOPE_PREFIX
@@ -1082,7 +1233,7 @@ BOX
     echo "MODULE"
     count=$(echo "$PLAN" | grep -c . || true)  # 0 modules (--build-only): grep exits 1
     echo "echo \"== modules: $count, $MODULE_JOBS at a time\""
-    echo "seq 1 $count | xargs -P $MODULE_JOBS -n 1 sh \$S/module.sh"
+    echo "step modules sh -c 'seq 1 $count | xargs -P $MODULE_JOBS -n 1 sh \$S/module.sh'"
     echo 'failed=0 passed=0 skipped=0 broke=0'
     echo "for name in $(echo "$PLAN" | while read -r module module_mem module_bigmem assignments; do printf 'test-%s ' "$module"; done); do"
     cat <<'BOX'
@@ -1103,6 +1254,9 @@ fi
 # A box reserved for a measurement (tools/boxes.sh reserve) waits here, printing
 # who holds it and until when; the holder's own runs (this worktree) pass.
 FN_BOX_AS=${FN_BOX_AS:-$(basename "$HERE")} sh "$FN_HBOX_NATIVE_COPY/boxes.sh" wait "$HOST" || exit 3
+# Read-only early refusal also precedes the no-build image preflight. The
+# reservation below rechecks under an exclusive lock before any shipping.
+ssh -n "$HOST" "if [ -f $S/run.lock ]; then if ! flock -n $S/run.lock true; then echo \"hbox_native: launch refused: run.lock held by live leader \$(cat $S/run.pid 2>/dev/null || echo unknown)\" >&2; exit 2; fi; fi" || exit 2
 # --no-build reuses THIS label's tree (item 74): a tree without the images the
 # run needs used to fail at the first module's `need`, after the re-ship.
 # Refuse up front, naming the runs of NAME on the box that hold them (a
@@ -1135,6 +1289,14 @@ if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
         fi
     fi
 fi
+# Acquire before any shared generation file or tree is touched. Only the
+# reservation's unique handshake files may be written on a refused launch.
+TOKEN=$S/launch-${FN_HBOX_NATIVE_COPY##*/}
+RESERVATION_STARTED=1
+HANDED_OFF=0
+launch_reservation_script | ssh "$HOST" "mkdir -p $S; cat > $TOKEN.guard; nohup setsid sh $TOKEN.guard $S $TOKEN > $TOKEN.log 2>&1 < /dev/null &" || exit 3
+ssh -n "$HOST" "remaining=5; while [ ! -s $TOKEN.state ] && [ \$remaining -gt 0 ]; do sleep 1; remaining=\$((remaining - 1)); done; if [ \"\$(cat $TOKEN.state 2>/dev/null)\" != ready ]; then cat $TOKEN.state >&2; exit 2; fi" || { echo "hbox_native: launch reservation refused or unavailable ($TOKEN)" >&2; exit 2; }
+
 # The local record names the images' identity source.  A reused run's is the
 # one its run.log names (the box script reads it from build/REUSED_SOURCE,
 # which link-run writes later), so read it here; train.py image compares it
@@ -1220,9 +1382,10 @@ if [ -n "$OVERLAY" ]; then
     tar -C "$OVERLAY_DIR" -cf - . | ssh "$HOST" "tar -xf - -C $S/overlay" || exit 3
     ssh "$HOST" "cat > $S/bin/native_overlay.py" < "$FN_HBOX_NATIVE_COPY/native_overlay.py" || exit 3
 fi
-ssh -n "$HOST" "rm -f $S/status $S/run.pid $S/run.starttime; : > $S/scopes; nohup setsid sh -c 'echo \$\$ > $S/run.pid || exit 3; exec sh $S/run.sh' > $S/run.log 2>&1 < /dev/null &" || exit 3
+ssh -n "$HOST" "rm -f $S/status $S/stopped $S/run.starttime; : > $S/scopes; echo go > $TOKEN.state" || exit 3
+HANDED_OFF=1
 # Read the leader's own file in a second ssh, never the ssh wrapper's $!.
-IDENTITY=$(ssh -n "$HOST" "remaining=5; while { [ ! -s $S/run.pid ] || [ ! -s $S/run.starttime ]; } && [ \"\$remaining\" -gt 0 ]; do sleep 1; remaining=\$((remaining - 1)); done; cat $S/run.pid $S/run.starttime") || exit 3
+IDENTITY=$(ssh -n "$HOST" "remaining=5; while { [ ! -s $S/run.pid ] || [ ! -s $S/run.starttime ]; } && [ \$remaining -gt 0 ]; do sleep 1; remaining=\$((remaining - 1)); done; cat $S/run.pid $S/run.starttime") || exit 3
 PID=$(printf '%s\n' "$IDENTITY" | sed -n '1p')
 STARTTIME=$(printf '%s\n' "$IDENTITY" | sed -n '2p')
 case $PID in ''|*[!0-9]*|0|1) echo "hbox_native: box run wrote no safe leader PID ($S/run.pid)" >&2; exit 3 ;; esac
