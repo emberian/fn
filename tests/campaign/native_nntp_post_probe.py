@@ -52,6 +52,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 from tests.campaign import native_cuts  # noqa: E402
+from tests.native_harness import node_dead  # noqa: E402
 from tests.campaign.native_operator_campaign import (  # noqa: E402
     CANDIDATE_ID, PRIOR_ID, Node, article, matches, parse_recover, public, seed,
     sha, snapshot)
@@ -62,7 +63,9 @@ def nntp_post(node: Node, payload: bytes, timeout=120) -> dict:
     try:
         with socket.create_connection(("127.0.0.1", node.port), timeout=timeout) as conn:
             stream = conn.makefile("rb")
-            out["greeting"] = stream.readline().decode("ascii", "replace")
+            greeting = stream.readline()
+            node.observe_greeting(greeting)
+            out["greeting"] = greeting.decode("ascii", "replace")
             conn.sendall(b"POST\r\n")
             out["post_reply"] = stream.readline().decode("ascii", "replace")
             if not out["post_reply"].startswith("340"):
@@ -79,6 +82,8 @@ def nntp_post(node: Node, payload: bytes, timeout=120) -> dict:
             except OSError as error:
                 out["quit_error"] = type(error).__name__
     except OSError as error:
+        if "greeting" not in out:
+            node_dead(f"port {node.port} never greeted: {error}")
         out["error"] = "{}: {}".format(type(error).__name__, error)
     return out
 
@@ -149,7 +154,9 @@ def plain(image: Path, base: Path, prior: Path, payload: bytes, name, kill_after
             # half the article has been sent: no reply can have been owed.
             with socket.create_connection(("127.0.0.1", node.port), timeout=120) as conn:
                 stream = conn.makefile("rb")
-                row["post"] = {"greeting": stream.readline().decode("ascii", "replace")}
+                greeting = stream.readline()
+                node.observe_greeting(greeting)
+                row["post"] = {"greeting": greeting.decode("ascii", "replace")}
                 conn.sendall(b"POST\r\n")
                 row["post"]["post_reply"] = stream.readline().decode("ascii", "replace")
                 conn.sendall(payload[: len(payload) // 2])

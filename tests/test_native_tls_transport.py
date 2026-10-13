@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from tests.native_harness import observe_node_greeting
 import os
 from pathlib import Path
 import shutil
@@ -114,7 +115,9 @@ class NativeTlsTransportTest(unittest.TestCase):
                                 break
                         self.assertIn("TLS-READY\n", lines)
                         protected.sendall(b"CAPABILITIES\r\n")
-                        self.assertEqual(protected.recv(64), b"200 ok\r\n")
+                        greeting = protected.recv(64)
+                        observe_node_greeting(port, greeting)
+                        self.assertEqual(greeting, b"200 ok\r\n")
 
                 remainder = process.communicate(timeout=10)[0]
                 lines.append(remainder)
