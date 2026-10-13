@@ -233,16 +233,16 @@
         (equal r :charge-invalid)))))
 
 ; MUTATION: the old constructor falsifies S1 with all hypotheses true.
-(local
- (defun fn-sn-article-record-old-for-teeth (s obs msgid payload groups
-                              obligation-id subject evidence charge)
-  (declare (xargs :guard t))
-  (let ((stamp (fn-record-stamp-of-observation obs))
-        (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
-    (if (not (natp stamp))
-        :clock-unusable
-      (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
-                      obligation-id subject evidence charge stamp)))))
+; Non-local: the defteeth mutation below calls it in certify-book pass 2.
+(defun fn-sn-article-record-old-for-teeth (s obs msgid payload groups
+                             obligation-id subject evidence charge)
+ (declare (xargs :guard t))
+ (let ((stamp (fn-record-stamp-of-observation obs))
+       (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+   (if (not (natp stamp))
+       :clock-unusable
+     (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
+                     obligation-id subject evidence charge stamp))))
 
 (with-guard-checking-event :none
  (assert-event
@@ -795,3 +795,34 @@
               (nth 2 fields) (nth 3 fields) (nth 4 fields) (nth 5 fields) (nth 6 fields))))
    (and (equal (fn-sn-field-tooth-hypotheses 6 s obs fields) '(t t t t t t t t t nil))
         (not (equal r :charge-invalid))))))
+
+
+; PRF-126: the claim has no hypotheses, hence no removal witnesses.
+; The positive fixture is a record, and the old subject fails at u64 exhaustion.
+(include-book "../../books/defkeystone")
+
+(defteeth fn-sn-article-record-is-a-record-or-a-named-refusal
+  :claim
+  (let ((r (fn-sn-article-record s obs msgid payload groups
+                                 obligation-id subject evidence charge)))
+    (() (or (fn-record-p r)
+            (member-equal r *fn-sn-article-record-refusals*))))
+  :subject fn-sn-article-record
+  :witness ((s (fn-sn-article-test-state 0 0))
+            (obs *sn-article-test-clock*)
+            (msgid "<seq@example>") (payload '(65)) (groups '("fn.test"))
+            (obligation-id "id") (subject "subject")
+            (evidence "evidence") (charge 1))
+  :breaks nil
+  :mutations
+  ((old-constructor-at-u64-exhaustion
+    (:conclusion
+     (let ((old (fn-sn-article-record-old-for-teeth
+                 s obs msgid payload groups
+                 obligation-id subject evidence charge)))
+       (or (fn-record-p old)
+           (member-equal old *fn-sn-article-record-refusals*))))
+    ((s (fn-sn-article-test-state (expt 2 64) 0)))
+    :fault "the old constructor copies 2^64 into the sequence and returns a malformed record instead of :sequence-exhausted")))
+
+(defteeth-check (fn-sn-article-record-is-a-record-or-a-named-refusal))
