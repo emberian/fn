@@ -39,6 +39,7 @@ from tests import test_native_open_depth as od
 from tests.native_harness import ROOT, executable, native_image, start
 
 IMAGE = native_image("FN_NATIVE_HOST")
+NATIVE_MEMORY = "80G"
 
 FIXTURES = os.environ.get("FN_STATUS_SCALE_FIXTURES")
 NAMES = [n for n in os.environ.get("FN_STATUS_SCALE_NAMES", "syn100k-2k").replace(":", ",").split(",") if n]

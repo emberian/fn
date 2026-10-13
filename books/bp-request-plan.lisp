@@ -11,7 +11,7 @@
 ; The :attempt record the current image admits for WORK-ID, or nil.  Fields
 ; are ACL2's: the work's next generation and the configured local/peer EID,
 ; policy and lifetime.  The ION sender publishes this same record.
-(defun fn-bprq-attempt-record (s txid tx-generation work-id attempt-id)
+(defun fn-bprq-attempt-record (s txid tx-generation work-id attempt-id pin-carry)
   (declare (xargs :guard t))
   (let* ((work (fn-bp-find-work work-id (fn-bp-state-works s)))
          (config (fn-bp-state-config s))
@@ -22,7 +22,7 @@
                        (fn-bp-config-policy-id config)
                        (fn-bp-config-lifetime config))))
     (if (and (fn-bp-journal-recordp record)
-             (car (fn-bprl-apply-journal-record s record)))
+             (car (fn-bprl-apply-journal-record-with-pin-carry s record pin-carry)))
         record nil)))
 
 ; The transaction id is chosen above every id the recovered image has used,
@@ -56,7 +56,7 @@
 ; the explicit local policy decision to retry) is admitted both live and in
 ; replay, and makes the old attempt :unknown, which is retryable.  The
 ; operator asking again for the same work is that decision.
-(defun fn-bprq-retry-record (s work-id)
+(defun fn-bprq-retry-record (s work-id pin-carry)
   (declare (xargs :guard t))
   (let* ((work (fn-bp-find-work work-id (fn-bp-state-works s)))
          (old (fn-bp-work-attempt work))
@@ -66,24 +66,24 @@
     (if (and (consp old)
              (equal (fn-bp-attempt-status old) :restart-observed)
              (fn-bp-journal-recordp record)
-             (car (fn-bprl-apply-journal-record s record)))
+             (car (fn-bprl-apply-journal-record-with-pin-carry s record pin-carry)))
         record
       nil)))
 
-(defun fn-bprq-pre-state (s retry)
+(defun fn-bprq-pre-state (s retry pin-carry)
   (declare (xargs :guard t))
-  (if retry (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s retry)) s))
+  (if retry (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record-with-pin-carry s retry pin-carry)) s))
 
 ; The workflow image after the plan's records (its retry request, if any,
 ; its attempt and the attempt's durable outcome), which is the image the host
 ; holds once every publication returns :durable.
-(defun fn-bprq-published-state (s retry attempt outcome)
+(defun fn-bprq-published-state (s retry attempt outcome pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bp-journal-nth
-   1 (fn-bprl-apply-journal-record
+   1 (fn-bprl-apply-journal-record-with-pin-carry
       (fn-bp-journal-nth
-       1 (fn-bprl-apply-journal-record (fn-bprq-pre-state s retry) attempt))
-      outcome)))
+       1 (fn-bprl-apply-journal-record-with-pin-carry (fn-bprq-pre-state s retry pin-carry) attempt pin-carry))
+      outcome pin-carry)))
 
 ; Plan: (:request ATTEMPT OUTCOME (WORK ATTEMPT-ID GENERATION) ADU DESTINATION
 ; RETRY) or nil, RETRY being the :retry-request published first, or nil.  DESTINATION is the work's peer EID, the bundle destination the
@@ -91,18 +91,18 @@
 ; nil is a refusal: no admissible attempt, no single :submit, or no request
 ; (fn-bpo-request-adu refuses a work that is not outstanding, not bound to a
 ; committed article, or whose image is pending or fenced).
-(defun fn-bprq-plan (s work-id attempt-id fn-arena)
+(defun fn-bprq-plan (s work-id attempt-id pin-carry fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
-  (let* ((retry (fn-bprq-retry-record s work-id))
-         (s1 (fn-bprq-pre-state s retry))
+  (let* ((retry (fn-bprq-retry-record s work-id pin-carry))
+         (s1 (fn-bprq-pre-state s retry pin-carry))
          (txid (fn-bprq-next-txid s1))
-         (attempt (fn-bprq-attempt-record s1 txid 0 work-id attempt-id)))
+         (attempt (fn-bprq-attempt-record s1 txid 0 work-id attempt-id pin-carry)))
     (if (not attempt)
         nil
       (let* ((outcome (list :outcome txid 0 :ordinary :durable))
-             (a1 (fn-bprl-apply-journal-record s1 attempt))
-             (a2 (fn-bprl-apply-journal-record
-                  (fn-bp-journal-nth 1 a1) outcome))
+             (a1 (fn-bprl-apply-journal-record-with-pin-carry s1 attempt pin-carry))
+             (a2 (fn-bprl-apply-journal-record-with-pin-carry
+                  (fn-bp-journal-nth 1 a1) outcome pin-carry))
              (generation (fn-bp-journal-nth 5 attempt))
              (result (fn-bpo-request-adu (fn-bp-journal-nth 1 a2)
                                          work-id attempt-id generation
@@ -206,15 +206,15 @@
                                fn-node-acceptance fn-find-article))))
 
 (defthm fn-bprq-plan-unfolds
-  (implies (fn-bprq-plan s work-id attempt-id fn-arena)
-           (let* ((retry (fn-bprq-retry-record s work-id))
-                  (s1 (fn-bprq-pre-state s retry))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprq-plan s work-id attempt-id pin-carry fn-arena))
+           (let* ((retry (fn-bprq-retry-record s work-id pin-carry))
+                  (s1 (fn-bprq-pre-state s retry pin-carry))
                   (txid (fn-bprq-next-txid s1))
-                  (attempt (fn-bprq-attempt-record s1 txid 0 work-id attempt-id))
+                  (attempt (fn-bprq-attempt-record s1 txid 0 work-id attempt-id pin-carry))
                   (outcome (list :outcome txid 0 :ordinary :durable))
                   (generation (fn-bp-journal-nth 5 attempt))
-                  (s2 (fn-bprq-published-state s retry attempt outcome))
-                  (plan (fn-bprq-plan s work-id attempt-id fn-arena)))
+                  (s2 (fn-bprq-published-state s retry attempt outcome pin-carry))
+                  (plan (fn-bprq-plan s work-id attempt-id pin-carry fn-arena)))
              (and attempt
                   (equal (fn-bprq-plan-retry plan) retry)
                   (equal (fn-bprq-plan-attempt plan) attempt)
@@ -238,7 +238,7 @@
                                   (fn-bp-find-work fn-bp-work-peer-eid
                                    fn-bprq-retry-record fn-bprq-pre-state
                                    fn-bp-state-works fn-bprq-attempt-record fn-bprq-next-txid
-                                   fn-bprl-apply-journal-record
+                                   fn-bprl-apply-journal-record-with-pin-carry
                                    fn-bpo-request-adu fn-bpo-result-okp
                                    fn-bpo-result-value
                                    ; the request's own theorems are not needed
@@ -255,14 +255,15 @@
                                    fn-bprq-submit-effectsp)))))
 
 (defthm fn-bprq-attempt-record-names-its-attempt
-  (implies (fn-bprq-attempt-record s txid tx-generation work-id attempt-id)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprq-attempt-record s txid tx-generation work-id attempt-id pin-carry))
            (let ((r (fn-bprq-attempt-record s txid tx-generation work-id
-                                            attempt-id)))
+                                            attempt-id pin-carry)))
              (and (equal (fn-bp-journal-nth 0 r) :attempt)
                   (equal (fn-bp-journal-nth 3 r) work-id)
                   (equal (fn-bp-journal-nth 4 r) attempt-id))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-bprl-apply-journal-record
+  :hints (("Goal" :in-theory (disable fn-bprl-apply-journal-record-with-pin-carry
+                                      fn-bp-apply-journal-record
                                       fn-bp-journal-recordp))))
 
 ; Keystone.  A plan the host may execute is the workflow's own request for
@@ -278,12 +279,12 @@
 ; fnn-core-state; the arena is only read.
 (defthm fn-bprq-plan-is-the-works-request
   (implies
-   (fn-bprq-plan s work-id attempt-id fn-arena)
-   (let* ((plan (fn-bprq-plan s work-id attempt-id fn-arena))
+   (and (fn-prc-carryp pin-carry) (fn-bprq-plan s work-id attempt-id pin-carry fn-arena))
+   (let* ((plan (fn-bprq-plan s work-id attempt-id pin-carry fn-arena))
           (attempt (fn-bprq-plan-attempt plan))
           (generation (fn-bp-journal-nth 5 attempt))
           (s2 (fn-bprq-published-state s (fn-bprq-plan-retry plan) attempt
-                                       (fn-bprq-plan-outcome plan)))
+                                       (fn-bprq-plan-outcome plan) pin-carry))
           (work (fn-bp-find-work work-id (fn-bp-state-works s2)))
           (article
            (fn-find-article
@@ -311,33 +312,33 @@
   :hints (("Goal"
            :use ((:instance fn-bprq-plan-unfolds)
                  (:instance fn-bprq-attempt-record-names-its-attempt
-                            (s (fn-bprq-pre-state s (fn-bprq-retry-record s work-id)))
+                            (s (fn-bprq-pre-state s (fn-bprq-retry-record s work-id pin-carry) pin-carry))
                             (txid (fn-bprq-next-txid
                                    (fn-bprq-pre-state
-                                    s (fn-bprq-retry-record s work-id))))
+                                    s (fn-bprq-retry-record s work-id pin-carry) pin-carry)))
                             (tx-generation 0))
                  (:instance fn-bprq-request-adu-is-the-works-request
                             (s (fn-bprq-published-state
-                                s (fn-bprq-retry-record s work-id)
+                                s (fn-bprq-retry-record s work-id pin-carry)
                                 (fn-bprq-attempt-record
-                                 (fn-bprq-pre-state s (fn-bprq-retry-record s work-id))
+                                 (fn-bprq-pre-state s (fn-bprq-retry-record s work-id pin-carry) pin-carry)
                                  (fn-bprq-next-txid
                                   (fn-bprq-pre-state
-                                   s (fn-bprq-retry-record s work-id)))
-                                 0 work-id attempt-id)
+                                   s (fn-bprq-retry-record s work-id pin-carry) pin-carry))
+                                 0 work-id attempt-id pin-carry)
                                 (list :outcome
                                       (fn-bprq-next-txid
                                        (fn-bprq-pre-state
-                                        s (fn-bprq-retry-record s work-id)))
-                                      0 :ordinary :durable)))
+                                        s (fn-bprq-retry-record s work-id pin-carry) pin-carry))
+                                      0 :ordinary :durable) pin-carry))
                             (generation
                              (fn-bp-journal-nth
                               5 (fn-bprq-attempt-record
-                                 (fn-bprq-pre-state s (fn-bprq-retry-record s work-id))
+                                 (fn-bprq-pre-state s (fn-bprq-retry-record s work-id pin-carry) pin-carry)
                                  (fn-bprq-next-txid
                                   (fn-bprq-pre-state
-                                   s (fn-bprq-retry-record s work-id)))
-                                 0 work-id attempt-id)))))
+                                   s (fn-bprq-retry-record s work-id pin-carry) pin-carry))
+                                 0 work-id attempt-id pin-carry)))))
            :in-theory (theory 'minimal-theory))))
 
 ;; ---------------------------------------------------------------------
@@ -378,14 +379,14 @@
     (list :outcome (fn-bp-pending-txid pending)
           (fn-bp-pending-generation pending) :recovery outcome)))
 
-(defun fn-bprq-recovery-plan (s work-id attempt-id outcome)
+(defun fn-bprq-recovery-plan (s work-id attempt-id outcome pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (let ((reason (fn-bprq-recovery-refusal s work-id attempt-id outcome)))
     (if reason
         (list :refused reason)
       (let ((record (fn-bprq-recovery-record s outcome)))
         (if (and (fn-bp-journal-recordp record)
-                 (car (fn-bprl-apply-journal-record s record)))
+                 (car (fn-bprl-apply-journal-record-with-pin-carry s record pin-carry)))
             (list :recover record)
           (list :refused :not-admitted))))))
 
@@ -395,10 +396,10 @@
 ;; :restart-observed, so its live image and the next open's replay agree
 ;; (the defect finding 1 of the native-request lane fixed for requests).
 ;; Answer: (RETRY ATTEMPT), RETRY nil when none is needed, or nil.
-(defun fn-bprq-ion-attempt-plan (s txid tx-generation work-id attempt-id)
+(defun fn-bprq-ion-attempt-plan (s txid tx-generation work-id attempt-id pin-carry)
   (declare (xargs :guard t :verify-guards nil))
-  (let* ((retry (fn-bprq-retry-record s work-id))
-         (attempt (fn-bprq-attempt-record (fn-bprq-pre-state s retry)
+  (let* ((retry (fn-bprq-retry-record s work-id pin-carry))
+         (attempt (fn-bprq-attempt-record (fn-bprq-pre-state s retry pin-carry)
                                           txid tx-generation
-                                          work-id attempt-id)))
+                                          work-id attempt-id pin-carry)))
     (if attempt (list retry attempt) nil)))

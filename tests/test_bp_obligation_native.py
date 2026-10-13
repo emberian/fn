@@ -12,9 +12,9 @@ IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 
 class NativeBpObligationBoundaryTests(unittest.TestCase):
     def test_pinned_predicate_uses_value_caller(self):
-        host = (ROOT / "host/native/bp-obligation.lisp").read_text()
-        self.assertIn("(fnn-owner-core\n                       'fn-owner-workflow-forward-pinnedp work-id)", host)
-        self.assertNotIn("(fnn-owner-action\n                       'fn-owner-workflow-forward-pinnedp", host)
+        host = " ".join((ROOT / "host/native/bp-obligation.lisp").read_text().split())
+        self.assertIn("(fnn-owner-core 'fn-owner-workflow-forward-pinnedp work-id)", host)
+        self.assertNotIn("(fnn-owner-action 'fn-owner-workflow-forward-pinnedp", host)
 
 
 @requires(IMAGE)

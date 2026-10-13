@@ -46,7 +46,13 @@ class RemoteCheckTests(unittest.TestCase):
         fake_ssh = base / "fake-ssh"
         fake_ssh.write_text("#!/bin/sh\nshift\nexec sh -c \"$1\"\n")
         fake_ssh.chmod(0o755)
+        # Emulate util-linux setsid on our fake box using the real syscall.
+        setsid = base / "setsid"
+        setsid.write_text('#!' + sys.executable + '\nimport os, sys\n'
+                          'os.setsid()\nos.execvp(sys.argv[1], sys.argv[1:])\n')
+        setsid.chmod(0o755)
         self.env = {**os.environ, **GIT_ENV, "FN_REMOTE_CHECK_SSH": str(fake_ssh),
+                    "PATH": str(base) + os.pathsep + os.environ["PATH"],
                     "FN_REMOTE_CHECK_BASE": str(self.box), "FN_REMOTE_CHECK_WRAP": "",
                     "FN_ACL2": "/nonexistent/acl2", "FN_REMOTE_CHECK_POLL": "0.2"}
         self.env.pop("FN_LANE", None)
@@ -198,10 +204,21 @@ class RemoteCheckTests(unittest.TestCase):
 
     def test_a_run_killed_on_the_box_is_reported_not_polled_forever(self):
         # obstructions-9 item 77: the box pid is recorded beside the log.
-        done = self.run_check("--cmd", "echo started; kill -9 $PPID")
+        done = self.run_check("--cmd", 'echo started; kill -9 "$(cat ../my-lane-check.log.pid)"')
         self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
         self.assertIn("ended without a status line", done.stderr)
         self.assertTrue((self.box / "my-lane-check.log.pid").read_text().strip().isdigit())
+
+    def test_the_pid_file_names_the_detached_group_leader(self):
+        command = (sys.executable + " -c 'import os; print(\"LEADER\", "
+                   "os.getpgrp(), os.getsid(0))'")
+        done = self.run_check("--cmd", command)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        pid = int((self.box / "my-lane-check.log.pid").read_text())
+        self.assertIn(f"LEADER {pid} {pid}", done.stdout)
+        text = SCRIPT.read_text()
+        self.assertIn("nohup setsid sh -c 'echo \\$\\$ > $LOG.pid || exit 3; exec sh $LOG.run.sh'", text)
+        self.assertNotIn("echo \\$! > $LOG.pid", text)
 
     def test_attach_after_the_local_side_died_fetches_by_the_record(self):
         # obstructions-9 item 77: a --cmd's local side died (exit 144) while

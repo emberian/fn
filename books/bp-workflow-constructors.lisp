@@ -7,10 +7,10 @@
 (include-book "bp-adu")
 (include-book "rev-onto")
 
-(defun fn-bprl-undertake-record (s work-id charge)
+(defun fn-bprl-undertake-record (s work-id charge pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((record (list :undertake work-id charge))
-         (answer (fn-bprl-apply-journal-record s record)))
+         (answer (fn-bprl-apply-journal-record-with-pin-carry s record pin-carry)))
     (if (and (fn-bprl-undertake-recordp record) (car answer))
         record
       nil)))
@@ -24,6 +24,8 @@
    (fn-bpa-receipt-incarnation adu) (fn-bpa-receipt-auth-context adu)
    (fn-bpa-receipt-terms-id adu)))
 
+; fn-bprl-apply-nonrelease-pin-carry-independent-by-definition proves that the
+; :receipt-intent branch cannot query a pin; the original entry supplies nil.
 (defun fn-bprl-receipt-intent-record (s octets txid generation authorizedp)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (equal authorizedp t))
@@ -49,6 +51,26 @@
           (if (and (fn-bp-journal-recordp record) (car answer))
               record
             nil))))))
+
+(defthm fn-bprl-receipt-intent-record-not-release-by-definition
+  (not (fn-bprl-release-recordp
+        (fn-bprl-receipt-intent-record s octets txid generation authorizedp)))
+  :hints (("Goal" :in-theory
+            (union-theories '(fn-bprl-receipt-intent-record
+                              fn-bprl-release-recordp car-cons cdr-cons)
+                            (theory 'minimal-theory)))))
+
+(defthm fn-bprl-receipt-intent-record-pin-carry-independent
+  (let ((r (fn-bprl-receipt-intent-record s octets txid generation authorizedp)))
+    (equal (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry-a)
+           (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry-b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+            (union-theories '(fn-bprl-receipt-intent-record-not-release-by-definition)
+                            (theory 'minimal-theory))
+           :use ((:instance fn-bprl-apply-nonrelease-pin-carry-independent-by-definition
+                            (r (fn-bprl-receipt-intent-record
+                                s octets txid generation authorizedp)))))))
 
 ; A native inbound receipt has no operator-supplied transaction pair.  The
 ; recovered FNWF image owns the entire used-pair history, including aborted
@@ -93,6 +115,8 @@
 (verify-guards fn-bprl-max-used-txid
   :hints (("Goal" :use ((:instance fn-bprl-max-used-txid-loop-of-rev-onto (zs nil))))))
 
+; The intent constructor uses nil by
+; fn-bprl-receipt-auto-record-pin-carry-independent (proved below).
 (defun fn-bprl-receipt-auto-record (s octets authorizedp)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (fn-bp-statep s))
@@ -101,16 +125,36 @@
      s octets (1+ (fn-bprl-max-used-txid (fn-bp-state-used-txs s) 0))
      0 authorizedp)))
 
+(defthm fn-bprl-receipt-auto-record-not-release-by-definition
+  (not (fn-bprl-release-recordp
+        (fn-bprl-receipt-auto-record s octets authorizedp)))
+  :hints (("Goal" :in-theory
+            (union-theories '(fn-bprl-receipt-auto-record
+                              (:executable-counterpart fn-bprl-release-recordp)
+                              fn-bprl-receipt-intent-record-not-release-by-definition)
+                            (theory 'minimal-theory)))))
+
+(defthm fn-bprl-receipt-auto-record-pin-carry-independent
+  (let ((r (fn-bprl-receipt-auto-record s octets authorizedp)))
+    (equal (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry-a)
+           (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry-b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+            (union-theories '(fn-bprl-receipt-auto-record-not-release-by-definition)
+                            (theory 'minimal-theory))
+           :use ((:instance fn-bprl-apply-nonrelease-pin-carry-independent-by-definition
+                            (r (fn-bprl-receipt-auto-record s octets authorizedp)))))))
+
 (defthm fn-bprl-max-used-txid-bounds-members
   (implies (member-equal pair used)
            (<= (nfix (fn-bp-nth 0 pair))
                (fn-bprl-max-used-txid used maximum)))
   :hints (("Goal" :in-theory (enable fn-bprl-max-used-txid))))
 
-(defun fn-bprl-release-record-for-journal (s receipt-id)
+(defun fn-bprl-release-record-for-journal (s receipt-id pin-carry)
   (declare (xargs :guard t :verify-guards nil))
-  (let* ((record (fn-bprl-release-record s receipt-id))
-         (answer (fn-bprl-apply-journal-record s record)))
+  (let* ((record (fn-bprl-release-record s receipt-id pin-carry))
+         (answer (fn-bprl-apply-journal-record-with-pin-carry s record pin-carry)))
     (if (and (fn-bprl-release-recordp record) (car answer))
         record
       nil)))
@@ -119,13 +163,13 @@
 ; publishing.  The underlying release and receipt authority proofs live in
 ; bp-release-invariants and bp-workflow-records-invariants respectively.
 (defthm fn-bprl-undertake-record-preflights
-  (implies (fn-bprl-undertake-record s work-id charge)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-undertake-record s work-id charge pin-carry))
            (and (fn-bprl-undertake-recordp
-                 (fn-bprl-undertake-record s work-id charge))
-                (car (fn-bprl-apply-journal-record
-                      s (fn-bprl-undertake-record s work-id charge)))))
+                 (fn-bprl-undertake-record s work-id charge pin-carry))
+                (car (fn-bprl-apply-journal-record-with-pin-carry
+                      s (fn-bprl-undertake-record s work-id charge pin-carry) pin-carry))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-bprl-apply-journal-record
+  :hints (("Goal" :in-theory (disable fn-bprl-apply-journal-record-with-pin-carry
                                       fn-bprl-undertake-recordp))))
 
 (defthm fn-bprl-receipt-intent-record-preflights
@@ -139,18 +183,17 @@
                       s (fn-bprl-receipt-intent-record
                          s octets txid generation authorizedp)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-bpa-decode-exact
-                                      fn-bpa-receiptp
-                                      fn-bp-journal-recordp
-                                      fn-bprl-apply-journal-record))))
+  :hints (("Goal" :in-theory
+            (union-theories '(fn-bprl-receipt-intent-record)
+                            (theory 'minimal-theory)))))
 
 (defthm fn-bprl-release-record-for-journal-preflights
-  (implies (fn-bprl-release-record-for-journal s receipt-id)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-release-record-for-journal s receipt-id pin-carry))
            (and (fn-bprl-release-recordp
-                 (fn-bprl-release-record-for-journal s receipt-id))
-                (car (fn-bprl-apply-journal-record
-                      s (fn-bprl-release-record-for-journal s receipt-id)))))
+                 (fn-bprl-release-record-for-journal s receipt-id pin-carry))
+                (car (fn-bprl-apply-journal-record-with-pin-carry
+                      s (fn-bprl-release-record-for-journal s receipt-id pin-carry) pin-carry))))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-bprl-release-record
                                       fn-bprl-release-recordp
-                                      fn-bprl-apply-journal-record))))
+                                      fn-bprl-apply-journal-record-with-pin-carry))))

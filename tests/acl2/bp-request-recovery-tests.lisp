@@ -11,29 +11,29 @@
 (defconst *bprv-history*
   (list *bpo-config-record* *bpo-enqueue-record*
         '(:outcome 10 0 :ordinary :durable) *bpo-attempt-record*))
-(defconst *bprv-open* (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* *bprv-history*))
+(defconst *bprv-open* (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* *bprv-history* nil))
 
 ; Reachable witness: the journal opens, fenced on the pending attempt, and
 ; every request is refused (the finding this closes).
 (assert-event (car *bprv-open*))
 (assert-event (equal (fn-bp-state-fenced (nth 1 *bprv-open*)) t))
-(assert-event (null (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 *bprv-open*) "work:out" "attempt:two")))
+(assert-event (null (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 *bprv-open*) "work:out" "attempt:two" nil)))
 
-(defun bprv-recover (outcome)
+(defun bprv-recover (outcome pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((plan (fn-bprq-recovery-plan (nth 1 *bprv-open*) "work:out"
-                                      "attempt:out" outcome))
+                                      "attempt:out" outcome pin-carry))
          (r (nth 1 plan))
-         (live (in-arena-fn-bpiw-apply *bpo-payloads* (nth 1 *bprv-open*) (nth 3 *bprv-open*) r))
+         (live (in-arena-fn-bpiw-apply *bpo-payloads* (nth 1 *bprv-open*) (nth 3 *bprv-open*) r pin-carry))
          (reopen (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node*
-                                         (append *bprv-history* (list r)))))
+                                         (append *bprv-history* (list r)) pin-carry)))
     (list plan live reopen)))
 
 ; :committed.  The plan is the recovery outcome of the attempt's own
 ; transaction; live and reopen agree; the image is unfenced; the work's
 ; attempt is :unknown (retryable), and the next request is accepted, with
 ; no retry record needed, both live and after the next open.
-(defconst *bprv-c* (bprv-recover :committed))
+(defconst *bprv-c* (bprv-recover :committed nil))
 (assert-event (equal (nth 0 *bprv-c*)
                      '(:recover (:outcome 11 0 :recovery :committed))))
 (assert-event (car (nth 1 *bprv-c*)))
@@ -43,12 +43,12 @@
 (assert-event (equal (fn-bp-work-status "work:out"
                                         (fn-bp-state-works (nth 1 (nth 1 *bprv-c*))))
                      :unknown))
-(assert-event (equal (car (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 (nth 1 *bprv-c*)) "work:out" "attempt:two"))
+(assert-event (equal (car (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 (nth 1 *bprv-c*)) "work:out" "attempt:two" nil))
                      :request))
-(assert-event (equal (car (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 (nth 2 *bprv-c*)) "work:out" "attempt:two"))
+(assert-event (equal (car (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 (nth 2 *bprv-c*)) "work:out" "attempt:two" nil))
                      :request))
 ; The next request's records replay after the recovery outcome.
-(defconst *bprv-next* (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 (nth 2 *bprv-c*)) "work:out" "attempt:two"))
+(defconst *bprv-next* (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 (nth 2 *bprv-c*)) "work:out" "attempt:two" nil))
 (assert-event
  (car (in-arena-fn-bpiw-replay-journal *bpo-payloads*
        *bpo-node*
@@ -57,51 +57,51 @@
                (if (fn-bprq-plan-retry *bprv-next*)
                    (list (fn-bprq-plan-retry *bprv-next*)) nil)
                (list (fn-bprq-plan-attempt *bprv-next*)
-                     (fn-bprq-plan-outcome *bprv-next*))))))
+                     (fn-bprq-plan-outcome *bprv-next*))) nil)))
 
 ; :absent.  The pending is dropped; the work keeps its earlier state and the
 ; next request is accepted.
-(defconst *bprv-a* (bprv-recover :absent))
+(defconst *bprv-a* (bprv-recover :absent nil))
 (assert-event (equal (nth 0 *bprv-a*)
                      '(:recover (:outcome 11 0 :recovery :absent))))
 (assert-event (and (car (nth 1 *bprv-a*)) (car (nth 2 *bprv-a*))))
 (assert-event (not (fn-bp-state-fenced (nth 1 (nth 1 *bprv-a*)))))
-(assert-event (equal (car (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 (nth 2 *bprv-a*)) "work:out" "attempt:two"))
+(assert-event (equal (car (in-arena-fn-bprq-plan *bpo-payloads* (nth 1 (nth 2 *bprv-a*)) "work:out" "attempt:two" nil))
                      :request))
 
 ; Refusals, each with its reason and nothing to publish.
-(assert-event (equal (fn-bprq-recovery-plan (nth 1 *bprv-open*) "work:out" "attempt:out" :maybe)
+(assert-event (equal (fn-bprq-recovery-plan (nth 1 *bprv-open*) "work:out" "attempt:out" :maybe nil)
                      '(:refused :outcome)))
-(assert-event (equal (fn-bprq-recovery-plan (nth 1 *bprv-open*) "work:missing" "attempt:out" :committed)
+(assert-event (equal (fn-bprq-recovery-plan (nth 1 *bprv-open*) "work:missing" "attempt:out" :committed nil)
                      '(:refused :attempt-unknown)))
-(assert-event (equal (fn-bprq-recovery-plan (nth 1 *bprv-open*) "work:out" "attempt:other" :committed)
+(assert-event (equal (fn-bprq-recovery-plan (nth 1 *bprv-open*) "work:out" "attempt:other" :committed nil)
                      '(:refused :attempt-unknown)))
-(assert-event (equal (fn-bprq-recovery-plan *bprq-s* "work:out" "attempt:out" :committed)
+(assert-event (equal (fn-bprq-recovery-plan *bprq-s* "work:out" "attempt:out" :committed nil)
                      '(:refused :not-fenced)))
-(assert-event (equal (fn-bprq-recovery-plan (nth 1 (nth 1 *bprv-c*)) "work:out" "attempt:out" :committed)
+(assert-event (equal (fn-bprq-recovery-plan (nth 1 (nth 1 *bprv-c*)) "work:out" "attempt:out" :committed nil)
                      '(:refused :not-fenced)))
 ; A live pending that is not fenced (no restart yet) is not recoverable.
-(assert-event (equal (fn-bprq-recovery-plan (nth 1 *bpo-attempt-prepared*) "work:out" "attempt:out" :committed)
+(assert-event (equal (fn-bprq-recovery-plan (nth 1 *bpo-attempt-prepared*) "work:out" "attempt:out" :committed nil)
                      '(:refused :not-fenced)))
 
 ; Keystone hypotheses.  (car open): a history that does not open has no
 ; image to recover.  (equal (car plan) :recover): a recovery outcome the
 ; plan did not produce (wrong transaction) is not accepted live.
 (must-fail-checked
- (assert-event (car (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* (cdr *bprv-history*)))))
+ (assert-event (car (in-arena-fn-bpiw-replay-journal *bpo-payloads* *bpo-node* (cdr *bprv-history*) nil))))
 (must-fail-checked
  (assert-event (car (in-arena-fn-bpiw-apply *bpo-payloads* (nth 1 *bprv-open*) (nth 3 *bprv-open*)
-                                   '(:outcome 99 0 :recovery :committed)))))
+                                   '(:outcome 99 0 :recovery :committed) nil))))
 (must-fail-checked
  (assert-event (equal (car (fn-bprq-recovery-plan (nth 1 *bprv-open*) "work:out"
-                                                  "attempt:other" :committed))
+                                                  "attempt:other" :committed nil))
                       :recover)))
 
 ; The ION attempt plan (host/native/workflow.lisp fnn-workflow-ion-submit).
 ; After a restart the in-flight attempt is :restart-observed; the plan puts
 ; the journaled retry request first, and the history replays.  Without it
 ; the same attempt is admitted live and refused by replay (the defect).
-(defconst *bprv-ion* (fn-bprq-ion-attempt-plan *bprq-restarted* 12 0 "work:out" "attempt:two"))
+(defconst *bprv-ion* (fn-bprq-ion-attempt-plan *bprq-restarted* 12 0 "work:out" "attempt:two" nil))
 (assert-event (equal (car *bprv-ion*)
                      '(:retry-request "work:out" "attempt:out" 0 "policy:out")))
 (assert-event (equal (fn-bp-journal-nth 0 (cadr *bprv-ion*)) :attempt))
@@ -110,15 +110,15 @@
        *bpo-node*
        (append *bprq-history*
                (list (car *bprv-ion*) (cadr *bprv-ion*)
-                     '(:outcome 12 0 :ordinary :durable))))))
+                     '(:outcome 12 0 :ordinary :durable))) nil)))
 (must-fail-checked
  (assert-event
   (car (in-arena-fn-bpiw-replay-journal *bpo-payloads*
         *bpo-node*
         (append *bprq-history*
                 (list (cadr *bprv-ion*)
-                      '(:outcome 12 0 :ordinary :durable)))))))
+                      '(:outcome 12 0 :ordinary :durable))) nil))))
 ; With no restart there is no retry record; the plan is the attempt alone.
-(assert-event (null (car (fn-bprq-ion-attempt-plan *bprq-s* 11 0 "work:out" "attempt:out"))))
-(assert-event (equal (cadr (fn-bprq-ion-attempt-plan *bprq-s* 11 0 "work:out" "attempt:out"))
+(assert-event (null (car (fn-bprq-ion-attempt-plan *bprq-s* 11 0 "work:out" "attempt:out" nil))))
+(assert-event (equal (cadr (fn-bprq-ion-attempt-plan *bprq-s* 11 0 "work:out" "attempt:out" nil))
                      *bpo-attempt-record*))

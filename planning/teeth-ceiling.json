@@ -14,8 +14,6 @@
   "fn-ocap-preview-keeps-input-prefix-bounds",
   "fn-proto-archive-command-cat-is-pinned",
   "fn-qplan-cw-drain-is-a-prefix",
-  "fn-scat-group-low-is-archive",
-  "fn-scat-group-summary-is-archive",
   "fn-sccv-step-is-seg-step"
  ]
 }
