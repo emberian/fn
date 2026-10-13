@@ -220,6 +220,15 @@ class Node:
             node_dead("no owner was started for this connection")
         observe_node_greeting(self.port, greeting, process=self.owners[-1]["proc"])
 
+    def require_live_owner(self):
+        """A buffered greeting credits the start; POST still needs a live owner."""
+        if not self.owners:
+            node_dead("no owner was started before POST")
+        owner = self.owners[-1]["proc"]
+        status = owner.poll()
+        if status is not None:
+            node_dead(f"pid {owner.pid} exited before POST (exit {status})")
+
     def post(self, msgid, payload: Path, extra=None, timeout=300):
         return self.operator("post", "--message-id", msgid, "--payload",
                              str(payload), "--group", GROUP,

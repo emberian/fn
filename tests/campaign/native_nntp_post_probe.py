@@ -66,6 +66,7 @@ def nntp_post(node: Node, payload: bytes, timeout=120) -> dict:
             greeting = stream.readline()
             node.observe_greeting(greeting)
             out["greeting"] = greeting.decode("ascii", "replace")
+            node.require_live_owner()
             conn.sendall(b"POST\r\n")
             out["post_reply"] = stream.readline().decode("ascii", "replace")
             if not out["post_reply"].startswith("340"):
@@ -157,6 +158,7 @@ def plain(image: Path, base: Path, prior: Path, payload: bytes, name, kill_after
                 greeting = stream.readline()
                 node.observe_greeting(greeting)
                 row["post"] = {"greeting": greeting.decode("ascii", "replace")}
+                node.require_live_owner()
                 conn.sendall(b"POST\r\n")
                 row["post"]["post_reply"] = stream.readline().decode("ascii", "replace")
                 conn.sendall(payload[: len(payload) // 2])

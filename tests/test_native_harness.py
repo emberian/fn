@@ -421,13 +421,16 @@ class NodeLivenessTests(unittest.TestCase):
         from pathlib import Path
         from unittest import mock
         marker = b"pull: developer kill at before-write of append 1"
-        for status, stderr, valid in ((-9, marker + b"\n", True),
-                                      (-9, b"", False), (-15, marker + b"\n", False),
-                                      (-9, marker + b" not reached\n", False)):
-            with self.subTest(status=status, stderr=stderr), tempfile.TemporaryDirectory() as directory:
+        for status, stdout, stderr, valid in ((-9, b"", marker + b"\n", True),
+                                              (-9, marker + b"\n", b"", True),
+                                              (-9, b"", b"", False),
+                                              (-9, b"", b"DECODED-WINDOW storage-ready\nOWNER-OPEN open=full-replay\n", False),
+                                              (-15, b"", marker + b"\n", False),
+                                              (-9, b"", marker + b" not reached\n", False)):
+            with self.subTest(status=status, stdout=stdout, stderr=stderr), tempfile.TemporaryDirectory() as directory:
                 native_harness._NODE_GREETINGS.clear()
                 native_harness._NODE_DEAD.clear()
-                process = self.owner(status=status, stderr=stderr)
+                process = self.owner(status=status, stdout=stdout, stderr=stderr)
                 process.announcement.side_effect = AssertionError("no LISTENING before exit")
                 node = native_harness.Node(self, "fake image", root=Path(directory), listener=False,
                                            control=False, image_heap="non-network fixture")
@@ -441,6 +444,63 @@ class NodeLivenessTests(unittest.TestCase):
                     self.assertEqual(bool(native_harness.node_start_failures(self.id())), not valid)
                 finally:
                     node.processes.clear()
+
+    def test_a_restart_after_a_named_cut_needs_its_own_greeting_and_has_no_cut_allowance(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        marker = b"pull: developer kill at before-write of append 1"
+        for restart_alive in (False, True):
+            with self.subTest(restart_alive=restart_alive), tempfile.TemporaryDirectory() as directory:
+                native_harness._NODE_GREETINGS.clear()
+                native_harness._NODE_DEAD.clear()
+                cut = self.owner(status=-9, stderr=marker + b"\n")
+                cut.announcement.side_effect = AssertionError("cut preceded LISTENING")
+                restart = self.owner(status=None if restart_alive else -9,
+                                     stderr=b"" if restart_alive else marker + b"\n")
+                if restart_alive:
+                    restart.announcement.return_value = b"LISTENING 1234\n"
+                else:
+                    restart.announcement.side_effect = AssertionError("restart died before LISTENING")
+                node = native_harness.Node(self, "fake image", root=Path(directory), listener=False,
+                                           control=False, image_heap="non-network fixture")
+                node.config.write_text('[listener]\nport = 1234\n')
+                try:
+                    with mock.patch.object(native_harness, "start", side_effect=(cut, restart)):
+                        self.assertIs(node.start(death_cut=(-9, marker)), cut)
+                        if restart_alive:
+                            self.assertIs(node.start(), restart)
+                            self.assertEqual(len(native_harness.node_start_failures(self.id())), 1)
+                            native_harness.observe_node_greeting(1234, b"200 restarted\r\n", process=restart)
+                            self.assertEqual(native_harness.node_start_failures(self.id()), [])
+                        else:
+                            # Even repeating the old marker on the new process
+                            # cannot turn an unarmed restart into a planned cut.
+                            with self.assertRaises(native_harness.NodeDead):
+                                node.start()
+                            self.assertTrue(native_harness.node_start_failures(self.id()))
+                finally:
+                    node.processes.clear()
+
+    def test_peer_pull_restart_does_not_inherit_the_selector_or_death_contract(self):
+        from pathlib import Path
+        from unittest import mock
+        from tests import test_native_peer_pull as pull
+        case = pull.NativePeerPullTests("test_cursor_publication_cuts")
+        case.env = {"FN_PULL_TEST_KILL": "before-write:1"}
+        node = mock.Mock()
+        with mock.patch.object(pull, "DEVELOPER", Path("fake developer image")), \
+             mock.patch.object(pull.os, "access", return_value=True):
+            case.start(node)
+            del case.env["FN_PULL_TEST_KILL"]
+            case.start(node)
+        cut, restart = node.start.call_args_list
+        self.assertEqual(cut.kwargs["env"]["FN_PULL_TEST_KILL"], "before-write:1")
+        self.assertEqual(cut.kwargs["death_cut"],
+                         (-9, b"pull: developer kill at before-write of append 1"))
+        self.assertNotIn("FN_PULL_TEST_KILL", restart.kwargs["env"])
+        self.assertNotIn("death_cut", restart.kwargs)
+        self.assertIsNone(restart.kwargs["image"])
 
     def test_the_announced_control_path_is_used_without_recomputing_its_config_default(self):
         from pathlib import Path
