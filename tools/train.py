@@ -2350,6 +2350,8 @@ def cmd_status(t: Train, args) -> int:
     fork = git(t.root, "merge-base", "HEAD", train_base(), check=False).stdout.strip()
     say("  " + (shrink_words(t, fork, head) if fork else "shrink: unavailable (no fork point with origin/dev)"))
     say("  " + census_words(st.get("census"), head))
+    from dev_control import status_line
+    say(status_line(t.root))
     for n in GATES:
         g = st.get("gates", {}).get(n)
         if g:
