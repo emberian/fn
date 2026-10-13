@@ -457,3 +457,40 @@
        (equal (fn-arn-seal-many (fn-arn-payloads-of (list *pat-r1* *pat-r2* *pat-r3*)) nil)
               '((1 2 3) (4 5) (6))))
   :rule-classes nil)
+
+; Checks moved from the former attachment book; the generic owns the attachment.
+; A ground wire record: an article "Subject: a" CRLF CRLF "line1" CRLF.
+(defconst *paa-art*
+  (append (fn-record-string-octets "Subject: a") '(13 10 13 10)
+          (fn-record-string-octets "line1") '(13 10)))
+
+(defconst *paa-w*
+  (fn-record-make 0 1 0 "<a@x>" *paa-art* '("fn.test") "o" "s" "e" 1 5))
+
+; The exec path on the live generic under the attachment: a clear, two
+; seals, the intern of *paa-w* (a third seal, handle 2), the materialization
+; by handle, a read of handle 0 after the later seals, the count.
+(defun fn-paa-smoke (fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard-hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp)))))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many '((1 2 3) (4 5)) fn-arena)))
+    (mv-let (held fn-arena)
+      (fn-cat-intern-list *paa-w* nil 0 fn-arena)
+      (let ((result (list (fn-arena-count fn-arena)
+                          (fn-record-payload held)
+                          (fn-hf-octets (fn-held-facts held))
+                          (fn-arena-payload-len (fn-record-payload held) fn-arena)
+                          (equal (fn-held-wire-of held fn-arena) *paa-w*)
+                          (fn-arena-payload 0 fn-arena)
+                          (fn-arena-get 1 1 fn-arena))))
+        (mv result fn-arena)))))
+
+(with-guard-checking-event t
+ (value-triple (fn-paa-smoke fn-arena) :stobjs-out '(nil fn-arena)))
+
+(with-guard-checking-event t
+ (assert-event (mv-let (result fn-arena) (fn-paa-smoke fn-arena)
+                (mv (equal result (list 3 2 (len *paa-art*) (len *paa-art*) t '(1 2 3) 5))
+                    fn-arena))
+              :stobjs-out '(nil fn-arena)))

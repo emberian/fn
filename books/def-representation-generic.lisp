@@ -29,10 +29,12 @@
 ;   * the `defabsstobj' with :attachable t, the exports in the order given, so
 ;     that (attach-stobj NAME IMPL) evaluated before this event, with IMPL's
 ;     export list positionally this one, replaces the foundation and the
-;     execs while the :logic functions stay (books/payload-arena-attach.lisp).
+;     execs while the :logic functions stay.  Production generic books own
+;     that preceding attachment (books/payload-arena.lisp).
 ;
-; Nothing is attached here: the implementation is chosen where the image is
-; built.  Every generated name is derived from NAME and the instance is
+; This generator emits the interface; its production caller selects the
+; implementation before introduction.  Every generated name is derived
+; from NAME and the instance is
 ; recorded in the world table `fn-generated'.  A malformed declaration is
 ; refused at expansion by the check that names it.  See
 ; tests/acl2/def-generic-tests.lisp.

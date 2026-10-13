@@ -2,8 +2,8 @@
 (in-package "ACL2")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
-(include-book "../books/payload-arena-attach")
-(include-book "../books/history-paged-attach")
+(include-book "../books/payload-arena")
+(include-book "../books/history-columns")
 (include-book "../books/owner-report-capture")
 (include-book "../books/store-node")
 (include-book "../books/served")

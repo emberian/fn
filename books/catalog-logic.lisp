@@ -53,9 +53,9 @@
 ; view is a version (a count), and a row withdrawn at version W is visible
 ; to a reader at version V <= W.
 ;
-; No book above this one names fn-cat$c; a second implementation of the
-; same logical side is an `attach-stobj' in the image's include order
-; (design section 3).  No skip-proofs.
+; fn-cat$c is the correspondence reference.  books/catalog.lisp selects
+; fn-cat-paged before introducing fn-cat; every compiled generic caller
+; executes over that paged implementation.  No skip-proofs.
 
 (in-package "ACL2")
 (include-book "catalog-record")
@@ -5944,7 +5944,7 @@
            :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
 
 ;; Four of the catalog's lemmas, non-local so that books/catalog.lisp (the
-;; generic, split from this book so that an implementation can be attached
-;; before it: books/catalog-paged-attach.lisp) proves its keystones over the
+;; generic, which includes the paged implementation and attaches it before
+;; introducing fn-cat) proves its keystones over the
 ;; opened view with them; disabled here, enabled where they are used.
 (in-theory (disable fn-ctg-nth-of-append-below fn-ctg-nth-of-append-at fn-ctg-len-of-append fn-ctg-number-seq-of-fresh))

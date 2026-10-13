@@ -7,6 +7,9 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
+(include-book "store-checkpoint-tables")
+(include-book "store-checkpoint-tables-reader")
+(include-book "store-intern")
 (include-book "open-frontier-wire")
 (include-book "store-recover-stream")
 (include-book "payload-commit-extent")
@@ -59,7 +62,6 @@
 (include-book "extent-window-span")
 (include-book "cold-read-wait")
 (include-book "page-window-span")
-(include-book "payload-arena")
 (include-book "decoded-worker-assignment")
 (include-book "decoded-worker-job")
 (include-book "decoded-window-span")
@@ -186,5 +188,3 @@
 (include-book "store-identity-reserve")
 (include-book "owner-identity-prepare")
 (include-book "consumer-event-charge")
-(include-book "consumer-publication-budget")
-(include-book "post-admission-keyed")

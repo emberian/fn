@@ -951,7 +951,7 @@ class CompiledFileTests(unittest.TestCase):
 
     def test_an_entry_without_a_compiled_file_is_not_installed_but_named(self):
         """install-partial leaves such a book to be certified (which compiles
-        it): installed bare, the image build refused it (payload-arena-attach,
+        it): installed bare, the image build refused it (payload-arena,
         2026-09-29, "fasl 659 missing 8")."""
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             root, manifest = self.source(one, ["books/base", "books/mid"])

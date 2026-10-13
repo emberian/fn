@@ -1,6 +1,9 @@
-; Generic history exports: alternate concrete attachment precedes this book.
+; Generic history exports: this book selects the resident paged implementation.
 (in-package "ACL2")
 (include-book "history-columns-foundation")
+
+(include-book "history-paged")
+(attach-stobj fn-hist fn-hist-paged)
 
 (defabsstobj fn-hist
   :attachable t
@@ -17,6 +20,22 @@
             (fn-hist-clear :logic fn-hist$a-clear :exec fn-hist$c-clear
                            :protect t))
   :corr-fn-exists t)
+
+; OW1: this generic is introduced only with its concrete implementation.
+(assert-event
+ (and (equal (cdr (assoc-eq 'fn-hist
+                           (table-alist 'attach-stobj-table (w state))))
+             'fn-hist-paged)
+      (let* ((generic (access absstobj-info
+                              (getpropc 'fn-hist 'absstobj-info nil (w state))
+                              :absstobj-tuples))
+             (impl (access absstobj-info
+                           (getpropc 'fn-hist-paged 'absstobj-info nil (w state))
+                           :absstobj-tuples))
+             (g-creator (assoc-eq 'create-fn-hist generic))
+             (i-creator (assoc-eq 'create-fn-hist-paged impl)))
+        (and (consp g-creator) (consp i-creator)
+             (equal (caddr g-creator) (caddr i-creator))))))
 
 ; -----------------------------------------------------------------------------
 ; The logical view, opened: a theorem over `fn-hist' is a theorem over the

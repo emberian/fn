@@ -2,8 +2,8 @@
 """Emit the current native logical world as ordinary, resumable ACL2 source.
 
 A matching certificate is an input optimization, never the verdict for source
-admission. Changed books keep their local proof scope. The early history
-attachment deliberately precedes introduction of the generic history stobj.
+admission. Changed books keep their local proof scope. Generic books own
+their implementation include and preceding attachment in every source world.
 """
 from __future__ import annotations
 import argparse
@@ -17,9 +17,7 @@ import proof_repl
 from proof_repl import encapsulated, forms, head_and_name
 
 EARLY = ('books/codec-attach', 'books/records-attach-concrete',
-         'books/payload-arena-attach', 'books/history-paged')
-ATTACH = 'books/history-paged-attach'
-ARENA_ATTACH = 'books/payload-arena-attach'
+         'books/payload-arena', 'books/history-columns')
 
 
 def event_head(form):
@@ -102,8 +100,46 @@ def bounded_body(body, steps):
         for event in events) + '\n)'
 
 
+def admission_forms(text, directory, available, limit):
+    """Preserve LOCAL scope without replaying a generic under later type rules.
+
+    ACL2's extra ENCAPSULATE pass can recompute an abstract export's type
+    using the generic's later theorems and fail a type-prescription assertion.
+    If its preceding attachment/introduction prefix has no LOCAL events,
+    admit that prefix once, then encapsulate the remaining proof events.
+    Prefixes with LOCAL witnesses retain their original common scope.
+    """
+    original = forms(text)
+    attached = set()
+    boundary = None
+    for index, form in enumerate(original):
+        head, name = head_and_name(form)
+        if head == 'attach-stobj':
+            # head_and_name names defining events only; ATTACH-STOBJ is a
+            # table event, so read its generic argument from the source form.
+            arguments = forms(form.strip()[1:-1])
+            if len(arguments) == 3:
+                attached.add(arguments[1].lower())
+        elif head in {'defabsstobj', 'def-generic'} and name in attached:
+            boundary = index + 1
+            break
+    if boundary is not None and not any(event_head(f) == 'local' for f in original[:boundary]):
+        before, after = original[:boundary], original[boundary:]
+        hoisted, prefix = [], []
+        for form in before:
+            if event_head(form) == 'in-package': continue
+            if event_head(form) in proof_repl.HOISTED_HEADS: hoisted.append(form)
+            else: prefix.append(proof_repl.wrap_limit(form, limit))
+        tail_hoisted, tail = encapsulated('\n'.join(after), directory, available, limit)
+        # Source includes were already expanded in order by scoped_events.
+        return hoisted + tail_hoisted, prefix + ([tail] if tail else [])
+    hoisted, body = encapsulated(text, directory, available, limit)
+    return hoisted, [body] if body else []
+
+
 def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
-             revision=None, deferred=None, steps=200000, world_book='books/image-world'):
+             revision=None, deferred=None, steps=200000, world_book='books/image-world',
+             installed_books=None):
     source = source.resolve()
     world_book = proof_repl.normalize_book(world_book)
     deferred = deferred or {}
@@ -112,7 +148,16 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
     all_deferred = {name for names in deferred.values() for name in names}
     caches = [p.resolve() for p in caches]
     proof_repl.ROOT = source
-    graph = certs.include_graph(source, [world_book, *EARLY, ATTACH])
+    graph = certs.include_graph(source, [world_book, *EARLY])
+    # Explicit source-session admission: the caller has installed exact
+    # certificates in the execution tree without loading them. ACL2 still
+    # checks each include; this does not claim a local certificate exists.
+    installed_books = None if installed_books is None else set(installed_books)
+    if installed_books is not None:
+        if not installed_books <= set(graph):
+            raise ValueError('installed books are outside the requested closure')
+        if any(child not in installed_books for name in installed_books for child in graph[name]):
+            raise ValueError('installed books must be closed under local includes')
     fingerprints = {name: certs.book_facts(source / (name + '.lisp'))[0]
                     for name in graph}
     exports = {name: exported_includes((source / (name + '.lisp')).read_text(),
@@ -136,6 +181,8 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
         if str(path) not in inputs:
             inputs[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
     def cache_for(name):
+        if installed_books is not None and name in installed_books:
+            return source
         return next((cache for cache in caches
                      if (cache / (name + '.cert')).is_file()
                      and (cache / (name + '.port')).is_file()
@@ -171,9 +218,9 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
         if omitted: removed[name] = sorted(omitted)
         if pruned: theory_pruned[name] = pruned
         transformed = scoped_events(text, path.parent, available)
-        hoisted, body = encapsulated(transformed, path.parent, set(), limit or None)
+        hoisted, bodies = admission_forms(transformed, path.parent, set(), limit or None)
         available.update(exported_closure(name))
-        parts = [*hoisted, bounded_body(body, steps)]
+        parts = [*hoisted, *[bounded_body(body, steps) if body.startswith('(encapsulate ') else body for body in bodies]]
         return '(progn\n' + '\n'.join(p for p in parts if p) + '\n)' if any(parts) else ''
     def scoped_events(text, directory, available):
         result = []
@@ -193,44 +240,6 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
         return '\n'.join(result)
     def visit(name):
         if name in loaded:
-            return
-        if name == ATTACH:
-            # Ordinary source order is include P3, attach, then generic.
-            path = source / (name + '.lisp')
-            actual = forms(path.read_text())
-            expected = ['(in-package "ACL2")', '(include-book "history-paged")',
-                        '(attach-stobj fn-hist fn-hist-paged)', '(include-book "history-columns")']
-            if actual != expected:
-                raise ValueError('history attachment order changed; inspect actual source before emitting')
-            remember(path)
-            visit('books/history-paged')
-            events.append(actual[2])
-            visit('books/history-columns')
-            loaded.add(name)
-            coordinate.append({'book': name, 'kind': 'ordered-attachment'})
-            return
-        if name == ARENA_ATTACH:
-            # Source admission must preserve the implementation/attach/generic
-            # order too. A dependency-first walk introduces the generic early.
-            path = source / (name + '.lisp')
-            actual = forms(path.read_text())
-            expected = ['(in-package "ACL2")', '(include-book "payload-arena-extent")',
-                        '(attach-stobj fn-arena fn-arena-extent)',
-                        '(include-book "payload-arena")', '(include-book "catalog-record")']
-            if actual[:5] != expected:
-                raise ValueError('arena attachment order changed; inspect actual source before emitting')
-            remember(path)
-            visit('books/payload-arena-extent')
-            events.append(actual[2])
-            visit('books/payload-arena')
-            visit('books/catalog-record')
-            text = scoped_events('\n'.join([actual[0], *actual[5:]]), path.parent, set(loaded))
-            hoisted, body = encapsulated(text, path.parent, set(loaded), limit or None)
-            events.extend(hoisted)
-            events.append('(value-triple (cw "FN_SOURCE_BOOK ' + name + '~%"))')
-            if body: events.append(bounded_body(body, steps))
-            loaded.add(name)
-            coordinate.append({'book': name, 'kind': 'ordered-attachment'})
             return
         selected = cache_for(name)
         if selected is not None:
@@ -255,20 +264,20 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
             raise ValueError('named DEFTHM not found: ' + name)
         if omitted: removed[name] = sorted(omitted)
         body_text = scoped_events(body_text, path.parent, set(loaded))
-        hoisted, body = encapsulated(body_text, path.parent, set(loaded), limit or None)
-        body = bounded_body(body, steps)
+        hoisted, bodies = admission_forms(body_text, path.parent, set(loaded), limit or None)
+        bodies = [bounded_body(body, steps) if body.startswith('(encapsulate ') else body for body in bodies]
         # All local fn include events were resolved above. Only system books
         # or package declarations may remain hoisted.
         events.extend(hoisted)
         events.append('(value-triple (cw "FN_SOURCE_BOOK ' + name + '~%"))')
-        if body: events.append(body)
+        events.extend(bodies)
+        events.append('(value-triple (cw "FN_SOURCE_END ' + name + '~%"))')
         loaded.add(name)
         coordinate.append({'book': name, 'kind': 'source-admission'})
 
-    # The build umbrella has replay before its attachment block. Explicit
-    # early attachment prevents any incidental generic introduction there.
-    for name in EARLY[:3]: visit(name)
-    visit(ATTACH)
+    # Match the build prefix. Each generic now owns its attachment, so the
+    # ordinary source-order walk also handles implementation selection.
+    for name in EARLY: visit(name)
     output.parent.mkdir(parents=True, exist_ok=True)
     early = output.with_name(output.stem + '.early.lisp')
     early.write_text('\n\n'.join(events) + '\n')
@@ -285,6 +294,7 @@ def generate(source: Path, caches: list[Path], output: Path, limit=25.0,
         'repository_books': sorted(name + '.lisp' for name in graph),
         'exported_books': sorted(name + '.lisp' for name in loaded),
         'logical_prefix': str(output.resolve()), 'cache_roots': [str(p) for p in caches],
+        'installed_books': sorted(installed_books) if installed_books is not None else None,
         'inputs_sha256': inputs, 'output_sha256': hashlib.sha256(output.read_bytes()).hexdigest(),
         'books': coordinate, 'deferred_defthms': removed,
         'deferred_theory_references': theory_pruned,
