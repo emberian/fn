@@ -166,7 +166,7 @@ class NativeTlsProxyTests(unittest.TestCase):
 
     def test_a_malformed_or_silent_header_from_the_proxy_is_refused_by_name(self):
         self.policy("tls-handshake-ms", 2000)
-        self.node.start()
+        self.node.start(intent="connection-refusal")
         self.assertFalse(self.served(PROXY, b"PROXY TCP4 198.51.100.300 127.0.0.1 1 2\r\n"))
         self.log_text("tls refused reason=proxy-malformed proxy=127.0.0.10")
         raw = socket.create_connection(("127.0.0.1", self.node.tls_port), timeout=10,

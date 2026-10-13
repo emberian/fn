@@ -315,8 +315,11 @@ def node_dead(reason, *, test_id=None):
     raise NodeDead(message)
 
 
-def require_node_greeting(process, port, *, control=None, config=None, ports=(), web_port=None, refusal=None):
+def require_node_greeting(process, port, *, control=None, config=None, ports=(), web_port=None,
+                          refusal=None, intent="serve"):
     """Register one start; only the test's own response can acknowledge it."""
+    if intent not in ("serve", "restart-only", "connection-refusal"):
+        raise ValueError("unknown node start intent: " + intent)
     exited = process.poll() is not None
     if refusal is not None:
         named = any(line.startswith(("refused operator run", "usage operator run",
@@ -330,7 +333,8 @@ def require_node_greeting(process, port, *, control=None, config=None, ports=(),
         "control": str(control) if control is not None else None,
         "config": str(config) if config is not None else None,
         "web_port": web_port,
-        "evidence": "startup refusal" if refusal is not None else None,
+        "evidence": ("startup refusal" if refusal is not None else
+                     "explicit " + intent if intent != "serve" else None),
     })
 
 
@@ -1456,9 +1460,15 @@ class Node:
         return [installed_launcher(image or self.image), *words], self.environment(merged)
 
     def start(self, *, image=None, env=None, ready=b"LISTENING ", timeout=180, verb=("run",),
-              limit=DEFAULT_LIMIT):
+              limit=DEFAULT_LIMIT, intent="serve"):
         """`operator CONFIG run`, drained (LIMIT octets kept per stream),
-        returned once READY is on stdout."""
+        returned once READY is on stdout. Ordinary starts owe a response.
+        `restart-only` declares a start stopped without requests;
+        `connection-refusal` declares requests deliberately denied a greeting.
+        Both still require a live process and its readiness announcement.
+        """
+        if intent not in ("serve", "restart-only", "connection-refusal"):
+            raise ValueError("unknown node start intent: " + intent)
         argv, launch_env = self.launch(image, ("operator", self.config, *verb), env)
         process = start(argv, cwd=ROOT, env=launch_env, limit=limit)
         self.processes.append(process)
@@ -1490,8 +1500,10 @@ class Node:
         config = tomllib.loads(self.config.read_text())
         listener = config.get("listener", {})
         require_node_greeting(process, self.port, control=self.control, config=self.config,
-                              ports=(self.tls_port, listener.get("tls_port"), config.get("tls_port")),
-                              web_port=config.get("web", {}).get("port", config.get("web_port")))
+                              ports=(listener.get("port"), self.tls_port,
+                                     listener.get("tls_port"), config.get("tls_port")),
+                              web_port=config.get("web", {}).get("port", config.get("web_port")),
+                              intent=intent)
         return process
 
     def start_store_owner(self, *, once=True, fault=None, connections=8, env=None, image=None):

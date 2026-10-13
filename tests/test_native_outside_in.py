@@ -227,6 +227,7 @@ class Talk:
                         if "-connect" in argv else argv[-1])
         self.captured, self.greeted = bytearray(), False
         self.debug_dump = False
+        self.transcript_reply = False
         self.raw_err = []
         self.process = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE)
@@ -264,6 +265,9 @@ class Talk:
                 self.debug_dump = False
                 if raw.startswith((b"CONNECTED(", b"read R BLOCK", b"write W BLOCK")):
                     continue
+                if raw.rstrip(b"\r\n") == b"---" and not self.transcript_reply:
+                    continue  # s_client's STARTTLS negotiation separator.
+            self.transcript_reply = True
             return raw.decode("utf-8", "replace").rstrip("\r\n")
 
     def tool_line(self, timeout):

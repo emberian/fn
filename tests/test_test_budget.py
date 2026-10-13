@@ -59,6 +59,130 @@ class NativeMemoryTests(unittest.TestCase):
 
 
 class NodeDeadResultTests(unittest.TestCase):
+    def test_explicit_start_intents_keep_ordinary_starts_strict(self):
+        import contextlib
+        import io
+        from tests import native_harness as harness
+        for mode in ("serve", "restart-only", "connection-refusal", "dead-restart",
+                     "startup-refusal", "wrong-startup-refusal"):
+            with self.subTest(mode=mode):
+                process = mock.Mock(pid=42)
+                process.poll.return_value = 1 if mode == "dead-restart" else None
+                process.announcement.return_value = b"LISTENING 1234\n"
+                class Cases(unittest.TestCase):
+                    def test_row(self):
+                        with tempfile.TemporaryDirectory() as directory:
+                            node = harness.Node(self, "fixture", root=Path(directory), listener=False,
+                                                control=False, image_heap="fake starter")
+                            node.config.write_text('[listener]\nport = 1234\n')
+                            try:
+                                if mode.endswith("startup-refusal"):
+                                    # These synchronous refusal subjects owe no greeting;
+                                    # their own exit/status assertions remain the verdict.
+                                    result = subprocess.CompletedProcess([], 1 if mode == "startup-refusal" else 2,
+                                                                         b"", b"explicit refusal")
+                                    with mock.patch.object(harness.subprocess, "run", return_value=result):
+                                        result = node.operator("run", "--once")
+                                    self.assertEqual(result.returncode, harness.EXIT.REFUSED)
+                                else:
+                                    with mock.patch.object(harness, "start", return_value=process):
+                                        node.start(intent="restart-only" if mode == "dead-restart" else mode)
+                                    # No connection: the ordinary case must fail.
+                            finally:
+                                node.processes.clear()  # Fake starters own no OS process.
+                out, err = io.StringIO(), io.StringIO()
+                suite = unittest.defaultTestLoader.loadTestsFromTestCase(Cases)
+                with mock.patch.object(test_budget.unittest.defaultTestLoader, "loadTestsFromName", return_value=suite), \
+                     mock.patch.dict(os.environ, {"FN_VERDICT_STORE": ""}), \
+                     contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    rc = test_budget.run_one("fixture")
+                record = json.loads(next(line[len(test_budget.RESULT_PREFIX):] for line in out.getvalue().splitlines()
+                                         if line.startswith(test_budget.RESULT_PREFIX)))
+                passed = mode in ("restart-only", "connection-refusal", "startup-refusal")
+                self.assertEqual(rc, 0 if passed else 1, err.getvalue())
+                self.assertEqual(bool(record["node_dead"]), mode in ("serve", "dead-restart"))
+                self.assertEqual(record["cases"][0][1], "ok" if passed else "FAIL")
+
+    def test_a_restart_greeting_belongs_to_the_exact_owner_not_a_reused_port_or_pid(self):
+        import io
+        from tests import native_harness as harness
+        from tests.test_native_owner_scheduler import SchedulerNativeTests
+        old, replacement = mock.Mock(pid=42), mock.Mock(pid=42)
+        old.poll.return_value = replacement.poll.return_value = None
+        try:
+            harness.require_node_greeting(old, 1234, intent="restart-only")
+            old.poll.return_value = 0
+            harness.require_node_greeting(replacement, 1234)
+            case = SchedulerNativeTests()
+            case.port, case.owner = 1234, replacement
+            conn = mock.Mock()
+            conn.makefile.return_value = io.BytesIO(b"200 replacement ready\r\n")
+            with mock.patch("tests.test_native_owner_scheduler.socket.create_connection", return_value=conn):
+                # The call stack has a different TestCase; explicitly retain
+                # this fixture's obligation owner key across that reader.
+                with mock.patch.object(harness, "current_test_id", return_value=self.id()):
+                    case.connect()
+            self.assertEqual(harness.node_start_failures(self.id()), [])
+            # Even on a reused PID, bytes acknowledged for another Popen
+            # must never satisfy this start's still-unmet obligation.
+            harness._NODE_GREETINGS.pop(self.id())
+            old.poll.return_value = None
+            harness.require_node_greeting(old, 1234)
+            harness.require_node_greeting(replacement, 1234)
+            harness.observe_node_greeting(1234, b"200 replacement ready\r\n", process=replacement)
+            self.assertEqual(len(harness.node_start_failures(self.id())), 1)
+            old.poll.return_value = 1
+            with self.assertRaises(harness.NodeDead):
+                harness.observe_node_greeting(1234, b"200 stale\r\n", process=old)
+        finally:
+            harness._NODE_GREETINGS.pop(self.id(), None)
+            harness._NODE_DEAD.pop(self.id(), None)
+
+    def test_ipv6_table_listener_and_starttls_multiline_acknowledge_existing_bytes(self):
+        import io
+        from tests import native_harness as harness
+        from tests.test_native_outside_in import Talk
+        process = mock.Mock(pid=42)
+        process.poll.return_value = None
+        process.stdout.wait_for.return_value = (b"CONTROL ready\n", 14)
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                node = harness.Node(self, "fixture", root=Path(directory), listener=False,
+                                    control=False, image_heap="fake starter")
+                node.config.write_text('[listener]\nhost = "::1"\nport = 1234\n')
+                with mock.patch.object(harness, "start", return_value=process):
+                    node.start(ready=None)
+                node.processes.clear()
+                def tool(argv, output):
+                    child = mock.Mock(stdin=io.BytesIO(), stdout=io.BytesIO(output), stderr=io.BytesIO())
+                    child.poll.return_value = 0
+                    with mock.patch("tests.test_native_outside_in.subprocess.Popen", return_value=child) as popen:
+                        talk = Talk(self, argv)
+                        popen.assert_called_once()
+                    return talk
+                talk = tool(["nc", "-6", "::1", "1234"], b"200 IPv6 ready\r\n")
+                self.assertEqual(talk.expect("200", "201"), "200 IPv6 ready")
+                self.assertEqual(harness.node_start_failures(self.id()), [])
+                talk.close()
+
+                harness.require_node_greeting(process, 1234)
+                greeting = b"200 ready\r\n"
+                dump = (b"read from 0x123 [0x456] (11 bytes => 11)\n0000 - " +
+                        b" ".join(f"{b:02x}".encode() for b in greeting) + b"   captured\n")
+                talk = tool(["openssl", "-starttls", "nntp", "-debug", "-connect", "127.0.0.1:1234"],
+                            dump + b"---\nread R BLOCK\n101 capabilities\r\nVERSION 2\r\n---\r\n.\r\n500 unknown\r\n")
+                self.assertEqual(talk.multiline("CAPABILITIES", "101"),
+                                 ("101 capabilities", ["VERSION 2", "---"]))
+                self.assertTrue(talk.greeted)
+                self.assertEqual(harness.node_start_failures(self.id()), [])
+                with self.assertRaisesRegex(AssertionError, "expected 101, got '500 unknown'"):
+                    talk.command("BOGUS", "101")
+                self.assertEqual(talk.process.stdin.getvalue(), b"CAPABILITIES\r\nBOGUS\r\n")
+                talk.close()
+        finally:
+            harness._NODE_GREETINGS.pop(self.id(), None)
+            harness._NODE_DEAD.pop(self.id(), None)
+
     def test_mission_tls_and_web_ports_belong_to_the_started_owner(self):
         from tests import native_harness as harness
         process = mock.Mock(pid=42)
@@ -131,6 +255,7 @@ class NodeDeadResultTests(unittest.TestCase):
             talk.port, talk.timeout, talk.argv = 1234, 1, ["openssl", "-debug"]
             talk.captured, talk.greeted, talk.raw_err = bytearray(), False, []
             talk.debug_dump = False
+            talk.transcript_reply = False
             talk.lines, talk.err, talk.transcript = queue.Queue(), [], []
             for line in hidden.splitlines(keepends=True): talk.lines.put(line)
             self.assertEqual(talk.line(), "382 continue")
