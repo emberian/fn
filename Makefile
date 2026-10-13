@@ -1107,6 +1107,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-prepare-catalog-tests \
 	books/peer-transit-indexed \
 	tests/acl2/peer-transit-indexed-tests \
+	books/retain-known \
+	books/retain-carried \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
 	books/identity-retain-carried \
