@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Dev control devctl-150e2d6f48a0 (tools/dev_control.py, hbox, dev 150e2d6f4, 249 modules: 214 OK, 13 skipped, 22 failed): dev_control diff found 31 NEW reds; 6 are accounted (tls_key_exchange x3 retired in C16, public_limits x2 registered in C16, nntp_post_probe x1 retired by m-launcher-symlink). The other 25 are registered under this item at 150e2d6f4 by coordinator DECISION 10-13, owner builder-B until a triage run proposes owner and mechanism per row; each row then moves through known_reds.py transfer and its own item. Modules: auth_admin_fidelity 2 (uncertain-pass marker absent, exit -9); control_evidence 1 (extra 'output accounting: off' line); decoded_custody 1 (timing bound); expiry 1 (open=checkpoint:6 suffix=0 missing); fitness 1 (health finding in short soak); foreign_format_open 1 (health exit 18 not-running inside a subTest; test_budget records no red case: tools item); image_differential setUpClass (cold startup refused: heap does not hold the store's protected runtime; routed builder-M); operator_verdicts 1 (store status rc 1); owner_measure import (no pytest on the box; builder-B tools); raw_scripts 5 (raw-mock scripts exit 1); resilience_cuts 4 (git rev-parse HEAD in the box's git-archive tree); status_live_posts 1 (12232 != 60000); store_lineage 3 (not-running instead of refusal by name; routed builder-M); store_mount_identity 1 (another filesystem opened, not REFUSED); verdicts 1 (FN_NATIVE_LAUNCHER_SHA256 key; routed builder-M, launcher splice). Logs hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-<module>.log; table build/coordinator/tools-builder-b/b24/devctl-150e2d6f48a0-NEW.md.",
+ "file": "tests/",
+ "id": "DEV-CONTROL-UNTRACED-20261013",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "high",
+ "source": "devctl-150e2d6f48a0",
+ "state": "open",
+ "title": "25 dev reds found by the 10-13 control run, not yet traced to an owner",
+ "updated": "2026-10-13T13:16:26Z"
+}
