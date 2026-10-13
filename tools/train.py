@@ -1227,12 +1227,61 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
                 "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
 
 
+def image_dependency_events(forms, path: str):
+    """Read event containers and literal make-event results without evaluation.
+
+    Computed events have no statically known dependencies: refuse rather than
+    treating them as empty. Ordinary quoted templates are still not events.
+    """
+    import ledger
+    for form, origin in forms:
+        name = ledger.head(form)
+        if name in ledger.SUPPRESSING or name in ("quote", "quasiquote", "local"):
+            continue
+        if name == "make-event":
+            expression = form[1] if len(form) > 1 else None
+            if ledger.head(expression) != "quote" or len(expression) != 2:
+                raise TrainError(f"cannot derive image obligations for {path}: unresolved make-event")
+            yield from image_dependency_events([(expression[1], origin)], path)
+        elif name in ledger.TRANSPARENT or name in ("encapsulate", "mutual-recursion"):
+            start = 2 if name == "encapsulate" else 1
+            yield from image_dependency_events(((item, origin) for item in form[start:]), path)
+        else:
+            expansion = ledger.generated_expansion(form)
+            if expansion is not None:
+                yield from image_dependency_events(((item, origin) for item in expansion), path)
+            else:
+                yield form, origin
+
+
+def image_include_base(root: Path, file: Path, form: list) -> Path | None:
+    """Resolve the checked repository :FN namespace; system books are external."""
+    import ledger
+    directory = ledger.keyword_plist(form[2:]).get(":dir")
+    if directory is None or directory == [] or directory == ledger.Sym("nil"):
+        return file.parent
+    if directory == ledger.Sym(":system"):
+        return None
+    if directory == ledger.Sym(":fn"):
+        # The portable namespace is :FN "." (tools/acl2_projects.py).
+        # Validate the projects file with the same non-evaluating reader.
+        projects = root / "acl2-projects"
+        try:
+            forms = [f for f, _ in ledger.Reader(projects.read_text(encoding="utf-8")).top_level()]
+        except OSError as e:
+            raise TrainError(f"cannot resolve :dir :fn for {file}: {projects}: {e}") from e
+        if forms != [ledger.Sym(":fn"), "."]:
+            raise TrainError(f"cannot resolve :dir :fn for {file}: unsupported {projects} contract")
+        return root
+    raise TrainError(f"cannot derive image obligations for {file}: unsupported include-book :dir {directory}")
+
+
 def host_bp_image_books(root: Path, path: str) -> list[str]:
     """Direct, local BP book includes of a changed ACL2 host adapter.
 
     Read both the current adapter and its train-base version, so removing an
-    include or deleting the adapter still obliges its modules. Reader/source_events exclude
-    comments, quoted templates and suppressed events; no Lisp is evaluated.
+    include or deleting the adapter still obliges its modules. Event traversal
+    excludes comments, quoted templates and suppressed events; no Lisp is evaluated.
     Only BP dependencies extend the rules: other host files retain their
     existing gate policy.
     """
@@ -1248,11 +1297,14 @@ def host_bp_image_books(root: Path, path: str) -> list[str]:
     try:
         books = []
         for text in texts:
-            for form, _ in ledger.source_events(ledger.Reader(text).top_level(), include_local=False):
+            for form, _ in image_dependency_events(ledger.Reader(text).top_level(), path):
                 if (ledger.head(form) != "include-book" or len(form) < 2
-                        or type(form[1]) is not str or ledger.include_is_external(form)):
+                        or type(form[1]) is not str):
                     continue
-                book = (file.parent / (form[1] + ".lisp")).resolve()
+                base = image_include_base(root, file, form)
+                if base is None:
+                    continue
+                book = (base / (form[1] + ".lisp")).resolve()
                 try:
                     relative = book.relative_to(root.resolve()).as_posix()
                 except ValueError:
@@ -1262,6 +1314,30 @@ def host_bp_image_books(root: Path, path: str) -> list[str]:
         return books
     except ledger.ReadError as e:
         raise TrainError(f"cannot derive image obligations for {path}: {e}") from e
+
+
+def native_suite_sources(root: Path) -> dict[str, list[str]]:
+    """Native/image suite sources at the current tree and train base.
+
+    Include the base version so deleting a suite or removing a probe reference
+    cannot erase the obligation for a changed probe.
+    """
+    sources: dict[str, list[str]] = {}
+    for file in sorted((root / "tests").glob("test_*.py")):
+        sources[file.relative_to(root).as_posix()] = [file.read_text(encoding="utf-8")]
+    old = git(root, "ls-tree", "--name-only", train_base(), "tests/", check=False)
+    if old.returncode == 0:
+        for path in old.stdout.splitlines():
+            p = Path(path)
+            if p.parent == Path("tests") and p.name.startswith("test_") and p.suffix == ".py":
+                text = git(root, "show", f"{train_base()}:{path}", check=False)
+                if text.returncode == 0 and text.stdout not in sources.get(path, []):
+                    sources.setdefault(path, []).append(text.stdout)
+    declared = {m.replace(".", "/") + ".py" for _, _, modules in IMAGE_RULES for m in modules}
+    return {p: texts for p, texts in sources.items()
+            if Path(p).name.startswith("test_native_") or p in declared
+            or any(re.search(r"^\s*(from\s+(tests\.)?native_harness\s+import|"
+                             r"import\s+(tests\.)?native_harness\b)", text, re.M) for text in texts)}
 
 
 def image_modules(changed: list[str], root: Path | None = None) -> dict[str, list[str]]:
@@ -1278,6 +1354,19 @@ def image_modules(changed: list[str], root: Path | None = None) -> dict[str, lis
             for m in modules:
                 need.setdefault(m, [])
                 need[m] += [h for h in hits if h not in need[m]]
+    probes = [p for p in changed if Path(p).parent == Path("tests") and p.endswith(".lisp")]
+    suites = [p for p in changed if Path(p).parent == Path("tests")
+              and Path(p).name.startswith("test_") and p.endswith(".py")]
+    if probes or suites:
+        for path, texts in native_suite_sources(root).items():
+            hits = [p for p in probes if any(re.search(
+                r"(?<![\w.-])" + re.escape(Path(p).name) + r"(?![\w.-])", text) for text in texts)]
+            if path in suites:
+                hits.append(path)
+            if hits:
+                module = path[:-3].replace("/", ".")
+                need.setdefault(module, [])
+                need[module] += [p for p in hits if p not in need[module]]
     return need
 
 
@@ -1413,6 +1502,31 @@ def image_read_script(directory: str) -> str:
             "grep -ah FN_TEST_BUDGET_RESULT logs/test-*.log 2>/dev/null; true") % shlex.quote(directory)
 
 
+def require_published_run(run: dict, label: str) -> None:
+    """Generation-aware launchers publish pgid only after the run is adopted."""
+    if "launch_id" in run and not run.get("pgid"):
+        raise TrainError(f"image run {label} is pending; adopt: tools/hbox_native.sh adopt {label}")
+
+
+def run_identity_script(run: dict) -> str:
+    if "launch_id" not in run:
+        return ""
+    return ("printf 'TRAIN-RUN-IDENTITY '; cat %s/run.identity 2>/dev/null; printf '\\n'; "
+            % shlex.quote(run["dir"]))
+
+
+def checked_run_output(run: dict, output: str, label: str) -> str:
+    """Strip the identity framing only after binding output to this generation."""
+    if "launch_id" not in run:
+        return output
+    rows = [line for line in output.splitlines() if line.startswith("TRAIN-RUN-IDENTITY ")]
+    fields = rows[0].split()[1:] if len(rows) == 1 else []
+    if not fields or not run["launch_id"] or fields[0] != run["launch_id"]:
+        actual = fields[0] if fields else "missing or ambiguous"
+        raise TrainError(f"image run {label}: run.identity launch_id {actual!r}, expected {run['launch_id']!r}; results refused")
+    return "\n".join(line for line in output.splitlines() if not line.startswith("TRAIN-RUN-IDENTITY "))
+
+
 def drop_image_run(prior: dict | None, label: str, run: dict | None) -> tuple[dict, list[str], str]:
     """Remove exactly one run's verdicts and provenance, without box I/O."""
     if not prior:
@@ -1461,6 +1575,7 @@ def cmd_image(t: Train, args) -> int:
                if path.is_file() else None)
         st = t.load()
         st["image"], dropped, directory = drop_image_run(st.get("image"), label, run)
+        st.get("gates", {}).pop("image", None)
         t.save(st)
         say(f"image dropped {label} ({directory}): " + ", ".join(dropped))
         return 0
@@ -1469,10 +1584,11 @@ def cmd_image(t: Train, args) -> int:
     if not path.is_file():
         raise TrainError(f"no image run record {path}; run tools/hbox_native.sh {head[:9]} MODULES")
     run = dict(l.split("=", 1) for l in path.read_text().splitlines() if "=" in l)
+    require_published_run(run, label)
     source = run.get("source", "")
     tree = run.get("tree", source)
     if tree != head:
-        diff = git(t.root, "diff", "--name-only", tree, head, check=False)
+        diff = git(t.root, "diff", "--no-renames", "--name-only", tree, head, check=False)
         if diff.returncode != 0:
             raise TrainError(f"{path}: its tree {tree[:9] or '?'} is not a commit here")
         inputs = record_inputs_changed(diff.stdout.splitlines())
@@ -1483,7 +1599,7 @@ def cmd_image(t: Train, args) -> int:
     if source != head:
         # READY-image reuse: the modules ran in TREE on images built
         # at SOURCE; they stand for HEAD's images when no input differs.
-        diff = git(t.root, "diff", "--name-only", source, head, check=False)
+        diff = git(t.root, "diff", "--no-renames", "--name-only", source, head, check=False)
         if diff.returncode != 0:
             raise TrainError(f"{path}: its images' source {source[:9] or '?'} is not a commit here")
         inputs = image_inputs_changed(diff.stdout.split())
@@ -1494,13 +1610,14 @@ def cmd_image(t: Train, args) -> int:
         say(f"image run reuses the images of {source[:9]} (no image input differs)")
     if tree != head:
         say(f"image run tree {tree} accepted at HEAD {head}: only RECORD_NEUTRAL paths differ")
-    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], image_read_script(run["dir"])],
+    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], run_identity_script(run) + image_read_script(run["dir"])],
                        capture_output=True, text=True)
     if p.returncode != 0:
         raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")
     st = t.load()
-    read = parse_image_results(p.stdout)
+    read = parse_image_results(checked_run_output(run, p.stdout, label))
     st["image"] = merge_image_run(st.get("image"), head, run["box"], run["dir"], read, images_from)
+    st.get("gates", {}).pop("image", None)
     t.save(st)
     for m, e in sorted(read.items()):
         reds = [c for c, s in e["cases"].items() if s not in IMAGE_CASE_PASS]
@@ -1573,14 +1690,15 @@ def cmd_census(t: Train, args) -> int:
     if not path.is_file():
         raise TrainError(f"no image run record {path}")
     run = dict(l.split("=", 1) for l in path.read_text().splitlines() if "=" in l)
+    require_published_run(run, label)
     if head not in (run.get("source"), run.get("tree")):
         raise TrainError(f"{path} is a run of {run.get('tree', run.get('source', '?'))[:9]}, not HEAD {head[:9]}")
     d = shlex.quote(run["dir"])
-    script = f"tail -n 1 {d}/census.log 2>/dev/null; echo; echo CENSUS-LINE; cat {d}/census/line.txt 2>/dev/null; true"
+    script = run_identity_script(run) + f"tail -n 1 {d}/census.log 2>/dev/null; echo; echo CENSUS-LINE; cat {d}/census/line.txt 2>/dev/null; true"
     p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], script], capture_output=True, text=True)
     if p.returncode != 0:
         raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")
-    last, _, line_text = p.stdout.partition("CENSUS-LINE")
+    last, _, line_text = checked_run_output(run, p.stdout, label).partition("CENSUS-LINE")
     record = dict(parse_census(last.strip(), line_text), source=head, box=run["box"], dir=run["dir"])
     st = t.load()
     st["census"] = record
@@ -1622,7 +1740,7 @@ def unit_tests(root: Path, changed: list[str]) -> list[str]:
 
 
 def changed_paths(t: Train) -> list[str]:
-    return git(t.root, "diff", "--name-only", train_base(), "HEAD").stdout.split()
+    return git(t.root, "diff", "--no-renames", "--name-only", train_base(), "HEAD").stdout.splitlines()
 
 
 # Simple gates have one command; both drivers call the same functions below.
@@ -1750,7 +1868,7 @@ def _image_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
     files = changed_paths(t) if files is None else files
     need = image_modules(files, t.root)
     def changed_since(source: str) -> list[str] | None:
-        diff = git(t.root, "diff", "--name-only", source, head, check=False)
+        diff = git(t.root, "diff", "--no-renames", "--name-only", source, head, check=False)
         return diff.stdout.split() if diff.returncode == 0 else None
 
     image_rc, image_record = image_verdict(need, st.get("image"), head, known_reds_at(t, "HEAD"),
