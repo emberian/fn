@@ -1074,7 +1074,8 @@
               (if (and (equal (fn-stxk-context-kind identity) :ok)
                        (consp consumer) (eq (car consumer) :ok)
                        (eq (fn-th-at 0 topic) :ok)
-                       (fn-rii-sn-statep opened))
+                       (fn-rii-sn-statep opened)
+                       (fn-record-uint64p (fn-sn-identity-next opened)))
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :identity)))))))))
 
@@ -1243,7 +1244,8 @@
               (if (and (equal (fn-stxk-context-kind identity) :ok)
                        (consp consumer) (eq (car consumer) :ok)
                        (eq (fn-th-at 0 topic) :ok)
-                       (fn-rii-sn-statep-carried opened))
+                       (fn-rii-sn-statep-carried opened)
+                       (fn-record-uint64p (fn-sn-identity-next opened)))
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :identity)))))))))
 
@@ -1441,3 +1443,38 @@
                     fn-rii-advance-idlep fn-rii-sco-finalize-configured
                     fn-rii-sco-cpr-finish-configured fn-rii-sco-store-open-resumed
                     fn-rii-sco-extend-open))
+
+; Open exhaustion: the host path returns only a bounded identity cursor.
+(defthm fn-rii-sco-finalize-configured-opens-only-a-u64-identity-next
+  (implies (equal (fn-sn-open-kind (fn-rii-sco-finalize-configured replayed c configs frontier)) :ok)
+           (fn-record-uint64p
+            (fn-sn-identity-next
+             (fn-sn-open-state (fn-rii-sco-finalize-configured replayed c configs frontier)))))
+  :hints (("Goal" :in-theory (e/d (fn-rii-sco-finalize-configured fn-sn-open-kind fn-sn-open-state
+                                     fn-sn-open-ok fn-sn-open-error)
+                                    (fn-rii-sco-finalize-configured-is-finalize-from
+                                     fn-rii-sco-finalize-from fn-sco-finalize-from
+                                     fn-sn-with-event-index fn-sn-with-topic
+                                     fn-sn-with-consumer fn-cpo-install
+                                     fn-sn-update-replayed fn-sn-observed-seed
+                                     fn-rii-observed-historyp
+                                     fn-replay-advance-txid fn-rii-advance-idlep
+                                     fn-rii-sn-statep-carried)))))
+
+; Open exhaustion: the host path returns only a bounded identity cursor.
+(defthm fn-rii-sco-finalize-configured-refuses-an-exhausted-identity-next
+  (implies (not (fn-record-uint64p (fn-stxk-context-next (fn-sco-identity c))))
+           (let ((r (fn-rii-sco-finalize-configured replayed c configs frontier)))
+             (and (equal (fn-sn-open-kind r) :error)
+                  (member-equal (fn-sn-open-code r) '(:history :replay :frontier :identity)))))
+  :hints (("Goal" :in-theory (e/d (fn-rii-sco-finalize-configured fn-sn-open-kind fn-sn-open-state
+                                     fn-sn-open-ok fn-sn-open-error
+                                     fn-cpo-install fn-sn-update-replayed fn-sn-with-configuration fn-sn-make-v6 fn-sn-identity-next)
+                                    (fn-rii-sco-finalize-configured-is-finalize-from
+                                     fn-rii-sco-finalize-from fn-sco-finalize-from
+                                     fn-sn-with-event-index fn-sn-with-topic
+                                     fn-sn-with-consumer
+                                     fn-sn-observed-seed
+                                     fn-rii-observed-historyp
+                                     fn-replay-advance-txid fn-rii-advance-idlep
+                                     fn-rii-sn-statep-carried)))))

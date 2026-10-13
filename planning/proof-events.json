@@ -4842,6 +4842,10 @@
           "kind": "theorem",
           "name": "fn-sbud-prepare-under-article-budget-keeps-history",
           "note": "Replaces -at-producer-width (no width premise since H charges the stored octets)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-article-record-is-a-record-or-a-named-refusal"
         }
       ]
     },

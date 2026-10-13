@@ -5244,7 +5244,8 @@
         "fn-bs-frontier-v2-round-trip",
         "fn-bs-k0-host-frontier-frame-is-concrete-codec",
         "fn-sbud-article-verdict-keeps-history",
-        "fn-sbud-prepare-under-article-budget-keeps-history"
+        "fn-sbud-prepare-under-article-budget-keeps-history",
+        "fn-sn-article-record-is-a-record-or-a-named-refusal"
       ],
       "evidence_digest": "4f2bba5bd61d8cfd"
     },

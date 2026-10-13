@@ -501,3 +501,117 @@
    (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :duplicate))
                (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :conflict))))
    :rule-classes nil))
+
+; L18: constructor refusals retain their names and exact text at both wire boundaries.
+(include-book "../../books/owner")
+(include-book "../../books/peer-inbound")
+(with-guard-checking-event :none
+ (assert-event
+  (and (equal (fn-post-store-refusalp :sequence-exhausted) t)
+       (equal (fn-own-outcome-completion nil :sequence-exhausted) :refused)
+       (equal (fn-own-outcome-rendering nil :sequence-exhausted) :sequence-exhausted)
+       (equal (fn-post-store-refusal-line :sequence-exhausted)
+              "441 posting failed; the store has no article sequence number left, nothing was stored (sequence-exhausted)")
+       (equal (fn-peer-transit-refusal-line :sequence-exhausted)
+              "437 transfer rejected; the store has no article sequence number left, nothing was stored (sequence-exhausted)"))))
+(with-guard-checking-event :none
+ (assert-event
+  (and (equal (fn-post-store-refusalp :txid-exhausted) t)
+       (equal (fn-own-outcome-completion nil :txid-exhausted) :refused)
+       (equal (fn-own-outcome-rendering nil :txid-exhausted) :txid-exhausted)
+       (equal (fn-post-store-refusal-line :txid-exhausted)
+              "441 posting failed; the store has no transaction id left, nothing was stored (txid-exhausted)")
+       (equal (fn-peer-transit-refusal-line :txid-exhausted)
+              "437 transfer rejected; the store has no transaction id left, nothing was stored (txid-exhausted)"))))
+(with-guard-checking-event :none
+ (assert-event
+  (and (equal (fn-post-store-refusalp :msgid-invalid) t)
+       (equal (fn-own-outcome-completion nil :msgid-invalid) :refused)
+       (equal (fn-own-outcome-rendering nil :msgid-invalid) :msgid-invalid)
+       (equal (fn-post-store-refusal-line :msgid-invalid)
+              "441 posting failed; the Message-ID cannot be stored as a record field, nothing was stored (msgid-invalid)")
+       (equal (fn-peer-transit-refusal-line :msgid-invalid)
+              "437 transfer rejected; the Message-ID cannot be stored as a record field, nothing was stored (msgid-invalid)"))))
+(with-guard-checking-event :none
+ (assert-event
+  (and (equal (fn-post-store-refusalp :payload-invalid) t)
+       (equal (fn-own-outcome-completion nil :payload-invalid) :refused)
+       (equal (fn-own-outcome-rendering nil :payload-invalid) :payload-invalid)
+       (equal (fn-post-store-refusal-line :payload-invalid)
+              "441 posting failed; the article octets cannot be stored as a record, nothing was stored (payload-invalid)")
+       (equal (fn-peer-transit-refusal-line :payload-invalid)
+              "437 transfer rejected; the article octets cannot be stored as a record, nothing was stored (payload-invalid)"))))
+(with-guard-checking-event :none
+ (assert-event
+  (and (equal (fn-post-store-refusalp :groups-invalid) t)
+       (equal (fn-own-outcome-completion nil :groups-invalid) :refused)
+       (equal (fn-own-outcome-rendering nil :groups-invalid) :groups-invalid)
+       (equal (fn-post-store-refusal-line :groups-invalid)
+              "441 posting failed; the newsgroups list cannot be stored as a record field, nothing was stored (groups-invalid)")
+       (equal (fn-peer-transit-refusal-line :groups-invalid)
+              "437 transfer rejected; the newsgroups list cannot be stored as a record field, nothing was stored (groups-invalid)"))))
+(with-guard-checking-event :none
+ (assert-event
+  (and (equal (fn-post-store-refusalp :obligation-id-invalid) t)
+       (equal (fn-own-outcome-completion nil :obligation-id-invalid) :refused)
+       (equal (fn-own-outcome-rendering nil :obligation-id-invalid) :obligation-id-invalid)
+       (equal (fn-post-store-refusal-line :obligation-id-invalid)
+              "441 posting failed; the article's obligation id exceeds its record field, nothing was stored (obligation-id-invalid)")
+       (equal (fn-peer-transit-refusal-line :obligation-id-invalid)
+              "437 transfer rejected; the article's obligation id exceeds its record field, nothing was stored (obligation-id-invalid)"))))
+(with-guard-checking-event :none
+ (assert-event
+  (and (equal (fn-post-store-refusalp :subject-invalid) t)
+       (equal (fn-own-outcome-completion nil :subject-invalid) :refused)
+       (equal (fn-own-outcome-rendering nil :subject-invalid) :subject-invalid)
+       (equal (fn-post-store-refusal-line :subject-invalid)
+              "441 posting failed; the article's subject exceeds its record field, nothing was stored (subject-invalid)")
+       (equal (fn-peer-transit-refusal-line :subject-invalid)
+              "437 transfer rejected; the article's subject exceeds its record field, nothing was stored (subject-invalid)"))))
+(with-guard-checking-event :none
+ (assert-event
+  (and (equal (fn-post-store-refusalp :evidence-invalid) t)
+       (equal (fn-own-outcome-completion nil :evidence-invalid) :refused)
+       (equal (fn-own-outcome-rendering nil :evidence-invalid) :evidence-invalid)
+       (equal (fn-post-store-refusal-line :evidence-invalid)
+              "441 posting failed; the server's posting evidence cannot be stored as a record field, nothing was stored (evidence-invalid)")
+       (equal (fn-peer-transit-refusal-line :evidence-invalid)
+              "437 transfer rejected; the server's posting evidence cannot be stored as a record field, nothing was stored (evidence-invalid)"))))
+(with-guard-checking-event :none
+ (assert-event
+  (and (equal (fn-post-store-refusalp :charge-invalid) t)
+       (equal (fn-own-outcome-completion nil :charge-invalid) :refused)
+       (equal (fn-own-outcome-rendering nil :charge-invalid) :charge-invalid)
+       (equal (fn-post-store-refusal-line :charge-invalid)
+              "441 posting failed; the article's charge exceeds its record field, nothing was stored (charge-invalid)")
+       (equal (fn-peer-transit-refusal-line :charge-invalid)
+              "437 transfer rejected; the article's charge exceeds its record field, nothing was stored (charge-invalid)"))))
+; The clock word retains its separate POST line, and unknown words stay uncertain.
+(with-guard-checking-event :none
+ (assert-event
+  (and (not (fn-post-store-refusalp :clock-unusable))
+       (equal (fn-own-outcome-completion nil :clock-unusable) :clock-unusable)
+       (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-s0* :clock-unusable))
+              (fn-post-single *fn-tp-s0* (fn-post-refusal-line :clock-unusable)))
+       (not (fn-post-store-refusalp :no-such-refusal))
+       (equal (fn-own-outcome-rendering nil :no-such-refusal) :uncertain))))
+
+; A consumed completion always wins over a refusal, including a new member word.
+(with-guard-checking-event :none
+ (assert-event
+  (let ((o (fn-own-make nil nil nil 0 1 nil '((0 . 0)) nil nil nil nil
+                        (fn-own-sub-make :probe 0 0 nil nil) nil nil nil)))
+    (and (fn-own-completion-consumedp o)
+         (fn-post-store-refusalp :charge-invalid)
+         (equal (fn-own-outcome-completion o :charge-invalid) :uncertain)
+         (equal (fn-own-outcome-rendering o :charge-invalid) :uncertain)))))
+
+(defun fn-tp-constructor-refusals-have-post-words (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (and (or (equal (car words) :clock-unusable)
+               (fn-post-store-refusalp (car words)))
+           (fn-tp-constructor-refusals-have-post-words (cdr words)))
+    t))
+(with-guard-checking-event :none
+ (assert-event (fn-tp-constructor-refusals-have-post-words *fn-sn-article-record-refusals*)))
