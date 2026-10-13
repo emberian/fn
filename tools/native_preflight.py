@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reuse successful static native gates over identical source and Python inputs.
 
-Only these three source scanners are eligible. ACL2 admission, certificates,
+Only the listed source scanners are eligible. ACL2 admission, certificates,
 host loading, image identity and runtime tests never use these receipts.
 All repository source is hashed, including untracked files, except generated
 build products and evidence payloads (the evidence index is included). The
@@ -30,6 +30,7 @@ GATES = {
     "interfaces-check": ("tools/interface_emit.py", "--check"),
     "host-books": ("tools/host_check.py", "--books"),
     "attach-order": ("tools/host_check.py", "--attach-order"),
+    "one-world": ("tools/one_world_check.py",),
 }
 SCHEMA = 1
 PYTHON_FLAGS = ("-I", "-S")  # No user/site startup hooks or external import paths.

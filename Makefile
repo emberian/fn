@@ -3129,6 +3129,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_tls_check
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --build-lists
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --attach-order
+	@$(CHECK_STEP) $(PYTHON) tools/one_world_check.py
 # A host macro used before its definition in load order compiles as a
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --macro-order
