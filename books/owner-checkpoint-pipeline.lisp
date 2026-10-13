@@ -687,6 +687,9 @@
                                          (:executable-counterpart nth)
                                          (:executable-counterpart natp)))))))
 
+; Preserve the NTH total field for the admit-frames shape lemma.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+
 (local
  (defthm fn-ockp-batch-total-natp
    (implies (and (natp total)

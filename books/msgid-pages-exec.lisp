@@ -2648,6 +2648,9 @@
   :hints (("Goal" :in-theory (enable nthcdr)))))
 
 ; The key from I is the tail of the key array.
+; Preserve the key-array NTH terms for the recognizer and tail lemmas.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+
 (defthm fn-mpxt-key-from-is-nthcdr
   (implies (and (fn-mpxtp fn-mpxt) (natp i))
            (equal (fn-mpxt-key-from i fn-mpxt) (nthcdr i (nth *fn-mpxt-keyi* fn-mpxt))))

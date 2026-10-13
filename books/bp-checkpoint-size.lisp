@@ -243,6 +243,9 @@
    :rule-classes nil
    :hints (("Goal" :in-theory (enable fn-bpnr-checkpointp)))))
 
+; Preserve the list-slot vocabulary used by the length witness.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+
 (local
  (defthm fn-bpck-len9-is-nine-slots
    (implies (and (true-listp ck) (equal (len ck) 9))

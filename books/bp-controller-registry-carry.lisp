@@ -11,6 +11,9 @@
            (member-eq (fn-bpn-nth 1 row) '(:live :fenced :retiring))
            (true-listp (fn-bpn-nth 2 row))
            (fn-bpnp-step-guard-premisesp (fn-bpn-nth 2 row)))))
+; Keep the consuming proof vocabulary at this event.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+
 (defun fn-bpc-segment-carry-loop (slot fn-bpc-segment)
   (declare (xargs :stobjs fn-bpc-segment :measure (nfix (- 64 (nfix slot)))
                   :guard (and (natp slot) (<= slot 64)) :verify-guards nil))

@@ -272,6 +272,9 @@
    :hints (("Goal" :expand ((fn-sccr-planp plan pos fn-octets))
             :in-theory (enable fn-sccr-framep)))))
 
+; Keep the consuming proof vocabulary at this event.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+
 (defun fn-sctr-run-decode (plan pos s fn-octets)
   (declare (xargs :stobjs fn-octets
                   :guard (fn-sccr-planp plan pos fn-octets)
