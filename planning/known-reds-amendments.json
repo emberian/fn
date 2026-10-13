@@ -113,6 +113,30 @@
    "item": "FILL-BOUNDS-JOIN-POST-HEAP",
    "owner": "builder-P",
    "ruling": "coordinator 2026-10-12 DECISION (a): a 3 MiB POST allocates ~874 MB under the owner mutex (L16, build/lanes/log-l4/build/codex/l4-trace/REPORT.md section 3), bar 16 x 3 MiB = 50,331,648 bytes; copies (a)-(g) are on the native POST path that POST landing 2b deletes (c7/DESIGN.md section 9), so no twin repair under rule 6.7; (h) with L16's restatement, (i) and surviving paths by A19 now; carried as a known red, amended, owner builder-P, retired by POST landing 2b (lane/post), whose READY reports the measured 3 MiB allocation pessimistic first"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_openssl_prefix_is_refused_by_name",
+   "dev_sha": "0403f697b",
+   "item": "TLS-WRAPPER-UNSCOPED-REFUSAL",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 (A26 trace): dev red not in known-reds; owner builder-A, retired by lane/vertical-tls-wrapper (the wrapper keeps nothing but exec; the image's scoped refusal in host/native/tls.lisp is the one decision site); gate = these three tests on hbox"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_prefix_with_hybrid_required_and_no_tls_is_refused",
+   "dev_sha": "0403f697b",
+   "item": "TLS-WRAPPER-UNSCOPED-REFUSAL",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 (A26 trace): dev red not in known-reds; owner builder-A, retired by lane/vertical-tls-wrapper (the wrapper keeps nothing but exec; the image's scoped refusal in host/native/tls.lisp is the one decision site); gate = these three tests on hbox"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_prefix_on_a_node_without_tls_runs_on_the_system_pair",
+   "dev_sha": "0403f697b",
+   "item": "TLS-WRAPPER-UNSCOPED-REFUSAL",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 (A26 trace): dev red not in known-reds; owner builder-A, retired by lane/vertical-tls-wrapper (the wrapper keeps nothing but exec; the image's scoped refusal in host/native/tls.lisp is the one decision site); gate = these three tests on hbox"
   }
  ]
 }

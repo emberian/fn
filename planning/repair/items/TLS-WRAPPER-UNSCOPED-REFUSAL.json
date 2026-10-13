@@ -1,0 +1,12 @@
+{
+ "detail": "Measured on dev 0403f697b by B23's control run, hbox:/tank/fn/scratch/b-native-launch-2/native-nl2-ctl0403/logs/test-tests.test_native_tls_key_exchange.log (exit 2 != REFUSED 1; message 'fn: no OpenSSL libssl.so.3 under ...'). Introduced by c6b5d0a57 (crypto-xform-2, 10-08), packaging/fn:62-70. Not the launcher splice. Fix (coordinator 10-13): delete the wrapper's check so the image's scoped refusal (host/native/tls.lisp) is the one decision site; the wrapper keeps nothing but exec; gate = the three tests on hbox.",
+ "file": "packaging/fn",
+ "id": "TLS-WRAPPER-UNSCOPED-REFUSAL",
+ "notes": [],
+ "owner": "builder-A",
+ "severity": "medium",
+ "source": "b23-control-0403",
+ "state": "open",
+ "title": "tests.test_native_tls_key_exchange: the installed wrapper packaging/fn exits 2 on any missing FN_OPENSSL_PREFIX before the image runs, so D59's scoped refusal (TLS listener/STARTTLS or hybrid-required only; else the system pair) is never reached: three tests red (missing prefix refused by name, missing prefix + hybrid-required, missing prefix on a node without TLS runs on the system pair)",
+ "updated": "2026-10-13T06:56:15Z"
+}
