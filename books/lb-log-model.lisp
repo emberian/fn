@@ -66,8 +66,17 @@
   (append (fn-lb-log-model-nat-octets (length text))
           (fn-record-string-octets text)))
 
-(defun fn-lb-log-model-value-octets (value)
+; Guard-only domain: ACL2 value trees exclude the logical bad-atom case.
+(defun fn-lb-value-treep (value)
   (declare (xargs :guard t :verify-guards nil))
+  (if (consp value)
+      (and (fn-lb-value-treep (car value))
+           (fn-lb-value-treep (cdr value)))
+    (or (symbolp value) (rationalp value) (complex-rationalp value)
+        (characterp value) (stringp value))))
+
+(defun fn-lb-log-model-value-octets (value)
+  (declare (xargs :guard (fn-lb-value-treep value) :verify-guards nil))
   (cond ((null value) '(0))
         ((consp value)
          (cons 1 (append (fn-lb-log-model-value-octets (car value))
@@ -87,7 +96,7 @@
                            (fn-lb-log-model-text-octets (symbol-name value)))))))
 
 (defun fn-lb-log-model-home-frame (row)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (or (not (fn-cat-rowp row)) (fn-lb-value-treep (fn-lb-log-model-homes row))) :verify-guards nil))
   (if (fn-cat-rowp row)
       (let ((bytes (fn-lb-log-model-value-octets (fn-lb-log-model-homes row))))
         (append (fn-lb-log-model-nat-octets (len bytes)) bytes))
@@ -122,22 +131,76 @@
            (fn-lb-log-model-segsp (cdr segs)))
     (null segs)))
 
-(defun fn-lb-log-model-segment (segment segs)
+; These predicates constrain only the spines used by guard-sensitive readers.
+; An outer atom tail is ignored, just as it is by the model workers.
+(defun fn-lb-log-entries-guardp (segs)
   (declare (xargs :guard t :verify-guards nil))
+  (if (consp segs)
+      (and (true-listp (car segs))
+           (true-list-listp (true-list-fix (caddar segs)))
+           (fn-lb-log-entries-guardp (cdr segs)))
+    t))
+
+(defun fn-lb-log-read-guardp (segs)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp segs)
+      (and (true-listp (car segs)) (true-listp (cadar segs))
+           (true-list-listp (true-list-fix (caddar segs)))
+           (fn-lb-log-read-guardp (cdr segs)))
+    t))
+
+(defun fn-lb-log-append-guardp (segs)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp segs)
+      (and (true-listp (car segs)) (true-listp (cadar segs))
+           (true-listp (caddar segs))
+           (fn-lb-log-append-guardp (cdr segs)))
+    t))
+
+; A locator updater may select any entry in this log.  The guard domain
+; therefore covers all saved home/control spines, including missing entries.
+(defun fn-lb-home-fields-guardp (homes)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (true-listp homes)
+       (fn-lb-value-treep homes)
+       (let ((home (nth 4 homes)))
+         (and (true-listp home)
+              (or (< (nfix (car home)) 4)
+                  (and (true-listp (cadr home))
+                       (equal (len (cadr home)) 3)))))))
+
+(defun fn-lb-entries-homes-guardp (entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp entries)
+      (and (true-listp (car entries))
+           (fn-lb-home-fields-guardp (nth 7 (car entries)))
+           (fn-lb-entries-homes-guardp (cdr entries)))
+    t))
+
+(defun fn-lb-log-homes-guardp (log)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp log)
+      (and (true-listp (car log))
+           (fn-lb-entries-homes-guardp (caddar log))
+           (fn-lb-log-homes-guardp (cdr log)))
+    t))
+
+(defun fn-lb-log-model-segment (segment segs)
+  (declare (xargs :guard (alistp (remove-equal nil (true-list-fix segs))) :verify-guards nil))
   (if (consp segs)
       (if (equal segment (caar segs)) (car segs)
         (fn-lb-log-model-segment segment (cdr segs)))
     nil))
 
 (defun fn-lb-log-model-entry (entry entries)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (alistp (remove-equal nil (true-list-fix entries))) :verify-guards nil))
   (if (consp entries)
       (if (equal entry (caar entries)) (car entries)
         (fn-lb-log-model-entry entry (cdr entries)))
     nil))
 
 (defun fn-lb-log-model-read-range (segment offset length segs)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (alistp (remove-equal nil (true-list-fix segs))) (true-listp (fn-lb-log-model-segment segment segs)) (true-listp (cadr (fn-lb-log-model-segment segment segs)))) :verify-guards nil))
   (let* ((seg (fn-lb-log-model-segment segment segs))
          (bytes (cadr seg)))
     (if (and seg (natp offset) (natp length)
@@ -146,7 +209,7 @@
       :bad)))
 
 (defun fn-lb-log-model-home-entry (position entries)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (true-list-listp (true-list-fix entries)) :verify-guards nil))
   (if (consp entries)
       (if (equal position (+ (nfix (nth 3 (car entries)))
                              (nfix (nth 4 (car entries)))))
@@ -155,7 +218,7 @@
     nil))
 
 (defun fn-lb-log-model-read-home-frame (position segs)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (true-listp position) (fn-lb-log-read-guardp segs)) :verify-guards nil))
   (let* ((seg (fn-lb-log-model-segment (car position) segs))
          (entry (fn-lb-log-model-home-entry (cadr position) (caddr seg)))
          (end (+ (nfix (nth 1 entry)) (nfix (nth 2 entry)))))
@@ -165,21 +228,21 @@
       :bad)))
 
 (defun fn-lb-log-model-handle-entry (handle entries)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (true-list-listp (true-list-fix entries)) :verify-guards nil))
   (if (consp entries)
       (if (equal handle (nth 5 (car entries))) (car entries)
         (fn-lb-log-model-handle-entry handle (cdr entries)))
     nil))
 
 (defun fn-lb-log-model-payload-entry (handle segs)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-lb-log-entries-guardp segs) :verify-guards nil))
   (if (consp segs)
       (or (fn-lb-log-model-handle-entry handle (caddar segs))
           (fn-lb-log-model-payload-entry handle (cdr segs)))
     nil))
 
 (defun fn-lb-log-model-payload-segment (handle segs)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-lb-log-entries-guardp segs) :verify-guards nil))
   (if (consp segs)
       (if (fn-lb-log-model-handle-entry handle (caddar segs))
           (caar segs)
@@ -187,16 +250,16 @@
     nil))
 
 (defun fn-lb-log-payload (row log)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-lb-log-entries-guardp log) :verify-guards nil))
   (nth 6 (fn-lb-log-model-payload-entry (fn-record-payload row) log)))
 
 (defun fn-lb-entry-protected-len (seg entry log)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-lb-log-entries-guardp log) :verify-guards nil))
   (nfix (nth 2 (fn-lb-log-model-entry entry
                       (caddr (fn-lb-log-model-segment seg log))))))
 
 (defun fn-lb-entry-octets (seg entry log)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-lb-log-read-guardp log) :verify-guards nil))
   (let ((e (fn-lb-log-model-entry entry
                 (caddr (fn-lb-log-model-segment seg log)))))
     (if e
@@ -209,12 +272,12 @@
 ; preserves the sequence and home suffix, while a reclaim supplies the new
 ; sealed tombstone handle and its raw range.
 (defun fn-lb-log-model-pre (row payload)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (natp (fn-record-sequence row)) :verify-guards nil))
   (append (list 70 76 66 1 (if (fn-rcl-tombstonep payload) 1 0))
           (fn-lb-log-model-nat-octets (fn-record-sequence row))))
 
 (defun fn-lb-log-model-append-to-segment (row payload segment)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (or (not (fn-rcl-tombstonep payload)) (true-listp payload)) (and (fn-lb-value-treep (fn-lb-log-model-homes row)) (and (fn-cat-rowp row) (true-listp segment) (true-listp (cadr segment)) (true-listp (caddr segment))))) :verify-guards nil))
   (let* ((bytes (cadr segment)) (entries (caddr segment))
          (pre (fn-lb-log-model-pre row payload))
          (range (if (fn-rcl-tombstonep payload)
@@ -230,7 +293,7 @@
           (append entries (list entry)))))
 
 (defun fn-lb-log-model-append (row payload segment-id log)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (or (not (fn-rcl-tombstonep payload)) (true-listp payload)) (and (fn-lb-value-treep (fn-lb-log-model-homes row)) (and (fn-cat-rowp row) (fn-lb-log-append-guardp log)))) :verify-guards nil))
   (if (consp log)
       (if (equal segment-id (caar log))
           (cons (fn-lb-log-model-append-to-segment row payload (car log)) (cdr log))
@@ -238,14 +301,14 @@
     (list (fn-lb-log-model-append-to-segment row payload (list segment-id nil nil)))))
 
 (defun fn-lb-log-model-recycle (segment-id log)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (alistp (remove-equal nil (true-list-fix log))) :verify-guards nil))
   (if (consp log)
       (if (equal segment-id (caar log)) (cdr log)
         (cons (car log) (fn-lb-log-model-recycle segment-id (cdr log))))
     nil))
 
 (defun fn-lb-arena-is-log (fn-arena rows log)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard (fn-lb-log-entries-guardp log) :verify-guards nil))
   ;; every row's payload bytes in FN-ARENA are its stored payload in LOG
   (if (consp rows)
       (and (equal (fn-nntp-payload-bytes (fn-record-payload (car rows)) fn-arena)

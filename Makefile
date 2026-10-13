@@ -1612,6 +1612,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-columns \
 	books/log-locator-resolves \
 	books/log-verified-map \
+	books/catalog-columns-guards \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
 	tests/acl2/catalog-raw-low-tests \

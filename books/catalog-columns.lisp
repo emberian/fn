@@ -101,6 +101,41 @@
   (stobj-let ((fn-lbc-rowwords (fn-lbc-row-store fn-lbc)))
              (count) (fn-lbc-rowwords-count fn-lbc-rowwords) count))
 
+; Stobj-aware guard recognizers: no loop closure captures FN-LBC.
+(defun fn-lbc-escape-cellsp (i fn-lbc)
+  (declare (xargs :stobjs fn-lbc
+                  :guard (and (natp i) (<= i (fn-lbc-count fn-lbc)))
+                  :measure (nfix (- (fn-lbc-count fn-lbc) (nfix i)))
+                  :verify-guards nil))
+  (if (and (natp i) (< i (fn-lbc-count fn-lbc)))
+      (and (alistp (fn-lbc-escape-store-get i fn-lbc))
+           (fn-lbc-escape-cellsp (+ i 1) fn-lbc))
+    t))
+
+(defun fn-lbc-number-escape-cellsp (i fn-lbc)
+  (declare (xargs :stobjs fn-lbc
+                  :guard (and (natp i) (<= i (fn-lbc-count fn-lbc))
+                              (fn-lbc-escape-cellsp i fn-lbc))
+                  :measure (nfix (- (fn-lbc-count fn-lbc) (nfix i)))
+                  :verify-guards nil))
+  (if (and (natp i) (< i (fn-lbc-count fn-lbc)))
+      (and (alistp (cdr (assoc-eq :numbers
+                          (fn-lbc-escape-store-get i fn-lbc))))
+           (fn-lbc-number-escape-cellsp (+ i 1) fn-lbc))
+    t))
+
+(defun fn-lbc-stamp-escape-cellsp (i fn-lbc)
+  (declare (xargs :stobjs fn-lbc
+                  :guard (and (natp i) (<= i (fn-lbc-count fn-lbc))
+                              (fn-lbc-escape-cellsp i fn-lbc))
+                  :measure (nfix (- (fn-lbc-count fn-lbc) (nfix i)))
+                  :verify-guards nil))
+  (if (and (natp i) (< i (fn-lbc-count fn-lbc)))
+      (let ((escape (assoc-eq :stamp (fn-lbc-escape-store-get i fn-lbc))))
+        (and (or (not escape) (acl2-numberp (cdr escape)))
+             (fn-lbc-stamp-escape-cellsp (+ i 1) fn-lbc)))
+    t))
+
 (defun fn-lbc-loc0 (i fn-lbc)
   (declare (xargs :stobjs fn-lbc
                   :guard (and (natp i) (< i (fn-lbc-count fn-lbc)))
@@ -327,21 +362,21 @@
 ; Escapes carry individual values, keyed by catalog sequence.  Presence
 ; is distinguished from NIL, so an escaped NIL does not become a word 0.
 (defun fn-lbc-escape (i field fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (if (symbolp field) (alistp (fn-lbc-escape-store-get i fn-lbc)) (symbol-alistp (fn-lbc-escape-store-get i fn-lbc)))) :verify-guards nil))
   (assoc-eq field (fn-lbc-escape-store-get i fn-lbc)))
 
 (defun fn-lbc-value (i field fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (if (symbolp field) (alistp (fn-lbc-escape-store-get i fn-lbc)) (symbol-alistp (fn-lbc-escape-store-get i fn-lbc)))) :verify-guards nil))
   (let ((escape (fn-lbc-escape i field fn-lbc)))
     (if escape (cdr escape) (fn-lbc-word field i fn-lbc))))
 
 (defun fn-lbc-directory-value (i field fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (if (symbolp field) (alistp (fn-lbc-escape-store-get i fn-lbc)) (symbol-alistp (fn-lbc-escape-store-get i fn-lbc)))) :verify-guards nil))
   (let ((escape (fn-lbc-escape i field fn-lbc)))
     (if escape (cdr escape) (fn-lbc-directory-field field i fn-lbc))))
 
 (defun fn-lbc-msgid (i fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (let ((length (nfix (fn-lbc-value i :msgid-length fn-lbc))))
     (if (> length *fn-record-max-msgid*) ""
       (fn-record-octets-string
@@ -353,7 +388,7 @@
   (logbitp bit (nfix (fn-lbc-word :flags i fn-lbc))))
 
 (defun fn-lbc-withdrawn (i fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (if (fn-lbc-flag i *fn-lbc-withdrawn-bit* fn-lbc)
       (cons (fn-lbc-value i :withdrawal-at fn-lbc)
             (fn-lbc-value i :withdrawal-by fn-lbc))
@@ -377,13 +412,13 @@
           (fn-lbc-membership-run (+ 1 start) (- count 1) numbersp fn-lbc))))
 
 (defun fn-lbc-groups (i fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (fn-lbc-membership-run
     (nfix (fn-lbc-directory-value i :groups-start fn-lbc))
     (nfix (fn-lbc-directory-value i :groups-count fn-lbc)) nil fn-lbc))
 
 (defun fn-lbc-numbers (i fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (let ((escape (fn-lbc-escape i :numbers fn-lbc)))
     (if escape (cdr escape)
       (fn-lbc-membership-run
@@ -411,14 +446,14 @@
                      (fn-lbc-nov-field :references-length j fn-lbc) fn-lbc)))
 
 (defun fn-lbc-original-nov (i fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (let ((escape (fn-lbc-escape i :nov fn-lbc)))
     (if escape (cdr escape)
       (if (equal (fn-lbc-directory-value i :nov-length fn-lbc) 0) nil
         (fn-lbc-nov-at (fn-lbc-directory-value i :nov-start fn-lbc) fn-lbc)))))
 
 (defun fn-lbc-render-nov (i fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (fn-lbc-nov-at (fn-lbc-directory-value i :render-nov-start fn-lbc) fn-lbc))
 
 (defun fn-cat-served-projection (row)
@@ -434,7 +469,7 @@
           (fn-record-sequence row))))
 
 (defun fn-lbc-served-row (i fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (list (fn-lbc-msgid i fn-lbc) (fn-lbc-value i :handle fn-lbc)
         (fn-lbc-groups i fn-lbc) (fn-lbc-numbers i fn-lbc)
         (fn-lbc-value i :stamp fn-lbc) (fn-lbc-withdrawn i fn-lbc)
@@ -451,19 +486,37 @@
 ; The parser adapter supplies the full log-home fields.  They are not
 ; recovered from a resident copy of the held record.
 (defun fn-lbc-home-entry (i fn-lbc log)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (natp i) (< i (fn-lbc-count fn-lbc)) (fn-lb-log-entries-guardp log)) :verify-guards nil))
   (let* ((loc0 (fn-lbc-loc0 i fn-lbc)) (loc1 (fn-lbc-loc1 i fn-lbc))
          (seg (fn-lb-log-model-segment (fn-loc-segment loc0 loc1) log)))
     (fn-lb-log-model-home-entry
       (+ (fn-loc-offset loc0 loc1) (fn-loc-len loc0 loc1)) (caddr seg))))
 
 (defun fn-lbc-restore-control (home nov)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (true-listp home) (or (< (nfix (car home)) 4) (true-listp (cadr home)))) :verify-guards nil))
   (if (< (nfix (car home)) 4) (cadr home)
     (append (cadr home) (cons nov (caddr home)))))
 
-(defun fn-lbc-at (i fn-lbc log)
+(defun fn-lbc-home-guardp (i fn-lbc log)
+  (declare (xargs :stobjs fn-lbc
+                  :guard (and (natp i) (< i (fn-lbc-count fn-lbc))
+                              (fn-lb-log-entries-guardp log))
+                  :verify-guards nil))
+  (let ((homes (nth 7 (fn-lbc-home-entry i fn-lbc log))))
+    (and (true-listp homes)
+         (let ((home (nth 4 homes)))
+           (and (true-listp home)
+                (or (< (nfix (car home)) 4) (true-listp (cadr home))))))))
+
+; LC's guard invariant is independent of the current locator values.
+; This makes arbitrary in-range locator-word updates preserve it.
+(defun fn-lbc-lc-guardp (log fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (and (fn-lb-log-homes-guardp log)
+       (fn-lbc-escape-cellsp 0 fn-lbc)))
+
+(defun fn-lbc-at (i fn-lbc log)
+  (declare (xargs :stobjs fn-lbc :guard (and (natp i) (< i (fn-lbc-count fn-lbc)) (fn-lb-log-entries-guardp log) (alistp (fn-lbc-escape-store-get i fn-lbc)) (fn-lbc-home-guardp i fn-lbc log)) :verify-guards nil))
   (let* ((r (fn-lbc-served-row i fn-lbc))
          (homes (nth 7 (fn-lbc-home-entry i fn-lbc log)))
          (facts (nth 6 r)) (identity (nth 7 r)))
@@ -480,7 +533,7 @@
   (if (unsigned-byte-p 64 value) value 0))
 
 (defun fn-lbc-sparse-u64 (fields values)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (true-listp values) :verify-guards nil))
   (if (consp fields)
       (if (unsigned-byte-p 64 (car values))
           (fn-lbc-sparse-u64 (cdr fields) (cdr values))
@@ -551,7 +604,7 @@
       (fn-lbc-nov) (fn-lbc-nov-append record fn-lbc-nov) fn-lbc)))
 
 (defun fn-lbc-append-memberships (items numbersp fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (or (not numbersp) (alistp (remove-equal nil (true-list-fix items)))) :verify-guards nil))
   (if (consp items)
       (let* ((group (if numbersp (caar items) (car items)))
              (bytes (fn-record-string-octets group))
@@ -581,8 +634,30 @@
 ; Appends the columns of an already committed row.  The log adapter's
 ; directory supplies its locator and entry ordinal; no locator is invented
 ; for a row absent from LOG.  The open and commit adapters use this worker.
+(defun fn-lbc-row-log-guardp (row log)
+  (declare (xargs :guard (fn-lb-log-read-guardp log) :verify-guards nil))
+  (let ((entry (fn-lb-log-model-payload-entry (fn-record-payload row) log))
+        (segment (fn-lb-log-model-payload-segment (fn-record-payload row) log)))
+    (and (unsigned-byte-p 64 segment)
+         (unsigned-byte-p 32 (nth 3 entry))
+         (unsigned-byte-p 32 (nth 4 entry)))))
+
+(defun fn-lbc-rows-log-guardp (rows log)
+  (declare (xargs :guard (fn-lb-log-read-guardp log) :verify-guards nil))
+  (if (consp rows)
+      (and (fn-lbc-row-log-guardp (car rows) log)
+           (fn-lbc-rows-log-guardp (cdr rows) log))
+    t))
+
+(defun fn-lbc-row-homes-guardp (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rows)
+      (and (fn-lb-value-treep (fn-lb-log-model-homes (car rows)))
+           (fn-lbc-row-homes-guardp (cdr rows)))
+    t))
+
 (defun fn-lbc-append-row (row log fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard (fn-cat-rowp row)
+  (declare (xargs :stobjs fn-lbc :guard (and (fn-cat-rowp row) (fn-lb-log-read-guardp log) (fn-lbc-row-log-guardp row log) (fn-lbc-escape-cellsp 0 fn-lbc))
                   :verify-guards nil))
   (let* ((i (fn-lbc-count fn-lbc))
          (entry (fn-lb-log-model-payload-entry (fn-record-payload row) log))
@@ -668,7 +743,7 @@
         (fn-lbc-escape-store-put i escape fn-lbc)))))
 
 (defun fn-lbc-visiblep (i v fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (or (not (and (natp i) (< i (rfix v)) (< i (fn-lbc-count fn-lbc)))) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (and (natp i) (< i (rfix v)) (< i (fn-lbc-count fn-lbc))
        (let ((w (fn-lbc-withdrawn i fn-lbc)))
          (or (null w) (<= (rfix v) (nfix (car w)))))))
@@ -697,8 +772,7 @@
 ; against its own value after the search, never against the prefix maximum.
 (defun fn-lbc-first-reaching (threshold lo hi fn-lbc)
   (declare (xargs :stobjs fn-lbc
-                  :guard (and (natp threshold) (natp lo) (natp hi)
-                              (<= lo hi) (<= hi (fn-lbc-count fn-lbc)))
+                  :guard (and (natp threshold) (natp lo) (natp hi) (<= lo hi) (<= hi (fn-lbc-count fn-lbc)) (fn-lbc-escape-cellsp 0 fn-lbc))
                   :measure (nfix (- (nfix hi) (nfix lo)))
                   :verify-guards nil))
   (if (and (natp lo) (natp hi) (< lo hi))
@@ -709,14 +783,14 @@
     (nfix lo)))
 
 (defun fn-lbc-newnews-candidatep (groups numbers)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (or (atom groups) (alistp numbers)) :verify-guards nil))
   (if (consp groups)
       (or (posp (cdr (assoc-equal (car groups) numbers)))
           (fn-lbc-newnews-candidatep (cdr groups) numbers))
     nil))
 
 (defun fn-lbc-newnews-tail (groups threshold v lo hi fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t
+  (declare (xargs :stobjs fn-lbc :guard (and (natp lo) (natp hi) (<= lo hi) (<= hi (fn-lbc-count fn-lbc)) (fn-lbc-escape-cellsp 0 fn-lbc) (or (atom groups) (fn-lbc-number-escape-cellsp 0 fn-lbc)) (fn-lbc-stamp-escape-cellsp 0 fn-lbc))
                   :measure (nfix (- (nfix hi) (nfix lo)))
                   :verify-guards nil))
   (if (and (natp lo) (natp hi) (< lo hi))
@@ -733,7 +807,7 @@
 
 (defun fn-lbc-newnews-range (groups threshold v horizon fn-lbc)
   (declare (xargs :stobjs fn-lbc
-                  :guard (and (natp threshold) (natp v) (<= v (fn-lbc-count fn-lbc)))
+                  :guard (and (natp threshold) (natp v) (<= v (fn-lbc-count fn-lbc)) (fn-lbc-escape-cellsp 0 fn-lbc) (or (atom groups) (fn-lbc-number-escape-cellsp 0 fn-lbc)) (fn-lbc-stamp-escape-cellsp 0 fn-lbc))
                   :verify-guards nil)
            (ignore horizon))
   (let ((start (fn-lbc-first-reaching threshold 0 v fn-lbc)))
@@ -745,7 +819,7 @@
 ; The served dispatcher tests RECLAIMED first and never calls this worker
 ; for a tombstone.  Its all-row logical value is nevertheless specified.
 (defun fn-lbc-stored-range (i kind fn-lbc log)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (natp i) (< i (fn-lbc-count fn-lbc)) (fn-lb-log-read-guardp log) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (let* ((a (fn-lbc-loc0 i fn-lbc)) (b (fn-lbc-loc1 i fn-lbc))
          (segment (fn-loc-segment a b)) (offset (fn-loc-offset a b))
          (length (fn-loc-len a b))
@@ -778,7 +852,7 @@
     fn-lbc))
 
 (defun fn-lbc-number-put-row-seen (numbers seen i fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (alistp (remove-equal nil (true-list-fix numbers))) (true-listp seen)) :verify-guards nil))
   (if (consp numbers)
       (let ((fn-lbc (if (member-equal (caar numbers) seen) fn-lbc
                      (fn-lbc-number-put-first (caar numbers) (cdar numbers) i fn-lbc))))
@@ -786,7 +860,7 @@
     fn-lbc))
 
 (defun fn-lbc-number-put-row (numbers i fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (alistp (remove-equal nil (true-list-fix numbers))) :verify-guards nil))
   (fn-lbc-number-put-row-seen numbers nil i fn-lbc))
 
 (defun fn-lbc-summary-word (group field fn-lbc)
@@ -813,12 +887,12 @@
     fn-lbc))
 
 (defun fn-lbc-number-group-keys (numbers)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (alistp (remove-equal nil (true-list-fix numbers))) :verify-guards nil))
   (if (consp numbers)
       (cons (caar numbers) (fn-lbc-number-group-keys (cdr numbers))) nil))
 
 (defun fn-lbc-row-group-keys (rows)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-cat$ap rows) :verify-guards nil))
   (if (consp rows)
       (union-equal (fn-lbc-number-group-keys (fn-held-numbers (car rows)))
                    (fn-lbc-row-group-keys (cdr rows))) nil))
@@ -838,7 +912,7 @@
     fn-lbc))
 
 (defun fn-lbc-rebuild-rows (rows log fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard (fn-cat$ap rows) :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (fn-cat$ap rows) (fn-lb-log-read-guardp log) (fn-lbc-rows-log-guardp rows log) (fn-lbc-escape-cellsp 0 fn-lbc)) :verify-guards nil))
   (if (consp rows)
       (let* ((i (fn-lbc-count fn-lbc))
              (fn-lbc (fn-lbc-append-row (car rows) log fn-lbc))
@@ -870,7 +944,7 @@
       (fn-lbc-reserve-slots (- n 1) fn-lbc))))
 
 (defun fn-lbc-slot-insert (i slot fuel fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :measure (nfix fuel)
+  (declare (xargs :stobjs fn-lbc :guard (and (natp fuel) (or (zp fuel) (and (natp slot) (< slot (fn-lbc-slot-count fn-lbc))))) :measure (nfix fuel)
                   :verify-guards nil))
   (cond ((zp fuel) fn-lbc)
         ((equal (fn-lbc-slot-word slot fn-lbc) 0)
@@ -893,7 +967,7 @@
     fn-lbc))
 
 (defun fn-lbc-msgid-probe (msgid hash slot fuel fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :measure (nfix fuel)
+  (declare (xargs :stobjs fn-lbc :guard (and (natp fuel) (fn-lbc-escape-cellsp 0 fn-lbc)) :measure (nfix fuel)
                   :verify-guards nil))
   (if (zp fuel) nil
     (let ((word (fn-lbc-slot-word slot fn-lbc)))
@@ -909,12 +983,12 @@
             rest))))))
 
 (defun fn-lbc-msgid-seqs (msgid fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-escape-cellsp 0 fn-lbc) :verify-guards nil))
   (let ((hash (fn-lbc-msgid-hash msgid)) (capacity (fn-lbc-slot-count fn-lbc)))
     (fn-lbc-msgid-probe msgid hash (mod hash (max 1 capacity)) capacity fn-lbc)))
 
 (defun fn-lbc-open-rebuild (rows log fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard (fn-cat$ap rows) :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (fn-cat$ap rows) (fn-lb-log-read-guardp log) (fn-lbc-rows-log-guardp rows log) (fn-lb-log-homes-guardp log)) :verify-guards nil))
   (let* ((fn-lbc (fn-lbc-clear-columns fn-lbc))
          (fn-lbc (fn-lbc-rebuild-rows rows log fn-lbc))
          (groups (fn-lbc-row-group-keys rows))
@@ -927,7 +1001,7 @@
 ; Comparing a decoded frame only with its own re-encoding would not bind
 ; the obligation, subject, release evidence, context, or control fields.
 (defun fn-lbc-row-corr (i row prefix-max fn-lbc log)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (and (natp i) (< i (fn-lbc-count fn-lbc)) (fn-lb-log-read-guardp log) (alistp (fn-lbc-escape-store-get i fn-lbc))) (or (not (fn-cat-rowp row)) (fn-lb-value-treep (fn-lb-log-model-homes row)))) :verify-guards nil))
   (let* ((entry (fn-lbc-home-entry i fn-lbc log))
          (payload (fn-lb-log-payload row log))
          (a (fn-lbc-loc0 i fn-lbc)) (b (fn-lbc-loc1 i fn-lbc))
@@ -969,7 +1043,7 @@
                 (fn-lb-log-model-home-frame row)))))
 
 (defun fn-lbc-rows-corr (i rows prefix-max fn-lbc log)
-  (declare (xargs :stobjs fn-lbc :guard t :measure (acl2-count rows)
+  (declare (xargs :stobjs fn-lbc :guard (and (natp i) (<= (+ i (len rows)) (fn-lbc-count fn-lbc)) (fn-lb-log-read-guardp log) (fn-lbc-escape-cellsp 0 fn-lbc) (fn-lbc-row-homes-guardp rows)) :measure (acl2-count rows)
                   :verify-guards nil))
   (if (consp rows)
       (let ((next-max (max (nfix prefix-max) (nfix (fn-record-stamp (car rows))))))
@@ -978,7 +1052,7 @@
     t))
 
 (defun fn-lbc-summaries-corr (groups rows fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (fn-cat$ap rows) :verify-guards nil))
   (if (consp groups)
       (and (equal (fn-lbc-live-summary (car groups) fn-lbc)
                   (list (fn-cat$a-group-live-count (car groups) rows)
@@ -989,7 +1063,7 @@
     t))
 
 (defun fn-lbc-summary-cells-corr (keys table rows)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (alistp table) (fn-cat$ap rows) (loop$ for p in (true-list-fix keys) always (and (or (consp p) (null p)) (or (consp (car p)) (null (car p))) (true-listp (car (car p)))))) :verify-guards nil))
   (if (consp keys)
       (let* ((key (caar keys)) (tag (car key)) (field (cdr key))
              (group (cadr tag)))
@@ -1006,7 +1080,7 @@
     t))
 
 (defun fn-lbc-number-cells-corr (keys table rows)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (alistp table) (loop$ for p in (true-list-fix keys) always (and (or (consp p) (null p)) (or (consp (car p)) (null (car p)))))) :verify-guards nil))
   (if (consp keys)
       (let ((key (caar keys)))
         (and (equal (cdr (assoc-equal key table))
