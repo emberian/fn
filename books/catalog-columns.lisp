@@ -508,6 +508,13 @@
            (and (true-listp home)
                 (or (< (nfix (car home)) 4) (true-listp (cadr home))))))))
 
+; LC's guard invariant is independent of the current locator values.
+; This makes arbitrary in-range locator-word updates preserve it.
+(defun fn-lbc-lc-guardp (log fn-lbc)
+  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (and (fn-lb-log-homes-guardp log)
+       (fn-lbc-escape-cellsp 0 fn-lbc)))
+
 (defun fn-lbc-at (i fn-lbc log)
   (declare (xargs :stobjs fn-lbc :guard (and (natp i) (< i (fn-lbc-count fn-lbc)) (fn-lb-log-entries-guardp log) (alistp (fn-lbc-escape-store-get i fn-lbc)) (fn-lbc-home-guardp i fn-lbc log)) :verify-guards nil))
   (let* ((r (fn-lbc-served-row i fn-lbc))
@@ -981,7 +988,7 @@
     (fn-lbc-msgid-probe msgid hash (mod hash (max 1 capacity)) capacity fn-lbc)))
 
 (defun fn-lbc-open-rebuild (rows log fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard (and (fn-cat$ap rows) (fn-lb-log-read-guardp log) (fn-lbc-rows-log-guardp rows log)) :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (fn-cat$ap rows) (fn-lb-log-read-guardp log) (fn-lbc-rows-log-guardp rows log) (fn-lb-log-homes-guardp log)) :verify-guards nil))
   (let* ((fn-lbc (fn-lbc-clear-columns fn-lbc))
          (fn-lbc (fn-lbc-rebuild-rows rows log fn-lbc))
          (groups (fn-lbc-row-group-keys rows))

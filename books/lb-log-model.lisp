@@ -157,6 +157,31 @@
            (fn-lb-log-append-guardp (cdr segs)))
     t))
 
+; A locator updater may select any entry in this log.  The guard domain
+; therefore covers all saved home/control spines, including missing entries.
+(defun fn-lb-home-fields-guardp (homes)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (true-listp homes)
+       (let ((home (nth 4 homes)))
+         (and (true-listp home)
+              (or (< (nfix (car home)) 4) (true-listp (cadr home)))))))
+
+(defun fn-lb-entries-homes-guardp (entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp entries)
+      (and (true-listp (car entries))
+           (fn-lb-home-fields-guardp (nth 7 (car entries)))
+           (fn-lb-entries-homes-guardp (cdr entries)))
+    t))
+
+(defun fn-lb-log-homes-guardp (log)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp log)
+      (and (true-listp (car log))
+           (fn-lb-entries-homes-guardp (caddar log))
+           (fn-lb-log-homes-guardp (cdr log)))
+    t))
+
 (defun fn-lb-log-model-segment (segment segs)
   (declare (xargs :guard (alistp (remove-equal nil (true-list-fix segs))) :verify-guards nil))
   (if (consp segs)
