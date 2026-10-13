@@ -7,8 +7,9 @@ shape and pinned here so it stays caught. The rest are the two ways a lint
 like this goes wrong: flagging a call that is fine, and passing a call that is
 not.
 
-Nothing here runs ACL2 or touches the real tree; each case builds a throwaway
-corpus in a temporary directory and points the lint at it.
+Nothing here runs ACL2 or changes the real tree; each case builds a throwaway
+corpus in a temporary directory. The runtime guard control loads shipped host
+source into bare SBCL.
 """
 
 import ast
@@ -1079,19 +1080,45 @@ class ImageProbeGuardTests(unittest.TestCase):
         self.assertEqual(harness_check.write_derived_stubs(self.root), [self.probe.relative_to(self.root).as_posix()])
         self.assertEqual(self.findings(), ([], []))
 
-    def test_guard_is_compared_as_a_reader_form(self):
+    def test_exact_source_allows_only_whitespace_and_comments_between_forms(self):
         guard = harness_check.IMAGE_PROBE_GUARD
-        reformatted = guard.replace('(unless ', '(unless\n ; format-only comment\n ')
-        for text in (reformatted + '\n(fnn-top nil nil)', self.guarded().replace(guard, reformatted),
-                     '(in-package "ACL2")\n' + self.guarded()):
+        reformatted = guard.replace('(unless ', '(unless\n\t ').replace('\n  ', '\r\n\t')
+        for text in (self.guarded().replace(guard, reformatted),
+                     self.guarded().replace('(in-package ', '(in-package\n\t '),
+                     '; before\n#| leading comment |#\n' + self.guarded(),
+                     self.guarded().replace(guard, '; between\n#| another comment |#\n' + guard)):
             with self.subTest(text=text):
                 self.assertEqual(harness_check.image_probe_guard(text), (True, False))
+        for text in (guard + '\n(fnn-top nil nil)',
+                     '(in-package "ACL2")\n' + self.guarded()):
+            with self.subTest(text=text):
+                self.assertEqual(harness_check.image_probe_guard(text), (False, True))
         for text in (self.hand + ';; ' + guard.replace('\n', '\n;; '),
+                     self.guarded().replace('(unless ', '(unless ; internal comment\n '),
                      self.guarded().replace('fboundp', 'boundp'),
                      self.guarded().replace('only inside', 'inside'),
                      self.guarded().replace('unless', 'when')):
             with self.subTest(text=text):
                 self.assertEqual(harness_check.image_probe_guard(text), (False, False))
+
+    def test_reader_equivalent_escaped_symbols_and_case_do_not_exempt_probe(self):
+        for old, new in (('fboundp', '|fboundp|'),
+                         ('acl2::fnn-save-world-flavor', '|acl2::fnn-save-world-flavor|'),
+                         ('in-package', '|in-package|'), ('fboundp', 'FBOUNDP'),
+                         ('"ACL2"', '"AC\\L2"')):
+            with self.subTest(replacement=new):
+                text = self.guarded().replace(old, new)
+                self.probe.write_text(text + self.block)
+                self.assertFalse(harness_check.image_probe_guard(text)[0])
+                stubs, _ = self.findings()
+                if old in ('in-package', '"ACL2"'):
+                    self.assertEqual(len(stubs), 1, stubs)
+                    self.assertIn('misplaced guard', stubs[0]['problem'])
+                else:
+                    scan = harness_check.harness_scans(self.root)[0][3]
+                    self.assertEqual(scan['expected'], self.block)
+                self.assertEqual(harness_check.write_derived_stubs(self.root), [])
+                self.assertEqual(self.probe.read_text(), text + self.block)
 
     def test_each_fixture_requires_its_own_first_guard(self):
         child = self.root / "tests/child.lisp"
@@ -1104,7 +1131,7 @@ class ImageProbeGuardTests(unittest.TestCase):
         self.assertEqual(self.findings(), ([], []))
         self.assertEqual(harness_check.harness_scans(self.root), [])
 
-    def test_runtime_refuses_bare_sbcl_before_probe_body(self):
+    def test_runtime_refuses_bare_sbcl_after_loading_whole_io(self):
         import shutil
         import subprocess
         sbcl = shutil.which("sbcl")
@@ -1112,21 +1139,56 @@ class ImageProbeGuardTests(unittest.TestCase):
             self.skipTest("SBCL is required for the runtime guard control")
         self.probe.write_text(self.guarded('(in-package "ACL2")\n(format t "PROBE-BODY~%")'))
         driver = self.root / "driver.lisp"
-        prelude = '(defpackage "ACL2" (:use "CL"))\n'
-        load = '(handler-case (load "' + self.probe.relative_to(self.root).as_posix() + '")\n'
+        # Inline raw-load scaffolding reads the books' own constants and bodies;
+        # no test fixture file or build/ artifact is needed.
+        prelude = textwrap.dedent('''\
+            (defpackage "ACL2" (:use "CL"))
+            (in-package "ACL2")
+            (defvar *the-live-state* nil)
+            (defun f-get-global (name state) (declare (ignore name state)) nil)
+            (defun book-constant (path name)
+              (with-open-file (s path)
+                (loop for f = (read s nil :eof) until (eq f :eof)
+                      when (and (consp f) (eq (car f) 'defconst) (eq (cadr f) name))
+                        do (return (eval (caddr f)))
+                      finally (error "Missing constant ~a" name))))
+            (defun book-functions (path names)
+              (with-open-file (s path)
+                (loop for f = (read s nil :eof) until (eq f :eof)
+                      when (and (consp f) (eq (car f) 'defun) (member (cadr f) names))
+                        do (destructuring-bind (name args &rest body) (cdr f)
+                             (eval `(defun ,name ,args
+                                      ,@(remove-if (lambda (x) (and (consp x) (eq (car x) 'declare))) body)))
+                             (setf names (remove name names)))
+                      finally (when names (error "Missing functions ~a" names)))))
+            (defun assoc-equal (x alist) (assoc x alist :test #'equal))
+            (defun member-equal (x xs) (member x xs :test #'equal))
+            (defparameter *fn-outcome-codes* (book-constant "books/outcome-class.lisp" '*fn-outcome-codes*))
+            (book-functions "books/outcome-class.lisp"
+                            '(fn-outcome-code fn-outcome-of-host-condition fn-outcome-host-condition-exit-code))
+            (defparameter *fn-profile-limits* (book-constant "books/profile-limits.lisp" '*fn-profile-limits*))
+            (defmacro fn-profile-limit (key) (second (assoc key *fn-profile-limits*)))
+            (defparameter *t* ''t)
+            (defparameter *nil* ''nil)
+            (defparameter *fn-entry-guard-kinds* (book-constant "books/payload-kinds.lisp" '*fn-entry-guard-kinds*))
+            (defun w (state) (declare (ignore state)) nil)
+            (defun getpropc (symbol key &optional default world)
+              (declare (ignore symbol key world)) default)
+            (defun stobjs-in (name world) (declare (ignore name world)) nil)
+            (handler-bind ((warning #'muffle-warning)) (load "host/native/io.lisp"))
+            (assert (fboundp 'fnn-native-startup))
+            (assert (not (fboundp 'fnn-save-world-flavor)))
+            (format t "WHOLE-IO-LOADED~%")
+        ''')
+        load = '(handler-case (load "' + str(self.probe) + '")\n'
         load += '  (error (c) (format t "~a~%" c) (sb-ext:exit :code 17)))\n'
         driver.write_text(prelude + load)
         result = subprocess.run([sbcl, "--noinform", "--disable-debugger", "--script", str(driver)],
-                                cwd=self.root, capture_output=True, text=True, timeout=10)
+                                cwd=ROOT, capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+        self.assertIn("WHOLE-IO-LOADED", result.stdout)
         self.assertIn("this probe runs only inside a built fn-host image", result.stdout)
         self.assertNotIn("PROBE-BODY", result.stdout)
-        # Simulate only the image-presence premise, not a host or native image.
-        driver.write_text(prelude + "(setf (symbol-function 'acl2::fnn-native-startup) (lambda (x) x))\n" + load)
-        result = subprocess.run([sbcl, "--noinform", "--disable-debugger", "--script", str(driver)],
-                                cwd=self.root, capture_output=True, text=True, timeout=10)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("PROBE-BODY", result.stdout)
 
     def test_reduced_c13_probe_uses_real_host_callees_without_external_fixtures(self):
         self.patch.stop()  # use shipped host bodies for the C13 mechanism
