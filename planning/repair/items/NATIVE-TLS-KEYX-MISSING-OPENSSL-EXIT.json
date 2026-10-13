@@ -1,0 +1,16 @@
+{
+ "category": "implementation",
+ "detail": "Red on dev 0403f697b, hbox run native-nl2-ctl0403 (B23 control; logs /tank/fn/scratch/b-native-launch-2/native-nl2-ctl0403/logs/test-tests.test_native_tls_key_exchange.log): two tests expect EXIT.REFUSED (1) and get 2 with 'fn: no OpenSSL libssl.so.3 under .../no-such-openssl; the shipped OpenSSL 3.5.8 is required'; the third (no TLS configured) never reaches LISTENING. Mechanism traced by A26: the installed wrapper packaging/fn:62-70 (c6b5d0a57, crypto-xform-2) exits 2 on any missing FN_OPENSSL_PREFIX before the image runs, against D59/D64's scoped refusal (refuse only with a TLS listener, STARTTLS or hybrid-required policy; otherwise run on the system library), so host/native/tls.lisp's scoped refusal is never reached. Owner builder-A; retired by A's wrapper fix (lane/vertical-tls-wrapper).",
+ "file": "packaging/fn",
+ "id": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+ "notes": [
+  "10-13 05:10 retired by lane/vertical-tls-wrapper@ab199ee55 (packaging/fn's unscoped OpenSSL exit-2 check deleted; the image's scoped D59/D64 decision is the one site); hbox native-tls1 9/9 at ab199ee55; rows dropped in train C16"
+ ],
+ "owner": "builder-A",
+ "severity": "medium",
+ "sha": "ab199ee55",
+ "source": "b23-control-20261013",
+ "state": "landed",
+ "title": "tests.test_native_tls_key_exchange: a node with a missing OpenSSL prefix exits 2 instead of REFUSED 1 (two tests) and does not run on the system pair without TLS (one test)",
+ "updated": "2026-10-13T09:10:05Z"
+}
