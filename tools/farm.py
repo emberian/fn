@@ -1041,7 +1041,6 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         # after its submit has released (or lost) ownership of the tree.
         f'[ "$(cut -d\' \' -f1 {remote_quote(submit_lock_path(root))}/owner 2>/dev/null)" '
         f'= {shlex.quote(identifier)} ] || exit 12; '
-        f"echo $$ > build/farm/{identifier}.pid || exit 11; "
         f": > {started_file} || exit 11; "
         f"FN_ACL2={acl2_shell_word(host, acl2)} "
         f"FN_ACL2_TIMEOUT_SECONDS={timeout_seconds} "
@@ -1058,6 +1057,8 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         + " ".join(shlex.quote(word) for word in runner)
         + f" > {log} 2>&1; echo $? > {status_file}"
     )
+    leader = (f"echo $$ > build/farm/{identifier}.pid || exit 11; "
+              f"exec sh -c {shlex.quote(inner)}")
     where = remote_quote(root)
     return (
         f"cd {where} || {{ echo \"fn-farm: no directory {root} on {host}\" >&2; exit 9; }}; "
@@ -1065,13 +1066,14 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         f"{{ echo \"fn-farm: no tools/certify_books.py under {root}\" >&2; exit 10; }}; "
         f"mkdir -p build/farm || "
         f"{{ echo \"fn-farm: cannot write build/farm under {root}\" >&2; exit 11; }}; "
-        f"nohup sh -c {shlex.quote(inner)} >/dev/null 2>&1 & "
-        f"pid=$!; remaining={RUN_START_WAIT_SECONDS}; "
+        f"nohup setsid sh -c {shlex.quote(leader)} >/dev/null 2>&1 < /dev/null & "
+        f"remaining={RUN_START_WAIT_SECONDS}; "
         f"while [ ! -e {started_file} ] && [ \"$remaining\" -gt 0 ]; do "
         'sleep 1; remaining=$((remaining - 1)); done; '
         f"if [ ! -e {started_file} ]; then "
         f"echo \"fn-farm: the runner for {identifier} did not start\" >&2; "
         f"tail -c 400 {log} >&2 2>/dev/null; exit 12; fi; "
+        f"pid=$(cat build/farm/{identifier}.pid) || exit 12; "
         f"echo FN_FARM_STARTED {identifier} $pid"
     )
 

@@ -52,6 +52,7 @@ from tests.native_harness import Node, executable, native_image
 from tools import fixtures
 
 IMAGE = native_image("FN_NATIVE_HOST")
+NATIVE_MEMORY = "80G"
 
 
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
