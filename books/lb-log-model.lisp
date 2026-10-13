@@ -162,9 +162,12 @@
 (defun fn-lb-home-fields-guardp (homes)
   (declare (xargs :guard t :verify-guards nil))
   (and (true-listp homes)
+       (fn-lb-value-treep homes)
        (let ((home (nth 4 homes)))
          (and (true-listp home)
-              (or (< (nfix (car home)) 4) (true-listp (cadr home)))))))
+              (or (< (nfix (car home)) 4)
+                  (and (true-listp (cadr home))
+                       (equal (len (cadr home)) 3)))))))
 
 (defun fn-lb-entries-homes-guardp (entries)
   (declare (xargs :guard t :verify-guards nil))

@@ -1,6 +1,6 @@
 ; Guard discharge for the LB foundation.
 ; Guard signatures, recognizers, findings and residual goals: build/lb/GUARDS.md.
-; All helper lemmas and the arithmetic theory are local to this book.
+; Proof cuts and arithmetic are local; LC invariant lemmas are exported.
 (in-package "ACL2")
 (include-book "lb-log-model")
 (include-book "catalog-columns")
@@ -3314,3 +3314,98 @@
        fn-lb-log-read-guardp
        fn-lbg-named-read
        always$))))
+
+; Resume 4: value-tree closure of saved homes across reconstruction.
+
+(local
+ (defthm fn-lbg-tree-car (implies (fn-lb-value-treep x) (fn-lb-value-treep (car x))) :hints (("Goal" :in-theory (enable fn-lb-value-treep))))
+)
+
+(local
+ (defthm fn-lbg-tree-cdr (implies (fn-lb-value-treep x) (fn-lb-value-treep (cdr x))) :hints (("Goal" :in-theory (enable fn-lb-value-treep))))
+)
+
+(local
+ (defthm fn-lbg-tree-nth (implies (fn-lb-value-treep x) (fn-lb-value-treep (nth n x))) :hints (("Goal" :induct (nth n x) :in-theory (enable nth fn-lb-value-treep))))
+)
+
+(local
+ (defthm fn-lbg-tree-truefix (implies (fn-lb-value-treep x) (fn-lb-value-treep (true-list-fix x))) :hints (("Goal" :induct (true-list-fix x) :in-theory (enable true-list-fix fn-lb-value-treep))))
+)
+
+(local
+ (defthm fn-lbg-tree-take (implies (fn-lb-value-treep x) (fn-lb-value-treep (take n x))) :hints (("Goal" :induct (take n x) :in-theory (enable take fn-lb-value-treep))))
+)
+
+(local
+ (defthm fn-lbg-tree-nthcdr (implies (fn-lb-value-treep x) (fn-lb-value-treep (nthcdr n x))) :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr fn-lb-value-treep))))
+)
+
+(local
+ (defthm fn-lbg-prefix3-shape (implies (and (true-listp x) (equal (len x) 3)) (equal x (list (car x) (cadr x) (caddr x)))) :rule-classes nil :hints (("Goal" :in-theory (enable len true-listp))))
+)
+
+(local
+ (defthm fn-lbg-restored-control-home-tree
+  (implies (fn-lb-home-fields-guardp homes)
+   (let ((control (true-list-fix (fn-lbc-restore-control (nth 4 homes) nov))))
+    (fn-lb-value-treep (list (len control) (take (min 3 (len control)) control) (nthcdr 4 control)))))
+  :hints (("Goal" :do-not-induct t
+   :use ((:instance fn-lbg-prefix3-shape (x (cadr (nth 4 homes)))))
+   :in-theory (e/d (fn-lb-home-fields-guardp fn-lbc-restore-control fn-lb-value-treep)
+    ()))))
+)
+
+(local
+ (defthm fn-lbg-home-field-trees
+  (implies (fn-lb-home-fields-guardp homes) (fn-lb-value-treep homes))
+  :hints (("Goal" :in-theory (enable fn-lb-home-fields-guardp))))
+)
+
+(local
+ (defthm fn-lbg-at-home-tree
+  (implies (fn-lb-home-fields-guardp (nth 7 (fn-lbc-home-entry i fn-lbc log)))
+           (fn-lb-value-treep (fn-lb-log-model-homes (fn-lbc-at i fn-lbc log))))
+  :hints (("Goal" :do-not-induct t
+   :use ((:instance fn-lbg-restored-control-home-tree
+    (homes (nth 7 (fn-lbc-home-entry i fn-lbc log)))
+    (nov (nth 3 (nth 6 (fn-lbc-served-row i fn-lbc))))))
+   :in-theory (e/d (fn-lbc-at fn-lb-log-model-homes fn-lb-value-treep)
+    (fn-lbc-served-row fn-lbc-home-entry fn-lbc-restore-control fn-held-make fn-hf-make fn-lb-home-fields-guardp fn-lbg-restored-control-home-tree)))))
+)
+
+(local
+ (defthm fn-lbg-lc-at-tree
+  (implies (fn-lbc-lc-guardp log fn-lbc)
+           (fn-lb-value-treep (fn-lb-log-model-homes (fn-lbc-at i fn-lbc log))))
+  :hints (("Goal" :do-not-induct t
+   :use ((:instance fn-lbg-homes-segment
+    (seg (fn-loc-segment (fn-lbc-loc0 i fn-lbc) (fn-lbc-loc1 i fn-lbc))))
+    (:instance fn-lbg-homes-selected-entry
+     (entries (caddr (fn-lb-log-model-segment (fn-loc-segment (fn-lbc-loc0 i fn-lbc) (fn-lbc-loc1 i fn-lbc)) log)))
+     (position (+ (fn-loc-offset (fn-lbc-loc0 i fn-lbc) (fn-lbc-loc1 i fn-lbc)) (fn-loc-len (fn-lbc-loc0 i fn-lbc) (fn-lbc-loc1 i fn-lbc))))))
+   :in-theory (e/d (fn-lbc-lc-guardp fn-lbc-home-entry)
+    (fn-lbg-homes-segment fn-lbg-homes-selected-entry fn-lb-log-homes-guardp fn-lb-entries-homes-guardp fn-lb-home-fields-guardp fn-lb-value-treep fn-lb-log-model-homes fn-lbc-at fn-lbc-escape-cellsp fn-lbc-loc0 fn-lbc-loc1 fn-lb-log-model-segment fn-lb-log-model-home-entry fn-loc-segment fn-loc-offset fn-loc-len)))))
+)
+
+(local
+ (defthm fn-lbg-model-home-fields-domain
+  (implies (fn-lb-value-treep (fn-lb-log-model-homes row))
+           (fn-lb-home-fields-guardp (fn-lb-log-model-homes row)))
+  :hints (("Goal" :do-not-induct t
+   :in-theory (enable fn-lb-home-fields-guardp fn-lb-log-model-homes))))
+)
+
+(verify-guards fn-lc-expected-home-frame
+ :hints (("Goal" :in-theory (disable fn-held-p fn-lb-log-model-homes fn-lb-value-treep fn-lb-log-model-home-frame))))
+
+(verify-guards fn-lc-locator-resolves
+ :hints (("Goal" :in-theory
+  (e/d (fn-lc-bound-row fn-lc-count fn-lc-segsp)
+       (fn-lbc-at fn-lb-log-model-homes fn-lb-value-treep fn-held-p fn-lbc-p fn-lbc-lc-guardp fn-lbc-count fn-lc-read-range fn-lc-read-home-frame fn-lb-log-payload fn-lc-expected-range fn-lc-expected-home-frame fn-lc-home-position fn-lbc-loc0 fn-lbc-loc1 fn-locp fn-lb-log-model-segsp fn-lb-log-homes-guardp fn-lbc-escape-cellsp always$ fn-lbg-named-entries fn-lbg-named-read)))))
+
+(verify-guards fn-lc-resolve-from
+ :hints (("Goal" :in-theory (e/d (fn-lc-count) (fn-lc-locator-resolves fn-lbc-lc-guardp fn-lc-segsp fn-lbc-p fn-lbc-count)))))
+
+(verify-guards fn-lc-locators-resolve
+ :hints (("Goal" :in-theory (e/d (fn-lc-count) (fn-lc-resolve-from fn-lbc-lc-guardp fn-lc-segsp fn-lbc-p fn-lbc-count)))))

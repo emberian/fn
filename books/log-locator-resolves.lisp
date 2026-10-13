@@ -55,7 +55,8 @@
   (fn-lb-log-model-read-home-frame position segs))
 
 (defun fn-lc-expected-home-frame (row)
-  (declare (xargs :guard (fn-held-p row) :verify-guards nil))
+  (declare (xargs :guard (and (fn-held-p row)
+                              (fn-lb-value-treep (fn-lb-log-model-homes row))) :verify-guards nil))
   (fn-lb-log-model-home-frame row))
 
 ;; The stored range of a row's payload (LA, P10 10-12): an article is stored in wire
