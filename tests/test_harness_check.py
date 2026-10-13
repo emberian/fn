@@ -1028,11 +1028,27 @@ class ImageLoadedProbeTests(unittest.TestCase):
     def python(self, source, filename="test_probe.py"):
         (self.root / "tests" / filename).write_text(textwrap.dedent(source))
 
-    def image_loader(self):
-        self.python('''
-            from tests.test_native_entry_guard import image_command
-            argv, env = image_command(['(in-package "ACL2")', '(load "tests/probe.lisp")'])
-        ''')
+    def image_loader(self, relative="tests/probe.lisp"):
+        self.python('from tests.test_native_entry_guard import image_command\n'
+                    + f'''image_command(['(load "{relative}")'])\n''')
+
+    def current_block(self, probe=None):
+        probe = probe or self.probe
+        scan = DerivedStubTests().scan(DerivedStubTests.HOST, '(fnn-top nil nil)')
+        probe.write_text(harness_check.with_stub_block(probe.read_text(), scan["expected"]))
+        return probe.read_text()
+
+    def assert_preserved(self, original, probe=None, ambiguous=True):
+        probe = probe or self.probe
+        stubs, reach = self.findings()
+        if ambiguous:
+            self.assertTrue(any(row["where"] == probe.relative_to(self.root).as_posix()
+                                and "ambiguous" in row["problem"] for row in stubs), stubs)
+        else:
+            self.assertEqual(stubs, [])
+        self.assertEqual(reach, [])
+        self.assertEqual(harness_check.write_derived_stubs(self.root), [])
+        self.assertEqual(probe.read_text(), original)
 
     def findings(self):
         stubs, _ = harness_check.test_stub_findings(self.root)
@@ -1117,14 +1133,13 @@ class ImageLoadedProbeTests(unittest.TestCase):
         self.assertEqual(self.probe.read_text().split(), hand.split())
         self.assertEqual(self.findings(), ([], []))
 
-    def test_import_aliases_and_assigned_form_lists_are_followed(self):
+    def test_import_aliases_and_assigned_form_lists_are_not_evidence(self):
         self.python('''
             import tests.test_native_entry_guard as guard
             forms = ['(load "tests/probe.lisp")']
             guard.image_command(forms=forms)
         ''')
-        self.assertEqual(self.findings(), ([], []))
-        self.assertEqual(harness_check.harness_scans(self.root), [])
+        self.assertTrue(harness_check.harness_scans(self.root)[0][3]["expected"])
 
     def test_comments_unpassed_literals_and_unrelated_names_exempt_nothing(self):
         self.python('''
@@ -1142,22 +1157,19 @@ class ImageLoadedProbeTests(unittest.TestCase):
                             + 'image_command(' + argument + ')')
                 self.assertTrue(harness_check.harness_scans(self.root)[0][3]["expected"])
 
-    def test_native_harness_session_forms_have_image_provenance(self):
+    def test_native_harness_session_forms_give_no_image_evidence(self):
         self.python('''
             from tests.native_harness import Acl2Session as Session
             with Session() as bridge:
                 bridge.call('(load "tests/probe.lisp")')
         ''')
-        self.assertEqual(self.findings(), ([], []))
-        self.assertEqual(harness_check.harness_scans(self.root), [])
+        self.assertTrue(harness_check.harness_scans(self.root)[0][3]["expected"])
 
-    def test_saved_runtime_wrapper_load_has_image_provenance(self):
-        # This is the other existing path: test_native_nov_metadata's --load.
+    def test_saved_runtime_wrapper_gives_no_image_evidence(self):
         source = (ROOT / "tests/test_native_nov_metadata.py").read_text().replace(
             "tests/native_nov_metadata_image.lisp", "tests/probe.lisp")
         self.python(source)
-        self.assertEqual(self.findings(), ([], []))
-        self.assertEqual(harness_check.harness_scans(self.root), [])
+        self.assertTrue(harness_check.harness_scans(self.root)[0][3]["expected"])
 
     def test_image_context_follows_literal_fixture_loads(self):
         self.image_loader()
@@ -1165,6 +1177,178 @@ class ImageLoadedProbeTests(unittest.TestCase):
         (self.root / "tests/child.lisp").write_text('(fnn-top nil nil)')
         self.assertEqual(harness_check.harness_scans(self.root), [])
         self.assertEqual(self.findings(), ([], []))
+
+    def test_review_1_raw_fixture_uses_real_discovery_and_preserves_its_block(self):
+        self.image_loader()
+        self.probe.write_text('(load "tests/native_child_raw.lisp")')
+        child = self.root / "tests/native_child_raw.lisp"
+        child.write_text('(in-package "ACL2")\n(fnn-top nil nil)')
+        original = self.current_block(child)
+        raw = (ROOT / "tests/test_native_raw_scripts.py").read_text()
+        runner = self.root / "tests/test_native_raw_scripts.py"
+        runner.write_text(raw)
+        function = next(node for node in ast.parse(raw).body
+                        if isinstance(node, ast.FunctionDef) and node.name == "runners_of")
+        scope = {"ROOT": self.root, "__file__": str(runner), "pathlib": __import__("pathlib")}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), str(runner), "exec"), scope)
+        self.assertEqual(scope["runners_of"](child, self.root), [])
+        self.assert_preserved(original, child)
+
+    def test_review_1_uncertain_glob_regex_selection_is_ambiguous(self):
+        self.probe.rename(self.root / "tests/native_probe_raw_extra.lisp")
+        self.probe = self.root / "tests/native_probe_raw_extra.lisp"
+        self.image_loader("tests/native_probe_raw_extra.lisp")
+        original = self.current_block()
+        # The real discovery's narrower globs omit this spelling; another
+        # native_*_raw*.lisp runner may select it, so exclusion is not proved.
+        self.assert_preserved(original)
+
+    def test_review_2_parameterized_runner_preserves_block(self):
+        self.image_loader()
+        self.python('''
+            import subprocess
+            def run_mock(script):
+                return subprocess.run(['sbcl', '--script', f'tests/{script}'])
+            run_mock('probe.lisp')
+        ''', "test_parameterized.py")
+        self.assert_preserved(self.current_block())
+
+    def test_review_2_temporary_raw_driver_preserves_block(self):
+        self.image_loader()
+        self.python('''
+            import subprocess
+            from pathlib import Path
+            path = Path('/tmp/driver.lisp')
+            path.write_text('(load "tests/probe.lisp")')
+            subprocess.run(['sbcl', '--script', str(path)])
+        ''', "test_driver.py")
+        self.assert_preserved(self.current_block())
+
+    def test_review_3_shell_eval_and_nested_script_preserve_blocks(self):
+        self.image_loader()
+        for relative, source in (
+                ("tests/test_eval.sh", '''sbcl --eval '(load "tests/probe.lisp")'\n'''),
+                ("tests/subdir/run.sh", "sbcl --script tests/probe.lisp\n")):
+            with self.subTest(relative=relative):
+                script = self.root / relative
+                script.parent.mkdir(exist_ok=True)
+                script.write_text(source)
+                self.assert_preserved(self.current_block())
+                script.unlink()  # our own disposable fixture
+
+    def test_review_4_late_global_rebind_never_provides_image_evidence(self):
+        self.python('''
+            from tests.test_native_entry_guard import image_command
+            import subprocess
+            def probe():
+                image_command(['(load "tests/probe.lisp")'])
+            def raw_command(forms):
+                return subprocess.run(['sbcl', '--eval', forms[0]])
+            image_command = raw_command
+            probe()
+        ''', "test_late.py")
+        original = self.current_block()
+        self.assert_preserved(original, ambiguous=False)
+        self.image_loader()
+        self.assert_preserved(original)
+
+    def test_review_5_explicit_core_and_real_image_class_remain_opaque(self):
+        sources = ['''
+            import subprocess
+            from tests.native_harness import native_image
+            image = native_image('FN_NATIVE_DEVELOPER_HOST')
+            subprocess.run(['sbcl', '--core', str(image) + '.core', '--load', 'tests/probe.lisp'])
+        ''', (ROOT / "tests/test_native_image_differential.py").read_text().replace(
+            'CHECK = ROOT / "tools" / "runtime_image" / "world-deps-check.lisp"',
+            'CHECK = ROOT / "tests/probe.lisp"')]
+        for source in sources:
+            with self.subTest(source=source[:100]):
+                self.python(source, "test_opaque.py")
+                original = self.current_block()
+                self.assert_preserved(original, ambiguous=False)
+                self.image_loader()
+                self.assert_preserved(original)
+                (self.root / "tests/test_probe.py").unlink()
+
+    def test_occurrences_in_any_file_type_and_outside_evidence_calls_are_ambiguous(self):
+        self.image_loader()
+        original = self.current_block()
+        extra = self.root / "tests/notes.bin"
+        extra.write_bytes(b'\xff opaque probe.lisp\x00')
+        self.assert_preserved(original)
+        extra.unlink()
+        self.python('''
+            from tests.test_native_entry_guard import image_command
+            image_command(['(load "tests/probe.lisp")'])
+            # Another occurrence of probe.lisp in this very module also blocks removal.
+        ''')
+        self.assert_preserved(original)
+
+    def test_fixture_occurrences_block_children_and_their_descendants(self):
+        self.image_loader()
+        self.probe.write_text('(load "tests/child.lisp")')
+        child = self.root / "tests/child.lisp"
+        grandchild = self.root / "tests/grandchild.lisp"
+        child.write_text('(load "tests/grandchild.lisp")')
+        grandchild.write_text('(in-package "ACL2")\n(fnn-top nil nil)')
+        original = self.current_block(grandchild)
+        (self.root / "tests/notes.txt").write_text('child.lisp')
+        self.assert_preserved(original, grandchild)
+
+    def test_review_1_standalone_parent_chain_marks_root_child_and_grandchild(self):
+        self.image_loader()
+        self.probe.write_text('(load "tests/child.lisp")')
+        child = self.root / "tests/child.lisp"
+        grandchild = self.root / "tests/grandchild.lisp"
+        standalone = self.root / "tests/standalone.lisp"
+        child.write_text('(load "tests/grandchild.lisp")')
+        grandchild.write_text('(in-package "ACL2")\n(fnn-top nil nil)')
+        standalone.write_text('(load "tests/probe.lisp")')
+        originals = {path: self.current_block(path)
+                     for path in (self.probe, child, grandchild, standalone)}
+        stubs, reach = self.findings()
+        self.assertEqual({row["where"] for row in stubs if "ambiguous" in row["problem"]},
+                         {"tests/probe.lisp", "tests/child.lisp", "tests/grandchild.lisp"})
+        self.assertEqual(reach, [])
+        self.assertEqual(harness_check.write_derived_stubs(self.root), [])
+        self.assertEqual({path: path.read_text() for path in originals}, originals)
+
+    def test_only_flat_literal_exact_load_calls_with_top_level_import_are_evidence(self):
+        for source in (
+                '''from tests.test_native_entry_guard import image_command
+image_command(('(load "tests/probe.lisp")',))''',
+                '''from tests.test_native_entry_guard import image_command
+label = "λ"; image_command(['(load "tests/probe.lisp")', '(load "tests/probe.lisp")'])'''):
+            with self.subTest(source=source):
+                self.python(source)
+                self.assertEqual(harness_check.harness_scans(self.root), [])
+        for source in (
+                '''def probe():
+    from tests.test_native_entry_guard import image_command
+    image_command(['(load "tests/probe.lisp")'])''',
+                '''from tests.test_native_entry_guard import image_command as launch
+launch(['(load "tests/probe.lisp")'])''',
+                '''from tests.test_native_entry_guard import image_command
+image_command(['(progn (load "tests/probe.lisp"))'])''',
+                '''from tests.test_native_entry_guard import image_command
+image_command(['(load "tests/probe.lisp") (print 1)'])'''):
+            with self.subTest(source=source):
+                self.python(source)
+                self.assertTrue(harness_check.harness_scans(self.root)[0][3]["expected"])
+
+    def test_every_rebinding_kind_disqualifies_the_whole_module(self):
+        for rebind in ('image_command = other', 'del image_command',
+                       'def image_command(forms): pass', 'class image_command: pass',
+                       'def other(image_command): pass', 'global image_command',
+                       'from other import image_command', 'import other as image_command',
+                       'image_command: object', 'image_command += other',
+                       'for image_command in others: pass', 'with other as image_command: pass',
+                       'match {}:\n    case {**image_command}: pass',
+                       'def other():\n    nonlocal image_command'):
+            with self.subTest(rebind=rebind):
+                self.python('from tests.test_native_entry_guard import image_command\n'
+                            + '''image_command(['(load "tests/probe.lisp")'])\n''' + rebind)
+                self.assertTrue(harness_check.harness_scans(self.root)[0][3]["expected"])
 
     def test_c13_pin_carry_fixture_reproduces_the_seven_overwritten_helpers(self):
         # Copy the supplied lane fixtures into the disposable tree: the probe
