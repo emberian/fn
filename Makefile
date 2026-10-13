@@ -1693,6 +1693,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-plan-line-buffer-tests \
 	tests/acl2/one-world-hole-tests \
 	tests/acl2/one-world-hole-attached-tests \
+	tests/acl2/one-world-attach-table-image-world-tests \
+	tests/acl2/one-world-attach-table-image-world-dtn-tests \
+	tests/acl2/one-world-attach-table-image-world-store-test-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-teeth-tests \
 	tests/acl2/payload-arena-paged-tests \
