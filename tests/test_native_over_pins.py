@@ -194,10 +194,13 @@ class NativeOverPinsTests(unittest.TestCase):
                     self.assertTrue(all(ms >= 1 for ms in empty), empty)
                     self.assertTrue(all(ms == 0 for ms in sent), sent)
                     settled = rb"OVER response-settled cid=" + yielded.group(1) + rb" status=released"
-                    self.assertEqual(len(self.owner_lines(owner, re.compile(settled), 1)), 1,
-                                     owner.stderr.since(0)[-3000:])
+                    settled_pattern = re.compile(settled)
+                    before_yield = owner.stderr.since(0)[:at] + log[:yielded.end()]
+                    settled_before = sum(bool(settled_pattern.search(line))
+                                         for line in before_yield.splitlines())
+                    self.owner_lines(owner, settled_pattern, settled_before + 1)
                     log = owner.stderr.since(0)[at:]
-                    self.assertRegex(log[yielded.end():], settled)
+                    self.assertRegex(log[yielded.end():], settled, log[-3000:])
             finally:
                 node.stop(expect=None, grace=300)
         self.assertEqual(replies[0], replies[1])
