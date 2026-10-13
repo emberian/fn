@@ -6598,9 +6598,11 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
+    "fn-crv-pool-budget",
     "fn-mm-launch-dynamic",
-    "fn-mo-serve-pools",
-    "fn-mo-serve-run-limit"
+    "fn-mo-serve-run-limit",
+    "fn-prstartup-launch-extra",
+    "true-list-fix"
    ],
    "theorem": null,
    "declared_in": "books/memory-run-cost.lisp"
@@ -6612,9 +6614,14 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-mo-serve-decide",
-    "fn-mo-serve-pool-threads",
-    "fn-mo-serve-total-pools"
+    "fn-heap-profile-word",
+    "fn-mm-least-observation",
+    "fn-mm-reopen-need",
+    "fn-mo-serve-cfg",
+    "fn-mo-serve-dynamic",
+    "fn-mo-serve-limit",
+    "fn-mo-serve-total-pools",
+    "true-list-fix"
    ],
    "theorem": null,
    "declared_in": "books/memory-run-cost.lisp"

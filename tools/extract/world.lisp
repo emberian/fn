@@ -531,7 +531,6 @@
 (include-book "../../books/history-image-snapshot")
 (include-book "../../books/def-cost")
 (include-book "../../books/string-line-cursor-cost")
-(include-book "../../books/memory-run-cost")
 (include-book "../../host/page-read-host")
 (include-book "../../host/page-window-executor-host")
 (include-book "../../host/store-host")

@@ -13,8 +13,6 @@
 (include-book "page-window-executor-host")
 (include-book "../books/output-tariff-families")
 (include-book "page-decoded-window-host")
-; The served run's memory costs (L-RUN-LAUNCH), after every attach above.
-(include-book "../books/memory-run-cost")
 ; Hosts whose entries rows below cost: fn-nco-owner-publication-word (the
 ; control host), fn-owner-cfg-capture and fn-owner-sco-count (the owner host),
 ; fn-owner-held-verdicts.  The image loads each before this file.
@@ -81,17 +79,7 @@
 (def-cost fn-ncfg-nth :visits (+ 1 m) :sizes ((m (nfix n))))
 (def-cost fn-native-config-reclaim-livep :visits 32)
 (def-cost fn-mca-figure-octets :unaccounted (fn-mca-base-octets fn-heap-with-nursery))
-; The served run's launch (books/heap-command.lisp, L-RUN-LAUNCH).
-(def-cost fn-mo-serve-pool-threads :unaccounted (true-list-fix))
-(def-cost fn-bpsp-node-capacity
-  :unaccounted (fn-bpsp-node-wire-span fn-bpnpf-held-octets fn-bpnpf-rows fn-bpnpf-adu-octets
-                fn-bpsp-capacity-octets))
-(def-cost fn-mo-serve-pools :unaccounted (fn-crv-pool-budget fn-prstartup-launch-extra true-list-fix))
-(def-cost fn-prstartup-serve-store-need
-  :unaccounted (fn-prstartup-serve-limit fn-prstartup-serve-protected))
-(def-cost fn-mo-serve-decide
-  :unaccounted (fn-mo-serve-limit fn-mo-serve-dynamic fn-mo-serve-cfg fn-mm-least-observation
-                fn-mm-reopen-need fn-heap-profile-word))
+; Shared launch rows derive in books/memory-run-cost.lisp after image-world.
 (def-cost fn-owner-page-window-span-at :unaccounted (fn-owner-page-read-ledger fn-pwr-span-at))
 (def-cost fn-owner-page-window-cache-span-at :unaccounted (fn-owner-page-read-ledger fn-pwc-span-at))
 (def-cost fn-owner-page-decoded-job-span-at :unaccounted (fn-owner-page-read-ledger fn-dwj-span-at))

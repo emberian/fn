@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
+(include-book "article-buffer")
+(include-book "served-query-plan")
 (include-book "feed-journal")
 (include-book "peer-pull")
 (include-book "peer-pull-session")
@@ -140,7 +142,6 @@
 (include-book "history-image-snapshot")
 (include-book "def-cost")
 (include-book "string-line-cursor-cost")
-(include-book "memory-run-cost")
 (include-book "../host/page-read-host")
 (include-book "../host/page-window-executor-host")
 (include-book "../host/store-host")
