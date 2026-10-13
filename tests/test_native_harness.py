@@ -406,11 +406,13 @@ class Acl2SessionHeapTests(unittest.TestCase):
     def launched_args(self, user_args):
         import os, tempfile
         decide = (native_harness.ROOT / "packaging" / "launcher-decide.sh").read_text()
+        fn = (native_harness.ROOT / "packaging" / "fn").read_text()
+        resolver = fn[fn.index("# BEGIN fn_resolve_path"):fn.index("# END fn_resolve_path")]
         with tempfile.TemporaryDirectory() as work:
             launcher = os.path.join(work, "image")
             with open(launcher, "w") as out:
-                out.write("#!/bin/sh\n"
-                          "fn_decide_heap() { SBCL_USER_ARGS='--dynamic-space-size 1024 "
+                out.write("#!/bin/sh\n" + resolver)
+                out.write("fn_decide_heap() { SBCL_USER_ARGS='--dynamic-space-size 1024 "
                           "--control-stack-size 1024KB'; }\n")
                 out.write(decide)
                 out.write('\nprintf %s "$SBCL_USER_ARGS"\n')
@@ -418,7 +420,7 @@ class Acl2SessionHeapTests(unittest.TestCase):
             env = dict(os.environ, SBCL_USER_ARGS=user_args)
             env.pop("FN_TEST_HEAP_MB", None)
             return subprocess.run([launcher, "--fn", "acl2", "session"], env=env,
-                                  capture_output=True, text=True, check=True).stdout.split()
+                                  capture_output=True, text=True, check=True, timeout=10).stdout.split()
 
     def test_the_session_runs_at_its_own_heap_not_the_store_less_decision(self):
         args = self.launched_args(native_harness.acl2_session_user_args())

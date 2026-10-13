@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Held by builder-B until D is seated (coordinator 10-13). store_mount_identity: the recover refusal passes; the red is the following plain status (metadata-only by design, operability-2 S3a, e08df92c6). The property the test should pin: every command that opens the store runs the mount-binding gate; whoever takes this asserts it over the opening commands, not just recover. rows under DEV-CONTROL-UNTRACED-20261013 (a row's item is fixed at its first amendment record; the owner moves by known_reds.py transfer); triage build/coordinator/tools-builder-b/b24/DEVCTL-TRIAGE-20261013.md",
+ "file": "tests/",
+ "id": "DEVCTL-D-HELD",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "medium",
+ "source": "devctl-150e2d6f48a0",
+ "state": "open",
+ "title": "D's four, held for D's seat: control_evidence, expiry, fitness, store_mount_identity",
+ "updated": "2026-10-13T13:33:49Z"
+}

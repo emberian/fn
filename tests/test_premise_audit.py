@@ -275,7 +275,7 @@ class RegisteredEstablishments(EstablishmentFixture):
         predicate = "fn-lgp-relp"
         heads = ["fn-lgrc-attempt", "fn-lgrc-final"]
         form = self.shape("(not (fn-bsc-lookup s stg stage))",
-                          "(fn-lgrc-final (fn-lgrc-attempt s j k) s)", predicate)
+                          "(fn-lgrc-final (fn-lgrc-attempt s j k) s)", predicate)  # acl2-arity-fixture: fn-lgrc-attempt synthetic term shape; the audit reads only the definitions this test supplies
         audit = self.audit(form, definitions=[*heads, "fn-bsc-lookup"],
                            hosted_heads=["fn-bsc-lookup"], predicate=predicate)
         self.assert_off_host(audit, heads, predicate)
