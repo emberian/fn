@@ -51,3 +51,25 @@
       (not (nth 7 (fn-ovr-plan-cursor plan)))))
  :hints (("Goal" :use (:instance fn-ovr-rest-cursor-is-over (rest (fn-splan-rest plan)))
  :in-theory (union-theories '(fn-ovr-plan-cursor) (theory 'minimal-theory)))))
+
+; Total hosted entry: N=0, NEXT=nil, J=0, OP=nil refuses a non-OVER plan.
+(defun fn-ovr-plan-lease-quantum (plan w h id inc fn-rtc-st fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-rtc-st fn-arena fn-cat) :verify-guards nil
+                  :guard (unsigned-byte-p 59 (fn-rtc-buf-cap h (fn-rtc-st-config fn-rtc-st)))))
+  (let ((cur (fn-ovr-plan-cursor plan)))
+    (if cur
+        (fn-ovr-lease-quantum cur w h id inc fn-rtc-st fn-arena fn-cat)
+      (mv 0 nil 0 nil fn-rtc-st))))
+(verify-guards fn-ovr-plan-lease-quantum
+  :hints (("Goal" :use fn-ovr-plan-cursor-is-an-over-cursor
+                 :in-theory (disable fn-ovr-plan-cursor fn-ovw-cursorp))))
+
+; A taken total-entry result establishes selection, rather than requiring it.
+(defthm fn-ovr-plan-lease-quantum-taken-is-over
+  (implies (posp (mv-nth 0 (fn-ovr-plan-lease-quantum plan w h id inc s fn-arena fn-cat)))
+           (and (fn-ovr-plan-cursor plan)
+                (fn-ovw-cursorp (fn-ovr-plan-cursor plan))))
+  :hints (("Goal" :use fn-ovr-plan-cursor-is-an-over-cursor
+                 :in-theory (union-theories '(fn-ovr-plan-lease-quantum
+                       mv-nth car-cons cdr-cons posp zp)
+                       (theory 'minimal-theory)))))

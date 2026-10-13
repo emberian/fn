@@ -98,6 +98,24 @@
 (assert-event
  (let ((r (ovrt-probe-scene "fn.test" 3 *ovrt-server* 2 nil)))
    (and (car r) (cadr r) (zp (caddr r)))))
+; The renderer's identity string copier refuses physical capacity overflow.
+(defun ovrt-refused-writer (fn-rtc-st)
+ (declare (xargs :stobjs fn-rtc-st :verify-guards nil))
+ (mv-let (id inc fn-rtc-st) (pc1-boot 4 nil fn-rtc-st)
+  (declare (ignore id inc))
+  (mv-let (sig j fn-rtc-st) (fn-dsw-append 0 0 '(1 2) fn-rtc-st)
+   (let ((before (fn-rtc-x-state fn-rtc-st))
+         (no-room (not (fn-dsw-roomp 0 2 3 fn-rtc-st))))
+    (mv-let (refused end fn-rtc-st) (fn-ovr-wcopy-string 0 0 3 2 "345" fn-rtc-st)
+     (mv (and (eq sig :done) (equal j 2) no-room
+              (eq refused :refused) (equal end 2)
+              (equal (fn-rtc-x-state fn-rtc-st) before)) fn-rtc-st))))))
+(defun ovrt-refused-writer-scene ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn-rtc-st
+  (mv-let (ok fn-rtc-st) (ovrt-refused-writer fn-rtc-st) ok)))
+(assert-event (ovrt-refused-writer-scene))
+
 ; Each scene obtains a fresh workspace through the actual host driver.
 (defun ovrt-pool-sweep (cur w cap fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil :measure (nfix cap)

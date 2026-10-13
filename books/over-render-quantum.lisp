@@ -845,6 +845,35 @@
                       (fn-rtc-splice-okp h base (mv-nth 0 (fn-ovw-step cur n fn-arena fn-cat)) s)))))
 (local (set-default-hints nil))
 
+; C's room/length equivalence is local there; repeat it with the same hint,
+; in a scoped accessor theory, to derive this host-facing corollary.
+(local (encapsulate ()
+ (local (in-theory (e/d (fn-rtc-st-config fn-rtc-st-owner fn-rtc-st-uses fn-rtc-st-fill
+                         fn-rtc-b-owner fn-rtc-b-bytes)
+                        (fn-rtc-config fn-rtc-buffer fn-rtc-nbufs fn-rtc-buf-cap fn-rtc-splice-target-p))))
+ (defthm fn-ovrqp-roomp-length-equivalence
+  (equal (and (fn-cbor-octet-listp data) (fn-dsw-roomp h j (len data) s))
+         (fn-rtc-splice-okp h j data s))
+  :hints (("Goal" :in-theory (enable fn-dsw-roomp fn-rtc-splice-okp
+                                    fn-rtc-st$a-config fn-rtc-st$a-owner fn-rtc-st$a-uses fn-rtc-st$a-fill fn-rtc-bytes))))))
+(local (defthm fn-ovrqp-KL1r
+  (implies (and (fn-ovw-cursorp cur) (fn-rtc-st$ap s))
+           (let ((n (mv-nth 0 (fn-ovr-quantum cur w h base limit s fn-arena fn-cat))))
+             (implies (posp n)
+                      (fn-dsw-roomp h base (len (mv-nth 0 (fn-ovw-step cur n fn-arena fn-cat))) s))))
+ :hints (("Goal" :use (fn-ovr-quantum-taken-is-splice-okp
+   (:instance fn-ovrqp-roomp-length-equivalence (j base)
+     (data (mv-nth 0 (fn-ovw-step cur (mv-nth 0 (fn-ovr-quantum cur w h base limit s fn-arena fn-cat)) fn-arena fn-cat)))))
+   :in-theory (theory 'minimal-theory)))))
+(local (set-default-hints '((quote (:use fn-ovrqp-KL1r :in-theory (theory 'minimal-theory))))))
+(defthm fn-ovr-quantum-taken-has-room
+  (implies (and (fn-ovw-cursorp cur) (fn-rtc-st$ap s))
+           (let ((n (mv-nth 0 (fn-ovr-quantum cur w h base limit s fn-arena fn-cat))))
+             (implies (posp n)
+                      (fn-dsw-roomp h base (len (mv-nth 0 (fn-ovw-step cur n fn-arena fn-cat))) s)))))
+(local (set-default-hints nil))
+
+
 (local (defthm fn-ovrqp-invp-is-ap
  (implies (fn-rtc-invp s) (fn-rtc-st$ap s))
  :hints (("Goal" :use fn-rtc-invp-implies-st-p

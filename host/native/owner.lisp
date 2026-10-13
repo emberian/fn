@@ -996,7 +996,7 @@ holds the owner mutex. Return (:wait), or (:warm ARRAY START END NEXT DONE)."
            (h (first (fnn-call 'fn-hld-workspace 0 id inc st))))
       (unless h (return-from fnn-owner-lease-over-step (list :wait)))
       (destructuring-bind (n next j op st2)
-          (fnn-call 'fn-ovr-lease-quantum (fnn-core 'fn-ovr-plan-cursor plan)
+          (fnn-call 'fn-ovr-plan-lease-quantum plan
                     (fnn-owner-over-window) h id inc st
                     (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
         (declare (ignore st2))

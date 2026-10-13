@@ -621,11 +621,13 @@
   :keystones (fn-hld-end-keeps-invp))
 
 ; The pool OVER executor and its total plan boundary selectors.
-(definterface fn-ovr-lease-quantum
+(definterface fn-ovr-plan-lease-quantum
   :class :common-lisp-compliant
-  :keystones ((fn-ovr-leased-quantum-sends-the-step :via fn-ovr-quantum)
+  :keystones (fn-ovr-plan-lease-quantum-taken-is-over
+              (fn-ovr-leased-quantum-sends-the-step :via fn-ovr-quantum)
               (fn-ovr-quantum-taken-is-splice-okp :via fn-ovr-quantum)
-              fn-ovr-lease-quantum-keeps-invp))
+              (fn-ovr-quantum-taken-has-room :via fn-ovr-quantum)
+              (fn-ovr-lease-quantum-keeps-invp :via fn-ovr-lease-quantum)))
 
 (definterface fn-ovr-plan-cursor
   :class :common-lisp-compliant
