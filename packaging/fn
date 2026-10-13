@@ -37,9 +37,55 @@ set -eu
 #   developer  -- packaging/fn in a checkout (no libexec/fn beside it):
 #                 FN_NATIVE_HOST when set (the tests' named override), else
 #                 the tree's build/fn-host.
-self=$0
+# BEGIN fn_resolve_path
+# Resolve each link relative to its own directory, including directory links.
+# Plain readlink works on OpenBSD as well as Linux/macOS; ls is the fallback
+# for systems without readlink.  No readlink -f or caller-directory assumption.
+# Follow at most 40 links (the usual SYMLOOP_MAX), including cyclic chains.
+fn_resolve_path() (
+    original_path=$1
+    fn_resolve_fail() {
+        printf 'fn: cannot resolve %s\n' "$original_path" >&2
+        exit 4
+    }
+    path=$1
+    case $path in
+        */*) ;;
+        *) path=$(command -v "$path" 2>/dev/null) || fn_resolve_fail ;;
+    esac
+    case $path in /*) ;; *) path=./$path ;; esac
+    hops=0
+    while :; do
+        directory=${path%/*}
+        name=${path##*/}
+        CDPATH= cd -P "$directory" 2>/dev/null || fn_resolve_fail
+        directory=$(pwd -P 2>/dev/null) || fn_resolve_fail
+        path=$directory/$name
+        if [ ! -L "$path" ]; then
+            printf '%s\n' "$path"
+            exit 0
+        fi
+        if [ "$hops" -ge 40 ]; then
+            printf 'fn: too many levels of symbolic links: %s\n' "$original_path" >&2
+            exit 4
+        fi
+        hops=$((hops + 1))
+        target=$(readlink "$path" 2>/dev/null) || {
+            link=$(LC_ALL=C ls -ld "$path" 2>/dev/null) || fn_resolve_fail
+            target=${link#*"$path -> "}
+            [ "$target" != "$link" ] || fn_resolve_fail
+        }
+        [ -n "$target" ] || fn_resolve_fail
+        case $target in
+            /*) path=$target ;;
+            *) path=$directory/$target ;;
+        esac
+    done
+)
+# END fn_resolve_path
+
 # A link to bin/fn (say /usr/local/bin/fn) finds the release it points into.
-if [ -L "$self" ] && resolved=$(readlink -f -- "$self" 2>/dev/null); then self=$resolved; fi
+self=$(fn_resolve_path "$0") || exit 4
 here=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd)
 installed=
 if [ -d "$here/../libexec/fn" ]; then
@@ -51,6 +97,7 @@ else
     root=$(CDPATH= cd -- "$here/.." && pwd)
     image=$root/build/fn-host
 fi
+image=$(fn_resolve_path "$image") || exit 4
 
 # The TLS library (D64): the OpenSSL 3.5.8 the release ships, whose
 # X25519MLKEM768 the [tls] key_exchange policy offers.  Installed on Linux,
@@ -90,7 +137,7 @@ unset ACL2_SYSTEM_BOOKS
 # every image launcher: the same probe decides the heap whether the image is
 # started through bin/fn or bare)
 fn_decide_heap() {
-    img=$1
+    img=$(fn_resolve_path "$1") || exit 4
     shift
     core_octets=$(wc -c < "$img.core" | tr -d ' ')
     boot=$(( (core_octets + 1048575) / 1048576 + 128 ))

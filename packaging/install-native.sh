@@ -186,10 +186,16 @@ else
   # v2): a release lives wherever install.sh puts it (PREFIX/releases/NAME,
   # reached through PREFIX/current), so no path of the staging prefix may
   # be written into it.
-  sed -e 's|^export SBCL_HOME=.*|here=$(CDPATH= cd -- "$(dirname -- "$0")" \&\& pwd); export SBCL_HOME="$here/runtime/sbcl-home/"|' \
+  {
+  echo '#!/bin/sh'
+  sed -n '/^# BEGIN fn_resolve_path/,/^# END fn_resolve_path/p' packaging/fn
+  echo 'self=$(fn_resolve_path "$0") || exit 4'
+  sed -e '1d' -e '/^# BEGIN fn_resolve_path/,/^# END fn_resolve_path/d' \
+      -e 's|^export SBCL_HOME=.*|here=$(CDPATH= cd -- "$(dirname -- "$self")" \&\& pwd); export SBCL_HOME="$here/runtime/sbcl-home/"|' \
       -e 's|^exec "[^"]*"|exec "$here/runtime/sbcl"|' \
       -e 's|--core "[^"]*"|--core "$here/fn-host.core"|' \
-      "$image" > "$libdir/fn-host"
+      "$image"
+  } > "$libdir/fn-host"
   grep -q '^here=' "$libdir/fn-host" && grep -q '^exec "\$here/runtime/sbcl"' "$libdir/fn-host" || {
     echo "install-native: the image launcher has no SBCL_HOME/exec lines to relocate: $image" >&2; exit 4; }
 fi

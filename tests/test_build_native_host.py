@@ -17,6 +17,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools import profile_limits  # noqa: E402
+from tools.extract import core_launcher  # noqa: E402
 TLS = profile_limits.get("run-tls-limit")
 SCRIPT = ROOT / "tools" / "build_native_host.sh"
 FAKE = """#!/bin/sh
@@ -140,9 +141,9 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(self.catalog_text, "paged\n")
         # So is the source the image was built from (S057): this checkout's
         # HEAD, `commit` only when nothing differs from it.
-        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+        head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
                               text=True, check=True).stdout.strip()
-        clean = not subprocess.run(["git", "status", "--porcelain", "--untracked-files=normal"],
+        clean = not subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=normal"],
                                    cwd=ROOT, capture_output=True, text=True).stdout.strip()
         self.assertEqual(self.source_text,
                          (f"commit {head}" if clean else f"worktree {head}+dirty") + "\n")
@@ -176,6 +177,260 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(answer.returncode, 1, answer.stdout + answer.stderr)
         self.assertIn("acl2 exited with status 137", answer.stderr)
         self.assertIsNone(self.source_text)
+
+
+class LauncherSymlinkTests(unittest.TestCase):
+    def render(self, kind, launcher, runtime):
+        """Run the real generators' shell blocks, without building an image."""
+        source = launcher.parent / "source"
+        source.write_text(
+            '#!/bin/sh\n'
+            + (core_launcher.decision_prelude() if kind == "installed" else "")
+            + 'export SBCL_HOME=\'%s\'\n' % launcher.parent
+            + 'exec "%s" --dynamic-space-size 1068 --control-stack-size 1024KB '
+              '--core "%s.core" ${SBCL_USER_ARGS} "$@"\n' % (runtime, launcher))
+        if kind == "core":
+            launcher.write_text(core_launcher.launcher(
+                str(runtime), str(launcher.parent), str(launcher) + ".core", "1068", "1024KB"))
+        else:
+            if kind == "native":
+                text = SCRIPT.read_text()
+                start = text.index("    {\n        echo '#!/bin/sh'", text.index("# The decided heap"))
+                end = text.index('} > "$IMAGE.decide"', start)
+                block = text[start:end + 1]
+                launcher.write_text(source.read_text())
+                env = {"IMAGE": str(launcher)}
+            elif kind == "frozen":
+                text = (ROOT / "packaging/freeze-native-image.sh").read_text()
+                start = text.index("  {\n    echo '#!/bin/sh'", text.index("for name in $variants"))
+                end = text.index('} > "$out/$name"', start)
+                block = text[start:end + 1]
+                env = {"src": str(source), "name": launcher.name, "openssl_lib": "", "heap": ""}
+            else:
+                text = (ROOT / "packaging/install-native.sh").read_text()
+                start = text.index("  {\n  echo '#!/bin/sh'", text.index("# Self-locating"))
+                end = text.index('} > "$libdir/fn-host"', start)
+                block = text[start:end + 1]
+                env = {"image": str(source)}
+            result = subprocess.run(["sh", "-c", block], cwd=ROOT, env={**os.environ, **env},
+                                    capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            launcher.write_text(result.stdout)
+        launcher.chmod(0o755)
+
+    def exercise_links(self, readlink_mode):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = pathlib.Path(tmp).resolve()
+            commands = base / "commands"
+            commands.mkdir()
+            # OpenBSD's plain-readlink interface: reject every option. The
+            # failing variant also exercises the ls -l fallback, on this OS.
+            readlink = commands / "readlink"
+            readlink.write_text('#!/bin/sh\n[ "$#" -eq 1 ] || exit 2\n'
+                                'case $1 in -*) exit 2 ;; esac\n'
+                                + ('exec /usr/bin/readlink "$1"\n' if readlink_mode == "plain"
+                                   else 'exit 1\n'))
+            readlink.chmod(0o755)
+            links = base / "links"
+            links.mkdir()
+            for kind in ("native", "core", "installed", "frozen", "operator"):
+                with self.subTest(kind=kind, readlink=readlink_mode):
+                    product = base / kind
+                    product.mkdir()
+                    launcher = product / "fn-host"
+                    runtime = product / "runtime/sbcl"
+                    runtime.parent.mkdir()
+                    runtime.write_text(
+                        '#!/bin/sh\ncore=\nprobe=\nwant_core=\nwant_heap=\nheap=\n'
+                        'for word in "$@"; do\n'
+                        '  if [ -n "$want_core" ]; then core=$word; want_core=; fi\n'
+                        '  if [ -n "$want_heap" ]; then heap=$word; want_heap=; fi\n'
+                        '  [ "$word" != --core ] || want_core=1\n'
+                        '  [ "$word" != --dynamic-space-size ] || want_heap=1\n'
+                        '  [ "$word" != heap ] || probe=1\n'
+                        'done\n[ -s "$core" ] || { echo "missing-core=$core" >&2; exit 9; }\n'
+                        'if [ -n "$probe" ]; then\n'
+                        '  echo "probe-core=$core" >&2\n'
+                        '  echo "probe-heap=$heap" >&2\n'
+                        '  echo "heap=777 MB stack=512 KB"\n'
+                        'else\n  printf "%s\\n" "core=$core" "$@"\nfi\n')
+                    runtime.chmod(0o755)
+                    (product / "fn-host.core").write_bytes(b"core")
+                    self.render("native" if kind == "operator" else kind, launcher, runtime)
+                    entry = launcher
+                    if kind == "operator":
+                        lib = product / "libexec/fn"
+                        lib.mkdir(parents=True)
+                        for item in (launcher, product / "fn-host.core"):
+                            item.rename(lib / item.name)
+                        launcher = lib / "fn-host"
+                        # Regenerate to carry the installed core's literal path.
+                        self.render("native", launcher, runtime)
+                        entry = product / "bin/fn"
+                        entry.parent.mkdir()
+                        entry.write_text((ROOT / "packaging/fn").read_text())
+                        entry.chmod(0o755)
+                    absolute = links / (kind + "-absolute")
+                    absolute.symlink_to(entry)
+                    relative = links / (kind + "-relative")
+                    relative.symlink_to(os.path.relpath(entry, links))
+                    chain = links / (kind + "-chain")
+                    chain.symlink_to(relative.name)
+                    spaced = links / (kind + " -> entry with spaces")
+                    spaced.symlink_to(chain.name)
+                    directory = links / (kind + "-directory")
+                    directory.symlink_to(entry.parent, target_is_directory=True)
+                    env = {"PATH": str(commands) + ":/usr/bin:/bin"}
+                    for link in (absolute, relative, chain, spaced, directory / entry.name,
+                                 pathlib.Path(os.path.relpath(chain, base))):
+                        for override in ({}, {"SBCL_USER_ARGS": "--dynamic-space-size 888"}):
+                            with self.subTest(link=link.name, override=override):
+                                args = ["operator", "/cfg with spaces", "run"]
+                                result = subprocess.run(
+                                    [str(link), *([] if kind == "operator" else ["--fn"]), *args],
+                                    cwd=base, env={**env, **override}, capture_output=True,
+                                    text=True, timeout=10)
+                                self.assertEqual(result.returncode, 0, result.stderr)
+                                self.assertIn("core=" + str(launcher) + ".core", result.stdout)
+                                self.assertEqual(result.stdout.splitlines()[-3:], args)
+                                # Frozen images currently use their fixed runtime
+                                # geometry; the other three image paths decide it.
+                                if kind != "frozen" and (not override or kind == "operator"):
+                                    self.assertIn("probe-core=" + str(launcher) + ".core", result.stderr)
+                                    self.assertIn("probe-heap=129\n", result.stderr)
+                                    self.assertIn("777", result.stdout.splitlines())
+
+    def test_unresolved_control_reads_the_missing_symlink_core(self):
+        """Recreate the old path handling in an isolated launcher, not the fix.
+
+        Its missing core gives the probe only 128 MiB; whether a real image
+        can boot at that size is the served-wire evidence run's question.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            base = pathlib.Path(tmp).resolve()
+            launcher = base / "fn-host"
+            runtime = base / "runtime"
+            runtime.write_text('#!/bin/sh\ncase "$*" in *"--fn heap"*) '
+                               'echo "boot=$SBCL_USER_ARGS" >&2; echo "heap=777 MB stack=512 KB" ;; '
+                               '*) echo started ;; esac\n')
+            runtime.chmod(0o755)
+            (base / "fn-host.core").write_bytes(b"core")
+            self.render("native", launcher, runtime)
+            launcher.write_text(launcher.read_text().replace(
+                'fn_launcher_path=$(fn_resolve_path "$0") || exit 4', 'fn_launcher_path=$0').replace(
+                'img=$(fn_resolve_path "$1") || exit 4', 'img=$1'))
+            link = base / "alias"
+            link.symlink_to(launcher.name)
+            result = subprocess.run([str(link), "--fn", "operator", "/cfg", "run"],
+                                    env={"PATH": "/usr/bin:/bin"}, capture_output=True,
+                                    text=True, timeout=10)
+            self.assertIn(str(link) + ".core", result.stderr)
+            self.assertIn("boot=--dynamic-space-size 128", result.stderr)
+
+    def test_links_find_the_core_with_plain_readlink(self):
+        self.exercise_links("plain")
+
+    def test_links_find_the_core_with_ls_fallback(self):
+        self.exercise_links("absent")
+
+
+class ResolverFailureTests(unittest.TestCase):
+    def resolve(self, path, env=None):
+        fn = (ROOT / "packaging/fn").read_text()
+        resolver = fn[fn.index("# BEGIN fn_resolve_path"):fn.index("# END fn_resolve_path")]
+        return subprocess.run(["sh", "-c", resolver + '\nfn_resolve_path "$1"',
+                               "resolver-test", str(path)],
+                              env={"PATH": "/usr/bin:/bin", **(env or {})},
+                              capture_output=True, text=True, timeout=3)
+
+    def cycle(self, self_link):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = pathlib.Path(tmp).resolve()
+            a = base / "a"
+            a.symlink_to("a" if self_link else "b")
+            if not self_link:
+                (base / "b").symlink_to("a")
+            result = self.resolve(a)
+            self.assertEqual(result.returncode, 4)
+            self.assertEqual(result.stdout, "")
+            self.assertEqual(result.stderr, f"fn: too many levels of symbolic links: {a}\n")
+
+    def test_a_self_link_ends_with_a_named_error(self):
+        self.cycle(True)
+
+    def test_a_two_link_cycle_ends_with_a_named_error(self):
+        self.cycle(False)
+
+    def test_forty_hops_succeed_and_forty_one_are_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = pathlib.Path(tmp).resolve()
+            target = base / "target"
+            target.write_text("target")
+            for hops in (40, 41):
+                with self.subTest(hops=hops):
+                    chain = base / str(hops)
+                    chain.mkdir()
+                    for hop in range(hops):
+                        (chain / str(hop)).symlink_to(str(hop + 1) if hop + 1 < hops else target)
+                    entry = chain / "0"
+                    result = self.resolve(entry)
+                    self.assertEqual(result.returncode, 0 if hops == 40 else 4)
+                    self.assertEqual(result.stdout, f"{target}\n" if hops == 40 else "")
+                    self.assertEqual(result.stderr, "" if hops == 40 else
+                                     f"fn: too many levels of symbolic links: {entry}\n")
+
+    def test_missing_directory_has_one_named_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp).resolve() / "missing/image"
+            result = self.resolve(path)
+            self.assertEqual(result.returncode, 4)
+            self.assertEqual(result.stdout, "")
+            self.assertEqual(result.stderr, f"fn: cannot resolve {path}\n")
+
+    def test_unknown_command_has_one_named_error(self):
+        result = self.resolve("fn-m26-no-such-command")
+        self.assertEqual(result.returncode, 4)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "fn: cannot resolve fn-m26-no-such-command\n")
+
+    def test_unreadable_link_has_one_named_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = pathlib.Path(tmp).resolve()
+            path = base / "link"
+            path.symlink_to("target")
+            commands = base / "commands"
+            commands.mkdir()
+            for command in ("readlink", "ls"):
+                fake = commands / command
+                fake.write_text('#!/bin/sh\necho "tool error" >&2\nexit 1\n')
+                fake.chmod(0o755)
+            result = self.resolve(path, {"PATH": str(commands) + ":/usr/bin:/bin"})
+            self.assertEqual(result.returncode, 4)
+            self.assertEqual(result.stdout, "")
+            self.assertEqual(result.stderr, f"fn: cannot resolve {path}\n")
+
+    def test_developer_missing_image_file_and_directory_name_the_image(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = pathlib.Path(tmp).resolve()
+            for missing in ("file", "directory"):
+                with self.subTest(missing=missing):
+                    checkout = base / missing
+                    packaging = checkout / "packaging"
+                    packaging.mkdir(parents=True)
+                    launcher = packaging / "fn"
+                    launcher.write_text((ROOT / "packaging/fn").read_text())
+                    image = checkout / "build/fn-host"
+                    if missing == "file":
+                        image.parent.mkdir()
+                    result = subprocess.run(["sh", str(launcher), "--version"],
+                                            env={"PATH": "/usr/bin:/bin"},
+                                            capture_output=True, text=True, timeout=3)
+                    self.assertEqual(result.returncode, 4)
+                    self.assertEqual(result.stdout, "")
+                    expected = (f"fn: native host image missing: {image} "
+                                "(run tools/build_native_host.sh)\n" if missing == "file" else
+                                f"fn: cannot resolve {image}\n")
+                    self.assertEqual(result.stderr, expected)
 
 
 if __name__ == "__main__":
