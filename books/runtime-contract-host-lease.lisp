@@ -306,8 +306,14 @@
                                      fn-rtc-m-step-state-is-bounded fn-rtc-m-init-is-uncommitted
                                      fn-rtc-m-static-init-is-bounded fn-rtc-m-static-init-is-uncommitted
                                      fn-rtc-m-commits-only-on-fsync-done)))))
-   (cons 'progn (fn-rtc-layer-keystone-events '(fn-rtc-x-init-is) prefix alist (fn-rtc-layer-fi-alist alist)
-                                              (strip-cdrs copied) obligations (w state)))))
+   (cons 'progn
+     (append
+       (fn-rtc-layer-keystone-events '(fn-rtc-x-init-is) prefix alist (fn-rtc-layer-fi-alist alist)
+                                    (strip-cdrs copied) obligations (w state))
+       (list (list 'local
+         (cons 'progn
+           (fn-rtc-layer-keystone-events '(fn-rtc-step*-config-frame fn-rtc-arm-opened-state)
+             prefix alist (fn-rtc-layer-fi-alist alist) (strip-cdrs copied) obligations (w state)))))))))
 
 (defthm fn-hld-hll-invp-st-p
   (implies (fn-hll-invp s) (fn-rtc-st-p s))
@@ -325,6 +331,38 @@
            :expand ((fn-hld-settle work fuel st))
            :in-theory (union-theories '(fn-hld-x-step*-keeps-invp (:induction fn-hld-settle) fn-hld-mv-nth-0-cons)
                                       (theory 'minimal-theory)))))
+
+(local (defthm fn-hld-x-step*-config-frame
+  (implies (fn-rtc-st-p st)
+           (equal (fn-rtc-config (mv-nth 0 (fn-hll-x-step* e q st)))
+                  (fn-rtc-config st)))
+  :hints (("Goal" :in-theory (union-theories
+           '(fn-hll-x-step*-is fn-hll-step*-config-frame) (theory 'minimal-theory))))))
+(local (defthm fn-hld-settle-config-frame
+  (implies (fn-hll-invp st)
+           (equal (fn-rtc-config (mv-nth 0 (fn-hld-settle work fuel st)))
+                  (fn-rtc-config st)))
+  :hints (("Goal" :induct (fn-hld-settle work fuel st)
+           :expand ((fn-hld-settle work fuel st))
+           :in-theory (union-theories
+             '(fn-hld-x-step*-config-frame fn-hld-hll-invp-st-p fn-hld-x-step*-keeps-invp
+               (:induction fn-hld-settle) fn-hld-mv-nth-0-cons)
+             (theory 'minimal-theory))))))
+(local (defthm fn-hld-init-config-frame
+  (equal (fn-rtc-config (mv-nth 0 (fn-hll-init cfg))) cfg)
+  :hints (("Goal" :in-theory (union-theories
+           '(fn-hll-init fn-hll-arm-opened-state fn-rtc-rearm-frame fn-rtc-make-accessors)
+           (theory 'minimal-theory))))))
+
+(defthm fn-hld-init-establishes-cfg-okp
+  (implies (and (fn-rtc-st-p fn-rtc-st) (mv-nth 1 (fn-hld-init profile cfg q fn-rtc-st)))
+           (fn-rtc-st-cfg-okp (fn-rtc-config (mv-nth 0 (fn-hld-init profile cfg q fn-rtc-st)))))
+  :hints (("Goal" :in-theory (union-theories
+           '(fn-hld-init fn-hll-x-init-is fn-hld-settle-config-frame fn-hld-init-config-frame fn-rtc-st-cfg-okp
+             fn-hld-mv-nth-0-cons)
+           (theory 'minimal-theory))
+           :use ((:instance fn-hll-init-establishes-invp
+                    (cfg (fn-hl-rtc-config profile cfg q 1 0 0)))))))
 
 (defthm fn-hld-init-establishes-invp
   (implies (mv-nth 1 (fn-hld-init profile cfg q st))
@@ -570,12 +608,10 @@
 
 ; Every dynamic slot has spent its final incarnation: terminal begin result.
 ; Temporary occupancy of slots with incarnation room remains NIL.
-(defthm fn-hld-begin-exhausted-iff
-  (implies (and (fn-rtc-st-p fn-rtc-st) (fn-rtc-invp fn-rtc-st))
-           (iff (equal (mv-nth 2 (fn-hld-begin r fn-rtc-st)) :rtc-slots-exhausted)
-                (fn-rtc-slots-exhaustedp 0
-                  (fn-rtc-nstatic (fn-rtc-config fn-rtc-st))
-                  (fn-rtc-slots fn-rtc-st))))
+(defthm fn-hld-begin-terminal-means-exhausted
+  (implies (and (fn-rtc-st-p fn-rtc-st) (fn-rtc-invp fn-rtc-st)
+                (equal (mv-nth 2 (fn-hld-begin r fn-rtc-st)) :rtc-slots-exhausted))
+           (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config fn-rtc-st)) (fn-rtc-slots fn-rtc-st)))
   :hints (("Goal" :in-theory
            (e/d (fn-hld-begin fn-rtc-st-free-slot fn-rtc-st-slot
                  fn-rtc-x-slots-exhaustedp-is)
@@ -583,4 +619,14 @@
                  fn-rtc-kind-op fn-rtc-inc-roomp fn-rtc-free-slot fn-rtc-slot
                  fn-rtc-s-inc fn-rtc-st-uses fn-rtc-slots-exhaustedp
                  fn-rtc-nstatic fn-rtc-invp mv-nth))
+           :use ((:instance fn-rtc-exhausted-means-no-free-slot (s fn-rtc-st))))))
+
+(defthm fn-hld-begin-exhausted-means-terminal
+  (implies (and (fn-rtc-st-p fn-rtc-st) (fn-rtc-invp fn-rtc-st)
+                (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config fn-rtc-st)) (fn-rtc-slots fn-rtc-st)))
+           (equal (mv-nth 2 (fn-hld-begin r fn-rtc-st)) :rtc-slots-exhausted))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-hld-begin fn-rtc-st-free-slot fn-rtc-st$a-free-slot
+               fn-rtc-x-slots-exhaustedp-is mv-nth (:executable-counterpart natp)))
            :use ((:instance fn-rtc-exhausted-means-no-free-slot (s fn-rtc-st))))))
