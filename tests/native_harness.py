@@ -343,6 +343,15 @@ def _pending_node_starts(test_id=None):
             for entry in _NODE_GREETINGS.get(key, []) if not entry["evidence"]]
 
 
+def require_observed_node_response(port):
+    """An opaque STARTTLS tool may only reuse an already observed start."""
+    if any(port in entry["ports"] for entry in _pending_node_starts()):
+        node_dead(f"port {port} has no observed startup response; "
+                  "s_client -starttls nntp consumes its greeting internally; "
+                  "select an ordinary reader of this shared node first "
+                  "(outside-in b01 before b04)")
+
+
 def observe_node_greeting(port, greeting, *, process=None, test_id=None):
     """Acknowledge an existing connection, never open a probe connection."""
     entries = [entry for entry in _pending_node_starts(test_id) if port in entry["ports"]

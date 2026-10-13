@@ -138,7 +138,7 @@ class NodeDeadResultTests(unittest.TestCase):
             harness._NODE_GREETINGS.pop(self.id(), None)
             harness._NODE_DEAD.pop(self.id(), None)
 
-    def test_ipv6_table_listener_and_starttls_multiline_acknowledge_existing_bytes(self):
+    def test_ipv6_table_listener_acknowledges_existing_bytes(self):
         import io
         from tests import native_harness as harness
         from tests.test_native_outside_in import Talk
@@ -165,23 +165,93 @@ class NodeDeadResultTests(unittest.TestCase):
                 self.assertEqual(harness.node_start_failures(self.id()), [])
                 talk.close()
 
-                harness.require_node_greeting(process, 1234)
-                greeting = b"200 ready\r\n"
-                dump = (b"read from 0x123 [0x456] (11 bytes => 11)\n0000 - " +
-                        b" ".join(f"{b:02x}".encode() for b in greeting) + b"   captured\n")
-                talk = tool(["openssl", "-starttls", "nntp", "-debug", "-connect", "127.0.0.1:1234"],
-                            dump + b"---\nread R BLOCK\n101 capabilities\r\nVERSION 2\r\n---\r\n.\r\n500 unknown\r\n")
-                self.assertEqual(talk.multiline("CAPABILITIES", "101"),
-                                 ("101 capabilities", ["VERSION 2", "---"]))
-                self.assertTrue(talk.greeted)
-                self.assertEqual(harness.node_start_failures(self.id()), [])
-                with self.assertRaisesRegex(AssertionError, "expected 101, got '500 unknown'"):
-                    talk.command("BOGUS", "101")
-                self.assertEqual(talk.process.stdin.getvalue(), b"CAPABILITIES\r\nBOGUS\r\n")
-                talk.close()
         finally:
             harness._NODE_GREETINGS.pop(self.id(), None)
             harness._NODE_DEAD.pop(self.id(), None)
+
+    def test_starttls_stock_stream_excludes_session_and_late_ticket_without_hiding_start_debt(self):
+        import contextlib
+        import io
+        from tests import native_harness as harness
+        from tests.test_native_outside_in import NodeCase, StrangerTests
+        owner = mock.Mock(pid=42)
+        owner.poll.return_value = None
+        session = b"CONNECTED(7)\n---\nCertificate chain\nServer certificate\n-----BEGIN CERTIFICATE-----\nfixture\n-----END CERTIFICATE-----\n---\n"
+        ticket = b"---\nPost-Handshake New Session Ticket arrived:\nSSL-Session:\n    Protocol  : TLSv1.3\n---\n"
+        caps = b"101 capabilities\r\nVERSION 2\r\nAUTHINFO USER\r\n---\r\nCONNECTED(7)\r\nread R BLOCK\r\n0000 - article text\r\n.\r\n"
+        children = []
+
+        def popen(argv, **kwargs):
+            if "-starttls" in argv:
+                # Model OpenSSL's debug BIO sharing stdout with the session
+                # printer and a ticket arriving AFTER the first NNTP reply.
+                output = (session if "-debug" in argv else b"") + caps
+                output += (ticket if "-debug" in argv else b"")
+                output += b"502 already TLS\r\n381 password\r\n281 logged in\r\n200 reader\r\n205 bye\r\n"
+            else:
+                output = b"200 ready\r\n205 bye\r\n"
+            child = mock.Mock(stdin=io.BytesIO(), stdout=io.BytesIO(output),
+                              stderr=io.BytesIO(b"certificate verification diagnostic\n"))
+            child.poll.return_value = 0
+            children.append((argv, child))
+            return child
+
+        class Cases(unittest.TestCase):
+            node = mock.Mock(port=1234, tls_port=4321, cert=Path("fixture-cert.pem"))
+            plain, tls = NodeCase.plain, NodeCase.tls
+            test_b04 = StrangerTests.test_b04_starttls_on_the_plain_port_then_log_in
+
+            @classmethod
+            def setUpClass(cls):
+                with mock.patch.object(harness, "current_test_id", return_value=None):
+                    harness.require_node_greeting(owner, 1234)
+
+            def test_b01(self):
+                talk = self.plain()
+                talk.expect("200", "201")
+                talk.quit()
+
+            def ran(self, argv, transcript=None):
+                pass
+
+            def saw(self, text):
+                self.assertIn("'---', 'CONNECTED(7)', 'read R BLOCK', '0000 - article text'", text)
+
+        for selection in (None, ["test_b01", "test_b04"], ["test_b04"]):
+            with self.subTest(only_cases=selection), \
+                 mock.patch.dict(harness._NODE_GREETINGS, {}, clear=True), \
+                 mock.patch.dict(harness._NODE_DEAD, {}, clear=True):
+                children.clear()
+                suite = unittest.TestSuite(Cases(name) for name in (selection or ["test_b01", "test_b04"]))
+                out, err = io.StringIO(), io.StringIO()
+                with mock.patch.object(test_budget.unittest.defaultTestLoader, "loadTestsFromName", return_value=suite), \
+                     mock.patch.object(test_budget.unittest.defaultTestLoader, "loadTestsFromNames", return_value=suite), \
+                     mock.patch("tests.test_native_outside_in.subprocess.Popen", side_effect=popen), \
+                     mock.patch.dict(os.environ, {"FN_VERDICT_STORE": ""}), \
+                     contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    rc = test_budget.run_one("fixture", cases=selection)
+                record = json.loads(next(line[len(test_budget.RESULT_PREFIX):] for line in out.getvalue().splitlines()
+                                         if line.startswith(test_budget.RESULT_PREFIX)))
+                isolated = selection == ["test_b04"]
+                self.assertEqual(rc, 1 if isolated else 0, err.getvalue())
+                self.assertEqual(bool(record["node_dead"]), isolated)
+                self.assertEqual(len(children), 0 if isolated else 2)
+                if isolated:
+                    self.assertIn("consumes its greeting internally", err.getvalue())
+                    self.assertIsNone(harness._NODE_GREETINGS[None][0]["evidence"])
+                    # The ordinary unittest result must reject this too;
+                    # correctness cannot depend on the budget post-check.
+                    result = unittest.TestResult()
+                    with mock.patch("tests.test_native_outside_in.subprocess.Popen", side_effect=popen):
+                        Cases("test_b04").run(result)
+                    self.assertEqual(len(result.failures), 1)
+                    self.assertEqual(result.errors, [])
+                    self.assertIn("consumes its greeting internally", result.failures[0][1])
+                    self.assertEqual(children, [])
+                else:
+                    self.assertTrue(all(outcome == "ok" for _, outcome in record["cases"]))
+                    self.assertNotIn("-debug", children[-1][0])
+                    self.assertEqual(harness._NODE_GREETINGS[None][0]["evidence"], "NNTP greeting")
 
     def test_mission_tls_and_web_ports_belong_to_the_started_owner(self):
         from tests import native_harness as harness
@@ -252,15 +322,15 @@ class NodeDeadResultTests(unittest.TestCase):
 
             harness.require_node_greeting(process, 1234)
             talk = object.__new__(Talk)
-            talk.port, talk.timeout, talk.argv = 1234, 1, ["openssl", "-debug"]
-            talk.captured, talk.greeted, talk.raw_err = bytearray(), False, []
-            talk.debug_dump = False
-            talk.transcript_reply = False
+            talk.port, talk.timeout, talk.argv = 1234, 1, ["nc"]
+            talk.captured, talk.greeted = bytearray(), False
             talk.lines, talk.err, talk.transcript = queue.Queue(), [], []
-            for line in hidden.splitlines(keepends=True): talk.lines.put(line)
-            self.assertEqual(talk.line(), "382 continue")
+            for line in b"200 ready\r\n382 continue\r\n200 later\r\n".splitlines(keepends=True):
+                talk.lines.put(line)
+            self.assertEqual(talk.line(), "200 ready")
             self.assertTrue(talk.greeted)
             self.assertEqual(harness.node_start_failures(self.id()), [])
+            self.assertEqual(talk.line(), "382 continue")
             talk.lines.put(b"0000 - this is article text\r\n")
             self.assertEqual(talk.line(), "200 later")
             self.assertEqual(talk.line(), "0000 - this is article text")

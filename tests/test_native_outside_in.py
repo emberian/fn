@@ -39,6 +39,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from tests.native_harness import observe_http_reply, observe_tool_greeting
+from tests.native_harness import require_observed_node_response
 from tests.native_harness import EXIT, Node, ROOT, class_case, free_port, native_image, requires
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
@@ -226,9 +227,10 @@ class Talk:
         self.port = int(argv[argv.index("-connect") + 1].rsplit(":", 1)[1]
                         if "-connect" in argv else argv[-1])
         self.captured, self.greeted = bytearray(), False
-        self.debug_dump = False
-        self.transcript_reply = False
-        self.raw_err = []
+        if "-starttls" in argv:
+            # s_client hides the plain greeting. Its debug/session output
+            # cannot share the application stream used by this oracle.
+            require_observed_node_response(self.port)
         self.process = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE)
         self.lines = queue.Queue()
@@ -246,29 +248,14 @@ class Talk:
 
     def _pump_err(self):
         for raw in iter(self.process.stderr.readline, b""):
-            self.raw_err.append(raw)
             self.err.append(raw.decode("utf-8", "replace"))
 
     def line(self, timeout=None):
-        deadline = time.monotonic() + (timeout or self.timeout)
-        while True:
-            raw = self.tool_line(max(.001, deadline - time.monotonic()))
-            if not self.greeted:
-                self.captured.extend(raw)
-                self.greeted = observe_tool_greeting(self.port, bytes(self.captured) + b"".join(self.raw_err))
-            if "-debug" in self.argv:
-                if raw.startswith((b"read from ", b"write to ")):
-                    self.debug_dump = True
-                    continue
-                if self.debug_dump and re.match(rb"^[0-9a-fA-F]{4} - ", raw):
-                    continue
-                self.debug_dump = False
-                if raw.startswith((b"CONNECTED(", b"read R BLOCK", b"write W BLOCK")):
-                    continue
-                if raw.rstrip(b"\r\n") == b"---" and not self.transcript_reply:
-                    continue  # s_client's STARTTLS negotiation separator.
-            self.transcript_reply = True
-            return raw.decode("utf-8", "replace").rstrip("\r\n")
+        raw = self.tool_line(timeout or self.timeout)
+        if not self.greeted and "-starttls" not in self.argv:
+            self.captured.extend(raw)
+            self.greeted = observe_tool_greeting(self.port, bytes(self.captured))
+        return raw.decode("utf-8", "replace").rstrip("\r\n")
 
     def tool_line(self, timeout):
         try:
@@ -441,7 +428,7 @@ class NodeCase(Recorded):
             argv += ["-CAfile", str(self.node.cert), "-verify_return_error",
                      "-verify_ip", "127.0.0.1"]
         if starttls:
-            argv += ["-starttls", "nntp", "-debug"]
+            argv += ["-starttls", "nntp"]
         return Talk(self, argv)
 
     def login(self, talk, user, password=PASSWORD):
