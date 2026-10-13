@@ -85,6 +85,13 @@
   :hints (("Goal" :in-theory '(fn-owner-memory-held-close
                                fn-orh-retain-statep-of-other-global-put))))
 
+; The admission's returned bank is installed without changing owner or carry.
+(defthm fn-orh-retain-statep-of-held-install
+ (equal (fn-owner-retain-statep (fn-owner-memory-held-install result state))
+        (fn-owner-retain-statep state))
+ :hints (("Goal" :in-theory '(fn-owner-memory-held-install
+                             fn-orh-retain-statep-of-other-global-put))))
+
 ; -----------------------------------------------------------------------------
 ; The writers.
 
@@ -238,13 +245,23 @@
     (:executable-counterpart posp) (:executable-counterpart member-equal))
   (theory 'minimal-theory))))))
 
+; Selector wiring only: the wrapper installs field one of the exposure result.
+(local (defthm m24-exposure-transfer-owner-at-preserves-carried-relation-by-definition
+ (implies (fn-lgoc-invariantp oc)
+  (fn-lgoc-invariantp (fn-exp-at 1 (fn-exp-at 1
+   (fn-adm-transport-rearm :exposure oc xs lim acfg peer address now
+                           bank old-id configured capacity)))))
+ :hints (("Goal" :use m24-exposure-transfer-preserves-carried-relation
+  :in-theory '(fn-exp-open-ocfg)))))
+
 (defthm fn-owner-exposure-rearm-preserves-retain-state
  (implies (fn-owner-retain-statep state)
   (fn-owner-retain-statep (mv-nth 2
    (fn-owner-exposure-rearm family address peer-octets old-id state))))
  :hints (("Goal" :in-theory '(fn-owner-exposure-rearm fn-owner-held-callback-exposure-open
-  fn-owner-memory-held-install fn-exp-at fn-exp-open-ocfg mv-nth nth zp car-cons cdr-cons
-  (:executable-counterpart zp) m24-exposure-transfer-preserves-carried-relation
+  fn-orh-retain-statep-of-held-install fn-exp-at fn-exp-open-ocfg mv-nth nth zp car-cons cdr-cons
+  (:executable-counterpart zp)
+  m24-exposure-transfer-owner-at-preserves-carried-relation-by-definition
   fn-orh-retain-statep-of-other-global-put fn-orh-retain-statep-of-install-served-effects
   fn-orh-retain-statep-of-install-ocfg)
   :use ((:instance fn-owner-retain-statep-implies-lgoc (state state))))))
@@ -401,14 +418,15 @@
 (defthm fn-owner-memory-recapacity-preserves-retain-state
  (implies (fn-owner-retain-statep state)
           (fn-owner-retain-statep (mv-nth 1 (fn-owner-memory-recapacity fn-hist state))))
- :hints (("Goal" :in-theory (union-theories
-  '(fn-owner-memory-recapacity fn-owner-record-totals fn-orh-retain-statep-of-other-global-put
+ :hints (("Goal" :use (fn-owner-record-totals-preserves-retain-state) :in-theory (union-theories
+  '(fn-owner-memory-recapacity
+    fn-orh-retain-statep-of-other-global-put
     mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
   (theory 'minimal-theory)))))
 (defthm fn-owner-memory-reclaim-complete-preserves-retain-state
  (implies (fn-owner-retain-statep state)
           (fn-owner-retain-statep (mv-nth 3 (fn-owner-memory-reclaim-complete fn-hist state))))
- :hints (("Goal" :in-theory (union-theories
-  '(fn-owner-memory-reclaim-complete fn-owner-memory-recapacity fn-owner-record-totals fn-orh-retain-statep-of-other-global-put
+ :hints (("Goal" :use (fn-owner-memory-recapacity-preserves-retain-state) :in-theory (union-theories
+  '(fn-owner-memory-reclaim-complete
     mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
   (theory 'minimal-theory)))))
