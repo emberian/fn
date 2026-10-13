@@ -50,6 +50,41 @@
    "item": "A-OVER-WINDOW-FIT",
    "owner": "builder-C",
    "evidence": "measured red on both images at memory landing 3+4a (hbox m15-r3 at lane/memory e6aab64bb; B's persvati run at train 89's gated head a8685dab1 agrees): the run admitted at C' answers \"400 too many connections\" where the test expects the connection served, because the admission gate prices the OVER reply through the named adapter A-OVER-WINDOW-FIT (books/memory-model.lisp fn-mm-over-window-fit; host/native/owner.lisp fnn-owner-over-window) until OVER renders into one pool lease; retirement: landing O1 (Builder O's OVER pool lease); admitted by amendment, coordinator 2026-10-10"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_public_limits.DeveloperImagePublicLimits.test_capacity_and_trusted_range",
+   "item": "PUBLIC-LIMITS-OVER-WINDOW-CAPACITY",
+   "owner": "builder-O",
+   "evidence": "dev red found by B23's control run hbox native-nl2-ctl0403 at dev 0403f697b, traced by M25: 'memory capacity=34 of 40 bound-by=over-window' (hbox:/tank/fn/scratch/memory-run-launch/m25-publimits/fn-dev.log); each added holder is charged the whole OVER window (adapter A-OVER-WINDOW-FIT); owner builder-O, retired by OVER landing 2 (pool lease), evidence: green at capacity 40 of 40, then 45 live"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_public_limits.ProductionImagePublicLimits.test_capacity_and_trusted_range",
+   "item": "PUBLIC-LIMITS-OVER-WINDOW-CAPACITY",
+   "owner": "builder-O",
+   "evidence": "dev red found by B23's control run hbox native-nl2-ctl0403 at dev 0403f697b, traced by M25: 'memory capacity=34 of 40 bound-by=over-window' (hbox:/tank/fn/scratch/memory-run-launch/m25-publimits/fn-dev.log); each added holder is charged the whole OVER window (adapter A-OVER-WINDOW-FIT); owner builder-O, retired by OVER landing 2 (pool lease), evidence: green at capacity 40 of 40, then 45 live"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_openssl_prefix_is_refused_by_name",
+   "item": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+   "owner": "builder-A",
+   "evidence": "dev red found by B23's control run hbox native-nl2-ctl0403 at dev 0403f697b: the installed wrapper packaging/fn:62-70 (c6b5d0a57) exits 2 on a missing FN_OPENSSL_PREFIX before the image runs (A26's trace), against D59/D64's scoped refusal; owner builder-A, retired by lane/vertical-tls-wrapper"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_prefix_with_hybrid_required_and_no_tls_is_refused",
+   "item": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+   "owner": "builder-A",
+   "evidence": "dev red found by B23's control run hbox native-nl2-ctl0403 at dev 0403f697b: the installed wrapper packaging/fn:62-70 (c6b5d0a57) exits 2 on a missing FN_OPENSSL_PREFIX before the image runs (A26's trace), against D59/D64's scoped refusal; owner builder-A, retired by lane/vertical-tls-wrapper"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_prefix_on_a_node_without_tls_runs_on_the_system_pair",
+   "item": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+   "owner": "builder-A",
+   "evidence": "dev red found by B23's control run hbox native-nl2-ctl0403 at dev 0403f697b: the installed wrapper packaging/fn:62-70 (c6b5d0a57) exits 2 on a missing FN_OPENSSL_PREFIX before the image runs (A26's trace), against D59/D64's scoped refusal; owner builder-A, retired by lane/vertical-tls-wrapper"
   }
  ]
 }
