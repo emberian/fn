@@ -1605,6 +1605,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-live-links \
 	tests/acl2/catalog-live-links-tests \
 	books/catalog-wbv-trie \
+	books/log-locator \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
 	tests/acl2/catalog-raw-low-tests \
