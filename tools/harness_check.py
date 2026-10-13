@@ -2075,21 +2075,39 @@ HOST_LOAD = re.compile(
 
 
 
-# Every built host loads io.lisp's startup boundary; standalone probes do not.
-IMAGE_PROBE_GUARD = """(unless (fboundp 'acl2::fnn-native-startup)
+# fnn-save-world-flavor is defined only in host/native/strip-world.lisp.
+# build.lisp, build-dtn.lisp and build-store-test.lisp load it just before
+# save-exec; no test loads it (the Python source-runner fixture is text only).
+# tools/native_source_runner.py removes that load and call from source runs.
+# Unlike io.lisp, which bare-SBCL harnesses load whole, this marks a built image.
+IMAGE_PROBE_GUARD = """(unless (fboundp 'acl2::fnn-save-world-flavor)
   (error "fn: this probe runs only inside a built fn-host image"))"""
 
 
 def image_probe_guard(text: str) -> tuple[bool, bool]:
-    """(Valid first guard, misplaced/duplicate guard), comparing reader forms."""
+    """(Valid first guard, misplaced/duplicate guard), comparing source spans."""
     from tools import ledger
-    guard = ledger.Reader(IMAGE_PROBE_GUARD).top_level()[0][0]
-    forms = [form for form, _ in ledger.Reader(text).top_level()]
-    first = next((form for form in forms if form != [ledger.Sym("in-package"), "ACL2"]), None)
-    def count(form):
-        return 1 if form == guard else sum(map(count, form)) if isinstance(form, list) else 0
-    total = sum(map(count, forms))
-    valid = first == guard and total == 1
+    def normalized(source):
+        return b" ".join(source.encode("utf-8").split())
+    guard = normalized(IMAGE_PROBE_GUARD)
+    spans = []
+    class SpanReader(ledger.Reader):
+        def form(self):
+            self.skip_space()
+            start = self.pos
+            result = super().form()
+            spans.append(normalized(self.source[start:self.pos]))
+            return result
+    reader, top = SpanReader(text), []
+    while True:
+        reader.skip_space()
+        start = reader.pos
+        if start == len(text):
+            break
+        reader.form()  # Only boundaries matter: Reader folds case and escapes.
+        top.append(normalized(text[start:reader.pos]))
+    total = spans.count(guard)
+    valid = top[:2] == [b'(in-package "ACL2")', guard] and total == 1
     return valid, total > 0 and not valid
 
 
@@ -2207,7 +2225,7 @@ def harness_scans(root: Path) -> list[tuple[Path, str, str, dict]]:
                     "extracted": set(), "stubs": {}, "checked": 0}
             if misplaced:
                 scan["stale"].append({"lint": "test-stubs", "where": relative, "callee": "",
-                    "problem": "misplaced guard: IMAGE_PROBE_GUARD must be the single first form after in-package ACL2"})
+                    "problem": 'misplaced guard: first two forms must be exactly (in-package "ACL2") and IMAGE_PROBE_GUARD, with no other guard'})
         else:
             fixtures = None if guarded else harness_fixture_sources(root, relative, text)
             scan = harness_scan(relative, text, rawdefs, bodies, origins, fixtures)
