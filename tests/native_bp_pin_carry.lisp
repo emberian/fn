@@ -2,7 +2,7 @@
 ;;; no socket, durable Store I/O, or full owner quantum claim.
 ;;; Save/hook/restore symbol-function as in native_bp_prefix_probe_source.lisp.
 (in-package "ACL2")
-(unless (fboundp 'acl2::fnn-native-startup)
+(unless (fboundp 'acl2::fnn-save-world-flavor)
   (error "fn: this probe runs only inside a built fn-host image"))
 
 (defun d14-pin-fixtures ()
