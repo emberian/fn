@@ -604,7 +604,10 @@
                        ;; PRF-335: a peer's outbound feed queue has no room
                        ;; for the article's feed obligation
                        ;; (books/owner.lisp fn-own-intent-refusal-word).
-                       :feed-queue-full))
+                       :feed-queue-full
+                       ;; books/store-node.lisp *fn-sn-article-record-refusals*, KEYSTONE fn-sn-article-record-is-a-record-or-a-named-refusal: refused in prepare before staging, so nothing stored.
+                       :sequence-exhausted :txid-exhausted :msgid-invalid :payload-invalid :groups-invalid
+                       :obligation-id-invalid :subject-invalid :evidence-invalid :charge-invalid))
        t))
 
 ; The reason text of a Store refusal, one per kind: the one table.  POST's
@@ -658,6 +661,24 @@
     "this login posts only articles signed by its bound principal")
    ((equal kind :feed-queue-full)
     "a peer's outbound feed queue is full, nothing was stored (feed-queue-full); the peer is behind, and the node's operator sees which one in health")
+   ((equal kind :sequence-exhausted)
+    "the store has no article sequence number left, nothing was stored (sequence-exhausted)")
+   ((equal kind :txid-exhausted)
+    "the store has no transaction id left, nothing was stored (txid-exhausted)")
+   ((equal kind :msgid-invalid)
+    "the Message-ID cannot be stored as a record field, nothing was stored (msgid-invalid)")
+   ((equal kind :payload-invalid)
+    "the article octets cannot be stored as a record, nothing was stored (payload-invalid)")
+   ((equal kind :groups-invalid)
+    "the newsgroups list cannot be stored as a record field, nothing was stored (groups-invalid)")
+   ((equal kind :obligation-id-invalid)
+    "the article's obligation id exceeds its record field, nothing was stored (obligation-id-invalid)")
+   ((equal kind :subject-invalid)
+    "the article's subject exceeds its record field, nothing was stored (subject-invalid)")
+   ((equal kind :evidence-invalid)
+    "the server's posting evidence cannot be stored as a record field, nothing was stored (evidence-invalid)")
+   ((equal kind :charge-invalid)
+    "the article's charge exceeds its record field, nothing was stored (charge-invalid)")
    (t "the article was refused")))
 
 (defun fn-post-store-refusal-line (kind)

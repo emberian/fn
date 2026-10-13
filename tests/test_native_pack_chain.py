@@ -43,6 +43,7 @@ from tests.native_harness import EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTA
 from tools import fixtures, native_env
 
 IMAGE = checkpoint.IMAGE
+NATIVE_MEMORY = "48G"
 
 N = int(os.environ.get("FN_P5_N", "20000"))
 CUT_N = int(os.environ.get("FN_P5_CUT_N", "4500"))
