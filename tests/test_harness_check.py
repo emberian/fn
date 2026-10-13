@@ -1009,6 +1009,186 @@ class DerivedStubTests(unittest.TestCase):
         self.assertTrue(harness_check.LINTS["test-harness-reach"][1], "reach gates")
 
 
+class ImageLoadedProbeTests(unittest.TestCase):
+    """B21: a saved image supplies real host helpers; derived traps must not replace them."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="image-probe-", dir=ROOT / "build/codex")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "tests").mkdir()
+        self.probe = self.root / "tests/probe.lisp"
+        self.probe.write_text('(in-package "ACL2")\n\n(fnn-top nil nil)\n')
+        from tools import ledger
+        sources = {"host/native/x.lisp": ledger.Reader(DerivedStubTests.HOST).top_level()}
+        self.patch = mock.patch.object(harness_check, "raw_host_sources", return_value=sources)
+        self.patch.start()
+        self.addCleanup(self.patch.stop)
+
+    def python(self, source, filename="test_probe.py"):
+        (self.root / "tests" / filename).write_text(textwrap.dedent(source))
+
+    def image_loader(self):
+        self.python('''
+            from tests.test_native_entry_guard import image_command
+            argv, env = image_command(['(in-package "ACL2")', '(load "tests/probe.lisp")'])
+        ''')
+
+    def findings(self):
+        stubs, _ = harness_check.test_stub_findings(self.root)
+        reach, _ = harness_check.test_harness_reach_findings(self.root)
+        return stubs, reach
+
+    def test_image_probe_has_no_extraction_block_or_findings(self):
+        self.image_loader()
+        self.assertEqual(harness_check.harness_scans(self.root), [])
+        self.assertEqual(self.findings(), ([], []))
+        self.assertEqual(harness_check.write_derived_stubs(self.root), [])
+        self.assertNotIn(harness_check.STUB_BEGIN, self.probe.read_text())
+
+    def test_without_an_image_loader_the_current_model_still_derives_traps(self):
+        rows = harness_check.harness_scans(self.root)
+        self.assertEqual(set(rows[0][3]["unresolved"]), {"fnn-a", "fnn-b"})
+        self.assertIn("harness-stub-reached", rows[0][3]["expected"])
+        self.assertEqual(harness_check.write_derived_stubs(self.root), ["tests/probe.lisp"])
+        self.assertEqual(self.findings(), ([], []))
+
+    def test_double_loader_reports_both_and_regeneration_does_not_guess(self):
+        self.image_loader()
+        self.python('''
+            import subprocess
+            from pathlib import Path
+            ROOT = Path(__file__).resolve().parent.parent
+            subprocess.run(["sbcl", "--script", str(ROOT / "tests/probe.lisp")])
+        ''', "test_standalone.py")
+        block = harness_check.derived_stub_block({"fnn-a": (["x"], "host/native/x.lisp")})
+        self.probe.write_text(harness_check.with_stub_block(self.probe.read_text(), block))
+        stubs, reach = self.findings()
+        self.assertEqual(len(stubs), 1, stubs)
+        self.assertIn("ambiguous", stubs[0]["problem"])
+        self.assertIn("test_probe.py", stubs[0]["problem"])
+        self.assertIn("test_standalone.py", stubs[0]["problem"])
+        self.assertEqual(reach, [])
+        self.assertEqual(harness_check.write_derived_stubs(self.root), [])
+        self.assertIn(block, self.probe.read_text())
+
+    def test_another_harness_is_also_a_standalone_loader(self):
+        self.image_loader()
+        (self.root / "tests/parent.lisp").write_text('(load "tests/probe.lisp")')
+        stubs, _ = self.findings()
+        ambiguous = [row for row in stubs if "ambiguous" in row["problem"]]
+        self.assertEqual(len(ambiguous), 1, stubs)
+        self.assertIn("tests/parent.lisp", ambiguous[0]["problem"])
+
+    def test_a_shell_sbcl_runner_is_a_standalone_loader(self):
+        self.image_loader()
+        (self.root / "tests/test_probe.sh").write_text(
+            '#!/bin/sh\n"${FN_SBCL:-sbcl}" --script tests/probe.lisp\n')
+        stubs, _ = self.findings()
+        self.assertEqual(len(stubs), 1, stubs)
+        self.assertIn("ambiguous", stubs[0]["problem"])
+        self.assertIn("test_probe.sh", stubs[0]["problem"])
+
+    def test_rebound_launcher_names_are_not_image_evidence(self):
+        for source in (
+                'from tests.test_native_entry_guard import image_command\n'
+                'image_command = "tests.test_native_entry_guard.image_command"\n'
+                '''image_command(['(load "tests/probe.lisp")'])''',
+                'from tests.test_native_entry_guard import image_command\n'
+                'if uncertain:\n    image_command = unrelated\n'
+                '''image_command(['(load "tests/probe.lisp")'])''',
+                'from tests.test_native_entry_guard import image_command\n'
+                '''def probe(image_command):\n    image_command(['(load "tests/probe.lisp")'])'''):
+            with self.subTest(source=source):
+                self.python(source)
+                self.assertTrue(harness_check.harness_scans(self.root)[0][3]["expected"])
+
+    def test_stale_image_block_is_found_and_removed_by_write_stubs(self):
+        self.image_loader()
+        hand = self.probe.read_text()
+        block = harness_check.derived_stub_block({"fnn-a": (["x"], "host/native/x.lisp")})
+        self.probe.write_text(harness_check.with_stub_block(hand, block))
+        stubs, reach = self.findings()
+        self.assertEqual(len(stubs), 1, stubs)
+        self.assertIn("stale derived-stub block", stubs[0]["problem"])
+        self.assertEqual(reach, [])
+        self.assertEqual(harness_check.write_derived_stubs(self.root), ["tests/probe.lisp"])
+        self.assertNotIn(harness_check.STUB_BEGIN, self.probe.read_text())
+        self.assertEqual(self.probe.read_text().split(), hand.split())
+        self.assertEqual(self.findings(), ([], []))
+
+    def test_import_aliases_and_assigned_form_lists_are_followed(self):
+        self.python('''
+            import tests.test_native_entry_guard as guard
+            forms = ['(load "tests/probe.lisp")']
+            guard.image_command(forms=forms)
+        ''')
+        self.assertEqual(self.findings(), ([], []))
+        self.assertEqual(harness_check.harness_scans(self.root), [])
+
+    def test_comments_unpassed_literals_and_unrelated_names_exempt_nothing(self):
+        self.python('''
+            # image_command(['(load "tests/probe.lisp")'])
+            unused = '(load "tests/probe.lisp")'
+            def image_command(forms):
+                return forms
+            image_command(['(load "tests/probe.lisp")'])
+        ''')
+        self.assertTrue(harness_check.harness_scans(self.root)[0][3]["expected"])
+        for argument in ('''\'(load "tests/probe.lisp")\' ''',
+                         '''[['(load "tests/probe.lisp")']]'''):
+            with self.subTest(argument=argument):
+                self.python('from tests.test_native_entry_guard import image_command\n'
+                            + 'image_command(' + argument + ')')
+                self.assertTrue(harness_check.harness_scans(self.root)[0][3]["expected"])
+
+    def test_native_harness_session_forms_have_image_provenance(self):
+        self.python('''
+            from tests.native_harness import Acl2Session as Session
+            with Session() as bridge:
+                bridge.call('(load "tests/probe.lisp")')
+        ''')
+        self.assertEqual(self.findings(), ([], []))
+        self.assertEqual(harness_check.harness_scans(self.root), [])
+
+    def test_saved_runtime_wrapper_load_has_image_provenance(self):
+        # This is the other existing path: test_native_nov_metadata's --load.
+        source = (ROOT / "tests/test_native_nov_metadata.py").read_text().replace(
+            "tests/native_nov_metadata_image.lisp", "tests/probe.lisp")
+        self.python(source)
+        self.assertEqual(self.findings(), ([], []))
+        self.assertEqual(harness_check.harness_scans(self.root), [])
+
+    def test_image_context_follows_literal_fixture_loads(self):
+        self.image_loader()
+        self.probe.write_text('(load "tests/child.lisp")')
+        (self.root / "tests/child.lisp").write_text('(fnn-top nil nil)')
+        self.assertEqual(harness_check.harness_scans(self.root), [])
+        self.assertEqual(self.findings(), ([], []))
+
+    def test_c13_pin_carry_fixture_reproduces_the_seven_overwritten_helpers(self):
+        # Copy the supplied lane fixtures into the disposable tree: the probe
+        # must never be installed under this repository's tests/ by this test.
+        fixture_dir = ROOT / "build/codex"
+        for filename in ("native_bp_pin_carry.lisp", "test_native_bp_pin_carry.py"):
+            (self.root / "tests" / filename).write_bytes(
+                (fixture_dir / (filename + ".fixture")).read_bytes())
+        self.probe.unlink()  # our own disposable reduced probe
+        self.patch.stop()  # use the actual host definitions for the C13 control
+        stubs, reach = self.findings()
+        self.assertEqual(len(stubs), 1, stubs)  # the supplied probe already has the bad block
+        self.assertIn("stale derived-stub block", stubs[0]["problem"])
+        self.assertEqual(reach, [])
+        self.assertEqual(harness_check.write_derived_stubs(self.root), ["tests/native_bp_pin_carry.lisp"])
+        self.assertEqual(harness_check.harness_scans(self.root), [])
+        self.assertEqual(self.findings(), ([], []))
+        (self.root / "tests/test_native_bp_pin_carry.py").unlink()
+        rows = harness_check.harness_scans(self.root)
+        self.assertEqual(set(rows[0][3]["unresolved"]), {
+            "fnn-arena-then-state", "fnn-fault", "fnn-live-arena", "fnn-live-ast-ws",
+            "fnn-live-cat", "fnn-live-hist", "fnn-live-owner-st"})
+
+
 class RawMacroTemplateTests(unittest.TestCase):
     def calls(self, source):
         from tools import ledger
