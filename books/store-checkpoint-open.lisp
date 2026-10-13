@@ -23,6 +23,7 @@
 ; at open only.
 (in-package "ACL2")
 (include-book "config-observed")
+(local (include-book "store-identity-sequence-invariants"))
 (include-book "store-checkpoint-accessors")
 
 (local (defthmd fn-cpr-config-firstp-has-config-local-rewrite
@@ -262,7 +263,8 @@
                 (if (and (equal (fn-stxk-context-kind identity) :ok)
                          (consp consumer) (eq (car consumer) :ok)
                          (eq (fn-th-at 0 topic) :ok)
-                         (fn-sn-statep opened))
+                         (fn-sn-statep opened)
+                       (fn-record-uint64p (fn-sn-identity-next opened)))
                     (fn-sn-open-ok opened)
                   (fn-sn-open-error :identity))))))))))
 
@@ -569,12 +571,44 @@
                             fn-stxk-initial-context fn-th-prefix-state)))))
 
 ; Finishing the capture of a whole history is the host's open of it.
+(local
+ (defthm lseq-history-count-at-most-frontier
+  (implies (and (natp lower) (natp frontier) (<= lower frontier)
+                (fn-sf-record-listp records sequence lower frontier))
+           (<= (+ lower (len records)) frontier))
+  :hints (("Goal" :induct (fn-sf-record-listp records sequence lower frontier)
+                  :in-theory (e/d (fn-sf-record-listp) (fn-store-event-p))))))
+
+(local
+ (defthm lseq-opened-next-is-context-next
+  (equal
+   (fn-sn-identity-next
+    (fn-sn-with-event-index
+     (fn-sn-with-topic
+      (fn-sn-with-consumer
+       (fn-cpo-install
+        (fn-sn-update-replayed seed files node index identity)
+        cn configs) consumer) topic) event-index))
+   (fn-stxk-context-next identity))
+  :hints (("Goal" :in-theory (e/d (fn-sn-with-event-index fn-sn-with-topic
+                                   fn-sn-with-consumer fn-cpo-install
+                                   fn-sn-update-replayed fn-sn-with-configuration
+                                   fn-sn-make-v6 fn-sn-identity-next)
+                                  (fn-stxk-context-next fn-sn-node fn-sn-files fn-sn-groups
+                                   fn-sn-capacity fn-sn-keyring fn-sn-config-history
+                                   fn-sn-keyring-generation fn-sn-verdicts
+                                   fn-sn-keyring-snapshots fn-sn-consumer fn-sn-topic
+                                   fn-sn-event-index fn-ssk-keyring-of-snapshots
+                                   fn-sn-index fn-sn-row-verdicts))))))
+
 (defthm fn-sco-finalize-of-capture
   (implies (true-listp records)
            (equal (fn-sco-finalize (fn-sco-capture configs records) configs frontier)
                   (fn-cpo-open-observed configs frontier records)))
   :hints (("Goal"
-           :use ((:instance fn-cpr-loop-append
+           :use ((:instance lseq-history-count-at-most-frontier (sequence 0) (lower 0))
+                 (:instance fn-replay-identity-ok-next-is-record-count)
+                 (:instance fn-cpr-loop-append
                             (cn (fn-cnode-initial (fn-cfg-initial)))
                             (prefix records) (suffix nil)
                             (config-sequence 0) (event-sequence 0)))
@@ -585,6 +619,8 @@
                          fn-sco-consumer fn-sco-topic fn-sco-event-index
                          fn-sco-at fn-sco-nthcdr fn-sco-cpr-finish fn-cpo-open-observed
                          fn-cpr-replay fn-replay-identity fn-th-prefix-project
+                         lseq-opened-next-is-context-next fn-sn-observed-historyp
+                         fn-record-uint32p fn-record-uint64p (:type-prescription len)
                          fn-cei-build nth car-cons cdr-cons nfix natp fix zp
                          fn-sco-true-list-fix-when-true-listp
                          fn-sco-cpr-prefix-paused-counter fn-sco-cpe-replay-shape
@@ -845,7 +881,8 @@
               (if (and (equal (fn-stxk-context-kind identity) :ok)
                        (consp consumer) (eq (car consumer) :ok)
                        (eq (fn-th-at 0 topic) :ok)
-                       (fn-sn-statep opened))
+                       (fn-sn-statep opened)
+                       (fn-record-uint64p (fn-sn-identity-next opened)))
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :identity)))))))))
 

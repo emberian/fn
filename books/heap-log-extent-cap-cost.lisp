@@ -7,6 +7,7 @@
 ; primitives, the decimal renderer and the probe line's pieces, each its own
 ; book's figure.
 (in-package "ACL2")
+(include-book "image-world")
 (include-book "def-cost")
 (include-book "memory-entry-cost")
 (include-book "heap-log-extent-cap")

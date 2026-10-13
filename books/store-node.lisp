@@ -866,19 +866,59 @@
   (declare (xargs :guard t))
   (let ((stamp (fn-record-stamp-of-observation obs))
         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
-    (if (not (natp stamp))
-        :clock-unusable
-      (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
-                      obligation-id subject evidence charge stamp))))
+    (cond ((not (natp stamp)) :clock-unusable)
+          ((not (fn-record-uint64p (fn-sn-identity-next s)))
+           :sequence-exhausted)
+          ((not (fn-record-uint64p txid)) :txid-exhausted)
+           ((not (fn-record-msgidp msgid)) :msgid-invalid)
+           ((not (fn-record-payloadp payload)) :payload-invalid)
+           ((not (fn-record-groups-validp groups)) :groups-invalid)
+           ((not (fn-record-metadata-bytes-p obligation-id)) :obligation-id-invalid)
+           ((not (fn-record-metadata-bytes-p subject)) :subject-invalid)
+           ((not (fn-record-metadata-bytes-p evidence)) :evidence-invalid)
+           ((not (fn-record-uint64p charge)) :charge-invalid)
+          (t (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
+                             obligation-id subject evidence charge stamp)))))
+
+(defconst *fn-sn-article-record-refusals*
+  '(:clock-unusable :sequence-exhausted :txid-exhausted :msgid-invalid :payload-invalid
+    :groups-invalid :obligation-id-invalid :subject-invalid :evidence-invalid :charge-invalid))
+
+; KEYSTONE: article construction returns a record or a named refusal.
+(defthm fn-sn-article-record-is-a-record-or-a-named-refusal
+  (let ((r (fn-sn-article-record s obs msgid payload groups
+                                 obligation-id subject evidence charge)))
+    (or (fn-record-p r)
+        (member-equal r *fn-sn-article-record-refusals*)))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
+
+(defthm fn-sn-article-record-refuses-an-exhausted-sequence
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (not (fn-record-uint64p (fn-sn-identity-next s))))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :sequence-exhausted))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record))))
+
+(defthm fn-sn-article-record-refuses-an-exhausted-txid
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (not (fn-record-uint64p
+                      (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :txid-exhausted))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record))))
+
+
 
 (defthm fn-sn-article-record-stamps-the-observation
-  (implies (natp (fn-record-stamp-of-observation obs))
-           (equal (fn-record-stamp
-                   (fn-sn-article-record s obs msgid payload groups
-                                         obligation-id subject evidence charge))
-                  (floor (fn-clock-wall obs) 1000)))
-  :hints (("Goal" :in-theory (enable fn-sn-article-record
-                                     fn-record-stamp-of-observation))))
+  (let ((r (fn-sn-article-record s obs msgid payload groups
+                                 obligation-id subject evidence charge)))
+    (implies (fn-record-p r)
+             (equal (fn-record-stamp r)
+                    (floor (fn-clock-wall obs) 1000))))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p fn-record-stamp-of-observation))))
 
 (defthm fn-sn-article-record-without-a-usable-clock-is-refused
   (implies (not (natp (fn-record-stamp-of-observation obs)))
@@ -886,6 +926,116 @@
                                         obligation-id subject evidence charge)
                   :clock-unusable))
   :hints (("Goal" :in-theory (enable fn-sn-article-record))))
+
+(defthm fn-sn-article-record-refuses-an-invalid-msgid
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))
+                (not (fn-record-msgidp msgid)))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :msgid-invalid))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
+
+(defthm fn-sn-article-record-refuses-an-invalid-payload
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))
+                (fn-record-msgidp msgid)
+                (not (fn-record-payloadp payload)))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :payload-invalid))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
+
+(defthm fn-sn-article-record-refuses-invalid-groups
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))
+                (fn-record-msgidp msgid)
+                (fn-record-payloadp payload)
+                (not (fn-record-groups-validp groups)))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :groups-invalid))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
+
+(defthm fn-sn-article-record-refuses-an-invalid-obligation-id
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))
+                (fn-record-msgidp msgid)
+                (fn-record-payloadp payload)
+                (fn-record-groups-validp groups)
+                (not (fn-record-metadata-bytes-p obligation-id)))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :obligation-id-invalid))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
+
+(defthm fn-sn-article-record-refuses-an-invalid-subject
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))
+                (fn-record-msgidp msgid)
+                (fn-record-payloadp payload)
+                (fn-record-groups-validp groups)
+                (fn-record-metadata-bytes-p obligation-id)
+                (not (fn-record-metadata-bytes-p subject)))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :subject-invalid))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
+
+(defthm fn-sn-article-record-refuses-invalid-evidence
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))
+                (fn-record-msgidp msgid)
+                (fn-record-payloadp payload)
+                (fn-record-groups-validp groups)
+                (fn-record-metadata-bytes-p obligation-id)
+                (fn-record-metadata-bytes-p subject)
+                (not (fn-record-metadata-bytes-p evidence)))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :evidence-invalid))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
+
+(defthm fn-sn-article-record-refuses-an-invalid-charge
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))
+                (fn-record-msgidp msgid)
+                (fn-record-payloadp payload)
+                (fn-record-groups-validp groups)
+                (fn-record-metadata-bytes-p obligation-id)
+                (fn-record-metadata-bytes-p subject)
+                (fn-record-metadata-bytes-p evidence)
+                (not (fn-record-uint64p charge)))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :charge-invalid))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
+
+(defthm fn-sn-article-record-of-valid-inputs-is-the-record
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))
+                (fn-record-msgidp msgid)
+                (fn-record-payloadp payload)
+                (fn-record-groups-validp groups)
+                (fn-record-metadata-bytes-p obligation-id)
+                (fn-record-metadata-bytes-p subject)
+                (fn-record-metadata-bytes-p evidence)
+                (fn-record-uint64p charge))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  (let ((txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+                    (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
+                                    obligation-id subject evidence charge
+                                    (fn-record-stamp-of-observation obs)))))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
 
 ; The record is derived from the real pending proposal, including its retention
 ; stage, instead of a second host interpretation of the submission.

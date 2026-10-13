@@ -22,7 +22,9 @@
  '(fn-cbud-handshake-slots fn-cbud-config-handshake-slots fn-cbud-run-held fn-cbud-held-at fn-cbud-live-held))
 (book-defuns "books/tls-handshake-decision.lisp"
  '(fn-hsb-at fn-hsb-make fn-hsb-next fn-hsb-tick fn-hsb-started fn-hsb-flight
-   fn-hsb-waiting fn-hsb-buckets fn-hsb-initial fn-hsb-remove fn-hsb-done))
+   fn-hsb-waiting fn-hsb-buckets fn-hsb-initial fn-hsb-done))
+(load "tests/raw_def_loop.lisp")
+(assert (raw-def-loop-load "books/tls-handshake-decision.lisp" 'fn-hsb-remove))
 (defvar *charge-refusal* nil)
 (defvar *charge-verdict* nil)
 (defvar *charge-next* nil)

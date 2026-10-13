@@ -332,8 +332,11 @@ class InstalledLaunchTests(unittest.TestCase):
         (self.tmp / "fn-host.core").write_bytes(b"core" * 1024)
         # The installed layout carries a shipped OpenSSL prefix (D64: never
         # the system pair).  The fake image loads no library, so its own
-        # empty prefix is the layout's, on any machine.
+        # fixture files satisfy the launcher's Linux package-presence check;
+        # the fake image never opens either file as a library.
         (self.tmp / "openssl" / "lib").mkdir(parents=True)
+        for library in ("libssl.so.3", "libcrypto.so.3"):
+            (self.tmp / "openssl" / "lib" / library).write_bytes(b"fake image library fixture\n")
         from unittest import mock
         patch = mock.patch.dict(os.environ, {"FN_OPENSSL_PREFIX": str(self.tmp / "openssl")})
         patch.start()

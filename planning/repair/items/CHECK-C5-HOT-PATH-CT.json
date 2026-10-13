@@ -1,0 +1,13 @@
+{
+ "category": "check-lane",
+ "detail": "books/charged-totals.lisp:210 via fn-owner-record-totals -> fn-hist-totals-carried -> fn-ct-charged -> fn-ct-charged-acc; made executable by a54996b31 (lane/vertical, charged-totals header). A valid cache advances over added records; the fallback at books/history-totals-carried.lisp:82 folds every retained record, no quantum bound.",
+ "file": "books/charged-totals.lisp",
+ "id": "CHECK-C5-HOT-PATH-CT",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "make check on hbox at dev bf81a2991 (certificates installed), Builder D13 2026-10-12, log build/remote-check/hbox-check.log of lane/d-check-c5",
+ "state": "open",
+ "title": "hot_path_check NEW: fn-ct-charged-acc folds the retained record list on fn-owner-record-totals' cache fallback",
+ "updated": "2026-10-12T09:49:54Z"
+}

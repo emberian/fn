@@ -197,6 +197,41 @@
    "mutation": "tests/acl2/store-log-buffer-tests.lisp::every-record-is-non-empty",
    "provenance": "keystone_critical.py --declare sha256:6d3e60d51a45c05c412a1054dc71a53ee3d40621ec8649bcd083653b0ef47bbe"
   },
+  "fn-lgb-next-record-advances-the-cursor": {
+   "subject": "fn-lgb-next-record",
+   "host_test": "tests/test_native_log.py::test_append_then_scan_on_both_images",
+   "trace_witness": "tests/acl2/store-log-buffer-tests.lisp::fn-lgb-next-record-advances-the-cursor",
+   "mutation": "tests/acl2/store-log-buffer-tests.lisp::next-one-too-far",
+   "provenance": "keystone_critical.py --declare sha256:cdd0278ac0b340e1a7ee6371e464f5d2ab43e4701e6672308f3d85c7d5de8d32"
+  },
+  "fn-lgb-next-record-descriptor-is-the-attached-place": {
+   "subject": "fn-lgb-next-record",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
+   "trace_witness": "tests/acl2/store-log-buffer-tests.lisp::fn-lgb-next-record-descriptor-is-the-attached-place",
+   "mutation": "tests/acl2/store-log-buffer-tests.lisp::descriptor-length-is-the-record",
+   "provenance": "keystone_critical.py --declare sha256:79bfef7e2076675511ef503276dd158567a9efffdff4442a6a634c690dd6c4bd"
+  },
+  "fn-lgb-next-record-has-a-descriptor": {
+   "subject": "fn-lgb-next-record",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
+   "trace_witness": "tests/acl2/store-log-buffer-tests.lisp::fn-lgb-next-record-has-a-descriptor",
+   "mutation": "tests/acl2/store-log-buffer-tests.lisp::every-record-is-non-empty",
+   "provenance": "keystone_critical.py --declare sha256:65daf98e345c81f7a0fbe2b738503681131bd9c162836d5d91623b0b5be3e5a3"
+  },
+  "fn-lgb-next-record-within-max": {
+   "subject": "fn-lgb-next-record",
+   "host_test": "tests/test_native_log.py::test_append_then_scan_on_both_images",
+   "trace_witness": "tests/acl2/store-log-buffer-tests.lisp::fn-lgb-next-record-within-max",
+   "mutation": "tests/acl2/store-log-buffer-tests.lisp::bound-one-below-max",
+   "provenance": "keystone_critical.py --declare sha256:3b389634ecdca8aa7b0dc86692b8e0ce4208aa9ec30bb22e3169c670f750a1a3"
+  },
+  "fn-lgb-next-record-yields-the-records": {
+   "subject": "fn-lgb-next-record",
+   "host_test": "tests/test_native_log.py::test_append_then_scan_on_both_images",
+   "trace_witness": "tests/acl2/store-log-buffer-tests.lisp::fn-lgb-next-record-yields-the-records",
+   "mutation": "tests/acl2/store-log-buffer-tests.lisp::batch-window-includes-the-prefix",
+   "provenance": "keystone_critical.py --declare sha256:7bc9752fa385e4e965b7f92de10812ff70ba49fba14d36c0cca3fc7a2aa2ed59"
+  },
   "fn-lgb-span-records-are-the-records": {
    "subject": "fn-lgb-span",
    "host_test": "tests/test_native_log.py::test_append_then_scan_on_both_images",
@@ -483,6 +518,13 @@
    "trace_witness": "tests/acl2/reader-open-carried-tests.lisp::fn-rdc-selection-establishes",
    "mutation": "tests/acl2/reader-open-carried-tests.lisp::drop-verdicts",
    "provenance": "keystone_critical.py --declare sha256:8c31a8d5277047b1d09ab9bdcd39d14d14fd51a26d6cf15bc5a9c8b5047bfbab"
+  },
+  "fn-rfc-the-rewrite-keeps-the-fold-contexts": {
+   "subject": "fn-orc-rewrite-rows",
+   "host_test": "tests/test_native_recovery.py::test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves",
+   "trace_witness": "tests/acl2/reclaim-fold-contexts-tests.lisp::fn-rfc-the-rewrite-keeps-the-fold-contexts",
+   "mutation": "tests/acl2/reclaim-fold-contexts-tests.lisp::rewrite-tombstones-a-keyring-event",
+   "provenance": "keystone_critical.py --declare sha256:d185cb1c66dcaf0fb46b40831afd463bcca5f54c96a29e239368ea40103cf200"
   },
   "fn-sbud-article-verdict-keeps-history": {
    "subject": "fn-sbud-article-verdict-at",

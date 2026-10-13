@@ -102,7 +102,7 @@ class Conn:
     # Kept for the --nodelay flag of the T17 lane; TCP_NODELAY is now always set.
     nodelay = True
 
-    def __init__(self, port, buffered=False, source=None):
+    def __init__(self, port, buffered=False, source=None, timeout=600):
         """BUFFERED (the throughput gate's measuring client): replies are
         read through a 64 KiB buffer, one recv per segment.  The default
         reads the unbuffered stream, one recv per octet, so the stream never
@@ -112,7 +112,7 @@ class Conn:
         2026-09-27), which the default makes part of every figure."""
         # SOURCE (a loopback address such as 127.0.0.2) widens the client's
         # ephemeral port space past ~28k held connections (EADDRNOTAVAIL).
-        self.sock = socket.create_connection(("127.0.0.1", port), timeout=600,
+        self.sock = socket.create_connection(("127.0.0.1", port), timeout=timeout,
                                              source_address=(source, 0) if source else None)
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.stream = whole_stream(self.sock)

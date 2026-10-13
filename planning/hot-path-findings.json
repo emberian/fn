@@ -853,6 +853,16 @@
       "class": "unexpected",
       "packet": "HOT-PATH-SERVED-WALKS-N",
       "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/store-files.lisp:601 (a walk of N, retained Store history), reached via fn-reader-use-store -> fn-rdc-store-selection -> fn-sn-statep -> fn-sf-statep -> fn-sf-success-listp -> fn-sf-success-listp-ks -> fn-sf-success-listp-scan [recursion]; owning book books/store-files.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-bprl-find-pin recursion N": {
+      "class": "unexpected",
+      "packet": "CHECK-C5-HOT-PATH-BPRL",
+      "note": "[d-check-c5, 10-12: made executable by 6162b6f43 (lane/d-release-guards); fn-owner-workflow-forward-pinnedp walks the retained pins to the work's obligation id; owner builder-D]"
+    },
+    "fn-ct-charged-acc recursion N": {
+      "class": "unexpected",
+      "packet": "CHECK-C5-HOT-PATH-CT",
+      "note": "[d-check-c5, 10-12: made executable by a54996b31 (lane/vertical); fn-owner-record-totals' cache fallback at books/history-totals-carried.lisp:82 folds every retained record; owner builder-M]"
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."

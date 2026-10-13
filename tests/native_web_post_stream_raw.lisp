@@ -1,5 +1,6 @@
 (load "tests/native_web_page_cursor_raw.lisp")
 (in-package "ACL2")
+(defmacro ec-call (call) call)
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
 (define-condition harness-stub-reached (serious-condition)
