@@ -7,6 +7,9 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-1")
+(include-book "store-log-damage")
+(include-book "store-log-entry-bound")
+(include-book "store-log-lineage")
 (include-book "store-log-buffer")
 (include-book "store-log-walk-once")
 (include-book "store-log-segments")
@@ -159,5 +162,3 @@
 (include-book "owner-parse-carried")
 (include-book "owner-identity-intern")
 (include-book "owner-identity-served")
-(include-book "owner-prepare-outcome")
-(include-book "owner-commit-ocl")
