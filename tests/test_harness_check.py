@@ -841,8 +841,11 @@ class DuplicateDefunTests(unittest.TestCase):
         sites: dict = {}
         for form, line in ledger.Reader(textwrap.dedent(self.STRUCTS)).top_level():
             harness_check.raw_definition_sites(form, line, "host/native/a.lisp", sites)
-        self.assertEqual(sorted(sites), ["bare-slot", "fnn-job-lock", "fnn-job-phase",
-                                         "fnn-job-service", "fnn-other", "fnn-r-a", "fnn-r-b"])
+        self.assertEqual(sorted(sites), ["%make-fnn-job", "bare-slot", "copy-fnn-bare",
+                                         "copy-fnn-job", "copy-fnn-row", "fnn-bare-p",
+                                         "fnn-job-lock", "fnn-job-p", "fnn-job-phase",
+                                         "fnn-job-service", "fnn-other", "fnn-r-a", "fnn-r-b",
+                                         "fnn-row-p", "make-fnn-bare", "make-fnn-row"])
 
     def test_a_defun_colliding_with_an_accessor_is_caught(self):
         found = self.scan(a=self.STRUCTS, b="(defun fnn-job-phase (j) j)")
@@ -947,9 +950,13 @@ class DerivedStubTests(unittest.TestCase):
         rawdefs, _ = harness_check.raw_definitions({"host/native/x.lisp": forms})
         bodies, origins = {}, {}
         for form, _line in forms:
-            name = str(form[1]).lower()
-            bodies[name] = form
-            origins[name] = (form[2], "host/native/x.lisp")
+            if ledger.head(form) == "defun":
+                name = str(form[1]).lower()
+                bodies[name] = form
+                origins[name] = (form[2], "host/native/x.lisp")
+            elif ledger.head(form) == "defstruct":
+                for name, formals in harness_check.defstruct_definitions(form).items():
+                    origins[name] = (formals, "host/native/x.lisp")
         return harness_check.harness_scan("tests/native_x_raw.lisp", harness,
                                           rawdefs, bodies, origins)
 
@@ -1000,6 +1007,123 @@ class DerivedStubTests(unittest.TestCase):
         scan = self.scan(self.HOST, harness)
         self.assertEqual(scan["unresolved"], {})
         self.assertIsNone(scan["expected"])
+
+    def test_constructor_omission_mutant_and_real_extraction_in_one_run(self):
+        from tools import ledger
+        host = ledger.Reader('''
+            (defstruct (fnn-lease (:constructor fnn-make-lease)) (id nil))
+            (defun fnn-render () (fnn-make-lease))
+        ''').top_level()
+        harness = '(load-deployed-forms "host/native/x.lisp" \'((defun fnn-render)))\n'
+        with tempfile.TemporaryDirectory(prefix="harness-struct-") as directory:
+            root = Path(directory)
+            (root / "tests").mkdir()
+            fixture = root / "tests/native_x_raw.lisp"
+            fixture.write_text(harness)
+            with mock.patch.object(harness_check, "raw_host_sources",
+                                   return_value={"host/native/x.lisp": host}):
+                findings, _ = harness_check.test_stub_findings(root)
+                reach = harness_check.TEST_HARNESS_REACH
+                self.assertEqual([row["callee"] for row in reach], ["fnn-make-lease"])
+                self.assertEqual([row["lint"] for row in findings], ["test-stubs"])
+                fixture.write_text(harness + '''
+                    (load-deployed-forms "host/native/x.lisp"
+                      '((defstruct (fnn-lease (:constructor fnn-make-lease)))))
+                ''')
+                findings, _ = harness_check.test_stub_findings(root)
+                self.assertEqual(findings, [])
+                self.assertEqual(harness_check.TEST_HARNESS_REACH, [])
+
+    def test_default_constructor_call_does_not_imply_structure_extraction(self):
+        from tools import ledger
+        host = ledger.Reader('''
+            (defstruct fnn-lease id)
+            (defun fnn-render () (make-fnn-lease))
+        ''').top_level()
+        with tempfile.TemporaryDirectory(prefix="harness-default-") as directory:
+            root = Path(directory)
+            (root / "tests").mkdir()
+            fixture = root / "tests/native_x_raw.lisp"
+            fixture.write_text('''
+                (load-deployed-forms "host/native/x.lisp" '((defun fnn-render)))
+                (fnn-render) (make-fnn-lease)
+            ''')
+            other = root / "tests/native_other_raw.lisp"
+            other.write_text(fixture.read_text())
+            with mock.patch.object(harness_check, "raw_host_sources",
+                                   return_value={"host/native/x.lisp": host}):
+                harness_check.test_stub_findings(root)
+                self.assertEqual({row["callee"] for row in harness_check.TEST_HARNESS_REACH},
+                                 {"make-fnn-lease"})
+                before = other.read_text()
+                self.assertEqual(harness_check.write_derived_stubs(
+                    root, ["tests/native_x_raw.lisp"]), ["tests/native_x_raw.lisp"])
+                self.assertEqual(other.read_text(), before)
+                harness_check.test_stub_findings(root)
+                self.assertEqual([row["where"] for row in harness_check.TEST_HARNESS_REACH],
+                                 ["tests/native_other_raw.lisp"])
+
+    def test_generated_names_defaults_suppression_and_boa_arities(self):
+        host = '''
+            (defstruct fnn-default value)
+            (defstruct (fnn-custom (:constructor fnn-new (x &optional y))
+                                  (:constructor fnn-keyword)
+                                  (:predicate fnn-valid) (:copier fnn-clone)) x y)
+            (defstruct (fnn-disabled (:constructor nil) (:predicate nil) (:copier nil)))
+            (defun fnn-top () (make-fnn-default) (fnn-default-p nil)
+              (copy-fnn-default nil) (fnn-new 1) (fnn-keyword :x 1)
+              (fnn-valid nil) (fnn-clone nil))
+        '''
+        scan = self.scan(host, ";; extracts fnn-top\n")
+        self.assertEqual(set(scan["unresolved"]), {"make-fnn-default", "fnn-default-p",
+                         "copy-fnn-default", "fnn-new", "fnn-keyword", "fnn-valid", "fnn-clone"})
+        self.assertIn("(defun fnn-new (x &optional y)", scan["expected"])
+        self.assertIn("(defun make-fnn-default (&key value)", scan["expected"])
+        written = harness_check.with_stub_block(";; extracts fnn-top\n", scan["expected"])
+        self.assertEqual(self.scan(host, written)["current"], scan["expected"])
+        from tools import ledger
+        definitions, _ = harness_check.raw_definitions(
+            {"host/native/x.lisp": ledger.Reader(host).top_level()})
+        for suppressed in ("make-fnn-disabled", "fnn-disabled-p", "copy-fnn-disabled",
+                           "make-fnn-custom"):
+            self.assertNotIn(suppressed, definitions)
+        stale = self.scan(host, ";; extracts fnn-top\n(defun fnn-valid () nil)\n")
+        self.assertEqual([row["callee"] for row in stale["stale"]], ["fnn-valid"])
+
+    def test_guarded_by_lock_metadata_is_not_an_accessor_call(self):
+        from tools import ledger
+        sources = {"host/native/x.lisp": ledger.Reader('''
+            (defstruct fnn-owner-service lock)
+            (fnn-guarded-by *fixture* (fnn-owner-service-lock))
+            (defun fnn-check (service) (fnn-owner-service-lock service))
+        ''').top_level()}
+        findings, counts = harness_check.raw_arity_scan(sources)
+        self.assertEqual(findings, [])
+        self.assertGreater(counts["applications"], 0)
+        sources["host/native/x.lisp"] += ledger.Reader('''
+            (defun fnn-bad () (fnn-owner-service-lock))
+        ''').top_level()
+        findings, _ = harness_check.raw_arity_scan(sources)
+        self.assertEqual([row["callee"] for row in findings], ["fnn-owner-service-lock"])
+
+    def test_partial_mock_structure_does_not_supply_missing_host_slots(self):
+        from tools import ledger
+        host = ledger.Reader('''
+            (defstruct fnn-lease id op)
+            (defun fnn-render (lease) (fnn-lease-op lease))
+        ''').top_level()
+        with tempfile.TemporaryDirectory(prefix="harness-partial-") as directory:
+            root = Path(directory)
+            (root / "tests").mkdir()
+            (root / "tests/native_x_raw.lisp").write_text('''
+                (defstruct fnn-lease id)
+                (load-deployed-forms "host/native/x.lisp" '((defun fnn-render)))
+            ''')
+            with mock.patch.object(harness_check, "raw_host_sources",
+                                   return_value={"host/native/x.lisp": host}):
+                harness_check.test_stub_findings(root)
+                self.assertEqual([row["callee"] for row in harness_check.TEST_HARNESS_REACH],
+                                 ["fnn-lease-op"])
 
     def test_the_tree_has_no_stale_stub_and_no_unresolved_call(self):
         findings, counts = harness_check.test_stub_findings(ROOT)

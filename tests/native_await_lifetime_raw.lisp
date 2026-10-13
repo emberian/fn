@@ -253,7 +253,10 @@
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/io.lisp" '((defvar *fnn-monotonic-ticks*) (defun fnn-now)))
 (load-deployed-forms "host/native/owner.lisp"
- '((defun fnn-owner-deliver) (defun fnn-owner-await-register)
+ '((defstruct (fnn-response-capture (:constructor %make-fnn-response-capture)))
+   (defstruct (fnn-output-grant (:constructor %make-fnn-output-grant)))
+   (defstruct (fnn-owner-cold-read (:constructor %make-fnn-owner-cold-read)))
+   (defun fnn-owner-deliver) (defun fnn-owner-await-register)
    (defun fnn-owner-awaiting-sockets) (defun fnn-owner-past-p)
    (defun fnn-owner-await-logical)))
 ;; Let the unchanged harness execute its behavioral assertions on the baseline.

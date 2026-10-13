@@ -75,9 +75,6 @@
 (defun fnn-owner-journal-note (service a b)
   (declare (ignorable service a b))
   (harness-stub-reached 'fnn-owner-journal-note "host/native/owner.lisp"))
-(defun fnn-owner-lease-install-locked (service)
-  (declare (ignorable service))
-  (harness-stub-reached 'fnn-owner-lease-install-locked "host/native/owner.lisp"))
 (defun fnn-owner-open-log (path)
   (declare (ignorable path))
   (harness-stub-reached 'fnn-owner-open-log "host/native/owner.lisp"))
@@ -188,6 +185,8 @@
 (defun fnn-state-checkpoint-test-fault () nil)
 (setq +fnn-exit-ok+ 0)
 (defvar *fnn-owner-last-fault* nil)
+(load-deployed-forms "host/native/tls.lisp"
+ '((defstruct (fnn-tls-context (:constructor fnn-tls-context-make)))))
 (defun fnn-feed-service-start (&rest args) (declare (ignore args)) nil)
 (defun fnn-feed-service-wake (&rest args) (declare (ignore args)) nil)
 (defun fnn-feed-service-close (&rest args) (declare (ignore args)) nil)
@@ -249,6 +248,7 @@
 ;; Actual mux hold is the caller of both worker and output installers.
 (defvar *startup-budget-word* :hold)
 (defvar *startup-syncer-installed* nil)
+(defvar *startup-lease-installed* nil)
 (defvar *startup-memory-calls* nil)
 (defvar *startup-diagnostics* nil)
 ;; The new memory admission boundary is recorded here; its arithmetic is
@@ -275,6 +275,15 @@
   (declare (ignore service cid class)) (funcall thunk))
 (defun fnn-owner-syncer-install (service threads stack)
   (declare (ignore service)) (setq *startup-syncer-installed* (list threads stack)))
+;; The real installer initializes fn-hld-init over the image's live fn-rtc-st.
+;; Record this semantic boundary here, alongside the memory admission mock.
+(defun fnn-owner-lease-install-locked (service)
+  (check (and (equal *startup-syncer-installed* '(12 1048576))
+              (equal (first *startup-memory-calls*)
+                     (list :configure (fnn-owner-service-reclaim-live service)))
+              (zerop *startup-allocations*) (null *startup-lease-installed*))
+         "lease installation follows memory hold before output allocation, once")
+  (setq *startup-lease-installed* service))
 (defun fnn-global (name)
   (check (member name '(fn-owner-connection-budget-line fn-owner-memory-capacity-line))
          "actual budget diagnostic subject")
@@ -282,10 +291,11 @@
 (defun fnn-log-line (line) (declare (ignore line)) nil)
 (load-deployed-forms "host/native/mux.lisp" '((defun fnn-mux-budget-install)))
 (let* ((*startup-calls* nil) (*startup-memory-calls* nil) (*startup-diagnostics* nil)
-       (*startup-syncer-installed* nil) (*startup-allocations* 0)
+       (*startup-syncer-installed* nil) (*startup-lease-installed* nil) (*startup-allocations* 0)
        (service (%make-fnn-owner-service :store :store :cold-resources *startup-cold*
                   :output-resources *startup-output* :output-slots 5)))
   (check (eq (fnn-mux-budget-install service nil) :hold) "actual mux hold invokes installers")
+  (check (eq *startup-lease-installed* service) "memory hold installs the same service's lease")
   (check (equal (reverse *startup-diagnostics*)
                 '(fn-owner-connection-budget-line fn-owner-memory-capacity-line))
          "mux reads both exact capacity diagnostics in order")
@@ -300,10 +310,11 @@
 ;; D53: the service's live-reclaim opt-in reaches both the budget and the
 ;; figure the output pool is installed over.
 (let* ((*startup-calls* nil) (*startup-memory-calls* nil) (*startup-diagnostics* nil)
-       (*startup-syncer-installed* nil) (*startup-allocations* 0)
+       (*startup-syncer-installed* nil) (*startup-lease-installed* nil) (*startup-allocations* 0)
        (service (%make-fnn-owner-service :store :store :cold-resources *startup-cold*
                   :output-resources *startup-output* :output-slots 5 :reclaim-live t)))
   (check (eq (fnn-mux-budget-install service nil) :hold) "opted-in mux hold invokes installers")
+  (check (eq *startup-lease-installed* service) "opted-in memory hold installs the same service's lease")
   (check (equal (reverse *startup-diagnostics*)
                 '(fn-owner-connection-budget-line fn-owner-memory-capacity-line))
          "opted-in mux reads both exact diagnostics")
@@ -314,12 +325,13 @@
               (eq (car (last (cdr (assoc 'fn-owner-connection-budget *startup-calls*)))) t))
          "opted-in service passes reclaim-live to the budget and the figure"))
 (let* ((*startup-budget-word* :refused) (*startup-memory-calls* nil) (*startup-diagnostics* nil)
-       (*startup-syncer-installed* nil) (*startup-allocations* 0)
+       (*startup-syncer-installed* nil) (*startup-lease-installed* nil) (*startup-allocations* 0)
        (service (%make-fnn-owner-service :store :store :cold-resources *startup-cold*
                   :output-resources *startup-output* :output-slots 5)))
   (check (handler-case (progn (fnn-mux-budget-install service nil) nil)
            (fnn-store-error () t)) "actual mux capacity refusal remains refusal")
-  (check (and (null *startup-syncer-installed*) (zerop *startup-allocations*))
+  (check (and (null *startup-syncer-installed*) (null *startup-lease-installed*)
+              (zerop *startup-allocations*))
          "refused parent capacity grants neither child projection")
   (check (equal *startup-memory-calls* '(:observe)) "parent refusal does not configure memory")
   (check (equal *startup-diagnostics* '(fn-owner-connection-budget-line))
