@@ -90,7 +90,7 @@
    "kind": "native",
    "subject": "tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
    "item": "DEV-CONTROL-UNTRACED-20261013",
-   "owner": "builder-B",
+   "owner": "builder-C",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): timing bound 7736440.284 not < 7736440.263; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_decoded_custody.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
@@ -125,7 +125,7 @@
    "kind": "native",
    "subject": "tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups",
    "item": "DEV-CONTROL-UNTRACED-20261013",
-   "owner": "builder-B",
+   "owner": "builder-M",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): fn store ... status returned 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_operator_verdicts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
@@ -139,35 +139,35 @@
    "kind": "native",
    "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_preflight_raw_mock",
    "item": "DEV-CONTROL-UNTRACED-20261013",
-   "owner": "builder-B",
+   "owner": "builder-A",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
    "kind": "native",
    "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_response_lease_raw_mock",
    "item": "DEV-CONTROL-UNTRACED-20261013",
-   "owner": "builder-B",
+   "owner": "builder-A",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
    "kind": "native",
    "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_startup_raw_mock",
    "item": "DEV-CONTROL-UNTRACED-20261013",
-   "owner": "builder-B",
+   "owner": "builder-A",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
    "kind": "native",
    "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock",
    "item": "DEV-CONTROL-UNTRACED-20261013",
-   "owner": "builder-B",
+   "owner": "builder-P",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
    "kind": "native",
    "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_response_window_raw",
    "item": "DEV-CONTROL-UNTRACED-20261013",
-   "owner": "builder-B",
+   "owner": "builder-A",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
@@ -202,7 +202,7 @@
    "kind": "native",
    "subject": "tests.test_native_status_live_posts.NativeStatusLivePostsTests.test_status_after_live_posts_stays_within_the_slack",
    "item": "DEV-CONTROL-UNTRACED-20261013",
-   "owner": "builder-B",
+   "owner": "builder-M",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): 12232 != 60000; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_status_live_posts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {

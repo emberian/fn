@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Case: tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen. Coordinator: queued after LB, not now. rows under DEV-CONTROL-UNTRACED-20261013 (a row's item is fixed at its first amendment record; the owner moves by known_reds.py transfer); triage build/coordinator/tools-builder-b/b24/DEVCTL-TRIAGE-20261013.md",
+ "file": "tests/test_native_decoded_custody.py",
+ "id": "DEVCTL-DECODED-CUSTODY",
+ "notes": [],
+ "owner": "builder-C",
+ "severity": "low",
+ "source": "devctl-150e2d6f48a0",
+ "state": "open",
+ "title": "decoded_custody timing bound misses by 0.02 s",
+ "updated": "2026-10-13T13:33:48Z"
+}
