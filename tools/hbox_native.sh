@@ -296,6 +296,24 @@ def recorded_generation(pid, starttime, run_dir):
         raise ValueError("run directory scope prefix does not match the recorded leader")
 
 
+def scope_state(unit):
+    done = subprocess.run(["systemctl", "--user", "show", "-p", "LoadState,ActiveState", "--", unit],
+                          capture_output=True, text=True, timeout=60)
+    if done.returncode:
+        raise ValueError(f"state query failed (exit {done.returncode}): "
+                         f"{done.stderr.strip() or done.stdout.strip()}")
+    properties = dict(line.split("=", 1) for line in done.stdout.splitlines() if "=" in line)
+    load, active = properties.get("LoadState"), properties.get("ActiveState")
+    if not load or not active:
+        raise ValueError("state query omitted LoadState or ActiveState")
+    return load, active
+
+
+def scope_already_stopped(unit):
+    load, active = scope_state(unit)
+    return load != "loaded" or active == "inactive"
+
+
 def stop_scopes(pid, starttime, run_dir):
     recorded_generation(pid, starttime, run_dir)
     units = list(dict.fromkeys((run_dir / "scopes").read_text().splitlines()))
@@ -307,16 +325,24 @@ def stop_scopes(pid, starttime, run_dir):
             failed = True
             continue
         try:
+            if scope_already_stopped(unit):
+                print(f"hbox_native: scope {unit}: already stopped", flush=True)
+                continue
             done = subprocess.run(["systemctl", "--user", "stop", "--", unit],
                                   capture_output=True, text=True, timeout=60)
             if done.returncode:
+                # The scope may disappear between show and stop as its group
+                # exits. Recheck the exact unit before reporting a failure.
+                if scope_already_stopped(unit):
+                    print(f"hbox_native: scope {unit}: already stopped", flush=True)
+                    continue
                 print(f"hbox_native: scope {unit}: stop failed (exit {done.returncode}): "
                       f"{done.stderr.strip() or done.stdout.strip()}", file=sys.stderr)
                 failed = True
             else:
                 print(f"hbox_native: scope {unit}: stopped", flush=True)
-        except (OSError, subprocess.TimeoutExpired) as error:
-            print(f"hbox_native: scope {unit}: stop failed: {error}", file=sys.stderr)
+        except (OSError, subprocess.TimeoutExpired, ValueError) as error:
+            print(f"hbox_native: scope {unit}: cleanup failed: {error}", file=sys.stderr)
             failed = True
     if not units:
         print("hbox_native: no recorded module scopes")

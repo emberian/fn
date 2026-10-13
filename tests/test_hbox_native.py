@@ -1769,8 +1769,10 @@ class NativeStopTests(unittest.TestCase):
         self.fake_signal = SimpleNamespace(SIGTERM=15, SIGKILL=9,
             pidfd_send_signal=mock.Mock(side_effect=lambda *args: self.events.append(("signal", args))))
         self.fake_subprocess = SimpleNamespace(TimeoutExpired=subprocess.TimeoutExpired,
-            run=mock.Mock(side_effect=lambda args, **kw: self.events.append(("scope", args[-1])) or
-                         SimpleNamespace(returncode=0, stdout="", stderr="")))
+            run=mock.Mock(side_effect=lambda args, **kw: self.events.append(
+                ("query" if args[2] == "show" else "scope", args[-1])) or
+                SimpleNamespace(returncode=0, stdout="LoadState=loaded\nActiveState=active\n"
+                                if args[2] == "show" else "", stderr="")))
         self.api.update(os=self.fake_os, signal=self.fake_signal, subprocess=self.fake_subprocess,
                         leader_exited=lambda fd, seconds=0: True)
         self.units = [self.api["scope_prefix"](self.run_dir, 4242, 888) + f"-{n}.scope" for n in (1, 2)]
@@ -1836,7 +1838,9 @@ class NativeStopTests(unittest.TestCase):
         # Execute the real subprocess path against a fake bus, with real locking.
         self.api.update(os=os, subprocess=subprocess)
         fake = self.root / "systemctl"
-        fake.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS"\n')
+        fake.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS"\n'
+                        '[ "$2" != show ] || printf "LoadState=loaded\\nActiveState=active\\n"\n'
+                        'exit 0\n')
         fake.chmod(0o755)
         calls = self.root / "calls"
         output = io.StringIO()
@@ -1846,7 +1850,8 @@ class NativeStopTests(unittest.TestCase):
              contextlib.redirect_stdout(output):
             self.assertEqual(self.api["stop_run"](4242, 888, self.run_dir), 0)
             self.assertIn("already gone", output.getvalue())
-            self.assertEqual(calls.read_text().splitlines(), ["--user stop -- " + u for u in self.units])
+            self.assertEqual(calls.read_text().splitlines(), [command + u for u in self.units
+                for command in ("--user show -p LoadState,ActiveState -- ", "--user stop -- ")])
             for name, value in (("run.starttime", "999\n"), ("scope-prefix", "foreign\n")):
                 old = (self.run_dir / name).read_text()
                 (self.run_dir / name).write_text(value)
@@ -1863,6 +1868,95 @@ class NativeStopTests(unittest.TestCase):
                     self.assertEqual(self.api["stop_run"](4242, 888, self.run_dir), 2)
                 self.assertEqual(calls.read_text(), "")
 
+    def exercise_scope_state(self, scenario, expected_rc, message, commands, esrch=False):
+        import errno
+        import json
+        from unittest import mock
+        fake = self.root / "systemctl"
+        fake.write_text("#!" + sys.executable + "\n" + '''import json, os, sys
+from pathlib import Path
+args = sys.argv[1:]
+root = Path(os.environ["SCOPE_FIXTURE"])
+with (root / "state-calls.jsonl").open("a") as out:
+    out.write(json.dumps(args) + "\\n")
+scenario = os.environ["SCOPE_SCENARIO"]
+unit = args[-1]
+assert args[0] == "--user"
+if args[1] == "show":
+    assert args[2:-1] == ["-p", "LoadState,ActiveState", "--"]
+    if scenario == "query-fails":
+        print("cannot reach user bus", file=sys.stderr)
+        raise SystemExit(1)
+    if scenario == "malformed":
+        print("ActiveState=active")
+        raise SystemExit(0)
+    gone = scenario == "not-loaded" or (root / (unit + ".gone")).exists()
+    print("LoadState=" + ("not-found" if gone else "loaded"))
+    inactive = gone or scenario == "inactive" or (root / (unit + ".inactive")).exists()
+    print("ActiveState=" + ("inactive" if inactive else "active"))
+elif args[1] == "stop":
+    assert args[2:-1] == ["--"]
+    if scenario == "disappears":
+        (root / (unit + ".gone")).touch()
+        print("Unit " + unit + " not loaded", file=sys.stderr)
+        raise SystemExit(5)
+    if scenario == "active-fails":
+        print("active unit stop rejected", file=sys.stderr)
+        raise SystemExit(5)
+    assert scenario == "active"
+    (root / (unit + ".inactive")).touch()
+else:
+    raise AssertionError(args)
+''')
+        fake.chmod(0o755)
+        self.api["subprocess"] = subprocess
+        if esrch:
+            self.fake_os.pidfd_open.side_effect = ProcessLookupError(errno.ESRCH, "gone")
+        with mock.patch.dict(os.environ, {"PATH": str(self.root) + os.pathsep + os.environ["PATH"],
+                            "SCOPE_FIXTURE": str(self.root), "SCOPE_SCENARIO": scenario}):
+            rc, out, err = self.stop()
+        self.assertEqual(rc, expected_rc, out + err)
+        for unit in self.units:
+            self.assertIn(unit + ": " + message, out if expected_rc == 0 else err)
+        calls = [json.loads(line) for line in (self.root / "state-calls.jsonl").read_text().splitlines()]
+        expected = []
+        for unit in self.units:
+            for command in commands:
+                expected.append(["--user", "show", "-p", "LoadState,ActiveState", "--", unit]
+                                if command == "show" else ["--user", "stop", "--", unit])
+        self.assertEqual(calls, expected)
+        if scenario == "active":
+            self.assertTrue(all((self.root / (unit + ".inactive")).exists() for unit in self.units))
+        if esrch:
+            self.assertIn("already gone", out)
+            self.fake_signal.pidfd_send_signal.assert_not_called()
+        return out, err
+
+    def test_not_loaded_scopes_are_already_stopped_without_stop_call(self):
+        self.exercise_scope_state("not-loaded", 0, "already stopped", ["show"])
+
+    def test_inactive_scopes_are_already_stopped_without_stop_call(self):
+        self.exercise_scope_state("inactive", 0, "already stopped", ["show"])
+
+    def test_active_scopes_are_stopped(self):
+        self.exercise_scope_state("active", 0, "stopped", ["show", "stop"])
+
+    def test_active_scope_stop_failure_is_still_failure(self):
+        _, err = self.exercise_scope_state("active-fails", 2, "stop failed (exit 5)", ["show", "stop", "show"])
+        self.assertIn("active unit stop rejected", err)
+
+    def test_scope_disappearing_between_query_and_stop_is_already_stopped(self):
+        self.exercise_scope_state("disappears", 0, "already stopped", ["show", "stop", "show"])
+
+    def test_esrch_retry_after_normal_end_skips_unloaded_scopes(self):
+        self.exercise_scope_state("not-loaded", 0, "already stopped", ["show"], esrch=True)
+
+    def test_scope_query_errors_are_not_mistaken_for_already_stopped(self):
+        self.exercise_scope_state("query-fails", 2, "cleanup failed: state query failed (exit 1)", ["show"])
+
+    def test_scope_query_without_properties_is_not_mistaken_for_already_stopped(self):
+        self.exercise_scope_state("malformed", 2, "cleanup failed: state query omitted", ["show"])
+
     def test_grace_escalates_through_the_same_pidfd_before_scope_cleanup(self):
         from unittest import mock
         self.api["leader_exited"] = mock.Mock(side_effect=[False, True])
@@ -1870,7 +1964,7 @@ class NativeStopTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual([c.args for c in self.fake_signal.pidfd_send_signal.call_args_list],
                          [(701, 15, None, 4), (701, 9, None, 4)])
-        self.assertEqual([e[0] for e in self.events], ["open", "signal", "signal", "scope", "scope", "close"])
+        self.assertEqual([e[0] for e in self.events], ["open", "signal", "signal", "query", "scope", "query", "scope", "close"])
 
     def test_opens_pidfd_before_identity_and_uses_only_it_to_signal(self):
         self.fake_signal.PIDFD_SIGNAL_PROCESS_GROUP = 4
@@ -1952,8 +2046,10 @@ class NativeStopTests(unittest.TestCase):
 
     def test_only_recorded_exact_units_are_stopped_after_term_and_reported(self):
         from types import SimpleNamespace
-        self.fake_subprocess.run.side_effect = [SimpleNamespace(returncode=1, stdout="", stderr="unit failure"),
-                                               SimpleNamespace(returncode=0, stdout="", stderr="")]
+        active = SimpleNamespace(returncode=0, stdout="LoadState=loaded\nActiveState=active\n", stderr="")
+        self.fake_subprocess.run.side_effect = [active,
+            SimpleNamespace(returncode=1, stdout="", stderr="unit failure"), active, active,
+            SimpleNamespace(returncode=0, stdout="", stderr="")]
         # Deduplicate; reject foreign run units, option injection and globs.
         (self.run_dir / "scopes").write_text("\n".join(
             [self.units[0], self.units[0], "--all", "fn-native-foreign-888-1.scope", "*.scope", self.units[1]]) + "\n")
@@ -1961,7 +2057,11 @@ class NativeStopTests(unittest.TestCase):
         self.assertEqual(rc, 2)
         calls = self.fake_subprocess.run.call_args_list
         self.assertEqual([c.args[0] for c in calls],
-                         [["systemctl", "--user", "stop", "--", unit] for unit in self.units])
+                         [["systemctl", "--user", "show", "-p", "LoadState,ActiveState", "--", self.units[0]],
+                          ["systemctl", "--user", "stop", "--", self.units[0]],
+                          ["systemctl", "--user", "show", "-p", "LoadState,ActiveState", "--", self.units[0]],
+                          ["systemctl", "--user", "show", "-p", "LoadState,ActiveState", "--", self.units[1]],
+                          ["systemctl", "--user", "stop", "--", self.units[1]]])
         self.assertTrue(all(c.kwargs["timeout"] == 60 for c in calls))
         self.assertIn(self.units[0] + ": stop failed (exit 1): unit failure", err)
         self.assertIn(self.units[1] + ": stopped", out)
