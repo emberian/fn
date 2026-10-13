@@ -128,6 +128,25 @@ class KnownRedsTests(TrainBase):
             with self.subTest(subject=subject):
                 self.assertIn('native subject', self.refuse_add(subject=subject))
 
+    def test_add_accepts_a_module_that_failed_to_import(self):
+        # unittest records an import failure as one case named after the module.
+        (self.work / 'tests').mkdir(exist_ok=True)
+        (self.work / 'tests/test_fn_fixture_owner.py').write_text('import missing_name\n')
+        subject = 'unittest.loader._FailedTest.test_fn_fixture_owner'
+        rc, out, err = self.add(subject=subject)
+        self.assertEqual(rc, 0, err)
+        rows = train.parse_known_reds(self.rows_path.read_text())
+        self.assertEqual(rows[-1]['subject'], subject)
+        self.assertEqual(known_reds.native_module(self.work, subject), 'tests.test_fn_fixture_owner')
+
+    def test_refuses_a_failed_import_subject_without_its_module(self):
+        for subject in ('unittest.loader._FailedTest.test_fn_absent_module',
+                        'unittest.loader._FailedTest.not_a_test_module',
+                        'unittest.loader._FailedTest.test_x.extra',
+                        'unittest.loader._FailedTest.'):
+            with self.subTest(subject=subject):
+                self.assertIn('native subject', self.refuse_add(subject=subject))
+
     def test_refuses_noncommit_shas(self):
         blob = sh(self.work, 'git', '-C', str(self.work), 'rev-parse', 'HEAD:src.txt').stdout.strip()
         sh(self.work, 'git', '-C', str(self.work), 'tag', '-a', 'fixture-tag', '-m', 'fixture tag')
