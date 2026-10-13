@@ -3,7 +3,11 @@
 ; each entry's visit twin derived from its executed body, partial over the
 ; callees named :unaccounted. No :visits bound is declared: the claim is
 ; `derived'.
+; Derive in the final image world, after its dispatch routes are installed.
+; The OVER callee rows below precede their callers; no other cost book
+; supplies a row for the entries' direct callees.
 (in-package "ACL2")
+(include-book "image-world")
 (include-book "def-cost")
 (include-book "over-render-plan")
 
