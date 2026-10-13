@@ -1,5 +1,8 @@
 #!/usr/bin/env python3.12
-"""Write known-red admissions and owner transfers; validate with train's parsers."""
+"""Write known-red admissions, owner transfers and closed-item retirements.
+
+Validate with train's parsers; retirement leaves append-only amendments intact.
+"""
 from __future__ import annotations
 
 import argparse
@@ -86,6 +89,31 @@ def append_entry(text: str, key: str, entry: dict) -> str:
     return text[:start + 1] + '\n' + rendered + '\n ' + text[end - 1:]
 
 
+def retire_rows(text: str, item: str) -> str:
+    """Delete matching value spans and separators, preserving surviving bytes."""
+    start, end, entries = array_entries(text, 'rows')
+    if all(value['item'] == item for value, _, _ in entries):
+        return text[:start + 1] + text[end - 1:]
+    spans = []
+    index = 0
+    while index < len(entries):
+        if entries[index][0]['item'] != item:
+            index += 1
+            continue
+        first = index
+        while index < len(entries) and entries[index][0]['item'] == item:
+            index += 1
+        if index < len(entries):
+            # Keep the indentation before this run for the next surviving row.
+            spans.append((entries[first][1], entries[index][1]))
+        else:
+            # A trailing run takes the comma after the previous surviving row.
+            spans.append((entries[first - 1][2], entries[-1][2]))
+    for start, end in reversed(spans):
+        text = text[:start] + text[end:]
+    return text
+
+
 def item_state(root: Path, item: str):
     if not item or Path(item).name != item or item in ('.', '..'):
         raise train.TrainError(f'invalid repair item: {item}')
@@ -130,10 +158,23 @@ def validate(root: Path, rows_text: str, amendments_text: str) -> tuple[list, li
 def operate(root: Path, args) -> int:
     rows_path, amendments_path = root / train.KNOWN_REDS, root / train.KNOWN_RED_AMENDMENTS
     # Lock the existing row file without writing a lock file, including on refusal.
-    with rows_path.open('r', encoding='utf-8') as lock:
+    with rows_path.open('r', encoding='utf-8', newline='') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         rows_text = lock.read()
         amendments_text = amendments_path.read_text(encoding='utf-8')
+        if args.command == 'retire':
+            if item_state(root, args.item) not in train.CLOSED_ITEM_STATES:
+                raise train.TrainError(f'close the item first: {args.item}')
+            rows = train.parse_known_reds(rows_text)
+            removed = [row for row in rows if row['item'] == args.item]
+            if not removed:
+                raise train.TrainError(f'no rows for repair item: {args.item}')
+            new_rows = retire_rows(rows_text, args.item)
+            validate(root, new_rows, amendments_text)
+            rows_path.write_bytes(new_rows.encode('utf-8'))
+            for row in removed:
+                print(f'retire: {row["kind"]} {row["subject"]}')
+            return 0
         rows, records = validate(root, rows_text, amendments_text)
         if args.command == 'check':
             print(f'known reds: {len(rows)} rows, {len(records)} amendment records; valid')
@@ -184,6 +225,8 @@ def main(argv=None, *, root: Path = ROOT) -> int:
     transfer = commands.add_parser('transfer')
     for field in ('subject', 'owner', 'ruling'):
         transfer.add_argument('--' + field, required=True)
+    retire = commands.add_parser('retire')
+    retire.add_argument('--item', required=True)
     commands.add_parser('check')
     args = parser.parse_args(argv)
     try:

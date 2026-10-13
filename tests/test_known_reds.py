@@ -179,6 +179,119 @@ class KnownRedsTests(TrainBase):
             self.assertEqual(rc, 1)
             self.assertEqual(self.snapshot(), before)
 
+    def test_retire_two_rows_preserves_survivors_amendments_and_baseline_gate(self):
+        other_item = self.item_path.with_name('KR-OTHER.json')
+        other_item.write_text('{"state": "open"}\n')
+        survivors = [dict(self.original, subject=f'check:keep-{i}', item='KR-OTHER',
+                          evidence=f'keep évidence {i}') for i in range(2)]
+        data = {'note': 'keep this état', 'rows': [self.original, *survivors]}
+        self.rows_path.write_text(self.render(data))
+        self.commit(self.work, 'fixture other baseline rows')
+        sh(self.work, 'git', '-C', str(self.work), 'update-ref', 'refs/remotes/origin/dev', self.head())
+        self.assertEqual(self.add()[0], 0)
+        admitted = train.parse_known_reds(self.rows_path.read_text())[-1]
+        self.commit(self.work, 'fixture amended baseline')
+        sh(self.work, 'git', '-C', str(self.work), 'update-ref', 'refs/remotes/origin/dev', self.head())
+        self.item_path.write_text('{"state": "landed"}\n')
+        # Every pair of positions: leading, middle, trailing and separated runs.
+        for positions in ((0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)):
+            with self.subTest(positions=positions):
+                kept = iter(survivors)
+                removed = iter((self.original, admitted))
+                data['rows'] = [next(removed) if i in positions else next(kept)
+                                for i in range(4)]
+                self.rows_path.write_text(self.render(data))
+                before = self.snapshot()
+                original_write = Path.write_bytes
+                with mock.patch.object(Path, 'write_bytes', autospec=True,
+                                       side_effect=original_write) as writer:
+                    rc, out, err = self.invoke('retire', '--item', 'KR-X')
+                self.assertEqual(rc, 0, err)
+                self.assertEqual(out, f'retire: check {self.original["subject"]}\n'
+                                 f'retire: native {self.SUBJECT}\n')
+                self.assertEqual([call.args[0] for call in writer.call_args_list], [self.rows_path])
+                expected = self.render(dict(data, rows=survivors)).encode()
+                self.assertEqual(self.snapshot(), (expected, before[1]))
+                rows, records = known_reds.validate(self.work, expected.decode(), before[1].decode())
+                self.assertEqual(rows, survivors)
+                self.assertEqual(len(records), 1)
+                self.assertEqual(records[0]['item'], 'KR-X')
+        self.commit(self.work, 'fixture retirement')
+        with contextlib.redirect_stdout(io.StringIO()):
+            gate_rc, result = train._baseline_gate(train.Train(self.work))
+        self.assertEqual(gate_rc, 0, result)
+        self.assertEqual(result['gone'], sorted([
+            ['check', self.original['subject']], ['native', self.SUBJECT]]))
+        self.assertFalse(result['dangling_amendments'])
+        self.assertFalse(result['amendments_rewritten'])
+
+    def test_retire_only_row_renders_empty_array_for_every_closed_state(self):
+        for state in sorted(train.CLOSED_ITEM_STATES):
+            with self.subTest(state=state):
+                data = {'note': 'keep this état', 'rows': [self.original]}
+                self.rows_path.write_text(self.render(data))
+                self.item_path.write_text(json.dumps({'state': state}))
+                before = self.snapshot()
+                rc, out, err = self.invoke('retire', '--item', 'KR-X')
+                self.assertEqual(rc, 0, err)
+                self.assertEqual(out, f'retire: check {self.original["subject"]}\n')
+                self.assertEqual(self.snapshot(), (self.render(dict(data, rows=[])).encode(), before[1]))
+                self.assertEqual(self.invoke('check')[0], 0)
+
+    def test_retire_preserves_noncanonical_outer_bytes(self):
+        text = self.rows_path.read_text().replace('"note": ', '"note" :  ')
+        text = text.replace('\n', '\r\n')
+        self.rows_path.write_bytes(text.encode())
+        self.item_path.write_text('{"state": "landed"}')
+        before = self.snapshot()
+        start, end, _ = known_reds.array_entries(text, 'rows')
+        expected = (text[:start + 1] + text[end - 1:]).encode()
+        rc, _, err = self.invoke('retire', '--item', 'KR-X')
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(self.snapshot(), (expected, before[1]))
+
+    def test_retire_refuses_open_item_without_writes(self):
+        before = self.snapshot()
+        rc, out, err = self.invoke('retire', '--item', 'KR-X')
+        self.assertEqual(rc, 1)
+        self.assertEqual(out, '')
+        self.assertIn('known_reds: close the item first', err)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_retire_refuses_invalid_items_without_writes(self):
+        for item in ('MISSING', '../KR-X'):
+            with self.subTest(item=item):
+                before = self.snapshot()
+                rc, out, err = self.invoke('retire', '--item', item)
+                self.assertEqual(rc, 1)
+                self.assertEqual(out, '')
+                self.assertIn('known_reds:', err)
+                self.assertIn('repair item', err)
+                self.assertEqual(self.snapshot(), before)
+
+    def test_retire_refuses_item_without_rows_without_writes(self):
+        self.rows_path.write_text(self.render({'note': 'keep this état', 'rows': []}))
+        self.item_path.write_text('{"state": "landed"}')
+        before = self.snapshot()
+        rc, out, err = self.invoke('retire', '--item', 'KR-X')
+        self.assertEqual(rc, 1)
+        self.assertEqual(out, '')
+        self.assertIn('known_reds: no rows for repair item', err)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_retire_validates_result_before_writing(self):
+        self.assertEqual(self.add()[0], 0)
+        self.commit(self.work, 'fixture amended baseline')
+        sh(self.work, 'git', '-C', str(self.work), 'update-ref', 'refs/remotes/origin/dev', self.head())
+        self.item_path.write_text('{"state": "landed"}')
+        self.amendments_path.write_text(self.amendments_path.read_text().replace('seat ruling', 'edited'))
+        before = self.snapshot()
+        rc, out, err = self.invoke('retire', '--item', 'KR-X')
+        self.assertEqual(rc, 1)
+        self.assertEqual(out, '')
+        self.assertIn('known_reds: amendments are append-only', err)
+        self.assertEqual(self.snapshot(), before)
+
     def test_check_positive_and_train_parsers_are_reused(self):
         with mock.patch.object(train, 'parse_known_reds', wraps=train.parse_known_reds) as rows, \
                 mock.patch.object(train, 'parse_amendments', wraps=train.parse_amendments) as amendments:
