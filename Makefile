@@ -1606,6 +1606,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-live-links-tests \
 	books/catalog-wbv-trie \
 	books/log-locator \
+	books/lb-log-model \
+	books/catalog-columns \
+	books/log-locator-resolves \
+	books/log-verified-map \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
 	tests/acl2/catalog-raw-low-tests \
