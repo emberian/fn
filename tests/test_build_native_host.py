@@ -141,9 +141,9 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
         self.assertEqual(self.catalog_text, "paged\n")
         # So is the source the image was built from (S057): this checkout's
         # HEAD, `commit` only when nothing differs from it.
-        head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
                               text=True, check=True).stdout.strip()
-        clean = not subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=normal"],
+        clean = not subprocess.run(["git", "status", "--porcelain", "--untracked-files=normal"],
                                    cwd=ROOT, capture_output=True, text=True).stdout.strip()
         self.assertEqual(self.source_text,
                          (f"commit {head}" if clean else f"worktree {head}+dirty") + "\n")
@@ -180,6 +180,11 @@ class BuildNativeHostRefusalTests(unittest.TestCase):
 
 
 class LauncherSymlinkTests(unittest.TestCase):
+    def linux_uname(self, commands):
+        uname = commands / "uname"
+        uname.write_text('#!/bin/sh\nprintf "Linux\\n"\n')
+        uname.chmod(0o755)
+
     def render(self, kind, launcher, runtime):
         """Run the real generators' shell blocks, without building an image."""
         source = launcher.parent / "source"
@@ -223,6 +228,8 @@ class LauncherSymlinkTests(unittest.TestCase):
             base = pathlib.Path(tmp).resolve()
             commands = base / "commands"
             commands.mkdir()
+            # Exercise packaging/fn's installed Linux OpenSSL check on every OS.
+            self.linux_uname(commands)
             # OpenBSD's plain-readlink interface: reject every option. The
             # failing variant also exercises the ls -l fallback, on this OS.
             readlink = commands / "readlink"
@@ -242,6 +249,7 @@ class LauncherSymlinkTests(unittest.TestCase):
                     runtime.parent.mkdir()
                     runtime.write_text(
                         '#!/bin/sh\ncore=\nprobe=\nwant_core=\nwant_heap=\nheap=\n'
+                        'echo "openssl-prefix=${FN_OPENSSL_PREFIX-unset}" >&2\n'
                         'for word in "$@"; do\n'
                         '  if [ -n "$want_core" ]; then core=$word; want_core=; fi\n'
                         '  if [ -n "$want_heap" ]; then heap=$word; want_heap=; fi\n'
@@ -261,6 +269,10 @@ class LauncherSymlinkTests(unittest.TestCase):
                     if kind == "operator":
                         lib = product / "libexec/fn"
                         lib.mkdir(parents=True)
+                        openssl = lib / "openssl/lib"
+                        openssl.mkdir(parents=True)
+                        for library in ("libssl.so.3", "libcrypto.so.3"):
+                            (openssl / library).write_bytes(b"fixture library")
                         for item in (launcher, product / "fn-host.core"):
                             item.rename(lib / item.name)
                         launcher = lib / "fn-host"
@@ -293,6 +305,8 @@ class LauncherSymlinkTests(unittest.TestCase):
                                 self.assertEqual(result.returncode, 0, result.stderr)
                                 self.assertIn("core=" + str(launcher) + ".core", result.stdout)
                                 self.assertEqual(result.stdout.splitlines()[-3:], args)
+                                if kind == "operator":
+                                    self.assertIn(f"openssl-prefix={lib}/openssl\n", result.stderr)
                                 # Frozen images currently use their fixed runtime
                                 # geometry; the other three image paths decide it.
                                 if kind != "frozen" and (not override or kind == "operator"):
@@ -332,6 +346,36 @@ class LauncherSymlinkTests(unittest.TestCase):
 
     def test_links_find_the_core_with_ls_fallback(self):
         self.exercise_links("absent")
+
+    def test_symlinked_installed_launcher_without_openssl_names_resolved_prefix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = pathlib.Path(tmp).resolve()
+            release = base / "releases/release1"
+            lib = release / "libexec/fn"
+            lib.mkdir(parents=True)
+            image = lib / "fn-host"
+            image.write_text('#!/bin/sh\necho runtime-was-started\nexit 9\n')
+            image.chmod(0o755)
+            (lib / "fn-host.core").write_bytes(b"core")
+            launcher = release / "bin/fn"
+            launcher.parent.mkdir()
+            launcher.write_text((ROOT / "packaging/fn").read_text())
+            launcher.chmod(0o755)
+            links = base / "links"
+            links.mkdir()
+            entry = links / "fn"
+            entry.symlink_to(os.path.relpath(launcher, links))
+            commands = base / "commands"
+            commands.mkdir()
+            self.linux_uname(commands)
+            result = subprocess.run([str(entry), "--version"],
+                                    env={"PATH": str(commands) + ":/usr/bin:/bin"},
+                                    capture_output=True, text=True, timeout=3)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stdout, "")
+            self.assertEqual(result.stderr,
+                             f"fn: no OpenSSL libssl.so.3 under {lib}/openssl; "
+                             "the shipped OpenSSL 3.5.8 is required\n")
 
 
 class ResolverFailureTests(unittest.TestCase):
