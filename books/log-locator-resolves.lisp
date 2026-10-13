@@ -109,7 +109,7 @@
   (fn-lc-resolve-from 0 fn-lbc segs))
 
 (defun fn-lc-pin-tokens (fn-lc-pins)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (alistp fn-lc-pins) :verify-guards nil))
   (if (consp fn-lc-pins)
       (cons (caar fn-lc-pins) (fn-lc-pin-tokens (cdr fn-lc-pins)))
     nil))

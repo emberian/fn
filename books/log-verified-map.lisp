@@ -19,7 +19,7 @@
   (equal (fn-lb-vmap-bits-get (cons seg entry) fn-lb-vmap) t))
 
 (defun fn-lb-verified-entries-invp (bits log)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (fn-lb-log-read-guardp log) (loop$ for p in (true-list-fix bits) always (and (or (consp p) (null p)) (or (consp (car p)) (null (car p)))))) :verify-guards nil))
   (if (consp bits)
       (and (implies (equal (cdar bits) t)
                     (fn-arx-entry-ok
@@ -29,7 +29,7 @@
     t))
 
 (defun fn-lb-vmap-index-covers (bits keys)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (alistp (remove-equal nil (true-list-fix bits))) (true-listp keys)) :verify-guards nil))
   (if (consp bits)
       (and (implies (equal (cdar bits) t) (member-equal (caar bits) keys))
            (fn-lb-vmap-index-covers (cdr bits) keys))
@@ -43,7 +43,7 @@
        (fn-lb-verified-entries-invp (nth *fn-lb-vmap-bits* fn-lb-vmap) log)))
 
 (defun fn-lb-vmap-mark (seg entry log fn-lb-vmap)
-  (declare (xargs :stobjs fn-lb-vmap :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lb-vmap :guard (fn-lb-log-read-guardp log) :verify-guards nil))
   (if (fn-arx-entry-ok (fn-lb-entry-octets seg entry log)
                        (fn-lb-entry-protected-len seg entry log))
       (let ((fn-lb-vmap
@@ -54,7 +54,7 @@
     fn-lb-vmap))
 
 (defun fn-lb-vmap-recycle-keys (keys seg fn-lb-vmap)
-  (declare (xargs :stobjs fn-lb-vmap :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lb-vmap :guard (alistp (remove-equal nil (true-list-fix keys))) :verify-guards nil))
   (if (consp keys)
       (let ((fn-lb-vmap
               (if (equal (caar keys) seg)
@@ -64,7 +64,7 @@
     fn-lb-vmap))
 
 (defun fn-lb-vmap-retain-keys (keys seg)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (alistp (remove-equal nil (true-list-fix keys))) :verify-guards nil))
   (if (consp keys)
       (if (equal (caar keys) seg)
           (fn-lb-vmap-retain-keys (cdr keys) seg)
@@ -72,7 +72,7 @@
     nil))
 
 (defun fn-lb-vmap-recycle (seg fn-lb-vmap)
-  (declare (xargs :stobjs fn-lb-vmap :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lb-vmap :guard (alistp (remove-equal nil (true-list-fix (fn-lb-vmap-index fn-lb-vmap)))) :verify-guards nil))
   (let* ((keys (fn-lb-vmap-index fn-lb-vmap))
          (fn-lb-vmap (fn-lb-vmap-recycle-keys keys seg fn-lb-vmap)))
     (update-fn-lb-vmap-index (fn-lb-vmap-retain-keys keys seg) fn-lb-vmap)))
