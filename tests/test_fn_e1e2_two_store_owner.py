@@ -1,5 +1,5 @@
 """Isolated source-pinned native A/B owner for Mini's finite E1/E2 handoff."""
-from tests.native_harness import observe_node_greeting
+from tests.native_harness import free_port, observe_node_greeting
 import json
 import os
 from pathlib import Path
@@ -12,7 +12,7 @@ import unittest
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
-from tests.test_native_protected_peering import NativeProtectedPeeringTests, IMAGE, free_port
+from tests.test_native_protected_peering import NativeProtectedPeeringTests, IMAGE
 from tools.wire_stream import whole_stream
 
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
