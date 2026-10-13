@@ -228,7 +228,7 @@ class LauncherSymlinkTests(unittest.TestCase):
             base = pathlib.Path(tmp).resolve()
             commands = base / "commands"
             commands.mkdir()
-            # Exercise packaging/fn's installed Linux OpenSSL check on every OS.
+            # Exercise packaging/fn's installed Linux prefix derivation on every OS.
             self.linux_uname(commands)
             # OpenBSD's plain-readlink interface: reject every option. The
             # failing variant also exercises the ls -l fallback, on this OS.
@@ -269,10 +269,6 @@ class LauncherSymlinkTests(unittest.TestCase):
                     if kind == "operator":
                         lib = product / "libexec/fn"
                         lib.mkdir(parents=True)
-                        openssl = lib / "openssl/lib"
-                        openssl.mkdir(parents=True)
-                        for library in ("libssl.so.3", "libcrypto.so.3"):
-                            (openssl / library).write_bytes(b"fixture library")
                         for item in (launcher, product / "fn-host.core"):
                             item.rename(lib / item.name)
                         launcher = lib / "fn-host"
@@ -347,14 +343,16 @@ class LauncherSymlinkTests(unittest.TestCase):
     def test_links_find_the_core_with_ls_fallback(self):
         self.exercise_links("absent")
 
-    def test_symlinked_installed_launcher_without_openssl_names_resolved_prefix(self):
+    def test_symlinked_installed_launcher_passes_default_and_operator_openssl_prefix(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = pathlib.Path(tmp).resolve()
             release = base / "releases/release1"
             lib = release / "libexec/fn"
             lib.mkdir(parents=True)
             image = lib / "fn-host"
-            image.write_text('#!/bin/sh\necho runtime-was-started\nexit 9\n')
+            image.write_text('#!/bin/sh\nif [ "$2" = heap ]; then\n'
+                             '  echo "heap=777 MB stack=512 KB"\n  exit 0\nfi\n'
+                             'printf "%s\\n" runtime-was-started "openssl-prefix=$FN_OPENSSL_PREFIX"\n')
             image.chmod(0o755)
             (lib / "fn-host.core").write_bytes(b"core")
             launcher = release / "bin/fn"
@@ -368,14 +366,19 @@ class LauncherSymlinkTests(unittest.TestCase):
             commands = base / "commands"
             commands.mkdir()
             self.linux_uname(commands)
-            result = subprocess.run([str(entry), "--version"],
-                                    env={"PATH": str(commands) + ":/usr/bin:/bin"},
-                                    capture_output=True, text=True, timeout=3)
-            self.assertEqual(result.returncode, 2)
-            self.assertEqual(result.stdout, "")
-            self.assertEqual(result.stderr,
-                             f"fn: no OpenSSL libssl.so.3 under {lib}/openssl; "
-                             "the shipped OpenSSL 3.5.8 is required\n")
+            self.assertFalse((lib / "openssl").exists())
+            for prefix in (None, "/operator/../prefix with spaces"):
+                with self.subTest(prefix=prefix):
+                    env = {"PATH": str(commands) + ":/usr/bin:/bin"}
+                    if prefix is not None:
+                        env["FN_OPENSSL_PREFIX"] = prefix
+                    result = subprocess.run([str(entry), "--version"], env=env,
+                                            capture_output=True, text=True, timeout=3)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, "runtime-was-started\nopenssl-prefix="
+                                     + (prefix if prefix is not None else str(lib / "openssl")) + "\n")
+                    self.assertEqual(result.stderr, "")
+                    self.assertFalse((lib / "openssl").exists())
 
 
 class ResolverFailureTests(unittest.TestCase):
