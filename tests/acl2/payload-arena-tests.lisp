@@ -19,6 +19,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/payload-arena")
+(include-book "../../books/catalog-record") ; fn-cat-intern-list, for the moved smoke check
 (include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------

@@ -1198,7 +1198,11 @@
 
 (in-theory (disable fn-arx-mark fn-arx-stage-grow fn-arx-stage-write fn-arx-stage-len
                     fn-arx-stage-get fn-arx-stage-payload
-                    fn-arena$xp nth update-nth fn-arn-extentp fn-arn-lz-extentp fn-arx-view))
+                    fn-arena$xp fn-arn-extentp fn-arn-lz-extentp fn-arx-view))
+;; nth and update-nth are core ACL2 functions: closed here for this book's
+;; own proofs only, never for its includers (every arena consumer includes
+;; this book through books/payload-arena).
+(local (in-theory (disable nth update-nth)))
 
 ;; The generic ADT aliases otherwise reopen NTH after it was closed above.
 ;; Keep the abstract export obligations at the same field boundary.
