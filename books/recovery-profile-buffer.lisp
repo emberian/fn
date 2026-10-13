@@ -60,7 +60,7 @@
                          (nthcdr i (nth 0 fn-recovery-profile-buffer)))))
    :hints (("Goal" :induct (fn-rpf-prefix-from i n fn-recovery-profile-buffer)
             :in-theory (e/d (fn-rpf-prefix-from fn-rpf-bytesi take)
-                            (nth))))))
+                            (nth adt-cdr-nthcdr))))))
 (defthm fn-rpf-prefix-is-logical-prefix
   (equal (fn-rpf-prefix n fn-recovery-profile-buffer)
          (take n (nth 0 fn-recovery-profile-buffer)))

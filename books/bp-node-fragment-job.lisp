@@ -114,6 +114,9 @@
                                   (fn-bpfj-cells fn-bpfj-total
                                    fn-bpfw-sort fn-bpfw-fragmentp)))))
 
+; Keep NTH terms available to the imported step shape lemmas.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
+
 (defthm fn-bpfj-step-keeps-readable
   (implies (fn-bpfj-jobp job)
            (and (fn-bpfj-jobp (fn-bpfj-step job quantum))

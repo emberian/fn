@@ -98,6 +98,9 @@
    :hints (("Goal" :induct (nthcdr i l)))))
 
 ; The specification from 0 is the specification.
+; The local step lemma orients NTHCDR in the opposite direction.
+(local (in-theory (disable adt-cdr-nthcdr)))
+
 (defthm fn-mpx-spec-from-is-records-for
   (implies (natp i)
            (equal (fn-mpx-spec-from i msgid rows)

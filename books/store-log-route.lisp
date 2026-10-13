@@ -318,6 +318,9 @@
 
 ; The verdict's shape under the link: the scan is committed ++ a prefix of
 ; the batch in flight, and the history is committed ++ in flight ++ batch.
+; Do not rewrite the linked scan equality before the prefix lemmas match.
+(local (in-theory (disable fn-lgc-nthcdr-of-append-shorter)))
+
 (local
  (defthm fn-olr-verdict-under-the-link
    (implies (and (fn-lg-crash-verdictp scan committed frontier inflight last unit)
