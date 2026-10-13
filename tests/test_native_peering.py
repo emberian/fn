@@ -5,6 +5,7 @@ nodes are the production saved image through its public operator entry; no
 Python service or feed process participates after startup.
 """
 
+from tests.native_harness import observe_node_greeting
 import hashlib
 import json
 import os
@@ -282,6 +283,7 @@ class NativePeeringTests(unittest.TestCase):
             chunk = client.recv(1)
             self.assertTrue(chunk)
             greeting.extend(chunk)
+        observe_node_greeting(node.port, bytes(greeting))
         self.assertTrue(greeting.startswith(b"200 "))
         payload = self.article(message_id, marker).replace(b"\r\n.\r\n", b"\r\n..\r\n")
         client.sendall(b"TAKETHIS " + message_id.encode("ascii") + b"\r\n"
@@ -452,7 +454,9 @@ class NativePeeringTests(unittest.TestCase):
         source = self.article(z, "interrupted")
         with socket.create_connection(("127.0.0.1", b.port), timeout=30) as client:
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(b.port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             stream.write(b"IHAVE " + z.encode("ascii") + b"\r\n")
             self.assertTrue(stream.readline().startswith(b"335 "))
             stream.write(source[:len(source) // 2])
@@ -502,7 +506,9 @@ class NativePeeringTests(unittest.TestCase):
                    + self.article(message_id, "path-identity-ihave"))
         with socket.create_connection(("127.0.0.1", target.port), timeout=30) as client:
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(target.port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
             self.assertTrue(stream.readline().startswith(b"335 "))
             stream.write(offered + b".\r\n")
@@ -557,7 +563,9 @@ class NativePeeringTests(unittest.TestCase):
         replies = {}
         with socket.create_connection(("127.0.0.1", target.port), timeout=30) as client:
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(target.port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             stream.write(b"MODE STREAM\r\n")
             replies["mode"] = stream.readline()
             # IHAVE first, on the same connection: the held article, and an
@@ -687,7 +695,9 @@ class NativePeeringTests(unittest.TestCase):
             client = socket.create_connection(("127.0.0.1", target.port), timeout=15,
                                               source_address=(address, 0))
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(target.port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             return client, stream
 
         def ask(stream, line):
@@ -772,7 +782,9 @@ class NativePeeringTests(unittest.TestCase):
         ids = ["<pipe-{}@example.invalid>".format(n) for n in range(8)]
         with socket.create_connection(("127.0.0.1", target.port), timeout=15) as client:
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(target.port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             stream.write(b"".join(b"TAKETHIS " + m.encode() + b"\r\n"
                                   + self.article(m, m[1:-1]) + b".\r\n"
                                   for m in ids))
@@ -819,7 +831,9 @@ class NativePeeringTests(unittest.TestCase):
         replies = []
         with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             for message_id in ids:
                 stream.write(b"TAKETHIS " + message_id.encode() + b"\r\n"
                              + self.article(message_id, message_id[1:-1]) + b".\r\n")
@@ -882,7 +896,9 @@ class NativePeeringTests(unittest.TestCase):
         with socket.create_connection(("127.0.0.1", target.port), timeout=15) as client:
             client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(target.port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             for piece in pieces:
                 client.sendall(piece)
                 time.sleep(0.002)
@@ -912,7 +928,9 @@ class NativePeeringTests(unittest.TestCase):
         ids = ["<pipe-post-{}@example.invalid>".format(n) for n in range(4)]
         with socket.create_connection(("127.0.0.1", node.port), timeout=15) as client:
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(node.port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             # Two whole POST blocks in one write.
             stream.write(b"".join(b"POST\r\n" + self.article(m, m[1:-1]) + b".\r\n"
                                   for m in ids[:2]))
@@ -1210,7 +1228,9 @@ class NativePeeringTests(unittest.TestCase):
         replies = []
         with socket.create_connection(("127.0.0.1", node.port), timeout=60) as client:
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(node.port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             for message_id in ids:
                 stream.write(b"TAKETHIS " + message_id.encode() + b"\r\n"
                              + self.article(message_id, message_id[1:-1]) + b".\r\n")
@@ -1221,7 +1241,9 @@ class NativePeeringTests(unittest.TestCase):
     def nntp_post(self, node, message_id):
         with socket.create_connection(("127.0.0.1", node.port), timeout=60) as client:
             stream = whole_stream(client)
-            self.assertTrue(stream.readline().startswith(b"200 "))
+            greeting = stream.readline()
+            observe_node_greeting(node.port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
             stream.write(b"POST\r\n")
             offer = stream.readline()
             if not offer.startswith(b"340"):
@@ -1352,6 +1374,8 @@ class NativePeeringTests(unittest.TestCase):
             try:
                 with socket.create_connection(("127.0.0.1", node.port), timeout=10) as client:
                     line = whole_stream(client).readline()
+                    if line[:3] in (b"200", b"201"):
+                        observe_node_greeting(node.port, line)
                 if line.startswith(b"502 "):
                     refused = line
                 else:

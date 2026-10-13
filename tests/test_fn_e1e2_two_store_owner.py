@@ -1,4 +1,5 @@
 """Isolated source-pinned native A/B owner for Mini's finite E1/E2 handoff."""
+from tests.native_harness import observe_node_greeting
 import json
 import os
 from pathlib import Path
@@ -85,7 +86,9 @@ class NativeTwoStoreMiniHandoff(NativeProtectedPeeringTests):
     def verified_header(self, node, message_id):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as raw:
             with whole_stream(raw) as stream:
-                self.assertTrue(stream.readline().startswith((b"200 ", b"201 ")))
+                greeting = stream.readline()
+                observe_node_greeting(node["port"], greeting)
+                self.assertTrue(greeting.startswith((b"200 ", b"201 ")))
                 stream.write(b"STARTTLS\r\n")
                 self.assertTrue(stream.readline().startswith(b"382 "))
             context = ssl.create_default_context(cafile=str(node["certificate"]))

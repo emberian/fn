@@ -1,4 +1,5 @@
 """Developer-image owner diagnostic: writable NNTP POST with no Python peer."""
+from tests.native_harness import observe_node_greeting
 import datetime
 import json
 import os
@@ -737,7 +738,9 @@ class NativeOwnerTests(unittest.TestCase):
     def test_client_disconnect_is_not_a_global_owner_fault(self):
         process, port = self.node.start_store_owner(once=False)
         with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
-            self.assertTrue(client.makefile("rb", buffering=0).readline().startswith(b"200 "))
+            greeting = client.makefile("rb", buffering=0).readline()
+            observe_node_greeting(port, greeting)
+            self.assertTrue(greeting.startswith(b"200 "))
         with Client(port, timeout=30, greeting=(b"200",)) as client:
             self.assertTrue(client.command(b"QUIT").startswith(b"205 "))
         self.assertIsNone(process.poll(), "owner stopped after an ordinary disconnect")

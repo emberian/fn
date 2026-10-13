@@ -30,6 +30,7 @@ After each:
 The node is the production image (FN_NATIVE_HOST): what a stranger meets.
 """
 
+from tests.native_harness import observe_node_greeting
 import os
 import socket
 import struct
@@ -103,6 +104,7 @@ def raw(port):
         if not chunk:
             raise EOFError("closed before the greeting")
         greeting += chunk
+    observe_node_greeting(port, greeting)
     if not greeting.startswith(b"200 "):
         raise AssertionError("greeting {!r}".format(greeting))
     return sock

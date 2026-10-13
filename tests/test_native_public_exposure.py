@@ -19,6 +19,7 @@ Run on hbox: tools/hbox_native.sh . tests.test_native_public_exposure
 """
 from __future__ import annotations
 
+from tests.native_harness import current_test_id, observe_node_greeting
 import json
 import os
 from pathlib import Path
@@ -39,7 +40,7 @@ READY = executable(IMAGE)
 LOGIN, PASSWORD = "legit", "correct-horse-battery"
 
 
-def first_line(sock, timeout):
+def first_line(sock, timeout, *, test_id=None):
     """The first line the server sends, b'' on a clean close, or a tag."""
     sock.settimeout(timeout)
     data = b""
@@ -53,6 +54,8 @@ def first_line(sock, timeout):
         return b"<timeout>"
     except (ConnectionResetError, BrokenPipeError):
         return b"<reset>"
+    if data[:3] in (b"200", b"201"):
+        observe_node_greeting(sock.getpeername()[1], data, test_id=test_id)
     return data
 
 
@@ -83,6 +86,7 @@ class Legit(threading.Thread):
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=30)
         self.stream = whole_stream(self.sock)
         greeting = self.stream.readline()
+        observe_node_greeting(port, greeting)
         assert greeting[:3] in (b"200", b"201"), greeting
         for line, code in ((b"AUTHINFO USER " + LOGIN.encode() + b"\r\n", b"381"),
                            (b"AUTHINFO PASS " + PASSWORD.encode() + b"\r\n", b"281"),
@@ -155,6 +159,7 @@ class NativePublicExposureTests(unittest.TestCase):
         """Open per_source connections from each source at once; hold every
         admitted one; return (classified counts, held sockets)."""
         results, held, lock = [], [], threading.Lock()
+        test_id = current_test_id()
 
         def one(source):
             try:
@@ -163,7 +168,7 @@ class NativePublicExposureTests(unittest.TestCase):
                 with lock:
                     results.append("connect-" + type(error).__name__)
                 return
-            line = first_line(sock, 30)
+            line = first_line(sock, 30, test_id=test_id)
             kind = classify(line)
             with lock:
                 results.append(kind)
@@ -328,6 +333,8 @@ class NativePublicExposureTests(unittest.TestCase):
             stream = whole_stream(sock)
             greeting = stream.readline()
             anonymous = {"greeting_none": greeting.decode().strip()}
+            if greeting[:3] in (b"200", b"201"):
+                observe_node_greeting(self.port, greeting)
             for command in (b"GROUP fn.test", b"ARTICLE 1", b"POST", b"LIST",
                             b"CAPABILITIES"):
                 stream.write(command + b"\r\n")
@@ -342,7 +349,9 @@ class NativePublicExposureTests(unittest.TestCase):
         self.policy("anonymous", "open")
         with self.connect("127.0.0.6") as sock:
             stream = whole_stream(sock)
-            stream.readline()
+            greeting = stream.readline()
+            if greeting[:3] in (b"200", b"201"):
+                observe_node_greeting(self.port, greeting)
             stream.write(b"GROUP fn.test\r\n")
             anonymous["GROUP fn.test (open)"] = stream.readline().decode().strip()
             # The ARTICLE loop against the step budget (20 a second).
@@ -374,6 +383,8 @@ class NativePublicExposureTests(unittest.TestCase):
             with self.connect("127.0.0.7") as sock:
                 stream = whole_stream(sock)
                 greeting = stream.readline()
+                if greeting[:3] in (b"200", b"201"):
+                    observe_node_greeting(self.port, greeting)
                 if greeting.startswith(b"400"):
                     guessing["next_connection"] = greeting.decode().strip()
                     break

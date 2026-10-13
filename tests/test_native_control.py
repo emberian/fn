@@ -65,7 +65,10 @@ def control_exchange(path, frame):
         while True:
             chunk = client.recv(65536)
             if not chunk:
-                return b"".join(chunks)
+                from tests.native_harness import observe_control_reply
+                reply = b"".join(chunks)
+                observe_control_reply(path, reply)
+                return reply
             chunks.append(chunk)
 
 
@@ -656,7 +659,10 @@ class NativeControlTests(unittest.TestCase):
             self.assertTrue(readable, "per-chunk reads reset the frame deadline")
             self.assertGreaterEqual(elapsed, 8)
             self.assertLess(elapsed, 12)
-            self.assertNotEqual(client.recv(4096), b"")
+            reply = client.recv(4096)
+            from tests.native_harness import observe_control_reply
+            observe_control_reply(self.control, reply)
+            self.assertNotEqual(reply, b"")
         finally:
             client.close()
         self.stop_owner()
