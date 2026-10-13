@@ -145,16 +145,26 @@
            (fn-owner-retain-tree-mentionsp 'fn-owner-retain-livep formula)
            (fn-owner-retain-coverage-listp (cdr writers) mapping world)))))
 
+(defun fn-owner-retain-coveragep (writers mapping world)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((quanta '(fn-owner-retain-post-quantum fn-owner-retain-identity-quantum))
+         (keepers (set-difference-eq (strip-cars mapping) quanta)))
+   (and (consp writers)
+        (no-duplicatesp-eq writers)
+        (no-duplicatesp-eq keepers)
+        (equal (len writers) (len keepers))
+        (subsetp-eq writers keepers)
+        (subsetp-eq keepers writers)
+        (fn-owner-retain-coverage-listp
+         (append writers quanta) mapping world))))
+
 (assert-event
  (let* ((world (w state))
         (row (cdr (assoc-eq 'fn-owner-served-carried
                             (table-alist 'fn-carried world))))
         (writers (append (strip-cars (fn-cd-get :established row))
                          (strip-cars (fn-cd-get :transitions row)))))
-   (and row (consp writers)
-        (fn-owner-retain-coverage-listp
-         (append writers '(fn-owner-retain-post-quantum fn-owner-retain-identity-quantum))
-         *fn-owner-retain-live-keepers* world))))
+   (and row (fn-owner-retain-coveragep writers *fn-owner-retain-live-keepers* world))))
 
 
 ; New ground witnesses use the included RFCL fixture, not fixture twins.
