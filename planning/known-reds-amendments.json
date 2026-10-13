@@ -407,6 +407,78 @@
    "owner": "builder-M",
    "ruling": "coordinator 2026-10-13: FN_NATIVE_LAUNCHER_SHA256 verdict key from the launcher splice, builder-M (M26)",
    "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_preflight_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-RAW-SCRIPTS-LEASE (A27)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_response_lease_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-RAW-SCRIPTS-LEASE (A27)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_startup_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-RAW-SCRIPTS-LEASE (A27)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_response_window_raw",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-RAW-SCRIPTS-LEASE (A27)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-P",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-POST-SEAL-GATE-CLASSIFIER (P12)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-C",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-DECODED-CUSTODY (C23, after LB)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-M-SIZING (M26)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_status_live_posts.NativeStatusLivePostsTests.test_status_after_live_posts_stays_within_the_slack",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-M-SIZING (M26, settles with P12)",
+   "transfer_from": "builder-B"
   }
  ]
 }

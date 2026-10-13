@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Cases: test_output_preflight_raw_mock, test_output_response_lease_raw_mock, test_output_startup_raw_mock, test_response_window_raw (tests.test_native_raw_scripts.RawHarnessTests). rows under DEV-CONTROL-UNTRACED-20261013 (a row's item is fixed at its first amendment record; the owner moves by known_reds.py transfer); triage build/coordinator/tools-builder-b/b24/DEVCTL-TRIAGE-20261013.md",
+ "file": "host/native/mux.lisp",
+ "id": "DEVCTL-RAW-SCRIPTS-LEASE",
+ "notes": [],
+ "owner": "builder-A",
+ "severity": "high",
+ "source": "devctl-150e2d6f48a0",
+ "state": "open",
+ "title": "raw_scripts x4: fnn-make-lease missing on the NIL-lease path (mux.lisp:712), startup budget and preflight raw mocks",
+ "updated": "2026-10-13T13:33:48Z"
+}
