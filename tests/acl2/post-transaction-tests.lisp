@@ -5,6 +5,7 @@
 (include-book "../../books/codec-attach")
 (include-book "../../books/defkeystone")
 (include-book "teeth-ground-lemma")
+(include-book "post-acceptance-tests")
 
 (defun ptxt-acc-begin (txid) (declare (xargs :guard t) (ignore txid)) nil)
 (defun ptxt-acc-feed (a octets) (declare (xargs :guard t) (ignore a octets)) (mv nil nil))
@@ -39,7 +40,7 @@
 (defun ptxt-kd () (fn-ptx-kd-mk 4 (make-list 32 :initial-element 7) 8192 5 4))
 (defun ptxt-geo () (list 4096 16777216 4096))
 (defun ptxt-hs () (list 47 (make-list 32 :initial-element 9) 4065))
-(defun ptxt-cur () (list 1 1 2 5 0 4 5))
+(defun ptxt-cur () (list 1 1 2 5 0 4 5 0 0))
 (defun ptxt-mach (ph k evd)
   (fn-ptx-mk ph k (ptxt-cur) nil (ptxt-kd) 1048576 1048576 '(0 1 10 0) '(1 1 41 9) (ptxt-hs) nil evd (ptxt-geo) nil))
 (defconst *ptxt-done3* '((:pwrite :done 10) (:pwrite :done 5) (:pwrite :done 32)))
@@ -689,3 +690,288 @@
 ; in the unfolding of fn-ptx-trace-run before any claim could be checked; it is
 ; not in this book.  The fix is the books', not this file's: an executable twin
 ; of the trace run, or an acceptance with a body.
+
+; Draft-4 amendment 2: evaluated through the real step under this book's
+; checked K=0 acceptance attachment. The theorem is about those captured outputs.
+(with-guard-checking-event :none
+ (encapsulate ()
+ (defconst *ptxt-mhalf-charge-m*
+  (fn-ptx-mk :reading 0 '(2 1 3 0 0 1 0 0 0) nil
+   (fn-ptx-kd-mk 0 (make-list 32 :initial-element 0) 0 1 0)
+   0 0 nil nil nil nil nil '(1 256 256) nil))
+ (defconst *ptxt-mhalf-charge-e* '(:timer (:done 0) 1 1))
+ (defun ptxt-mhalf-charge-execute (fn-rtc-st)
+  (declare (xargs :guard t :stobjs fn-rtc-st))
+  (mv-let (m2 rs cost)
+    (fn-ptx-step1 *ptxt-mhalf-charge-m* *ptxt-mhalf-charge-e* fn-rtc-st 0)
+   (declare (ignore m2))
+   (mv fn-rtc-st
+    (list (natp 0) (fn-rtc-size (fn-ptx-q *ptxt-mhalf-charge-m*))
+     (fn-rtc-size (fn-ptx-kd *ptxt-mhalf-charge-m*))
+     (fn-ptx-wfp *ptxt-mhalf-charge-m*) cost (fn-rtc-reqs-octets rs)
+     (+ 0 9216 (* 10 (fn-ptx-acc-out-max)))
+     (+ 0 9216 (* 10 (fn-ptx-acc-out-max)) (* 2 *fn-pctx-max*))))))
+ (defun ptxt-mhalf-charge-local ()
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj fn-rtc-st
+   (mv-let (fn-rtc-st out) (ptxt-mhalf-charge-execute fn-rtc-st) out)))
+ (make-event
+  (value `(defconst *ptxt-mhalf-charge-observed* ',(ptxt-mhalf-charge-local))))
+ (defthm ptxt-mhalf-old-charge-bound-is-refuted-and-new-bound-holds
+  (let ((x *ptxt-mhalf-charge-observed*))
+   (and (nth 0 x) (<= (nth 1 x) 21) (<= (nth 2 x) 75) (nth 3 x)
+        (equal (+ (nth 4 x) (nth 5 x)) 20848)
+        (equal (nth 6 x) 9216) (equal (nth 7 x) 29934)
+        (< (nth 6 x) (+ (nth 4 x) (nth 5 x)))
+        (<= (+ (nth 4 x) (nth 5 x)) (nth 7 x))))
+  :rule-classes nil)))
+
+; The old reader is a source copy from 0d6d79e83, with only its name and
+; proof-side guard verification policy changed. It scans ENC as article bytes.
+(with-guard-checking-event :none
+ (encapsulate ()
+ (defattach (fn-ptx-acc-begin fn-pacc-begin)
+  (fn-ptx-acc-feed fn-pacc-feed) (fn-ptx-acc-feed-cost fn-pacc-feed-cost)
+  (fn-ptx-acc-end fn-pacc-end) (fn-ptx-acc-max-state fn-pacc-max-state)
+  (fn-ptx-acc-out-max fn-pacc-out-max)
+  :hints (("Goal" :use
+   (fn-pacc-meets-fn-ptx-acc-max-state-natp fn-pacc-meets-fn-ptx-acc-out-max-natp
+    fn-pacc-meets-fn-ptx-acc-begin-bounded fn-pacc-meets-fn-ptx-acc-feed-bounded
+    fn-pacc-meets-fn-ptx-acc-feed-cost-bounded fn-pacc-meets-fn-ptx-acc-feed-shape
+    fn-pacc-meets-fn-ptx-acc-end-shape))))
+(defun ptxt-v2-old-read (m q id inc fn-rtc-st)
+  (declare (xargs :guard t :verify-guards nil :stobjs fn-rtc-st))
+  (mbe :logic (let* ((cur (fn-ptx-cur m)) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+         (bp (fn-ptx-cur-bp cur)) (len (fn-ptx-cur-len cur)) (pos (fn-ptx-cur-hoff cur))
+         (lim (min len (fn-ptx-hmax m)))
+         (w (fn-ptx-read-w q))
+         (m0 (fn-ptx-chg m :committed nil))
+         (fresh (not (consp (fn-ptx-b1 m))))
+         (h1 (if fresh (fn-ptx-free 0 nil id inc fn-rtc-st) (fn-ptx-buf-h (fn-ptx-b1 m))))
+         (h3 (if fresh (fn-ptx-free 0 h1 id inc fn-rtc-st) (fn-ptx-buf-h (fn-ptx-b3 m))))
+         (g1 (if fresh (+ 1 (fn-ptx-gen h1 id inc fn-rtc-st)) (fn-ptx-buf-g (fn-ptx-b1 m))))
+         (g3 (if fresh (+ 1 (fn-ptx-gen h3 id inc fn-rtc-st)) (fn-ptx-buf-g (fn-ptx-b3 m))))
+         (off (if fresh *fn-ptx-sufhead-max* (fn-ptx-buf-len (fn-ptx-b3 m))))
+         ;; acquired, b3 is zeroed below its base (a write may not start past a buffer's
+         ;; fill), so the suffix's head can be written just below the base at the end
+         (acq (if fresh (list (list :acquire h1) (list :acquire h3)
+                              (list :write h3 g3 0 (fn-bs-zeros *fn-ptx-sufhead-max*)))
+                nil))
+         (e (fn-ptx-head-end bp pos (min lim (+ pos w 3)) id inc fn-rtc-st))
+         (cost0 (+ w 3 (* 3 (fn-ptx-acc-out-max)) 64)))
+    (if (not (and h1 h3))
+        ;; no workspaces: refused before any log action
+        (mv-let (m2 r2 c2) (fn-ptx-end m0 :refused kd ext nil nil id inc fn-rtc-st)
+          (mv m2 r2 (+ cost0 c2)))
+      (let* ((m1 (fn-ptx-chg m0 :b1 (list h1 g1 0 0) :b3 (list h3 g3 off *fn-ptx-sufhead-max*)))
+             ;; a refusal in this step: the end over the state without workspaces, which
+             ;; are released here at the generation they were acquired or held at (no
+             ;; lease has ended on them while reading)
+             (mr (fn-ptx-chg m0 :b1 nil :b3 nil))
+             (rel (list (list :release h1 g1) (list :release h3 g3)))
+             (nfeed (if e (- e pos) (if (< (+ pos w 3) lim) w 0))))
+        (mv-let (a sp) (fn-ptx-acc-feed (fn-ptx-acc m) (fn-ptx-range bp pos nfeed id inc fn-rtc-st))
+          (let ((off2 (+ off (len sp)))
+                (cost (+ cost0 (nfix (fn-ptx-acc-feed-cost (fn-ptx-acc m) (fn-ptx-range bp pos nfeed id inc fn-rtc-st))))))
+            (cond
+             ((not (<= (+ off2 32) (fn-ptx-cap h3 id inc fn-rtc-st)))
+              ;; the suffix outgrows its workspace: refused before any log action
+              (mv-let (m2 r2 c2) (fn-ptx-end mr :refused kd ext nil nil id inc fn-rtc-st)
+                (mv m2 (append acq rel r2) (+ cost c2))))
+             (e
+              (mv-let (ok pre ins ioff sh st) (fn-ptx-acc-end a (- len e))
+                (let* ((ioff (if (consp ins) (nfix ioff) len))
+                       (start (- *fn-ptx-sufhead-max* (min (len sh) *fn-ptx-sufhead-max*)))
+                       (end (+ off2 (len st)))
+                       (rlen (+ (len pre) len (len ins) (- end start)))
+                       (b1 (append (fn-ptx-frame-header rlen) (fn-ptx-kd-last kd) pre)))
+                  (if (not (and ok (<= ioff len) (<= (+ 32 rlen) (fn-ptx-fmax m))
+                                (<= (+ (len b1) (len ins)) (fn-ptx-cap h1 id inc fn-rtc-st))
+                                (<= (+ end 32) (fn-ptx-cap h3 id inc fn-rtc-st))))
+                      (mv-let (m2 r2 c2) (fn-ptx-end mr :refused kd ext nil nil id inc fn-rtc-st)
+                        (mv m2 (append acq rel r2) (+ cost c2)))
+                    (mv (fn-ptx-chg m1 :ph :hashing :k 0
+                                    :cur (list (fn-ptx-cur-fid cur) (fn-ptx-cur-finc cur) bp len e (fn-ptx-cur-txid cur) ioff)
+                                    :b1 (list h1 g1 (len b1) (len ins)) :b3 (list h3 g3 end start) :hs (list 0 nil) :acc nil)
+                        (append acq (list (list :write h1 g1 0 (append b1 ins)))
+                                (fn-ptx-write-nz h3 g3 start (take (- *fn-ptx-sufhead-max* start) sh))
+                                (fn-ptx-write-nz h3 g3 off sp) (fn-ptx-write-nz h3 g3 off2 st)
+                                (list (fn-ptx-timer)))
+                        cost)))))
+             ((< (+ pos w 3) lim)
+              ;; no head end yet: the window fed, its suffix part written, continue
+              (mv (fn-ptx-chg m1 :cur (list (fn-ptx-cur-fid cur) (fn-ptx-cur-finc cur) bp len (+ pos w) (fn-ptx-cur-txid cur) len)
+                              :b3 (list h3 g3 off2 *fn-ptx-sufhead-max*) :acc a)
+                  (append acq (fn-ptx-write-nz h3 g3 off sp) (list (fn-ptx-timer)))
+                  cost))
+             (t
+              ;; no head within the head limit: refused before any log action
+              (mv-let (m2 r2 c2) (fn-ptx-end mr :refused kd ext nil nil id inc fn-rtc-st)
+                (mv m2 (append acq rel r2) (+ cost c2))))))))))
+       :exec (let* ((cur (fn-ptx-cur m)) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+         (bp (fn-ptx-cur-bp cur)) (len (fn-ptx-cur-len cur)) (pos (fn-ptx-cur-hoff cur))
+         (lim (min len (fn-ptx-hmax m)))
+         (w (fn-ptx-read-w q))
+         (m0 (fn-ptx-chg m :committed nil))
+         (fresh (not (consp (fn-ptx-b1 m))))
+         (h1 (if fresh (fn-ptx-free 0 nil id inc fn-rtc-st) (fn-ptx-buf-h (fn-ptx-b1 m))))
+         (h3 (if fresh (fn-ptx-free 0 h1 id inc fn-rtc-st) (fn-ptx-buf-h (fn-ptx-b3 m))))
+         (g1 (if fresh (+ 1 (fn-ptx-gen h1 id inc fn-rtc-st)) (fn-ptx-buf-g (fn-ptx-b1 m))))
+         (g3 (if fresh (+ 1 (fn-ptx-gen h3 id inc fn-rtc-st)) (fn-ptx-buf-g (fn-ptx-b3 m))))
+         (off (if fresh *fn-ptx-sufhead-max* (fn-ptx-buf-len (fn-ptx-b3 m))))
+         ;; acquired, b3 is zeroed below its base (a write may not start past a buffer's
+         ;; fill), so the suffix's head can be written just below the base at the end
+         (acq (if fresh (list (list :acquire h1) (list :acquire h3)
+                              (list :write h3 g3 0 (fn-bs-zeros *fn-ptx-sufhead-max*)))
+                nil))
+         (e (fn-ptx-head-end bp pos (min lim (+ pos w 3)) id inc fn-rtc-st))
+         (cost0 (+ w 3 (* 3 (fn-ptx-acc-out-max)) 64)))
+    (if (not (and h1 h3))
+        ;; no workspaces: refused before any log action
+        (mv-let (m2 r2 c2) (fn-ptx-end m0 :refused kd ext nil nil id inc fn-rtc-st)
+          (mv m2 r2 (+ cost0 c2)))
+      (let* ((m1 (fn-ptx-chg m0 :b1 (list h1 g1 0 0) :b3 (list h3 g3 off *fn-ptx-sufhead-max*)))
+             ;; a refusal in this step: the end over the state without workspaces, which
+             ;; are released here at the generation they were acquired or held at (no
+             ;; lease has ended on them while reading)
+             (mr (fn-ptx-chg m0 :b1 nil :b3 nil))
+             (rel (list (list :release h1 g1) (list :release h3 g3)))
+             (nfeed (if e (- e pos) (if (< (+ pos w 3) lim) w 0))))
+        (mv-let (a sp) (fn-ptx-acc-feed (fn-ptx-acc m) (fn-ptx-range bp pos nfeed id inc fn-rtc-st))
+          (let ((off2 (+ off (len sp)))
+                (cost (+ cost0 (nfix (fn-ptx-acc-feed-cost (fn-ptx-acc m) (fn-ptx-range bp pos nfeed id inc fn-rtc-st))))))
+            (cond
+             ((not (<= (+ off2 32) (fn-ptx-cap h3 id inc fn-rtc-st)))
+              ;; the suffix outgrows its workspace: refused before any log action
+              (mv-let (m2 r2 c2) (fn-ptx-end mr :refused kd ext nil nil id inc fn-rtc-st)
+                (mv m2 (append acq rel r2) (+ cost c2))))
+             (e
+              (mv-let (ok pre ins ioff sh st) (fn-ptx-acc-end a (- len e))
+                (let* ((ioff (if (consp ins) (nfix ioff) len))
+                       (start (- *fn-ptx-sufhead-max* (min (len sh) *fn-ptx-sufhead-max*)))
+                       (end (+ off2 (len st)))
+                       (rlen (+ (len pre) len (len ins) (- end start)))
+                       (b1 (append (fn-ptx-frame-header rlen) (true-list-fix (fn-ptx-kd-last kd)) pre)))
+                  (if (not (and ok (<= ioff len) (<= (+ 32 rlen) (fn-ptx-fmax m))
+                                (<= (+ (len b1) (len ins)) (fn-ptx-cap h1 id inc fn-rtc-st))
+                                (<= (+ end 32) (fn-ptx-cap h3 id inc fn-rtc-st))))
+                      (mv-let (m2 r2 c2) (fn-ptx-end mr :refused kd ext nil nil id inc fn-rtc-st)
+                        (mv m2 (append acq rel r2) (+ cost c2)))
+                    (mv (fn-ptx-chg m1 :ph :hashing :k 0
+                                    :cur (list (fn-ptx-cur-fid cur) (fn-ptx-cur-finc cur) bp len e (fn-ptx-cur-txid cur) ioff)
+                                    :b1 (list h1 g1 (len b1) (len ins)) :b3 (list h3 g3 end start) :hs (list 0 nil) :acc nil)
+                        (append acq (list (list :write h1 g1 0 (append b1 ins)))
+                                (fn-ptx-write-nz h3 g3 start (take (- *fn-ptx-sufhead-max* start) sh))
+                                (fn-ptx-write-nz h3 g3 off sp) (fn-ptx-write-nz h3 g3 off2 st)
+                                (list (fn-ptx-timer)))
+                        cost)))))
+             ((< (+ pos w 3) lim)
+              ;; no head end yet: the window fed, its suffix part written, continue
+              (mv (fn-ptx-chg m1 :cur (list (fn-ptx-cur-fid cur) (fn-ptx-cur-finc cur) bp len (+ pos w) (fn-ptx-cur-txid cur) len)
+                              :b3 (list h3 g3 off2 *fn-ptx-sufhead-max*) :acc a)
+                  (append acq (fn-ptx-write-nz h3 g3 off sp) (list (fn-ptx-timer)))
+                  cost))
+             (t
+              ;; no head within the head limit: refused before any log action
+              (mv-let (m2 r2 c2) (fn-ptx-end mr :refused kd ext nil nil id inc fn-rtc-st)
+                (mv m2 (append acq rel r2) (+ cost c2))))))))))))
+
+(defun ptxt-v2-machine-observe (ctx art gs)
+ (declare (xargs :guard t :verify-guards nil))
+ (let* ((enc (fn-pctx-encode ctx)) (data (append enc art gs))
+        (tx (fn-pctx-get 0 ctx))
+        (m (fn-ptx-mk :reading 0 (list 2 1 3 (len data) 0 tx (len data) 0 0)
+              nil (fn-ptx-kd-mk 0 (make-list 32 :initial-element 0) 8192 tx 0)
+              1048576 1048576 nil nil nil nil nil '(1 1048576 65536)
+              (fn-pacc-begin (list tx ctx)))))
+  (with-local-stobj fn-rtc-st
+   (mv-let (ans fn-rtc-st)
+    (let* ((fn-rtc-st (fn-rtc-st-init (list 3 4 0 1 0 1 (len data) 3 65667) fn-rtc-st))
+           (fn-rtc-st (fn-rtc-st-set-slot 1 '(1 :live nil) fn-rtc-st))
+           (fn-rtc-st (fn-rtc-st-reset 3 0 '(:workspace 1 1) fn-rtc-st))
+           (fn-rtc-st (fn-rtc-st-splice 3 0 data fn-rtc-st)))
+     (mv-let (new reqs cost) (fn-ptx-read m 100000 1 1 fn-rtc-st)
+      (declare (ignore reqs cost))
+      (mv-let (old old-reqs old-cost) (ptxt-v2-old-read m 100000 1 1 fn-rtc-st)
+       (declare (ignore old-reqs old-cost))
+       (mv (list (len (fn-pctx-get 1 ctx)) (len enc) (len art) (len gs)
+                 (fn-ptx-ph new) (fn-ptx-cur new) (fn-ptx-spans new)
+                 (fn-ptx-ph old) (fn-ptx-cur old) (fn-ptx-spans old) (fn-ptx-b3 new)) fn-rtc-st))))
+    ans))))
+(defconst *ptxt-v2-2165-rec*
+ (fn-pacc-prepared-record *pc4d-wide-s* *pc4-obs* *pc4d-wide-art* *pc4d-wide-inj*))
+(make-event (value `(defconst *ptxt-v2-2165-observation*
+ ',(ptxt-v2-machine-observe
+   (fn-pctx-of-prepared *pc4d-wide-s* *ptxt-v2-2165-rec* *pc4d-wide-art* *pc4d-wide-inj*)
+   *pc4d-wide-art* (fn-pacc-prepared-gsec *ptxt-v2-2165-rec*)))))
+(make-event (value `(defconst *ptxt-v2-2238-observation*
+ ',(ptxt-v2-machine-observe (m2-max-ctx) *m2-max-art* (fn-pacc-prepared-gsec *m2-max-rec*)))))
+(make-event (value `(defconst *ptxt-v2-2729-observation*
+ ',(ptxt-v2-machine-observe (pa1-max-ctx) *pa1-max-art* (fn-pacc-prepared-gsec *pa1-max-rec*)))))
+(defun ptxt-v2-layout-observedp (x pre)
+ (let* ((base (nth 1 x)) (alen (nth 2 x)) (glen (nth 3 x))
+        (cur (nth 5 x)) (spans (nth 6 x)) (old-cur (nth 8 x)))
+  (and (equal (nth 0 x) pre) (equal (nth 4 x) :hashing)
+       (equal (fn-ptx-cur-base cur) base) (equal (fn-ptx-cur-len cur) alen)
+       (equal (fn-ptx-cur-glen cur) glen)
+       (or (zp (fn-ptx-cur-ioff cur)) (member-equal (list 3 base (fn-ptx-cur-ioff cur)) spans))
+       (or (equal (fn-ptx-cur-ioff cur) alen)
+           (member-equal (list 3 (+ base (fn-ptx-cur-ioff cur)) (- alen (fn-ptx-cur-ioff cur))) spans))
+       (equal (fn-ptx-buf-cut (nth 10 x)) 9)
+       (or (zp glen) (member-equal (list 3 (+ base alen) glen) spans))
+       (equal (nth 7 x) :hashing)
+       (equal (fn-ptx-cur-base old-cur) 0)
+       (equal (fn-ptx-cur-len old-cur) (+ base alen glen))
+       (not (equal (nth 6 x) (nth 9 x))))))
+(defthm ptxt-v2-machine-reads-the-2165-context-layout
+ (ptxt-v2-layout-observedp *ptxt-v2-2165-observation* 2165) :rule-classes nil)
+(defthm ptxt-v2-machine-reads-the-2238-context-layout
+ (ptxt-v2-layout-observedp *ptxt-v2-2238-observation* 2238) :rule-classes nil)
+(defthm ptxt-v2-machine-reads-the-2729-context-layout
+ (ptxt-v2-layout-observedp *ptxt-v2-2729-observation* 2729) :rule-classes nil)))
+
+; Amendment 4: the old four-field unfolding is false, and the
+; corrected fifth field is equal on precisely the same hashing input.
+(with-guard-checking-event :none
+ (encapsulate ()
+ (defun ptxt-hash-0h-old-rhs (m q id inc fn-rtc-st)
+  (declare (xargs :guard t :verify-guards nil :stobjs fn-rtc-st))
+  (let* ((nmsg (fn-ptx-hnmsg m)) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m)) (b3 (fn-ptx-b3 m))
+                (m0 (fn-ptx-chg m :committed nil))
+                (pos (fn-ptx-hpos m q id inc fn-rtc-st)) (stk (fn-ptx-hstk m q id inc fn-rtc-st)))
+           (if (< (+ pos 1024) nmsg)
+               (fn-ptx-chg m0 :hs (list pos stk))
+             (let* ((trailer (fn-ptx-finish-digest pos stk nmsg (fn-ptx-spans m) id inc fn-rtc-st))
+                    (pad (fn-ptx-pad-len (+ nmsg 32) (fn-ptx-unit m)))
+                    (b3x (list (fn-ptx-buf-h b3) (fn-ptx-buf-g b3) (+ (fn-ptx-buf-len b3) 32) (fn-ptx-buf-x b3)))
+                    (elen (+ nmsg 32 pad))
+                    (front (fn-ptx-kd-frontier kd)))
+               (if (fn-olr-extension-needed-p front elen ext (fn-ptx-unit m))
+                   (let ((nx (fn-olr-extension-target front elen ext (fn-ptx-unit m))))
+                     (if (<= (expt 2 64) nx)
+                         (mv-let (m2 r2 c2) (fn-ptx-end m0 :refused kd ext nil nil id inc fn-rtc-st) (declare (ignore r2 c2)) m2)
+                       (fn-ptx-chg m0 :ph :extending :k 0 :nxt nx :b3 b3x :hs (list nmsg trailer pad) :evd nil)))
+                 (fn-ptx-chg m0 :ph :payload-writing :k 0 :nxt ext :b3 b3x :hs (list nmsg trailer pad) :evd nil))))))
+ (defun ptxt-hash-layout-witness ()
+  (fn-ptx-mk :hashing 0 '(2 1 3 1 0 1 1 33 1) nil
+   (fn-ptx-kd-mk 0 (make-list 32 :initial-element 0) 8192 1 0)
+   1048576 1048576 '(0 1 42 0) '(1 1 9 9 9) '(0 nil)
+   nil nil '(1 1048576 65536) nil))
+ (defun ptxt-hash-layout-observe ()
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj fn-rtc-st
+   (mv-let (ans fn-rtc-st)
+    (let* ((m (ptxt-hash-layout-witness))
+           (fn-rtc-st (fn-rtc-st-init '(3 4 0 1 0 1 64 3 128) fn-rtc-st)))
+     (mv-let (lhs reqs cost) (fn-ptx-hash m 0 1 1 fn-rtc-st)
+      (declare (ignore reqs cost))
+      (let ((rhs (ptxt-hash-0h-old-rhs m 0 1 1 fn-rtc-st)))
+       (mv (list (fn-ptx-okp m) (equal lhs rhs)
+          (fn-ptx-ph lhs) (fn-ptx-b3 lhs) (fn-ptx-ph rhs) (fn-ptx-b3 rhs)
+          (equal lhs (fn-ptx-chg rhs :b3 (append (fn-ptx-b3 rhs) (list (fn-ptx-buf-cut (fn-ptx-b3 m))))))) fn-rtc-st))))
+    ans)))
+ (make-event (value `(defconst *ptxt-hash-layout-observation* ',(ptxt-hash-layout-observe))))
+ (defthm ptxt-old-hash-unfolding-refuted-new-equality-holds
+  (equal *ptxt-hash-layout-observation*
+   '(t nil :payload-writing (1 1 41 9 9) :payload-writing (1 1 41 9) t))
+  :rule-classes nil)))

@@ -641,56 +641,41 @@
   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here)))))
 
 
-; A24 READY: the projection equals the actual machine REQS at the
-; generated product step's slot-1 delivery sites.
-; Extract the argument actually bound as REQS at FN-RTC-REQUESTS inside
-; FN-PTH-DELIVER, then select it at each FN-PTH-STEP* delivery site.
+; A24: a build-time refusal checks the actual request binding. The theorem
+; formula below is the fixed hand-written seat/A24 text, not generated.
 (make-event
- (let* ((body (car (last (get-event 'fn-pth-step* (w state)))))
-        (dispatch (cadddr (caddr body)))
-        (bindings (cadr dispatch))
-        (clauses (cdr (caddr dispatch)))
-        (deliver-body (car (last (get-event 'fn-pth-deliver (w state)))))
-        (machine-call (caddr deliver-body))
-        (request-binding (cadr deliver-body))
-        (accept-body (car (last (get-event 'fn-pth-accept-branch (w state)))))
-        (accept-if (caddr accept-body))
-        (accept-let (caddr accept-if))
-        (accept-call (caddr (caddr accept-let))))
-  (if (not (and (equal (car deliver-body) 'mv-let)
-                (equal (cadr request-binding) 'reqs)
-                (equal (car (caddr (cadddr deliver-body))) 'fn-rtc-requests)
-                (equal (cadr (caddr (cadddr deliver-body))) 'reqs)))
-      (er soft 'fn-pth-owner-requests-are-the-step-request-list "Delivery request site changed.")
-   (value
-    `(defthm fn-pth-owner-requests-are-the-step-request-list
-      (implies (mv-nth 0 (fn-pth-owner-delivery s e q))
-       (equal (fn-pth-owner-requests s e q)
-        (let* ,(remove-assoc-eq 'base bindings)
-         (cond
-          ,@(loop$ for clause in clauses collect
-           (let* ((arm (cadr clause)) (wrapped (eq (car arm) 'let*))
-                  (delivery (if wrapped (caddr arm) arm)) (call (caddr delivery)))
-            (list (car clause)
-             (if (eq (car call) 'fn-pth-deliver)
-              (let ((answer `(if (equal ,(caddr call) 1)
-                              (mv-nth 1
-                               ,(sublis (pairlis$ '(s id inc ev q) (cdr call)) machine-call)) nil)))
-               (if wrapped `(let* ,(cadr arm) ,answer) answer))
-              (if (eq (car call) 'fn-pth-accept-branch)
-               `(let ,(cadr accept-body)
-                 (if ,(cadr accept-if)
-                  (let* ,(cadr accept-let)
-                   (if (equal ,(caddr accept-call) 1)
-                    (mv-nth 1
-                     ,(sublis (pairlis$ '(s id inc ev q) (cdr accept-call)) machine-call)) nil)) nil))
-               nil))))))))
-      )
-      :rule-classes nil
-      :hints (("Goal" :do-not-induct t
-        :in-theory (union-theories (theory 'minimal-theory)
-                    '(fn-pth-owner-delivery fn-pth-owner-requests
-                      fn-rtc-view-state fn-pthm-init fn-hlm-init
-                      (:executable-counterpart fn-pthm-init)
-                      mv-nth car-cons cdr-cons)))))))))
+ (let* ((body (car (last (get-event 'fn-pth-deliver (w state)))))
+        (binding (cadr body)))
+  (if (and (equal (car body) 'mv-let) (equal (cadr binding) 'reqs)
+           (equal (car (caddr (cadddr body))) 'fn-rtc-requests)
+           (equal (cadr (caddr (cadddr body))) 'reqs))
+      (value '(value-triple :delivery-request-site-unchanged))
+    (er soft 'fn-pth-owner-requests-are-the-step-request-list "Delivery request site changed."))))
 
+(local (defthm mh2-accept-owner-requests-nil
+ (implies (and (equal (fn-rtc-get 0 ev) :accept) (equal (fn-rtc-ev-id ev) 1))
+          (equal (mv-nth 1 (fn-pth-m-step m ev st q)) nil))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-pth-m-step fn-pthm-step fn-ptx-step fn-ptx-step1
+      mv-nth car-cons cdr-cons (:executable-counterpart equal)
+      (:executable-counterpart member-equal) (:executable-counterpart nfix)
+      (:executable-counterpart zp)))))))
+
+(defthm fn-pth-owner-requests-are-the-step-request-list
+(implies (mv-nth 0 (fn-pth-owner-delivery s e q))
+ (let* ((ev (mv-nth 1 (fn-pth-owner-delivery s e q))) (inc (fn-rtc-ev-inc ev)) (s1 (fn-rtc-end-use s e))
+        (d (if (eq (fn-rtc-e-kind e) :accept)
+               (fn-rtc-with-mstate 1 (fn-rtc-m-init) (fn-rtc-with-slot 1 (list inc :live (fn-rtc-get 1 (fn-rtc-get 1 ev))) s1))
+             s1)))
+  (equal (fn-pth-owner-requests s e q) (mv-nth 1 (fn-pth-m-step (fn-rtc-mstate 1 d) ev (fn-rtc-view-state 1 inc d) (nfix q))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-pth-owner-delivery fn-pth-owner-requests fn-rtc-view-state
+      fn-rtc-e-kind fn-rtc-hand-delivers-p fn-rtc-get nth
+      fn-rtc-ev-inc fn-rtc-ev-id fn-rtc-ev mh2-accept-owner-requests-nil
+      fn-pthm-init fn-hlm-init car-cons cdr-cons mv-nth
+      (:executable-counterpart fn-rtc-get) (:executable-counterpart nfix)
+      (:executable-counterpart zp) (:executable-counterpart equal)
+      (:executable-counterpart not))))))

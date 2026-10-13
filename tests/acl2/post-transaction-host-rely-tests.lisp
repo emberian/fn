@@ -20,7 +20,7 @@
   (fn-ptx-acc-max-state pthrt-acc-max-state) (fn-ptx-acc-out-max pthrt-acc-out-max))
 
 (defconst *pthrt-article* '(70 114 111 109 58 97 13 10 68 97 116 101 58 84 104 117 44 32 49 32 74 97 110 32 49 57 55 48 32 48 48 58 48 48 58 48 48 32 43 48 48 48 48 13 10 78 101 119 115 103 114 111 117 112 115 58 120 13 10 83 117 98 106 101 99 116 58 120 13 10 77 101 115 115 97 103 101 45 73 68 58 60 120 64 121 62 13 10 13 10 120))
-(defconst *pthrt-post* (append '(1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0) *pthrt-article*))
+(defconst *pthrt-post* (append (fn-pctx-encode '(1 nil nil 0 nil nil 0)) *pthrt-article*))
 (defconst *pthrt-red-cfg* '(3 9 8 1 4 1 256 4 8))
 (defthm pthrt-red-config-is-valid (fn-rtc-configp *pthrt-red-cfg*))
 (defthm pthrt-red-config-is-outside-host-domain
@@ -100,8 +100,22 @@
   (mv-let (fn-rtc-st obs) (pthrt-execute cfg fn-rtc-st) obs)))
 (make-event (value `(defconst *pthrt-host-observations* ',(pthrt-local *fn-pth-rely-cfg*))))
 (make-event (value `(defconst *pthrt-red-observations* ',(pthrt-local *pthrt-red-cfg*))))
-(assert-event (equal (nth 5 (nth 6 *pthrt-red-observations*))
-                    '((:write 1 1 0 (0 0 0 0 0 0 0 0 0)))))
+; Amendment 5: the eight-byte homes fail closed before any workspace
+; write. The concrete reply contains refusal code 1 and is handed back.
+(assert-event
+ (let* ((o (nth 6 *pthrt-red-observations*))
+        (before (nth 1 o)) (after (nth 2 o))
+        (reply (fn-rtc-buffer 8 after)))
+  (and (equal (nth 5 o) nil)
+       (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates before))) :reading)
+       (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates after))) :idle)
+       (equal (car (fn-rtc-b-bytes reply)) 1)
+       (equal (fn-rtc-b-owner reply) '(:handed 1 1 2 1))
+       (equal (fn-rtc-find-use '(:hand 1 1 6) (fn-rtc-uses after))
+              '(:hand 1 1 6 (8 3 0 124))))))
+(defthm mhalf6-old-red-single-refusal-expectation-is-refuted
+ (not (equal (nth 5 (nth 6 *pthrt-red-observations*))
+             '((:write 1 1 0 (0 0 0 0 0 0 0 0 0))))) :rule-classes nil)
 (defun pthrt-ops (obs)
  (if (consp obs) (cons (car (car obs)) (pthrt-ops (cdr obs))) nil))
 (defconst *pthrt-prefix-ops* (pthrt-ops (take 5 *pthrt-host-observations*)))
@@ -447,8 +461,9 @@
 (make-event (value `(defconst *pthrt-r9-old-observations* ',(pthrt-r9-old-local *fn-pth-rely-cfg*))))
 (defconst *pthrt-r9-same-ops* (pthrt-ops *pthrt-r9-old-observations*))
 (make-event (value `(defconst *pthrt-r9-new-observations* ',(pthrt-r8-fixed-local *pthrt-r9-same-ops*))))
+; Context v2: 91-octet article + 32-octet trailer = 123.
 (defconst *pthrt-r9-bad-header*
- (append '(70 78 76 71 1 1 0 0 0 152) (make-list 32 :initial-element 256)))
+ (append '(70 78 76 71 1 1 0 0 0 123) (make-list 32 :initial-element 256)))
 (defthm pthrt-r9-old-chain-makes-a-request-that-is-not-data-ok
  (let* ((o (nth 6 *pthrt-r9-old-observations*))
         (r (list :write 0 1 0 *pthrt-r9-bad-header*)))
@@ -457,6 +472,18 @@
        (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates (nth 2 o)))) :hashing)
        (equal (nth 5 o) (list r))
        (not (fn-pth-req-data-okp r)))))
+; Paired tooth: freeze the old-layout value 152 while the real fixture is 123.
+(defconst *pthrt-r9-old-layout-bad-header*
+ (append '(70 78 76 71 1 1 0 0 0 152) (make-list 32 :initial-element 256)))
+(defthm mhalf7-old-r9-bad-header-expectation-is-refuted
+ (not (let* ((o (nth 6 *pthrt-r9-old-observations*))
+        (r (list :write 0 1 0 *pthrt-r9-old-layout-bad-header*)))
+  (and (nth 3 o)
+       (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates (nth 1 o)))) :reading)
+       (equal (fn-ptx-ph (nth 1 (fn-rtc-mstates (nth 2 o)))) :hashing)
+       (equal (nth 5 o) (list r))
+       (not (fn-pth-req-data-okp r))))) :rule-classes nil)
+
 (defthm pthrt-r9-non-octet-chain-new-open-stays-closed-on-the-same-run
  (and (equal (pthrt-ops *pthrt-r9-new-observations*) *pthrt-r9-same-ops*)
       (pthrt-r8-closed-observations-p *pthrt-r9-new-observations*)))
@@ -556,3 +583,78 @@
       (not (nth 3 (nth 5 *pthrt-r10-new-observations*)))
       (pthrt-r10-no-owner-refused-p *pthrt-r10-new-observations*)))
 (value-triple (cw "R10 R9 TOOTH: exact sender conjunct removed in logical and exec copies, count checked; OLD owner reply refused; NEW listener submit refused, no owner delivery/refusal.~%"))
+
+; M-HALF projection tooth: end-use transfers the hand before the machine call.
+(defconst *pthrt-mhalf-projection-s* '((3 4 0 1 0 1 66560 3 65663)
+ ((0 :LIVE NIL) (1 :LIVE 0) (1 :LIVE 0))
+ ((0 (:FREE) NIL)
+  (0 (:FREE) NIL)
+  (0 (:FREE) NIL)
+  (2 (:HANDED 2 1 1 1) (9)))
+ ((:HAND 2 1 4 (3 2 0 1))
+  (:OPENED 1 1 0 NIL))
+ (NIL (:CLOSED 0 NIL
+               NIL NIL 0 0 NIL NIL NIL NIL NIL NIL NIL)
+      NIL)
+ 5))
+(defconst *pthrt-mhalf-projection-e* '(:HAND 2 1 4 (:DONE 0)))
+(defconst *pthrt-mhalf-actual-rs* '((:WRITE 3 3 0 (1)) (:SUBMIT :HAND (3 3 0 1) (2 1))))
+(defconst *pthrt-mhalf-old-rs* '((:WRITE 3 0 0 (1)) (:SUBMIT :HAND (3 0 0 1) (2 1))))
+(defthm pthrt-mhalf-actual-owner-request-value
+ (equal (fn-pth-owner-requests *pthrt-mhalf-projection-s* *pthrt-mhalf-projection-e* 100000) *pthrt-mhalf-actual-rs*)
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories
+    '(fn-pth-owner-requests fn-pth-m-step fn-pthm-step fn-ptx-step fn-ptx-step1
+      fn-ptx-wfp fn-ptx-fields-fit fn-ptx-mk fn-ptx-answer fn-rtc-view-state
+      pthrt-nil-acc-fits car-cons cdr-cons mv-nth)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-pth-owner-requests) (:executable-counterpart fn-pth-m-step)
+       (:executable-counterpart fn-pthm-step) (:executable-counterpart fn-ptx-step)
+       (:executable-counterpart fn-ptx-step1) (:executable-counterpart fn-ptx-wfp)
+       (:executable-counterpart fn-ptx-fields-fit))))))))
+(defthm pthrt-mhalf-old-preview-request-value
+ (equal (mv-nth 1 (fn-pth-m-step (fn-rtc-mstate 1 *pthrt-mhalf-projection-s*)
+              (mv-nth 1 (fn-pth-owner-delivery *pthrt-mhalf-projection-s* *pthrt-mhalf-projection-e* 100000))
+              (fn-rtc-view-state 1 (fn-rtc-s-inc (fn-rtc-slot 1 *pthrt-mhalf-projection-s*)) *pthrt-mhalf-projection-s*)
+              (nfix 100000))) *pthrt-mhalf-old-rs*)
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories
+    '(fn-pth-owner-delivery fn-pth-m-step fn-pthm-step fn-ptx-step fn-ptx-step1
+      fn-ptx-wfp fn-ptx-fields-fit fn-ptx-mk fn-ptx-answer fn-rtc-view-state
+      pthrt-nil-acc-fits car-cons cdr-cons mv-nth)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-pth-m-step) (:executable-counterpart fn-pthm-step)
+       (:executable-counterpart fn-ptx-step) (:executable-counterpart fn-ptx-step1)
+       (:executable-counterpart fn-ptx-wfp) (:executable-counterpart fn-ptx-fields-fit))))))))
+(defthm pthrt-mhalf-old-preview-differs-and-corrected-projection-holds
+ (let* ((s *pthrt-mhalf-projection-s*) (e *pthrt-mhalf-projection-e*) (q 100000)
+        (ev (mv-nth 1 (fn-pth-owner-delivery s e q))) (inc (fn-rtc-ev-inc ev))
+        (s1 (fn-rtc-end-use s e))
+        (d (if (eq (fn-rtc-e-kind e) :accept)
+               (fn-rtc-with-mstate 1 (fn-rtc-m-init)
+                 (fn-rtc-with-slot 1 (list inc :live (fn-rtc-get 1 (fn-rtc-get 1 ev))) s1))
+             s1)))
+  (and (mv-nth 0 (fn-pth-owner-delivery s e q))
+       (not (equal (fn-pth-owner-requests s e q)
+         (mv-nth 1 (fn-pth-m-step (fn-rtc-mstate 1 s) ev
+           (fn-rtc-view-state 1 (fn-rtc-s-inc (fn-rtc-slot 1 s)) s) (nfix q)))))
+       (equal (fn-pth-owner-requests s e q)
+         (mv-nth 1 (fn-pth-m-step (fn-rtc-mstate 1 d) ev
+           (fn-rtc-view-state 1 inc d) (nfix q))))))
+ :rule-classes nil
+ :hints (("Goal" :use (pthrt-mhalf-actual-owner-request-value
+                        pthrt-mhalf-old-preview-request-value
+    (:instance fn-pth-owner-requests-are-the-step-request-list
+      (s *pthrt-mhalf-projection-s*) (e *pthrt-mhalf-projection-e*) (q 100000)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories '(car-cons cdr-cons)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-pth-owner-requests)
+       (:executable-counterpart fn-pth-m-step)
+       (:executable-counterpart fn-pthm-step)
+       (:executable-counterpart fn-ptx-step)
+       (:executable-counterpart fn-ptx-step1)
+       (:executable-counterpart fn-ptx-wfp)
+       (:executable-counterpart fn-ptx-fields-fit))))))))
