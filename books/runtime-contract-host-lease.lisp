@@ -19,8 +19,9 @@
 ; contract's own request functions, so every contract keystone about requests covers it.
 (in-package "ACL2")
 (include-book "runtime-contract-host-send")
-(include-book "runtime-contract-host-pool")
+(include-book "runtime-contract-u64")
 (include-book "runtime-contract-layer")
+(include-book "runtime-contract-host-pool")
 (include-book "def-span-scan")
 
 ; -----------------------------------------------------------------------------
@@ -104,7 +105,8 @@
   (declare (xargs :stobjs fn-rtc-st :guard-hints (("Goal" :in-theory (disable fn-hll-x-step* fn-rtc-x-request fn-hld-settle)))))
   (let ((uses (fn-rtc-st-uses fn-rtc-st))
         (j (fn-rtc-st-free-slot fn-rtc-st)))
-    (if (and (natp r) (< r (expt 2 64)) (natp j) (fn-rtc-kind-out-p :accept 0 0 uses))
+    (if (and (natp r) (< r (expt 2 64)) (natp j) (fn-rtc-inc-roomp (fn-rtc-st-slot j fn-rtc-st))
+             (fn-rtc-kind-out-p :accept 0 0 uses))
         (let ((jinc (+ 1 (fn-rtc-s-inc (fn-rtc-st-slot j fn-rtc-st))))
               (op (fn-rtc-kind-op :accept 0 0 uses)))
           (mv-let (fn-rtc-st acts refused cost)
@@ -112,7 +114,10 @@
             (declare (ignore refused cost))
             (mv-let (fn-rtc-st left) (fn-hld-settle (true-list-fix acts) (fn-hld-fuel fn-rtc-st) fn-rtc-st)
               (mv fn-rtc-st j jinc left))))
-      (mv fn-rtc-st nil nil nil))))
+      (mv fn-rtc-st nil
+          (if (fn-rtc-x-slots-exhaustedp fn-rtc-st)
+              :rtc-slots-exhausted nil)
+          nil))))
 
 ; The pool buffer that is (ID INC)'s workspace, at or above H; nil when the request still waits.
 (defun fn-hld-workspace (h id inc fn-rtc-st)
@@ -562,3 +567,19 @@
                                              (theory 'minimal-theory))
            :use ((:instance fn-hld-quantum-state-cases)
                  (:instance fn-hld-hll-invp-st-p (s st))))))
+
+; Permanent retirement is a terminal begin result; temporary occupancy remains NIL.
+(defthm fn-hld-begin-exhausted-iff
+  (implies (and (fn-rtc-st-p fn-rtc-st) (fn-rtc-invp fn-rtc-st))
+           (iff (equal (mv-nth 2 (fn-hld-begin r fn-rtc-st)) :rtc-slots-exhausted)
+                (fn-rtc-slots-exhaustedp 0
+                  (fn-rtc-nstatic (fn-rtc-config fn-rtc-st))
+                  (fn-rtc-slots fn-rtc-st))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hld-begin fn-rtc-st-free-slot fn-rtc-st-slot
+                 fn-rtc-x-slots-exhaustedp-is)
+                (fn-hll-x-step* fn-hld-settle fn-hld-fuel fn-rtc-kind-out-p
+                 fn-rtc-kind-op fn-rtc-inc-roomp fn-rtc-free-slot fn-rtc-slot
+                 fn-rtc-s-inc fn-rtc-st-uses fn-rtc-slots-exhaustedp
+                 fn-rtc-nstatic fn-rtc-invp mv-nth))
+           :use ((:instance fn-rtc-exhausted-means-no-free-slot (s fn-rtc-st))))))

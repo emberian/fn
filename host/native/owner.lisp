@@ -969,6 +969,8 @@ is empty, and then no send is outstanding)."
       (destructuring-bind (st2 id inc left) (fnn-call 'fn-hld-begin cid st)
         (declare (ignore st2))
         (when left (fnn-fault "the host lease left completions unsettled: ~s" left))
+        (when (eq inc :rtc-slots-exhausted)
+          (return-from fnn-owner-lease-article-step (list :refused :rtc-slots-exhausted)))
         (unless id (return-from fnn-owner-lease-article-step (list :wait)))
         (setf (fnn-lease-id lease) id (fnn-lease-inc lease) inc)))
     (let* ((id (fnn-lease-id lease)) (inc (fnn-lease-inc lease))
@@ -1010,9 +1012,10 @@ yield while no pool buffer is free."
                        (catch 'fnn-extent-cold
                          (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
                            (fnn-owner-lease-article-step cid lease plan)))))))
-                 (if (member (car attempt) '(:warm :wait)) attempt
+                 (if (member (car attempt) '(:warm :wait :refused)) attempt
                    (list :cold (fnn-owner-cold-issue-locked service cid attempt))))) class)))
       (case (car article)
+        (:refused (fnn-refuse "rtc-slots-exhausted: all dynamic runtime slots are retired"))
         (:cold (return-from fnn-owner-render-next-quantum
                  (values (fnn-make-octets 0) plan nil nil (second article) 0)))
         (:wait (return-from fnn-owner-render-next-quantum

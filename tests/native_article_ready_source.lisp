@@ -34,6 +34,9 @@
 (defun fnn-owner-render-next (plan &optional compressedp borrowp)
   (declare (ignorable plan compressedp borrowp))
   (harness-stub-reached 'fnn-owner-render-next "host/native/owner.lisp"))
+(defun fnn-refuse (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-refuse "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (defun fn-ag-car (x) (if (consp x) (car x) nil))
 (defun fn-ag-cdr (x) (if (consp x) (cdr x) nil))

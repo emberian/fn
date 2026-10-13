@@ -512,3 +512,260 @@
            (not (equal (fn-rtc-c-octets (+ 1 (fn-rtc-buf-base (nth 2 r) (fn-rtc-config (nth 0 r)))) 3
                                         (nth *fn-rtc-c-bytesi* c))
                        *hlt-win*))))
+
+; RTC-U64: high-incarnation transient controls, with all C6 hypotheses true.
+
+; Entire antecedent of protected C6, not a failed search.
+(defthm fn-a24-c6-sent-completion-control
+  (let ((id 1) (inc 18446744073709551616) (op 0) (outcome '(:done 0)))
+    (and (natp id) (natp inc) (natp op) (fn-rtc-outcomep outcome)
+         (equal (fn-hld-sent-event id inc op outcome)
+                '(:send 1 18446744073709551616 0 (:done 0)))
+         (fn-rtc-get 0 (fn-hld-sent-event id inc op outcome))
+         (fn-rtc-completionp (fn-hld-sent-event id inc op outcome))
+         (not (fn-rtc-slotp (list inc :live 7)))
+         (not (fn-rtc-ownerp (list :workspace id inc)))
+         (not (fn-rtc-usep (list :send id inc op '(0 0 0 0))))
+         (fn-rtc-usep (list :send id 18446744073709551615 op '(0 0 0 0)))))
+  :rule-classes nil)
+
+; Entire antecedent of the separately protected HL run helper.
+(defthm fn-a24-hlr-completionp-send-control
+  (let ((id 1) (inc 18446744073709551616) (op 0) (n 0))
+    (and (natp id) (natp inc) (natp op) (natp n)
+         (fn-rtc-completionp (list :send id inc op (list :done n)))
+         (not (fn-rtc-slotp (list inc :free nil)))))
+  :rule-classes nil)
+
+; Fixture calls are logic-mode, guard-free only inside the evaluation event.
+(defun fn-a24-host-u64-scene (mode fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st :verify-guards nil))
+  (mv-let (fn-rtc-st okp left)
+    (fn-hld-init *fn-bs-profile-development*
+      (if (eq mode :drain) '(1 nil 0 0 nil 0 0 0 nil 0 2)
+        '(3 nil 0 0 nil 0 0 0 nil 0 2)) 4 fn-rtc-st)
+    (declare (ignore left))
+    (cond
+     ((eq mode :drain)
+      (let* ((op (fn-rtc-st-next-op fn-rtc-st))
+             (u (list :timer 2 0 op nil))
+             (e (list :timer 2 0 op '(:done 0)))
+             (fn-rtc-st (fn-rtc-st-set-slot 2 '(0 :draining 7) fn-rtc-st))
+             (fn-rtc-st (fn-rtc-st-set-uses nil fn-rtc-st))
+             (fn-rtc-st (fn-rtc-st-issue u fn-rtc-st))
+             (before (fn-rtc-x-state fn-rtc-st)))
+        (mv-let (fn-rtc-st acts refused cost) (fn-hll-x-step* e 1 fn-rtc-st)
+          (declare (ignore acts refused cost))
+          (mv (list okp before (fn-rtc-x-state fn-rtc-st) u e) fn-rtc-st))))
+     ((member-eq mode '(:skip :last-valid))
+      (let* ((slot (if (eq mode :last-valid) '(18446744073709551614 :free nil)
+                    '(18446744073709551615 :free nil)))
+             (fn-rtc-st (fn-rtc-st-set-slot 2 slot fn-rtc-st))
+             (before (fn-rtc-x-state fn-rtc-st)))
+        (mv-let (fn-rtc-st id inc left) (fn-hld-begin 7 fn-rtc-st)
+          (mv (list okp before (fn-rtc-x-state fn-rtc-st) id inc left) fn-rtc-st))))
+     (t
+      (let* ((slot (if (eq mode :exhausted) '(18446744073709551615 :free nil) '(0 :live 7)))
+             (fn-rtc-st (fn-rtc-st-set-slot 2 slot fn-rtc-st))
+             (fn-rtc-st (fn-rtc-st-set-slot 3 slot fn-rtc-st))
+             (fn-rtc-st (fn-rtc-st-set-slot 4 slot fn-rtc-st))
+             (fn-rtc-st (fn-rtc-st-set-uses nil fn-rtc-st))
+             (before (fn-rtc-x-state fn-rtc-st)))
+        (mv-let (fn-rtc-st id inc left) (fn-hld-begin 7 fn-rtc-st)
+          (mv (list okp before (fn-rtc-x-state fn-rtc-st) id inc left) fn-rtc-st)))))))
+(defun fn-a24-host-u64-fixture (mode)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-rtc-st
+    (mv-let (result fn-rtc-st) (fn-a24-host-u64-scene mode fn-rtc-st) result)))
+(with-guard-checking-event nil
+ (make-event
+  (let ((drain (fn-a24-host-u64-fixture :drain))
+        (skip (fn-a24-host-u64-fixture :skip))
+        (last-valid (fn-a24-host-u64-fixture :last-valid))
+        (exh (fn-a24-host-u64-fixture :exhausted))
+        (wait (fn-a24-host-u64-fixture :wait)))
+    `(progn
+      (defconst *fn-a24-host-u64-drain* ',drain)
+      (defconst *fn-a24-host-u64-skip* ',skip)
+      (defconst *fn-a24-host-u64-last-valid* ',last-valid)
+      (defconst *fn-a24-host-u64-exhausted* ',exh)
+      (defconst *fn-a24-host-u64-wait* ',wait)))))
+(with-guard-checking-event nil
+ (assert-event
+  (let* ((r *fn-a24-host-u64-drain*) (s (nth 1 r)) (s2 (nth 2 r))
+         (u (nth 3 r)) (e (nth 4 r)))
+    (and (nth 0 r) (fn-hll-invp s) (fn-hll-invp s2)
+         (not (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))
+         (equal (fn-rtc-config s)
+                (fn-hl-rtc-config *fn-bs-profile-development* '(1 nil 0 0 nil 0 0 0 nil 0 2) 4 1 0 0))
+         (equal (fn-rtc-s-status (fn-rtc-slot 2 s)) :draining)
+         (member-equal u (fn-rtc-uses s))
+         (equal (fn-rtc-get 1 u) 2)
+         (fn-rtc-ends-use-p e u)
+         (not (fn-rtc-uses-of-slot-p 2 0 (fn-rtc-remove-use (fn-rtc-key u) (fn-rtc-uses s))))
+         (equal (fn-rtc-s-status (fn-rtc-slot 2 s2)) :free)
+         (fn-rtc-inc-roomp (fn-rtc-slot 2 s2))
+         (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2))
+         (iff (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2)) (fn-rtc-free-slot 0 (fn-rtc-slots s2)))))))
+(with-guard-checking-event nil
+ (assert-event
+  (let* ((r *fn-a24-host-u64-skip*) (s (nth 1 r)) (s2 (nth 2 r)))
+    (and (nth 0 r) (fn-hll-invp s) (fn-hll-invp s2)
+         (equal (fn-rtc-free-slot 0 (fn-rtc-slots s)) 3)
+         (equal (nth 3 r) 3) (equal (nth 4 r) 1)
+         (equal (fn-rtc-slot 2 s2) '(18446744073709551615 :free nil))
+         (equal (fn-rtc-s-status (fn-rtc-slot 3 s2)) :live)))))
+(with-guard-checking-event nil
+ (assert-event
+  (let* ((r *fn-a24-host-u64-exhausted*) (s (nth 1 r)) (s2 (nth 2 r)))
+    (and (nth 0 r) (fn-hll-invp s) (fn-hll-invp s2)
+         (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config s)) (fn-rtc-slots s))
+         (not (fn-rtc-free-slot 0 (fn-rtc-slots s)))
+         (equal s2 s) (equal (nth 3 r) nil)
+         (equal (nth 4 r) :rtc-slots-exhausted) (equal (nth 5 r) nil)))))
+(with-guard-checking-event nil
+ (assert-event
+  (let* ((r *fn-a24-host-u64-last-valid*) (s (nth 1 r)) (s2 (nth 2 r)))
+    (and (nth 0 r) (fn-hll-invp s) (fn-hll-invp s2)
+         (fn-rtc-inc-roomp (fn-rtc-slot 2 s))
+         (equal (nth 3 r) 2)
+         (equal (nth 4 r) 18446744073709551615)
+         (equal (fn-rtc-s-inc (fn-rtc-slot 2 s2)) 18446744073709551615)
+         (equal (fn-rtc-s-status (fn-rtc-slot 2 s2)) :live)
+         (not (fn-rtc-inc-roomp (fn-rtc-slot 2 s2)))))))
+(with-guard-checking-event nil
+ (assert-event
+  (let* ((r *fn-a24-host-u64-wait*) (s (nth 1 r)))
+    (and (nth 0 r) (fn-hll-invp s)
+         (not (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config s)) (fn-rtc-slots s)))
+         (equal (nth 2 r) s) (equal (nth 3 r) nil)
+         (equal (nth 4 r) nil) (equal (nth 5 r) nil)))))
+
+(local (defthm fn-a24-host-generic-max-state-positive
+  (<= 1 (fn-rtc-m-max-state))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-rtc-m-init-is-bounded
+           :in-theory (disable fn-rtc-m-init-is-bounded)))))
+; The host-built drain supplies the full generic T13 antecedent as well as (c).
+(defthm fn-a24-host-built-t13-room-witness
+  (let* ((r *fn-a24-host-u64-drain*) (s (nth 1 r)) (s2 (nth 2 r))
+         (u (nth 3 r)) (e (nth 4 r)) (j 2))
+    (and (fn-rtc-invp s)
+         (equal (fn-rtc-s-status (fn-rtc-slot j s)) :draining)
+         (member-equal u (fn-rtc-uses s))
+         (equal (fn-rtc-get 1 u) j)
+         (fn-rtc-ends-use-p e u)
+         (not (fn-rtc-uses-of-slot-p j (fn-rtc-s-inc (fn-rtc-slot j s))
+                (fn-rtc-remove-use (fn-rtc-key u) (fn-rtc-uses s))))
+         (equal s2 (mv-nth 0 (fn-rtc-step s e 1)))
+         (equal (fn-rtc-s-status (fn-rtc-slot j s2)) :free)
+         (iff (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2))
+              (fn-rtc-free-slot 0 (fn-rtc-slots s2)))
+         (fn-rtc-inc-roomp (fn-rtc-slot j s2))
+         (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-invp fn-rtc-core-invp fn-rtc-mstates-okp fn-rtc-step
+                 fn-rtc-step* fn-rtc-acts-on-p fn-rtc-end-use fn-rtc-end-lease
+                 fn-rtc-retire-drained fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant)
+                ((:executable-counterpart fn-rtc-invp)
+                 (:executable-counterpart fn-rtc-core-invp)
+                 (:executable-counterpart fn-rtc-mstates-okp))))))
+(defthm fn-a24-host-built-terminal-iff-witness
+  (let* ((r *fn-a24-host-u64-exhausted*) (s (nth 1 r)))
+    (and (fn-rtc-st-p s) (fn-rtc-invp s)
+         (equal (nth 3 r) nil) (equal (nth 4 r) :rtc-slots-exhausted)
+         (equal (nth 5 r) nil)
+         (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config s)) (fn-rtc-slots s))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-invp fn-rtc-core-invp fn-rtc-mstates-okp
+                 fn-rtc-st-p fn-rtc-st$ap fn-rtc-shapep)
+                ((:executable-counterpart fn-rtc-invp)
+                 (:executable-counterpart fn-rtc-core-invp)
+                 (:executable-counterpart fn-rtc-mstates-okp))))))
+
+(defthm fn-a24-host-built-slot-id-u64-witness
+  (let ((s (nth 1 *fn-a24-host-u64-drain*)) (j 2))
+    (and (fn-rtc-invp s) (fn-rtc-st-cfg-okp (fn-rtc-config s))
+         (natp j) (< j (fn-rtc-nslots (fn-rtc-config s)))
+         (fn-rtc-u64p j) (fn-rtc-u64p (fn-rtc-s-inc (fn-rtc-slot j s)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-invp fn-rtc-core-invp fn-rtc-mstates-okp)
+                ((:executable-counterpart fn-rtc-invp)
+                 (:executable-counterpart fn-rtc-core-invp)
+                 (:executable-counterpart fn-rtc-mstates-okp))))))
+(defthm fn-a24-slot-id-range-hypothesis-tooth
+  (let ((s (nth 1 *fn-a24-host-u64-drain*)) (j 18446744073709551616))
+    (and (fn-rtc-invp s) (fn-rtc-st-cfg-okp (fn-rtc-config s)) (natp j)
+         (not (< j (fn-rtc-nslots (fn-rtc-config s))))
+         (not (fn-rtc-u64p j))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-invp fn-rtc-core-invp fn-rtc-mstates-okp)
+                ((:executable-counterpart fn-rtc-invp)
+                 (:executable-counterpart fn-rtc-core-invp)
+                 (:executable-counterpart fn-rtc-mstates-okp))))))
+(defthm fn-a24-slot-id-natural-hypothesis-tooth
+  (let ((s (nth 1 *fn-a24-host-u64-drain*)) (j -1))
+    (and (fn-rtc-invp s) (fn-rtc-st-cfg-okp (fn-rtc-config s))
+         (< j (fn-rtc-nslots (fn-rtc-config s))) (not (natp j))
+         (not (fn-rtc-u64p j))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-invp fn-rtc-core-invp fn-rtc-mstates-okp)
+                ((:executable-counterpart fn-rtc-invp)
+                 (:executable-counterpart fn-rtc-core-invp)
+                 (:executable-counterpart fn-rtc-mstates-okp))))))
+
+(defthm fn-a24-exhaustion-step-witness
+  (let* ((s (nth 1 *fn-a24-host-u64-exhausted*))
+         (e '(:accept 0 0 99 (:done 7)))
+         (s2 (mv-nth 0 (fn-rtc-step* s e 1))))
+    (and (fn-rtc-invp s)
+         (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config s)) (fn-rtc-slots s))
+         (fn-rtc-inc-roomp (fn-rtc-slot 0 s))
+         (fn-rtc-inc-roomp (fn-rtc-slot 1 s))
+         (equal s2 s)
+         (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config s)) (fn-rtc-slots s2))
+         (not (fn-rtc-free-slot 0 (fn-rtc-slots s2)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-invp fn-rtc-core-invp fn-rtc-mstates-okp
+                 fn-rtc-step*-state-is-step-state fn-rtc-step-state fn-rtc-acts-on-p
+                 fn-rtc-end-use fn-rtc-retire-drained fn-rtc-end-lease
+                 fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant)
+                ((:executable-counterpart fn-rtc-invp)
+                 (:executable-counterpart fn-rtc-core-invp)
+                 (:executable-counterpart fn-rtc-mstates-okp)
+                 (:executable-counterpart fn-rtc-step*))))))
+(defthm fn-a24-exhaustion-invariant-hypothesis-tooth
+  (let* ((s (fn-rtc-with-slot 1 '(1 :free nil)
+              (nth 1 *fn-a24-host-u64-exhausted*))))
+    (and (not (fn-rtc-invp s))
+         (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config s)) (fn-rtc-slots s))
+         (fn-rtc-free-slot 0 (fn-rtc-slots s))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-invp fn-rtc-core-invp fn-rtc-mstates-okp)
+                ((:executable-counterpart fn-rtc-invp)
+                 (:executable-counterpart fn-rtc-core-invp)
+                 (:executable-counterpart fn-rtc-mstates-okp))))))
+
+; The concrete layer's logical machine copy is intentionally non-executable.
+; Prove the whole ground control by its definition instead of evaluating it.
+(defthm fn-a24-after-deliver-retired-record-tooth
+  (let ((s '((2 0 0 0 0 0 0)
+              ((0 :live nil) (18446744073709551615 :free nil))
+              nil nil (nil nil) 1)))
+    (mv-let (sd acts refused cost) (fn-hll-deliver s 1 18446744073709551615 nil 1)
+      (declare (ignore acts refused cost))
+      (mv-let (s2 acts2) (fn-rtc-rearm sd)
+        (declare (ignore acts2))
+        (and (posp 1) (equal (fn-rtc-s-status (fn-rtc-slot 1 s)) :free)
+             (not (fn-rtc-inc-roomp (fn-rtc-slot 1 s)))
+             (equal (fn-rtc-slot 1 sd) (fn-rtc-slot 1 s))
+             (not (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-hll-deliver fn-hll-m-step fn-hlm-step))))

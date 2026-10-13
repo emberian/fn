@@ -724,7 +724,7 @@
                           (and (natp (fn-rtc-get 3 o)) (natp (fn-rtc-get 4 o))))))
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
-               '(fn-rtc-ownerp natp member-equal car-cons cdr-cons
+               '(fn-rtc-ownerp fn-rtc-u64p natp member-equal car-cons cdr-cons
                  fn-rtc-get-of-cons (:executable-counterpart nfix) nfix zp
                  (:executable-counterpart equal) (:executable-counterpart member-equal)))))))
 
