@@ -36,6 +36,9 @@ import unittest
 import zlib
 from pathlib import Path
 
+from urllib.parse import urlsplit
+
+from tests.native_harness import observe_http_reply, observe_tool_greeting
 from tests.native_harness import EXIT, Node, ROOT, class_case, free_port, native_image, requires
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
@@ -199,6 +202,7 @@ class Curl:
         if head_file.exists():
             blocks = [b for b in head_file.read_bytes().split(b"\r\n\r\n") if b.strip()]
             if blocks:
+                observe_http_reply(urlsplit(self.base).port, blocks[0] + b"\r\n")
                 lines = blocks[-1].decode("iso-8859-1").split("\r\n")
                 match = re.match(r"HTTP/\S+ (\d{3})", lines[0])
                 status = int(match.group(1)) if match else 0
@@ -219,6 +223,11 @@ class Talk:
     def __init__(self, case, argv, timeout=60):
         self.case, self.argv, self.timeout = case, argv, timeout
         self.transcript = []
+        self.port = int(argv[argv.index("-connect") + 1].rsplit(":", 1)[1]
+                        if "-connect" in argv else argv[-1])
+        self.captured, self.greeted = bytearray(), False
+        self.debug_dump = False
+        self.raw_err = []
         self.process = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE)
         self.lines = queue.Queue()
@@ -236,9 +245,28 @@ class Talk:
 
     def _pump_err(self):
         for raw in iter(self.process.stderr.readline, b""):
+            self.raw_err.append(raw)
             self.err.append(raw.decode("utf-8", "replace"))
 
     def line(self, timeout=None):
+        deadline = time.monotonic() + (timeout or self.timeout)
+        while True:
+            raw = self.tool_line(max(.001, deadline - time.monotonic()))
+            if not self.greeted:
+                self.captured.extend(raw)
+                self.greeted = observe_tool_greeting(self.port, bytes(self.captured) + b"".join(self.raw_err))
+            if "-debug" in self.argv:
+                if raw.startswith((b"read from ", b"write to ")):
+                    self.debug_dump = True
+                    continue
+                if self.debug_dump and re.match(rb"^[0-9a-fA-F]{4} - ", raw):
+                    continue
+                self.debug_dump = False
+                if raw.startswith((b"CONNECTED(", b"read R BLOCK", b"write W BLOCK")):
+                    continue
+            return raw.decode("utf-8", "replace").rstrip("\r\n")
+
+    def tool_line(self, timeout):
         try:
             raw = self.lines.get(timeout=timeout or self.timeout)
         except queue.Empty:
@@ -247,7 +275,7 @@ class Talk:
         if raw is None:
             raise AssertionError("the connection closed; sent %r; stderr %r" % (
                 self.transcript[-3:], "".join(self.err)[-400:]))
-        return raw.decode("utf-8", "replace").rstrip("\r\n")
+        return raw
 
     def expect(self, *codes):
         reply = self.line()
@@ -409,7 +437,7 @@ class NodeCase(Recorded):
             argv += ["-CAfile", str(self.node.cert), "-verify_return_error",
                      "-verify_ip", "127.0.0.1"]
         if starttls:
-            argv += ["-starttls", "nntp"]
+            argv += ["-starttls", "nntp", "-debug"]
         return Talk(self, argv)
 
     def login(self, talk, user, password=PASSWORD):

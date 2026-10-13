@@ -26,6 +26,7 @@ FNFD fsync takes MS longer).
   * a duplicate POST, refused at its drain with frames to write, is still
     told its refusal (the job's :deliver item, after its resolution frame).
 """
+from tests.native_harness import observe_node_greeting
 import json
 import os
 import re
@@ -65,7 +66,9 @@ class OwnerOfflockNativeTests(unittest.TestCase):
         conn = socket.create_connection(("127.0.0.1", self.port), timeout=120)
         self.addCleanup(conn.close)
         stream = conn.makefile("rwb")
-        self.assertTrue(stream.readline().startswith(b"200"))
+        greeting = stream.readline()
+        observe_node_greeting(self.port, greeting)
+        self.assertTrue(greeting.startswith(b"200"))
         return conn, stream
 
     def send_article(self, stream, msgid, body):

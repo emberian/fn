@@ -20,6 +20,7 @@ The diagnostic image is built with
 tests are skipped rather than silently passing.  The production image has no
 raw `reader` entry: its listener is reached only through the native operator.
 """
+from tests.native_harness import observe_node_greeting
 import os
 import socket
 import tempfile
@@ -79,6 +80,7 @@ class NativeServedDifferentialTests(unittest.TestCase):
         try:
             port = int(process.announcement(b"LISTENING ").split()[1])
             received = []
+            greeting = b""
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
                 for chunk in chunks:
                     if chunk:
@@ -90,6 +92,11 @@ class NativeServedDifferentialTests(unittest.TestCase):
                     if not piece:
                         break
                     received.append(piece)
+                    if greeting is not None:
+                        greeting += piece
+                        if b"\r\n" in greeting:
+                            observe_node_greeting(port, greeting.split(b"\r\n", 1)[0] + b"\r\n")
+                            greeting = None
             self.assertEqual(process.wait(timeout=60), EXIT.OK)
             return b"".join(received)
         finally:

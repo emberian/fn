@@ -46,6 +46,7 @@ retried afterwards is accepted (239).
 
     tools/hbox_native.sh --images developer,production . tests.test_native_article_slots
 """
+from tests.native_harness import observe_node_greeting
 import socket
 import time
 import unittest
@@ -107,10 +108,11 @@ MEMORY_440 = ("440 posting not permitted now; the articles in flight fill the "
 
 
 class Poster:
-    def __init__(self, port):
-        self.conn = socket.create_connection(("127.0.0.1", port), timeout=300)
+    def __init__(self, port, timeout=300):
+        self.conn = socket.create_connection(("127.0.0.1", port), timeout=timeout)
         self.stream = self.conn.makefile("rwb")
         greeting = self.stream.readline()
+        observe_node_greeting(port, greeting)
         assert greeting.startswith(b"200"), greeting
 
     def ask(self):
@@ -223,7 +225,9 @@ class ArticleSlotsTests(JoinFixture):
                         + dot_stuff(transit(streamed_id, 600)) + b".\r\n")
             with socket.create_connection(("127.0.0.1", self.port), timeout=60) as peer:
                 stream = peer.makefile("rwb")
-                self.assertTrue(stream.readline().startswith(b"200"))
+                greeting = stream.readline()
+                observe_node_greeting(self.port, greeting)
+                self.assertTrue(greeting.startswith(b"200"))
                 stream.write(streamed)   # one write, one read at the owner
                 stream.flush()
                 answer = stream.readline().rstrip(b"\r\n")
@@ -238,7 +242,9 @@ class ArticleSlotsTests(JoinFixture):
             for _ in range(50):
                 with socket.create_connection(("127.0.0.1", self.port), timeout=60) as peer:
                     stream = peer.makefile("rwb")
-                    self.assertTrue(stream.readline().startswith(b"200"))
+                    greeting = stream.readline()
+                    observe_node_greeting(self.port, greeting)
+                    self.assertTrue(greeting.startswith(b"200"))
                     stream.write(streamed)
                     stream.flush()
                     answer = stream.readline().rstrip(b"\r\n")

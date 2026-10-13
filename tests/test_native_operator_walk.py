@@ -16,6 +16,7 @@ D34 (fresh deploys, no migrations) retired the walk's upgrade rehearsal and
 `rollback-check`: the backup step is docs/operator.md section 9's (stop, copy
 the node folder, start) and its restore on a copy.
 """
+from tests.native_harness import observe_node_greeting
 import hashlib
 import os
 import re
@@ -489,7 +490,9 @@ class OperatorWalkTests(unittest.TestCase):
             with socket.create_connection(("127.0.0.1", tls_port), timeout=30) as raw:
                 with context.wrap_socket(raw, server_hostname=name) as tls:
                     self.assertEqual(tls.getpeercert()["subject"], ((("commonName", "127.0.0.1"),),))
-                    self.assertRegex(tls.recv(512), rb"^20[01] ")
+                    greeting = tls.recv(512)
+                    observe_node_greeting(tls_port, greeting)
+                    self.assertRegex(greeting, rb"^20[01] ")
         # A name the certificate does not carry fails verification.
         with socket.create_connection(("127.0.0.1", tls_port), timeout=30) as raw:
             with self.assertRaises(ssl.SSLCertVerificationError):

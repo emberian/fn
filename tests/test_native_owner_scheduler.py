@@ -20,6 +20,7 @@ What this module asserts on the image:
     answered within its 10 s deadline, every time, and no held quantum
     reached a second: the bound the gate gives control, observed.
 """
+from tests.native_harness import observe_node_greeting
 import re
 import socket
 import struct
@@ -154,7 +155,9 @@ class SchedulerNativeTests(unittest.TestCase):
     def connect(self):
         conn = socket.create_connection(("127.0.0.1", self.port), timeout=120)
         stream = conn.makefile("rwb")
-        self.assertTrue(stream.readline().startswith(b"200"))
+        greeting = stream.readline()
+        observe_node_greeting(self.port, greeting)
+        self.assertTrue(greeting.startswith(b"200"))
         return conn, stream
 
     def post(self, stream, msgid, body):
@@ -595,7 +598,9 @@ class SchedulerNativeTests(unittest.TestCase):
             raw = socket.create_connection(("127.0.0.1", tls_port), timeout=120)
             conn = context.wrap_socket(raw)
             stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"200"))
+            greeting = stream.readline()
+            observe_node_greeting(tls_port, greeting)
+            self.assertTrue(greeting.startswith(b"200"))
             return conn, stream
 
         redeem_conn, redeem = tls()
@@ -649,7 +654,9 @@ class SchedulerNativeTests(unittest.TestCase):
         conn = socket.create_connection(("127.0.0.1", self.port), timeout=120,
                                         source_address=(source, 0))
         stream = conn.makefile("rwb")
-        self.assertTrue(stream.readline().startswith(b"200"))
+        greeting = stream.readline()
+        observe_node_greeting(self.port, greeting)
+        self.assertTrue(greeting.startswith(b"200"))
         return conn, stream
 
     def ask(self, stream, line):

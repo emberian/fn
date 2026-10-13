@@ -18,6 +18,7 @@ Run on hbox: tools/hbox_native.sh . tests.test_native_tls_proxy
 """
 from __future__ import annotations
 
+from tests.native_harness import observe_node_greeting
 import os
 from pathlib import Path
 import socket
@@ -92,6 +93,8 @@ class NativeTlsProxyTests(unittest.TestCase):
         try:
             sock.settimeout(timeout)
             line = sock.recv(512)
+            if line[:3] in (b"200", b"201"):
+                observe_node_greeting(self.node.tls_port, line)
             return line[:3] in (b"200", b"201", b"480")
         finally:
             sock.close()
