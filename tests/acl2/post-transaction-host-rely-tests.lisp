@@ -585,7 +585,9 @@
 (value-triple (cw "R10 R9 TOOTH: exact sender conjunct removed in logical and exec copies, count checked; OLD owner reply refused; NEW listener submit refused, no owner delivery/refusal.~%"))
 
 ; M-HALF projection tooth: end-use transfers the hand before the machine call.
-(defconst *pthrt-mhalf-projection-s* '((3 4 0 1 0 1 66560 3 65663)
+; Class 5: context v2 CS = max(6920, 33 + 65634) = 65667; the v1
+; fixture used 65663, four octets short (maximal-batch tooth below acceptance).
+(defconst *pthrt-mhalf-projection-s* '((3 4 0 1 0 1 66560 3 65667)
  ((0 :LIVE NIL) (1 :LIVE 0) (1 :LIVE 0))
  ((0 (:FREE) NIL)
   (0 (:FREE) NIL)

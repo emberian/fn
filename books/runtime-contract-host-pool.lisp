@@ -23,8 +23,9 @@
 
 (defconst *fn-pth-nstatic* 1)
 (defconst *fn-pth-qs* 3)
-(defconst *fn-pbatch-max* 65634)
-(defconst *fn-pth-cs* (max 5606 (+ 29 *fn-pbatch-max*)))
+(include-book "post-acceptance-batch-bound")
+(defconst *fn-pth-cs*
+  (max *fn-pbatch-post-home-max* (+ *fn-pbatch-context-octets* *fn-pbatch-max*)))
 
 (defun fn-hl-article-capl (profile q)
   (declare (xargs :guard t))

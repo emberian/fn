@@ -1266,6 +1266,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-acceptance-bound \
 	tests/acl2/post-acceptance-bound-tests \
 	tests/acl2/post-acceptance-tests \
+	books/post-acceptance-batch-bound \
+	books/post-acceptance-batch \
+	tests/acl2/post-acceptance-batch-tests \
 	books/heap-store-open-walk \
 	tests/acl2/heap-store-open-walk-tests \
 	tests/acl2/bp-held-projection-tests \
