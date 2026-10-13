@@ -259,7 +259,7 @@ class OneWorldTests(unittest.TestCase):
         generic = 'books/def-representation-generic.lisp'
         representation = 'books/def-representation.lisp'
         sources = {
-            generic: '(defun template (name) `(acl2::defabsstobj ,name :attachable t))',
+            generic: '(include-book \"def-representation\") (defun template (name) `(acl2::defabsstobj ,name :attachable t))',
             representation: '(defun template (name) `((acl2::attach-stobj ,name impl) (acl2::defabsstobj ,name :attachable t)))',
         }
         self.accept(sources, {book: one_world.ALLOWED_SITES[book] for book in sources})
@@ -281,10 +281,131 @@ class OneWorldTests(unittest.TestCase):
         sources['books/g.lisp'] += '\n; (attach-stobj commented impl)\n(defconst *text* "(defabsstobj text :attachable t)")'
         self.accept(sources, allowed)
 
+    def test_omitted_owner_attachments_are_missing_sites(self):
+        for conditional in ('#+(or)', '#-(and)'):
+            with self.subTest(conditional=conditional):
+                sources, allowed = self.owner()
+                sources['books/g.lisp'] = f'{conditional} (attach-stobj scratch-closed impl) (defabsstobj scratch-closed :attachable t)'
+                self.refuse(sources, 'scratch-closed', 'MISSING-SITE', allowed)
+
+    def test_omitted_forms_create_no_objects_or_sites(self):
+        sources, allowed = self.owner()
+        sources['books/other.lisp'] = '#+(or) (attach-stobj scratch-closed other)\n#-(and) (make-event \'(defabsstobj scratch-closed :attachable t))\n#+(or) (list "ATTACH-STOBJ" `(def-generic ,name))\n(progn #+(or) (attach-stobj scratch-closed other))\n'
+        self.accept(sources, allowed)
+
+    def test_omitted_nested_conditionals_do_not_evaluate_features(self):
+        sources, allowed = self.owner()
+        sources['books/other.lisp'] = '#+(or) (progn #+:unmodeled (list "ATTACH-STOBJ"))'
+        self.accept(sources, allowed)
+
+    def test_midtoken_hash_is_not_a_block_comment(self):
+        sources, allowed = self.owner()
+        sources['books/g.lisp'] = '(attach-stobj#|suffix|# scratch-closed impl) (defabsstobj scratch-closed :attachable t)'
+        self.refuse(sources, 'scratch-closed', 'MISSING-SITE', allowed)
+
+    def test_feature_expressions_and_keywords(self):
+        features = frozenset({'sbcl', 'gencgc', 'linux', 'x86-64'})
+        reader = one_world.SourceReader('#+(:and :sbcl (:or :linux :openbsd) (:not :darwin)) kept\n#-:linux omitted\n#+(or) omitted\n#-(and) omitted\n#+(and) kept-too\n#-(or) kept-last\n', features=features)
+        self.assertEqual([str(value) for value, _line in reader.top_level()],
+                         ['kept', 'kept-too', 'kept-last'])
+
+    def test_feature_expressions_are_validated_without_short_circuiting(self):
+        for expression in ('(not :sbcl :linux)', '(and (or) :unmodeled)', '(or :sbcl :unmodeled)'):
+            with self.subTest(expression=expression):
+                sources, allowed = self.owner()
+                sources['books/other.lisp'] = f'#+{expression} nil'
+                self.refuse(sources, 'expected' if expression.startswith('(not') else 'unmodeled',
+                            'READER-FEATURE', allowed)
+
+    def test_included_conditional_site_preserves_ordering_location(self):
+        sources, allowed = self.owner()
+        sources['books/g.lisp'] = '#+(and) (attach-stobj scratch-closed impl)\n#+(not (or)) (defabsstobj scratch-closed :attachable t)\n'
+        self.accept(sources, allowed)
+
+    def test_read_eval_is_refused_in_every_source_root(self):
+        for book in ('books/other.lisp', 'host/other.lisp', 'tests/acl2/other-tests.lisp'):
+            for expression in ('(#.(intern "ATTACH-STOBJ" "ACL2") scratch-closed impl)',
+                               '(defmacro hidden () \'(#.(intern "DEFABSSTOBJ" "ACL2") scratch-closed :attachable t))',
+                               '#+(or) #.(intern "ATTACH-STOBJ" "ACL2")'):
+                with self.subTest(book=book, expression=expression):
+                    sources, allowed = self.owner()
+                    sources[book] = expression
+                    self.refuse(sources, 'read-eval', 'READER-EVAL', allowed)
+
+    def test_reader_labels_and_references_are_refused(self):
+        for expression in ('(#1=ATTACH-STOBJ scratch-closed impl)',
+                           '(list #1=thing #1#)', '#1#', '#+(or) #12=thing'):
+            with self.subTest(expression=expression):
+                sources, allowed = self.owner()
+                sources['books/other.lisp'] = expression
+                self.refuse(sources, 'labels/references', 'READER-LABEL', allowed)
+
+    def test_unknown_dispatch_is_refused(self):
+        for expression in ('#zanything', '#:uninterned', '#2A((1 2))', '#S(thing)', '#;ignored', '#+(or) #zhidden'):
+            with self.subTest(expression=expression):
+                sources, allowed = self.owner()
+                sources['books/other.lisp'] = expression
+                self.refuse(sources, 'unsupported dispatch', 'READER-DISPATCH', allowed)
+
+    def test_legitimate_dispatch_macros_are_read_as_data(self):
+        reader = one_world.SourceReader("#| outer #| inner |# comment |#\n#'fn #\\) #(1 2) #o600 #xFF #c(1/2 2) #b101 #d12 #16rFF\n")
+        values = [value for value, _line in reader.top_level()]
+        self.assertEqual(len(values), 9)
+        self.assertEqual(one_world.head(values[0]), 'function')
+        self.assertIsInstance(values[1], one_world.LispChar)
+        self.assertEqual(one_world.head(values[2]), 'vector')
+        self.assertEqual(values[3:5], [384, 255])
+        self.assertEqual(one_world.head(values[5]), 'complex')
+        self.assertEqual(values[6:], [5, 12, 255])
+
+    def test_dispatch_text_inside_comments_and_strings_is_not_dispatch(self):
+        sources, allowed = self.owner()
+        sources['books/other.lisp'] = '; #.(unsafe) #1=object #1# #zunknown\n#| #.(unsafe) #1=object #1# #zunknown |#\n(defconst *text* "#. #1= #1# #z")\n'
+        self.accept(sources, allowed)
+
+    def test_site_name_strings_at_every_depth(self):
+        for name in sorted(one_world.SITE_SYMBOLS):
+            for text in (name, name.upper(), 'ACL2::' + name.upper(), 'other:' + name):
+                for wrapper in ('(defconst *name* "{text}")',
+                                '(defmacro hidden () (list "{text}"))',
+                                '(make-event (list (intern-in-package-of-symbol "{text}" \'fn-cat)))',
+                                '`(unknown-wrapper #("{text}"))'):
+                    with self.subTest(text=text, wrapper=wrapper):
+                        sources, allowed = self.owner()
+                        sources['books/other.lisp'] = wrapper.format(text=text)
+                        self.refuse(sources, text, 'SITE-NAME-STRING', allowed)
+
+    def test_escaped_site_name_string_is_decoded(self):
+        sources, allowed = self.owner()
+        escaped = 'AT' + chr(92) + 'TACH-STOBJ'
+        sources['books/other.lisp'] = f'(defconst *name* "{escaped}")'
+        self.refuse(sources, 'ATTACH-STOBJ', 'SITE-NAME-STRING', allowed)
+
+    def test_import_string_allowance_is_exact_and_contextual(self):
+        book = 'books/catalog-paged.lisp'
+        allowed = {book: one_world.ALLOWED_SITES[book]}
+        self.accept({book: '(include-book "def-representation")'}, allowed)
+        for source in ('(defconst *name* "def-representation")',
+                       '(include-book "DEF-REPRESENTATION")',
+                       '(make-event (list (intern "def-representation" "ACL2")))'):
+            with self.subTest(source=source):
+                self.refuse({book: source}, 'REPRESENTATION' if 'DEF-REPRESENTATION' in source else 'def-representation',
+                            'SITE-NAME-STRING', allowed)
+        self.refuse({book: '(include-book "def-representation") (include-book "def-representation")'},
+                    'def-representation', 'SITE-COUNT', allowed)
+
+    def test_exact_allowed_site_name_string_is_counted(self):
+        sources, allowed = self.owner()
+        sources['books/g.lisp'] += ' (defconst *name* "ATTACH-STOBJ")'
+        allowed['books/g.lisp'] += (('site-name-string', 'ATTACH-STOBJ'),)
+        self.accept(sources, allowed)
+        sources['books/other.lisp'] = '(defconst *name* "ATTACH-STOBJ")'
+        self.refuse(sources, 'ATTACH-STOBJ', 'SITE-NAME-STRING', allowed)
+
     def test_clean_tree(self):
         findings, sites, expected = check(ROOT)
         self.assertEqual(findings, [])
-        self.assertEqual((sites, expected), (23, 23))
+        self.assertEqual((sites, expected), (29, 29))
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             status = main([])

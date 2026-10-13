@@ -10,6 +10,8 @@ import argparse
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+import platform
+import re
 import sys
 
 try:
@@ -38,6 +40,13 @@ GENERATOR_MACROS = {
 # Source sites, not expansion events: a representation-call is one source site.
 # Repeated pairs mean repeated expected occurrences. No filename is exempt.
 ALLOWED_SITES = {
+    # These exact strings name an imported book. Only the include-book
+    # argument position matches this kind; using the string as a builder does not.
+    'books/decoded-payload-buffer.lisp': (('include-book-string', 'def-representation'),),
+    'books/def-representation-index.lisp': (('include-book-string', 'def-representation'),),
+    'books/paged-checkpoint.lisp': (('include-book-string', 'def-representation'),),
+    'books/payload-arena-bytes.lisp': (('include-book-string', 'def-representation'),),
+    'books/catalog-paged.lisp': (('include-book-string', 'def-representation'),),
     'books/payload-arena.lisp': (
         ('attachment', 'fn-arena'), ('introduction', 'fn-arena')),
     'books/catalog.lisp': (
@@ -45,7 +54,7 @@ ALLOWED_SITES = {
     'books/history-columns.lisp': (
         ('attachment', 'fn-hist'), ('introduction', 'fn-hist')),
     'books/def-representation-generic.lisp': (
-        ('introduction', GENERATOR),),
+        ('include-book-string', 'def-representation'), ('introduction', GENERATOR)),
     'books/def-representation.lisp': (
         ('introduction', GENERATOR), ('attachment', GENERATOR)),
     # Positive and must-fail generator fixtures, each by its exact name.
@@ -98,19 +107,239 @@ def head(form):
     return symbol(form[0]) if isinstance(form, list) and form else None
 
 
+# fn's qualified ACL2 uses SBCL (tools/build_local_acl2.sh), with GENCGC.
+# Only these atoms occur in the scanned feature expressions. Unknown atoms
+# fail closed rather than assuming they are absent from the real *features*.
+FEATURE_NAMES = frozenset({'sbcl', 'gencgc', 'linux', 'darwin', 'openbsd', 'x86-64'})
+ACL2_FEATURES = frozenset({'sbcl', 'gencgc'} |
+                         ({sys.platform} if sys.platform in {'linux', 'darwin'} else
+                          {'openbsd'} if sys.platform.startswith('openbsd') else set()) |
+                         ({'x86-64'} if platform.machine().lower() in {'x86_64', 'amd64'} else set()))
+OMITTED = object()
+SITE_SYMBOLS = frozenset({'attach-stobj', 'defabsstobj', 'def-generic', *GENERATOR_MACROS})
+
+
+class LispString(str):
+    """A literal string, distinct from ledger's structural rational strings."""
+
+
+class LispChar(str):
+    """A character literal cannot serve as a symbol or an event head."""
+
+
+class ReaderError(ledger.ReadError):
+    def __init__(self, reason, line, detail):
+        self.reason, self.line, self.detail = reason, line, detail
+        super().__init__(f'{reason}: {detail} at line {line}')
+
+
 class SourceReader(ledger.Reader):
-    """Retain exact source lines for conservative nested diagnostics."""
-    def __init__(self, source):
+    """Strict local reader; never invoke read-eval or intern/evaluate Lisp."""
+    def __init__(self, source, features=ACL2_FEATURES):
         super().__init__(source)
         self.lines = {}
+        self.features = features
 
-    def form(self):
+    def error(self, reason, detail, position=None):
+        raise ReaderError(reason, self.line(self.pos if position is None else position), detail)
+
+    def feature(self, expr):
+        if isinstance(expr, ledger.Sym):
+            name = str(expr).lower().rsplit(':', 1)[-1]
+            if name not in FEATURE_NAMES:
+                self.error('READER-FEATURE', f'unmodeled feature {name}')
+            return name in self.features
+        if not isinstance(expr, list) or not expr:
+            self.error('READER-FEATURE', 'expected a feature symbol or expression')
+        operator = str(expr[0]).lower().rsplit(':', 1)[-1] if isinstance(expr[0], ledger.Sym) else None
+        # Validate every operand, including ones boolean evaluation could skip.
+        operands = [self.feature(child) for child in expr[1:]]
+        if operator == 'and':
+            return all(operands)
+        if operator == 'or':
+            return any(operands)
+        if operator == 'not' and len(operands) == 1:
+            return not operands[0]
+        self.error('READER-FEATURE', 'expected AND, OR, or unary NOT')
+
+    def required(self, suppress=False):
+        while True:
+            value = self.form(suppress)
+            if suppress or value is not OMITTED:
+                return value
+
+    def _top_level(self):
+        forms = []
+        while True:
+            self.skip_space()
+            if self.pos >= len(self.source):
+                return forms
+            line = self.line(self.pos)
+            value = self.form()
+            if value is not OMITTED:
+                forms.append((value, line))
+
+    def list_body(self, suppress=False):
+        items = []
+        while True:
+            self.skip_space()
+            if self.pos >= len(self.source):
+                self.error('READ', 'unterminated list')
+            if self.source[self.pos] == ')':
+                self.pos += 1
+                return OMITTED if suppress else items
+            value = self.form(suppress)
+            if value is not OMITTED:
+                items.append(value)
+
+    def string_body(self, suppress=False):
+        if not suppress:
+            return LispString(super().string())
+        # Discarded forms create neither a string object nor a source site.
+        self.pos += 1
+        while self.pos < len(self.source):
+            char = self.source[self.pos]
+            self.pos += 1
+            if char == '\\':
+                self.pos += 1
+            elif char == '"':
+                return OMITTED
+        self.error('READ', 'unterminated string')
+
+    def dispatch(self, suppress, start):
+        match = re.match(r'#([0-9]*)(.)', self.source[self.pos:], re.DOTALL)
+        if match is None:
+            self.error('READER-DISPATCH', 'incomplete # dispatch', start)
+        parameter, code = match.groups()
+        code = code.lower()
+        self.pos += len(match[0])
+        if code == '.':
+            self.error('READER-EVAL', 'read-eval is forbidden', start)
+        if parameter and code in {'=', '#'}:
+            self.error('READER-LABEL', 'reader labels/references are forbidden', start)
+        if not parameter and code in {'+', '-'}:
+            if suppress:
+                # A discarded conditional consumes its syntax without
+                # constructing or evaluating its own feature expression.
+                self.required(True)
+                self.required(True)
+                return OMITTED
+            feature = self.required()
+            enabled = self.feature(feature)
+            if code == '-':
+                enabled = not enabled
+            if not enabled:
+                self.required(True)
+                return OMITTED
+            return self.required()
+        if not parameter and code == "'":
+            value = self.required(suppress)
+            return OMITTED if suppress else [ledger.Sym('function'), value]
+        if not parameter and code == '\\':
+            if self.pos >= len(self.source):
+                self.error('READ', 'missing character', start)
+            self.pos += 1  # The character itself can be a delimiter, e.g. #\\).
+            while self.pos < len(self.source) and self.source[self.pos] not in ledger.DELIMITERS:
+                self.pos += 1
+            return OMITTED if suppress else LispChar(self.source[start:self.pos])
+        if not parameter and code == '(':
+            value = self.list_body(suppress)
+            return OMITTED if suppress else [ledger.Sym('vector'), *value]
+        if not parameter and code == 'c':
+            value = self.required(suppress)
+            if suppress:
+                return OMITTED
+            def real(x):
+                return isinstance(x, (int, float)) or (type(x) is str and ledger.is_number(x))
+            if not isinstance(value, list) or len(value) != 2 or not all(real(x) for x in value):
+                self.error('READ', '#C requires two real numeric literals', start)
+            return [ledger.Sym('complex'), *value]
+        if code in {'b', 'o', 'd', 'x'} and not parameter or code == 'r' and parameter:
+            base = int(parameter) if code == 'r' else {'b': 2, 'o': 8, 'd': 10, 'x': 16}[code]
+            if not 2 <= base <= 36:
+                self.error('READ', 'radix must be between 2 and 36', start)
+            token_start = self.pos
+            while self.pos < len(self.source) and self.source[self.pos] not in ledger.DELIMITERS:
+                self.pos += 1
+            if suppress:
+                return OMITTED
+            token = self.source[token_start:self.pos]
+            try:
+                return int(token, base)
+            except ValueError:
+                self.error('READ', f'invalid radix literal {self.source[start:self.pos]}', start)
+        self.error('READER-DISPATCH', f'unsupported dispatch {match[0]}', start)
+
+    def atom(self, suppress=False):
+        start = self.pos
+        chars = []
+        bars = False
+        while self.pos < len(self.source):
+            char = self.source[self.pos]
+            if char == '|':
+                bars = not bars
+                self.pos += 1
+            elif char == '\\':
+                if self.pos + 1 >= len(self.source):
+                    self.error('READ', 'unterminated symbol escape', start)
+                if not suppress:
+                    chars.append(self.source[self.pos + 1])
+                self.pos += 2
+            elif not bars and char in ledger.DELIMITERS:
+                break
+            else:
+                # # is nonterminating within a token; a#|b|# is a symbol,
+                # not a followed by a block comment.
+                if not suppress:
+                    chars.append(char)
+                self.pos += 1
+        if bars:
+            self.error('READ', 'unterminated escaped symbol', start)
+        if self.pos == start:
+            self.error('READ', 'empty atom', start)
+        if suppress:
+            return OMITTED
+        text = ''.join(chars)
+        return ledger.number(text) if ledger.is_number(text) else ledger.Sym(text.lower())
+
+    def form(self, suppress=False):
         self.skip_space()
-        line = self.line(self.pos)
-        value = super().form()
-        if isinstance(value, (list, ledger.Sym)):
+        if self.pos >= len(self.source):
+            self.error('READ', 'unexpected end of source')
+        start = self.pos
+        line = self.line(start)
+        char = self.source[self.pos]
+        if char == '#':
+            # A conditional returns the following object's own source location.
+            value = self.dispatch(suppress, start)
+            if (value is not OMITTED and self.source[start:start + 2] not in {'#+', '#-'} and
+                    isinstance(value, (list, ledger.Sym, LispString, LispChar))):
+                self.lines[id(value)] = line
+            return value
+        if char == '(':
+            self.pos += 1
+            value = self.list_body(suppress)
+        elif char == ')':
+            self.error('READ', 'unbalanced close parenthesis')
+        elif char == '"':
+            value = self.string_body(suppress)
+        elif char in "'`,":
+            self.pos += 1
+            prefix = {"'": 'quote', '`': 'quasiquote', ',': 'unquote'}[char]
+            if char == ',' and self.source[self.pos:self.pos + 1] == '@':
+                self.pos += 1
+                prefix = 'unquote-splicing'
+            value = self.required(suppress)
+            value = OMITTED if suppress else [ledger.Sym(prefix), value]
+        else:
+            value = self.atom(suppress)
+        if isinstance(value, (list, ledger.Sym, LispString)):
             self.lines[id(value)] = line
         return value
+
+
+def names_site(text):
+    return text.lower().rsplit(':', 1)[-1] in SITE_SYMBOLS
 
 
 def occurrences(form):
@@ -137,11 +366,17 @@ def occurrences(form):
             elif event_head in {'defstobj', 'defabsstobj'}:
                 yield 'concrete-introduction', value, value, emitting
             pending.extend((child, value, emitting) for child in reversed(value))
+        elif isinstance(value, LispString) and names_site(value):
+            kind = ('include-book-string' if head(parent) == 'include-book' and
+                    len(parent) > 1 and parent[1] is value else 'site-name-string')
+            yield kind, value, parent, False
         elif symbol(value) == 'attach-stobj':
             yield 'attachment', value, parent, False
 
 
 def site_name(kind, value, parent):
+    if kind in {'include-book-string', 'site-name-string'}:
+        return str(value), False
     argument = None
     has_argument = isinstance(parent, list) and len(parent) > 1
     if kind == 'attachment':
@@ -204,6 +439,9 @@ def check(root=ROOT):
             try:
                 reader = SourceReader(path.read_text())
                 forms = reader.top_level()
+            except ReaderError as error:
+                findings.append(f'{book}:{error.line}: {error.reason}: {error.detail}')
+                continue
             except (OSError, UnicodeError, ledger.ReadError) as error:
                 findings.append(f'{book}: READ: {error}')
                 continue
@@ -241,6 +479,8 @@ def check(root=ROOT):
     actual = defaultdict(list)
     for site in sites:
         actual[(site.book, site.key)].append(site)
+        if site.kind in {'site-name-string', 'include-book-string'} and site.key not in ALLOWED_SITES.get(site.book, ()):
+            findings.append(f'{site.location}: SITE-NAME-STRING: {site.name} names a site symbol')
         if site.computed and (site.book not in GENERATOR_LIBRARIES or site.name != GENERATOR):
             findings.append(f'{site.location}: GENERATOR-OUTSIDE-LIBRARY: {site.name} {site.kind} needs a listed comma-name library site')
             if site.kind == 'attachment':
@@ -263,7 +503,7 @@ def check(root=ROOT):
     introductions = defaultdict(list)
     attachments = defaultdict(list)
     for site in sites:
-        if site.computed:
+        if site.computed or site.kind not in {'attachment', 'introduction', 'representation-call'}:
             continue
         if site.kind == 'representation-call':
             attachments[site.name].append(site)
