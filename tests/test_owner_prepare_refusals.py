@@ -31,8 +31,164 @@ def actual(path, name, kind="defun"):
     return form
 
 
+def guard_probe_source():
+    """ACL2 probe with image flags, real budget code and live fixture stobjs.
+
+    Constructor/context seams select the already-decided refusal. The actual
+    budget and its callees are loaded from books; the memory-gate body is exact.
+    Unlike the SBCL adapter test, all host xargs declarations are retained.
+    Execute this driver only through tools/proof_repl.py.
+    """
+    def declared(path, name):
+        return next(f for f in forms((ROOT / path).read_text())
+                    if f.startswith("(defun " + name + " "))
+
+    # Live fixtures replace the representation owners, never a budget guard.
+    names = {
+        "fn-octets": "fn-l18-octets", "fn-arena": "fn-l18-arena",
+        "fn-cat": "fn-l18-cat", "fn-hist": "fn-l18-hist",
+    }
+    fixtures = {
+        "fn-owner-store": ("state", "(f-get-global 'fn-l18-word state)", "state"),
+        "fn-owner-core": ("state", "nil", "state"),
+        "fn-own-clock": ("o", "nil", ""),
+        "fn-store-groups-from-codes": ("codes groups", "'(\"fn.test\")", ""),
+        "fn-store-octets->string": ("xs", "(fn-record-octets-string xs)", ""),
+        "fn-pfld-article-inputsp": ("mid size groups id subject evidence charge", "t", ""),
+        "fn-store-existing-action": ("mid payload groups s fn-l18-arena", "nil", "fn-l18-arena"),
+        "fn-pidx-existing-action-cat": ("mid fn-l18-octets groups o fn-l18-arena fn-l18-cat", "nil", "fn-l18-octets fn-l18-arena fn-l18-cat"),
+        "fn-adm-handle-room-p": ("count n", "t", ""),
+        "fn-arena-count": ("fn-l18-arena", "0", "fn-l18-arena"),
+        "fn-octets-list": ("fn-l18-octets", "nil", "fn-l18-octets"),
+        "fn-octets-len": ("fn-l18-octets", "0", "fn-l18-octets"),
+        "fn-sn-article-record": ("s obs mid payload groups id subject evidence charge", "s", ""),
+        "fn-owner-record-octets": ("fn-l18-hist state", "(mv 0 fn-l18-hist state)", "fn-l18-hist state"),
+        "fn-owner-record-debt": ("fn-l18-hist state", "(mv 0 fn-l18-hist state)", "fn-l18-hist state"),
+        "fn-owner-record-totals": ("fn-l18-hist state", "(mv nil fn-l18-hist state)", "fn-l18-hist state"),
+        "fn-owner-profile-carry": ("state", "nil", "state"),
+        "fn-owner-store-profile": ("state", "nil", "state"),
+        "fn-owner-ocfg": ("state", "nil", "state"),
+        "fn-owner-parse-carry": ("state", "nil", "state"),
+        "fn-owner-retain-carry": ("state", "nil", "state"),
+        "fn-prc-refresh": ("carry ledger", "nil", ""),
+        "fn-pout-prepare-article": ("before row budget carry", "(mv :prepared before)", ""),
+        "fn-ppc-pout-prepare-article-cat": ("before row budget carry fn-l18-arena fn-l18-cat", "(mv :prepared before)", "fn-l18-arena fn-l18-cat"),
+        "fn-owner-retain-carry-put": ("carry state", "state", "state"),
+        "fn-owner-install-ocfg": ("before state", "state", "state"),
+        "fn-store-sn-domain": ("state", "nil", "state"),
+        "fn-psrv-store-prepare-next": ("cfg s record count", "s", ""),
+        "fn-psrv-store-refusal-kind": ("cfg s record", ":refused", ""),
+        "fn-adm-article-word": ("word profile img cfg limit count bytes record debt tot row", "word", ""),
+        "fn-adm-memory-admitp": ("profile img cfg limit tot row", "nil", ""),
+        "fn-owner-config": ("state", "nil", "state"),
+        "fn-cfg-value": ("cfg", "nil", ""),
+        "fn-owner-memory-cfg": ("v tls trigger pub live cold profile window server config", "nil", ""),
+        "fn-oag-agent": ("cfg", "nil", ""),
+        "fn-adm-cfg-at": ("cfg cap", "nil", ""),
+        "fn-mm-cfg-connections": ("cfg", "0", ""),
+    }
+    for name in fixtures:
+        names[name] = "fn-l18-seam-" + name.removeprefix("fn-")
+
+    def rewrite(form):
+        # Symbols only: never rewrite prose or a source literal.
+        from lisp_source import tokens
+        for kind, start, end in reversed(list(tokens(form))):
+            if kind == "atom" and form[start:end] in names:
+                form = form[:start] + names[form[start:end]] + form[end:]
+        return form
+
+    source = '''(in-package "ACL2")
+(include-book "../../../books/store-profile-carried")
+(defstobj fn-l18-octets (l18-octets-cell :initially nil))
+(defstobj fn-l18-arena (l18-arena-cell :initially nil))
+(defstobj fn-l18-cat (l18-cat-cell :initially nil))
+(defstobj fn-l18-hist (l18-hist-cell :initially nil))
+'''
+    for name, (args, body, stobjs) in fixtures.items():
+        declaration = " :stobjs (" + stobjs + ")" if stobjs else ""
+        used = set(re.findall(r"[A-Za-z0-9-]+", body))
+        ignored = [arg for arg in args.split() if arg not in used]
+        ignore = " (declare (ignore " + " ".join(ignored) + "))" if ignored else ""
+        source += f"(defun {names[name]} ({args}) (declare (xargs :mode :program :guard t{declaration})){ignore} {body})\n"
+    source += '''(defun fn-l18-seam-apc-intern-row-at (record keyring generation h carry)
+ (declare (xargs :mode :program :guard (and (fn-record-p record) (fn-prin-keyringp keyring) (natp generation) (natp h))))
+ (declare (ignore record keyring generation h carry))
+ (hard-error 'fn-l18-guard-probe "Refusal reached the interner" nil))
+'''
+    names["fn-apc-intern-row-at"] = "fn-l18-seam-apc-intern-row-at"
+    source += rewrite(declared("host/owner-host.lisp", "fn-owner-memory-gate")) + "\n"
+    for path, name in [("host/owner-host.lisp", "fn-owner-prepare"),
+                       ("host/owner-host.lisp", "fn-owner-prepare-buffer"),
+                       ("host/store-node-host.lisp", "fn-store-sn-prepare")]:
+        source += rewrite(declared(path, name)) + "\n"
+    source += '''(defun fn-l18-guard-probe (words fn-l18-octets fn-l18-arena fn-l18-cat fn-l18-hist state)
+ (declare (xargs :mode :program :stobjs (fn-l18-octets fn-l18-arena fn-l18-cat fn-l18-hist state)))
+ (if (endp words)
+     (mv nil fn-l18-octets fn-l18-arena fn-l18-cat fn-l18-hist state)
+   (let ((state (f-put-global 'fn-l18-word (car words) state)))
+    (mv-let (erp word fn-l18-arena fn-l18-hist state)
+      (fn-owner-prepare '(60 97 64 120 62) '(65) '(0) '(105) '(115) '(101) 1 fn-l18-arena fn-l18-hist state)
+      (if (or erp (not (equal word (car words)))) (hard-error 'fn-l18-guard-probe "Owner refused incorrectly" nil)
+       (mv-let (erp word fn-l18-arena fn-l18-hist state)
+         (fn-owner-prepare-buffer '(60 97 64 120 62) '(0) '(105) '(115) '(101) 1 fn-l18-octets fn-l18-arena fn-l18-cat fn-l18-hist state)
+         (if (or erp (not (equal word (car words)))) (hard-error 'fn-l18-guard-probe "Buffer refused incorrectly" nil)
+          (let ((state (f-put-global 'fn-store-sn (car words) state)))
+           (mv-let (erp word fn-l18-arena state)
+             (fn-store-sn-prepare '(60 97 64 120 62) '(65) '(0) '(105) '(115) '(101) 1 nil fn-l18-arena state)
+             (if (or erp (not (equal word (car words)))) (hard-error 'fn-l18-guard-probe "Store refused incorrectly" nil)
+              (prog2$ (cw "GUARD-T ALL-THREE ~x0 budget=~x1 memory=~x2~%" word
+                           (fn-pvc-article-budget-carried nil nil 0 0 word 0)
+                           (fn-owner-memory-gate state))
+                (fn-l18-guard-probe (cdr words) fn-l18-octets fn-l18-arena fn-l18-cat fn-l18-hist state))))))))))))
+(defun fn-l18-guard-probe-local (state)
+ (declare (xargs :mode :program :stobjs state))
+ (with-local-stobj fn-l18-octets
+  (mv-let (erp fn-l18-octets state)
+   (with-local-stobj fn-l18-arena
+    (mv-let (erp fn-l18-octets fn-l18-arena state)
+     (with-local-stobj fn-l18-cat
+      (mv-let (erp fn-l18-octets fn-l18-arena fn-l18-cat state)
+       (with-local-stobj fn-l18-hist
+        (mv-let (erp fn-l18-octets fn-l18-arena fn-l18-cat fn-l18-hist state)
+         (fn-l18-guard-probe *fn-sn-article-record-refusals* fn-l18-octets fn-l18-arena fn-l18-cat fn-l18-hist state)
+         (mv erp fn-l18-octets fn-l18-arena fn-l18-cat state)))
+       (mv erp fn-l18-octets fn-l18-arena state)))
+     (mv erp fn-l18-octets state)))
+   (mv erp state))))
+(set-check-invariant-risk t)
+(with-guard-checking-event t
+ (value-triple (cw "IMAGE GUARD=~x0 INVARIANT-RISK=~x1~%" (@ guard-checking-on) (@ check-invariant-risk))))
+(with-guard-checking-event t
+ (make-event
+  (mv-let (erp state)
+    (fn-l18-guard-probe-local state)
+    (if erp (er soft 'fn-l18-guard-probe "Guard probe returned an error")
+      (value '(value-triple :guards-passed))))))
+'''
+    for message in ("Owner refused incorrectly", "Buffer refused incorrectly", "Store refused incorrectly"):
+        error = f'(hard-error \'fn-l18-guard-probe "{message}" nil)'
+        source = source.replace(error, "(mv " + error + " fn-l18-octets fn-l18-arena fn-l18-cat fn-l18-hist state)")
+    return source
+
+
 @unittest.skipUnless(shutil.which("sbcl"), "SBCL needed for host adapter probe")
 class OwnerPrepareRefusals(unittest.TestCase):
+    def test_guard_probe_keeps_the_image_flags_and_real_budget(self):
+        source = guard_probe_source()
+        read_all(source, strict=True)
+        self.assertIn("(with-guard-checking-event t", source)
+        self.assertIn("(set-check-invariant-risk t)", source)
+        self.assertNotIn("with-guard-checking-event :none", source)
+        self.assertNotIn("(defun fn-pvc-article-budget-carried", source)
+        self.assertIn("(fn-l18-guard-probe *fn-sn-article-record-refusals*", source)
+        for name in ("fn-owner-prepare", "fn-owner-prepare-buffer", "fn-store-sn-prepare"):
+            self.assertIn("(defun " + name, source)
+        # The real budget entry's domain admits every constructor keyword.
+        self.assertIn("(xargs :guard t)", next(
+            form for form in forms((ROOT / "books/store-profile-carried.lisp").read_text())
+            if form.startswith("(defun fn-pvc-article-budget-carried ")))
+
     def test_constructor_refusals_return_by_name_without_interning(self):
         sources = "\n".join([
             actual("books/store-node.lisp", "*fn-sn-article-record-refusals*", "defconst"),
