@@ -13,6 +13,7 @@ the browser and the node.
 FN_NATIVE_DEVELOPER_HOST names the developer image (default
 build/fn-host-developer).  The test creates and removes only its own Store.
 """
+from tests.native_harness import current_test_id, observe_http_reply
 import errno
 import html
 import http.client
@@ -23,7 +24,7 @@ import time
 import unittest
 from urllib.parse import urlencode
 
-from tests.native_harness import EXIT, Client, Node, class_case, client_context, free_port, keep_diagnostics, native_image, requires
+from tests.native_harness import EXIT, Client, Node, class_case, client_context, free_port, keep_diagnostics, native_image, observe_web_reply, requires
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 PASSWORD = "wren-secret-9"
@@ -34,6 +35,7 @@ class Browser:
 
     def __init__(self, port, tls=False):
         self.port, self.tls, self.cookies, self.pages = port, tls, {}, []
+        self.test_id = current_test_id()
 
     def request(self, method, path, fields=None, origin=True, raw=None):
         host = "127.0.0.1:%d" % self.port
@@ -56,6 +58,7 @@ class Browser:
             conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=120)
         conn.request(method, path, body=body, headers=headers)
         reply = conn.getresponse()
+        observe_web_reply(self.port, reply.status, test_id=self.test_id)
         page = reply.read().decode("utf-8")
         answer = (reply.status, reply.getheader("Location"), page, dict(reply.getheaders()),
                   reply.msg.get_all("Set-Cookie") or [])
@@ -194,6 +197,7 @@ class FaceCases:
         while True:
             chunk = s.recv(65536)
             if not chunk:
+                observe_http_reply(s.getpeername()[1], answer)
                 return answer
             answer += chunk
 
@@ -282,7 +286,7 @@ class FaceCases:
             self.assertEqual(trace.count(b"DECODED-WINDOW release "), issued, trace[-8192:])
             self.assertIn(b":PARTIAL-FIXED-STORAGE", trace)
             self.assertIn(b"word=:RELEASED", trace)
-        self.node.start()  # Keep the class's other existing browser cases usable.
+        self.node.start(intent="restart-only")  # Reset for the class's later browser cases.
 
     def test_1_a_friend_makes_an_account_reads_posts_and_removes(self):
         b = self.browser()
@@ -380,6 +384,7 @@ class FaceCases:
                     if not chunk:
                         break
                     answer += chunk
+            observe_http_reply(self.web_port, answer)
             self.assertTrue(answer.startswith(b"HTTP/1.1 %d " % code), (raw, answer[:80]))
         # The style sheet: constant octets, no script anywhere.
         status, _, css, headers, _ = b.request("GET", "/style.css")
@@ -449,6 +454,7 @@ class FaceCases:
                     if error.errno != errno.ENOTCONN:
                         raise
                     answer = b""
+            observe_http_reply(self.web_port, answer)
             self.assertTrue(answer == b"" or re.match(rb"HTTP/1\.1 [1-5]\d\d ", answer),
                             (raw[:120], answer[:120]))
         status, _, _, _, _ = self.browser().request("GET", "/signin")

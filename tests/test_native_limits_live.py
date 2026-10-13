@@ -44,8 +44,8 @@ RESERVATION = {"SBCL_USER_ARGS": "--dynamic-space-size 4096"}
 class LimitsLiveTests(AutoCheckpointFixture):
     T = 12
 
-    def start_owner(self):
-        return self.node.start(env=RESERVATION)
+    def start_owner(self, *, intent="serve"):
+        return self.node.start(env=RESERVATION, intent=intent)
 
     def init_small(self):
         created = self.op("init", "--profile", "development", "--max-transactions",
@@ -160,10 +160,10 @@ class LimitsLiveTests(AutoCheckpointFixture):
         self.assertIn(b"; limit max-transactions requested=16 funded=none ceiling=4294967295",
                       changed.stdout)
         first = self.budget()
-        owner = self.start_owner()
+        owner = self.start_owner(intent="restart-only")
         self.node.stop(process=owner)
         second = self.budget()
-        owner = self.start_owner()
+        owner = self.start_owner(intent="restart-only")
         self.node.stop(process=owner)
         self.assertEqual((first, second, self.budget()), (first, first, first))
         self.assertGreater(first, 0)

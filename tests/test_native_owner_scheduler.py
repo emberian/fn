@@ -20,6 +20,7 @@ What this module asserts on the image:
     answered within its 10 s deadline, every time, and no held quantum
     reached a second: the bound the gate gives control, observed.
 """
+from tests.native_harness import observe_node_greeting
 import re
 import socket
 import struct
@@ -140,7 +141,7 @@ class SchedulerNativeTests(unittest.TestCase):
         self.config, self.control = self.node.config, self.node.control
         init = self.operator("init", "--max-article-octets", "1048576", "fn.test")
         self.assertEqual(init.returncode, 0, init.stderr.decode())
-        self.owner = self.start_owner()
+        self.owner = None
 
     def operator(self, *words, timeout=60):
         return self.node.operator(*words, timeout=timeout)
@@ -154,7 +155,9 @@ class SchedulerNativeTests(unittest.TestCase):
     def connect(self):
         conn = socket.create_connection(("127.0.0.1", self.port), timeout=120)
         stream = conn.makefile("rwb")
-        self.assertTrue(stream.readline().startswith(b"200"))
+        greeting = stream.readline()
+        observe_node_greeting(self.port, greeting, process=self.owner)
+        self.assertTrue(greeting.startswith(b"200"))
         return conn, stream
 
     def post(self, stream, msgid, body):
@@ -204,6 +207,7 @@ class SchedulerNativeTests(unittest.TestCase):
         # worker early (fnn-feed-idle-wait answers :commit, S145): here the
         # one post.  The window is timed from before the first sample, so the
         # polls the first sample's own request spans are inside it.
+        self.owner = self.start_owner()
         started = time.monotonic()
         bound, before = self.sched()
         self.assertEqual(bound, 3)
@@ -241,6 +245,7 @@ class SchedulerNativeTests(unittest.TestCase):
             self.assertEqual(sum(row[1:6]), row[0], (name, row))
 
     def test_a_reply_larger_than_a_render_window_is_the_posted_article(self):
+        self.owner = self.start_owner()
         body = b"\r\n".join((b"." if n % 40 == 0 else b"line %d %s" % (n, b"x" * 60))
                             for n in range(3000))
         self.assertGreater(len(body), 2 * 65536)
@@ -264,6 +269,7 @@ class SchedulerNativeTests(unittest.TestCase):
             stream.flush()
 
     def test_control_requests_are_answered_under_three_tight_loop_readers(self):
+        self.owner = self.start_owner()
         conn, stream = self.connect()
         with conn:
             for n in range(200):
@@ -357,7 +363,6 @@ class SchedulerNativeTests(unittest.TestCase):
         # (fn-ocvm-reader-view-is-the-completed-prefix); the POST's 240 leaves
         # only after the barrier (fn-ocs-members-told-only-after-the-barrier),
         # and from then on the reader counts and finds it.
-        self.reap(self.owner)
         hold = 6.0
         self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000))},
                                       image=DEVELOPER)
@@ -415,7 +420,6 @@ class SchedulerNativeTests(unittest.TestCase):
         # barrier after A's, not two.  A reader during A's barrier counts
         # neither; between A's 240 and B's it counts A and not B; after B's,
         # both.
-        self.reap(self.owner)
         hold = 4.0
         self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000)),
                                        "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1"},
@@ -480,7 +484,6 @@ class SchedulerNativeTests(unittest.TestCase):
         # pipeline (fn-ocp-wake BLOCKED): at most two more batches are sealed
         # (fn-ocf-control-waits-at-most-the-bound), so it is answered within
         # three barriers plus its own quantum, while the posters keep going.
-        self.reap(self.owner)
         hold = 1.5
         self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000)),
                                        "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1"},
@@ -566,7 +569,6 @@ class SchedulerNativeTests(unittest.TestCase):
         # reader's GROUP 1 s in is answered inside the barrier (the redeem
         # holds nothing while it waits).  The account then logs in.
         import ssl
-        self.reap(self.owner)
         hold = 4.0
         cert, key = self.root / "cert.pem", self.root / "key.pem"
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
@@ -595,7 +597,9 @@ class SchedulerNativeTests(unittest.TestCase):
             raw = socket.create_connection(("127.0.0.1", tls_port), timeout=120)
             conn = context.wrap_socket(raw)
             stream = conn.makefile("rwb")
-            self.assertTrue(stream.readline().startswith(b"200"))
+            greeting = stream.readline()
+            observe_node_greeting(tls_port, greeting, process=self.owner)
+            self.assertTrue(greeting.startswith(b"200"))
             return conn, stream
 
         redeem_conn, redeem = tls()
@@ -649,7 +653,9 @@ class SchedulerNativeTests(unittest.TestCase):
         conn = socket.create_connection(("127.0.0.1", self.port), timeout=120,
                                         source_address=(source, 0))
         stream = conn.makefile("rwb")
-        self.assertTrue(stream.readline().startswith(b"200"))
+        greeting = stream.readline()
+        observe_node_greeting(self.port, greeting, process=self.owner)
+        self.assertTrue(greeting.startswith(b"200"))
         return conn, stream
 
     def ask(self, stream, line):
@@ -675,7 +681,6 @@ class SchedulerNativeTests(unittest.TestCase):
         # after the COMPLETE the same peer session is told it is held (435,
         # 438); the article is the poster's, once, and stays so across a
         # restart.
-        self.reap(self.owner)
         policy = self.operator("policy", "set", "path-identity", "fn-a2.example")
         self.assertEqual(policy.returncode, 0, policy.stderr.decode())
         added = self.operator("peer", "add", "hostile", "hostile.example", "127.0.0.1", "9",
@@ -774,7 +779,6 @@ class SchedulerNativeTests(unittest.TestCase):
         # root loses a page (the old reader reads every article it pinned,
         # during the snapshot); the article whose completion the crash cut is
         # all there or not there -- never a damaged body.
-        self.reap(self.owner)
         # The extent cache stays on: with it off ACL2 refuses every cold
         # read (fn-pxe-cache-mode) and defers the checkpoint publication
         # (fn-orln-cache-off-walk-defers-the-publication), so the snapshot

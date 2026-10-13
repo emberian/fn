@@ -24,6 +24,7 @@ latency; the node's answers are stated relative to it
     barrier's latency and one slow episode, and the next POST is accepted
     (fn-otm-return-recovers).
 """
+from tests.native_harness import observe_node_greeting
 import json
 import os
 from pathlib import Path
@@ -236,7 +237,9 @@ class SlowDiskNativeTests(unittest.TestCase):
     def connect(self):
         conn = socket.create_connection(("127.0.0.1", self.port), timeout=120)
         stream = conn.makefile("rwb")
-        self.assertTrue(stream.readline().startswith(b"200"))
+        greeting = stream.readline()
+        observe_node_greeting(self.port, greeting)
+        self.assertTrue(greeting.startswith(b"200"))
         return conn, stream
 
     def send_article(self, stream, msgid, body):
@@ -1288,6 +1291,7 @@ class SlowDiskNativeTests(unittest.TestCase):
                                              source_address=("127.0.0.2", 0))
         peer = peer_conn.makefile("rwb")
         greeting = peer.readline()
+        observe_node_greeting(self.port, greeting)
         self.assertTrue(greeting.startswith(b"200"), greeting)
 
         def ask(line):

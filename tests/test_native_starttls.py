@@ -10,7 +10,7 @@ import subprocess
 import time
 import unittest
 
-from tests.native_harness import EXIT, ROOT, Node, client_context, native_image, requires
+from tests.native_harness import EXIT, ROOT, Node, client_context, native_image, observe_node_greeting, requires
 
 IMAGE = native_image("FN_NATIVE_HOST")
 
@@ -23,6 +23,8 @@ def recv_line(peer: socket.socket, prefix: bytes = b"") -> tuple[bytes, bytes]:
             raise EOFError("connection ended before an NNTP line")
         buffered += piece
     line, remainder = buffered.split(b"\r\n", 1)
+    if line[:3] in (b"200", b"201"):
+        observe_node_greeting(peer.getpeername()[1], line)
     return line + b"\r\n", remainder
 
 
@@ -142,6 +144,8 @@ class MemoryTlsClient:
                 raise EOFError("TLS connection ended before an NNTP line")
             self.incoming.write(encrypted)
         line, self.plaintext = self.plaintext.split(b"\r\n", 1)
+        if line[:3] in (b"200", b"201"):
+            observe_node_greeting(self.peer.getpeername()[1], line + b"\r\n")
         return line + b"\r\n"
 
 
