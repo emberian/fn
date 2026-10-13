@@ -180,8 +180,14 @@
 ; Derived auxiliary memory writer costs, not declared ceilings.
 (def-cost fn-owner-memory-physical-return
  :unaccounted (fn-owner-memory-held-return))
-(def-cost fn-owner-memory-physical-rearm
- :unaccounted (fn-owner-memory-held-rearm))
+(def-cost fn-owner-open
+ :unaccounted (fn-owner-held-callback-open))
+(def-cost fn-owner-open-peer
+ :unaccounted (fn-owner-held-callback-open-peer))
+(def-cost fn-owner-peer-rearm
+ :unaccounted (fn-owner-held-callback-open-peer))
+(def-cost fn-owner-exposure-rearm
+ :unaccounted (fn-owner-held-callback-exposure-open))
 (def-cost fn-owner-memory-lease-install
  :unaccounted (fn-adm-installed-lease-allocation))
 (def-cost fn-owner-memory-reclaim-complete

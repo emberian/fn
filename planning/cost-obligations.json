@@ -4,15 +4,15 @@
  "counts": {
   "proved": 6,
   "partial": 4,
-  "derived": 113,
-  "none": 1737
+  "derived": 116,
+  "none": 1735
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 4,
-   "derived": 112,
-   "none": 1021
+   "derived": 115,
+   "none": 1019
   },
   "ideal": {
    "proved": 0,
@@ -11304,6 +11304,18 @@
    "declared_in": null
   },
   {
+   "name": "fn-owner-exposure-rearm",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-owner-held-callback-exposure-open"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
    "name": "fn-owner-exposure-release",
    "class": "program",
    "claim": "none",
@@ -12056,18 +12068,6 @@
    "declared_in": "host/cost-host.lisp"
   },
   {
-   "name": "fn-owner-memory-physical-rearm",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
-    "fn-owner-memory-held-rearm"
-   ],
-   "theorem": null,
-   "declared_in": "host/cost-host.lisp"
-  },
-  {
    "name": "fn-owner-memory-physical-return",
    "class": "common-lisp-compliant",
    "claim": "derived",
@@ -12145,22 +12145,26 @@
   {
    "name": "fn-owner-open",
    "class": "common-lisp-compliant",
-   "claim": "none",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-owner-held-callback-open"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-open-peer",
    "class": "common-lisp-compliant",
-   "claim": "none",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-owner-held-callback-open-peer"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-operator-refusal-reason",
@@ -13071,6 +13075,18 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-owner-peer-rearm",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-owner-held-callback-open-peer"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-peer-revoked-event",

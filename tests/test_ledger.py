@@ -1603,6 +1603,20 @@ class DefkeystoneExpansionTests(unittest.TestCase):
     that book and requires the Python expansion to equal the same literal,
     so the static tools and ACL2 cannot drift apart silently."""
 
+    def test_hypothesis_free_let_is_the_whole_conclusion(self):
+        term = ledger.read_forms("(let ((x (f y))) (and (p x) (q x)))")[0]
+        self.assertEqual(ledger.defkeystone_claim(ledger.Sym("k"), term, {}),
+                         [[], term])
+
+    def test_decoded_credential_keeps_its_original_claim_and_teeth(self):
+        source = (self.BOOK.parent / "feed-connection-teeth-tests.lisp").read_text()
+        form = next(f for f in ledger.read_forms(source)
+                    if ledger.head(f) == "defkeystone" and str(f[1]) == "fct-decoded-credential")
+        parts = ledger.defkeystone_parts(form)
+        self.assertIsNotNone(parts)
+        self.assertEqual(parts["claim"], [[], form[2]])
+        self.assertGreater(len(ledger.teeth_events(parts, "defkeystone")), 1)
+
     def test_outer_let_keeps_hypothesis_scope(self):
         form = ledger.Reader("(defkeystone lexical (let* ((a (nfix x)) (b (1+ a))) "
                              "(implies (< 0 a) (< 1 b))) :subject nfix :hyps (positive) "

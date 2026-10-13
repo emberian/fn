@@ -479,8 +479,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         over the carried store (books/admission-memory.lisp fn-adm-capacity),
         and serves at C': the gate prices C' connections and the readers
         accepted are bounded by it (books/owner-connection-callbacks.lisp
-        fn-owner-memory-max-conns lowers the bound to C'+1;
-        fn-owner-callback-exposure-total-within-the-memory-capacity).
+        fn-adm-exposure-open compares the held custody with min(C, C'),
+        including ended connections awaiting physical disposal).
 
         The tooth is C' below C under the 2 GiB cgroup, bound by a PERMANENT
         term.  A 4 MiB article bound makes each holder's article reply
@@ -531,7 +531,7 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertNotEqual(term, "configured")
         self.assertEqual(term, "article-reply",
                          "the permanent term binds, not the retiring OVER window")
-        # C'+1 sockets here, the owner's as many: well inside 1,024 descriptors.
+        # C' admitted sockets and one refused attempt, inside 1,024 descriptors.
         self.assertLess(cap, 400)
         body = ("z" * 72 + "\r\n") * 28
         readers = []
@@ -543,6 +543,11 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 self.assertTrue(extra.greeting.startswith(b"400 "), extra.greeting)
             finally:
                 extra.sock.close()
+            # The private staging reader has the same priced bound. At C'
+            # held readers the retired C'+1 operator slot cannot be opened.
+            control = self.run_fn("operator", config, "policy", "set",
+                                  "exposure-connections", str(configured - 1))
+            self.assertEqual(control.returncode, EXIT_REFUSED, text(control))
             # C' is the most connections the gate holds over the store at
             # configure, so the room left is under one connection's charge
             # (one article reply here) and a store that grows spends it: each

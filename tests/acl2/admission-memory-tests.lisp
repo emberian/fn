@@ -663,6 +663,7 @@
                                 (fn-mm-reopen-need *m22-profile* *m22-img* *m22-lease-cfg* *m22-empty*)))
 (defkeystone m22-adm-priced-connections-cover-held
   (<= (nfix held) (fn-adm-priced-connections held configured capacity))
+ :id "PRF-10018"
  :rule-classes nil
  :restates fn-adm-priced-connections-cover-held
  :subject fn-adm-priced-connections
@@ -674,6 +675,7 @@
   (implies (<= (nfix held) (fn-adm-reader-count configured capacity))
            (equal (fn-adm-priced-connections held configured capacity)
                   (fn-adm-reader-count configured capacity)))
+ :id "PRF-10018"
  :rule-classes nil
  :restates fn-adm-priced-connections-equal-reader-count-when-covered
  :subject fn-adm-priced-connections
@@ -694,6 +696,7 @@
                               (fn-mm-cfg-handshakes priced))
                             publishing)
                  limit)))
+ :id "PRF-10018"
  :rule-classes nil
  :restates fn-adm-priced-gate-bounds-the-held-instant
  :subject fn-adm-priced-cfg
@@ -717,6 +720,7 @@
                         (fn-mm-cfg-tlsp bare) (fn-mm-cfg-handshakes bare))
                       publishing))
                  limit)))
+ :id "PRF-10018"
  :rule-classes nil
  :restates fn-adm-priced-gate-holds-the-retained-lease
  :subject fn-adm-priced-cfg
@@ -737,6 +741,7 @@
                   (<= installed (fn-mm-cfg-connections cfg))
                   (fn-mm-gate-p profile img (fn-adm-cfg-at cfg installed)
                                 limit tot)))))
+ :id "PRF-10019"
  :rule-classes nil
  :restates fn-adm-installed-capacity-is-proved-or-zero
  :subject fn-adm-installed-capacity
@@ -749,6 +754,7 @@
     (and (equal (fn-exp-lim-total limits) 0)
          (equal (car (fn-exp-admit-decision xs limits held address now))
                 :refuse)))
+ :id "PRF-10019"
  :rule-classes nil
  :restates fn-adm-zero-capacity-refuses-new-readers
  :subject fn-adm-exposure-limits
@@ -758,6 +764,7 @@
 
 (defkeystone m22-adm-zero-capacity-refuses-records
   (not (fn-adm-run-memory-admitp profile img cfg limit tot row held 0))
+ :id "PRF-10019"
  :rule-classes nil
  :restates fn-adm-zero-capacity-refuses-records
  :subject fn-adm-run-memory-admitp
@@ -771,6 +778,7 @@
        (equal (fn-adm-memory-owner-bound maximum nil) (nfix maximum))
        (equal (fn-adm-memory-owner-bound maximum 0) 0)
        (equal (fn-adm-priced-connections held configured 0) (nfix held)))
+ :id "PRF-10019"
  :rule-classes nil
  :restates fn-adm-absent-capacity-and-zero-are-distinct
  :subject fn-adm-reader-count
@@ -790,6 +798,7 @@
         " sum=" (fn-adm-mb-up
           (fn-mm-sum profile img (fn-adm-cfg-at cfg 0) tot))
         " MB limit=" (fn-adm-mb-down limit) " MB")))
+ :id "PRF-10019"
  :rule-classes nil
  :restates fn-adm-installed-zero-has-the-zero-diagnostic
  :subject fn-adm-installed-capacity-line

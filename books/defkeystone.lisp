@@ -318,9 +318,12 @@
 
 (defun fn-dk-claim-of (name term kvs)
  (declare (xargs :mode :program))
- ; Preserve outer lexical bindings in the claim, just as defteeth does.
+ ; Split a scoped implication, while retaining the bindings for its teeth.
+ ; A hypothesis-free LET is the whole conclusion, as before LET support.
  (if (and (consp term) (member-eq (car term) '(let let*))
-          (true-listp term) (equal (len term) 3))
+          (true-listp term) (equal (len term) 3)
+          (consp (caddr term)) (eq (car (caddr term)) 'implies)
+          (true-listp (caddr term)) (equal (len (caddr term)) 3))
   (list (car term) (cadr term) (fn-dk-claim-of name (caddr term) kvs))
   (let* ((hyps (fn-dk-source-hyps term))
          (labels (if (assoc-keyword :hyps kvs) (fn-dk-get :hyps kvs)

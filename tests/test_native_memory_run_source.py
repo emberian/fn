@@ -14,6 +14,8 @@ class MemoryRunSourceTests(unittest.TestCase):
                                 cwd=ROOT, capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("SOURCE MEMORY RUN PASSED", result.stdout)
+        self.assertIn("SOURCE HELD ADMISSION PASSED", result.stdout)
+        self.assertIn("SOURCE WEB/PULL TRANSFER PASSED", result.stdout)
 
     def test_refresh_is_in_the_committed_swap_quantum(self):
         source = (ROOT / "host/native/owner.lisp").read_text()

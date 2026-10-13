@@ -104,9 +104,10 @@ exposure admission decides (the id, or NIL when it refused)."
            service nil
            (lambda ()
              (fnn-owner-advance-clock)
-             (let ((id (fnn-owner-core 'fn-owner-exposure-open family address nil)))
-               (when (and id prior-physical-id)
-                 (fnn-owner-action 'fn-owner-memory-physical-rearm prior-physical-id id))
+             (let ((id (if prior-physical-id
+                           (fnn-owner-core 'fn-owner-exposure-rearm
+                                           family address nil prior-physical-id)
+                         (fnn-owner-core 'fn-owner-exposure-open family address nil))))
                (when id (fnn-owner-log))
                ;; The session's SASL context (books/nntp-auth.lisp): a fresh
                ;; seed and no channel binding (the browser's TLS layer is not

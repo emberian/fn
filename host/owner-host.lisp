@@ -1519,9 +1519,11 @@
                               (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
                               (fn-ocfg-eventp (fn-owner-ocfg state) event))
                   :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
-  (let ((state (fn-owner-install-ocfg
-                (fn-ocfg-step (fn-owner-ocfg state) event fn-arena) state)))
-    state))
+  (if (member-eq (car event) '(:open :open-peer))
+      state
+    (let ((state (fn-owner-install-ocfg
+                  (fn-ocfg-step (fn-owner-ocfg state) event fn-arena) state)))
+      state)))
 
 ; A staged configuration record grows the history the run holds by its
 ; encoding (counted at staging: a write that fails over-counts, never
@@ -3562,8 +3564,16 @@
   (declare (xargs :stobjs state :verify-guards t
                   :guard (and (boundp-global 'fn-owner state)
                               (fn-cbor-octet-listp peer-octets))))
-  (mv-let (erp id state) (fn-owner-callback-open-peer peer-octets state)
-    (let ((state (fn-owner-memory-held-open id t state))) (mv erp id state))))
+  (fn-owner-held-callback-open-peer peer-octets nil nil state))
+
+; Persistent pull custody is transferred before the replacement is admitted.
+(defun fn-owner-peer-rearm (peer-octets old-id state)
+ (declare (xargs :stobjs state :verify-guards t
+                 :guard (and (boundp-global 'fn-owner state)
+                             (fn-cbor-octet-listp peer-octets))))
+ (fn-owner-held-callback-open-peer peer-octets t old-id state))
+(definterface fn-owner-peer-rearm
+ :class :common-lisp-compliant :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-open-peer
   :class :common-lisp-compliant
@@ -4840,15 +4850,12 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-owner-callback-at-working-view working state))
 
-(defun fn-owner-open-at (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-callback-open-at state))
+
 
 (defun fn-owner-open (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
                   :verify-guards t))
-  (mv-let (erp id state) (fn-owner-callback-open state)
-    (let ((state (fn-owner-memory-held-open id nil state))) (mv erp id state))))
+  (fn-owner-held-callback-open state))
 
 (definterface fn-owner-open
   :class :common-lisp-compliant)
@@ -5094,37 +5101,16 @@
 (defun fn-owner-exposure-open (family address peer-octets state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp peer-octets)))
-  (let* ((peer (and peer-octets (fn-store-octets->string peer-octets)))
-         (peer (if (equal peer :bad) nil peer))
-         (before (fn-owner-core state))
-         (id (fn-own-next-id before))
-         ; fn-ocar-exp-open is fn-exp-open under the configured owner's
-         ; relation (fn-ocar-exp-open-is-exp-open-under-ocl-relation,
-         ; books/owner-open-carried.lisp): its reader arm opens through
-         ; fn-ocar-ocfg-open, which evaluates no whole-state recognizer.
-         (r (fn-ocar-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
-                         (fn-owner-exposure-limits state) (fn-owner-auth state)
-                         peer (cons family address)
-                         (fn-owner-exposure-now state)))
-         (state (fn-owner-install-ocfg (fn-exp-open-ocfg r) state))
-         (state (f-put-global 'fn-owner-exposure (fn-exp-open-state r) state)))
-    (if (fn-exp-open-id r)
-        (let* ((state (fn-owner-memory-held-open (fn-exp-open-id r) t state))
-               (state (fn-owner-install-effects (fn-exp-open-effects r) state))
-               (state (f-put-global 'fn-owner-log-line
-                                    (fn-olog-socket-connection-line
-                                     (fn-owner-core state) id
-                                     (and peer peer-octets) family address)
-                                    state)))
-          (value (fn-exp-open-id r)))
-      (let* ((state (f-put-global 'fn-owner-effects nil state))
-             (state (f-put-global 'fn-owner-output
-                                  (fn-exp-open-refusal r) state))
-             (state (f-put-global 'fn-owner-closep
-                                  (and (fn-exp-open-refusal r) t) state))
-             (state (f-put-global 'fn-owner-starttlsp nil state))
-             (state (f-put-global 'fn-owner-submittedp nil state)))
-        (value nil)))))
+  (fn-owner-held-callback-exposure-open family address peer-octets nil nil state))
+
+; One owner-serialized transition replaces an ended persistent Web reader.
+(defun fn-owner-exposure-rearm (family address peer-octets old-id state)
+ (declare (xargs :stobjs state :verify-guards t
+                 :guard (and (boundp-global 'fn-owner state)
+                             (fn-cbor-octet-listp peer-octets))))
+ (fn-owner-held-callback-exposure-open family address peer-octets t old-id state))
+(definterface fn-owner-exposure-rearm
+ :class :common-lisp-compliant :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-exposure-open
   :class ::program
@@ -6617,10 +6603,8 @@ itself."
  (declare (xargs :stobjs state :guard t :verify-guards t))
  (let ((state (fn-owner-memory-held-return id state))) (value :returned)))
 (definterface fn-owner-memory-physical-return :class :common-lisp-compliant)
-(defun fn-owner-memory-physical-rearm (old-id new-id state)
- (declare (xargs :stobjs state :guard t :verify-guards t))
- (let ((state (fn-owner-memory-held-rearm old-id new-id state))) (value :rearmed)))
-(definterface fn-owner-memory-physical-rearm :class :common-lisp-compliant)
+
+
 (defun fn-owner-memory-lease-install (profile cfg quantum state)
  (declare (xargs :stobjs state :guard t))
  (let ((state (f-put-global 'fn-owner-memory-lease-octets
@@ -6636,6 +6620,6 @@ itself."
 (verify-guards fn-owner-memory-handshakes-in-flight)
 (verify-guards fn-owner-memory-run-cfg)
 (verify-guards fn-owner-memory-physical-return)
-(verify-guards fn-owner-memory-physical-rearm)
+
 (verify-guards fn-owner-memory-recapacity)
 (verify-guards fn-owner-memory-reclaim-complete)

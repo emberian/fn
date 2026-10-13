@@ -283,11 +283,11 @@
    service nil
    (lambda ()
      (fnn-owner-advance-clock)
-     (let ((cid (fnn-owner-core 'fn-owner-open-peer peer-octets)))
+     (let ((cid (if prior-physical-id
+                    (fnn-owner-core 'fn-owner-peer-rearm peer-octets prior-physical-id)
+                  (fnn-owner-core 'fn-owner-open-peer peer-octets))))
        (unless (and (integerp cid) (>= cid 0))
          (fnn-refuse "owner refused the pull transit connection"))
-       (when prior-physical-id
-         (fnn-owner-action 'fn-owner-memory-physical-rearm prior-physical-id cid))
        (fnn-owner-log)
        (values cid (fnn-owner-octets-global 'fn-owner-output))))))
 

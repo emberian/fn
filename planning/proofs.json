@@ -23783,6 +23783,106 @@
         "fn-lgo-head-genesis-is-the-open-lineage-start",
         "fn-lgo-history-ceiling-bounds-the-intern"
       ]
+    },
+    {
+      "id": "PRF-10017",
+      "title": "Held reader admissions and same-step transport transfer preserve the installed memory capacity",
+      "statement": "fn-adm-held-admissions-compose-with-installed-capacity (defkeystone m24t-held-admissions-compose-with-installed-capacity, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-exposure-open.",
+      "milestone": "M24",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "8c351d92a415f866",
+      "keystone_subjects": {
+        "fn-adm-exposure-open-admits-below-held-reader-bound": "fn-adm-exposure-open",
+        "fn-adm-held-admissions-compose-with-installed-capacity": "fn-adm-exposure-open",
+        "fn-adm-peer-open-admits-below-held-reader-bound": "fn-adm-peer-open",
+        "fn-adm-reader-open-admits-below-held-reader-bound": "fn-adm-reader-open",
+        "fn-adm-transport-rearm-admits-below-held-reader-bound": "fn-adm-transport-rearm"
+      },
+      "events": [
+        "fn-adm-exposure-open-admits-below-held-reader-bound",
+        "fn-adm-peer-open-admits-below-held-reader-bound",
+        "fn-adm-transport-rearm-admits-below-held-reader-bound",
+        "fn-adm-reader-open-admits-below-held-reader-bound",
+        "fn-adm-held-admissions-compose-with-installed-capacity"
+      ]
+    },
+    {
+      "id": "PRF-10018",
+      "title": "Held connection pricing bounds the instantaneous memory need and retained lease",
+      "statement": "fn-adm-priced-connections-cover-held (defkeystone m22-adm-priced-connections-cover-held, tests/acl2/admission-memory-tests.lisp); subject fn-adm-priced-connections.",
+      "milestone": "M24",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/admission-memory-tests.lisp"
+      ],
+      "evidence_digest": "719c3298f7e8ef0e",
+      "keystone_subjects": {
+        "fn-adm-priced-connections-cover-held": "fn-adm-priced-connections",
+        "fn-adm-priced-connections-equal-reader-count-when-covered": "fn-adm-priced-connections",
+        "fn-adm-priced-gate-bounds-the-held-instant": "fn-adm-priced-cfg",
+        "fn-adm-priced-gate-holds-the-retained-lease": "fn-adm-priced-cfg"
+      },
+      "events": [
+        "fn-adm-priced-connections-cover-held",
+        "fn-adm-priced-connections-equal-reader-count-when-covered",
+        "fn-adm-priced-gate-bounds-the-held-instant",
+        "fn-adm-priced-gate-holds-the-retained-lease"
+      ]
+    },
+    {
+      "id": "PRF-10019",
+      "title": "Installed capacity is proved fitting or zero and zero remains distinct from absence",
+      "statement": "fn-adm-installed-capacity-is-proved-or-zero (defkeystone m22-adm-installed-capacity-is-proved-or-zero, tests/acl2/admission-memory-tests.lisp); subject fn-adm-installed-capacity.",
+      "milestone": "M24",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/admission-memory-tests.lisp"
+      ],
+      "evidence_digest": "c07599e92edc4943",
+      "keystone_subjects": {
+        "fn-adm-absent-capacity-and-zero-are-distinct": "fn-adm-reader-count",
+        "fn-adm-installed-capacity-is-proved-or-zero": "fn-adm-installed-capacity",
+        "fn-adm-installed-zero-has-the-zero-diagnostic": "fn-adm-installed-capacity-line",
+        "fn-adm-zero-capacity-refuses-new-readers": "fn-adm-exposure-limits",
+        "fn-adm-zero-capacity-refuses-records": "fn-adm-run-memory-admitp"
+      },
+      "events": [
+        "fn-adm-installed-capacity-is-proved-or-zero",
+        "fn-adm-zero-capacity-refuses-new-readers",
+        "fn-adm-zero-capacity-refuses-records",
+        "fn-adm-absent-capacity-and-zero-are-distinct",
+        "fn-adm-installed-zero-has-the-zero-diagnostic"
+      ]
+    },
+    {
+      "id": "PRF-10020",
+      "title": "Served launch conserves the resident partition and funds BP startup at its decided need",
+      "statement": "fn-mo-serve-launch-conserves-the-resident-partition (defkeystone m22-mo-serve-launch-conserves-the-resident-partition, tests/acl2/heap-command-tests.lisp); subject fn-mo-serve-total-pools.",
+      "milestone": "M24",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/heap-command-tests.lisp"
+      ],
+      "evidence_digest": "136a10d2578b28ba",
+      "keystone_subjects": {
+        "fn-mo-serve-bp-launch-admits-its-startup": "fn-mo-serve-run-decide",
+        "fn-mo-serve-launch-conserves-the-resident-partition": "fn-mo-serve-total-pools"
+      },
+      "events": [
+        "fn-mo-serve-launch-conserves-the-resident-partition",
+        "fn-mo-serve-bp-launch-admits-its-startup"
+      ]
     }
   ]
 }

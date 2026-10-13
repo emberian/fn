@@ -867,6 +867,7 @@
 (defkeystone fn-dkt-lexical-scope
  (let* ((a (nfix x)) (b (1+ a)))
   (implies (< 0 a) (< 1 b)))
+ :id :test
  :subject nfix :hyps (positive) :witness ((x 1))
  :breaks ((positive ((x 0))))
  :mutations ((off-by-one (:conclusion (< 2 b)) ((x 1))

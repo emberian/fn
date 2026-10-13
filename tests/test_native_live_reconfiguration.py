@@ -174,18 +174,18 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         bridge = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
         # Since 1bf2ddcaf the host entry fn-owner-open is the guarded
         # callback of books/owner-connection-callbacks.lisp.
-        self.assertIn("(fn-owner-callback-open state)",
+        self.assertIn("(fn-owner-held-callback-open state)",
                       body_of(bridge, "(defun fn-owner-open (state)"))
         book = (ROOT / "books" / "owner-connection-callbacks.lisp").read_text(encoding="ascii")
         # Since PKT-828 the open runs open-at at the reader view and puts the
         # working view back; the id is answered there.
-        open_body = body_of(book, "(defun fn-owner-callback-open (state)")
+        open_body = body_of(book, "(defun fn-owner-held-callback-open (state)")
         order = [open_body.index(word) for word in (
             "(fn-owner-callback-at-reader-view state)",
-            "(fn-owner-callback-open-at state)",
+            "(fn-owner-held-callback-open-at state)",
             "(fn-owner-callback-at-working-view working state)")]
         self.assertEqual(order, sorted(order))
-        self.assertIn("(value id)", body_of(book, "(defun fn-owner-callback-open-at (state)"))
+        self.assertIn("(value id)", body_of(book, "(defun fn-owner-held-callback-open-at (state)"))
 
     def test_publication_is_authorized_on_the_stores_own_lock_observation(self):
         start = self.native_admin.index("(defun fnn-admin-authorize")

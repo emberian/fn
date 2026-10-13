@@ -706,9 +706,10 @@
            (equal pools
              (+ (fn-mo-serve-pools profile cold output peer workers cache-limit root)
                 (fn-mo-serve-bp-need bp-terms))))))
+ :id "PRF-10020"
  :rule-classes nil
  :restates fn-mo-serve-launch-conserves-the-resident-partition
- :subject fn-mo-serve-run-decide
+ :subject fn-mo-serve-total-pools
  :witness ((profile *fn-bs-profile-development*) (img *m22-bp-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident *m22-bp-resident*) (address nil) (core *m22-bp-core*) (nursery *m22-bp-nursery*) (tot *m22-empty*) (output nil) (peer nil) (workers 4) (cache-limit 8) (root "/x") (bp-terms *m22-bp-terms*))
  :hyps (accepted)
  :breaks ((accepted ((profile *fn-bs-profile-development*) (img *m22-bp-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident nil) (address nil) (core *m22-bp-core*) (nursery *m22-bp-nursery*) (tot *m22-empty*) (output nil) (peer nil) (workers 4) (cache-limit 8) (root "/x") (bp-terms *m22-bp-terms*))))
@@ -731,6 +732,7 @@
         (fn-mo-serve-bp-store-need resident profile cold output peer workers cache-limit root
                                   bp-terms core nursery)))
       :hold))
+ :id "PRF-10020"
  :rule-classes nil
  :restates fn-mo-serve-bp-launch-admits-its-startup
  :subject fn-mo-serve-run-decide

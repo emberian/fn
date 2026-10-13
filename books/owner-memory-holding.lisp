@@ -2,6 +2,8 @@
 ; Gates read COUNT without walking the connections or another actor's roster.
 (in-package "ACL2")
 (include-book "public-exposure")
+(include-book "admission-memory")
+(include-book "owner-open-carried")
 (include-book "acceptance-alloc")
 (include-book "defrecord")
 (include-book "state-globals")
@@ -95,10 +97,7 @@
  (f-put-global 'fn-owner-memory-held-bank
   (fn-adm-hh-return (fn-owner-memory-held-bank state) id) state))
 
-(defun fn-owner-memory-held-rearm (old-id new-id state)
- (declare (xargs :stobjs state :guard t))
- (f-put-global 'fn-owner-memory-held-bank
-  (fn-adm-hh-rearm (fn-owner-memory-held-bank state) old-id new-id) state))
+
 
 (local (defthm m22-lookup-implies-consp-by-definition
  (implies (fn-exp-lookup id rows) (< 0 (len rows)))
@@ -206,3 +205,462 @@
 (defthm fn-adm-hh-rearm-preserves-identity-union
  (implies (fn-adm-hh-representsp bank) (fn-adm-hh-representsp (fn-adm-hh-rearm bank old-id new-id)))
  :hints (("Goal" :in-theory (e/d (fn-adm-hh-rearm) (fn-adm-hh-open fn-adm-hh-return fn-adm-hh-update fn-adm-hh-representsp)))))
+
+; M24 held admission and same-step persistent-transport transfer.
+(defun fn-adm-admission-held (result)
+  (declare (xargs :guard t))
+  (nfix (fn-adm-hh-count (fn-exp-at 2 result))))
+
+(defun fn-adm-held-open-roomp (bank configured capacity id)
+  (declare (xargs :guard t))
+  (and (< (nfix (fn-adm-hh-count bank))
+          (fn-adm-reader-count configured capacity))
+       (natp id)
+       (not (fn-exp-lookup id (fn-adm-hh-rows bank)))))
+
+(defun fn-adm-held-open-refusal (kind oc xs decision now bank)
+  (declare (xargs :guard t))
+  (list :refuse
+    (if (equal kind :exposure)
+      (list nil oc
+        (fn-exp-with xs (fn-exp-conns xs) (fn-exp-rates xs)
+          (fn-exp-fails xs) (fn-exp-posts xs)
+          (fn-exp-counters-bump (nfix (fn-exp-at 2 decision)) now
+                                (fn-exp-counters xs)))
+        nil (fn-exp-line (fn-exp-at 1 decision)))
+      (cons nil oc))
+    bank (nfix (fn-adm-hh-count bank)) nil))
+
+(defun fn-adm-held-open
+  (kind oc xs lim acfg peer address now bank configured capacity)
+  (declare (xargs :guard t))
+  (let* ((held (nfix (fn-adm-hh-count bank)))
+         (id (fn-own-next-id (fn-ocfg-owner oc)))
+         (busy (list :refuse *fn-exp-busy-line* 1))
+         (policy (if (equal kind :exposure)
+                   (fn-exp-admit-decision xs lim held address now)
+                   (list :admit))))
+    (cond
+      ((not (member-eq kind '(:exposure :peer :reader)))
+       (fn-adm-held-open-refusal kind oc xs busy now bank))
+      ((not (fn-adm-held-open-roomp bank configured capacity id))
+       (fn-adm-held-open-refusal kind oc xs busy now bank))
+      ((not (equal (car policy) :admit))
+       (fn-adm-held-open-refusal kind oc xs policy now bank))
+      (t
+       (let* ((opened
+                (case kind
+                  (:exposure (fn-ocar-exp-open oc xs lim acfg peer address now))
+                  (:peer (fn-ocfg-open-peer oc peer acfg))
+                  (otherwise (fn-ocar-ocfg-open oc acfg))))
+              (actual-id
+                (if (equal kind :exposure)
+                  (fn-exp-open-id opened)
+                  (and (fn-own-find-conn id
+                         (fn-own-conns (fn-ocfg-owner (cdr opened)))) id))))
+         (if (and (natp actual-id) (equal actual-id id))
+           (list :admit opened
+             (fn-adm-hh-open bank id (not (equal kind :reader)))
+             (1+ held) id)
+           (list :refuse opened bank held nil)))))))
+
+(defun fn-adm-exposure-open
+  (oc xs lim acfg peer address now bank configured capacity)
+  (declare (xargs :guard t))
+  (fn-adm-held-open :exposure oc xs lim acfg peer address now
+                    bank configured capacity))
+
+(defun fn-adm-peer-open (oc peer acfg bank configured capacity)
+  (declare (xargs :guard t))
+  (fn-adm-held-open :peer oc nil nil acfg peer nil 0 bank configured capacity))
+
+(defun fn-adm-reader-open (oc acfg bank configured capacity)
+  (declare (xargs :guard t))
+  (fn-adm-held-open :reader oc nil nil acfg nil nil 0 bank configured capacity))
+
+(defun fn-adm-transport-rearm
+  (kind oc xs lim acfg peer address now bank old-id configured capacity)
+  (declare (xargs :guard t))
+  (let ((old (fn-exp-lookup old-id (fn-adm-hh-rows bank))))
+    (if (and (member-eq kind '(:exposure :peer))
+             (natp old-id) (not (fn-exp-at 1 old)) (fn-exp-at 2 old))
+      (let ((r (fn-adm-held-open kind oc xs lim acfg peer address now
+                                (fn-adm-hh-return bank old-id) configured capacity)))
+        (if (equal (car r) :admit)
+          r
+          (update-nth 3 (nfix (fn-adm-hh-count bank)) (update-nth 2 bank r))))
+      (fn-adm-held-open-refusal kind oc xs
+        (list :refuse *fn-exp-busy-line* 1) now bank))))
+
+(local (defthm m24-held-refusal-selectors-by-definition
+ (let ((r (fn-adm-held-open-refusal kind oc xs decision now bank)))
+  (and (equal (car r) :refuse) (equal (fn-exp-at 2 r) bank)
+       (equal (fn-exp-at 3 r) (nfix (fn-adm-hh-count bank)))))
+ :hints (("Goal" :in-theory (union-theories
+   '(fn-adm-held-open-refusal fn-exp-at nth nfix natp car-cons cdr-cons)
+   (theory 'minimal-theory))))))
+
+(local (defthm m23-bank-count-of-make-by-definition
+ (equal (fn-adm-hh-count (fn-adm-hh-make count rows)) count)
+ :hints (("Goal" :in-theory (enable fn-adm-hh-count fn-adm-hh-make)))))
+
+(local (defthm m23-held-open-admission-by-definition
+ (let ((r (fn-adm-held-open kind oc xs lim acfg peer address now bank configured capacity)))
+  (implies (equal (car r) :admit)
+   (and (< (nfix (fn-adm-hh-count bank)) (fn-adm-reader-count configured capacity))
+        (equal (fn-exp-at 3 r) (1+ (nfix (fn-adm-hh-count bank))))
+        (equal (fn-adm-admission-held r) (1+ (nfix (fn-adm-hh-count bank)))))))
+ :hints (("Goal" :in-theory (e/d
+  (fn-adm-held-open fn-adm-held-open-roomp fn-adm-held-open-refusal
+   fn-adm-admission-held fn-adm-hh-open fn-adm-hh-update fn-exp-at)
+  (fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup fn-adm-hh-put fn-adm-hh-drop
+   fn-ocar-exp-open fn-ocfg-open-peer fn-ocar-ocfg-open fn-exp-open-id
+   fn-own-find-conn fn-ocfg-owner fn-own-conns fn-own-next-id fn-exp-admit-decision
+   fn-adm-reader-count))))))
+
+(local (defthm m23-lookup-implies-positive-length-by-definition
+ (implies (fn-exp-lookup id rows) (< 0 (len rows)))
+ :hints (("Goal" :induct (fn-exp-lookup id rows) :in-theory (enable fn-exp-lookup)))))
+
+(local (defthm m23-return-ended-held-count-by-definition
+ (implies (and (fn-adm-hhp bank) (natp old-id)
+               (not (fn-exp-at 1 (fn-exp-lookup old-id (fn-adm-hh-rows bank))))
+               (fn-exp-at 2 (fn-exp-lookup old-id (fn-adm-hh-rows bank))))
+  (equal (1+ (nfix (fn-adm-hh-count (fn-adm-hh-return bank old-id))))
+         (nfix (fn-adm-hh-count bank))))
+ :hints (("Goal" :use ((:instance m23-lookup-implies-positive-length-by-definition
+                             (id old-id) (rows (fn-adm-hh-rows bank))))
+  :in-theory (e/d (fn-adm-hhp fn-adm-hh-return fn-adm-hh-update fn-exp-at)
+                 (fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup fn-adm-hh-put fn-adm-hh-drop))))))
+
+(defthm fn-adm-exposure-open-admits-below-held-reader-bound
+  (let* ((held (nfix (fn-adm-hh-count bank)))
+         (r (fn-adm-exposure-open oc xs lim acfg peer address now
+                                  bank configured capacity)))
+    (implies (equal (car r) :admit)
+      (and (< held (fn-adm-reader-count configured capacity))
+           (equal (fn-exp-at 3 r) (1+ held))
+           (equal (fn-adm-admission-held r) (1+ held)))))
+  :rule-classes nil :hints (("Goal"
+ :use ((:instance m23-held-open-admission-by-definition (kind :exposure))
+       (:instance m23-held-open-admission-by-definition (kind :peer)
+          (xs nil) (lim nil) (address nil) (now 0))
+       (:instance m23-held-open-admission-by-definition (kind :reader)
+          (xs nil) (lim nil) (peer nil) (address nil) (now 0))
+       (:instance m23-held-open-admission-by-definition
+          (bank (fn-adm-hh-return bank old-id)))
+       m23-return-ended-held-count-by-definition)
+ :in-theory (e/d
+ (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm
+  fn-exp-at)
+ (fn-adm-held-open fn-adm-admission-held fn-adm-hh-return fn-adm-hh-count
+  fn-adm-hh-rows fn-exp-lookup fn-adm-reader-count fn-adm-hhp
+  m23-held-open-admission-by-definition nfix fn-adm-held-open-refusal)))))
+
+(defthm fn-adm-peer-open-admits-below-held-reader-bound
+  (let* ((held (nfix (fn-adm-hh-count bank)))
+         (r (fn-adm-peer-open oc peer acfg bank configured capacity)))
+    (implies (equal (car r) :admit)
+      (and (< held (fn-adm-reader-count configured capacity))
+           (equal (fn-exp-at 3 r) (1+ held))
+           (equal (fn-adm-admission-held r) (1+ held)))))
+  :rule-classes nil :hints (("Goal"
+ :use ((:instance m23-held-open-admission-by-definition (kind :exposure))
+       (:instance m23-held-open-admission-by-definition (kind :peer)
+          (xs nil) (lim nil) (address nil) (now 0))
+       (:instance m23-held-open-admission-by-definition (kind :reader)
+          (xs nil) (lim nil) (peer nil) (address nil) (now 0))
+       (:instance m23-held-open-admission-by-definition
+          (bank (fn-adm-hh-return bank old-id)))
+       m23-return-ended-held-count-by-definition)
+ :in-theory (e/d
+ (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm
+  fn-exp-at)
+ (fn-adm-held-open fn-adm-admission-held fn-adm-hh-return fn-adm-hh-count
+  fn-adm-hh-rows fn-exp-lookup fn-adm-reader-count fn-adm-hhp
+  m23-held-open-admission-by-definition nfix fn-adm-held-open-refusal)))))
+
+(defthm fn-adm-transport-rearm-admits-below-held-reader-bound
+  (let* ((held (nfix (fn-adm-hh-count bank)))
+         (r (fn-adm-transport-rearm kind oc xs lim acfg peer address now
+                                    bank old-id configured capacity)))
+    (implies (and (fn-adm-hhp bank) (equal (car r) :admit))
+      (and (< (nfix (fn-adm-hh-count (fn-adm-hh-return bank old-id)))
+              (fn-adm-reader-count configured capacity))
+           (equal (fn-exp-at 3 r) held)
+           (equal (fn-adm-admission-held r) held))))
+  :rule-classes nil :hints (("Goal"
+ :use ((:instance m23-held-open-admission-by-definition (kind :exposure))
+       (:instance m23-held-open-admission-by-definition (kind :peer)
+          (xs nil) (lim nil) (address nil) (now 0))
+       (:instance m23-held-open-admission-by-definition (kind :reader)
+          (xs nil) (lim nil) (peer nil) (address nil) (now 0))
+       (:instance m23-held-open-admission-by-definition
+          (bank (fn-adm-hh-return bank old-id)))
+       m23-return-ended-held-count-by-definition)
+ :in-theory (e/d
+ (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm
+  fn-exp-at)
+ (fn-adm-held-open fn-adm-admission-held fn-adm-hh-return fn-adm-hh-count
+  fn-adm-hh-rows fn-exp-lookup fn-adm-reader-count fn-adm-hhp
+  m23-held-open-admission-by-definition nfix fn-adm-held-open-refusal)))))
+
+(defthm fn-adm-reader-open-admits-below-held-reader-bound
+  (let* ((held (nfix (fn-adm-hh-count bank)))
+         (r (fn-adm-reader-open oc acfg bank configured capacity)))
+    (implies (equal (car r) :admit)
+      (and (< held (fn-adm-reader-count configured capacity))
+           (equal (fn-exp-at 3 r) (1+ held))
+           (equal (fn-adm-admission-held r) (1+ held)))))
+  :rule-classes nil :hints (("Goal"
+ :use ((:instance m23-held-open-admission-by-definition (kind :exposure))
+       (:instance m23-held-open-admission-by-definition (kind :peer)
+          (xs nil) (lim nil) (address nil) (now 0))
+       (:instance m23-held-open-admission-by-definition (kind :reader)
+          (xs nil) (lim nil) (peer nil) (address nil) (now 0))
+       (:instance m23-held-open-admission-by-definition
+          (bank (fn-adm-hh-return bank old-id)))
+       m23-return-ended-held-count-by-definition)
+ :in-theory (e/d
+ (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm
+  fn-exp-at)
+ (fn-adm-held-open fn-adm-admission-held fn-adm-hh-return fn-adm-hh-count
+  fn-adm-hh-rows fn-exp-lookup fn-adm-reader-count fn-adm-hhp
+  m23-held-open-admission-by-definition nfix fn-adm-held-open-refusal)))))
+
+(local (defthm m24-fix-update-by-definition
+ (equal (true-list-fix (update-nth n v xs)) (update-nth n v (true-list-fix xs)))
+ :hints (("Goal" :induct (update-nth n v xs)
+                 :in-theory (enable update-nth true-list-fix)))))
+
+(local (defthm m24-repeat-update-by-definition
+ (equal (update-nth n a (update-nth n b xs)) (update-nth n a xs))
+ :hints (("Goal" :induct (update-nth n a xs) :in-theory (enable update-nth)))))
+
+(local (defthm m24-priced-installed-gate-by-definition
+ (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg)))
+        (configured (fn-mm-cfg-connections run-cfg))
+        (capacity (fn-adm-installed-capacity profile img run-cfg limit tot)))
+  (implies (and (< 0 capacity) (<= (nfix held) (fn-adm-reader-count configured capacity)))
+   (and (equal (fn-adm-priced-connections held configured capacity)
+               (fn-adm-reader-count configured capacity))
+        (fn-mm-gate-p profile img (fn-adm-priced-cfg run-cfg held capacity) limit tot))))
+ :hints (("Goal"
+  :use ((:instance fn-adm-installed-capacity-is-proved-or-zero
+         (cfg (update-nth 10 nil (true-list-fix cfg)))))
+  :in-theory (e/d (fn-adm-reader-count fn-adm-priced-connections fn-adm-priced-cfg
+                  fn-adm-cfg-at)
+                 (fn-adm-installed-capacity fn-adm-capacity fn-mm-gate-p
+                  fn-mm-cfg-connections))))))
+
+(local (defthm m24-held-open-composes-with-installed-capacity
+ (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg)))
+        (configured (fn-mm-cfg-connections run-cfg))
+        (capacity (fn-adm-installed-capacity profile img run-cfg limit tot))
+        (r (fn-adm-held-open kind oc xs lim acfg peer address now bank configured capacity)))
+  (implies (equal (car r) :admit)
+   (and (<= (fn-exp-at 3 r) (fn-adm-reader-count configured capacity))
+        (<= (fn-adm-admission-held r) (fn-adm-reader-count configured capacity))
+        (equal (fn-adm-priced-connections (fn-adm-admission-held r) configured capacity)
+               (fn-adm-reader-count configured capacity))
+        (fn-mm-gate-p profile img
+         (fn-adm-priced-cfg run-cfg (fn-adm-admission-held r) capacity) limit tot))))
+ :hints (("Goal"
+  :use ((:instance m23-held-open-admission-by-definition
+           (configured (fn-mm-cfg-connections (update-nth 10 nil (true-list-fix cfg))))
+           (capacity (fn-adm-installed-capacity profile img
+                      (update-nth 10 nil (true-list-fix cfg)) limit tot)))
+        (:instance m24-priced-installed-gate-by-definition
+         (held (1+ (nfix (fn-adm-hh-count bank))))))
+  :in-theory (e/d (fn-adm-reader-count)
+   (fn-adm-installed-capacity fn-adm-capacity fn-mm-gate-p fn-adm-priced-cfg
+    fn-adm-priced-connections fn-mm-cfg-connections fn-adm-admission-held
+    fn-adm-held-open fn-adm-hh-count fn-exp-at
+    m23-held-open-admission-by-definition m24-priced-installed-gate-by-definition))))))
+
+(local (defthm m24-exposure-admission-composes
+ (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg))) (configured (fn-mm-cfg-connections run-cfg)) (capacity (fn-adm-installed-capacity profile img run-cfg limit tot)) (reader-count (fn-adm-reader-count configured capacity)) (exposure (fn-adm-exposure-open oc xs lim acfg peer address now
+                                         bank configured capacity))) (implies (equal (car exposure) :admit)
+        (and (<= (fn-exp-at 3 exposure) reader-count)
+             (<= (fn-adm-admission-held exposure) reader-count)
+             (equal (fn-adm-priced-connections
+                      (fn-adm-admission-held exposure) configured capacity) reader-count)
+             (fn-mm-gate-p profile img
+               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held exposure) capacity)
+               limit tot))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance m24-held-open-composes-with-installed-capacity (kind :exposure)))
+  :in-theory (e/d
+   (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm fn-exp-at)
+   (fn-adm-held-open fn-adm-installed-capacity fn-mm-cfg-connections fn-adm-reader-count
+    fn-adm-admission-held fn-adm-hh-return fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup
+    fn-adm-priced-connections fn-adm-priced-cfg fn-mm-gate-p fn-adm-held-open-refusal nfix
+    m23-held-open-admission-by-definition m24-held-open-composes-with-installed-capacity))))))
+
+(local (defthm m24-peer-admission-composes
+ (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg))) (configured (fn-mm-cfg-connections run-cfg)) (capacity (fn-adm-installed-capacity profile img run-cfg limit tot)) (reader-count (fn-adm-reader-count configured capacity)) (peer-open (fn-adm-peer-open oc peer acfg bank configured capacity))) (implies (equal (car peer-open) :admit)
+        (and (<= (fn-exp-at 3 peer-open) reader-count)
+             (<= (fn-adm-admission-held peer-open) reader-count)
+             (equal (fn-adm-priced-connections
+                      (fn-adm-admission-held peer-open) configured capacity) reader-count)
+             (fn-mm-gate-p profile img
+               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held peer-open) capacity)
+               limit tot))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance m24-held-open-composes-with-installed-capacity (kind :peer) (xs nil) (lim nil) (address nil) (now 0)))
+  :in-theory (e/d
+   (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm fn-exp-at)
+   (fn-adm-held-open fn-adm-installed-capacity fn-mm-cfg-connections fn-adm-reader-count
+    fn-adm-admission-held fn-adm-hh-return fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup
+    fn-adm-priced-connections fn-adm-priced-cfg fn-mm-gate-p fn-adm-held-open-refusal nfix
+    m23-held-open-admission-by-definition m24-held-open-composes-with-installed-capacity))))))
+
+(local (defthm m24-rearm-admission-composes
+ (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg))) (configured (fn-mm-cfg-connections run-cfg)) (capacity (fn-adm-installed-capacity profile img run-cfg limit tot)) (reader-count (fn-adm-reader-count configured capacity)) (rearm (fn-adm-transport-rearm kind oc xs lim acfg peer address now
+                                        bank old-id configured capacity))) (implies (equal (car rearm) :admit)
+        (and (<= (fn-exp-at 3 rearm) reader-count)
+             (<= (fn-adm-admission-held rearm) reader-count)
+             (equal (fn-adm-priced-connections
+                      (fn-adm-admission-held rearm) configured capacity) reader-count)
+             (fn-mm-gate-p profile img
+               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held rearm) capacity)
+               limit tot))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance m24-held-open-composes-with-installed-capacity (bank (fn-adm-hh-return bank old-id))))
+  :in-theory (e/d
+   (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm fn-exp-at)
+   (fn-adm-held-open fn-adm-installed-capacity fn-mm-cfg-connections fn-adm-reader-count
+    fn-adm-admission-held fn-adm-hh-return fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup
+    fn-adm-priced-connections fn-adm-priced-cfg fn-mm-gate-p fn-adm-held-open-refusal nfix
+    m23-held-open-admission-by-definition m24-held-open-composes-with-installed-capacity))))))
+
+(local (defthm m24-reader-admission-composes
+ (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg))) (configured (fn-mm-cfg-connections run-cfg)) (capacity (fn-adm-installed-capacity profile img run-cfg limit tot)) (reader-count (fn-adm-reader-count configured capacity)) (reader (fn-adm-reader-open oc acfg bank configured capacity))) (implies (equal (car reader) :admit)
+        (and (<= (fn-exp-at 3 reader) reader-count)
+             (<= (fn-adm-admission-held reader) reader-count)
+             (equal (fn-adm-priced-connections
+                      (fn-adm-admission-held reader) configured capacity) reader-count)
+             (fn-mm-gate-p profile img
+               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held reader) capacity)
+               limit tot))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance m24-held-open-composes-with-installed-capacity (kind :reader) (xs nil) (lim nil) (peer nil) (address nil) (now 0)))
+  :in-theory (e/d
+   (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm fn-exp-at)
+   (fn-adm-held-open fn-adm-installed-capacity fn-mm-cfg-connections fn-adm-reader-count
+    fn-adm-admission-held fn-adm-hh-return fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup
+    fn-adm-priced-connections fn-adm-priced-cfg fn-mm-gate-p fn-adm-held-open-refusal nfix
+    m23-held-open-admission-by-definition m24-held-open-composes-with-installed-capacity))))))
+
+(defthm fn-adm-held-admissions-compose-with-installed-capacity
+  (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg)))
+         (configured (fn-mm-cfg-connections run-cfg))
+         (capacity (fn-adm-installed-capacity profile img run-cfg limit tot))
+         (reader-count (fn-adm-reader-count configured capacity))
+         (exposure (fn-adm-exposure-open oc xs lim acfg peer address now
+                                         bank configured capacity))
+         (peer-open (fn-adm-peer-open oc peer acfg bank configured capacity))
+         (rearm (fn-adm-transport-rearm kind oc xs lim acfg peer address now
+                                        bank old-id configured capacity))
+         (reader (fn-adm-reader-open oc acfg bank configured capacity)))
+    (and
+      (implies (equal (car exposure) :admit)
+        (and (<= (fn-exp-at 3 exposure) reader-count)
+             (<= (fn-adm-admission-held exposure) reader-count)
+             (equal (fn-adm-priced-connections
+                      (fn-adm-admission-held exposure) configured capacity) reader-count)
+             (fn-mm-gate-p profile img
+               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held exposure) capacity)
+               limit tot)))
+      (implies (equal (car peer-open) :admit)
+        (and (<= (fn-exp-at 3 peer-open) reader-count)
+             (<= (fn-adm-admission-held peer-open) reader-count)
+             (equal (fn-adm-priced-connections
+                      (fn-adm-admission-held peer-open) configured capacity) reader-count)
+             (fn-mm-gate-p profile img
+               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held peer-open) capacity)
+               limit tot)))
+      (implies (equal (car rearm) :admit)
+        (and (<= (fn-exp-at 3 rearm) reader-count)
+             (<= (fn-adm-admission-held rearm) reader-count)
+             (equal (fn-adm-priced-connections
+                      (fn-adm-admission-held rearm) configured capacity) reader-count)
+             (fn-mm-gate-p profile img
+               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held rearm) capacity)
+               limit tot)))
+      (implies (equal (car reader) :admit)
+        (and (<= (fn-exp-at 3 reader) reader-count)
+             (<= (fn-adm-admission-held reader) reader-count)
+             (equal (fn-adm-priced-connections
+                      (fn-adm-admission-held reader) configured capacity) reader-count)
+             (fn-mm-gate-p profile img
+               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held reader) capacity)
+               limit tot)))))
+  :rule-classes nil :hints (("Goal"
+ :use (m24-exposure-admission-composes m24-peer-admission-composes
+       m24-rearm-admission-composes m24-reader-admission-composes)
+ :in-theory (theory 'minimal-theory))))
+
+(local (defthm m24-refused-rearm-bank-selector-by-definition
+ (equal (fn-exp-at 2 (update-nth 3 peak (update-nth 2 bank r))) bank)
+ :hints (("Goal" :expand ((update-nth 3 peak (update-nth 2 bank r))
+                          (update-nth 2 bank r))
+                  :in-theory (enable fn-exp-at update-nth)))))
+
+(local (defthm m24-held-open-preserves-identity-union
+ (implies (fn-adm-hh-representsp bank)
+  (fn-adm-hh-representsp (fn-exp-at 2
+   (fn-adm-held-open kind oc xs lim acfg peer address now bank configured capacity))))
+ :hints (("Goal" :in-theory (e/d
+  (fn-adm-held-open fn-exp-at)
+  (fn-adm-hh-representsp fn-adm-hh-open fn-adm-held-open-roomp fn-exp-admit-decision
+   fn-ocar-exp-open fn-ocar-ocfg-open fn-ocfg-open-peer fn-exp-open-id
+   fn-own-find-conn fn-ocfg-owner fn-own-conns fn-own-next-id fn-adm-held-open-refusal))))))
+
+(defthm fn-adm-exposure-open-preserves-identity-union
+ (implies (fn-adm-hh-representsp bank)
+  (fn-adm-hh-representsp (fn-exp-at 2 (fn-adm-exposure-open oc xs lim acfg peer address now bank configured capacity))))
+ :hints (("Goal" :in-theory (e/d
+ (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm
+  fn-exp-at)
+ (fn-adm-held-open fn-adm-hh-representsp fn-adm-hh-return fn-adm-hh-rows fn-exp-lookup
+  fn-adm-held-open-refusal)))))
+
+(defthm fn-adm-peer-open-preserves-identity-union
+ (implies (fn-adm-hh-representsp bank)
+  (fn-adm-hh-representsp (fn-exp-at 2 (fn-adm-peer-open oc peer acfg bank configured capacity))))
+ :hints (("Goal" :in-theory (e/d
+ (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm
+  fn-exp-at)
+ (fn-adm-held-open fn-adm-hh-representsp fn-adm-hh-return fn-adm-hh-rows fn-exp-lookup
+  fn-adm-held-open-refusal)))))
+
+(defthm fn-adm-reader-open-preserves-identity-union
+ (implies (fn-adm-hh-representsp bank)
+  (fn-adm-hh-representsp (fn-exp-at 2 (fn-adm-reader-open oc acfg bank configured capacity))))
+ :hints (("Goal" :in-theory (e/d
+ (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm
+  fn-exp-at)
+ (fn-adm-held-open fn-adm-hh-representsp fn-adm-hh-return fn-adm-hh-rows fn-exp-lookup
+  fn-adm-held-open-refusal)))))
+
+(defthm fn-adm-transport-rearm-preserves-identity-union
+ (implies (fn-adm-hh-representsp bank)
+  (fn-adm-hh-representsp (fn-exp-at 2 (fn-adm-transport-rearm kind oc xs lim acfg peer address now bank old-id configured capacity))))
+ :hints (("Goal" :in-theory (e/d
+ (fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm
+  fn-exp-at)
+ (fn-adm-held-open fn-adm-hh-representsp fn-adm-hh-return fn-adm-hh-rows fn-exp-lookup
+  fn-adm-held-open-refusal)))))
+
+(defun fn-owner-memory-held-install (result state)
+ (declare (xargs :stobjs state :guard t))
+ (f-put-global 'fn-owner-memory-held-bank (fn-exp-at 2 result) state))
+(defthm fn-owner-memory-held-install-preserves-owner-bound
+ (implies (boundp-global 'fn-owner state)
+  (boundp-global 'fn-owner (fn-owner-memory-held-install result state)))
+ :hints (("Goal" :in-theory (enable fn-owner-memory-held-install boundp-global put-global))))

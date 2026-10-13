@@ -19083,6 +19083,90 @@
           "name": "fn-lgo-history-ceiling-bounds-the-intern"
         }
       ]
+    },
+    {
+      "id": "PRF-10017",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-exposure-open-admits-below-held-reader-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-peer-open-admits-below-held-reader-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-transport-rearm-admits-below-held-reader-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-reader-open-admits-below-held-reader-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-held-admissions-compose-with-installed-capacity"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10018",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-connections-cover-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-connections-equal-reader-count-when-covered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-gate-bounds-the-held-instant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-gate-holds-the-retained-lease"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10019",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-installed-capacity-is-proved-or-zero"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-zero-capacity-refuses-new-readers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-zero-capacity-refuses-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-absent-capacity-and-zero-are-distinct"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-installed-zero-has-the-zero-diagnostic"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10020",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-launch-conserves-the-resident-partition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-bp-launch-admits-its-startup"
+        }
+      ]
     }
   ]
 }
