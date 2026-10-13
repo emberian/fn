@@ -108,6 +108,9 @@ books/, specs/ or tests/acl2/ changed since it, and the local checks
 (LOCAL_BOX_CHECKS) are all 0 at HEAD; the gate then records the sha it
 inherits from (coordinator ruling, 2026-10-07, during the hbox outage).  Any
 other case refuses: the train runs `boxstep` first.
+
+The `harness` gate runs `harness_check.py --quiet` to refuse findings such as
+the acl2-arity finding in tests/test_premise_audit.py that train C16 carried onto dev.
 """
 from __future__ import annotations
 
@@ -248,7 +251,7 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "cost_obligations", "book_roots",
+         "cost_obligations", "book_roots", "harness",
          "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
 
 # The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
@@ -1900,6 +1903,8 @@ GATE_FUNCTIONS = {
         t, "cost_obligations", ["tools/cost_obligations.py", "--check"]), {}),
     "book_roots": lambda t: (_reported_check_gate(
         t, "book_roots", ["tools/book_roots_check.py"]), {}),
+    "harness": lambda t: (_reported_check_gate(
+        t, "harness", ["tools/harness_check.py", "--quiet"]), {}),
     "box_step": _box_step_gate,
     "lock_delta": _lock_delta_gate,
     "baseline": _baseline_gate,
