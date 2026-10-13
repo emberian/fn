@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Refuse production attachable stobjs introduced in more than one world.
+"""Check a closed, counted inventory of every single-world source site.
 
-Read every certifiable source root, never evaluate Lisp. Admitted events
-establish ownership and ordering; all nested source, including templates and
-macro bodies, is checked conservatively for attachments and introductions.
+Read books/, host/, and tests/acl2/ without evaluating Lisp. Context never
+suppresses a site: wrappers, macros, make-event and templates are all scanned.
 """
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 import sys
@@ -21,21 +20,52 @@ except ImportError:
     import ledger
 
 ROOT = Path(__file__).resolve().parents[1]
-IMPLEMENTATIONS = frozenset({'fn-arena-extent', 'fn-cat-paged', 'fn-hist-paged'})
-TEST_EXEMPTIONS = {
-    'tests/acl2/def-generic-tests.lisp': (
-        ('dgt-g', 'dgt-gs'), 'generator fixtures; never attached'),
-    'tests/acl2/def-representation-tests.lisp': (
-        ('drt-gen',), 'attaches drt-gen-cols in the same book'),
-    'tests/acl2/def-representation-index-tests.lisp': (
-        ('dri',), 'generator fixture; never attached'),
-}
 SOURCE_ROOTS = ('books', 'host', 'tests/acl2')
+IMPLEMENTATIONS = frozenset({'fn-arena-extent', 'fn-cat-paged', 'fn-hist-paged'})
+GENERATOR = 'GENERATOR'  # Distinct from a normalized literal symbol.
 GENERATOR_LIBRARIES = {
     'books/def-representation-generic.lisp':
         'def-generic / def-representation macro templates; each expansion is checked at its call site',
     'books/def-representation.lisp':
         'def-generic / def-representation macro templates; each expansion is checked at its call site',
+}
+# The defmacros in these libraries. def-generic always emits an attachable
+# introduction; def-representation emits attachment + introduction for :generic t.
+GENERATOR_MACROS = {
+    'def-generic': 'books/def-representation-generic.lisp',
+    'def-representation': 'books/def-representation.lisp',
+}
+# Source sites, not expansion events: a representation-call is one source site.
+# Repeated pairs mean repeated expected occurrences. No filename is exempt.
+ALLOWED_SITES = {
+    'books/payload-arena.lisp': (
+        ('attachment', 'fn-arena'), ('introduction', 'fn-arena')),
+    'books/catalog.lisp': (
+        ('attachment', 'fn-cat'), ('introduction', 'fn-cat')),
+    'books/history-columns.lisp': (
+        ('attachment', 'fn-hist'), ('introduction', 'fn-hist')),
+    'books/def-representation-generic.lisp': (
+        ('introduction', GENERATOR),),
+    'books/def-representation.lisp': (
+        ('introduction', GENERATOR), ('attachment', GENERATOR)),
+    # Positive and must-fail generator fixtures, each by its exact name.
+    'tests/acl2/def-generic-tests.lisp': (
+        ('introduction', 'dgt-g'),
+        ('introduction', 'dgt-g2'),
+        ('introduction', 'dgt-g3'),
+        ('introduction', 'dgt-g4'),
+        ('introduction', 'dgt-g5'),
+        ('introduction', 'dgt-g6'),
+        ('introduction', 'dgt-g7'),
+        ('introduction', 'dgt-gs'),
+        ('introduction', 'dgt-gs-bad'),
+        ('introduction', 'dgt-gs-unsound')),
+    'tests/acl2/def-representation-tests.lisp': (
+        ('representation-call', 'drt-gen'),
+        ('representation-call', 'drt-r7'),
+        ('representation-call', 'drt-v8')),
+    'tests/acl2/def-representation-index-tests.lisp': (
+        ('introduction', 'dri'),),
 }
 
 
@@ -45,11 +75,16 @@ class Site:
     line: int
     order: int
     name: str
-    attachable: bool = False
+    kind: str
+    computed: bool = False
 
     @property
     def location(self):
         return f'{self.book}:{self.line}'
+
+    @property
+    def key(self):
+        return self.kind, self.name
 
 
 def symbol(value):
@@ -79,23 +114,50 @@ class SourceReader(ledger.Reader):
 
 
 def occurrences(form):
-    """Inspect every symbol, even outside function position or inside quotes."""
-    pending = [(form, None)]
+    """Every relevant occurrence, regardless of its enclosing context."""
+    pending = [(form, None, False)]
     while pending:
-        value, parent = pending.pop()
+        value, parent, emitting = pending.pop()
         if isinstance(value, list):
+            event_head = head(value)
+            emitting = emitting or event_head in {'defmacro', 'make-event'}
             options = ledger.keyword_plist(value[2:])
-            if head(value) == 'def-generic' or (head(value) == 'defabsstobj'
-                                              and ':attachable' in options):
-                yield 'introduction', value, value
-            elif head(value) in {'defstobj', 'defabsstobj'}:
-                yield 'concrete-introduction', value, value
-            pending.extend((child, value) for child in reversed(value))
+            if event_head == 'defabsstobj' and ':attachable' in options:
+                yield 'introduction', value, value, False
+            elif event_head in GENERATOR_MACROS:
+                if event_head == 'def-generic':
+                    yield 'introduction', value, value, False
+                elif (symbol(options.get(':generic')) == 't' or
+                      ':generic' in options and symbol(options[':generic']) != 'nil' or
+                      len(value) > 1 and symbol(value[1]) is None):
+                    # Computed arguments cannot hide a call behind :generic nil.
+                    yield 'representation-call', value, value, False
+                else:
+                    yield 'concrete-introduction', value, value, emitting
+            elif event_head in {'defstobj', 'defabsstobj'}:
+                yield 'concrete-introduction', value, value, emitting
+            pending.extend((child, value, emitting) for child in reversed(value))
         elif symbol(value) == 'attach-stobj':
-            yield 'attachment', value, parent
+            yield 'attachment', value, parent, False
 
 
-def events(form):
+def site_name(kind, value, parent):
+    argument = None
+    has_argument = isinstance(parent, list) and len(parent) > 1
+    if kind == 'attachment':
+        has_argument = has_argument and head(parent) == 'attach-stobj' and parent[0] is value
+    if not has_argument:
+        return '<computed>', True
+    argument = parent[1]
+    literal = symbol(argument)
+    if literal is not None:
+        return literal, False
+    # Only comma/unquote names match the GENERATOR entries in the libraries.
+    return (GENERATOR if head(argument) in {'unquote', 'unquote-splicing'}
+            else '<computed>'), True
+
+
+def events(form, locations=None):
     """Admitted source event positions, excluding quoted templates and bodies."""
     event_head = head(form)
     if event_head == 'def-representation' and len(form) > 1:
@@ -105,11 +167,15 @@ def events(form):
         options = ledger.keyword_plist(form[2:])
         if symbol(options.get(':generic')) == 't':
             impl = ledger.Sym(str(name) + '-cols')
-            yield [ledger.Sym('defabsstobj'), impl]
-            yield [ledger.Sym('attach-stobj'), name, impl]
-            yield [ledger.Sym('defabsstobj'), name, ledger.Sym(':attachable'), ledger.Sym('t')]
+            generated = [[ledger.Sym('defabsstobj'), impl],
+                         [ledger.Sym('attach-stobj'), name, impl],
+                         [ledger.Sym('defabsstobj'), name, ledger.Sym(':attachable'), ledger.Sym('t')]]
         else:
-            yield [ledger.Sym('defabsstobj'), name]
+            generated = [[ledger.Sym('defabsstobj'), name]]
+        for event in generated:
+            if locations is not None:
+                locations[id(event)] = locations[id(form)]
+            yield event
         return
     if event_head in {'local', 'progn', 'progn!', 'defsection-progn'}:
         children = form[1:]
@@ -122,20 +188,19 @@ def events(form):
         yield form
         return
     for child in children:
-        yield from events(child)
+        yield from events(child, locations)
 
 
 def check(root=ROOT):
     root = Path(root)
-    introductions = defaultdict(list)
-    attachments = defaultdict(list)
     findings = []
-    nested = []
+    sites = []
+    concrete = []
+    admitted_attachments = defaultdict(list)
+    admitted_generics = defaultdict(list)
     for folder in SOURCE_ROOTS:
         for path in sorted((root / folder).rglob('*.lisp')):
             book = path.relative_to(root).as_posix()
-            if book in TEST_EXEMPTIONS:
-                continue
             try:
                 reader = SourceReader(path.read_text())
                 forms = reader.top_level()
@@ -144,88 +209,111 @@ def check(root=ROOT):
                 continue
             order = 0
             for form, line in forms:
-                admitted = set()
-                for event in events(form):
+                for event in events(form, reader.lines):
                     order += 1
                     event_head = head(event)
-                    if event_head not in {'defstobj', 'defabsstobj', 'def-generic', 'attach-stobj'}:
+                    if event_head not in {'attach-stobj', 'defabsstobj', 'def-generic', 'defstobj'}:
                         continue
                     name = symbol(event[1]) if len(event) > 1 else None
                     if name is None:
                         findings.append(f'{book}:{line}: MALFORMED: {event_head} needs a literal stobj name')
                         continue
-                    admitted.add(id(event))
+                    location = reader.lines.get(id(event), line)
                     options = ledger.keyword_plist(event[2:])
-                    attachable = (event_head == 'def-generic' or
-                                  (event_head == 'defabsstobj' and ':attachable' in options))
-                    site = Site(book, reader.lines.get(id(event), line), order, name, attachable)
-                    (attachments if event_head == 'attach-stobj' else introductions)[name].append(site)
-                for kind, value, parent in occurrences(form):
-                    is_attachment_head = (head(parent) == 'attach-stobj' and parent[0] is value)
-                    if id(parent) in admitted and (kind != 'attachment' or is_attachment_head):
-                        continue
-                    has_argument = (isinstance(parent, list) and len(parent) > 1 and
-                                    (kind != 'attachment' or is_attachment_head))
-                    name = symbol(parent[1]) if has_argument else None
-                    generator = has_argument and name is None
-                    nested.append((kind, Site(book, reader.lines.get(id(value), line),
-                                              order, name or '<computed>'), generator))
-    generics = {name for name, sites in introductions.items() if any(s.attachable for s in sites)}
-    owners = {name: next(s.book for s in introductions[name] if s.attachable)
-              for name in generics}
-    owner_books = set(owners.values())
-    for kind, site, generator in nested:
-        if kind == 'concrete-introduction' and site.name not in generics:
+                    if event_head == 'attach-stobj':
+                        admitted_attachments[name].append(Site(book, location, order, name, 'attachment'))
+                    elif event_head == 'def-generic' or ':attachable' in options:
+                        admitted_generics[name].append(Site(book, location, order, name, 'introduction'))
+                for kind, value, parent, emitting in occurrences(form):
+                    name, computed = site_name(kind, value, parent)
+                    site = Site(book, reader.lines.get(id(value), line), order, name, kind, computed)
+                    if kind == 'concrete-introduction':
+                        concrete.append((site, emitting))
+                    else:
+                        sites.append(site)
+    generics = {s.name for s in sites if s.kind in {'introduction', 'representation-call'} and not s.computed}
+    for site, emitting in concrete:
+        if site.name in generics or site.computed and emitting:
+            # Reintroductions and computed macro/event emissions are not inert
+            # unrelated concrete definitions (RR-A2's hidden bare defabsstobj).
+            sites.append(Site(site.book, site.line, site.order, site.name,
+                              'introduction', site.computed))
+    actual = defaultdict(list)
+    for site in sites:
+        actual[(site.book, site.key)].append(site)
+        if site.computed and (site.book not in GENERATOR_LIBRARIES or site.name != GENERATOR):
+            findings.append(f'{site.location}: GENERATOR-OUTSIDE-LIBRARY: {site.name} {site.kind} needs a listed comma-name library site')
+            if site.kind == 'attachment':
+                findings.append(f'{site.location}: OUTSIDE-OWNER: attach-stobj {site.name} has no literal owner')
+    expected = {(book, key): count for book, entries in ALLOWED_SITES.items()
+                for key, count in Counter(entries).items()}
+    for book, key in sorted(actual.keys() | expected.keys()):
+        found = actual[(book, key)]
+        wanted = expected.get((book, key), 0)
+        location = found[0].location if found else f'{book}:1'
+        kind, name = key
+        if not wanted:
+            findings.append(f'{location}: UNLISTED-SITE: {kind} {name}; found {len(found)}, expected 0')
+        elif not found:
+            findings.append(f'{location}: MISSING-SITE: {kind} {name}; found 0, expected {wanted}')
+        elif len(found) != wanted:
+            findings.append(f'{location}: SITE-COUNT: {kind} {name}; found {len(found)}, expected {wanted}')
+    # Retain the earlier semantic refusals as additional diagnostics. The
+    # closed inventory is decisive even when an event is not admitted source.
+    introductions = defaultdict(list)
+    attachments = defaultdict(list)
+    for site in sites:
+        if site.computed:
             continue
-        if generator:
-            if site.book not in GENERATOR_LIBRARIES:
-                findings.append(f'{site.location}: GENERATOR-OUTSIDE-LIBRARY: {site.name} {kind} needs a named generator library')
-            continue
-        if kind == 'attachment' and site.name in IMPLEMENTATIONS:
-            findings.append(f'{site.location}: IMPLEMENTATION-AS-GENERIC: {site.name} is a concrete implementation')
-        owner = owners.get(site.name)
-        if site.book == owner or (owner is None and site.book in owner_books):
-            continue
-        reason = 'OUTSIDE-OWNER' if kind == 'attachment' else 'SECOND-INTRODUCTION'
-        findings.append(f'{site.location}: {reason}: {site.name} {kind} in nested source outside its owner book')
-    for name in sorted(attachments):
-        if len(attachments[name]) > 1:
-            for site in attachments[name][1:]:
-                findings.append(f'{site.location}: SECOND-ATTACHMENT: {name} first attached at {attachments[name][0].location}')
-        for site in attachments[name]:
+        if site.kind == 'representation-call':
+            attachments[site.name].append(site)
+            introductions[site.name].append(site)
+        else:
+            (attachments if site.kind == 'attachment' else introductions)[site.name].append(site)
+    for name, group in introductions.items():
+        group.sort(key=lambda s: (s.book, s.line))
+        for site in group[1:]:
+            findings.append(f'{site.location}: SECOND-INTRODUCTION: {name} first introduced at {group[0].location}')
+    for name, group in attachments.items():
+        group.sort(key=lambda s: (s.book, s.line))
+        for site in group[1:]:
+            findings.append(f'{site.location}: SECOND-ATTACHMENT: {name} first attached at {group[0].location}')
+        owners = {s.book for s in introductions[name]}
+        for site in group:
             if name in IMPLEMENTATIONS:
                 findings.append(f'{site.location}: IMPLEMENTATION-AS-GENERIC: {name} is a concrete implementation')
-            elif name not in generics:
-                findings.append(f'{site.location}: NO-GENERIC: {name} has no attachable introduction')
-                findings.append(f'{site.location}: OUTSIDE-OWNER: attach-stobj {name} has no owner book')
-            else:
-                if site.book != owners[name]:
-                    findings.append(f'{site.location}: OUTSIDE-OWNER: attach-stobj {name} belongs in {owners[name]}')
-    for name in sorted(generics):
-        sites = introductions[name]
-        if any(name in names for names, _reason in TEST_EXEMPTIONS.values()):
-            findings.append(f'{sites[0].location}: TEST-ONLY-SCOPE: {name} is exempt only in its named test book')
-        if len(sites) != 1:
-            for site in sites[1:]:
-                findings.append(f'{site.location}: SECOND-INTRODUCTION: {name} first introduced at {sites[0].location}')
-        for site in sites:
-            if site.attachable and not any(a.book == site.book and a.order < site.order
-                                           for a in attachments[name]):
+            if site.book not in owners:
+                findings.append(f'{site.location}: OUTSIDE-OWNER: attach-stobj {name} is outside its introducing book')
+    for site in sites:
+        if site.computed or site.kind not in {'introduction', 'representation-call'}:
+            continue
+        if site.book.startswith('tests/acl2/') and site.key in ALLOWED_SITES.get(site.book, ()):
+            continue
+        if not any(g.book == site.book and g.line == site.line
+                   for g in admitted_generics[site.name]):
+            findings.append(f'{site.location}: MISSING-PRECEDING-ATTACH: {site.name} needs an admitted attachment and introduction; source emission is unresolved')
+    for name, group in admitted_generics.items():
+        for site in group:
+            # Only individually listed fixture introductions may omit an
+            # attachment. This does not skip any source in a test book.
+            if site.book.startswith('tests/acl2/') and site.key in ALLOWED_SITES.get(site.book, ()):
+                continue
+            if not any(a.book == site.book and a.order < site.order
+                       for a in admitted_attachments[name]):
                 findings.append(f'{site.location}: MISSING-PRECEDING-ATTACH: {name} needs attach-stobj before introduction in this book')
-    return findings, len(generics), sum(len(v) for v in attachments.values())
+    return findings, len(sites), sum(expected.values())
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=ROOT)
     args = parser.parse_args(argv)
-    findings, generics, attachments = check(args.root)
+    findings, sites, expected = check(args.root)
     for finding in findings:
         print(finding)
     if findings:
         return 1
-    print(f'one_world_check: {generics} attachable generics, {attachments} attachment sites; '
-          f'{len(TEST_EXEMPTIONS)} named test-only exemptions; 0 findings')
+    print(f'one_world_check: {sites} source sites, {expected} expected sites; 0 findings')
     return 0
 
 

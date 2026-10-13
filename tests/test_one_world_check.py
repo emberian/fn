@@ -3,12 +3,14 @@ import io
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
+from tools import one_world_check as one_world
 from tools.one_world_check import ROOT, check, main
 
 
 class OneWorldTests(unittest.TestCase):
-    def refuse(self, sources, name, reason):
+    def refuse(self, sources, name, reason, allowed=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for filename, source in sources.items():
@@ -16,7 +18,9 @@ class OneWorldTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(source)
             output = io.StringIO()
-            with contextlib.redirect_stdout(output):
+            with (contextlib.redirect_stdout(output),
+                  patch.object(one_world, "ALLOWED_SITES", allowed) if allowed is not None
+                  else contextlib.nullcontext()):
                 status = main(['--root', str(root)])
             self.assertEqual(status, 1, output.getvalue())
             self.assertTrue(any(name in line and reason in line
@@ -125,7 +129,7 @@ class OneWorldTests(unittest.TestCase):
                 with self.subTest(template=template, filename=filename):
                     sources = {'books/g.lisp': '(attach-stobj scratch-generator impl) (def-generic scratch-generator :model nil)'}
                     sources[filename] = sources.get(filename, '') + f'(defun generator (name) {template})'
-                    self.refuse(sources, '<computed>', 'GENERATOR-OUTSIDE-LIBRARY')
+                    self.refuse(sources, 'GENERATOR', 'GENERATOR-OUTSIDE-LIBRARY')
 
     def test_literal_sites_in_generator_libraries_are_not_exempt(self):
         for filename in ('books/def-representation-generic.lisp', 'books/def-representation.lisp'):
@@ -137,56 +141,150 @@ class OneWorldTests(unittest.TestCase):
                         filename: f'(defmacro hidden () {template}) (hidden)',
                     }, 'scratch-library', reason)
 
-    def test_generator_sites_in_named_libraries_are_legal(self):
+    def accept(self, sources, allowed):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / 'books').mkdir()
-            for filename in ('def-representation-generic', 'def-representation'):
-                (root / 'books' / f'{filename}.lisp').write_text('''
-(defun generator (name)
-  `((acl2::attach-stobj ,name impl)
-    (acl2::defabsstobj ,name :attachable t)))
-''')
-            self.assertEqual(check(root), ([], 0, 0))
+            for filename, source in sources.items():
+                path = root / filename
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source)
+            with patch.object(one_world, 'ALLOWED_SITES', allowed):
+                count = sum(len(entries) for entries in allowed.values())
+                self.assertEqual(check(root), ([], count, count))
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    self.assertEqual(main(['--root', str(root)]), 0)
+                self.assertIn('0 findings', output.getvalue())
+
+    def owner(self, book='books/g.lisp', name='scratch-closed'):
+        sources = {book: f'(attach-stobj {name} impl) (defabsstobj {name} :attachable t)'}
+        allowed = {book: (('attachment', name), ('introduction', name))}
+        self.accept(sources, allowed)
+        return sources, allowed
+
+    def test_unlisted_site(self):
+        sources, allowed = self.owner()
+        sources['books/other.lisp'] = "'(attach-stobj scratch-unlisted impl)"
+        self.refuse(sources, 'scratch-unlisted', 'UNLISTED-SITE', allowed)
+
+    def test_missing_site(self):
+        sources, allowed = self.owner()
+        sources['books/g.lisp'] = '(attach-stobj scratch-closed impl)'
+        self.refuse(sources, 'scratch-closed', 'MISSING-SITE', allowed)
+
+    def test_site_count(self):
+        sources, allowed = self.owner()
+        sources['books/g.lisp'] += ' (attach-stobj scratch-closed other)'
+        self.refuse(sources, 'scratch-closed', 'SITE-COUNT', allowed)
+
+    def test_missing_file_still_requires_its_sites(self):
+        sources, allowed = self.owner()
+        allowed['books/missing.lisp'] = (('introduction', 'scratch-missing'),)
+        self.refuse(sources, 'scratch-missing', 'MISSING-SITE', allowed)
+
+    def test_order_requires_admitted_owner_events(self):
+        sources, allowed = self.owner()
+        sources['books/g.lisp'] = "(attach-stobj scratch-closed impl) (unknown-wrapper '(defabsstobj scratch-closed :attachable t))"
+        self.refuse(sources, 'scratch-closed', 'MISSING-PRECEDING-ATTACH', allowed)
+
+    def test_rr_a1_attachment_inside_each_named_fixture_book(self):
+        for book, entries in one_world.ALLOWED_SITES.items():
+            if not book.startswith('tests/acl2/'):
+                continue
+            with self.subTest(book=book):
+                sources, allowed = self.owner(name='fn-cat')
+                kind, name = entries[0]
+                if kind == 'representation-call':
+                    fixture = f'(def-representation {name} (value :u8) :generic t)'
+                else:
+                    fixture = f'(defabsstobj {name} :attachable t)'
+                sources[book] = fixture
+                allowed[book] = ((kind, name),)
+                self.accept(sources, allowed)
+                sources[book] += ' (attach-stobj fn-cat fn-cat-paged)'
+                self.refuse(sources, 'fn-cat', 'UNLISTED-SITE', allowed)
+
+    def test_rr_a2_hidden_concrete_generator_and_call(self):
+        sources, allowed = self.owner(name='fn-cat')
+        sources['books/other.lisp'] = '(defmacro hidden (name) `(defabsstobj ,name)) (hidden fn-cat)'
+        self.refuse(sources, 'GENERATOR', 'UNLISTED-SITE', allowed)
+        self.refuse(sources, 'GENERATOR', 'GENERATOR-OUTSIDE-LIBRARY', allowed)
+
+    def test_rr_a2_library_macro_calls_outside_owner_are_sites(self):
+        for event in ('(def-generic fn-cat :model nil)',
+                      '(acl2::def-representation fn-cat (value :u8) :generic t)',
+                      '(def-representation fn-cat (value :u8))'):
+            with self.subTest(event=event):
+                sources, allowed = self.owner(name='fn-cat')
+                sources['books/other.lisp'] = f'(unknown-wrapper (make-event \'{event}))'
+                self.refuse(sources, 'fn-cat', 'UNLISTED-SITE', allowed)
+
+    def test_computed_macro_calls_are_refused_even_if_counted(self):
+        for macro in one_world.GENERATOR_MACROS:
+            for name in (',name', '(intern-in-package-of-symbol "FN-CAT" \'fn-cat)'):
+                with self.subTest(macro=macro, name=name):
+                    sources, allowed = self.owner()
+                    kind = 'introduction' if macro == 'def-generic' else 'representation-call'
+                    marker = 'GENERATOR' if name.startswith(',') else '<computed>'
+                    sources['books/other.lisp'] = f'(defmacro hidden (name) `({macro} {name}))'
+                    # Even an erroneous manifest grant cannot legalize a
+                    # computed generic outside a named generator library.
+                    allowed['books/other.lisp'] = ((kind, marker),)
+                    self.refuse(sources, marker, 'GENERATOR-OUTSIDE-LIBRARY', allowed)
+
+    def test_unresolved_representation_option_is_a_site(self):
+        sources, allowed = self.owner()
+        sources['books/other.lisp'] = '(def-representation scratch-option (value :u8) :generic (intern "T" "ACL2"))'
+        self.refuse(sources, 'scratch-option', 'UNLISTED-SITE', allowed)
+
+    def test_rr_a3_make_event_second_attachment_and_introduction(self):
+        for event in ('(attach-stobj fn-cat other)',
+                      '(defabsstobj fn-cat :attachable t)',
+                      '(def-generic fn-cat :model nil)'):
+            with self.subTest(event=event):
+                sources, allowed = self.owner(name='fn-cat')
+                sources['books/g.lisp'] += f' (make-event \'{event})'
+                self.refuse(sources, 'fn-cat', 'SITE-COUNT', allowed)
+
+    def test_unlisted_owner_templates_are_refused(self):
+        for template in ("'(attach-stobj scratch-closed impl)",
+                         '`(defabsstobj scratch-closed :attachable t)',
+                         '(defmacro hidden () \'(attach-stobj scratch-closed impl))'):
+            with self.subTest(template=template):
+                sources, allowed = self.owner()
+                sources['books/g.lisp'] += ' ' + template
+                self.refuse(sources, 'scratch-closed', 'SITE-COUNT', allowed)
+
+    def test_generator_sites_in_named_libraries_are_legal(self):
+        generic = 'books/def-representation-generic.lisp'
+        representation = 'books/def-representation.lisp'
+        sources = {
+            generic: '(defun template (name) `(acl2::defabsstobj ,name :attachable t))',
+            representation: '(defun template (name) `((acl2::attach-stobj ,name impl) (acl2::defabsstobj ,name :attachable t)))',
+        }
+        self.accept(sources, {book: one_world.ALLOWED_SITES[book] for book in sources})
 
     def test_qualified_generator_call_is_checked_at_call_site(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / 'books').mkdir()
-            (root / 'books/g.lisp').write_text(
-                '(acl2::def-representation scratch-expanded (value :u8) :generic t)')
-            self.assertEqual(check(root), ([], 1, 1))
+        self.accept({'books/g.lisp': '(acl2::def-representation scratch-expanded (value :u8) :generic t)'},
+                    {'books/g.lisp': (('representation-call', 'scratch-expanded'),)})
 
-    def test_qualified_owner_events_and_templates_are_legal(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / 'books').mkdir()
-            (root / 'books/g.lisp').write_text('''
-(acl2::progn (acl2::attach-stobj acl2::scratch-good impl)
-             (acl2::defabsstobj acl2::scratch-good :attachable t))
-(defmacro generator () `(other::attach-stobj scratch-good impl))
-(make-event '(acl2::attach-stobj scratch-good impl))
-(defconst *template* '(acl2::defabsstobj scratch-good :attachable t))
-''')
-            self.assertEqual(check(root), ([], 1, 1))
+    def test_wrapped_generator_keeps_its_call_site_ordering_location(self):
+        self.accept({'books/g.lisp': '(acl2::progn\n (acl2::def-representation scratch-expanded (value :u8) :generic t))'},
+                    {'books/g.lisp': (('representation-call', 'scratch-expanded'),)})
 
-    def test_quoted_templates_are_not_introductions(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / 'books').mkdir()
-            (root / 'books/g.lisp').write_text('''
-; (def-generic commented)
-(defun generator (name) `(defabsstobj scratch-good :attachable t))
-(defconst *template* '(attach-stobj quoted impl))
-(progn (attach-stobj scratch-good impl)
-       (defabsstobj scratch-good :attachable t))
-''')
-            self.assertEqual(check(root), ([], 1, 1))
+    def test_qualified_owner_events_are_legal(self):
+        self.accept({'books/g.lisp': '(acl2::progn (acl2::attach-stobj acl2::scratch-good impl) (acl2::defabsstobj acl2::scratch-good :attachable t))'},
+                    {'books/g.lisp': (('attachment', 'scratch-good'), ('introduction', 'scratch-good'))})
+
+    def test_comments_and_strings_are_not_sites(self):
+        sources, allowed = self.owner()
+        sources['books/g.lisp'] += '\n; (attach-stobj commented impl)\n(defconst *text* "(defabsstobj text :attachable t)")'
+        self.accept(sources, allowed)
 
     def test_clean_tree(self):
-        findings, generics, sites = check(ROOT)
+        findings, sites, expected = check(ROOT)
         self.assertEqual(findings, [])
-        self.assertEqual((generics, sites), (3, 3))
+        self.assertEqual((sites, expected), (23, 23))
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             status = main([])
