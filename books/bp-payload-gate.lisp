@@ -37,11 +37,11 @@
 (include-book "reclaim-tombstone")
 
 ; The work's :forward pin, with its required evidence, is live in CANON.
-(defun fn-bppg-canonically-pinnedp (canon s work-id)
+(defun fn-bppg-canonically-pinnedp (canon s work-id pin-carry)
   (declare (xargs :guard t))
   (let ((work (fn-bp-find-work work-id (fn-bp-state-works s))))
     (and (consp work)
-         (fn-bprl-work-pinnedp (fn-bprl-with-node s canon) work)
+         (fn-bprl-work-pinnedp (fn-bprl-with-node s canon) work pin-carry)
          t)))
 
 ; The article an encoded request ADU carries is a reclaim tombstone.
@@ -63,10 +63,10 @@
 
 ; The generic request (`bp-obligation request'): PLAN is fn-bprq-plan's (or
 ; a refusal already).  A :request plan passes only pinned and live.
-(defun fn-bppg-request-gate (canon s work-id plan)
+(defun fn-bppg-request-gate (canon s work-id plan pin-carry)
   (declare (xargs :guard t))
   (if (and (consp plan) (equal (car plan) :request))
-      (cond ((not (fn-bppg-canonically-pinnedp canon s work-id))
+      (cond ((not (fn-bppg-canonically-pinnedp canon s work-id pin-carry))
              (list :refused :forward-pin-not-durable))
             ((fn-bppg-adu-tombstonep (fn-bprq-plan-adu plan))
              (list :refused :article-reclaimed))
@@ -76,10 +76,10 @@
 ; The ION attempt (`app-journal workflow-ion-submit'): PLAN is
 ; fn-bprq-ion-attempt-plan's, (retry attempt) or nil; nothing is published
 ; before it.  Refused by name the same way, the article read from S's node.
-(defun fn-bppg-ion-attempt-gate (canon s work-id plan fn-arena)
+(defun fn-bppg-ion-attempt-gate (canon s work-id plan pin-carry fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (consp plan)
-      (cond ((not (fn-bppg-canonically-pinnedp canon s work-id))
+      (cond ((not (fn-bppg-canonically-pinnedp canon s work-id pin-carry))
              (list :refused :forward-pin-not-durable))
             ((fn-bppg-article-tombstonep s work-id fn-arena)
              (list :refused :article-reclaimed))
@@ -99,20 +99,20 @@
 ; work's :forward pin is live in the canonical node, and the article the ADU
 ; carries is not a reclaim tombstone.
 (defthm fn-bppg-request-gate-sends-only-pinned-live-payload
-  (let ((out (fn-bppg-request-gate canon s work-id plan)))
+  (implies (fn-prc-carryp pin-carry) (let ((out (fn-bppg-request-gate canon s work-id plan pin-carry)))
     (implies (and (consp out) (equal (car out) :request))
              (and (equal out plan)
-                  (fn-bppg-canonically-pinnedp canon s work-id)
-                  (not (fn-bppg-adu-tombstonep (fn-bprq-plan-adu out))))))
+                  (fn-bppg-canonically-pinnedp canon s work-id pin-carry)
+                  (not (fn-bppg-adu-tombstonep (fn-bprq-plan-adu out)))))))
   :hints (("Goal" :in-theory (disable fn-bppg-canonically-pinnedp
                                       fn-bppg-adu-tombstonep fn-bprq-plan-adu))))
 
 ; A refusal is by name and never a plan.
 (defthm fn-bppg-request-gate-refusals-are-named
-  (let ((out (fn-bppg-request-gate canon s work-id plan)))
+  (implies (fn-prc-carryp pin-carry) (let ((out (fn-bppg-request-gate canon s work-id plan pin-carry)))
     (implies (not (equal out plan))
              (or (equal out '(:refused :forward-pin-not-durable))
-                 (equal out '(:refused :article-reclaimed)))))
+                 (equal out '(:refused :article-reclaimed))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-bppg-canonically-pinnedp
                                       fn-bppg-adu-tombstonep fn-bprq-plan-adu))))
@@ -125,12 +125,12 @@
 ; is canonically pinned, and the article its ADU would carry is not a
 ; tombstone; the ADU entry never answers a tombstone-carrying ADU.
 (defthm fn-bppg-ion-gates-send-only-pinned-live-payload
-  (and (let ((out (fn-bppg-ion-attempt-gate canon s work-id plan fn-arena)))
+  (implies (fn-prc-carryp pin-carry) (and (let ((out (fn-bppg-ion-attempt-gate canon s work-id plan pin-carry fn-arena)))
          (implies (and (consp out) (not (equal (car out) :refused)))
                   (and (equal out plan)
-                       (fn-bppg-canonically-pinnedp canon s work-id)
+                       (fn-bppg-canonically-pinnedp canon s work-id pin-carry)
                        (not (fn-bppg-article-tombstonep s work-id fn-arena)))))
-       (not (fn-bppg-adu-tombstonep (fn-bppg-ion-adu adu))))
+       (not (fn-bppg-adu-tombstonep (fn-bppg-ion-adu adu)))))
   :hints (("Goal" :in-theory (disable fn-bppg-canonically-pinnedp
                                       fn-bppg-article-tombstonep
                                       fn-bppg-adu-tombstonep))))

@@ -14,6 +14,7 @@
 
 (in-package "ACL2")
 (include-book "runtime-contract-exec")
+(include-book "runtime-contract-list-facts")
 
 (defthm fn-rtc-st-p-is-shapep
   (equal (fn-rtc-st-p x) (fn-rtc-shapep x))
@@ -141,11 +142,7 @@
   (declare (xargs :measure (nfix (- (nfix n) (nfix h)))))
   (if (< (nfix h) (nfix n)) (fn-rtc-xis-ind-up (+ 1 (nfix h)) n) (list h n))))
 
-(local (defthm fn-rtc-xis-nthcdr-parts
-  (and (equal (car (nthcdr h l)) (nth h l))
-       (equal (cdr (nthcdr h l)) (nthcdr (+ 1 (nfix h)) l))
-       (implies (true-listp l) (iff (consp (nthcdr h l)) (< (nfix h) (len l)))))
-  :hints (("Goal" :in-theory (enable nth nthcdr)))))
+(local (in-theory (enable fn-rtc-nthcdr-parts)))
 
 (local (defthm fn-rtc-xis-consp-nthcdr
   (implies (< (nfix k) (len l)) (consp (nthcdr k l)))))
@@ -204,7 +201,9 @@
 
 (defthm fn-rtc-nhome-le-nbufs
   (implies (fn-rtc-configp cfg) (<= (fn-rtc-nhome cfg) (fn-rtc-nbufs cfg)))
-  :hints (("Goal" :in-theory (enable fn-rtc-configp fn-rtc-nhome fn-rtc-nbufs)))
+  :hints (("Goal" :in-theory (enable fn-rtc-configp fn-rtc-nhome fn-rtc-nbufs
+                   fn-rtc-nconnection-home fn-rtc-nstatic-home fn-rtc-nconnections
+                   fn-rtc-nstatic fn-rtc-qfixed fn-rtc-qfixed-static fn-rtc-nslots)))
   :rule-classes (:rewrite :linear))
 
 (defthm fn-rtc-x-free-pool-buf-is

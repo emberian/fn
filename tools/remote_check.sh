@@ -370,7 +370,7 @@ RECORDED=$ROOT/build/remote-check/$BOX.run
 rm -rf "$RECORDED" && mkdir -p "$RECORDED" && echo "$HEAD_SHA $TARGET" > "$RECORDED/head" \
     && cp "$WORK/shipped" "$RECORDED/shipped" && echo "$FETCH" > "$RECORDED/fetch" \
     && echo "$BOX $TREE $LOG" > "$RECORDED/box"
-remote "rm -f $LOG $LOG.pid; echo $HEAD_SHA $TARGET > $LOG.head; nohup sh $LOG.run.sh > $LOG 2>&1 < /dev/null & echo \$! > $LOG.pid" || {
+remote "rm -f $LOG $LOG.pid; echo $HEAD_SHA $TARGET > $LOG.head; nohup setsid sh -c 'echo \$\$ > $LOG.pid || exit 3; exec sh $LOG.run.sh' > $LOG 2>&1 < /dev/null &" || {
     echo "remote_check: cannot start make on $BOX" >&2; exit 3; }
 echo "remote_check: if this side dies, the box run goes on: tools/remote_check.sh attach $BOX waits for it and fetches$FETCH"
 fi

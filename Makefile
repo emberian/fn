@@ -14,6 +14,7 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	tests/acl2/owner-completion-arena-tests \
 	books/consumer-transaction-dispatch \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/receiver-response-transfer-tests \
@@ -1107,6 +1108,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-prepare-catalog-tests \
 	books/peer-transit-indexed \
 	tests/acl2/peer-transit-indexed-tests \
+	books/retain-known \
+	books/retain-carried \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
 	books/identity-retain-carried \
@@ -2774,6 +2777,9 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/book-name-relative-tests \
     tests/acl2/book-name-provenance-tests \
     tests/acl2/runtime-contract-echo-tests \
+    books/runtime-contract-exhaustion \
+    books/runtime-contract-u64 \
+    tests/acl2/runtime-contract-u64-tests \
     tests/acl2/runtime-contract-landing-tests \
     tests/acl2/runtime-contract-host-send-tests \
     books/runtime-contract-host-lease \

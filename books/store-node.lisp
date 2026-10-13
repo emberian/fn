@@ -960,6 +960,19 @@
                   :groups-invalid))
   :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
 
+; What the constructor establishes of what it returns: a record it makes
+; (any answer that is not a named refusal) carries groups the constructor
+; checked.  The refusal theorems around this one assume the groups valid only
+; to say which refusal comes first; this is where the host path makes it hold.
+(defthm fn-sn-article-record-carries-valid-groups
+  (implies (not (member-equal (fn-sn-article-record s obs msgid payload groups
+                                                    obligation-id subject evidence charge)
+                              *fn-sn-article-record-refusals*))
+           (fn-record-groups-validp
+            (fn-record-groups (fn-sn-article-record s obs msgid payload groups
+                                                    obligation-id subject evidence charge))))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record))))
+
 (defthm fn-sn-article-record-refuses-an-invalid-obligation-id
   (implies (and (natp (fn-record-stamp-of-observation obs))
                 (fn-record-uint64p (fn-sn-identity-next s))

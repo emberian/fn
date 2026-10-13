@@ -35,8 +35,10 @@ module at a time.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
+import re
 from pathlib import Path
 import signal
 import subprocess
@@ -50,6 +52,48 @@ TEST_BUDGET_SECONDS = 20.0
 BUDGETS_FILE = ROOT / "tests" / "test_budgets.json"
 GRACE_SECONDS = 10.0
 RESULT_PREFIX = "FN_TEST_BUDGET_RESULT "
+
+
+def memory_bytes(value: str) -> int:
+    """MemoryMax sizes, with binary systemd suffixes; reject shell syntax."""
+    match = re.fullmatch(r"([1-9][0-9]*)([KMGT]?)", value)
+    if not match:
+        raise ValueError(f"invalid native memory size: {value!r} (positive integer[KMGT])")
+    return int(match[1]) * 1024 ** (" KMGT".index(match[2]) if match[2] else 0)
+
+
+def native_memory(module: str, root: Path = ROOT) -> str:
+    """Read one literal module declaration without importing native tests."""
+    if not re.fullmatch(r"tests\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*", module):
+        raise ValueError(f"invalid native module: {module!r}")
+    filename = "/".join(module.split(".")[:2]) + ".py"
+    tree = ast.parse((root / filename).read_text())
+    values = [node.value for node in tree.body if isinstance(node, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == "NATIVE_MEMORY"
+                      for target in node.targets)]
+    if not values:
+        return "24G"
+    if len(values) != 1 or not isinstance(values[0], ast.Constant) or not isinstance(values[0].value, str):
+        raise ValueError(f"{module}: NATIVE_MEMORY must be one literal string")
+    value = values[0].value
+    memory_bytes(value)
+    return value
+
+
+def memory_plan(lines, override=None, root: Path = ROOT):
+    """Add MemoryMax and bigmem membership to native_env's module plan."""
+    if override is not None:
+        memory_bytes(override)
+    for line in lines:
+        if not line.strip():
+            continue
+        module, *rest = line.strip().split(maxsplit=1)
+        declared = native_memory(module, root)
+        value = declared if override is None else override
+        if override is not None and declared != value:
+            print(f"hbox_native: {module} memory override {declared} -> {value}", file=sys.stderr)
+        bigmem = int(memory_bytes(value) >= 40 * 1024 ** 3)
+        print(f"{module} {value} {bigmem} {rest[0] if rest else ''}")
 
 
 class _TimedResult(unittest.TextTestResult):
@@ -393,8 +437,18 @@ def main(argv: list[str] | None = None) -> int:
                         help="print the verdict of a --one run's log and exit with it "
                              "(0 passed, 1 failed, 4 every test skipped)")
     parser.add_argument("--one", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--memory-plan", action="store_true",
+                        help="add native module memory sizes to a stdin environment plan")
+    parser.add_argument("--memory-override", default=None,
+                        help="explicit MemoryMax override for --memory-plan")
     parser.add_argument("--cases", default="", help=argparse.SUPPRESS)
     arguments = parser.parse_args(argv)
+    if arguments.memory_plan:
+        try:
+            memory_plan(sys.stdin, arguments.memory_override)
+        except (OSError, ValueError, SyntaxError) as error:
+            parser.error(str(error))
+        return 0
     if arguments.one:
         return run_one(arguments.one, arguments.order,
                        [c for c in arguments.cases.split(",") if c] or None)

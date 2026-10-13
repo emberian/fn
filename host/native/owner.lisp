@@ -969,6 +969,8 @@ is empty, and then no send is outstanding)."
       (destructuring-bind (st2 id inc left) (fnn-call 'fn-hld-begin cid st)
         (declare (ignore st2))
         (when left (fnn-fault "the host lease left completions unsettled: ~s" left))
+        (when (eq inc :rtc-slots-exhausted)
+          (return-from fnn-owner-lease-article-step (list :refused :rtc-slots-exhausted)))
         (unless id (return-from fnn-owner-lease-article-step (list :wait)))
         (setf (fnn-lease-id lease) id (fnn-lease-inc lease) inc)))
     (let* ((id (fnn-lease-id lease)) (inc (fnn-lease-inc lease))
@@ -1010,9 +1012,10 @@ yield while no pool buffer is free."
                        (catch 'fnn-extent-cold
                          (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
                            (fnn-owner-lease-article-step cid lease plan)))))))
-                 (if (member (car attempt) '(:warm :wait)) attempt
+                 (if (member (car attempt) '(:warm :wait :refused)) attempt
                    (list :cold (fnn-owner-cold-issue-locked service cid attempt))))) class)))
       (case (car article)
+        (:refused (fnn-refuse "rtc-slots-exhausted: every dynamic runtime slot has spent its final incarnation"))
         (:cold (return-from fnn-owner-render-next-quantum
                  (values (fnn-make-octets 0) plan nil nil (second article) 0)))
         (:wait (return-from fnn-owner-render-next-quantum
@@ -1274,7 +1277,10 @@ function supplied no observation at all, which is a defect here."
 
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
-  (fnn-owner-core 'fn-owner-finish-submission))
+  ;; FN_OWNER_MEASURE: the completion is also its own class, nested inside the
+  ;; commit hold, which stays inclusive (classes overlap; never add them).
+  (fnn-owner-measured (:commit-complete)
+    (fnn-owner-core 'fn-owner-finish-submission)))
 
 ;;; The typed results (books/owner-results.lisp; wave 5 adapter retirement).
 ;;; A wrapper that used to answer a keyword and leave the rest of its result
@@ -3570,12 +3576,14 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; history budget's :history-exhausted (fn-cvec-article-refusal-word), the
 ;; memory gate's :memory (fn-adm-article-word), or :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
-  (case prepared
-    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memory :handle-space
-      :history-exhausted :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
-     prepared)
-    (:invalid :malformed)
-    (t (fnn-fault "owner prepare returned ~a" prepared))))
+  (if (member prepared *fn-sn-article-record-refusals*)
+      prepared
+    (case prepared
+      ((:duplicate :conflict :refused :unaffordable :memory :handle-space
+        :history-exhausted :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
+       prepared)
+      (:invalid :malformed)
+      (t (fnn-fault "owner prepare returned ~a" prepared)))))
 
 (defmacro fnn-owner-attempt-handlers (store &body body)
   "Classify one Store attempt's conditions into its outcome word.

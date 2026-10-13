@@ -397,15 +397,15 @@
                                       fn-bprl-term-terms-id))))
 
 (defthm fn-bprl-release-okp-implies-statep
-  (implies (fn-bprl-release-okp s receipt work) (fn-bp-statep s))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-release-okp s receipt work pin-carry)) (fn-bp-statep s))
   :hints (("Goal" :in-theory (enable fn-bprl-release-okp))))
 
 (defthm fn-bprl-decision-state-formula
-  (equal (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id))
+  (implies (fn-prc-carryp pin-carry) (equal (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id pin-carry))
          (let* ((receipt (fn-bprl-find-receipt receipt-id (fn-bp-state-receipts s)))
                 (work (fn-bp-find-work (fn-bp-receipt-work-id receipt)
                                        (fn-bp-state-works s))))
-           (if (fn-bprl-release-okp s receipt work)
+           (if (fn-bprl-release-okp s receipt work pin-carry)
                (fn-bprl-with-node
                 s (fn-bprl-node-with-retention
                    (fn-bp-state-node s)
@@ -414,7 +414,7 @@
                                       (fn-bp-work-subject work) :forward
                                       (fn-bprl-evidence-string
                                        (fn-bprl-receipt-evidence receipt)))))
-             s)))
+             s))))
   :hints (("Goal" :in-theory (e/d (fn-bprl-release-decision
                                    fn-bprl-decision-state)
                                   (fn-bprl-release-okp fn-bprl-with-node
@@ -426,11 +426,11 @@
                                                        fn-bprl-evidence-string)))))
 
 (defthm fn-bprl-decision-okp-formula
-  (equal (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id))
+  (implies (fn-prc-carryp pin-carry) (equal (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry))
          (let* ((receipt (fn-bprl-find-receipt receipt-id (fn-bp-state-receipts s)))
                 (work (fn-bp-find-work (fn-bp-receipt-work-id receipt)
                                        (fn-bp-state-works s))))
-           (if (fn-bprl-release-okp s receipt work) t nil)))
+           (if (fn-bprl-release-okp s receipt work pin-carry) t nil))))
   :hints (("Goal" :in-theory (e/d (fn-bprl-release-decision
                                    fn-bprl-decision-okp)
                                   (fn-bprl-release-okp fn-bprl-with-node
@@ -442,13 +442,13 @@
                                                        fn-bprl-evidence-string)))))
 
 (defthm fn-bprl-decision-evidence-formula
-  (equal (fn-bprl-decision-evidence (fn-bprl-release-decision s receipt-id))
+  (implies (fn-prc-carryp pin-carry) (equal (fn-bprl-decision-evidence (fn-bprl-release-decision s receipt-id pin-carry))
          (let* ((receipt (fn-bprl-find-receipt receipt-id (fn-bp-state-receipts s)))
                 (work (fn-bp-find-work (fn-bp-receipt-work-id receipt)
                                        (fn-bp-state-works s))))
-           (if (fn-bprl-release-okp s receipt work)
+           (if (fn-bprl-release-okp s receipt work pin-carry)
                (fn-bprl-receipt-evidence receipt)
-             nil)))
+             nil))))
   :hints (("Goal" :in-theory (e/d (fn-bprl-release-decision
                                    fn-bprl-decision-evidence)
                                   (fn-bprl-release-okp fn-bprl-with-node
@@ -465,13 +465,13 @@
 ; The pin named by the work is gone and the ledger's release record carries the
 ; rendered typed evidence.
 (defthm fn-bprl-release-removes-the-forward-pin
-  (implies (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry)))
            (let* ((receipt (fn-bprl-find-receipt receipt-id
                                                  (fn-bp-state-receipts s)))
                   (work (fn-bp-find-work (fn-bp-receipt-work-id receipt)
                                          (fn-bp-state-works s)))
                   (next (fn-bprl-decision-state
-                         (fn-bprl-release-decision s receipt-id))))
+                         (fn-bprl-release-decision s receipt-id pin-carry))))
              (and (equal (fn-retain-find-id (fn-bp-work-obligation-id work)
                                             (fn-bprl-pins next))
                          nil)
@@ -482,7 +482,7 @@
                           (fn-bp-work-subject work) :forward
                           (fn-bprl-evidence-string
                            (fn-bprl-decision-evidence
-                            (fn-bprl-release-decision s receipt-id))))))))
+                            (fn-bprl-release-decision s receipt-id pin-carry))))))))
   :hints (("Goal"
            :use ((:instance fn-bprl-release-pins
                             (s (fn-node-retention (fn-bp-state-node s)))
@@ -552,7 +552,7 @@
 ; Lifted fn-retain-release-preserves-independent-pin: every other pin, in
 ; particular the article's archive pin, is untouched.
 (defthm fn-bprl-release-preserves-independent-pin
-  (implies (and (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry))
                 (not (equal other
                             (fn-bp-work-obligation-id
                              (fn-bp-find-work
@@ -563,7 +563,7 @@
            (equal (fn-retain-find-id
                    other
                    (fn-bprl-pins (fn-bprl-decision-state
-                                  (fn-bprl-release-decision s receipt-id))))
+                                  (fn-bprl-release-decision s receipt-id pin-carry))))
                   (fn-retain-find-id other (fn-bprl-pins s))))
   :hints (("Goal"
            :in-theory (e/d (fn-bprl-pins)
@@ -576,7 +576,7 @@
                                          fn-bprl-evidence-string)))))
 
 (defthm fn-bprl-release-preserves-archive-pin
-  (implies (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry)))
            (let ((work (fn-bp-find-work
                         (fn-bp-receipt-work-id
                          (fn-bprl-find-receipt receipt-id
@@ -585,7 +585,7 @@
              (equal (fn-retain-find-id
                      (fn-bp-work-archive-id work)
                      (fn-bprl-pins (fn-bprl-decision-state
-                                    (fn-bprl-release-decision s receipt-id))))
+                                    (fn-bprl-release-decision s receipt-id pin-carry))))
                     (fn-retain-find-id (fn-bp-work-archive-id work)
                                        (fn-bprl-pins s)))))
   :hints (("Goal"
@@ -605,10 +605,10 @@
                                          fn-bprl-release-preserves-independent-pin)))))
 
 (defthm fn-bprl-release-preserves-node-state
-  (implies (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry)))
            (fn-node-statep
             (fn-bp-state-node
-             (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id)))))
+             (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id pin-carry)))))
   :hints (("Goal"
            :use ((:instance fn-bprl-node-release-preserves-statep
                             (node (fn-bp-state-node s))
@@ -659,9 +659,9 @@
                                          fn-bp-tx-key-listp)))))
 
 (defthm fn-bprl-release-preserves-state
-  (implies (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry)))
            (fn-bp-statep
-            (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id))))
+            (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id pin-carry))))
   :hints (("Goal"
            :use ((:instance fn-bprl-release-preserves-node-state)
                  (:instance fn-bprl-with-node-preserves-statep
@@ -698,10 +698,10 @@
                                          fn-bprl-with-node-preserves-statep)))))
 
 (defthm fn-bprl-release-preserves-binding-state
-  (implies (and (fn-bp-binding-statep s)
-                (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id)))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bp-binding-statep s)
+                (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry)))
            (fn-bp-binding-statep
-            (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id))))
+            (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id pin-carry))))
   :hints (("Goal"
            :use ((:instance fn-bprl-release-preserves-node-state)
                  (:instance fn-bprl-with-node-preserves-binding-statep
@@ -846,10 +846,10 @@
 ; After a successful undertaking the release decision's pin premise holds for
 ; that work: release is reachable from this state.
 (defthm fn-bprl-undertake-pins-the-forwarding-obligation
-  (implies (fn-bprl-undertake-okp s (fn-bp-find-work work-id (fn-bp-state-works s))
-                                  charge)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-undertake-okp s (fn-bp-find-work work-id (fn-bp-state-works s))
+                                  charge))
            (fn-bprl-work-pinnedp (fn-bprl-undertake s work-id charge)
-                                 (fn-bp-find-work work-id (fn-bp-state-works s))))
+                                 (fn-bp-find-work work-id (fn-bp-state-works s)) pin-carry))
   :hints (("Goal"
            :use ((:instance fn-retain-admission-binds-subject-immutably
                             (s (fn-node-retention (fn-bp-state-node s)))
@@ -880,9 +880,9 @@
 ; The second conjunct is A-PEER's constraint fn-assume-peer-needs-a-receipt.
 
 (defthm fn-bprl-no-receipt-no-release-no-peer-reliance
-  (implies (not (consp (fn-bprl-find-receipt receipt-id (fn-bp-state-receipts s))))
-           (and (not (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id)))
-                (equal (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id))
+  (implies (and (fn-prc-carryp pin-carry) (not (consp (fn-bprl-find-receipt receipt-id (fn-bp-state-receipts s)))))
+           (and (not (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry)))
+                (equal (fn-bprl-decision-state (fn-bprl-release-decision s receipt-id pin-carry))
                        s)
                 (not (fn-assume-peer-retainsp
                       (fn-bprl-find-receipt receipt-id (fn-bp-state-receipts s))
@@ -899,9 +899,9 @@
 ; fn-assume-policy-needs-evidence cannot refuse them.  Binding the verdict
 ; itself to that signature is the D09 item.
 (defthm fn-bprl-release-evidence-has-policy-shape
-  (implies (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-decision-okp (fn-bprl-release-decision s receipt-id pin-carry)))
            (let ((ev (fn-bprl-decision-evidence
-                      (fn-bprl-release-decision s receipt-id))))
+                      (fn-bprl-release-decision s receipt-id pin-carry))))
              (and (fn-bprl-evidencep ev)
                   (consp ev)
                   (consp (fn-bprl-evidence-term ev)))))
@@ -932,10 +932,10 @@
                                       fn-bp-journal-nth))))
 
 (defthm fn-bprl-apply-journal-record-agrees-with-host-on-bp-records
-  (implies (fn-bp-journal-recordp r)
-           (equal (fn-bprl-apply-journal-record s r)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bp-journal-recordp r))
+           (equal (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry)
                   (fn-bp-apply-journal-record s r)))
-  :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record)
+  :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record-with-pin-carry)
                                   (fn-bp-journal-recordp
                                    fn-bprl-release-recordp
                                    fn-bprl-undertake-recordp
@@ -946,17 +946,17 @@
 ; Replay reproduces the decision: an accepted :release record yields exactly
 ; the decision state, and its evidence fields are the computed evidence.
 (defthm fn-bprl-release-record-replays-decision-by-definition
-  (implies (and (fn-bprl-release-recordp r)
-                (car (fn-bprl-apply-journal-record s r)))
-           (and (equal (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s r))
+  (implies (and (fn-prc-carryp pin-carry) (fn-bprl-release-recordp r)
+                (car (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry)))
+           (and (equal (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry))
                        (fn-bprl-decision-state
-                        (fn-bprl-release-decision s (fn-bp-journal-nth 1 r))))
+                        (fn-bprl-release-decision s (fn-bp-journal-nth 1 r) pin-carry)))
                 (equal (fn-bprl-record-evidence r)
                        (fn-bprl-decision-evidence
-                        (fn-bprl-release-decision s (fn-bp-journal-nth 1 r))))
+                        (fn-bprl-release-decision s (fn-bp-journal-nth 1 r) pin-carry)))
                 (fn-bprl-decision-okp
-                 (fn-bprl-release-decision s (fn-bp-journal-nth 1 r)))))
-  :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record fn-bp-journal-nth)
+                 (fn-bprl-release-decision s (fn-bp-journal-nth 1 r) pin-carry))))
+  :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record-with-pin-carry fn-bp-journal-nth)
                                   (fn-bprl-release-recordp
                                    fn-bprl-undertake-recordp
                                    fn-bp-apply-journal-record

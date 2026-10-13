@@ -16,6 +16,48 @@ sys.path.insert(0, str(ROOT))
 from tools import test_budget  # noqa: E402
 
 
+class NativeMemoryTests(unittest.TestCase):
+    def test_literal_reader_never_imports_and_defaults_to_24g(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tests").mkdir()
+            source = root / "tests/test_need.py"
+            source.write_text('raise RuntimeError("must not import")\n')
+            self.assertEqual(test_budget.native_memory("tests.test_need", root), "24G")
+            source.write_text('NATIVE_MEMORY = "40G"\nraise RuntimeError("must not import")\n')
+            self.assertEqual(test_budget.native_memory("tests.test_need", root), "40G")
+            self.assertEqual(test_budget.native_memory("tests.test_need.SomeTests", root), "40G")
+            for declaration in ('NATIVE_MEMORY = calculate()', 'NATIVE_MEMORY = "0G"',
+                                'NATIVE_MEMORY = "48G; touch x"', 'NATIVE_MEMORY = 48',
+                                'NATIVE_MEMORY = "2G"\nNATIVE_MEMORY = "48G"'):
+                source.write_text(declaration)
+                with self.assertRaises(ValueError):
+                    test_budget.native_memory("tests.test_need", root)
+
+    def test_sizes_and_bigmem_threshold_use_the_effective_unit(self):
+        self.assertEqual(test_budget.memory_bytes("40960M"), 40 * 1024 ** 3)
+        with mock.patch.object(test_budget, "native_memory", return_value="40G"):
+            import contextlib
+            import io
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                test_budget.memory_plan(["tests.test_need FN_X=1\n"], "2G")
+            self.assertEqual(out.getvalue(), "tests.test_need 2G 0 FN_X=1\n")
+            self.assertIn("40G -> 2G", err.getvalue())
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                test_budget.memory_plan(["tests.test_need FN_X=1"])
+            self.assertEqual(out.getvalue().strip(), "tests.test_need 40G 1 FN_X=1")
+
+    def test_module_inventory(self):
+        expected = {"pack_chain": "48G", "bounds_join": "40G", "heap_from_profile": "2G",
+                    "open_depth": "80G", "status_scale": "80G", "load": "16G",
+                    "owner": "24G"}
+        for module, value in expected.items():
+            with self.subTest(module=module):
+                self.assertEqual(test_budget.native_memory("tests.test_native_" + module), value)
+
+
 class TestBudgetRunner(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="fn-test-budget-")

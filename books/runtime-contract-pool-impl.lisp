@@ -82,7 +82,7 @@
   (implies (natp h)
            (equal (fn-rtc-buf-base (+ 1 h) cfg)
                   (+ (fn-rtc-buf-base h cfg) (fn-rtc-buf-cap h cfg))))
-  :hints (("Goal" :nonlinearp t)))
+  :hints (("Goal" :nonlinearp t :in-theory (enable fn-rtc-buf-cap))))
 
 (local (defun fn-rtc-buf-ind (j h)
   (declare (xargs :measure (nfix (- (nfix h) (nfix j)))))
@@ -678,7 +678,7 @@
                   :measure (nfix (- (fn-rtc-c-slots-length fn-rtc-st$c) (nfix i)))))
   (let ((i (nfix i)))
     (if (< i (fn-rtc-c-slots-length fn-rtc-st$c))
-        (if (and (not (zp i)) (eq (fn-rtc-get 1 (fn-rtc-c-slotsi i fn-rtc-st$c)) :free))
+        (if (and (not (zp i)) (fn-rtc-slot-selectablep (fn-rtc-c-slotsi i fn-rtc-st$c)))
             i
           (fn-rtc-c-free-slot-loop (+ 1 i) fn-rtc-st$c))
       nil)))

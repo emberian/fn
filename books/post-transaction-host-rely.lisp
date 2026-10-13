@@ -351,6 +351,7 @@
     (let ((cfg (fn-hl-rtc-config profile mcfg q0 *fn-pth-nstatic* 0 0
                                 *fn-pth-qs* *fn-pth-cs*)))
       (and (fn-rtc-configp cfg) (natp q0)
+           (fn-rtc-st-cfg-okp cfg)
            (<= 1 (fn-rtc-nstatic cfg))
            (equal s (fn-pth-host-run (mv-nth 0 (fn-pth-init cfg)) ops0 q0))))))
 

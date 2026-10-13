@@ -223,7 +223,15 @@
 (defthm fn-rtc-rearm-budget
   (and (<= (len (mv-nth 1 (fn-rtc-rearm s))) 2)
        (equal (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-rearm s))) 0))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-rearm) (fn-rtc-free-slot fn-rtc-kind-out-p)))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant
+               fn-rtc-actions-octets-def fn-rtc-actions-octets-append fn-rtc-act-octets
+               fn-rtc-len-append len car-cons cdr-cons fn-rtc-get-of-cons
+               (:executable-counterpart fn-rtc-get) (:executable-counterpart zp)
+               (:executable-counterpart nfix) (:executable-counterpart binary-+)
+               unicity-of-0 fix
+               (:executable-counterpart fn-rtc-buffered-kind-p))))))
 
 (defun fn-rtc-step-cost-of (s e q)
   (declare (xargs :guard t))
@@ -250,7 +258,10 @@
              (mv-nth 3 (fn-rtc-deliver (fn-rtc-accept-prepared s1 out) (fn-rtc-accept-slot s1)
                                        (fn-rtc-accept-inc s1) (fn-rtc-ev :accept out (fn-rtc-accept-slot s1) (fn-rtc-accept-inc s1) nil) q))
            0))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (fn-rtc-deliver fn-rtc-rearm fn-rtc-free-slot)))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-accept-branch fn-rtc-accept-go-p fn-rtc-accept-prepared
+               fn-rtc-accept-slot fn-rtc-accept-inc fn-rtc-ev fn-rtc-deliver-types nfix)))))
 
 (defthm fn-rtc-rearm-budget-linear
   (<= (len (mv-nth 1 (fn-rtc-rearm s))) 2)

@@ -466,7 +466,8 @@
 
 (defthm fn-rtc-free-slot-found
   (implies (and (natp i) (natp k) (< k (len slots)) (< 0 (+ i k))
-                (eq (fn-rtc-s-status (fn-rtc-get k slots)) :free))
+                (eq (fn-rtc-s-status (fn-rtc-get k slots)) :free)
+                (fn-rtc-inc-roomp (fn-rtc-get k slots)))
            (fn-rtc-free-slot i slots))
   :hints (("Goal" :induct (fn-rtc-ind-free i k slots)
                   :in-theory (disable fn-rtc-s-status))))
@@ -573,11 +574,11 @@
                             (id j)
                             (s (fn-rtc-end-lease (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e
                                                  (fn-rtc-with-uses (fn-rtc-remove-use (fn-rtc-key e) (fn-rtc-uses s)) s))))
-                 (:instance fn-rtc-free-slot-found (i 0) (k j)
-                            (slots (fn-rtc-slots (fn-rtc-end-use s e))))))))
+                 (:instance fn-rtc-key-equal-parts (e e) (u u))))))
 
 (defthm fn-rtc-free-record-implies-free-slot
-  (implies (and (equal (fn-rtc-s-status (fn-rtc-slot j s)) :free) (posp j))
+  (implies (and (equal (fn-rtc-s-status (fn-rtc-slot j s)) :free) (posp j)
+                (fn-rtc-inc-roomp (fn-rtc-slot j s)))
            (fn-rtc-free-slot 0 (fn-rtc-slots s)))
   :hints (("Goal" :in-theory
            (e/d (fn-rtc-slot fn-rtc-s-status)
@@ -586,13 +587,15 @@
                  (:instance fn-rtc-get-out-of-range (i j) (l (fn-rtc-slots s)))))))
 
 (defthm fn-rtc-rearm-arms-from-free-record
-  (implies (and (equal (fn-rtc-s-status (fn-rtc-slot j s)) :free) (posp j))
+  (implies (and (equal (fn-rtc-s-status (fn-rtc-slot j s)) :free) (posp j)
+                (fn-rtc-inc-roomp (fn-rtc-slot j s)))
            (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm s)))))
   :hints (("Goal" :in-theory (theory 'minimal-theory)
            :use (fn-rtc-free-record-implies-free-slot fn-rtc-rearm-arms-when-free))))
 
 (defthm fn-rtc-rearm-after-deliver-arms-from-free-record
-  (implies (and (equal (fn-rtc-s-status (fn-rtc-slot j s)) :free) (posp j))
+  (implies (and (equal (fn-rtc-s-status (fn-rtc-slot j s)) :free) (posp j)
+                (fn-rtc-inc-roomp (fn-rtc-slot j s)))
            (fn-rtc-kind-out-p :accept 0 0
              (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm
                (mv-nth 0 (fn-rtc-deliver s id inc ev q)))))))
@@ -600,6 +603,44 @@
            :use (fn-rtc-deliver-keeps-free-slot
                  (:instance fn-rtc-rearm-arms-from-free-record
                    (s (mv-nth 0 (fn-rtc-deliver s id inc ev q))))))))
+
+; Composed admission facts, retaining the full T13 premise.
+(defthm fn-rtc-deliver-preserves-reusable-slot
+  (implies (fn-rtc-free-slot 0 (fn-rtc-slots s))
+           (fn-rtc-free-slot 0 (fn-rtc-slots (mv-nth 0 (fn-rtc-deliver s id inc ev q)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-slot-selectablep)
+        (fn-rtc-free-slot fn-rtc-get fn-rtc-slot fn-rtc-s-status fn-rtc-inc-roomp fn-rtc-s-inc
+         mv-nth fn-rtc-deliver fn-rtc-free-record-implies-free-slot))
+           :use ((:instance fn-rtc-free-slot-selects-selectable-record (i 0) (slots (fn-rtc-slots s)))
+                 (:instance fn-rtc-deliver-keeps-free-slot (j (fn-rtc-free-slot 0 (fn-rtc-slots s))))
+                 (:instance fn-rtc-free-record-implies-free-slot
+                  (j (fn-rtc-free-slot 0 (fn-rtc-slots s)))
+                  (s (mv-nth 0 (fn-rtc-deliver s id inc ev q))))))))
+(defthm fn-rtc-deliver-preserves-accept-safe
+  (implies (implies (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s))
+                    (fn-rtc-free-slot 0 (fn-rtc-slots s)))
+           (implies (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-deliver s id inc ev q))))
+                    (fn-rtc-free-slot 0 (fn-rtc-slots (mv-nth 0 (fn-rtc-deliver s id inc ev q))))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use (fn-rtc-deliver-does-not-change-accept fn-rtc-deliver-preserves-reusable-slot))))
+(defthm fn-rtc-rearm-after-end-use-admits-iff
+  (implies (fn-rtc-invp s)
+           (iff (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm (fn-rtc-end-use s e)))))
+                (fn-rtc-free-slot 0 (fn-rtc-slots (mv-nth 0 (fn-rtc-rearm (fn-rtc-end-use s e)))))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use (fn-rtc-end-use-accept-safe
+                 (:instance fn-rtc-rearm-accept-iff-when-safe (s (fn-rtc-end-use s e)))))))
+(defthm fn-rtc-rearm-after-deliver-end-use-admits-iff
+  (implies (fn-rtc-invp s)
+           (iff (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm
+                  (mv-nth 0 (fn-rtc-deliver (fn-rtc-end-use s e) id inc ev q))))))
+                (fn-rtc-free-slot 0 (fn-rtc-slots (mv-nth 0 (fn-rtc-rearm
+                  (mv-nth 0 (fn-rtc-deliver (fn-rtc-end-use s e) id inc ev q))))))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use (fn-rtc-end-use-accept-safe
+                 (:instance fn-rtc-deliver-preserves-accept-safe (s (fn-rtc-end-use s e)))
+                 (:instance fn-rtc-rearm-accept-iff-when-safe
+                  (s (mv-nth 0 (fn-rtc-deliver (fn-rtc-end-use s e) id inc ev q))))))))
 
 (defthm fn-rtc-last-completion-retires-a-draining-slot
   (implies (and (fn-rtc-invp s)
@@ -611,18 +652,25 @@
                                             (fn-rtc-remove-use (fn-rtc-key u) (fn-rtc-uses s)))))
            (let ((s2 (mv-nth 0 (fn-rtc-step s e q))))
              (and (equal (fn-rtc-s-status (fn-rtc-slot j s2)) :free)
-                  (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2)))))
+                  (iff (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2))
+                       (fn-rtc-free-slot 0 (fn-rtc-slots s2)))
+                  (implies (fn-rtc-inc-roomp (fn-rtc-slot j s2))
+                           (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2))))))
   :hints (("Goal" :in-theory
            (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
              '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-acts-on-p
                fn-rtc-ends-use-p fn-rtc-e-id (:executable-counterpart fn-rtc-s-status)
-               fn-rtc-slot-of-rearm fn-rtc-rearm-arms-from-free-record
+               fn-rtc-slot-of-rearm fn-rtc-rearm-frame fn-rtc-rearm-arms-when-free
+               fn-rtc-rearm-after-end-use-admits-iff
+               fn-rtc-rearm-after-deliver-end-use-admits-iff
+               fn-rtc-deliver-preserves-reusable-slot
+               fn-rtc-rearm-arms-from-free-record
                fn-rtc-rearm-after-deliver-arms-from-free-record
                fn-rtc-deliver-keeps-free-slot fn-rtc-key-equal-parts
                fn-rtc-free-record-implies-free-slot posp natp nfix
                (:executable-counterpart fn-rtc-get)))
            :do-not-induct t :cases ((equal j 0))
-           :use (fn-rtc-invp-listener fn-rtc-end-use-retires-last))))
+           :use (fn-rtc-invp-listener fn-rtc-end-use-retires-last fn-rtc-end-use-accept-safe))))
 
 ;; v2.2: the :extend kind (extent request) -- KX1, KX1r, KX2.
 (defthm fn-rtc-extend-request-is-the-action

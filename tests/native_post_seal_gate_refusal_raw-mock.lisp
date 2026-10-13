@@ -36,6 +36,15 @@
              (and (eq (car f) 'defun)
                   (member (cadr f) '(fnn-refuse fnn-fault fnn-indeterminate)))))))
 
+;; Read the classifier's ACL2 refusal vocabulary from its source of record.
+;; DEFCONST's value is evaluated as a plain Lisp fixture parameter here.
+(let ((form (find-if (lambda (f)
+                      (and (consp f) (eq (car f) 'defconst)
+                           (eq (cadr f) '*fn-sn-article-record-refusals*)))
+                    (harness-forms "books/store-node.lisp"))))
+  (unless form (error "harness: article-record refusal vocabulary is missing"))
+  (eval (cons 'defparameter (cdr form))))
+
 (defstruct fnn-store fenced)
 (defvar *store* (make-fnn-store))
 (defun fnn-owner-service-store (service) (declare (ignore service)) *store*)

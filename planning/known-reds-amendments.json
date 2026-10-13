@@ -105,6 +105,54 @@
    "item": "LEASE-DISPATCH-COST-ROWS",
    "owner": "builder-A",
    "ruling": "coordinator 2026-10-12 (C8): vertical-header-cost leaves C8; cost_obligations stays red on dev until it lands; carried as a known red, amended, owner builder-A, retired by lane/vertical-header-cost in the next train"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_bounds_join.PostHeapUnderMutexTests.test_large_post_allocates_less_than_one_article_list_under_the_mutex",
+   "dev_sha": "3bdd1f147",
+   "item": "FILL-BOUNDS-JOIN-POST-HEAP",
+   "owner": "builder-P",
+   "ruling": "coordinator 2026-10-12 DECISION (a): a 3 MiB POST allocates ~874 MB under the owner mutex (L16, build/lanes/log-l4/build/codex/l4-trace/REPORT.md section 3), bar 16 x 3 MiB = 50,331,648 bytes; copies (a)-(g) are on the native POST path that POST landing 2b deletes (c7/DESIGN.md section 9), so no twin repair under rule 6.7; (h) with L16's restatement, (i) and surviving paths by A19 now; carried as a known red, amended, owner builder-P, retired by POST landing 2b (lane/post), whose READY reports the measured 3 MiB allocation pessimistic first"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_public_limits.DeveloperImagePublicLimits.test_capacity_and_trusted_range",
+   "dev_sha": "0403f697b",
+   "item": "PUBLIC-LIMITS-OVER-WINDOW-CAPACITY",
+   "owner": "builder-O",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json so the next train's verdict counts it; routed to builder-M, who traced it to the OVER window pricing (adapter A-OVER-WINDOW-FIT) and moved it to builder-O with the coordinator's approval; retired by OVER landing 2"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_public_limits.ProductionImagePublicLimits.test_capacity_and_trusted_range",
+   "dev_sha": "0403f697b",
+   "item": "PUBLIC-LIMITS-OVER-WINDOW-CAPACITY",
+   "owner": "builder-O",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json so the next train's verdict counts it; routed to builder-M, who traced it to the OVER window pricing (adapter A-OVER-WINDOW-FIT) and moved it to builder-O with the coordinator's approval; retired by OVER landing 2"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_openssl_prefix_is_refused_by_name",
+   "dev_sha": "0403f697b",
+   "item": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json, owner builder-A (packaging/fn wrapper, traced by A26), retired by lane/vertical-tls-wrapper"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_prefix_with_hybrid_required_and_no_tls_is_refused",
+   "dev_sha": "0403f697b",
+   "item": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json, owner builder-A (packaging/fn wrapper, traced by A26), retired by lane/vertical-tls-wrapper"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_prefix_on_a_node_without_tls_runs_on_the_system_pair",
+   "dev_sha": "0403f697b",
+   "item": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json, owner builder-A (packaging/fn wrapper, traced by A26), retired by lane/vertical-tls-wrapper"
   }
  ]
 }
