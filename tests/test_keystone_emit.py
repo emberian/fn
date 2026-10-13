@@ -458,6 +458,49 @@ class NewWitnessClasses(unittest.TestCase):
         self.assertEqual(problems, [])
         self.assertEqual(reached, {"scoped": "host/a.lisp:1"})
 
+    def test_subject_rejects_a_variable_named_like_a_reachable_function(self):
+        form = ke.ledger.read_forms('''
+          (defkeystone scoped
+            (let ((fn-adm-peer-open (nfix x)))
+              (implies (< 0 fn-adm-peer-open) (< 1 (+ 1 fn-adm-peer-open))))
+            :subject fn-adm-peer-open :witness ((x 1)) :breaks ((h1 ((x 0))))
+            :mutations ((off (:conclusion (< 2 (+ 1 fn-adm-peer-open)))
+                             ((x 1)) :fault "off")))
+        ''')[0]
+        graph = SimpleNamespace(books={}, book_defs={"nfix", "fn-adm-peer-open"},
+                                stobj_names=set(), reachable={"nfix", "fn-adm-peer-open"})
+        with mock.patch("reach_check.Graph", return_value=graph), \
+                mock.patch("reach_check.theorem_forms", return_value={}):
+            problems, reached = ke.subject_findings([ke.Keystone("tests/acl2/k.lisp", 1, form)])
+        self.assertEqual(reached, {})
+        self.assertEqual(len(problems), 1)
+        self.assertIn("is not a function", problems[0])
+
+    def test_subject_rejects_an_unused_bound_call(self):
+        form = ke.ledger.read_forms('''
+          (defkeystone scoped
+            (let ((unused (fn-adm-peer-open x nil nil nil 1 1)))
+              (implies (< 0 (nfix x)) (< 1 (+ 1 (nfix x)))))
+            :subject fn-adm-peer-open :witness ((x 1)) :breaks ((h1 ((x 0))))
+            :mutations ((off (:conclusion (< 2 (+ 1 (nfix x))))
+                             ((x 1)) :fault "off")))
+        ''')[0]
+        graph = SimpleNamespace(books={}, book_defs={"nfix", "fn-adm-peer-open"},
+                                stobj_names=set(), reachable={"nfix", "fn-adm-peer-open"})
+        with mock.patch("reach_check.Graph", return_value=graph), \
+                mock.patch("reach_check.theorem_forms", return_value={}):
+            problems, reached = ke.subject_findings([ke.Keystone("tests/acl2/k.lisp", 1, form)])
+        self.assertEqual(reached, {})
+        self.assertEqual(len(problems), 1)
+
+    def test_call_heads_follow_parallel_sequential_and_shadowed_bindings(self):
+        parallel = ke.ledger.read_forms("(let ((a (f x)) (b (g a))) (h b))")[0]
+        sequential = ke.ledger.read_forms("(let* ((a (f x)) (b (g a))) (h b))")[0]
+        shadowed = ke.ledger.read_forms("(let ((a (f x))) (let ((a 0)) (h a)))")[0]
+        self.assertEqual(ke.claim_call_heads(parallel), {"g", "h"})
+        self.assertEqual(ke.claim_call_heads(sequential), {"f", "g", "h"})
+        self.assertEqual(ke.claim_call_heads(shadowed), {"h"})
+
     def test_scoped_claim_preserves_labels_and_scopes_mutation(self):
         form = ke.ledger.read_forms('''
           (defteeth scoped

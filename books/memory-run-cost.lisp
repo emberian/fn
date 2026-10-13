@@ -12,8 +12,7 @@
   :unaccounted (fn-bpsp-node-wire-span fn-bpnpf-held-octets fn-bpnpf-rows fn-bpnpf-adu-octets
                 fn-bpsp-capacity-octets))
 (def-cost fn-mo-serve-pools :unaccounted (fn-crv-pool-budget fn-prstartup-launch-extra true-list-fix))
-(def-cost fn-prstartup-serve-store-need
-  :unaccounted (fn-prstartup-serve-limit fn-prstartup-serve-protected))
+
 (def-cost fn-mo-serve-decide
   :unaccounted (fn-mo-serve-limit fn-mo-serve-dynamic fn-mo-serve-cfg fn-mm-least-observation
                 fn-mm-reopen-need fn-heap-profile-word))

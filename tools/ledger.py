@@ -1472,12 +1472,18 @@ def defteeth_parts(form: list) -> dict | None:
     return _dk_spec_parts(form[1], options)
 
 
+def _dk_scoped_implies(term: object) -> bool:
+    while head(term) in {"let", "let*"} and len(term) == 3:
+        term = term[2]
+    return head(term) == "implies" and len(term) == 3
+
+
 def defkeystone_claim(name: Sym, term: object, options: dict) -> list | None:
     """The claim a defkeystone form states, from TERM's source
     ``implies``/``and`` and its ``:hyps`` labels (`fn-dk-claim-of`); None
     where the labels do not number the hypotheses."""
     if (head(term) in {"let", "let*"} and len(term) == 3
-            and head(term[2]) == "implies" and len(term[2]) == 3):
+            and _dk_scoped_implies(term[2])):
         inner = defkeystone_claim(name, term[2], options)
         return [term[0], term[1], inner] if inner is not None else None
     implies = (isinstance(term, list) and len(term) == 3 and head(term) == "implies")

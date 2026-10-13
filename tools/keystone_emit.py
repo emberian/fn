@@ -186,6 +186,43 @@ def host_line(subject: str, root: Path = ROOT) -> str | None:
     return None
 
 
+def claim_call_heads(term, env=None) -> set[str]:
+    """Calls whose values reach TERM, following lexical bindings lazily.
+
+    A binding name is a value, never a function head. Unused bindings and
+    unused lambda actuals contribute no subject; LET values use the outer
+    environment, while LET* values capture the preceding bindings.
+    """
+    env = {} if env is None else env
+    if isinstance(term, str):
+        bound = env.get(term)
+        return claim_call_heads(*bound) if bound is not None else set()
+    if not isinstance(term, list) or not term or term[0] == "quote":
+        return set()
+    head = term[0]
+    if head in ("let", "let*") and len(term) == 3:
+        inner = dict(env)
+        for binding in term[1]:
+            name = binding[0] if isinstance(binding, list) else binding
+            value = binding[1] if isinstance(binding, list) and len(binding) > 1 else "nil"
+            inner[name] = (value, dict(inner if head == "let*" else env))
+        return claim_call_heads(term[2], inner)
+    if head == "mv-let" and len(term) == 4:
+        inner = dict(env)
+        for name in term[1]:
+            inner[name] = (term[2], dict(env))
+        return claim_call_heads(term[3], inner)
+    if isinstance(head, list) and head and head[0] == "lambda":
+        inner = dict(env)
+        for name, value in zip(head[1], term[1:]):
+            inner[name] = (value, dict(env))
+        return claim_call_heads(head[-1], inner)
+    calls = {head} if isinstance(head, str) else set()
+    for arg in term[1:]:
+        calls.update(claim_call_heads(arg, env))
+    return calls
+
+
 def subject_findings(keystones: list[Keystone]) -> tuple[list[str], dict[str, str]]:
     """Findings on subjects, and each registry keystone's host line (or how
     it is reached)."""
@@ -199,17 +236,21 @@ def subject_findings(keystones: list[Keystone]) -> tuple[list[str], dict[str, st
         entry = theorems.get(name.lower())
         text = entry[1] if entry else render([Sym("defthm"), Sym(name),
                                               keystone.parts["term"]])
-        subject = reach_check.Subject(graph, name.lower(), text)
-        # The scoped claim includes calls in the LET bindings, even when
-        # substitution makes their result appear only in the antecedent.
-        # Read the conclusion with its actual lexical scope, never hints.
-        _, scoped = reach_check.split_statement(text, keep_binders=True)
-        functions = set(subject.functions) | (reach_check.defined(
-            reach_check.tree_symbols(scoped), graph.book_defs) - graph.stobj_names)
+        # Read the actual claim, never hints or bare symbol occurrences.
+        # A decision used in an antecedent is still part of this claim;
+        # recognizers already assumed by the hypotheses remain excluded.
+        hyps, _ = reach_check.split_statement(text)
+        bound_hyps, scoped = reach_check.split_statement(text, keep_binders=True)
+        calls = claim_call_heads(scoped)
+        for hyp in bound_hyps:
+            calls.update(claim_call_heads(hyp))
+        actual = reach_check.defined(calls, graph.book_defs) - graph.stobj_names
+        assumed = reach_check.defined(reach_check.hypothesis_heads(hyps), graph.book_defs)
+        functions = (actual - assumed) or actual
         if keystone.subject not in functions:
             problems.append(
                 f"{keystone.where}: {keystone.name}: :subject {keystone.subject} is not "
-                f"a function {name}'s scoped conclusion calls (reach_check reads "
+                f"a function {name}'s scoped claim calls (reach_check reads "
                 f"{', '.join(sorted(functions)) or 'nothing'})")
             continue
         if keystone.subject not in graph.reachable:

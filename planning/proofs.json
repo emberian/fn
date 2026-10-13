@@ -23695,7 +23695,7 @@
     {
       "id": "PRF-10014",
       "title": "The owner's output pool is held where the probe launched (L-RUN-LAUNCH K-L4c)",
-      "statement": "fn-mo-serve-output-pool-is-held (defkeystone pfrst-serve-output-pool-is-held, tests/acl2/peer-flight-startup-tests.lisp); subject fn-prstartup-serve-store-need (books/peer-flight-startup.lisp), called by host/native/mux.lisp fnn-mux-budget-install for books/output-reservation.lisp fn-orv-startup-grant: the store's need at the owner's observations and the output pool fit the dynamic space fn-mo-serve-decide launched.",
+      "statement": "fn-mo-serve-output-pool-is-held (defkeystone pfrst-serve-output-pool-is-held, tests/acl2/peer-flight-startup-tests.lisp); subject fn-prstartup-run-store-need (books/peer-flight-startup.lisp), called by host/native/mux.lisp fnn-mux-budget-install for books/output-reservation.lisp fn-orv-startup-grant: whenever fn-mo-serve-run-decide decides :heap, with the same core file and the owner's least resident observation at most the probe's, the store's need at the owner's observations and the output pool fit the launched dynamic space; bp-terms is free in both the decision and the need.",
       "milestone": "M5",
       "requirements": [],
       "depends_on": [],
@@ -23705,7 +23705,7 @@
       ],
       "evidence_digest": "9c167fd43af05a66",
       "keystone_subjects": {
-        "fn-mo-serve-output-pool-is-held": "fn-prstartup-serve-store-need"
+        "fn-mo-serve-output-pool-is-held": "fn-prstartup-run-store-need"
       },
       "events": [
         "fn-mo-serve-output-pool-is-held"
