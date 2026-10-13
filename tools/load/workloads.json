@@ -106,7 +106,7 @@
    "16"
   ]
  },
- "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up). huge-articles is development with 256 transactions, 256 MiB of history and articles up to 3.25 MiB, sized to W2M's 64 preloaded 3 MiB articles (4096 transactions reserved 25.7 GB, past the 16 GB cell budget).",
+ "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up). huge-articles is development with 256 transactions, 256 MiB of history and articles up to 3.25 MiB, sized to W2M's 64 preloaded 3 MiB articles; its served capacity is the memory gate's C' within resident LIMIT.",
  "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384",
  "workloads": {
   "smoke": {
@@ -263,7 +263,7 @@
    }
   },
   "readers": {
-   "about": "Readers looping ARTICLE on a filled store (preloaded by POSTs, cached per image; the small preset holds only ~4000 2 KiB articles in its 8 MiB history bound, so this runs at the filled preset) beside one open-loop poster at 5 POSTs/s, at R = 1, 4, 16, 64 (L-READ). The variant R<n> runs one R. The connection cap is 32 by default (books/profile-limits.lisp:65); fn.toml has no max_connections key (the comment there is stale), so the cell tries `policy set exposure-connections 128` and records the verb result and the connections refused.",
+   "about": "Readers looping ARTICLE on a filled store (preloaded by POSTs, cached per image; the small preset holds only ~4000 2 KiB articles in its 8 MiB history bound, so this runs at the filled preset) beside one open-loop poster at 5 POSTs/s, at R = 1, 4, 16, 64 (L-READ). The variant R<n> runs one R. The memory gate derives serving capacity C'; fn.toml has no max_connections key, so the cell tries `policy set exposure-connections 128` and records the verb result and the connections refused.",
    "preset": "filled",
    "groups": [
     "fn.letters",
@@ -399,7 +399,7 @@
    ]
   },
   "fresh-start": {
-   "about": "A fresh node (operator init, run to LISTENING) under a whole-process limit of 256 MB and of 1024 MB (cgroup MemoryMax, not the heap flag), serving one POST and one ARTICLE. Started the way an installed node starts (packaging/fn: the image's heap probe, which may refuse the profile), each inside systemd-run --user --scope -p MemoryMax=LIMIT -p MemorySwapMax=0; a refusal is the result and is recorded verbatim. Absorbed from tools/load_fresh_start.py.",
+   "about": "A fresh node (operator init, run to LISTENING) under a whole-process limit of 256 MB and of 1024 MB (cgroup MemoryMax, not the heap flag), serving one POST and one ARTICLE. Started the way an installed node starts: the probe checks pools, observed store reopen and address space; configure derives the serving capacity C' from the memory gate. Each runs inside systemd-run --user --scope -p MemoryMax=LIMIT -p MemorySwapMax=0; a refusal is the result and is recorded verbatim. Absorbed from tools/load_fresh_start.py.",
    "preset": "small",
    "groups": [
     "fn.letters",
@@ -512,7 +512,7 @@
    ]
   },
   "conn-capacity": {
-   "about": "Connection capacity per preset (deputy L, from books/profile-limits.lisp:65): the decided default cap, the largest fn.toml [server] max_connections the image admits (doubling then bisection; a cold start that refuses is the end), RSS per held connection, the greeting past the cap.",
+   "about": "Connection capacity per preset: the capacity stated by running status, configure's memory capacity C' line, the largest live exposure-connections request admitted (doubling then bisection), RSS per held connection and the greeting past the served capacity. The probe launches at resident LIMIT plus core content and pools; the memory gate determines C'.",
    "preset": "small",
    "groups": [
     "fn.test"
@@ -944,6 +944,96 @@
    "sprof": {
     "window_s": 60
    }
+  },
+  "pub-prof": {
+   "about": "Profile owner replay to LISTENING, offline checkpoint publication, and checkpoint reopen to LISTENING in CPU, allocation and child-strace processes. Each mode starts from a fresh curve fixture copy; heap probes and filesystem rebinding are unprofiled.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "store": {
+    "preload": 50000,
+    "octets": 2048,
+    "fixture": "curve/n{N}",
+    "require_fixture": true
+   },
+   "phases": [
+    {
+     "name": "pub-profile",
+     "kind": "pub_profile",
+     "measure": true,
+     "open_timeout_s": 1800,
+     "publish_timeout_s": 3600,
+     "report_timeout_s": 120,
+     "sample_interval": "0.005"
+    }
+   ]
+  },
+  "op-prof": {
+   "about": "Per-command owner profile: isolated clean, CPU sampling, allocation sampling, prof2 calls and optional strace windows, each after 50 warmup commands. Hooks never share an owner.",
+   "preset": "scale-1m",
+   "strace": true,
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 10000,
+    "octets": 2048,
+    "fixture": "curve/n{N}",
+    "require_fixture": true
+   },
+   "op_variants": [
+    "POST_2k",
+    "ARTICLE_2k",
+    "ARTICLE_128k",
+    "HEAD",
+    "STAT",
+    "GROUP",
+    "OVER40",
+    "NEWNEWS",
+    "LIST",
+    "greeting"
+   ],
+   "phases": [
+    {
+     "name": "op-profile",
+     "kind": "op_profile",
+     "measure": true,
+     "ops": [
+      "POST_2k",
+      "ARTICLE_2k",
+      "ARTICLE_128k",
+      "HEAD",
+      "STAT",
+      "GROUP",
+      "OVER40",
+      "NEWNEWS",
+      "LIST",
+      "greeting"
+     ],
+     "budget_s": 60,
+     "warmup": 50
+    }
+   ]
+  },
+  "floor": {
+   "about": "C loopback TCP and local filesystem floors on the cell work path; no node is started.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "floor",
+     "kind": "floor",
+     "measure": true,
+     "reps": 300
+    }
+   ]
   },
   "greeting-prof": {
    "about": "C's ask (2026-10-08): sb-sprof of the owner (all threads, one 60 s window) while one client loops TCP connect to the greeting (T-CMD greeting is superlinear in store size on g41). Variant /alloc samples allocation instead of CPU. Run as GREET-PROF@25k.",
@@ -1517,6 +1607,9 @@
   "W15": "mem-vs-size",
   "conn-capacity": "conn-capacity",
   "T-OPS": "prof-ops",
+  "OPPROF": "op-prof",
+  "PUBPROF": "pub-prof",
+  "FLOOR": "floor",
   "W6b": "peers-feed",
   "W6c": "peers-catchup-load",
   "W8S": "publish-stall",

@@ -4,10 +4,11 @@
 The installed `bin/fn` (packaging/fn with libexec/fn beside it) no longer
 runs every command under the image launcher's `--dynamic-space-size 32000`:
 it first runs the same image as `heap -- ARGV`, where ACL2 decides the
-figure from the command's store profile and this machine's memory
-(books/heap-figure.lisp `fn-heap-decide'), and then execs the command with
-that figure; a profile the machine cannot hold is refused there by name,
-exit 1, and nothing else runs.
+figure (books/heap-command.lisp `fn-mo-serve-decide' for a run), then execs
+the command with it.  A run holds core content + resident LIMIT + pools;
+the probe refuses unobserved memory, pools or observed store reopen that
+cannot fit, or address space that cannot hold the reservation.  Configure
+derives the capacity C' from the memory gate.
 
 The case is the friend's machine: the module runs under a 2 GiB memory
 limit (tools/hbox_native.sh --mem 2G: `systemd-run --user --scope -p
@@ -20,7 +21,8 @@ name, outside a limit of at most 2 GiB.
   fn-heap-init-decide, judging the first run of the empty store it makes:
   reservation-after-flip); the small node here is the small preset's fields
   named at init: `status' prints the next run's figure over the store on
-  disk, `heap=N MB profile=small machine=2048 MB'.  The node starts under
+  disk, `heap=N MB profile=small machine=L MB', L the resident LIMIT after
+  the pools.  The node starts under
   that figure, takes 100 POSTs of
   2 KiB, serves them (ARTICLE, OVER), publishes one automatic checkpoint
   (K = 128: at 64), stops, reopens from the checkpoint and serves them
@@ -30,8 +32,8 @@ name, outside a limit of at most 2 GiB.
   name with both numbers (lane
   membership-budget); `init --budget 16384 --profile scale'
   writes it for that target (`within-budget=no target-budget=16384 MB'),
-  and the launcher refuses its `run' and `status' by name (an empty
-  development store's run fits 2 GiB since lane heap-bounds, B4).
+  and its empty store serves at the capacity the memory gate derives;
+  stopped `status' holds the header and is accepted.
 * FreshInitTests (also without a small limit): conservative sizing,
   `init --largest', `init --budget MB' (below the machine: init
   warns by name with both figures), and the default mission
@@ -53,6 +55,7 @@ from pathlib import Path
 from tests.native_harness import (
     EXIT_OK, EXIT_REFUSED, EXIT_USAGE, ROOT, Client, Node, article, environment, native_image,
     node_log_on_failure, run)
+NATIVE_MEMORY = "2G"
 
 IMAGE = str(native_image("FN_NATIVE_HOST"))
 SMALL_FLAGS = ("--profile", "development", "--max-transactions", "16384",
@@ -477,8 +480,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         over the carried store (books/admission-memory.lisp fn-adm-capacity),
         and serves at C': the gate prices C' connections and the readers
         accepted are bounded by it (books/owner-connection-callbacks.lisp
-        fn-owner-memory-max-conns lowers the bound to C'+1;
-        fn-owner-callback-exposure-total-within-the-memory-capacity).
+        fn-adm-exposure-open compares the held custody with min(C, C'),
+        including ended connections awaiting physical disposal).
 
         The tooth is C' below C under the 2 GiB cgroup, bound by a PERMANENT
         term.  A 4 MiB article bound makes each holder's article reply
@@ -528,7 +531,7 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertNotEqual(term, "configured")
         self.assertEqual(term, "article-reply",
                          "the permanent term binds, not the retiring OVER window")
-        # C'+1 sockets here, the owner's as many: well inside 1,024 descriptors.
+        # C' admitted sockets and one refused attempt, inside 1,024 descriptors.
         self.assertLess(cap, 400)
         body = ("z" * 72 + "\r\n") * 28
         readers = []
@@ -540,6 +543,11 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 self.assertTrue(extra.greeting.startswith(b"400 "), extra.greeting)
             finally:
                 extra.sock.close()
+            # The private staging reader has the same priced bound. At C'
+            # held readers the retired C'+1 operator slot cannot be opened.
+            control = self.run_fn("operator", config, "policy", "set",
+                                  "exposure-connections", str(configured - 1))
+            self.assertEqual(control.returncode, EXIT_REFUSED, text(control))
             # C' is the most connections the gate holds over the store at
             # configure, so the room left is under one connection's charge
             # (one article reply here) and a store that grows spends it: each
@@ -623,6 +631,16 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 r"\b(articles|signed)=(\d+)", replay.stdout.decode())}
 
         # With room: P enrolled and granted `keys', a succession is admitted.
+        # The room is derived, not the remainder C' happens to leave (under
+        # one connection's charge, which a statement's row may exceed: 10-12,
+        # 2007 of 2008 MB at C' = 122): the run is priced at C' - 1, which
+        # leaves at least one connection's charge free.
+        self.start()
+        cap, configured, term = self.capacity()
+        self.stop()
+        roomy = self.run_fn("operator", config, "policy", "set",
+                            "exposure-connections", str(max(1, cap - 1)))
+        self.assertEqual(roomy.returncode, EXIT_OK, text(roomy))
         self.start()
         helper.enrol_and_grant(self.node)
         with Client(port, timeout=300) as client:
@@ -636,6 +654,9 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         base = counts()
         self.assertGreaterEqual(base["signed"], 1, base)
 
+        restored = self.run_fn("operator", config, "policy", "set",
+                               "exposure-connections", str(CAPACITY_CONNECTIONS))
+        self.assertEqual(restored.returncode, EXIT_OK, text(restored))
         # Without room: fill with one reader and minimal posts
         # until an ordinary POST is refused, which must be by the memory's
         # word, then POST the revocation, signed by the succeeded keys.
@@ -791,10 +812,9 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         print("NATIVE-HEAP init refused reservation={} MB budget={} MB".format(
             found.group(3), found.group(4)))
         # The store written for a bigger machine: since lane heap-bounds (B4)
-        # an EMPTY development store's run fits 2 GiB (the open's chunk is
-        # bounded by the input, and a run sizes the open by the store on
-        # disk), so the launcher's refusal is shown on the scale preset,
-        # whose state at its bounds alone is past 2 GiB.  The target budget
+        # an EMPTY development store's reopen fits 2 GiB.  Scale's init
+        # target budget is still priced at its bounds; its served run now
+        # launches at LIMIT and derives C' after the open.  The target budget
         # is the scale store's own reservation, as init's refusal names it
         # (never a figure written here: 16384 MB held it until the scale
         # figure grew past it).
@@ -820,8 +840,13 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         # checkpoint header and the configuration history, not the store
         # (books/heap-command.lisp fn-mo-header-decide-holds-the-header), so
         # it is accepted here (lane memory, landing 2).
+        # start() reads the greeting on its own connection; at C' = 1 a
+        # second connection is answered 400 while that one is counted, which
+        # is the gate's bound, not a fault.
         self.start()
-        self.post(port, ["<scale-0@heap.invalid>"])
+        cap, configured, term = self.capacity()
+        self.assertGreater(cap, 0)
+        self.assertLess(cap, configured, term)
         hwm = self.stop()
         self.assertLess(hwm * 1024, LIMIT)
         status = self.run_fn("operator", config, "status")

@@ -1,0 +1,12 @@
+{
+ "file": "books/bp-native-app-fast.lisp",
+ "id": "PAYLOAD-EXPORT-BP-TRANSIT-LOOKUP",
+ "notes": [],
+ "owner": "builder-A",
+ "retired_by": "a span/arena-side read of the row payload (FILL-BOUNDS-JOIN-POST-HEAP follow-up; perf plan D1)",
+ "severity": "medium",
+ "source": "FACTS-I.md section 5 (A20, lane vertical-post-heap, dev f0c2f4d5f; static trace): whole-payload export via fn-row-wire-of/fn-row-bytes on a path that survives POST landing 2",
+ "state": "open",
+ "title": "BP transit lookup exports the row up to six times (books/bp-native-app-fast.lisp:466-475 fn-bpaj-transit-record-lookup-fast; host/bp-native-app-host.lisp:297/:508)",
+ "updated": "2026-10-12T17:32:18Z"
+}

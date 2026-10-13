@@ -105,6 +105,14 @@
    "item": "LEASE-DISPATCH-COST-ROWS",
    "owner": "builder-A",
    "ruling": "coordinator 2026-10-12 (C8): vertical-header-cost leaves C8; cost_obligations stays red on dev until it lands; carried as a known red, amended, owner builder-A, retired by lane/vertical-header-cost in the next train"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_bounds_join.PostHeapUnderMutexTests.test_large_post_allocates_less_than_one_article_list_under_the_mutex",
+   "dev_sha": "3bdd1f147",
+   "item": "FILL-BOUNDS-JOIN-POST-HEAP",
+   "owner": "builder-P",
+   "ruling": "coordinator 2026-10-12 DECISION (a): a 3 MiB POST allocates ~874 MB under the owner mutex (L16, build/lanes/log-l4/build/codex/l4-trace/REPORT.md section 3), bar 16 x 3 MiB = 50,331,648 bytes; copies (a)-(g) are on the native POST path that POST landing 2b deletes (c7/DESIGN.md section 9), so no twin repair under rule 6.7; (h) with L16's restatement, (i) and surviving paths by A19 now; carried as a known red, amended, owner builder-P, retired by POST landing 2b (lane/post), whose READY reports the measured 3 MiB allocation pessimistic first"
   }
  ]
 }

@@ -17,15 +17,21 @@
                     (fnn-read-regular-bounded path (fnn-core 'fn-bpsp-read-bound)))))))
   (unless profile (fnn-refuse "BP session profile refused in ~a" path)) profile))
 
-(defun fnn-bp-session-install (bp owner transfer segment)
- "Capture installed profiles and runtime space before any session/socket."
- (let* ((profile (fnn-bp-session-profile (fnn-bps-root bp)))
-        (node (fnn-bps-node-profile bp))
+(defun fnn-bp-session-install (bp owner captured-terms)
+ "Use the same captured terms and launch coordinates as the installed owner."
+ (declare (ignore bp))
+ (let* ((profile (first captured-terms))
+        (node (second captured-terms))
+        (transfer (third captured-terms))
+        (segment (fourth captured-terms))
         (store (fnn-owner-service-store owner))
-        (core (fnn-heap-core-octets))
+        (observed (fnn-owner-service-launch-observed owner))
         (grant (fnn-core 'fn-bpsp-node-startup profile node transfer segment
                  (sb-ext:dynamic-space-size)
-                 (fnn-core 'fn-heap-figure-octets (fnn-store-config store) core +fnn-gc-nursery-octets+)))
+                 (fnn-core 'fn-mo-serve-bp-store-need (second observed) (fnn-store-config store)
+                  (fnn-owner-service-cold-resources owner) (fnn-owner-service-output-resources owner)
+                  (sixth observed) (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit)
+                  (fnn-store-root store) captured-terms (fifth observed) +fnn-gc-nursery-octets+)))
         (bank (make-fnn-bp-session-bank :grant grant :profile profile
                   :ledger (fnn-core 'create-fn-resource-ledger))))
   (unless (eq (first grant) :hold)

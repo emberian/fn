@@ -551,6 +551,11 @@ failed effects remain discoverable while independent physical cleanup runs."
                 (if condition (error condition)
                   (fnn-fault "socket close returned no physical receipt")))
               receipt)) :closed nil)
+        (when (and opened-cid
+                   (every #'fnn-mux-cleanup-receipt-section-returned
+                          (mapcar #'cdr (fnn-mux-conn-cleanup-receipts conn))))
+          (fnn-mux-cleanup-attempt loop conn :memory-physical-return
+            (lambda () (fnn-owner-action 'fn-owner-memory-physical-return opened-cid)) :returned t))
         (setf (fnn-mux-loop-waiting loop)
               (delete conn (fnn-mux-loop-waiting loop) :test #'eq)
               (fnn-mux-loop-queued loop)
@@ -2229,7 +2234,7 @@ open, an fstat; fnn-peer-flight-profile)."
         (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store))
         ;; the address-space limits and the core file (landing 4b's launch)
         (fnn-heap-address-observations)
-        (fnn-heap-core-octets)
+        (fnn-heap-image-observation)
         (fnn-peer-flight-profile (fnn-store-root store))))
 
 (defun fnn-owner-memory-configure-locked (service tls-context observed &optional gate-only)
@@ -2254,28 +2259,32 @@ limit at the carried store); the gate alone answers :hold."
             (if gate-only
                 (fnn-owner-core 'fn-owner-memory-gate-install
                                 img resident trigger pub-trigger profile tlsp live cold output
-                                peer workers cache-limit root config-octets)
+                                peer workers cache-limit root config-octets
+                                (fnn-owner-service-bp-terms service) core +fnn-gc-nursery-octets+)
               (fnn-owner-core 'fn-owner-memory-configure
                               img resident trigger pub-trigger profile tlsp live cold output
                               peer workers cache-limit root config-octets
-                              address core +fnn-gc-nursery-octets+))
+                              address core +fnn-gc-nursery-octets+ (fnn-owner-service-bp-terms service)
+                              (and (not (fnn-owner-service-bp-terms service)) (fnn-owner-article-window))))
           ;; Published before the install or run creates any serving actor.
           (setq *fnn-owner-cursor-octets-fit*
                 (fnn-global 'fn-owner-memory-cursor-octets)))))))
 
 (defun fnn-owner-memory-install (service)
-  "The memory gate for an owner process before it admits anything, called
-by fnn-owner-install while the process is still single-threaded (as its
-other install steps reach the owner).  Nothing is refused
-here, and no C' is computed (fn-owner-memory-gate-install: the gate then
-prices the configured C and refuses each article it cannot hold by :memory,
-by name); C' and its capacity line are the mux run's statement, after the
-run's connection budget holds (fnn-mux-budget-install), which configures
-again with the run's coordinates and refuses a run no connection fits."
-  (let* ((observed (fnn-owner-memory-observe (fnn-owner-service-store service)))
-         (memory (fnn-owner-memory-configure-locked service nil observed t)))
-    (unless (eq memory :hold)
+  "Install the run envelope before any actor exists. A BP owner computes C'
+and its diagnostic now; a mux computes them after its startup budget holds."
+  (let* ((observed (or (fnn-owner-service-launch-observed service)
+                       (setf (fnn-owner-service-launch-observed service)
+                         (fnn-owner-memory-observe (fnn-owner-service-store service)))))
+         (memory (fnn-owner-memory-configure-locked service nil observed
+                    (not (fnn-owner-service-bp-terms service)))))
+    (unless (member memory '(:hold :refused))
       (fnn-fault "owner returned a malformed memory gate"))
+    (when (fnn-owner-service-bp-terms service)
+      (let ((line (fnn-global 'fn-owner-memory-capacity-line)))
+        (unless (fnn-octet-list-p line) (fnn-fault "owner returned a malformed memory capacity"))
+        (fnn-out "~a" (map 'string #'code-char line))
+        (when (eq memory :refused) (fnn-refuse "~a" (map 'string #'code-char line)))))
     memory))
 
 (defun fnn-mux-budget-install (service tls-context)
@@ -2289,7 +2298,8 @@ in the service log."
          (core (fnn-heap-core-octets))
          ;; K-ADMIT's coordinates, observed here for the same reason
          ;; (fnn-owner-memory-observe).
-         (observed (fnn-owner-memory-observe store))
+         (observed (or (fnn-owner-service-launch-observed service)
+                       (fnn-owner-memory-observe store)))
          ;; the memory gate's word: :hold with C' >= 1, :refused when no
          ;; connection fits the limit at the carried store (ruling (b))
          (memory nil)
@@ -2329,12 +2339,12 @@ in the service log."
                   ;; fn-mo-serve-output-pool-is-held).
                   (fnn-owner-output-install
                    service (sb-ext:dynamic-space-size)
-                   (fnn-core 'fn-prstartup-serve-store-need (fnn-store-config store)
+                   (fnn-core 'fn-prstartup-run-store-need (fnn-store-config store)
                              core (fnn-gc-nursery-octets)
                              (fnn-owner-service-output-resources service)
                              (sixth observed) (fnn-core 'fn-pio-direct-workers)
                              (fnn-extent-cache-limit) (fnn-store-root store)
-                             (second observed))))
+                             (second observed) (fnn-owner-service-bp-terms service))))
                 word)))))
     (unless (eq decision :hold)
       (fnn-fault "owner returned a malformed run installation"))

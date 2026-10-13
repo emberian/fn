@@ -89,10 +89,7 @@
 (defun fnn-core (entry &rest args)
   (case entry
     (fn-heap-command-growth (if (eq (first args) :run) :serves :grows))
-    (fn-mo-serve-pools (push (cons :pools args) *calls*) 4268136)
-    (fn-mo-serve-pool-threads (push (cons :pool-threads args) *calls*) 1)
-    (fn-mo-serve-decide (push (cons :serve args) *calls*) *serve*)
-    (fn-bpsp-node-capacity (push (cons :bp args) *calls*) 1048576)
+    (fn-mo-serve-run-decide (push (cons :serve args) *calls*) *serve*)
     (fn-heap-command-decide (push (cons :command args) *calls*) *base*)
     (fn-native-operator-host-result-run-cold-resources *cold*)
     (fn-native-operator-host-result-run-output-resources *output*)
@@ -119,15 +116,12 @@
 (multiple-value-bind (code line calls observed) (heap-command)
   (assert (= code 0))
   (assert (equal line (format nil "~s" *serve*)))
-  (assert (equal (mapcar #'car calls) '(:pools :pool-threads :serve)))
-  ;; the pools of this run: no cold or output policy, its peer flight, the
-  ;; DEFAULT pool's workers and cache over the store's root
-  (assert (equal (call-of calls :pools) (list *profile* nil nil *peer* 4 8 "/absolute/fixture")))
-  (assert (equal (call-of calls :pool-threads) (list nil *peer*)))
-  ;; (profile img trigger live cold config resident address core nursery tot pools pool-threads)
+  (assert (equal (mapcar #'car calls) '(:serve)))
+  ;; The shared ACL2 subject receives every captured pool coordinate.
   (assert (equal (call-of calls :serve)
                  (list *profile* *img* +fnn-owner-service-nursery-octets+ nil nil 119 *resident*
-                       *address* *core-observation* +fnn-gc-nursery-octets+ *totals* 4268136 1)))
+                       *address* *core-observation* +fnn-gc-nursery-octets+ *totals*
+                       nil *peer* 4 8 "/absolute/fixture" nil)))
   ;; memory.max and physical memory are read only as the resident limit
   (assert (not (member :machine observed)))
   (assert (= 1 (count :core observed)))
@@ -137,9 +131,8 @@
 (multiple-value-bind (code line calls) (heap-command :run '(complete) t)
   (declare (ignore line))
   (assert (= code 0))
-  (assert (equal (second (call-of calls :pools)) '(complete)))
-  (assert (equal (call-of calls :pool-threads) (list '(complete) *peer*)))
-  (assert (equal (subseq (call-of calls :serve) 3 5) (list t '(complete)))))
+  (assert (equal (subseq (call-of calls :serve) 3 5) (list t '(complete))))
+  (assert (equal (subseq (call-of calls :serve) 11) (list nil *peer* 4 8 "/absolute/fixture" nil))))
 ;; A refusal of the launch is the probe's answer (exit 1).
 (let ((*serve* '(:refused :machine-cannot-hold-the-store 327 251)))
   (multiple-value-bind (code line) (heap-command)
@@ -161,7 +154,7 @@
 (let ((*calls* nil) (*observed* nil) (*fnn-stdout* (make-string-output-stream)))
   (fnn-heap-print-store-line "/fixture" nil nil t)
   (assert (equal (get-output-stream-string *fnn-stdout*) (format nil "~s" *serve*)))
-  (assert (equal (mapcar #'car (reverse *calls*)) '(:pools :pool-threads :serve)))
+  (assert (equal (mapcar #'car (reverse *calls*)) '(:serve)))
   (assert (equal (fourth (call-of *calls* :serve)) t))
   (assert (not (member :machine *observed*))))
 (format t "SOURCE DEFAULT HEAP PASSED~%")

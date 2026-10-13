@@ -42,7 +42,7 @@
 (assert-event (fn-bp-work-outstandingp
                (fn-bp-find-work "work-1" (fn-bp-state-works *bra-wf*))))
 (assert-event (fn-bprl-work-pinnedp
-               *bra-wf* (fn-bp-find-work "work-1" (fn-bp-state-works *bra-wf*))))
+               *bra-wf* (fn-bp-find-work "work-1" (fn-bp-state-works *bra-wf*)) nil))
 
 (defun bra-receipt (work subject terms)
   (fn-bpa-encode

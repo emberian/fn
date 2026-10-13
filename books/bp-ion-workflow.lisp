@@ -95,7 +95,7 @@
 
 ; Result: (okp next-bp effects next-ion). Existing FNWF records use the
 ; unchanged application-work interpreter. Rejected ION records never mutate.
-(defun fn-bpiw-apply (bp ion record fn-arena)
+(defun fn-bpiw-apply (bp ion record pin-carry fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((equal (car record) :ion-route)
@@ -110,7 +110,7 @@
               (list (fn-bpiw-routes ion)
                     (cons record (fn-bpiw-observations ion))))
       (list nil bp nil ion)))
-   (t (let ((answer (fn-bprl-apply-journal-record bp record)))
+   (t (let ((answer (fn-bprl-apply-journal-record-with-pin-carry bp record pin-carry)))
         (list (car answer) (nth 1 answer) (nth 2 answer) ion)))))
 
 ; A recovery outcome is written only after a reopen, whose :restart fenced
@@ -139,7 +139,7 @@
 ; stack frame per effect.  The :exec is the replay with the machine's
 ; functions called through ec-call and the appends in constant stack
 ; (fn-ag-append).
-(defun fn-bpiw-replay-records (bp ion records effects fn-arena)
+(defun fn-bpiw-replay-records (bp ion records effects pin-carry fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil
                   :measure (acl2-count records)))
   (mbe
@@ -149,25 +149,25 @@
          (list t (fn-bp-result-state restarted)
                (append effects (fn-bp-result-effects restarted)) ion))
      (let ((answer (fn-bpiw-apply (fn-bpiw-replay-fence bp (car records))
-                                  ion (car records) fn-arena)))
+                                  ion (car records) pin-carry fn-arena)))
        (if (not (car answer))
            (list nil bp effects ion)
          (fn-bpiw-replay-records
           (nth 1 answer) (nth 3 answer) (cdr records)
-          (append effects (nth 2 answer)) fn-arena))))
+          (append effects (nth 2 answer)) pin-carry fn-arena))))
    :exec
    (if (atom records)
        (let ((restarted (ec-call (fn-bp-step bp (ec-call (fn-bp-restart-event))))))
          (list t (ec-call (fn-bp-result-state restarted))
                (fn-ag-append effects (ec-call (fn-bp-result-effects restarted))) ion))
      (let ((answer (ec-call (fn-bpiw-apply (ec-call (fn-bpiw-replay-fence bp (car records)))
-                                           ion (car records) fn-arena))))
+                                           ion (car records) pin-carry fn-arena))))
        (if (not (fn-ag-car answer))
            (list nil bp effects ion)
          (fn-bpiw-replay-records
           (fn-ag-car (fn-ag-cdr answer)) (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr answer))))
           (cdr records)
-          (fn-ag-append effects (fn-ag-car (fn-ag-cdr (fn-ag-cdr answer)))) fn-arena))))))
+          (fn-ag-append effects (fn-ag-car (fn-ag-cdr (fn-ag-cdr answer)))) pin-carry fn-arena))))))
 
 (local
  (defthm fn-bpiw-nth-1-2-3
@@ -178,7 +178,7 @@
 (verify-guards fn-bpiw-replay-records
   :hints (("Goal" :in-theory (disable fn-bpiw-apply fn-bpiw-replay-fence fn-bp-step nth))))
 
-(defun fn-bpiw-replay-journal (node records fn-arena)
+(defun fn-bpiw-replay-journal (node records pin-carry fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (or (endp records) (not (fn-bp-config-recordp (car records))))
       (list nil nil nil (fn-bpiw-initial))
@@ -187,19 +187,19 @@
       (if (not (fn-bp-statep bp))
           (list nil nil nil (fn-bpiw-initial))
         (fn-bpiw-replay-records bp (fn-bpiw-initial) (cdr records) nil
-                                fn-arena)))))
+                                pin-carry fn-arena)))))
 
 (defthm fn-bpiw-ion-record-keeps-bp-state
-  (implies (member-equal (car record) '(:ion-route :ion-observed))
-           (equal (nth 1 (fn-bpiw-apply bp ion record fn-arena)) bp))
+  (implies (and (fn-prc-carryp pin-carry) (member-equal (car record) '(:ion-route :ion-observed)))
+           (equal (nth 1 (fn-bpiw-apply bp ion record pin-carry fn-arena)) bp))
   :hints (("Goal" :in-theory
            (e/d (fn-bpiw-apply)
                 (fn-bpiw-route-admissiblep
                  fn-bpiw-observation-admissiblep)))))
 
 (defthm fn-bpiw-ion-record-emits-no-effects
-  (implies (member-equal (car record) '(:ion-route :ion-observed))
-           (equal (nth 2 (fn-bpiw-apply bp ion record fn-arena)) nil))
+  (implies (and (fn-prc-carryp pin-carry) (member-equal (car record) '(:ion-route :ion-observed)))
+           (equal (nth 2 (fn-bpiw-apply bp ion record pin-carry fn-arena)) nil))
   :hints (("Goal" :in-theory
            (e/d (fn-bpiw-apply)
                 (fn-bpiw-route-admissiblep

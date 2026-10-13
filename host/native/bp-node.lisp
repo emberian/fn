@@ -1129,6 +1129,7 @@ over N rows takes ceiling(N/64) turns and resumes where it yielded.")
          (owner nil)
          (owner-custody (make-fnn-bp-served-owner-custody))
          (bank nil)
+         (bp-terms nil)
          (*fnn-bp-session-bank* nil)
          (control nil)
          (*fnn-bpnode-control-pump* nil)
@@ -1139,13 +1140,16 @@ over N rows takes ceiling(N/64) turns and resumes where it yielded.")
          (handler-bind ((serious-condition (lambda (condition)
                            (unless primary-condition (setq primary-condition condition)))))
          (progn
+           (when listen-port
+             (setq bp-terms (list (fnn-bp-session-profile journal-root)
+                              (fnn-bps-node-profile bp) transfer-mru +fnn-tcl-segment-mru+)))
            (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
            (setq owner
                  (if listen-port
-                     (fnn-bp-served-owner-start owner-custody store-root 1)
+                     (fnn-bp-served-owner-start owner-custody store-root 1 bp-terms)
                    (fnn-owner-install store-root 1)))
            (when listen-port
-             (setq bank (fnn-bp-session-install bp owner transfer-mru +fnn-tcl-segment-mru+)))
+             (setq bank (fnn-bp-session-install bp owner bp-terms)))
            (when control-config
              (setq control (fnn-bpnc-start control-config store-root owner)
                    *fnn-bpnode-control-pump* (lambda () (fnn-bpnc-pump control))))

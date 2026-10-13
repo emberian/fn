@@ -55,21 +55,21 @@
    :hints (("Goal" :in-theory (enable fn-bp-nth)))))
 
 (defthm fn-bpcw-waiver-release-event-formula
-  (equal (fn-bpcc-waiver-release-event bp c w)
+  (implies (fn-prc-carryp pin-carry) (equal (fn-bpcc-waiver-release-event bp c w pin-carry)
          (let ((work (fn-bp-find-work w (fn-bp-state-works bp))))
            (if (and (consp (fn-bpcc-waiver-entry c w))
                     (consp work)
-                    (fn-bprl-work-pinnedp bp work))
+                    (fn-bprl-work-pinnedp bp work pin-carry))
                (list :release (fn-bp-work-obligation-id work) (fn-bp-work-subject work)
                      (fn-bprl-required-evidence (fn-bp-state-config bp) work) 0)
-             nil)))
+             nil))))
   :hints (("Goal" :in-theory (enable fn-bpcc-waiver-release-event))))
 
 (local (in-theory (disable fn-bpcc-waiver-release-event fn-bprl-work-pinnedp)))
 
 (local
  (defthm fn-bpcw-pinned-find-id
-   (implies (fn-bprl-work-pinnedp bp work)
+   (implies (and (fn-prc-carryp pin-carry) (fn-bprl-work-pinnedp bp work pin-carry))
             (fn-retain-matching-releasep
              (fn-retain-find-id (fn-bp-work-obligation-id work) (fn-bprl-pins bp))
              (fn-bp-work-obligation-id work) (fn-bp-work-subject work) :forward
@@ -91,8 +91,8 @@
 ; The Store's retention step removes exactly the obligation's pin.
 (local
  (defthm fn-bpcw-pins-after-release
-   (implies (and (fn-retain-statep (fn-node-retention (fn-bp-state-node bp)))
-                 (fn-bprl-work-pinnedp bp work))
+   (implies (and (fn-prc-carryp pin-carry) (fn-retain-statep (fn-node-retention (fn-bp-state-node bp)))
+                 (fn-bprl-work-pinnedp bp work pin-carry))
             (equal (fn-bprl-pins
                     (fn-bpcw-after-release
                      bp (list :release (fn-bp-work-obligation-id work)
@@ -114,8 +114,8 @@
 
 (local
  (defthm fn-bpcw-not-pinned-without-pin
-   (implies (not (fn-retain-find-id (fn-bp-work-obligation-id work) (fn-bprl-pins bp)))
-            (not (fn-bprl-work-pinnedp bp work)))
+   (implies (and (fn-prc-carryp pin-carry) (not (fn-retain-find-id (fn-bp-work-obligation-id work) (fn-bprl-pins bp))))
+            (not (fn-bprl-work-pinnedp bp work pin-carry)))
    :hints (("Goal" :in-theory (enable fn-bprl-work-pinnedp fn-bprl-work-pin
                                       fn-retain-matching-releasep)))))
 
@@ -136,14 +136,14 @@
 ; The release, for any pinned work: its pin goes, and nothing pins it after.
 (local
  (defthm fn-bpcw-release-of-a-pinned-work
-   (let ((next (fn-bpcw-after-release
+   (implies (fn-prc-carryp pin-carry) (let ((next (fn-bpcw-after-release
                 bp (list :release (fn-bp-work-obligation-id work)
                          (fn-bp-work-subject work)
                          (fn-bprl-required-evidence (fn-bp-state-config bp) work)
                          0))))
      (implies (and (fn-retain-statep (fn-node-retention (fn-bp-state-node bp)))
-                   (fn-bprl-work-pinnedp bp work))
-              (not (fn-bprl-work-pinnedp next work))))
+                   (fn-bprl-work-pinnedp bp work pin-carry))
+              (not (fn-bprl-work-pinnedp next work pin-carry)))))
    :hints (("Goal" :in-theory (disable fn-bpcw-after-release fn-bpcw-not-pinned-without-pin
                                        fn-bprl-find-id-of-remove-self)
             :use ((:instance fn-bprl-find-id-of-remove-self
@@ -159,13 +159,13 @@
 
 (local
  (defthm fn-bpcw-release-okp-needs-the-pin
-   (implies (not (fn-bprl-work-pinnedp s work))
-            (not (fn-bprl-release-okp s receipt work)))
+   (implies (and (fn-prc-carryp pin-carry) (not (fn-bprl-work-pinnedp s work pin-carry)))
+            (not (fn-bprl-release-okp s receipt work pin-carry)))
    :hints (("Goal" :in-theory (enable fn-bprl-release-okp)))))
 
 ; KEYSTONE.
 (defthm fn-bpcw-waiver-releases-exactly-once
-  (let* ((event (fn-bpcc-waiver-release-event bp c w))
+  (implies (fn-prc-carryp pin-carry) (let* ((event (fn-bpcc-waiver-release-event bp c w pin-carry))
          (work (fn-bp-find-work w (fn-bp-state-works bp)))
          (next (fn-bpcw-after-release bp event)))
     (implies (and (fn-retain-statep (fn-node-retention (fn-bp-state-node bp)))
@@ -174,9 +174,9 @@
                   (equal (fn-bprl-pins next)
                          (fn-retain-remove-id (fn-bp-work-obligation-id work)
                                               (fn-bprl-pins bp)))
-                  (not (fn-bprl-work-pinnedp next work))
-                  (null (fn-bpcc-waiver-release-event next c w))
-                  (not (fn-bprl-release-okp next receipt work)))))
+                  (not (fn-bprl-work-pinnedp next work pin-carry))
+                  (null (fn-bpcc-waiver-release-event next c w pin-carry))
+                  (not (fn-bprl-release-okp next receipt work pin-carry))))))
   :hints (("Goal" :in-theory (disable fn-bpcw-after-release fn-bpcc-waiver-entry
                                       fn-retain-statep))))
 
@@ -209,31 +209,31 @@
                                    fn-bpcc-waiver-principal)))))
 
 (defthm fn-bpcw-only-a-waiver-authors-a-waiver-release
-  (implies (and (not (consp (fn-bpcc-waiver-entry c w)))
+  (implies (and (fn-prc-carryp pin-carry) (not (consp (fn-bpcc-waiver-entry c w)))
                 (not (and (fn-bpcc-waiver-recordp record)
                           (equal (fn-bpcc-record-work record) w))))
-           (null (fn-bpcc-waiver-release-event bp (fn-bpcc-apply c record) w)))
+           (null (fn-bpcc-waiver-release-event bp (fn-bpcc-apply c record) w pin-carry)))
   :hints (("Goal" :in-theory (disable fn-bpcc-apply fn-bpcc-waiver-entry
                                       fn-bpcc-waiver-recordp fn-bpcc-record-work
                                       fn-bprl-work-pinnedp)
            :use fn-bpcw-only-a-waiver-waives)))
 
 (defthm fn-bpcw-admitted-waiver-authors-its-release
-  (let ((work (fn-bp-find-work (fn-bpcc-record-work record) (fn-bp-state-works bp))))
+  (implies (fn-prc-carryp pin-carry) (let ((work (fn-bp-find-work (fn-bpcc-record-work record) (fn-bp-state-works bp))))
     (implies (and (fn-bpcc-waiver-recordp record)
-                  (null (fn-bpcc-waiver-refusal bp c record)))
+                  (null (fn-bpcc-waiver-refusal bp c record pin-carry)))
              (equal (fn-bpcc-waiver-release-event bp (fn-bpcc-apply c record)
-                                                  (fn-bpcc-record-work record))
+                                                  (fn-bpcc-record-work record) pin-carry)
                     (list :release (fn-bp-work-obligation-id work)
                           (fn-bp-work-subject work)
                           (fn-bprl-required-evidence (fn-bp-state-config bp) work)
-                          0))))
+                          0)))))
   :hints (("Goal" :in-theory (enable fn-bpcc-heldp))))
 
 (defthm fn-bpcw-waiver-of-an-unheld-obligation-is-refused
-  (implies (and (fn-bpcc-waiver-recordp record)
-                (not (fn-bpcc-heldp bp (fn-bpcc-record-work record))))
-           (member-equal (fn-bpcc-waiver-refusal bp c record)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bpcc-waiver-recordp record)
+                (not (fn-bpcc-heldp bp (fn-bpcc-record-work record) pin-carry)))
+           (member-equal (fn-bpcc-waiver-refusal bp c record pin-carry)
                          '(:unknown-work :already-waived :not-held))))
 
 (defthm fn-bpcw-refusal-ignores-the-pin

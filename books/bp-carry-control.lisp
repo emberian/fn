@@ -262,29 +262,29 @@
 
 ; WORK's obligation is held: the work is in the workflow image and its
 ; :forward pin stands with the evidence it was undertaken against.
-(defun fn-bpcc-heldp (bp work-id)
+(defun fn-bpcc-heldp (bp work-id pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (let ((work (fn-bp-find-work work-id (fn-bp-state-works bp))))
-    (and (consp work) (fn-bprl-work-pinnedp bp work) t)))
+    (and (consp work) (fn-bprl-work-pinnedp bp work pin-carry) t)))
 
 ; The append decision (host/workflow-host.lisp fn-workflow-carry-record): the
 ; journal's admissibility, and the pin must stand.  Replay admits the record
 ; by fn-bpcc-refusal alone, since the waiver's own release removes the pin.
-(defun fn-bpcc-waiver-refusal (bp c record)
+(defun fn-bpcc-waiver-refusal (bp c record pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-bpcc-refusal bp c record)
-      (if (fn-bpcc-heldp bp (fn-bpcc-record-work record)) nil :not-held)))
+      (if (fn-bpcc-heldp bp (fn-bpcc-record-work record) pin-carry) nil :not-held)))
 
 ; The Store retention event a waiver of WORK-ID authors, or nil: C holds the
 ; waiver and the pin still stands.  Its shape and fields are the receipt's
 ; (host/bp-release-owner-host.lisp fn-owner-workflow-store-release): the
 ; obligation id, subject, and the evidence the pin demands, charge 0.
-(defun fn-bpcc-waiver-release-event (bp c work-id)
+(defun fn-bpcc-waiver-release-event (bp c work-id pin-carry)
   (declare (xargs :guard t))
   (let ((work (fn-bp-find-work work-id (fn-bp-state-works bp))))
     (if (and (consp (fn-bpcc-waiver-entry c work-id))
              (consp work)
-             (fn-bprl-work-pinnedp bp work))
+             (fn-bprl-work-pinnedp bp work pin-carry))
         (list :release (fn-bp-work-obligation-id work) (fn-bp-work-subject work)
               (fn-bprl-required-evidence (fn-bp-state-config bp) work) 0)
       nil)))
@@ -292,21 +292,21 @@
 ; The waivers durable in the journal whose Store event has not landed (a
 ; crash between the waiver's append and its Store publication): the writable
 ; owner open completes each (host/native/bp-obligation.lisp).
-(defun fn-bpcc-pending-waivers-loop (bp c waived acc)
+(defun fn-bpcc-pending-waivers-loop (bp c waived acc pin-carry)
   (declare (xargs :guard (true-listp acc)))
   (if (consp waived)
       (fn-bpcc-pending-waivers-loop
        bp c (cdr waived)
        (if (and (consp (car waived))
-                (fn-bpcc-waiver-release-event bp c (caar waived))
+                (fn-bpcc-waiver-release-event bp c (caar waived) pin-carry)
                 (not (member-equal (caar waived) acc)))
            (cons (caar waived) acc)
-         acc))
+         acc) pin-carry)
     (reverse acc)))
 
-(defun fn-bpcc-pending-waivers (bp c)
+(defun fn-bpcc-pending-waivers (bp c pin-carry)
   (declare (xargs :guard t))
-  (fn-bpcc-pending-waivers-loop bp c (fn-bpcc-waived c) nil))
+  (fn-bpcc-pending-waivers-loop bp c (fn-bpcc-waived c) nil pin-carry))
 
 ; A receipt for a waived work is refused by name: its obligation was
 ; released by the waiver, and nothing releases it twice.  RECORD is

@@ -21,9 +21,9 @@ these cases run the real owner, real ACL2 and the real P3 history root.
   every pass above runs on a node that asks for it.  Without the key the
   same live `store reclaim` (and `--recorded`) is refused by name,
   offline-only, before anything is recorded or reserved, the history is
-  untouched and the offline verbs still reclaim; and the next run's heap
-  figure (`status`, heap=) is the store's alone, smaller than the opted-in
-  one.
+  untouched and the offline verbs still reclaim.  The next run's launch
+  (`status`, heap=) has the same resident LIMIT and heap with either opt-in;
+  the memory gate charges the enabled pass within that LIMIT.
 * FN_RUN_RECLAIM_RSS=1 adds the measurement the reclaim-design packet asks
   for (its slice 3): the owner's resident set before and after a pass at 1k
   and 10k articles (Linux /proc only), recorded in the test's output and not
@@ -50,7 +50,7 @@ CHUNK = 1024
 # 45e05c7f answered `deferred-credit`, estimate=452968896, at the preset's H
 # and at an explicit 64 MiB alike -- so no history bound funded it; the pass
 # now borrows its second generation's demand from the owner's work reserve,
-# which the launcher's figure holds at the profile's bounds.
+# which the memory gate charges within the run's resident LIMIT.
 PROFILE = ("--profile", "development", "--max-transactions", "16384")
 # The development preset's history budget (max-history-octets) is 24 MiB, which
 # served 7,459 of the resident-set measurement's 10,000 small posts before
@@ -248,20 +248,13 @@ class NativeReclaimWalkTests(unittest.TestCase):
                       done.stdout)
 
     def test_the_opt_in_is_the_only_change_to_the_figure(self):
-        """The next run's figure (`status` heap=) on the same store: without
-        the key it is the store's alone; with it, the store's plus the owner's
-        work reserve's EXCESS over the open's transient
-        (books/heap-store-figure.lisp fn-heap-store-reclaim-base-octets).  The
-        run's figure is the full-store figure (ADMISSION-RESERVES-NOT-REOPEN):
-        its open term is the transient at the profile's bounds, and one
-        reserve holds whichever of the open and a live pass is larger
-        (fn-heap-open-and-excess-is-the-larger; the pass's demand is held by
-        fn-heap-open-and-excess-hold-the-reclaim).  So the opt-in never lowers
-        the figure, and it raises it exactly when the pass's demand exceeds
-        the open's transient at the bounds; at presets where the open term
-        already covers the pass the two figures are equal.  Their numbers are
-        printed for the record."""
-        line = re.compile(rb"^heap=(\d+) MB", re.M)
+        """L-RUN-LAUNCH retired the profile-bound heap and reclaim excess
+        sizing.  With the same observations and pools, the probe reserves
+        the same core content + LIMIT + pools.  Live reclaim changes the
+        gate's charge and reopen need, rather than enlarging address space.
+        Both probes must accept this empty store and state the same heap
+        and LIMIT; the live refusal/installation cases above test the opt-in."""
+        line = re.compile(rb"^heap=(\d+) MB profile=\S+ machine=(\d+) MB", re.M)
         off = self.node("figure", live=False)
         status = off.operator("status", timeout=600, expect=EXIT.OK)
         a = line.search(status.stdout)
@@ -272,7 +265,7 @@ class NativeReclaimWalkTests(unittest.TestCase):
         self.assertIsNotNone(b, status.stdout)
         print("RECLAIM-OPTIN-FIGURE off=%s on=%s" % (a.group(1).decode(), b.group(1).decode()),
               flush=True)
-        self.assertLessEqual(int(a.group(1)), int(b.group(1)), (a.group(0), b.group(0)))
+        self.assertEqual(a.groups(), b.groups(), (a.group(0), b.group(0)))
 
     @unittest.skipUnless(os.environ.get("FN_RUN_RECLAIM_RSS") == "1",
                          "FN_RUN_RECLAIM_RSS=1 runs the walk's resident-set measurement")

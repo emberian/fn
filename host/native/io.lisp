@@ -6262,8 +6262,9 @@ the Store and the served projection judge them like any posted article."
     octets))
 
 (defun fnn-command-probe (root count &optional articlep)
-  "tests/store_capacity_probe.py's sequence in-process: commit COUNT maximum
-payloads, close, reopen, and report both timings as JSON on stdout.  With
+  "Probe a completely initialized, empty store under its sealed profile, or
+initialize/resume a development root: commit COUNT maximum payloads, close,
+reopen, and report both timings as JSON on stdout.  With
 ARTICLEP (`probe N article') each payload is a well-formed article of the
 same size (fnn-probe-article), so the served reader can frame it."
   (unless (fnn-developer-image-p)
@@ -6271,38 +6272,60 @@ same size (fnn-probe-article), so the served reader can frame it."
            :message "store probe is available only in the developer image"))
   (let* ((started (get-internal-real-time))
          (store (make-fnn-store root :writable t))
-         (payload nil))
-    (fnn-initialize store)
-    (fnn-record-filesystem-at-init store :development)
-    (fnn-acquire store)
-    (fnn-bridge-reset)
-    (fnn-extent-pool-open-context)
-    (fnn-recover store)
-    (setq payload (make-array (fnn-config-max-payload store)
-                              :element-type '(unsigned-byte 8)
-                              :initial-element (char-code #\x)))
-    (let ((codes (fnn-group-codes-for store +fnn-default-groups+)))
-      (dotimes (sequence count)
-        (let ((msgid (fnn-octets (fnn-ascii-octet-list
-                                  (format nil "<capacity-~d@example.invalid>" sequence))))
-              (payload (if articlep
-                           (fnn-probe-article sequence (length payload))
-                         payload)))
-          (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
-            (fnn-advance-frontier store (fnn-bridge-next-txid))
-            (unless (eq (fnn-bridge-prepare msgid payload codes obligation subject evidence
-                                            (fnn-charge (length payload)))
-                        :prepared)
-              (fnn-fault "probe prepare refused"))
-            (let ((pending (fnn-pending-sequence
-                            (fnn-core-state 'fn-store-sn-pending-sequence))))
-              (unless (eq (fnn-publish store pending (fnn-bridge-pending-record))
-                          :durable)
-                (fnn-fault "probe publish refused")))
-            (unless (eq (fnn-finish store) :durable) (fnn-fault "probe finish refused"))))))
-    (let ((commit-seconds (/ (- (get-internal-real-time) started)
-                             (float internal-time-units-per-second 1d0))))
-      (fnn-store-close store)
+         (payload nil)
+         (primary nil))
+    (let ((commit-seconds
+           (unwind-protect
+                (handler-case
+                 (progn
+                  ;; fnn-initialize publishes generation one, genesis, then
+                  ;; the segment; init records the filesystem afterward.
+                  ;; Compaction can replace segment one with a checkpoint;
+                  ;; the live open validates these artifacts.
+                  (if (and (fnn-lstat (fnn-config-path store))
+                           (fnn-lstat (fnn-config-record-path store 1))
+                           (fnn-lstat (fnn-genesis-path store))
+                           (fnn-lstat (fnn-filesystem-record-path store))
+                           (or (fnn-lstat (fnn-segment-path store))
+                               (fnn-lstat (fnn-state-checkpoint-path store))))
+                      (setq store (fnn-open-live-store root t))
+                    (progn
+                      (fnn-initialize store)
+                      (fnn-record-filesystem-at-init store :development)
+                      (fnn-acquire store)
+                      (fnn-bridge-reset)
+                      (fnn-extent-pool-open-context)
+                      (fnn-recover store)))
+                  (setq payload (make-array (fnn-config-max-payload store)
+                                            :element-type '(unsigned-byte 8)
+                                            :initial-element (char-code #\x)))
+                  (let ((codes (fnn-group-codes-for store +fnn-default-groups+)))
+                    (dotimes (sequence count)
+                      (let ((msgid (fnn-octets (fnn-ascii-octet-list
+                                                (format nil "<capacity-~d@example.invalid>" sequence))))
+                            (payload (if articlep
+                                         (fnn-probe-article sequence (length payload))
+                                       payload)))
+                        (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
+                          (fnn-advance-frontier store (fnn-bridge-next-txid))
+                          (unless (eq (fnn-bridge-prepare msgid payload codes obligation subject evidence
+                                                          (fnn-charge (length payload)))
+                                      :prepared)
+                            (fnn-fault "probe prepare refused"))
+                          (let ((pending (fnn-pending-sequence
+                                          (fnn-core-state 'fn-store-sn-pending-sequence))))
+                            (unless (eq (fnn-publish store pending (fnn-bridge-pending-record))
+                                        :durable)
+                              (fnn-fault "probe publish refused")))
+                          (unless (eq (fnn-finish store) :durable) (fnn-fault "probe finish refused"))))))
+                  (/ (- (get-internal-real-time) started)
+                     (float internal-time-units-per-second 1d0)))
+                 (serious-condition (condition)
+                   (setq primary condition)
+                   (error condition)))
+             (if primary
+                 (fnn-store-failed-open-close store primary)
+               (fnn-store-close store)))))
       (let ((before (get-internal-real-time)))
         (multiple-value-bind (reopened replayed) (fnn-open-live-store root nil)
           (let ((reopen-seconds (/ (- (get-internal-real-time) before)
@@ -7825,8 +7848,10 @@ buffer), and ACL2's step over the buffer (fn-lgw-step-buf-count,
 books/store-log-buffer.lisp: KEYSTONE fn-lgw-step-buf-count-is-step, the list
 step on the buffer's octets with its records answered by their count); each
 record the step takes (one, or a batch entry's several) is sliced from the
-buffer by ACL2's cursor one at a time (fn-lgb-span, fn-lgb-slice: KEYSTONES
-fn-lgb-span-records-are-the-records, fn-lgb-span-within-max), goes to SINK
+buffer by ACL2's fused cursor call one at a time (fn-lgb-next-record:
+KEYSTONES NR-S2 fn-lgb-next-record-yields-the-records, NR-S4
+fn-lgb-next-record-within-max; NR-S5
+fn-lgb-next-record-descriptor-is-the-attached-place names its extent place), goes to SINK
 and is not kept here.  One entry's octets at a time, never the segment (KEYSTONE fn-lgw-run-is-the-open: the
 records are the recovered kernel's committed records and the kernel is its
 fn-lgc-of).  At the stop, ACL2's probe of the rest of the segment
@@ -7867,34 +7892,26 @@ the open proceeds on (:complete, :torn or :repaired)."
                ;; COUNT: a rotation entry is taken with no record.
                (when (and took *fnn-log-stream-copy*)
                  (funcall *fnn-log-stream-copy* pos e (- (fnn-nat (fnn-core 'fn-lgw-pos next)) pos)))
-               ;; The step's COUNT records, one at a time by ACL2's cursor
-               ;; (fn-lgb-span from 42: KEYSTONE fn-lgb-span-records-are-the-
-               ;; records), each sliced from the buffer (fn-lgb-slice) only
-               ;; while SINK has it: at most MAX octets of list live
-               ;; (KEYSTONE fn-lgb-span-within-max).
+               ;; COUNT calls from 42, each returning one record and the next
+               ;; cursor (fn-lgb-next-record: NR-S2 yields-the-records,
+               ;; NR-S4 within-max). Only SINK holds the current record.
                (when took
                  (let ((i 42))
                    (dotimes (j (fnn-nat count))
                      (declare (ignorable j))
-                     (destructuring-bind (start len i2) (fnn-call 'fn-lgb-span i buf)
-                       (let ((record (fnn-core 'fn-lgb-slice start len buf)))
-                         (if *fnn-extent-file*
-                             ;; The full replay's extent seals (PRF-294): the
-                             ;; record's descriptor, its place in this entry with
-                             ;; the entry's COMMITMENT attached (ACL2's
-                             ;; fn-lgb-descriptor: KEYSTONE fn-lgb-descriptor-is-
-                             ;; the-attached-place, the place fn-arx-list-places
-                             ;; gives the record with fn-arx-attach-trailers-
-                             ;; buffer's trailer; lane extent-identity, PRF-994),
-                             ;; bound for the sink as *fnn-log-record-place*
-                             ;; (FILE . DESCRIPTOR), or NIL.
-                             (let* ((desc (fnn-core 'fn-lgb-descriptor pos start len buf))
-                                    (*fnn-log-record-place*
-                                      (and desc (cons *fnn-extent-file* desc)))
-                                    (*fnn-log-record-stored* record))
-                               (funcall sink (fnn-log-read-record record)))
-                           (let ((*fnn-log-record-stored* record))
-                             (funcall sink (fnn-log-read-record record)))))
+                     (destructuring-bind (record desc i2)
+                         (fnn-call 'fn-lgb-next-record i pos (and *fnn-extent-file* t) buf)
+                       (if *fnn-extent-file*
+                           ;; The replay's extent seal (PRF-294): NR-S5
+                           ;; fn-lgb-next-record-descriptor-is-the-attached-place
+                           ;; returns the record's place with this entry's
+                           ;; COMMITMENT attached (PRF-994), bound for SINK.
+                           (let ((*fnn-log-record-place*
+                                   (and desc (cons *fnn-extent-file* desc)))
+                                 (*fnn-log-record-stored* record))
+                             (funcall sink (fnn-log-read-record record)))
+                         (let ((*fnn-log-record-stored* record))
+                           (funcall sink (fnn-log-read-record record))))
                        (setq i (fnn-nat i2))))))
                (setq st next))))
       (setf (svref buf 1) 0

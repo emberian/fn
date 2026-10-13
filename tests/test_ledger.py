@@ -369,6 +369,33 @@ class EventTests(unittest.TestCase):
     def test_a_theorem_inside_must_fail_is_not_a_theorem(self):
         self.assertNotIn("never", self.tree.theorems)
 
+    def test_dir_nil_is_local_for_book_host_and_nonlocal_include_consumers(self):
+        source = '(include-book "target" :dir nil)\n' \
+                 '(local (include-book "local-target" :dir nil))\n' \
+                 '(include-book "system-target" :dir :system)\n'
+        book = ledger.Book("books/root.lisp")
+        host = ledger.HostFile("host/root.lisp")
+        for form, line in ledger.Reader(source).top_level():
+            ledger.record(book, form, line, local=False, suppressed=False)
+            ledger.host_record(host, form, line)
+        self.assertEqual(book.includes, ["target", "local-target"])
+        self.assertEqual(book.nonlocal_includes, [(1, "target")])
+        self.assertEqual(book.system_includes, ["system-target"])
+        self.assertEqual(host.includes, ["target", "local-target"])
+
+    def test_default_reader_record_and_source_events_keep_conditional_host_definitions(self):
+        source = '#+linux\n(defun conditional-host (x) (#-linux f x))\n'
+        forms = ledger.Reader(source).top_level()
+        self.assertEqual(forms[0], (ledger.Sym("#+linux"), 1))
+        definition = [ledger.Sym("defun"), ledger.Sym("conditional-host"),
+                      [ledger.Sym("x")], [ledger.Sym("#-linux"), ledger.Sym("f"), ledger.Sym("x")]]
+        self.assertEqual(forms[1], (definition, 2))
+        self.assertIn((definition, 2), list(ledger.source_events(forms)))
+        book = ledger.Book("host/root.lisp")
+        for form, line in forms:
+            ledger.record(book, form, line, local=False, suppressed=False)
+        self.assertEqual([function.name for function in book.functions], ["conditional-host"])
+
     def test_guard_status_distinguishes_four_states(self):
         states = {f.name: f.guard_status for f in self.book.functions}
         self.assertEqual(states, {"f": "verified", "g": "default-guarded",
@@ -1576,6 +1603,31 @@ class DefkeystoneExpansionTests(unittest.TestCase):
     that book and requires the Python expansion to equal the same literal,
     so the static tools and ACL2 cannot drift apart silently."""
 
+    def test_hypothesis_free_let_is_the_whole_conclusion(self):
+        term = ledger.read_forms("(let ((x (f y))) (and (p x) (q x)))")[0]
+        self.assertEqual(ledger.defkeystone_claim(ledger.Sym("k"), term, {}),
+                         [[], term])
+
+    def test_decoded_credential_keeps_its_original_claim_and_teeth(self):
+        source = (self.BOOK.parent / "feed-connection-teeth-tests.lisp").read_text()
+        form = next(f for f in ledger.read_forms(source)
+                    if ledger.head(f) == "defkeystone" and str(f[1]) == "fct-decoded-credential")
+        parts = ledger.defkeystone_parts(form)
+        self.assertIsNotNone(parts)
+        self.assertEqual(parts["claim"], [[], form[2]])
+        self.assertGreater(len(ledger.teeth_events(parts, "defkeystone")), 1)
+
+    def test_outer_let_keeps_hypothesis_scope(self):
+        form = ledger.Reader("(defkeystone lexical (let* ((a (nfix x)) (b (1+ a))) "
+                             "(implies (< 0 a) (< 1 b))) :subject nfix :hyps (positive) "
+                             ":witness ((x 1)) :breaks ((positive ((x 0)))) "
+                             ":mutations ((off (:conclusion (< 2 b)) ((x 1)) :fault \"off by one\")))").top_level()[0][0]
+        parts = ledger.defkeystone_parts(form)
+        self.assertIsNotNone(parts)
+        self.assertEqual([str(x) for x in parts["labels"]], ["positive"])
+        self.assertEqual(ledger.head(parts["claim"]), "let*")
+        self.assertEqual(ledger.head(parts["hyps"][0]), "let*")
+
     BOOK = Path(__file__).resolve().parents[1] / "tests/acl2/defkeystone-tests.lisp"
 
     def constants(self) -> dict:
@@ -1606,7 +1658,10 @@ class DefkeystoneExpansionTests(unittest.TestCase):
     def test_the_sample_is_the_form_the_book_admits(self):
         constants, forms = self.constants()
         admitted = [form for form in forms if ledger.head(form) == "defkeystone"]
-        self.assertEqual(admitted, [constants["*fn-dkt-sample*"][1]])
+        lexical = [form for form in admitted if str(form[1]) == "fn-dkt-lexical-scope"]
+        self.assertEqual(len(lexical), 1)
+        self.assertEqual([form for form in admitted if str(form[1]) != "fn-dkt-lexical-scope"],
+                         [constants["*fn-dkt-sample*"][1]])
 
     def test_the_book_sees_the_keystone_and_its_teeth(self):
         source = self.BOOK.read_text(encoding="utf-8")
@@ -1637,7 +1692,7 @@ class DefkeystoneExpansionTests(unittest.TestCase):
                           "fn-dkt-assumed-one", "fn-dkt-scoped",
                           "fn-dkt-cell-positive", "fn-dkt-two-cells",
                           "fn-dkt-two-cells-built", "fn-dkt-snapshot",
-                          "fn-dkt-sk-positive"})
+                          "fn-dkt-sk-positive", "fn-dkt-lexical-scope"})
         # a bound :derived-by a def-cost row is a theorem of its book too
         self.assertIn("fn-dkt-walk-of-true-list-visits-steps", names)
         self.assertEqual(set(book.teeth_owed), {"fn-dkt-add-adds-source"})

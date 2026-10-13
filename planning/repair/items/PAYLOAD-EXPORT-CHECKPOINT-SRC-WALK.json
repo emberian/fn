@@ -1,0 +1,14 @@
+{
+ "file": "books/store-checkpoint-arena-writer.lisp",
+ "id": "PAYLOAD-EXPORT-CHECKPOINT-SRC-WALK",
+ "notes": [
+  "10-12 17:06 closed by L17 per ember's adoption of the resource design (17:10 10-12): the path is deleted by LC, not repaired (rule 6.7)"
+ ],
+ "owner": "builder-L",
+ "retired_by": "LC (checkpoint, open and reclaim over columns; DESIGN-RESOURCE-MODEL-20261012 section 4 deletes the .fnsc writer and reader, whole-store publication and reclaim's three passes, which hold this export)",
+ "severity": "medium",
+ "source": "FACTS-I.md section 5 (A20, lane vertical-post-heap, dev f0c2f4d5f; static trace): whole-payload export via fn-row-wire-of/fn-row-bytes on a path that survives POST landing 2",
+ "state": "closed",
+ "title": "Checkpoint/reclaim source walk exports the whole payload only to take its length (books/store-checkpoint-arena-writer.lisp:396-399 fn-scka-srcs-n; I:3807; O:8872)",
+ "updated": "2026-10-12T21:06:02Z"
+}

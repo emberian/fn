@@ -79,17 +79,7 @@
 (def-cost fn-ncfg-nth :visits (+ 1 m) :sizes ((m (nfix n))))
 (def-cost fn-native-config-reclaim-livep :visits 32)
 (def-cost fn-mca-figure-octets :unaccounted (fn-mca-base-octets fn-heap-with-nursery))
-; The served run's launch (books/heap-command.lisp, L-RUN-LAUNCH).
-(def-cost fn-mo-serve-pool-threads :unaccounted (true-list-fix))
-(def-cost fn-bpsp-node-capacity
-  :unaccounted (fn-bpsp-node-wire-span fn-bpnpf-held-octets fn-bpnpf-rows fn-bpnpf-adu-octets
-                fn-bpsp-capacity-octets))
-(def-cost fn-mo-serve-pools :unaccounted (fn-crv-pool-budget fn-prstartup-launch-extra true-list-fix))
-(def-cost fn-prstartup-serve-store-need
-  :unaccounted (fn-prstartup-serve-limit fn-prstartup-serve-protected))
-(def-cost fn-mo-serve-decide
-  :unaccounted (fn-mo-serve-limit fn-mo-serve-dynamic fn-mo-serve-cfg fn-mm-least-observation
-                fn-mm-reopen-need fn-heap-profile-word))
+; Shared launch rows derive in books/memory-run-cost.lisp after image-world.
 (def-cost fn-owner-page-window-span-at :unaccounted (fn-owner-page-read-ledger fn-pwr-span-at))
 (def-cost fn-owner-page-window-cache-span-at :unaccounted (fn-owner-page-read-ledger fn-pwc-span-at))
 (def-cost fn-owner-page-decoded-job-span-at :unaccounted (fn-owner-page-read-ledger fn-dwj-span-at))
@@ -127,20 +117,21 @@
 (def-cost fn-native-control-profile-observes-p)
 (def-cost fn-native-control-profile-source)
 (def-cost fn-nco-at)
-(def-cost fn-nco-client-follow :unaccounted (fn-nco-work-class fn-nctrl-reason-word))
 (def-cost fn-nco-client-heldp :unaccounted (fn-nctrl-reason-word))
-(def-cost fn-nco-client-observed-status :unaccounted (fn-nctrl-reason-word fn-nco-client-status))
 (def-cost fn-nco-client-releasep :unaccounted (member-eq-exec))
 (def-cost fn-nco-client-status :unaccounted (fn-nctrl-reason-word))
 (def-cost fn-nco-client-waitp :unaccounted (fn-nctrl-reason-word))
 (def-cost fn-nco-epoch-octets)
 (def-cost fn-nco-initial)
-(def-cost fn-nco-owner-step :unaccounted (fn-nco-work-class fn-nco-terminalp))
 (def-cost fn-nco-pending-job)
 (def-cost fn-nco-receipt-command)
 (def-cost fn-nco-status-argv)
 (def-cost fn-nco-wait-seconds)
 (def-cost fn-nco-work-class)
+(def-cost fn-nco-client-follow :unaccounted (fn-nctrl-reason-word))
+(def-cost fn-nco-client-observed-status :unaccounted (fn-nctrl-reason-word))
+(def-cost fn-nco-owner-step :unaccounted (fn-nco-terminalp))
+(def-cost fn-nco-wire-step :unaccounted (fn-record-string-octets fn-nco-terminalp fn-nco-token-text))
 (def-cost fn-och-caller-answer :unaccounted (member-eq-exec))
 (def-cost fn-och-frames-event)
 (def-cost fn-och-held-event)
@@ -166,7 +157,6 @@
 (def-cost fn-lpf-reply :unaccounted (fn-bs-profile-validp fn-wg-encode))
 (def-cost fn-lpf-request :unaccounted (fn-wg-encode))
 (def-cost fn-lpf-request-p :unaccounted (fn-wg-decode))
-(def-cost fn-nco-wire-step :unaccounted (fn-record-string-octets fn-nco-work-class fn-nco-terminalp fn-nco-token-text))
 (def-cost fn-orp-step :unaccounted (fn-orp-refused-in-q2 fn-orp-replay-peers true-list-fix fn-orp-label))
 (def-cost fn-otm-held-plan :unaccounted (fn-otm-held-event mv-nth fn-och-action-effects))
 (def-cost fn-otm-hold-next :unaccounted (mv-nth fn-otm-next))
@@ -174,3 +164,19 @@
 (def-cost fn-owner-cfg-capture)
 (def-cost fn-owner-held-verdicts)
 (def-cost fn-owner-sco-count :unaccounted (fn-sf-records-count))
+
+; Derived auxiliary memory writer costs, not declared ceilings.
+(def-cost fn-owner-memory-physical-return
+ :unaccounted (fn-owner-memory-held-return))
+(def-cost fn-owner-open
+ :unaccounted (fn-owner-held-callback-open))
+(def-cost fn-owner-open-peer
+ :unaccounted (fn-owner-held-callback-open-peer))
+(def-cost fn-owner-peer-rearm
+ :unaccounted (fn-owner-held-callback-open-peer))
+(def-cost fn-owner-exposure-rearm
+ :unaccounted (fn-owner-held-callback-exposure-open))
+(def-cost fn-owner-memory-lease-install
+ :unaccounted (fn-adm-installed-lease-allocation))
+(def-cost fn-owner-memory-reclaim-complete
+ :unaccounted (fn-owner-memory-recapacity mv-nth))

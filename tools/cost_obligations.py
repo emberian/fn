@@ -40,6 +40,8 @@ name (the baseline SHRINKS: `--baseline` rewrites it from the current `none`
 set and refuses to add a name); a contract row that changed its template or
 vanished fails (the trusted base is reviewed, never edited in passing); the
 unwitnessed count may not grow.
+Every file under books/ or host/ with a top-level def-cost declaration must
+also be included by books/cost-final-world.lisp for final-world rederivation.
 
     python3 tools/cost_obligations.py            # report
     python3 tools/cost_obligations.py --check    # exit 1 on any finding
@@ -52,6 +54,7 @@ import argparse
 import re
 import json
 from pathlib import Path
+import posixpath
 import subprocess
 import sys
 
@@ -75,7 +78,7 @@ def _sym(x) -> str:
 
 
 def _forms(root: Path, directory: str):
-    for path in sorted((root / directory).glob("*.lisp")):
+    for path in sorted((root / directory).rglob("*.lisp")):
         text = path.read_text(encoding="utf-8", errors="replace")
         if "def-cost" not in text and "*fn-cost-contracts*" not in text:
             continue
@@ -108,6 +111,32 @@ def declarations(root: Path = ROOT) -> dict[str, dict]:
                            "theorem": name + "-conses-bound" if kv.get(":conses") is not None else None}
                           if ":conses" in kv or ":cons-unaccounted" in kv else None}
     return found
+
+
+def final_world_findings(root: Path = ROOT) -> list[str]:
+    """Require every declaring file's include, followed by the aggregate check."""
+    final = root / "books" / "cost-final-world.lisp"
+    included: set[str] = set()
+    forms = []
+    if final.is_file():
+        forms = [form for form, _line in
+                 ledger.Reader(final.read_text(encoding="utf-8")).top_level()]
+        for form in forms:
+            if (ledger.head(form) != "include-book" or len(form) < 2
+                    or type(form[1]) is not str
+                    or ledger.keyword_plist(form[2:]).get(":dir") is not None):
+                continue
+            included.add(posixpath.normpath(posixpath.join("books", form[1] + ".lisp")))
+    declared = {relative for directory in SOURCES for relative, form in _forms(root, directory)
+                if ledger.head(form) == "def-cost"}
+    findings = ["{}: top-level def-cost declarations are not included by "
+                "books/cost-final-world.lisp".format(relative)
+                for relative in sorted(declared - included)]
+    if (not forms or ledger.head(forms[-1]) != "def-cost-check-all"
+            or len(forms[-1]) != 1):
+        findings.append("books/cost-final-world.lisp: last top-level form must be exactly "
+                        "(def-cost-check-all), after every include-book")
+    return findings
 
 
 def contracts(root: Path = ROOT, dimension: str = "visits") -> list[dict]:
@@ -289,6 +318,7 @@ def check(root: Path = ROOT, base: dict | None = None, base_contracts: dict | No
     try:
         doc = build(root)
         cdoc = build_contracts(root)
+        findings.extend(final_world_findings(root))
     except ValueError as error:
         return ["cost_obligations: {}".format(error)]
     for path, fresh in ((root / "planning" / "cost-obligations.json", doc),

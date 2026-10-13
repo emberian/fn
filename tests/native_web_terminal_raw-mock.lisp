@@ -18,6 +18,9 @@
 (defun fnn-exit (code)
   (declare (ignorable code))
   (harness-stub-reached 'fnn-exit "host/native/io.lisp"))
+(defun fnn-owner-action (name &rest args)
+  (declare (ignorable name args))
+  (harness-stub-reached 'fnn-owner-action "host/native/owner.lisp"))
 (defun fnn-tls-close-channel (channel)
   (declare (ignorable channel))
   (harness-stub-reached 'fnn-tls-close-channel "host/native/tls.lisp"))
@@ -78,7 +81,7 @@
 (eval (source-form "host/native/owner.lisp" "(defun fnn-owner-install-or-end "))
 (let ((path (or (sb-ext:posix-getenv "FN_WEB_HOST_SOURCE") "host/native/web-host.lisp")))
   (dolist (prefix '("(defstruct (fnn-web-reactor-face " "(defstruct (fnn-web-reactor-conn "
-                    "(defstruct (fnn-web-job " "(defun fnn-web-cleanup " "(defun fnn-web-finish "
+                    "(defstruct (fnn-web-job " "(defun fnn-web-cleanup " "(defun fnn-web-memory-return " "(defun fnn-web-finish "
                     "(defun fnn-web-close-wakes-locked " "(defun fnn-web-start "
                     "(defun fnn-web-close-listener " "(defun fnn-web-face-drained-p " "(defun fnn-web-actor-body "))
     (eval (source-form (if (equal prefix "(defun fnn-web-close-wakes-locked ")

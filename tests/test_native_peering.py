@@ -807,9 +807,9 @@ class NativePeeringTests(unittest.TestCase):
         unavailable-peer (books/native-health.lisp
         fn-nh-deferring-peer-is-held)."""
         source = self.initialize("full-source")
-        # Development base: `--profile default' with T=12 is a store no
-        # launcher starts (its heap probe: machine-cannot-hold-profile, about
-        # 16 TB); only the bare image's 32000 MB ever ran it.
+        # Development base with T=12 makes the Store's transaction bound
+        # bind this transit case.  A run now serves at the gate's C'; its
+        # probe no longer refuses a profile for its whole-store size.
         full = self.initialize("full-target", "--profile", "development",
                                "--max-transactions", "12", "fn.test")
         port = full.port
@@ -1187,8 +1187,8 @@ class NativePeeringTests(unittest.TestCase):
         """A node with two peers, both by source address: `injector'
         (127.0.0.1, inbound only: the test's raw TAKETHIS client) and
         `down' (127.0.0.2, outbound only, at DOWN_PORT)."""
-        # Room for 12,000 transactions with a record bound small enough that
-        # the heap the profile asks for fits the test's 24 GiB scope.
+        # Room for 12,000 transactions; the record and article bounds keep
+        # the stored workload and replies within the run's memory gate.
         node = self.initialize(marker, "--profile", "default", "--max-transactions", "12000",
                                "--max-record-octets", "262144",
                                "--max-history-octets", "134217728",

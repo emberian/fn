@@ -14,6 +14,7 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	tests/acl2/owner-completion-arena-tests \
 	books/consumer-transaction-dispatch \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/receiver-response-transfer-tests \
@@ -258,6 +259,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-transaction-driver-tests \
 	books/owner-connection-state \
 	books/owner-connection-callbacks \
+	books/owner-memory-holding \
+	books/owner-memory-run \
+	books/memory-run-cost \
+	tests/acl2/owner-memory-holding-tests \
+	tests/acl2/owner-memory-run-tests \
+	tests/acl2/memory-run-cost-tests \
 	books/owner-connection-callback-refinement \
 	tests/acl2/owner-connection-callback-tests \
 	tests/acl2/owner-connection-callback-additional-tests \
@@ -730,6 +737,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/charged-totals-header-cost \
 	books/runtime-contract-host-lease-cost \
 	books/over-render-lease-cost \
+	books/cost-final-world \
 	tests/acl2/charged-totals-header-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
@@ -1102,6 +1110,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-prepare-catalog-tests \
 	books/peer-transit-indexed \
 	tests/acl2/peer-transit-indexed-tests \
+	books/retain-known \
+	books/retain-carried \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
 	books/identity-retain-carried \
@@ -2559,6 +2569,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world-part-1 \
 	books/image-world-part-2 \
 	books/image-world-part-3 \
+	books/image-world-part-4 \
 	books/image-world \
 	books/image-world-dtn-part-1 \
 	books/image-world-dtn-part-2 \
@@ -2907,6 +2918,8 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/check_scaffold.py
 # Every tests/acl2/*-tests.lisp is a certification root (Q7j).
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
+# Every production book is in a root's closure or an explicit work item.
+	@$(CHECK_STEP) $(PYTHON) tools/book_roots_check.py
 # Every command the docs name exists with the grammar the docs give (NNT-032):
 # operator invocations are judged by ACL2's grammar in the generated book
 # tests/acl2/docs-operator-grammar-tests.lisp, which this fails on when it is

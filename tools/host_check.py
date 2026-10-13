@@ -838,8 +838,9 @@ def interface_world_undefined(output: str) -> list[str] | None:
     return None
 
 
-def touched_host_files(root: Path = ROOT, base: str = "origin/dev") -> list[str] | None:
-    """Host files this branch changed against BASE (None without git)."""
+def touched_host_files(root: Path = ROOT, base: str | None = None) -> list[str] | None:
+    """Host files changed against BASE / FN_HOST_CHECK_BASE (default origin/dev)."""
+    base = base or os.environ.get("FN_HOST_CHECK_BASE", "origin/dev")
     try:
         merge = subprocess.run(["git", "merge-base", "HEAD", base], cwd=root,
                                capture_output=True, text=True, timeout=30)

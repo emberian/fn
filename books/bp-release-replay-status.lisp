@@ -6,55 +6,55 @@
 (include-book "bp-release-invariants")
 (include-book "bp-workflow-replay-status")
 
-(defun fn-bprl-durable-fold (s records)
+(defun fn-bprl-durable-fold (s records pin-carry)
   (declare (xargs :guard t :verify-guards nil
                   :measure (acl2-count records)))
   (if (endp records)
       s
-    (let ((answer (fn-bprl-apply-journal-record s (car records))))
+    (let ((answer (fn-bprl-apply-journal-record-with-pin-carry s (car records) pin-carry)))
       (if (car answer)
-          (fn-bprl-durable-fold (fn-bp-journal-nth 1 answer) (cdr records))
+          (fn-bprl-durable-fold (fn-bp-journal-nth 1 answer) (cdr records) pin-carry)
         s))))
 
 (local
  (defthm fn-bprl-release-record-apply-preserves-state
-   (implies (and (fn-bp-statep s) (fn-bprl-release-recordp r))
+   (implies (and (fn-prc-carryp pin-carry) (fn-bp-statep s) (fn-bprl-release-recordp r))
             (fn-bp-statep
-             (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s r))))
+             (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry))))
    :hints (("Goal"
             :use ((:instance fn-bprl-release-preserves-state
                              (receipt-id (fn-bp-journal-nth 1 r))))
-            :in-theory (e/d (fn-bprl-apply-journal-record fn-bp-journal-nth)
+            :in-theory (e/d (fn-bprl-apply-journal-record-with-pin-carry fn-bp-journal-nth)
                             (fn-bp-statep fn-bprl-release-recordp
                              fn-bprl-release-decision fn-bprl-undertake
                              fn-bp-apply-journal-record))))))
 
 (local
  (defthm fn-bprl-undertake-record-apply-preserves-state
-   (implies (and (fn-bp-statep s)
+   (implies (and (fn-prc-carryp pin-carry) (fn-bp-statep s)
                  (not (fn-bprl-release-recordp r))
                  (fn-bprl-undertake-recordp r))
             (fn-bp-statep
-             (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s r))))
+             (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry))))
    :hints (("Goal"
             :use ((:instance fn-bprl-undertake-preserves-state
                              (work-id (fn-bp-journal-nth 1 r))
                              (charge (fn-bp-journal-nth 2 r))))
-            :in-theory (e/d (fn-bprl-apply-journal-record fn-bp-journal-nth)
+            :in-theory (e/d (fn-bprl-apply-journal-record-with-pin-carry fn-bp-journal-nth)
                             (fn-bp-statep fn-bprl-release-recordp
                              fn-bprl-undertake-recordp fn-bprl-undertake
                              fn-bp-apply-journal-record))))))
 
 (local
  (defthm fn-bprl-ordinary-record-apply-preserves-state
-   (implies (and (fn-bp-statep s)
+   (implies (and (fn-prc-carryp pin-carry) (fn-bp-statep s)
                  (not (fn-bprl-release-recordp r))
                  (not (fn-bprl-undertake-recordp r)))
             (fn-bp-statep
-             (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s r))))
+             (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry))))
    :hints (("Goal"
             :use ((:instance fn-bp-apply-journal-record-preserves-state))
-            :in-theory (e/d (fn-bprl-apply-journal-record)
+            :in-theory (e/d (fn-bprl-apply-journal-record-with-pin-carry)
                             (fn-bp-statep fn-bp-journal-nth
                              fn-bprl-release-recordp
                              fn-bprl-undertake-recordp
@@ -68,23 +68,23 @@
                                       fn-bprl-release-recordp)))))
 
 (defthm fn-bprl-apply-journal-record-preserves-state
-  (implies (fn-bp-statep s)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bp-statep s))
            (fn-bp-statep
-            (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s r))))
+            (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry))))
   :hints (("Goal"
            :cases ((fn-bprl-release-recordp r)
                    (fn-bprl-undertake-recordp r))
            :in-theory (disable fn-bp-statep fn-bp-journal-nth
-                               fn-bprl-apply-journal-record
+                               fn-bprl-apply-journal-record-with-pin-carry
                                fn-bprl-release-recordp
                                fn-bprl-undertake-recordp))))
 
 (defthm fn-bprl-durable-fold-preserves-state
-  (implies (fn-bp-statep s)
-           (fn-bp-statep (fn-bprl-durable-fold s records)))
-  :hints (("Goal" :induct (fn-bprl-durable-fold s records)
+  (implies (and (fn-prc-carryp pin-carry) (fn-bp-statep s))
+           (fn-bp-statep (fn-bprl-durable-fold s records pin-carry)))
+  :hints (("Goal" :induct (fn-bprl-durable-fold s records pin-carry)
            :in-theory (e/d (fn-bprl-durable-fold)
-                           (fn-bp-statep fn-bprl-apply-journal-record
+                           (fn-bp-statep fn-bprl-apply-journal-record-with-pin-carry
                             fn-bp-journal-nth)))))
 
 (local
@@ -103,13 +103,13 @@
                     fn-bp-result-state fn-bp-nth)))))
 
 (defthm fn-bprl-replay-records-state-is-restarted-fold
-  (implies (car (fn-bprl-replay-records s records effects))
+  (implies (and (fn-prc-carryp pin-carry) (car (fn-bprl-replay-records s records effects pin-carry)))
            (equal (fn-bp-journal-nth 1
-                    (fn-bprl-replay-records s records effects))
-                  (fn-bp-restart (fn-bprl-durable-fold s records))))
-  :hints (("Goal" :induct (fn-bprl-replay-records s records effects)
+                    (fn-bprl-replay-records s records effects pin-carry))
+                  (fn-bp-restart (fn-bprl-durable-fold s records pin-carry))))
+  :hints (("Goal" :induct (fn-bprl-replay-records s records effects pin-carry)
            :in-theory (e/d (fn-bprl-replay-records fn-bprl-durable-fold)
-                           (fn-bprl-apply-journal-record fn-bp-step
+                           (fn-bprl-apply-journal-record-with-pin-carry fn-bp-step
                             fn-bp-statep fn-bp-restart
                             fn-bp-configp fn-bp-workp
                             fn-bp-attemptp fn-bp-receiptp
@@ -120,7 +120,7 @@
 ; status of the durable ACL2 record fold after exactly one restart marking.
 (local
  (defthm fn-bprl-replay-journal-ok-implies-initial-statep
-   (implies (car (fn-bprl-replay-journal node records))
+   (implies (and (fn-prc-carryp pin-carry) (car (fn-bprl-replay-journal node records pin-carry)))
             (fn-bp-statep
              (fn-bp-initial-state
               node (fn-bp-config-from-record (car records)))))
@@ -132,14 +132,14 @@
 
 (local
  (defthm fn-bprl-replay-journal-state-is-restarted-fold
-   (implies (car (fn-bprl-replay-journal node records))
+   (implies (and (fn-prc-carryp pin-carry) (car (fn-bprl-replay-journal node records pin-carry)))
             (equal
-             (fn-bp-journal-nth 1 (fn-bprl-replay-journal node records))
+             (fn-bp-journal-nth 1 (fn-bprl-replay-journal node records pin-carry))
              (fn-bp-restart
               (fn-bprl-durable-fold
                (fn-bp-initial-state
                 node (fn-bp-config-from-record (car records)))
-               (cdr records)))))
+               (cdr records) pin-carry))))
    :hints (("Goal"
             :use ((:instance fn-bprl-replay-records-state-is-restarted-fold
                              (s (fn-bp-initial-state
@@ -152,25 +152,25 @@
                   fn-bp-config-recordp fn-bp-config-from-record))))))
 
 (defthm fn-bprl-replay-work-status-is-durable-status-restarted
-  (implies (car (fn-bprl-replay-journal node records))
+  (implies (and (fn-prc-carryp pin-carry) (car (fn-bprl-replay-journal node records pin-carry)))
            (equal
             (fn-bp-work-status
              id (fn-bp-state-works
                  (fn-bp-journal-nth 1
-                  (fn-bprl-replay-journal node records))))
+                  (fn-bprl-replay-journal node records pin-carry))))
             (fn-bp-work-status-after-restart
              (fn-bp-work-status
               id (fn-bp-state-works
                   (fn-bprl-durable-fold
                    (fn-bp-initial-state
                     node (fn-bp-config-from-record (car records)))
-                   (cdr records)))))))
+                   (cdr records) pin-carry))))))
   :hints (("Goal"
            :use ((:instance fn-bp-work-status-of-restart
                             (s (fn-bprl-durable-fold
                                 (fn-bp-initial-state
                                  node (fn-bp-config-from-record (car records)))
-                                (cdr records))))
+                                (cdr records) pin-carry)))
                  (:instance fn-bprl-replay-journal-ok-implies-initial-statep)
                  (:instance fn-bprl-replay-journal-state-is-restarted-fold)
                  (:instance fn-bprl-durable-fold-preserves-state
