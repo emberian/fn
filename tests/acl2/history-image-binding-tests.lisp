@@ -24,6 +24,7 @@
 ; tables being the history's is witnessed instead (root-is-image removed).
 (in-package "ACL2")
 (include-book "../../books/history-image-fold")
+(local (in-theory (enable adt-nth-1+)))
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every executable the host will call is

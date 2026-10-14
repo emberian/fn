@@ -21,6 +21,7 @@
 (in-package "ACL2")
 (include-book "adt-keyed")
 (include-book "../consumer-position")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defadt-keyed cpent :order :stack :key consumer

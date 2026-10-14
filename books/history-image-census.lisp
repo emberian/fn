@@ -3,6 +3,7 @@
 ; retained, traversed or materialized by these scalar operations.
 (in-package "ACL2")
 (include-book "history-pages-row")
+(local (in-theory (enable adt-nth-1+)))
 
 (defun fn-hcc-begin ()
   (declare (xargs :guard t))

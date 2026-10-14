@@ -17,12 +17,18 @@ import subprocess
 import sys
 from types import SimpleNamespace
 
-DEV_GLOB = '/Users/ember/dev/fn/build/integrate*/build/acl2/certify-2026101*/*.certify.log'
-LANE_GLOB = '/Users/ember/dev/fn/build/lanes/*/build/acl2/certify-2026101*/*.certify.log'
+DEV_GLOB = '/Users/ember/dev/fn/build/integrate*/build/acl2/certify-202610*/*.certify.log'
+LANE_GLOB = '/Users/ember/dev/fn/build/lanes/*/build/acl2/certify-202610*/*.certify.log'
 REMOTE_GLOBS = [
-    '/tank/fn/scratch/spans-view-walks/native-c19-vw/tree/build/acl2/certify-2026101*/*.certify.log',
-    '/tank/fn/gates/vertical-one-world-dev-reference-repl/build/acl2/certify-2026101*/*.certify.log',
+    '/tank/fn/scratch/spans-view-walks/native-c19-vw/tree/build/acl2/certify-202610*/*.certify.log',
+    '/tank/fn/gates/vertical-one-world-dev-reference-repl/build/acl2/certify-202610*/*.certify.log',
 ]
+# Prototype guard certificates predate the October publishing runs. Retain
+# only function/explicit-guard summaries in this additional historical scope.
+DEV_GUARD_GLOB = DEV_GLOB.replace('202610*', '202609*')
+LANE_GUARD_GLOB = LANE_GLOB.replace('202610*', '202609*')
+REMOTE_GUARD_GLOBS = [p.replace('202610*', '202609*') for p in REMOTE_GLOBS]
+GUARD_KINDS = {'DEFUN', 'DEFUND', 'VERIFY-GUARDS', 'VERIFY-GUARDS+'}
 LINE = '(local (in-theory (enable adt-nth-1+)))\n'
 LIB = 'books/proto/adt-key-lib.lisp'
 EXCLUDED = {
@@ -35,8 +41,16 @@ RUNE = re.compile(r'\(:REWRITE\s+ADT-NTH-1\+\)', re.I)
 SUMMARY = re.compile(r'^Form:[ \t]*(.*?)\nRules:[ \t]*(.*?)(?=\n\S|\Z)', re.M | re.S)
 
 
-def census(patterns, remote=False):
+def census(patterns, remote=False, kinds=None):
     paths = sorted({p for pattern in patterns for p in glob.glob(pattern)})
+    # Search in batches before reading full logs; most successful books do not
+    # use the opener. Tail checks still account for every named log.
+    candidates = set()
+    for first in range(0, len(paths), 400):
+        found = subprocess.run(['rg', '-i', '-l', r'\(:REWRITE\s+ADT-NTH-1\+\)', '--',
+                                *paths[first:first + 400]], capture_output=True, timeout=60)
+        assert found.returncode in (0, 1), found.stderr.decode()
+        candidates.update(found.stdout.decode().splitlines())
     records, successful, rejected = {}, 0, 0
     for path in paths:
         with open(path, 'rb') as stream:
@@ -47,6 +61,8 @@ def census(patterns, remote=False):
                 rejected += 1
                 continue
             successful += 1
+            if path not in candidates:
+                continue
             stream.seek(0)
             text = stream.read().decode('utf-8', 'surrogateescape')
         if not RUNE.search(text):
@@ -57,7 +73,11 @@ def census(patterns, remote=False):
                 form = ' '.join(match[1].split())
                 name = re.match(r'\(\s*([^\s()]+)\s+([^\s()]+)', form)
                 assert name, (path, form)
-                summaries.append({'event': name[2], 'form': form,
+                if kinds is not None and name[1].upper() not in kinds:
+                    continue
+                # DEFUN includes its implicit guard proof; explicit guard
+                # events are retained too. This is not a DEFTHM-only census.
+                summaries.append({'event': name[2], 'event_kind': name[1].upper(), 'form': form,
                                   'rules_line': text.count('\n', 0, match.start(2)) + 1})
         if not summaries:
             continue
@@ -72,11 +92,29 @@ def census(patterns, remote=False):
             'non_success_logs': rejected, 'books': records}
 
 
+def with_guard_history(base, guard):
+    """Merge the disjoint October/all-kind and September/guard-only scopes."""
+    base['guard_history'] = {k: v for k, v in guard.items() if k != 'books'}
+    for key in ('logs', 'successful_logs', 'non_success_logs'):
+        base[key] += guard[key]
+    for book, entries in guard['books'].items():
+        base['books'].setdefault(book, []).extend(entries)
+    return base
+
+
 def fixtures():
     good = 'Summary\nForm:  ( DEFTHM FOO ...)\nRules: ((:DEFINITION BAR)\n        (:REWRITE ADT-NTH-1+))\nWarnings: None\n'
     assert [m[1].strip() for m in SUMMARY.finditer(good) if RUNE.search(m[2])] == ['( DEFTHM FOO ...)']
     decoy = 'ACL2 !>>>(IN-THEORY (ENABLE ADT-NTH-1+))\nSummary\nForm: (DEFTHM FOO ...)\nRules: NIL\nTime: 1\n(:REWRITE ADT-NTH-1+)\n'
     assert not any(RUNE.search(m[2]) for m in SUMMARY.finditer(decoy))
+    for kind in ('DEFUN', 'VERIFY-GUARDS', 'DEFTHM'):
+        sample = good.replace('DEFTHM', kind)
+        assert len([m for m in SUMMARY.finditer(sample) if RUNE.search(m[2])]) == 1
+    # Multiple summaries in a macro-generated declaration must retain the
+    # function/guard use even when the surrounding event's Rules list is NIL.
+    guard = good.replace('DEFTHM FOO', 'DEFUN CFGROUP$C-POOLW')
+    wrapped = guard + 'Summary\nForm: (ENCAPSULATE NIL ...)\nRules: NIL\nTime: 1\n'
+    assert len([m for m in SUMMARY.finditer(wrapped) if RUNE.search(m[2])]) == 1
 
 
 def git(root, *args):
@@ -167,7 +205,8 @@ def lane_class(path, head):
 
 
 def derive_provenance(root, data):
-    paths = sorted({str(Path(p).parents[3]) for p in glob.glob(LANE_GLOB)})
+    paths = sorted({str(Path(p).parents[3]) for pattern in (LANE_GLOB, LANE_GUARD_GLOB)
+                    for p in glob.glob(pattern)})
     classes = {name: {'logs': 0, 'successful_logs': 0, 'non_success_logs': 0,
                       'books': {}, 'lanes': []} for name in ('own', 'other', 'ancestry_excluded')}
     lanes = {}
@@ -176,7 +215,8 @@ def derive_provenance(root, data):
         assert lane_root.parent == root.parent, path
         head = git(lane_root, 'rev-parse', 'HEAD').decode().strip()
         kind, code = lane_class(lane_root, head)
-        found = census([str(lane_root / 'build/acl2/certify-2026101*/*.certify.log')])
+        found = with_guard_history(census([str(lane_root / 'build/acl2/certify-202610*/*.certify.log')]),
+                    census([str(lane_root / 'build/acl2/certify-202609*/*.certify.log')], kinds=GUARD_KINDS))
         lanes[lane_root.name] = {'head': head, 'class': kind, 'ancestry_exit': code,
                                 **{k: v for k, v in found.items() if k != 'books'},
                                 'used_books': sorted(found['books'])}
@@ -230,13 +270,14 @@ def main():
     opts = args.parse_args()
     fixtures()
     if opts.scan_remote:
-        print(json.dumps(census(REMOTE_GLOBS, remote=True)))
+        print(json.dumps(with_guard_history(census(REMOTE_GLOBS, remote=True),
+                         census(REMOTE_GUARD_GLOBS, remote=True, kinds=GUARD_KINDS))))
         return
     out = Path(__file__).resolve().parent
     root = out.parents[2]
     assert str(root) == '/Users/ember/dev/fn/build/lanes/vertical-one-world', root
     if opts.scan:
-        dev = census([DEV_GLOB])
+        dev = with_guard_history(census([DEV_GLOB]), census([DEV_GUARD_GLOB], kinds=GUARD_KINDS))
         command = ['timeout', '180', 'ssh', '-o', 'ControlMaster=no', '-o', 'ControlPath=none',
                    '-o', 'ConnectTimeout=15', 'hbox', 'python3 - --scan-remote']
         remote = subprocess.run(command, input=Path(__file__).read_bytes(),
@@ -246,7 +287,7 @@ def main():
         assert remote['logs'] > 0, 'No remote reference logs found'
         for book, evidence in remote['books'].items():
             dev['books'].setdefault(book, [])[:0] = evidence
-        data = {'head': git(root, 'rev-parse', 'HEAD').decode().strip(),
+        data = {'head': git(root, 'rev-parse', 'HEAD').decode().strip(), 'gate_prefix': 'p1d',
                 'dev': dev,
                 'remote_scope': {k: v for k, v in remote.items() if k != 'books'},
                 'U_dev': sorted(dev['books'])}
@@ -327,8 +368,26 @@ def main():
                         return True
             return False
 
-        plans, judgment, undefined = {}, {}, []
-        for book in data['U']:
+        plans, judgment, undefined, existing = {}, {}, [], []
+        # A28 explicitly authorizes the four named guard repairs after an
+        # off/on proof control. Do not relabel those replay results as dev
+        # certificates or relax the historical success/provenance predicate.
+        guard_map = {'cfgroup': 'books/proto/adt-config-groups.lisp',
+                     'cfpolicy': 'books/proto/adt-config-policy.lisp',
+                     'cpent': 'books/proto/adt-consumer-position.lisp',
+                     'stxa': 'books/proto/adt-topic-accepted-type.lisp'}
+        guard_file = out / 'p1d-guards.json'
+        authorized = []
+        if guard_file.exists():
+            controls = json.loads(guard_file.read_text())
+            for name, book in guard_map.items():
+                assert not controls[name]['off']['admitted'] and controls[name]['on']['admitted'], name
+                assert book not in EXCLUDED
+                authorized.append(book)
+        selected = sorted(set(data['U']) | set(authorized))
+        # read_head_sources already covers all tracked books; all named guards
+        # use that same immutable source/insertion check as census selections.
+        for book in selected:
             parent = head_sources[book]
             tree = lr.parse(parent)
             if book == LIB:
@@ -354,10 +413,16 @@ def main():
             remainder = tree.text[anchor.end:end].strip()
             assert not remainder or remainder.startswith(';'), (book, remainder)
             pos = end + 1
-            changed = lr.write(parent, [(pos, pos, LINE)])
-            assert changed[:pos] + changed[pos + len(LINE):] == parent
-            assert len(changed.splitlines()) == len(parent.splitlines()) + 1
-            assert parent.count(LINE) == 0 and changed.count(LINE) == 1, book
+            assert parent.count(LINE) in (0, 1), (book, 'duplicate committed enables')
+            if parent.count(LINE):
+                assert parent[pos:pos + len(LINE)] == LINE, (book, 'existing enable at a different anchor')
+                changed = parent
+                existing.append(book)
+            else:
+                changed = lr.write(parent, [(pos, pos, LINE)])
+                assert changed[:pos] + changed[pos + len(LINE):] == parent
+                assert len(changed.splitlines()) == len(parent.splitlines()) + 1
+            assert changed.count(LINE) == 1, book
             current = (root / book).read_bytes().decode('utf-8', 'surrogateescape')
             assert current in (parent, changed), (book, 'concurrent/non-P1 change')
             plans[book] = (parent, changed, pos)
@@ -369,6 +434,10 @@ def main():
             if current != changed:
                 path.write_bytes(changed.encode('utf-8', 'surrogateescape'))
         data['edited'] = sorted(plans)
+        data['existing_enables'] = sorted(existing)
+        data['new_enables'] = sorted(set(plans) - set(existing))
+        data['authorized_guard_repairs'] = sorted(authorized)
+        data['guard_repairs_without_historical_logs'] = sorted(set(authorized) - set(data['U']))
         data['judgment'] = judgment
         data['undefined_at_insertion'] = undefined
         data['excluded'] = EXCLUDED
@@ -381,6 +450,11 @@ def main():
         evidence = {book: [{**entry, 'world': 'dev'} for entry in data['dev']['books'].get(book, [])] +
                           [{**entry, 'world': 'lane_other'} for entry in data['provenance']['other']['books'].get(book, [])]
                     for book in plans}
+        for name, book in guard_map.items():
+            if book in data.get('guard_repairs_without_historical_logs', []):
+                evidence[book].append({'world': 'A28-authorized-guard-repair',
+                    'event': name.upper() + '$C-POOLW', 'control': controls[name],
+                    'not_historical_certificate_evidence': True})
         (out / 'p1-enables.json').write_text(json.dumps(evidence, indent=2) + '\n')
         print(json.dumps({'edited': len(plans), 'judgment': judgment,
                           'U': len(data['U']), 'own_only': len(data['own_only']),
@@ -395,7 +469,9 @@ def report(out):
              f"At parent `{data['head']}`, |U_dev| = {len(data['U_dev'])}, |U_lane_other| = {len(data['U_lane_other'])}, "
              f"|U_lane_own| = {len(data['U_lane_own'])}, |U_lane_ancestry_excluded| = {len(data['U_lane_ancestry_excluded'])}, "
              f"|U| = {len(data['U'])}; own-only books = {len(data['own_only'])}. "
-             f"{len(data['edited'])} books receive exactly one LOCAL enable line. No proof or certificate is claimed.", '',
+             f"{len(data['edited'])} subjects have exactly one LOCAL enable line: "
+             f"{len(data.get('existing_enables', []))} already committed, "
+             f"{len(data.get('new_enables', data['edited']))} newly inserted. No proof or certificate is claimed.", '',
              '`U = (U_dev union U_lane_other) minus the seven exclusions`. '
              'Own-lane logs and logs from other lanes whose current HEAD contains the one-world change are not qualifying evidence. '
              'Include-closure membership is not a selection criterion.', '',
@@ -403,9 +479,17 @@ def report(out):
              'Source echoes, hints, warnings and failed/incomplete certify attempts are excluded. '
              'Evidence is the union of the named dev log scopes; hbox reference evidence is preferred in provenance ordering. '
              'Historical logs establish use, not certification of the current closure.', '',
-             '## Log scope', '', f"- Local dev: `{DEV_GLOB}` — {data['dev']['logs']} logs, {data['dev']['successful_logs']} successful.",
-             f"- Local lane: `{LANE_GLOB}` — {data['lane']['logs']} logs, {data['lane']['successful_logs']} successful."]
-    for pattern in REMOTE_GLOBS:
+             'The census includes DEFTHM, DEFUN (including implicit guard proofs), and VERIFY-GUARDS summaries. '
+             'The original generic Form/Rules parser already accepted DEFUN; the old `certify-2026101*` scope '
+             'omitted October 1–9 guard evidence. The current scope is all October, with the same success, '
+             'provenance and seven-book exclusion rules.', '',
+             'A28 separately authorizes the four named proto guard repairs after off/on proof controls. '
+             'These do not alter U or qualify own-lane replay output as a dev certificate. '
+             f"Named guard repairs without historical logs in the named corpus: {', '.join(data.get('guard_repairs_without_historical_logs', [])) or 'none'}. "
+             'Their recorded provenance in p1-enables.json is A28-authorized-guard-repair.', '',
+             '## Log scope', '', f"- Local dev: `{DEV_GLOB}` plus guard-only `{DEV_GUARD_GLOB}` — {data['dev']['logs']} combined logs, {data['dev']['successful_logs']} successful.",
+             f"- Local lane: `{LANE_GLOB}` plus guard-only `{LANE_GUARD_GLOB}` — {data['lane']['logs']} combined logs, {data['lane']['successful_logs']} successful."]
+    for pattern in REMOTE_GLOBS + REMOTE_GUARD_GLOBS:
         lines.append(f'- Read-only hbox: `{pattern}`.')
     remote = data['remote_scope']
     lines += [f"- Remote total: {remote['logs']} logs, {remote['successful_logs']} successful.", '',
@@ -450,7 +534,8 @@ def report(out):
         lines += ['', f'## {key} ({len(data[key])})', '']
         lines += ['- `' + book + '`' for book in data[key]]
     lines += ['', '## Insertion checks', '',
-              'Every edited file is asserted byte-for-byte equal to HEAD plus the single inserted line. '
+              'Each newly edited file is asserted byte-for-byte equal to HEAD plus the single inserted line; '
+              'already committed enables are asserted present exactly once at the same anchor and are left byte-identical. '
               'All books use their last raw top-level include-book; adt-key-lib uses its defthmd. '
               'The rune is reachable through non-local exported include closures at every insertion point. '
               'Undefined at insertion: none.', '', 'Wrapped include-book judgment:']
@@ -462,16 +547,18 @@ def report(out):
     for name, command in [('one-world', 'python3 tools/one_world_check.py'),
                           ('book-roots', 'python3 tools/book_roots_check.py'),
                           ('host-attach-order', 'python3 tools/host_check.py --attach-order'),
-                          ('extract-world', 'python3 tools/extract/world.py --check')]:
-        log = out / ('p1-gate-' + name + '.log')
-        code = out / ('p1-gate-' + name + '.exit')
+                          ('extract-world', 'python3 tools/extract/world.py --check'),
+                          ('interface', 'python3 tools/interface_emit.py --check')]:
+        prefix = data.get('gate_prefix', 'p1')
+        log = out / (prefix + '-gate-' + name + '.log')
+        code = out / (prefix + '-gate-' + name + '.exit')
         result = code.read_text().strip() if code.exists() else 'not run'
         lines.append(f'- `{command}`: exit {result}; [{log.name}]({log.name}).')
     lines += ['', 'The two tools without executable bits were invoked through python3; source permissions were unchanged.', '',
               'The exact sorted edit list is [p1-enables.txt](p1-enables.txt); '
               'book-to-log/event evidence is [p1-enables.json](p1-enables.json); '
               'provenance sets, lane HEADs, excluded evidence and selection are [p1-census.json](p1-census.json). '
-              'No commits, box jobs or proof_repl sessions.', '']
+              'This derivation does not claim a certificate. Guard replay and diagnosis results are in P1D.md; no commits.', '']
     (out / 'P1.md').write_text('\n'.join(lines))
 
 

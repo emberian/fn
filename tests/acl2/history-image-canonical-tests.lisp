@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/history-image-concrete-proof")
 (include-book "../../books/history-image-size")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defconst *m13-fresh* '(nil nil nil nil nil nil))   ; the empty pgs-mem

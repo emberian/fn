@@ -7,6 +7,7 @@
 
 (in-package "ACL2")
 (include-book "adt-keyed")
+(local (in-theory (enable adt-nth-1+)))
 
 (defadt-keyed stxa :order :stack :key sequence
   (sequence :u32) (txid :u32) (generation :u32) (keyring-generation :u32)
