@@ -1607,10 +1607,20 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-wbv-trie \
 	books/log-locator \
 	books/lb-log-model \
+	books/lb-log-model-properties \
 	books/catalog-columns \
 	books/log-locator-resolves \
 	books/log-verified-map \
 	books/catalog-columns-guards \
+	books/catalog-columns-served \
+	books/lb-log-layout \
+	books/log-verified-map-properties \
+	books/catalog-columns-properties \
+	books/catalog-columns-range \
+	books/catalog-columns-summary \
+	books/catalog-columns-projections \
+	books/catalog-columns-newnews \
+	books/log-verified-map-invariants \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
 	tests/acl2/catalog-raw-low-tests \

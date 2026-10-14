@@ -821,6 +821,8 @@
 ; span separately so the all-row section equation also covers that case.
 ; The served dispatcher tests RECLAIMED first and never calls this worker
 ; for a tombstone.  Its all-row logical value is nevertheless specified.
+; Raw tombstones use their raw span and the reference section conversion;
+; a stuffed header length is not an offset into their unstuffed bytes.
 (defun fn-lbc-stored-range (i kind fn-lbc log)
   (declare (xargs :stobjs fn-lbc :guard (and (natp i) (< i (fn-lbc-count fn-lbc)) (fn-lb-log-read-guardp log) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
   (let* ((a (fn-lbc-loc0 i fn-lbc)) (b (fn-lbc-loc1 i fn-lbc))
@@ -829,6 +831,9 @@
          (head (nfix (fn-lbc-value i :head-length fn-lbc)))
          (raw-head (nfix (fn-lbc-directory-value i :raw-head-length fn-lbc))))
     (cond
+      ((fn-lbc-flag i *fn-lbc-reclaimed-bit* fn-lbc)
+       (fn-nntp-stuffed-section
+         kind (fn-lb-log-model-read-range segment offset length log)))
       ((equal kind :article)
        (if (fn-lbc-directory-value i :article-ok fn-lbc)
            (fn-lb-log-model-read-range segment offset length log) nil))
@@ -933,8 +938,30 @@
 ; inverse lookup needed only on the unsupported-profile escape path.
 (defconst *fn-lbc-slot-escape-word* 18446744073709551615)
 
-(defun fn-lbc-escaped-slot-word (slot keys fn-lbc)
+; Guard-only shape of the inverse slot owners and each row's slot value.
+; These predicates supply callee domains, never a logical data ceiling.
+(defun fn-lbc-slot-owners-guardp (keys fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (if (consp keys)
+      (and (eqlablep (car keys))
+           (let ((cell (fn-lbc-escape-store-get (car keys) fn-lbc)))
+             (and (alistp cell)
+                  (true-listp (cdr (assoc-eq :msgid-slot cell)))))
+           (fn-lbc-slot-owners-guardp (cdr keys) fn-lbc))
+    (null keys)))
+
+(defun fn-lbc-slot-values-guardp (i fn-lbc)
+  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil
+                  :measure (nfix (- (fn-lbc-count fn-lbc) (nfix i)))))
+  (if (and (natp i) (< i (fn-lbc-count fn-lbc)))
+      (let ((cell (fn-lbc-escape-store-get i fn-lbc)))
+        (and (alistp cell)
+             (true-listp (cdr (assoc-eq :msgid-slot cell)))
+             (fn-lbc-slot-values-guardp (+ i 1) fn-lbc)))
+    t))
+
+(defun fn-lbc-escaped-slot-word (slot keys fn-lbc)
+  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-slot-owners-guardp keys fn-lbc) :verify-guards nil))
   (if (consp keys)
       (let ((position (fn-lbc-escape (car keys) :msgid-slot fn-lbc)))
         (if (and position (member-equal slot (cdr position)))
@@ -943,7 +970,7 @@
     0))
 
 (defun fn-lbc-slot-word (slot fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc) :verify-guards nil))
   (stobj-let ((fn-lbc-msgid-slots (fn-lbc-slot-store fn-lbc)))
     (word)
     (if (and (natp slot) (< slot (fn-lbc-msgid-slots-count fn-lbc-msgid-slots)))
@@ -955,7 +982,7 @@
 ; Remove the current slot's inverse ownership and all stale copies before
 ; a write.  Other escaped slots retain their sequence-keyed records.
 (defun fn-lbc-slot-drop-owner (slot keys fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-slot-owners-guardp keys fn-lbc) :verify-guards nil))
   (if (consp keys)
       (let* ((key (car keys))
              (cell (fn-lbc-escape-store-get key fn-lbc))
@@ -973,7 +1000,7 @@
     (mv nil fn-lbc)))
 
 (defun fn-lbc-slot-put (slot ordinal fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc) (or (not (and (natp slot) (< slot (fn-lbc-slot-count fn-lbc)))) (or (< (nfix ordinal) *fn-lbc-slot-escape-word*) (let* ((seq (- (nfix ordinal) 1)) (cell (fn-lbc-escape-store-get seq fn-lbc))) (and (alistp cell) (true-listp (cdr (assoc-eq :msgid-slot cell)))))))) :verify-guards nil))
   (if (not (and (natp slot) (< slot (fn-lbc-slot-count fn-lbc)))) fn-lbc
     (mv-let (keys fn-lbc)
       (fn-lbc-slot-drop-owner slot (fn-lbc-slot-escape-keys fn-lbc) fn-lbc)
@@ -1017,7 +1044,7 @@
       (fn-lbc-reserve-slots (- n 1) fn-lbc))))
 
 (defun fn-lbc-slot-insert (i slot fuel fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard (and (natp fuel) (or (zp fuel) (and (natp slot) (< slot (fn-lbc-slot-count fn-lbc))))) :measure (nfix fuel)
+  (declare (xargs :stobjs fn-lbc :guard (and (natp fuel) (or (zp fuel) (and (natp slot) (< slot (fn-lbc-slot-count fn-lbc)) (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc) (or (< (nfix (+ 1 (nfix i))) *fn-lbc-slot-escape-word*) (let* ((seq (- (nfix (+ 1 (nfix i))) 1)) (cell (fn-lbc-escape-store-get seq fn-lbc))) (and (alistp cell) (true-listp (cdr (assoc-eq :msgid-slot cell))))))))) :measure (nfix fuel)
                   :verify-guards nil))
   (cond ((zp fuel) fn-lbc)
         ((equal (fn-lbc-slot-word slot fn-lbc) 0)
@@ -1027,7 +1054,7 @@
                                (- fuel 1) fn-lbc))))
 
 (defun fn-lbc-index-slots (i n fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t
+  (declare (xargs :stobjs fn-lbc :guard (and (natp i) (natp n) (<= i n) (<= n (fn-lbc-count fn-lbc)) (fn-lbc-escape-cellsp 0 fn-lbc) (fn-lbc-slot-values-guardp 0 fn-lbc) (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc))
                   :measure (nfix (- (nfix n) (nfix i))) :verify-guards nil))
   (if (and (natp i) (natp n) (< i n))
       (let* ((capacity (fn-lbc-slot-count fn-lbc))
@@ -1037,7 +1064,7 @@
     fn-lbc))
 
 (defun fn-lbc-msgid-probe (msgid hash slot fuel fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard (and (natp fuel) (fn-lbc-escape-cellsp 0 fn-lbc)) :measure (nfix fuel)
+  (declare (xargs :stobjs fn-lbc :guard (and (natp fuel) (fn-lbc-escape-cellsp 0 fn-lbc) (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc)) :measure (nfix fuel)
                   :verify-guards nil))
   (if (zp fuel) nil
     (let ((word (fn-lbc-slot-word slot fn-lbc)))
@@ -1053,20 +1080,20 @@
             rest))))))
 
 (defun fn-lbc-msgid-seqs (msgid fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-escape-cellsp 0 fn-lbc) :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (and (fn-lbc-escape-cellsp 0 fn-lbc) (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc)) :verify-guards nil))
   (let ((hash (fn-lbc-msgid-hash msgid)) (capacity (fn-lbc-slot-count fn-lbc)))
     (fn-lbc-msgid-probe msgid hash (mod hash (max 1 capacity)) capacity fn-lbc)))
 
 ; Independent canonical linear-probing table over full logical Message-IDs.
 (defun fn-lbc-canonical-slot-insert (ordinal slot fuel table)
-  (declare (xargs :guard t :measure (nfix fuel) :verify-guards nil))
+  (declare (xargs :guard (and (natp fuel) (true-listp table)) :measure (nfix fuel) :verify-guards nil))
   (cond ((zp fuel) table)
         ((equal (nth (nfix slot) table) 0) (update-nth (nfix slot) ordinal table))
         (t (fn-lbc-canonical-slot-insert ordinal
               (mod (+ 1 (nfix slot)) (max 1 (len table))) (- fuel 1) table))))
 
 (defun fn-lbc-canonical-slots-from (rows i table)
-  (declare (xargs :guard t :measure (acl2-count rows) :verify-guards nil))
+  (declare (xargs :guard (true-listp table) :measure (acl2-count rows) :verify-guards nil))
   (if (consp rows)
       (fn-lbc-canonical-slots-from (cdr rows) (+ 1 (nfix i))
         (fn-lbc-canonical-slot-insert (+ 1 (nfix i))
@@ -1079,14 +1106,14 @@
   (fn-lbc-canonical-slots-from rows 0 (make-list (+ 1 (* 2 (len rows))) :initial-element 0)))
 
 (defun fn-lbc-slot-cells-corr (table slot fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc) :verify-guards nil))
   (if (consp table)
       (and (equal (fn-lbc-slot-word slot fn-lbc) (car table))
            (fn-lbc-slot-cells-corr (cdr table) (+ 1 (nfix slot)) fn-lbc))
     t))
 
 (defun fn-lbc-slots-corr (fn-lbc rows)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc) :verify-guards nil))
   (let* ((capacity (fn-lbc-slot-count fn-lbc))
          (table (fn-lbc-canonical-slots-from rows 0
                    (make-list capacity :initial-element 0))))
@@ -1095,7 +1122,7 @@
          (fn-lbc-slot-cells-corr table 0 fn-lbc))))
 
 (defun fn-lbc-number-keys-covered (numbers rows fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (alistp (remove-equal nil (true-list-fix numbers))) :verify-guards nil))
   (if (consp numbers)
       (and (equal (fn-lbc-number-get (caar numbers) (cdar numbers) fn-lbc)
                   (fn-cat-number-seq (caar numbers) (cdar numbers) rows 0))
@@ -1103,7 +1130,7 @@
     t))
 
 (defun fn-lbc-number-rows-covered (rest rows fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-lbc :guard (fn-cat$ap rest) :verify-guards nil))
   (if (consp rest)
       (and (fn-lbc-number-keys-covered (fn-held-numbers (car rest)) rows fn-lbc)
            (fn-lbc-number-rows-covered (cdr rest) rows fn-lbc))

@@ -6,6 +6,7 @@
 (include-book "catalog-columns")
 (include-book "log-verified-map")
 (include-book "log-locator-resolves")
+(local (include-book "ihs/logops-lemmas" :dir :system))
 
 (local
   (defthm
@@ -424,6 +425,26 @@
        :in-theory
        (enable fn-lb-log-append-guardp always$ apply$ apply$-prim ev$-list badge)))))
 
+(local
+ (defthm fn-lbg-row-entry-in-list
+  (implies (true-list-listp (true-list-fix entries))
+           (true-listp (fn-lb-log-model-row-entry-in sequence handle entries)))
+  :hints (("Goal" :induct (fn-lb-log-model-row-entry-in sequence handle entries)
+           :in-theory (enable fn-lb-log-model-row-entry-in true-list-listp)))))
+(local
+ (defthm fn-lbg-row-entry-list
+  (implies (fn-lb-log-entries-guardp log)
+           (true-listp (fn-lb-log-model-row-entry row log)))
+  :hints (("Goal" :induct (fn-lb-log-model-row-entry row log)
+           :in-theory (e/d (fn-lb-log-model-row-entry fn-lb-log-entries-guardp)
+                           (fn-lb-log-model-row-entry-in fn-lbg-named-entries))))))
+(local
+ (defthm fn-lbg-range-entry-list
+  (implies (true-list-listp (true-list-fix entries))
+           (true-listp (fn-lb-log-model-range-entry offset entries)))
+  :hints (("Goal" :induct (fn-lb-log-model-range-entry offset entries)
+           :in-theory (enable fn-lb-log-model-range-entry true-list-listp)))))
+
 (verify-guards fn-lb-value-treep :hints (("Goal" :in-theory (enable fn-lbc-escape-cellsp))))
 
 (verify-guards
@@ -501,6 +522,14 @@
   t
   :hints
   (("Goal" :in-theory (enable always$ apply$ apply$-prim ev$-list badge))))
+
+(verify-guards fn-lb-log-model-range-in-entries :guard-debug t)
+(verify-guards fn-lb-log-model-row-entry-in :guard-debug t)
+(verify-guards fn-lb-log-model-row-entry :guard-debug t
+ :hints (("Goal" :in-theory (disable fn-lbg-named-entries))))
+(verify-guards fn-lb-log-model-row-segment :guard-debug t
+ :hints (("Goal" :in-theory (disable fn-lbg-named-entries))))
+(verify-guards fn-lb-log-model-range-entry :guard-debug t)
 
 (verify-guards
   fn-lb-log-model-read-range
@@ -923,6 +952,180 @@
 
 (verify-guards fn-lbc-rebuild-summaries :guard-debug t)
 
+(verify-guards fn-lbc-slot-owners-guardp :guard-debug t)
+(verify-guards fn-lbc-slot-values-guardp :guard-debug t)
+(verify-guards fn-lbc-escaped-slot-word :guard-debug t)
+(local
+ (defthm fn-lbg-slot-get-of-put
+ (equal (fn-lbc-escape-store-get key (fn-lbc-escape-store-put at cell fn-lbc))
+        (if (equal key at) cell (fn-lbc-escape-store-get key fn-lbc)))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-escape-store-get fn-lbc-escape-store-put) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-put-preserves-stobj
+ (implies (fn-lbc-p fn-lbc) (fn-lbc-p (fn-lbc-escape-store-put key cell fn-lbc)))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-p fn-lbc-escape-store-put fn-lbc-escape-storep)
+   (fn-lbc-row-storep fn-lbc-msgid-storep fn-lbc-overview-storep fn-lbc-number-storep
+    fn-lbc-slot-storep fn-lbc-directory-storep fn-lbc-membership-storep fn-lbc-nov-storep
+    fn-lbc-summary-groupsp fn-lbc-slot-escape-keysp))))))
+(local
+ (defthm fn-lbg-slot-cell-of-put-assoc
+ (implies (and (alistp cell) (true-listp value))
+  (and (alistp (put-assoc-eq :msgid-slot value cell))
+       (true-listp (cdr (assoc-eq :msgid-slot (put-assoc-eq :msgid-slot value cell))))))
+ :hints (("Goal" :induct (put-assoc-eq :msgid-slot value cell)
+   :in-theory (enable put-assoc-eq put-assoc-equal assoc-eq assoc-equal alistp)))))
+(local
+ (defthm fn-lbg-slot-cell-of-remove-assoc
+ (implies (alistp cell)
+  (and (alistp (remove-assoc-eq :msgid-slot cell))
+       (true-listp (cdr (assoc-eq :msgid-slot (remove-assoc-eq :msgid-slot cell))))))
+ :hints (("Goal" :induct (remove-assoc-eq :msgid-slot cell)
+   :in-theory (enable remove-assoc-equal assoc-equal alistp)))))
+(local
+ (defthm fn-lbg-slot-owners-of-put
+ (implies (and (fn-lbc-slot-owners-guardp keys fn-lbc)
+               (alistp cell) (true-listp (cdr (assoc-eq :msgid-slot cell))))
+          (fn-lbc-slot-owners-guardp keys (fn-lbc-escape-store-put at cell fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-slot-owners-guardp keys fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-owners-guardp)
+                 (fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))))
+
+(verify-guards fn-lbc-slot-drop-owner
+ :hints (("Goal" :in-theory (disable fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))
+(local
+ (defthm fn-lbg-slot-drop-preserves-stobj
+ (implies (fn-lbc-p fn-lbc)
+  (fn-lbc-p (mv-nth 1 (fn-lbc-slot-drop-owner slot keys fn-lbc))))
+ :hints (("Goal" :induct (fn-lbc-slot-drop-owner slot keys fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-drop-owner) (fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-drop-keys-list
+ (true-listp (mv-nth 0 (fn-lbc-slot-drop-owner slot keys fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-slot-drop-owner slot keys fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-drop-owner) (fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-drop-owners-observation
+ (implies (and (fn-lbc-slot-owners-guardp keys fn-lbc)
+               (fn-lbc-slot-owners-guardp observed fn-lbc))
+  (fn-lbc-slot-owners-guardp observed
+    (mv-nth 1 (fn-lbc-slot-drop-owner slot keys fn-lbc))))
+ :hints (("Goal" :induct (fn-lbc-slot-drop-owner slot keys fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-drop-owner fn-lbc-slot-owners-guardp)
+                 (fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-drop-cell-observation
+ (implies (and (fn-lbc-slot-owners-guardp keys fn-lbc) (eqlablep key)
+               (alistp (fn-lbc-escape-store-get key fn-lbc))
+               (true-listp (cdr (assoc-eq :msgid-slot (fn-lbc-escape-store-get key fn-lbc)))))
+  (and (alistp (fn-lbc-escape-store-get key (mv-nth 1 (fn-lbc-slot-drop-owner slot keys fn-lbc))))
+       (true-listp (cdr (assoc-eq :msgid-slot
+          (fn-lbc-escape-store-get key (mv-nth 1 (fn-lbc-slot-drop-owner slot keys fn-lbc))))))))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-drop-owners-observation (observed (list key))))
+  :in-theory (e/d (fn-lbc-slot-owners-guardp)
+                 (fn-lbc-slot-drop-owner fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p fn-lbg-slot-drop-owners-observation))))))
+(local
+ (defthm fn-lbg-slot-drop-result-owners
+ (implies (fn-lbc-slot-owners-guardp keys fn-lbc)
+  (fn-lbc-slot-owners-guardp
+    (mv-nth 0 (fn-lbc-slot-drop-owner slot keys fn-lbc))
+    (mv-nth 1 (fn-lbc-slot-drop-owner slot keys fn-lbc))))
+ :hints (("Goal" :induct (fn-lbc-slot-drop-owner slot keys fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-drop-owner fn-lbc-slot-owners-guardp)
+                 (fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-put-other-field
+ (implies (and (natp field) (not (equal field *fn-lbc-escape-store-get*)))
+  (equal (nth field (fn-lbc-escape-store-put key cell fn-lbc)) (nth field fn-lbc)))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-escape-store-put) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-drop-other-field
+ (implies (and (natp field) (not (equal field *fn-lbc-escape-store-get*)))
+  (equal (nth field (mv-nth 1 (fn-lbc-slot-drop-owner slot keys fn-lbc))) (nth field fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-slot-drop-owner slot keys fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-drop-owner) (fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-drop-slot-count
+ (equal (fn-lbc-slot-count (mv-nth 1 (fn-lbc-slot-drop-owner slot keys fn-lbc))) (fn-lbc-slot-count fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-slot-count) (fn-lbc-slot-drop-owner fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-drop-car-proper
+ (true-listp (car (fn-lbc-slot-drop-owner slot keys fn-lbc)))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-drop-keys-list))
+          :in-theory (e/d (mv-nth) (fn-lbg-slot-drop-keys-list fn-lbc-slot-drop-owner))))))
+(local
+ (defthm fn-lbg-slot-drop-car-cadr-owners
+ (implies (fn-lbc-slot-owners-guardp keys fn-lbc)
+  (fn-lbc-slot-owners-guardp
+    (car (fn-lbc-slot-drop-owner slot keys fn-lbc))
+    (cadr (fn-lbc-slot-drop-owner slot keys fn-lbc))))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-drop-result-owners))
+  :in-theory (e/d (mv-nth) (fn-lbg-slot-drop-result-owners fn-lbc-slot-drop-owner fn-lbc-slot-owners-guardp))))))
+(local
+ (defthm fn-lbg-slot-owners-other-field
+ (implies (and (natp field) (not (equal field *fn-lbc-escape-store-get*)))
+  (equal (fn-lbc-slot-owners-guardp keys (update-nth field value fn-lbc))
+         (fn-lbc-slot-owners-guardp keys fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-slot-owners-guardp keys fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-owners-guardp fn-lbc-escape-store-get) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-rowwords-flag-field
+ (implies (and (adt-seq-p *fn-lbc-rowwords-schema* rows) (natp i) (< i (len rows)))
+  (unsigned-byte-p 64 (nth 15 (nth i rows))))
+ :hints (("Goal" :use ((:instance adt-tp-rec-p-nth (s *fn-lbc-rowwords-schema*) (a rows)))
+                  :in-theory (enable adt-rec-p adt-val-okp)))))
+(local
+ (defthm fn-lbg-column-flag-field
+ (implies (and (fn-lbc-p fn-lbc) (natp i) (< i (fn-lbc-count fn-lbc)))
+  (unsigned-byte-p 64 (nth 15 (nth i (car fn-lbc)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn-lbc-p fn-lbc-count fn-lbc-row-storep)
+    (fn-lbc-msgid-storep fn-lbc-overview-storep fn-lbc-number-storep fn-lbc-slot-storep
+     fn-lbc-directory-storep fn-lbc-membership-storep fn-lbc-nov-storep
+     fn-lbc-summary-groupsp fn-lbc-escape-storep fn-lbc-slot-escape-keysp))))))
+(local
+ (defthm fn-lbg-slot-get-other-field
+ (implies (and (natp field) (not (equal field *fn-lbc-escape-store-get*)))
+  (equal (fn-lbc-escape-store-get key (update-nth field value fn-lbc))
+         (fn-lbc-escape-store-get key fn-lbc)))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-escape-store-get) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-assoc-spine
+ (implies (alistp cell)
+  (or (consp (assoc-equal key cell)) (equal (assoc-equal key cell) nil)))
+ :hints (("Goal" :induct (assoc-equal key cell) :in-theory (enable assoc-equal alistp)))
+ :rule-classes :type-prescription))
+(local
+ (defthm fn-lbg-slot-atomic-assoc-is-nil
+ (implies (and (alistp cell) (not (consp (assoc-equal key cell))))
+          (equal (assoc-equal key cell) nil))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-assoc-spine))
+          :in-theory (disable fn-lbg-slot-assoc-spine assoc-equal)))))
+(local
+ (defthm fn-lbg-slot-escaped-flag-u64
+ (implies (unsigned-byte-p 64 flags) (unsigned-byte-p 64 (logior flags 8)))
+ :hints (("Goal" :in-theory (disable logior unsigned-byte-p)))))
+(local
+ (defthm fn-lbg-nth-after-cdr-by-definition
+ (implies (natp n) (equal (nth n (cdr x)) (nth (+ 1 n) x)))
+ :hints (("Goal" :in-theory (enable nth)))))
+
+(verify-guards fn-lbc-slot-put
+ :hints (("Goal"
+  :use ((:instance fn-lbg-column-flag-field (i (- (nfix ordinal) 1)))
+        (:instance fn-lbg-slot-escaped-flag-u64
+          (flags (nth 15 (nth (- (nfix ordinal) 1) (car fn-lbc))))))
+  :in-theory (disable logior fn-lbg-column-flag-field fn-lbg-slot-escaped-flag-u64
+                      fn-lbc-p fn-lbc-slot-drop-owner
+                      fn-lbc-escape-store-get fn-lbc-escape-store-put))))
+
+
+(local
+ (defthm fn-lbg-escaped-slot-natural
+  (natp (fn-lbc-escaped-slot-word slot keys fn-lbc))
+  :hints (("Goal" :induct (fn-lbc-escaped-slot-word slot keys fn-lbc)
+           :in-theory (enable fn-lbc-escaped-slot-word)))
+  :rule-classes :type-prescription))
+
 (verify-guards fn-lbc-slot-word :guard-debug t)
 
 (verify-guards
@@ -939,10 +1142,208 @@
   :hints
   (("Goal" :in-theory (enable always$ apply$ apply$-prim ev$-list badge))))
 
-(verify-guards
-  fn-lbc-index-slots
-  :hints
-  (("Goal" :in-theory (disable floor mod fn-lbc-p fn-lbc-slot-count fn-lbc-word))))
+(local
+ (defthm fn-lbg-slot-drop-row-store-frame
+ (equal (car (mv-nth 1 (fn-lbc-slot-drop-owner slot keys fn-lbc))) (car fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-drop-other-field (field 0)))
+  :in-theory (e/d (nth) (fn-lbc-slot-drop-owner fn-lbc-p fn-lbg-slot-drop-other-field))))))
+(local
+ (defthm fn-lbg-adt-set-in-bounds-count
+ (implies (and (natp i) (< i (len rows)))
+  (equal (len (adt-set-a field i value rows)) (len rows)))
+ :hints (("Goal" :in-theory (enable adt-set-a)))))
+(local
+ (defthm fn-lbg-slot-put-row-store-frame
+ (equal (car (fn-lbc-escape-store-put key cell fn-lbc)) (car fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-put-other-field (field 0)))
+  :in-theory (e/d (nth) (fn-lbc-escape-store-put fn-lbc-p fn-lbg-slot-put-other-field))))))
+(local
+ (defthm fn-lbg-slot-put-count
+ (equal (fn-lbc-count (fn-lbc-slot-put slot ordinal fn-lbc)) (fn-lbc-count fn-lbc))
+ :hints (("Goal" :in-theory
+   (e/d (fn-lbc-slot-put fn-lbc-count fn-lbc-slot-count update-fn-lbc-slot-escape-keys
+         fn-lbc-rowwords-set-flags fn-lbc-rowwords$a-set-flags)
+        (fn-lbc-slot-drop-owner fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p
+         fn-lbc-msgid-slots-set-word fn-lbc-rowwords-get-flags logior))))))
+(local
+ (defthm fn-lbg-slot-insert-count
+ (equal (fn-lbc-count (fn-lbc-slot-insert i slot fuel fn-lbc)) (fn-lbc-count fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-slot-insert i slot fuel fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-insert) (fn-lbc-slot-put fn-lbc-slot-word fn-lbc-p fn-lbc-count))))))
+(local
+ (defthm fn-lbg-slot-values-other-field
+ (implies (and (natp field) (not (equal field *fn-lbc-escape-store-get*)) (not (equal field *fn-lbc-row-store*)))
+  (equal (fn-lbc-slot-values-guardp i (update-nth field value fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-slot-values-guardp i fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-values-guardp fn-lbc-count fn-lbc-escape-store-get) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-of-put
+ (implies (and (fn-lbc-slot-values-guardp i fn-lbc)
+               (alistp cell) (true-listp (cdr (assoc-eq :msgid-slot cell))))
+  (fn-lbc-slot-values-guardp i (fn-lbc-escape-store-put key cell fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-slot-values-guardp i fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-values-guardp fn-lbc-count)
+   (fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-of-drop
+ (implies (and (fn-lbc-slot-owners-guardp keys fn-lbc) (fn-lbc-slot-values-guardp i fn-lbc))
+  (fn-lbc-slot-values-guardp i (mv-nth 1 (fn-lbc-slot-drop-owner slot keys fn-lbc))))
+ :hints (("Goal" :induct (fn-lbc-slot-drop-owner slot keys fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-drop-owner fn-lbc-slot-owners-guardp)
+   (fn-lbc-slot-values-guardp fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-owners-row-replacement
+ (equal (fn-lbc-slot-owners-guardp keys (cons rows (cdr fn-lbc)))
+        (fn-lbc-slot-owners-guardp keys fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-slot-owners-guardp keys fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-owners-guardp fn-lbc-escape-store-get) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-owners-cdr-field
+ (implies (and (natp field) (not (equal field 8)))
+  (equal (fn-lbc-slot-owners-guardp keys (cons rows (update-nth field value tail)))
+         (fn-lbc-slot-owners-guardp keys (cons rows tail))))
+ :hints (("Goal" :induct (fn-lbc-slot-owners-guardp keys (cons rows tail))
+  :in-theory (e/d (fn-lbc-slot-owners-guardp fn-lbc-escape-store-get) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-row-replacement
+ (implies (equal (len rows) (fn-lbc-count fn-lbc))
+  (equal (fn-lbc-slot-values-guardp i (cons rows (cdr fn-lbc)))
+         (fn-lbc-slot-values-guardp i fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-slot-values-guardp i fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-values-guardp fn-lbc-count fn-lbc-escape-store-get) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-cdr-field
+ (implies (and (natp field) (not (equal field 8)))
+  (equal (fn-lbc-slot-values-guardp i (cons rows (update-nth field value tail)))
+         (fn-lbc-slot-values-guardp i (cons rows tail))))
+ :hints (("Goal" :induct (fn-lbc-slot-values-guardp i (cons rows tail))
+  :in-theory (e/d (fn-lbc-slot-values-guardp fn-lbc-count fn-lbc-escape-store-get) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-select
+ (implies (and (fn-lbc-slot-values-guardp start fn-lbc)
+               (natp start) (natp i) (<= start i) (< i (fn-lbc-count fn-lbc)))
+  (and (alistp (fn-lbc-escape-store-get i fn-lbc))
+       (true-listp (cdr (assoc-eq :msgid-slot (fn-lbc-escape-store-get i fn-lbc))))))
+ :hints (("Goal" :induct (fn-lbc-slot-values-guardp start fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-values-guardp) (fn-lbc-escape-store-get fn-lbc-count fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-owners-cons-unfolds
+ (equal (fn-lbc-slot-owners-guardp (cons key keys) fn-lbc)
+  (and (eqlablep key) (alistp (fn-lbc-escape-store-get key fn-lbc))
+       (true-listp (cdr (assoc-eq :msgid-slot (fn-lbc-escape-store-get key fn-lbc))))
+       (fn-lbc-slot-owners-guardp keys fn-lbc)))
+ :hints (("Goal" :expand (fn-lbc-slot-owners-guardp (cons key keys) fn-lbc)
+          :in-theory (disable fn-lbc-slot-owners-guardp fn-lbc-escape-store-get fn-lbc-p)))))
+(local
+ (defthm fn-lbg-slot-get-row-replacement
+ (equal (fn-lbc-escape-store-get key (cons rows (cdr fn-lbc)))
+        (fn-lbc-escape-store-get key fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-escape-store-get) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-get-cdr-field
+ (implies (and (natp field) (not (equal field 8)))
+  (equal (fn-lbc-escape-store-get key (cons rows (update-nth field value tail)))
+         (fn-lbc-escape-store-get key (cons rows tail))))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-escape-store-get) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-select-zero
+ (implies (and (fn-lbc-slot-values-guardp 0 fn-lbc) (natp i) (< i (fn-lbc-count fn-lbc)))
+  (and (alistp (fn-lbc-escape-store-get i fn-lbc))
+       (true-listp (cdr (assoc-eq :msgid-slot (fn-lbc-escape-store-get i fn-lbc))))))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-select (start 0)))
+  :in-theory (disable fn-lbg-slot-values-select fn-lbc-slot-values-guardp fn-lbc-escape-store-get fn-lbc-p)))))
+(local
+ (defthm fn-lbg-slot-put-owners-preserved
+ (implies (and (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc) (or (not (and (natp slot) (< slot (fn-lbc-slot-count fn-lbc)))) (or (< (nfix ordinal) *fn-lbc-slot-escape-word*) (let* ((seq (- (nfix ordinal) 1)) (cell (fn-lbc-escape-store-get seq fn-lbc))) (and (alistp cell) (true-listp (cdr (assoc-eq :msgid-slot cell))))))))
+  (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys (fn-lbc-slot-put slot ordinal fn-lbc))
+                            (fn-lbc-slot-put slot ordinal fn-lbc)))
+ :hints (("Goal" :in-theory
+  (e/d (fn-lbc-slot-put fn-lbc-slot-escape-keys update-fn-lbc-slot-escape-keys)
+       (fn-lbc-slot-count fn-lbc-count fn-lbc-slot-drop-owner fn-lbc-slot-owners-guardp
+        fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p
+        fn-lbc-rowwords-set-flags fn-lbc-msgid-slots-set-word))))))
+(local
+ (defthm fn-lbg-slot-put-values-preserved
+ (implies (and (and (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc) (or (not (and (natp slot) (< slot (fn-lbc-slot-count fn-lbc)))) (or (< (nfix ordinal) *fn-lbc-slot-escape-word*) (let* ((seq (- (nfix ordinal) 1)) (cell (fn-lbc-escape-store-get seq fn-lbc))) (and (alistp cell) (true-listp (cdr (assoc-eq :msgid-slot cell)))))))) (fn-lbc-slot-values-guardp i fn-lbc))
+  (fn-lbc-slot-values-guardp i (fn-lbc-slot-put slot ordinal fn-lbc)))
+ :hints (("Goal" :in-theory
+  (e/d (fn-lbc-slot-put fn-lbc-count fn-lbc-slot-escape-keys update-fn-lbc-slot-escape-keys)
+       (fn-lbc-slot-count fn-lbc-slot-drop-owner fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp
+        fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p
+        fn-lbc-rowwords-set-flags fn-lbc-msgid-slots-set-word))))))
+(local
+ (defthm fn-lbg-slot-row-put-values-preserved
+ (implies (and (natp i) (< i (fn-lbc-count fn-lbc))
+               (fn-lbc-slot-values-guardp 0 fn-lbc)
+               (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc))
+  (fn-lbc-slot-values-guardp 0 (fn-lbc-slot-put slot (+ 1 i) fn-lbc)))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-select (start 0))
+                      (:instance fn-lbg-slot-put-values-preserved (ordinal (+ 1 i)) (i 0)))
+  :in-theory (disable fn-lbg-slot-values-select fn-lbg-slot-put-values-preserved
+   fn-lbc-slot-put fn-lbc-count fn-lbc-slot-count fn-lbc-slot-escape-keys
+   fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp fn-lbc-escape-store-get fn-lbc-p)))))
+(local
+ (defthm fn-lbg-slot-row-put-owners-preserved
+ (implies (and (natp i) (< i (fn-lbc-count fn-lbc))
+               (fn-lbc-slot-values-guardp 0 fn-lbc)
+               (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc))
+  (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys (fn-lbc-slot-put slot (+ 1 i) fn-lbc))
+                            (fn-lbc-slot-put slot (+ 1 i) fn-lbc)))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-select (start 0))
+                      (:instance fn-lbg-slot-put-owners-preserved (ordinal (+ 1 i))))
+  :in-theory (disable fn-lbg-slot-values-select fn-lbg-slot-put-owners-preserved
+   fn-lbc-slot-put fn-lbc-count fn-lbc-slot-count fn-lbc-slot-escape-keys
+   fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp fn-lbc-escape-store-get fn-lbc-p)))))
+(local
+ (defthm fn-lbg-slot-insert-values-preserved
+ (implies (and (natp i) (< i (fn-lbc-count fn-lbc))
+               (fn-lbc-slot-values-guardp 0 fn-lbc)
+               (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc))
+  (fn-lbc-slot-values-guardp 0 (fn-lbc-slot-insert i slot fuel fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-slot-insert i slot fuel fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-insert)
+   (fn-lbc-slot-put fn-lbc-slot-word fn-lbc-count fn-lbc-slot-count
+    fn-lbc-slot-escape-keys fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-insert-owners-preserved
+ (implies (and (natp i) (< i (fn-lbc-count fn-lbc))
+               (fn-lbc-slot-values-guardp 0 fn-lbc)
+               (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc))
+  (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys (fn-lbc-slot-insert i slot fuel fn-lbc))
+                            (fn-lbc-slot-insert i slot fuel fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-slot-insert i slot fuel fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-insert)
+   (fn-lbc-slot-put fn-lbc-slot-word fn-lbc-count fn-lbc-slot-count
+    fn-lbc-slot-escape-keys fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-gives-escape-cells
+ (implies (fn-lbc-slot-values-guardp i fn-lbc) (fn-lbc-escape-cellsp i fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-slot-values-guardp i fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-values-guardp fn-lbc-escape-cellsp)
+                 (fn-lbc-escape-store-get fn-lbc-count fn-lbc-p))))))
+
+(local (defthm fn-lbg-index-slots-count-frame
+ (equal (fn-lbc-count (fn-lbc-index-slots i n fn-lbc)) (fn-lbc-count fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-index-slots i n fn-lbc)
+ :in-theory (e/d (fn-lbc-index-slots) (fn-lbc-slot-insert fn-lbc-slot-word fn-lbc-count fn-lbc-slot-count fn-lbc-word fn-lbc-p))))))
+(local (defthm fn-lbg-index-slots-domain-preserved
+ (implies (and (natp i) (natp n) (<= i n) (<= n (fn-lbc-count fn-lbc))
+               (fn-lbc-slot-values-guardp 0 fn-lbc)
+               (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc))
+  (and (fn-lbc-slot-values-guardp 0 (fn-lbc-index-slots i n fn-lbc))
+       (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys (fn-lbc-index-slots i n fn-lbc))
+                                (fn-lbc-index-slots i n fn-lbc))))
+ :hints (("Goal" :induct (fn-lbc-index-slots i n fn-lbc)
+ :in-theory (e/d (fn-lbc-index-slots)
+  (fn-lbc-slot-insert fn-lbc-slot-word fn-lbc-count fn-lbc-slot-count fn-lbc-word
+   fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp fn-lbc-slot-escape-keys fn-lbc-p))))))
+
+(verify-guards fn-lbc-index-slots
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-select-zero))
+  :in-theory (disable floor mod fn-lbc-slot-insert fn-lbc-slot-put fn-lbc-slot-word fn-lbc-p
+                      fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp
+                      fn-lbc-escape-cellsp fn-lbc-count fn-lbc-slot-count fn-lbc-escape-store-get fn-lbc-slot-escape-keys))))
+
 
 (verify-guards
   fn-lbc-summaries-corr
@@ -1830,9 +2231,9 @@
     (implies
       (fn-lbc-row-log-guardp row log)
       (and
-        (unsigned-byte-p 64 (fn-lb-log-model-payload-segment (fn-record-payload row) log))
-        (unsigned-byte-p 32 (nth 3 (fn-lb-log-model-payload-entry (fn-record-payload row) log)))
-        (unsigned-byte-p 32 (nth 4 (fn-lb-log-model-payload-entry (fn-record-payload row) log)))))
+        (unsigned-byte-p 64 (fn-lb-log-model-row-segment row log))
+        (unsigned-byte-p 32 (nth 3 (fn-lb-log-model-row-entry row log)))
+        (unsigned-byte-p 32 (nth 4 (fn-lb-log-model-row-entry row log)))))
     :hints
     (("Goal" :in-theory (enable fn-lbc-row-log-guardp)))
     :rule-classes
@@ -2068,7 +2469,6 @@
           (fn-lbc-u64 x10)
           (fn-lbc-u64 x11)
           (fn-lbc-u64 x12)
-          (fn-lbc-u64 x13)
           b14
           b15
           b16
@@ -2613,53 +3013,13 @@
        :in-theory
        (e/d (fn-lbc-reserve-slots) (fn-lbc-msgid-slots-append fn-lbc-p))))))
 
-(local
-  (defthm
-    fn-lbg-slot-insert-row-frame
-    (equal (car (fn-lbc-slot-insert i slot fuel fn-lbc)) (car fn-lbc))
-    :hints
-    (("Goal"
-       :induct
-       (fn-lbc-slot-insert i slot fuel fn-lbc)
-       :in-theory
-       (e/d (fn-lbc-slot-insert) (fn-lbc-msgid-slots-set-word fn-lbc-slot-word fn-lbc-p))))))
 
-(local
-  (defthm
-    fn-lbg-slot-insert-escape-frame
-    (equal
-      (nth *fn-lbc-escape-store-get* (fn-lbc-slot-insert i slot fuel fn-lbc))
-      (nth *fn-lbc-escape-store-get* fn-lbc))
-    :hints
-    (("Goal"
-       :induct
-       (fn-lbc-slot-insert i slot fuel fn-lbc)
-       :in-theory
-       (e/d (fn-lbc-slot-insert) (fn-lbc-msgid-slots-set-word fn-lbc-slot-word fn-lbc-p))))))
 
-(local
-  (defthm
-    fn-lbg-index-slots-row-frame
-    (equal (car (fn-lbc-index-slots i n fn-lbc)) (car fn-lbc))
-    :hints
-    (("Goal"
-       :induct
-       (fn-lbc-index-slots i n fn-lbc)
-       :in-theory
-       (e/d (fn-lbc-index-slots) (fn-lbc-slot-insert fn-lbc-p))))))
 
-(local
-  (defthm
-    fn-lbg-index-slots-escape-frame
-    (equal
-      (nth *fn-lbc-escape-store-get* (fn-lbc-index-slots i n fn-lbc))
-      (nth *fn-lbc-escape-store-get* fn-lbc))
-    :hints
-    (("Goal"
-       :induct
-       (fn-lbc-index-slots i n fn-lbc)
-       :in-theory
-       (e/d (fn-lbc-index-slots) (fn-lbc-slot-insert fn-lbc-p))))))
+
+
+
+
 
 (local
   (defthm
@@ -2757,6 +3117,64 @@
          fn-lbc-append-nov
          fn-lbc-p)))))
 
+(local (defthm fn-lbg-rowwords-typed-record
+ (implies (and (unsigned-byte-p 64 x0) (unsigned-byte-p 64 x1) (unsigned-byte-p 64 x2) (unsigned-byte-p 64 x3) (unsigned-byte-p 64 x4) (unsigned-byte-p 64 x5) (unsigned-byte-p 64 x6) (unsigned-byte-p 64 x7) (unsigned-byte-p 64 x8) (unsigned-byte-p 64 x9) (unsigned-byte-p 64 x10) (unsigned-byte-p 64 x11) (unsigned-byte-p 64 x12) (unsigned-byte-p 64 x13) (unsigned-byte-p 64 x14) (unsigned-byte-p 64 x15))
+ (adt-rec-p *fn-lbc-rowwords-schema* (list x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15)))
+ :hints (("Goal" :in-theory (e/d (adt-rec-p adt-val-okp) (unsigned-byte-p))))))
+(local (defthm fn-lbg-directory-typed-record
+ (implies (and (unsigned-byte-p 64 x0) (unsigned-byte-p 64 x1) (unsigned-byte-p 64 x2) (booleanp x3) (unsigned-byte-p 64 x4) (unsigned-byte-p 64 x5) (unsigned-byte-p 64 x6) (unsigned-byte-p 64 x7) (unsigned-byte-p 64 x8) (unsigned-byte-p 64 x9) (unsigned-byte-p 64 x10) (unsigned-byte-p 64 x11) (unsigned-byte-p 64 x12) (booleanp x13) (booleanp x14) (booleanp x15) (unsigned-byte-p 64 x16) (booleanp x17))
+ (adt-rec-p *fn-lbc-directory-schema* (list x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17)))
+ :hints (("Goal" :in-theory (e/d (adt-rec-p adt-val-okp) (unsigned-byte-p))))))
+
+(local (defthm fn-lbg-msgid-pool-append-slot-keys-frame
+ (equal (fn-lbc-slot-escape-keys (fn-lbc-msgid-pool-append bytes fn-lbc)) (fn-lbc-slot-escape-keys fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-msgid-pool-append bytes fn-lbc)
+ :in-theory (e/d (fn-lbc-msgid-pool-append fn-lbc-slot-escape-keys)
+  (fn-lbc-p fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp fn-lbc-escape-cellsp))))))
+(local (defthm fn-lbg-overview-pool-append-slot-keys-frame
+ (equal (fn-lbc-slot-escape-keys (fn-lbc-overview-pool-append bytes fn-lbc)) (fn-lbc-slot-escape-keys fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-overview-pool-append bytes fn-lbc)
+ :in-theory (e/d (fn-lbc-overview-pool-append fn-lbc-slot-escape-keys)
+  (fn-lbc-p fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp fn-lbc-escape-cellsp))))))
+(local (defthm fn-lbg-append-nov-texts-slot-keys-frame
+ (equal (fn-lbc-slot-escape-keys (fn-lbc-append-nov-texts fields fn-lbc)) (fn-lbc-slot-escape-keys fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-append-nov-texts fields fn-lbc)
+ :in-theory (e/d (fn-lbc-append-nov-texts fn-lbc-slot-escape-keys)
+  (fn-lbc-p fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp fn-lbc-escape-cellsp))))))
+(local (defthm fn-lbg-msgid-pool-append-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-msgid-pool-append bytes fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-msgid-pool-append-slot-keys-frame)) :in-theory (e/d (fn-lbc-slot-escape-keys) (fn-lbc-msgid-pool-append fn-lbg-msgid-pool-append-slot-keys-frame))))))
+(local (defthm fn-lbg-overview-pool-append-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-overview-pool-append bytes fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-overview-pool-append-slot-keys-frame)) :in-theory (e/d (fn-lbc-slot-escape-keys) (fn-lbc-overview-pool-append fn-lbg-overview-pool-append-slot-keys-frame))))))
+(local (defthm fn-lbg-append-nov-texts-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-append-nov-texts fields fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-append-nov-texts-slot-keys-frame)) :in-theory (e/d (fn-lbc-slot-escape-keys) (fn-lbc-append-nov-texts fn-lbg-append-nov-texts-slot-keys-frame))))))
+(local (defthm fn-lbg-append-memberships-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-append-memberships items numbersp fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-append-memberships items numbersp fn-lbc) :in-theory (e/d (fn-lbc-append-memberships) (fn-lbc-msgid-pool-append fn-lbc-overview-pool-append fn-lbc-append-nov-texts fn-lbc-append-nov fn-lbc-number-put-first fn-lbc-number-put-row-seen fn-lbc-number-put-row fn-lbc-summary-put fn-lbc-rebuild-summaries fn-lbc-reserve-slots fn-lbc-append-row fn-lbc-rebuild-rows fn-lbc-p fn-record-string-octets fn-record-string-octets-aux fn-lbc-word fn-lbc-value fn-lb-log-model-row-entry fn-lb-log-model-row-segment fn-loc-make fn-nntp-stuffed-section fn-la-payload-wire fn-hnov-of fn-lbc-sparse-u64))))))
+(local (defthm fn-lbg-append-nov-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-append-nov nov fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-append-nov) (fn-lbc-msgid-pool-append fn-lbc-overview-pool-append fn-lbc-append-nov-texts fn-lbc-append-memberships fn-lbc-number-put-first fn-lbc-number-put-row-seen fn-lbc-number-put-row fn-lbc-summary-put fn-lbc-rebuild-summaries fn-lbc-reserve-slots fn-lbc-append-row fn-lbc-rebuild-rows fn-lbc-p fn-record-string-octets fn-record-string-octets-aux fn-lbc-word fn-lbc-value fn-lb-log-model-row-entry fn-lb-log-model-row-segment fn-loc-make fn-nntp-stuffed-section fn-la-payload-wire fn-hnov-of fn-lbc-sparse-u64))))))
+(local (defthm fn-lbg-number-put-first-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-number-put-first group number seq fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-number-put-first) (fn-lbc-msgid-pool-append fn-lbc-overview-pool-append fn-lbc-append-nov-texts fn-lbc-append-memberships fn-lbc-append-nov fn-lbc-number-put-row-seen fn-lbc-number-put-row fn-lbc-summary-put fn-lbc-rebuild-summaries fn-lbc-reserve-slots fn-lbc-append-row fn-lbc-rebuild-rows fn-lbc-p fn-record-string-octets fn-record-string-octets-aux fn-lbc-word fn-lbc-value fn-lb-log-model-row-entry fn-lb-log-model-row-segment fn-loc-make fn-nntp-stuffed-section fn-la-payload-wire fn-hnov-of fn-lbc-sparse-u64))))))
+(local (defthm fn-lbg-number-put-row-seen-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-number-put-row-seen numbers seen seq fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-number-put-row-seen numbers seen seq fn-lbc) :in-theory (e/d (fn-lbc-number-put-row-seen) (fn-lbc-msgid-pool-append fn-lbc-overview-pool-append fn-lbc-append-nov-texts fn-lbc-append-memberships fn-lbc-append-nov fn-lbc-number-put-first fn-lbc-number-put-row fn-lbc-summary-put fn-lbc-rebuild-summaries fn-lbc-reserve-slots fn-lbc-append-row fn-lbc-rebuild-rows fn-lbc-p fn-record-string-octets fn-record-string-octets-aux fn-lbc-word fn-lbc-value fn-lb-log-model-row-entry fn-lb-log-model-row-segment fn-loc-make fn-nntp-stuffed-section fn-la-payload-wire fn-hnov-of fn-lbc-sparse-u64))))))
+(local (defthm fn-lbg-number-put-row-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-number-put-row numbers seq fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-number-put-row) (fn-lbc-msgid-pool-append fn-lbc-overview-pool-append fn-lbc-append-nov-texts fn-lbc-append-memberships fn-lbc-append-nov fn-lbc-number-put-first fn-lbc-number-put-row-seen fn-lbc-summary-put fn-lbc-rebuild-summaries fn-lbc-reserve-slots fn-lbc-append-row fn-lbc-rebuild-rows fn-lbc-p fn-record-string-octets fn-record-string-octets-aux fn-lbc-word fn-lbc-value fn-lb-log-model-row-entry fn-lb-log-model-row-segment fn-loc-make fn-nntp-stuffed-section fn-la-payload-wire fn-hnov-of fn-lbc-sparse-u64))))))
+(local (defthm fn-lbg-summary-put-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-summary-put group value next fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-summary-put group value next fn-lbc) :in-theory (e/d (fn-lbc-summary-put) (fn-lbc-msgid-pool-append fn-lbc-overview-pool-append fn-lbc-append-nov-texts fn-lbc-append-memberships fn-lbc-append-nov fn-lbc-number-put-first fn-lbc-number-put-row-seen fn-lbc-number-put-row fn-lbc-rebuild-summaries fn-lbc-reserve-slots fn-lbc-append-row fn-lbc-rebuild-rows fn-lbc-p fn-record-string-octets fn-record-string-octets-aux fn-lbc-word fn-lbc-value fn-lb-log-model-row-entry fn-lb-log-model-row-segment fn-loc-make fn-nntp-stuffed-section fn-la-payload-wire fn-hnov-of fn-lbc-sparse-u64))))))
+(local (defthm fn-lbg-rebuild-summaries-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-rebuild-summaries groups rows fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-rebuild-summaries groups rows fn-lbc) :in-theory (e/d (fn-lbc-rebuild-summaries) (fn-lbc-msgid-pool-append fn-lbc-overview-pool-append fn-lbc-append-nov-texts fn-lbc-append-memberships fn-lbc-append-nov fn-lbc-number-put-first fn-lbc-number-put-row-seen fn-lbc-number-put-row fn-lbc-summary-put fn-lbc-reserve-slots fn-lbc-append-row fn-lbc-rebuild-rows fn-lbc-p fn-record-string-octets fn-record-string-octets-aux fn-lbc-word fn-lbc-value fn-lb-log-model-row-entry fn-lb-log-model-row-segment fn-loc-make fn-nntp-stuffed-section fn-la-payload-wire fn-hnov-of fn-lbc-sparse-u64))))))
+(local (defthm fn-lbg-reserve-slots-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-reserve-slots n fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-reserve-slots n fn-lbc) :in-theory (e/d (fn-lbc-reserve-slots) (fn-lbc-msgid-pool-append fn-lbc-overview-pool-append fn-lbc-append-nov-texts fn-lbc-append-memberships fn-lbc-append-nov fn-lbc-number-put-first fn-lbc-number-put-row-seen fn-lbc-number-put-row fn-lbc-summary-put fn-lbc-rebuild-summaries fn-lbc-append-row fn-lbc-rebuild-rows fn-lbc-p fn-record-string-octets fn-record-string-octets-aux fn-lbc-word fn-lbc-value fn-lb-log-model-row-entry fn-lb-log-model-row-segment fn-loc-make fn-nntp-stuffed-section fn-la-payload-wire fn-hnov-of fn-lbc-sparse-u64))))))
+
 (verify-guards
   fn-lbc-append-row
   :hints
@@ -2765,17 +3183,23 @@
      ((:instance fn-lbg-row-withdrawal-spine)
        (:instance
          fn-lbg-locator-make-types
-         (seg (fn-lb-log-model-payload-segment (fn-record-payload row) log))
-         (off (nth 3 (fn-lb-log-model-payload-entry (fn-record-payload row) log)))
-         (len (nth 4 (fn-lb-log-model-payload-entry (fn-record-payload row) log))))
+         (seg (fn-lb-log-model-row-segment row log))
+         (off (nth 3 (fn-lb-log-model-row-entry row log)))
+         (len (nth 4 (fn-lb-log-model-row-entry row log))))
        (:instance fn-lbg-row-log-widths)
        (:instance fn-cat-rowp-fields (h row))
        (:instance fn-lbg-escape-select (start 0) (i (- (fn-lbc-count fn-lbc) 1)))
        (:instance
          fn-lbg-hnov-small
-         (nov (fn-hnov-of (nth 6 (fn-lb-log-model-payload-entry (fn-record-payload row) log))))))
+         (nov (fn-hnov-of (nth 6 (fn-lb-log-model-row-entry row log))))))
      :in-theory
      (disable
+       fn-loc-make adt-rec-p adt-val-okp max nfix natp
+       fn-lbg-row-withdrawal-spine
+       fn-lbg-locator-make-types
+       fn-cat-rowp-fields
+       fn-lbg-escape-select
+       fn-lbg-hnov-small
        fn-held-withdrawnp
        fn-rcl-tombstonep
        fn-arx-entry-ok
@@ -2813,6 +3237,10 @@
        fn-lb-log-model-handle-entry
        fn-lb-log-model-payload-entry
        fn-lb-log-model-payload-segment
+       fn-lb-log-model-row-entry
+       fn-lb-log-model-row-entry-in
+       fn-lb-log-model-row-segment
+       fn-lb-log-model-range-entry
        fn-lb-log-payload
        fn-lb-entry-protected-len
        fn-lb-entry-octets
@@ -3119,43 +3547,9 @@
          (fn-lbc-count)
          (fn-lbc-reserve-slots fn-lbc-escape-cellsp fn-lbc-escape-store-get fn-lbc-p))))))
 
-(local
-  (defthm
-    fn-lbg-slot-insert-recognizer-frame
-    (equal
-      (fn-lbc-escape-cellsp j (fn-lbc-slot-insert i slot fuel fn-lbc))
-      (fn-lbc-escape-cellsp j fn-lbc))
-    :hints
-    (("Goal"
-       :use
-       ((:instance
-          fn-lbg-escape-extensional
-          (i j)
-          (x (fn-lbc-slot-insert i slot fuel fn-lbc))
-          (y fn-lbc)))
-       :in-theory
-       (e/d
-         (fn-lbc-count)
-         (fn-lbc-slot-insert fn-lbc-escape-cellsp fn-lbc-escape-store-get fn-lbc-p))))))
 
-(local
-  (defthm
-    fn-lbg-index-slots-recognizer-frame
-    (equal
-      (fn-lbc-escape-cellsp j (fn-lbc-index-slots i n fn-lbc))
-      (fn-lbc-escape-cellsp j fn-lbc))
-    :hints
-    (("Goal"
-       :use
-       ((:instance
-          fn-lbg-escape-extensional
-          (i j)
-          (x (fn-lbc-index-slots i n fn-lbc))
-          (y fn-lbc)))
-       :in-theory
-       (e/d
-         (fn-lbc-count)
-         (fn-lbc-index-slots fn-lbc-escape-cellsp fn-lbc-escape-store-get fn-lbc-p))))))
+
+
 
 (local
   (defthm
@@ -3259,25 +3653,299 @@
          (fn-lbc-rebuild-rows)
          (fn-lbc-append-row fn-lbc-number-put-row fn-lbc-count fn-lbc-escape-cellsp fn-lbc-p))))))
 
-(defthm
-  fn-lbc-lc-guardp-of-open-rebuild
-  (implies
-    (fn-lb-log-homes-guardp log)
-    (fn-lbc-lc-guardp log (fn-lbc-open-rebuild rows log fn-lbc)))
-  :hints
-  (("Goal"
-     :in-theory
-     (e/d
-       (fn-lbc-open-rebuild fn-lbc-lc-guardp)
-       (fn-lbc-clear-columns
-         fn-lbc-rebuild-rows
-         fn-lbc-rebuild-summaries
-         fn-lbc-index-slots
-         fn-lbc-reserve-slots
-         fn-lbc-count
-         fn-lbc-escape-cellsp
-         fn-lbc-p
-         fn-lb-log-homes-guardp)))))
+(local
+ (defthm fn-lbg-slot-values-extensional
+ (implies (and (equal (fn-lbc-count x) (fn-lbc-count y))
+               (equal (nth *fn-lbc-escape-store-get* x) (nth *fn-lbc-escape-store-get* y)))
+  (equal (fn-lbc-slot-values-guardp i x) (fn-lbc-slot-values-guardp i y)))
+ :hints (("Goal" :induct (fn-lbc-slot-values-guardp i x)
+          :in-theory (e/d (fn-lbc-slot-values-guardp fn-lbc-escape-store-get) (fn-lbc-count fn-lbc-p))))))
+(local
+ (defthm fn-lbg-sparse-slot-absent
+ (implies (not (member-eq :msgid-slot fields))
+  (equal (assoc-eq :msgid-slot (fn-lbc-sparse-u64 fields values)) nil))
+ :hints (("Goal" :induct (fn-lbc-sparse-u64 fields values)
+          :in-theory (enable fn-lbc-sparse-u64 assoc-equal)))))
+(local
+ (defthm fn-lbg-slot-values-of-clear
+ (fn-lbc-slot-values-guardp 0 (fn-lbc-clear-columns fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-slot-values-guardp fn-lbc-clear-columns fn-lbc-count) (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-at-end
+ (implies (<= (fn-lbc-count fn-lbc) i) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :expand (fn-lbc-slot-values-guardp i fn-lbc)
+          :in-theory (disable fn-lbc-slot-values-guardp fn-lbc-count fn-lbc-p)))))
+(local
+ (defthm fn-lbg-slot-values-extension-end
+ (implies (and (alistp cell) (true-listp (cdr (assoc-eq :msgid-slot cell))))
+  (fn-lbc-slot-values-guardp (fn-lbc-count fn-lbc)
+    (fn-lbc-escape-store-put (fn-lbc-count fn-lbc) cell
+      (update-nth *fn-lbc-row-store* (append (car fn-lbc) (list words)) fn-lbc))))
+ :hints (("Goal" :expand ((:free (x) (fn-lbc-slot-values-guardp (fn-lbc-count fn-lbc) x)))
+ :in-theory
+  (e/d (fn-lbc-slot-values-guardp fn-lbc-count fn-lbc-escape-store-get fn-lbc-escape-store-put)
+       (fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-extension-prefix
+ (implies (and (natp i) (<= i (fn-lbc-count fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc)
+               (alistp cell) (true-listp (cdr (assoc-eq :msgid-slot cell))))
+  (fn-lbc-slot-values-guardp i
+   (fn-lbc-escape-store-put (fn-lbc-count fn-lbc) cell
+     (update-nth *fn-lbc-row-store* (append (car fn-lbc) (list words)) fn-lbc))))
+ :hints (("Goal" :induct (fn-lbc-slot-values-guardp i fn-lbc)
+  :in-theory (e/d (fn-lbc-slot-values-guardp fn-lbc-count)
+                 (fn-lbc-escape-store-get fn-lbc-escape-store-put fn-lbc-p))))))
+(local
+ (defthm fn-lbg-slot-values-extension-flexible
+ (implies (and (equal n (fn-lbc-count fn-lbc)) (equal rows (car fn-lbc))
+               (natp start) (<= start n) (fn-lbc-slot-values-guardp start fn-lbc)
+               (alistp cell) (true-listp (cdr (assoc-eq :msgid-slot cell))))
+  (fn-lbc-slot-values-guardp start
+   (fn-lbc-escape-store-put n cell
+     (update-nth *fn-lbc-row-store* (append rows (list words)) fn-lbc))))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extension-prefix (i start)))
+  :in-theory (disable fn-lbg-slot-values-extension-prefix fn-lbc-slot-values-guardp
+                      fn-lbc-count fn-lbc-escape-store-put fn-lbc-escape-store-get fn-lbc-p)))))
+(local
+ (defthm fn-lbg-msgid-pool-append-slot-values-frame
+ (equal (fn-lbc-slot-values-guardp i (fn-lbc-msgid-pool-append bytes fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional (x (fn-lbc-msgid-pool-append bytes fn-lbc)) (y fn-lbc)))
+  :in-theory (e/d (fn-lbc-count) (fn-lbc-msgid-pool-append fn-lbc-slot-values-guardp fn-lbc-p fn-lbg-slot-values-extensional))))))
+(local
+ (defthm fn-lbg-overview-pool-append-slot-values-frame
+ (equal (fn-lbc-slot-values-guardp i (fn-lbc-overview-pool-append bytes fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional (x (fn-lbc-overview-pool-append bytes fn-lbc)) (y fn-lbc)))
+  :in-theory (e/d (fn-lbc-count) (fn-lbc-overview-pool-append fn-lbc-slot-values-guardp fn-lbc-p fn-lbg-slot-values-extensional))))))
+(local
+ (defthm fn-lbg-append-nov-texts-slot-values-frame
+ (equal (fn-lbc-slot-values-guardp i (fn-lbc-append-nov-texts fields fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional (x (fn-lbc-append-nov-texts fields fn-lbc)) (y fn-lbc)))
+  :in-theory (e/d (fn-lbc-count) (fn-lbc-append-nov-texts fn-lbc-slot-values-guardp fn-lbc-p fn-lbg-slot-values-extensional))))))
+(local
+ (defthm fn-lbg-append-memberships-slot-values-frame
+ (equal (fn-lbc-slot-values-guardp i (fn-lbc-append-memberships items numbersp fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional (x (fn-lbc-append-memberships items numbersp fn-lbc)) (y fn-lbc)))
+  :in-theory (e/d (fn-lbc-count) (fn-lbc-append-memberships fn-lbc-slot-values-guardp fn-lbc-p fn-lbg-slot-values-extensional))))))
+(local
+ (defthm fn-lbg-append-nov-slot-values-frame
+ (equal (fn-lbc-slot-values-guardp i (fn-lbc-append-nov nov fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional (x (fn-lbc-append-nov nov fn-lbc)) (y fn-lbc)))
+  :in-theory (e/d (fn-lbc-count) (fn-lbc-append-nov fn-lbc-slot-values-guardp fn-lbc-p fn-lbg-slot-values-extensional))))))
+(local
+ (defthm fn-lbg-number-put-row-slot-values-frame
+ (equal (fn-lbc-slot-values-guardp i (fn-lbc-number-put-row numbers seq fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional (x (fn-lbc-number-put-row numbers seq fn-lbc)) (y fn-lbc)))
+  :in-theory (e/d (fn-lbc-count) (fn-lbc-number-put-row fn-lbc-slot-values-guardp fn-lbc-p fn-lbg-slot-values-extensional))))))
+(local
+ (defthm fn-lbg-summary-put-slot-values-frame
+ (equal (fn-lbc-slot-values-guardp i (fn-lbc-summary-put group value next fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional (x (fn-lbc-summary-put group value next fn-lbc)) (y fn-lbc)))
+  :in-theory (e/d (fn-lbc-count) (fn-lbc-summary-put fn-lbc-slot-values-guardp fn-lbc-p fn-lbg-slot-values-extensional))))))
+(local
+ (defthm fn-lbg-rebuild-summaries-slot-values-frame
+ (equal (fn-lbc-slot-values-guardp i (fn-lbc-rebuild-summaries groups rows fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional (x (fn-lbc-rebuild-summaries groups rows fn-lbc)) (y fn-lbc)))
+  :in-theory (e/d (fn-lbc-count) (fn-lbc-rebuild-summaries fn-lbc-slot-values-guardp fn-lbc-p fn-lbg-slot-values-extensional))))))
+(local
+ (defthm fn-lbg-reserve-slots-slot-values-frame
+ (equal (fn-lbc-slot-values-guardp i (fn-lbc-reserve-slots n fn-lbc)) (fn-lbc-slot-values-guardp i fn-lbc))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional (x (fn-lbc-reserve-slots n fn-lbc)) (y fn-lbc)))
+  :in-theory (e/d (fn-lbc-count) (fn-lbc-reserve-slots fn-lbc-slot-values-guardp fn-lbc-p fn-lbg-slot-values-extensional))))))
+(local
+ (defthm fn-lbg-slot-absent-in-append
+ (implies (and (not (assoc-eq :msgid-slot a)) (not (assoc-eq :msgid-slot b)))
+  (equal (assoc-eq :msgid-slot (append a b)) nil))
+ :hints (("Goal" :induct (append a b) :in-theory (enable assoc-equal)))))
+(local
+ (defthm fn-lbg-row-escape-cell-slot-domain
+ (let ((cell (append (fn-lbc-sparse-u64 '(:handle :head-length :stamp :prefix-max :txid :generation :charge
+                 :msgid-offset :msgid-length :withdrawal-at :withdrawal-by
+                 :overview-offset :sequence :facts-octets :body-start :body-lines
+                 :nov-start :render-nov-start :groups-start :groups-count
+                 :numbers-start :numbers-count :raw-head-length) values)
+                     (if novp (list (cons :nov nov)) nil)
+                     (if numbersp nil (list (cons :numbers numbers))))))
+  (and (alistp cell) (not (assoc-eq :msgid-slot cell))))
+ :hints (("Goal" :in-theory (disable fn-lbc-sparse-u64)))))
+
+(local (defthm fn-lbg-escape-put-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-escape-store-put key cell fn-lbc))
+        (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-escape-store-put)
+  (fn-lbc-p fn-lbc-escape-store-get fn-lbc-slot-escape-keys fn-dmap-put))))))
+(local (defthm fn-lbg-append-row-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-append-row row log fn-lbc))
+        (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :in-theory
+  (union-theories
+   '(fn-lbc-append-row update-fn-lbc-row-store update-fn-lbc-directory-store
+     fn-lbc-row-store fn-lbc-directory-store
+     fn-dm-nth-update-nth fn-lbg-escape-put-slot-key-column-frame
+     fn-lbg-msgid-pool-append-slot-key-column-frame
+     fn-lbg-overview-pool-append-slot-key-column-frame
+     fn-lbg-append-nov-texts-slot-key-column-frame
+     fn-lbg-append-memberships-slot-key-column-frame
+     fn-lbg-append-nov-slot-key-column-frame
+     (:executable-counterpart equal) (:executable-counterpart not)
+     (:executable-counterpart car) (:executable-counterpart cdr)
+     (:executable-counterpart nfix) (:executable-counterpart consp)
+     (:executable-counterpart natp) (:executable-counterpart <)
+     car-cons cdr-cons)
+   (theory 'minimal-theory))))))
+(local (defthm fn-lbg-slot-values-put-other-field
+ (implies (and (natp field) (< 0 field) (not (equal field *fn-lbc-escape-store-get*)))
+  (equal (fn-lbc-slot-values-guardp i (fn-lbc-escape-store-put key cell (update-nth field value fn-lbc)))
+         (fn-lbc-slot-values-guardp i (fn-lbc-escape-store-put key cell fn-lbc))))
+ :hints (("Goal" :use ((:instance fn-lbg-slot-values-extensional
+  (x (fn-lbc-escape-store-put key cell (update-nth field value fn-lbc)))
+  (y (fn-lbc-escape-store-put key cell fn-lbc))))
+  :in-theory (e/d (fn-lbc-count fn-lbc-escape-store-put)
+                 (fn-lbc-p fn-lbc-slot-values-guardp fn-lbc-escape-store-get fn-lbg-slot-values-extensional))))))
+(local (defthm fn-lbg-slot-values-of-append-row
+ (implies (fn-lbc-slot-values-guardp 0 fn-lbc)
+  (fn-lbc-slot-values-guardp 0 (fn-lbc-append-row row log fn-lbc)))
+ :hints (("Goal" :in-theory
+  (union-theories
+   '(fn-lbc-append-row update-fn-lbc-row-store update-fn-lbc-directory-store
+     fn-lbc-row-store fn-lbc-directory-store fn-lbc-rowwords-append-is-append
+     fn-lbc-directory-append-is-append fn-lbg-escape-put-other-field
+     fn-lbg-slot-values-other-field fn-lbg-slot-values-put-other-field fn-lbg-slot-values-extension-flexible
+     fn-lbg-slot-absent-in-append fn-lbg-sparse-slot-absent
+     fn-lbg-row-escape-cell-slot-domain fn-lbg-alist-append fn-lbg-sparse-alist alistp
+     fn-lbg-row-nth-by-car fn-lbg-count-by-car
+     fn-lbg-msgid-pool-append-count-frame fn-lbg-msgid-pool-append-row-column
+     fn-lbg-msgid-pool-append-escape-frame fn-lbg-msgid-pool-append-slot-values-frame
+     fn-lbg-overview-pool-append-count-frame fn-lbg-overview-pool-append-row-column
+     fn-lbg-overview-pool-append-escape-frame fn-lbg-overview-pool-append-slot-values-frame
+     fn-lbg-append-nov-texts-count-frame fn-lbg-append-nov-texts-row-column
+     fn-lbg-append-nov-texts-escape-frame fn-lbg-append-nov-texts-slot-values-frame
+     fn-lbg-append-memberships-count-frame fn-lbg-append-memberships-row-column
+     fn-lbg-append-memberships-escape-frame fn-lbg-append-memberships-slot-values-frame
+     fn-lbg-append-nov-count-frame fn-lbg-append-nov-row-column
+     fn-lbg-append-nov-escape-frame fn-lbg-append-nov-slot-values-frame
+     (:executable-counterpart equal) (:executable-counterpart car) (:executable-counterpart cdr)
+     (:executable-counterpart <) (:executable-counterpart natp) (:executable-counterpart not)
+     (:executable-counterpart member-equal) (:executable-counterpart true-listp)
+     assoc-eq-exec-is-assoc-equal member-eq-exec-is-member-equal
+     (:definition return-last) (:definition assoc-eq-exec$guard-check) (:definition true-listp) (:definition assoc-equal)
+     (:type-prescription len) (:type-prescription fn-lbc-count) (:type-prescription alistp)
+     car-cons cdr-cons)
+   (theory 'minimal-theory))))))
+(local (defthm fn-lbg-slot-values-of-rebuild-rows
+ (implies (fn-lbc-slot-values-guardp 0 fn-lbc)
+  (fn-lbc-slot-values-guardp 0 (fn-lbc-rebuild-rows rows log fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-rebuild-rows rows log fn-lbc)
+ :in-theory (e/d (fn-lbc-rebuild-rows)
+  (fn-lbc-append-row fn-lbc-number-put-row fn-lbc-count fn-lbc-slot-values-guardp fn-lbc-p))))))
+(local (defthm fn-lbg-clear-slot-key-column
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-clear-columns fn-lbc)) nil)
+ :hints (("Goal" :in-theory
+  (union-theories
+   '(fn-lbc-clear-columns update-fn-lbc-summary-groups update-fn-lbc-slot-escape-keys
+     fn-dm-nth-update-nth (:executable-counterpart equal) (:executable-counterpart nfix))
+   (theory 'minimal-theory))))))
+(local (defthm fn-lbg-rebuild-rows-slot-key-column-frame
+ (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-rebuild-rows rows log fn-lbc))
+        (nth *fn-lbc-slot-escape-keys* fn-lbc))
+ :hints (("Goal" :induct (fn-lbc-rebuild-rows rows log fn-lbc)
+ :in-theory (e/d (fn-lbc-rebuild-rows)
+   (fn-lbc-append-row fn-lbc-number-put-row fn-lbc-count fn-lbc-p
+    fn-lbc-slot-escape-keys fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp))))))
+(local (defthm fn-lbg-owners-when-key-column-empty
+ (implies (equal (nth *fn-lbc-slot-escape-keys* fn-lbc) nil)
+  (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys fn-lbc) fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-slot-owners-guardp fn-lbc-slot-escape-keys)
+  (fn-lbc-escape-store-get fn-lbc-p))))))
+
+(local (defthm fn-lbg-car-update-nth-by-definition
+ (equal (car (update-nth n value x)) (if (zp n) value (car x)))
+ :hints (("Goal" :in-theory (enable update-nth)))))
+(local (defthm fn-lbg-car-of-escape-put
+ (equal (car (fn-lbc-escape-store-put key cell fn-lbc)) (car fn-lbc))
+ :hints (("Goal" :in-theory
+  (union-theories '(fn-lbc-escape-store-put fn-lbg-car-update-nth-by-definition
+    (:executable-counterpart zp) (:executable-counterpart nfix) car-cons cdr-cons)
+   (theory 'minimal-theory))))))
+(local (defthm fn-lbg-count-put-other-field
+ (implies (and (natp field) (< 0 field) (not (equal field *fn-lbc-escape-store-get*)))
+  (equal (fn-lbc-count (fn-lbc-escape-store-put key cell (update-nth field value fn-lbc)))
+         (fn-lbc-count (fn-lbc-escape-store-put key cell fn-lbc))))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-count) (fn-lbc-escape-store-put fn-lbc-p))))))
+(local (defthm fn-lbg-extension-count-flexible
+ (implies (and (equal n (fn-lbc-count fn-lbc)) (equal rows (car fn-lbc)))
+  (equal (fn-lbc-count (fn-lbc-escape-store-put n cell
+    (update-nth *fn-lbc-row-store* (append rows (list words)) fn-lbc)))
+   (+ 1 (fn-lbc-count fn-lbc))))
+ :hints (("Goal" :use fn-lbg-extension-count
+  :in-theory (disable fn-lbg-extension-count fn-lbc-count fn-lbc-escape-store-put fn-lbc-p)))))
+(local (defthm fn-lbg-len-append-singleton
+ (equal (len (append x (list value))) (+ 1 (len x)))
+ :hints (("Goal" :induct (append x (list value)) :in-theory (enable append len)))))
+(local (defthm fn-lbg-count-of-append-row
+ (equal (fn-lbc-count (fn-lbc-append-row row log fn-lbc)) (+ 1 (fn-lbc-count fn-lbc)))
+ :hints (("Goal" :do-not '(preprocess) :in-theory
+  (union-theories
+   '(fn-lbc-append-row update-fn-lbc-row-store update-fn-lbc-directory-store
+     fn-lbc-row-store fn-lbc-directory-store fn-lbc-rowwords-append-is-append
+     fn-lbc-directory-append-is-append fn-lbg-car-of-escape-put fn-lbg-car-update-nth-by-definition
+     fn-lbg-len-append-singleton (:executable-counterpart zp) fn-lbg-row-nth-by-car fn-lbg-count-by-car
+     fn-lbg-msgid-pool-append-row-column fn-lbg-msgid-pool-append-count-frame
+     fn-lbg-append-nov-row-column fn-lbg-append-nov-count-frame
+     fn-lbg-append-memberships-row-column fn-lbg-append-memberships-count-frame
+     (:executable-counterpart equal) (:executable-counterpart not)
+     (:executable-counterpart car) (:executable-counterpart cdr)
+     (:executable-counterpart natp) (:executable-counterpart <)
+     (:executable-counterpart nfix) car-cons cdr-cons
+     (:type-prescription len) (:type-prescription fn-lbc-count))
+   (theory 'minimal-theory))))))
+(local (defthm fn-lbg-number-put-row-count-frame
+ (equal (fn-lbc-count (fn-lbc-number-put-row numbers i fn-lbc)) (fn-lbc-count fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-count) (fn-lbc-number-put-row fn-lbc-p))))))
+(local (defthm fn-lbg-count-of-rebuild-rows
+ (equal (fn-lbc-count (fn-lbc-rebuild-rows rows log fn-lbc))
+        (+ (len rows) (fn-lbc-count fn-lbc)))
+ :hints (("Goal" :induct (fn-lbc-rebuild-rows rows log fn-lbc)
+  :in-theory (e/d (fn-lbc-rebuild-rows)
+    (fn-lbc-append-row fn-lbc-number-put-row fn-lbc-count fn-lbg-count-by-car fn-lbc-p))))))
+(local (defthm fn-lbg-count-of-clear
+ (equal (fn-lbc-count (fn-lbc-clear-columns fn-lbc)) 0)
+ :hints (("Goal" :in-theory (e/d (fn-lbc-count fn-lbc-clear-columns) (fn-lbc-p))))))
+(local (defthm fn-lbg-count-other-field
+ (implies (and (natp field) (< 0 field))
+  (equal (fn-lbc-count (update-nth field value fn-lbc)) (fn-lbc-count fn-lbc)))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-count) (fn-lbc-p))))))
+(local (defthm fn-lbg-rebuild-summaries-count-frame
+ (equal (fn-lbc-count (fn-lbc-rebuild-summaries groups rows fn-lbc)) (fn-lbc-count fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-count) (fn-lbc-rebuild-summaries fn-lbc-p))))))
+(local (defthm fn-lbg-reserve-slots-count-frame
+ (equal (fn-lbc-count (fn-lbc-reserve-slots n fn-lbc)) (fn-lbc-count fn-lbc))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-count) (fn-lbc-reserve-slots fn-lbc-p))))))
+(local (defthm fn-lbg-open-prefix-domains
+ (let* ((state (fn-lbc-clear-columns fn-lbc))
+        (state (fn-lbc-rebuild-rows rows log state))
+        (state (fn-lbc-rebuild-summaries groups rows state))
+        (state (update-fn-lbc-summary-groups groups state))
+        (state (fn-lbc-reserve-slots (+ 1 (* 2 (len rows))) state)))
+   (and (equal (fn-lbc-count state) (len rows))
+        (fn-lbc-slot-values-guardp 0 state)
+        (fn-lbc-slot-owners-guardp (fn-lbc-slot-escape-keys state) state)))
+ :hints (("Goal" :in-theory
+   (e/d (update-fn-lbc-summary-groups)
+        (fn-lbc-count fn-lbg-count-by-car fn-lbc-clear-columns fn-lbc-rebuild-rows fn-lbc-rebuild-summaries
+         fn-lbc-reserve-slots fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp
+         fn-lbc-slot-escape-keys fn-lbc-escape-store-get fn-lbc-p))))))
+
+(defthm fn-lbc-lc-guardp-of-open-rebuild
+ (implies (fn-lb-log-homes-guardp log)
+  (fn-lbc-lc-guardp log (fn-lbc-open-rebuild rows log fn-lbc)))
+ :hints (("Goal"
+  :use ((:instance fn-lbg-open-prefix-domains (groups (fn-lbc-row-group-keys rows))))
+  :in-theory (e/d (fn-lbc-open-rebuild fn-lbc-lc-guardp)
+    (fn-lbg-open-prefix-domains fn-lbc-row-group-keys fn-lbc-clear-columns fn-lbc-rebuild-rows
+     fn-lbc-rebuild-summaries fn-lbc-index-slots fn-lbc-reserve-slots
+     fn-lbc-count fn-lbc-escape-cellsp fn-lbc-slot-values-guardp
+     fn-lbc-slot-owners-guardp fn-lbc-slot-escape-keys fn-lbc-p
+     fn-lb-log-homes-guardp)))))
 
 (verify-guards
   fn-lbc-rebuild-rows
@@ -3299,8 +3967,11 @@
   fn-lbc-open-rebuild
   :hints
   (("Goal"
+     :use ((:instance fn-lbg-open-prefix-domains (groups (fn-lbc-row-group-keys rows))))
      :in-theory
      (disable
+       fn-lbg-open-prefix-domains fn-lbc-row-group-keys fn-lbg-count-by-car
+       fn-lbc-slot-values-guardp fn-lbc-slot-owners-guardp fn-lbc-slot-escape-keys
        fn-lbc-clear-columns
        fn-lbc-rebuild-rows
        fn-lbc-p
@@ -3409,3 +4080,27 @@
 
 (verify-guards fn-lc-locators-resolve
  :hints (("Goal" :in-theory (e/d (fn-lc-count) (fn-lc-resolve-from fn-lbc-lc-guardp fn-lc-segsp fn-lbc-p fn-lbc-count)))))
+
+; Resume 8: previously admitted canonical and relational helper guards.
+(verify-guards fn-lbc-canonical-slot-insert
+ :hints (("Goal" :in-theory (disable floor mod))))
+(local (defthm fn-lbg-canonical-insert-proper
+ (implies (true-listp table) (true-listp (fn-lbc-canonical-slot-insert ordinal slot fuel table)))
+ :hints (("Goal" :induct (fn-lbc-canonical-slot-insert ordinal slot fuel table)
+          :in-theory (e/d (fn-lbc-canonical-slot-insert) (floor mod))))))
+(verify-guards fn-lbc-canonical-slots-from
+ :hints (("Goal" :in-theory (disable floor mod))))
+(verify-guards fn-lbc-slot-cells-corr :guard-debug t)
+(verify-guards fn-lbc-number-keys-covered
+ :hints (("Goal" :in-theory (enable always$ apply$ apply$-prim ev$-list badge))))
+(verify-guards fn-lbc-number-rows-covered
+ :hints (("Goal" :in-theory (disable fn-cat$ap))))
+(local (defthm fn-lbg-make-list-ac-proper
+ (implies (true-listp acc) (true-listp (make-list-ac n value acc)))
+ :hints (("Goal" :induct (make-list-ac n value acc) :in-theory (enable make-list-ac))))
+)
+(verify-guards fn-lbc-canonical-slots
+ :hints (("Goal" :in-theory (disable floor mod fn-lbc-canonical-slots-from fn-lbc-canonical-slot-insert))))
+(verify-guards fn-lbc-slots-corr
+ :hints (("Goal" :in-theory (disable floor mod fn-lbc-canonical-slots-from fn-lbc-canonical-slot-insert fn-lbc-slot-cells-corr fn-lbc-slot-owners-guardp fn-lbc-slot-escape-keys fn-lbc-p))))
+

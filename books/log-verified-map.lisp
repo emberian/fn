@@ -3,6 +3,7 @@
 ; segment identifiers.  Recycle removes every bit of the victim identifier.
 (in-package "ACL2")
 (include-book "lb-log-model")
+(include-book "log-locator")
 
 (defstobj fn-lb-vmap
   (fn-lb-vmap-bits :type (hash-table equal))
