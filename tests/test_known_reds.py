@@ -208,6 +208,124 @@ class KnownRedsTests(TrainBase):
         path.write_text(json.dumps({'state': state, 'owner': owner}) + '\n')
         return path
 
+    def retired_admission(self):
+        self.assertEqual(self.add()[0], 0)
+        self.commit(self.work, 'fixture admission')
+        self.item_path.write_text('{"state": "landed"}\n')
+        self.assertEqual(self.invoke('retire', '--item', 'KR-X')[0], 0)
+        self.commit(self.work, 'fixture retirement')
+        sh(self.work, 'git', '-C', str(self.work), 'update-ref', 'refs/remotes/origin/dev', self.head())
+
+    def readmit(self, **changes):
+        fields = dict(item='KR-TARGET', owner='builder-M', dev_sha=self.head()[:9],
+                      evidence='recurrence log', ruling='recurrence ruling')
+        fields.update(changes)
+        args = self.add_args(**fields)
+        args[0] = 'readmit'
+        return self.invoke(*args)
+
+    def test_admit_retire_readmit_live_and_retire_again(self):
+        self.retired_admission()
+        self.target_item(owner='builder-M')
+        before = self.snapshot()
+        previous = train.parse_amendments(before[1].decode())
+        measured = self.head()[:9]
+        rc, out, err = self.readmit()
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(out, f'readmit: native {self.SUBJECT}\n')
+        rows = train.parse_known_reds(self.rows_path.read_text())
+        records = train.parse_amendments(self.amendments_path.read_text())
+        self.assertEqual(rows, [dict(kind='native', subject=self.SUBJECT, item='KR-TARGET',
+                                    owner='builder-M', evidence='recurrence log')])
+        self.assertEqual(records, [*previous, dict(kind='native', subject=self.SUBJECT,
+                         item='KR-TARGET', owner='builder-M', dev_sha=measured,
+                         evidence='recurrence log', ruling='recurrence ruling', readmit_from='KR-X')])
+        self.assertNotEqual(records[-1]['dev_sha'], records[0]['dev_sha'])
+        self.assertEqual(self.invoke('check')[0], 0)
+        self.commit(self.work, 'fixture re-admission')
+        self.assertEqual(train.known_reds_at(train.Train(self.work), 'HEAD'), rows)
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc, result = train._baseline_gate(train.Train(self.work))
+        self.assertEqual(rc, 0, result)
+        self.assertEqual(result['admitted'], [['native', self.SUBJECT]])
+        sh(self.work, 'git', '-C', str(self.work), 'update-ref', 'refs/remotes/origin/dev', self.head())
+        self.target_item(state='landed', owner='builder-M')
+        before = self.amendments_path.read_bytes()
+        self.assertEqual(self.invoke('retire', '--item', 'KR-TARGET')[0], 0)
+        self.assertEqual(self.amendments_path.read_bytes(), before)
+        self.assertEqual(self.invoke('check')[0], 0)
+        self.commit(self.work, 'fixture second retirement')
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc, result = train._baseline_gate(train.Train(self.work))
+        self.assertEqual(rc, 0, result)
+        self.assertEqual(result['rows'], 0)
+        self.assertEqual(result['gone'], [['native', self.SUBJECT]])
+
+    def test_readmit_refuses_live_row_or_no_chain_without_writes(self):
+        self.target_item(owner='builder-M')
+        before = self.snapshot()
+        self.assertIn('earlier amendment', self.readmit()[2])
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(self.add()[0], 0)
+        before = self.snapshot()
+        rc, _, err = self.readmit()
+        self.assertEqual(rc, 1, err)
+        self.assertIn('already exists', err)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_readmit_refusals_leave_register_bytes_unchanged(self):
+        self.retired_admission()
+        for state, owner, item, message in [
+                *[(state, 'builder-M', 'KR-TARGET', 'closed')
+                  for state in sorted(train.CLOSED_ITEM_STATES)],
+                ('unknown', 'builder-M', 'KR-TARGET', 'not open'),
+                ('open', 'builder-B', 'KR-TARGET', 'owner'),
+                ('open', 'builder-M', 'MISSING', 'repair item'),
+                ('open', 'builder-M', 'KR-X', 'retiring item')]:
+            with self.subTest(state=state, owner=owner, item=item):
+                self.target_item(state=state, owner=owner)
+                before = self.snapshot()
+                rc, out, err = self.readmit(item=item)
+                self.assertEqual(rc, 1, err)
+                self.assertEqual(out, '')
+                self.assertIn(message, err)
+                self.assertEqual(self.snapshot(), before)
+        self.assertIn('use readmit', self.refuse_add(item='KR-TARGET'))
+        self.item_path.write_text('{"state": "open"}')
+        before = self.snapshot()
+        self.assertEqual(self.readmit()[0], 1)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_readmit_refile_and_check_whole_chain(self):
+        self.retired_admission()
+        target = self.target_item(owner='builder-M')
+        self.assertEqual(self.readmit()[0], 0)
+        target.write_text('{"state": "open", "owner": "builder-B"}')
+        self.assertEqual(self.invoke('check')[0], 1)
+        self.target_item(owner='builder-M')
+        self.assertEqual(self.invoke('transfer', '--subject', self.SUBJECT,
+                         '--owner', 'builder-B', '--ruling', 'owner changed')[0], 1)
+        next_item = self.item_path.with_name('KR-NEXT.json')
+        next_item.write_text('{"state": "open", "owner": "builder-M"}')
+        self.assertEqual(self.refile(item='KR-NEXT')[0], 0)
+        records = train.parse_amendments(self.amendments_path.read_text())
+        self.assertNotIn('readmit_from', records[-1])
+        self.assertEqual(self.invoke('check')[0], 0)
+        next_item.write_text('{"state": "closed", "owner": "builder-M"}')
+        self.assertEqual(self.invoke('retire', '--item', 'KR-NEXT')[0], 0)
+        self.assertEqual(self.invoke('check')[0], 0)
+        self.target_item(owner='builder-M')
+        self.assertEqual(self.readmit()[0], 0)
+        self.assertEqual(self.invoke('check')[0], 0)
+        # The earliest readmit's retirement link must still be checked, even
+        # after another recurrence supersedes it as the latest record.
+        self.item_path.write_text('{"state": "open"}')
+        before = self.snapshot()
+        rc, _, err = self.invoke('check')
+        self.assertEqual(rc, 1)
+        self.assertIn('source repair item', err)
+        self.assertEqual(self.snapshot(), before)
+
     def refile(self, subject=None, item='KR-TARGET'):
         return self.invoke('refile', '--subject', subject or self.SUBJECT,
                            '--item', item, '--ruling', 're-file ruling')

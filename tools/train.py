@@ -77,6 +77,8 @@ present row (unless the row was retired and its item is closed), so amendments
 cannot be stockpiled.  `push` and `status` print the amendment count beside
 the row count; later records may transfer ownership within an item or re-file
 to the same owner's open retirement item while preserving the measured dev SHA.
+An explicit re-admission after retirement names the closed previous item in
+readmit_from and supplies a new measurement and evidence under a new open item.
 
 The image gate.  A train whose diff touches the heap probe, a launcher or
 host/native/ (IMAGE_RULES) must run the rule's native modules
@@ -345,6 +347,8 @@ KNOWN_RED_KINDS = ("certify", "native", "check", "extraction")
 KNOWN_RED_FIELDS = ("kind", "subject", "item", "owner", "evidence")
 # Amendments admit a row added after the baseline entered (COORDINATION section 5).
 # Each record names its row by the same (kind, subject) key.
+# Re-admission adds readmit_from (the previous, retired item) and evidence;
+# its dev_sha measures the recurrence rather than retaining the old measurement.
 KNOWN_RED_AMENDMENTS = "planning/known-reds-amendments.json"
 AMENDMENT_FIELDS = ("kind", "subject", "dev_sha", "item", "owner", "ruling")
 
@@ -482,7 +486,16 @@ def parse_amendments(text: str) -> list[dict]:
                              f"{', '.join(AMENDMENT_FIELDS)}: {str(rec)[:120]}")
         key = (rec["kind"], rec["subject"])
         prev = last.get(key)
-        if prev is not None:
+        if "readmit_from" in rec:
+            if (prev is None or rec["readmit_from"] != prev["item"]
+                    or rec["item"] == prev["item"]
+                    or "transfer_from" in rec or "item_from" in rec
+                    or not isinstance(rec.get("evidence"), str) or not rec["evidence"]
+                    or not re.fullmatch(r"[0-9a-fA-F]{4,40}", rec["dev_sha"])):
+                raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]}: re-admission must "
+                                 "name the previous item in readmit_from, a new item, "
+                                 "a measured dev_sha and evidence, with no transfer or re-file")
+        elif prev is not None:
             # Later records either transfer ownership with the same item
             # (coordinator 2026-10-09), or re-file to a different item with
             # the same owner and item_from naming the previous item (2026-10-13).
@@ -502,6 +515,39 @@ def parse_amendments(text: str) -> list[dict]:
                              "earlier record")
         last[key] = rec
     return records
+
+
+def readmission_errors(records: list[dict], rows: list[dict], item_data) -> list[str]:
+    """Check every retirement link, and ownership of each live re-admission.
+
+    Retirement is represented by row removal and a closed item, not a separate
+    amendment. Transfers/re-files after re-admission retain this obligation;
+    after a later retirement, the usual closed-item history rule applies.
+    """
+    errors, episodes, latest = [], set(), {}
+    for record in records:
+        key = (record["kind"], record["subject"])
+        latest[key] = record
+        if "readmit_from" in record:
+            episodes.add(key)
+            source = item_data(record["readmit_from"])
+            if source is None or source.get("state") not in CLOSED_ITEM_STATES:
+                errors.append(f"{key[0]} {key[1]}: re-admission source repair item is missing or "
+                              f"not retired (closed): {record['readmit_from']}")
+    live = {(row["kind"], row["subject"]) for row in rows}
+    for key in sorted(episodes & live):
+        record = latest[key]
+        target = item_data(record["item"])
+        if target is None:
+            reason = "missing"
+        elif target.get("state") != "open":
+            reason = "not open"
+        elif target.get("owner") != record["owner"]:
+            reason = "owner differs from record"
+        else:
+            continue
+        errors.append(f"{key[0]} {key[1]}: re-admission target repair item {reason}: {record['item']}")
+    return errors
 
 
 def refile_item_error(record: dict, item: dict | None) -> str | None:
@@ -1258,6 +1304,7 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
             error = refile_item_error(a, item_data(a["item"]))
             if error:
                 invalid_refiles.append(f"{k[0]} {k[1]}: {error}")
+    invalid_readmissions = readmission_errors(head_amend, head_rows, item_data)
     for k in added:
         say(f"  known red ADDED by this train (rows shrink only): {k[0]} {k[1]}")
     for k in admitted:
@@ -1270,6 +1317,8 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
         say(f"  amendment disagrees with its row on item or owner: {k}")
     for error in invalid_refiles:
         say(f"  {error}")
+    for error in invalid_readmissions:
+        say(f"  {error}")
     for k in unowned:
         say(f"  known red with no repair item: {k}")
     for k in closed:
@@ -1278,12 +1327,14 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
     say(f"baseline: {len(head_rows)} row(s), {n_amended} amended; added {len(added)}; "
         f"added by amendment {len(admitted)}; gone {len(gone)}"
         + ("; first baseline (none on origin/dev)" if dev_rows is None else ""))
-    rc = 1 if (added or unowned or closed or rewritten or dangling or mismatched or invalid_refiles) else 0
+    rc = 1 if (added or unowned or closed or rewritten or dangling or mismatched
+               or invalid_refiles or invalid_readmissions) else 0
     return rc, {"rows": len(head_rows), "amended": n_amended, "added": [list(k) for k in added],
                 "admitted": [list(k) for k in admitted], "gone": [list(k) for k in gone],
                 "amendments_rewritten": rewritten, "dangling_amendments": dangling,
                 "mismatched_amendments": mismatched,
                 "invalid_refiles": invalid_refiles,
+                "invalid_readmissions": invalid_readmissions,
                 "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
 
 
