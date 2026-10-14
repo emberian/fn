@@ -11,8 +11,7 @@ import unittest
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
-from tests.native_harness import free_port
-from tests.test_native_protected_peering import NativeProtectedPeeringTests, IMAGE
+from tests.test_native_protected_peering import NativeProtectedPeeringTests, IMAGE, free_port
 from tools.wire_stream import whole_stream
 
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
