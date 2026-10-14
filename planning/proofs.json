@@ -23798,7 +23798,7 @@
       "evidence_digest": "8c351d92a415f866",
       "keystone_subjects": {
         "fn-adm-exposure-open-admits-below-held-reader-bound": "fn-adm-exposure-open",
-        "fn-adm-held-admissions-compose-with-installed-capacity": "fn-adm-exposure-open",
+        "fn-adm-held-admissions-compose-with-installed-capacity": "fn-adm-operator-open",
         "fn-adm-peer-open-admits-below-held-reader-bound": "fn-adm-peer-open",
         "fn-adm-reader-open-admits-below-held-reader-bound": "fn-adm-reader-open",
         "fn-adm-transport-rearm-admits-below-held-reader-bound": "fn-adm-transport-rearm"
@@ -23882,6 +23882,158 @@
       "events": [
         "fn-mo-serve-launch-conserves-the-resident-partition",
         "fn-mo-serve-bp-launch-admits-its-startup"
+      ]
+    },
+    {
+      "id": "PRF-100001",
+      "title": "Priced connection configuration retains the installed bank floor",
+      "statement": "fn-adm-priced-cfg-keeps-the-installed-bank (defkeystone m26-priced-cfg-keeps-the-installed-bank, tests/acl2/owner-memory-run-tests.lisp); subject fn-adm-priced-cfg.",
+      "milestone": "M26",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-run-tests.lisp"
+      ],
+      "evidence_digest": "d04e7abbd3540383",
+      "keystone_subjects": {
+        "fn-adm-priced-cfg-keeps-the-installed-bank": "fn-adm-priced-cfg"
+      },
+      "events": [
+        "fn-adm-priced-cfg-keeps-the-installed-bank"
+      ]
+    },
+    {
+      "id": "PRF-100000",
+      "title": "Installing the bank preserves its funded public readers",
+      "statement": "fn-adm-lease-startup-keeps-its-bank-readers (defkeystone m26-lease-startup-keeps-its-bank-readers, tests/acl2/owner-memory-run-tests.lisp); subject fn-adm-lease-startup-cfg.",
+      "milestone": "M26",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-run-tests.lisp"
+      ],
+      "evidence_digest": "3e50a4357cccff56",
+      "keystone_subjects": {
+        "fn-adm-lease-startup-keeps-its-bank-readers": "fn-adm-lease-startup-cfg"
+      },
+      "events": [
+        "fn-adm-lease-startup-keeps-its-bank-readers"
+      ]
+    },
+    {
+      "id": "PRF-100002",
+      "title": "capacity is nil exactly when no slot fits",
+      "statement": "fn-adm-capacity-is-nil-exactly-when-no-slot-fits (defkeystone m28-capacity-is-nil-exactly-when-no-slot-fits, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-capacity.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "f22486105c54bbc6",
+      "keystone_subjects": {
+        "fn-adm-capacity-is-nil-exactly-when-no-slot-fits": "fn-adm-capacity"
+      },
+      "events": [
+        "fn-adm-capacity-is-nil-exactly-when-no-slot-fits"
+      ]
+    },
+    {
+      "id": "PRF-100003",
+      "title": "operator open admits exactly a free funded slot",
+      "statement": "fn-adm-operator-open-admits-exactly-a-free-funded-slot (defkeystone m28-operator-open-admits-exactly-a-free-funded-slot, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-operator-open.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "dba0d450c227573e",
+      "keystone_subjects": {
+        "fn-adm-operator-open-admits-exactly-a-free-funded-slot": "fn-adm-operator-open"
+      },
+      "events": [
+        "fn-adm-operator-open-admits-exactly-a-free-funded-slot"
+      ]
+    },
+    {
+      "id": "PRF-100004",
+      "title": "operator refusal is named",
+      "statement": "fn-adm-operator-refusal-is-named (defkeystone m28-operator-refusal-is-named, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-operator-open.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "231bb5a45717695c",
+      "keystone_subjects": {
+        "fn-adm-operator-refusal-is-named": "fn-adm-operator-open"
+      },
+      "events": [
+        "fn-adm-operator-refusal-is-named"
+      ]
+    },
+    {
+      "id": "PRF-100005",
+      "title": "operator open below saturation is the reader open",
+      "statement": "fn-adm-operator-open-below-saturation-is-the-reader-open (defkeystone m28-operator-open-below-saturation-is-the-reader-open, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-operator-open.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "eb986f0fb25060dc",
+      "keystone_subjects": {
+        "fn-adm-operator-open-below-saturation-is-the-reader-open": "fn-adm-operator-open"
+      },
+      "events": [
+        "fn-adm-operator-open-below-saturation-is-the-reader-open"
+      ]
+    },
+    {
+      "id": "PRF-100006",
+      "title": "run gate keeps the operator slot funded",
+      "statement": "fn-adm-run-gate-keeps-the-operator-slot-funded (defkeystone m28-run-gate-keeps-the-operator-slot-funded, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-run-gate-held.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "d088ab9253ec398e",
+      "keystone_subjects": {
+        "fn-adm-run-gate-keeps-the-operator-slot-funded": "fn-adm-run-gate-held"
+      },
+      "events": [
+        "fn-adm-run-gate-keeps-the-operator-slot-funded"
+      ]
+    },
+    {
+      "id": "PRF-100007",
+      "title": "run admitted record keeps the operator slot funded",
+      "statement": "fn-adm-run-admitted-record-keeps-the-operator-slot-funded (defkeystone m28-run-admitted-record-keeps-the-operator-slot-funded, tests/acl2/owner-memory-holding-tests.lisp); subject fn-mm-gate-p.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "f4ccd3fdb2eb0f7c",
+      "keystone_subjects": {
+        "fn-adm-run-admitted-record-keeps-the-operator-slot-funded": "fn-mm-gate-p"
+      },
+      "events": [
+        "fn-adm-run-admitted-record-keeps-the-operator-slot-funded"
       ]
     }
   ]

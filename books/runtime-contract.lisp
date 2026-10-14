@@ -175,6 +175,18 @@
 
 ; Extra action arguments: at most two naturals below 2^64 (a file reference
 ; and a position, or a timer delay).
+(defun fn-rtc-u64p (x)
+  (declare (xargs :guard t))
+  (and (natp x) (< x (expt 2 64))))
+
+(defthm fn-rtc-u64p-implies-natp
+  (implies (fn-rtc-u64p x) (natp x))
+  :rule-classes :rewrite)
+
+(defthm fn-rtc-u64p-upper-bound
+  (implies (fn-rtc-u64p x) (< x (expt 2 64)))
+  :rule-classes :rewrite)
+
 (defun fn-rtc-extrap (x)
   (declare (xargs :guard t))
   (and (true-listp x) (<= (len x) 2)
@@ -339,10 +351,12 @@
 ; -----------------------------------------------------------------------------
 ; Slots, buffers, uses
 
+
+
 (defun fn-rtc-slotp (x)
   (declare (xargs :guard t))
   (and (true-listp x) (equal (len x) 3)
-       (natp (fn-rtc-get 0 x))
+       (fn-rtc-u64p (fn-rtc-get 0 x))
        (member-eq (fn-rtc-get 1 x) '(:free :live :closing :draining))
        (or (null (fn-rtc-get 2 x))
            (and (natp (fn-rtc-get 2 x)) (< (fn-rtc-get 2 x) (expt 2 64))))))
@@ -359,15 +373,15 @@
        (case (fn-rtc-get 0 o)
          (:free (equal (len o) 1))
          (:workspace
-          (and (equal (len o) 3) (natp (fn-rtc-get 1 o)) (natp (fn-rtc-get 2 o))))
+          (and (equal (len o) 3) (natp (fn-rtc-get 1 o)) (fn-rtc-u64p (fn-rtc-get 2 o))))
          (:leased
-          (and (equal (len o) 4) (natp (fn-rtc-get 1 o)) (natp (fn-rtc-get 2 o))
+          (and (equal (len o) 4) (natp (fn-rtc-get 1 o)) (fn-rtc-u64p (fn-rtc-get 2 o))
                (member-eq (fn-rtc-get 3 o) '(:in :out))))
          ;; (:handed id inc to tinc): in flight from instance (id inc) to
          ;; instance (to tinc), held by the one :hand use
          (:handed
-          (and (equal (len o) 5) (natp (fn-rtc-get 1 o)) (natp (fn-rtc-get 2 o))
-               (natp (fn-rtc-get 3 o)) (natp (fn-rtc-get 4 o))))
+          (and (equal (len o) 5) (natp (fn-rtc-get 1 o)) (fn-rtc-u64p (fn-rtc-get 2 o))
+               (natp (fn-rtc-get 3 o)) (fn-rtc-u64p (fn-rtc-get 4 o))))
          (otherwise nil))))
 
 (defun fn-rtc-bufferp (b cap)
@@ -387,7 +401,7 @@
   (and (true-listp u) (equal (len u) 5)
        ;; :wait, a pool request not yet granted, is a use no completion names
        (member-eq (fn-rtc-get 0 u) (cons :wait *fn-rtc-kinds*))
-       (natp (fn-rtc-get 1 u)) (natp (fn-rtc-get 2 u)) (natp (fn-rtc-get 3 u))
+       (natp (fn-rtc-get 1 u)) (fn-rtc-u64p (fn-rtc-get 2 u)) (natp (fn-rtc-get 3 u))
        (if (or (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
                (member-eq (fn-rtc-get 0 u) *fn-rtc-out-kinds*)
                (member-eq (fn-rtc-get 0 u) *fn-rtc-hand-kinds*)
@@ -758,10 +772,25 @@
     t))
 
 ; Some slot other than the listener is free.
+(defun fn-rtc-inc-roomp (slot)
+  (declare (xargs :guard t))
+  (< (+ 1 (fn-rtc-s-inc slot)) (expt 2 64)))
+
+(defun fn-rtc-slots-exhaustedp (i nstatic slots)
+  (declare (xargs :guard (and (natp i) (natp nstatic)) :measure (len slots)))
+  (if (consp slots)
+      (and (or (zp i) (<= i (nfix nstatic)) (not (fn-rtc-inc-roomp (car slots))))
+           (fn-rtc-slots-exhaustedp (+ 1 i) nstatic (cdr slots)))
+    t))
+
+(defun fn-rtc-slot-selectablep (slot)
+  (declare (xargs :guard t))
+  (and (eq (fn-rtc-s-status slot) :free) (fn-rtc-inc-roomp slot)))
+
 (defun fn-rtc-free-slot (i slots)
   (declare (xargs :guard (natp i) :measure (len slots)))
   (if (consp slots)
-      (if (and (not (zp i)) (eq (fn-rtc-s-status (car slots)) :free))
+      (if (and (not (zp i)) (fn-rtc-slot-selectablep (car slots)))
           i
         (fn-rtc-free-slot (+ 1 i) (cdr slots)))
     nil))
@@ -1434,7 +1463,7 @@
   (declare (xargs :guard t))
   (let ((j (fn-rtc-free-slot 0 (fn-rtc-slots s1)))
         (r (fn-rtc-get 1 out)))
-    (if (and (eq (fn-rtc-get 0 out) :done) j (natp r) (< r (expt 2 64)))
+    (if (and (eq (fn-rtc-get 0 out) :done) j (fn-rtc-inc-roomp (fn-rtc-slot j s1)) (natp r) (< r (expt 2 64)))
         (let* ((jinc (+ 1 (fn-rtc-s-inc (fn-rtc-slot j s1))))
                (s2 (fn-rtc-with-mstate
                     j (fn-rtc-m-init)
@@ -2467,3 +2496,196 @@
 ; and A-HOST-COMPLETES, every draining slot is eventually retired: the pin a
 ; stuck action holds is bounded by the instance's deadline plus the host's
 ; completion of the cancel.
+
+; RTC-U64: bounded identity and reusable-slot selection.
+
+(defthm fn-rtc-free-slot-index-type
+  (implies (fn-rtc-free-slot i slots)
+           (and (posp (fn-rtc-free-slot i slots))
+                (integerp (fix i))
+                (<= (fix i) (fn-rtc-free-slot i slots))))
+  :hints (("Goal" :induct (fn-rtc-free-slot i slots)
+           :in-theory (enable fn-rtc-free-slot fix posp))))
+
+(defthm fn-rtc-get-zero
+  (equal (fn-rtc-get 0 slots) (car slots))
+  :hints (("Goal" :in-theory (enable fn-rtc-get))))
+
+(defthm fn-rtc-get-positive-index
+  (implies (and (consp slots) (integerp k) (< 0 k))
+           (equal (fn-rtc-get k slots)
+                  (fn-rtc-get (- k 1) (cdr slots))))
+  :hints (("Goal" :in-theory (enable fn-rtc-get))))
+
+(defthm fn-rtc-free-slot-recursive-offset-positive
+  (implies (fn-rtc-free-slot (+ 1 i) (cdr slots))
+           (and (integerp (- (fn-rtc-free-slot (+ 1 i) (cdr slots)) i))
+                (< 0 (- (fn-rtc-free-slot (+ 1 i) (cdr slots)) i))))
+  :hints (("Goal" :in-theory (enable fix)
+           :use ((:instance fn-rtc-free-slot-index-type
+                            (i (+ 1 i)) (slots (cdr slots)))))))
+
+(defthm fn-rtc-free-slot-has-incarnation-room
+  (implies (fn-rtc-free-slot i slots)
+           (fn-rtc-inc-roomp
+             (fn-rtc-get (- (fn-rtc-free-slot i slots) i) slots)))
+  :hints (("Goal" :induct (fn-rtc-free-slot i slots)
+           :in-theory (e/d ((:induction fn-rtc-free-slot))
+                           ((:definition fn-rtc-free-slot) fn-rtc-get fn-rtc-inc-roomp fn-rtc-s-inc))
+           :expand ((fn-rtc-free-slot i slots))
+           :do-not '(generalize))
+          ("Subgoal *1/2"
+           :use (fn-rtc-free-slot-recursive-offset-positive
+                 (:instance fn-rtc-get-positive-index
+                            (k (- (fn-rtc-free-slot (+ 1 i) (cdr slots)) i)))))))
+
+(local (defun fn-rtc-slot-bound-ind (i j slots)
+  (declare (xargs :measure (len slots)))
+  (if (and (consp slots) (not (zp (nfix j))))
+      (fn-rtc-slot-bound-ind (+ 1 i) (- (nfix j) 1) (cdr slots))
+    (list i j slots))))
+
+(defthm fn-rtc-slots-okp-incarnation-u64
+  (implies (fn-rtc-slots-okp i slots)
+           (fn-rtc-u64p (fn-rtc-s-inc (fn-rtc-get j slots))))
+  :hints (("Goal" :induct (fn-rtc-slot-bound-ind i j slots)
+           :in-theory (enable fn-rtc-slots-okp fn-rtc-get fn-rtc-slotp
+                              fn-rtc-s-inc fn-rtc-u64p))))
+
+(defthm fn-rtc-invp-slot-incarnation-is-u64
+  (implies (fn-rtc-invp s)
+           (fn-rtc-u64p (fn-rtc-s-inc (fn-rtc-slot j s))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-invp fn-rtc-slot)
+                                 (fn-rtc-slots-okp fn-rtc-slotp fn-rtc-u64p fn-rtc-s-inc)))))
+
+; Structural admission facts for RTC-U64.
+(defthm fn-rtc-kind-out-of-cons
+  (equal (fn-rtc-kind-out-p kind id inc (cons u uses))
+         (or (and (equal (fn-rtc-get 0 u) kind)
+                  (equal (fn-rtc-get 1 u) id)
+                  (equal (fn-rtc-get 2 u) inc))
+             (fn-rtc-kind-out-p kind id inc uses)))
+  :hints (("Goal" :expand ((fn-rtc-kind-out-p kind id inc (cons u uses)))
+           :in-theory (union-theories (theory 'minimal-theory) '(car-cons cdr-cons)))))
+(defthm fn-rtc-completion-id-natural
+  (implies (fn-rtc-completionp e) (natp (fn-rtc-e-id e)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-rtc-completionp fn-rtc-e-id))))
+(defthm fn-rtc-free-slot-selects-selectable-record
+  (implies (fn-rtc-free-slot i slots)
+           (fn-rtc-slot-selectablep
+             (fn-rtc-get (- (fn-rtc-free-slot i slots) i) slots)))
+  :hints (("Goal" :induct (fn-rtc-free-slot i slots)
+           :in-theory (e/d ((:induction fn-rtc-free-slot))
+                           ((:definition fn-rtc-free-slot) fn-rtc-get fn-rtc-slot-selectablep fn-rtc-inc-roomp fn-rtc-s-inc))
+           :expand ((fn-rtc-free-slot i slots))
+           :do-not '(generalize))
+          ("Subgoal *1/2"
+           :use (fn-rtc-free-slot-recursive-offset-positive
+                 (:instance fn-rtc-get-positive-index
+                            (k (- (fn-rtc-free-slot (+ 1 i) (cdr slots)) i)))))))
+
+(defthm fn-rtc-selectable-write-preserves-free-slot
+  (implies (and (natp i) (natp k) (fn-rtc-free-slot i slots)
+                (or (fn-rtc-slot-selectablep slot)
+                    (not (fn-rtc-slot-selectablep (fn-rtc-get k slots)))))
+           (fn-rtc-free-slot i (fn-rtc-set k slot slots)))
+  :hints (("Goal" :induct (fn-rtc-slot-bound-ind i k slots)
+           :do-not '(generalize)
+           :expand ((fn-rtc-set k slot slots)
+                    (fn-rtc-free-slot i (fn-rtc-set k slot slots)))
+           :in-theory (e/d (fn-rtc-free-slot fn-rtc-set fn-rtc-get)
+             (fn-rtc-s-status fn-rtc-slot-selectablep fn-rtc-inc-roomp fn-rtc-s-inc)))))
+(defthm fn-rtc-retire-preserves-reusable-slot
+  (implies (and (natp id) (fn-rtc-free-slot 0 (fn-rtc-slots s)))
+           (fn-rtc-free-slot 0 (fn-rtc-slots (fn-rtc-retire-drained id s))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-retire-drained fn-rtc-slot-selectablep fn-rtc-slot)
+                (fn-rtc-free-slot fn-rtc-s-inc fn-rtc-s-status fn-rtc-inc-roomp fn-rtc-uses-of-slot-p fn-rtc-get))
+           :use ((:instance fn-rtc-selectable-write-preserves-free-slot
+                  (i 0) (k id) (slots (fn-rtc-slots s))
+                  (slot (list (fn-rtc-s-inc (fn-rtc-slot id s)) :free nil)))))))
+(defthm fn-rtc-end-lease-keeps-slot-table
+  (equal (fn-rtc-slots (fn-rtc-end-lease u e s)) (fn-rtc-slots s))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-end-lease)
+    (fn-rtc-lease-return fn-rtc-holds-p fn-rtc-handlep fn-rtc-u-hd fn-rtc-h-buf)))))
+(defthm fn-rtc-end-use-preserves-reusable-slot
+  (implies (fn-rtc-free-slot 0 (fn-rtc-slots s))
+           (fn-rtc-free-slot 0 (fn-rtc-slots (fn-rtc-end-use s e))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-end-use)
+                (fn-rtc-retire-drained fn-rtc-completionp fn-rtc-free-slot fn-rtc-find-use fn-rtc-key
+                 fn-rtc-uses-of-slot-p fn-rtc-end-lease fn-rtc-e-id fn-rtc-s-inc fn-rtc-s-status)))))
+(defthm fn-rtc-rearm-accept-value
+  (equal (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm s))))
+         (if (fn-rtc-free-slot 0 (fn-rtc-slots s)) t (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant)
+           (fn-rtc-kind-out-p fn-rtc-free-slot fn-rtc-oldest-wait fn-rtc-free-pool-buf fn-rtc-get fn-rtc-next-op)))))
+(defthm fn-rtc-rearm-accept-iff-when-safe
+  (implies (implies (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s))
+                    (fn-rtc-free-slot 0 (fn-rtc-slots s)))
+           (iff (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm s))))
+                (fn-rtc-free-slot 0 (fn-rtc-slots (mv-nth 0 (fn-rtc-rearm s))))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+           '(fn-rtc-rearm-accept-value fn-rtc-rearm-frame)))))
+(defthm fn-rtc-remove-use-does-not-create-kind
+  (implies (not (fn-rtc-kind-out-p kind id inc uses))
+           (not (fn-rtc-kind-out-p kind id inc (fn-rtc-remove-use key uses))))
+  :hints (("Goal" :induct (fn-rtc-remove-use key uses)
+           :in-theory (e/d (fn-rtc-remove-use fn-rtc-kind-out-p) (fn-rtc-key fn-rtc-get)))))
+(defthm fn-rtc-end-use-does-not-arm-accept
+  (implies (not (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))
+           (not (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (fn-rtc-end-use s e)))))
+  :hints (("Goal" :in-theory
+           (disable fn-rtc-kind-out-p fn-rtc-find-use fn-rtc-key fn-rtc-completionp fn-rtc-remove-use))))
+(defthm fn-rtc-end-use-accept-safe
+  (implies (fn-rtc-invp s)
+           (implies (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (fn-rtc-end-use s e)))
+                    (fn-rtc-free-slot 0 (fn-rtc-slots (fn-rtc-end-use s e)))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use (fn-rtc-invp-admission fn-rtc-end-use-does-not-arm-accept
+                 fn-rtc-end-use-preserves-reusable-slot))))
+
+(defthm fn-rtc-machine-kind-not-accept
+  (implies (member-equal kind *fn-rtc-machine-kinds*) (not (equal kind :accept))))
+(defthm fn-rtc-buffer-request-use-tables
+  (and (equal (fn-rtc-uses (mv-nth 0 (fn-rtc-req-acquire r id inc s))) (fn-rtc-uses s))
+       (equal (fn-rtc-uses (mv-nth 0 (fn-rtc-req-write r id inc s))) (fn-rtc-uses s))
+       (equal (fn-rtc-uses (mv-nth 0 (fn-rtc-req-release r id inc s))) (fn-rtc-uses s))
+       (equal (fn-rtc-uses (mv-nth 0 (fn-rtc-req-cancel r id inc s))) (fn-rtc-uses s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-cancel)
+    (fn-rtc-buffer fn-rtc-b-gen fn-rtc-b-owner fn-rtc-b-bytes fn-rtc-home fn-rtc-h-buf fn-rtc-h-gen
+     fn-rtc-splice fn-rtc-kind-out-p fn-rtc-kind-op fn-rtc-current-p fn-rtc-get fn-cbor-octet-listp)))))
+(defthm fn-rtc-close-does-not-change-accept
+  (equal (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-req-close r id inc s))))
+         (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-req-close)
+    (fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-s-res fn-rtc-slot fn-rtc-next-op fn-rtc-get fn-rtc-nstatic)))))
+(defthm fn-rtc-submit-does-not-change-accept
+  (equal (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-req-submit r id inc s))))
+         (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-req-submit)
+    (fn-rtc-kind-out-p fn-rtc-buffered-kind-p fn-rtc-submit-okp fn-rtc-hand-target-okp fn-rtc-live-p
+     fn-rtc-kind-extrap fn-rtc-buffer fn-rtc-b-gen fn-rtc-b-owner fn-rtc-b-bytes
+     fn-rtc-h-buf fn-rtc-s-res fn-rtc-slot fn-rtc-next-op fn-rtc-get member-equal)))))
+(defthm fn-rtc-request-does-not-change-accept
+  (equal (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-request r id inc s))))
+         (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-request)
+       (mv-nth fn-rtc-kind-out-p fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
+        fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-req-close)))))
+(defthm fn-rtc-requests-do-not-change-accept
+  (equal (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-requests reqs id inc s))))
+         (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))
+  :hints (("Goal" :induct (fn-rtc-requests reqs id inc s)
+           :in-theory (e/d (fn-rtc-requests) (fn-rtc-kind-out-p fn-rtc-request mv-nth)))))
+(defthm fn-rtc-deliver-does-not-change-accept
+  (equal (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses (mv-nth 0 (fn-rtc-deliver s id inc ev q))))
+         (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-deliver) (fn-rtc-kind-out-p fn-rtc-requests mv-nth)))))
+
+(defthm fn-rtc-slotp-incarnation-u64
+  (implies (fn-rtc-slotp slot) (fn-rtc-u64p (fn-rtc-s-inc slot))))
+
+; Keep selector proof rewrites from changing accessor shapes in client books.
+(in-theory (disable fn-rtc-get-zero fn-rtc-get-positive-index))

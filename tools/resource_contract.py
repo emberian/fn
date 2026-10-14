@@ -142,6 +142,7 @@ ROWS: tuple[Row, ...] = (
     Row("M7", "a served connection's memory is named, and the run's capacity is the most connections the memory gate holds (C'), a run none fits refused by name",
         theorems=(("books/admission-memory", "fn-adm-capacity-fits"),
                   ("books/admission-memory", "fn-adm-capacity-is-the-most"),
+                  ("books/admission-memory", "fn-adm-priced-gate-holds-the-retained-lease"),
                   ("books/connection-read-quantum", "fn-cbud-step-read-octets-is-bounded"),
                   ("books/resource-vector-relations-heap", "fn-rv-connection-capacity-funds-the-root")),
         proofs=("PRF-223",),

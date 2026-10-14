@@ -4,15 +4,15 @@
  "counts": {
   "proved": 6,
   "partial": 4,
-  "derived": 119,
-  "none": 1735
+  "derived": 125,
+  "none": 1733
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 4,
-   "derived": 118,
-   "none": 1019
+   "derived": 124,
+   "none": 1017
   },
   "ideal": {
    "proved": 0,
@@ -113,6 +113,7 @@
   "fn-mo-tot-log-at-least",
   "fn-ncfg-nth",
   "fn-ovr-lease-quantum",
+  "fn-owner-open",
   "fn-rce-exercise-items",
   "fn-scat-group-low-top",
   "fn-scat-top-viewp",
@@ -267,6 +268,42 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-adm-operator-open-id",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-exp-at"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-adm-operator-open-reason",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-exp-at"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-adm-operator-open-word",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-exp-at"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-aj-host-authorize",
@@ -4982,9 +5019,11 @@
     "fn-hld-fuel",
     "fn-hld-settle",
     "fn-hll-x-step*",
+    "fn-rtc-inc-roomp",
     "fn-rtc-kind-op",
     "fn-rtc-kind-out-p",
     "fn-rtc-s-inc",
+    "fn-rtc-x-slots-exhaustedp",
     "mv-nth",
     "true-list-fix"
    ],
@@ -9747,6 +9786,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-ores-config-refused",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
    "name": "fn-ores-config-word",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -11018,12 +11067,20 @@
   {
    "name": "fn-owner-close",
    "class": "common-lisp-compliant",
-   "claim": "none",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-adm-operator-close",
+    "fn-exp-at",
+    "fn-owner-callback-close",
+    "fn-owner-memory-held-close",
+    "mv-nth",
+    "true-list-fix",
+    "update-nth"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-compress-min-octets",
@@ -11380,12 +11437,20 @@
   {
    "name": "fn-owner-fault",
    "class": "common-lisp-compliant",
-   "claim": "none",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-adm-operator-close",
+    "fn-exp-at",
+    "fn-owner-callback-fault",
+    "fn-owner-memory-held-close",
+    "mv-nth",
+    "true-list-fix",
+    "update-nth"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-feed-auth-policy",
@@ -12195,18 +12260,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-owner-open",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
-    "fn-owner-held-callback-open"
-   ],
-   "theorem": null,
-   "declared_in": "host/cost-host.lisp"
-  },
-  {
    "name": "fn-owner-open-peer",
    "class": "common-lisp-compliant",
    "claim": "derived",
@@ -12214,6 +12267,24 @@
    "sizes": [],
    "unaccounted": [
     "fn-owner-held-callback-open-peer"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-owner-operator-open",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-exp-at",
+    "fn-owner-held-callback-operator-open",
+    "fn-owner-memory-run-cfg",
+    "fn-owner-record-totals",
+    "mv-nth",
+    "true-list-fix",
+    "update-nth"
    ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"

@@ -456,8 +456,18 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             fcfg = config(Path(str(store) + "-fresh.toml"), fresh, free_port())
             refused = image.run(["operator", fcfg, "init", "--budget", "1000",
                                  "--profile", "scale", "local.test"])
-            made = image.run(["operator", fcfg, "init", "--budget", "4000", "local.test"])
+            # Capacity-free init selects a funded rung using this image's core
+            # file and dynamic content (fn-pfd-init-decide -> fn-heap-init-decide).
+            # Full and stripped cores are distinct physical inputs. Compare
+            # identical explicit capacities, retaining their exact status/limits.
+            made = image.run(["operator", fcfg, "init", "--budget", "4000",
+                              "--profile", "development", "--max-transactions", "16384",
+                              "--max-history-octets", "8388608", "local.test"])
+            self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stdout + refused.stderr)
+            self.assertEqual(made.returncode, EXIT.OK, made.stdout + made.stderr)
             status = self.status(image, fcfg)
+            self.assertEqual(status[0], EXIT.OK, status[1] + status[2])
+            self.assertIn(b"max-transactions=16384 max-history-octets=8388608", status[1])
             files = sorted(tree(fresh))
             shutil.rmtree(fresh, True)
             return [refused.returncode, refused.stdout, refused.stderr,

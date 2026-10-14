@@ -246,8 +246,8 @@
 (defconst *hct-run-empty* (fn-mm-make-tot 0 0 0 0 0 0 0 0 :resident))
 ; The exact funded edge at eighteen holders, to keep the configured-C mutant failing.
 (defconst *hct-run-edge*
-  (max (fn-mm-sum *hct-small* *hct-run-img* (fn-adm-cfg-at *hct-run-cfg* 18) *hct-run-empty*)
-       (fn-mm-reopen-need *hct-small* *hct-run-img* (fn-adm-cfg-at *hct-run-cfg* 18) *hct-run-empty*)))
+  (max (fn-mm-sum *hct-small* *hct-run-img* (fn-adm-public-readers-cfg *hct-run-cfg* 18) *hct-run-empty*)
+       (fn-mm-reopen-need *hct-small* *hct-run-img* (fn-adm-public-readers-cfg *hct-run-cfg* 18) *hct-run-empty*)))
 (defun hct-run-at-edge (address)
   (fn-mo-run-decide *hct-small* *hct-run-img* *hct-run-cfg* nil (list *hct-run-edge*) address
                     *hct-core* *hct-nur* *hct-run-empty*))

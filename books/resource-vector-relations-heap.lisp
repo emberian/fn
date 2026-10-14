@@ -63,10 +63,10 @@
   (implies (posp (fn-adm-capacity profile img cfg limit tot))
            (and (fn-rv-okp (fn-rv-connections-root profile img cfg limit tot))
                 (fn-rv-fundedp (fn-rv-connections-root profile img cfg limit tot))))
-  :hints (("Goal" :use fn-adm-capacity-fits
+  :hints (("Goal" :use (fn-adm-capacity-fits fn-adm-public-capacity-fits)
            :in-theory (e/d (fn-rv-okp fn-rv-bankp fn-rv-fundedp fn-rv-outstanding
                             fn-rv-row-demand fn-rv-rowsp fn-rv-rowp fn-rv-vectorp
                             fn-rv-nats-p fn-rv-below fn-rv-plus fn-rv-keep fn-rv-drop
                             fn-mm-gate-p)
-                           (fn-adm-capacity-fits fn-adm-capacity fn-adm-cfg-at fn-mm-sum
+                           (fn-adm-public-capacity-fits fn-adm-capacity fn-adm-cfg-at fn-mm-sum
                             fn-mm-reopen-need)))))

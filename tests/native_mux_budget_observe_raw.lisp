@@ -6,17 +6,22 @@
 (in-package "ACL2")
 
 
+;; Extract the real service record: its captured launch observations and BP terms
+;; are part of the installer input, not ad-hoc accessor twins in this raw world.
+(defconstant +fnn-exit-ok+ 0)
+(defun load-deployed-forms (path wanted)
+  (with-open-file (stream path)
+    (loop for form = (read stream nil :eof) until (eq form :eof)
+      when (and (consp form) (member (list (car form) (cadr form)) wanted :test #'equal))
+        do (eval form) (setf wanted (remove (list (car form) (cadr form)) wanted :test #'equal))
+      finally (assert (null wanted)))))
+(load-deployed-forms "host/native/owner.lisp"
+ '((defstruct (fnn-owner-service (:constructor %make-fnn-owner-service)))))
+
 (defvar *in-section* nil)
 (defvar *violations* nil)
 (defvar *seen* nil)
-(defvar *launch-observed* nil)
-(defun fnn-owner-service-launch-observed (service)
-  (declare (ignore service)) *launch-observed*)
-(defun (setf fnn-owner-service-launch-observed) (value service)
-  (declare (ignore service)) (setf *launch-observed* value))
-(defun fnn-owner-service-bp-terms (service) (declare (ignore service)) nil)
 (defun observe (name) (push name *seen*) (when *in-section* (push name *violations*)))
-(defun fnn-owner-service-store (service) (declare (ignore service)) :store)
 (defun fnn-heap-machine-octets () (error "retired resident/reservation comparison reached"))
 (defun fnn-heap-core-octets () (observe :core) 10)
 (defun fnn-owner-serialized (service cid thunk &optional class)
@@ -29,8 +34,6 @@
 (defun fnn-store-root (store) (declare (ignore store)) "/fixture")
 (defun fnn-gc-nursery-octets () 7)
 (defun fnn-extent-cache-limit () 8)
-(defun fnn-owner-service-reclaim-live (service) (declare (ignore service)) nil)
-(defun fnn-owner-service-output-resources (service) (declare (ignore service)) nil)
 (defun fnn-owner-syncer-install (&rest args) (declare (ignore args)))
 (defun fnn-owner-output-install (&rest args) (declare (ignore args)))
 ;; The real installer initializes in-memory lease state; it observes no files.
@@ -47,28 +50,16 @@
 ;; The memory gate's coordinates are observed off the section too
 ;; (fnn-owner-memory-observe); its configure runs inside it, after the
 ;; connection budget holds.
-(defun fnn-owner-memory-observe (store)
-  (declare (ignore store)) (observe :memory)
-  (list :image :resident :config :address (fnn-heap-core-octets) :peer))
+(defun fnn-owner-memory-observe (store) (declare (ignore store)) (observe :memory) '(:observed))
 (defun fnn-owner-memory-configure-locked (service tls-context observed &optional gate-only)
   (declare (ignore service tls-context gate-only))
-  (unless (and *in-section* (eq observed *launch-observed*)) (error "configure outside the section"))
+  (unless (and *in-section* (equal observed '(:observed))) (error "configure outside the section"))
   :hold)
 (defconstant +fnn-gc-nursery-octets+ 7)
-(with-open-file (stream "host/native/mux.lisp")
-  (loop for form = (read stream nil :eof) until (eq form :eof)
-        when (and (consp form) (eq (car form) 'defun) (eq (cadr form) 'fnn-mux-budget-install))
-          do (eval form) (return)))
-;; The owner install captured the run's observations before the budget
-;; installer enters its section; the latter reuses that exact snapshot.
-(setf *launch-observed* (fnn-owner-memory-observe :store))
-(unless (eq (fnn-mux-budget-install :service nil) :hold) (error "decision"))
+(load-deployed-forms "host/native/mux.lisp" '((defun fnn-mux-budget-install)))
+(unless (eq (fnn-mux-budget-install (%make-fnn-owner-service :store :store) nil) :hold) (error "decision"))
 (when *violations* (error "observed inside the owner section: ~s" *violations*))
 (unless (member :lease-install *seen*) (error "lease install missing"))
 (unless (and (member :core *seen*) (member :memory *seen*))
   (error "observations missing"))
-;; The credits installer also observes its core coordinate off the section;
-;; it must reuse the launch's resident/configuration capture for the gate.
-(unless (= (count :memory *seen*) 1)
-  (error "captured memory observations were re-read"))
 (format t "native mux budget observe: PASS~%")

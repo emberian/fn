@@ -1,0 +1,14 @@
+{
+ "category": "memory",
+ "detail": "fn-apc-sub-stored-octets selects fn-peer-relayed-octets (owner-parse-carried.lisp:227-229), which calls fn-pu-relay-article (peer-inbound.lisp:301-307; path-update.lisp:927-933). fn-pu-walk-loop (path-update.lisp:185-220) walks the header into a reverse accumulator and revappends it onto the shared body suffix: H' fresh cells plus an H'-cell accumulator, and fn-pu-line (path-update.lisp:136-142) builds temporary line lists in two passes. The completion recomputes cells the take already generated. Required: the transit completion's allocation bounded by the generated Path delta, not the header length, stated over the take's header (a cost row or a heap-test case with a header-dominated transit article as the tooth).",
+ "file": "books/owner-parse-carried.lisp",
+ "id": "TRANSIT-RELAY-HEADER-REBUILD",
+ "line": "227",
+ "notes": [],
+ "owner": "A",
+ "severity": "low",
+ "source": "A20 REPORT-I step 4 (build/lanes/vertical-post-heap/build/vertical-runs/post-heap/REPORT-I.md:85), FILL-BOUNDS-JOIN-POST-HEAP part (i), 2026-10-12",
+ "state": "open",
+ "title": "transit completion rebuilds the relayed header (fn-peer-relayed-octets) instead of reusing the take's generated header: allocation O(header + Path), article-sized for header-dominated input",
+ "updated": "2026-10-12T19:03:13Z"
+}

@@ -37,6 +37,12 @@
 (defun fnn-owner-cursor-step (service cid plan class)
   (declare (ignorable service cid plan class))
   (harness-stub-reached 'fnn-owner-cursor-step "host/native/owner.lisp"))
+(defun fnn-owner-service-stopping (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-owner-service-stopping "host/native/owner.lisp"))
+(defun fnn-refuse (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-refuse "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (defvar *calls* nil)
 (defvar *answers* nil)

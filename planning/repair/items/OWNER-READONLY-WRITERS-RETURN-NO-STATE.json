@@ -1,0 +1,13 @@
+{
+ "category": "collapse",
+ "detail": "Many of the 362 owed writers of fn-owner-served-carried are (value X) readers: they return (mv nil X state) with state unchanged (e.g. fn-owner-feed-host/-port/-security, fn-owner-proxy-step, fn-owner-orcp-salt, fn-store-sn-sweep-round, fn-owner-retire-step). A :program function can carry no preservation theorem, but a function that does not return state is not a writer at all. Fix: return the value without state (definterface signature and native callers adapted), regenerate the owed list, and the names leave it with no proof. Survey first: classify each owed :program name as read-only or writing by its body (a tail call into a state writer is a writer). Not inside K1 (coordinator).",
+ "file": "host/owner-host.lisp",
+ "id": "OWNER-READONLY-WRITERS-RETURN-NO-STATE",
+ "notes": [],
+ "owner": "A",
+ "severity": "medium",
+ "source": "A23 K1 coverage triage (build/vertical-runs/owner-retain/A23-OWED-TRIAGE.txt), coordinator condition 3, 2026-10-12",
+ "state": "open",
+ "title": "Owed :program host writers that only read state still return STATE, so each sits on A-OWNER-INVARIANT-CARRIED's owed list with no proof possible: make them stop returning state",
+ "updated": "2026-10-13T00:16:26Z"
+}

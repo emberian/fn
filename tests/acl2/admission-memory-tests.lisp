@@ -219,8 +219,8 @@
 (defconst *adt-big* (adt-posts 200))
 ; Exact funded edge at 18 holders: the nineteen-holder mutant must fail.
 (defconst *adt-cap-edge*
-  (max (fn-mm-sum *adt-p* *adt-img* (fn-adm-cfg-at *adt-cfg* 18) *adt-empty*)
-       (fn-mm-reopen-need *adt-p* *adt-img* (fn-adm-cfg-at *adt-cfg* 18) *adt-empty*)))
+  (max (fn-mm-sum *adt-p* *adt-img* (fn-adm-public-readers-cfg *adt-cfg* 18) *adt-empty*)
+       (fn-mm-reopen-need *adt-p* *adt-img* (fn-adm-public-readers-cfg *adt-cfg* 18) *adt-empty*)))
 (assert-event (equal (fn-adm-capacity *adt-p* *adt-img* *adt-cfg* *adt-230m* *adt-empty*) 32))
 (assert-event (equal (fn-adm-capacity-binding *adt-p* *adt-img* *adt-cfg* *adt-230m* *adt-empty*)
                      :configured))
@@ -247,7 +247,7 @@
           (let ((c (fn-adm-capacity profile img cfg limit tot)))
             (and (natp c)
                  (<= c (fn-mm-cfg-connections cfg))
-                 (fn-mm-gate-p profile img (fn-adm-cfg-at cfg c) limit tot))))
+                 (fn-mm-gate-p profile img (fn-adm-public-readers-cfg cfg c) limit tot))))
   :subject fn-adm-capacity
   :witness ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-cap-edge*)
             (tot *adt-empty*))
@@ -255,7 +255,7 @@
                   (tot *adt-empty*))))
   :mutations ((the-gate-holds-one-more
                (:conclusion (fn-mm-gate-p profile img
-                                          (fn-adm-cfg-at cfg (+ 1 (fn-adm-capacity profile img cfg limit tot)))
+                                          (fn-adm-public-readers-cfg cfg (+ 1 (fn-adm-capacity profile img cfg limit tot)))
                                           limit tot))
                ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-cap-edge*)
                 (tot *adt-empty*))
@@ -264,7 +264,7 @@
 (defteeth fn-adm-capacity-is-the-most
   :claim (((counted (natp j))
            (within (<= j (fn-mm-cfg-connections cfg)))
-           (holds (fn-mm-gate-p profile img (fn-adm-cfg-at cfg j) limit tot)))
+           (holds (fn-mm-gate-p profile img (fn-adm-public-readers-cfg cfg j) limit tot)))
           (let ((c (fn-adm-capacity profile img cfg limit tot)))
             (and (natp c) (<= j c))))
   :subject fn-adm-capacity
@@ -485,14 +485,14 @@
 (defconst *adt-search-4m*
   (fn-adm-capacity *adt-p* *adt-img* *adt-cfg-4m* *adt-230m* *adt-empty*))
 (defconst *adt-count-4m*
-  (adt-search-count *adt-p* *adt-img* *adt-cfg-4m* *adt-230m* *adt-empty* 0 (1+ *adt-c-4m*)))
+  (adt-search-count *adt-p* *adt-img* (fn-adm-public-capacity-cfg *adt-cfg-4m*) *adt-230m* *adt-empty* 0 (+ 2 *adt-c-4m*)))
 ; the twin counts the search it twins
-(assert-event (equal (car *adt-count-4m*) *adt-search-4m*))
+(assert-event (equal (and (posp (car *adt-count-4m*)) (1- (car *adt-count-4m*))) *adt-search-4m*))
 ; the search found a capacity, below the configured 4,000,000 (the limit binds)
 (assert-event (and (natp *adt-search-4m*) (< *adt-search-4m* *adt-c-4m*)))
-; the gate holds at C' and fails at C' + 1 (the walk's C', by antitonicity)
-(assert-event (fn-mm-gate-p *adt-p* *adt-img* (fn-adm-cfg-at *adt-cfg-4m* *adt-search-4m*) *adt-230m* *adt-empty*))
-(assert-event (not (fn-mm-gate-p *adt-p* *adt-img* (fn-adm-cfg-at *adt-cfg-4m* (1+ *adt-search-4m*))
+; C' public readers plus their private slot fit; one more public reader fails.
+(assert-event (fn-mm-gate-p *adt-p* *adt-img* (fn-adm-public-readers-cfg *adt-cfg-4m* *adt-search-4m*) *adt-230m* *adt-empty*))
+(assert-event (not (fn-mm-gate-p *adt-p* *adt-img* (fn-adm-public-readers-cfg *adt-cfg-4m* (1+ *adt-search-4m*))
                                  *adt-230m* *adt-empty*)))
 ; the walk answers the same
 ; Keep the exact closed equality to the reference walk. Its certified
@@ -512,8 +512,8 @@
 (assert-event (<= (cdr *adt-count-4m*) (+ 2 (integer-length *adt-c-4m*))))
 ; no capacity at all is also found in the same bound
 (assert-event (null (fn-adm-capacity *adt-p* *adt-img* *adt-cfg-4m* *adt-128m* *adt-empty*)))
-(assert-event (<= (cdr (adt-search-count *adt-p* *adt-img* *adt-cfg-4m* *adt-128m* *adt-empty*
-                                            0 (1+ *adt-c-4m*)))
+(assert-event (<= (cdr (adt-search-count *adt-p* *adt-img* (fn-adm-public-capacity-cfg *adt-cfg-4m*) *adt-128m* *adt-empty*
+                                            0 (+ 2 *adt-c-4m*)))
                   (+ 2 (integer-length *adt-c-4m*))))
 
 ; M22 approved whole witnesses and old-behavior teeth, unchanged.
@@ -623,12 +623,12 @@
   (let* ((held 0) (cfg *m22-lowered-cfg*)
          (lease (* 4096 (fn-hl-article-capl *m22-profile* 1048576)))
          (bare (fn-adm-priced-cfg cfg held 1))
-         (charged (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease) held 1))
+         (charged (fn-adm-priced-cfg (update-nth 14 lease (true-list-fix cfg)) held 1))
          (limit (max (fn-mm-sum *m22-profile* *m22-img* charged *m22-empty*)
                      (fn-mm-reopen-need *m22-profile* *m22-img* charged *m22-empty*)))
          (old-limit (max (fn-mm-sum *m22-profile* *m22-img* bare *m22-empty*)
                          (fn-mm-reopen-need *m22-profile* *m22-img* bare *m22-empty*)))
-         (instant (fn-mm-need *m22-profile* *m22-img* bare *m22-empty* held held
+         (instant (fn-mm-need *m22-profile* *m22-img* charged *m22-empty* 0 0
                      (fn-heap-article-slots *m22-profile*)
                      (fn-cbud-handshake-slots t 16) t)))
     (and (natp lease) (posp lease)
@@ -667,7 +667,7 @@
 (defconst *m22-held-limit* (max (fn-mm-sum *m22-profile* *m22-img* *m22-priced-cfg* *m22-empty*)
                                (fn-mm-reopen-need *m22-profile* *m22-img* *m22-priced-cfg* *m22-empty*)))
 (defconst *m22-lease* (* 4096 (fn-hl-article-capl *m22-profile* 1048576)))
-(defconst *m22-lease-cfg* (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg *m22-lowered-cfg* *m22-lease*) 0 1))
+(defconst *m22-lease-cfg* (fn-adm-priced-cfg (update-nth 14 *m22-lease* (true-list-fix *m22-lowered-cfg*)) 0 1))
 (defconst *m22-lease-limit* (max (fn-mm-sum *m22-profile* *m22-img* *m22-lease-cfg* *m22-empty*)
                                 (fn-mm-reopen-need *m22-profile* *m22-img* *m22-lease-cfg* *m22-empty*)))
 (defkeystone m22-adm-priced-connections-cover-held
@@ -717,16 +717,13 @@
  :hints (("Goal" :by fn-adm-priced-gate-bounds-the-held-instant)))
 
 (defkeystone m22-adm-priced-gate-holds-the-retained-lease
-(let* ((bare (fn-adm-priced-cfg cfg held capacity))
-         (charged (fn-adm-priced-cfg
-                    (fn-adm-retained-runtime-cfg cfg lease-octets)
-                    held capacity)))
+(let ((charged (fn-adm-priced-cfg (update-nth 14 lease-octets (true-list-fix cfg)) held capacity)))
     (implies (fn-mm-gate-p profile img charged limit tot)
              (<= (+ (nfix lease-octets)
-                    (fn-mm-need profile img bare tot (nfix held) (nfix held)
+                    (fn-mm-need profile img charged tot 0 0
                       (fn-heap-article-slots profile)
                       (fn-cbud-handshake-slots
-                        (fn-mm-cfg-tlsp bare) (fn-mm-cfg-handshakes bare))
+                        (fn-mm-cfg-tlsp charged) (fn-mm-cfg-handshakes charged))
                       publishing))
                  limit)))
  :id "PRF-10018"
@@ -743,13 +740,10 @@
 (defkeystone m22-adm-installed-capacity-is-proved-or-zero
   (let ((found (fn-adm-capacity profile img cfg limit tot))
         (installed (fn-adm-installed-capacity profile img cfg limit tot)))
-    (and (natp installed)
-         (equal installed (if (natp found) found 0))
+    (and (natp installed) (equal installed (if (natp found) found 0))
          (or (equal installed 0)
-             (and (equal installed found)
-                  (<= installed (fn-mm-cfg-connections cfg))
-                  (fn-mm-gate-p profile img (fn-adm-cfg-at cfg installed)
-                                limit tot)))))
+             (and (equal installed found) (<= installed (fn-mm-cfg-connections cfg))
+                  (fn-mm-gate-p profile img (fn-adm-public-readers-cfg cfg installed) limit tot)))))
  :id "PRF-10019"
  :rule-classes nil
  :restates fn-adm-installed-capacity-is-proved-or-zero
@@ -816,3 +810,52 @@
  :breaks ((zero ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 250 *fn-heap-mib*)) (tot *m22-empty*))))
  :mutations ((old-behavior (:conclusion (equal (fn-adm-capacity-line profile img cfg limit tot) (fn-adm-installed-capacity-line profile img cfg limit tot))) ((profile *m22-profile*) (img *m22-img*) (cfg (fn-adm-cfg-at *m22-cfg* 0)) (limit (* 250 *fn-heap-mib*)) (tot *m22-empty*)) :fault "raw search result zero was described as a successful capacity"))
  :hints (("Goal" :by fn-adm-installed-zero-has-the-zero-diagnostic)))
+
+; Seat's final B polarity: zero refuses, positive public capacity funds one slot.
+(with-guard-checking-event :all
+ (assert-event
+  (and (equal (fn-adm-memory-owner-bound 1024 0) 0)
+       (equal (fn-adm-memory-owner-bound 1024 1) (min 1024 (1+ 1)))
+       (equal (fn-adm-memory-owner-bound 3 4) (min 3 (1+ 4)))
+       (not (equal (min 1024 (1+ 0)) (fn-adm-memory-owner-bound 1024 0)))
+       (not (equal (min 1024 1) (fn-adm-memory-owner-bound 1024 1))))))
+
+; FINAL B: a refusing zero line uses zero connections; a positive line funds its slot.
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((cfg (fn-adm-cfg-at *m22-cfg* 1))
+         (zero-limit (* 128 *fn-heap-mib*))
+         (funded (fn-adm-public-readers-cfg cfg 1))
+         (positive-limit (max (fn-mm-sum *m22-profile* *m22-img* funded *m22-empty*)
+                              (fn-mm-reopen-need *m22-profile* *m22-img* funded *m22-empty*)))
+         (zero-line (fn-adm-installed-capacity-line *m22-profile* *m22-img* cfg zero-limit *m22-empty*))
+         (positive-line (fn-adm-installed-capacity-line *m22-profile* *m22-img* cfg positive-limit *m22-empty*)))
+   (and (equal (fn-adm-installed-capacity *m22-profile* *m22-img* cfg zero-limit *m22-empty*) 0)
+        (equal (fn-adm-installed-capacity *m22-profile* *m22-img* cfg positive-limit *m22-empty*) 1)
+        (equal zero-line (concatenate 'string
+          "refused memory-cannot-hold-the-store capacity=0 of 1 bound-by=store sum="
+          (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* (fn-adm-cfg-at cfg 0) *m22-empty*))
+          " MB limit=" (fn-adm-mb-down zero-limit) " MB"))
+        (equal positive-line (concatenate 'string
+          "memory capacity=1 of 1 bound-by=configured sum="
+          (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* funded *m22-empty*))
+          " MB limit=" (fn-adm-mb-down positive-limit) " MB"))
+        (not (equal (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* funded *m22-empty*))
+                    (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* (fn-adm-cfg-at cfg 1) *m22-empty*))))))))
+
+; B1 whole funded-slot witness and old-search mutation at the exact edge.
+(with-guard-checking-event :none
+ (assert-event
+  (let* ((cfg (fn-adm-cfg-at *m22-cfg* 1))
+         (one (fn-adm-cfg-at cfg 1)) (two (fn-adm-cfg-at cfg 2))
+         (one-limit (max (fn-mm-sum *m22-profile* *m22-img* one *m22-empty*)
+                          (fn-mm-reopen-need *m22-profile* *m22-img* one *m22-empty*)))
+         (two-limit (max (fn-mm-sum *m22-profile* *m22-img* two *m22-empty*)
+                          (fn-mm-reopen-need *m22-profile* *m22-img* two *m22-empty*))))
+   (and (equal (fn-adm-capacity *m22-profile* *m22-img* cfg two-limit *m22-empty*) 1)
+        (fn-mm-gate-p *m22-profile* *m22-img* two two-limit *m22-empty*)
+        (fn-mm-gate-p *m22-profile* *m22-img* one one-limit *m22-empty*)
+        (not (fn-mm-gate-p *m22-profile* *m22-img* two one-limit *m22-empty*))
+        (equal (fn-adm-capacity *m22-profile* *m22-img* cfg one-limit *m22-empty*) 0)
+        (equal (if (fn-mm-gate-p *m22-profile* *m22-img* one one-limit *m22-empty*) 1 nil) 1)
+        (null (fn-adm-capacity *m22-profile* *m22-img* cfg 0 *m22-empty*))))))

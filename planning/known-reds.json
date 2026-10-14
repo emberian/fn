@@ -36,6 +36,167 @@
    "item": "OPERATOR-STATUS-OBSERVED-SIZING",
    "owner": "builder-M",
    "evidence": "measured red at dev ac66a0a23 on image native-ac66a0a23ad7 (the `operator status` step: refused machine-cannot-hold-profile, heap=23095730 MB); admitted by amendment, coordinator 2026-10-09 13:05; retirement: status sized by the store's charged totals from the checkpoint header (RUNTIME-MODEL section 6 observation form)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_public_limits.DeveloperImagePublicLimits.test_capacity_and_trusted_range",
+   "item": "PUBLIC-LIMITS-OVER-WINDOW-CAPACITY",
+   "owner": "builder-O",
+   "evidence": "dev red found by B23's control run hbox native-nl2-ctl0403 at dev 0403f697b, traced by M25: 'memory capacity=34 of 40 bound-by=over-window' (hbox:/tank/fn/scratch/memory-run-launch/m25-publimits/fn-dev.log); each added holder is charged the whole OVER window (adapter A-OVER-WINDOW-FIT); owner builder-O, retired by OVER landing 2 (pool lease), evidence: green at capacity 40 of 40, then 45 live"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_public_limits.ProductionImagePublicLimits.test_capacity_and_trusted_range",
+   "item": "PUBLIC-LIMITS-OVER-WINDOW-CAPACITY",
+   "owner": "builder-O",
+   "evidence": "dev red found by B23's control run hbox native-nl2-ctl0403 at dev 0403f697b, traced by M25: 'memory capacity=34 of 40 bound-by=over-window' (hbox:/tank/fn/scratch/memory-run-launch/m25-publimits/fn-dev.log); each added holder is charged the whole OVER window (adapter A-OVER-WINDOW-FIT); owner builder-O, retired by OVER landing 2 (pool lease), evidence: green at capacity 40 of 40, then 45 live"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_auth_admin_fidelity.NativeAuthAdminFidelityTests.test_post_rename_eio_is_uncertain_then_fresh_process_recovers",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): uncertain-pass marker FN_NATIVE_AUTH_ADMIN_UNCERTAIN_PASS absent; exit -9; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_auth_admin_fidelity.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_auth_admin_fidelity.NativeAuthAdminFidelityTests.test_sigkill_after_rename_recovers_in_a_new_process",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): uncertain-pass marker FN_NATIVE_AUTH_ADMIN_UNCERTAIN_PASS absent; exit -9; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_auth_admin_fidelity.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_control_evidence.NativeControlEvidenceTests.test_log_and_evidence_live_and_offline",
+   "item": "DEVCTL-D-HELD",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): evidence listing has an extra line 'output accounting: off (no [resources])'; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_control_evidence.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+   "item": "DEVCTL-DECODED-CUSTODY",
+   "owner": "builder-C",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): timing bound 7736440.284 not < 7736440.263; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_decoded_custody.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_expiry.DeveloperExpiryTests.test_a_recorded_reclaim_installs_on_the_quiet_serving_node",
+   "item": "DEVCTL-D-HELD",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): [] != ['open=checkpoint:6 suffix=0']; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_expiry.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_fitness.ShortSoakTests.test_a_short_soak_has_no_finding_and_the_journal_replays",
+   "item": "DEVCTL-D-HELD",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): short soak reports a health finding (18, feed table live); log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_fitness.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_foreign_format_open.ForeignFormatOpenTest.test_a_store_of_another_format_is_refused_by_name",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): subTest (operator health): exit 18 not-running where REFUSED 1 was expected; test_budget recorded no red case; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_foreign_format_open.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "setUpClass (tests.test_native_image_differential.ReleaseAgainstReferenceTests)",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): cold startup refused: the process heap does not hold the store's protected runtime; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_image_differential.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): fn store ... status returned 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_operator_verdicts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "unittest.loader._FailedTest.test_native_owner_measure",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): ImportError: No module named 'pytest' on the box; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_owner_measure.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock",
+   "item": "DEVCTL-POST-SEAL-GATE-CLASSIFIER",
+   "owner": "builder-P",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_capture_first_reclaim_waits_for_independent_response_then_makes_progress",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): git rev-parse HEAD exits 128 in the box's git-archive tree; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_resilience_cuts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_disabling_the_capture_first_reclaim_hold_cannot_pass",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): git rev-parse HEAD exits 128 in the box's git-archive tree; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_resilience_cuts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_disabling_the_real_issued_page_io_hold_cannot_pass",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): git rev-parse HEAD exits 128 in the box's git-archive tree; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_resilience_cuts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_true_issued_page_io_settles_cancelled_token_and_reads_retained_article",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): git rev-parse HEAD exits 128 in the box's git-archive tree; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_resilience_cuts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_status_live_posts.NativeStatusLivePostsTests.test_status_after_live_posts_stays_within_the_slack",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): 12232 != 60000; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_status_live_posts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_over_a_suffix_is_refused_by_name",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): not-running where a refusal by name was expected; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_store_lineage.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_with_an_empty_suffix_is_refused_by_name",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): not-running where a refusal by name was expected; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_store_lineage.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_this_checkpoint_against_the_copy_log_is_refused_by_name",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): not-running where a refusal by name was expected; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_store_lineage.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_mount_identity.MountIdentityNativeTests.test_a_store_on_another_filesystem_is_refused_by_name_then_rebound",
+   "item": "DEVCTL-D-HELD",
+   "owner": "builder-B",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): a store on another filesystem opened instead of REFUSED 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_store_mount_identity.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_verdicts.KeyTests.test_the_key_covers_the_module_its_helpers_the_harness_the_runner_and_the_images",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): verdict key carries FN_NATIVE_LAUNCHER_SHA256, expected {'absent': 'build/fn-host'}; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_verdicts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   }
  ]
 }

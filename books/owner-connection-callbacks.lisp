@@ -361,6 +361,50 @@
    (let ((state (fn-owner-callback-at-working-view working state)))
     (mv erp val state)))))
 
+(local (defthm m26-operator-open-raw-is-cons-by-definition
+ (consp (fn-exp-at 1 (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img cfg limit tot)))
+ :hints (("Goal" :in-theory (e/d
+  (fn-adm-operator-open fn-adm-operator-open-refusal fn-exp-at)
+  (fn-adm-reader-open fn-adm-operator-slot-freep fn-adm-operator-fundedp
+   fn-mm-gate-p fn-adm-priced-cfg fn-adm-reader-count fn-adm-hh-count
+   fn-adm-hh-rows fn-exp-lookup fn-own-next-id fn-ocfg-owner
+   fn-ocar-ocfg-open fn-own-find-conn fn-own-conns))))))
+
+; Install the operator decision's OC, bank and slot identity together.
+(defun fn-owner-held-callback-operator-open-at (profile img full limit tot capacity operator-id state)
+ (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
+  :guard-hints (("Goal" :in-theory (disable boundp-global put-global
+   fn-adm-operator-open fn-owner-install-ocfg fn-owner-auth
+   fn-owner-memory-held-install fn-owner-callback-install-effects fn-exp-at)))))
+ (let* ((result (fn-adm-operator-open (fn-owner-ocfg state) (fn-owner-auth state)
+                   (fn-owner-memory-held-bank state) (fn-mm-cfg-connections full)
+                   capacity operator-id profile img full limit tot))
+        (opened (fn-exp-at 1 result))
+        (state (fn-owner-memory-held-install result state))
+        (state (fn-owner-install-ocfg (cdr opened) state))
+        (state (fn-owner-callback-install-effects (car opened) state)))
+   (value result)))
+
+(defthm fn-owner-held-callback-operator-open-at-preserves-owner-bound
+ (implies (boundp-global 'fn-owner state)
+  (boundp-global 'fn-owner (mv-nth 2
+    (fn-owner-held-callback-operator-open-at profile img full limit tot capacity operator-id state))))
+ :hints (("Goal" :in-theory (e/d (fn-owner-held-callback-operator-open-at)
+  (boundp-global put-global fn-adm-operator-open fn-owner-install-ocfg
+   fn-owner-callback-install-effects fn-owner-auth)))))
+
+(defun fn-owner-held-callback-operator-open (profile img full limit tot capacity operator-id state)
+ (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
+  :guard-hints (("Goal" :in-theory (disable boundp-global put-global
+    fn-owner-held-callback-operator-open-at fn-owner-callback-at-working-view
+    fn-owner-callback-at-reader-view)))))
+ (let* ((working (fn-own-view (fn-owner-core state)))
+        (state (fn-owner-callback-at-reader-view state)))
+  (mv-let (erp result state)
+   (fn-owner-held-callback-operator-open-at profile img full limit tot capacity operator-id state)
+   (let ((state (fn-owner-callback-at-working-view working state)))
+    (mv erp result state)))))
+
 (defun fn-owner-held-callback-open-peer (peer-octets rearm old-id state)
  (declare (xargs :stobjs state
   :guard (and (boundp-global 'fn-owner state) (fn-cbor-octet-listp peer-octets))

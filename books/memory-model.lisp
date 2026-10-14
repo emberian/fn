@@ -296,11 +296,15 @@
   (declare (xargs :guard t))
   (+ (fn-mm-connection-fixed profile cfg) (fn-mm-large-reply profile cfg)))
 
-; C fixed parts and the holders' large replies.
+; The installed physical bank is retained even after the reader bound falls.
+(defun fn-mm-cfg-bank-floor (cfg) (declare (xargs :guard t)) (fn-mm-nat 14 cfg))
+
+; C fixed parts and the holders' large replies, or the installed bank floor.
 (defun fn-mm-connections (profile cfg)
   (declare (xargs :guard t))
-  (+ (* (fn-mm-cfg-connections cfg) (fn-mm-connection-fixed profile cfg))
-     (fn-mm-large-pool profile cfg)))
+  (max (fn-mm-cfg-bank-floor cfg)
+       (+ (* (fn-mm-cfg-connections cfg) (fn-mm-connection-fixed profile cfg))
+          (fn-mm-large-pool profile cfg))))
 
 ; The cold-read pool: its funded budget, the ledger's heap and native
 ; allowances (books/page-read-ledger.lisp fn-prl-make; tables, registration
@@ -604,7 +608,20 @@
        (natp (fn-mm-connection profile cfg)) (natp (fn-mm-maintenance tot cfg))
        (natp (fn-mm-cfg-connections cfg)) (natp (fn-mm-cfg-holders cfg))
        (natp (fn-mm-cold-reads profile cfg)))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories
+    '(natp fn-mm-base fn-mm-owner fn-mm-large-reply fn-mm-connection max
+      (:type-prescription fn-mm-img-file) (:type-prescription fn-mm-img-anon)
+      (:type-prescription fn-mm-img-thread) (:type-prescription fn-heap-thread-count)
+      (:type-prescription fn-mm-payload-octets) (:type-prescription fn-mm-tot-records) (:type-prescription fn-mm-tot-hcharge)
+      (:type-prescription fn-mm-tot-memberships) (:type-prescription fn-mm-tot-events)
+      (:type-prescription fn-mm-hroot-live)
+      (:type-prescription fn-mm-config-heap) (:type-prescription fn-mm-cfg-config)
+      (:type-prescription fn-mm-connection-fixed) (:type-prescription fn-ovr-over-capl-of)
+      (:type-prescription fn-mm-maintenance) (:type-prescription fn-mm-cfg-connections)
+      (:type-prescription fn-mm-cfg-holders) (:type-prescription fn-mm-cold-reads)
+      (:type-prescription nfix))
+    (theory 'minimal-theory)))))
 (defthm fn-mm-collector-monotone
   (implies (<= (nfix a) (nfix b))
            (<= (fn-mm-collector a cfg) (fn-mm-collector b cfg)))
@@ -639,14 +656,19 @@
                (fn-mm-live profile cfg tot)))
   :rule-classes nil
   :hints (("Goal"
-           :in-theory (union-theories '(fn-mm-need-live fn-mm-live fn-mm-inflight fn-mm-connections natp)
+           :in-theory (union-theories '(fn-mm-need-live fn-mm-live fn-mm-inflight fn-mm-connections max natp)
                                        (theory 'minimal-theory))
            :use ((:instance fn-heap-article-slots-are-held (k s))
                  fn-mm-open-connections-within fn-mm-holders-within-the-pool
                  (:instance fn-mm-handshakes-within (tlsp (fn-mm-cfg-tlsp cfg)) (hs (fn-mm-cfg-handshakes cfg)))
                  fn-mm-terms-natp))))
 
-(defthm fn-mm-live-natp (natp (fn-mm-live profile cfg tot)) :rule-classes :type-prescription)
+(defthm fn-mm-live-natp (natp (fn-mm-live profile cfg tot)) :rule-classes :type-prescription
+  :hints (("Goal" :use fn-mm-terms-natp
+    :in-theory (union-theories
+      '(fn-mm-live fn-mm-connections fn-mm-large-pool max natp
+        (:type-prescription fn-mm-cfg-bank-floor) (:type-prescription fn-mm-inflight))
+      (theory 'minimal-theory)))))
 (defthm fn-mm-need-live-natp (natp (fn-mm-need-live profile cfg tot k j s h publishing))
   :rule-classes :type-prescription)
 ; KEYSTONE K1.  The instant within the sum: at most C connections open, at
@@ -786,33 +808,31 @@
                                    fn-mm-cfg-trigger fn-mm-cfg-connections))
            :use ((:instance fn-mm-times-monotone (a (fn-mm-img-thread i1)) (b (fn-mm-img-thread i2))
                             (c (fn-heap-thread-count (fn-mm-cfg-connections cfg))))))))
-; Each reopen input bound is monotone without opening the profile codec.
-(local (defthm fn-mm-open-record-bound-monotone
+; Keep the open's independent input bounds opaque in the sum proof.
+(local (defthm m28-mm-open-small-terms-monotone
   (implies (<= (nfix ou1) (nfix ou2))
-           (<= (fn-heap-open-record-bound profile ou1) (fn-heap-open-record-bound profile ou2)))
+   (and (<= (fn-heap-open-record-bound profile ou1)
+            (fn-heap-open-record-bound profile ou2))
+        (<= (fn-heap-open-entry-array-bound profile ou1)
+            (fn-heap-open-entry-array-bound profile ou2))
+        (<= (fn-heap-open-walk-fixed-bound ou1)
+            (fn-heap-open-walk-fixed-bound ou2))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-heap-open-record-bound min) (fn-bs-profile-max-record-octets))))))
-(local (defthm fn-mm-open-entry-array-bound-monotone
-  (implies (<= (nfix ou1) (nfix ou2))
-           (<= (fn-heap-open-entry-array-bound profile ou1) (fn-heap-open-entry-array-bound profile ou2)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-heap-open-entry-array-bound min) (fn-bs-profile-max-record-octets))))))
-(local (defthm fn-mm-open-walk-fixed-bound-monotone
-  (implies (<= (nfix ou1) (nfix ou2))
-           (<= (fn-heap-open-walk-fixed-bound ou1) (fn-heap-open-walk-fixed-bound ou2)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(fn-heap-open-walk-fixed-bound min nfix natp zp)
-                                             (theory 'minimal-theory))))))
+  :hints (("Goal" :in-theory (e/d
+    (fn-heap-open-record-bound fn-heap-open-entry-array-bound
+     fn-heap-open-walk-fixed-bound min zp nfix)
+    (fn-bs-profile-max-record-octets fn-heap-open-chunk-bound
+     fn-heap-store-open-octets))))))
 
 (defthm fn-mm-open-octets-monotone
   (implies (and (<= (nfix ou1) (nfix ou2)) (<= (nfix on1) (nfix on2)))
            (<= (fn-heap-store-open-octets profile ou1 on1) (fn-heap-store-open-octets profile ou2 on2)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(fn-heap-store-open-octets) (theory 'minimal-theory))
-           :use ((:instance fn-heap-open-chunk-bound-monotone (p1 profile) (p2 profile))
-                 fn-mm-open-record-bound-monotone fn-mm-open-entry-array-bound-monotone
-                 fn-mm-open-walk-fixed-bound-monotone))))
-
+  :hints (("Goal" :in-theory (e/d (fn-heap-store-open-octets)
+                                 (fn-heap-open-chunk-bound fn-heap-open-record-bound
+                                  fn-heap-open-entry-array-bound fn-heap-open-walk-fixed-bound))
+           :use (m28-mm-open-small-terms-monotone
+                 (:instance fn-heap-open-chunk-bound-monotone (p1 profile) (p2 profile))))))
 (defthm fn-mm-reopen-live-monotone
   (implies (fn-mm-tot-le a b)
            (<= (fn-mm-reopen-live profile cfg a) (fn-mm-reopen-live profile cfg b)))

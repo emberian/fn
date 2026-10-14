@@ -152,7 +152,9 @@ for name in $variants; do
   {
     echo '#!/bin/sh'
     echo '# fn frozen image launcher v2'
-    echo 'here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)'
+    sed -n '/^# BEGIN fn_resolve_path/,/^# END fn_resolve_path/p' packaging/fn
+    echo 'self=$(fn_resolve_path "$0") || exit 4'
+    echo 'here=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd)'
     echo 'export SBCL_HOME="$here/runtime/sbcl-home/"'
     echo 'export LD_LIBRARY_PATH="$here/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"'
     if [ -n "$openssl_lib" ]; then

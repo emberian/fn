@@ -28,8 +28,8 @@ time.sleep(600)
 
 REFUSES = r"""
 import sys
-sys.stderr.write("refused memory-cannot-hold-the-store capacity=0 of 31 bound-by=store sum=327 MB limit=251 MB\n")
-sys.exit(1)
+sys.stderr.write("owner refused: connections-exceed-memory\n")
+sys.exit(4)
 """
 
 
@@ -60,8 +60,8 @@ class DrainingStartTests(unittest.TestCase):
         with self.assertRaises(AssertionError) as caught:
             node.announcement(b"LISTENING ", timeout=30)
         message = str(caught.exception)
-        self.assertIn("memory-cannot-hold-the-store capacity=0", message)
-        self.assertIn("exit=1", message)
+        self.assertIn("connections-exceed-memory", message)
+        self.assertIn("exit=4", message)
         self.assertTrue(node.stopped)
 
     def test_output_until_advances_a_cursor(self):
@@ -86,8 +86,7 @@ class DrainingStartTests(unittest.TestCase):
 # The Popen-shaped start the older modules use (was tests/test_native_process.py):
 # a start that fails says why, from stderr (feed-queue's ask, 2026-09-27),
 # the refusal line first whatever the breakdown's length.
-# A current probe refusal, preserved verbatim whatever the diagnostic tail.
-REFUSAL = "fn: refused machine-cannot-hold-the-pools need=327 MB machine=251 MB"
+REFUSAL = "fn: refused machine-cannot-hold-profile reservation=35034 MB budget=24576 MB"
 
 
 def stand_in(breakdown_lines: int, announce: bool = False) -> subprocess.Popen:
@@ -227,7 +226,7 @@ class FailedTestStderrTests(unittest.TestCase):
             def test_refusal(self):
                 process = native_harness.start(
                     [sys.executable, "-c",
-                     "import sys; sys.stderr.write('refused memory-cannot-hold-the-store capacity=0\\n')"])
+                     "import sys; sys.stderr.write('owner refused: heap figure 802 GB\\n')"])
                 process.wait(timeout=30)
                 process.stop()
                 self.fail("the owner did not start")
@@ -271,7 +270,7 @@ class FailedTestStderrTests(unittest.TestCase):
         from pathlib import Path
         with tempfile.TemporaryDirectory() as keep:
             out = self.run_cases(keep)
-            self.assertIn("refused memory-cannot-hold-the-store capacity=0", out)
+            self.assertIn("owner refused: heap figure 802 GB", out)
             self.assertIn("filed refusal line", out)
             self.assertNotIn("test_passes process", out)
             kept = sorted(path.name for path in Path(keep).iterdir())
@@ -308,12 +307,14 @@ class StableStatusLinesTests(unittest.TestCase):
 
 
 FAKE_IMAGE = """#!/bin/sh
-# A stand-in image: the reservation exceeds resident LIMIT, as a run's does.
+# A stand-in image: the heap probe answers a figure, a run prints what it got.
 if [ "$1 $2" = "--fn heap" ]; then
-    echo "heap=4777 MB profile=custom machine=4096 MB stack=1536 KB threads=3"
+    echo "heap=777 MB profile=custom machine=4096 MB stack=1536 KB threads=3"
     exit 0
 fi
 echo "ran SBCL_USER_ARGS=${SBCL_USER_ARGS:-} args=$*"
+echo "image FN_OPENSSL_PREFIX=${FN_OPENSSL_PREFIX:-unset}"
+exit "${FN_TEST_IMAGE_EXIT:-0}"
 """
 
 
@@ -331,55 +332,68 @@ class InstalledLaunchTests(unittest.TestCase):
         self.image.write_text(FAKE_IMAGE)
         self.image.chmod(0o755)
         (self.tmp / "fn-host.core").write_bytes(b"core" * 1024)
-        # The installed layout carries a shipped OpenSSL prefix (D64: never
-        # the system pair).  The fake image loads no library, so its own
-        # fixture files satisfy the launcher's Linux package-presence check;
-        # the fake image never opens either file as a library.
+        # The harness needs a prefix directory to construct the installed
+        # layout.  The launcher exports it; the image decides availability
+        # (D59/D64).  This stand-in image needs no library files.
         (self.tmp / "openssl" / "lib").mkdir(parents=True)
-        for library in ("libssl.so.3", "libcrypto.so.3"):
-            (self.tmp / "openssl" / "lib" / library).write_bytes(b"fake image library fixture\n")
+        commands = self.tmp / "commands"
+        commands.mkdir()
+        uname = commands / "uname"
+        uname.write_text("#!/bin/sh\necho Linux\n")
+        uname.chmod(0o755)
         from unittest import mock
-        patch = mock.patch.dict(os.environ, {"FN_OPENSSL_PREFIX": str(self.tmp / "openssl")})
+        patch = mock.patch.dict(os.environ, {
+            "FN_OPENSSL_PREFIX": str(self.tmp / "openssl"),
+            "PATH": str(commands) + os.pathsep + os.environ["PATH"],
+        })
         patch.start()
         self.addCleanup(patch.stop)
+        # These shell fixtures never listen; give Node a fixed port rather
+        # than probing the network for one while testing prefix forwarding.
+        ports = mock.patch.object(native_harness, "free_port", return_value=119)
+        ports.start()
+        self.addCleanup(ports.stop)
 
     def test_an_owner_run_goes_through_the_installed_launcher_at_the_decided_heap(self):
         node = native_harness.Node(self, self.image, root=self.tmp / "node")
-        probe = node.invoke("heap", "--", "operator", node.config, "run")
-        import re
-        figure = re.search(rb"heap=(\d+) MB .*machine=(\d+) MB stack=(\d+) KB", probe.stdout)
-        self.assertIsNotNone(figure, probe.stdout)
-        heap, limit, stack = (value.decode() for value in figure.groups())
-        self.assertGreater(int(heap), int(limit))
         result = node.invoke("operator", node.config, "run", "--once",
                              env={"FN_NATIVE_HOST": "/elsewhere"})
         out = result.stdout.decode()
         self.assertEqual(result.returncode, 0, out + result.stderr.decode())
-        self.assertIn("SBCL_USER_ARGS=--dynamic-space-size {} --control-stack-size {}KB".format(heap, stack), out)
+        self.assertIn("SBCL_USER_ARGS=--dynamic-space-size 777 --control-stack-size 1536KB", out)
         self.assertIn("args=--fn operator {} run --once".format(node.config), out)
         launcher = native_harness.installed_launcher(self.image)
         self.assertEqual(launcher.read_bytes(),
                          (native_harness.ROOT / "packaging" / "fn").read_bytes())
 
-    def test_the_fixture_passes_the_linux_openssl_prefix_check_on_every_platform(self):
-        # macOS skips this installed-layout check in packaging/fn.  Execute
-        # its actual shell condition here too, so an empty prefix fails locally.
-        launcher = (native_harness.ROOT / "packaging" / "fn").read_text()
-        begin = launcher.index('    if [ ! -s "$FN_OPENSSL_PREFIX/lib/libssl.so.3" ]')
-        end = launcher.index("    fi", begin) + len("    fi")
-        result = subprocess.run(["sh", "-c", launcher[begin:end]],
-                                capture_output=True, timeout=30, check=False)
-        self.assertEqual(result.returncode, 0, result.stderr.decode())
-        self.assertGreater((self.tmp / "openssl" / "lib" / "libcrypto.so.3").stat().st_size, 0)
+    def test_missing_default_prefix_reaches_the_image(self):
+        node = native_harness.Node(self, self.image, root=self.tmp / "default-prefix")
+        launcher = native_harness.installed_launcher(self.image)
+        prefix = launcher.parent.parent / "libexec" / "fn" / "openssl"
+        result = node.invoke("operator", node.config, "run", "--once",
+                             env={"FN_OPENSSL_PREFIX": None})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(("image FN_OPENSSL_PREFIX=" + str(prefix)).encode(), result.stdout)
+        self.assertFalse((prefix / "lib" / "libssl.so.3").exists())
+
+    def test_missing_operator_prefix_keeps_the_images_refusal_exit(self):
+        node = native_harness.Node(self, self.image, root=self.tmp / "operator-prefix")
+        missing = self.tmp / "no-such-openssl"
+        result = node.invoke("operator", node.config, "run", "--once",
+                             env={"FN_OPENSSL_PREFIX": str(missing), "FN_TEST_IMAGE_EXIT": "1"})
+        self.assertFalse(missing.exists())
+        self.assertEqual(result.returncode, native_harness.EXIT.REFUSED,
+                         result.stdout + result.stderr)
+        self.assertIn(("image FN_OPENSSL_PREFIX=" + str(missing)).encode(), result.stdout)
 
     def test_a_named_heap_opts_out_and_other_verbs_run_the_image(self):
         node = native_harness.Node(self, self.image, root=self.tmp / "named",
                                    image_heap="the subject is the image's own figure")
         out = node.invoke("operator", node.config, "run").stdout.decode()
-        self.assertNotIn("--dynamic-space-size 4777", out)  # not the probe's figure
+        self.assertNotIn("--dynamic-space-size 777", out)
         plain = native_harness.Node(self, self.image, root=self.tmp / "plain")
         out = plain.invoke("operator", plain.config, "status").stdout.decode()
-        self.assertNotIn("--dynamic-space-size 4777", out)  # not the probe's figure
+        self.assertNotIn("--dynamic-space-size 777", out)
         self.assertIn("args=--fn operator {} status".format(plain.config), out)
 
 
@@ -392,11 +406,13 @@ class Acl2SessionHeapTests(unittest.TestCase):
     def launched_args(self, user_args):
         import os, tempfile
         decide = (native_harness.ROOT / "packaging" / "launcher-decide.sh").read_text()
+        fn = (native_harness.ROOT / "packaging" / "fn").read_text()
+        resolver = fn[fn.index("# BEGIN fn_resolve_path"):fn.index("# END fn_resolve_path")]
         with tempfile.TemporaryDirectory() as work:
             launcher = os.path.join(work, "image")
             with open(launcher, "w") as out:
-                out.write("#!/bin/sh\n"
-                          "fn_decide_heap() { SBCL_USER_ARGS='--dynamic-space-size 1024 "
+                out.write("#!/bin/sh\n" + resolver)
+                out.write("fn_decide_heap() { SBCL_USER_ARGS='--dynamic-space-size 1024 "
                           "--control-stack-size 1024KB'; }\n")
                 out.write(decide)
                 out.write('\nprintf %s "$SBCL_USER_ARGS"\n')
@@ -404,7 +420,7 @@ class Acl2SessionHeapTests(unittest.TestCase):
             env = dict(os.environ, SBCL_USER_ARGS=user_args)
             env.pop("FN_TEST_HEAP_MB", None)
             return subprocess.run([launcher, "--fn", "acl2", "session"], env=env,
-                                  capture_output=True, text=True, check=True).stdout.split()
+                                  capture_output=True, text=True, check=True, timeout=10).stdout.split()
 
     def test_the_session_runs_at_its_own_heap_not_the_store_less_decision(self):
         args = self.launched_args(native_harness.acl2_session_user_args())

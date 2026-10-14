@@ -164,3 +164,5 @@
 (include-book "bp-fnbs-delivery-replay")
 (include-book "bp-fnbs-delivery-publication")
 (include-book "bp-app-handoff")
+(include-book "bp-receive-evidence")
+(include-book "bp-app-handoff-time")
