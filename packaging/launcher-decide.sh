@@ -10,9 +10,10 @@
 # (LAUNCHER-STACK-ARGS-REPLACE-DECIDED-HEAP: since train 63 a stack-only
 # caller lost the decision and cold-started at the launcher's small-preset
 # heap).  FN_TEST_HEAP_MB is the tests' named override of the decided heap.
+fn_launcher_path=$(fn_resolve_path "$0") || exit 4
 fn_decide_command_heap() {
     shift
-    fn_decide_heap "$0" "$@"
+    fn_decide_heap "$fn_launcher_path" "$@"
 }
 case " ${SBCL_USER_ARGS:-} " in
     *" --dynamic-space-size "*) fn_caller_heap=1 ;;

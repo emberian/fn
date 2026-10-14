@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
-(include-book "article-buffer")
-(include-book "served-query-plan")
 (include-book "feed-journal")
 (include-book "peer-pull")
 (include-book "peer-pull-session")
@@ -126,6 +124,7 @@
 (include-book "bp-node-host-machine")
 (include-book "bp-evidence-host-names")
 (include-book "owner-retain-carried")
+(include-book "owner-retain-live")
 (include-book "bp-handoff-report")
 (include-book "tcpcl-delivery-invariants")
 (include-book "resource-syncer")

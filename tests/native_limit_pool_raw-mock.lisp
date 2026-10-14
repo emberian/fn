@@ -29,6 +29,9 @@
 (defun fnn-refuse (control &rest args)
   (declare (ignorable control args))
   (harness-stub-reached 'fnn-refuse "host/native/io.lisp"))
+(defun fnn-store-fenced (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-store-fenced "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 
 (defun nfix (x) (if (and (integerp x) (<= 0 x)) x 0))

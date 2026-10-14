@@ -1745,7 +1745,7 @@ def runner_closure(book: str, graph: dict[str, list[str]], include_self: bool,
     roots = ([book] if include_self else sorted(graph.get(book, ()))) + list(include_books)
     if not roots:
         return None
-    with acl2_slots.slot(f"proof-repl cache {book}"):
+    with acl2_slots.tree_slot(f"proof-repl cache {book}"):
         report = certs.install_partial(ROOT, cache, roots, identity, acl2=acl2)
     return None if report.uncached or report.uncompiled else report
 
@@ -1804,9 +1804,9 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
             fingerprint = acl2_toolchain.fingerprint(acl2)
         if not fingerprint.qualified or fingerprint.identity is None:
             raise ValueError("unqualified ACL2 launcher/core/runtime: " + fingerprint.reason)
-        # The alist probe starts ACL2 directly. Hold the same machine-wide
-        # slot that the subsequent interactive wrapper will take.
-        with acl2_slots.slot(f"proof-repl cache {book}"):
+        # The alist probe uses acl2_slots.run too. Share this process tree's
+        # slot with that probe instead of waiting for a second reservation.
+        with acl2_slots.tree_slot(f"proof-repl cache {book}"):
             if from_source or include_books:
                 # What stays is closed under includes: a book that includes a
                 # from-source book is itself from source.

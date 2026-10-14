@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
-(include-book "payload-commit-extent")
 (include-book "payload-extent-read")
 (include-book "page-read-ownership")
 (include-book "payload-lz-append")
@@ -190,3 +189,5 @@
 (include-book "owner-results")
 (include-book "owner-served-bound")
 (include-book "topic-history-local-proposals")
+(include-book "article-buffer")
+(include-book "served-query-plan")

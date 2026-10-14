@@ -45,6 +45,16 @@ class BoxesTests(unittest.TestCase):
         self.assertIn("persvati  unreachable", done.stdout)
         self.assertEqual(self.run_boxes({}, "--bogus").returncode, 2)
 
+    def test_the_listing_without_tokens_exits_0(self):
+        # The listing's last step was `[ -n "$name" ] && echo ...` over the
+        # token lines; with no token held, the empty line left the script at
+        # status 1, and tools/dev_control.py refused its load probe.
+        done = self.run_boxes({"hbox": "24 8.3 70 23 700 /tank/fn/scratch",
+                               "persvati": "24 1.6 73 0 246 /home/e/fn-gates"})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("hbox      load   8.30", done.stdout)
+        self.assertNotIn("token", done.stdout)
+
     def test_pick_passes_over_a_box_reserved_by_someone_else_but_not_ones_own(self):
         lease = "R 1900000000 25 17:05Z curve-lane a scale curve (quiet box)"
         answers = {"hbox": "24 1.0 70 24 700 /tank/fn/scratch\n" + lease,

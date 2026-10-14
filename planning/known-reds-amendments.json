@@ -113,6 +113,611 @@
    "item": "FILL-BOUNDS-JOIN-POST-HEAP",
    "owner": "builder-P",
    "ruling": "coordinator 2026-10-12 DECISION (a): a 3 MiB POST allocates ~874 MB under the owner mutex (L16, build/lanes/log-l4/build/codex/l4-trace/REPORT.md section 3), bar 16 x 3 MiB = 50,331,648 bytes; copies (a)-(g) are on the native POST path that POST landing 2b deletes (c7/DESIGN.md section 9), so no twin repair under rule 6.7; (h) with L16's restatement, (i) and surviving paths by A19 now; carried as a known red, amended, owner builder-P, retired by POST landing 2b (lane/post), whose READY reports the measured 3 MiB allocation pessimistic first"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_public_limits.DeveloperImagePublicLimits.test_capacity_and_trusted_range",
+   "dev_sha": "0403f697b",
+   "item": "PUBLIC-LIMITS-OVER-WINDOW-CAPACITY",
+   "owner": "builder-O",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json so the next train's verdict counts it; routed to builder-M, who traced it to the OVER window pricing (adapter A-OVER-WINDOW-FIT) and moved it to builder-O with the coordinator's approval; retired by OVER landing 2"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_public_limits.ProductionImagePublicLimits.test_capacity_and_trusted_range",
+   "dev_sha": "0403f697b",
+   "item": "PUBLIC-LIMITS-OVER-WINDOW-CAPACITY",
+   "owner": "builder-O",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json so the next train's verdict counts it; routed to builder-M, who traced it to the OVER window pricing (adapter A-OVER-WINDOW-FIT) and moved it to builder-O with the coordinator's approval; retired by OVER landing 2"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_openssl_prefix_is_refused_by_name",
+   "dev_sha": "0403f697b",
+   "item": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json, owner builder-A (packaging/fn wrapper, traced by A26), retired by lane/vertical-tls-wrapper"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_prefix_with_hybrid_required_and_no_tls_is_refused",
+   "dev_sha": "0403f697b",
+   "item": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json, owner builder-A (packaging/fn wrapper, traced by A26), retired by lane/vertical-tls-wrapper"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_tls_key_exchange.NativeTlsKeyExchangeTests.test_a_missing_prefix_on_a_node_without_tls_runs_on_the_system_pair",
+   "dev_sha": "0403f697b",
+   "item": "NATIVE-TLS-KEYX-MISSING-OPENSSL-EXIT",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13: dev red enters planning/known-reds.json, owner builder-A (packaging/fn wrapper, traced by A26), retired by lane/vertical-tls-wrapper"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_auth_admin_fidelity.NativeAuthAdminFidelityTests.test_post_rename_eio_is_uncertain_then_fresh_process_recovers",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_auth_admin_fidelity.NativeAuthAdminFidelityTests.test_sigkill_after_rename_recovers_in_a_new_process",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_control_evidence.NativeControlEvidenceTests.test_log_and_evidence_live_and_offline",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_expiry.DeveloperExpiryTests.test_a_recorded_reclaim_installs_on_the_quiet_serving_node",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_fitness.ShortSoakTests.test_a_short_soak_has_no_finding_and_the_journal_replays",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_foreign_format_open.ForeignFormatOpenTest.test_a_store_of_another_format_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "setUpClass (tests.test_native_image_differential.ReleaseAgainstReferenceTests)",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "unittest.loader._FailedTest.test_native_owner_measure",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_preflight_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_response_lease_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_startup_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_response_window_raw",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_capture_first_reclaim_waits_for_independent_response_then_makes_progress",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_disabling_the_capture_first_reclaim_hold_cannot_pass",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_disabling_the_real_issued_page_io_hold_cannot_pass",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_true_issued_page_io_settles_cancelled_token_and_reads_retained_article",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_status_live_posts.NativeStatusLivePostsTests.test_status_after_live_posts_stays_within_the_slack",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_over_a_suffix_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_with_an_empty_suffix_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_this_checkpoint_against_the_copy_log_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_mount_identity.MountIdentityNativeTests.test_a_store_on_another_filesystem_is_refused_by_name_then_rebound",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_verdicts.KeyTests.test_the_key_covers_the_module_its_helpers_the_harness_the_runner_and_the_images",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 DECISION: register all 25 untraced control-run reds at dev 150e2d6f4 under one item, owner builder-B until a triage run proposes owner and mechanism; owners move through known_reds.py transfer"
+  },
+  {
+   "kind": "native",
+   "subject": "setUpClass (tests.test_native_image_differential.ReleaseAgainstReferenceTests)",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13: startup refusal / not-running from memory sizing, builder-M (M26) triages first",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_over_a_suffix_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13: startup refusal / not-running from memory sizing, builder-M (M26) triages first",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_with_an_empty_suffix_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13: startup refusal / not-running from memory sizing, builder-M (M26) triages first",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_this_checkpoint_against_the_copy_log_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13: startup refusal / not-running from memory sizing, builder-M (M26) triages first",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_foreign_format_open.ForeignFormatOpenTest.test_a_store_of_another_format_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13: startup refusal / not-running from memory sizing, builder-M (M26) triages first",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_verdicts.KeyTests.test_the_key_covers_the_module_its_helpers_the_harness_the_runner_and_the_images",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13: FN_NATIVE_LAUNCHER_SHA256 verdict key from the launcher splice, builder-M (M26)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_preflight_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-RAW-SCRIPTS-LEASE (A27)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_response_lease_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-RAW-SCRIPTS-LEASE (A27)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_startup_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-RAW-SCRIPTS-LEASE (A27)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_response_window_raw",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-RAW-SCRIPTS-LEASE (A27)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-P",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-POST-SEAL-GATE-CLASSIFIER (P12)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-C",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-DECODED-CUSTODY (C23, after LB)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-M-SIZING (M26)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_status_live_posts.NativeStatusLivePostsTests.test_status_after_live_posts_stays_within_the_slack",
+   "dev_sha": "150e2d6f4",
+   "item": "DEV-CONTROL-UNTRACED-20261013",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 routing after triage: item DEVCTL-M-SIZING (M26, settles with P12)",
+   "transfer_from": "builder-B"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_auth_admin_fidelity.NativeAuthAdminFidelityTests.test_post_rename_eio_is_uncertain_then_fresh_process_recovers",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_auth_admin_fidelity.NativeAuthAdminFidelityTests.test_sigkill_after_rename_recovers_in_a_new_process",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_control_evidence.NativeControlEvidenceTests.test_log_and_evidence_live_and_offline",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-D-HELD",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_decoded_custody.NativeDecodedCustodyTests.test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-DECODED-CUSTODY",
+   "owner": "builder-C",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_expiry.DeveloperExpiryTests.test_a_recorded_reclaim_installs_on_the_quiet_serving_node",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-D-HELD",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_fitness.ShortSoakTests.test_a_short_soak_has_no_finding_and_the_journal_replays",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-D-HELD",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_foreign_format_open.ForeignFormatOpenTest.test_a_store_of_another_format_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "setUpClass (tests.test_native_image_differential.ReleaseAgainstReferenceTests)",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "unittest.loader._FailedTest.test_native_owner_measure",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_preflight_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-RAW-SCRIPTS-LEASE",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_response_lease_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-RAW-SCRIPTS-LEASE",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_startup_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-RAW-SCRIPTS-LEASE",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-POST-SEAL-GATE-CLASSIFIER",
+   "owner": "builder-P",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_response_window_raw",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-RAW-SCRIPTS-LEASE",
+   "owner": "builder-A",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_capture_first_reclaim_waits_for_independent_response_then_makes_progress",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_disabling_the_capture_first_reclaim_hold_cannot_pass",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_disabling_the_real_issued_page_io_hold_cannot_pass",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_resilience_cuts.NativeResilienceCutTests.test_true_issued_page_io_settles_cancelled_token_and_reads_retained_article",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-B-HARNESS",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_status_live_posts.NativeStatusLivePostsTests.test_status_after_live_posts_stays_within_the_slack",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_over_a_suffix_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_with_an_empty_suffix_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_this_checkpoint_against_the_copy_log_is_refused_by_name",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_store_mount_identity.MountIdentityNativeTests.test_a_store_on_another_filesystem_is_refused_by_name_then_rebound",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-D-HELD",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_verdicts.KeyTests.test_the_key_covers_the_module_its_helpers_the_harness_the_runner_and_the_images",
+   "dev_sha": "150e2d6f4",
+   "item": "DEVCTL-M-SIZING",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
+   "transfer_from": "builder-B",
+   "item_from": "DEV-CONTROL-UNTRACED-20261013"
   }
  ]
 }

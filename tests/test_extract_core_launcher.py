@@ -181,10 +181,12 @@ class CoreLauncherTests(unittest.TestCase):
 
     def test_the_image_and_fn_core_carry_the_same_decision(self):
         prelude = module.decision_prelude()
-        self.assertIn('fn_decide_heap "$0" "$@"', prelude)
+        self.assertIn('fn_launcher_path=$(fn_resolve_path "$0") || exit 4', prelude)
+        self.assertIn('fn_decide_heap "$fn_launcher_path" "$@"', prelude)
         build = (ROOT / "tools/build_native_host.sh").read_text()
         self.assertIn("cat packaging/launcher-decide.sh", build)
         self.assertIn("/^# BEGIN fn_decide_heap/,/^# END fn_decide_heap/p", build)
+        self.assertIn("/^# BEGIN fn_resolve_path/,/^# END fn_resolve_path/p", build)
 
     def test_frozen_product_fingerprint_resolves_only_the_known_here_prefix(self):
         import sys
