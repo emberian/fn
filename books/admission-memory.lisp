@@ -251,8 +251,8 @@
               (fn-mm-cfg-holders (fn-adm-public-readers-cfg cfg (1+ c))))
            (if (< (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile)))
                      *fn-cbud-reply-status-octets*)
-                  (fn-mm-over-window-octets profile cfg))
-               :over-window
+                  (fn-ovr-over-capl-of profile cfg))
+               :over-line
              :article-reply))
           (t :connection-fixed))))
 
@@ -305,14 +305,14 @@
          (equal (fn-mm-cfg-cache (fn-adm-cfg-at cfg k)) (fn-mm-cfg-cache cfg))
          (equal (fn-mm-cfg-cold (fn-adm-cfg-at cfg k)) (fn-mm-cfg-cold cfg))
          (equal (fn-mm-cfg-handshakes (fn-adm-cfg-at cfg k)) (fn-mm-cfg-handshakes cfg))
-         (equal (fn-mm-cfg-over-window (fn-adm-cfg-at cfg k)) (fn-mm-cfg-over-window cfg))
+         (equal (fn-mm-cfg-header-octets (fn-adm-cfg-at cfg k)) (fn-mm-cfg-header-octets cfg))
          (equal (fn-mm-cfg-server-octets (fn-adm-cfg-at cfg k)) (fn-mm-cfg-server-octets cfg))
          (equal (fn-mm-cfg-rho (fn-adm-cfg-at cfg k)) (fn-mm-cfg-rho cfg))
          (equal (fn-mm-cfg-config (fn-adm-cfg-at cfg k)) (fn-mm-cfg-config cfg))
          (equal (fn-mm-cfg-connections (fn-adm-cfg-at cfg k)) (nfix k)))
     :hints (("Goal" :in-theory (enable fn-adm-cfg-at fn-mm-cfg-tlsp fn-mm-cfg-trigger
                                        fn-mm-cfg-pub-trigger fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache
-                                       fn-mm-cfg-cold fn-mm-cfg-handshakes fn-mm-cfg-over-window
+                                       fn-mm-cfg-cold fn-mm-cfg-handshakes fn-mm-cfg-header-octets
                                        fn-mm-cfg-server-octets fn-mm-cfg-rho fn-mm-cfg-config
                                        fn-mm-cfg-connections fn-mm-nat)))))
 
@@ -322,7 +322,7 @@
 
   (local (in-theory (disable fn-mm-cfg-tlsp fn-mm-cfg-trigger fn-mm-cfg-pub-trigger
                              fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache fn-mm-cfg-cold
-                             fn-mm-cfg-handshakes fn-mm-cfg-over-window fn-mm-cfg-server-octets
+                             fn-mm-cfg-handshakes fn-mm-cfg-header-octets fn-mm-cfg-server-octets
                              fn-mm-cfg-rho fn-mm-cfg-config fn-mm-cfg-connections fn-adm-cfg-at)))
 
   (local (defthm fn-adm-at-owner
@@ -342,8 +342,8 @@
     :hints (("Goal" :in-theory (enable fn-mm-connection-fixed)))))
   (local (defthm fn-adm-at-large
     (equal (fn-mm-large-reply profile (fn-adm-cfg-at cfg k)) (fn-mm-large-reply profile cfg))
-    :hints (("Goal" :in-theory (enable fn-mm-large-reply fn-mm-over-window-octets
-                                       fn-mm-over-window-fit fn-mm-nov-line-octets)))))
+    :hints (("Goal" :in-theory (enable fn-mm-large-reply fn-ovr-over-capl-of
+                                       fn-mm-cfg-header-octets fn-mm-cfg-server-octets)))))
   (local (defthm fn-adm-at-maintenance
     (equal (fn-mm-maintenance tot (fn-adm-cfg-at cfg k)) (fn-mm-maintenance tot cfg))
     :hints (("Goal" :in-theory (enable fn-mm-maintenance)))))
@@ -565,7 +565,7 @@
  (equal (equal (fn-adm-capacity-binding profile img cfg limit tot) :configured) (equal (fn-adm-capacity profile img cfg limit tot) (fn-mm-cfg-connections cfg)))
  :rule-classes nil
 
-  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-binding) (fn-adm-capacity fn-adm-public-readers-cfg fn-mm-gate-p fn-mm-cfg-connections fn-mm-sum fn-mm-cfg-holders fn-mm-over-window-octets)))))
+  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-binding) (fn-adm-capacity fn-adm-public-readers-cfg fn-mm-gate-p fn-mm-cfg-connections fn-mm-sum fn-mm-cfg-holders fn-ovr-over-capl-of)))))
 
 ; THE HANDLE SPACE (K-BOUND P3; Builder M, memory landing 4b, 2026-10-10; Codex rev-7
 ; finding 5).  A row's handle is the arena's count at its seal and a seal adds one
@@ -1154,7 +1154,7 @@
  (symbolp (fn-adm-capacity-binding profile img cfg limit tot))
  :rule-classes :type-prescription
  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-binding)
-   (fn-adm-capacity fn-mm-sum fn-mm-cfg-connections fn-mm-cfg-holders fn-mm-over-window-octets fn-bs-profile-max-article-octets))))))
+   (fn-adm-capacity fn-mm-sum fn-mm-cfg-connections fn-mm-cfg-holders fn-bs-profile-max-article-octets))))))
 
 (local (defthm m22-decimal-stringp-by-definition
  (stringp (fn-heap-decimal n))

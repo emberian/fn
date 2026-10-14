@@ -1,0 +1,12 @@
+{
+ "detail": "Two premises NEW against dev at OVER landing 2 (premise_audit --strict on hbox native-l2-o8-3 at lane/over@5cd18fd28 vs M28's 9ab1229dc tree). Both were already NEW at base-0842 (lane/over before landing 2; hbox /tank/fn/scratch/over/base-0842/o6-gates/premise_audit.log:1438,4169) and appear only because lane/over hosts over-render theorems dev never hosted. (1) fn-ovr-probes-within (books/over-render-quantum.lisp:34): established off the host path, by the unhosted fn-ovr-probes-within-the-header-bound (books/over-render-bound.lisp:245); assumed by fn-ovr-quantum-progress-under-probes (over-render-quantum.lisp:1314), fn-ovr-step-keeps-probe-bound (:1341), fn-ovr-quantum-line-window-lower-bound (:1681), fn-ovr-lease-run-quanta-within-the-line-count (books/over-render-lease.lisp:1029). (2) fn-ovr-records-within-octets-or-reclaimedp (books/over-render-store.lisp:43): never concluded; assumed by fn-ovr-served-catalog-rows-within-header (over-render-store.lisp:218); with it the term premise fn-ovr-records-parse-or-reclaimedp. Retirement: each premise concluded on the host path (premise_audit --strict shows neither), with a tooth per premise: the host refuses outside the bound, and the reclaimed arm answers by name. Coordinator ruling 10-14 (DECISION (a)): O's NEXT item, before anything else on O's queue; its READY precedes the next OVER landing.",
+ "file": "books/over-render-quantum.lisp",
+ "id": "OVER-PREMISES-ON-HOST-PATH",
+ "notes": [],
+ "owner": "builder-O",
+ "severity": "medium",
+ "source": "o8-over2-20261014",
+ "state": "open",
+ "title": "OVER's two carried premises are concluded on the host path: fn-ovr-probes-within and fn-ovr-records-within-octets-or-reclaimedp",
+ "updated": "2026-10-14T14:12:15Z"
+}

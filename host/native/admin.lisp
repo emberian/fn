@@ -330,7 +330,7 @@ owner staging path. The probe forwards its actual refusal text."
     (fnn-owner-core 'fn-owner-memory-gate-install
       (nth 0 r) (list resident) (nth 2 r) (nth 3 r) (nth 4 r) (nth 5 r)
       (nth 6 r) (nth 7 r) (nth 1 envelope) (nth 2 envelope) (nth 3 envelope)
-      (nth 4 envelope) (nth 5 envelope) (nth 8 r) (nth 9 r)
+      (nth 4 envelope) (nth 5 envelope) (nth 8 r)
       (nth 6 envelope) (nth 7 envelope) (nth 8 envelope))
     (fnn-owner-core 'fn-owner-memory-reclaim-complete)
     (funcall stage cid)))

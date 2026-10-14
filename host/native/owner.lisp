@@ -746,26 +746,19 @@ range), which the caller runs under the owner mutex
 ;;; fn-ovw-run-is-over-range-cat that is the unbounded reader's reply.
 (defun fnn-owner-over-quantum ()
   "ACL2's cursor quantum, the developer selector's override passed through:
-the window the memory gate's configure fits (fn-owner-memory-configure)."
+the work bound of each OVER cursor step."
   (let ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")))
     (fnn-core 'fn-splan-cursor-window
               (and raw (> (length raw) 0) (every #'digit-char-p raw) (parse-integer raw)))))
 
-(defvar *fnn-owner-over-window-fit* nil
-  "The run's W' (A-OVER-WINDOW-FIT), published by
-fnn-owner-memory-configure-locked (host/native/mux.lisp) before any actor
-exists; NIL until a configure.")
-
 (defun fnn-owner-over-window ()
-  "ACL2's cursor quantum (fnn-owner-over-quantum); under a configured run, the run's W' (A-OVER-WINDOW-FIT: books/memory-model.lisp fn-mm-over-window-fit, installed by host/owner-host.lisp fn-owner-memory-configure and published in *fnn-owner-over-window-fit*), at most that quantum."
-  (let ((w (fnn-owner-over-quantum))
-        (fit *fnn-owner-over-window-fit*))
-    (if (and (integerp fit) (plusp fit)) (min w fit) w)))
+  "ACL2's cursor quantum, served without a memory-window clamp."
+  (fnn-owner-over-quantum))
 
 (defvar *fnn-owner-cursor-octets-fit* nil
   "The run's NEWNEWS/LIST quantum octets (books/memory-model.lisp
-fn-mm-cursor-octets-fit, the octets of W' NOV lines), published with
-*fnn-owner-over-window-fit* by fnn-owner-memory-configure-locked; NIL until
+fn-mm-cursor-octets-fit, charged within LARGE), published by
+fnn-owner-memory-configure-locked; NIL until
 a configure.")
 
 (defun fnn-owner-cursor-octets ()
@@ -991,13 +984,50 @@ is empty, and then no send is outstanding)."
                     ((zerop (svref (fnn-live-dss-out) 1)) (list :warm nil base base next done))
                     (t (fnn-fault "the host lease refused a window of ~d octets" (svref (fnn-live-dss-out) 1)))))))))))
 
+(defun fnn-owner-lease-over-step (cid lease plan)
+  "One OVER quantum into the runtime pool and its submitted send. The caller
+holds the owner mutex. Return (:wait), or (:warm ARRAY START END NEXT DONE)."
+  (let ((st (fnn-live-rtc-st)))
+    (fnn-owner-lease-sent-locked lease (list :done (fnn-lease-n lease)))
+    (unless (fnn-lease-id lease)
+      (destructuring-bind (st2 id inc left) (fnn-call 'fn-hld-begin cid st)
+        (declare (ignore st2))
+        (when left (fnn-fault "the OVER lease left completions unsettled: ~s" left))
+        (unless id (return-from fnn-owner-lease-over-step (list :wait)))
+        (setf (fnn-lease-id lease) id (fnn-lease-inc lease) inc)))
+    (let* ((id (fnn-lease-id lease)) (inc (fnn-lease-inc lease))
+           (h (first (fnn-call 'fn-hld-workspace 0 id inc st))))
+      (unless h (return-from fnn-owner-lease-over-step (list :wait)))
+      (destructuring-bind (n next j op st2)
+          (fnn-call 'fn-ovr-plan-lease-quantum plan
+                    (fnn-owner-over-window) h id inc st
+                    (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
+        (declare (ignore st2))
+        (unless (plusp n) (fnn-fault "the OVER lease refused its next window"))
+        (when (and (plusp j) (null op))
+          (fnn-fault "the OVER lease refused its send of ~d octets" j))
+        (setf (fnn-lease-op lease) op (fnn-lease-n lease) j)
+        (let* ((base (first (fnn-call 'fn-hld-window-base h st)))
+               (rest (fnn-core 'fn-ovr-plan-next plan next))
+               (done (fnn-core 'fn-qplan-donep rest)))
+          (list :warm (and op (svref st *fn-rtc-c-bytesi*)) base (+ base j) rest done))))))
+
+(defun fnn-owner-over-pause-after-quantum (service cid)
+  "The developer witness pauses off the mutex while the response is held."
+  (let ((stall (fnn-developer-selector "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM")))
+    (when (and stall (plusp (length stall)) (probe-file stall))
+      (fnn-err "OVER quantum-held cid=~d" cid)
+      (loop while (and (probe-file stall) (not (fnn-owner-service-stopping service)))
+            do (sleep 0.05)))))
+
 (defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp borrowp lease)
   "Render a window, running at most one cursor quantum under the owner
 mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP COLD-READ END
 NIL START), the window OCTETS[START, END) (START nil: 0).  Empty progress
 yields; a cold read retains the exact original plan/capture.  With LEASE (a
-plain connection's fnn-lease) an ARTICLE window is the host lease's
-(fnn-owner-lease-article-step): written from the contract's octet array, a
+plain connection's fnn-lease) an ARTICLE or OVER window comes from
+fnn-owner-lease-article-step or fnn-owner-lease-over-step, written from the
+contract's octet array, a
 yield while no pool buffer is free."
   (multiple-value-bind (ready ready-p yield cold)
       (fnn-owner-ready-plan-step service cid plan class)
@@ -1005,14 +1035,16 @@ yield while no pool buffer is free."
       (return-from fnn-owner-render-next-quantum
         (values (fnn-make-octets 0) ready nil yield cold 0)))
     (setq plan ready))
-  (when (and lease (fnn-owner-service-lease-ready service) (fnn-core 'fn-asto-plan-articlep plan))
+  (when (and lease (fnn-owner-service-lease-ready service) (or (fnn-core 'fn-asto-plan-articlep plan) (fnn-core 'fn-ovr-plan-cursor plan)))
     (let ((article
             (fnn-owner-cursor-step-serialized service cid
              (lambda ()
                (let ((attempt
                        (catch 'fnn-extent-cold
                          (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
-                           (fnn-owner-lease-article-step cid lease plan)))))))
+                           (if (fnn-core 'fn-ovr-plan-cursor plan)
+                               (fnn-owner-lease-over-step cid lease plan)
+                             (fnn-owner-lease-article-step cid lease plan))))))))
                  (if (member (car attempt) '(:warm :wait :refused)) attempt
                    (list :cold (fnn-owner-cold-issue-locked service cid attempt))))) class)))
       (case (car article)
@@ -1021,6 +1053,8 @@ yield while no pool buffer is free."
                  (values (fnn-make-octets 0) plan nil nil (second article) 0)))
         (:wait (return-from fnn-owner-render-next-quantum
                  (values (fnn-make-octets 0) plan nil t nil 0))))
+      (when (fnn-core 'fn-ovr-plan-cursor plan)
+        (fnn-owner-over-pause-after-quantum service cid))
       (destructuring-bind (array start end next done) (cdr article)
         (return-from fnn-owner-render-next-quantum
           (if (< start end)

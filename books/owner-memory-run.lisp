@@ -59,14 +59,14 @@
   (equal (fn-mm-cfg-cache (update-nth 14 b (true-list-fix cfg))) (fn-mm-cfg-cache cfg))
   (equal (fn-mm-cfg-cold (update-nth 14 b (true-list-fix cfg))) (fn-mm-cfg-cold cfg))
   (equal (fn-mm-cfg-handshakes (update-nth 14 b (true-list-fix cfg))) (fn-mm-cfg-handshakes cfg))
-  (equal (fn-mm-cfg-over-window (update-nth 14 b (true-list-fix cfg))) (fn-mm-cfg-over-window cfg))
+  (equal (fn-mm-cfg-header-octets (update-nth 14 b (true-list-fix cfg))) (fn-mm-cfg-header-octets cfg))
   (equal (fn-mm-cfg-server-octets (update-nth 14 b (true-list-fix cfg))) (fn-mm-cfg-server-octets cfg))
   (equal (fn-mm-cfg-holders (update-nth 14 b (true-list-fix cfg))) (fn-mm-cfg-holders cfg))
   (equal (fn-mm-cfg-rho (update-nth 14 b (true-list-fix cfg))) (fn-mm-cfg-rho cfg))
   (equal (fn-mm-cfg-config (update-nth 14 b (true-list-fix cfg))) (fn-mm-cfg-config cfg))
   (equal (fn-mm-cfg-bank-floor (update-nth 14 b (true-list-fix cfg))) (nfix b)))
  :hints (("Goal" :in-theory (union-theories
-  '(m25-fix-update-by-definition m25-fix-fix-by-definition nth-update-nth (:executable-counterpart nfix) fn-mm-cfg-bank-floor fn-mm-nat fn-mm-cfg-connections fn-mm-cfg-tlsp fn-mm-cfg-trigger fn-mm-cfg-pub-trigger fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache fn-mm-cfg-cold fn-mm-cfg-handshakes fn-mm-cfg-over-window fn-mm-cfg-server-octets fn-mm-cfg-holders fn-mm-cfg-rho fn-mm-cfg-config)
+  '(m25-fix-update-by-definition m25-fix-fix-by-definition nth-update-nth (:executable-counterpart nfix) fn-mm-cfg-bank-floor fn-mm-nat fn-mm-cfg-connections fn-mm-cfg-tlsp fn-mm-cfg-trigger fn-mm-cfg-pub-trigger fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache fn-mm-cfg-cold fn-mm-cfg-handshakes fn-mm-cfg-header-octets fn-mm-cfg-server-octets fn-mm-cfg-holders fn-mm-cfg-rho fn-mm-cfg-config)
   (theory 'minimal-theory))))))
 
 (local (defthm m25-bank-floor-terms-by-definition
@@ -82,7 +82,7 @@
  :hints (("Goal" :in-theory (union-theories
   '(m25-bank-floor-fields-by-definition fn-mm-base fn-mm-owner fn-mm-payload-octets fn-mm-inflight
     fn-mm-cold-reads fn-mm-maintenance fn-mm-collector fn-mm-connection-fixed fn-mm-large-pool
-    fn-mm-large-reply fn-mm-over-window-octets fn-mm-over-window-fit fn-mm-nov-line-octets
+    fn-mm-large-reply fn-ovr-over-capl-of fn-ovr-over-capl fn-ovr-frame-max
     fn-mm-reopen-need fn-mm-reopen-live fn-mm-checkpoint-load-octets)
   (theory 'minimal-theory))))))
 

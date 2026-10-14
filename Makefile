@@ -725,6 +725,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/memory-model \
 	books/memory-entry-cost \
 	tests/acl2/memory-model-tests \
+	tests/acl2/owner-memory-cfg-tests \
+	tests/acl2/runtime-contract-host-pool-tests \
 	tests/acl2/admission-memory-tests \
 	tests/acl2/history-totals-carried-tests \
 	tests/acl2/heap-command-tests \
@@ -735,6 +737,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/charged-totals-header-writes \
 	books/charged-totals-header-cost \
 	books/runtime-contract-host-lease-cost \
+	books/over-render-lease-cost \
 	books/cost-final-world \
 	tests/acl2/charged-totals-header-tests \
 	tests/acl2/open-frontier-tests \
@@ -1618,8 +1621,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
-	books/nov-column-pieces \
-	tests/acl2/nov-column-pieces-tests \
 	tests/acl2/nov-metadata-tests \
 	books/nov-piece-window \
 	tests/acl2/nov-piece-window-tests \
@@ -1629,10 +1630,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nov-decimal-window-tests \
 	books/nov-byte-window \
 	tests/acl2/nov-byte-window-tests \
-	books/nov-row-facts \
-	tests/acl2/nov-row-facts-tests \
-	books/nov-column-window \
-	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
 	books/served-catalog-group-low-cost \
 	books/served-catalog-chain \
@@ -1725,9 +1722,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-incremental-tests \
 	tests/acl2/over-window-tests \
 	books/over-render-quantum \
+	books/over-render-lease \
+	books/over-render-plan \
 	tests/acl2/over-render-tests \
+	tests/acl2/over-render-lease-tests \
+	tests/acl2/over-render-plan-tests \
 	books/over-render-bound \
 	tests/acl2/over-render-bound-tests \
+	books/over-render-capl \
+	books/over-render-store \
+	tests/acl2/over-render-store-tests \
 	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-view-linear-tests \
 	tests/acl2/served-catalog-chain-tests \
@@ -2336,6 +2340,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-publication-state-tests \
 	tests/acl2/owner-readers-state-tests \
 	tests/acl2/def-span-scan-tests \
+	tests/acl2/def-span-scan-window-tests \
 	tests/acl2/owner-reclaim-ready-tests \
 	tests/acl2/control-request-word-tests \
 	tests/acl2/packed-submission-tests \
@@ -2568,6 +2573,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world-part-1 \
 	books/image-world-part-2 \
 	books/image-world-part-3 \
+	books/image-world-part-4 \
 	books/image-world \
 	books/image-world-dtn-part-1 \
 	books/image-world-dtn-part-2 \

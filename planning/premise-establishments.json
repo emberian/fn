@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "call": "fn-ovr-plan-lease-quantum",
+    "premise": "fn-ovr-plan-cursor",
+    "theorem": "fn-ovr-plan-lease-quantum-taken-is-over"
+  }
+]

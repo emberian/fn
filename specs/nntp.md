@@ -2191,13 +2191,13 @@ measurement remain open; no complete long-row scheduling claim is made.
 NOV `:bytes` and `:lines` metadata render their complete decimal natural
 values in `fn-nov-line`, including values above ten digits (RFC 3977
 §8.3.2 and D27). The initial NNTP status-line number renderer keeps its
-separate width rule. `fn-npw-column-pieces` captures five cached strings
-and resumable numeric references with a fixed number of pieces; under
-cached field shape and natural metadata its complete abstraction equals
-the existing cached-row renderer, including arbitrary-width counts.
-`nov-metadata-tests` checks exact wide and ordinary rows and semantic block
-framing; `nov-column-pieces-tests` checks continuation and literal premise
-removals. `tests.test_native_nov_metadata` distinguishes a real saved-image
+separate width rule. Served OVER writes these fields in place into its runtime
+pool lease: `over-render` supplies the writers, `over-render-quantum` selects
+and fills a whole window, and `over-render-lease` submits that window for
+sending. `over-render-plan` selects and advances the served plan's cursor.
+`over-render-tests` and `over-render-lease-tests` check exact rows, framing,
+progress and capacity refusal. `nov-metadata-tests` checks exact wide and
+ordinary rows and semantic block framing. `tests.test_native_nov_metadata` distinguishes a real saved-image
 scalar renderer fixture from a socket fixture over an actual retained
 article. Its matching-image result remains a separate qualification step.
 
@@ -2224,14 +2224,11 @@ The owning response must retain the origin generation pin until all span
 bytes drain or it cancels. This component is not yet wired into the served
 cursor and does not establish legacy parser refinement or runtime costs.
 
-The direct-row component `fn-nrf-facts` reads the already-selected catalog
-row once and returns its decided facts only for an arena handle. It does
-not search the Message-ID history. Under the maintained column relation F,
-those facts equal the facts of that row's payload. Its cached pieces denote
-the exact article NOV row when the cache is valid and the article retains
-the selected row's payload identity. Visibility and group membership remain
-the selecting cursor's responsibility; cache existence alone grants neither.
-This accessor is not yet called by the served cursor.
+OVER renders leased replies in place into the runtime pool lease: `books/over-render.lisp`
+provides the writers, `books/over-render-quantum.lisp` fills each selected
+window, and `books/over-render-lease.lisp` submits that window for sending.
+Visibility and group membership remain the selecting cursor's responsibility;
+cache existence alone grants neither.
 
 The mixed row-piece component `fn-npw-tick` composes cached strings,
 pinned spans, owned separators, numerical setup and character draining

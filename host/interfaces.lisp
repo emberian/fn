@@ -77,6 +77,8 @@
 (include-book "../books/runtime-contract-echo")
 ; The host lease's executor (fn-hld-*), declared below.
 (include-book "../books/runtime-contract-host-lease")
+; OVER renders and sends in the runtime pool lease.
+(include-book "../books/over-render-plan")
 (include-book "../books/store-checkpoint-arena-load")
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/reclaim-chunked-seal")
@@ -616,6 +618,22 @@
 (definterface fn-hld-end
   :class :common-lisp-compliant
   :keystones (fn-hld-end-keeps-invp))
+
+; The pool OVER executor and its total plan boundary selectors.
+(definterface fn-ovr-plan-lease-quantum
+  :class :common-lisp-compliant
+  :keystones (fn-ovr-plan-lease-quantum-taken-is-over
+              (fn-ovr-leased-quantum-sends-the-step :via fn-ovr-quantum)
+              (fn-ovr-quantum-taken-is-splice-okp :via fn-ovr-quantum)
+              (fn-ovr-quantum-taken-has-room :via fn-ovr-quantum)
+              (fn-ovr-lease-quantum-keeps-invp :via fn-ovr-lease-quantum)))
+
+(definterface fn-ovr-plan-cursor
+  :class :common-lisp-compliant
+  :keystones (fn-ovr-plan-cursor-is-an-over-cursor))
+
+(definterface fn-ovr-plan-next
+  :class :common-lisp-compliant)
 
 (definterface fn-bs-config-encode
   :class :common-lisp-compliant)

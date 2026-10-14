@@ -1,0 +1,12 @@
+{
+ "detail": "fn-adm-priced-cfg (books/admission-memory.lisp:885) forces cfg field 10 (P, fn-mm-cfg-holders' pool term) to NIL, while the runtime pool lease reads P at init (books/runtime-contract-host-pool.lisp:18 fn-hl-rtc-config, npool; books/owner-memory-run.lisp:14). After OVER landing 2 a leased OVER renders into the pool, so the gate can price P directly; the open piece is the accounting for large-reply holders that hold no lease (OVER on a connection without a lease, the zout path LB retires). Retirement: fn-adm-priced-cfg carries the pool's P, with a keystone that the priced connections term covers every leased and unleased large-reply holder, and a tooth for an unleased holder. Follows OVER-PREMISES-ON-HOST-PATH on O's queue; coordinates with M (admission-memory owner) and C (LB).",
+ "file": "books/admission-memory.lisp",
+ "id": "OVER-POOL-P-PRICING",
+ "notes": [],
+ "owner": "builder-O",
+ "severity": "medium",
+ "source": "o8-over2-20261014",
+ "state": "open",
+ "title": "The memory gate prices the pool's P (cfg field 10) instead of forcing it NIL: account for large-reply holders without a lease",
+ "updated": "2026-10-14T14:14:21Z"
+}

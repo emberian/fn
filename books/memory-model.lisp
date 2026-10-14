@@ -47,16 +47,15 @@
 ;         core's file-backed pages resident after the open, the runtime's
 ;         anonymous floor, one thread's resident areas.  A-IMAGE-RESIDENT.
 ;   CFG   (CONNECTIONS TLSP TRIGGER PUB-TRIGGER RECLAIM-LIVE CACHE COLD
-;          HANDSHAKES OVER-WINDOW SERVER-OCTETS): the connection cap C,
+;          HANDSHAKES NIL SERVER-OCTETS HOLDERS RHO CONFIG HEADER-OCTETS): the connection cap C,
 ;         whether a TLS context is loaded, the collector's trigger in service
 ;         and during a publication, the live-reclaim opt-in, the paged
 ;         payload cache's octets, the cold-read pool's funded budget (its
 ;         ledger's heap and native allowances: books/page-read-ledger.lisp,
 ;         cached entries and full paths charged within it), the handshake
 ;         allowance the served budget holds (the live limit, or the
-;         outstanding handshakes when a reconfiguration lowered it), the OVER
-;         cursor quantum the host uses (fn-splan-cursor-window of its
-;         override), and the server name's octets (each NOV line's Xref).
+;         outstanding handshakes when a reconfiguration lowered it), and the
+;         server name and stored header octet limits (each NOV line's Xref).
 ;
 ; A-GC-FOOTPRINT: the dynamic space's resident pages are at most its live
 ; objects plus twice the trigger in force, freed pages returned (MEM-003).
@@ -67,6 +66,7 @@
 (include-book "connection-budget")
 (include-book "page-read-startup")
 (include-book "served-plan-cursor")
+(include-book "over-render-capl")
 (include-book "proto/adt-bytes")
 
 (local (in-theory (disable (tau-system))))
@@ -94,9 +94,7 @@
 (defun fn-mm-cfg-cache (cfg) (declare (xargs :guard t)) (fn-mm-nat 5 cfg))
 (defun fn-mm-cfg-cold (cfg) (declare (xargs :guard t)) (fn-mm-nat 6 cfg))
 (defun fn-mm-cfg-handshakes (cfg) (declare (xargs :guard t)) (fn-mm-nat 7 cfg))
-(defun fn-mm-cfg-over-window (cfg)
-  (declare (xargs :guard t))
-  (fn-splan-cursor-window (nth 8 (true-list-fix cfg))))
+(defun fn-mm-cfg-header-octets (cfg) (declare (xargs :guard t)) (fn-mm-nat 13 cfg))
 (defun fn-mm-cfg-server-octets (cfg) (declare (xargs :guard t)) (fn-mm-nat 9 cfg))
 ; P, the large-payload holders: how many connections may hold a large reply
 ; (an article, an OVER quantum, a POST body) at once.  A natural at most C
@@ -243,82 +241,15 @@
        (fn-mm-hroot-live n (fn-mm-tot-history tot))
        (fn-mm-config-heap (fn-mm-cfg-config cfg)))))
 
-; A reply a connection holds: the article (connection-budget's stated
-; workload, 2A + 1,024) or an OVER/XOVER cursor quantum, W NOV lines built
-; as octet lists (books/over-window.lisp fn-ovw-step; W the host's quantum,
-; CFG's OVER-WINDOW), each line at most the header bound, its number, size
-; and line-count fields, and the generated Xref: the server name and, for
-; each of at most G memberships, a space, the group name, a colon and the
-; article number (books/nntp-xref.lisp).  O-NOV-LINE (PROVED,
-; books/over-window.lisp fn-ovw-nov-line-within-the-bound): a NOV line is at
-; most fn-mm-nov-line-octets.  It prices G memberships a line, not the
-; article's own Newsgroups: no invariant ties a stored article's memberships
-; to its header (a signed article takes its groups from the signed source,
-; unchecked; Builder C, 2026-10-10), so a header-bounded line is row O1's to
-; state with that invariant before the gate may charge it.
-(defconst *fn-mm-nov-fields-octets* 128)
-(defconst *fn-mm-xref-membership-fixed-octets* 12)   ; " " ":" and 10 digits
-
-(defun fn-mm-nov-line-octets (profile cfg)
+(defun fn-ovr-over-capl-of (profile cfg)
   (declare (xargs :guard t))
-  (+ (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))
-     *fn-mm-nov-fields-octets*
-     (fn-mm-cfg-server-octets cfg)
-     (* (nfix (fn-bs-profile-max-groups-per-article profile))
-        (+ (nfix (fn-bs-profile-max-group-name-octets profile))
-           *fn-mm-xref-membership-fixed-octets*))))
+  (fn-ovr-over-capl (fn-mm-cfg-header-octets cfg)
+                    (fn-bs-profile-max-article-octets profile)
+                    (fn-mm-cfg-server-octets cfg)))
 
-;; A-OVER-WINDOW-FIT (named adapter, COORDINATION section 6b rule 5; owner
-;; Builder C, the OVER path; retirement: row O1's pool lease on dev, when the
-;; quantum is rendered into one leased buffer of the article bound and LARGE
-;; is the lease's capacity).  Until then the host builds the quantum's W NOV
-;; lines as octet lists, 2 x 16 octets a line octet, and at a profile whose
-;; Xref term prices G memberships a line (development: G 65,535, a line of
-;; 17,579,912 octets, 144 GB at W = 256) no connection fits.  The served
-;; quantum is W', the largest W up to the host's quantum whose list window is
-;; within the article reply or one line, whichever is larger; W' >= 1, so a
-;; cursor always progresses (books/over-window.lisp fn-ovw-run-is-over-range-cat
-;; holds at every W >= 1).  The run installs W' at configure
-;; (host/owner-host.lisp fn-owner-memory-configure, global
-;; fn-owner-memory-over-window) and the host's quantum
-;; (host/native/owner.lisp fnn-owner-over-window) serves it, so the term the
-;; gate charges is the window the host builds.
-(defun fn-mm-article-reply-octets (profile)
-  (declare (xargs :guard t))
-  (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile)))
-     *fn-cbud-reply-status-octets*))
-
-(defun fn-mm-window-fit (w line large)
-  (declare (xargs :guard t))
-  (let ((unit (* 2 *fn-heap-list-octets-per-octet* (max 1 (nfix line)))))
-    (max 1 (min (nfix w) (floor (max (nfix large) unit) unit)))))
-
-(defthm fn-mm-window-fit-posp
-  (posp (fn-mm-window-fit w line large))
-  :rule-classes :type-prescription)
-
-(defun fn-mm-over-window-fit (profile cfg)
-  (declare (xargs :guard t))
-  (fn-mm-window-fit (fn-mm-cfg-over-window cfg)
-                    (fn-mm-nov-line-octets profile cfg)
-                    (fn-mm-article-reply-octets profile)))
-
-(defun fn-mm-over-window-octets (profile cfg)
-  (declare (xargs :guard t))
-  (* 2 *fn-heap-list-octets-per-octet* (fn-mm-over-window-fit profile cfg)
-     (fn-mm-nov-line-octets profile cfg)))
-
-; M_connection, split by what holds it (coordinator ruling (d), 2026-10-09;
-; Builder A's contract v2.1).  FIXED: what every open connection holds
-; whatever it serves (fn-cbud-conn-octets at an article of 0: the record,
-; reads, the reply status, the command line, COMPRESS, kernel buffers,
-; TLS).  LARGE: the one large reply a holder holds, the article reply
-; (connection-budget's 2A + status) or the OVER cursor quantum, whichever is
-; larger.  The process holds C fixed parts and at most P large replies.
-; O-CONN: connection-budget's terms over the mux state, and O-NOV-LINE.
-; Adapter, owner Builder C: the OVER quantum is W NOV lines as octet lists
-; until C's OVER landing renders it into one leased buffer of the article
-; bound; then LARGE is the lease's capacity.
+; M_connection: every connection's fixed part and at most P large replies.
+; LARGE charges the whole article reply or one header-bounded OVER line
+; plus framing, whichever is larger. OVER renders into one pool buffer.
 (defun fn-mm-connection-fixed (profile cfg)
   (declare (xargs :guard t) (ignore profile))
   (fn-cbud-conn-octets 0 (fn-mm-cfg-tlsp cfg)))
@@ -327,18 +258,26 @@
   (declare (xargs :guard t))
   (max (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile)))
           *fn-cbud-reply-status-octets*)
-       (fn-mm-over-window-octets profile cfg)))
+       (fn-ovr-over-capl-of profile cfg)))
 
-;; The octets of a NEWNEWS or LIST cursor quantum (books/served-plan-cursor.lisp
-;; B; lane spans-newnews): the octets of W' NOV lines, as raw octets.  Such a
-;; quantum builds no NOV line, so W' does not bound its control visits (V, the
-;; unfitted fn-splan-cursor-window); its output is an octet list of at most B
-;; octets (fn-nnw-stream-batch-byte-bound, fn-lst-batch-byte-bound), which the
-;; LARGE term already charges (fn-mm-cursor-octets-fit-is-charged).  Published
-;; by fn-owner-memory-configure as fn-owner-memory-cursor-octets.
+; KL7l: the configured one-line OVER lease is charged for each holder.
+(defthm fn-ovr-over-capl-within-the-large-reply
+  (<= (fn-ovr-over-capl-of profile cfg) (fn-mm-large-reply profile cfg))
+  :hints (("Goal" :in-theory (union-theories '(fn-mm-large-reply max) (theory 'minimal-theory)))))
+
+(local (include-book "arithmetic-5/top" :dir :system))
+
+; NEWNEWS/LIST retain octet-list output. Their byte budget uses the
+; article reply charge divided by its allocation factor; control visits
+; remain the host's cursor quantum. The stored profile's article bound is
+; stable for a run, so this published budget stays funded when a live
+; path-identity change lowers the configured OVER term. Published as
+; fn-owner-memory-cursor-octets.
 (defun fn-mm-cursor-octets-fit (profile cfg)
-  (declare (xargs :guard t))
-  (* (fn-mm-over-window-fit profile cfg) (fn-mm-nov-line-octets profile cfg)))
+  (declare (xargs :guard t) (ignore cfg))
+  (floor (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile)))
+            *fn-cbud-reply-status-octets*)
+         (* 2 *fn-heap-list-octets-per-octet*)))
 
 ;; KEYSTONE: a cursor quantum of B octets, held as an octet list, fits the one
 ;; large reply the gate charges each holder.
@@ -346,9 +285,7 @@
   (<= (* 2 *fn-heap-list-octets-per-octet* (fn-mm-cursor-octets-fit profile cfg))
       (fn-mm-large-reply profile cfg))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (e/d (fn-mm-cursor-octets-fit fn-mm-large-reply
-                                   fn-mm-over-window-octets)
-                                  (fn-mm-over-window-fit fn-mm-nov-line-octets)))))
+  :hints (("Goal" :in-theory (e/d (fn-mm-cursor-octets-fit fn-mm-large-reply max) (fn-ovr-over-capl-of)))))
 
 (defun fn-mm-large-pool (profile cfg)
   (declare (xargs :guard t))
@@ -661,7 +598,6 @@
 ; -----------------------------------------------------------------------------
 ; THE KEYSTONES and their lemmas.
 
-(local (include-book "arithmetic-5/top" :dir :system))
 (defthm fn-mm-times-monotone
   (implies (and (natp a) (natp b) (natp c) (<= a b)) (<= (* a c) (* b c)))
   :rule-classes nil :hints (("Goal" :nonlinearp t)))
@@ -681,47 +617,11 @@
       (:type-prescription fn-mm-tot-memberships) (:type-prescription fn-mm-tot-events)
       (:type-prescription fn-mm-hroot-live)
       (:type-prescription fn-mm-config-heap) (:type-prescription fn-mm-cfg-config)
-      (:type-prescription fn-mm-connection-fixed) (:type-prescription fn-mm-over-window-octets)
+      (:type-prescription fn-mm-connection-fixed) (:type-prescription fn-ovr-over-capl-of)
       (:type-prescription fn-mm-maintenance) (:type-prescription fn-mm-cfg-connections)
       (:type-prescription fn-mm-cfg-holders) (:type-prescription fn-mm-cold-reads)
       (:type-prescription nfix))
     (theory 'minimal-theory)))))
-;; A-OVER-WINDOW-FIT's statements (the adapter beside fn-mm-over-window-octets).
-;; KEYSTONE: W' is at least one, at most the host's quantum, its list window
-;; within the article reply or one line, and the largest such: a W' below the
-;; quantum is short only because one more line would not fit.
-(defthm fn-mm-window-fit-is-the-largest-that-fits
-  (let ((wp (fn-mm-window-fit w line large))
-        (unit (* 2 *fn-heap-list-octets-per-octet* (max 1 (nfix line)))))
-    (and (posp wp)
-         (<= wp (max 1 (nfix w)))
-         (<= (* unit wp) (max (nfix large) unit))
-         (implies (< wp (nfix w))
-                  (< (max (nfix large) unit) (* unit (+ 1 wp))))))
-  :hints (("Goal" :in-theory (enable fn-mm-window-fit)
-           :nonlinearp t)))
-
-;; The gate's OVER term is the window the host builds with W' (the global
-;; fn-owner-memory-over-window the host serves).
-(defthm fn-mm-over-window-octets-is-the-served-window
-  (equal (fn-mm-over-window-octets profile cfg)
-         (* 2 *fn-heap-list-octets-per-octet* (fn-mm-over-window-fit profile cfg)
-            (fn-mm-nov-line-octets profile cfg)))
-  :hints (("Goal" :in-theory (enable fn-mm-over-window-octets))))
-
-;; KEYSTONE: so one holder's large reply is the article reply or one line's
-;; list window, whichever is larger (no longer W lines of it).
-(defthm fn-mm-large-reply-is-the-article-or-one-line
-  (<= (fn-mm-large-reply profile cfg)
-      (max (fn-mm-article-reply-octets profile)
-           (* 2 *fn-heap-list-octets-per-octet* (fn-mm-nov-line-octets profile cfg))))
-  :hints (("Goal" :in-theory (e/d (fn-mm-large-reply fn-mm-over-window-octets fn-mm-over-window-fit
-                                   fn-mm-article-reply-octets)
-                                  (fn-mm-window-fit fn-mm-nov-line-octets))
-           :use ((:instance fn-mm-window-fit-is-the-largest-that-fits
-                            (w (fn-mm-cfg-over-window cfg))
-                            (line (fn-mm-nov-line-octets profile cfg))
-                            (large (fn-mm-article-reply-octets profile)))))))
 (defthm fn-mm-collector-monotone
   (implies (<= (nfix a) (nfix b))
            (<= (fn-mm-collector a cfg) (fn-mm-collector b cfg)))
@@ -937,10 +837,10 @@
   (implies (fn-mm-tot-le a b)
            (<= (fn-mm-reopen-live profile cfg a) (fn-mm-reopen-live profile cfg b)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-reopen-live)
-                                  (fn-mm-owner fn-mm-maintenance fn-heap-store-open-octets
-                                   fn-mm-checkpoint-load-octets
-                                   fn-mm-tot-le fn-mm-tot-log fn-mm-tot-records))
+  :hints (("Goal" :in-theory (union-theories '(fn-mm-reopen-live nfix natp
+                                                          (:type-prescription fn-mm-tot-log)
+                                                          (:type-prescription fn-mm-tot-records))
+                                                        (theory 'minimal-theory))
            :use (fn-mm-owner-monotone fn-mm-maintenance-monotone fn-mm-tot-le-parts
                  fn-mm-checkpoint-load-octets-monotone
                  (:instance fn-mm-open-octets-monotone
@@ -1120,7 +1020,7 @@
   (implies (and (natp capl) (<= (fn-mm-large-reply profile cfg) capl))
            (<= (fn-mm-large-pool profile cfg) (* (fn-mm-cfg-holders cfg) capl)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-large-pool) (fn-mm-large-reply fn-mm-cfg-holders))
+  :hints (("Goal" :in-theory (union-theories '(fn-mm-large-pool commutativity-of-*) (theory 'minimal-theory))
            :use ((:instance fn-mm-terms-natp)
                  (:instance fn-mm-times-monotone (a (fn-mm-large-reply profile cfg)) (b capl)
                             (c (fn-mm-cfg-holders cfg)))))))

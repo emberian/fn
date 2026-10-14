@@ -541,11 +541,10 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         The tooth is C' below C under the 2 GiB cgroup, bound by a PERMANENT
         term.  A 4 MiB article bound makes each holder's article reply
         2A + 1,024 = 8,389,632 octets (books/memory-model.lisp
-        fn-mm-large-reply, fn-mm-article-reply-octets), and the gate prices
+        fn-mm-large-reply), and the gate prices
         every connection as a holder (fn-mm-cfg-holders: C when the host does
-        not bound them).  The adapter A-OVER-WINDOW-FIT, which retires, is
-        not what binds: its W' keeps the OVER window within this reply.  The
-        small preset's own connection costs about 1.2 MB, so the preset at
+        not bound them). The header-bounded OVER lease is smaller than
+        this article reply. The small preset's own connection costs about 1.2 MB, so the preset at
         its C of 31 never binds (m34a-9h: capacity=31 of 31 bound-by=
         configured sum=379 MB limit=2043 MB).  Here init takes the profile
         (books/heap-reservation.lisp fn-heap-init-decide: 1,422 MB in the

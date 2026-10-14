@@ -214,11 +214,7 @@
           octets))
     nil))
 
-(defun fn-ovw-octets (session v token legacyp server w fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
-  (mv-let (octets cursor)
-    (fn-ovw-start session v token legacyp server fn-cat)
-    (append octets (fn-ovw-run cursor w fn-arena fn-cat))))
+
 
 ; -----------------------------------------------------------------------------
 ; The windows are the range
@@ -324,12 +320,14 @@
           ("Subgoal *1/1" :expand ((:free (owedp) (fn-ovw-run (fn-ovw-cursor group k top v legacyp owedp server) w fn-arena fn-cat)))
                           :use ((:instance fn-ovw-lines-split (hi (fn-ovw-hi k top w)))))))
 
-(defthm fn-ovw-octets-is-spec
-  (equal (fn-ovw-octets session v token legacyp server w fn-arena fn-cat)
+(defthm fn-ovw-start-run-is-spec
+  (equal (mv-let (ovw-inline-octets ovw-inline-cursor)
+            (fn-ovw-start session v token legacyp server fn-cat)
+            (append ovw-inline-octets (fn-ovw-run ovw-inline-cursor w fn-arena fn-cat)))
          (fn-ovw-spec session v token legacyp server fn-arena fn-cat))
   :hints (("Goal" :do-not-induct t
            :expand ((fn-ovw-run nil w fn-arena fn-cat))
-           :in-theory (union-theories '(fn-ovw-octets fn-ovw-start fn-ovw-spec fn-ovw-run-is-reply
+           :in-theory (union-theories '(fn-ovw-start fn-ovw-start fn-ovw-spec fn-ovw-run-is-reply
                                         natp-compound-recognizer nfix min (:e fn-ovw-status) append-to-nil binary-append
                                         (:e fn-proto-text-of) (:e fn-proto-shared-text))
                                       (theory 'minimal-theory)))))
@@ -352,10 +350,12 @@
 (defthm fn-ovw-run-is-over-range-cat
   (and (equal (car (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat))
               session)
-       (equal (fn-ovw-octets session v token legacyp nil w fn-arena fn-cat)
+       (equal (mv-let (ovw-inline-octets ovw-inline-cursor)
+            (fn-ovw-start session v token legacyp nil fn-cat)
+            (append ovw-inline-octets (fn-ovw-run ovw-inline-cursor w fn-arena fn-cat)))
               (fn-served-reply-octets
                (cdr (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat)))))
-  :hints (("Goal" :in-theory (union-theories '(fn-ovw-octets-is-spec fn-ovw-over-range-cat-is-spec
+  :hints (("Goal" :in-theory (union-theories '(fn-ovw-start-run-is-spec fn-ovw-over-range-cat-is-spec
                                                fn-ovw-reply-octets-of-one-listp fn-ovw-spec-true-listp)
                                              (theory 'minimal-theory)))))
 
@@ -367,11 +367,13 @@
            (and (equal (car (fn-nntp-over-range-served-cat session v token legacyp server
                                                            fn-arena fn-cat))
                        session)
-                (equal (fn-ovw-octets session v token legacyp server w fn-arena fn-cat)
+                (equal (mv-let (ovw-inline-octets ovw-inline-cursor)
+            (fn-ovw-start session v token legacyp server fn-cat)
+            (append ovw-inline-octets (fn-ovw-run ovw-inline-cursor w fn-arena fn-cat)))
                        (fn-served-reply-octets
                         (cdr (fn-nntp-over-range-served-cat session v token legacyp server
                                                             fn-arena fn-cat))))))
-  :hints (("Goal" :in-theory (union-theories '(fn-ovw-octets-is-spec
+  :hints (("Goal" :in-theory (union-theories '(fn-ovw-start-run-is-spec
                                                fn-ovw-over-range-served-cat-is-spec
                                                fn-ovw-reply-octets-of-one-listp fn-ovw-spec-true-listp)
                                              (theory 'minimal-theory)))))
@@ -382,9 +384,11 @@
 (defthm fn-ovw-cursor-effect-expands-to-run
   (equal (fn-ovw-expand (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat))
                         fn-arena fn-cat)
-         (list (fn-nntp-reply-effect (fn-ovw-octets session v token legacyp server w fn-arena fn-cat))))
+         (list (fn-nntp-reply-effect (mv-let (ovw-inline-octets ovw-inline-cursor)
+            (fn-ovw-start session v token legacyp server fn-cat)
+            (append ovw-inline-octets (fn-ovw-run ovw-inline-cursor w fn-arena fn-cat))))))
   :hints (("Goal" :in-theory (union-theories '(fn-nntp-over-range-ovw-expands-to-spec
-                                               fn-ovw-octets-is-spec)
+                                               fn-ovw-start-run-is-spec)
                                              (theory 'minimal-theory)))))
 
 ; The cursor the arm emits (fn-ovw-start's, its status line owed) runs to

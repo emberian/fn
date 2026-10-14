@@ -7,6 +7,7 @@
 (include-book "heap-log-extent-cap-cost")
 (include-book "reclaim-chunked-cost")
 (include-book "runtime-contract-host-lease-cost")
+(include-book "over-render-lease-cost")
 (include-book "store-log-buffer-cost")
 (include-book "store-log-open-scan-cost")
 (include-book "string-line-cursor-cost")
