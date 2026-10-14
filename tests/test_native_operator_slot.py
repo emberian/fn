@@ -10,6 +10,7 @@ step. It calls the actual operator wrapper twice and forwards ACL2's second
 refusal through the regular administrative control reply. It is a test of
 simultaneous slot custody; it does not rely on scheduler timing.
 """
+import re
 import socket
 import unittest
 
@@ -117,8 +118,19 @@ class OperatorSlotCase:
             sock.close()
         self.held.clear()
 
+    def public_capacity(self):
+        """The run's own public capacity C' from its capacity line; the test pins no figure (the
+        over-window term keeps C' below the configured 40 until OVER landing 2, and below it
+        after any profile change)."""
+        found = re.search(rb"memory capacity=(\d+) of (\d+) bound-by=", self.node.process.stderr.since(0))
+        self.assertIsNotNone(found, self.node.process.stderr.since(0)[-2000:])
+        capacity = int(found.group(1))
+        self.assertGreater(capacity, 0)
+        self.assertLessEqual(capacity, 40)
+        return capacity
+
     def saturate(self):
-        for _ in range(40):
+        for _ in range(self.public_capacity()):
             sock = socket.create_connection(("127.0.0.1", self.node.port), timeout=30)
             line = first_line(sock)
             self.assertTrue(line.startswith((b"200 ", b"201 ")), line)
