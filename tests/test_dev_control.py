@@ -106,9 +106,27 @@ class DevControlTests(TrainBase):
         launch = next(argv for argv in self.calls if 'tools/hbox_native.sh' in argv)
         self.assertEqual(launch, ['timeout', '600', 'sh', 'tools/hbox_native.sh', '--box', 'hbox',
                                   '--label', self.label, '--allow-skips', '--detach',
-                                  '--env', 'FN_INN_SRC=/tank/fn/inn/2.7.4', self.sha,
+                                  '--env', 'FN_INN_SRC=/tank/fn/inn/2.7.4',
+                                  '--env', 'FN_RUN_NATIVE_CLONE=1',
+                                  '--env', 'FN_RUN_CONSUMER_E2E=1',
+                                  '--env', 'FN_RUN_CONSUMER_POLL_E2E=1',
+                                  '--env', 'FN_RUN_CONSUMER_INSPECT=1',
+                                  '--env', 'FN_RUN_CONSUMER_PROJECT_BOUNDS=1',
+                                  '--env', 'FN_RUN_TOPIC_LOCAL_E2E=1',
+                                  '--env', 'FN_RUN_TOPIC_METADATA_E2E=1', self.sha,
                                   *sorted(self.expected)])
         self.assertTrue(self.record_path.exists())
+
+    def test_launch_leaves_slow_and_soak_gates_unset(self):
+        rc, _, err = self.invoke('launch', '--sha', self.sha)
+        self.assertEqual(rc, 0, err)
+        launch = next(argv for argv in self.calls if 'tools/hbox_native.sh' in argv)
+        env_names = {launch[i + 1].split('=', 1)[0]
+                     for i, word in enumerate(launch) if word == '--env'}
+        self.assertTrue(env_names.isdisjoint({
+            'FN_PULL_SOAK_SECONDS', 'FN_RUN_SLOW', 'FN_P5_SCALE', 'FN_RUN_IMAGE_HEAP',
+            'FN_RUN_RECLAIM_RSS', 'FN_NATIVE_RECLAIM_SEAL_SCALE',
+            'FN_STATUS_SCALE_FIXTURES', 'FN_LOAD_CELLS'}), env_names)
 
     def test_launch_uses_selected_box_fact(self):
         with mock.patch.object(box_table, 'native_test_env', return_value={
