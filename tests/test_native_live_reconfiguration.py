@@ -150,7 +150,7 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
             return self.native_admin[at:self.native_admin.index("\n(def", at + 10)]
         stage = fn("fnn-rc-do-stage")
         order = [stage.index(word) for word in (
-            "'fn-owner-open", "(funcall stage cid)", "'fn-owner-close")]
+            "'fn-owner-operator-open", "(funcall stage cid)", "'fn-owner-close")]
         self.assertEqual(order, sorted(order))
         self.assertIn("(fnn-admin-publish-effect", fn("fnn-rc-do-publish"))
         self.assertIn("'fn-owner-reconfigure-complete", fn("fnn-rc-do-complete"))
@@ -161,12 +161,15 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertIn("(fnn-owner-live-reconfigure", arm)
 
     def test_the_live_arm_reads_the_open_connection_id_as_an_id(self):
-        # `fn-owner-open' answers an integer id or NIL; `fnn-owner-action'
+        # The operator result's ACL2 accessors supply word, id and reason; `fnn-owner-action'
         # faults on anything but a keyword, so reading the id through it
         # stopped the owner on every live request (dabebb84, V0-CFG-LIVE).
         start = self.native_admin.index("(defun fnn-rc-do-stage ")
         body = self.native_admin[start:self.native_admin.index("(defun fnn-rc-do-authorize", start)]
-        self.assertIn("(fnn-owner-core 'fn-owner-open)", body)
+        self.assertIn("(fnn-owner-core 'fn-owner-operator-open)", body)
+        for accessor in ("word", "id", "reason"):
+            self.assertIn("'fn-adm-operator-open-" + accessor, body)
+        self.assertNotIn("(or staged :none)", body)
         self.assertNotIn("(fnn-owner-action 'fn-owner-open)", body)
         def body_of(text, head):
             at = text.index(head)

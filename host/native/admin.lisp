@@ -307,28 +307,40 @@ classifies it as it did when the window ran inside the section."
   (setq *fnn-section-step* (fnn-rc-step run))
   (error (or (fnn-rc-condition run) default)))
 
+; Register this landing's developer-only transport witness with the shared gate.
+(defun fnn-operator-slot-test-stage (cid stage)
+  "Two logical private opens overlap inside one serialized owner step.
+The second decision is the actual book transition; its refusal returns
+through the normal administrative control reply. No refusal is invented."
+  (let* ((second (fnn-owner-core 'fn-owner-operator-open))
+         (word (fnn-core 'fn-adm-operator-open-word second)))
+    (if (eq word :refused)
+        (fnn-core 'fn-ores-config-refused
+          (fnn-core 'fn-adm-operator-open-reason second))
+      (unwind-protect (funcall stage cid)
+        (fnn-owner-action 'fn-owner-close
+          (fnn-core 'fn-adm-operator-open-id second))))))
+
 (defun fnn-rc-do-stage (run stage)
-  "Effect :stage, under O: ACL2's staging entry, STAGE (lambda (CID)) -- the
-caller's (fnn-owner-result 'fn-ores-config-result-p 'ENTRY CID ...) -- over a
-private logical connection (its pin is the current generation
-fn-ocfg-reconfig-refusal checks).  `fn-owner-open' answers the new
-connection's integer id, or NIL when the model refused the open (it is not an
-action keyword).  A staged record's octets are the one configuration record to
-publish; a refusal keeps ACL2's reason (:busy while another record is staged)."
-  (let* ((cid (let ((opened (fnn-owner-core 'fn-owner-open)))
-                (unless (or (null opened) (and (integerp opened) (>= opened 0)))
-                  (fnn-fault "owner returned a malformed connection id"))
-                opened))
-         (result (and (integerp cid) (funcall stage cid)))
-         (staged (and result (fnn-core 'fn-ores-config-word result))))
-    (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
-    (cond ((eq staged :staged)
-           (setf (fnn-rc-record run)
-                 (fnn-octets (fnn-core 'fn-ores-config-octets result)))
-           :staged)
-          (t (setf (fnn-rc-reason run)
-                   (and (eq staged :refused) (fnn-core 'fn-ores-config-reason result)))
-             (or staged :none)))))
+  "Open through ACL2's operator admission and carry its refusal unchanged."
+  (let* ((opened (fnn-owner-core 'fn-owner-operator-open))
+         (word (fnn-core 'fn-adm-operator-open-word opened))
+         (cid (fnn-core 'fn-adm-operator-open-id opened)))
+    (when (eq word :refused)
+      (setf (fnn-rc-reason run) (fnn-core 'fn-adm-operator-open-reason opened))
+      (return-from fnn-rc-do-stage word))
+    (let* ((result (unwind-protect
+                       (if (fnn-developer-selector "FN_NATIVE_OPERATOR_SLOT_TEST")
+                           (fnn-operator-slot-test-stage cid stage)
+                         (funcall stage cid))
+                     (fnn-owner-action 'fn-owner-close cid)))
+           (staged (fnn-core 'fn-ores-config-word result)))
+      (cond ((eq staged :staged)
+             (setf (fnn-rc-record run)
+                   (fnn-octets (fnn-core 'fn-ores-config-octets result)))
+             :staged)
+            (t (setf (fnn-rc-reason run) (fnn-core 'fn-ores-config-reason result))
+               staged)))))
 
 (defun fnn-rc-do-authorize (run)
   "Effect :authorize, under O: capture the owner once and decide the staged

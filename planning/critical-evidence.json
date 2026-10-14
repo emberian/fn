@@ -8,6 +8,62 @@
    "mutation": "tests/acl2/accounts-tests.lisp::expires-as-seconds",
    "provenance": "keystone_critical.py --declare sha256:f130342d91ee15af0777c99358eff4733f9e7e1ee7e9aac5ce551752150bb8de"
   },
+  "fn-adm-capacity-is-nil-exactly-when-no-slot-fits": {
+   "subject": "fn-adm-capacity",
+   "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
+   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::m28-capacity-is-nil-exactly-when-no-slot-fits",
+   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::old-zero-total-search",
+   "provenance": "keystone_critical.py --declare sha256:558d2c68fa895a302a4ff12e81b2534d0dab576fffe40379d7f08f1bea064d09"
+  },
+  "fn-adm-lease-startup-keeps-its-bank-readers": {
+   "subject": "fn-adm-lease-startup-cfg",
+   "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
+   "trace_witness": "tests/acl2/owner-memory-run-tests.lisp::m26-lease-startup-keeps-its-bank-readers",
+   "mutation": "tests/acl2/owner-memory-run-tests.lisp::old-cold-add",
+   "provenance": "keystone_critical.py --declare sha256:827b62d4f441ff025f8ee1b88a2bd0f3fc6f9dd9e4c9e9048572b6cd5eeb3da5"
+  },
+  "fn-adm-operator-open-admits-exactly-a-free-funded-slot": {
+   "subject": "fn-adm-operator-open",
+   "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
+   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-FUNDED-SATURATION-AND-SECOND",
+   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::M28-OLD-ADMISSION-CONSUMES-FUNDED-SLOT",
+   "provenance": "keystone_critical.py --declare sha256:a9b21687297b2cbe7882391bf3a25fbfb854cf9cad3ab3d8c40856438898c45a"
+  },
+  "fn-adm-operator-open-below-saturation-is-the-reader-open": {
+   "subject": "fn-adm-operator-open",
+   "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
+   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-TWO-PRIVATE-READERS",
+   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::M28-READER-FIRST-CODE-MUTATION",
+   "provenance": "keystone_critical.py --declare sha256:3fdfa1b29b2b5175c2b764d0767f442c5909ec3451b5ec7bd1af9ca0e906c8ae"
+  },
+  "fn-adm-operator-refusal-is-named": {
+   "subject": "fn-adm-operator-open",
+   "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
+   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-STALENESS-IS-NAMED",
+   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::M28-SLOT-FREE-CHECK-MUTATION",
+   "provenance": "keystone_critical.py --declare sha256:2f2315734a30e3a0be69c043fff7f192b64e161e4de4b8708c1ae9bd360f37fe"
+  },
+  "fn-adm-priced-cfg-keeps-the-installed-bank": {
+   "subject": "fn-adm-priced-cfg",
+   "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
+   "trace_witness": "tests/acl2/owner-memory-run-tests.lisp::m26-priced-cfg-keeps-the-installed-bank",
+   "mutation": "tests/acl2/owner-memory-run-tests.lisp::old-reader-only-charge",
+   "provenance": "keystone_critical.py --declare sha256:d58024b9d5ead0a61edf829c25fafd5e489253808c188df35b1a3212f554f6d3"
+  },
+  "fn-adm-run-admitted-record-keeps-the-operator-slot-funded": {
+   "subject": "fn-mm-gate-p",
+   "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
+   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-GROWN-STORE-EDGE-ADMITS-OPERATOR",
+   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::M28-OLD-ADMISSION-CONSUMES-FUNDED-SLOT",
+   "provenance": "keystone_critical.py --declare sha256:a2408d83055b20632510506abfdead4adde68c48e45f3d665209c39635d6effe"
+  },
+  "fn-adm-run-gate-keeps-the-operator-slot-funded": {
+   "subject": "fn-adm-run-gate-held",
+   "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
+   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-FUNDED-SATURATION-AND-SECOND",
+   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::old-held-only-gate",
+   "provenance": "keystone_critical.py --declare sha256:c767be16fdbacdd55a8c859f9e47d3b90756a71a02bf59bd4a62bbb624d48ff0"
+  },
   "fn-arena-seal-buffer{correspondence}": {
    "subject": "fn-arena-seal-buffer",
    "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",

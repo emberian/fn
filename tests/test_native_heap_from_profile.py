@@ -41,6 +41,7 @@ name, outside a limit of at most 2 GiB.
 """
 import base64
 import hashlib
+import json
 import os
 import resource
 import re
@@ -104,6 +105,60 @@ INIT_REFUSED = re.compile(r"refused init-budget-cannot-hold-profile profile=([a-
 # bound C', the model's sum at C' over the carried store and the limit.
 CAPACITY_LINE = re.compile(rb"memory capacity=(\d+) of (\d+) bound-by=([a-z-]+) "
                            rb"sum=(\d+) MB limit=(\d+) MB")
+
+
+
+UINT32_MAX = 4294967295
+
+
+def connection_pressure(limit_octets, fixed_octets):
+    """A codec-valid count whose fixed term exceeds the observed limit."""
+    # Below the ceiling, pressure=L+1 exceeds L for every positive fixed term.
+    # At the ceiling, the required inequality is UINT32_MAX*F>L; even F>=2
+    # covers the four boundary cases below, but cannot cover every larger L.
+    pressure = min(limit_octets + 1, UINT32_MAX)
+    if pressure * fixed_octets <= limit_octets:
+        raise ValueError("uint32 connection ceiling does not exceed this limit")
+    return pressure
+
+
+def connection_fixed_octets():
+    """ACL2-generated fn-cbud-conn-octets(0,nil), a TLS-independent lower bound."""
+    generator = "tools/native_memory_figures.py"
+    figures = json.loads((ROOT / "tests/native_memory_figures.json").read_text())
+    required = {"books/connection-budget.lisp", "books/connection-read-quantum.lisp",
+                "books/heap-figure.lisp"}
+    digests = figures.get("source_sha256", {})
+    if figures.get("generated_by") != generator or required != digests.keys():
+        raise AssertionError("stale native memory figures: run python3 " + generator)
+    for source, expected in digests.items():
+        if hashlib.sha256((ROOT / source).read_bytes()).hexdigest() != expected:
+            raise AssertionError("stale native memory figure input " + source +
+                                 ": run python3 " + generator)
+    return figures["connection_fixed_without_tls"]
+
+
+class ConnectionPressureTests(unittest.TestCase):
+    def test_stale_figure_names_its_input_and_generator(self):
+        from unittest.mock import patch
+        figures = json.loads((ROOT / "tests/native_memory_figures.json").read_text())
+        figures["source_sha256"]["books/connection-budget.lisp"] = "0" * 64
+        with patch("tests.test_native_heap_from_profile.json.loads", return_value=figures):
+            with self.assertRaisesRegex(AssertionError,
+                    "books/connection-budget.lisp: run python3 tools/native_memory_figures.py"):
+                connection_fixed_octets()
+
+    def test_uint32_boundary_and_four_gib_ceiling(self):
+        fixed = connection_fixed_octets()
+        for limit, expected in ((4294967294, 4294967295),
+                                (4294967295, 4294967295),
+                                (4 * 1024 ** 3, 4294967295),
+                                (4 * 1024 ** 3 + 1, 4294967295)):
+            with self.subTest(limit=limit):
+                pressure = connection_pressure(limit, fixed)
+                self.assertEqual(pressure, expected)
+                self.assertGreater(pressure * fixed, limit)
+                self.assertLessEqual(pressure, UINT32_MAX)
 
 
 def cgroup_limit():
@@ -830,26 +885,31 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertRegex(made.stdout.decode(),
                          r"init: profile=scale sizing=requested reservation=\d+ MB "
                          r"budget=\d+ MB within-budget=no target-budget=" + target.group(3) + " MB")
-        # Its run is not sized by its profile (L-RUN-LAUNCH retired the
-        # profile-bound run sizing): the empty store's reopen fits the run's
-        # LIMIT, so it serves at the capacity the gate derives here (persvati,
-        # 2 GiB, 10-12: capacity=1 of 31 bound-by=over-window sum=1662 MB
-        # limit=1909 MB), and its resident set stays within the limit.  A run
-        # the memory cannot hold is refused by name where the model refuses
-        # (REFUSED above; the pools past the limit in
-        # test_native_control_reply_fit).  Its stopped `status' holds the
-        # checkpoint header and the configuration history, not the store
-        # (books/heap-command.lisp fn-mo-header-decide-holds-the-header), so
-        # it is accepted here (lane memory, landing 2).
-        # start() reads the greeting on its own connection; at C' = 1 a
-        # second connection is answered 400 while that one is counted, which
-        # is the gate's bound, not a fault.
+        # Observe this node's LIMIT before constructing pressure. An empty
+        # scale store may fit every configured reader after OVER is leased.
+        self.start()
+        self.capacity()
+        observed = CAPACITY_LINE.search(self.node.process.stderr.since(0))
+        self.assertIsNotNone(observed)
+        limit_mib = int(observed.group(5))
+        self.assertGreater(limit_mib, 0)
+        first_hwm = self.stop()
+        # The codec row is uint32. ACL2's generated fixed connection term
+        # proves pressure exceeds even the line's unprinted MiB fraction.
+        fixed = connection_fixed_octets()
+        pressure = connection_pressure(limit_mib * MIB, fixed)
+        self.assertGreater(pressure * fixed, (limit_mib + 1) * MIB)
+        changed = self.run_fn("operator", config, "policy", "set",
+                              "exposure-connections", str(pressure))
+        self.assertEqual(changed.returncode, EXIT_OK, text(changed))
         self.start()
         cap, configured, term = self.capacity()
+        self.assertEqual(configured, pressure)
         self.assertGreater(cap, 0)
         self.assertLess(cap, configured, term)
+        self.assertNotEqual(term, "configured")
         hwm = self.stop()
-        self.assertLess(hwm * 1024, LIMIT)
+        self.assertLess(max(first_hwm, hwm) * 1024, LIMIT)
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         self.assertIn("max-history-octets=", status.stdout.decode())

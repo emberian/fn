@@ -8,6 +8,8 @@
 (include-book "defrecord")
 (include-book "state-globals")
 
+(local (in-theory (disable (tau-system))))
+
 (def-loop fn-adm-hh-drop (id rows)
  :shape :map :over rows :elt row
  :stop (and (consp row) (equal (car row) id))
@@ -86,6 +88,11 @@
  (declare (xargs :stobjs state :guard t))
  (f-put-global 'fn-owner-memory-held-bank
   (fn-adm-hh-open (fn-owner-memory-held-bank state) id physical) state))
+
+(defun fn-adm-operator-close (bank operator-id id)
+  (declare (xargs :guard t))
+  (list (fn-adm-hh-close bank id)
+        (if (equal id operator-id) nil operator-id)))
 
 (defun fn-owner-memory-held-close (id state)
  (declare (xargs :stobjs state :guard t))
@@ -447,8 +454,12 @@
         (fn-mm-gate-p profile img (fn-adm-priced-cfg run-cfg held capacity) limit tot))))
  :hints (("Goal"
   :use ((:instance fn-adm-installed-capacity-is-proved-or-zero
-         (cfg (update-nth 10 nil (true-list-fix cfg)))))
-  :in-theory (e/d (fn-adm-reader-count fn-adm-priced-connections fn-adm-priced-cfg
+         (cfg (update-nth 10 nil (true-list-fix cfg))))
+        (:instance fn-adm-gate-antitone-in-the-connections
+         (cfg (update-nth 10 nil (true-list-fix cfg)))
+         (j (fn-adm-installed-capacity profile img (update-nth 10 nil (true-list-fix cfg)) limit tot))
+         (k (1+ (fn-adm-installed-capacity profile img (update-nth 10 nil (true-list-fix cfg)) limit tot)))))
+  :in-theory (e/d (fn-adm-public-readers-cfg fn-adm-reader-count fn-adm-priced-connections fn-adm-priced-cfg
                   fn-adm-cfg-at)
                  (fn-adm-installed-capacity fn-adm-capacity fn-mm-gate-p
                   fn-mm-cfg-connections))))))
@@ -556,54 +567,65 @@
     fn-adm-priced-connections fn-adm-priced-cfg fn-mm-gate-p fn-adm-held-open-refusal nfix
     m23-held-open-admission-by-definition m24-held-open-composes-with-installed-capacity))))))
 
-(defthm fn-adm-held-admissions-compose-with-installed-capacity
-  (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg)))
-         (configured (fn-mm-cfg-connections run-cfg))
-         (capacity (fn-adm-installed-capacity profile img run-cfg limit tot))
-         (reader-count (fn-adm-reader-count configured capacity))
-         (exposure (fn-adm-exposure-open oc xs lim acfg peer address now
-                                         bank configured capacity))
-         (peer-open (fn-adm-peer-open oc peer acfg bank configured capacity))
-         (rearm (fn-adm-transport-rearm kind oc xs lim acfg peer address now
-                                        bank old-id configured capacity))
-         (reader (fn-adm-reader-open oc acfg bank configured capacity)))
-    (and
-      (implies (equal (car exposure) :admit)
-        (and (<= (fn-exp-at 3 exposure) reader-count)
-             (<= (fn-adm-admission-held exposure) reader-count)
-             (equal (fn-adm-priced-connections
-                      (fn-adm-admission-held exposure) configured capacity) reader-count)
-             (fn-mm-gate-p profile img
-               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held exposure) capacity)
-               limit tot)))
-      (implies (equal (car peer-open) :admit)
-        (and (<= (fn-exp-at 3 peer-open) reader-count)
-             (<= (fn-adm-admission-held peer-open) reader-count)
-             (equal (fn-adm-priced-connections
-                      (fn-adm-admission-held peer-open) configured capacity) reader-count)
-             (fn-mm-gate-p profile img
-               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held peer-open) capacity)
-               limit tot)))
-      (implies (equal (car rearm) :admit)
-        (and (<= (fn-exp-at 3 rearm) reader-count)
-             (<= (fn-adm-admission-held rearm) reader-count)
-             (equal (fn-adm-priced-connections
-                      (fn-adm-admission-held rearm) configured capacity) reader-count)
-             (fn-mm-gate-p profile img
-               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held rearm) capacity)
-               limit tot)))
-      (implies (equal (car reader) :admit)
-        (and (<= (fn-exp-at 3 reader) reader-count)
-             (<= (fn-adm-admission-held reader) reader-count)
-             (equal (fn-adm-priced-connections
-                      (fn-adm-admission-held reader) configured capacity) reader-count)
-             (fn-mm-gate-p profile img
-               (fn-adm-priced-cfg run-cfg (fn-adm-admission-held reader) capacity)
-               limit tot)))))
-  :rule-classes nil :hints (("Goal"
- :use (m24-exposure-admission-composes m24-peer-admission-composes
-       m24-rearm-admission-composes m24-reader-admission-composes)
- :in-theory (theory 'minimal-theory))))
+(defun fn-adm-operator-slot-freep (operator-id)
+  (declare (xargs :guard t))
+  (not (natp operator-id)))
+
+(defun fn-adm-operator-open-refusal (oc bank operator-id reason)
+  (declare (xargs :guard t))
+  (list :refuse (cons nil oc) bank (nfix (fn-adm-hh-count bank)) nil reason operator-id))
+
+(defun fn-adm-operator-open
+  (oc acfg bank configured capacity operator-id profile img cfg limit tot)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((held (nfix (fn-adm-hh-count bank)))
+         (id (fn-own-next-id (fn-ocfg-owner oc)))
+         (priced (fn-adm-priced-cfg cfg (1+ held) capacity)))
+    (cond
+      ((< held (fn-adm-reader-count configured capacity))
+       (let ((r (fn-adm-reader-open oc acfg bank configured capacity)))
+         (if (equal (car r) :admit)
+           (list :admit (fn-exp-at 1 r) (fn-exp-at 2 r) (fn-exp-at 3 r) (fn-exp-at 4 r) nil operator-id)
+           (list :refuse (fn-exp-at 1 r) bank held nil :operator-owner-bound operator-id))))
+      ((not (fn-adm-operator-slot-freep operator-id))
+       (fn-adm-operator-open-refusal oc bank operator-id :operator-slot-held))
+      ((not (equal (fn-mm-cfg-connections cfg) (nfix configured)))
+       (fn-adm-operator-open-refusal oc bank operator-id :operator-cfg-stale))
+      ((or (not (natp id))
+           (fn-exp-lookup id (fn-adm-hh-rows bank))
+           (not (fn-adm-operator-fundedp profile img cfg limit tot capacity))
+           (not (fn-mm-gate-p profile img priced limit tot)))
+       (fn-adm-operator-open-refusal oc bank operator-id :operator-slot-memory))
+      (t
+       (let ((opened (fn-ocar-ocfg-open oc acfg)))
+         (if (and (equal (fn-own-next-id (fn-ocfg-owner (cdr opened))) (1+ id))
+                  (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner (cdr opened)))))
+           (list :admit opened (fn-adm-hh-open bank id nil) (1+ held) id nil id)
+           (fn-adm-operator-open-refusal oc bank operator-id :operator-owner-bound)))))))
+
+
+
+(defun fn-adm-operator-open-word (result)
+  (declare (xargs :guard t))
+  (if (equal (fn-exp-at 0 result) :admit) :admitted :refused))
+
+(defun fn-adm-operator-open-reason (result)
+  (declare (xargs :guard t))
+  (if (equal (fn-exp-at 0 result) :admit) nil (fn-exp-at 5 result)))
+
+(defun fn-adm-operator-statep (bank operator-id)
+ (declare (xargs :guard t))
+ (and (fn-adm-hh-representsp bank)
+      (or (null operator-id)
+          (and (natp operator-id)
+               (fn-exp-at 1 (fn-exp-lookup operator-id (fn-adm-hh-rows bank)))
+               (not (fn-exp-at 2 (fn-exp-lookup operator-id (fn-adm-hh-rows bank))))))))
+
+(defun fn-adm-operator-open-id (result)
+ (declare (xargs :guard t))
+ (if (equal (fn-exp-at 0 result) :admit) (fn-exp-at 4 result) nil))
+
+
 
 (local (defthm m24-refused-rearm-bank-selector-by-definition
  (equal (fn-exp-at 2 (update-nth 3 peak (update-nth 2 bank r))) bank)
@@ -664,3 +686,250 @@
  (implies (boundp-global 'fn-owner state)
   (boundp-global 'fn-owner (fn-owner-memory-held-install result state)))
  :hints (("Goal" :in-theory (enable fn-owner-memory-held-install boundp-global put-global))))
+
+(defthm fn-adm-operator-open-refuses-a-held-slot
+  (let ((r (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img cfg limit tot)))
+    (implies (and (natp operator-id)
+                  (<= (fn-adm-reader-count configured capacity) (nfix (fn-adm-hh-count bank))))
+      (and (equal (car r) :refuse)
+           (equal (fn-exp-at 2 r) bank)
+           (equal (fn-adm-operator-open-reason r) :operator-slot-held)
+           (equal (fn-exp-at 6 r) operator-id))))
+  :rule-classes nil
+ :hints (("Goal" :in-theory (e/d
+ (fn-adm-operator-open fn-adm-operator-slot-freep fn-adm-operator-open-refusal
+  fn-adm-operator-open-reason fn-exp-at)
+ (fn-adm-reader-count fn-adm-hh-count fn-adm-reader-open fn-adm-operator-fundedp
+  fn-adm-priced-cfg fn-mm-gate-p fn-own-next-id fn-ocfg-owner fn-ocar-ocfg-open fn-own-find-conn fn-own-conns)))))
+
+(defthm fn-adm-operator-open-preserves-bank-representation
+  (implies (fn-adm-hh-representsp bank)
+    (fn-adm-hh-representsp (fn-exp-at 2
+      (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img cfg limit tot))))
+ :hints (("Goal"
+ :use (fn-adm-reader-open-preserves-identity-union
+       (:instance fn-adm-hh-open-preserves-identity-union
+          (id (fn-own-next-id (fn-ocfg-owner oc))) (physical nil)))
+ :in-theory (e/d (fn-adm-operator-open fn-adm-operator-open-refusal fn-exp-at)
+ (fn-adm-hh-representsp fn-adm-hh-open fn-adm-reader-open fn-adm-operator-fundedp
+  fn-adm-priced-cfg fn-mm-gate-p fn-own-next-id fn-ocfg-owner fn-ocar-ocfg-open
+  fn-own-find-conn fn-own-conns fn-adm-hh-count fn-adm-reader-count)))))
+
+(defthm fn-adm-operator-close-preserves-bank-representation
+  (implies (fn-adm-hh-representsp bank)
+    (fn-adm-hh-representsp (fn-exp-at 0 (fn-adm-operator-close bank operator-id id))))
+ :hints (("Goal" :in-theory (e/d (fn-adm-operator-close fn-exp-at)
+ (fn-adm-hh-close fn-adm-hh-representsp)))))
+
+(defthm fn-adm-operator-open-is-a-single-priced-admission
+  (let ((r (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img cfg limit tot))
+        (held (nfix (fn-adm-hh-count bank))))
+    (implies (equal (car r) :admit)
+      (and (equal (fn-adm-admission-held r) (1+ held))
+           (if (< held (fn-adm-reader-count configured capacity))
+             (and (equal (fn-exp-at 6 r) operator-id)
+                  (<= (fn-adm-admission-held r) (fn-adm-reader-count configured capacity)))
+             (and (fn-adm-operator-slot-freep operator-id)
+                  (equal (fn-exp-at 6 r) (fn-exp-at 4 r))
+                  (fn-adm-operator-fundedp profile img cfg limit tot capacity)
+                  (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (fn-adm-admission-held r) capacity) limit tot))))))
+  :rule-classes nil
+ :hints (("Goal"
+ :use (fn-adm-reader-open-admits-below-held-reader-bound)
+ :in-theory (e/d
+ (fn-adm-operator-open fn-adm-operator-open-refusal fn-adm-admission-held
+  fn-adm-hh-open fn-adm-hh-update fn-exp-at)
+ (fn-adm-reader-open fn-adm-reader-count fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup
+ fn-adm-hh-put fn-adm-hh-drop fn-adm-hh-cached-count-is-the-union-cardinality
+ fn-adm-operator-fundedp fn-adm-priced-cfg fn-mm-gate-p fn-own-next-id fn-ocfg-owner
+ fn-ocar-ocfg-open fn-own-find-conn fn-own-conns)))))
+
+(local (defthm m28-reader-open-tag-and-refusal-fields
+ (let ((r (fn-adm-reader-open oc acfg bank configured capacity)))
+  (and (member-eq (car r) '(:admit :refuse))
+       (implies (equal (car r) :refuse)
+        (and (equal (fn-exp-at 2 r) bank)
+             (equal (fn-exp-at 3 r) (nfix (fn-adm-hh-count bank)))
+             (equal (fn-exp-at 4 r) nil)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d
+  (fn-adm-reader-open fn-adm-held-open fn-adm-held-open-refusal fn-exp-at)
+  (fn-adm-held-open-roomp fn-adm-hh-count fn-adm-hh-open fn-exp-admit-decision
+   fn-ocar-exp-open fn-ocfg-open-peer fn-ocar-ocfg-open fn-exp-open-id
+   fn-own-find-conn fn-ocfg-owner fn-own-conns fn-own-next-id
+   fn-adm-hh-cached-count-is-the-union-cardinality))))))
+
+(defthm fn-adm-operator-open-below-saturation-is-the-reader-open
+  (let ((r (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img cfg limit tot))
+        (q (fn-adm-reader-open oc acfg bank configured capacity)))
+    (implies (< (nfix (fn-adm-hh-count bank)) (fn-adm-reader-count configured capacity))
+      (and (equal (car r) (car q))
+           (equal (fn-exp-at 1 r) (fn-exp-at 1 q))
+           (equal (fn-exp-at 2 r) (fn-exp-at 2 q))
+           (equal (fn-exp-at 3 r) (fn-exp-at 3 q))
+           (equal (fn-exp-at 4 r) (fn-exp-at 4 q))
+           (equal (fn-exp-at 6 r) operator-id))))
+  :rule-classes nil
+ :hints (("Goal" :use (m28-reader-open-tag-and-refusal-fields)
+ :in-theory (e/d (fn-adm-operator-open fn-adm-operator-open-refusal fn-exp-at)
+  (fn-adm-reader-open fn-adm-reader-count fn-adm-hh-count fn-adm-operator-fundedp
+   fn-adm-priced-cfg fn-mm-gate-p fn-own-next-id fn-ocfg-owner fn-ocar-ocfg-open
+   fn-own-find-conn fn-own-conns fn-adm-hh-cached-count-is-the-union-cardinality)))))
+
+(defthm fn-adm-operator-open-admits-exactly-a-free-funded-slot
+ (let* ((held (nfix (fn-adm-hh-count bank)))
+        (id (fn-own-next-id (fn-ocfg-owner oc)))
+        (opened (fn-ocar-ocfg-open oc acfg))
+        (r (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img cfg limit tot)))
+  (equal (equal (car r) :admit)
+   (if (< held (fn-adm-reader-count configured capacity))
+     (equal (car (fn-adm-reader-open oc acfg bank configured capacity)) :admit)
+     (and (fn-adm-operator-slot-freep operator-id)
+          (equal (fn-mm-cfg-connections cfg) (nfix configured))
+          (natp id) (not (fn-exp-lookup id (fn-adm-hh-rows bank)))
+          (fn-adm-operator-fundedp profile img cfg limit tot capacity)
+          (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (1+ held) capacity) limit tot)
+          (equal (fn-own-next-id (fn-ocfg-owner (cdr opened))) (1+ id))
+          (and (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner (cdr opened)))) t)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d
+ (fn-adm-operator-open fn-adm-operator-open-refusal fn-adm-operator-slot-freep fn-exp-at)
+ (fn-adm-reader-open fn-adm-reader-count fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup
+  fn-adm-operator-fundedp fn-adm-priced-cfg fn-mm-gate-p fn-mm-cfg-connections
+  fn-own-next-id fn-ocfg-owner fn-ocar-ocfg-open fn-own-find-conn fn-own-conns
+  fn-adm-hh-cached-count-is-the-union-cardinality)))))
+
+(defthm fn-adm-operator-refusal-is-named
+ (let ((r (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img cfg limit tot)))
+  (implies (equal (car r) :refuse)
+   (member-eq (fn-adm-operator-open-reason r)
+              '(:operator-slot-held :operator-slot-memory :operator-owner-bound :operator-cfg-stale))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d
+ (fn-adm-operator-open fn-adm-operator-open-refusal fn-adm-operator-open-reason fn-exp-at)
+ (fn-adm-reader-open fn-adm-reader-count fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup
+  fn-adm-operator-fundedp fn-adm-priced-cfg fn-mm-gate-p fn-mm-cfg-connections
+  fn-own-next-id fn-ocfg-owner fn-ocar-ocfg-open fn-own-find-conn fn-own-conns
+  fn-adm-hh-cached-count-is-the-union-cardinality)))))
+
+(local (defthm m28-lookup-after-other-drop-by-definition
+  (implies (not (equal key id))
+   (equal (fn-exp-lookup key (fn-adm-hh-drop id rows)) (fn-exp-lookup key rows)))
+  :hints (("Goal" :induct (fn-adm-hh-drop id rows)
+                   :in-theory (enable fn-adm-hh-drop fn-exp-lookup)))))
+
+(local (defthm m28-lookup-after-put-by-definition
+  (equal (fn-exp-lookup key (fn-adm-hh-put id logical physical rows))
+   (if (equal key id) (list id logical physical) (fn-exp-lookup key rows)))
+  :hints (("Goal" :in-theory (enable fn-adm-hh-put fn-exp-lookup)))))
+
+(local (defthm m28-other-row-of-update-by-definition
+  (implies (not (equal key id))
+   (equal (fn-exp-lookup key (fn-adm-hh-rows (fn-adm-hh-update bank id logical physical)))
+          (fn-exp-lookup key (fn-adm-hh-rows bank))))
+  :hints (("Goal" :in-theory (e/d
+   (fn-adm-hh-update fn-adm-hh-rows fn-adm-hh-make)
+   (fn-adm-hh-count fn-exp-lookup fn-adm-hh-put fn-adm-hh-drop))))))
+
+(local (defthm m28-row-of-natural-live-update-by-definition
+ (implies (and (natp id) logical)
+  (equal (fn-exp-lookup id (fn-adm-hh-rows (fn-adm-hh-update bank id logical physical)))
+         (list id t (and physical t))))
+ :hints (("Goal" :in-theory (e/d
+  (fn-adm-hh-update fn-adm-hh-rows fn-adm-hh-make)
+  (fn-adm-hh-count fn-exp-lookup fn-adm-hh-put fn-adm-hh-drop))))))
+
+(defthm fn-adm-operator-open-preserves-slot-representation
+ (implies (fn-adm-operator-statep bank operator-id)
+  (let ((r (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img cfg limit tot)))
+   (fn-adm-operator-statep (fn-exp-at 2 r) (fn-exp-at 6 r))))
+ :hints (("Goal"
+ :cases ((equal (fn-own-next-id (fn-ocfg-owner oc)) operator-id))
+ :use (fn-adm-operator-open-preserves-bank-representation)
+ :in-theory (e/d
+  (fn-adm-operator-statep fn-adm-operator-open fn-adm-operator-open-refusal
+   fn-adm-operator-slot-freep fn-adm-reader-open fn-adm-held-open fn-adm-held-open-roomp
+   fn-adm-held-open-refusal fn-adm-hh-open fn-exp-at)
+  (fn-adm-hh-representsp fn-adm-hh-update fn-adm-hh-count fn-adm-hh-rows
+   fn-exp-lookup fn-adm-hh-put fn-adm-hh-drop fn-adm-reader-count
+   fn-adm-operator-fundedp fn-adm-priced-cfg fn-mm-gate-p fn-mm-cfg-connections
+   fn-own-next-id fn-ocfg-owner fn-ocar-ocfg-open fn-own-find-conn fn-own-conns
+   fn-ocar-exp-open fn-ocfg-open-peer fn-exp-open-id fn-exp-admit-decision
+   fn-adm-hh-cached-count-is-the-union-cardinality)))))
+
+(defthm fn-adm-operator-close-preserves-slot-representation
+ (implies (fn-adm-operator-statep bank operator-id)
+  (let ((r (fn-adm-operator-close bank operator-id id)))
+   (fn-adm-operator-statep (fn-exp-at 0 r) (fn-exp-at 1 r))))
+ :hints (("Goal"
+ :use (fn-adm-operator-close-preserves-bank-representation)
+ :in-theory (e/d (fn-adm-operator-close fn-adm-operator-statep fn-adm-hh-close fn-exp-at)
+  (fn-adm-hh-representsp fn-adm-hh-update fn-adm-hh-count fn-adm-hh-rows
+   fn-exp-lookup fn-adm-hh-put fn-adm-hh-drop
+   fn-adm-hh-cached-count-is-the-union-cardinality)))))
+
+(local (defthm m28-reader-open-has-a-natural-admitted-id
+ (let ((r (fn-adm-reader-open oc acfg bank configured capacity)))
+  (implies (equal (car r) :admit) (natp (fn-exp-at 4 r))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d
+  (fn-adm-reader-open fn-adm-held-open fn-adm-held-open-roomp fn-adm-held-open-refusal fn-exp-at)
+  (fn-adm-reader-count fn-adm-hh-count fn-exp-lookup fn-adm-hh-rows fn-adm-hh-open
+   fn-adm-hh-cached-count-is-the-union-cardinality fn-exp-admit-decision
+   fn-ocar-exp-open fn-ocfg-open-peer fn-ocar-ocfg-open fn-exp-open-id
+   fn-own-find-conn fn-ocfg-owner fn-own-conns fn-own-next-id)))))
+)
+
+(defthm fn-adm-operator-admitted-id-is-the-slot-id
+ (let ((r (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img cfg limit tot)))
+  (implies (equal (fn-adm-operator-open-word r) :admitted)
+   (and (natp (fn-adm-operator-open-id r))
+        (equal (fn-exp-at 6 r)
+               (if (< (nfix (fn-adm-hh-count bank)) (fn-adm-reader-count configured capacity))
+                 operator-id
+                 (fn-adm-operator-open-id r))))))
+ :rule-classes nil
+ :hints (("Goal" :use (m28-reader-open-has-a-natural-admitted-id)
+ :in-theory (e/d
+  (fn-adm-operator-open fn-adm-operator-open-refusal fn-adm-operator-open-word
+   fn-adm-operator-open-id fn-exp-at)
+  (fn-adm-reader-open fn-adm-reader-count fn-adm-hh-count fn-adm-hh-rows fn-exp-lookup
+   fn-adm-operator-fundedp fn-adm-priced-cfg fn-mm-gate-p fn-mm-cfg-connections
+   fn-own-next-id fn-ocfg-owner fn-ocar-ocfg-open fn-own-find-conn fn-own-conns
+   fn-adm-hh-cached-count-is-the-union-cardinality)))))
+
+; Deferred served operator decision guard verification.
+(verify-guards fn-adm-operator-open)
+
+
+; Composition uses the operator admission summary above.
+(local (defthm m28-operator-admission-composes
+ (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg)))
+(configured (fn-mm-cfg-connections run-cfg))
+(capacity (fn-adm-installed-capacity profile img run-cfg limit tot))
+(reader-count (fn-adm-reader-count configured capacity))
+(operator (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img run-cfg limit tot)))
+(implies (equal (car operator) :admit) (and (equal (fn-adm-admission-held operator) (1+ (nfix (fn-adm-hh-count bank)))) (or (and (<= (fn-adm-admission-held operator) reader-count) (equal (fn-exp-at 6 operator) operator-id)) (and (fn-adm-operator-slot-freep operator-id) (equal (fn-exp-at 6 operator) (fn-exp-at 4 operator)) (fn-adm-operator-fundedp profile img run-cfg limit tot capacity))) (fn-mm-gate-p profile img (fn-adm-priced-cfg run-cfg (fn-adm-admission-held operator) capacity) limit tot))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn-adm-operator-open-is-a-single-priced-admission
+          (cfg (update-nth 10 nil (true-list-fix cfg)))
+          (configured (fn-mm-cfg-connections (update-nth 10 nil (true-list-fix cfg))))
+          (capacity (fn-adm-installed-capacity profile img (update-nth 10 nil (true-list-fix cfg)) limit tot)))
+        (:instance m24-priced-installed-gate-by-definition
+          (held (fn-adm-admission-held
+            (fn-adm-operator-open oc acfg bank
+              (fn-mm-cfg-connections (update-nth 10 nil (true-list-fix cfg)))
+              (fn-adm-installed-capacity profile img (update-nth 10 nil (true-list-fix cfg)) limit tot)
+              operator-id profile img (update-nth 10 nil (true-list-fix cfg)) limit tot)))))
+  :in-theory (e/d (fn-adm-reader-count fn-adm-priced-connections nfix natp)
+    (m24-priced-installed-gate-by-definition fn-adm-operator-fundedp fn-adm-operator-slot-freep fn-adm-cfg-at fn-adm-public-readers-cfg fn-adm-exposure-open fn-adm-peer-open fn-adm-reader-open fn-adm-transport-rearm
+     fn-adm-operator-open fn-adm-admission-held fn-adm-installed-capacity fn-adm-capacity
+     fn-mm-gate-p fn-adm-priced-cfg fn-adm-priced-connections fn-mm-cfg-connections
+     fn-adm-hh-count fn-exp-at))))))
+(defthm fn-adm-held-admissions-compose-with-installed-capacity
+ (let* ((run-cfg (update-nth 10 nil (true-list-fix cfg))) (configured (fn-mm-cfg-connections run-cfg)) (capacity (fn-adm-installed-capacity profile img run-cfg limit tot)) (reader-count (fn-adm-reader-count configured capacity)) (exposure (fn-adm-exposure-open oc xs lim acfg peer address now bank configured capacity)) (peer-open (fn-adm-peer-open oc peer acfg bank configured capacity)) (rearm (fn-adm-transport-rearm kind oc xs lim acfg peer address now bank old-id configured capacity)) (reader (fn-adm-reader-open oc acfg bank configured capacity)) (operator (fn-adm-operator-open oc acfg bank configured capacity operator-id profile img run-cfg limit tot))) (and (implies (equal (car exposure) :admit) (and (<= (fn-exp-at 3 exposure) reader-count) (<= (fn-adm-admission-held exposure) reader-count) (equal (fn-adm-priced-connections (fn-adm-admission-held exposure) configured capacity) reader-count) (fn-mm-gate-p profile img (fn-adm-priced-cfg run-cfg (fn-adm-admission-held exposure) capacity) limit tot))) (implies (equal (car peer-open) :admit) (and (<= (fn-exp-at 3 peer-open) reader-count) (<= (fn-adm-admission-held peer-open) reader-count) (equal (fn-adm-priced-connections (fn-adm-admission-held peer-open) configured capacity) reader-count) (fn-mm-gate-p profile img (fn-adm-priced-cfg run-cfg (fn-adm-admission-held peer-open) capacity) limit tot))) (implies (equal (car rearm) :admit) (and (<= (fn-exp-at 3 rearm) reader-count) (<= (fn-adm-admission-held rearm) reader-count) (equal (fn-adm-priced-connections (fn-adm-admission-held rearm) configured capacity) reader-count) (fn-mm-gate-p profile img (fn-adm-priced-cfg run-cfg (fn-adm-admission-held rearm) capacity) limit tot))) (implies (equal (car reader) :admit) (and (<= (fn-exp-at 3 reader) reader-count) (<= (fn-adm-admission-held reader) reader-count) (equal (fn-adm-priced-connections (fn-adm-admission-held reader) configured capacity) reader-count) (fn-mm-gate-p profile img (fn-adm-priced-cfg run-cfg (fn-adm-admission-held reader) capacity) limit tot))) (implies (equal (car operator) :admit) (and (equal (fn-adm-admission-held operator) (1+ (nfix (fn-adm-hh-count bank)))) (or (and (<= (fn-adm-admission-held operator) reader-count) (equal (fn-exp-at 6 operator) operator-id)) (and (fn-adm-operator-slot-freep operator-id) (equal (fn-exp-at 6 operator) (fn-exp-at 4 operator)) (fn-adm-operator-fundedp profile img run-cfg limit tot capacity))) (fn-mm-gate-p profile img (fn-adm-priced-cfg run-cfg (fn-adm-admission-held operator) capacity) limit tot)))))
+ :rule-classes nil
+ :hints (("Goal" :use (m24-exposure-admission-composes m24-peer-admission-composes
+ m24-rearm-admission-composes m24-reader-admission-composes m28-operator-admission-composes)
+ :in-theory (theory 'minimal-theory))))

@@ -216,6 +216,7 @@
                 fn-owner-moderation-plan
                 fn-owner-next-store-coordinates fn-owner-next-txid
                 fn-owner-observe fn-owner-oex-capture fn-owner-open
+                fn-owner-operator-open
                 fn-owner-operator-refusal-reason fn-owner-operator-submit
                 fn-owner-orc-capture fn-owner-orc-finish
                 fn-owner-orc-instant-stage fn-owner-orc-request

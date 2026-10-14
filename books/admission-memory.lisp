@@ -213,14 +213,26 @@
 
 ; The walk, the specification the search is proved equal to
 ; (fn-adm-capacity-is-the-walk).
+(defun fn-adm-public-capacity-cfg (cfg)
+  (declare (xargs :guard t))
+  (fn-adm-cfg-at cfg (1+ (fn-mm-cfg-connections cfg))))
+
+(defun fn-adm-public-readers-cfg (cfg public-readers)
+  (declare (xargs :guard t))
+  (fn-adm-cfg-at cfg (1+ (nfix public-readers))))
+
 (defun fn-adm-capacity-walk (profile img cfg limit tot)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-adm-capacity-down profile img cfg limit tot (fn-mm-cfg-connections cfg)))
+  (let ((total (fn-adm-capacity-down profile img (fn-adm-public-capacity-cfg cfg)
+                limit tot (1+ (fn-mm-cfg-connections cfg)))))
+    (if (and (natp total) (< 0 total)) (1- total) nil)))
 
 ; The run's capacity C': the search.
 (defun fn-adm-capacity (profile img cfg limit tot)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-adm-capacity-search-top profile img cfg limit tot))
+  (let ((total (fn-adm-capacity-search-top profile img
+                (fn-adm-public-capacity-cfg cfg) limit tot)))
+    (if (and (natp total) (< 0 total)) (1- total) nil)))
 
 ; The term that bound C', named on the run's line: :configured when C' is C;
 ; when C' < C the term one more connection adds, the large reply (the OVER
@@ -232,11 +244,11 @@
   (let ((c (fn-adm-capacity profile img cfg limit tot)))
     (cond ((null c)
            (cond ((not (natp limit)) :no-limit)
-                 ((< limit (fn-mm-sum profile img (fn-adm-cfg-at cfg 0) tot)) :store)
+                 ((< limit (fn-mm-sum profile img (fn-adm-public-readers-cfg cfg 0) tot)) :store)
                  (t :reopen)))
           ((equal c (fn-mm-cfg-connections cfg)) :configured)
-          ((< (fn-mm-cfg-holders (fn-adm-cfg-at cfg c))
-              (fn-mm-cfg-holders (fn-adm-cfg-at cfg (1+ c))))
+          ((< (fn-mm-cfg-holders (fn-adm-public-readers-cfg cfg c))
+              (fn-mm-cfg-holders (fn-adm-public-readers-cfg cfg (1+ c))))
            (if (< (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile)))
                      *fn-cbud-reply-status-octets*)
                   (fn-mm-over-window-octets profile cfg))
@@ -304,6 +316,10 @@
                                        fn-mm-cfg-server-octets fn-mm-cfg-rho fn-mm-cfg-config
                                        fn-mm-cfg-connections fn-mm-nat)))))
 
+  (local (defthm m25-reader-projection-keeps-bank-floor-by-definition
+    (equal (fn-mm-cfg-bank-floor (fn-adm-cfg-at cfg k)) (fn-mm-cfg-bank-floor cfg))
+    :hints (("Goal" :in-theory (enable fn-mm-cfg-bank-floor fn-adm-cfg-at fn-mm-nat)))))
+
   (local (in-theory (disable fn-mm-cfg-tlsp fn-mm-cfg-trigger fn-mm-cfg-pub-trigger
                              fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache fn-mm-cfg-cold
                              fn-mm-cfg-handshakes fn-mm-cfg-over-window fn-mm-cfg-server-octets
@@ -334,8 +350,10 @@
   (local (defthm fn-adm-at-reopen
     (equal (fn-mm-reopen-need profile img (fn-adm-cfg-at cfg k) tot)
            (fn-mm-reopen-need profile img cfg tot))
-    :hints (("Goal" :in-theory (enable fn-mm-reopen-need fn-mm-reopen-live
-                                       fn-mm-checkpoint-load-octets)))))
+    :hints (("Goal" :in-theory (union-theories
+      '(fn-mm-reopen-need fn-mm-reopen-live fn-mm-checkpoint-load-octets
+        fn-adm-at-base fn-adm-at-owner fn-adm-at-maintenance fn-adm-at-collector fn-adm-at-accessors)
+      (theory 'minimal-theory))))))
   (local (defthm fn-adm-at-holders
     (equal (fn-mm-cfg-holders (fn-adm-cfg-at cfg k))
            (if (natp (nth 10 (true-list-fix cfg))) (min (nth 10 (true-list-fix cfg)) (nfix k)) (nfix k)))
@@ -355,7 +373,7 @@
     (implies (and (natp j) (natp k) (<= j k))
              (<= (fn-mm-live profile (fn-adm-cfg-at cfg j) tot) (fn-mm-live profile (fn-adm-cfg-at cfg k) tot)))
     :rule-classes nil
-    :hints (("Goal" :in-theory (e/d (fn-mm-live fn-mm-connections fn-mm-large-pool)
+    :hints (("Goal" :in-theory (e/d (fn-mm-live fn-mm-connections fn-mm-large-pool max)
                                     (fn-adm-at-holders fn-mm-owner fn-mm-inflight fn-mm-maintenance
                                      fn-mm-connection-fixed fn-mm-large-reply fn-mm-cfg-holders))
              :use ((:instance fn-adm-live-sum-monotone-abstract
@@ -445,40 +463,56 @@
   (equal (fn-adm-capacity profile img cfg limit tot)
          (fn-adm-capacity-walk profile img cfg limit tot))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-adm-capacity fn-adm-capacity-search-top fn-adm-capacity-walk)
-                                  (fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down
-                                   fn-adm-capacity-search fn-mm-cfg-connections))
-           :use ((:instance fn-adm-search-is-the-down (lo 0) (hi (1+ (fn-mm-cfg-connections cfg)))
-                            (c (fn-mm-cfg-connections cfg)))))))
+
+
+  :hints (("Goal" :in-theory (e/d (fn-adm-capacity fn-adm-capacity-search-top fn-adm-capacity-walk fn-adm-public-capacity-cfg fn-adm-cfg-at fn-mm-cfg-connections fn-mm-nat)
+ (fn-mm-gate-p fn-adm-capacity-down fn-adm-capacity-search))
+ :use ((:instance fn-adm-search-is-the-down (cfg (fn-adm-public-capacity-cfg cfg))
+ (lo 0) (hi (+ 2 (fn-mm-cfg-connections cfg))) (c (1+ (fn-mm-cfg-connections cfg))))))))
 
 
 
 ; KEYSTONE (C' fits): C' is at most C and the gate holds at C' connections.
 (defthm fn-adm-capacity-fits
   (implies (fn-adm-capacity profile img cfg limit tot)
-           (let ((c (fn-adm-capacity profile img cfg limit tot)))
-             (and (natp c)
-                  (<= c (fn-mm-cfg-connections cfg))
-                  (fn-mm-gate-p profile img (fn-adm-cfg-at cfg c) limit tot))))
-  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-walk)
-                                  (fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down fn-adm-capacity
-                                   fn-mm-cfg-connections))
-           :use (fn-adm-capacity-is-the-walk
-                 (:instance fn-adm-capacity-down-fits (k (fn-mm-cfg-connections cfg)))))))
+    (let ((c (fn-adm-capacity profile img cfg limit tot)))
+      (and (natp c)
+           (<= c (fn-mm-cfg-connections cfg))
+           (fn-mm-gate-p profile img (fn-adm-public-readers-cfg cfg c) limit tot))))
+  :rule-classes nil
+
+  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-walk fn-adm-public-readers-cfg fn-adm-public-capacity-cfg fn-adm-cfg-at fn-mm-cfg-connections fn-mm-nat)
+ (fn-adm-capacity fn-adm-capacity-down fn-mm-gate-p))
+ :use (fn-adm-capacity-is-the-walk
+ (:instance fn-adm-capacity-down-fits (cfg (fn-adm-public-capacity-cfg cfg)) (k (1+ (fn-mm-cfg-connections cfg))))))))
+
+; A funded public-plus-private bank also funds the public-only projection.
+(defthm fn-adm-public-capacity-fits
+ (implies (natp (fn-adm-capacity profile img cfg limit tot))
+  (fn-mm-gate-p profile img
+   (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg limit tot)) limit tot))
+ :hints (("Goal"
+  :use (fn-adm-capacity-fits
+   (:instance fn-adm-gate-antitone-in-the-connections
+    (j (fn-adm-capacity profile img cfg limit tot))
+    (k (1+ (fn-adm-capacity profile img cfg limit tot)))))
+  :in-theory (e/d (fn-adm-public-readers-cfg)
+   (fn-adm-capacity fn-adm-cfg-at fn-mm-gate-p fn-mm-cfg-connections)))))
+
 
 ; KEYSTONE (C' is the most): every count up to C the gate holds at is at most
 ; C'; with none, C' is NIL.
 (defthm fn-adm-capacity-is-the-most
-  (implies (and (natp j)
-                (<= j (fn-mm-cfg-connections cfg))
-                (fn-mm-gate-p profile img (fn-adm-cfg-at cfg j) limit tot))
-           (let ((c (fn-adm-capacity profile img cfg limit tot)))
-             (and (natp c) (<= j c))))
-  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-walk)
-                                  (fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down fn-adm-capacity
-                                   fn-mm-cfg-connections))
-           :use (fn-adm-capacity-is-the-walk
-                 (:instance fn-adm-capacity-down-is-the-most (k (fn-mm-cfg-connections cfg)))))))
+  (implies (and (natp j) (<= j (fn-mm-cfg-connections cfg))
+                (fn-mm-gate-p profile img (fn-adm-public-readers-cfg cfg j) limit tot))
+    (let ((c (fn-adm-capacity profile img cfg limit tot)))
+      (and (natp c) (<= j c))))
+  :rule-classes nil
+
+  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-walk fn-adm-public-readers-cfg fn-adm-public-capacity-cfg fn-adm-cfg-at fn-mm-cfg-connections fn-mm-nat)
+ (fn-adm-capacity fn-adm-capacity-down fn-mm-gate-p fn-adm-capacity-down-is-the-most))
+ :use (fn-adm-capacity-is-the-walk
+ (:instance fn-adm-capacity-down-is-the-most (cfg (fn-adm-public-capacity-cfg cfg)) (k (1+ (fn-mm-cfg-connections cfg))) (j (1+ j)))))))
 
 (local (defthm fn-adm-gate-monotone-in-the-limit
   (implies (and (fn-mm-gate-p profile img cfg l1 tot) (natp l2) (<= l1 l2))
@@ -493,11 +527,11 @@
                 (<= (fn-adm-capacity profile img cfg l1 tot)
                     (fn-adm-capacity profile img cfg l2 tot))))
   :hints (("Goal" :in-theory (disable fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity
-                                      fn-mm-cfg-connections fn-adm-capacity-fits
-                                      fn-adm-capacity-is-the-most)
+                                      fn-mm-cfg-connections
+                                      )
            :use ((:instance fn-adm-capacity-fits (limit l1))
                  (:instance fn-adm-gate-monotone-in-the-limit
-                            (cfg (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg l1 tot))))
+                            (cfg (fn-adm-public-readers-cfg cfg (fn-adm-capacity profile img cfg l1 tot))))
                  (:instance fn-adm-capacity-is-the-most
                             (limit l2) (j (fn-adm-capacity profile img cfg l1 tot)))))))
 
@@ -518,22 +552,20 @@
                 (<= (fn-adm-capacity profile img cfg limit b)
                     (fn-adm-capacity profile img cfg limit a))))
   :hints (("Goal" :in-theory (disable fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity
-                                      fn-mm-cfg-connections fn-adm-capacity-fits
-                                      fn-adm-capacity-is-the-most fn-mm-tot-le)
+                                      fn-mm-cfg-connections
+                                       fn-mm-tot-le)
            :use ((:instance fn-adm-capacity-fits (tot b))
                  (:instance fn-adm-gate-antitone-in-the-store
-                            (cfg (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg limit b))))
+                            (cfg (fn-adm-public-readers-cfg cfg (fn-adm-capacity profile img cfg limit b))))
                  (:instance fn-adm-capacity-is-the-most
                             (tot a) (j (fn-adm-capacity profile img cfg limit b)))))))
 
 ; KEYSTONE: the line says :configured exactly when C' is C.
 (defthm fn-adm-capacity-binding-configured-exactly-at-c
-  (equal (equal (fn-adm-capacity-binding profile img cfg limit tot) :configured)
-         (equal (fn-adm-capacity profile img cfg limit tot)
-                (fn-mm-cfg-connections cfg)))
-  :hints (("Goal" :in-theory (disable fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity
-                                      fn-mm-cfg-connections fn-mm-sum fn-mm-reopen-need
-                                      fn-mm-cfg-holders fn-mm-over-window-octets))))
+ (equal (equal (fn-adm-capacity-binding profile img cfg limit tot) :configured) (equal (fn-adm-capacity profile img cfg limit tot) (fn-mm-cfg-connections cfg)))
+ :rule-classes nil
+
+  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-binding) (fn-adm-capacity fn-adm-public-readers-cfg fn-mm-gate-p fn-mm-cfg-connections fn-mm-sum fn-mm-cfg-holders fn-mm-over-window-octets)))))
 
 ; THE HANDLE SPACE (K-BOUND P3; Builder M, memory landing 4b, 2026-10-10; Codex rev-7
 ; finding 5).  A row's handle is the arena's count at its seal and a seal adds one
@@ -858,20 +890,22 @@
     (fn-adm-cfg-at cfg
       (fn-adm-priced-connections held (fn-mm-cfg-connections cfg) capacity))))
 
-(defun fn-adm-retained-runtime-cfg (cfg lease-octets)
-  (declare (xargs :guard t))
-  (update-nth 6 (+ (fn-mm-cfg-cold cfg) (nfix lease-octets))
-                (true-list-fix cfg)))
+
 
 (defun fn-adm-installed-capacity (profile img cfg limit tot)
   (declare (xargs :guard t :verify-guards nil))
   (nfix (fn-adm-capacity profile img cfg limit tot)))
 
+(defun fn-adm-operator-fundedp (profile img cfg limit tot capacity)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (natp capacity)
+       (fn-mm-gate-p profile img (fn-adm-public-readers-cfg cfg capacity) limit tot)))
+
 (defun fn-adm-memory-owner-bound (maximum capacity)
   (declare (xargs :guard t))
-  (cond ((not (natp capacity)) (nfix maximum))
-        ((equal capacity 0) 0)
-        (t (min (nfix maximum) (1+ capacity)))))
+  (if (natp capacity)
+      (min (nfix maximum) (if (posp capacity) (1+ capacity) 0))
+    (nfix maximum)))
 
 (defun fn-adm-exposure-limits (v maximum publicp auth-required capacity)
   (declare (xargs :guard t))
@@ -881,11 +915,19 @@
     (update-nth 1 (fn-adm-reader-count (fn-exp-lim-total limits) capacity)
                 limits)))
 
+(defun fn-adm-run-gate-held (held configured capacity)
+  (declare (xargs :guard t))
+  (if (natp capacity)
+      (max (nfix held) (1+ (fn-adm-reader-count configured capacity)))
+    (nfix held)))
+
 (defun fn-adm-run-memory-admitp (profile img cfg limit tot row held capacity)
   (declare (xargs :guard t :verify-guards nil))
   (and (or (not (natp capacity)) (posp capacity))
        (fn-adm-memory-admitp profile img
-                            (fn-adm-priced-cfg cfg held capacity)
+                            (fn-adm-priced-cfg cfg
+                              (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity)
+                              capacity)
                             limit tot row)))
 
 (defun fn-adm-installed-capacity-line (profile img cfg limit tot)
@@ -896,7 +938,9 @@
                  " of " (fn-heap-decimal (fn-mm-cfg-connections cfg))
                  " bound-by=" (string-downcase (symbol-name word))
                  " sum=" (fn-adm-mb-up
-                   (fn-mm-sum profile img (fn-adm-cfg-at cfg c) tot))
+                   (fn-mm-sum profile img
+                     (if (posp c) (fn-adm-public-readers-cfg cfg c) (fn-adm-cfg-at cfg 0))
+                     tot))
                  " MB limit=" (fn-adm-mb-down limit) " MB")))
     (concatenate 'string
       (if (posp c) "memory capacity="
@@ -938,15 +982,14 @@
 (defthm fn-adm-installed-capacity-is-proved-or-zero
   (let ((found (fn-adm-capacity profile img cfg limit tot))
         (installed (fn-adm-installed-capacity profile img cfg limit tot)))
-    (and (natp installed)
-         (equal installed (if (natp found) found 0))
+    (and (natp installed) (equal installed (if (natp found) found 0))
          (or (equal installed 0)
-             (and (equal installed found)
-                  (<= installed (fn-mm-cfg-connections cfg))
-                  (fn-mm-gate-p profile img (fn-adm-cfg-at cfg installed)
-                                limit tot)))))
+             (and (equal installed found) (<= installed (fn-mm-cfg-connections cfg))
+                  (fn-mm-gate-p profile img (fn-adm-public-readers-cfg cfg installed) limit tot)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-adm-installed-capacity) (fn-adm-capacity fn-adm-cfg-at fn-mm-gate-p fn-mm-cfg-connections)) :use fn-adm-capacity-fits)))
+
+  :hints (("Goal" :in-theory (e/d (fn-adm-installed-capacity nfix natp)
+ (fn-adm-capacity fn-mm-gate-p fn-adm-public-readers-cfg fn-mm-cfg-connections)) :use fn-adm-capacity-fits)))
 
 (defthm fn-adm-zero-capacity-refuses-new-readers
   (let ((limits (fn-adm-exposure-limits v maximum publicp auth-required 0)))
@@ -986,117 +1029,93 @@
   :hints (("Goal" :in-theory (e/d (fn-adm-installed-capacity-line) (fn-adm-installed-capacity fn-adm-capacity-binding fn-adm-cfg-at fn-mm-sum fn-mm-cfg-connections fn-adm-mb-up fn-adm-mb-down fn-heap-decimal)))))
 
 ; The retained bank changes only the fixed runtime allowance.
-(local (defthm m22-retained-cfg-fields-by-definition
- (let ((bare (fn-adm-priced-cfg cfg held capacity)) (charged (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)))
-  (and   (equal (fn-mm-cfg-connections charged) (fn-mm-cfg-connections bare))
-  (equal (fn-mm-cfg-tlsp charged) (fn-mm-cfg-tlsp bare))
-  (equal (fn-mm-cfg-trigger charged) (fn-mm-cfg-trigger bare))
-  (equal (fn-mm-cfg-pub-trigger charged) (fn-mm-cfg-pub-trigger bare))
-  (equal (fn-mm-cfg-reclaim-live-p charged) (fn-mm-cfg-reclaim-live-p bare))
-  (equal (fn-mm-cfg-cache charged) (fn-mm-cfg-cache bare))
-  (equal (fn-mm-cfg-handshakes charged) (fn-mm-cfg-handshakes bare))
-  (equal (fn-mm-cfg-over-window charged) (fn-mm-cfg-over-window bare))
-  (equal (fn-mm-cfg-server-octets charged) (fn-mm-cfg-server-octets bare))
-  (equal (fn-mm-cfg-holders charged) (fn-mm-cfg-holders bare))
-  (equal (fn-mm-cfg-rho charged) (fn-mm-cfg-rho bare))
-  (equal (fn-mm-cfg-config charged) (fn-mm-cfg-config bare))
-       (equal (fn-mm-cfg-cold charged) (+ (nfix lease-octets) (fn-mm-cfg-cold bare)))))
- :hints (("Goal" :in-theory (e/d
-   (fn-adm-priced-cfg fn-adm-retained-runtime-cfg fn-adm-cfg-at fn-mm-nat
-    fn-mm-cfg-connections fn-mm-cfg-tlsp fn-mm-cfg-trigger fn-mm-cfg-pub-trigger fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache fn-mm-cfg-handshakes fn-mm-cfg-over-window fn-mm-cfg-server-octets fn-mm-cfg-holders fn-mm-cfg-rho fn-mm-cfg-config fn-mm-cfg-cold)
-   (fn-adm-priced-connections fn-adm-reader-count))))))
 
-(local (defthm fn-mm-base-retained-by-definition
- (equal (fn-mm-base img (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-base img (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-base img (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-base img (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition))))))
 
-(local (defthm fn-mm-collector-retained-by-definition
- (equal (fn-mm-collector live (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-collector live (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-collector live (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-collector live (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition))))))
 
-(local (defthm fn-mm-payload-octets-retained-by-definition
- (equal (fn-mm-payload-octets tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-payload-octets tot (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-payload-octets tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-payload-octets tot (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition))))))
 
-(local (defthm fn-mm-owner-retained-by-definition
- (equal (fn-mm-owner tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-owner tot (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-owner tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-owner tot (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition))))))
 
-(local (defthm fn-mm-connection-fixed-retained-by-definition
- (equal (fn-mm-connection-fixed profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-connection-fixed profile (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-connection-fixed profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-connection-fixed profile (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition))))))
 
-(local (defthm fn-mm-nov-line-octets-retained-by-definition
- (equal (fn-mm-nov-line-octets profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-nov-line-octets profile (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-nov-line-octets profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-nov-line-octets profile (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition))))))
 
-(local (defthm fn-mm-over-window-fit-retained-by-definition
- (equal (fn-mm-over-window-fit profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-over-window-fit profile (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-over-window-fit profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-over-window-fit profile (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition))))))
 
-(local (defthm fn-mm-over-window-octets-retained-by-definition
- (equal (fn-mm-over-window-octets profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-over-window-octets profile (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-over-window-octets profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-over-window-octets profile (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition fn-mm-over-window-fit-retained-by-definition))))))
 
-(local (defthm fn-mm-large-reply-retained-by-definition
- (equal (fn-mm-large-reply profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-large-reply profile (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-large-reply profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-large-reply profile (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition fn-mm-over-window-fit-retained-by-definition fn-mm-over-window-octets-retained-by-definition))))))
 
-(local (defthm fn-mm-maintenance-retained-by-definition
- (equal (fn-mm-maintenance tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-maintenance tot (fn-adm-priced-cfg cfg held capacity)))
- :hints (("Goal" :expand ((fn-mm-maintenance tot (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-maintenance tot (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory) '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition fn-mm-over-window-fit-retained-by-definition fn-mm-over-window-octets-retained-by-definition fn-mm-large-reply-retained-by-definition))))))
 
-(local (defthm m22-retained-need-terms-by-definition
- (let ((bare (fn-adm-priced-cfg cfg held capacity)) (charged (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)))
-  (and (equal (fn-mm-base img charged) (fn-mm-base img bare))
-       (equal (fn-mm-collector live charged) (fn-mm-collector live bare))
-       (equal (fn-mm-need-live profile charged tot k j s h publishing)
-              (+ (nfix lease-octets) (fn-mm-need-live profile bare tot k j s h publishing)))))
- :hints (("Goal"
- :expand ((fn-mm-need-live profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity) tot k j s h publishing)
-          (fn-mm-need-live profile (fn-adm-priced-cfg cfg held capacity) tot k j s h publishing)
-          (fn-mm-cold-reads profile (fn-adm-priced-cfg (fn-adm-retained-runtime-cfg cfg lease-octets) held capacity)) (fn-mm-cold-reads profile (fn-adm-priced-cfg cfg held capacity)))
- :in-theory (union-theories (theory 'minimal-theory)
- '(m22-retained-cfg-fields-by-definition fn-mm-base-retained-by-definition fn-mm-collector-retained-by-definition fn-mm-payload-octets-retained-by-definition fn-mm-owner-retained-by-definition fn-mm-connection-fixed-retained-by-definition fn-mm-nov-line-octets-retained-by-definition fn-mm-over-window-fit-retained-by-definition fn-mm-over-window-octets-retained-by-definition fn-mm-large-reply-retained-by-definition fn-mm-maintenance-retained-by-definition default-+-1 default-+-2 associativity-of-+ commutativity-of-+ commutativity-2-of-+))))))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(local (defthm m28-adm-fix-update-by-definition
+ (equal (true-list-fix (update-nth n v xs))
+        (update-nth n v (true-list-fix xs)))
+ :hints (("Goal" :induct (update-nth n v xs)
+                 :in-theory (enable update-nth true-list-fix)))))
+
+(local (defthm m26-priced-projections-commute-by-definition
+ (equal (fn-adm-priced-cfg cfg held capacity)
+        (fn-adm-cfg-at (update-nth 10 nil (true-list-fix cfg))
+                       (fn-adm-priced-connections held (fn-mm-cfg-connections cfg) capacity)))
+ :hints (("Goal" :in-theory (enable fn-adm-priced-cfg fn-adm-cfg-at)))))
+
+(local (defthm m26-bank-plus-nonconnection-need-live-within-live
+ (implies (and (<= (nfix s) (fn-heap-article-slots profile))
+               (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
+  (<= (+ (fn-mm-cfg-bank-floor cfg) (fn-mm-need-live profile cfg tot 0 0 s h publishing))
+      (fn-mm-live profile cfg tot)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-mm-need-live fn-mm-live fn-mm-inflight fn-mm-connections max natp (:executable-counterpart nfix))
+  (theory 'minimal-theory))
+  :use ((:instance fn-heap-article-slots-are-held (k s))
+        (:instance fn-mm-handshakes-within (tlsp (fn-mm-cfg-tlsp cfg)) (hs (fn-mm-cfg-handshakes cfg)))
+        fn-mm-terms-natp)))))
+
+(local (defthm m26-bank-plus-nonconnection-need-within-sum
+ (implies (and (<= (nfix s) (fn-heap-article-slots profile))
+               (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
+  (<= (+ (fn-mm-cfg-bank-floor cfg) (fn-mm-need profile img cfg tot 0 0 s h publishing))
+      (fn-mm-sum profile img cfg tot)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories '(fn-mm-need fn-mm-sum nfix natp (:type-prescription fn-mm-cfg-bank-floor) (:type-prescription fn-mm-live-natp) (:type-prescription fn-mm-need-live-natp)) (theory 'minimal-theory))
+ :use (m26-bank-plus-nonconnection-need-live-within-live
+       (:instance fn-mm-need-live-within-the-live (k 0) (j 0))
+       (:instance fn-mm-collector-monotone
+        (a (fn-mm-need-live profile cfg tot 0 0 s h publishing)) (b (fn-mm-live profile cfg tot)))
+       (:instance fn-mm-need-live-natp (k 0) (j 0)) fn-mm-live-natp
+       (:instance fn-mm-terms-natp))))))
+
+(local (defthm m26-priced-cfg-retains-the-floor-by-definition
+ (equal (fn-mm-cfg-bank-floor (fn-adm-priced-cfg (update-nth 14 lease-octets (true-list-fix cfg)) held capacity))
+        (nfix lease-octets))
+ :hints (("Goal" :in-theory (e/d (fn-mm-cfg-bank-floor fn-adm-priced-cfg fn-adm-cfg-at fn-mm-nat)
+                               (fn-adm-priced-connections fn-mm-cfg-connections))))))
 
 (defthm fn-adm-priced-gate-holds-the-retained-lease
-  (let* ((bare (fn-adm-priced-cfg cfg held capacity))
-         (charged (fn-adm-priced-cfg
-                    (fn-adm-retained-runtime-cfg cfg lease-octets)
-                    held capacity)))
+  (let ((charged (fn-adm-priced-cfg (update-nth 14 lease-octets (true-list-fix cfg)) held capacity)))
     (implies (fn-mm-gate-p profile img charged limit tot)
              (<= (+ (nfix lease-octets)
-                    (fn-mm-need profile img bare tot (nfix held) (nfix held)
+                    (fn-mm-need profile img charged tot 0 0
                       (fn-heap-article-slots profile)
                       (fn-cbud-handshake-slots
-                        (fn-mm-cfg-tlsp bare) (fn-mm-cfg-handshakes bare))
+                        (fn-mm-cfg-tlsp charged) (fn-mm-cfg-handshakes charged))
                       publishing))
                  limit)))
   :rule-classes nil
- :hints (("Goal" :in-theory (e/d (fn-mm-need)
-  (fn-adm-priced-cfg fn-adm-retained-runtime-cfg fn-mm-gate-p fn-mm-base fn-mm-need-live
-   fn-mm-collector fn-mm-cfg-tlsp fn-mm-cfg-handshakes fn-cbud-handshake-slots fn-heap-article-slots))
- :use ((:instance fn-adm-priced-gate-bounds-the-held-instant
-        (cfg (fn-adm-retained-runtime-cfg cfg lease-octets)))
-       (:instance fn-mm-collector-monotone
-        (cfg (fn-adm-priced-cfg cfg held capacity))
-        (a (fn-mm-need-live profile (fn-adm-priced-cfg cfg held capacity) tot (nfix held) (nfix held)
-              (fn-heap-article-slots profile)
-              (fn-cbud-handshake-slots (fn-mm-cfg-tlsp (fn-adm-priced-cfg cfg held capacity)) (fn-mm-cfg-handshakes (fn-adm-priced-cfg cfg held capacity))) publishing))
-        (b (+ (nfix lease-octets)
-              (fn-mm-need-live profile (fn-adm-priced-cfg cfg held capacity) tot (nfix held) (nfix held)
-               (fn-heap-article-slots profile)
-               (fn-cbud-handshake-slots (fn-mm-cfg-tlsp (fn-adm-priced-cfg cfg held capacity)) (fn-mm-cfg-handshakes (fn-adm-priced-cfg cfg held capacity))) publishing))))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-mm-gate-p m26-priced-cfg-retains-the-floor-by-definition nfix natp (:type-prescription fn-heap-article-slots) (:type-prescription fn-cbud-handshake-slots)) (theory 'minimal-theory))
+ :use ((:instance m26-bank-plus-nonconnection-need-within-sum
+  (cfg (fn-adm-priced-cfg (update-nth 14 lease-octets (true-list-fix cfg)) held capacity))
+  (s (fn-heap-article-slots profile))
+  (h (fn-cbud-handshake-slots (fn-mm-cfg-tlsp (fn-adm-priced-cfg (update-nth 14 lease-octets (true-list-fix cfg)) held capacity)) (fn-mm-cfg-handshakes (fn-adm-priced-cfg (update-nth 14 lease-octets (true-list-fix cfg)) held capacity)))))))))
 
 ; Guard verification for the shared served decisions. The search endpoints
 ; are naturals at its initial call and every midpoint recursion.
@@ -1115,6 +1134,8 @@
 (verify-guards fn-adm-capacity-binding)
 
 (verify-guards fn-adm-installed-capacity)
+
+(verify-guards fn-adm-operator-fundedp)
 
 (verify-guards fn-adm-run-memory-admitp)
 
@@ -1154,3 +1175,45 @@
              (fn-sbud-article-gate-figure (len (fn-record-payload record)) (len (fn-record-groups record))) debt)
            (not (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity)))
    :memory w)))
+
+; Field 14 is immutable under the priced-reader projection.
+(defthm fn-adm-priced-cfg-keeps-the-installed-bank
+  (and (equal (fn-mm-cfg-bank-floor (fn-adm-priced-cfg cfg held capacity)) (fn-mm-cfg-bank-floor cfg))
+       (<= (fn-mm-cfg-bank-floor cfg) (fn-mm-connections profile (fn-adm-priced-cfg cfg held capacity))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-cfg-bank-floor fn-mm-connections fn-adm-priced-cfg
+                                   fn-adm-cfg-at fn-mm-nat)
+                                  (fn-adm-priced-connections fn-mm-cfg-connections
+                                   fn-mm-connection-fixed fn-mm-large-pool)))))
+
+(defthm fn-adm-capacity-is-nil-exactly-when-no-slot-fits
+  (iff (fn-adm-capacity profile img cfg limit tot)
+       (fn-mm-gate-p profile img (fn-adm-public-readers-cfg cfg 0) limit tot))
+  :rule-classes nil
+
+  :hints (("Goal" :in-theory (e/d (fn-adm-public-readers-cfg) (fn-adm-capacity fn-mm-gate-p fn-adm-cfg-at fn-mm-cfg-connections))
+ :use ((:instance fn-adm-capacity-is-the-most (j 0)) fn-adm-capacity-fits
+ (:instance fn-adm-gate-antitone-in-the-connections (j 1) (k (1+ (fn-adm-capacity profile img cfg limit tot))))))))
+
+(defthm fn-adm-run-gate-keeps-the-operator-slot-funded
+  (implies (and (natp capacity)
+                (<= (nfix held) (fn-adm-reader-count (fn-mm-cfg-connections cfg) capacity))
+                (fn-mm-gate-p profile img
+                  (fn-adm-priced-cfg cfg (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity) capacity)
+                  limit tot))
+           (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (1+ (nfix held)) capacity) limit tot))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(m26-priced-projections-commute-by-definition fn-adm-run-gate-held fn-adm-priced-connections max nfix natp (:type-prescription fn-adm-reader-count)) (theory 'minimal-theory))
+ :use ((:instance fn-adm-gate-antitone-in-the-connections
+  (cfg (update-nth 10 nil (true-list-fix cfg)))
+  (j (fn-adm-priced-connections (1+ (nfix held)) (fn-mm-cfg-connections cfg) capacity))
+  (k (fn-adm-priced-connections (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity) (fn-mm-cfg-connections cfg) capacity)))))))
+
+(defthm fn-adm-run-admitted-record-keeps-the-operator-slot-funded
+  (implies (and (natp capacity)
+                (<= (nfix held) (fn-adm-reader-count (fn-mm-cfg-connections cfg) capacity))
+                (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity))
+           (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (1+ (nfix held)) capacity) limit (fn-adm-after tot row)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-adm-run-memory-admitp fn-adm-memory-admitp) (theory 'minimal-theory))
+ :use ((:instance fn-adm-run-gate-keeps-the-operator-slot-funded (tot (fn-adm-after tot row)))))))

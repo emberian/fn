@@ -40,7 +40,7 @@
    when (and (consp form) (member (list (car form) (second form)) wanted :test #'equal))
    do (eval form))))
 (load-deployed-forms "books/admission-memory.lisp"
- '((defun fn-adm-reader-count) (defun fn-adm-priced-connections) (defun fn-adm-priced-cfg)
+ '((defun fn-adm-reader-count) (defun fn-adm-priced-connections) (defun fn-adm-priced-cfg) (defun fn-adm-run-gate-held) (defun fn-adm-public-readers-cfg)
    (defun fn-adm-cfg-at) (defun fn-adm-installed-capacity) (defun fn-adm-memory-owner-bound)
    (defun fn-adm-exposure-limits) (defun fn-adm-installed-capacity-line)))
 (load-deployed-forms "books/public-exposure-selectors.lisp"

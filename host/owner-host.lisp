@@ -1724,13 +1724,18 @@
  (declare (xargs :stobjs state :mode :program))
  (let* ((limit (fn-mo-serve-run-limit resident-obs profile cold output peer workers cache-limit root bp-terms))
         (ocfg (fn-owner-config state))
-        (cfg (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
-                                  profile window (fn-oag-agent ocfg) (nfix config)))
+        (cfg (update-nth 14
+               (if (boundp-global 'fn-owner-memory-lease-octets state)
+                   (f-get-global 'fn-owner-memory-lease-octets state) 0)
+               (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
+                                    profile window (fn-oag-agent ocfg) (nfix config))))
         (state (f-put-global 'fn-owner-memory-envelope
                  (fn-menv-make resident-obs output peer workers cache-limit root bp-terms core nursery) state))
         (state (f-put-global 'fn-owner-memory-capacity nil state))
         (state (f-put-global 'fn-owner-memory-run
-                 (list img limit trigger pub-trigger profile tlsp live cold window (nfix config) nil) state))
+                 (list img limit trigger pub-trigger profile tlsp live cold window (nfix config) nil
+                   (if (boundp-global 'fn-owner-memory-run state)
+                       (fn-exp-at 11 (f-get-global 'fn-owner-memory-run state)) nil)) state))
         (state (f-put-global 'fn-owner-memory-over-window (fn-mm-over-window-fit profile cfg) state))
         (state (f-put-global 'fn-owner-memory-cursor-octets (fn-mm-cursor-octets-fit profile cfg) state)))
   (mv limit (fn-adm-priced-cfg cfg (fn-owner-memory-held state) nil) state)))
@@ -1798,10 +1803,10 @@
   (declare (xargs :stobjs state :guard t :verify-guards t))
   (let ((full (fn-owner-memory-cfg v (fn-exp-at 5 r) (fn-exp-at 2 r) (fn-exp-at 3 r) (fn-exp-at 6 r) (fn-exp-at 7 r)
                                    (fn-exp-at 4 r) (fn-exp-at 8 r) (fn-oag-agent cfg) (fn-exp-at 9 r))))
-    (fn-adm-retained-runtime-cfg
-     (fn-adm-cfg-holding-handshakes full (fn-owner-memory-handshakes-in-flight state))
+    (update-nth 14
      (if (boundp-global 'fn-owner-memory-lease-octets state)
-         (f-get-global 'fn-owner-memory-lease-octets state) 0))))
+         (f-get-global 'fn-owner-memory-lease-octets state) 0)
+     (fn-adm-cfg-holding-handshakes full (fn-owner-memory-handshakes-in-flight state)))))
 
 ; (IMG CFG LIMIT): the CFG rebuilt from the live configuration; LIMIT NIL
 ; until a run configured it, so the gate (fn-mm-gate-p: LIMIT a natural)
@@ -1811,7 +1816,7 @@
  (if (and (boundp-global 'fn-owner-memory-run state) (consp (f-get-global 'fn-owner-memory-run state)))
   (let* ((r (f-get-global 'fn-owner-memory-run state)) (cfg (fn-owner-config state))
          (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state)))
-   (list (nth 0 r) (fn-adm-priced-cfg full (fn-owner-memory-held state) (nth 10 r)) (nth 1 r)))
+   (list (nth 0 r) (fn-adm-priced-cfg full (fn-adm-run-gate-held (fn-owner-memory-held state) (fn-mm-cfg-connections full) (nth 10 r)) (nth 10 r)) (nth 1 r)))
   (list nil nil nil)))
 
 ; A LIVE RECONFIGURATION AND THE RUN'S CAPACITY (L-RUN-LAUNCH; PRF-223's
@@ -4859,8 +4864,36 @@
                   :verify-guards t))
   (fn-owner-held-callback-open state))
 
-(definterface fn-owner-open
-  :class :common-lisp-compliant)
+; The generic reader opener remains an internal source API; native admin uses the operator entry.
+
+; Sync and capture the full run in the same serialized owner step.
+(defun fn-owner-operator-open (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state)
+                  :guard (boundp-global 'fn-owner state)
+                  :verify-guards t
+                  :guard-hints (("Goal" :in-theory (e/d (fn-owner-record-totals)
+                    (fn-owner-store fn-hist-sync fn-hist-totals-carried
+                     fn-owner-memory-run-cfg fn-owner-config
+                     fn-owner-held-callback-operator-open put-global boundp-global))))))
+  (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+    (let* ((r (if (boundp-global 'fn-owner-memory-run state)
+                  (f-get-global 'fn-owner-memory-run state) nil))
+           (cfg (fn-owner-config state))
+           (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state)))
+      (mv-let (erp result state)
+        (fn-owner-held-callback-operator-open (fn-exp-at 4 r) (fn-exp-at 0 r)
+          full (fn-exp-at 1 r) tot (fn-exp-at 10 r) (fn-exp-at 11 r) state)
+        (let ((state (f-put-global 'fn-owner-memory-run
+                       (update-nth 11 (fn-exp-at 6 result) (true-list-fix r)) state)))
+          (mv erp result fn-hist state))))))
+
+(definterface fn-owner-operator-open
+  :class :common-lisp-compliant :kinds ())
+(definterface fn-adm-operator-open-word :class :common-lisp-compliant :kinds ())
+(definterface fn-adm-operator-open-id :class :common-lisp-compliant :kinds ())
+(definterface fn-adm-operator-open-reason :class :common-lisp-compliant :kinds ())
+(definterface fn-ores-config-refused :class :common-lisp-compliant :kinds ())
+
 
 
 ; One observed socket region is one ACL2 prefix transition
@@ -5574,7 +5607,15 @@
   (declare (xargs :stobjs (state fn-arena) :guard (boundp-global 'fn-owner state)
                   :verify-guards t))
   (mv-let (erp word state) (fn-owner-callback-close id fn-arena state)
-    (let ((state (fn-owner-memory-held-close id state))) (mv erp word state))))
+    (let* ((run (if (boundp-global 'fn-owner-memory-run state)
+                    (f-get-global 'fn-owner-memory-run state) nil))
+           (closed (fn-adm-operator-close (fn-owner-memory-held-bank state) (fn-exp-at 11 run) id))
+           (state (fn-owner-memory-held-close id state))
+           (state (if (boundp-global 'fn-owner-memory-run state)
+                      (f-put-global 'fn-owner-memory-run
+                        (update-nth 11 (fn-exp-at 1 closed) (true-list-fix run)) state)
+                    state)))
+      (mv erp word state))))
 
 (definterface fn-owner-close
   :class :common-lisp-compliant)
@@ -5594,10 +5635,18 @@
 ; reports the two differently because a fault naming no connection is a host
 ; defect and not a served event.
 (defun fn-owner-fault (id state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
+  (declare (xargs :stobjs (state) :guard (boundp-global 'fn-owner state)
                   :verify-guards t))
   (mv-let (erp word state) (fn-owner-callback-fault id state)
-    (let ((state (fn-owner-memory-held-close id state))) (mv erp word state))))
+    (let* ((run (if (boundp-global 'fn-owner-memory-run state)
+                    (f-get-global 'fn-owner-memory-run state) nil))
+           (closed (fn-adm-operator-close (fn-owner-memory-held-bank state) (fn-exp-at 11 run) id))
+           (state (fn-owner-memory-held-close id state))
+           (state (if (boundp-global 'fn-owner-memory-run state)
+                      (f-put-global 'fn-owner-memory-run
+                        (update-nth 11 (fn-exp-at 1 closed) (true-list-fix run)) state)
+                    state)))
+      (mv erp word state))))
 
 (definterface fn-owner-fault
   :class :common-lisp-compliant)

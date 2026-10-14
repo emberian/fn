@@ -17,6 +17,9 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-operator-slot-test-stage (cid stage)
+  (declare (ignorable cid stage))
+  (harness-stub-reached 'fnn-operator-slot-test-stage "host/native/admin.lisp"))
 (defun fnn-owner-feed-replay (peer entries offset)
   (declare (ignorable peer entries offset))
   (harness-stub-reached 'fnn-owner-feed-replay "host/native/owner.lisp"))
@@ -82,6 +85,7 @@
   (declare (ignore service cid class))
   (sb-thread:with-mutex (*fixture-owner-lock*) (funcall thunk)))
 ;; No developer fault armed (FN_NATIVE_ADMIN_FAULT unset): the hook is a no-op.
+(defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defun fnn-admin-test-fault (section) (declare (ignore section)) nil)
 (defun fnn-owner-core (name &rest args)
   (case name
@@ -91,7 +95,7 @@
      (push :carry *events*)
      (if (equal (car (third args)) :applied) 'candidate 'funded))
     (fn-owner-apply-limit-profile (push :profile *events*) :installed)
-    (fn-owner-open 1)
+    (fn-owner-operator-open '(:admit nil nil 0 1 nil nil))
     (fn-owner-cfg-capture :capture)
     (fn-owner-feed-journal-prefix-size 0)
     (otherwise (error "unexpected owner call ~s" name))))
@@ -129,8 +133,21 @@
 (defun fnn-lim-decision (&rest args) (declare (ignore args)) '(:applied 257))
 (defun fnn-lim-line (&rest args) (declare (ignore args)) "line")
 (defun fnn-lim-reason (d) (if (equal (car d) :applied) :applied :recorded))
+; Execute the shipped result accessors instead of encoding their new shape here.
+(declaim (declaration xargs))
+(dolist (spec '(("books/public-exposure-selectors.lisp" fn-exp-at)
+                ("books/owner-memory-holding.lisp" fn-adm-operator-open-word)
+                ("books/owner-memory-holding.lisp" fn-adm-operator-open-id)
+                ("books/owner-memory-holding.lisp" fn-adm-operator-open-reason)))
+ (destructuring-bind (path name) spec
+  (with-open-file (stream path)
+   (loop for form = (read stream nil :eof) until (eq form :eof)
+    when (and (consp form) (eq (car form) 'defun) (eq (cadr form) name)) do (eval form)))))
 (defun fnn-core (name &rest args)
   (case name
+    (fn-adm-operator-open-word (apply #'fn-adm-operator-open-word args))
+    (fn-adm-operator-open-id (apply #'fn-adm-operator-open-id args))
+    (fn-adm-operator-open-reason (apply #'fn-adm-operator-open-reason args))
     (fn-lim-protected-growth 20)
     (fn-lim-apply-row 'candidate)
     (fn-lim-pool-decision (apply #'fn-lim-pool-decision args))

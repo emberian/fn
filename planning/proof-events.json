@@ -19171,6 +19171,78 @@
           "name": "fn-mo-serve-bp-launch-admits-its-startup"
         }
       ]
+    },
+    {
+      "id": "PRF-100001",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-cfg-keeps-the-installed-bank"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100000",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-lease-startup-keeps-its-bank-readers"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100002",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-capacity-is-nil-exactly-when-no-slot-fits"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100003",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-operator-open-admits-exactly-a-free-funded-slot"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100004",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-operator-refusal-is-named"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100005",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-operator-open-below-saturation-is-the-reader-open"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100006",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-run-gate-keeps-the-operator-slot-funded"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100007",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-run-admitted-record-keeps-the-operator-slot-funded"
+        }
+      ]
     }
   ]
 }

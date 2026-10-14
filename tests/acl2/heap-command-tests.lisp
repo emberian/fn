@@ -253,11 +253,11 @@
 (assert-event (equal (hct-run 2048 nil) '(:heap 2174 "small" 2048 1024 35)))
 (assert-event (equal (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* (hct-mib 2048) *hct-run-empty*)
                      32))
-;; 230 MiB: C' is 18 of 32 and the run launches at it ...
+;; 230 MiB: C' is 17 public readers of 32, plus the funded operator and the run launches at it ...
 (assert-event (equal (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* (hct-mib 230) *hct-run-empty*)
-                     18))
+                     17))
 (assert-event (equal (car (hct-run 230 nil)) :heap))
-(assert-event (equal (nth 5 (hct-run 230 nil)) (fn-heap-thread-count 18)))
+(assert-event (equal (nth 5 (hct-run 230 nil)) (fn-heap-thread-count 17)))
 ;; ... where the launch decided at the configured C refuses: "the launch at C
 ;; always agrees with the launch at C'" is false.
 (assert-event (equal (car (fn-mm-launch-decide *hct-small* *hct-run-img* *hct-run-cfg* nil (list (hct-mib 230))
