@@ -2356,6 +2356,15 @@ class ImageModuleTests(unittest.TestCase):
 
     HEAD = "a" * 40
 
+    def test_launcher_only_diff_obliges_nntp_post_probe_with_other_modules(self):
+        path = "tools/build_native_host.sh"
+        probe = "tests.test_native_nntp_post_probe"
+        expected = {"tests.test_native_operator_verbs", "tests.test_native_heap_from_profile",
+                    probe, *train.SERVED_NATIVES}
+        self.assertEqual(train.image_modules([path], REPO), {m: [path] for m in expected})
+        self.assertNotIn(probe, train.SERVED_NATIVES)
+        self.assertEqual(train.image_modules(["tools/train.py"], REPO), {})
+
     def ran(self, modules, source=None):
         return {"source": source or self.HEAD, "dir": "/box/run",
                 "modules": {m: {"rc": 0, "cases": {m + ".T.test_ok": "ok"}} for m in modules}}
@@ -2538,7 +2547,8 @@ class ImageModuleTests(unittest.TestCase):
     def test_a_launcher_change_obliges_the_served_natives_operator_verbs_and_heap_from_profile(self):
         need = train.image_modules(["packaging/launcher-decide.sh", "README.md"])
         self.assertEqual(set(need), {"tests.test_native_operator_verbs",
-                                     "tests.test_native_heap_from_profile", *train.SERVED_NATIVES})
+                                     "tests.test_native_heap_from_profile", "tests.test_native_nntp_post_probe",
+                                     *train.SERVED_NATIVES})
         self.assertIn("tests.test_native_served_line_stack", need)
         self.assertEqual(need["tests.test_native_owner"], ["packaging/launcher-decide.sh"])
 
