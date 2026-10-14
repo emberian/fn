@@ -4894,7 +4894,12 @@
  (defthm fn-owner-put-credits-preserves-state-p1
   (implies (state-p1 state)
            (state-p1 (fn-owner-put-credits l state)))
-  :hints (("Goal" :in-theory (e/d (fn-owner-put-credits) (put-global))))))
+  :hints (("Goal" :in-theory
+    (union-theories
+     '(fn-owner-put-credits fn-sg-state-p1-of-put-global
+       put-global update-global-table global-table
+       (:executable-counterpart symbolp) (:executable-counterpart equal) (:executable-counterpart not))
+     (theory 'minimal-theory))))))
 
 (local
  (defthm fn-owner-held-callback-operator-open-preserves-state-p1
@@ -4903,14 +4908,17 @@
              (fn-owner-held-callback-operator-open
                profile img full limit tot capacity operator-id state))))
   :hints (("Goal" :in-theory
-    (e/d (fn-owner-held-callback-operator-open
-          fn-owner-held-callback-operator-open-at
-          fn-owner-callback-at-reader-view fn-owner-callback-at-working-view
-          fn-owner-memory-held-install fn-owner-install-ocfg
-          fn-owner-callback-install-effects fn-owner-install-served-effects)
-         (fn-adm-operator-open fn-owner-core fn-owner-reader-views
-          fn-owner-ocfg fn-ocfg-at-reader-view fn-ocfg-with-view
-          fn-owner-auth put-global boundp-global))))))
+    (union-theories
+     '(fn-owner-held-callback-operator-open
+       fn-owner-held-callback-operator-open-at
+       fn-owner-callback-at-reader-view fn-owner-callback-at-working-view
+       fn-owner-memory-held-install fn-owner-install-ocfg
+       fn-owner-callback-install-effects fn-owner-install-served-effects
+       fn-owner-put-credits-preserves-state-p1 fn-sg-state-p1-of-put-global
+       put-global update-global-table global-table (:executable-counterpart symbolp)
+       mv-nth nth zp car-cons cdr-cons (:executable-counterpart zp)
+       (:executable-counterpart equal) (:executable-counterpart not))
+     (theory 'minimal-theory))))))
 
 (defun fn-owner-operator-open (fn-hist state)
   (declare (xargs :stobjs (fn-hist state)
