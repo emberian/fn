@@ -10,6 +10,7 @@
 (include-book "def-representation-pageread")
 (include-book "def-representation")
 (include-book "catalog-dense-map")
+(include-book "nntp-projection")
 (include-book "lb-log-model")
 (include-book "log-locator")
 
