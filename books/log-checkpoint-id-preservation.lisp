@@ -9,7 +9,7 @@
  :hints (("Goal" :induct (fn-lc-prepare-tail records id unit segs))))
 (defthm fn-lc-commit-adds-no-segment-id
  (let ((out (fn-lc-commit records segs header k fn-lbc)))
-  (subsetp-equal (fn-lc-seg-ids (mv-nth 2 out)) (fn-lc-seg-ids segs)))
+    (subsetp-equal (fn-lc-seg-ids (mv-nth 2 out)) (fn-lc-seg-ids segs)))
  :rule-classes nil
  :hints (("Goal" :in-theory (e/d (fn-lc-commit)
   (fn-lc-prepare-tail fn-lc-tail-history fn-lc-prepared-recordsp

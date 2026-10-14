@@ -106,12 +106,10 @@
     (fresh (pgs-c-fresh disk r mode dirty alloc))
     (tfresh (pgs-c-tfresh disk r mode dirty alloc))
     (rs (pgs-c-rs disk r mode dirty alloc)) (txid (pgs-c-txid disk r))))
-  :in-theory (e/d (pgs-c-writes)
-   (pgs-open pgs-c-cur pgs-pages pgs-c-fresh pgs-c-tfresh pgs-c-rs pgs-c-txid
-    pgs-swr pgs-sp pgs-plan-commit pgs-c-open-facts pgs-c-step-hyps
-    pgs-plan-commit-unfold fn-lc-pgs-step-program-physical-cost
-    fn-lc-write-octets fn-lc-publication-program fn-lc-page-write-program
-    pgs-grown-len pgs-dirty-lpages pgs-touched pgs-dir-run-pages)))))
+  :in-theory (union-theories
+    '(car-cons cdr-cons pgs-c-writes fn-lc-program-cost-by-definition fn-lc-open-table-length
+      fn-lc-nth-1-alias fn-lc-nth-3-alias)
+    (theory 'minimal-theory)))))
 (defthm fn-lc-publication-value-has-valid-plan
  (implies (fn-lc-publication-valuep old old-header columns header disk r mode)
   (and (equal (car (pgs-open disk r mode)) :ok)
@@ -120,10 +118,9 @@
  :hints (("Goal" :use
   ((:instance pgs-c-lpages-ok-is (dirty (fn-lc-dirty old old-header columns header)))
    (:instance fn-lc-dirty-lpages-ok (new columns)))
-  :in-theory (e/d (fn-lc-publication-valuep)
-    (pgs-open pgs-c-lpages-ok pgs-lpages-ok fn-lc-dirty fn-lc-pages
-     fn-lc-publication-alloc pgs-alloc-inv pgs-c-lpages-ok-is
-     fn-lc-dirty-lpages-ok fn-lc-snapshotp fn-lc-headerp)))))
+  :in-theory (union-theories
+    '(fn-lc-publication-valuep fn-lc-nth-3-alias)
+    (theory 'minimal-theory)))))
 (defthm fn-lc-publication-value-program-cost
  (implies (fn-lc-publication-valuep old old-header columns header disk r mode)
   (equal (fn-lc-write-octets
@@ -141,11 +138,9 @@
     (dirty (fn-lc-dirty old old-header columns header))
     (alloc (fn-lc-publication-alloc disk)))
    (:instance fn-lc-grown-delta-has-new-extent (new columns)))
-  :in-theory (e/d (fn-lc-publication-valuep)
-   (fn-lc-dirty fn-lc-pages pgs-open pgs-c-lpages-ok pgs-alloc-inv
-    fn-lc-publication-alloc pgs-plan-commit fn-lc-publication-program
-    fn-lc-publication-value-has-valid-plan fn-lc-write-octets fn-lc-valid-plan-program-cost pgs-grown-len
-    pgs-dirty-lpages pgs-touched pgs-dir-run-pages fn-lc-grown-delta-has-new-extent)))))
+  :in-theory (union-theories
+    '(fn-lc-publication-valuep fn-lc-nth-3-alias)
+    (theory 'minimal-theory)))))
 
 (defthm fn-lc-stage-value-write-bound
  (<= (fn-lc-write-octets (nth 2 (fn-lc-stage-value old old-header columns header disk r mode outcome)))
@@ -165,10 +160,12 @@
 ; Standing rule: invalid publications have no requested writes.
 (defthm fn-lc-publication-writes-bound
  (let ((out (fn-lc-stage old old-header header disk r mode segs outcome fn-lbc)))
-  (<= (fn-lc-write-octets (mv-nth 4 out))
-      (+ (* (+ (len (fn-lc-dirty-column-pages old (fn-lc-columns fn-lbc)))
-               (len (fn-lc-dirty-directory-pages old old-header (fn-lc-columns fn-lbc) header)))
-            (fn-lc-page-octets)) (fn-lc-root-slot-octets))))
+    (<= (fn-lc-write-octets (mv-nth 4 out))
+                 (+ (* (+ (len (fn-lc-dirty-column-pages old (fn-lc-columns fn-lbc)))
+                           (len (fn-lc-dirty-directory-pages
+                                  old old-header (fn-lc-columns fn-lbc) header)))
+                        (fn-lc-page-octets))
+                    (fn-lc-root-slot-octets))))
  :rule-classes nil
  :hints (("Goal" :use
   ((:instance fn-lc-stage-value-write-bound (columns (fn-lc-columns fn-lbc))))

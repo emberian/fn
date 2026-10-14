@@ -255,9 +255,9 @@
                  (fn-lc-in-either-range nfix)))))
 (defthm fn-lc-dirty-bound
  (<= (len (fn-lc-dirty old old-header new header))
-     (+ (len (fn-lc-dirty-column-pages old new))
-        (len (fn-lc-dirty-directory-structure-pages old old-header new header))
-        (len (fn-lc-dirty-control-pages old old-header new header))))
+      (+ (len (fn-lc-dirty-column-pages old new))
+         (len (fn-lc-dirty-directory-structure-pages old old-header new header))
+         (len (fn-lc-dirty-control-pages old old-header new header))))
  :rule-classes nil
  :hints (("Goal" :use
   ((:instance fn-lc-dirty-filter-cover-length (dirty (fn-lc-dirty old old-header new header)))
@@ -458,6 +458,11 @@
  (implies (subsetp-equal x left) (subsetp-equal x (union-equal left right))))
 (defthm fn-lc-subset-append
  (iff (subsetp-equal (append x y) z) (and (subsetp-equal x z) (subsetp-equal y z))))
+(local
+ (defthm fn-lc-subset-cons-super
+  (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))
+  :hints (("Goal" :induct (subsetp-equal x y)
+   :in-theory (enable subsetp-equal member-equal)))))
 (defthm fn-lc-subset-self (subsetp-equal x x))
 (defthm fn-lc-subset-append-right
  (implies (subsetp-equal x y) (subsetp-equal x (append prefix y))))

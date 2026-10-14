@@ -6,7 +6,9 @@
 (defthm fn-lc-hstxa-reconstructs
  (implies (fn-hstxa-p x)
           (equal (fn-hstxa-make (fn-hstxa-stxa x) (fn-hstxa-held x)) x))
- :hints (("Goal" :in-theory (enable fn-hstxa-p fn-hstxa-make fn-hstxa-stxa fn-hstxa-held))))
+ :hints (("Goal" :expand ((len x) (len (cdr x)) (len (cddr x)) (len (cdddr x)))
+  :in-theory (e/d (fn-hstxa-p fn-hstxa-make fn-hstxa-stxa fn-hstxa-held)
+                  (fn-stxa-p fn-held-p)))))
 (defthm fn-lc-history-partition-is-lossless
  (equal (fn-lc-recompose-history (fn-lc-event-directory events)
                                  (fn-lc-history-rows configs events))

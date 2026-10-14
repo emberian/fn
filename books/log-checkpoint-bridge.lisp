@@ -60,11 +60,27 @@
 (defthm fn-lc-empty-scan-summary-by-definition
  (fn-lc-scan-summaryp (list :ok nil nil prev))
  :hints (("Goal" :in-theory (enable fn-lc-scan-summaryp))))
+; Match the scanner's NTH projections without opening its byte recursion.
+(local
+ (defthm fn-lc-merged-nth-scan-summary
+  (implies (and (fn-lc-scan-summaryp one) (equal (car one) :ok)
+                (fn-lc-scan-summaryp rest))
+   (fn-lc-scan-summaryp
+    (list (car rest) (append (nth 1 one) (nth 1 rest))
+                     (append (nth 2 one) (nth 2 rest)) (nth 3 rest))))
+  :hints (("Goal" :in-theory (enable fn-lc-scan-summaryp)))))
 (defthm fn-lc-segment-scan-summary
  (fn-lc-scan-summaryp (fn-lc-scan-segments segs segment offset prev unit max))
  :hints (("Goal" :induct (fn-lc-scan-segments segs segment offset prev unit max)
   :in-theory (e/d (fn-lc-scan-segments)
                  (fn-lc-scan-summaryp fn-lc-scan-bytes nfix)))))
+; The remaining consumers use CADR/CADDR; normalize the fixed fields locally.
+(local
+ (defthm fn-lc-scan-field-projections
+  (and (equal (nth 1 scan) (cadr scan))
+       (equal (nth 2 scan) (caddr scan))
+       (equal (nth 3 scan) (cadddr scan)))
+  :hints (("Goal" :in-theory (enable nth)))))
 (defthm fn-lc-scan-segment-count-with-terminal
  (<= (len (nth 2 (fn-lc-scan-segments segs segment offset prev unit max)))
      (+ (len (nth 1 (fn-lc-scan-segments segs segment offset prev unit max)))

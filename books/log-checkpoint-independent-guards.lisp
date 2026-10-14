@@ -1,6 +1,7 @@
 ; Independent model guards; append/column observations stay explicit restack seams.
 (in-package "ACL2")
 (include-book "log-checkpoint-independent")
+(include-book "log-checkpoint-publication-witnesses")
 (defthm fn-lc-guard-dirty-alistp
  (alistp (fn-lc-value-dirty-from old new i count))
  :hints (("Goal" :induct (fn-lc-value-dirty-from old new i count)

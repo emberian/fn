@@ -3,6 +3,7 @@
 ; not an execution input to open; the concrete page producer is a restack seam.
 (in-package "ACL2")
 (include-book "store-checkpoint-open")
+(include-book "log-checkpoint-total-accessors")
 
 (defun fn-lc-history-at (configs events)
   (declare (xargs :guard (true-listp events)))

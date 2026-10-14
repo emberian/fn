@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/log-checkpoint-control-proof")
+(include-book "../../books/defkeystone")
 (defun fn-lc-control-tooth-valid-row (handle)
  (declare (xargs :guard (natp handle) :verify-guards nil))
  (fn-held-make 0 1 1 "<a@x>" handle '("fn.test") "o" "s" "e" 1 5

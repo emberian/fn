@@ -161,6 +161,13 @@
 (defthm fn-lc-cdr-nthcdr
  (implies (natp i) (equal (cdr (nthcdr i x)) (nthcdr (+ 1 i) x)))
  :hints (("Goal" :induct (nthcdr i x))))
+; APPEND discards an improper prefix's final atom. UPDATE-NTH's append
+; rule normalizes that prefix; the delta induction must identify both forms.
+(local
+ (defthm fn-lc-append-true-list-fix
+  (equal (append (true-list-fix prefix) tail) (append prefix tail))
+  :hints (("Goal" :induct (len prefix)
+           :in-theory (enable true-list-fix binary-append)))))
 (defthm fn-lc-exact-delta-region
  (implies (and (natp i) (natp count) (equal (len prefix) i)
                (true-listp old) (true-listp new)

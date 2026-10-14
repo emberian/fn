@@ -69,11 +69,11 @@
 ; Standing rule: an accepted stage already validates its header's type.
 (defthm fn-lc-stage-publishes-the-allocation-state
  (let ((out (fn-lc-stage old old-header header disk r mode segs outcome fn-lbc)))
-  (implies (equal (mv-nth 0 out) :ok)
-   (and (equal (fn-lc-header-next-id (fn-lc-adopted-header (mv-nth 2 out) r mode))
-               (fn-lc-header-next-id header))
-        (equal (fn-lc-header-exhaustedp (fn-lc-adopted-header (mv-nth 2 out) r mode))
-               (fn-lc-header-exhaustedp header)))))
+    (implies (equal (mv-nth 0 out) :ok)
+             (and (equal (fn-lc-header-next-id (fn-lc-adopted-header (mv-nth 2 out) r mode))
+                         (fn-lc-header-next-id header))
+                  (equal (fn-lc-header-exhaustedp (fn-lc-adopted-header (mv-nth 2 out) r mode))
+                         (fn-lc-header-exhaustedp header)))))
  :rule-classes nil
  :hints (("Goal" :use
   ((:instance fn-lc-stage-value-image (columns (fn-lc-columns fn-lbc)))
