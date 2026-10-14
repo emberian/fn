@@ -2212,7 +2212,7 @@
 
 (local
  (defthm fn-ctg-apply-plan-fields
-   (and (equal (car (fn-cat$c-apply-plan plan seq fn-cat$c)) (car fn-cat$c))
+   (and (equal (nth 0 (fn-cat$c-apply-plan plan seq fn-cat$c)) (nth 0 fn-cat$c))
         (equal (nth 1 (fn-cat$c-apply-plan plan seq fn-cat$c)) (nth 1 fn-cat$c))
         (equal (nth 2 (fn-cat$c-apply-plan plan seq fn-cat$c)) (nth 2 fn-cat$c))
         (equal (nth 3 (fn-cat$c-apply-plan plan seq fn-cat$c))

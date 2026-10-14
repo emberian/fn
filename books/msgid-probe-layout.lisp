@@ -162,7 +162,7 @@
 (defthm fn-mpl-cursor-field-bounds
   (implies (fn-mpr-cursorp cursor pages)
            (and (consp cursor) (natp (car cursor)) (< (car cursor) pages)
-                (natp (car cursor)) (< (car cursor) pages)
+                (natp (nth 0 cursor)) (< (nth 0 cursor) pages)
                 (natp (nth 1 cursor))
                 (natp (nth 2 cursor)) (< (nth 2 cursor) *fn-mpxt-page-slots*)))
   :rule-classes (:forward-chaining)
