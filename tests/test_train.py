@@ -2449,13 +2449,57 @@ class ImageModuleTests(unittest.TestCase):
             root = Path(d)
             (root / "host").mkdir()
             path = "host/new-adapter.lisp"
-            for event in ('(make-event (compute-event state))',
+            for event in ('(make-event (f state))',
+                          '(make-event (compute-event state))',
                           '(progn (encapsulate () (make-event (compute-event state))))',
                           '(make-event \'(progn (make-event (compute-event state))))'):
                 with self.subTest(event=event):
                     (root / path).write_text(event)
                     with self.assertRaisesRegex(train.TrainError, "new-adapter.lisp: unresolved make-event"):
                         train.image_modules([path], root)
+
+    def test_raw_dispatch_verdicts_quasiquoted_table_has_no_dependency_events(self):
+        import ledger
+        path = "host/raw-dispatch-verdicts.lisp"
+        forms = ledger.Reader((REPO / path).read_text(encoding="utf-8")).top_level()
+        events = [(form, line) for form, line in forms if ledger.head(form) == "make-event"]
+        self.assertEqual(len(events), 1)
+        expression = events[0][0][1]
+        self.assertEqual(ledger.head(expression), "quasiquote")
+        self.assertEqual(ledger.head(expression[1]), "table")
+        # The real adapter's ',(...) is quote around an unquote, not an event.
+        self.assertEqual(ledger.head(expression[1][3]), "quote")
+        self.assertEqual(ledger.head(expression[1][3][1]), "unquote")
+        self.assertEqual(list(train.image_dependency_events(events, path)), [])
+        self.assertEqual(train.image_modules([path], REPO), {})
+
+    def test_quasiquoted_leaf_event_heads_have_no_dependencies(self):
+        import ledger
+        for name in ("table", "defconst", "value-triple", "in-theory", "defthm",
+                     "defthmd", "defun", "defund", "defun-nx", "defun-sk"):
+            with self.subTest(head=name):
+                forms = ledger.Reader(f"(make-event `({name} ,(f state) ,@(g state)))").top_level()
+                self.assertEqual(list(train.image_dependency_events(forms, "host/adapter.lisp")), [])
+
+    def test_quasiquoted_dependency_or_container_heads_refuse(self):
+        import ledger
+        for name in sorted(ledger.TRANSPARENT | {"progn", "include-book", "encapsulate",
+                                                "mutual-recursion", "make-event",
+                                                "def-carried-view", "unknown-event"}):
+            with self.subTest(head=name):
+                forms = ledger.Reader(
+                    f'(make-event `({name} (include-book "../books/bp-release")))').top_level()
+                with self.assertRaisesRegex(train.TrainError, "host/adapter.lisp: unresolved make-event"):
+                    list(train.image_dependency_events(forms, "host/adapter.lisp"))
+
+    def test_quasiquoted_nonliteral_heads_refuse(self):
+        import ledger
+        for template in ('(,(f state) data)', '(,@(f state) data)',
+                         '("table" data)', ',(f state)', 'table'):
+            with self.subTest(template=template):
+                forms = ledger.Reader(f"(make-event `{template})").top_level()
+                with self.assertRaisesRegex(train.TrainError, "host/adapter.lisp: unresolved make-event"):
+                    list(train.image_dependency_events(forms, "host/adapter.lisp"))
 
     def test_bp_host_adapters_oblige_the_bp_native_modules(self):
         expected = {"tests.test_bp_app_native", "tests.test_bp_obligation_native",
