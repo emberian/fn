@@ -10,22 +10,14 @@
 ; record (books/catalog-record.lisp) refers to a payload by HANDLE, a
 ; position in the arena's logical list.
 ;
-; `fn-arena' is the GENERIC: its logical value is the list of sealed
-; payloads, oldest first, each an octet list (`fn-arn-payload-listp'), and
-; its own foundation is the list-backed reference `fn-arena$l' (one field
-; holding that list; every export a list operation).  The byte-array
-; implementation is `fn-arena-bytes' (books/payload-arena-bytes.lisp), an
-; abstract stobj with the SAME logical side (`fn-arena$ap',
-; `create-fn-arena$a', the seven `fn-arena$a-*', defined there); an image
-; evaluates `(attach-stobj fn-arena fn-arena-bytes)' before this book
-; (books/payload-arena-attach.lisp) and the generic then executes over the
-; byte array, one byte per payload octet.  A book certified against this
-; generic (the catalog, books/catalog*.lisp) is included unchanged under
-; the attachment: its certificate is the generic's, and no dependent
-; recertifies when the implementation is chosen or replaced (a paged arena
-; is a later attachment behind the same `fn-arena$a-*').
+; `fn-arena' has the list of sealed payloads as its logical value.  This
+; book includes fn-arena-extent and attaches it before introducing the
+; generic, so every compiled creator and export uses the extent foundation.
+; The generated list foundation supplies the correspondence obligations;
+; it is never selected for generic execution.  The :logic functions remain
+; the model used by every theorem above the generic.
 ;
-; Exports (logic / exec over the list foundation):
+; Exports (logical meanings; execution uses the extent foundation):
 ;   fn-arena-count             (len a)
 ;   fn-arena-payload-len h     (len (nth h a))
 ;   fn-arena-get h i           (nth i (nth h a))
@@ -90,9 +82,9 @@
 ; foundation `fn-arena$l', its abstraction relation, one :exec per export (the
 ; export's :logic function over the field) and every {correspondence},
 ; {guard-thm} and {preserved} obligation are the generator's; the
-; `defabsstobj' is `:attachable t', which is what lets (attach-stobj fn-arena
-; IMPL), evaluated before this book is included, replace the foundation and
-; the :exec functions while the :logic functions stay the implementation's own.
+; `defabsstobj' is `:attachable t'; this book attaches fn-arena-extent
+; before that event.  The executable foundation and exports are the extent
+; implementation's, while the :logic functions remain unchanged.
 ; The one content of the model the generator reads is that each update keeps
 ; the recognizer; the lemmas below say so for the writes of an octet list.
 
@@ -117,6 +109,9 @@
            (fn-arena$ap (fn-arena$a-seal-range a b fn-octets arena)))
   :hints (("Goal" :in-theory (enable fn-arena$a-seal-range)))))
 
+(include-book "payload-arena-extent")
+(attach-stobj fn-arena fn-arena-extent)
+
 (def-generic fn-arena
   :omit-hypotheses ((fn-arena-seal-range (natp a) (natp b) (<= a b)))
   :model (:recognizer fn-arena$ap :creator create-fn-arena$a)
@@ -138,6 +133,22 @@
             (:update fn-arena-seal-lz-extent :logic fn-arena$a-seal-lz-extent)
             (:update fn-arena-reseat-lz-extent :logic fn-arena$a-reseat-lz-extent)
             (:update fn-arena-forget :logic fn-arena$a-forget)))
+
+; OW1: this generic is introduced only with its concrete implementation.
+(assert-event
+ (and (equal (cdr (assoc-eq 'fn-arena
+                           (table-alist 'attach-stobj-table (w state))))
+             'fn-arena-extent)
+      (let* ((generic (access absstobj-info
+                              (getpropc 'fn-arena 'absstobj-info nil (w state))
+                              :absstobj-tuples))
+             (impl (access absstobj-info
+                           (getpropc 'fn-arena-extent 'absstobj-info nil (w state))
+                           :absstobj-tuples))
+             (g-creator (assoc-eq 'create-fn-arena generic))
+             (i-creator (assoc-eq 'create-fn-arena-extent impl)))
+        (and (consp g-creator) (consp i-creator)
+             (equal (caddr g-creator) (caddr i-creator))))))
 
 ; -----------------------------------------------------------------------------
 ; The logical view, opened: the value is the list of payloads, a handle is

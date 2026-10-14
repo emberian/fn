@@ -949,7 +949,7 @@ class IncrementalTests(unittest.TestCase):
 
     def test_a_pair_cached_without_a_compiled_file_is_certified_afresh(self):
         """Installed bare, such a pair made the image build refuse the book
-        (payload-arena-attach, 2026-09-29); certifying it compiles it."""
+        (payload-arena, 2026-09-29); certifying it compiles it."""
         with tempfile.TemporaryDirectory() as directory:
             repository = self.seeded(directory, ["books/base", "books/mid"],
                                      no_fasl="books/base")

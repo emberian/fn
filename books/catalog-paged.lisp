@@ -5,10 +5,9 @@
 ; behind every export, and a foundation whose rows are TYPED COLUMNS and a
 ; byte pool instead of an `(array t)' of held records: `fn-crow', one
 ; declaration of books/def-representation.lisp, whose correspondence and
-; preservation the generator discharges.  Attached in the image's include
-; order by books/catalog-paged-attach.lisp (`attach-stobj fn-cat
-; fn-cat-paged'), so no book above the catalog recertifies -- the arena's
-; precedent (books/payload-arena-attach.lisp).
+; preservation the generator discharges.  books/catalog.lisp includes this
+; implementation and attaches fn-cat-paged before introducing fn-cat, so
+; every caller compiles against the same paged foundation.
 ;
 ; THE ROW.  A held record is sixteen positions; the columns carry the ones
 ; the executable reads without a decode and the brief names:
@@ -248,13 +247,15 @@
         (if (fn-cp-escapedp h) (list (fn-held-payload h) (fn-held-withdrawn h)) nil)))
 (fn-payload-kind fn-cp-tree-of :handle "returns the held payload handle in the escaped remainder")
 
-(defthm fn-scc-octet-listp-is-adt-octetsp
+(defthmd fn-scc-octet-listp-is-adt-octetsp
   (equal (fn-scc-octet-listp x) (adt-octetsp x))
   :hints (("Goal" :in-theory (enable adt-octetsp fn-scc-octet-listp fn-scc-octetp unsigned-byte-p))))
+(local (in-theory (enable fn-scc-octet-listp-is-adt-octetsp)))
 
-(defthm fn-cbor-octet-listp-is-adt-octetsp
+(defthmd fn-cbor-octet-listp-is-adt-octetsp
   (equal (fn-cbor-octet-listp x) (adt-octetsp x))
   :hints (("Goal" :in-theory (enable adt-octetsp fn-cbor-octet-listp fn-cbor-octetp unsigned-byte-p))))
+(local (in-theory (enable fn-cbor-octet-listp-is-adt-octetsp)))
 
 ; The Message-ID's octets (fn-record-string-octets of a Message-ID string
 ; is one; clamped so that any row's column is typed).
@@ -3733,7 +3734,7 @@
 
 ; -----------------------------------------------------------------------------
 ; 8. The paged catalog: the same :logic functions as `fn-cat' (books/catalog.lisp),
-; so books/catalog-paged-attach.lisp attaches it to the generic.
+; so books/catalog.lisp attaches it before introducing the generic.
 
 (defabsstobj fn-cat-paged
   :foundation fn-cat$p
@@ -3763,5 +3764,4 @@
             (fn-cat-paged-clear-keyed :logic fn-cat$a-clear-keyed :exec fn-cat$p-clear-keyed :protect t)
             (fn-cat-paged-msgid-saturatedp :logic fn-cat$a-msgid-saturatedp :exec fn-cat$p-msgid-saturatedp)
             (fn-cat-paged-index-health :logic fn-cat$a-index-health :exec fn-cat$p-index-health))
-  :corr-fn-exists t
-  :attachable t)
+  :corr-fn-exists t)

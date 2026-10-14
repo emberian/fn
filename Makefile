@@ -1598,7 +1598,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/frame-digest-buffer \
 	books/payload-extent-read \
 	books/payload-arena \
-	books/payload-arena-attach \
 	books/records-freeze \
 	books/catalog-record \
 	books/catalog \
@@ -1616,7 +1615,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
 	tests/acl2/catalog-raw-low-tests \
-	books/catalog-paged-attach \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
@@ -1699,6 +1697,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/string-line-fill-tests \
 	tests/acl2/string-line-cursor-cost-tests \
 	tests/acl2/served-plan-line-buffer-tests \
+	tests/acl2/one-world-hole-tests \
+	tests/acl2/one-world-hole-attached-tests \
+	tests/acl2/one-world-attach-table-image-world-tests \
+	tests/acl2/one-world-attach-table-image-world-dtn-tests \
+	tests/acl2/one-world-attach-table-image-world-store-test-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-teeth-tests \
 	tests/acl2/payload-arena-paged-tests \
@@ -3140,6 +3143,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_tls_check
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --build-lists
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --attach-order
+	@$(CHECK_STEP) $(PYTHON) tools/one_world_check.py
 # A host macro used before its definition in load order compiles as a
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --macro-order

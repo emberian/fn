@@ -53,6 +53,7 @@
 (include-book "adt-key-lib")
 (include-book "../sha256")
 (include-book "../blake3")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (disable nth update-nth nthcdr take)))
@@ -659,7 +660,7 @@
   (implies (equal m (len x))
            (equal (nth m (append x (list p))) p)))
 
-(defthm adt-len-region-below-body
+(defthmd adt-len-region-below-body
   (implies (and (natp r) (< r (len regs)))
            (<= (len (nth r regs)) (len (adt-body regs))))
   :rule-classes :linear

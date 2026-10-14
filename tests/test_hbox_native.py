@@ -335,6 +335,13 @@ echo REACHED
             self.assertEqual(cached.stdout.splitlines(), ["tools/native_preflight.py", "--cache",
                 "/tank/fn/scratch/.native-preflight-cache", "--gate", "interfaces-check"])
 
+    def test_one_world_gate_runs_before_certification(self):
+        answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        gate = 'step one-world static_gate one-world tools/one_world_check.py'
+        self.assertEqual(answer.stdout.count(gate), 1)
+        self.assertLess(answer.stdout.index(gate), answer.stdout.index('step certify '))
+
     def test_the_box_artifacts_are_made_in_the_shipped_tree_and_stamped_with_its_source(self):
         # build/box/ is never committed (tools/box_artifacts.py), so a shipped
         # tree makes it: the wire grammar after the certify step, the stamp

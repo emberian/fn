@@ -7,6 +7,7 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-store-test-part-1")
+(include-book "owner-prepare-served")
 (include-book "history-columns-store")
 (include-book "store-carried-folds")
 (include-book "owner-log-route")

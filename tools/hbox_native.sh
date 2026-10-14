@@ -965,6 +965,7 @@ step host-books static_gate host-books tools/host_check.py --books
 # A certified host file attaches the image's stobj implementation before the
 # generic it implements (tools/host_check.py --attach-order).
 step attach-order static_gate attach-order tools/host_check.py --attach-order
+step one-world static_gate one-world tools/one_world_check.py
 BOX
         if [ -n "$REUSE_TREE" ]; then
             # The train's certified tree stands in for the install, the

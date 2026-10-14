@@ -290,3 +290,78 @@
         (equal (nth 6 r) 0)
         (equal (nth 7 r) (fn-cat$a-index-health *cat-other-key* nil))
         (equal (cadr (nth 7 r)) 0))))
+
+; Checks moved from the former attachment book; the generic owns the attachment.
+; Two ground held rows: a plain article in one group and a crosspost.
+(defconst *cpa-w1*
+  (fn-record-make 0 1 0 "<a@x>" (append (fn-record-string-octets "Subject: a") '(13 10 13 10 97 13 10))
+                  '("fn.test") "o" "s" "e" 1 5))
+(defconst *cpa-w2*
+  (fn-record-make 1 2 0 "<b@x>" (append (fn-record-string-octets "Subject: b") '(13 10 13 10 98 13 10))
+                  '("fn.test" "fn.other") "o" "s" "e" 1 6))
+(defconst *cpa-h1*
+  (fn-held-with-facts (fn-held-plain *cpa-w1* 0)
+                      (fn-held-facts-of (fn-record-payload *cpa-w1*))))
+(defconst *cpa-h2*
+  (fn-held-with-facts (fn-held-plain *cpa-w2* 1)
+                      (fn-held-facts-of (fn-record-payload *cpa-w2*))))
+
+(defconst *cpa-ctx* (fn-hc-make (fn-stx-make-verdict :verified nil 3) nil 3))
+
+; The program over the live generic under the attachment.
+(defun fn-cpa-smoke (fn-cat)
+  (declare (xargs :stobjs fn-cat))
+  (let* ((fn-cat (fn-cat-clear fn-cat))
+         (fn-cat (fn-cat-commit *cpa-h1* fn-cat))
+         (fn-cat (fn-cat-commit *cpa-h2* fn-cat))
+         (fn-cat (fn-cat-withdraw 0 1 fn-cat))
+         (fn-cat (fn-cat-redecide 1 *cpa-ctx* fn-cat)))
+    (mv (list (fn-cat-count fn-cat)
+              (fn-cat-at 0 fn-cat)
+              (fn-cat-at 1 fn-cat)
+              (fn-cat-msgid-seqs "<b@x>" fn-cat)
+              (fn-cat-group-number "fn.test" 2 fn-cat)
+              (fn-cat-group-next "fn.other" fn-cat)
+              (fn-cat-group-count "fn.test" fn-cat)
+              (fn-cat-visible-at 0 1 fn-cat)
+              (fn-cat-visible-at 0 3 fn-cat)
+              (fn-cat-group-live-count "fn.test" fn-cat)
+              (fn-cat-horizon fn-cat)
+              (fn-cat-withdrawn-at 2 fn-cat))
+        fn-cat)))
+
+;; The same program over the logical side: the :logic functions the generic's
+;; exports are (books/catalog-logic.lisp), on the list.
+(defconst *cpa-c*
+  (let* ((c (fn-cat$a-clear nil))
+         (c (fn-cat$a-commit *cpa-h1* c))
+         (c (fn-cat$a-commit *cpa-h2* c))
+         (c (fn-cat$a-withdraw 0 1 c))
+         (c (fn-cat$a-redecide 1 *cpa-ctx* c)))
+    c))
+
+(defconst *cpa-expected*
+  (let ((c *cpa-c*))
+    (list (fn-cat$a-count c)
+          (fn-cat$a-at 0 c)
+          (fn-cat$a-at 1 c)
+          (fn-cat$a-msgid-seqs "<b@x>" c)
+          (fn-cat$a-group-number "fn.test" 2 c)
+          (fn-cat$a-group-next "fn.other" c)
+          (fn-cat$a-group-count "fn.test" c)
+          (fn-cat$a-visible-at 0 1 c)
+          (fn-cat$a-visible-at 0 3 c)
+          (fn-cat$a-group-live-count "fn.test" c)
+          (fn-cat$a-horizon c)
+          (fn-cat$a-withdrawn-at 2 c))))
+
+;; Not vacuous: two rows, the second numbered 2 in fn.test, the first withdrawn.
+(with-guard-checking-event t
+ (assert-event (and (equal (car *cpa-expected*) 2)
+                   (equal (nth 4 *cpa-expected*) 1)
+                   (consp (fn-held-withdrawn (nth 1 *cpa-expected*))))))
+
+(with-guard-checking-event t
+ (assert-event (mv-let (result fn-cat) (fn-cpa-smoke fn-cat)
+                (mv (equal result *cpa-expected*) fn-cat))
+              :stobjs-out '(nil fn-cat)))

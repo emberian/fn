@@ -137,10 +137,11 @@
       (adt-tp-pad (- n *pgs-page-words*)))))
 
 
-(defthm adt-tp-nthcdr-short
+(defthmd adt-tp-nthcdr-short
   (implies (and (<= (len w) (nfix n)) (true-listp w))
            (equal (nthcdr n w) nil))
   :hints (("Goal" :induct (adt-tp-take n w) :in-theory (enable adt-tp-take))))
+(local (in-theory (enable adt-tp-nthcdr-short)))
 (defthm adt-tp-pad-long
   (implies (and (natp n) (< *pgs-page-words* n))
            (equal (adt-tp-pad n) (adt-tp-pad (- n *pgs-page-words*)))))
