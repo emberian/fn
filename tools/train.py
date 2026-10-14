@@ -252,8 +252,11 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "cost_obligations", "book_roots", "harness",
+         "cost_obligations", "book_roots", "harness", "evidence_size",
          "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
+
+EVIDENCE_MAX_LINES = 50_000
+EVIDENCE_MAX_BINARY_BYTES = 4 * 1024 * 1024
 
 # The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
 # against origin/dev touches a rule's paths runs the rule's native modules on
@@ -1200,6 +1203,41 @@ def _ascii_gate(t: Train) -> int:
     return 1 if hits else 0
 
 
+def _evidence_size_gate(t: Train) -> int:
+    """Coordinator rule 2026-10-14, after C18 committed 351,459 generated
+    evidence lines in 22 files: refuse changed planning/ files over 50,000
+    lines; publish to hbox evidence and cite by sha256. Non-UTF-8 files over
+    4 MiB are refused by size instead. Deletions and untouched dev files pass.
+    Use changed_paths' base and no-renames policy, counting HEAD's bytes:
+    newline count plus a final unterminated line, as with git grep -c ''.
+    """
+    paths = git(t.root, "diff", "--no-renames", "--name-only", "-z", "--diff-filter=d",
+                train_base(), "HEAD", "--", "planning/").stdout.split("\0")
+    findings = []
+    for path in filter(None, paths):
+        p = subprocess.run(["git", "-C", str(t.root), "show", f"HEAD:{path}"],
+                           capture_output=True, timeout=60)
+        if p.returncode:
+            raise TrainError(f"cannot read HEAD:{path}: {p.stderr.decode('utf-8', errors='replace').strip()}")
+        data = p.stdout
+        try:
+            data.decode("utf-8")
+        except UnicodeDecodeError:
+            if len(data) > EVIDENCE_MAX_BINARY_BYTES:
+                findings.append(f"{path}: {len(data)} bytes (non-UTF-8; limit {EVIDENCE_MAX_BINARY_BYTES} bytes)")
+        else:
+            lines = data.count(b"\n") + int(bool(data) and not data.endswith(b"\n"))
+            if lines > EVIDENCE_MAX_LINES:
+                findings.append(f"{path}: {lines} lines (limit {EVIDENCE_MAX_LINES})")
+    t.logs.mkdir(parents=True, exist_ok=True)
+    report = [f"evidence_size: {len(findings)} refusal(s)"]
+    report.extend(f"REFUSED {finding}: publish to hbox evidence and cite by sha256" for finding in findings)
+    (t.logs / "gate-evidence_size.log").write_text("\n".join(report) + "\n")
+    for line in report:
+        say(line)
+    return 1 if findings else 0
+
+
 def _baseline_gate(t: Train) -> tuple[int, dict]:
     """(rc, record) of the known-reds gate: the file parses at HEAD, every
     row's repair item exists and is open, and no row is added relative to
@@ -1801,15 +1839,15 @@ def unit_tests(root: Path, changed: list[str]) -> list[str]:
     tests = list(UNIT_TESTS)
     for path in changed:
         p = Path(path)
-        if p.name.startswith("test_native_") or _launches_native_image(root / p):
-            # needs a native image (build/fn-host-*); N's native gate on the
-            # box is its gate, not this tree
-            continue
         if p.parent.as_posix() == "tests" and p.name.startswith("test_") and p.suffix == ".py":
             candidate = path
         elif p.parent.as_posix() == "tools" and p.suffix == ".py":
             candidate = f"tests/test_{p.stem}.py"
         else:
+            continue
+        if p.name.startswith("test_native_") or _launches_native_image(root / p):
+            # needs a native image (build/fn-host-*); N's native gate on the
+            # box is its gate, not this tree
             continue
         if candidate not in tests and (root / candidate).is_file():
             tests.append(candidate)
@@ -1979,6 +2017,7 @@ GATE_FUNCTIONS = {
         t, "book_roots", ["tools/book_roots_check.py"]), {}),
     "harness": lambda t: (_reported_check_gate(
         t, "harness", ["tools/harness_check.py", "--quiet"]), {}),
+    "evidence_size": lambda t: (_evidence_size_gate(t), {}),
     "box_step": _box_step_gate,
     "lock_delta": _lock_delta_gate,
     "baseline": _baseline_gate,

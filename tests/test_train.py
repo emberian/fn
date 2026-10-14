@@ -679,10 +679,10 @@ class NewFixtureTests(unittest.TestCase):
         self.assertEqual(report["gates"]["fetched_policy"]["rc"], 7)
 
     def test_cmd_gate_preserves_names_order_output_and_return_codes(self):
-        # Literal order from 9fe40c34a plus the cost, book-roots and harness gates after ascii,
+        # Literal order from 9fe40c34a plus the cheap gates after ascii,
         # independent of this implementation.
         baseline_gates = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-                          "cost_obligations", "book_roots", "harness", "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
+                          "cost_obligations", "book_roots", "harness", "evidence_size", "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
         self.assertEqual(train.GATES, baseline_gates)
         for rc in (0, 7):
             p = self.train("gate", extra_env={"STUB_RC_ledger_check": str(rc)})
@@ -2297,6 +2297,81 @@ class HarnessGateTests(TrainBase):
 
     def test_gates_lists_harness(self):
         self.assertIn("harness", train.GATES)
+
+
+class EvidenceSizeGateTests(TrainBase):
+    PATH = "planning/big-evidence.txt"
+
+    def change(self, files):
+        sha = self.lane("evidence-size", files)
+        self.assertEqual(self.train("merge", f"evidence-size@{sha}").returncode, 0)
+
+    def gate(self, expected):
+        g = self.train("gate", "--local")
+        self.assertEqual(g.returncode, expected, g.stdout + g.stderr)
+        record = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        self.assertEqual(record["gates"]["evidence_size"]["rc"], expected)
+        self.assertTrue(all(gate["rc"] == 0 for name, gate in record["gates"].items()
+                            if name != "evidence_size"), g.stdout + g.stderr)
+        self.assertEqual((self.work / "build/train/logs/gate-evidence_size.log").read_text(),
+                         "\n".join(line for line in g.stdout.splitlines()
+                                   if line.startswith(("evidence_size:", "REFUSED "))) + "\n")
+        return g
+
+    def test_adding_50001_lines_refuses_push(self):
+        self.change({self.PATH: "line\n" * 50_001})
+        before = self.origin_rev("dev")
+        g = self.gate(1)
+        self.assertIn(f"{self.PATH}: 50001 lines", g.stdout)
+        self.assertIn("publish to hbox evidence and cite by sha256", g.stdout)
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("gate evidence_size failed (rc 1); push refused", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
+
+    def test_50000_lines_pass(self):
+        self.change({self.PATH: "line\n" * 50_000})
+        self.gate(0)
+
+    def test_unterminated_final_line_counts(self):
+        self.change({self.PATH: "line\n" * 50_000 + "last"})
+        self.assertIn(f"{self.PATH}: 50001 lines", self.gate(1).stdout)
+
+    def test_modifying_existing_big_file_refuses(self):
+        self.advance_dev({self.PATH: "line\n" * 50_001})
+        sh(self.work, "git", "pull", "-q", "--ff-only")
+        self.change({self.PATH: "changed\n" + "line\n" * 50_000})
+        self.assertIn(f"{self.PATH}: 50001 lines", self.gate(1).stdout)
+
+    def test_deleting_existing_big_file_passes(self):
+        self.advance_dev({self.PATH: "line\n" * 50_001})
+        sh(self.work, "git", "pull", "-q", "--ff-only")
+        self.change({self.PATH: None})
+        self.gate(0)
+
+    def test_untouched_big_file_on_dev_passes(self):
+        self.advance_dev({self.PATH: "line\n" * 50_001})
+        sh(self.work, "git", "pull", "-q", "--ff-only")
+        self.change({"other.txt": "small\n"})
+        self.gate(0)
+
+    def test_big_file_outside_planning_passes(self):
+        self.change({"other.txt": "line\n" * 50_001})
+        self.gate(0)
+
+    def test_non_utf8_size_boundary(self):
+        for size, expected in ((4 * 1024 * 1024, 0), (4 * 1024 * 1024 + 1, 1)):
+            with self.subTest(size=size):
+                (self.work / self.PATH).write_bytes(b"\xff" * size)
+                self.commit(self.work, "binary evidence")
+                g = self.gate(expected)
+                if expected:
+                    self.assertIn(f"{self.PATH}: {size} bytes (non-UTF-8", g.stdout)
+                    self.assertIn("publish to hbox evidence and cite by sha256", g.stdout)
+
+    def test_gates_lists_evidence_size_before_box_step(self):
+        self.assertIn("evidence_size", train.GATES)
+        self.assertEqual(train.GATES.index("evidence_size") + 1, train.GATES.index("box_step"))
 
 
 class AsciiGateTests(unittest.TestCase):
