@@ -1,0 +1,14 @@
+{
+ "category": "implementation",
+ "detail": "fn-own-sub-stored-octets under fn-owner-take-config (owner-host.lisp:2111, :2961) -> fn-ipp-injected-octets (injection-info-params.lisp:126) reads fn-ipp-complaints of the take-time config; a live config apply between enqueue and take changes what is stored. Main 10-13: the submission's decision should not depend on config read later.",
+ "file": "host/owner-host.lisp",
+ "id": "TAKE-CONFIG-COMPLAINTS-LATE",
+ "line": "2111",
+ "notes": [],
+ "owner": "builder-A",
+ "severity": "low",
+ "source": "pacc-v5-measurement",
+ "state": "open",
+ "title": "a queued submission's staged octets read the complaints address from the CURRENT config at take (fn-owner-take-config), not the config it was admitted under",
+ "updated": "2026-10-13T23:54:41Z"
+}

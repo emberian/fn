@@ -948,6 +948,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-context \
 	tests/acl2/post-context-tests \
 	books/post-acceptance \
+	books/pacc-owner-reads \
+	books/pacc-chain \
+	tests/acl2/pacc-owner-reads-tests \
 	books/post-transaction-host-layer \
 	books/post-transaction-host-rely \
 	tests/acl2/store-log-critical-teeth-tests \
