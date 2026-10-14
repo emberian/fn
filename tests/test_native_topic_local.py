@@ -185,7 +185,7 @@ class NativeTopicLocalTest(unittest.TestCase):
 
         def state(result):
             # Row S3: the open's route, the stopped header and the checkpoint
-            # file's own line are not the state
+            # file's own line and its charged-totals snapshot are not the state
             # (native_harness.stable_status_lines); every other line is.
             return stable_status_lines(result.stdout)
         self.assertEqual(state(self.invoke("store", self.store, "status")),

@@ -33,7 +33,7 @@ sys.modules["farm"] = farm
 SPEC.loader.exec_module(farm)
 # No test reaches a real box's reservation lease (tools/boxes.sh wait).
 BOX_WAITS = []
-farm.BOXES = lambda words, **_: BOX_WAITS.append(words) or SimpleNamespace(returncode=0)
+farm.BOXES = lambda words, **_: BOX_WAITS.append(words) or SimpleNamespace(returncode=0, stdout="1.0\n")
 # No test mirrors into a real box's cache (tools/cert_cache_sync.py).
 MIRRORS = []
 farm.MIRROR = lambda host, since, entries=None: MIRRORS.append((host, since)) or 0
@@ -130,6 +130,87 @@ def driving(fake, cache: Path):
             contextlib.redirect_stderr(io.StringIO()), \
             contextlib.redirect_stdout(io.StringIO()):
         yield
+
+
+class SubmitAdmissionTests(unittest.TestCase):
+    def test_cli_defaults_to_the_box_table_and_accepts_a_positive_override(self):
+        with mock.patch.dict(os.environ, {}, clear=True), \
+                mock.patch.object(farm, "submit", return_value="run-test") as submit, \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(farm.main(["submit", "hbox", "books/alpha"]), 0)
+            self.assertEqual(submit.call_args.args[3], 8)
+            with mock.patch.dict(os.environ, {"FN_CERTIFY_JOBS": "3"}):
+                self.assertEqual(farm.main(["submit", "hbox", "books/alpha"]), 0)
+                self.assertEqual(submit.call_args.args[3], 3)
+                self.assertEqual(farm.main(["submit", "hbox", "books/alpha", "--jobs", "2"]), 0)
+                self.assertEqual(submit.call_args.args[3], 2)
+            self.assertEqual(farm.main(["submit", "hbox", "books/alpha", "--force"]), 0)
+            self.assertTrue(submit.call_args.kwargs["force"])
+
+    def test_auto_is_refused_at_the_cli_and_submit_boundary_even_with_force(self):
+        real_submit = farm.submit
+        for value in ("auto", "auto:4"):
+            with self.subTest(value=value), \
+                    mock.patch.object(farm, "submit") as submit, \
+                    mock.patch.object(farm, "BOXES") as boxes, \
+                    contextlib.redirect_stderr(io.StringIO()) as err:
+                self.assertEqual(farm.main(["submit", "hbox", "books/alpha",
+                                            "--jobs", value, "--force"]), 2)
+                submit.assert_not_called()
+                boxes.assert_not_called()
+                self.assertIn("shared-box fixed-job rule", err.getvalue())
+                self.assertIn("hbox", err.getvalue())
+                self.assertIn("8 jobs", err.getvalue())
+                with self.assertRaisesRegex(farm.FarmError, "fixed-job rule"):
+                    # No tree inspection or remote effect can precede refusal.
+                    real_submit("hbox", Path("/nonexistent"), [], value, 60, [], force=True)
+
+    def test_environment_override_must_be_a_positive_count(self):
+        for value in ("auto", "auto:4", "0", "-1", "1.5", "", "many"):
+            with self.subTest(value=value), mock.patch.dict(os.environ, {"FN_CERTIFY_JOBS": value}):
+                with self.assertRaises(farm.FarmError):
+                    farm.submit_jobs("hbox", None)
+
+    def test_load_at_or_above_ceiling_refuses_before_remote_effects(self):
+        for load in ("24", "40"):
+            with self.subTest(load=load), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                fake = Fake([])
+                with driving(fake, root / "cache"), \
+                        mock.patch.object(farm, "BOXES", return_value=SimpleNamespace(
+                            returncode=0, stdout=load)) as boxes, \
+                        contextlib.redirect_stderr(io.StringIO()) as err:
+                    with self.assertRaisesRegex(farm.FarmError, "retry later"):
+                        farm.submit("hbox", root, ["books/alpha"], None, 60, [])
+                self.assertEqual(boxes.call_args.args[0][-2:], ["--load", "hbox"])
+                self.assertIn(f"load {load}; ceiling 24", err.getvalue())
+                self.assertEqual(fake.commands, [])
+                self.assertFalse((root / "build/farm").exists())
+
+    def test_load_below_ceiling_accepts_and_force_overrides_high_load(self):
+        for load, force in (("23.99", False), ("24", True), ("40", True)):
+            with self.subTest(load=load, force=force), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                fake = Fake([])
+                with driving(fake, root / "cache"), \
+                        mock.patch.dict(os.environ, {}, clear=True), \
+                        mock.patch.object(farm, "BOXES", return_value=SimpleNamespace(
+                            returncode=0, stdout=load)), \
+                        contextlib.redirect_stderr(io.StringIO()) as err:
+                    farm.submit("hbox", root, ["books/alpha"], None, 60, [], force=force)
+                self.assertIn("--jobs 8", fake.runner_script())
+                self.assertIn(f"load {load}; ceiling 24", err.getvalue())
+                if force:
+                    self.assertIn("--force overrides", err.getvalue())
+
+    def test_an_unreadable_load_refuses_even_with_force(self):
+        for code, output in ((1, "1"), (0, ""), (0, "nan"), (0, "inf"), (0, "-1")):
+            with self.subTest(code=code, output=output), \
+                    mock.patch.object(farm, "BOXES", return_value=SimpleNamespace(
+                        returncode=code, stdout=output)):
+                with self.assertRaisesRegex(farm.FarmError, "ceiling 24.*retry later"):
+                    farm.admit_load("hbox", force=True)
 
 
 class SubmitTests(unittest.TestCase):
