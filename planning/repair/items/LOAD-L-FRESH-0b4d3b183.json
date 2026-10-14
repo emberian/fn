@@ -4,12 +4,13 @@
  "file": "books/heap-reservation.lisp",
  "id": "LOAD-L-FRESH-0b4d3b183",
  "notes": [
-  "10-09 15:03 10-09 builder-B: owner deputy-L -> builder-M (coordinator ruling 2026-10-09 (Builder M opened for the section-6 memory and admission model))."
+  "10-09 15:03 10-09 builder-B: owner deputy-L -> builder-M (coordinator ruling 2026-10-09 (Builder M opened for the section-6 memory and admission model)).",
+  "10-14 12:00 10-14 ember (EMBER.md 12:50): 'stop grinding towards the memory bar ... set guardrails to avoid bloating more than 50% from our baseline ... say ok for where we're at'. The 128 MB target is retired as a goal. Guardrail: whole-process VmHWM <= 249 MB (1.5 x 166.3 MB) and RssAnon+RssShmem <= 115 MB (1.5 x 77096 KiB) on the small preset; the tests assert the guardrail (lane memory-run-launch)."
  ],
  "owner": "builder-M",
  "severity": "medium",
  "source": "load-bars-now",
- "state": "open",
+ "state": "closed",
  "title": "fresh node refused at cold start under a 256 MB and a 1024 MB whole-process limit at the small preset (heap probe: machine-cannot-hold-profile heap=497 MB; machine-cannot-hold-threads reservation=1030 MB)",
- "updated": "2026-10-09T19:03:32Z"
+ "updated": "2026-10-14T16:00:59Z"
 }

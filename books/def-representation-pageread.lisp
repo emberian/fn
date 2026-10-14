@@ -15,6 +15,7 @@
 
 (in-package "ACL2")
 (include-book "def-representation-pages")
+(local (in-theory (enable adt-tp-nthcdr-short)))
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "std/lists/take" :dir :system))
 (local (include-book "std/lists/nth" :dir :system))

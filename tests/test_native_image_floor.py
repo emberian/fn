@@ -15,10 +15,10 @@ stays at its current value.  These witnesses run the saved images:
   replace-project-dir-alist walks the world from event 0 (the strip keeps a
   bottom of command 0, event 0 and the project-dir-alist triple for it);
 * the production image refuses the verb by name (exit 5);
-* the core's dynamic content is under 128 MiB (271 MiB before the strip and
-  the residue drop), and
-  a fresh node started with a 256 MB dynamic space takes a POST and serves
-  it back;
+* the core's dynamic content is reported by the runtime, and a fresh node
+  on the small preset takes a POST and serves it back with whole-process
+  VmHWM <= 249 MB and RssAnon + RssShmem <= 115 MB.  The 128 MB target and
+  256 MB-fit goal are retired by ember's 2026-10-14 ruling;
 * the control stack books/heap-reservation.lisp decides (a constant 1,024
   KiB since lane served-line-iterative made the served path's per-line
   recursions loops) posts, serves, reopens and serves again the worst
@@ -44,6 +44,9 @@ from tests import native_harness
 from tools import profile_limits
 from tests.native_harness import (
     EXIT_FAULT, EXIT_USAGE, ROOT, Client, Node, executable, native_image)
+from tests.test_native_image_heap import (
+    GUARDRAIL_ANON_SHMEM_KIB, GUARDRAIL_VMHWM_MB, GROUPS, INIT_FLAGS,
+    SBCL_USER_ARGS, article, status_kib)
 
 
 IMAGE = native_image("FN_NATIVE_HOST")
@@ -55,7 +58,6 @@ MEASURE = ROOT / "tools" / "runtime_image" / "node_measure.py"
 # entry guard did not describe, and the line was ACL2's EV-FNCALL-GUARD-ER.)
 GUARD_LINE = (b"store: host-entry-guard: fn-b3-left-chunks argument 2 (n) must be a "
               b"natural (natp); the host passed the integer -1\n")
-CORE_CEILING_KIB = 128 * 1024
 # fn-heap-stack-kib: the profile's row (books/profile-limits.lisp), read, not copied.
 SMALL_STACK_KIB = profile_limits.get("stack-kib")
 
@@ -121,21 +123,34 @@ class ProductionTests(unittest.TestCase):
                              env=environment(), stdout=subprocess.PIPE, check=True, timeout=120)
         doc = json.loads(res.stdout)
         self.assertIsNotNone(doc["core_required_kib"], doc)
-        self.assertLess(doc["core_required_kib"], CORE_CEILING_KIB, doc)
 
-    def test_fresh_node_serves_in_256_mb(self):
-        # The node as the launcher starts it: 1 MiB control stacks (books/
-        # heap-reservation.lisp fn-heap-stack-octets).  The raw image script's
-        # own 64 MiB stacks count 78 x 68 MiB of address space, which the
-        # launch's address-space comparison holds them to (batch AR).
-        stack_env = dict(environment(), NM_STACK_MB="1")
-        with tempfile.TemporaryDirectory() as work:
-            res = subprocess.run([sys.executable, str(MEASURE), "floor", str(IMAGE), work,
-                                  "--lo", "248", "--hi", "256"],
-                                 env=stack_env, stdout=subprocess.PIPE, check=True,
-                                 timeout=600)
-        doc = json.loads(res.stdout)
-        self.assertEqual(doc["trials"][0][:2], [256, True], doc)
+    @unittest.skipUnless(Path("/proc/self").is_dir(), "needs Linux /proc")
+    def test_fresh_node_serves_within_guardrails(self):
+        # The same small preset and heap launch as nmem3-clean, with the
+        # control stack read from the profile rather than a fixed fit goal.
+        env = {"SBCL_USER_ARGS": "%s --control-stack-size %dKB"
+                                 % (SBCL_USER_ARGS, SMALL_STACK_KIB)}
+        node = Node(self, IMAGE, env=env)
+        node.operator("init", *INIT_FLAGS, *GROUPS, env=env, timeout=600,
+                      expect=native_harness.EXIT.OK)
+        owner = node.start(env=env, timeout=900)
+        try:
+            with Client(node.port, timeout=120) as client:
+                first, final = client.post(article(0))
+                self.assertTrue(first.startswith(b"340"), first)
+                self.assertTrue(final.startswith(b"240"), final)
+                reply = client.command("ARTICLE <heap-000000@example.invalid>")
+                self.assertTrue(reply.startswith(b"220"), reply)
+                client.block()
+            sample = status_kib(owner.pid)
+        finally:
+            node.stop(expect=None, grace=120)
+        print("FN_IMAGE_FRESH " + json.dumps({"image": str(IMAGE), "status_kib": sample,
+                                             "post": final.decode("ascii"),
+                                             "article": reply.decode("ascii")}), flush=True)
+        self.assertLessEqual(sample["VmHWM"], GUARDRAIL_VMHWM_MB * 1024, sample)
+        self.assertLessEqual(sample["RssAnon"] + sample["RssShmem"],
+                             GUARDRAIL_ANON_SHMEM_KIB, sample)
 
     def stack_trial(self, kib):
         with tempfile.TemporaryDirectory() as work:

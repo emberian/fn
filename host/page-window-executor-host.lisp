@@ -2,8 +2,8 @@
 (in-package "ACL2")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
-(include-book "../books/payload-arena-attach")
-(include-book "../books/history-paged-attach")
+(include-book "../books/payload-arena")
+(include-book "../books/history-columns")
 (include-book "page-read-host")
 (include-book "../books/page-window-executor")
 (include-book "../books/cold-read-window")
@@ -482,6 +482,7 @@
 (definterface fn-owner-page-window-work-permittedp :class :common-lisp-compliant)
 
 (include-book "../books/payload-arena")
+(local (in-theory (enable adt-nth-0)))
 
 ; Caller authorization comes from the captured provider row and live logical
 ; holder. This getter alone never grants authority to an arbitrary handle.

@@ -257,7 +257,7 @@ class Report:
     # without its `.fasl`, and `install-partial` never installs one (the run
     # certifies it afresh, which compiles it).  A pair without one made the
     # image build compile the book in core, and `build_native_host` refuses
-    # that (payload-arena-attach, 2026-09-29: "fasl 659 missing 8").
+    # that (payload-arena, 2026-09-29: "fasl 659 missing 8").
     uncompiled: list[str] = field(default_factory=list)
 
     def origin_words(self) -> str:

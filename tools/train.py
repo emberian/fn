@@ -1287,11 +1287,24 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
                 "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
 
 
-def image_dependency_events(forms, path: str):
-    """Read event containers and literal make-event results without evaluation.
+# Closed subset of ledger.record's ACL2 leaf event vocabulary, plus
+# value-triple (ledger's host walker recognizes it). These definitions, table
+# data and logical terms cannot contain dependency events. In particular,
+# value-triple's HOST_TRANSPARENT_HEADS membership is for call traversal, not
+# event traversal. Do not infer safety for unknown macros or generators from
+# their names: they can expand into include-book or an event container.
+IMAGE_QUASIQUOTE_LEAF_HEADS = frozenset({
+    "table", "defconst", "value-triple", "in-theory", "defthm", "defthmd",
+    "defun", "defund", "defun-nx", "defun-sk",
+})
 
-    Computed events have no statically known dependencies: refuse rather than
-    treating them as empty. Ordinary quoted templates are still not events.
+
+def image_dependency_events(forms, path: str):
+    """Read event containers and known make-event results without evaluation.
+
+    A quasiquote with a literal leaf event head has no dependency events:
+    unquotes fill its arguments, never its event kind. All other computed
+    events refuse. Ordinary quoted templates are still not events.
     """
     import ledger
     for form, origin in forms:
@@ -1300,9 +1313,13 @@ def image_dependency_events(forms, path: str):
             continue
         if name == "make-event":
             expression = form[1] if len(form) > 1 else None
-            if ledger.head(expression) != "quote" or len(expression) != 2:
+            if ledger.head(expression) == "quote" and len(expression) == 2:
+                yield from image_dependency_events([(expression[1], origin)], path)
+            elif (ledger.head(expression) == "quasiquote" and len(expression) == 2
+                  and ledger.head(expression[1]) in IMAGE_QUASIQUOTE_LEAF_HEADS):
+                continue
+            else:
                 raise TrainError(f"cannot derive image obligations for {path}: unresolved make-event")
-            yield from image_dependency_events([(expression[1], origin)], path)
         elif name in ledger.TRANSPARENT or name in ("encapsulate", "mutual-recursion"):
             start = 2 if name == "encapsulate" else 1
             yield from image_dependency_events(((item, origin) for item in form[start:]), path)

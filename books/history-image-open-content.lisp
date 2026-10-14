@@ -3,6 +3,7 @@
 (include-book "history-image-open-proof")
 (include-book "history-image-model-step")
 (include-book "history-image-dirty-proof")
+(local (in-theory (enable adt-nth-0)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (local

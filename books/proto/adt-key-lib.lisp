@@ -550,13 +550,18 @@
 
 (local (in-theory (disable adt-nth-open-local adt-update-nth-open-local)))
 
-(defthm adt-nth-1+
+; Disabled by default: it opens every fixed field index (nth 4 x) into
+; (nth 3 (cdr x)), against the house field vocabulary; proofs that walk
+; concrete indices enable it locally (one-world pairs, PAIRFIX.md).
+(defthmd adt-nth-1+
   (implies (natp j) (equal (nth (+ 1 j) x) (nth j (cdr x))))
   :hints (("Goal" :in-theory (enable nth))))
+(local (in-theory (enable adt-nth-1+)))
 
-(defthm adt-nth-0
+(defthmd adt-nth-0
   (equal (nth 0 x) (car x))
   :hints (("Goal" :in-theory (enable nth))))
+(local (in-theory (enable adt-nth-0)))
 
 ; The lookup: walk the key's bucket; a candidate answers only when its slot
 ; is in range, live, and its key is EXACTLY K.

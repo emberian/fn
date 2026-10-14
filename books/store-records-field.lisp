@@ -31,11 +31,35 @@
 ;; book above that includes one of them again: the include is redundant.)
 (include-book "snoc-list")
 (include-book "assumptions")
-(include-book "history-columns")
+(include-book "history-columns-foundation")
 (include-book "sha256")
 (include-book "store-checkpoint-buffer")
+; Keep the generic foundation and history-columns' own rules in the
+; exported theory, without inheriting the resident implementation's closure.
+; Preloading history-paged makes its include in history-columns redundant;
+; the universal snapshot then separates columns' own events structurally.
+(deftheory fn-sfr-theory-before-paged (current-theory :here))
+(include-book "history-paged")
+; The pre-export disk snapshot needs the implementation's enabled theory,
+; even when its later includes find these books already loaded.
+(deftheory fn-sfr-theory-paged-import (current-theory :here))
+(deftheory fn-sfr-theory-before-columns (universal-theory :here))
+(include-book "history-columns")
+(in-theory
+ (union-theories
+  (theory 'fn-sfr-theory-before-paged)
+  (set-difference-theories (current-theory :here)
+                           (theory 'fn-sfr-theory-before-columns))))
 (deftheory fn-sfr-theory-before-disk (current-theory :here))
+; Keep the public baseline above; restore the enabled import snapshot for
+; the disk's proof theory before recording fn-sfr-theory-after-disk.
+(in-theory
+ (union-theories
+  (theory 'fn-sfr-theory-paged-import)
+  (set-difference-theories (current-theory :here)
+                           (theory 'fn-sfr-theory-before-columns))))
 (include-book "history-records-disk")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (deftheory fn-sfr-theory-after-disk (current-theory :here))
 
 (defun fn-sfr-basedp (f)

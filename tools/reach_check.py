@@ -477,7 +477,7 @@ def absstobjs(paths, extra=()):
 def stobj_attachments(paths) -> dict[str, set[str]]:
     """generic stobj -> the implementations `(attach-stobj GENERIC IMPL)'
     names.  At run time an export of GENERIC executes IMPL's export that
-    shares its :logic function (books/payload-arena-attach.lisp)."""
+    shares its :logic function (books/payload-arena.lisp)."""
     found: dict[str, set[str]] = collections.defaultdict(set)
     for path in paths:
         try:

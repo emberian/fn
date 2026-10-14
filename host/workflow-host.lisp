@@ -2,9 +2,9 @@
 (in-package "ACL2")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
-(include-book "../books/payload-arena-attach")
+(include-book "../books/payload-arena")
 (include-book "../books/owner-retain-state")
-(include-book "../books/history-paged-attach")
+(include-book "../books/history-columns")
 (include-book "../books/bp-workflow-constructors")
 (include-book "../books/bp-ion-workflow")
 (include-book "../books/bp-ion-lifetime")
@@ -18,6 +18,7 @@
 (include-book "../books/store-node")
 (include-book "../books/definterface")
 (include-book "store-host")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 
 ; The workflow entries that form a request read the article's octets through
 ; the live payload arena (books/bp-outbound.lisp; the records flip): each takes

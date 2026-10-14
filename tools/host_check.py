@@ -1414,7 +1414,7 @@ def attach_order_findings(path: Path, root: Path = ROOT, parsed: dict | None = N
     it cannot serve here as an attachable stobj"), so the order of includes
     decides it: host/index-writer-operation-host reached payload-arena (which
     defines fn-arena) through index-writer-begin-host before owner-host
-    included payload-arena-attach (HOST-ATTACH-ORDER-STANDALONE).  The walk
+    included payload-arena (HOST-ATTACH-ORDER-STANDALONE).  The walk
     replays the root's events in order, its own local ones too, and each
     included book's non-local ones, once each, as include-book does."""
     import ledger
@@ -2235,7 +2235,7 @@ def macro_order_main(names: list[str]) -> int:
 # Protects the image's arena and history stobjs.  A host file that is
 # include-book'd (D61) is compiled in the world its own include-books build.
 # Reaching `fn-arena` (books/payload-arena.lisp) without
-# `books/payload-arena-attach` first compiles it against the generic arena
+# `books/payload-arena` first compiles it against the generic arena
 # while the image runs the attached one: the owner read arena count 0 where
 # the host's arena held 1, and every second POST stopped with "owner prepare
 # returned NOT-SEALED" (CONVERGE-1, red 1).  Run by tools/native_preflight.py
@@ -2254,7 +2254,7 @@ def macro_order_main(names: list[str]) -> int:
 #
 # Not checked: `defattach` seams (the stub resolves at call time, order does not
 # matter); books/* above a generic (certified over it by design, books/catalog.lisp
-# header); catalog-paged-attach, which the image does not include.  It reads
+# header).  It reads
 # source order, not the binary .cert files, which record the same order.
 
 UMBRELLAS = ("books/image-world", "books/image-world-dtn", "books/image-world-store-test")
@@ -2304,7 +2304,7 @@ class AttachWorld:
                 return
             done.add(book)
             if book == generic:
-                result[0] = "attached" if attach in stack or attach in finished else "bare"
+                result[0] = "attached" if attach == generic or attach in stack or attach in finished else "bare"
                 return
             for child in self.includes(book):
                 go(child, stack + (book,))
@@ -2410,8 +2410,8 @@ def attach_fix(root: Path = ROOT) -> list[str]:
             raise SystemExit("host_check --attach-order --write: %s has no (in-package \"ACL2\") form" % host)
         # The arena's attach first: the other attach books' closures reach
         # books/payload-arena, so it must already be attached (owner-host's order).
-        order = {"books/payload-arena-attach": 0, "books/history-paged-attach": 1,
-                 "books/catalog-paged-attach": 2}
+        order = {"books/payload-arena": 0, "books/history-columns": 1,
+                 "books/catalog": 2}
         attaches = sorted(attaches, key=lambda a: order.get(a, 9))
         lines = "".join('(include-book "../%s")\n' % a for a in attaches)
         comment = "" if "D61: the image attaches these" in text else ATTACH_COMMENT

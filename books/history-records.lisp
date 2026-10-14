@@ -49,6 +49,7 @@
 (include-book "history-pages-import")
 (include-book "history-pages-view")
 (include-book "assumptions")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).

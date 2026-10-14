@@ -33,7 +33,7 @@
 ;   * the obligations of every export and of the creator, as
 ;     `defabsstobj-missing-events' states them, and the `defabsstobj' (a
 ;     non-attachable one: the history's alternate concrete is attached by
-;     books/history-paged-attach.lisp, which this keeps positional).
+;     books/history-columns.lisp, which this keeps positional).
 ;
 ; Four things the instance proves about its own functions, named in :lemmas
 ; and used by the instantiation: H is a natural, T implies K (the object has

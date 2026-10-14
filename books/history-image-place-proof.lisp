@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "history-image-place-invariant")
 (include-book "history-image-plan-proof")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defthm fn-his-remaining-lengths-step

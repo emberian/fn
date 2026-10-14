@@ -27,9 +27,9 @@
 ;
 ; The logical side is `fn-arena-bytes''s, verbatim (`fn-arena$ap',
 ; `create-fn-arena$a', the eight `fn-arena$a-*'), given as :model, so
-; `(attach-stobj fn-arena fn-arena-paged)' (books/payload-arena-attach.lisp)
-; makes the generic (books/payload-arena.lisp) execute here while every
-; certificate above it stays the generic's.  The export list is the eight
+; fn-arena-extent builds on these pages.  books/payload-arena.lisp attaches
+; that extent implementation before introducing the generic, so every
+; caller compiles against the same executable foundation.  The export list is the eight
 ; exports of the arena, in the arena's order, without NAME-RESERVE.
 ; No `skip-proofs'.
 
