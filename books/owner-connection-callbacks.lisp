@@ -124,129 +124,15 @@
            :in-theory (e/d (fn-owner-callback-at-working-view)
                            (boundp-global fn-owner-installed-owner-bound)))))
 
-(defun fn-owner-callback-open-at (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
-                  :guard-hints (("Goal" :in-theory (disable boundp-global put-global
-                           fn-owner-callback-install-effects
-                           fn-owner-install-served-effects
-                           fn-olog-connection-line fn-owner-auth)))))
-  (let* ((before (fn-owner-core state))
-         (id (fn-own-next-id before))
-         ; fn-ocar-ocfg-open (books/owner-open-carried.lisp) is fn-ocfg-open
-         ; under the configured owner's relation
-         ; (fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation): the greeting
-         ; takes the view archive's fn-statep, the store node's
-         ; fn-node-statep and the configuration's fn-cfgp from the relation
-         ; instead of evaluating them per connection (PKT-455 (1)).
-         (opened (fn-ocar-ocfg-open (fn-owner-ocfg state)
-                                    (fn-owner-auth state)))
-         (state (fn-owner-install-ocfg (cdr opened) state))
-         (state (fn-owner-callback-install-effects (car opened) state))
-         (state (f-put-global 'fn-owner-log-line
-                              (fn-olog-connection-line (fn-owner-core state)
-                                                       id nil)
-                              state)))
-    (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
-        (value id)
-      (value nil))))
 
-(defthm fn-owner-callback-open-at-preserves-owner-bound
-  (implies (boundp-global 'fn-owner state)
-           (boundp-global 'fn-owner
-             (mv-nth 2 (fn-owner-callback-open-at state))))
-  :hints (("Goal" :in-theory
-           (e/d (fn-owner-callback-open-at)
-                (boundp-global put-global fn-owner-callback-install-effects
-                 fn-owner-install-served-effects fn-olog-connection-line
-                 fn-owner-auth)))))
 
-(defun fn-owner-callback-open (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
-                  :guard-hints (("Goal" :in-theory (disable boundp-global put-global
-                           fn-owner-callback-install-effects
-                           fn-owner-install-served-effects
-                           fn-olog-connection-line fn-owner-auth)))))
-  (let* ((working (fn-own-view (fn-owner-core state)))
-         (state (fn-owner-callback-at-reader-view state)))
-    (mv-let (erp val state)
-      (fn-owner-callback-open-at state)
-      (let ((state (fn-owner-callback-at-working-view working state)))
-        (mv erp val state)))))
 
-(defun fn-owner-callback-exposure-open (family address peer-octets state)
-  (declare (xargs :stobjs state
-                  :guard (and (boundp-global 'fn-owner state)
-                              (fn-cbor-octet-listp peer-octets))
-                  :guard-hints (("Goal" :in-theory (disable boundp-global put-global
-                           fn-owner-callback-install-effects
-                           fn-owner-install-served-effects
-                           fn-olog-connection-line fn-owner-auth
-                           fn-owner-callback-exposure-limits
-                           fn-owner-exposure-state fn-owner-exposure-publicp
-                           fn-owner-exposure-now fn-ocar-exp-open
-                           fn-exp-open-id fn-exp-open-ocfg fn-exp-open-state
-                           fn-exp-open-effects fn-exp-open-refusal)))))
-  (let* ((peer (and peer-octets (fn-store-octets->string peer-octets)))
-         (peer (if (equal peer :bad) nil peer))
-         (before (fn-owner-core state))
-         (id (fn-own-next-id before))
-         ; fn-ocar-exp-open is fn-exp-open under the configured owner's
-         ; relation (fn-ocar-exp-open-is-exp-open-under-ocl-relation,
-         ; books/owner-open-carried.lisp): its reader arm opens through
-         ; fn-ocar-ocfg-open, which evaluates no whole-state recognizer.
-         (r (fn-ocar-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
-                         (fn-owner-callback-exposure-limits state) (fn-owner-auth state)
-                         peer (cons family address)
-                         (fn-owner-exposure-now state)))
-         (state (fn-owner-install-ocfg (fn-exp-open-ocfg r) state))
-         (state (f-put-global 'fn-owner-exposure (fn-exp-open-state r) state)))
-    (if (fn-exp-open-id r)
-        (let* ((state (fn-owner-callback-install-effects (fn-exp-open-effects r) state))
-               (state (f-put-global 'fn-owner-log-line
-                                    (fn-olog-connection-line
-                                     (fn-owner-core state) id
-                                     (and peer peer-octets))
-                                    state)))
-          (value (fn-exp-open-id r)))
-      (let* ((state (f-put-global 'fn-owner-effects nil state))
-             (state (f-put-global 'fn-owner-output
-                                  (fn-exp-open-refusal r) state))
-             (state (f-put-global 'fn-owner-closep
-                                  (and (fn-exp-open-refusal r) t) state))
-             (state (f-put-global 'fn-owner-starttlsp nil state))
-             (state (f-put-global 'fn-owner-submittedp nil state)))
-        (value nil)))))
 
-(defun fn-owner-callback-open-peer (peer-octets state)
-  (declare (xargs :stobjs state
-                  :guard (and (boundp-global 'fn-owner state)
-                              (fn-cbor-octet-listp peer-octets))
-                  :guard-hints (("Goal" :in-theory (disable boundp-global put-global
-                           fn-owner-callback-install-effects
-                           fn-owner-install-served-effects
-                           fn-olog-connection-line fn-owner-auth)))))
-  (let ((peer (fn-store-octets->string peer-octets)))
-    (if (equal peer :bad)
-        (value nil)
-      (let* ((before (fn-owner-core state))
-             (id (fn-own-next-id before))
-             ; The owner's AUTHINFO policy, the same value fn-owner-callback-open
-             ; pins into a reader.  A peer connection was opened with no
-             ; policy at all, and the owner resolves a connection to a peer
-             ; by source address alone (fn-owner-peer-name-for below), so on
-             ; a box where a configured peer is on loopback that was every
-             ; client: the operator's credential reached nothing.
-             (opened (fn-ocfg-open-peer (fn-owner-ocfg state) peer
-                                        (fn-owner-auth state)))
-             (state (fn-owner-install-ocfg (cdr opened) state))
-             (state (fn-owner-callback-install-effects (car opened) state))
-             (state (f-put-global 'fn-owner-log-line
-                                  (fn-olog-connection-line
-                                   (fn-owner-core state) id peer-octets)
-                                  state)))
-        (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
-            (value id)
-          (value nil))))))
+
+
+
+
+
 
  ; Exact generic dispatcher arm, not a supplied owner-valid flag. The
  ; FN-ARENA argument is read by other dispatcher arms, never by :CLOSE.

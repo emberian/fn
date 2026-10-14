@@ -603,7 +603,7 @@
   (let ((row (m22-held-row)) (limit (* 4096 *fn-heap-mib*)))
     (and (fn-held-p row)
          (not (fn-adm-run-memory-admitp *m22-profile* *m22-img* *m22-cfg*
-                                       limit *m22-empty* row 0 0))
+                                       limit *m22-empty* row 0 0 nil))
          ; Teeth: the old POSP-as-absent projection prices full configured C
          ; and actually admits this fitting VALID row despite installed 0.
          (fn-adm-memory-admitp *m22-profile* *m22-img*
@@ -757,13 +757,13 @@
  :hints (("Goal" :by fn-adm-zero-capacity-refuses-new-readers)))
 
 (defkeystone m22-adm-zero-capacity-refuses-records
-  (not (fn-adm-run-memory-admitp profile img cfg limit tot row held 0))
+  (not (fn-adm-run-memory-admitp profile img cfg limit tot row held 0 operator-id))
  :id "PRF-10019"
  :rule-classes nil
  :restates fn-adm-zero-capacity-refuses-records
  :subject fn-adm-run-memory-admitp
- :witness ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 4096 *fn-heap-mib*)) (tot *m22-empty*) (row (m22-held-row)) (held 0))
- :mutations ((old-behavior (:conclusion (not (fn-adm-memory-admitp profile img cfg limit tot row))) ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 4096 *fn-heap-mib*)) (tot *m22-empty*) (row (m22-held-row)) (held 0)) :fault "the old gate admits a fitting valid row while capacity is zero"))
+ :witness ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 4096 *fn-heap-mib*)) (tot *m22-empty*) (row (m22-held-row)) (held 0) (operator-id nil))
+ :mutations ((old-behavior (:conclusion (not (fn-adm-memory-admitp profile img cfg limit tot row))) ((profile *m22-profile*) (img *m22-img*) (cfg *m22-cfg*) (limit (* 4096 *fn-heap-mib*)) (tot *m22-empty*) (row (m22-held-row)) (held 0) (operator-id nil)) :fault "the old gate admits a fitting valid row while capacity is zero"))
  :hints (("Goal" :by fn-adm-zero-capacity-refuses-records)))
 
 (defkeystone m22-adm-absent-capacity-and-zero-are-distinct

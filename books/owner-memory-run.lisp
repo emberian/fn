@@ -147,3 +147,17 @@
          (:instance fn-adm-capacity-is-the-most
           (cfg (fn-adm-lease-startup-cfg profile img cfg limit tot quantum))
           (j (fn-adm-installed-capacity profile img cfg limit tot)))))))
+
+
+; R2 developer witness: exactly the present gate's binding resident observation,
+; including the run's separately funded pools. No host arithmetic chooses it.
+(defun fn-adm-config-edge-resident (profile img cfg tot cold envelope)
+ (declare (xargs :guard t :verify-guards nil))
+ (+ (nfix (fn-mo-serve-total-pools profile cold
+            (fn-menv-output envelope) (fn-menv-peer envelope)
+            (fn-menv-workers envelope) (fn-menv-cache-limit envelope)
+            (fn-menv-root envelope) (fn-menv-bp-terms envelope)))
+    (max (fn-mm-sum profile img cfg tot)
+         (fn-mm-reopen-need profile img cfg tot))))
+
+(verify-guards fn-adm-config-edge-resident)

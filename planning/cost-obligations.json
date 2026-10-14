@@ -5,7 +5,7 @@
   "proved": 6,
   "partial": 4,
   "derived": 122,
-  "none": 1733
+  "none": 1734
  },
  "by_class": {
   "common-lisp-compliant": {
@@ -24,7 +24,7 @@
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 572
+   "none": 573
   }
  },
  "families": {
@@ -11028,7 +11028,6 @@
     "fn-adm-operator-close",
     "fn-exp-at",
     "fn-owner-callback-close",
-    "fn-owner-memory-held-close",
     "mv-nth",
     "true-list-fix",
     "update-nth"
@@ -11398,7 +11397,6 @@
     "fn-adm-operator-close",
     "fn-exp-at",
     "fn-owner-callback-fault",
-    "fn-owner-memory-held-close",
     "mv-nth",
     "true-list-fix",
     "update-nth"
@@ -12099,6 +12097,16 @@
   {
    "name": "fn-owner-login-gate-buffer",
    "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-owner-memory-config-edge-observation",
+   "class": "program",
    "claim": "none",
    "bound": null,
    "sizes": [],

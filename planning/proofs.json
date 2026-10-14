@@ -23797,20 +23797,20 @@
         "tests/acl2/owner-memory-holding-tests.lisp"
       ],
       "evidence_digest": "8c351d92a415f866",
-      "keystone_subjects": {
-        "fn-adm-exposure-open-admits-below-held-reader-bound": "fn-adm-exposure-open",
-        "fn-adm-held-admissions-compose-with-installed-capacity": "fn-adm-operator-open",
-        "fn-adm-peer-open-admits-below-held-reader-bound": "fn-adm-peer-open",
-        "fn-adm-reader-open-admits-below-held-reader-bound": "fn-adm-reader-open",
-        "fn-adm-transport-rearm-admits-below-held-reader-bound": "fn-adm-transport-rearm"
-      },
       "events": [
         "fn-adm-exposure-open-admits-below-held-reader-bound",
         "fn-adm-peer-open-admits-below-held-reader-bound",
         "fn-adm-transport-rearm-admits-below-held-reader-bound",
         "fn-adm-reader-open-admits-below-held-reader-bound",
         "fn-adm-held-admissions-compose-with-installed-capacity"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-adm-exposure-open-admits-below-held-reader-bound": "fn-adm-exposure-open",
+        "fn-adm-held-admissions-compose-with-installed-capacity": "fn-adm-operator-open",
+        "fn-adm-peer-open-admits-below-held-reader-bound": "fn-adm-peer-open",
+        "fn-adm-reader-open-admits-below-held-reader-bound": "fn-adm-reader-open",
+        "fn-adm-transport-rearm-admits-below-held-reader-bound": "fn-adm-transport-rearm"
+      }
     },
     {
       "id": "PRF-10018",
@@ -23821,10 +23821,13 @@
       "depends_on": [],
       "assumptions": [],
       "evidence": [
-        "tests/acl2/admission-memory-tests.lisp"
+        "tests/acl2/admission-memory-tests.lisp",
+        "tests/acl2/owner-memory-holding-tests.lisp",
+        "tests/test_native_operator_slot.py"
       ],
-      "evidence_digest": "719c3298f7e8ef0e",
+      "evidence_digest": "3f390a229ba01753",
       "keystone_subjects": {
+        "fn-adm-admitted-config-change-keeps-the-operator-slot-funded": "fn-mm-gate-p",
         "fn-adm-priced-connections-cover-held": "fn-adm-priced-connections",
         "fn-adm-priced-connections-equal-reader-count-when-covered": "fn-adm-priced-connections",
         "fn-adm-priced-gate-bounds-the-held-instant": "fn-adm-priced-cfg",
@@ -23834,7 +23837,8 @@
         "fn-adm-priced-connections-cover-held",
         "fn-adm-priced-connections-equal-reader-count-when-covered",
         "fn-adm-priced-gate-bounds-the-held-instant",
-        "fn-adm-priced-gate-holds-the-retained-lease"
+        "fn-adm-priced-gate-holds-the-retained-lease",
+        "fn-adm-admitted-config-change-keeps-the-operator-slot-funded"
       ]
     },
     {
@@ -23935,12 +23939,12 @@
         "tests/acl2/owner-memory-holding-tests.lisp"
       ],
       "evidence_digest": "f22486105c54bbc6",
-      "keystone_subjects": {
-        "fn-adm-capacity-is-nil-exactly-when-no-slot-fits": "fn-adm-capacity"
-      },
       "events": [
         "fn-adm-capacity-is-nil-exactly-when-no-slot-fits"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-adm-capacity-is-nil-exactly-when-no-slot-fits": "fn-adm-capacity"
+      }
     },
     {
       "id": "PRF-100003",
@@ -23954,12 +23958,12 @@
         "tests/acl2/owner-memory-holding-tests.lisp"
       ],
       "evidence_digest": "dba0d450c227573e",
-      "keystone_subjects": {
-        "fn-adm-operator-open-admits-exactly-a-free-funded-slot": "fn-adm-operator-open"
-      },
       "events": [
         "fn-adm-operator-open-admits-exactly-a-free-funded-slot"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-adm-operator-open-admits-exactly-a-free-funded-slot": "fn-adm-operator-open"
+      }
     },
     {
       "id": "PRF-100004",
@@ -23973,12 +23977,12 @@
         "tests/acl2/owner-memory-holding-tests.lisp"
       ],
       "evidence_digest": "231bb5a45717695c",
-      "keystone_subjects": {
-        "fn-adm-operator-refusal-is-named": "fn-adm-operator-open"
-      },
       "events": [
         "fn-adm-operator-refusal-is-named"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-adm-operator-refusal-is-named": "fn-adm-operator-open"
+      }
     },
     {
       "id": "PRF-100005",
@@ -23992,12 +23996,12 @@
         "tests/acl2/owner-memory-holding-tests.lisp"
       ],
       "evidence_digest": "eb986f0fb25060dc",
-      "keystone_subjects": {
-        "fn-adm-operator-open-below-saturation-is-the-reader-open": "fn-adm-operator-open"
-      },
       "events": [
         "fn-adm-operator-open-below-saturation-is-the-reader-open"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-adm-operator-open-below-saturation-is-the-reader-open": "fn-adm-operator-open"
+      }
     },
     {
       "id": "PRF-100006",
@@ -24011,12 +24015,12 @@
         "tests/acl2/owner-memory-holding-tests.lisp"
       ],
       "evidence_digest": "d088ab9253ec398e",
-      "keystone_subjects": {
-        "fn-adm-run-gate-keeps-the-operator-slot-funded": "fn-adm-run-gate-held"
-      },
       "events": [
         "fn-adm-run-gate-keeps-the-operator-slot-funded"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-adm-run-gate-keeps-the-operator-slot-funded": "fn-adm-run-gate-held"
+      }
     },
     {
       "id": "PRF-100007",
@@ -24030,12 +24034,12 @@
         "tests/acl2/owner-memory-holding-tests.lisp"
       ],
       "evidence_digest": "f4ccd3fdb2eb0f7c",
-      "keystone_subjects": {
-        "fn-adm-run-admitted-record-keeps-the-operator-slot-funded": "fn-mm-gate-p"
-      },
       "events": [
         "fn-adm-run-admitted-record-keeps-the-operator-slot-funded"
-      ]
+      ],
+      "keystone_subjects": {
+        "fn-adm-run-admitted-record-keeps-the-operator-slot-funded": "fn-mm-gate-p"
+      }
     }
   ]
 }

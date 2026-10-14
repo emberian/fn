@@ -20,6 +20,7 @@ from tests.test_native_public_limits import first_line
 PRODUCTION = native_image("FN_NATIVE_HOST")
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 SELECTOR = "FN_NATIVE_OPERATOR_SLOT_TEST"
+CONFIG_EDGE_SELECTOR = "FN_NATIVE_CONFIG_MEMORY_EDGE_TEST"
 
 
 class OperatorSlotSourceTests(unittest.TestCase):
@@ -46,6 +47,46 @@ class OperatorSlotSourceTests(unittest.TestCase):
         self.assertIn('"' + SELECTOR + '"', register)
         self.assertNotIn('(pushnew "' + SELECTOR + '"', text)
         self.assertIn('(fnn-developer-selector "' + SELECTOR + '")', text)
+
+    def test_config_edge_probe_prices_the_real_request_before_staging(self):
+        host = (ROOT / "host/owner-host.lisp").read_text()
+        candidate = native_cuts.host_function(host, "fn-owner-memory-candidate-refusal")
+        self.assertIn("fn-adm-config-change-admitp", candidate)
+        self.assertIn(":config-exceeds-memory", candidate)
+        self.assertIn("(projected-cap (if raises-c c2 cap))", candidate)
+        self.assertIn("(fn-exp-at 11 r)", candidate)
+        stage = native_cuts.host_function(host, "fn-owner-reconfigure-deltas")
+        self.assertIn("(len (fn-cfg-encode (fn-ocfg-reconfig-record oc deltas)))", stage)
+        self.assertIn("(okp (fn-ocfg-reconfig-okp oc id deltas))", stage)
+        self.assertIn("(memory (and okp", stage)
+        admitted = native_cuts.host_function(host, "fn-owner-reconfigure-deltas-admitted")
+        self.assertIn("(reason (if (fn-ocfg-reconfig-okp oc id deltas) nil", admitted)
+        self.assertIn("(if (and staged (not reason))", admitted)
+        self.assertIn("fn-owner-memory-config-grow", admitted)
+        self.assertLess(stage.index("fn-owner-memory-candidate-refusal"),
+                        stage.index("fn-owner-reconfigure-deltas-admitted"))
+        native = (ROOT / "host/native/admin.lisp").read_text()
+        probe = native_cuts.host_function(native, "fnn-config-memory-edge-stage")
+        self.assertIn("'fn-owner-memory-config-edge-observation", probe)
+        observation = native_cuts.host_function(host, "fn-owner-memory-config-edge-observation")
+        self.assertIn("fn-adm-config-edge-resident", observation)
+        self.assertIn("'fn-owner-memory-gate-install", probe)
+        self.assertIn("'fn-owner-memory-reclaim-complete", probe)
+        self.assertNotIn(":config-exceeds-memory", probe)
+        self.assertIn('(fnn-developer-selector "' + CONFIG_EDGE_SELECTOR + '")', native)
+        io = (ROOT / "host/native/io.lisp").read_text()
+        register = io[io.index("(defparameter +fnn-developer-selectors+"):
+                      io.index("(defun fnn-developer-selector ")]
+        self.assertIn('"' + CONFIG_EDGE_SELECTOR + '"', register)
+
+    def test_close_and_fault_install_the_one_paired_close_result(self):
+        host = (ROOT / "host/owner-host.lisp").read_text()
+        for name in ("fn-owner-close", "fn-owner-fault"):
+            body = native_cuts.host_function(host, name)
+            self.assertEqual(body.count("(fn-adm-operator-close "), 1)
+            self.assertIn("'fn-owner-memory-held-bank (fn-exp-at 0 closed)", body)
+            self.assertIn("(update-nth 11 (fn-exp-at 1 closed)", body)
+            self.assertNotIn("fn-owner-memory-held-close", body)
 
     def test_owner_installs_all_three_coordinates_in_one_owner_step(self):
         host = (ROOT / "host/owner-host.lisp").read_text()
@@ -107,5 +148,21 @@ class NativeOperatorSlotRefusalTests(OperatorSlotCase, unittest.TestCase):
         self.assertEqual(result.returncode, EXIT_REFUSED, result.stderr.decode())
         words = (result.stdout + result.stderr).decode("ascii", "replace").split()
         self.assertIn("operator-slot-held", words)
+        self.assertNotIn("none", words)
+        self.assertIsNone(self.node.process.poll())
+
+
+@requires(DEVELOPER)
+class NativeConfigHistoryEdgeTests(OperatorSlotCase, unittest.TestCase):
+    IMAGE = DEVELOPER
+
+    def test_unchanged_policy_at_the_memory_edge_returns_the_exact_refusal_text(self):
+        # The real request preserves C/H. ACL2 chooses the pre-change edge;
+        # fn-adm-config-change-admitp prices its positive encoded history charge.
+        self.node.start(env={CONFIG_EDGE_SELECTOR: "1"})
+        result = self.node.operator("policy", "set", "posting-policy", "open")
+        self.assertEqual(result.returncode, EXIT_REFUSED, result.stderr.decode())
+        words = (result.stdout + result.stderr).decode("ascii", "replace").split()
+        self.assertIn("config-exceeds-memory", words)
         self.assertNotIn("none", words)
         self.assertIsNone(self.node.process.poll())
