@@ -82,7 +82,7 @@
         rest))))
 
 (local
- (defthm fn-mpx-nthcdr-cdr
+ (defthmd fn-mpx-nthcdr-cdr
    (implies (natp i)
             (equal (nthcdr (+ 1 i) l) (cdr (nthcdr i l))))))
 
@@ -103,7 +103,8 @@
            (equal (fn-mpx-spec-from i msgid rows)
                   (fn-cei-article-records-for msgid (nthcdr i rows))))
   :hints (("Goal" :induct (fn-mpx-spec-from i msgid rows)
-           :in-theory (enable fn-cei-article-records-for))))
+           :in-theory (e/d (fn-cei-article-records-for fn-mpx-nthcdr-cdr)
+                            (adt-cdr-nthcdr)))))
 
 ; Candidates: strictly ascending naturals, every one at least FROM and
 ; below N.

@@ -63,7 +63,7 @@ class ProfileTests(unittest.TestCase):
             (root / "host/native").mkdir(parents=True)
             (root / "host/native/build.lisp").write_text(
                 '(include-book "books/zeta")\n'
-                '(include-book "books/payload-arena-attach")\n'
+                '(include-book "books/payload-arena")\n'
                 '(ld "host/store-host.lisp" :ld-error-action :error)\n'
                 '(include-book "books/alpha")\n', encoding="utf-8")
             (root / "host/store-host.lisp").write_text(
@@ -73,7 +73,7 @@ class ProfileTests(unittest.TestCase):
                     "default": proof_artifacts.NativeProfile(
                         "default", "host/native/build.lisp", "build/fn-host", ())}):
                 self.assertEqual(proof_artifacts.profile_roots(root, "default"), [
-                    "books/zeta", "books/payload-arena-attach",
+                    "books/zeta", "books/payload-arena",
                     "books/store-intern", "books/alpha"])
 
 

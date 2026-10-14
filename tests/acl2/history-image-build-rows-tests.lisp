@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/history-image-build-rows")
 (include-book "../../books/defkeystone")
+(local (in-theory (enable adt-nth-0)))
 
 (local (in-theory (enable fn-hrs-img-ok fn-hp-vhold-is-x)))
 (defconst *hibr-empty*

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from native_source_world import generate, selected_defthms, bounded_body
+from native_source_world import generate, selected_defthms, bounded_body, admission_forms
 
 
 class CurrentSourceWorldTests(unittest.TestCase):
@@ -16,15 +16,13 @@ class CurrentSourceWorldTests(unittest.TestCase):
             'codec-attach': '(in-package "ACL2")\n',
             'records-attach-concrete': '(in-package "ACL2")\n',
             'payload-arena-extent': '(in-package "ACL2")\n(defun arena-physical (x) x)\n',
-            'payload-arena': '(in-package "ACL2")\n(defun arena-generic (x) x)\n',
             'catalog-record': '(in-package "ACL2")\n',
-            'payload-arena-attach': '(in-package "ACL2")\n(include-book "payload-arena-extent")\n(attach-stobj fn-arena fn-arena-extent)\n(include-book "payload-arena")\n(include-book "catalog-record")\n(assert-event t)\n',
+            'payload-arena': '(in-package "ACL2")\n(include-book "payload-arena-extent")\n(attach-stobj fn-arena fn-arena-extent)\n(defun arena-generic (x) x)\n(assert-event t)\n',
             'history-paged': '(in-package "ACL2")\n(defun physical (x) x)\n',
-            'history-columns': '(in-package "ACL2")\n(defun generic (x) x)\n',
-            'history-paged-attach': '(in-package "ACL2")\n(include-book "history-paged")\n(attach-stobj fn-hist fn-hist-paged)\n(include-book "history-columns")\n',
+            'history-columns': '(in-package "ACL2")\n(include-book "history-paged")\n(attach-stobj fn-hist fn-hist-paged)\n(defun generic (x) x)\n',
             'child': '(in-package "ACL2")\n(defun child (x) x)\n',
             'parent': '(in-package "ACL2")\n(include-book "child")\n(defthm optional (equal x x) :rule-classes nil)\n',
-            'image-world': '(in-package "ACL2")\n(include-book "parent")\n(include-book "history-paged-attach")\n',
+            'image-world': '(in-package "ACL2")\n(include-book "parent")\n(include-book "history-columns")\n',
         }
         for name, text in books.items(): (root / 'books' / (name + '.lisp')).write_text(text)
         return root
@@ -57,6 +55,41 @@ class CurrentSourceWorldTests(unittest.TestCase):
             text = out.read_text()
             self.assertIn('(defun actual-transport', text)
             self.assertLess(text.index('(attach-stobj fn-hist fn-hist-paged)'), text.index('(defun generic'))
+
+    def test_installed_books_remain_in_declared_include_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            (root / 'books/parent.lisp').write_text(
+                '(in-package "ACL2")\n(include-book "child")\n(defthm optional (equal x x) :rule-classes nil)')
+            output = root / 'prefix.lisp'
+            generate(root, [], output, installed_books={'books/child'})
+            text = output.read_text()
+            self.assertLess(text.index('(defun arena-generic'), text.index(str(root / 'books/child')))
+            self.assertLess(text.index(str(root / 'books/child')), text.index('(defthm optional'))
+            self.assertNotIn('(defun child', text)
+
+    def test_installed_book_set_must_be_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            with self.assertRaisesRegex(ValueError, 'closed under local includes'):
+                generate(root, [], root / 'prefix.lisp', installed_books={'books/parent'})
+
+    def test_generic_prefix_is_not_replayed_under_later_type_rules(self):
+        text = '(attach-stobj g impl) (defabsstobj g :attachable t) (defthm after t) (local (defthm witness t))'
+        hoisted, bodies = admission_forms(text, Path('.'), set(), None)
+        self.assertEqual(hoisted, [])
+        self.assertEqual(bodies[:2], ['(attach-stobj g impl)', '(defabsstobj g :attachable t)'])
+        self.assertTrue(bodies[2].startswith('(encapsulate'))
+        self.assertIn('(local (defthm witness t))', bodies[2])
+        self.assertNotIn('defabsstobj', bodies[2])
+
+    def test_generic_local_witness_prefix_keeps_common_scope(self):
+        text = '(local (defthm witness t)) (attach-stobj g impl) (def-generic g :model nil)'
+        hoisted, bodies = admission_forms(text, Path('.'), set(), None)
+        self.assertEqual(hoisted, [])
+        self.assertEqual(len(bodies), 1)
+        self.assertIn('(local (defthm witness t))', bodies[0])
+        self.assertIn('(def-generic g :model nil)', bodies[0])
 
     def test_changed_child_refuses_cached_parent(self):
         with tempfile.TemporaryDirectory() as d:

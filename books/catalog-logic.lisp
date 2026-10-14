@@ -53,9 +53,9 @@
 ; view is a version (a count), and a row withdrawn at version W is visible
 ; to a reader at version V <= W.
 ;
-; No book above this one names fn-cat$c; a second implementation of the
-; same logical side is an `attach-stobj' in the image's include order
-; (design section 3).  No skip-proofs.
+; fn-cat$c is the correspondence reference.  books/catalog.lisp selects
+; fn-cat-paged before introducing fn-cat; every compiled generic caller
+; executes over that paged implementation.  No skip-proofs.
 
 (in-package "ACL2")
 (include-book "catalog-record")
@@ -2425,7 +2425,7 @@
 ; the confirmation over the rows array is the confirmation over the list;
 ; the degraded scan is the walk.
 (local
- (defthm fn-ctg-nthcdr-cdr
+ (defthmd fn-ctg-nthcdr-cdr
    (implies (natp i) (equal (nthcdr (+ 1 i) l) (cdr (nthcdr i l))))))
 (local
  (defthm fn-ctg-car-nthcdr
@@ -2440,7 +2440,8 @@
            (equal (fn-mpxt-spec-from i msgid rows)
                   (fn-cat-seqs-for msgid (nthcdr i rows) i)))
   :hints (("Goal" :induct (fn-mpxt-spec-from i msgid rows)
-           :in-theory (enable fn-mpxt-spec-from fn-mpxt-hitp fn-cat-seqs-for))))
+           :in-theory (e/d (fn-mpxt-spec-from fn-mpxt-hitp fn-cat-seqs-for fn-ctg-nthcdr-cdr)
+                            (adt-cdr-nthcdr)))))
 
 ; KEYSTONE (PRF-970): the paged reader is the catalog's Message-ID column
 ; under the faithful relation.
@@ -2478,8 +2479,8 @@
                    (revappend acc (fn-cat-seqs-for msgid (nthcdr i c) i))))
    :hints (("Goal" :induct (fn-cat$c-scan-msgid msgid i acc fn-cat$c)
             :in-theory (e/d (fn-cat$c-scan-msgid fn-cat-seqs-for fn-cat$c-count fn-cat$c-rows-length
-                             fn-cat$c-rowsi)
-                            (nthcdr))
+                             fn-cat$c-rowsi fn-ctg-nthcdr-cdr)
+                            (nthcdr adt-cdr-nthcdr))
             :expand ((fn-cat-seqs-for msgid (nthcdr i c) i))))))
 
 ; The table that IS the fold with no unplaced row: well formed, its
@@ -5944,7 +5945,7 @@
            :in-theory (union-theories '(fn-cat$corr-w) (theory 'minimal-theory)))))
 
 ;; Four of the catalog's lemmas, non-local so that books/catalog.lisp (the
-;; generic, split from this book so that an implementation can be attached
-;; before it: books/catalog-paged-attach.lisp) proves its keystones over the
+;; generic, which includes the paged implementation and attaches it before
+;; introducing fn-cat) proves its keystones over the
 ;; opened view with them; disabled here, enabled where they are used.
 (in-theory (disable fn-ctg-nth-of-append-below fn-ctg-nth-of-append-at fn-ctg-len-of-append fn-ctg-number-seq-of-fresh))

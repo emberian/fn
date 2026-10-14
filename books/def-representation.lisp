@@ -44,9 +44,9 @@
 ;     generic over a LIST foundation (one field holding the logical value,
 ;     every :exec a total list operation from
 ;     books/def-representation-lib.lisp), with the same :logic functions
-;     and the same export skeleton, so that a book certified against NAME
-;     is included unchanged under the attachment (the pattern of
-;     books/payload-arena.lisp and payload-arena-attach.lisp, generated).
+;     and the same export skeleton.  The implementation, attachment and
+;     generic are introduced together; every compiled caller sees the
+;     selected implementation (books/payload-arena.lisp owns this order).
 ;   * `:write-once t' (lane paged-catalog-4, Codex r21 F1): no :octets or
 ;     :tree field has a set export, so the pool is written only by an
 ;     append; NAME$C-FILL-IS-LOAD-OF-{CREATE,APPEND,APPEND-T,SET-F,CLEAR},

@@ -1,0 +1,33 @@
+== certify triage certify-20261014T095349Z-520539: 366 book logs
+   real 3 / cascade 57 / must-fail 0 / limit 0 / killed 0 / other 0
+   (not failures: echo 12, clean 294)
+-- REAL books/admission-memory: HARD ACL2 ERROR in (cw-gstack): The call depth limit of 1000 has been exceeded in the ACL2 rewriter. To see why the limit was exceeded, first execute :brr t and then try the proof again, and then execute the form (cw-gstack) or, for less verbose output, instead try (cw-gstack :frames 30). You may then notice a loop caused by some set of enabled rules, some of which you can then disable; see :DOC disable. For a possible solution when there is not a loop, see :DOC rewrite-stack-limit.
+-- REAL books/checkpoint-codec: ACL2 Error [Failure] in (DEFTHM FN-CPC-DECODE-BYTES-REST-LEN ...): See :DOC failure.
+   | *** Key checkpoint at the top level
+   |     before a :DO-NOT-INDUCT hint stopped the proof attempt: ***
+   | 
+   | Subgoal 5''
+   | (IMPLIES
+   |  (AND (EQUAL (CAR (FN-CBOR-DECODE-ARGUMENT ADDITIONAL TAIL))
+   |              :OK)
+   |       (FN-CBOR-CANONICAL-ARGUMENTP
+   |            ADDITIONAL
+   |            (CADR (FN-CBOR-DECODE-ARGUMENT ADDITIONAL TAIL)))
+   |       (<= (CADR (FN-CBOR-DECODE-ARGUMENT ADDITIONAL TAIL))
+   |           65535)
+   | ... (11 more lines in the log)
+-- REAL books/checkpoint-payloads-extent: ACL2 Error [Failure] in (DEFTHM CPL-PAYLOAD-IN-FILE ...): See :DOC failure.
+   | *** Key checkpoint at the top level
+   |     before a :DO-NOT-INDUCT hint stopped the proof attempt: ***
+   | 
+   | Goal'''
+   | (IMPLIES
+   |    (AND (EQUAL (FN-CPL-FRAME P)
+   |                (APPEND (FN-SCC-HEADER 0 1 (LEN P) 0)
+   |                        P
+   |                        (FN-FRAME-DIGEST (APPEND (FN-SCC-HEADER 0 1 (LEN P) 0)
+   |                                                 P))))
+   |         (EQUAL (APPEND (NTHCDR 37 (FN-SCC-HEADER 0 1 (LEN P) 0))
+   |                        P
+   | ... (14 more lines in the log)
+-- cascades directly blocked by: books/image-world (4), books/native-live-status (4), books/store-reclaim-pack (3), books/owner-recovery-retain (3), books/owner-article-slots (3), books/owner-credits (2), books/store-checkpoint-arena-writer (2), books/deflate-pool (2)

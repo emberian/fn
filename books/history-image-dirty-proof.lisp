@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "history-image-build")
 (include-book "history-image-cursor-proof")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defthm fn-his-all-dirty-update-one

@@ -1,6 +1,6 @@
 ; Exact canonical attachment order and normal exported execution.
 (in-package "ACL2")
-(include-book "../../books/history-paged-attach")
+(include-book "../../books/history-columns")
 
 (defconst *hpct-held*
   (fn-held-make 0 1 0 "<canonical@fn>" 0 '("fn.test") "o" "s" "e" 1 5
