@@ -218,6 +218,13 @@
    "item": "OFFLINE-SCAN-STORE-READ-RESOURCES",
    "owner": "builder-L",
    "evidence": "hbox:/tank/fn/scratch/b-control-optins/native-optins-2b6c0fca0/logs/test-tests.test_native_topic_local.log"
+  },
+  {
+   "kind": "check",
+   "subject": "check-fast:lock_discipline_check:R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "item": "MEMORY-TOTALS-SYNC-UNDER-LOCK",
+   "owner": "builder-M",
+   "evidence": "lane memory-run-launch @9ab1229dc vs a dev export at 364f0c053: R2|fnn-extent-pread|O:sb-alien:alien-funcall reached from 122 owner-held sites (baseline 111, dev 103), +19 through fn-owner-record-totals and fn-owner-memory-recapacity (the history-totals sync's cold page reads under the owner mutex, via fn-owner-operator-open and recapacity)."
   }
  ]
 }
