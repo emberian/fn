@@ -898,19 +898,25 @@
       (equal (fn-adm-hh-rearm bank *m28-zero-slot-id* *m28-zero-slot-id*) bank)))
   :msg "M28-PUBLIC-ADMISSION-AND-REARM-KEEP-PRIVATE-ROW"))
 
+;; The old-admission scenario's limit holds in BOTH pricings (this lane's window term and OVER's field-13
+;; line, measured by O8 10-14): at least *m28-limit3* (three holders fit before the row), at least
+;; *m28-after-limit2* (the row fits beside two), and below *m28-after-limit3* (three holders after it are
+;; unfunded), since the row adds to both.
+(defconst *m28-old-slot-limit* (max *m28-limit3* *m28-after-limit2*))
+
 (with-guard-checking-event :all
  (assert-event (let ((actual (fn-adm-operator-open *m28-oc2* nil *m28-b2* 2 2 nil
-                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m28-after*))
+                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-old-slot-limit* *m28-after*))
        (mutant (m28-operator-borrowed-slot *m28-oc2* nil *m28-b2* 2 2 nil
-                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m28-after*)))
+                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-old-slot-limit* *m28-after*)))
  (and (fn-held-p *m28-row*) (and (fn-ocl-relation *m28-oc2*)
        (fn-cstp-carriedp (fn-own-store (fn-ocfg-owner *m28-oc2*))))
-      (equal (fn-adm-installed-capacity *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m22a-tot*) 2)
+      (equal (fn-adm-installed-capacity *m22a-profile* *m22a-img* *m22a-cfg* *m28-old-slot-limit* *m22a-tot*) 2)
       (fn-adm-run-memory-admitp *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit3* *m22a-tot* *m28-row* 2 2 nil)
-      (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-after-limit2* *m22a-tot*)
+      (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-old-slot-limit* *m22a-tot*)
       (fn-adm-memory-admitp *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 2 2)
-          *m28-after-limit2* *m22a-tot* *m28-row*)
-      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-after-limit2* *m28-after*))
+          *m28-old-slot-limit* *m22a-tot* *m28-row*)
+      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-old-slot-limit* *m28-after*))
       (equal (fn-adm-operator-open-word actual) :refused)
       (equal (fn-adm-operator-open-reason actual) :operator-slot-memory)
       (equal (fn-adm-operator-open-word mutant) :admitted)
