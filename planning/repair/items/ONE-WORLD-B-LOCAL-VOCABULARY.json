@@ -4,12 +4,13 @@
  "file": "books/history-paged.lisp",
  "id": "ONE-WORLD-B-LOCAL-VOCABULARY",
  "notes": [
-  "10-14 05:26 Per-rule exceptions B retires (one-world, main 10-14): defthmd + census local enables for ADT-NTH-0, ADT-NTH-1+ (adt-key-lib), ADT-LEN-REGION-BELOW-BODY (adt-bytes), FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP and FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP (catalog-paged), FN-CPL-FIRST-SKIPS and FN-CPL-LAST-SKIPS (catalog-live-links), ADT-TP-NTHCDR-SHORT (def-representation-pages); 68 books carry census enables (planning/evidence/one-world-exporters-20261013/p1-enables.txt). Six families; ADT-TP-NTHCDR-SHORT was the last. B deletes these exceptions and the census script once implementation vocabulary is LOCAL."
+  "10-14 05:26 Per-rule exceptions B retires (one-world, main 10-14): defthmd + census local enables for ADT-NTH-0, ADT-NTH-1+ (adt-key-lib), ADT-LEN-REGION-BELOW-BODY (adt-bytes), FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP and FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP (catalog-paged), FN-CPL-FIRST-SKIPS and FN-CPL-LAST-SKIPS (catalog-live-links), ADT-TP-NTHCDR-SHORT (def-representation-pages); 68 books carry census enables (planning/evidence/one-world-exporters-20261013/p1-enables.txt). Six families; ADT-TP-NTHCDR-SHORT was the last. B deletes these exceptions and the census script once implementation vocabulary is LOCAL.",
+  "10-14 09:03 Also retires the X/X4/X5 snapshot export structure (history-columns, store-records-field): deleting it at 3ee787c5c reddened admission-memory, checkpoint-codec, checkpoint-payloads-extent (r13), so it stays until B."
  ],
  "owner": "builder-A",
  "severity": "medium",
  "source": "one-world-D2-FAM5",
  "state": "open",
  "title": "one-world B: implementation books export only what their attach needs; internal vocabulary LOCAL",
- "updated": "2026-10-14T09:26:25Z"
+ "updated": "2026-10-14T13:03:06Z"
 }
