@@ -1979,6 +1979,29 @@
     :hints
     (("Goal" :in-theory (e/d (fn-lbc-msgid-hash) (fn-lbc-msgid-hash-octets unsigned-byte-p))))))
 
+(local (defthm fn-lbg-xref-stuff-lines-proper
+ (true-listp (fn-nntp-stuff-lines lines))
+ :hints (("Goal" :induct (fn-nntp-stuff-lines lines)
+ :in-theory (union-theories (theory 'ground-zero) '(fn-nntp-stuff-lines fn-nntp-crlf binary-append true-listp))))))
+
+(local (defthm fn-lbg-xref-stuffed-section-proper
+ (true-listp (fn-nntp-stuffed-section kind payload))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero) '(fn-nntp-stuffed-section fn-lbg-xref-stuff-lines-proper))))))
+
+(local (defthm fn-lbg-xref-xref-model-prefix-proper
+ (true-listp (fn-lb-xref-shift-prefix payload))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero) '(fn-lb-xref-shift-prefix binary-append true-listp))))))
+
+(local (defthm fn-lbg-xref-xref-column-prefix-proper
+ (true-listp (fn-lbc-xref-shift-prefix i fn-lbc))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero) '(fn-lbc-xref-shift-prefix true-list-fix true-listp))))))
+
+(verify-guards fn-lb-xref-shift-prefix
+ :hints (("Goal" :use ((:instance fn-lbg-xref-stuffed-section-proper (kind :head)))
+ :in-theory (disable fn-nntp-stuffed-section))))
+(verify-guards fn-lbc-xref-shift-prefix
+ :hints (("Goal" :in-theory (enable fn-lbc-escape))))
+
 (verify-guards
   fn-lbc-row-corr
   :hints
@@ -3175,6 +3198,10 @@
  (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-reserve-slots n fn-lbc)) (nth *fn-lbc-slot-escape-keys* fn-lbc))
  :hints (("Goal" :induct (fn-lbc-reserve-slots n fn-lbc) :in-theory (e/d (fn-lbc-reserve-slots) (fn-lbc-msgid-pool-append fn-lbc-overview-pool-append fn-lbc-append-nov-texts fn-lbc-append-memberships fn-lbc-append-nov fn-lbc-number-put-first fn-lbc-number-put-row-seen fn-lbc-number-put-row fn-lbc-summary-put fn-lbc-rebuild-summaries fn-lbc-append-row fn-lbc-rebuild-rows fn-lbc-p fn-record-string-octets fn-record-string-octets-aux fn-lbc-word fn-lbc-value fn-lb-log-model-row-entry fn-lb-log-model-row-segment fn-loc-make fn-nntp-stuffed-section fn-la-payload-wire fn-hnov-of fn-lbc-sparse-u64))))))
 
+(local (defthm fn-lbg-xref-flags-fit-u64
+ (unsigned-byte-p 64 (+ (if a 1 0) (if b 2 0) (if c 4 0) (if d 8 0) (if e 16 0) (if f 32 0)))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero) '(unsigned-byte-p integer-range-p))))))
+
 (verify-guards
   fn-lbc-append-row
   :hints
@@ -3194,6 +3221,7 @@
          (nov (fn-hnov-of (nth 6 (fn-lb-log-model-row-entry row log))))))
      :in-theory
      (disable
+       fn-lb-xref-shift-prefix
        fn-loc-make adt-rec-p adt-val-okp max nfix natp
        fn-lbg-row-withdrawal-spine
        fn-lbg-locator-make-types
@@ -4103,4 +4131,3 @@
  :hints (("Goal" :in-theory (disable floor mod fn-lbc-canonical-slots-from fn-lbc-canonical-slot-insert))))
 (verify-guards fn-lbc-slots-corr
  :hints (("Goal" :in-theory (disable floor mod fn-lbc-canonical-slots-from fn-lbc-canonical-slot-insert fn-lbc-slot-cells-corr fn-lbc-slot-owners-guardp fn-lbc-slot-escape-keys fn-lbc-p))))
-

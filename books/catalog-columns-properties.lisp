@@ -3,6 +3,11 @@
 (include-book "catalog-columns-served")
 (local (include-book "arithmetic-5/top" :dir :system))
 
+(local (defthm fn-lbp-row-corr-served-projection
+ (implies (fn-lbc-row-corr i row pm fn-lbc log)
+  (equal (fn-lbc-served-row i fn-lbc) (fn-cat-served-projection row)))
+ :hints (("Goal" :in-theory '(fn-lbc-row-corr)))))
+
 (local (defun fn-lbp-rows-corr-induction (base j rows pm)
   (declare (xargs :measure (nfix j) :verify-guards nil))
   (if (and (consp rows) (not (zp j)))
@@ -16,17 +21,8 @@
            (equal (fn-lbc-served-row (+ base j) fn-lbc)
                   (fn-cat-served-projection (nth j rows))))
   :hints (("Goal" :induct (fn-lbp-rows-corr-induction base j rows pm)
-           :in-theory (e/d (fn-lbc-rows-corr fn-lbc-row-corr nth)
-                           (fn-lbc-served-row fn-cat-served-projection fn-lbc-home-entry
-                            fn-lb-log-payload fn-lbc-value fn-lbc-word fn-lbc-flag
-                            fn-lbc-loc0 fn-lbc-loc1 fn-loc-segment fn-loc-offset fn-loc-len
-                            fn-lbc-directory-value fn-lbc-render-nov fn-lb-log-model-entryp
-                            fn-arx-entry-ok fn-lb-entry-octets fn-lb-entry-protected-len
-                            fn-lb-log-model-homes fn-lb-log-model-read-range
-                            fn-lb-log-model-read-home-frame fn-lb-log-model-home-frame
-                            fn-nntp-stuffed-section fn-la-payload-wire fn-rcl-tombstonep
-                            fn-la-tombstone-raw fn-nntp-split-article fn-nntp-split-head
-                            fn-nntp-section-of-bytes fn-nntp-framed-of-bytes fn-hnov-of))))))
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-lbp-rows-corr-induction fn-lbc-rows-corr nth natp nfix zp max fn-lbp-row-corr-served-projection))))))
 
 (defthm fn-lbc-served-row-is-abstract
   (implies (and (fn-lbc-p fn-lbc) (fn-cat$ap rows) (fn-lbc-corr fn-lbc rows log)
@@ -53,11 +49,6 @@
        (true-listp (fn-hf-control (fn-held-facts row)))))
  :rule-classes nil
  :hints (("Goal" :in-theory '(fn-cat-rowp fn-hf-p)))))
-
-(local (defthm fn-lbp-row-corr-served-projection
- (implies (fn-lbc-row-corr i row pm fn-lbc log)
-  (equal (fn-lbc-served-row i fn-lbc) (fn-cat-served-projection row)))
- :hints (("Goal" :in-theory '(fn-lbc-row-corr)))))
 
 (local (defthm fn-lbp-row-corr-homes
  (implies (fn-lbc-row-corr i row pm fn-lbc log)
@@ -141,6 +132,10 @@
           :in-theory (e/d (lb-first-at-least lb-prefix-max)
                          (lb-keep-from fn-lbp-first-reaching-general)))))
 
+(local (defthm fn-lbp-append-associative
+ (equal (append (append a b) c) (append a (append b c)))
+ :hints (("Goal" :induct (len a) :in-theory (union-theories (theory 'ground-zero) '(binary-append))))))
+
 (local (defthm fn-lbp-nth-one-by-definition
  (equal (nth 1 x) (cadr x))
  :hints (("Goal" :in-theory (enable nth)))))
@@ -182,14 +177,15 @@
  (implies (fn-lbc-selected-reads-entry-p selected kind server v fn-lbc)
   (not (equal (fn-lbc-resident-reply session selected kind server fn-lbc log)
               (fn-lb-unverified-refusal session kind args))))
- :hints (("Goal" :use ((:instance fn-lbp-arbitrary-prefix-not-unverified-refusal
+ :hints (("Goal" :do-not-induct t
+ :use ((:instance fn-lbp-arbitrary-prefix-not-unverified-refusal
    (article (fn-lbc-article (cadr selected) fn-lbc)) (number (nth 2 selected))
-   (updatep (nth 3 selected)) (group (nth 4 selected)) (i (cadr selected)))) :in-theory (e/d
- (fn-lbc-selected-reads-entry-p fn-lbc-resident-reply fn-lb-unverified-refusal
-  fn-nntp-make-result fn-nntp-reply-effect fn-nntp-crlf)
- (fn-lbc-id-article fn-nntp-article-idp fn-lbc-flag fn-lbc-visiblep fn-lbc-directory-value
-  fn-lbc-article fn-lbc-stored-range fn-lbc-arbitrary-prefix-reply fn-nntp-retrieval-initial
-  fn-xref-pairs fn-xref-field fn-xref-serverp fn-lb-unverified-target fn-nntp-set-cursor))))))
+   (updatep (nth 3 selected)) (group (nth 4 selected)) (i (cadr selected))))
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-lbc-selected-reads-entry-p fn-lbc-resident-reply fn-lb-unverified-refusal
+ fn-nntp-make-result fn-nntp-reply-effect fn-nntp-crlf
+ fn-lbp-nth-one-by-definition fn-lbp-retrieval-initial-starts-with-two
+ fn-lbp-two-prefix-cannot-be-four fn-lbp-append-associative fn-nntp-string-octets fn-nntp-string-octets-aux fn-nntp-string-octets-aux-loop member-equal))))))
 
 (defthm fn-lbc-retrieval-cold-refuses-exactly-when-entry-bad
 (implies (and (fn-lbc-p fn-lbc) (fn-lb-vmap-p fn-lb-vmap)
@@ -204,3 +200,16 @@
     fn-lb-entry-octets fn-lb-entry-protected-len fn-lbc-loc0 fn-lbc-loc1
     fn-loc-segment fn-loc-offset fn-lbc-resident-reply fn-lb-unverified-refusal
     fn-lbc-p fn-lb-vmap-p)))))
+
+(local (defthm fn-lbr11-rows-corr-row-nth
+ (implies (and (fn-lbc-rows-corr base rows pm fn-lbc log) (natp base) (natp j) (< j (len rows)))
+ (fn-lbc-row-corr (+ base j) (nth j rows) (fn-lbc-value (+ base j) :prefix-max fn-lbc) fn-lbc log))
+ :hints (("Goal" :induct (fn-lbp-rows-corr-induction base j rows pm)
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-lbp-rows-corr-induction fn-lbc-rows-corr fn-lbc-row-corr nth natp nfix zp max))))))
+
+(defthm fn-lbc-corresponding-row-at-index
+ (implies (and (fn-lbc-p fn-lbc) (fn-cat$ap rows) (fn-lbc-corr fn-lbc rows log) (natp i) (< i (len rows)))
+ (fn-lbc-row-corr i (nth i rows) (fn-lbc-value i :prefix-max fn-lbc) fn-lbc log))
+ :hints (("Goal" :use ((:instance fn-lbr11-rows-corr-row-nth (base 0) (j i) (pm 0)))
+ :in-theory (union-theories (theory 'ground-zero) '(fn-lbc-corr natp)))))

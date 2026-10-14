@@ -173,7 +173,13 @@
            (fn-nntp-single session "503 stored article framing unavailable"))
           (t (let* ((article (fn-lbc-article i fn-lbc))
                     (section-kind (if (member-equal kind '(:article :head)) kind :body))
-                    (section (fn-lbc-stored-range i section-kind fn-lbc log))
+                    (shift (and (not (equal section-kind :article))
+                                (consp (fn-xref-pairs article))
+                                (fn-lbc-xref-shift-prefix i fn-lbc)))
+                    (section (if (and shift (equal section-kind :head)) nil
+                               (fn-lbc-stored-range i section-kind fn-lbc log)))
+                    (section (if (and shift (equal section-kind :body))
+                                 (append shift section) section))
                     (prefix (if (and (not (equal section-kind :body))
                                      (consp (fn-xref-pairs article)))
                                 (append (fn-xref-field server (fn-xref-pairs article)) '(13 10)) nil)))
@@ -380,6 +386,10 @@
   (true-listp (fn-lbc-stored-range i kind fn-lbc log)))
  :hints (("Goal" :use ((:instance fn-lbsg-section-values-select (start 0)))
   :in-theory (disable fn-lbc-section-values-guardp fn-lbc-stored-range fn-lbc-count fn-lbc-p)))))
+(local (defthm fn-lbsg-append-proper-tail
+ (implies (true-listp tail) (true-listp (append prefix tail)))
+ :hints (("Goal" :induct (len prefix)
+ :in-theory (union-theories (theory 'ground-zero) '(binary-append true-listp))))))
 (verify-guards fn-lbc-section-values-guardp :guard-debug t
  :hints (("Goal" :in-theory (disable fn-lbc-section-values-guardp fn-lbc-stored-range fn-loc-segment fn-loc-offset fn-loc-len fn-locp fn-lbc-p fn-lbc-count fn-lbc-escape-store-get fn-lbc-escape-cellsp
  fn-lbc-slot-owners-guardp fn-lbc-slot-escape-keys fn-lbc-visiblep fn-lbc-msgid-seqs
@@ -428,7 +438,7 @@
  fn-lb-unverified-refusal fn-lb-log-read-guardp fn-lb-log-entries-guardp
  fn-lb-log-model-read-range fn-lb-log-payload fn-lc-expected-range fn-lbc-loc0 fn-lbc-loc1))))
 (verify-guards fn-lbc-resident-reply :guard-debug t
- :hints (("Goal" :in-theory (disable fn-lbc-section-values-guardp fn-lbc-stored-range fn-loc-segment fn-loc-offset fn-loc-len fn-locp fn-lbc-p fn-lbc-count fn-lbc-escape-store-get fn-lbc-escape-cellsp
+ :hints (("Goal" :in-theory (disable fn-lbc-xref-shift-prefix fn-lbc-section-values-guardp fn-lbc-stored-range fn-loc-segment fn-loc-offset fn-loc-len fn-locp fn-lbc-p fn-lbc-count fn-lbc-escape-store-get fn-lbc-escape-cellsp
  fn-lbc-slot-owners-guardp fn-lbc-slot-escape-keys fn-lbc-visiblep fn-lbc-msgid-seqs
  fn-lbc-article fn-lbc-id-article fn-lbc-select fn-lbc-msgid-visible-last
  fn-lbc-selected-reads-entry-p fn-lbc-arbitrary-prefix-reply fn-lbc-resident-reply

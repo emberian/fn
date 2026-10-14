@@ -1619,8 +1619,19 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-columns-range \
 	books/catalog-columns-summary \
 	books/catalog-columns-projections \
+	books/catalog-columns-number-properties \
+	books/catalog-columns-msgid-properties \
+	books/catalog-columns-selector-properties \
+	books/catalog-columns-framing \
+	books/catalog-columns-retrieval-properties \
 	books/catalog-columns-newnews \
 	books/log-verified-map-invariants \
+	books/log-verified-map-recycle \
+	books/log-verified-map-append \
+	books/lb-arena-log-binding \
+	books/lb-log-handle-allocation \
+	books/lb-log-open-model \
+	books/lb-log-open-properties \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
 	tests/acl2/catalog-raw-low-tests \
@@ -2195,6 +2206,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-available-readers-tests \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
+	tests/acl2/lb-open-bindings-tests \
 	tests/acl2/served-available-access-tests \
 	tests/acl2/served-available-critical-teeth-tests \
 	tests/acl2/served-access-revoke-tests \

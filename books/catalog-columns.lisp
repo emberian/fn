@@ -371,6 +371,28 @@
   (let ((escape (fn-lbc-escape i field fn-lbc)))
     (if escape (cdr escape) (fn-lbc-word field i fn-lbc))))
 
+; The only header fragment retained here is the exceptional leading-CRLF
+; projection: adding Xref then moves the first separator ahead of it.
+; It is an exact sequence-keyed escape value, with no size ceiling.
+(defun fn-lb-xref-shift-prefix (payload)
+ (declare (xargs :guard t :verify-guards nil))
+ (if (and (consp payload) (consp (cdr payload))
+          (eql (car payload) 13) (eql (cadr payload) 10))
+     (append (cddr (fn-nntp-stuffed-section :head payload)) '(13 10))
+   nil))
+
+(defun fn-lbc-xref-shift-prefix (i fn-lbc)
+ (declare (xargs :stobjs fn-lbc
+ :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
+ (true-list-fix (cdr (fn-lbc-escape i :xref-body-prefix fn-lbc))))
+
+(defthm fn-lbc-xref-shift-prefix-is-proper
+ (true-listp (fn-lbc-xref-shift-prefix i fn-lbc))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero) '(fn-lbc-xref-shift-prefix true-list-fix true-listp)))))
+
+; Keep the representation private to hints; consumers use correspondence.
+(in-theory (disable fn-lb-xref-shift-prefix fn-lbc-xref-shift-prefix))
+
 (defun fn-lbc-directory-value (i field fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (if (symbolp field) (alistp (fn-lbc-escape-store-get i fn-lbc)) (symbol-alistp (fn-lbc-escape-store-get i fn-lbc)))) :verify-guards nil))
   (let ((escape (fn-lbc-escape i field fn-lbc)))
@@ -703,7 +725,9 @@
                      nov-start render-start groups-start (len (fn-record-groups row))
                      numbers-start (len (fn-held-numbers row)) raw-head-length))
              (if (and nov (not nov-small)) (list (cons :nov nov)) nil)
-             (if numbers-small nil (list (cons :numbers (fn-held-numbers row))))))
+             (if numbers-small nil (list (cons :numbers (fn-held-numbers row))))
+             (let ((shift (fn-lb-xref-shift-prefix payload)))
+               (if shift (list (cons :xref-body-prefix shift)) nil))))
          (flags (+ (if (and (fn-hnov-p nov) (fn-hnov-ok nov)) 1 0)
                    (if (and (fn-hnov-p nov) (fn-hnov-tomb nov)) 2 0)
                    (if w 4 0) (if escape 8 0)
@@ -743,10 +767,10 @@
         (fn-lbc-escape-store-put i escape fn-lbc)))))
 
 (defun fn-lbc-visiblep (i v fn-lbc)
-  (declare (xargs :stobjs fn-lbc :guard (or (not (and (natp i) (< i (rfix v)) (< i (fn-lbc-count fn-lbc)))) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
-  (and (natp i) (< i (rfix v)) (< i (fn-lbc-count fn-lbc))
+  (declare (xargs :stobjs fn-lbc :guard (or (not (and (natp i) (fn-ag-less i v) (< i (fn-lbc-count fn-lbc)))) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
+  (and (natp i) (fn-ag-less i v) (< i (fn-lbc-count fn-lbc))
        (let ((w (fn-lbc-withdrawn i fn-lbc)))
-         (or (null w) (<= (rfix v) (nfix (car w)))))))
+         (or (null w) (fn-ng-less-equal v (car w))))))
 
 (defun lb-prefix-max (stamps m)
   (declare (xargs :guard t))
@@ -1173,6 +1197,8 @@
          (equal (fn-lbc-word :msgid-hash i fn-lbc)
                 (fn-lbc-msgid-hash (fn-record-msgid row)))
          (equal (fn-lbc-flag i *fn-lbc-reclaimed-bit* fn-lbc) reclaimed)
+         (equal (fn-lbc-xref-shift-prefix i fn-lbc)
+                (fn-lb-xref-shift-prefix payload))
          (equal (fn-lbc-value i :head-length fn-lbc)
                 (len (fn-nntp-stuffed-section :head payload)))
          (equal (fn-lbc-directory-value i :raw-head-length fn-lbc)

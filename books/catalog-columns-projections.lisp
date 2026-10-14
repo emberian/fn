@@ -73,8 +73,17 @@
  :hints (("Goal" :do-not-induct t
  :use fn-lbr10-row-withdrawal-typed
  :in-theory (union-theories (theory 'ground-zero)
-  '(fn-lbc-visiblep fn-cat-visiblep fn-held-withdrawnp fn-lbc-corr-count-is-length
+  '(fn-lbc-visiblep fn-cat-visiblep fn-held-withdrawnp fn-lbc-corr-count-is-length fn-ag-less fn-ng-less-equal-is-less-equal
     fn-lbc-served-fields-are-abstract natp nfix rfix)))))
+
+(defthm fn-lbc-visible-is-row-visible-total-version
+ (implies (and (fn-lbc-p fn-lbc) (fn-cat$ap rows) (fn-lbc-corr fn-lbc rows log)
+  (natp i) (< i (len rows)))
+ (equal (fn-lbc-visiblep i v fn-lbc) (fn-cat-visiblep i v rows)))
+ :hints (("Goal" :do-not-induct t
+ :in-theory (union-theories (theory 'ground-zero)
+  '(fn-lbc-visiblep fn-cat-visiblep fn-lbc-corr-count-is-length
+    fn-ag-less fn-ng-less-equal-is-less-equal fn-lbc-served-fields-are-abstract natp)))))
 
 (local (defthm fn-lbr10-row-corr-metadata-by-definition
  (implies (fn-lbc-row-corr i row pm fn-lbc log)
