@@ -832,9 +832,7 @@ RAW_LAMBDA_KEYWORDS = {"&optional", "&rest", "&body", "&key", "&aux",
                        "&allow-other-keys", "&whole", "&environment"}
 RAW_OPAQUE = {"quote", "declare", "declaim", "function", "in-package",
               "defpackage", "defstruct", "define-condition", "deftype",
-              "defsetf", "defconstant", "defparameter", "defvar",
-              # Registration macro: arguments are metadata, discarded at expansion.
-              "fnn-guarded-by"}
+              "defsetf", "defconstant", "defparameter", "defvar"}
 
 
 def raw_lambda_range(formals) -> tuple[int, int | None] | None:
@@ -927,6 +925,10 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
         walk(form)
         return
     if name in RAW_OPAQUE:
+        return
+    if name == "fnn-guarded-by" and name not in shadowed:
+        # Only the global registration macro discards these arguments.
+        # A local function/macro of the same name must still be walked.
         return
     if name == "quasiquote":
         def unquoted(x, depth=1):
@@ -1084,38 +1086,59 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset(),
     walk(form[1:])
 
 
-def raw_definitions(sources: dict[str, list]) -> tuple[dict, set]:
-    """Raw function name -> (required, maximum, where); includes defstruct."""
+def raw_definitions(sources: dict[str, list], *, fixture_entry: str | None = None
+                    ) -> tuple[dict, set]:
+    """Raw function name -> (required, maximum, where); includes defstruct.
+
+    Host inventory retains conflicting arities as ambiguous. For a fixture,
+    follow literal fixture LOADs from FIXTURE_ENTRY in statement order and
+    keep the effective (last) definition, including generated definitions.
+    A generated accessor cannot hide a later overriding mock's arity.
+    """
     seen: dict[str, list] = {}
-    for relative, forms in sorted(sources.items()):
-        def visit(form, line):
-            if not isinstance(form, list) or not form or not isinstance(form[0], str):
-                return
-            name = str(form[0])
-            if name in ("progn", "progn!", "eval-when", "locally"):
-                for item in form[1:]:
-                    visit(item, line)
-                return
-            if name == "defstruct":
-                for generated, formals in defstruct_definitions(form).items():
-                    bounds = raw_lambda_range(formals)
-                    if bounds is not None:
-                        seen.setdefault(generated, []).append(
-                            (bounds[0], bounds[1], "{}:{}".format(relative, line)))
-                return
-            if (name == "defun" or
-                    (name == "defmacro" and len(form) >= 2 and
-                     form[1] in RAW_DISPATCHERS)) and len(form) >= 3 and isinstance(form[1], str):
-                bounds = raw_lambda_range(form[2])
+    def visit(form, line, relative, active):
+        if not isinstance(form, list) or not form or not isinstance(form[0], str):
+            return
+        name = str(form[0])
+        if name in ("progn", "progn!", "eval-when", "locally"):
+            for item in form[1:]:
+                visit(item, line, relative, active)
+            return
+        if fixture_entry is not None and name == "load" and len(form) >= 2 and type(form[1]) is str:
+            import posixpath
+            target = posixpath.normpath(form[1])
+            if target in sources:
+                visit_file(target, active)
+            return
+        if name == "defstruct":
+            for generated, formals in defstruct_definitions(form).items():
+                bounds = raw_lambda_range(formals)
                 if bounds is not None:
-                    seen.setdefault(str(form[1]), []).append(
+                    seen.setdefault(generated, []).append(
                         (bounds[0], bounds[1], "{}:{}".format(relative, line)))
-        for form, line in forms:
-            visit(form, line)
+            return
+        if (name == "defun" or
+                (name == "defmacro" and len(form) >= 2 and
+                 form[1] in RAW_DISPATCHERS)) and len(form) >= 3 and isinstance(form[1], str):
+            bounds = raw_lambda_range(form[2])
+            if bounds is not None:
+                seen.setdefault(str(form[1]), []).append(
+                    (bounds[0], bounds[1], "{}:{}".format(relative, line)))
+
+    def visit_file(relative, active=()):
+        if relative in active:
+            raise ValueError(f"fixture load cycle at {relative}")
+        for form, line in sources[relative]:
+            visit(form, line, relative, active + (relative,))
+
+    for relative in ([fixture_entry] if fixture_entry is not None else sorted(sources)):
+        visit_file(relative)
     defined = {}
     ambiguous = set()
     for name, rows in seen.items():
-        if len({(low, high) for low, high, _ in rows}) == 1:
+        if fixture_entry is not None:
+            defined[name] = rows[-1]
+        elif len({(low, high) for low, high, _ in rows}) == 1:
             defined[name] = rows[0]
         else:
             ambiguous.add(name)
@@ -1297,7 +1320,7 @@ def harness_mock_arity_scan(harnesses: dict[str, list], hosts: dict[str, list],
         loaded = [h for h in loads.get(relative, []) if h in hosts]
         if not loaded:
             continue
-        mocks, _ambiguous = raw_definitions({relative: forms})
+        mocks, _ambiguous = raw_definitions({relative: forms}, fixture_entry=relative)
         for host in loaded:
             if host not in host_defined_cache:
                 host_defined_cache[host] = set(raw_definitions({host: hosts[host]})[0])
@@ -1427,7 +1450,9 @@ def defstruct_definitions(form) -> dict[str, list]:
     for option in constructors:
         constructor = option[1] if len(option) > 1 else Sym("make-" + name)
         if constructor is not None and str(constructor).lower() != "nil":
-            definitions[str(constructor).lower()] = option[2] if len(option) > 2 else keyword_formals
+            formals = option[2] if len(option) > 2 else keyword_formals
+            definitions[str(constructor).lower()] = (
+                [] if isinstance(formals, Sym) and str(formals).lower() == "nil" else formals)
     for kind, default in ((":predicate", name + "-p"), (":copier", "copy-" + name)):
         matching = [option for option in options if str(option[0]).lower() == kind]
         given = matching[-1][1] if matching and len(matching[-1]) > 1 else Sym(default)
@@ -2225,7 +2250,7 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
     hand, current = split_stub_block(text)
     sources = fixture_sources or {relative: hand}
     forms = {path: ledger.Reader(source).top_level() for path, source in sources.items()}
-    stubs, _ = raw_definitions(forms)
+    stubs, _ = raw_definitions(forms, fixture_entry=relative)
     mentioned = {m.lower() for source in sources.values()
                  for m in re.findall(r"(?<![A-Za-z0-9*+%-])(fnn-[A-Za-z0-9*+%-]+)", source)}
     # A fixture this harness loads may itself load a whole host file

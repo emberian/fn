@@ -247,6 +247,7 @@
 
 ;; Actual mux hold is the caller of both worker and output installers.
 (defvar *startup-budget-word* :hold)
+(defvar *startup-memory-word* :hold)
 (defvar *startup-syncer-installed* nil)
 (defvar *startup-lease-installed* nil)
 (defvar *startup-memory-calls* nil)
@@ -260,7 +261,7 @@
   (check (and (null gate-only) (null tls-context) (eq observed :observed-memory)
               (zerop *startup-allocations*)) "memory admission precedes child allocation")
   (push (list :configure (fnn-owner-service-reclaim-live service)) *startup-memory-calls*)
-  :hold)
+  *startup-memory-word*)
 (defun fnn-mux-thread-count (service) (declare (ignore service)) 12)
 (defun fnn-mux-thread-stack-octets () 1048576)
 (defun fnn-store-config (store) (declare (ignore store)) :captured-store-profile)
@@ -336,4 +337,21 @@
   (check (equal *startup-memory-calls* '(:observe)) "parent refusal does not configure memory")
   (check (equal *startup-diagnostics* '(fn-owner-connection-budget-line))
          "parent refusal reads its exact diagnostic"))
+;; The parent budget can hold while memory admission refuses. The actual
+;; memory word guards lease installation independently of that parent word.
+(let* ((*startup-budget-word* :hold) (*startup-memory-word* :refused)
+       (*startup-calls* nil) (*startup-memory-calls* nil) (*startup-diagnostics* nil)
+       (*startup-syncer-installed* nil) (*startup-lease-installed* nil) (*startup-allocations* 0)
+       (service (%make-fnn-owner-service :store :store :cold-resources *startup-cold*
+                  :output-resources *startup-output* :output-slots 5)))
+  (check (handler-case (progn (fnn-mux-budget-install service nil) nil)
+           (fnn-store-error () t)) "memory capacity refusal remains refusal")
+  (check (null *startup-lease-installed*) "memory refusal installs no lease")
+  (check (equal *startup-syncer-installed* '(12 1048576))
+         "memory refusal follows actual parent hold")
+  (check (equal (reverse *startup-memory-calls*) '(:observe (:configure nil)))
+         "memory refusal exercises the actual observed configure boundary")
+  (check (equal (reverse *startup-diagnostics*)
+                '(fn-owner-connection-budget-line fn-owner-memory-capacity-line))
+         "memory refusal reads both exact capacity diagnostics"))
 (format t "native_output_startup_raw: PASS actual mux hold/refusal caller~%")

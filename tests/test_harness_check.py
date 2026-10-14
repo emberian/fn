@@ -944,7 +944,7 @@ class DerivedStubTests(unittest.TestCase):
           (list service octets n reason x))
         """)
 
-    def scan(self, host: str, harness: str):
+    def scan(self, host: str, harness: str, fixtures=None):
         from tools import ledger
         forms = ledger.Reader(host).top_level()
         rawdefs, _ = harness_check.raw_definitions({"host/native/x.lisp": forms})
@@ -958,7 +958,7 @@ class DerivedStubTests(unittest.TestCase):
                 for name, formals in harness_check.defstruct_definitions(form).items():
                     origins[name] = (formals, "host/native/x.lisp")
         return harness_check.harness_scan("tests/native_x_raw.lisp", harness,
-                                          rawdefs, bodies, origins)
+                                          rawdefs, bodies, origins, fixtures)
 
     HARNESS = textwrap.dedent("""
         (defpackage "ACL2" (:use "CL"))
@@ -1124,6 +1124,105 @@ class DerivedStubTests(unittest.TestCase):
                 harness_check.test_stub_findings(root)
                 self.assertEqual([row["callee"] for row in harness_check.TEST_HARNESS_REACH],
                                  ["fnn-lease-op"])
+
+    def test_overriding_stale_accessor_mock_is_the_effective_definition(self):
+        # REVIEW.md's exact counterexample: the later DEFUN replaces the
+        # generated accessor, so it cannot borrow that accessor's arity.
+        host = '''
+            (defun fnn-lease-op (x) x)
+            (defun fnn-render () (fnn-lease-op nil))
+        '''
+        harness = '''
+            (defstruct fnn-lease op)
+            (defun fnn-lease-op () nil)
+            ;; extracts fnn-render
+        '''
+        scan = self.scan(host, harness)
+        self.assertEqual([row["callee"] for row in scan["stale"]], ["fnn-lease-op"])
+        self.assertIn("stub takes 0", scan["stale"][0]["problem"])
+        repaired = harness.replace("(defun fnn-lease-op () nil)", "(defun fnn-lease-op (x) x)")
+        accepted = self.scan(host, repaired)
+        self.assertEqual(accepted["stale"], [])
+        self.assertEqual(accepted["unresolved"], {})
+
+    def test_effective_fixture_definitions_follow_literal_load_order(self):
+        from tools import ledger
+        host = '''
+            (defun fnn-lease-op (x) x)
+            (defun fnn-render () (fnn-lease-op nil))
+        '''
+        # Sorting paths puts the root before its z-named child, but runtime
+        # LOAD occurs before the overriding root mock. Check both orders.
+        child = "(defstruct fnn-lease op)"
+        wrong = '(load "tests/z_fixture.lisp")\n(defun fnn-lease-op () nil)\n;; extracts fnn-render'
+        scan = self.scan(host, wrong, {
+            "tests/native_x_raw.lisp": wrong, "tests/z_fixture.lisp": child})
+        self.assertEqual([row["callee"] for row in scan["stale"]], ["fnn-lease-op"])
+        self.assertEqual(scan["stubs"]["fnn-lease-op"][:2], (0, 0))
+        right = '(defun fnn-lease-op () nil)\n(load "tests/z_fixture.lisp")\n;; extracts fnn-render'
+        scan = self.scan(host, right, {
+            "tests/native_x_raw.lisp": right, "tests/z_fixture.lisp": child})
+        self.assertEqual(scan["stale"], [])
+        self.assertEqual(scan["stubs"]["fnn-lease-op"][:2], (1, 1))
+        # Keep the host inventory's original conflict policy: effective
+        # fixture order must not make duplicate host definitions acceptable.
+        defined, ambiguous = harness_check.raw_definitions({
+            "host/native/x.lisp": ledger.Reader(child + "\n(defun fnn-lease-op () nil)").top_level()})
+        self.assertNotIn("fnn-lease-op", defined)
+        self.assertIn("fnn-lease-op", ambiguous)
+
+    def test_nil_and_parenthesized_empty_boa_constructors_are_checked(self):
+        from tools import ledger
+        for empty in ("nil", "()"):
+            with self.subTest(empty=empty):
+                host = f'''
+                    (defstruct (fnn-empty (:constructor fnn-new {empty})) value)
+                    (defun fnn-render () (fnn-new 1))
+                '''
+                sources = {"host/native/x.lisp": ledger.Reader(host).top_level()}
+                definitions, _ = harness_check.raw_definitions(sources)
+                self.assertIsNotNone(definitions.get("fnn-new"), "zero-argument BOA constructor is inventoried")
+                self.assertEqual(definitions["fnn-new"][:2], (0, 0))
+                findings, _ = harness_check.raw_arity_scan(sources)
+                self.assertEqual([row["callee"] for row in findings], ["fnn-new"])
+                scan = self.scan(host, ";; extracts fnn-render\n")
+                self.assertIn("fnn-new", scan["unresolved"])
+                self.assertIn("(defun fnn-new ()", scan["expected"])
+
+    def test_startup_refusal_rejects_unconditional_lease_installation(self):
+        import shutil
+        import subprocess
+        from tests.test_native_raw_scripts import HARNESSES
+
+        sbcl = shutil.which("sbcl") or "/opt/homebrew/bin/sbcl"
+        if not Path(sbcl).is_file():
+            self.skipTest("SBCL required for the startup memory-refusal mutant")
+        # Use the established catalog: this copied-source mutation control
+        # supplements, rather than replaces, the original raw harness case.
+        selected = next(path for path in HARNESSES if path.stem == "native_output_startup_raw-mock")
+        fixture = ROOT / "tests" / selected.name
+        control = subprocess.run([sbcl, "--script", str(fixture)], cwd=ROOT,
+                                 text=True, capture_output=True, timeout=30)
+        self.assertEqual(control.returncode, 0, control.stdout + control.stderr)
+        mux = (ROOT / "host/native/mux.lisp").read_text()
+        guarded = "(when (eq memory :hold)\n                    (fnn-owner-lease-install-locked service))"
+        self.assertEqual(mux.count(guarded), 1, "mutate the actual memory admission arm once")
+        load = '(load-deployed-forms "host/native/mux.lisp" \'((defun fnn-mux-budget-install)))'
+        source = fixture.read_text()
+        self.assertEqual(source.count(load), 1, "fixture extracts the actual budget installer")
+        artifact = ROOT / "build/a-devctl"
+        artifact.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="startup-refusal-unit-", dir=artifact) as directory:
+            mutant = Path(directory) / "mux-unconditional.lisp"
+            mutant.write_text(mux.replace(guarded, "(fnn-owner-lease-install-locked service)", 1))
+            driver = Path(directory) / "startup-mutant.lisp"
+            driver.write_text(source.replace(load,
+                f'(load-deployed-forms "{mutant.as_posix()}" \'((defun fnn-mux-budget-install)))', 1))
+            rejected = subprocess.run([sbcl, "--script", str(driver)], cwd=ROOT,
+                                      text=True, capture_output=True, timeout=30)
+        self.assertNotEqual(rejected.returncode, 0,
+                            "unconditional installation must fail the memory-refusal assertion")
+        self.assertIn("memory refusal installs no lease", rejected.stdout + rejected.stderr)
 
     def test_the_tree_has_no_stale_stub_and_no_unresolved_call(self):
         findings, counts = harness_check.test_stub_findings(ROOT)
@@ -1455,6 +1554,27 @@ class RawMacroTemplateTests(unittest.TestCase):
         for form, _ in ledger.Reader(source).top_level():
             harness_check.raw_applications(form, calls)
         return calls
+
+    def test_shadowed_guarded_by_checks_evaluated_arguments(self):
+        # The FLET alternative is REVIEW.md's exact counterexample.
+        bindings = {
+            "flet": "((fnn-guarded-by (a b) (+ a b)))",
+            "labels": "((fnn-guarded-by (a b) (+ a b)))",
+            "macrolet": "((fnn-guarded-by (a b) `(+ ,a ,b)))",
+        }
+        for kind, binding in bindings.items():
+            with self.subTest(kind=kind):
+                found = RawArityTests().scan(f'''
+                    (defun fnn-real (x) x)
+                    (defun fnn-driver ()
+                      ({kind} {binding} (fnn-guarded-by (fnn-real) 1)))
+                ''')
+                self.assertEqual([row["callee"] for row in found], ["fnn-real"])
+                self.assertIn("called with 0 arguments and takes 1", found[0]["problem"])
+        self.assertEqual(RawArityTests().scan('''
+            (defun fnn-real (x) x)
+            (fnn-guarded-by *metadata* (fnn-real))
+        '''), [], "the unshadowed registration macro does not evaluate metadata")
 
     def test_section_envelope_literal_core_calls_are_inventory(self):
         calls = self.calls("""(defmacro envelope (s classes c &body body)
