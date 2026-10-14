@@ -2212,7 +2212,7 @@
 
 (local
  (defthm fn-ctg-apply-plan-fields
-   (and (equal (nth 0 (fn-cat$c-apply-plan plan seq fn-cat$c)) (nth 0 fn-cat$c))
+   (and (equal (car (fn-cat$c-apply-plan plan seq fn-cat$c)) (car fn-cat$c))
         (equal (nth 1 (fn-cat$c-apply-plan plan seq fn-cat$c)) (nth 1 fn-cat$c))
         (equal (nth 2 (fn-cat$c-apply-plan plan seq fn-cat$c)) (nth 2 fn-cat$c))
         (equal (nth 3 (fn-cat$c-apply-plan plan seq fn-cat$c))
@@ -2425,7 +2425,7 @@
 ; the confirmation over the rows array is the confirmation over the list;
 ; the degraded scan is the walk.
 (local
- (defthm fn-ctg-nthcdr-cdr
+ (defthmd fn-ctg-nthcdr-cdr
    (implies (natp i) (equal (nthcdr (+ 1 i) l) (cdr (nthcdr i l))))))
 (local
  (defthm fn-ctg-car-nthcdr
@@ -2440,7 +2440,8 @@
            (equal (fn-mpxt-spec-from i msgid rows)
                   (fn-cat-seqs-for msgid (nthcdr i rows) i)))
   :hints (("Goal" :induct (fn-mpxt-spec-from i msgid rows)
-           :in-theory (enable fn-mpxt-spec-from fn-mpxt-hitp fn-cat-seqs-for))))
+           :in-theory (e/d (fn-mpxt-spec-from fn-mpxt-hitp fn-cat-seqs-for fn-ctg-nthcdr-cdr)
+                            (adt-cdr-nthcdr)))))
 
 ; KEYSTONE (PRF-970): the paged reader is the catalog's Message-ID column
 ; under the faithful relation.
@@ -2478,8 +2479,8 @@
                    (revappend acc (fn-cat-seqs-for msgid (nthcdr i c) i))))
    :hints (("Goal" :induct (fn-cat$c-scan-msgid msgid i acc fn-cat$c)
             :in-theory (e/d (fn-cat$c-scan-msgid fn-cat-seqs-for fn-cat$c-count fn-cat$c-rows-length
-                             fn-cat$c-rowsi)
-                            (nthcdr))
+                             fn-cat$c-rowsi fn-ctg-nthcdr-cdr)
+                            (nthcdr adt-cdr-nthcdr))
             :expand ((fn-cat-seqs-for msgid (nthcdr i c) i))))))
 
 ; The table that IS the fold with no unplaced row: well formed, its

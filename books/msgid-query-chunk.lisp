@@ -46,7 +46,7 @@
   (implies (and (fn-ibp-table-pagep fn-ibp-table-page)
                 (natp slot) (< slot 1024))
            (equal (fn-ibp-table-word slot fn-ibp-table-page)
-                  (fn-mpl-tag-at 0 slot (nth 0 fn-ibp-table-page))))
+                  (fn-mpl-tag-at 0 slot (car fn-ibp-table-page))))
   :hints (("Goal" :in-theory (e/d (fn-mpl-tag-at fn-mpxt-slot)
                             (fn-ibp-table-word fn-ibp-table-wordsi fn-ibp-table-pagep)))))
 
@@ -54,7 +54,7 @@
   (implies (and (fn-ibp-table-pagep fn-ibp-table-page)
                 (natp slot) (< slot 1024))
            (equal (fn-ibp-table-word (+ 1024 slot) fn-ibp-table-page)
-                  (fn-mpl-seq-at 0 slot (nth 0 fn-ibp-table-page))))
+                  (fn-mpl-seq-at 0 slot (car fn-ibp-table-page))))
   :hints (("Goal" :in-theory (e/d (fn-mpl-seq-at fn-mpxt-slot)
                             (fn-ibp-table-word fn-ibp-table-wordsi fn-ibp-table-pagep)))))
 
