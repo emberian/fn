@@ -186,10 +186,12 @@
  :unaccounted (fn-owner-record-totals fn-owner-memory-run-cfg
                fn-owner-held-callback-operator-open mv-nth
                fn-exp-at true-list-fix update-nth))
-(def-cost fn-adm-operator-open-word)
+(def-cost fn-adm-operator-open-word :unaccounted (fn-exp-at))
 (def-cost fn-adm-operator-open-id :unaccounted (fn-exp-at))
 (def-cost fn-adm-operator-open-reason :unaccounted (fn-exp-at))
-(def-cost fn-owner-close :unaccounted (fn-owner-callback-close fn-owner-memory-held-close mv-nth))
-(def-cost fn-owner-fault :unaccounted (fn-owner-callback-fault fn-owner-memory-held-close mv-nth))
+(def-cost fn-owner-close :unaccounted (fn-owner-callback-close mv-nth fn-adm-operator-close
+                                       fn-owner-memory-held-close fn-exp-at true-list-fix update-nth))
+(def-cost fn-owner-fault :unaccounted (fn-owner-callback-fault mv-nth fn-adm-operator-close
+                                       fn-owner-memory-held-close fn-exp-at true-list-fix update-nth))
 
 (def-cost fn-ores-config-refused)

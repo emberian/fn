@@ -298,7 +298,9 @@
    "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-exp-at"
+   ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
   },
@@ -11023,9 +11025,13 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
+    "fn-adm-operator-close",
+    "fn-exp-at",
     "fn-owner-callback-close",
     "fn-owner-memory-held-close",
-    "mv-nth"
+    "mv-nth",
+    "true-list-fix",
+    "update-nth"
    ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
@@ -11389,9 +11395,13 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
+    "fn-adm-operator-close",
+    "fn-exp-at",
     "fn-owner-callback-fault",
     "fn-owner-memory-held-close",
-    "mv-nth"
+    "mv-nth",
+    "true-list-fix",
+    "update-nth"
    ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
