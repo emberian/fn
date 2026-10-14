@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "tests.test_native_topic_local.NativeTopicLocalTest.test_history_reopens_and_survives_compaction (env FN_RUN_TOPIC_LOCAL_E2E, never run by a gate before lane b-control-optins): after two `operator store compact` runs on a stopped store, the offline `log scan-store` (tests/native_log_observation.py:66 committed_history) exits 4: `store: extent incarnation refused: READ-RESOURCES-UNAVAILABLE`. The same scan-store succeeded four times earlier in the test, before the compactions. The refusal is raised at host/native/extent.lisp:165 (fnn-extent-register) when fn-owner-page-file-issue returns :read-resources-unavailable (the 403 of books/owner-resource-line.lisp) instead of :issued or :unfunded-offline. Box evidence: hbox /tank/fn/scratch/b-control-optins/native-optins-2b6c0fca0/logs/test-tests.test_native_topic_local.log (lane head 2b6c0fca0, images of 919a41a17). Owner to confirm: the offline open after a compaction is charged as a funded read and runs out, or the compaction leaves more extents than the offline budget admits.",
+ "file": "host/native/extent.lisp",
+ "id": "OFFLINE-SCAN-STORE-READ-RESOURCES",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "B25 qualifying run for the control run's functional opt-ins (optin-e84056ca5, optins-2b6c0fca0)",
+ "state": "open",
+ "title": "offline log scan-store refuses READ-RESOURCES-UNAVAILABLE after store compaction",
+ "updated": "2026-10-14T03:40:00Z"
+}

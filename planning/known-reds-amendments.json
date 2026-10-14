@@ -718,6 +718,14 @@
    "ruling": "coordinator 2026-10-13 ruling (a): a row's item is the item that will retire it",
    "transfer_from": "builder-B",
    "item_from": "DEV-CONTROL-UNTRACED-20261013"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_topic_local.NativeTopicLocalTest.test_history_reopens_and_survives_compaction",
+   "dev_sha": "e84056ca5",
+   "item": "OFFLINE-SCAN-STORE-READ-RESOURCES",
+   "owner": "builder-M",
+   "ruling": "COORDINATION 6.3: a dev red found by the qualifying run, not caused by this lane (product refusal in host/native/extent.lisp:165); amended in the lane that first runs it"
   }
  ]
 }
