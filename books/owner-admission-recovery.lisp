@@ -28,7 +28,7 @@
          (fn-ost-admission state))
   :hints (("Goal" :in-theory
            (union-theories
-            '(fn-owner-install-extended fn-oadm-recovery-writers-frame
+            '(fn-owner-install-extended fn-ost-install-readers fn-oadm-recovery-writers-frame
               fn-ost-admission-of-other-global-put
               mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)

@@ -6,6 +6,8 @@
 (include-book "owner-retain-state")
 (include-book "owner-obligation-state")
 (include-book "identity-retain-carried")
+(include-book "owner-connection-state")
+(include-book "owner-reader-view")
 
 (defthm fn-owner-retain-carry-of-install-ocfg
   (equal (fn-owner-retain-carry (fn-owner-install-ocfg oc state))
@@ -47,11 +49,160 @@
 
 ; Proof-only carried entry-state invariant. Never called by native serving
 ; code or used as an executable guard: it names the maintained relation.
+(defun fn-captured-view-follows-files (view files)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-own-view-shapep view)
+       (natp (fn-own-view-version view))
+       (natp (fn-own-view-frontier view))
+       (natp (fn-sf-frontier files))
+       (<= (fn-own-view-version view) (len (fn-sf-records files)))
+       (<= (fn-own-view-frontier view) (fn-sf-frontier files))))
+(defun fn-captured-views-follow-files (views files)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp views)
+      (and (fn-captured-view-follows-files (car views) files)
+           (fn-captured-views-follow-files (cdr views) files))
+    (null views)))
+; Bounds plus the existing complete configured-owner relation at each captured view.
+(defun fn-captured-view-follows-ocfg (view oc)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-captured-view-follows-files view (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+       (fn-ocl-relation (fn-ocfg-with-view oc view))))
+(defun fn-captured-views-follow-ocfg (views oc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp views)
+      (and (fn-captured-view-follows-ocfg (car views) oc)
+           (fn-captured-views-follow-ocfg (cdr views) oc))
+    (null views)))
+(defun fn-owner-captured-view-follows-store (state)
+  (declare (xargs :stobjs state :guard t :verify-guards nil))
+  (and (boundp-global 'fn-owner state)
+       (fn-captured-views-follow-ocfg
+        (fn-owner-reader-views state)
+        (fn-owner-ocfg state))))
+
 (defun fn-owner-retain-statep (state)
   (declare (xargs :stobjs state :guard t :verify-guards nil))
   (and (boundp-global 'fn-owner state)
        (fn-lgoc-invariantp (fn-owner-ocfg state))
-       (fn-prc-carryp (fn-owner-retain-carry state))))
+       (fn-prc-carryp (fn-owner-retain-carry state))
+       (fn-owner-captured-view-follows-store state)))
+
+; Captured reader frames: globals, install, carry refresh, and identity prepare.
+(defthm fn-owner-reader-views-of-other-global-put
+  (implies (not (equal key 'fn-owner-reader-views))
+           (equal (fn-owner-reader-views (f-put-global key value state))
+                  (fn-owner-reader-views state)))
+  :hints (("Goal" :in-theory '(fn-owner-reader-views
+                               fn-ost-readers-of-other-global-put))))
+(defthm fn-owner-reader-views-of-install-ocfg
+  (equal (fn-owner-reader-views (fn-owner-install-ocfg oc state))
+         (fn-owner-reader-views state))
+  :hints (("Goal" :in-theory '(fn-owner-install-ocfg
+                               fn-owner-reader-views-of-other-global-put))))
+(defthm fn-owner-reader-views-of-retain-carry-put
+  (equal (fn-owner-reader-views (fn-owner-retain-carry-put carry state))
+         (fn-owner-reader-views state))
+  :hints (("Goal" :in-theory '(fn-owner-retain-carry-put
+                               fn-owner-reader-views-of-other-global-put))))
+(defthm fn-owner-captured-view-of-other-global-put
+  (implies (and (not (equal key 'fn-owner))
+                (not (equal key 'fn-owner-reader-views)))
+           (equal (fn-owner-captured-view-follows-store
+                   (f-put-global key value state))
+                  (fn-owner-captured-view-follows-store state)))
+  :hints (("Goal" :in-theory '(fn-owner-captured-view-follows-store
+                               fn-owner-reader-views-of-other-global-put
+                               fn-owner-ocfg-of-other-global-put
+                               fn-owner-bound-of-other-global-put))))
+(defthm fn-owner-captured-view-of-retain-carry-put
+  (equal (fn-owner-captured-view-follows-store
+          (fn-owner-retain-carry-put carry state))
+         (fn-owner-captured-view-follows-store state))
+  :hints (("Goal" :in-theory '(fn-owner-retain-carry-put
+                               fn-owner-captured-view-of-other-global-put))))
+(defthm fn-owner-captured-view-of-install-ocfg
+  (equal (fn-owner-captured-view-follows-store
+          (fn-owner-install-ocfg oc state))
+         (fn-captured-views-follow-ocfg (fn-owner-reader-views state) oc))
+  :hints (("Goal" :in-theory '(fn-owner-captured-view-follows-store
+                               fn-owner-reader-views-of-install-ocfg
+                               fn-owner-ocfg-of-install-ocfg
+                               fn-owner-bound-of-install-ocfg))))
+(local
+ (defthm fn-k1-true-list-fix-of-true-listp
+  (implies (true-listp xs) (equal (true-list-fix xs) xs))
+  :hints (("Goal" :induct (true-listp xs)
+            :in-theory (enable true-listp true-list-fix)))))
+(defthm fn-k1-captured-view-transport-same-history
+  (implies
+   (and (fn-lgoc-invariantp oc0)
+        (fn-lgoc-invariantp oc)
+        (fn-captured-view-follows-ocfg view oc0)
+        (equal (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+               (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc0)))))
+        (equal (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc)))
+               (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc0))))
+        (equal (fn-ocfg-config oc) (fn-ocfg-config oc0))
+        (equal (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+               (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc0))))))
+   (fn-captured-view-follows-ocfg view oc))
+  :hints
+  (("Goal"
+    :use ((:instance fn-ocl-relation-of-a-view-captured-before-appends
+           (oc0 (fn-ocfg-with-view oc0 view)) (extra nil))
+          (:instance fn-lgoc-invariant-statep (oc oc0))
+          (:instance fn-cstp-sn-statep-files
+           (st (fn-own-store (fn-ocfg-owner oc0))))
+          (:instance fn-sf-state-records-are-true-list
+           (s (fn-sn-files (fn-own-store (fn-ocfg-owner oc0))))))
+    :in-theory '(fn-captured-view-follows-ocfg fn-captured-view-follows-files
+                 fn-lgoc-invariantp fn-ocfg-with-view-keeps-the-rest
+                 fn-lgt-append-nil fn-k1-true-list-fix-of-true-listp))))
+(local
+ (defthm fn-k1-ccar-identity-keeps-frontier
+  (equal (fn-sf-frontier (fn-sn-files (fn-ccar-sn-prepare-identity s e)))
+         (fn-sf-frontier (fn-sn-files s)))
+  :hints (("Goal"
+    :use ((:instance fn-psrv-pcar-stage-record-staged
+            (files (fn-sn-files s))))
+    :in-theory '(fn-ccar-sn-prepare-identity fn-cstp-sn-update-fields)))))
+(local
+ (defthm fn-k1-config-of-with-owner
+  (equal (fn-ocfg-config (fn-ocfg-with-owner oc owner)) (fn-ocfg-config oc))
+  :hints (("Goal" :in-theory '(fn-ocfg-with-owner fn-ocfg-config-of-fn-ocfg-make)))))
+(defthm fn-k1-oiis-keeps-durable-context
+  (let* ((next (fn-oiis-prepare-identity oc w h))
+         (old (fn-own-store (fn-ocfg-owner oc)))
+         (new (fn-own-store (fn-ocfg-owner next))))
+    (and (equal (fn-sf-records (fn-sn-files new)) (fn-sf-records (fn-sn-files old)))
+         (equal (fn-sf-frontier (fn-sn-files new)) (fn-sf-frontier (fn-sn-files old)))
+         (equal (fn-sn-config-history new) (fn-sn-config-history old))
+         (equal (fn-ocfg-config next) (fn-ocfg-config oc))))
+  :hints (("Goal" :in-theory
+    '(fn-oiis-prepare-identity fn-psrv-prepare-identity
+      fn-psrv-ccar-ocfg-prepare-identity-is-owner-with-store
+      fn-lgoc-store-of-owner-with-store
+      fn-psrv-deferred-prepare-keeps-histories
+      fn-k1-ccar-identity-keeps-frontier
+      fn-k1-config-of-with-owner))))
+(defthm fn-k1-captured-view-of-oiis-prepare-identity
+  (implies (and (fn-lgoc-invariantp oc)
+                (fn-captured-view-follows-ocfg view oc))
+           (fn-captured-view-follows-ocfg view (fn-oiis-prepare-identity oc w h)))
+  :hints (("Goal"
+   :use ((:instance fn-k1-captured-view-transport-same-history
+           (oc0 oc) (oc (fn-oiis-prepare-identity oc w h))))
+   :in-theory '(fn-oiis-prepare-identity-preserves-invariant
+                fn-k1-oiis-keeps-durable-context))))
+(defthm fn-k1-captured-views-of-oiis-prepare-identity
+  (implies (and (fn-lgoc-invariantp oc)
+                (fn-captured-views-follow-ocfg views oc))
+           (fn-captured-views-follow-ocfg views (fn-oiis-prepare-identity oc w h)))
+  :hints (("Goal" :induct (fn-captured-views-follow-ocfg views oc)
+           :in-theory '(fn-captured-views-follow-ocfg
+                        fn-k1-captured-view-of-oiis-prepare-identity))))
+
 
 (defthm fn-owner-retain-statep-implies-entry-guard
   (implies (fn-owner-retain-statep state)
@@ -146,7 +297,12 @@
              fn-owner-retain-carry-of-install-ocfg
              fn-prc-carryp-of-refresh
              fn-irc-pout-prepare-identity-of-refresh-is-pout
-             fn-oiis-prepare-identity-preserves-invariant))))
+             fn-oiis-prepare-identity-preserves-invariant
+             fn-owner-captured-view-follows-store
+             fn-owner-reader-views-of-other-global-put
+             fn-owner-reader-views-of-retain-carry-put
+             fn-owner-reader-views-of-install-ocfg
+             fn-k1-captured-views-of-oiis-prepare-identity))))
 
 (defun fn-owner-finish-synced (fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :guard (and (boundp-global 'fn-owner state)

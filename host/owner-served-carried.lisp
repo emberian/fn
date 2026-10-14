@@ -59,7 +59,7 @@
 (include-book "../books/owner-retain-carried") ; the pilot row and its open
 (include-book "../books/owner-post-carried") ; actual refusal/known-abort writers
 (include-book "owner-retain-host")
-(include-book "../books/owner-retain-live")
+(include-book "../books/owner-retain-captured-open-frame")
 
 (def-carried fn-owner-served-carried
   :invariant fn-owner-retain-retained-statep
@@ -93,6 +93,7 @@
                 (fn-owner-close fn-owner-retain-close-keeps-retained-state)
                 (fn-owner-fault fn-owner-retain-fault-keeps-retained-state)
                 (fn-owner-open-peer fn-owner-retain-open-peer-keeps-retained-state)
+                (fn-owner-open fn-owner-retain-open-keeps-retained-state)
                 (fn-owner-install-node-secret fn-owner-retain-install-node-secret-keeps-retained-state)
                 (fn-owner-apply-limit-profile fn-owner-retain-apply-limit-profile-keeps-retained-state))
   :concludes ((fn-sn-statep fn-owner-retain-retained-statep-implies-entry-guard)
@@ -209,7 +210,7 @@
                 fn-owner-memory-gate-install
                 fn-owner-moderation-plan
                 fn-owner-next-store-coordinates fn-owner-next-txid
-                fn-owner-observe fn-owner-oex-capture fn-owner-open
+                fn-owner-observe fn-owner-oex-capture
                 fn-owner-operator-refusal-reason fn-owner-operator-submit
                 fn-owner-orc-capture fn-owner-orc-finish
                 fn-owner-orc-instant-stage fn-owner-orc-request

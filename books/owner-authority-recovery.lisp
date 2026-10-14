@@ -27,7 +27,7 @@
          (fn-ost-authority state))
   :hints (("Goal" :in-theory
            (union-theories
-            '(fn-owner-install-extended fn-oauth-recovery-writers-frame
+            '(fn-owner-install-extended fn-ost-install-readers fn-oauth-recovery-writers-frame
               fn-ost-authority-of-other-global-put
               mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)

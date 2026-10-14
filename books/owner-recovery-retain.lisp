@@ -239,6 +239,9 @@
                               (:rewrite fn-orr-record-listp-implies-values)
                               (:rewrite fn-owner-core-is-configured-owner-by-definition)
                               (:rewrite fn-owner-open-state-p1)
+                              (:rewrite fn-ost-install-readers-preserves-state-p1)
+                              (:rewrite fn-ost-install-readers-frames-global-association)
+                              (:rewrite fn-ost-install-readers-frames-boundp-global)
                               (:rewrite fn-owner-retain-carry-put-frames-global-association)
                               (:rewrite fn-owner-retain-carry-put-preserves-state-p1)
                               (:rewrite fn-sca-held-rowsp-of-record-values)
@@ -260,9 +263,12 @@
    (t
       (let* ((state (f-put-global 'fn-owner-identity-grant nil state))
          (state (fn-owner-authority-proposal-clear state))
+         ; Captures and their cache belong to the discarded Store. Reset both
+         ; in this same logical install, before the host call returns.
          ; Cold reset occurs before physical recovery under lifecycle exclusion.
          ; Preserve the epoch captured by the issued recovery source.
              (state (fn-owner-install-open-ocfg oc state))
+             (state (fn-ost-install-readers (fn-ordr-initial) state))
              ; PRF-289: the carried obligation-id trie for the ledger the
              ; owner opens with (books/post-retain-carried.lisp
              ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the
@@ -370,7 +376,7 @@
                         oc extended key fn-arena fn-cat fn-hist state)))))
   :hints (("Goal" :in-theory
            (union-theories
-            '(fn-owner-install-extended fn-ost-install-publication mv-nth nth zp car-cons cdr-cons
+            '(fn-owner-install-extended fn-ost-install-publication fn-ost-install-readers mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)
               fn-owner-retain-carry-of-put
@@ -378,6 +384,25 @@
               fn-orr-writer-enter-frame fn-orr-writer-leave-frame
               fn-prc-carryp-of-refresh (:executable-counterpart fn-prc-carryp))
             (theory 'minimal-theory)))))
+
+; The reset reader record passes through the report writer's bracket.
+(local
+ (defthm fn-b-k1-readers-of-writer-enter
+  (equal (fn-ost-readers (fn-orc-writer-enter state)) (fn-ost-readers state))
+  :hints (("Goal" :in-theory '(fn-orc-writer-enter fn-ost-readers-of-other-global-put)))))
+(local
+ (defthm fn-b-k1-readers-of-writer-leave
+  (equal (fn-ost-readers (fn-orc-writer-leave state)) (fn-ost-readers state))
+  :hints (("Goal" :in-theory '(fn-orc-writer-leave fn-ost-readers-of-other-global-put)))))
+(local
+ (defthm fn-b-k1-readers-of-retain-carry-put
+  (equal (fn-ost-readers (fn-owner-retain-carry-put carry state)) (fn-ost-readers state))
+  :hints (("Goal" :in-theory '(fn-owner-retain-carry-put fn-ost-readers-of-other-global-put)))))
+(local
+ (defthm fn-b-k1-readers-of-readers-put
+  (equal (fn-ost-readers (f-put-global 'fn-owner-reader-views r state)) r)
+  :hints (("Goal" :use ((:instance fn-ost-readers-of-install))
+    :in-theory '(fn-ost-install-readers)))))
 
 (defthm fn-owner-install-extended-establishes-retain-state
   (implies (and (fn-onb-open-okp (fn-ocfg-owner oc))
@@ -388,7 +413,13 @@
   :hints (("Goal" :cases ((equal oc :fault)) :in-theory
            (union-theories
             '((:executable-counterpart fn-lgoc-invariantp)
-              fn-owner-install-extended fn-ost-install-publication fn-owner-retain-statep
+              fn-owner-install-extended fn-ost-install-publication fn-ost-install-readers
+              fn-owner-retain-statep fn-owner-captured-view-follows-store
+              fn-owner-reader-views-of-other-global-put
+              fn-owner-reader-views fn-ordr-get fn-ordr-views fn-ordr-initial fn-ordr-make
+              fn-captured-views-follow-ocfg fn-ost-readers-of-other-global-put
+              fn-b-k1-readers-of-writer-enter fn-b-k1-readers-of-writer-leave
+              fn-b-k1-readers-of-readers-put fn-b-k1-readers-of-retain-carry-put
               mv-nth nth zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--)

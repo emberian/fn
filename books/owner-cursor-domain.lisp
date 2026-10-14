@@ -386,6 +386,7 @@
            (union-theories (theory 'minimal-theory)
             '(fn-owner-install-extended fn-owner-cursor-store-by-definition
               fn-ost-install-publication-frames-get-global
+              fn-ost-install-readers-frames-get-global
               fn-owner-ocfg fn-ocd-writer-owner-frame fn-ocd-get-owner-of-other-put
               fn-ocd-get-owner-of-retain-carry-put fn-ocd-get-owner-of-open-install
               mv-nth nth zp car-cons cdr-cons)))))
@@ -424,6 +425,7 @@
            (union-theories (theory 'minimal-theory)
             '(fn-owner-orcp-swap fn-owner-cursor-store-by-definition
               fn-ost-install-publication-frames-get-global
+              fn-ost-install-readers-frames-get-global
               fn-owner-put-credits fn-owner-ocfg fn-ocd-get-owner-of-other-put
               fn-ocd-get-owner-of-retain-carry-put fn-ocd-get-owner-of-install
               fn-owner-cursor-swapped-store

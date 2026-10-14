@@ -9,10 +9,13 @@
 
 (defthm fn-orh-retain-statep-of-other-global-put
   (implies (and (not (equal key 'fn-owner))
-                (not (equal key 'fn-owner-retain-carry)))
+                (not (equal key 'fn-owner-retain-carry))
+                (not (equal key 'fn-owner-reader-views)))
            (equal (fn-owner-retain-statep (f-put-global key value state))
                   (fn-owner-retain-statep state)))
   :hints (("Goal" :in-theory '(fn-owner-retain-statep
+                               fn-owner-captured-view-follows-store
+                               fn-owner-reader-views-of-other-global-put
                                fn-owner-ocfg-of-other-global-put
                                fn-owner-bound-of-other-global-put
                                fn-owner-retain-carry-of-other-global-put))))
@@ -25,9 +28,12 @@
 
 (defthm fn-orh-retain-statep-of-install-ocfg
   (implies (and (fn-owner-retain-statep state)
-                (fn-lgoc-invariantp oc))
+                (fn-lgoc-invariantp oc)
+                (fn-captured-views-follow-ocfg (fn-owner-reader-views state) oc))
            (fn-owner-retain-statep (fn-owner-install-ocfg oc state)))
   :hints (("Goal" :in-theory '(fn-owner-retain-statep
+                               fn-owner-captured-view-follows-store
+                               fn-owner-reader-views-of-install-ocfg
                                fn-owner-bound-of-install-ocfg
                                fn-owner-ocfg-of-install-ocfg
                                fn-owner-retain-carry-of-install-ocfg))))
@@ -37,6 +43,7 @@
                 (fn-prc-carryp carry))
            (fn-owner-retain-statep (fn-owner-retain-carry-put carry state)))
   :hints (("Goal" :in-theory '(fn-owner-retain-statep
+                               fn-owner-captured-view-of-retain-carry-put
                                fn-owner-bound-of-retain-carry-put
                                fn-owner-ocfg-of-retain-carry-put
                                fn-owner-retain-carry-of-put))))

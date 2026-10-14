@@ -5,6 +5,7 @@
 (include-book "owner-retain-carried")
 (include-book "owner-retain-livep")
 (include-book "owner-retain-frame")
+(local (include-book "owner-retain-captured-live-frame"))
 (include-book "owner-host-relation")
 
 (local
@@ -35,7 +36,7 @@
               fn-owner-install-open-ocfg fn-owner-ocfg-of-install-ocfg
               fn-owner-ocfg-of-retain-carry-put fn-owner-ocfg-of-other-global-put
               fn-owner-authority-proposal-clear fn-orc-writer-enter fn-orc-writer-leave
-              fn-ost-install-publication mv-nth nth endp zp car-cons cdr-cons
+              fn-ost-install-publication fn-ost-install-readers mv-nth nth endp zp car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+)
               (:executable-counterpart unary--))))))
 
@@ -398,7 +399,8 @@
 
 (defthm fn-owner-retain-retained-statep-of-other-global-put
   (implies (and (not (equal key 'fn-owner))
-                (not (equal key 'fn-owner-retain-carry)))
+                (not (equal key 'fn-owner-retain-carry))
+                (not (equal key 'fn-owner-reader-views)))
            (equal (fn-owner-retain-retained-statep (f-put-global key value state))
                   (fn-owner-retain-retained-statep state)))
   :hints (("Goal" :in-theory '(fn-owner-retain-retained-statep
@@ -406,7 +408,8 @@
               fn-owner-ocfg-of-other-global-put))))
 (defthm fn-owner-retain-retained-statep-of-install-ocfg
   (implies (and (fn-owner-retain-retained-statep state)
-                (fn-lgoc-invariantp oc) (fn-osr-retainedp (fn-sbud-oc-store oc)))
+                (fn-lgoc-invariantp oc) (fn-osr-retainedp (fn-sbud-oc-store oc))
+                (fn-captured-views-follow-ocfg (fn-owner-reader-views state) oc))
            (fn-owner-retain-retained-statep (fn-owner-install-ocfg oc state)))
   :hints (("Goal" :in-theory '(fn-owner-retain-retained-statep
               fn-orh-retain-statep-of-install-ocfg fn-owner-store-is-configured-store-by-definition fn-sbud-oc-store
@@ -569,7 +572,8 @@
 ; Group A frame: reads of the owner and the retention carry determine livep.
 (defthm fn-owner-retain-livep-of-other-global-put
   (implies (and (not (equal key 'fn-owner))
-                (not (equal key 'fn-owner-retain-carry)))
+                (not (equal key 'fn-owner-retain-carry))
+                (not (equal key 'fn-owner-reader-views)))
            (equal (fn-owner-retain-livep (f-put-global key value state) fn-arena)
                   (fn-owner-retain-livep state fn-arena)))
   :hints (("Goal" :in-theory
@@ -581,7 +585,8 @@
                  (fn-lgoc-invariantp oc)
                  (equal (fn-sbud-oc-store oc) (fn-owner-store state)))
             (fn-owner-retain-livep (fn-owner-install-ocfg oc state) fn-arena))
-   :hints (("Goal" :in-theory
+   :hints (("Goal" :use (fn-k1-same-store-install-preserves-livep)
+            :in-theory
             '(fn-owner-retain-livep fn-orh-retain-statep-of-install-ocfg
               fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg)))))
 
@@ -2105,7 +2110,14 @@
   :HINTS
   (("Goal"
     :USE
-    (FN-OWNER-RETAIN-STATEP-IMPLIES-LGOC
+    (FN-K1-RETAIN-STATEP-IMPLIES-CAPTURED-VIEWS
+     (:INSTANCE FN-K1-ARTICLE-PREPARE-CAPTURED-VIEWS
+      (OC (FN-OWNER-OCFG STATE)) (VIEWS (FN-OWNER-READER-VIEWS STATE))
+      (RECORD (FN-INTERN-ROW-AT RECORD (FN-SN-KEYRING (FN-OWNER-STORE STATE))
+                 (FN-SN-KEYRING-GENERATION (FN-OWNER-STORE STATE)) (FN-ARENA-COUNT FN-ARENA)))
+      (CARRY (FN-PRC-REFRESH (FN-OWNER-RETAIN-CARRY STATE)
+                 (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE))))))
+     FN-OWNER-RETAIN-STATEP-IMPLIES-LGOC
      (:INSTANCE
           FN-PRC-CARRYP-OF-REFRESH
           (CARRY (FN-OWNER-RETAIN-CARRY STATE))
@@ -2139,6 +2151,7 @@
                   (FN-NODE-RETENTION (FN-SN-NODE (FN-OWNER-STORE STATE)))))))
     :IN-THEORY
     '(FN-OWNER-RETAIN-LIVEP FN-OWNER-RETAIN-STATEP
+       FN-OWNER-CAPTURED-VIEW-OF-INSTALL-OCFG FN-OWNER-READER-VIEWS-OF-RETAIN-CARRY-PUT
                             FN-POUT-PREPARE-ARTICLE
                             FN-ORH-RETAIN-STATEP-OF-RETAIN-CARRY-PUT
                             FN-ORH-RETAIN-STATEP-OF-INSTALL-OCFG
@@ -3065,12 +3078,12 @@
   (implies (fn-owner-retain-retained-statep state)
            (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-apply-limit-profile values state))))
 :hints (("Goal"
-           :use ((:instance fn-ohr-osb-install-preserves-carried-relation
+           :use (fn-owner-apply-limit-profile-preserves-retain-state fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-osb-install-preserves-carried-relation
                             (oc (fn-owner-ocfg state)) (profile values)))
            :in-theory
-           '(fn-owner-apply-limit-profile fn-owner-replace-core fn-owner-ocfg
+           '(fn-owner-ocfg-of-other-global-put fn-owner-ocfg-of-install-ocfg fn-orh-retain-statep-of-other-global-put fn-owner-apply-limit-profile fn-owner-replace-core fn-owner-ocfg
              fn-owner-core-is-configured-owner-by-definition
-             fn-owner-retain-retained-statep fn-owner-retain-statep
+             fn-owner-retain-retained-statep
              fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-retained-statep-of-other-global-put
              fn-owner-retain-store-projection fn-owner-retain-lgoc-owner-shape
              fn-sbud-oc-store fn-ocfg-with-owner fn-ocfg-owner-of-fn-ocfg-make
@@ -3080,7 +3093,7 @@
 (defthm fn-owner-retain-close-keeps-retained-state
   (implies (fn-owner-retain-retained-statep state)
            (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-close id fn-arena state))))
- :hints (("Goal" :use (fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-step-close-preserves-carried-relation (oc (fn-owner-ocfg state))) (:instance fn-ohr-close-keeps-store (oc (fn-owner-ocfg state))) (:instance fn-owner-callback-close-branch-unfolds (oc (fn-owner-ocfg state)))) :in-theory '(fn-owner-close fn-owner-callback-close fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-retain-store-projection fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-retained-statep-of-install-ocfg fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+ :hints (("Goal" :use (fn-owner-close-preserves-retain-state fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-step-close-preserves-carried-relation (oc (fn-owner-ocfg state))) (:instance fn-ohr-close-keeps-store (oc (fn-owner-ocfg state))) (:instance fn-owner-callback-close-branch-unfolds (oc (fn-owner-ocfg state)))) :in-theory '(fn-owner-ocfg-of-install-ocfg fn-orh-retain-statep-of-other-global-put fn-owner-close fn-owner-callback-close fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-retained-statep  fn-owner-retain-store-projection fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-retained-statep-of-install-ocfg fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
 
 (defthm fn-owner-retain-close-keeps-live
   (implies (fn-owner-retain-livep state fn-arena)
@@ -3090,7 +3103,7 @@
 (defthm fn-owner-retain-fault-keeps-retained-state
   (implies (fn-owner-retain-retained-statep state)
            (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-fault id state))))
- :hints (("Goal" :use (fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-fault-preserves-carried-relation (oc (fn-owner-ocfg state))) (:instance fn-ohr-fault-keeps-store (oc (fn-owner-ocfg state)))) :in-theory '(fn-owner-fault fn-owner-callback-fault fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-retain-store-projection fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-retained-statep-of-install-ocfg fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+ :hints (("Goal" :use (fn-owner-fault-preserves-retain-state fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-fault-preserves-carried-relation (oc (fn-owner-ocfg state))) (:instance fn-ohr-fault-keeps-store (oc (fn-owner-ocfg state)))) :in-theory '(fn-owner-ocfg-of-install-ocfg fn-orh-retain-statep-of-other-global-put fn-owner-fault fn-owner-callback-fault fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-retained-statep  fn-owner-retain-store-projection fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-retained-statep-of-install-ocfg fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
 
 (defthm fn-owner-retain-fault-keeps-live
   (implies (fn-owner-retain-livep state fn-arena)
@@ -3101,12 +3114,12 @@
   (implies (fn-owner-retain-retained-statep state)
            (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-install-node-secret ring state))))
 :hints (("Goal"
-           :use ((:instance fn-ohr-with-node-secret-preserves-carried-relation
+           :use (fn-owner-install-node-secret-preserves-retain-state fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-with-node-secret-preserves-carried-relation
                             (oc (fn-owner-ocfg state)) (secret ring)))
            :in-theory
-           '(fn-owner-install-node-secret fn-owner-replace-core fn-owner-ocfg
+           '(fn-owner-ocfg-of-other-global-put fn-owner-ocfg-of-install-ocfg fn-orh-retain-statep-of-other-global-put fn-owner-install-node-secret fn-owner-replace-core fn-owner-ocfg
              fn-owner-core-is-configured-owner-by-definition
-             fn-owner-retain-retained-statep fn-owner-retain-statep
+             fn-owner-retain-retained-statep
              fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-store-projection
              fn-sbud-oc-store fn-ocfg-with-owner fn-own-with-node-secret
              fn-ocfg-owner-of-fn-ocfg-make fn-own-store-of-fn-own-make
@@ -3115,8 +3128,8 @@
 (defthm fn-owner-retain-observe-keeps-retained-state
   (implies (fn-owner-retain-retained-statep state)
            (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-observe monotonic wall wall-error has-wall state))))
-:hints (("Goal" :in-theory
-           '(fn-owner-observe fn-owner-retain-retained-statep fn-owner-retain-statep
+:hints (("Goal" :use ((:instance fn-owner-retain-observe-model-frame (oc (fn-owner-ocfg state)) (obs (fn-clock-observation monotonic wall wall-error has-wall))) fn-k1-retain-statep-implies-captured-views (:instance fn-k1-captured-views-follow-same-store (oc0 (fn-owner-ocfg state)) (oc (fn-ocfg-observe (fn-owner-ocfg state) (fn-clock-observation monotonic wall wall-error has-wall))) (views (fn-owner-reader-views state)))) :in-theory
+           '(fn-owner-captured-view-of-install-ocfg fn-owner-reader-views-of-install-ocfg fn-owner-retain-carry-of-install-ocfg fn-owner-ocfg-of-install-ocfg fn-owner-bound-of-install-ocfg fn-sbud-oc-store fn-owner-observe fn-owner-retain-retained-statep fn-owner-retain-statep
              fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-store-projection
              fn-owner-retain-observe-model-frame
              mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--)))))
@@ -3124,7 +3137,7 @@
 (defthm fn-owner-retain-open-peer-keeps-retained-state
   (implies (fn-owner-retain-retained-statep state)
            (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-open-peer peer-octets state))))
- :hints (("Goal" :use (fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-open-peer-preserves-carried-relation (oc (fn-owner-ocfg state)) (peer (fn-store-octets->string peer-octets)) (acfg (fn-owner-auth state))) (:instance fn-ohr-open-peer-keeps-store-and-view (oc (fn-owner-ocfg state)) (peer (fn-store-octets->string peer-octets)) (acfg (fn-owner-auth state)))) :in-theory '(fn-owner-open-peer fn-owner-callback-open-peer fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-retain-store-projection fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-retained-statep-of-install-ocfg fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
+ :hints (("Goal" :use (fn-owner-open-peer-preserves-retain-state fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-open-peer-preserves-carried-relation (oc (fn-owner-ocfg state)) (peer (fn-store-octets->string peer-octets)) (acfg (fn-owner-auth state))) (:instance fn-ohr-open-peer-keeps-store-and-view (oc (fn-owner-ocfg state)) (peer (fn-store-octets->string peer-octets)) (acfg (fn-owner-auth state)))) :in-theory '(fn-owner-ocfg-of-install-ocfg fn-orh-retain-statep-of-other-global-put fn-owner-open-peer fn-owner-callback-open-peer fn-owner-callback-install-effects fn-owner-install-served-effects fn-owner-put-credits fn-owner-retain-retained-statep  fn-owner-retain-store-projection fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-retained-statep-of-install-ocfg fn-sbud-oc-store fn-owner-ocfg-of-other-global-put mv-nth nth zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))
 
 (defthm fn-owner-retain-open-peer-keeps-live
   (implies (fn-owner-retain-livep state fn-arena)
@@ -3134,10 +3147,10 @@
 (defthm fn-owner-retain-reconfigure-unstage-keeps-retained-state
   (implies (fn-owner-retain-retained-statep state)
            (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-reconfigure-unstage state))))
-:hints (("Goal" :use ((:instance fn-psrv-unstage-preserves-invariant
+:hints (("Goal" :use (fn-k1-retain-statep-implies-captured-views (:instance fn-k1-captured-views-follow-same-store (oc0 (fn-owner-ocfg state)) (oc (fn-psrv-unstage (fn-owner-ocfg state))) (views (fn-owner-reader-views state))) (:instance fn-psrv-unstage-preserves-invariant
                                   (oc (fn-owner-ocfg state))))
            :in-theory
-           '(fn-owner-reconfigure-unstage fn-owner-authority-proposal-clear
+           '(fn-owner-reader-views-of-other-global-put fn-owner-retain-carry-of-other-global-put fn-owner-captured-view-of-install-ocfg fn-owner-reader-views-of-install-ocfg fn-owner-retain-carry-of-install-ocfg fn-owner-ocfg-of-install-ocfg fn-owner-bound-of-install-ocfg fn-owner-reconfigure-unstage fn-owner-authority-proposal-clear
              fn-owner-retain-retained-statep fn-owner-retain-statep
              fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-retained-statep-of-other-global-put
              fn-owner-ocfg-of-other-global-put fn-owner-retain-store-projection
@@ -3202,7 +3215,7 @@
  (implies (fn-owner-retain-retained-statep state)
           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-refuse-reservation fn-arena state))))
  :hints (("Goal" :use (fn-owner-refuse-reservation-preserves-retain-state (:instance fn-owner-retain-refuse-model-retained (oc (fn-owner-ocfg state))) fn-owner-retain-statep-implies-lgoc)
- :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-refuse-reservation
+ :in-theory '(fn-orh-retain-statep-of-other-global-put fn-owner-retain-retained-statep  fn-owner-refuse-reservation
   fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
   mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
 
@@ -3210,7 +3223,7 @@
  (implies (fn-owner-retain-retained-statep state)
           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-known-abort fn-arena state))))
  :hints (("Goal" :use (fn-owner-known-abort-preserves-retain-state fn-owner-retain-known-abort-retained fn-owner-retain-statep-implies-lgoc)
- :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-known-abort
+ :in-theory '(fn-orh-retain-statep-of-other-global-put fn-owner-retain-retained-statep  fn-owner-known-abort
   fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
   mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
 
@@ -3218,7 +3231,7 @@
  (implies (fn-owner-retain-retained-statep state)
           (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-io op result state))))
  :hints (("Goal" :use ((:instance fn-owner-io-preserves-retain-state (operation op)) fn-owner-retain-io-retained-without-arena fn-owner-retain-statep-implies-lgoc)
- :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-io
+ :in-theory '(fn-orh-retain-statep-of-other-global-put fn-owner-retain-retained-statep  fn-owner-io
   fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
   mv-nth nth endp zp car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e unary--)))))
 
@@ -3241,10 +3254,10 @@
 (local (defthm fn-owner-retain-step-take-keeps-retained-state
   (implies (fn-owner-retain-retained-statep state)
            (fn-owner-retain-retained-statep (fn-owner-step (list :take) fn-arena state)))
-  :hints (("Goal" :use ((:instance fn-ohr-step-take-preserves-carried-relation
+  :hints (("Goal" :use (fn-owner-step-take-preserves-retain-state fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-step-take-preserves-carried-relation
                                   (oc (fn-owner-ocfg state))))
            :in-theory
-           '(fn-owner-step fn-owner-retain-retained-statep fn-owner-retain-statep
+           '(fn-owner-ocfg-of-other-global-put fn-owner-ocfg-of-install-ocfg fn-orh-retain-statep-of-other-global-put fn-owner-step fn-owner-retain-retained-statep
              fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-store-projection
              fn-owner-retain-step-take-store-frame)))))
 
@@ -3261,10 +3274,10 @@
 (local (defthm fn-owner-retain-step-control-submit-keeps-retained-state
   (implies (fn-owner-retain-retained-statep state)
            (fn-owner-retain-retained-statep (fn-owner-step (list :control-submit msgid groups octets) fn-arena state)))
-  :hints (("Goal" :use ((:instance fn-ohr-step-control-submit-preserves-carried-relation
+  :hints (("Goal" :use (fn-owner-step-control-submit-preserves-retain-state fn-owner-retain-statep-implies-lgoc (:instance fn-ohr-step-control-submit-preserves-carried-relation
                                   (oc (fn-owner-ocfg state))))
            :in-theory
-           '(fn-owner-step fn-owner-retain-retained-statep fn-owner-retain-statep
+           '(fn-owner-ocfg-of-other-global-put fn-owner-ocfg-of-install-ocfg fn-orh-retain-statep-of-other-global-put fn-owner-step fn-owner-retain-retained-statep
              fn-owner-retain-retained-statep-of-install-ocfg fn-owner-retain-store-projection
              fn-owner-retain-step-control-submit-store-frame)))))
 
@@ -3358,7 +3371,7 @@
 (defthm fn-owner-retain-prepare-retention-keeps-retained-state
  (implies (fn-owner-retain-retained-statep state) (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-prepare-retention kind id-octets subject-octets evidence-octets charge fn-arena state))))
  :hints (("Goal" :use (fn-owner-prepare-retention-preserves-retain-state fn-owner-retain-statep-implies-lgoc)
- :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep fn-owner-prepare-retention fn-owner-retain-idrp-keeps-retained fn-owner-idrp-install-preserves-lgoc
+ :in-theory '(fn-orh-retain-statep-of-other-global-put fn-owner-retain-retained-statep  fn-owner-prepare-retention fn-owner-retain-idrp-keeps-retained fn-owner-idrp-install-preserves-lgoc
   fn-owner-retain-store-projection fn-owner-ocfg-of-install-ocfg fn-owner-ocfg-of-other-global-put
   fn-owner-retain-retained-statep-of-other-global-put fn-owner-retain-livep-of-other-global-put
   fn-rfcl-idrp-prepare-retention-keeps-okp mv-nth nth endp zp car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)))))

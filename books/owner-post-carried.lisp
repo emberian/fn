@@ -11,6 +11,7 @@
 (include-book "owner-prepare-outcome")
 (include-book "owner-prepare-served-ocl")
 (include-book "owner-log-ocl")
+(include-book "owner-retain-captured-host-frame")
 
 (def-carried-profile fn-owner-post-retain
   :invariant fn-owner-retain-statep
@@ -76,7 +77,10 @@
 (def-carried-writer fn-owner-refuse-reservation
   :profile fn-owner-post-retain
   :bridges ((fn-sn-statep fn-owner-retain-statep-implies-entry-guard))
-  :via (fn-pout-refuse-reservation-preserves-owner-invariant))
+  :via (fn-pout-refuse-reservation-preserves-owner-invariant
+        fn-k1-retain-statep-implies-captured-views
+        (fn-k1-pout-refuse-reservation-captured-views
+         (views (fn-owner-reader-views state)))))
 
 (defun fn-owner-known-abort (fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :verify-guards nil
@@ -99,7 +103,10 @@
 (def-carried-writer fn-owner-known-abort
   :profile fn-owner-post-retain
   :bridges ((fn-sn-statep fn-owner-retain-statep-implies-entry-guard))
-  :via (fn-pout-known-abort-preserves-owner-invariant))
+  :via (fn-pout-known-abort-preserves-owner-invariant
+        fn-k1-retain-statep-implies-captured-views
+        (fn-k1-pout-known-abort-captured-views
+         (views (fn-owner-reader-views state)))))
 
 (defthm fn-owner-refuse-reservation-exact-effects
   (let* ((result (fn-owner-refuse-reservation fn-arena state))

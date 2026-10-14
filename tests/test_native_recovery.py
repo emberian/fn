@@ -303,6 +303,61 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
 
 
 @unittest.skipUnless(executable(DEVELOPER), "the developer image is absent")
+class NativeRecoveryCapturedReaderTests(unittest.TestCase):
+    def test_store_open_recovery_discards_a_preexisting_reader_capture(self):
+        # One saved-image process: unlike a CLI restart, its readers global
+        # survives until the same recovery interface used by native/owner.lisp
+        # replaces the owner. ACL2 creates the store-open receipt and bytes.
+        with Acl2Session(DEVELOPER) as bridge:
+            def call(form):
+                result = bridge.call(form)
+                self.assertNotIn(b"ACL2 Error", result, result)
+                return result
+
+            def holds(form):
+                self.assertEqual(acl2_result(call(form)).upper(), b"T")
+
+            call("(defconst *b-native-k1-configs* (list *fn-cfg-default-record*))")
+            call("(defconst *b-native-k1-config* "
+                 "(fn-config-replay 0 (fn-cnode-line-ceiling) *b-native-k1-configs*))")
+            call("(defconst *b-native-k1-before* "
+                 "(let* ((opened (fn-cpo-open-observed *b-native-k1-configs* 1 nil)) "
+                 "(store (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-open-state opened) "
+                 ":recovery-barrier :ok) :recovery-barrier :ok) :recovery-barrier :ok))) "
+                 "(fn-ocfg-make (fn-own-start store 4) *b-native-k1-config* nil nil)))")
+            call("(fn-owner-install-ocfg *b-native-k1-before* state)")
+            call("(fn-owner-retain-carry-put nil state)")
+            call("(fn-ost-install-readers (fn-ordr-initial) state)")
+            # Capture through the actual host entry, not a synthetic global put.
+            call("(fn-owner-reader-views-capture :start state)")
+            holds("(and (consp (fn-owner-reader-views state)) "
+                  "(equal (fn-own-view-frontier (car (fn-owner-reader-views state))) 1) "
+                  "(fn-owner-retain-statep state))")
+
+            call("(f-put-global 'fn-store-sco-open "
+                 "(let ((extended (fn-sco-capture *b-native-k1-configs* nil))) "
+                 "(cons extended (fn-sco-store-open extended *b-native-k1-configs* 0))) state)")
+            call("(fn-owner-catalog-root-reserve state)")
+            recovered = call("(fn-owner-recover-from-store-open 4 nil "
+                             "fn-arena fn-cat fn-hist state)")
+            self.assertIn(b":RECOVERING", recovered.upper())
+            holds("(and (equal (fn-ost-readers state) (fn-ordr-initial)) "
+                  "(null (fn-owner-reader-views state)) "
+                  "(equal (fn-sf-frontier (fn-sn-files (fn-owner-store state))) 0) "
+                  "(fn-owner-retain-statep state))")
+
+            # The real open callback's emitted greeting must be the recovered
+            # store's served open, with no discarded capture substituted.
+            call("(f-put-global 'b-native-k1-expected-reply "
+                 "(fn-served-reply-octets "
+                 "(car (fn-ocfg-open (fn-owner-ocfg state) (fn-owner-auth state)))) state)")
+            call("(fn-owner-open state)")
+            holds("(and (consp (f-get-global 'b-native-k1-expected-reply state)) "
+                  "(equal (fn-served-reply-octets (f-get-global 'fn-owner-effects state)) "
+                  "(f-get-global 'b-native-k1-expected-reply state)))")
+
+
+@unittest.skipUnless(executable(DEVELOPER), "the developer image is absent")
 class StagingSweepDecisionTests(unittest.TestCase):
     """The ACL2 sweep decision itself, evaluated in the developer image's session."""
 

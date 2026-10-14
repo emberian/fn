@@ -78,6 +78,7 @@
 
 (in-package "ACL2")
 (include-book "def-carried")
+(local (include-book "owner-retain-captured-frames"))
 (include-book "owner-recovery-retain")
 (include-book "owner-cursor-domain") ; fn-owner-prepare-consumer, -topic
 (include-book "assumptions-recovery") ; A-RECOVERED-OPEN
@@ -158,6 +159,9 @@
              fn-pdc-pout-prepare-consumer mv-nth nth zp car-cons cdr-cons
              fn-owner-bound-of-install-ocfg fn-owner-ocfg-of-install-ocfg
              fn-owner-retain-carry-of-install-ocfg
+             fn-owner-captured-view-follows-store
+             fn-owner-reader-views-of-install-ocfg
+             fn-k1-captured-views-of-prepare-consumer
              fn-pdc-ocfg-prepare-consumer-preserves-invariant))))
 (defthm fn-owner-prepare-topic-preserves-retain-state
   (implies (fn-owner-retain-statep state)
@@ -168,6 +172,9 @@
              fn-pdc-pout-prepare-topic mv-nth nth zp car-cons cdr-cons
              fn-owner-bound-of-install-ocfg fn-owner-ocfg-of-install-ocfg
              fn-owner-retain-carry-of-install-ocfg
+             fn-owner-captured-view-follows-store
+             fn-owner-reader-views-of-install-ocfg
+             fn-k1-captured-views-of-prepare-topic
              fn-pdc-psrv-prepare-topic-preserves-invariant))))
 
 ; -----------------------------------------------------------------------------
