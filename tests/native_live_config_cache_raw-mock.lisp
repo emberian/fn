@@ -22,6 +22,12 @@
 (defun fnn-config-memory-edge-stage (cid stage)
   (declare (ignorable cid stage))
   (harness-stub-reached 'fnn-config-memory-edge-stage "host/native/admin.lisp"))
+(defun fnn-err (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-err "host/native/io.lisp"))
+(defun fnn-global (name)
+  (declare (ignorable name))
+  (harness-stub-reached 'fnn-global "host/native/io.lisp"))
 (defun fnn-operator-slot-test-stage (cid stage)
   (declare (ignorable cid stage))
   (harness-stub-reached 'fnn-operator-slot-test-stage "host/native/admin.lisp"))
@@ -220,6 +226,12 @@
     (fn-orp-step (multiple-value-list (apply #'fn-orp-step args)))
     (otherwise (error "unexpected dispatched call ~s" name))))
 
+; Load the actual selector-guarded printer; the fixture's selector is NIL.
+(with-open-file (stream "host/native/mux.lisp")
+ (loop for form = (read stream nil :eof) until (eq form :eof)
+       when (and (consp form) (eq (car form) 'defun)
+                 (eq (cadr form) 'fnn-owner-memory-print-capacity))
+       do (eval form) (return)))
 (with-open-file (stream "host/native/admin.lisp")
   (let ((wanted '(fnn-reconfig fnn-owner-live-reconfigure fnn-rc-begin fnn-rc-advance
                   fnn-rc-next-feed-event fnn-rc-prime fnn-rc-resignal fnn-rc-do-stage

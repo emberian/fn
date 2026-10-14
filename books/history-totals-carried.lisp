@@ -37,6 +37,7 @@
 (in-package "ACL2")
 (include-book "history-columns-store")
 (include-book "charged-totals")
+(include-book "owner-memory-stored")
 
 
 (local (in-theory (disable (tau-system))))
@@ -490,3 +491,56 @@
 ; Verify the existing bounded reader, without changing its statement or fold.
 (verify-guards fn-hist-totals-advance)
 (verify-guards fn-hist-totals-carried)
+
+; MOST advances in the same bounded, tail-recursive history-column pattern.
+(defun fn-hist-stored-most-advance (k count most fn-hist)
+  (declare (xargs :stobjs fn-hist
+                  :guard (and (natp k) (natp count) (natp most) (<= count (fn-hist-count fn-hist)))
+                  :measure (nfix (- (nfix count) (nfix k)))
+                  :verify-guards nil))
+  (if (and (natp k) (natp count) (< k count))
+      (fn-hist-stored-most-advance
+       (1+ k) count
+       (max most (fn-adm-stored-article-most (list (fn-hist-at k fn-hist)))) fn-hist)
+    most))
+
+(defun fn-hist-stored-most-carried (cache s fn-hist)
+  (declare (xargs :stobjs fn-hist :guard t :verify-guards nil))
+  (let ((count (fn-hist-count fn-hist)))
+    (if (and (consp cache) (natp (car cache)) (natp (cdr cache)) (<= (car cache) count))
+        (fn-hist-stored-most-advance (car cache) count (cdr cache) fn-hist)
+      (fn-adm-stored-article-most (fn-sf-records (fn-sn-files s))))))
+
+(local
+ (defthm pin-most-suffix-step
+  (implies (and (natp k) (< k (len records)))
+   (equal (fn-adm-stored-article-most (nthcdr k records))
+    (max (fn-adm-stored-article-most (list (nth k records)))
+         (fn-adm-stored-article-most (nthcdr (1+ k) records)))))
+  :hints (("Goal" :use ((:instance kt-nthcdr-unroll (xs records)))
+                  :in-theory (disable nth nthcdr fn-held-p fn-hstxa-p fn-held-facts fn-hstxa-held fn-hf-octets)))))
+(local
+ (defthm pin-most-of-atom
+  (implies (not (consp records)) (equal (fn-adm-stored-article-most records) 0))))
+(local
+ (defthm pin-most-advance-is-suffix
+  (implies (and (natp k) (<= k (len h)) (natp most))
+   (equal (fn-hist-stored-most-advance k (len h) most h)
+          (max most (fn-adm-stored-article-most (nthcdr k h)))))
+  :hints (("Goal" :induct (fn-hist-stored-most-advance k (len h) most h)
+                  :in-theory (disable nth nthcdr fn-adm-stored-article-most)))))
+(local
+ (defthm pin-most-nthcdr-fix
+  (equal (fn-adm-stored-article-most (nthcdr k (true-list-fix records)))
+         (fn-adm-stored-article-most (nthcdr k records)))
+  :hints (("Goal" :induct (kt-split-ind k records) :in-theory (enable nthcdr)))))
+(local (set-default-hints
+ '((quote (:in-theory (e/d (fn-hist-stored-most-carried fn-adm-stored-most-extend)
+                         (fn-hist-stored-most-advance fn-adm-stored-article-most)))))))
+(defthm fn-hist-stored-most-carried-is-the-extend
+  (implies (equal fn-hist (fn-sf-records (fn-sn-files s)))
+           (equal (fn-hist-stored-most-carried cache s fn-hist)
+                  (fn-adm-stored-most-extend cache (fn-sf-records (fn-sn-files s))))))
+(local (set-default-hints nil))
+(verify-guards fn-hist-stored-most-advance)
+(verify-guards fn-hist-stored-most-carried)

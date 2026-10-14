@@ -2280,6 +2280,14 @@ limit at the carried store); the gate alone answers :hold."
                 *fnn-owner-cursor-octets-fit*
                 (fnn-global 'fn-owner-memory-cursor-octets)))))))
 
+(defun fnn-owner-memory-print-capacity ()
+  "Print the current ACL2 capacity sentence under the owner mutex."
+  (when (fnn-developer-selector "FN_NATIVE_MEMORY_CAPACITY")
+    (let ((line (fnn-global 'fn-owner-memory-capacity-line)))
+      (unless (fnn-octet-list-p line)
+        (fnn-fault "owner returned a malformed memory capacity line"))
+      (fnn-err "~a" (map 'string #'code-char line)))))
+
 (defun fnn-owner-memory-install (service)
   "Install the run envelope before any actor exists. A BP owner computes C'
 and its diagnostic now; a mux computes them after its startup budget holds."

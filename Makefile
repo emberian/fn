@@ -260,6 +260,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-connection-state \
 	books/owner-connection-callbacks \
 	books/owner-memory-holding \
+	books/owner-memory-commit \
+	tests/acl2/pinned-charge-tests \
+	tests/acl2/pinned-charge-host-tests \
 	books/owner-memory-run \
 	books/memory-run-cost \
 	tests/acl2/owner-memory-holding-tests \
@@ -3381,3 +3384,8 @@ wire-grammar:
 
 wire-grammar-check:
 	$(PYTHON) tools/protocol_emit.py --wire --check
+
+# PIN landing's three actual capacity-text cases; an absent image remains a skip.
+.PHONY: native-pinned-charge
+native-pinned-charge:
+	$(PYTHON) tools/test_budget.py tests.test_native_pinned_charge --logs build/test-budget

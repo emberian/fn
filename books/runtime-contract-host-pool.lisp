@@ -71,7 +71,7 @@
   (<= (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile))) *fn-cbud-reply-status-octets*)
       (fn-mm-large-reply profile cfg))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(fn-mm-large-reply max) (theory 'minimal-theory))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-mm-large-reply fn-mm-served-article-octets max) (theory 'minimal-theory))))))
 
 (defthm fn-hl-leased-pool-within-the-large-term
   (let ((c (fn-hl-rtc-config profile cfg q nstatic qfixed capf)))

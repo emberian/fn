@@ -48,7 +48,7 @@
 (load-deployed-forms "books/public-exposure.lisp"
  '((defun fn-exp-lim-total) (defun fn-exp-admit-decision)))
 (load-deployed-forms "host/owner-host.lisp"
- '((defun fn-owner-memory-gate) (defun fn-owner-memory-reclaim-complete)))
+ '((defun fn-owner-memory-gate-at-most) (defun fn-owner-memory-gate) (defun fn-owner-memory-reclaim-complete)))
 (load-deployed-forms "books/owner-connection-callbacks.lisp"
  '((defun fn-owner-memory-max-conns) (defun fn-owner-memory-capacity-read)
    (defun fn-owner-callback-exposure-limits)))
@@ -67,6 +67,11 @@
 (defun fn-auth-config-requiredp (auth) (declare (ignore auth)) nil)
 (defun fn-owner-memory-run-cfg (r v cfg state)
  (declare (ignore r v cfg state)) (list *configured* nil))
+(defun fn-owner-memory-stored-most (state) (declare (ignore state)) 0)
+(defun fn-adm-pin-octets (conns) (declare (ignore conns)) 0)
+(defun fn-own-conns (owner) (declare (ignore owner)) nil)
+(defun fn-adm-pinned-cfg (cfg pins most) (declare (ignore pins most)) cfg)
+(defun fn-mm-large-reply (profile cfg) (declare (ignore profile cfg)) 21504)
 (defun fn-owner-memory-held (state) (declare (ignore state)) *held*)
 (defun fn-mm-cfg-connections (cfg) (nfix (first cfg)))
 (defun fn-adm-capacity (profile img cfg limit tot)

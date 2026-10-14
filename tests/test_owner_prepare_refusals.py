@@ -64,7 +64,7 @@ def guard_probe_source():
         "fn-sn-article-record": ("s obs mid payload groups id subject evidence charge", "s", ""),
         "fn-owner-record-octets": ("fn-l18-hist state", "(mv 0 fn-l18-hist state)", "fn-l18-hist state"),
         "fn-owner-record-debt": ("fn-l18-hist state", "(mv 0 fn-l18-hist state)", "fn-l18-hist state"),
-        "fn-owner-record-totals": ("fn-l18-hist state", "(mv nil fn-l18-hist state)", "fn-l18-hist state"),
+        "fn-owner-record-totals": ("fn-l18-hist state", "(mv nil 0 fn-l18-hist state)", "fn-l18-hist state"),
         "fn-owner-profile-carry": ("state", "nil", "state"),
         "fn-owner-store-profile": ("state", "nil", "state"),
         "fn-owner-ocfg": ("state", "nil", "state"),
@@ -204,6 +204,8 @@ class OwnerPrepareRefusals(unittest.TestCase):
 (defmacro mv (&rest xs) `(values ,@xs))
 (defmacro mv-let (vars form &body body) `(multiple-value-bind ,vars ,form ,@body))
 (defun len (x) (length x))
+(defun boundp-global (key state) (declare (ignore key state)) nil)
+(defun f-get-global (key state) (declare (ignore key state)) nil)
 '''
         prefix += r'''
 (defvar *reply*)
@@ -228,8 +230,9 @@ class OwnerPrepareRefusals(unittest.TestCase):
 (defun fn-octets-len (buffer) (declare (ignore buffer)) 1)
 (defun fn-owner-record-octets (hist state) (values 0 hist state))
 (defun fn-owner-record-debt (hist state) (values 0 hist state))
-(defun fn-owner-record-totals (hist state) (values nil hist state))
+(defun fn-owner-record-totals (hist state) (values nil 0 hist state))
 (defun fn-owner-memory-gate (state) (declare (ignore state)) '(0 0 0))
+(defun fn-owner-memory-gate-at-most (most state) (declare (ignore most)) (fn-owner-memory-gate state))
 (defun fn-apc-intern-row-at (record &rest args)
  (declare (ignore args)) (assert (fn-record-p record)) (incf *interns*) :row)
 (defun fn-pout-prepare-article (&rest args)
@@ -248,6 +251,11 @@ class OwnerPrepareRefusals(unittest.TestCase):
 (defun fn-record-payload (record) (assert (fn-record-p record)) '(65))
 (defun fnn-fault (&rest args) (error "Unknown prepare word: ~s" args))
 '''
+        prefix += actual("books/public-exposure-selectors.lisp", "fn-exp-at") + "\n"
+        prefix += "(defun fn-owner-memory-held (state) (declare (ignore state)) 0)\n"
+        prefix += "(defun fn-owner-memory-capacity-read (state) (declare (ignore state)) nil)\n"
+        prefix += "(defun fn-adm-run-memory-admitp (&rest args) (declare (ignore args)) t)\n"
+        prefix += "(defun fn-adm-run-article-word (word &rest args) (declare (ignore args)) word)\n"
         for name in ("fn-owner-store", "fn-state-groups", "fn-node-acceptance", "fn-sn-node",
                      "fn-own-clock", "fn-owner-core", "fn-pvc-article-budget-carried",
                      "fn-owner-profile-carry", "fn-owner-store-profile", "fn-sf-records-count",

@@ -20,6 +20,12 @@
 (defun fnn-config-memory-edge-stage (cid stage)
   (declare (ignorable cid stage))
   (harness-stub-reached 'fnn-config-memory-edge-stage "host/native/admin.lisp"))
+(defun fnn-global (name)
+  (declare (ignorable name))
+  (harness-stub-reached 'fnn-global "host/native/io.lisp"))
+(defun fnn-octet-list-p (x)
+  (declare (ignorable x))
+  (harness-stub-reached 'fnn-octet-list-p "host/native/io.lisp"))
 (defun fnn-operator-slot-test-stage (cid stage)
   (declare (ignorable cid stage))
   (harness-stub-reached 'fnn-operator-slot-test-stage "host/native/admin.lisp"))
@@ -240,6 +246,10 @@ order; a name the file does not hold is an error."
 (load-admin-forms "host/native/io.lisp"
  '((define-condition fnn-store-error) (define-condition fnn-store-fault)
    (define-condition fnn-store-indeterminate) (defun fnn-nat)))
+; Exercise the granted printer itself: this fixture's developer selector
+; answers NIL, so capacity diagnostics add no production-path effect.
+(load-admin-forms "host/native/mux.lisp"
+ '((defun fnn-owner-memory-print-capacity)))
 (load-admin-forms "host/native/admin.lisp"
  '((defstruct fnn-reconfig) (defmacro fnn-owner-live-reconfigure)
    (defun fnn-owner-reconfigure-unstage)

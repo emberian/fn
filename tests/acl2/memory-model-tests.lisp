@@ -319,7 +319,7 @@
 (assert-event (equal (fn-mm-large-reply *fn-bs-profile-development* *mmt-cfg-w256*) 562557184))
 (assert-event (< (fn-mm-large-reply *fn-bs-profile-development* *mmt-cfg-w256*)
                  (* 2 *fn-heap-list-octets-per-octet* 256 *mmt-dev-line*)))
-(assert-event (< (fn-mm-article-reply-octets *fn-bs-profile-development*)
+(assert-event (< (fn-mm-article-reply-octets *fn-bs-profile-development* *mmt-cfg-w256*)
                  (* 2 *fn-heap-list-octets-per-octet* 2 *mmt-dev-line*)))
 (assert-event (equal (fn-mm-over-window-fit *fn-bs-profile-defaults* *mmt-cfg-w256*) 1))
 (assert-event (equal (fn-mm-large-reply *fn-bs-profile-defaults* *mmt-cfg-w256*) 35656320))

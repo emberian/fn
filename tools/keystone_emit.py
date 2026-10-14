@@ -247,7 +247,7 @@ def subject_findings(keystones: list[Keystone]) -> tuple[list[str], dict[str, st
     it is reached)."""
     import reach_check
     graph = reach_check.Graph()
-    theorems = reach_check.theorem_forms(graph.books)
+    theorems = reach_check.theorem_forms(list(graph.books) + list(getattr(graph, "hosts", [])))
     problems: list[str] = []
     reached: dict[str, str] = {}
     for keystone in keystones:
@@ -262,8 +262,11 @@ def subject_findings(keystones: list[Keystone]) -> tuple[list[str], dict[str, st
         # Walk the whole term, including used antecedent producers. Preserve
         # literal positions before pairing lambda formals with actuals.
         calls = claim_call_heads(subject_claim_tree(text))
-        actual = reach_check.defined(calls, graph.book_defs) - graph.stobj_names
-        assumed = reach_check.defined(reach_check.hypothesis_heads(hyps), graph.book_defs)
+        # Logic-mode definitions in a loaded host file can be the proved
+        # subject too. Reachability below still requires an actual host line.
+        known = getattr(graph, "known", graph.book_defs)
+        actual = reach_check.defined(calls, known) - graph.stobj_names
+        assumed = reach_check.defined(reach_check.hypothesis_heads(hyps), known)
         functions = (actual - assumed) or actual
         if keystone.subject not in functions:
             problems.append(
@@ -271,7 +274,8 @@ def subject_findings(keystones: list[Keystone]) -> tuple[list[str], dict[str, st
                 f"a function {name}'s scoped claim calls (reach_check reads "
                 f"{', '.join(sorted(functions)) or 'nothing'})")
             continue
-        if keystone.subject not in graph.reachable:
+        if (keystone.subject not in graph.reachable
+                and keystone.subject not in getattr(graph, "host_reachable", set())):
             problems.append(
                 f"{keystone.where}: {keystone.name}: :subject {keystone.subject} is "
                 f"reached by no host line (reach_check)")

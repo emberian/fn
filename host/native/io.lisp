@@ -7160,6 +7160,8 @@ tree root), or stop the build."
     ;; decides the value (books/served-plan-cursor.lisp).
     "FN_NATIVE_OVER_WINDOW"
     "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM"
+    ;; PIN: print ACL2 capacity sentences after refresh, in developer images only.
+    "FN_NATIVE_MEMORY_CAPACITY"
     ;; the extraction gate's stateful differential (tools/extract/stateful.py):
     ;; a recorded clock observation and a recorded entropy stream, the
     ;; environment readings the image and the extracted program then share.

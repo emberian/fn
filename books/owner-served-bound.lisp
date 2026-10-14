@@ -130,3 +130,16 @@
            (equal (fn-osb-install o profile) (mv :refused o)))
   :hints (("Goal" :in-theory (union-theories '(fn-osb-install)
                                              (theory 'minimal-theory)))))
+
+(local
+ (defthm pin-conns-of-configure
+  (equal (fn-own-conns (fn-own-configure o config)) (fn-own-conns o))
+  :hints (("Goal" :in-theory (e/d (fn-own-configure) (fn-own-make fn-own-conns))))))
+(local (set-default-hints
+ '((quote (:in-theory (union-theories
+   '(fn-osb-install pin-conns-of-configure mv-nth nth car-cons cdr-cons)
+   (theory 'minimal-theory)))))))
+(defthm fn-osb-install-keeps-the-connections
+  (equal (fn-own-conns (mv-nth 1 (fn-osb-install o profile))) (fn-own-conns o)))
+
+(local (set-default-hints nil))

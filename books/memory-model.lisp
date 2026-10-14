@@ -283,9 +283,18 @@
 ;; fn-owner-memory-over-window) and the host's quantum
 ;; (host/native/owner.lisp fnn-owner-over-window) serves it, so the term the
 ;; gate charges is the window the host builds.
-(defun fn-mm-article-reply-octets (profile)
+(defun fn-mm-cfg-article-high (cfg) (declare (xargs :guard t)) (fn-mm-nat 15 cfg))
+
+(defun fn-mm-served-article-octets (profile cfg)
   (declare (xargs :guard t))
-  (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile)))
+  (max (nfix (fn-bs-profile-max-article-octets profile)) (fn-mm-cfg-article-high cfg)))
+
+; Keep the numeric served bound abstract in store/image monotonicity proofs.
+(local (in-theory (disable fn-mm-served-article-octets)))
+
+(defun fn-mm-article-reply-octets (profile cfg)
+  (declare (xargs :guard t))
+  (+ (* 2 (fn-mm-served-article-octets profile cfg))
      *fn-cbud-reply-status-octets*))
 
 (defun fn-mm-window-fit (w line large)
@@ -301,7 +310,7 @@
   (declare (xargs :guard t))
   (fn-mm-window-fit (fn-mm-cfg-over-window cfg)
                     (fn-mm-nov-line-octets profile cfg)
-                    (fn-mm-article-reply-octets profile)))
+                    (fn-mm-article-reply-octets profile cfg)))
 
 (defun fn-mm-over-window-octets (profile cfg)
   (declare (xargs :guard t))
@@ -325,7 +334,7 @@
 
 (defun fn-mm-large-reply (profile cfg)
   (declare (xargs :guard t))
-  (max (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile)))
+  (max (+ (* 2 (fn-mm-served-article-octets profile cfg))
           *fn-cbud-reply-status-octets*)
        (fn-mm-over-window-octets profile cfg)))
 
@@ -348,7 +357,8 @@
   :rule-classes :linear
   :hints (("Goal" :in-theory (e/d (fn-mm-cursor-octets-fit fn-mm-large-reply
                                    fn-mm-over-window-octets)
-                                  (fn-mm-over-window-fit fn-mm-nov-line-octets)))))
+                                  (fn-mm-over-window-fit fn-mm-nov-line-octets
+                                   fn-mm-served-article-octets fn-mm-cfg-article-high)))))
 
 (defun fn-mm-large-pool (profile cfg)
   (declare (xargs :guard t))
@@ -681,6 +691,7 @@
       (:type-prescription fn-mm-tot-memberships) (:type-prescription fn-mm-tot-events)
       (:type-prescription fn-mm-hroot-live)
       (:type-prescription fn-mm-config-heap) (:type-prescription fn-mm-cfg-config)
+      (:type-prescription fn-mm-served-article-octets)
       (:type-prescription fn-mm-connection-fixed) (:type-prescription fn-mm-over-window-octets)
       (:type-prescription fn-mm-maintenance) (:type-prescription fn-mm-cfg-connections)
       (:type-prescription fn-mm-cfg-holders) (:type-prescription fn-mm-cold-reads)
@@ -713,15 +724,15 @@
 ;; list window, whichever is larger (no longer W lines of it).
 (defthm fn-mm-large-reply-is-the-article-or-one-line
   (<= (fn-mm-large-reply profile cfg)
-      (max (fn-mm-article-reply-octets profile)
+      (max (fn-mm-article-reply-octets profile cfg)
            (* 2 *fn-heap-list-octets-per-octet* (fn-mm-nov-line-octets profile cfg))))
   :hints (("Goal" :in-theory (e/d (fn-mm-large-reply fn-mm-over-window-octets fn-mm-over-window-fit
                                    fn-mm-article-reply-octets)
-                                  (fn-mm-window-fit fn-mm-nov-line-octets))
+                                  (fn-mm-window-fit fn-mm-nov-line-octets fn-mm-served-article-octets))
            :use ((:instance fn-mm-window-fit-is-the-largest-that-fits
                             (w (fn-mm-cfg-over-window cfg))
                             (line (fn-mm-nov-line-octets profile cfg))
-                            (large (fn-mm-article-reply-octets profile)))))))
+                            (large (fn-mm-article-reply-octets profile cfg)))))))
 (defthm fn-mm-collector-monotone
   (implies (<= (nfix a) (nfix b))
            (<= (fn-mm-collector a cfg) (fn-mm-collector b cfg)))
@@ -937,10 +948,14 @@
   (implies (fn-mm-tot-le a b)
            (<= (fn-mm-reopen-live profile cfg a) (fn-mm-reopen-live profile cfg b)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-reopen-live)
-                                  (fn-mm-owner fn-mm-maintenance fn-heap-store-open-octets
-                                   fn-mm-checkpoint-load-octets
-                                   fn-mm-tot-le fn-mm-tot-log fn-mm-tot-records))
+  :hints (("Goal" :in-theory (union-theories
+   '(fn-mm-reopen-live (:type-prescription fn-mm-owner)
+     (:type-prescription fn-heap-store-open-octets)
+     (:type-prescription fn-mm-checkpoint-load-octets)
+     (:type-prescription fn-mm-maintenance)
+     (:type-prescription fn-mm-tot-log) (:type-prescription fn-mm-tot-records)
+     nfix natp associativity-of-+ commutativity-of-+)
+    (theory 'minimal-theory))
            :use (fn-mm-owner-monotone fn-mm-maintenance-monotone fn-mm-tot-le-parts
                  fn-mm-checkpoint-load-octets-monotone
                  (:instance fn-mm-open-octets-monotone
@@ -1116,11 +1131,18 @@
                  (:instance fn-mm-ceiling-quotient (c (fn-mm-connection-fixed profile cfg)) (k capf))))))
 
 ; The pool's leases hold the large term when one lease holds a large reply.
+(local
+ (defthm pin-mm-large-natural
+  (natp (fn-mm-large-reply profile cfg)) :rule-classes :type-prescription
+  :hints (("Goal" :use fn-mm-terms-natp :in-theory (theory 'minimal-theory)))))
+(local
+ (defthm pin-mm-holders-natural
+  (natp (fn-mm-cfg-holders cfg)) :rule-classes :type-prescription
+  :hints (("Goal" :use fn-mm-terms-natp :in-theory (theory 'minimal-theory)))))
 (defthm fn-mm-large-pool-within-the-leases
   (implies (and (natp capl) (<= (fn-mm-large-reply profile cfg) capl))
            (<= (fn-mm-large-pool profile cfg) (* (fn-mm-cfg-holders cfg) capl)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-large-pool) (fn-mm-large-reply fn-mm-cfg-holders))
-           :use ((:instance fn-mm-terms-natp)
-                 (:instance fn-mm-times-monotone (a (fn-mm-large-reply profile cfg)) (b capl)
+  :hints (("Goal" :in-theory (union-theories '(fn-mm-large-pool nfix natp commutativity-of-* pin-mm-large-natural pin-mm-holders-natural) (theory 'minimal-theory))
+           :use ((:instance fn-mm-times-monotone (a (fn-mm-large-reply profile cfg)) (b capl)
                             (c (fn-mm-cfg-holders cfg)))))))

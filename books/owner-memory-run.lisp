@@ -69,6 +69,16 @@
   '(m25-fix-update-by-definition m25-fix-fix-by-definition nth-update-nth (:executable-counterpart nfix) fn-mm-cfg-bank-floor fn-mm-nat fn-mm-cfg-connections fn-mm-cfg-tlsp fn-mm-cfg-trigger fn-mm-cfg-pub-trigger fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache fn-mm-cfg-cold fn-mm-cfg-handshakes fn-mm-cfg-over-window fn-mm-cfg-server-octets fn-mm-cfg-holders fn-mm-cfg-rho fn-mm-cfg-config)
   (theory 'minimal-theory))))))
 
+; PIN field 15 is independent of the physical bank's field 14.
+(local (defthm pin-bank-floor-keeps-the-article-high
+ (equal (fn-mm-cfg-article-high (update-nth 14 b (true-list-fix cfg)))
+        (fn-mm-cfg-article-high cfg))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-mm-cfg-article-high fn-mm-nat m25-fix-update-by-definition
+    m25-fix-fix-by-definition nth-update-nth
+    (:executable-counterpart nfix))
+  (theory 'minimal-theory))))))
+
 (local (defthm m25-bank-floor-terms-by-definition
  (and
   (equal (fn-mm-base img (update-nth 14 b (true-list-fix cfg))) (fn-mm-base img cfg))
@@ -82,7 +92,8 @@
  :hints (("Goal" :in-theory (union-theories
   '(m25-bank-floor-fields-by-definition fn-mm-base fn-mm-owner fn-mm-payload-octets fn-mm-inflight
     fn-mm-cold-reads fn-mm-maintenance fn-mm-collector fn-mm-connection-fixed fn-mm-large-pool
-    fn-mm-large-reply fn-mm-over-window-octets fn-mm-over-window-fit fn-mm-nov-line-octets
+    pin-bank-floor-keeps-the-article-high fn-mm-served-article-octets
+    fn-mm-article-reply-octets fn-mm-large-reply fn-mm-over-window-octets fn-mm-over-window-fit fn-mm-nov-line-octets
     fn-mm-reopen-need fn-mm-reopen-live fn-mm-checkpoint-load-octets)
   (theory 'minimal-theory))))))
 

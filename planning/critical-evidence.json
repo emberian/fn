@@ -50,6 +50,13 @@
    "mutation": "tests/acl2/owner-memory-holding-tests.lisp::M28-SLOT-FREE-CHECK-MUTATION",
    "provenance": "keystone_critical.py --declare sha256:2f2315734a30e3a0be69c043fff7f192b64e161e4de4b8708c1ae9bd360f37fe"
   },
+  "fn-adm-pinned-cfg-charges-every-stored-article": {
+   "subject": "fn-hist-stored-most-carried",
+   "host_test": "tests/test_native_pinned_charge.py::test_60k_stored_article_keeps_the_charge_until_real_reclaim",
+   "trace_witness": "tests/acl2/pinned-charge-tests.lisp::PIN-FIXTURES-INHABITED",
+   "mutation": "tests/acl2/pinned-charge-tests.lisp::PIN-CACHE-VALIDITY-REMOVAL-GAP",
+   "provenance": "keystone_critical.py --declare sha256:763c13fbff262945f643421c1d7008f892cd0b3a1a86a76d7a14f8fbce31bad6"
+  },
   "fn-adm-priced-cfg-keeps-the-installed-bank": {
    "subject": "fn-adm-priced-cfg",
    "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
@@ -547,6 +554,13 @@
    "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-single-pair-predict-mutant",
    "provenance": "keystone_critical.py --declare sha256:37313d042d49c0a47edcae463f441f4fa9bae7d13a5a2004f78cd5479b8ae573"
   },
+  "fn-osb-install-keeps-every-pin-charged": {
+   "subject": "fn-osb-install",
+   "host_test": "tests/test_native_pinned_charge.py::test_retained_64k_reader_is_charged_after_live_shrink",
+   "trace_witness": "tests/acl2/pinned-charge-host-tests.lisp::PIN-64-10-LIVE-GAP",
+   "mutation": "tests/acl2/pinned-charge-host-tests.lisp::PIN-64-10-LIVE-GAP",
+   "provenance": "keystone_critical.py --declare sha256:6065567c785fa03e516723c198b90efd8d7278eb443bf1f69e78ed00cea038cd"
+  },
   "fn-otm-held-plan-complete-only-after-the-barrier": {
    "subject": "fn-otm-held-plan",
    "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
@@ -574,6 +588,41 @@
    "trace_witness": "tests/acl2/owner-completion-teeth-tests.lisp::fn-own-consumed-completion-is-240-or-uncertain",
    "mutation": "tests/acl2/owner-completion-teeth-tests.lisp::all-durable",
    "provenance": "keystone_critical.py --declare sha256:31a6b9a8a660e19c009ad4439ab810089b960731924322573aed8921da448ebc"
+  },
+  "fn-owner-live-apply-keeps-every-pin-charged": {
+   "subject": "fn-owner-apply-limit-profile",
+   "host_test": "tests/test_native_pinned_charge.py::test_retained_64k_reader_is_charged_after_live_shrink",
+   "trace_witness": "tests/acl2/pinned-charge-host-tests.lisp::PIN-OPEN-SHRINK-CLOSE-TRACE-WHOLE",
+   "mutation": "tests/acl2/pinned-charge-host-tests.lisp::PIN-64-10-LIVE-GAP",
+   "provenance": "keystone_critical.py --declare sha256:900cc5dd7cd0028e564a2433d226e3e67bba996cd88157333572cefdd820e916"
+  },
+  "fn-owner-memory-gate-charge-falls-to-the-current-profile": {
+   "subject": "fn-owner-memory-run-cfg",
+   "host_test": "tests/test_native_pinned_charge.py::test_closing_the_last_large_pin_restores_the_10k_term",
+   "trace_witness": "tests/acl2/pinned-charge-host-tests.lisp::PIN-OPEN-SHRINK-CLOSE-TRACE-WHOLE",
+   "mutation": "tests/acl2/pinned-charge-host-tests.lisp::PIN-FALLS-MONOTONE-GAP",
+   "provenance": "keystone_critical.py --declare sha256:b0789649fcba953bfe2d3ea7505c7b561d4e2b22c72bec5371af64b804d7d69e"
+  },
+  "fn-owner-memory-gate-charges-every-pinned-connection": {
+   "subject": "fn-owner-memory-run-cfg",
+   "host_test": "tests/test_native_pinned_charge.py::test_retained_64k_reader_is_charged_after_live_shrink",
+   "trace_witness": "tests/acl2/pinned-charge-host-tests.lisp::PIN-OPEN-SHRINK-CLOSE-TRACE-WHOLE",
+   "mutation": "tests/acl2/pinned-charge-host-tests.lisp::PIN-64-10-PIN-GAP",
+   "provenance": "keystone_critical.py --declare sha256:b8e32a87a600495de84fe5b5cb2694a37dae6f53da25c460fb094ccbf67bf784"
+  },
+  "fn-owner-memory-run-cfg-of-charge-falls-to-the-current-profile": {
+   "subject": "fn-owner-memory-run-cfg-of",
+   "host_test": "tests/test_native_pinned_charge.py::test_closing_the_last_large_pin_restores_the_10k_term",
+   "trace_witness": "tests/acl2/pinned-charge-host-tests.lisp::PIN-FALLS-MONOTONE-GAP",
+   "mutation": "tests/acl2/pinned-charge-host-tests.lisp::PIN-FALLS-MONOTONE-GAP",
+   "provenance": "keystone_critical.py --declare sha256:61cbb13ba00b9e2fc12a0e4a73c10817f8cc3cf2d7d943bfdc04ae0e6558cb79"
+  },
+  "fn-owner-memory-run-cfg-of-charges-every-pinned-connection": {
+   "subject": "fn-owner-memory-run-cfg-of",
+   "host_test": "tests/test_native_pinned_charge.py::test_retained_64k_reader_is_charged_after_live_shrink",
+   "trace_witness": "tests/acl2/pinned-charge-host-tests.lisp::PIN-64-10-PIN-GAP",
+   "mutation": "tests/acl2/pinned-charge-host-tests.lisp::PIN-64-10-PIN-GAP",
+   "provenance": "keystone_critical.py --declare sha256:9322fe04f80c8ac5e270436fa312c468b8f901236268a1ec2de807252c81252c"
   },
   "fn-pidx-view-okp-of-live-owner": {
    "subject": "fn-pidx-view-okp",

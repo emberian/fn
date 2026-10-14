@@ -375,7 +375,8 @@ fn-olau-authorize-carried-across-reader-events preserves it across readers."
 (defun fnn-rc-do-complete (run)
   "Effect :complete, under O: the owner installs the durably published record
 (fn-owner-reconfigure-complete); ACL2's verdict is the event."
-  (fnn-owner-action 'fn-owner-reconfigure-complete (fnn-rc-generation run)))
+  (prog1 (fnn-owner-action 'fn-owner-reconfigure-complete (fnn-rc-generation run))
+    (fnn-owner-memory-print-capacity)))
 
 (defun fnn-rc-do-refresh (run)
   "Effect :refresh, under O: the store's configuration cache follows the

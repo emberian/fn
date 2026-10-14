@@ -80,7 +80,7 @@
 
 (defthm fn-owner-record-totals-keeps-retained-state
  (implies (fn-owner-retain-retained-statep state)
-          (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-record-totals fn-hist state))))
+          (fn-owner-retain-retained-statep (mv-nth 3 (fn-owner-record-totals fn-hist state))))
  :hints (("Goal" :in-theory (union-theories
   '(fn-owner-record-totals fn-owner-retain-retained-statep-of-other-global-put
     mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
@@ -253,7 +253,7 @@
 
 (defthm fn-owner-record-totals-keeps-live
  (implies (fn-owner-retain-livep state fn-arena)
-          (fn-owner-retain-livep (mv-nth 2 (fn-owner-record-totals fn-hist state)) fn-arena))
+          (fn-owner-retain-livep (mv-nth 3 (fn-owner-record-totals fn-hist state)) fn-arena))
  :hints (("Goal" :in-theory (union-theories
   '(fn-owner-record-totals fn-owner-retain-livep-of-other-global-put
     mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))

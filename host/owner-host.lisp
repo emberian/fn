@@ -691,7 +691,9 @@
                ; control stack).  Residency :resident charges every held
                ; payload in the arena, an upper bound of the paged store.
                (state (f-put-global 'fn-owner-record-totals
-                                    (fn-cth-installed-seed over-checkpoint covered header :resident)
+                                    (fn-adm-memory-cache-make
+                                     (fn-cth-installed-seed over-checkpoint covered header :resident)
+                                     '(0 . 0))
                                     state)))
           (value :installed))
       (value :refused)))))
@@ -1410,10 +1412,13 @@
          (cache (if (boundp-global 'fn-owner-record-totals state)
                     (f-get-global 'fn-owner-record-totals state)
                   nil))
-         (tot (fn-hist-totals-carried cache s :resident fn-hist))
+         (tot (fn-hist-totals-carried (fn-adm-memory-cache-totals cache) s :resident fn-hist))
+         (most (fn-hist-stored-most-carried (fn-adm-memory-cache-most cache) s fn-hist))
          (state (f-put-global 'fn-owner-record-totals
-                              (cons (fn-hist-count fn-hist) tot) state)))
-    (mv tot fn-hist state)))
+                              (fn-adm-memory-cache-make
+                               (cons (fn-hist-count fn-hist) tot)
+                               (cons (fn-hist-count fn-hist) most)) state)))
+    (mv tot most fn-hist state)))
 
 ; The completion debt of the carried Store (the open forward undertakings,
 ; each owing a release record), carried as (K . DEBT) and advanced over the
@@ -1709,6 +1714,14 @@
         (fn-cfg-limit v "tls-handshakes-in-flight")
         window (len server) nil nil (nfix config)))
 
+(defun fn-owner-memory-run-cfg-of (r v cfg conns most lease flight)
+  (declare (xargs :guard t))
+  (let ((full (fn-owner-memory-cfg v (fn-exp-at 5 r) (fn-exp-at 2 r) (fn-exp-at 3 r) (fn-exp-at 6 r)
+                                   (fn-exp-at 7 r) (fn-exp-at 4 r) (fn-exp-at 8 r) (fn-oag-agent cfg)
+                                   (fn-exp-at 9 r))))
+    (update-nth 15 (max (fn-adm-pin-octets conns) (nfix most))
+      (update-nth 14 lease (fn-adm-cfg-holding-handshakes full flight)))))
+
 ; The pools the launch funded beside the model's terms: books/heap-command.lisp
 ; fn-mo-serve-pools, the probe's own (host/native/heap.lisp fnn-heap-serve-decision).
 
@@ -1720,16 +1733,46 @@
 ; configured C the machine cannot hold (4,000,000 in test_native_mux) an
 ; install that computed it never returned, before the run's connection budget
 ; could refuse.  Answers the LIMIT and the CFG.
+(defun fn-owner-memory-handshakes-in-flight (state)
+  (declare (xargs :stobjs state :guard t :verify-guards t))
+  (if (boundp-global 'fn-owner-handshakes state)
+      (len (fn-hsb-flight (f-get-global 'fn-owner-handshakes state)))
+    0))
+
+(defun fn-owner-memory-stored-most (state)
+  (declare (xargs :stobjs state :guard t))
+  (let ((cache (fn-adm-memory-cache-most
+    (if (boundp-global 'fn-owner-record-totals state)
+        (f-get-global 'fn-owner-record-totals state) nil))))
+    (nfix (if (consp cache) (cdr cache) 0))))
+
+
+(defun fn-owner-memory-run-cfg (r v cfg state)
+  (declare (xargs :stobjs state :guard t :verify-guards t))
+  (fn-owner-memory-run-cfg-of r v cfg
+    (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil)
+    (fn-owner-memory-stored-most state)
+    (if (boundp-global 'fn-owner-memory-lease-octets state)
+        (f-get-global 'fn-owner-memory-lease-octets state) 0)
+    (fn-owner-memory-handshakes-in-flight state)))
+
+(defthm fn-owner-memory-run-cfg-is-the-pure-builder-of-the-state-reads
+  (equal (fn-owner-memory-run-cfg r v cfg state)
+         (fn-owner-memory-run-cfg-of r v cfg
+           (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil)
+           (fn-owner-memory-stored-most state)
+           (if (boundp-global 'fn-owner-memory-lease-octets state)
+               (f-get-global 'fn-owner-memory-lease-octets state) 0)
+           (fn-owner-memory-handshakes-in-flight state))))
+
 (defun fn-owner-memory-configure-gate (img resident-obs trigger pub-trigger profile tlsp live
  cold output peer workers cache-limit root window config bp-terms core nursery state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((limit (fn-mo-serve-run-limit resident-obs profile cold output peer workers cache-limit root bp-terms))
         (ocfg (fn-owner-config state))
-        (cfg (update-nth 14
-               (if (boundp-global 'fn-owner-memory-lease-octets state)
-                   (f-get-global 'fn-owner-memory-lease-octets state) 0)
-               (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
-                                    profile window (fn-oag-agent ocfg) (nfix config))))
+        (cfg (fn-adm-pinned-cfg (fn-owner-memory-run-cfg
+               (list img limit trigger pub-trigger profile tlsp live cold window (nfix config))
+               (fn-cfg-value ocfg) ocfg state) (fn-adm-pin-octets (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil)) (fn-owner-memory-stored-most state)))
         (state (f-put-global 'fn-owner-memory-envelope
                  (fn-menv-make resident-obs output peer workers cache-limit root bp-terms core nursery) state))
         (state (f-put-global 'fn-owner-memory-capacity nil state))
@@ -1742,12 +1785,15 @@
   (mv limit (fn-adm-priced-cfg cfg (fn-owner-memory-held state) nil) state)))
 
 (defun fn-owner-memory-gate-install (img resident-obs trigger pub-trigger profile tlsp live
- cold output peer workers cache-limit root window config bp-terms core nursery state)
- (declare (xargs :stobjs state :mode :program))
+ cold output peer workers cache-limit root window config bp-terms core nursery fn-hist state)
+ (declare (xargs :stobjs (fn-hist state) :mode :program))
+ ; Both startup variants price the current committed records, including MOST.
+ (mv-let (tot most fn-hist state) (fn-owner-record-totals fn-hist state)
+  (declare (ignore tot most))
  (mv-let (limit cfg state)
   (fn-owner-memory-configure-gate img resident-obs trigger pub-trigger profile tlsp live
    cold output peer workers cache-limit root window config bp-terms core nursery state)
-  (declare (ignore limit cfg)) (value :hold)))
+  (declare (ignore limit cfg)) (mv nil :hold fn-hist state))))
 
 (definterface fn-owner-memory-gate-install
   :class ::program)
@@ -1756,12 +1802,12 @@
                                       output peer workers cache-limit root window config
                                       address-obs core nursery bp-terms quantum fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (tot most fn-hist state) (fn-owner-record-totals fn-hist state)
   (mv-let (limit cfg state)
     (fn-owner-memory-configure-gate img resident-obs trigger pub-trigger profile tlsp live
                                     cold output peer workers cache-limit root window
                                     config bp-terms core nursery state)
-    (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
-      (let* ((bare cfg)
+      (let* ((bare (fn-adm-pinned-cfg cfg (fn-adm-pin-octets (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil)) most))
              (cfg (fn-adm-lease-startup-cfg profile img bare limit tot quantum))
              (state (f-put-global 'fn-owner-memory-lease-cfg
                       (fn-adm-lease-startup-bank-cfg profile img bare limit tot) state))
@@ -1791,34 +1837,27 @@
 
 ; The handshakes in flight now (fn-owner-handshake-admit's state), which a
 ; reconfiguration that lowered the live limit leaves outstanding.
-(defun fn-owner-memory-handshakes-in-flight (state)
-  (declare (xargs :stobjs state :guard t :verify-guards t))
-  (if (boundp-global 'fn-owner-handshakes state)
-      (len (fn-hsb-flight (f-get-global 'fn-owner-handshakes state)))
-    0))
+
 
 ; The run's CFG at the live configuration V: its coordinates, its own
 ; connection count, and the handshake allowance the gate charges (the live
 ; limit, or the handshakes still in flight when a reconfiguration lowered it).
-(defun fn-owner-memory-run-cfg (r v cfg state)
-  (declare (xargs :stobjs state :guard t :verify-guards t))
-  (let ((full (fn-owner-memory-cfg v (fn-exp-at 5 r) (fn-exp-at 2 r) (fn-exp-at 3 r) (fn-exp-at 6 r) (fn-exp-at 7 r)
-                                   (fn-exp-at 4 r) (fn-exp-at 8 r) (fn-oag-agent cfg) (fn-exp-at 9 r))))
-    (update-nth 14
-     (if (boundp-global 'fn-owner-memory-lease-octets state)
-         (f-get-global 'fn-owner-memory-lease-octets state) 0)
-     (fn-adm-cfg-holding-handshakes full (fn-owner-memory-handshakes-in-flight state)))))
+
 
 ; (IMG CFG LIMIT): the CFG rebuilt from the live configuration; LIMIT NIL
 ; until a run configured it, so the gate (fn-mm-gate-p: LIMIT a natural)
 ; admits nothing a run did not configure.
-(defun fn-owner-memory-gate (state)
+(defun fn-owner-memory-gate-at-most (most state)
  (declare (xargs :stobjs state :mode :program))
  (if (and (boundp-global 'fn-owner-memory-run state) (consp (f-get-global 'fn-owner-memory-run state)))
   (let* ((r (f-get-global 'fn-owner-memory-run state)) (cfg (fn-owner-config state))
-         (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state)))
+         (full (fn-adm-pinned-cfg (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state) (fn-adm-pin-octets (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil)) most)))
    (list (nth 0 r) (fn-adm-priced-cfg full (fn-adm-run-gate-held (fn-owner-memory-held state) (fn-mm-cfg-connections full) (nth 10 r) (fn-exp-at 11 r)) (nth 10 r)) (nth 1 r)))
   (list nil nil nil)))
+
+(defun fn-owner-memory-gate (state)
+ (declare (xargs :stobjs state :mode :program))
+ (fn-owner-memory-gate-at-most (fn-owner-memory-stored-most state) state))
 
 ; A LIVE RECONFIGURATION AND THE RUN'S CAPACITY (L-RUN-LAUNCH; PRF-223's
 ; statement, which books/connection-budget.lisp's resident model carried
@@ -1831,7 +1870,7 @@
 ; connections alone fit, else :connections-exceed-memory.  The bound itself
 ; is fn-owner-memory-recapacity's at the reconfiguration's completion, over
 ; the totals synced again.
-(defun fn-owner-memory-candidate-refusal (v2 tot octets state)
+(defun fn-owner-memory-candidate-refusal (v2 tot most octets state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (and (boundp-global 'fn-owner-memory-run state)
                 (consp (f-get-global 'fn-owner-memory-run state))))
@@ -1839,8 +1878,8 @@
     (let* ((r (f-get-global 'fn-owner-memory-run state))
            (cfg (fn-owner-config state))
            (v (fn-cfg-value cfg))
-           (now (fn-owner-memory-run-cfg r v cfg state))
-           (next (fn-owner-memory-run-cfg r v2 cfg state))
+           (now (fn-adm-pinned-cfg (fn-owner-memory-run-cfg r v cfg state) (fn-adm-pin-octets (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil)) most))
+           (next (fn-adm-pinned-cfg (fn-owner-memory-run-cfg r v2 cfg state) (fn-adm-pin-octets (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil)) most))
            (cap (fn-exp-at 10 r))
            (c2 (fn-mm-cfg-connections next))
            (raises-c (< (fn-mm-cfg-connections now) c2))
@@ -1849,7 +1888,7 @@
            (operator-id (fn-exp-at 11 r))
            ; A raise is checked at its new C, still reserving the private slot.
            (projected-cap (if raises-c c2 cap))
-           (profile (nth 4 r)) (img (nth 0 r)) (limit (nth 1 r)))
+           (profile (fn-owner-store-profile state)) (img (nth 0 r)) (limit (nth 1 r)))
       (cond ((and (or raises-c raises-h)
                   (not (fn-adm-config-change-admitp profile img next limit tot
                          held projected-cap operator-id 0)))
@@ -1878,16 +1917,16 @@
   (if (not (and (boundp-global 'fn-owner-memory-run state)
                 (consp (f-get-global 'fn-owner-memory-run state))))
       (mv fn-hist state)
-    (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+    (mv-let (tot most fn-hist state) (fn-owner-record-totals fn-hist state)
       (let* ((r (true-list-fix (f-get-global 'fn-owner-memory-run state)))
              (cfg (fn-owner-config state))
-             (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state))
-             (cap (fn-adm-installed-capacity (nth 4 r) (nth 0 r) full (nth 1 r) tot))
+             (full (fn-adm-pinned-cfg (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state) (fn-adm-pin-octets (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil)) most))
+             (cap (fn-adm-installed-capacity (fn-owner-store-profile state) (nth 0 r) full (nth 1 r) tot))
              (state (f-put-global 'fn-owner-memory-run (update-nth 10 cap r) state))
              (state (f-put-global 'fn-owner-memory-capacity cap state))
              (state (f-put-global 'fn-owner-memory-capacity-line
                                   (fn-record-string-octets
-                                   (fn-adm-installed-capacity-line (nth 4 r) (nth 0 r) full (nth 1 r) tot))
+                                   (fn-adm-installed-capacity-line (fn-owner-store-profile state) (nth 0 r) full (nth 1 r) tot))
                                   state)))
         (mv fn-hist state)))))
 
@@ -1901,9 +1940,9 @@
          (okp (fn-ocfg-reconfig-okp oc id deltas)))
     ;; The carried totals synced to the committed history (fn-owner-record-totals), so the
     ;; candidate is priced over the store as it is (Codex review F1 of L-RUN-LAUNCH).
-    (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+    (mv-let (tot most fn-hist state) (fn-owner-record-totals fn-hist state)
       (let ((memory (and okp
-                     (fn-owner-memory-candidate-refusal (fn-cfg-apply v gen stamp deltas) tot
+                     (fn-owner-memory-candidate-refusal (fn-cfg-apply v gen stamp deltas) tot most
                        (len (fn-cfg-encode (fn-ocfg-reconfig-record oc deltas))) state))))
         ;; The refusal is the staging step's result value (PRF-208,
         ;; adapter-retirement: books/owner-results.lisp fn-ores-config-refused),
@@ -1950,7 +1989,7 @@
         (fn-owner-publication-verdict kind fn-hist state)
       (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
         (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
-          (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+          (mv-let (tot most fn-hist state) (fn-owner-record-totals fn-hist state)
             (let* ((s (fn-owner-store state))
                    (verdict (fn-pvc-statement-verdict-carried
                              (fn-owner-profile-carry state)
@@ -1962,7 +2001,7 @@
                                              (fn-arena-count fn-arena)))
                    (r (if (boundp-global 'fn-owner-memory-run state)
                         (f-get-global 'fn-owner-memory-run state) nil))
-                 (gate (fn-owner-memory-gate state)))
+                 (gate (fn-owner-memory-gate-at-most most state)))
               (mv nil
                   ; The handle space (fn-adm-handle-room-p at N = 1: the
                   ; row's handle is the arena's count), then the memory.
@@ -2372,7 +2411,7 @@
             (mv nil (or existing :handle-space) fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
           (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
-          (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+          (mv-let (tot most fn-hist state) (fn-owner-record-totals fn-hist state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid payload groups
@@ -2425,7 +2464,7 @@
                  ; three, fn-adm-admitted-row-keeps-the-gate).
                  (r (if (boundp-global 'fn-owner-memory-run state)
                         (f-get-global 'fn-owner-memory-run state) nil))
-                 (gate (fn-owner-memory-gate state))
+                 (gate (fn-owner-memory-gate-at-most most state))
                  (budget (if (and row
                                   (fn-adm-run-memory-admitp (fn-owner-store-profile state)
                                                         (first gate) (second gate) (third gate)
@@ -2596,7 +2635,7 @@
             (mv nil (or existing :handle-space) fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
           (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
-          (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+          (mv-let (tot most fn-hist state) (fn-owner-record-totals fn-hist state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid (fn-octets-list fn-octets) groups
@@ -2636,7 +2675,7 @@
                  ; three, fn-adm-admitted-row-keeps-the-gate).
                  (r (if (boundp-global 'fn-owner-memory-run state)
                         (f-get-global 'fn-owner-memory-run state) nil))
-                 (gate (fn-owner-memory-gate state))
+                 (gate (fn-owner-memory-gate-at-most most state))
                  (budget (if (and row
                                   (fn-adm-run-memory-admitp (fn-owner-store-profile state)
                                                         (first gate) (second gate) (third gate)
@@ -4930,13 +4969,13 @@
                     (fn-owner-store fn-hist-sync fn-hist-totals-carried
                      fn-owner-memory-run-cfg fn-owner-config
                      fn-owner-held-callback-operator-open put-global boundp-global boundp-global1))))))
-  (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+  (mv-let (tot most fn-hist state) (fn-owner-record-totals fn-hist state)
     (let* ((r (if (boundp-global 'fn-owner-memory-run state)
                   (f-get-global 'fn-owner-memory-run state) nil))
            (cfg (fn-owner-config state))
-           (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state)))
+           (full (fn-adm-pinned-cfg (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state) (fn-adm-pin-octets (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil)) most)))
       (mv-let (erp result state)
-        (fn-owner-held-callback-operator-open (fn-exp-at 4 r) (fn-exp-at 0 r)
+        (fn-owner-held-callback-operator-open (fn-owner-store-profile state) (fn-exp-at 0 r)
           full (fn-exp-at 1 r) tot (fn-exp-at 10 r) (fn-exp-at 11 r) state)
         (let ((state (f-put-global 'fn-owner-memory-run
                        (update-nth 11 (fn-exp-at 6 result) (true-list-fix r)) state)))
@@ -6741,9 +6780,143 @@ itself."
  (let* ((r (f-get-global 'fn-owner-memory-run state))
         (envelope (f-get-global 'fn-owner-memory-envelope state))
         (gate (fn-owner-memory-gate state))
-        (tot (cdr (f-get-global 'fn-owner-record-totals state)))
+        (tot (cdr (fn-adm-memory-cache-totals (f-get-global 'fn-owner-record-totals state))))
         (resident (fn-adm-config-edge-resident (nth 4 r) (nth 0 r)
                      (second gate) tot (nth 7 r) envelope)))
    (list r envelope resident)))
 
 (definterface fn-owner-memory-config-edge-observation :class :program)
+
+; Rev 4's pure keystones share the sole host cfg definition above.
+; Moving them to an includable book would require that book to include this
+; host file, while its STATE corollaries depend on the book: an include cycle.
+(local
+ (defthm pin-pure-builder-article-high
+  (equal (fn-mm-cfg-article-high
+           (fn-owner-memory-run-cfg-of r v cfg conns most lease flight))
+         (max (fn-adm-pin-octets conns) (nfix most)))
+  :hints (("Goal" :in-theory (union-theories
+    '(fn-owner-memory-run-cfg-of fn-mm-cfg-article-high fn-mm-nat
+      fn-clq-true-list-fix-id nth-update-nth true-listp-update-nth
+      (:type-prescription fn-adm-cfg-holding-handshakes)
+      (:type-prescription fn-adm-pin-octets-is-natural)
+      nfix natp max (:type-prescription nfix))
+    (theory 'minimal-theory))))))
+(local (set-default-hints
+ '((quote (:use fn-adm-pin-octets-covers-member
+           :in-theory (union-theories
+            '(fn-mm-large-reply fn-mm-served-article-octets
+              fn-adm-priced-cfg-keeps-the-article-high pin-pure-builder-article-high
+              max nfix natp (:type-prescription fn-adm-pin-octets-is-natural)
+              (:type-prescription nfix))
+            (theory 'minimal-theory)))))))
+(defthm fn-owner-memory-run-cfg-of-charges-every-pinned-connection
+  (implies (member-equal c conns)
+           (<= (+ (* 2 (nfix (fn-inj-config-max-octets (fn-own-conn-config c))))
+                  *fn-cbud-reply-status-octets*)
+               (fn-mm-large-reply profile
+                 (fn-adm-priced-cfg (fn-owner-memory-run-cfg-of r v cfg conns most lease flight)
+                                    held cap)))))
+(local (set-default-hints
+ '((quote (:use ((:instance fn-owner-memory-run-cfg-of-charges-every-pinned-connection
+                 (conns (fn-own-conns (mv-nth 1 (fn-osb-install o values))))
+                 (profile values))
+                (:instance fn-osb-install-keeps-the-connections (profile values)))
+          :in-theory (theory 'minimal-theory))))))
+(defthm fn-osb-install-keeps-every-pin-charged
+  (implies (member-equal c (fn-own-conns o))
+           (<= (+ (* 2 (nfix (fn-inj-config-max-octets (fn-own-conn-config c))))
+                  *fn-cbud-reply-status-octets*)
+               (fn-mm-large-reply values
+                 (fn-adm-priced-cfg
+                  (fn-owner-memory-run-cfg-of r v cfg (fn-own-conns (mv-nth 1 (fn-osb-install o values)))
+                                              most lease flight)
+                  held cap)))))
+(local (set-default-hints
+ '((quote (:in-theory (union-theories
+            '(fn-mm-served-article-octets fn-adm-priced-cfg-keeps-the-article-high
+              pin-pure-builder-article-high max nfix natp
+              (:type-prescription fn-adm-pin-octets-is-natural)
+              (:type-prescription nfix))
+            (theory 'minimal-theory)))))))
+(defthm fn-owner-memory-run-cfg-of-charge-falls-to-the-current-profile
+  (implies (and (<= (fn-adm-pin-octets conns) (nfix (fn-bs-profile-max-article-octets profile)))
+                (<= (nfix most) (nfix (fn-bs-profile-max-article-octets profile))))
+           (equal (fn-mm-served-article-octets profile
+                    (fn-adm-priced-cfg (fn-owner-memory-run-cfg-of r v cfg conns most lease flight)
+                                       held cap))
+                  (nfix (fn-bs-profile-max-article-octets profile)))))
+(local (set-default-hints nil))
+
+; Live apply changes the profile/configuration, preserving the entire pin set.
+(local
+ (defthm pin-live-apply-keeps-owner-and-conns
+  (implies (boundp-global 'fn-owner state)
+   (let ((state2 (mv-nth 2 (fn-owner-apply-limit-profile values state))))
+    (and (boundp-global 'fn-owner state2)
+         (equal (fn-own-conns (fn-owner-core state2))
+                (fn-own-conns (fn-owner-core state))))))
+  :hints (("Goal" :in-theory
+   (e/d (fn-owner-apply-limit-profile fn-owner-replace-core fn-owner-core fn-owner-ocfg
+         fn-ocfg-with-owner fn-owner-install-ocfg)
+        (fn-osb-install fn-own-conns fn-pvc-make))))))
+; PINNED-CHARGE: exact approved host keystones.
+(local (set-default-hints
+ '((quote (:use ((:instance fn-owner-memory-run-cfg-of-charges-every-pinned-connection
+                 (conns (if (boundp-global 'fn-owner state) (fn-own-conns (fn-owner-core state)) nil))
+                 (most (fn-owner-memory-stored-most state))
+                 (lease (if (boundp-global 'fn-owner-memory-lease-octets state)
+                            (f-get-global 'fn-owner-memory-lease-octets state) 0))
+                 (flight (fn-owner-memory-handshakes-in-flight state))))
+          :in-theory (union-theories '(fn-owner-memory-run-cfg-is-the-pure-builder-of-the-state-reads)
+                                      (theory 'minimal-theory)))))))
+(defthm fn-owner-memory-gate-charges-every-pinned-connection
+  (implies (and (boundp-global 'fn-owner state)
+                (member-equal c (fn-own-conns (fn-owner-core state))))
+           (<= (+ (* 2 (nfix (fn-inj-config-max-octets (fn-own-conn-config c))))
+                  *fn-cbud-reply-status-octets*)
+               (fn-mm-large-reply profile
+                                  (fn-adm-priced-cfg (fn-owner-memory-run-cfg r v cfg state) held cap)))))
+
+
+(local (set-default-hints
+ '((quote (:use (pin-live-apply-keeps-owner-and-conns
+                (:instance fn-owner-memory-run-cfg-of-charges-every-pinned-connection
+                 (conns (fn-own-conns (fn-owner-core (mv-nth 2 (fn-owner-apply-limit-profile values state)))))
+                 (profile (fn-owner-store-profile (mv-nth 2 (fn-owner-apply-limit-profile values state))))
+                 (most (fn-owner-memory-stored-most (mv-nth 2 (fn-owner-apply-limit-profile values state))))
+                 (lease (if (boundp-global 'fn-owner-memory-lease-octets (mv-nth 2 (fn-owner-apply-limit-profile values state)))
+                            (f-get-global 'fn-owner-memory-lease-octets (mv-nth 2 (fn-owner-apply-limit-profile values state))) 0))
+                 (flight (fn-owner-memory-handshakes-in-flight (mv-nth 2 (fn-owner-apply-limit-profile values state))))))
+          :in-theory (union-theories '(fn-owner-memory-run-cfg-is-the-pure-builder-of-the-state-reads)
+                                      (theory 'minimal-theory)))))))
+(defthm fn-owner-live-apply-keeps-every-pin-charged
+  (implies (and (boundp-global 'fn-owner state)
+                (member-equal c (fn-own-conns (fn-owner-core state))))
+           (let ((state2 (mv-nth 2 (fn-owner-apply-limit-profile values state))))
+             (<= (+ (* 2 (nfix (fn-inj-config-max-octets (fn-own-conn-config c))))
+                    *fn-cbud-reply-status-octets*)
+                 (fn-mm-large-reply (fn-owner-store-profile state2)
+                                    (fn-adm-priced-cfg (fn-owner-memory-run-cfg r v cfg state2) held cap))))))
+
+(local (set-default-hints
+ '((quote (:use ((:instance fn-owner-memory-run-cfg-of-charge-falls-to-the-current-profile
+                 (conns (fn-own-conns (fn-owner-core state)))
+                 (most (fn-owner-memory-stored-most state))
+                 (lease (if (boundp-global 'fn-owner-memory-lease-octets state)
+                            (f-get-global 'fn-owner-memory-lease-octets state) 0))
+                 (flight (fn-owner-memory-handshakes-in-flight state))))
+          :in-theory (union-theories '(fn-owner-memory-run-cfg-is-the-pure-builder-of-the-state-reads
+                                      fn-owner-memory-stored-most nfix natp)
+                                      (theory 'minimal-theory)))))))
+(defthm fn-owner-memory-gate-charge-falls-to-the-current-profile
+  (implies (and (boundp-global 'fn-owner state)
+                (<= (fn-adm-pin-octets (fn-own-conns (fn-owner-core state)))
+                    (nfix (fn-bs-profile-max-article-octets profile)))
+                (<= (fn-owner-memory-stored-most state)
+                    (nfix (fn-bs-profile-max-article-octets profile))))
+           (equal (fn-mm-served-article-octets
+                   profile (fn-adm-priced-cfg (fn-owner-memory-run-cfg r v cfg state) held cap))
+                  (nfix (fn-bs-profile-max-article-octets profile)))))
+
+(local (set-default-hints nil))

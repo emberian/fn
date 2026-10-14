@@ -3,12 +3,37 @@
 (in-package "ACL2")
 (include-book "public-exposure")
 (include-book "admission-memory")
+(include-book "owner-memory-stored")
+(include-book "owner-memory-stored-charge")
 (include-book "owner-open-carried")
 (include-book "acceptance-alloc")
 (include-book "defrecord")
 (include-book "state-globals")
 
 (local (in-theory (disable (tau-system))))
+
+(defun fn-adm-pin-octets (conns)
+  (declare (xargs :guard t))
+  (if (consp conns)
+      (max (nfix (fn-inj-config-max-octets (fn-own-conn-config (car conns))))
+           (fn-adm-pin-octets (cdr conns)))
+    0))
+
+
+(defthm fn-adm-pin-octets-is-natural
+ (natp (fn-adm-pin-octets conns)) :rule-classes :type-prescription)
+(defthm fn-adm-pin-octets-covers-member
+ (implies (member-equal c conns)
+  (<= (nfix (fn-inj-config-max-octets (fn-own-conn-config c)))
+      (fn-adm-pin-octets conns)))
+ :rule-classes :linear
+ :hints (("Goal" :induct (fn-adm-pin-octets conns)
+                 :in-theory (disable fn-inj-config-max-octets fn-own-conn-config))))
+
+; The gate's article bound is recomputed from live pins and the stored carry.
+(defun fn-adm-pinned-cfg (cfg pins stored-most)
+  (declare (xargs :guard t))
+  (update-nth 15 (max (nfix pins) (nfix stored-most)) (true-list-fix cfg)))
 
 (def-loop fn-adm-hh-drop (id rows)
  :shape :map :over rows :elt row
@@ -943,3 +968,6 @@
  :hints (("Goal" :use (m24-exposure-admission-composes m24-peer-admission-composes
  m24-rearm-admission-composes m24-reader-admission-composes m28-operator-admission-composes)
  :in-theory (theory 'minimal-theory))))
+
+(defthm fn-adm-priced-cfg-keeps-the-article-high
+  (equal (fn-mm-cfg-article-high (fn-adm-priced-cfg cfg held cap)) (fn-mm-cfg-article-high cfg)))

@@ -3,6 +3,7 @@
 ; These are proved at producers before any raw owner dispatch is considered.
 (in-package "ACL2")
 (include-book "owner-report-capture")
+(include-book "owner-memory-stored")
 (include-book "owner-retain-transitions")
 (include-book "owner-reclaim-carry")
 (include-book "store-checkpoint-arena-writer")
@@ -95,7 +96,7 @@
          ; the next query folds the swapped store from the history stobj.
          ; (0 . TOT), TOT the empty store's (fn-ct-zero-tot :resident).
          (state (f-put-global 'fn-owner-record-totals
-                              '(0 0 0 0 0 0 0 0 0 :resident)
+                              (fn-adm-memory-cache-make '(0 0 0 0 0 0 0 0 0 :resident) '(0 . 0))
                               state))
          ; The rebuilt base has no canonical H0. Reset durable/attempted to
          ; COUNT and release the slot; pending/requested/serial survive.
@@ -263,6 +264,8 @@
          ; Cold reset occurs before physical recovery under lifecycle exclusion.
          ; Preserve the epoch captured by the issued recovery source.
              (state (fn-owner-install-open-ocfg oc state))
+             (state (f-put-global 'fn-owner-record-totals
+                      (fn-adm-memory-cache-make '(0 0 0 0 0 0 0 0 0 :resident) '(0 . 0)) state))
              ; PRF-289: the carried obligation-id trie for the ledger the
              ; owner opens with (books/post-retain-carried.lisp
              ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the

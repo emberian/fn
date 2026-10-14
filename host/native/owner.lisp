@@ -9051,6 +9051,7 @@ publication).  Answers the reply word."
                                      ;; only here, over the installed history and synced totals.
                                      (unless (eq (fnn-owner-core 'fn-owner-memory-reclaim-complete) :refreshed)
                                        (fnn-fault "reclaim memory capacity refresh refused"))
+                                     (fnn-owner-memory-print-capacity)
                                      (fnn-dev-held-verdicts-dump "reclaim"))
                                    w)))))
                        (case sw

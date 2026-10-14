@@ -239,9 +239,9 @@
                   (fn-adm-capacity *adt-p* *adt-img* *adt-cfg* *adt-250m* *adt-big*)))
 (assert-event (null (fn-adm-capacity *adt-p* *adt-img* *adt-cfg* *adt-250m* (adt-posts 500))))
 (assert-event (equal (fn-adm-capacity-line *adt-p* *adt-img* *adt-cfg* *adt-128m* *adt-empty*)
-                     "refused memory-cannot-hold-the-store capacity=0 of 32 bound-by=store sum=204 MB limit=128 MB"))
+                     (concatenate 'string "refused memory-cannot-hold-the-store capacity=0 of 32 bound-by=store sum=204 MB limit=128 MB large=" (fn-heap-decimal (fn-mm-large-reply *adt-p* *adt-cfg*)))))
 (assert-event (equal (fn-adm-capacity-line *adt-p* *adt-img* *adt-cfg* *adt-230m* *adt-empty*)
-                     "memory capacity=17 of 32 bound-by=over-window sum=228 MB limit=230 MB"))
+                     (concatenate 'string "memory capacity=17 of 32 bound-by=over-window sum=228 MB limit=230 MB large=" (fn-heap-decimal (fn-mm-large-reply *adt-p* *adt-cfg*)))))
 
 (defteeth fn-adm-capacity-fits
   :claim (((fits (fn-adm-capacity profile img cfg limit tot)))

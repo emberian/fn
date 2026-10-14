@@ -277,7 +277,8 @@
                             " of " (fn-heap-decimal (fn-mm-cfg-connections cfg))
                             " bound-by=" (string-downcase (symbol-name word))
                             " sum=" (fn-adm-mb-up (fn-mm-sum profile img (fn-adm-cfg-at cfg (nfix c)) tot))
-                            " MB limit=" (fn-adm-mb-down limit) " MB")))
+                            " MB limit=" (fn-adm-mb-down limit) " MB large="
+                 (fn-heap-decimal (fn-mm-large-reply profile cfg)))))
     (if c
         (concatenate 'string "memory capacity=" (fn-heap-decimal c) tail)
       (concatenate 'string "refused memory-cannot-hold-the-store capacity=0" tail))))
@@ -296,6 +297,13 @@
 ; C): the fixed parts grow with C, the large replies with the holders; the
 ; thread count, the owner, the in-flight, the maintenance and the collector's
 ; policy ignore it, and the reopen need ignores it altogether.
+(defthm fn-adm-cfg-at-keeps-article-high
+ (equal (fn-mm-served-article-octets profile (fn-adm-cfg-at cfg k))
+        (fn-mm-served-article-octets profile cfg))
+ :hints (("Goal" :in-theory (e/d (fn-mm-served-article-octets
+                              fn-mm-cfg-article-high fn-mm-nat fn-adm-cfg-at)
+                             (fn-bs-profile-max-article-octets)))))
+
 (encapsulate ()
   (local (defthm fn-adm-at-accessors
     (and (equal (fn-mm-cfg-tlsp (fn-adm-cfg-at cfg k)) (fn-mm-cfg-tlsp cfg))
@@ -342,8 +350,9 @@
     :hints (("Goal" :in-theory (enable fn-mm-connection-fixed)))))
   (local (defthm fn-adm-at-large
     (equal (fn-mm-large-reply profile (fn-adm-cfg-at cfg k)) (fn-mm-large-reply profile cfg))
-    :hints (("Goal" :in-theory (enable fn-mm-large-reply fn-mm-over-window-octets
-                                       fn-mm-over-window-fit fn-mm-nov-line-octets)))))
+    :hints (("Goal" :in-theory (e/d (fn-mm-large-reply fn-mm-over-window-octets
+                              fn-mm-over-window-fit fn-mm-nov-line-octets)
+                             (fn-mm-served-article-octets))))))
   (local (defthm fn-adm-at-maintenance
     (equal (fn-mm-maintenance tot (fn-adm-cfg-at cfg k)) (fn-mm-maintenance tot cfg))
     :hints (("Goal" :in-theory (enable fn-mm-maintenance)))))
@@ -950,7 +959,8 @@
                    (fn-mm-sum profile img
                      (if (posp c) (fn-adm-public-readers-cfg cfg c) (fn-adm-cfg-at cfg 0))
                      tot))
-                 " MB limit=" (fn-adm-mb-down limit) " MB")))
+                 " MB limit=" (fn-adm-mb-down limit) " MB large="
+                 (fn-heap-decimal (fn-mm-large-reply profile cfg)))))
     (concatenate 'string
       (if (posp c) "memory capacity="
         "refused memory-cannot-hold-the-store capacity=")
@@ -969,6 +979,22 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-adm-priced-connections))))
 
+; Keep the numeric pricing decision abstract when applying the generic gate.
+(local
+ (defthm pin-priced-count-natural
+  (natp (fn-adm-priced-connections held configured capacity))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-adm-priced-connections fn-adm-reader-count)))))
+(local
+ (defthm pin-priced-cfg-slot-projections
+  (and (equal (fn-mm-cfg-connections (fn-adm-priced-cfg cfg held capacity))
+              (fn-adm-priced-connections held (fn-mm-cfg-connections cfg) capacity))
+       (equal (fn-mm-cfg-holders (fn-adm-priced-cfg cfg held capacity))
+              (fn-adm-priced-connections held (fn-mm-cfg-connections cfg) capacity)))
+  :hints (("Goal" :in-theory
+   (e/d (fn-adm-priced-cfg fn-adm-cfg-at fn-mm-cfg-connections fn-mm-cfg-holders fn-mm-nat)
+        (fn-adm-priced-connections))))))
+
 (defthm fn-adm-priced-gate-bounds-the-held-instant
   (let ((priced (fn-adm-priced-cfg cfg held capacity)))
     (implies (fn-mm-gate-p profile img priced limit tot)
@@ -981,9 +1007,13 @@
                             publishing)
                  limit)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-adm-priced-cfg fn-adm-priced-connections fn-adm-reader-count fn-adm-cfg-at fn-mm-cfg-connections fn-mm-cfg-holders fn-mm-nat fn-mm-gate-p)
-(fn-mm-need fn-mm-sum fn-mm-reopen-need fn-heap-article-slots fn-cbud-handshake-slots))
-:use ((:instance fn-mm-need-within-the-sum
+  :hints (("Goal" :in-theory (e/d (fn-mm-gate-p)
+(fn-adm-priced-cfg fn-adm-priced-connections fn-adm-reader-count fn-adm-cfg-at
+ fn-mm-cfg-connections fn-mm-cfg-holders fn-mm-need fn-mm-sum fn-mm-reopen-need
+ fn-heap-article-slots fn-cbud-handshake-slots))
+:use ((:instance fn-adm-priced-connections-cover-held
+                      (configured (fn-mm-cfg-connections cfg)))
+      (:instance fn-mm-need-within-the-sum
 (cfg (fn-adm-priced-cfg cfg held capacity)) (k (nfix held)) (j (nfix held))
 (s (fn-heap-article-slots profile))
 (h (fn-cbud-handshake-slots (fn-mm-cfg-tlsp (fn-adm-priced-cfg cfg held capacity)) (fn-mm-cfg-handshakes (fn-adm-priced-cfg cfg held capacity)))))))))
@@ -1033,9 +1063,9 @@
           (fn-adm-capacity-binding profile img cfg limit tot)))
         " sum=" (fn-adm-mb-up
           (fn-mm-sum profile img (fn-adm-cfg-at cfg 0) tot))
-        " MB limit=" (fn-adm-mb-down limit) " MB")))
+        " MB limit=" (fn-adm-mb-down limit) " MB large=" (fn-heap-decimal (fn-mm-large-reply profile cfg)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-adm-installed-capacity-line) (fn-adm-installed-capacity fn-adm-capacity-binding fn-adm-cfg-at fn-mm-sum fn-mm-cfg-connections fn-adm-mb-up fn-adm-mb-down fn-heap-decimal)))))
+  :hints (("Goal" :in-theory (e/d (fn-adm-installed-capacity-line) (fn-adm-installed-capacity fn-adm-capacity-binding fn-adm-cfg-at fn-mm-sum fn-mm-cfg-connections fn-adm-mb-up fn-adm-mb-down fn-heap-decimal fn-mm-large-reply)))))
 
 ; The retained bank changes only the fixed runtime allowance.
 
@@ -1173,7 +1203,7 @@
 
 (verify-guards fn-adm-installed-capacity-line
  :hints (("Goal" :in-theory (disable fn-adm-installed-capacity fn-adm-capacity-binding
-   fn-mm-cfg-connections fn-adm-mb-up fn-adm-mb-down fn-heap-decimal fn-mm-sum fn-adm-cfg-at string-downcase))))
+   fn-mm-cfg-connections fn-adm-mb-up fn-adm-mb-down fn-heap-decimal fn-mm-sum fn-adm-cfg-at string-downcase fn-mm-large-reply fn-mm-served-article-octets))))
 
 ; Refusal diagnostics use the same zero-aware decision as the record budget.
 (defun fn-adm-run-article-word

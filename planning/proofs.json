@@ -24040,6 +24040,85 @@
       "keystone_subjects": {
         "fn-adm-run-admitted-record-keeps-the-operator-slot-funded": "fn-mm-gate-p"
       }
+    },
+    {
+      "id": "PRF-100009",
+      "title": "PIN: validated stored maximum charges every held article",
+      "statement": "fn-adm-pinned-cfg-charges-every-stored-article (defkeystone pin-k-stored, tests/acl2/pinned-charge-tests.lisp); subject fn-hist-stored-most-carried.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/pinned-charge-tests.lisp"
+      ],
+      "evidence_digest": "1bd39720209fb61d",
+      "keystone_subjects": {
+        "fn-adm-pinned-cfg-charges-every-stored-article": "fn-hist-stored-most-carried"
+      },
+      "events": [
+        "fn-adm-pinned-cfg-charges-every-stored-article"
+      ]
+    },
+    {
+      "id": "PRF-100011",
+      "title": "PIN: served article charge returns to the current profile",
+      "statement": "fn-owner-memory-gate-charge-falls-to-the-current-profile (defkeystone pin-k-falls, tests/acl2/pinned-charge-host-tests.lisp); subject fn-owner-memory-run-cfg.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/pinned-charge-host-tests.lisp"
+      ],
+      "evidence_digest": "4b88409ba4fe6618",
+      "keystone_subjects": {
+        "fn-owner-memory-run-cfg-of-charge-falls-to-the-current-profile": "fn-owner-memory-run-cfg-of"
+      },
+      "events": [
+        "fn-owner-memory-gate-charge-falls-to-the-current-profile",
+        "fn-owner-memory-run-cfg-of-charge-falls-to-the-current-profile"
+      ]
+    },
+    {
+      "id": "PRF-100008",
+      "title": "PIN: every retained connection is charged at its pin",
+      "statement": "fn-owner-memory-gate-charges-every-pinned-connection (defkeystone pin-k-pin, tests/acl2/pinned-charge-host-tests.lisp); subject fn-owner-memory-run-cfg.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/pinned-charge-host-tests.lisp"
+      ],
+      "evidence_digest": "7bdc2c1bf47d05a4",
+      "keystone_subjects": {
+        "fn-owner-memory-run-cfg-of-charges-every-pinned-connection": "fn-owner-memory-run-cfg-of"
+      },
+      "events": [
+        "fn-owner-memory-gate-charges-every-pinned-connection",
+        "fn-owner-memory-run-cfg-of-charges-every-pinned-connection"
+      ]
+    },
+    {
+      "id": "PRF-100010",
+      "title": "PIN: real live apply preserves every pin charge",
+      "statement": "fn-owner-live-apply-keeps-every-pin-charged (defkeystone pin-k-live, tests/acl2/pinned-charge-host-tests.lisp); subject fn-owner-apply-limit-profile.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/pinned-charge-host-tests.lisp"
+      ],
+      "evidence_digest": "0447c1018c2d28c1",
+      "keystone_subjects": {
+        "fn-osb-install-keeps-every-pin-charged": "fn-osb-install"
+      },
+      "events": [
+        "fn-owner-live-apply-keeps-every-pin-charged",
+        "fn-osb-install-keeps-every-pin-charged"
+      ]
     }
   ]
 }
