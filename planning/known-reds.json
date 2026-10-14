@@ -216,7 +216,7 @@
    "kind": "native",
    "subject": "tests.test_native_topic_local.NativeTopicLocalTest.test_history_reopens_and_survives_compaction",
    "item": "OFFLINE-SCAN-STORE-READ-RESOURCES",
-   "owner": "builder-M",
+   "owner": "builder-L",
    "evidence": "hbox:/tank/fn/scratch/b-control-optins/native-optins-2b6c0fca0/logs/test-tests.test_native_topic_local.log"
   }
  ]
