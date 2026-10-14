@@ -501,6 +501,7 @@
 
 
 (include-book "../books/page-read-startup")
+(local (in-theory (enable adt-nth-1+)))
 
 ; DEFAULT allowance is distinct from DATA6 binding revision and complete allocation installation.
 ; Bits start clear; actual native startup confirms each constructor/reserve

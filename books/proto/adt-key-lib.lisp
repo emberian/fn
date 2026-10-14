@@ -556,6 +556,7 @@
 (defthmd adt-nth-1+
   (implies (natp j) (equal (nth (+ 1 j) x) (nth j (cdr x))))
   :hints (("Goal" :in-theory (enable nth))))
+(local (in-theory (enable adt-nth-1+)))
 
 (defthm adt-nth-0
   (equal (nth 0 x) (car x))

@@ -57,6 +57,7 @@
 (in-package "ACL2")
 (include-book "history-records-disk")
 (include-book "store-log")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------

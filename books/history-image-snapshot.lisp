@@ -20,6 +20,7 @@
 ; binding's record as the only root slot (`fn-his-open').
 (in-package "ACL2")
 (include-book "history-image-fold")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------

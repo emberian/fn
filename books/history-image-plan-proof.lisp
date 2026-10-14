@@ -1,6 +1,7 @@
 ; The length-only pass agrees with the canonical image's region lengths.
 (in-package "ACL2")
 (include-book "history-image-plan")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defthm fn-his-plan-row-spec

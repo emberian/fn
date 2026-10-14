@@ -5,6 +5,7 @@
 (include-book "history-image-row-step")
 (include-book "memory-credits")
 (include-book "history-paged-adopt")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defun fn-hroot-nat-octets (n)

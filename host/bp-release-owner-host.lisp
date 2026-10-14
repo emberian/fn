@@ -12,6 +12,7 @@
 (include-book "../books/store-node")
 (include-book "workflow-host")
 (include-book "../books/owner-state-accessors")
+(local (in-theory (enable adt-nth-1+)))
 
 ; The entries that replay or apply workflow records read the attempt's
 ; request through the live payload arena (books/bp-outbound.lisp); they take

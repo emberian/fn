@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "history-pages-exec")
 (include-book "def-loop")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; Rules withdrawn at their source that this book's proofs use

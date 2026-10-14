@@ -11,6 +11,7 @@
 ; model `fn-hp-piw-of-append1-grown'.
 (in-package "ACL2")
 (include-book "history-pages-nest")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (disable floor mod pgs-true-list-fix-when-true-listp pgs-ptab-p-true-listp fn-cp-id-length-bound)))

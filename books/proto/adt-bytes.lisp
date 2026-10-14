@@ -53,6 +53,7 @@
 (include-book "adt-key-lib")
 (include-book "../sha256")
 (include-book "../blake3")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (disable nth update-nth nthcdr take)))

@@ -11,6 +11,7 @@
 (include-book "../books/state-globals")
 (include-book "../books/definterface")
 (include-book "../books/owner-agent")
+(local (in-theory (enable adt-nth-1+)))
 
 (defconst *fn-reader-groups* '("fn.letters"))
 (defconst *fn-reader-id* "<reader@example.invalid>")

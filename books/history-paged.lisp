@@ -5,6 +5,7 @@
 (include-book "history-columns-foundation")
 (include-book "history-pages-resident")
 (include-book "history-records")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defstobj fn-hist$p

@@ -14,6 +14,7 @@
 ; history's event at SEQ.
 (in-package "ACL2")
 (include-book "history-pages-row")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; Rules withdrawn at their source that this book's proofs use

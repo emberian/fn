@@ -4,6 +4,7 @@
 ; from the ACL2 rank: rank+1 suffices and is not an operator data ceiling.
 (in-package "ACL2")
 (include-book "history-pages-relocate-step")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defthm fn-hpr-grow-keeps-cursor

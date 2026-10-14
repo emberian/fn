@@ -18,6 +18,7 @@
 (include-book "../books/store-node")
 (include-book "../books/definterface")
 (include-book "store-host")
+(local (in-theory (enable adt-nth-1+)))
 
 ; The workflow entries that form a request read the article's octets through
 ; the live payload arena (books/bp-outbound.lisp; the records flip): each takes
