@@ -12,7 +12,7 @@
   :unaccounted (fn-hl-rtc-config fn-rtc-st-cfg-okp fn-hll-x-init true-list-fix fn-hld-fuel fn-hld-settle mv-nth))
 
 (def-cost fn-hld-begin
-  :unaccounted (expt fn-rtc-kind-out-p fn-rtc-s-inc fn-rtc-kind-op fn-hll-x-step* true-list-fix fn-hld-fuel fn-hld-settle mv-nth))
+  :unaccounted (expt fn-rtc-inc-roomp fn-rtc-kind-out-p fn-rtc-s-inc fn-rtc-kind-op fn-hll-x-step* true-list-fix fn-hld-fuel fn-hld-settle mv-nth fn-rtc-x-slots-exhaustedp))
 
 (def-cost fn-hld-workspace
   :unaccounted (fn-rtc-nbufs))

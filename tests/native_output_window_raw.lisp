@@ -64,6 +64,9 @@
 (defun fnn-owner-window-activation (thunk)
   (declare (ignorable thunk))
   (harness-stub-reached 'fnn-owner-window-activation "host/native/owner.lisp"))
+(defun fnn-refuse (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-refuse "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (declaim (declaration xargs))
 (defmacro mbe (&key logic exec) (declare (ignore logic)) exec)
