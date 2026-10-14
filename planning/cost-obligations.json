@@ -12222,10 +12222,13 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
+    "fn-exp-at",
     "fn-owner-held-callback-operator-open",
     "fn-owner-memory-run-cfg",
     "fn-owner-record-totals",
-    "mv-nth"
+    "mv-nth",
+    "true-list-fix",
+    "update-nth"
    ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
