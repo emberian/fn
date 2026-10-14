@@ -9,6 +9,7 @@
 #                             lowest load1 per core now among those not reserved by
 #                             someone else, and both loads on stderr; when every box
 #                             that answers is reserved, wait for the first lease to end
+#   tools/boxes.sh --load BOX print only its one-minute load (farm admission)
 #   tools/boxes.sh reserve BOX --for MINUTES --why TEXT [--as NAME]
 #   tools/boxes.sh release BOX [--as NAME] [--force]
 #   tools/boxes.sh check BOX [--as NAME]      prints "free" or the holder and expiry;
@@ -50,7 +51,8 @@ set -u
 LEASE_SHOW='L=$HOME/.fn-box-reservation; if [ -f "$L" ]; then IFS=$(printf "\t") read -r u h w < "$L"; n=$(date +%s); if [ "${u:-0}" -gt "$n" ] 2>/dev/null; then echo "R $u $(( (u - n + 59) / 60 )) $(date -u -d @$u +%H:%MZ 2>/dev/null || echo ?) $h $w"; fi; fi
 for T in "$HOME"/.fn-box-reservation-token-*; do case $T in *.lock|*.new|*"*") continue ;; esac; [ -f "$T" ] || continue; IFS=$(printf "\t") read -r u h w < "$T"; n=$(date +%s); if [ "${u:-0}" -gt "$n" ] 2>/dev/null; then echo "T ${T##*-token-} $u $(( (u - n + 59) / 60 )) $(date -u -d @$u +%H:%MZ 2>/dev/null || echo ?) $h $w"; fi; done'
 
-PROBE='n=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu); l=$(cut -d" " -f1 /proc/loadavg 2>/dev/null || sysctl -n vm.loadavg | tr -d "{}" | cut -d" " -f2)
+LOAD1='cut -d" " -f1 /proc/loadavg 2>/dev/null || sysctl -n vm.loadavg | tr -d "{}" | cut -d" " -f2'
+PROBE='n=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu); l=$('"$LOAD1"')
 if [ -r /proc/meminfo ]; then m=$(awk "/MemAvailable/{print int(\$2/1048576)}" /proc/meminfo); else m=$(vm_stat | awk "/free|inactive|speculative/{s+=\$NF} END{print int(s*16384/1073741824)}"); fi
 a=0; [ -r /proc/spl/kstat/zfs/arcstats ] && a=$(awk "\$1==\"size\"{print int(\$3/1073741824)}" /proc/spl/kstat/zfs/arcstats)
 d=$HOME; [ -d /tank/fn/scratch ] && d=/tank/fn/scratch; [ -d $HOME/fn-gates ] && d=$HOME/fn-gates
@@ -59,6 +61,13 @@ echo "$n $l $m $a $f $d"
 '"$LEASE_SHOW"
 
 SSH=${FN_BOXES_SSH:-ssh}
+
+# Reuse the probe's reader without reading leases or the personal box config.
+if [ "${1:-}" = --load ]; then
+    [ $# = 2 ] || exit 2
+    case $2 in *[!a-z0-9-]*|''|-*) exit 2 ;; esac
+    exec "$SSH" -o ConnectTimeout=10 -o BatchMode=yes "$2" "$LOAD1"
+fi
 
 # Rented boxes (tools/box_table.py, ~/.config/fn/boxes.json): listed, picked
 # and leased like hbox and persvati while their row is live.
