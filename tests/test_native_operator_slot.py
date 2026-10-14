@@ -10,6 +10,7 @@ step. It calls the actual operator wrapper twice and forwards ACL2's second
 refusal through the regular administrative control reply. It is a test of
 simultaneous slot custody; it does not rely on scheduler timing.
 """
+import re
 import socket
 import unittest
 
@@ -117,8 +118,19 @@ class OperatorSlotCase:
             sock.close()
         self.held.clear()
 
+    def public_capacity(self):
+        """The run's own public capacity C' from its capacity line; the test pins no figure (the
+        over-window term keeps C' below the configured 40 until OVER landing 2, and below it
+        after any profile change)."""
+        found = re.search(rb"memory capacity=(\d+) of (\d+) bound-by=", self.node.process.stderr.since(0))
+        self.assertIsNotNone(found, self.node.process.stderr.since(0)[-2000:])
+        capacity = int(found.group(1))
+        self.assertGreater(capacity, 0)
+        self.assertLessEqual(capacity, 40)
+        return capacity
+
     def saturate(self):
-        for _ in range(40):
+        for _ in range(self.public_capacity()):
             sock = socket.create_connection(("127.0.0.1", self.node.port), timeout=30)
             line = first_line(sock)
             self.assertTrue(line.startswith((b"200 ", b"201 ")), line)
@@ -130,9 +142,19 @@ class NativeOperatorSlotRaiseTests(OperatorSlotCase, unittest.TestCase):
     IMAGE = PRODUCTION
 
     def test_the_slot_allows_the_live_raise_at_public_saturation(self):
+        # Measure this node's own capacity K, then configure K-2 so that a raise to K-1
+        # still fits the memory (which holds K public readers plus the operator slot).
+        # At public saturation the raise must go through the private slot and be admitted;
+        # before STEP 5 it was refused until a reader left.
         self.node.start()
+        capacity = self.public_capacity()
+        self.assertGreaterEqual(capacity, 3)
+        self.node.stop()
+        self.node.operator("policy", "set", "exposure-connections", str(capacity - 2), expect=EXIT_OK)
+        self.node.start()
+        self.assertEqual(self.public_capacity(), capacity - 2)
         self.saturate()
-        result = self.node.operator("policy", "set", "exposure-connections", "45")
+        result = self.node.operator("policy", "set", "exposure-connections", str(capacity - 1))
         self.assertEqual(result.returncode, EXIT_OK, result.stderr.decode())
         self.assertIsNone(self.node.process.poll())
 

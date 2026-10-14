@@ -234,6 +234,9 @@ def normalize(data, *roots):
     # offline commands retain their own sizing.  Image content is an input.
     text = re.sub(r"\bheap=\d+ MB", "heap=<core-dependent> MB", text)
     text = re.sub(r"\breservation=\d+ MB", "reservation=<core-dependent> MB", text)
+    # The within-budget verdict compares that core-dependent reservation with the budget, so
+    # it is core-dependent too (release and reference differ only in their image content).
+    text = re.sub(r"\bwithin-budget=(?:yes|no)(?: target-budget=\d+ MB)?", "within-budget=<core-dependent>", text)
     # Wall-clock readings: a file's modification time, an accept's time.
     text = re.sub(r"\bmodified=\d+", "modified=<clock>", text)
     text = re.sub(r"\btime=\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "time=<clock>", text)
@@ -462,12 +465,12 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             # identical explicit capacities, retaining their exact status/limits.
             made = image.run(["operator", fcfg, "init", "--budget", "4000",
                               "--profile", "development", "--max-transactions", "16384",
-                              "--max-history-octets", "8388608", "local.test"])
+                              "--max-history-octets", "33554432", "local.test"])
             self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stdout + refused.stderr)
             self.assertEqual(made.returncode, EXIT.OK, made.stdout + made.stderr)
             status = self.status(image, fcfg)
             self.assertEqual(status[0], EXIT.OK, status[1] + status[2])
-            self.assertIn(b"max-transactions=16384 max-history-octets=8388608", status[1])
+            self.assertIn(b"max-transactions=16384 max-history-octets=33554432", status[1])
             files = sorted(tree(fresh))
             shutil.rmtree(fresh, True)
             return [refused.returncode, refused.stdout, refused.stderr,

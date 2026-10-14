@@ -598,11 +598,14 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 self.assertTrue(extra.greeting.startswith(b"400 "), extra.greeting)
             finally:
                 extra.sock.close()
-            # The private staging reader has the same priced bound. At C'
-            # held readers the retired C'+1 operator slot cannot be opened.
+            # At C' held public readers, the private staging open takes the
+            # priced operator slot (STEP 5: public capacity is the funded total
+            # less that slot), so the live change is admitted, not refused until
+            # a reader leaves (the retired operator-opener limitation (a)).
             control = self.run_fn("operator", config, "policy", "set",
                                   "exposure-connections", str(configured - 1))
-            self.assertEqual(control.returncode, EXIT_REFUSED, text(control))
+            self.assertEqual(control.returncode, EXIT_OK, text(control))
+            self.assertIn("ACCEPTED", text(control))
             # C' is the most connections the gate holds over the store at
             # configure, so the room left is under one connection's charge
             # (one article reply here) and a store that grows spends it: each
