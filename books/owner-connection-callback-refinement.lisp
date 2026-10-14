@@ -42,6 +42,12 @@
 
 
 
+;; M28 (R4 follow-up): installing the configured owner leaves the owner's credits unchanged.
+(local
+ (defthm m28-credits-of-install-ocfg
+  (equal (fn-owner-credits (fn-owner-install-ocfg oc state)) (fn-owner-credits state))
+  :hints (("Goal" :in-theory (enable fn-owner-credits fn-owner-install-ocfg fn-owner-credit-reserve)))))
+
 (defthm fn-owner-callback-close-complete-effects
   (let* ((oc (fn-owner-ocfg state))
          (next (fn-ocfg-close oc id))

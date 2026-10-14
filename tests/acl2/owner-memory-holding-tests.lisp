@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/owner-memory-holding")
+(include-book "../../books/owner-memory-run") ; fn-adm-installed-lease-allocation (R2 decrease fixture)
 (include-book "../../books/defkeystone")
 (include-book "../../books/config-observed")
 (include-book "../../books/config-store-steps")
@@ -640,6 +641,17 @@
  :hints (("Goal" :by fn-adm-run-gate-keeps-the-operator-slot-funded)))
 
 
+; The old-held-only-admission tooth needs a gap (O8's measurement in the merged OVER world, 10-14): at
+; *m28-after-limit2* the row fits beside two held readers, and three holders after it are unfunded.  The
+; limit is derived, so a pricing under which one holder no longer separates them fails here by name,
+; instead of leaving the mutant vacuous.
+(assert-event
+ (and (fn-adm-memory-admitp *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 2 2)
+                            *m28-after-limit2* *m22a-tot* *m28-row*)
+      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2)
+                         *m28-after-limit2* *m28-after*)))
+ :msg "M28 OLD-HELD-ONLY-ADMISSION gap: three holders are unfunded at *m28-after-limit2*")
+
 (defkeystone m28-run-admitted-record-keeps-the-operator-slot-funded
 (implies (and (natp capacity)
                 (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity operator-id))
@@ -888,17 +900,17 @@
 
 (with-guard-checking-event :all
  (assert-event (let ((actual (fn-adm-operator-open *m28-oc2* nil *m28-b2* 2 2 nil
-                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-limit3* *m28-after*))
+                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m28-after*))
        (mutant (m28-operator-borrowed-slot *m28-oc2* nil *m28-b2* 2 2 nil
-                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-limit3* *m28-after*)))
+                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m28-after*)))
  (and (fn-held-p *m28-row*) (and (fn-ocl-relation *m28-oc2*)
        (fn-cstp-carriedp (fn-own-store (fn-ocfg-owner *m28-oc2*))))
-      (equal (fn-adm-installed-capacity *m22a-profile* *m22a-img* *m22a-cfg* *m28-limit3* *m22a-tot*) 2)
+      (equal (fn-adm-installed-capacity *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m22a-tot*) 2)
       (fn-adm-run-memory-admitp *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit3* *m22a-tot* *m28-row* 2 2 nil)
-      (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-limit3* *m22a-tot*)
+      (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-after-limit2* *m22a-tot*)
       (fn-adm-memory-admitp *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 2 2)
-          *m28-limit3* *m22a-tot* *m28-row*)
-      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-limit3* *m28-after*))
+          *m28-after-limit2* *m22a-tot* *m28-row*)
+      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-after-limit2* *m28-after*))
       (equal (fn-adm-operator-open-word actual) :refused)
       (equal (fn-adm-operator-open-reason actual) :operator-slot-memory)
       (equal (fn-adm-operator-open-word mutant) :admitted)
