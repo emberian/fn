@@ -1,0 +1,28 @@
+; Guarded real-source open binding control, no hand-copied implementation.
+(in-package "ACL2")
+(include-book "../../books/lb-log-open-properties")
+
+(defun fn-lb-open-loader-control ()
+ (declare (xargs :guard t))
+ (with-local-stobj fn-arena
+  (mv-let (checked fn-arena)
+   (with-local-stobj fn-cat
+    (mv-let (checked fn-arena fn-cat)
+     (let* ((p '(72 58 32 120 13 10 13 10 46 13 10))
+            (w0 (fn-record-make 0 1 0 "<lb0@fn.test>" p '("fn.test") "o" "s" "e" 1 5))
+            (w1 (fn-record-make 1 2 0 "<lb1@fn.test>" nil '("fn.test") "o" "s" "e" 1 3))
+            (ws (list w0 w1)))
+      (if (not (fn-lb-open-records-guardp ws nil 0 0)) (mv nil fn-arena fn-cat)
+       (let ((log (fn-lb-log-model-open-events ws nil 0 0 7 nil)))
+        (mv-let (rows fn-arena) (fn-intern-events ws nil 0 fn-arena)
+         (if (not (and (fn-sca-held-rowsp rows) (fn-lb-log-entries-guardp log))) (mv nil fn-arena fn-cat)
+          (let ((fn-cat (fn-sca-load-held-rows rows nil fn-arena fn-cat)))
+           (mv (and (equal (fn-cat-count fn-cat) 2)
+                    (equal (fn-arena-count fn-arena) 2)
+                    (fn-lb-arena-is-log fn-arena (fn-lb-open-held-rows rows) log)
+                    (fn-lb-arena-is-log fn-arena (list (fn-cat-at 0 fn-cat) (fn-cat-at 1 fn-cat)) log)
+                    (fn-lb-log-handles-below log 2)) fn-arena fn-cat)))))))
+     (mv checked fn-arena)))
+   checked)))
+(assert-event (fn-lb-open-loader-control)
+ :msg "actual guarded open intern + availability loader: both payload bindings")
