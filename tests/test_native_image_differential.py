@@ -234,6 +234,9 @@ def normalize(data, *roots):
     # offline commands retain their own sizing.  Image content is an input.
     text = re.sub(r"\bheap=\d+ MB", "heap=<core-dependent> MB", text)
     text = re.sub(r"\breservation=\d+ MB", "reservation=<core-dependent> MB", text)
+    # The within-budget verdict compares that core-dependent reservation with the budget, so
+    # it is core-dependent too (release and reference differ only in their image content).
+    text = re.sub(r"\bwithin-budget=(?:yes|no)(?: target-budget=\d+ MB)?", "within-budget=<core-dependent>", text)
     # Wall-clock readings: a file's modification time, an accept's time.
     text = re.sub(r"\bmodified=\d+", "modified=<clock>", text)
     text = re.sub(r"\btime=\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "time=<clock>", text)
