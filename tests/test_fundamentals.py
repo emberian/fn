@@ -141,7 +141,7 @@ class ScoreboardTests(unittest.TestCase):
                 (ev / "out" / f).unlink()
             checklist = Path(tmp) / "release.md"
             # the 6.6.0 checklist is this test's fixture (its F1/F2/F8 rows are
-            # what the assertions read); VERSION 6.6.1-pre has no checklist
+            # what the assertions read); VERSION 5.1.1-pre has no checklist
             shutil.copy(ROOT / "planning" / "release-v6.6.0.md", checklist)
             before = fundamentals.table_rows(checklist.read_text())
             a = bars(checklist=str(checklist), out=str(ev / "out"), revision="HEAD", write=True)

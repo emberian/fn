@@ -1,39 +1,44 @@
 #!/usr/bin/env python3
-"""fn's release sequence (D37): release order is a sequence, never a number.
+"""fn's release sequence (EMBER.md, 2026-10-14): release order is a sequence, never a number.
 
     python3 tools/release_sequence.py position VERSION
     python3 tools/release_sequence.py next VERSION [--final]
     python3 tools/release_sequence.py is-next PREV NEW
     python3 tools/release_sequence.py cut-check VERSION [TAG ...]
 
-ember, 2026-09-27: the first release is 6.6.0, then 6.6.1 to 6.6.5, then the
-6.7.x series (6.7.0, 6.7.1, ..., open-ended), then 6.6.6, the final release,
-and after it every release appends one more .6 (6.6.6.6, 6.6.6.6.6, ...).
-So 6.6.6 follows 6.7.41, and 6.6.5 precedes 6.7.0: no comparison of version
-numbers says anything about release order.  The sequence is written in
+ember, 2026-10-14 (EMBER.md ~12:30 and ~15:20 EDT): keep developing; no
+release is being cut.  The first release will be 5.1.1, then 5.2.2, 5.3.3,
+5.4.4, 5.5.5, then the 6.7.x series (6.7.0, 6.7.1, ..., open-ended; ember's
+"6.7" starts at 6.7.0), then the 6.6 series 6.6.0 to 6.6.5, "the landing
+sequence", which comes chronologically AFTER 6.7.x, then 6.6.6, the final
+release, and after it every release appends one more .6 (6.6.6.6,
+6.6.6.6.6, ...).  This supersedes D37's 6.6.0-first order and D67's
+6.6.1-pre version line; no release has been cut.  So 6.6.0 follows 6.7.41,
+and 5.5.5 precedes 6.7.0: no comparison of version numbers says anything
+about release order.  The sequence is written in
 planning/release-sequence.json; this module reads it and is the only place
 that decides order.  `position' is (segment, index), segments in the file's
 order; `next' is the successor within the sequence (6.7.N has two: 6.7.N+1,
-and with --final the first entry of the next segment); `cut-check' is
-tools/cut_release.sh gate 01: VERSION is the next entry after the newest
-existing v* tag (by position), or the first entry when there is none, or
-VERSION's own tag is the newest (the cut's own commit, re-run).
+and with --final the first entry of the next segment, 6.6.0: --final leaves
+the counter, it never skips the landing sequence to 6.6.6);
+`cut-check' is tools/cut_release.sh gate 01: VERSION is the next entry after
+the newest existing v* tag (by position), or the first entry when there is
+none, or VERSION's own tag is the newest (the cut's own commit, re-run).
 
 Pre-releases (coordinator ruling 2026-10-05, D37): `ENTRY-pre' names the
 bytes built toward sequence entry ENTRY before ENTRY's cut criteria are met
-(the D60 redeploy ships 6.6.1-pre).  It takes ENTRY's position, so it sorts
-with ENTRY, and `fn --version' prints it with its REV12 (`fn 6.6.1-pre
-(R12)').  It is never a release: cut-check refuses it, so tools/cut_release.sh
-can never tag one, and the live nodes' version (6.6.0) never names other
-bytes.
+(currently 5.1.1-pre).  It takes ENTRY's position, so it sorts with ENTRY,
+and `fn --version' prints it with its REV12 (`fn 5.1.1-pre (R12)').  It is
+never a release: cut-check refuses it, so tools/cut_release.sh can never
+tag one, and a release version never names other bytes.
 
 Prehistory (2026-09-28, lane devhist): the first segment may be marked
 "prehistory": true.  Its entries (v1.0.0 to v5.0.0) are retrospective
 annotated tags on milestones of the development history (DEVHIST.md), not
-releases: they have positions, so they sort before 6.6.0, but `first' is the
-first release, cut-check ignores prehistory tags and refuses to cut a
-prehistory version, and tools/changelog.py never takes one as the previous
-release.
+releases: they have positions, so they sort before the first release, but
+`first' is the first release, cut-check ignores prehistory tags and refuses
+to cut a prehistory version, and tools/changelog.py never takes one as the
+previous release.
 Stdlib only; nothing here reads git or the network.
 """
 from __future__ import annotations
@@ -171,7 +176,7 @@ def successors(version: str, segments: list[dict] | None = None) -> tuple[str, .
 def next(version: str, final: bool = False, segments: list[dict] | None = None) -> str:  # noqa: A001
     """The release after VERSION.  In an open-ended counter (the 6.7.x
     series) that is 6.7.N+1, or with FINAL the next segment's first entry
-    (6.6.6); FINAL anywhere else is an error."""
+    (6.6.0, the landing sequence); FINAL anywhere else is an error."""
     segments = segments if segments is not None else load()
     succ = successors(version, segments)
     i, _ = position(version, segments)

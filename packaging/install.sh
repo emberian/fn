@@ -129,7 +129,7 @@ release_name() {  # $1: a release; sets name=VERSION+REV from `fn VERSION (REV)'
   [ "${1:-}" = fn ] && [ -n "${2:-}" ] && [ -n "${3:-}" ] || {
     echo "install: $dir/bin/fn --version printed '$printed', not 'fn VERSION (REV)'" >&2; exit 4; }
   rev=${3#\(}; rev=${rev%\)}
-  # VERSION may carry -pre (tools/release_sequence.py, 6.6.1-pre), never a
+  # VERSION may carry -pre (tools/release_sequence.py, 5.1.1-pre), never a
   # leading '-'; REV is hex.
   case "$2" in ''|-*|*[!A-Za-z0-9.-]*) echo "install: unusable release name from '$printed'" >&2; exit 4 ;; esac
   case "$rev" in ''|*[!A-Za-z0-9]*) echo "install: unusable release name from '$printed'" >&2; exit 4 ;; esac

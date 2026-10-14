@@ -32,7 +32,7 @@ INSTALL = ROOT / "packaging" / "install.sh"
 
 FAKE_FN = """#!/bin/sh
 case $1 in
-  --version) echo "fn 6.6.0 (REV)" ;;
+  --version) echo "fn 5.1.1 (REV)" ;;
   operator)
     case $3 in
       status) printf '%s\\n' "$FAKE_ANSWER"; exit "${FAKE_RC:-0}" ;;
@@ -79,8 +79,8 @@ class UpgradeAskTests(unittest.TestCase):
         (self.node / "fn.toml").write_text("# fake\n")
         first = release(self.root, "aaaa")
         (self.prefix / "releases").mkdir(parents=True)
-        shutil.copytree(first, self.prefix / "releases" / "6.6.0+aaaa", symlinks=True)
-        (self.prefix / "current").symlink_to("releases/6.6.0+aaaa")
+        shutil.copytree(first, self.prefix / "releases" / "5.1.1+aaaa", symlinks=True)
+        (self.prefix / "current").symlink_to("releases/5.1.1+aaaa")
         self.next = release(self.root, "bbbb")
 
     def upgrade(self, rc: int, answer: str) -> subprocess.CompletedProcess:
@@ -97,13 +97,13 @@ class UpgradeAskTests(unittest.TestCase):
     def test_a_stopped_report_switches(self):
         done = self.upgrade(0, "stopped checkpoint=none journal-octets=0 transactions-at-most=0")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertEqual(self.current(), "releases/6.6.0+bbbb")
+        self.assertEqual(self.current(), "releases/5.1.1+bbbb")
 
     def assert_refused(self, rc: int, answer: str, said: str) -> None:
         done = self.upgrade(rc, answer)
         self.assertEqual(done.returncode, 4, done.stdout + done.stderr)
-        self.assertEqual(self.current(), "releases/6.6.0+aaaa")
-        self.assertFalse((self.prefix / "releases" / "6.6.0+bbbb").exists())
+        self.assertEqual(self.current(), "releases/5.1.1+aaaa")
+        self.assertFalse((self.prefix / "releases" / "5.1.1+bbbb").exists())
         self.assertIn(said, done.stderr)
         self.assertNotIn("this continues", done.stdout + done.stderr)
 
