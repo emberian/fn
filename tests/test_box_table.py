@@ -51,6 +51,17 @@ class BoxTableTests(unittest.TestCase):
                           "cloud2": {"until": "2026-10-04T19:57:00Z"}})
         self.assertEqual(list(box_table.extra_boxes(FIXED, env, NOW)), ["cloud2"])
 
+    def test_inn_is_an_installation_fact_not_inherited_toolchain(self):
+        env = self.table({"cloud1": {"like": "hbox"},
+                          "cloud2": {"like": "hbox", "inn_src": "/opt/inn/2.7"}})
+        self.assertEqual(box_table.native_test_env("hbox", env),
+                         {"FN_INN_SRC": "/tank/fn/inn/2.7.4"})
+        self.assertEqual(box_table.native_test_env("cloud1", env), {})
+        self.assertEqual(box_table.native_test_env("cloud2", env),
+                         {"FN_INN_SRC": "/opt/inn/2.7"})
+        with self.assertRaises(SystemExit):
+            box_table.extra_boxes(FIXED, self.table({"cloud1": {"inn_src": "/bad;path"}}), NOW)
+
     def test_a_fixed_or_malformed_name_or_path_is_refused(self):
         for boxes in ({"hbox": {}}, {"laptop": {}}, {"Cloud 1": {}},
                       {"cloud1": {"cache": "/tank/fn/cert cache"}},

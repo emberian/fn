@@ -103,10 +103,33 @@ class _TimedResult(unittest.TextTestResult):
         self.cases: list[tuple[str, str]] = []  # (test id, ok|FAIL|ERROR|skip|xfail|unexpected-ok)
         self._started: dict[str, float] = {}
         self._failed: set[str] = set()
+        self._case_indices: dict[str, int] = {}
+
+    @staticmethod
+    def _parent(test):
+        # unittest._SubTest is a TestCase, but its id includes parameters.
+        return getattr(test, "test_case", test)
 
     def _case(self, test, outcome: str) -> None:
+        test = self._parent(test)
         name = test.id() if isinstance(test, unittest.TestCase) else str(test)
-        self.cases.append((name, outcome))
+        index = self._case_indices.get(name)
+        if index is None:
+            self._case_indices[name] = len(self.cases)
+            self.cases.append((name, outcome))
+        else:
+            # Aggregate a parent's subTests once. A later success or skip
+            # cannot erase a failure; a partial skip is not a full pass.
+            rank = {"ok": 0, "xfail": 0, "skip": 1,
+                    "unexpected-ok": 2, "FAIL": 3, "ERROR": 4}
+            if rank[outcome] > rank[self.cases[index][1]]:
+                self.cases[index] = (name, outcome)
+
+    def addSubTest(self, test, subtest, err):
+        super().addSubTest(test, subtest, err)
+        if err is not None:
+            self._failed.add(test.id())
+            self._case(test, "FAIL" if issubclass(err[0], test.failureException) else "ERROR")
 
     def addSuccess(self, test):
         super().addSuccess(test)
@@ -214,7 +237,9 @@ def run_one(module: str, order: str = "default", cases: list[str] | None = None)
     result = runner.run(suite)
     # A setUpClass/setUpModule SkipTest is one skip for tests never counted
     # in testsRun; a skipped test is counted in both.
-    counted = sum(isinstance(test, unittest.TestCase) for test, _ in result.skipped)
+    # SubTest skips are counted individually, not as unexecuted parents.
+    counted = sum(isinstance(test, unittest.TestCase) and test is result._parent(test)
+                  for test, _ in result.skipped)
     record = {
         "module": module,
         "tests": result.testsRun,
@@ -222,8 +247,9 @@ def run_one(module: str, order: str = "default", cases: list[str] | None = None)
         "errors": len(result.errors),
         "skipped": len(result.skipped),
         "executed": result.testsRun - counted,
-        "skips": [[test.id() if isinstance(test, unittest.TestCase) else str(test),
-                   str(reason)] for test, reason in result.skipped],
+        "skips": [[result._parent(test).id() if isinstance(test, unittest.TestCase) else str(test),
+                   (test.id() + ": " if test is not result._parent(test) else "") + str(reason)]
+                  for test, reason in result.skipped],
         "timings": result.timings,
         "cases": result.cases,
         "only_cases": sorted(cases) if cases else None,
