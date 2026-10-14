@@ -234,6 +234,63 @@
     :use fn-owner-exposure-rearm-preserves-retain-state
     :in-theory '(fn-owner-retain-retained-statep m28-owner-exposure-rearm-keeps-store))))
 
+;; M28 (K1 coverage, A28 grant): this lane's five carried writers keep fn-owner-retain-livep.
+(defthm fn-owner-memory-physical-return-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 2 (fn-owner-memory-physical-return id state)) fn-arena))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-physical-return fn-owner-memory-held-return fn-owner-retain-livep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-memory-lease-install-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 2 (fn-owner-memory-lease-install profile cfg quantum state)) fn-arena))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-lease-install fn-owner-retain-livep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-record-totals-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 2 (fn-owner-record-totals fn-hist state)) fn-arena))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-record-totals fn-owner-retain-livep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-memory-recapacity-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 1 (fn-owner-memory-recapacity fn-hist state)) fn-arena))
+ :hints (("Goal" :use (fn-owner-record-totals-keeps-live) :in-theory (union-theories
+  '(fn-owner-memory-recapacity fn-owner-retain-livep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-memory-reclaim-complete-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 3 (fn-owner-memory-reclaim-complete fn-hist state)) fn-arena))
+ :hints (("Goal" :use (fn-owner-memory-recapacity-keeps-live) :in-theory (union-theories
+  '(fn-owner-memory-reclaim-complete
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-peer-rearm-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep
+             (mv-nth 2 (fn-owner-peer-rearm peer-octets old-id state)) fn-arena))
+  :hints (("Goal"
+    :use fn-owner-peer-rearm-preserves-retain-state
+    :in-theory '(fn-owner-retain-livep m28-owner-peer-rearm-keeps-store))))
+
+(defthm fn-owner-exposure-rearm-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep
+             (mv-nth 2 (fn-owner-exposure-rearm family address peer-octets old-id state)) fn-arena))
+  :hints (("Goal"
+    :use fn-owner-exposure-rearm-preserves-retain-state
+    :in-theory '(fn-owner-retain-livep m28-owner-exposure-rearm-keeps-store))))
+
 (def-carried fn-owner-served-carried
   :invariant fn-owner-retain-retained-statep
   ; K1 retained establishment; the same recovery producers and assumptions.

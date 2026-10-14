@@ -126,7 +126,13 @@
     (fn-owner-fault . fn-owner-retain-fault-keeps-live)
     (fn-owner-open-peer . fn-owner-retain-open-peer-keeps-live)
     (fn-owner-install-node-secret . fn-owner-retain-install-node-secret-keeps-live)
-    (fn-owner-apply-limit-profile . fn-owner-retain-apply-limit-profile-keeps-live)))
+    (fn-owner-apply-limit-profile . fn-owner-retain-apply-limit-profile-keeps-live)
+    ;; lane memory-run-launch (A28 grant): this lane's five carried writers.
+    (fn-owner-memory-physical-return . fn-owner-memory-physical-return-keeps-live)
+    (fn-owner-memory-lease-install . fn-owner-memory-lease-install-keeps-live)
+    (fn-owner-memory-reclaim-complete . fn-owner-memory-reclaim-complete-keeps-live)
+    (fn-owner-peer-rearm . fn-owner-peer-rearm-keeps-live)
+    (fn-owner-exposure-rearm . fn-owner-exposure-rearm-keeps-live)))
 
 (defun fn-owner-retain-tree-mentionsp (symbol tree)
   (declare (xargs :guard t))

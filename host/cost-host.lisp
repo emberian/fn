@@ -184,7 +184,8 @@
 ; STEP 5 operator dispatch; derived costs, unresolved work is explicit.
 (def-cost fn-owner-operator-open
  :unaccounted (fn-owner-record-totals fn-owner-memory-run-cfg
-               fn-owner-held-callback-operator-open mv-nth))
+               fn-owner-held-callback-operator-open mv-nth
+               fn-exp-at true-list-fix update-nth))
 (def-cost fn-adm-operator-open-word)
 (def-cost fn-adm-operator-open-id :unaccounted (fn-exp-at))
 (def-cost fn-adm-operator-open-reason :unaccounted (fn-exp-at))
