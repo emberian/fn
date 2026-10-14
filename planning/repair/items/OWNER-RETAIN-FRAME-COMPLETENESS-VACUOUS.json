@@ -1,0 +1,14 @@
+{
+ "category": "test",
+ "detail": "M28's mutation (memory-run-launch build/m22-fix/M28-FRAME-DROPPED-WRITER-MUTATION.lisp, m28-frame-dropped-writer.log): dropping fn-owner-callback-close from a copy of ort-row gives (T T T NIL 5 4); fn-cd-host-owed-problem and fn-cd-problem are NIL. Fix: declare the callbacks via definterface in the test world so def-carried-check's completeness bites, and keep the :101 assert.",
+ "file": "tests/acl2/owner-retain-frame-tests.lisp",
+ "id": "OWNER-RETAIN-FRAME-COMPLETENESS-VACUOUS",
+ "line": "124",
+ "notes": [],
+ "owner": "builder-A",
+ "severity": "low",
+ "source": "M28-frame-dropped-writer-mutation",
+ "state": "open",
+ "title": "owner-retain-frame-tests: def-carried-check completeness bites only on a declared definterface entry; the callbacks have none, so a dropped writer passes it (the :101 exact-list assert is the tooth that refuses it)",
+ "updated": "2026-10-14T09:49:44Z"
+}

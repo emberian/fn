@@ -7,6 +7,9 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-1")
+(include-book "store-log-kernel-concrete")
+(include-book "store-log-stream")
+(include-book "store-log-damage")
 (include-book "store-log-entry-bound")
 (include-book "store-log-lineage")
 (include-book "store-log-buffer")
@@ -36,7 +39,6 @@
 (include-book "extent-window-span")
 (include-book "cold-read-wait")
 (include-book "page-window-span")
-(include-book "payload-arena")
 (include-book "decoded-worker-assignment")
 (include-book "decoded-worker-job")
 (include-book "decoded-window-span")
@@ -161,5 +163,3 @@
 (include-book "owner-identity-intern")
 (include-book "owner-identity-served")
 (include-book "owner-prepare-outcome")
-(include-book "owner-commit-ocl")
-(include-book "owner-served-invariants")

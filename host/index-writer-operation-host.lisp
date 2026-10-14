@@ -4,8 +4,8 @@
 ; The attachments precede every book that defines the stobjs they implement
 ; (index-writer-begin-host reaches payload-arena and history-columns);
 ; host_check --standalone checks the order.
-(include-book "../books/payload-arena-attach")
-(include-book "../books/history-paged-attach")
+(include-book "../books/payload-arena")
+(include-book "../books/history-columns")
 (include-book "index-writer-begin-host")
 (include-book "../books/index-backing-writer-step")
 (include-book "../books/allocation-turn-raw-bridge")

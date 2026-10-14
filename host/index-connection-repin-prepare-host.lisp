@@ -4,8 +4,9 @@
 (include-book "../books/owner-readers-state")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
-(include-book "../books/history-paged-attach")
+(include-book "../books/history-columns")
 (include-book "../books/index-connection-repin-prepare")
+(local (in-theory (enable adt-nth-0)))
 
 (defun fn-owner-index-connection-repin-prepare
  (id old-token new-token fuel fn-mio$c state)

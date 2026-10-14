@@ -2,9 +2,9 @@
 ; No availability filter: an absent target refuses the selected image.
 (in-package "ACL2")
 (include-book "../books/definterface")
-(include-book "../books/history-paged-attach")
-(include-book "../books/payload-arena-attach")
-(include-book "../books/catalog-paged-attach")
+(include-book "../books/history-columns")
+(include-book "../books/payload-arena")
+(include-book "../books/catalog")
 (include-book "../books/decoded-worker-job")
 (include-book "../books/history-paged")
 (include-book "../books/history-paged-adopt")

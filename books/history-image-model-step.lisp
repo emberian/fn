@@ -1,6 +1,7 @@
 ; Appending body words while retaining the final header written at open.
 (in-package "ACL2")
 (include-book "history-pages-grow-append")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (local

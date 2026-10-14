@@ -62,7 +62,7 @@ def profile_roots(root: Path, profile: str) -> list[str]:
     in the image's own load order: the build script's forms in sequence, each
     `ld` followed where it occurs, then the entry points; a root keeps its
     first place.  The order is load-bearing: an attachment book (the payload
-    arena's byte array, books/payload-arena-attach) must be included before
+    arena's byte array, books/payload-arena) must be included before
     any book that introduces the generic it attaches (ACL2 refuses the
     attach-stobj otherwise), exactly as host/native/build.lisp orders it, so
     the artifact check loads what the image loads in the order it loads it."""

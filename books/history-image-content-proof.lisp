@@ -1,6 +1,7 @@
 ; Word-level refinement of buffered final placement.
 (in-package "ACL2")
 (include-book "history-image-place-proof")
+(local (in-theory (enable adt-nth-0)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defthm fn-his-rc-write-materializes-words

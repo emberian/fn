@@ -9,14 +9,15 @@ or removing it touches no code and no commit:
     ~/.config/fn/boxes.json          ($FN_BOXES_FILE overrides the path)
 
     {"boxes": {"cloud1": {"like": "hbox", "until": "2026-10-04T19:57:00Z",
-                          "cores": 8}}}
+                          "cores": 8, "certify_jobs": 4, "load_ceiling": 8}}}
 
 The name is the ssh host (an ~/.ssh/config alias) and, on the box itself,
 its hostname, so the box answers acl2_slots.apply_box_defaults like hbox
 does.  `like` names the fixed row whose toolchain the box holds byte for
 byte at the same absolute paths (tools/acl2_toolchain.py then computes the
-same identity there, so the two caches are interchangeable); every other
-field defaults to that row's and may be given:
+same identity there, so the two caches are interchangeable). Toolchain and
+path fields default to that row's; installation and capacity facts are
+declared per box:
 
     cache, wrap        the certificate cache and build wrapper (farm HOSTS)
     scratch            the scratch base (native runs, remote_check trees)
@@ -24,6 +25,11 @@ field defaults to that row's and may be given:
     images             where published image sets live ("" for none)
     openssl            bundled: the OpenSSL 3.5.8 under /tank/fn/toolchains (D64)
     check_jobs         remote_check's default make -j ("" for none)
+    certify_jobs       fixed certification count; declare per box, never inherited
+    load_ceiling       one-minute load admission ceiling; declare per box
+                       (both are required to submit certification)
+    inn_src            installed INN tree for native interoperability tests;
+                       extra boxes must declare their own installation
     pick               false keeps the box out of tools/boxes.sh --pick
     until              UTC expiry; a row past it is ignored, so a torn-down
                        box drops out even when the file outlives it
@@ -54,9 +60,12 @@ PATH = re.compile(r"[A-Za-z0-9_./~-]*")
 # What each fixed row holds beyond tools/farm.py HOSTS.
 FIXED = {
     "hbox": {"scratch": "/tank/fn/scratch", "gates": "/tank/fn/gates",
-             "images": "/tank/fn/images", "openssl": "bundled", "check_jobs": "6"},
+             "images": "/tank/fn/images", "openssl": "bundled", "check_jobs": "6",
+             "inn_src": "/tank/fn/inn/2.7.4", "certify_jobs": 8, "load_ceiling": 24},
     "persvati": {"scratch": "~/fn-gates", "gates": "fn-gates", "images": "",
-                 "openssl": "bundled", "check_jobs": ""},
+                 "openssl": "bundled", "check_jobs": "",
+                 # docs/proofs.md: the documented persvati run uses eight jobs.
+                 "certify_jobs": 8, "load_ceiling": 24},
 }
 FARM_FIELDS = ("acl2", "image_acl2", "load_acl2", "sbcl", "cache", "wrap")
 
@@ -80,7 +89,8 @@ def extra_boxes(fixed: dict | None = None, environ=None, now: dt.datetime | None
     """{name: full row} for each live box in the config file; {} without one.
 
     A row carries the farm fields (FARM_FIELDS, from its `like` box unless
-    given) and scratch, gates, images, openssl, check_jobs, pick, cores."""
+    given) and scratch, gates, images, openssl, check_jobs, pick, cores,
+    plus its own certify_jobs and load_ceiling (None when undeclared)."""
     path = config_path(environ)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -104,11 +114,18 @@ def extra_boxes(fixed: dict | None = None, environ=None, now: dt.datetime | None
                 continue
         row = {field: fixed[like][field] for field in FARM_FIELDS if field in fixed[like]}
         row.update(FIXED[like])
+        row.pop("inn_src", None)  # sharing a toolchain does not install INN
+        # Toolchain likeness says nothing about available scheduling capacity.
+        row.update({"certify_jobs": None, "load_ceiling": None})
         row.update({"pick": True, "cores": None, "like": like, "until": until})
         row.update({key: value for key, value in given.items() if key != "like"})
         row["check_jobs"] = str(row["check_jobs"] or "")
+        for field in ("certify_jobs", "load_ceiling"):
+            value = row[field]
+            if value is not None and (type(value) is not int or value <= 0):
+                raise SystemExit(f"box_table: {path}: {name}: {field} needs a positive count")
         for field in ("acl2", "image_acl2", "load_acl2", "sbcl", "cache", "wrap",
-                      "scratch", "gates", "images"):
+                      "scratch", "gates", "images", "inn_src"):
             if not PATH.fullmatch(str(row.get(field, ""))):
                 raise SystemExit(f"box_table: {path}: {name}: bad {field} {row[field]!r}")
         if row["openssl"] != "bundled":
@@ -121,6 +138,27 @@ def farm_rows(fixed: dict, environ=None) -> dict:
     """The extra boxes as tools/farm.py HOSTS rows (farm fields only)."""
     return {name: {field: row[field] for field in FARM_FIELDS if field in row}
             for name, row in extra_boxes(fixed, environ).items()}
+
+
+def certify_limits(box: str, environ=None) -> tuple[int, int]:
+    """Per-box facts required before certification can be submitted."""
+    row = FIXED.get(box)
+    if row is None:
+        row = extra_boxes(environ=environ).get(box, {})
+    for field in ("certify_jobs", "load_ceiling"):
+        if row.get(field) is None:
+            raise ValueError(f"{box}: declare its own {field} in the box table; "
+                             "certification capacity is never inherited from 'like'")
+    return row["certify_jobs"], row["load_ceiling"]
+
+
+def native_test_env(box: str, environ=None) -> dict[str, str]:
+    """Installed test dependencies, without enabling slow/soak opt-ins."""
+    # Fixed boxes need no personal config lookup.
+    row = FIXED.get(box)
+    if row is None:
+        row = extra_boxes(environ=environ).get(box, {})
+    return {"FN_INN_SRC": row["inn_src"]} if row.get("inn_src") else {}
 
 
 def env_line(box: str, environ=None) -> str | None:

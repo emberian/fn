@@ -20,6 +20,7 @@
 (in-package "ACL2")
 (include-book "adt-keyed")
 (include-book "../config-invariants")
+(local (in-theory (enable adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defadt-keyed cfgroup :order :append :key name

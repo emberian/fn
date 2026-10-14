@@ -86,6 +86,7 @@
 #                                        (tools/wait_for.sh, --deadline S),
 #                                        prints the run log, exits with status
 #   tools/hbox_native.sh adopt LABEL   complete a pending launch identity
+# Pending launches refuse replacement; adopt must resolve them (no abandon).
 #   tools/hbox_native.sh status LABEL --dir prints the recorded box:directory
 #   tools/hbox_native.sh stop LABEL [--grace S] TERM the recorded process group only
 #                                        through a pidfd after checking its
@@ -347,6 +348,12 @@ def stop_scopes(pid, starttime, run_dir):
 def stop_run(pid, starttime, run_dir, proc_root=Path("/proc"), grace=90):
     fd = None
     generation_lock = None
+    def cleanup_after_exit():
+        rc = stop_scopes(pid, starttime, run_dir)
+        if not (run_dir / "status").is_file():
+            print(f"hbox_native: recovery failed: leader exited without final status; inspect {run_dir}", file=sys.stderr)
+            return 2
+        return rc
     try:
         if pid <= 1 or starttime <= 0 or grace < 0:
             raise ValueError("record lacks a safe PID/starttime or grace")
@@ -361,7 +368,7 @@ def stop_run(pid, starttime, run_dir, proc_root=Path("/proc"), grace=90):
             fcntl.flock(generation_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             recorded_generation(pid, starttime, run_dir)
             print(f"hbox_native: leader {pid} was already gone; retrying recorded scopes", flush=True)
-            return stop_scopes(pid, starttime, run_dir)
+            return cleanup_after_exit()
         pgid, observed_start = process_stat(pid, proc_root)
         if pgid != pid:
             raise ValueError("recorded process is not a group leader")
@@ -391,9 +398,7 @@ def stop_run(pid, starttime, run_dir, proc_root=Path("/proc"), grace=90):
                 print("hbox_native: observed status " + (run_dir / "status").read_text().strip(), flush=True)
                 status_reported = True
             leader_exited(fd, min(0.1, remaining))
-        if not (run_dir / "status").exists():
-            print("hbox_native: leader exited without a status file", file=sys.stderr)
-        return stop_scopes(pid, starttime, run_dir)
+        return cleanup_after_exit()
     except (AttributeError, OSError, ValueError, IndexError) as error:
         print(f"hbox_native: refused stop: {error}", file=sys.stderr)
         return 2
@@ -431,7 +436,7 @@ if __name__ == "__main__":
         sys.exit("hbox_native: unknown process operation")
 PROCESS
 }
-# Local launch/adopt writers share one lock through record publication.
+# Launch/adopt hold the local lock through publication; stop holds it through cleanup.
 lock_label() {
     lock=$HERE/build/hbox-native/$LABEL.lock
     [ "${FN_NATIVE_LABEL_LOCK:-}" != "$lock" ] || [ "${FN_NATIVE_LABEL_LOCK_OWNER:-}" != "$$" ] || return 0
@@ -444,7 +449,7 @@ ssh() { command ssh "$@" 7>&-; }
 rsync() { command rsync "$@" 7>&-; }
 readback_identity() {
     if IDENTITY=$(ssh -n "$HOST" "remaining=5; while [ \$remaining -gt 0 ]; do identity=\$(cat $S/run.identity 2>/dev/null || true); case \"\$identity\" in '$LAUNCH_ID '*) printf '%s\\n' \"\$identity\"; exit 0 ;; esac; sleep 1; remaining=\$((remaining - 1)); done; cat $S/run.identity") &&
-       native_process_script | python3 - publish "$record" "$LAUNCH_ID" "$IDENTITY"; then return 0; fi
+       native_process_script | python3 - publish "$record" "$LAUNCH_ID" "$IDENTITY"; then exec 7>&-; return 0; fi
     echo "hbox_native: identity readback failed for $HOST:$S; use status $LABEL --dir or adopt $LABEL to re-run readback" >&2
     return 3
 }
@@ -452,13 +457,13 @@ readback_identity() {
 attach_run() {
     record=$HERE/build/hbox-native/$2.run
     case $2 in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: $1 takes the run's LABEL" >&2; exit 2 ;; esac
+    case $1 in stop|adopt) LABEL=$2; lock_label ;; esac
     [ -f "$record" ] || { echo "hbox_native: no record $record (runs started here: $(ls "$HERE/build/hbox-native" 2>/dev/null | sed 's/\.run$//' | tr '\n' ' '))" >&2; exit 2; }
     HOST=$(sed -n 's/^box=//p' "$record")
     S=$(sed -n 's/^dir=//p' "$record")
     [ -n "$HOST" ] && [ -n "$S" ] || { echo "hbox_native: $record names no box or dir" >&2; exit 2; }
     case $S in /*) ;; *) echo "hbox_native: bad run directory in $record" >&2; exit 2 ;; esac
     case $S in *[!A-Za-z0-9_./-]*) echo "hbox_native: bad run directory in $record" >&2; exit 2 ;; esac
-    if [ "$1" = adopt ]; then LABEL=$2; lock_label; fi
     if [ "$1:${3:-}" = status:--dir ]; then echo "$HOST:$S"; exit 0; fi
     if [ "$1" = adopt ]; then
         LAUNCH_ID=$(sed -n 's/^launch_id=//p' "$record")
@@ -485,7 +490,7 @@ attach_run() {
     echo "hbox_native: attached to $HOST:$S (pgid $PID)"
     ssh -n "$HOST" "if /bin/kill -0 -- -$PID 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi"
     set +e
-    sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
+    sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" 7>&- >/dev/null
     waited=$?
     set -e
     ssh -n "$HOST" "cat $S/run.log; echo '== SHA256SUMS'; cat $S/SHA256SUMS 2>/dev/null"
@@ -880,7 +885,6 @@ finish() {
     # they must not recursively enter finish or restore the step's exit code.
     trap 'STOPPED=1' TERM
     finish_status=\$1
-    finish_stopped=\$STOPPED
     mark_stopped() {
         STOPPED=1
         COLLECT_INTERRUPTED=1
@@ -899,13 +903,8 @@ finish() {
             [ \$COLLECT_INTERRUPTED -ne 0 ] || break
         done
     }
-    finish_artifacts() {
-        collect timeout -k 5 120 sh -c 'cd "\$1" && { find tree/build -maxdepth 1 -name "fn-host*" -type f -exec sha256sum {} + ; sha256sum logs/*.log; }' sh \$S > \$S/SHA256SUMS 2>/dev/null
-        collect timeout -k 5 120 python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null
-    }
-    finish_artifacts
-    # Recollect the snapshot if normal finish became cancellation.
-    if [ \$finish_stopped -eq 0 ] && [ \$STOPPED -ne 0 ]; then finish_artifacts; fi
+    collect timeout -k 5 120 sh -c 'cd "\$1" && { find tree/build -maxdepth 1 -name "fn-host*" -type f -exec sha256sum {} + ; sha256sum logs/*.log; }' sh \$S > \$S/SHA256SUMS 2>/dev/null
+    collect timeout -k 5 120 python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null
     cancel_finished_run() {
         # Repeated TERM must never release the group-signal anchor.
         trap 'STOPPED=1' TERM
@@ -918,6 +917,7 @@ finish() {
     # handler writes its own marker/status and retains the same anchor.
     trap cancel_finished_run TERM
     [ \$STOPPED -eq 0 ] || cancel_finished_run
+    trap '' TERM
     echo \$finish_status > \$S/status
     echo "== done status \$finish_status; \$S/SHA256SUMS"
     exit \$finish_status
@@ -965,6 +965,7 @@ step host-books static_gate host-books tools/host_check.py --books
 # A certified host file attaches the image's stobj implementation before the
 # generic it implements (tools/host_check.py --attach-order).
 step attach-order static_gate attach-order tools/host_check.py --attach-order
+step one-world static_gate one-world tools/one_world_check.py
 BOX
         if [ -n "$REUSE_TREE" ]; then
             # The train's certified tree stands in for the install, the
@@ -1275,8 +1276,12 @@ if [ $DRY -eq 1 ]; then
 fi
 
 lock_label
-LAUNCH_ID=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 record=$HERE/build/hbox-native/$LABEL.run
+if [ -f "$record" ] && [ -z "$(sed -n 's/^pgid=//p' "$record")" ]; then
+    echo "hbox_native: unresolved pending launch in $record; use adopt $LABEL before relaunching" >&2
+    exit 2
+fi
+LAUNCH_ID=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 # A box reserved for a measurement (tools/boxes.sh reserve) waits here, printing
 # who holds it and until when; the holder's own runs (this worktree) pass.
 FN_BOX_AS=${FN_BOX_AS:-$(basename "$HERE")} sh "$FN_HBOX_NATIVE_COPY/boxes.sh" wait "$HOST" 7>&- || exit 3

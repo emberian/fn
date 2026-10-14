@@ -15,6 +15,32 @@ BOXES = ROOT / "tools" / "boxes.sh"
 
 
 class BoxesTests(unittest.TestCase):
+    def test_load_command_uses_the_probe_reader_and_its_platform_fallback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            ssh = directory / "ssh"
+            ssh.write_text('#!/bin/sh\nfor last; do :; done\nexec sh -c "$last"\n')
+            cut = directory / "cut"
+            cut.write_text('#!/bin/sh\nfor last; do :; done\n'
+                           'if [ "$last" = /proc/loadavg ]; then\n'
+                           '  [ "$LOAD_SOURCE" = proc ] || exit 1\n'
+                           '  echo 8.50\nelse exec /usr/bin/cut "$@"; fi\n')
+            sysctl = directory / "sysctl"
+            sysctl.write_text('#!/bin/sh\n[ "$*" = "-n vm.loadavg" ] || exit 1\n'
+                              'echo "{ 8.50 4.0 3.0 }"\n')
+            for path in (ssh, cut, sysctl):
+                path.chmod(0o755)
+            env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}",
+                   "FN_BOXES_SSH": str(ssh)}
+            for source in ("proc", "sysctl"):
+                with self.subTest(source=source):
+                    done = subprocess.run(["sh", str(BOXES), "--load", "hbox"],
+                                          env={**env, "LOAD_SOURCE": source},
+                                          capture_output=True, text=True, timeout=10)
+                    self.assertEqual(done.returncode, 0, done.stderr)
+                    self.assertEqual(done.stdout.strip(), "8.50")
+        self.assertEqual(self.run_boxes({}, "--load", "hbox").returncode, 255)
+
     def run_boxes(self, answers: dict[str, str], *words):
         with tempfile.TemporaryDirectory() as directory:
             ssh = Path(directory) / "ssh"

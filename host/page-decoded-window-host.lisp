@@ -106,6 +106,7 @@
 (definterface fn-owner-page-decoded-window-price-status :class :common-lisp-compliant)
 
 (include-book "../books/decoded-worker-backing")
+(local (in-theory (enable adt-nth-0)))
 
 ; Explicit DEFAULT partial storage projection, never a complete profile price.
 ; The legacy publisher cannot write a modern allocation installation/DATA6.

@@ -46,6 +46,18 @@
 (defun fnn-rc-do-feed-io (run peer)
   (declare (ignorable run peer))
   (harness-stub-reached 'fnn-rc-do-feed-io "host/native/admin.lisp"))
+(defun fnn-store-config-domain (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-store-config-domain "host/native/io.lisp"))
+(defun fnn-store-config-generation (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-store-config-generation "host/native/io.lisp"))
+(defun fnn-store-config-served (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-store-config-served "host/native/io.lisp"))
+(defun fnn-store-fenced (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-store-fenced "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 
 (defstruct test-store config-generation config-served config-domain fenced)

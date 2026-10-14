@@ -1303,7 +1303,8 @@
 (defun fn-cd-attached-to (fn w)
   (declare (xargs :mode :program))
   ; a name through which FN runs with no caller the scan sees, else nil.
-  ; attach-stobj needs no arm of its own (r29-F1): ACL2 8.7 records
+  ; The generic book now owns its preceding attachment.  This scan still
+  ; needs no attach-stobj arm (r29-F1): ACL2 8.7 records
   ; (attach-stobj GEN IMPL) in attach-stobj-table as the pair (GEN . IMPL)
   ; of stobj NAMES (basis-b.lisp; other-events.lisp attached-stobj), and
   ; IMPL is itself a defabsstobj, so a function run through it is an :exec

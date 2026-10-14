@@ -40,6 +40,7 @@
 (include-book "store-checkpoint-buffer")
 (include-book "history-columns-logic")
 (include-book "pagestore-words-blake3")
+(local (in-theory (enable adt-nth-0)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------

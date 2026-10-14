@@ -1,6 +1,7 @@
 ; A placed row appends exactly the canonical five body blocks.
 (in-package "ACL2")
 (include-book "history-image-content-step")
+(local (in-theory (enable adt-nth-0)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defthm fn-his-rcs-write-appends

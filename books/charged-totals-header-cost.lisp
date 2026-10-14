@@ -7,6 +7,7 @@
 (include-book "memory-entry-cost")
 (include-book "def-cost")
 (include-book "charged-totals-header")
+(local (in-theory (enable adt-nth-0 adt-nth-1+ fn-scc-octet-listp-is-adt-octetsp)))
 
 (local
  (defthm fn-cth-mm-nat-visits-explicit

@@ -1,0 +1,3708 @@
+{
+  "dev_revision": "e0981366718013c5d96c9780e81a3fe1cb75e2bd",
+  "method": "non-LOCAL include graph; independent dev-consumer reachability after cutting the generic and implementation roots; export-boundary projection is a matching cross-check, not rune evidence",
+  "implementation_root": "books/history-paged.lisp",
+  "generic_boundary": "books/history-columns.lisp",
+  "existing_foundation_baseline": [
+    "books/acceptance-alloc.lisp",
+    "books/acceptance-invariants.lisp",
+    "books/acceptance.lisp",
+    "books/article-fields.lisp",
+    "books/article.lisp",
+    "books/blake3-stobj.lisp",
+    "books/blake3.lisp",
+    "books/cbor-invariants.lisp",
+    "books/cbor-record-scalar.lisp",
+    "books/cbor-record-stream.lisp",
+    "books/cbor.lisp",
+    "books/clock.lisp",
+    "books/consumer-event-index-read.lisp",
+    "books/consumer-event-index.lisp",
+    "books/consumer-position-fields.lisp",
+    "books/consumer-position.lisp",
+    "books/consumer-store-events.lisp",
+    "books/control-classify.lisp",
+    "books/crypto-seam.lisp",
+    "books/decimal-text.lisp",
+    "books/def-keyset-check.lisp",
+    "books/def-loop.lisp",
+    "books/def-representation-index-lib.lisp",
+    "books/def-representation-index.lisp",
+    "books/def-representation-lib.lisp",
+    "books/def-representation-paged.lisp",
+    "books/def-representation.lisp",
+    "books/defevent.lisp",
+    "books/defrecord.lisp",
+    "books/frame-fields.lisp",
+    "books/frame-journal.lisp",
+    "books/frame-octets.lisp",
+    "books/frame.lisp",
+    "books/held-record.lisp",
+    "books/history-columns-foundation.lisp",
+    "books/history-columns-logic.lisp",
+    "books/hybrid-carrier.lisp",
+    "books/hybrid-profile.lisp",
+    "books/hybrid-signature.lisp",
+    "books/hybrid-store.lisp",
+    "books/identity-hex.lisp",
+    "books/identity.lisp",
+    "books/injection-shape.lisp",
+    "books/lace-invariants.lisp",
+    "books/lace.lisp",
+    "books/mailbox.lisp",
+    "books/msgid-index-concrete.lisp",
+    "books/msgid-index.lisp",
+    "books/node-invariants.lisp",
+    "books/node-retention-transitions.lisp",
+    "books/node.lisp",
+    "books/octet-window.lisp",
+    "books/octets-stobj.lisp",
+    "books/payload-kinds.lisp",
+    "books/principal.lisp",
+    "books/proto/adt-lib.lisp",
+    "books/proto/adt-load.lisp",
+    "books/proto/adt.lisp",
+    "books/provenance.lisp",
+    "books/records-invariants.lisp",
+    "books/records-seam.lisp",
+    "books/records-shape.lisp",
+    "books/records-stamp.lisp",
+    "books/records.lisp",
+    "books/replay.lisp",
+    "books/retention-invariants.lisp",
+    "books/retention.lisp",
+    "books/rev-onto.lisp",
+    "books/statement-invariants.lisp",
+    "books/statement-items-reference.lisp",
+    "books/statement-items-shape.lisp",
+    "books/statement-results.lisp",
+    "books/statement-seam.lisp",
+    "books/statement.lisp",
+    "books/store-events.lisp",
+    "books/stx-accept-records.lisp",
+    "books/stx-carrier.lisp",
+    "books/stx-evidence-records.lisp",
+    "books/stx-keyring-records.lisp",
+    "books/stx-lace.lisp",
+    "books/stx-verify.lisp",
+    "books/topic-history-admission.lisp",
+    "books/topic-history-authorship.lisp",
+    "books/topic-history-local-admin.lisp",
+    "books/topic-history-metadata.lisp",
+    "books/topic-history-store-events.lisp",
+    "books/utf8.lisp",
+    "books/wire-lines.lisp"
+  ],
+  "implementation_closure": [
+    "books/acceptance-alloc.lisp",
+    "books/acceptance-invariants.lisp",
+    "books/acceptance.lisp",
+    "books/article-fields.lisp",
+    "books/article.lisp",
+    "books/assumptions-durable.lisp",
+    "books/assumptions-pgs-host-io.lisp",
+    "books/assumptions.lisp",
+    "books/blake3-stobj.lisp",
+    "books/blake3.lisp",
+    "books/byte-store-invariants.lisp",
+    "books/byte-store.lisp",
+    "books/cbor-invariants.lisp",
+    "books/cbor-record-scalar.lisp",
+    "books/cbor-record-stream.lisp",
+    "books/cbor.lisp",
+    "books/clock.lisp",
+    "books/consumer-event-index-read.lisp",
+    "books/consumer-event-index.lisp",
+    "books/consumer-position-fields.lisp",
+    "books/consumer-position.lisp",
+    "books/consumer-store-events.lisp",
+    "books/control-classify.lisp",
+    "books/crypto-attach.lisp",
+    "books/crypto-seam.lisp",
+    "books/decimal-text.lisp",
+    "books/def-buffer.lisp",
+    "books/def-keyset-check.lisp",
+    "books/def-loop.lisp",
+    "books/def-representation-index-lib.lisp",
+    "books/def-representation-index.lisp",
+    "books/def-representation-lib.lisp",
+    "books/def-representation-paged.lisp",
+    "books/def-representation.lisp",
+    "books/defevent.lisp",
+    "books/deflate-inflate.lisp",
+    "books/defrecord.lisp",
+    "books/frame-fields.lisp",
+    "books/frame-invariants.lisp",
+    "books/frame-journal.lisp",
+    "books/frame-octets.lisp",
+    "books/frame-trailer.lisp",
+    "books/frame.lisp",
+    "books/held-record.lisp",
+    "books/history-columns-foundation.lisp",
+    "books/history-columns-logic.lisp",
+    "books/history-image-row-encode.lisp",
+    "books/history-paged.lisp",
+    "books/history-pages-append-grown.lisp",
+    "books/history-pages-arith.lisp",
+    "books/history-pages-exec.lisp",
+    "books/history-pages-grow-append.lisp",
+    "books/history-pages-grow-cap.lisp",
+    "books/history-pages-grow-then-append.lisp",
+    "books/history-pages-grow.lisp",
+    "books/history-pages-import.lisp",
+    "books/history-pages-nest.lisp",
+    "books/history-pages-placed-write.lisp",
+    "books/history-pages-placed.lisp",
+    "books/history-pages-read.lisp",
+    "books/history-pages-relocate.lisp",
+    "books/history-pages-resident.lisp",
+    "books/history-pages-row.lisp",
+    "books/history-pages-step.lisp",
+    "books/history-pages-view.lisp",
+    "books/history-pages-words.lisp",
+    "books/history-pages-write-exec.lisp",
+    "books/history-pages-write-keys.lisp",
+    "books/history-pages-write.lisp",
+    "books/history-pages.lisp",
+    "books/history-records.lisp",
+    "books/hybrid-carrier.lisp",
+    "books/hybrid-profile.lisp",
+    "books/hybrid-signature.lisp",
+    "books/hybrid-store.lisp",
+    "books/identity-hex.lisp",
+    "books/identity.lisp",
+    "books/injection-shape.lisp",
+    "books/lace-invariants.lisp",
+    "books/lace.lisp",
+    "books/mailbox.lisp",
+    "books/msgid-index-concrete.lisp",
+    "books/msgid-index.lisp",
+    "books/node-invariants.lisp",
+    "books/node-retention-transitions.lisp",
+    "books/node.lisp",
+    "books/octet-window.lisp",
+    "books/octets-stobj.lisp",
+    "books/pagestore-exec.lisp",
+    "books/pagestore-words-blake3.lisp",
+    "books/pagestore-words.lisp",
+    "books/pagestore.lisp",
+    "books/payload-deflate.lisp",
+    "books/payload-kinds.lisp",
+    "books/payload-lz-value.lisp",
+    "books/principal.lisp",
+    "books/proto/adt-bytes-lib.lisp",
+    "books/proto/adt-bytes.lisp",
+    "books/proto/adt-key-lib.lisp",
+    "books/proto/adt-lib.lisp",
+    "books/proto/adt-load.lisp",
+    "books/proto/adt.lisp",
+    "books/provenance.lisp",
+    "books/records-invariants.lisp",
+    "books/records-seam.lisp",
+    "books/records-shape.lisp",
+    "books/records-stamp.lisp",
+    "books/records.lisp",
+    "books/replay.lisp",
+    "books/retention-invariants.lisp",
+    "books/retention.lisp",
+    "books/rev-onto.lisp",
+    "books/sha256.lisp",
+    "books/statement-invariants.lisp",
+    "books/statement-items-reference.lisp",
+    "books/statement-items-shape.lisp",
+    "books/statement-results.lisp",
+    "books/statement-seam.lisp",
+    "books/statement.lisp",
+    "books/store-checkpoint-buffer.lisp",
+    "books/store-checkpoint-codec.lisp",
+    "books/store-events.lisp",
+    "books/store-tree-codec-program-guards.lisp",
+    "books/store-tree-codec.lisp",
+    "books/stx-accept-records.lisp",
+    "books/stx-carrier.lisp",
+    "books/stx-evidence-records.lisp",
+    "books/stx-keyring-records.lisp",
+    "books/stx-lace.lisp",
+    "books/stx-verify.lisp",
+    "books/topic-history-admission.lisp",
+    "books/topic-history-authorship.lisp",
+    "books/topic-history-local-admin.lisp",
+    "books/topic-history-metadata.lisp",
+    "books/topic-history-store-events.lisp",
+    "books/utf8.lisp",
+    "books/wire-lines.lisp"
+  ],
+  "dev_consumers": [
+    "books/acceptance-payload-ref.lisp",
+    "books/acceptance-stamp-invariants.lisp",
+    "books/admission-memory.lisp",
+    "books/arena-forget-columns.lisp",
+    "books/article-buffer.lisp",
+    "books/article-select-index.lisp",
+    "books/article-stream-owner-bridge.lisp",
+    "books/article-stream-owner.lisp",
+    "books/assumptions-publication.lisp",
+    "books/assumptions-recovery.lisp",
+    "books/bp-app-handoff-time.lisp",
+    "books/bp-app-handoff.lisp",
+    "books/bp-channel-ingress.lisp",
+    "books/bp-checkpoint-size.lisp",
+    "books/bp-controller-registry-carry.lisp",
+    "books/bp-fnbs-deletion-codec.lisp",
+    "books/bp-fnbs-deletion-publication.lisp",
+    "books/bp-fnbs-delivery-replay.lisp",
+    "books/bp-fnbs-dispatch-publication.lisp",
+    "books/bp-fnbs-family-codec.lisp",
+    "books/bp-fnbs-family-publication.lisp",
+    "books/bp-fnbs-family-replay.lisp",
+    "books/bp-fnbs-forward-codec.lisp",
+    "books/bp-fnbs-forward-publication.lisp",
+    "books/bp-fnbs-replay-append.lisp",
+    "books/bp-forward-attempt.lisp",
+    "books/bp-forward-cursor.lisp",
+    "books/bp-forward-image.lisp",
+    "books/bp-handoff-status.lisp",
+    "books/bp-heap-command.lisp",
+    "books/bp-held-projection.lisp",
+    "books/bp-ingress-carried.lisp",
+    "books/bp-ingress.lisp",
+    "books/bp-listener-set.lisp",
+    "books/bp-native-app-fast.lisp",
+    "books/bp-native-app-replay-bridge.lisp",
+    "books/bp-native-app.lisp",
+    "books/bp-node-busy-delivery.lisp",
+    "books/bp-node-contact-driver.lisp",
+    "books/bp-node-control.lisp",
+    "books/bp-node-debt-cache-invariants.lisp",
+    "books/bp-node-debt.lisp",
+    "books/bp-node-dispatch.lisp",
+    "books/bp-node-forward-lower-guards.lisp",
+    "books/bp-node-forward-plan.lisp",
+    "books/bp-node-forward-resume.lisp",
+    "books/bp-node-forward-retry.lisp",
+    "books/bp-node-fragment-expiry.lisp",
+    "books/bp-node-fragment-guards.lisp",
+    "books/bp-node-fragment-job.lisp",
+    "books/bp-node-fragment-jobs.lisp",
+    "books/bp-node-fragment-replacement.lisp",
+    "books/bp-node-fragment-step.lisp",
+    "books/bp-node-job-cursor.lisp",
+    "books/bp-node-job-offer-guards.lisp",
+    "books/bp-node-job-offer-progress.lisp",
+    "books/bp-node-job-offer.lisp",
+    "books/bp-node-listener-control.lisp",
+    "books/bp-node-machine-gaps.lisp",
+    "books/bp-node-profile-admission.lisp",
+    "books/bp-node-profile-replay.lisp",
+    "books/bp-node-progress-bridge.lisp",
+    "books/bp-node-progress-guards.lisp",
+    "books/bp-node-progress-invariants.lisp",
+    "books/bp-node-progress-premises.lisp",
+    "books/bp-node-progress-selection-invariants.lisp",
+    "books/bp-node-progress.lisp",
+    "books/bp-node-receipt-send.lisp",
+    "books/bp-node-report-step.lisp",
+    "books/bp-node-retire.lisp",
+    "books/bp-node-rotation-buffer.lisp",
+    "books/bp-node-rotation-due.lisp",
+    "books/bp-node-rotation-equivalence.lisp",
+    "books/bp-node-rotation-recovery.lisp",
+    "books/bp-node-rotation-step.lisp",
+    "books/bp-node-rotation.lisp",
+    "books/bp-node-run-class.lisp",
+    "books/bp-receipt-alpha.lisp",
+    "books/bp-receipt-log-crash.lisp",
+    "books/bp-receipt-records.lisp",
+    "books/bp-receipt.lisp",
+    "books/bp-receiver-context-invariants.lisp",
+    "books/bp-receiver-evolving-history-invariants.lisp",
+    "books/bp-receiver-evolving-node-invariants.lisp",
+    "books/bp-receiver-evolving-store-invariants.lisp",
+    "books/bp-receiver-invariants.lisp",
+    "books/bp-receiver-journal-invariants.lisp",
+    "books/bp-receiver-retention-invariants.lisp",
+    "books/bp-receiver-state-invariants.lisp",
+    "books/bp-receiver-store-invariants.lisp",
+    "books/bp-receiver-trace-invariants.lisp",
+    "books/bp-recovery-guards.lisp",
+    "books/bp-recovery-profile.lisp",
+    "books/bp-release-authority.lisp",
+    "books/bp-report-author.lisp",
+    "books/bp-report-deletion.lisp",
+    "books/bp-report-guards.lisp",
+    "books/bp-report-observe.lisp",
+    "books/bp-report-outbox.lisp",
+    "books/bp-request-reference.lisp",
+    "books/bp-route-step.lisp",
+    "books/bp-session-admission.lisp",
+    "books/bp-session-scheduler.lisp",
+    "books/bp-signed-binding.lisp",
+    "books/bp-transit-join.lisp",
+    "books/byte-store-arena.lisp",
+    "books/byte-store-fault-keystones.lisp",
+    "books/byte-store-frame.lisp",
+    "books/byte-store-initializer.lisp",
+    "books/byte-store-k0-recovery.lisp",
+    "books/byte-store-k0-staging.lisp",
+    "books/byte-store-k0.lisp",
+    "books/byte-store-keystones.lisp",
+    "books/byte-store-log-initializer.lisp",
+    "books/byte-store-native-correspondence.lisp",
+    "books/byte-store-observation-scan.lisp",
+    "books/byte-store-program-invariants.lisp",
+    "books/byte-store-programs.lisp",
+    "books/byte-store-record-fence.lisp",
+    "books/byte-store-record-provenance-bytes.lisp",
+    "books/byte-store-record-provenance-node.lisp",
+    "books/byte-store-record-provenance-owner.lisp",
+    "books/byte-store-record-provenance.lisp",
+    "books/byte-store-relation.lisp",
+    "books/byte-store-retention-publication.lisp",
+    "books/byte-store-scan.lisp",
+    "books/byte-store-stable-prefix.lisp",
+    "books/byte-store-state-checkpoint-program.lisp",
+    "books/cancel-lock-d25.lisp",
+    "books/catalog-availability-owner-load.lisp",
+    "books/catalog-availability-refinement.lisp",
+    "books/catalog-available-readers.lisp",
+    "books/catalog-commit.lisp",
+    "books/catalog-context-recovery.lisp",
+    "books/catalog-delta.lisp",
+    "books/catalog-entries.lisp",
+    "books/catalog-live-links.lisp",
+    "books/catalog-load-index.lisp",
+    "books/catalog-logic.lisp",
+    "books/catalog-may-seal.lisp",
+    "books/catalog-number-index.lisp",
+    "books/catalog-number-window.lisp",
+    "books/catalog-paged-attach.lisp",
+    "books/catalog-paged.lisp",
+    "books/catalog-pages.lisp",
+    "books/catalog-pool.lisp",
+    "books/catalog-prepare-sealed.lisp",
+    "books/catalog-prepare.lisp",
+    "books/catalog-refresh.lisp",
+    "books/catalog-relation.lisp",
+    "books/catalog-view.lisp",
+    "books/catalog.lisp",
+    "books/charged-totals-header-cost.lisp",
+    "books/charged-totals-header-writes.lisp",
+    "books/charged-totals-header.lisp",
+    "books/charged-totals.lisp",
+    "books/checkpoint-auxiliary.lisp",
+    "books/checkpoint-codec.lisp",
+    "books/checkpoint-payloads-extent.lisp",
+    "books/checkpoint-publish.lisp",
+    "books/checkpoint-reserve.lisp",
+    "books/checkpoint.lisp",
+    "books/closure-open.lisp",
+    "books/cold-read-reservation.lisp",
+    "books/config-carried-candidate.lisp",
+    "books/config-carried-open.lisp",
+    "books/config-crash-replay.lisp",
+    "books/config-observed.lisp",
+    "books/config-owner-advance-invariants.lisp",
+    "books/config-owner-advance-reader-invariants.lisp",
+    "books/config-owner-carried.lisp",
+    "books/config-owner-live-authorize-carried.lisp",
+    "books/config-owner-live-authorize.lisp",
+    "books/config-owner-live-complete.lisp",
+    "books/config-owner-live-open.lisp",
+    "books/config-owner-live-read.lisp",
+    "books/config-owner-live.lisp",
+    "books/config-owner-publish.lisp",
+    "books/config-owner-read-invariants.lisp",
+    "books/config-policy-delta.lisp",
+    "books/config-store-steps.lisp",
+    "books/config-store-traces.lisp",
+    "books/connection-budget.lisp",
+    "books/consumer-artifact-retry.lisp",
+    "books/consumer-authority-carried-fold.lisp",
+    "books/consumer-bound.lisp",
+    "books/consumer-config-publication.lisp",
+    "books/consumer-configured-authority-event.lisp",
+    "books/consumer-configured-authority-replay.lisp",
+    "books/consumer-configured-control-event.lisp",
+    "books/consumer-owner-index-invariants.lisp",
+    "books/consumer-owner-local-progress.lisp",
+    "books/consumer-owner-local.lisp",
+    "books/consumer-poll-index.lisp",
+    "books/consumer-publication-budget.lisp",
+    "books/consumer-remote-history.lisp",
+    "books/consumer-replay-bound.lisp",
+    "books/consumer-store-invariants.lisp",
+    "books/consumer-wait.lisp",
+    "books/consumer-withdrawal.lisp",
+    "books/control-evidence.lisp",
+    "books/control-visible-effect.lisp",
+    "books/control-visible-indexed.lisp",
+    "books/control-visible-prefix-bound.lisp",
+    "books/cost-final-world.lisp",
+    "books/decoded-payload-decode-into.lisp",
+    "books/deflate-pool-check.lisp",
+    "books/deflate-pool.lisp",
+    "books/expiry-instant.lisp",
+    "books/expiry-verdict.lisp",
+    "books/expiry.lisp",
+    "books/extent-retire.lisp",
+    "books/filed-catalog.lisp",
+    "books/filed-history.lisp",
+    "books/filed-lifecycle.lisp",
+    "books/filed-operator.lisp",
+    "books/filed-stored.lisp",
+    "books/group-access-cache.lisp",
+    "books/heap-breakdown.lisp",
+    "books/heap-command-entry-scratch.lisp",
+    "books/heap-command.lisp",
+    "books/heap-figure.lisp",
+    "books/heap-log-extent-cap-cost.lisp",
+    "books/heap-log-extent-cap.lisp",
+    "books/heap-open-nursery.lisp",
+    "books/heap-reservation.lisp",
+    "books/heap-store-figure.lisp",
+    "books/heap-store-open-walk.lisp",
+    "books/held-message-id-answer.lisp",
+    "books/history-columns-relation.lisp",
+    "books/history-columns-store.lisp",
+    "books/history-fold-refinement.lisp",
+    "books/history-knowledge.lisp",
+    "books/history-paged-attach.lisp",
+    "books/history-pages-owner.lisp",
+    "books/history-resource-refinement.lisp",
+    "books/history-root-figure.lisp",
+    "books/history-root-status.lisp",
+    "books/history-totals-carried.lisp",
+    "books/hybrid-lifecycle-store-invariants.lisp",
+    "books/identity-retain-carried.lisp",
+    "books/image-world-dtn-part-1.lisp",
+    "books/image-world-dtn-part-2.lisp",
+    "books/image-world-dtn-part-3.lisp",
+    "books/image-world-dtn.lisp",
+    "books/image-world-part-1.lisp",
+    "books/image-world-part-2.lisp",
+    "books/image-world-part-3.lisp",
+    "books/image-world-store-test-part-1.lisp",
+    "books/image-world-store-test-part-2.lisp",
+    "books/image-world-store-test.lisp",
+    "books/image-world.lisp",
+    "books/index-adoption-context.lisp",
+    "books/index-backing-assignment.lisp",
+    "books/index-backing-connection-pins.lisp",
+    "books/index-backing-generations.lisp",
+    "books/index-backing-layout.lisp",
+    "books/index-backing-page-owners.lisp",
+    "books/index-backing-provider.lisp",
+    "books/index-backing-publication-row-carry.lisp",
+    "books/index-backing-publication.lisp",
+    "books/index-backing-reinsert.lisp",
+    "books/index-backing-request-adoption.lisp",
+    "books/index-backing-resource-driver.lisp",
+    "books/index-backing-row-copy.lisp",
+    "books/index-backing-row-retain.lisp",
+    "books/index-backing-served-producer-carry.lisp",
+    "books/index-backing-table-layout.lisp",
+    "books/index-backing-table-pages.lisp",
+    "books/index-backing-table-place.lisp",
+    "books/index-backing-table-seal.lisp",
+    "books/index-backing-writer-step.lisp",
+    "books/index-backing-writer.lisp",
+    "books/index-connection-issuer.lisp",
+    "books/index-connection-repin-prepare.lisp",
+    "books/index-connection-repin.lisp",
+    "books/index-connection-rx-repin.lisp",
+    "books/index-generation-issuer.lisp",
+    "books/index-incoming-request.lisp",
+    "books/index-page-debt-transfer.lisp",
+    "books/index-page-issuer.lisp",
+    "books/index-query-slot-issuer.lisp",
+    "books/index-range-render-custody.lisp",
+    "books/index-reader-actor.lisp",
+    "books/index-reader-receiver-issuer.lisp",
+    "books/index-reader-render-establishment.lisp",
+    "books/index-reader-render-ready.lisp",
+    "books/index-reader-render-registry.lisp",
+    "books/index-reader-render-slot.lisp",
+    "books/index-reader-request-shape.lisp",
+    "books/index-reader-request.lisp",
+    "books/index-reader-response-issuer.lisp",
+    "books/index-reader-rx-source-completion.lisp",
+    "books/index-writer-source-fence.lisp",
+    "books/injection-info-params-invariants.lisp",
+    "books/injection-info-params.lisp",
+    "books/limits-live.lisp",
+    "books/list-available-reference.lisp",
+    "books/list-metadata-cursor.lisp",
+    "books/live-profile-control.lisp",
+    "books/login-binding-live.lisp",
+    "books/login-binding.lisp",
+    "books/memory-entry-cost.lisp",
+    "books/memory-model.lisp",
+    "books/moderation-verbs.lisp",
+    "books/msgid-linear-exec.lisp",
+    "books/msgid-linear.lisp",
+    "books/msgid-pages-exec.lisp",
+    "books/msgid-pages.lisp",
+    "books/msgid-probe-cursor.lisp",
+    "books/msgid-probe-layout.lisp",
+    "books/msgid-query-chunk.lisp",
+    "books/msgid-query-page.lisp",
+    "books/msgid-tag-exec.lisp",
+    "books/native-admin.lisp",
+    "books/native-control-kinds.lisp",
+    "books/native-health.lisp",
+    "books/native-live-buffer.lisp",
+    "books/native-live-pages.lisp",
+    "books/native-live-status.lisp",
+    "books/native-mission.lisp",
+    "books/native-operator-stage.lisp",
+    "books/native-operator.lisp",
+    "books/native-status-columns.lisp",
+    "books/newnews-metadata-cursor.lisp",
+    "books/newnews-stream-cost.lisp",
+    "books/newnews-stream-cursor.lisp",
+    "books/ninep-mount.lisp",
+    "books/ninep-mounted-directory.lisp",
+    "books/nov-column-pieces.lisp",
+    "books/nov-column-window.lisp",
+    "books/nov-row-facts.lisp",
+    "books/number-durability-handles.lisp",
+    "books/number-durability.lisp",
+    "books/open-frontier-wire.lisp",
+    "books/output-admission-line.lisp",
+    "books/output-reservation.lisp",
+    "books/output-tariff-article-row.lisp",
+    "books/output-tariff-auth.lisp",
+    "books/output-tariff-families.lisp",
+    "books/output-tariff-input.lisp",
+    "books/output-tariff-line.lisp",
+    "books/over-render-bound.lisp",
+    "books/over-render-quantum.lisp",
+    "books/over-render.lisp",
+    "books/over-window.lisp",
+    "books/owner-admission-recovery.lisp",
+    "books/owner-advance-carried.lisp",
+    "books/owner-agent.lisp",
+    "books/owner-article-held.lisp",
+    "books/owner-article-slots.lisp",
+    "books/owner-authority-recovery.lisp",
+    "books/owner-authority-transitions.lisp",
+    "books/owner-batch.lisp",
+    "books/owner-catalog-root-recovery.lisp",
+    "books/owner-checkpoint-open.lisp",
+    "books/owner-checkpoint-pipeline.lisp",
+    "books/owner-checkpoint-writer.lisp",
+    "books/owner-cold-line.lisp",
+    "books/owner-commit-carried.lisp",
+    "books/owner-commit-ocl.lisp",
+    "books/owner-compact-request.lisp",
+    "books/owner-config-observe.lisp",
+    "books/owner-config-state.lisp",
+    "books/owner-config.lisp",
+    "books/owner-connection-callback-refinement.lisp",
+    "books/owner-connection-callbacks.lisp",
+    "books/owner-connection-state.lisp",
+    "books/owner-control-post-reason.lisp",
+    "books/owner-control-read.lisp",
+    "books/owner-credits.lisp",
+    "books/owner-cursor-domain.lisp",
+    "books/owner-descriptions-read.lisp",
+    "books/owner-enrollment-read.lisp",
+    "books/owner-fault.lisp",
+    "books/owner-feed-article.lisp",
+    "books/owner-feed-subject.lisp",
+    "books/owner-feed-txid-reuse.lisp",
+    "books/owner-host-relation-span.lisp",
+    "books/owner-host-relation.lisp",
+    "books/owner-identity-intern.lisp",
+    "books/owner-identity-prepare.lisp",
+    "books/owner-identity-served.lisp",
+    "books/owner-incoming-freshness.lisp",
+    "books/owner-injection-info.lisp",
+    "books/owner-intent-carried.lisp",
+    "books/owner-invariants-outcome.lisp",
+    "books/owner-invariants-relation.lisp",
+    "books/owner-invariants-served.lisp",
+    "books/owner-invariants-step.lisp",
+    "books/owner-invariants.lisp",
+    "books/owner-list-counts-read.lisp",
+    "books/owner-log-ocl.lisp",
+    "books/owner-log-reopen.lisp",
+    "books/owner-log-route.lisp",
+    "books/owner-log.lisp",
+    "books/owner-maintenance-request.lisp",
+    "books/owner-number-bound-join.lisp",
+    "books/owner-number-bound.lisp",
+    "books/owner-numbering.lisp",
+    "books/owner-obligation-state.lisp",
+    "books/owner-open-carried.lisp",
+    "books/owner-outcome-counted.lisp",
+    "books/owner-outcome-pinned.lisp",
+    "books/owner-parse-carried.lisp",
+    "books/owner-post-carried.lisp",
+    "books/owner-prepare-carried.lisp",
+    "books/owner-prepare-correspondence.lisp",
+    "books/owner-prepare-deferred-carried.lisp",
+    "books/owner-prepare-outcome-topic.lisp",
+    "books/owner-prepare-outcome.lisp",
+    "books/owner-prepare-served-ocl.lisp",
+    "books/owner-prepare-served.lisp",
+    "books/owner-publication-composition.lisp",
+    "books/owner-publication-lifecycle.lisp",
+    "books/owner-publication-transitions.lisp",
+    "books/owner-reader-establishment.lisp",
+    "books/owner-reader-read.lisp",
+    "books/owner-reader-response-domain.lisp",
+    "books/owner-reader-view.lisp",
+    "books/owner-readers-recovery.lisp",
+    "books/owner-readers-transitions.lisp",
+    "books/owner-reclaim-carry.lisp",
+    "books/owner-reclaim-conns.lisp",
+    "books/owner-reclaim-instant.lisp",
+    "books/owner-reclaim-pass.lisp",
+    "books/owner-reclaim-ready.lisp",
+    "books/owner-reclaim-retained.lisp",
+    "books/owner-reclaim-seal.lisp",
+    "books/owner-reclaim.lisp",
+    "books/owner-reconfig-lock.lisp",
+    "books/owner-recover-ocl.lisp",
+    "books/owner-recovery-retain.lisp",
+    "books/owner-refresh-indexed.lisp",
+    "books/owner-resource-line.lisp",
+    "books/owner-results.lisp",
+    "books/owner-retain-carried.lisp",
+    "books/owner-retain-frame.lisp",
+    "books/owner-retain-live.lisp",
+    "books/owner-retain-livep.lisp",
+    "books/owner-retain-transitions.lisp",
+    "books/owner-retain-writer-frame.lisp",
+    "books/owner-retention-preparation.lisp",
+    "books/owner-retire.lisp",
+    "books/owner-served-bound.lisp",
+    "books/owner-served-carried.lisp",
+    "books/owner-served-invariants.lisp",
+    "books/owner-signed-post.lisp",
+    "books/owner-snapshot-recovery.lisp",
+    "books/owner-state-accessors.lisp",
+    "books/owner-store-budget.lisp",
+    "books/owner-store-indexed.lisp",
+    "books/owner-time-admission.lisp",
+    "books/owner-tls-prefix.lisp",
+    "books/owner-verdict-read.lisp",
+    "books/owner-view-catalog-lookup.lisp",
+    "books/owner-xref-read.lisp",
+    "books/owner.lisp",
+    "books/page-read-startup.lisp",
+    "books/paged-checkpoint-exec.lisp",
+    "books/paged-checkpoint-host.lisp",
+    "books/paged-checkpoint-image.lisp",
+    "books/paged-checkpoint-open.lisp",
+    "books/paged-checkpoint-stage.lisp",
+    "books/paged-checkpoint.lisp",
+    "books/payload-commit-extent.lisp",
+    "books/payload-extent-read.lisp",
+    "books/payload-extent.lisp",
+    "books/payload-lz-append.lisp",
+    "books/payload-lz-record.lisp",
+    "books/payload-lz-replay.lisp",
+    "books/peer-catchup-spool-resources.lisp",
+    "books/peer-flight-default.lisp",
+    "books/peer-flight-profile.lisp",
+    "books/peer-flight-reservation.lisp",
+    "books/peer-flight-startup.lisp",
+    "books/peer-offer-catalog.lisp",
+    "books/peer-transit-authority.lisp",
+    "books/peer-transit-indexed.lisp",
+    "books/post-acceptance-bound.lisp",
+    "books/post-admission-keyed.lisp",
+    "books/post-head-limit.lisp",
+    "books/post-identity-catalog.lisp",
+    "books/post-identity-index.lisp",
+    "books/post-prepare-catalog.lisp",
+    "books/post-record-width-owner.lisp",
+    "books/post-retain-carried.lisp",
+    "books/post-transaction-durable.lisp",
+    "books/post-transaction-layer.lisp",
+    "books/post-transaction-sim.lisp",
+    "books/post-transaction.lisp",
+    "books/poster-bytes-buffer.lisp",
+    "books/poster-bytes-invariants.lisp",
+    "books/poster-bytes.lisp",
+    "books/productive-contract.lisp",
+    "books/productive-read-absent.lisp",
+    "books/productive-read-chain.lisp",
+    "books/productive-read-credit.lisp",
+    "books/productive-read-message-id.lisp",
+    "books/productive-read.lisp",
+    "books/protocol-served.lisp",
+    "books/public-exposure-reply.lisp",
+    "books/public-exposure.lisp",
+    "books/raw-dispatch-verdict.lisp",
+    "books/reader-open-carried.lisp",
+    "books/receive-octet-buffer.lisp",
+    "books/receiver-custody-row.lisp",
+    "books/receiver-held-ticket.lisp",
+    "books/receiver-index-custody.lisp",
+    "books/receiver-output-association.lisp",
+    "books/receiver-output-issuer.lisp",
+    "books/receiver-provider.lisp",
+    "books/receiver-query-binding.lisp",
+    "books/receiver-query-custody-producer.lisp",
+    "books/receiver-query-freshness.lisp",
+    "books/receiver-render-custody.lisp",
+    "books/receiver-turn-controller.lisp",
+    "books/reclaim-chunked-cost.lisp",
+    "books/reclaim-chunked-seal.lisp",
+    "books/reclaim-chunked-walk.lisp",
+    "books/reclaim-fold-contexts-live.lisp",
+    "books/reclaim-fold-contexts.lisp",
+    "books/reclaim-instant.lisp",
+    "books/reclaim-reservation.lisp",
+    "books/record-width-producers.lisp",
+    "books/records-concrete-owner.lisp",
+    "books/records-concrete.lisp",
+    "books/records-freeze.lisp",
+    "books/recovery-page-file-controller.lisp",
+    "books/recovery-profile-buffer.lisp",
+    "books/recovery-profile-envelope.lisp",
+    "books/recovery-refinement-concurrent.lisp",
+    "books/recovery-refinement-store.lisp",
+    "books/recovery-refinement.lisp",
+    "books/refusal-effect.lisp",
+    "books/refusal-headroom.lisp",
+    "books/relay-crash-invariants.lisp",
+    "books/relay-invariants.lisp",
+    "books/relay-source-routes.lisp",
+    "books/relay.lisp",
+    "books/replay-historical-limits.lisp",
+    "books/replay-identity-index.lisp",
+    "books/resource-output-chain.lisp",
+    "books/resource-output.lisp",
+    "books/resource-vector-relations-heap.lisp",
+    "books/retention-figures.lisp",
+    "books/runtime-contract-host-lease-cost.lisp",
+    "books/runtime-contract-host-lease-premises.lisp",
+    "books/runtime-contract-host-lease-run.lisp",
+    "books/runtime-contract-host-lease.lisp",
+    "books/runtime-contract-host-pool.lisp",
+    "books/served-access-revoke.lisp",
+    "books/served-availability.lisp",
+    "books/served-available-access.lisp",
+    "books/served-available-commands.lisp",
+    "books/served-available-read.lisp",
+    "books/served-catalog-chain.lisp",
+    "books/served-catalog-dispatch.lisp",
+    "books/served-catalog-group-low-cost.lisp",
+    "books/served-catalog-join-conns.lisp",
+    "books/served-catalog-join-entry.lisp",
+    "books/served-catalog-join-finish.lisp",
+    "books/served-catalog-join-frame-conns.lisp",
+    "books/served-catalog-join-frame-store.lisp",
+    "books/served-catalog-join-frame.lisp",
+    "books/served-catalog-join-host-arms.lisp",
+    "books/served-catalog-join-host-columns-open.lisp",
+    "books/served-catalog-join-host-columns.lisp",
+    "books/served-catalog-join-host-complete.lisp",
+    "books/served-catalog-join-host-entries.lisp",
+    "books/served-catalog-join-host-exec.lisp",
+    "books/served-catalog-join-host-finish.lisp",
+    "books/served-catalog-join-host-identity-finish.lisp",
+    "books/served-catalog-join-host-identity.lisp",
+    "books/served-catalog-join-host-open.lisp",
+    "books/served-catalog-join-host-post.lisp",
+    "books/served-catalog-join-host-read.lisp",
+    "books/served-catalog-join-host-views.lisp",
+    "books/served-catalog-join-host.lisp",
+    "books/served-catalog-join-inv.lisp",
+    "books/served-catalog-join-number.lisp",
+    "books/served-catalog-join-open.lisp",
+    "books/served-catalog-join-pinned.lisp",
+    "books/served-catalog-join-read.lisp",
+    "books/served-catalog-join-refresh.lisp",
+    "books/served-catalog-join-step.lisp",
+    "books/served-catalog-join.lisp",
+    "books/served-catalog-load-identity.lisp",
+    "books/served-catalog-owner-keyed.lisp",
+    "books/served-catalog-owner.lisp",
+    "books/served-catalog-view.lisp",
+    "books/served-catalog.lisp",
+    "books/served-chunk-live-free.lisp",
+    "books/served-columns.lisp",
+    "books/served-plan-cursor.lisp",
+    "books/served-plan-line-buffer.lisp",
+    "books/served-query-plan.lisp",
+    "books/served-span.lisp",
+    "books/source-routes.lisp",
+    "books/state-digest.lisp",
+    "books/statement-keyring-publication.lisp",
+    "books/statement-recover-stream.lisp",
+    "books/store-budget-article.lisp",
+    "books/store-budget-naming.lisp",
+    "books/store-budget-stored-post.lisp",
+    "books/store-budget-stored.lisp",
+    "books/store-budget.lisp",
+    "books/store-capacity-config.lisp",
+    "books/store-capacity-vector.lisp",
+    "books/store-carried-folds.lisp",
+    "books/store-checkpoint-arena-load.lisp",
+    "books/store-checkpoint-arena-size-load.lisp",
+    "books/store-checkpoint-arena-writer.lisp",
+    "books/store-checkpoint-arena.lisp",
+    "books/store-checkpoint-digest.lisp",
+    "books/store-checkpoint-fold.lisp",
+    "books/store-checkpoint-open.lisp",
+    "books/store-checkpoint-size-reader.lisp",
+    "books/store-checkpoint-tables-reader.lisp",
+    "books/store-checkpoint-tables.lisp",
+    "books/store-config-generation.lisp",
+    "books/store-existing-alpha.lisp",
+    "books/store-export-stream.lisp",
+    "books/store-export.lisp",
+    "books/store-files-invariants.lisp",
+    "books/store-files-traces.lisp",
+    "books/store-files.lisp",
+    "books/store-finalize-carried-check.lisp",
+    "books/store-finalize-incremental.lisp",
+    "books/store-finalize-published.lisp",
+    "books/store-genesis.lisp",
+    "books/store-host-boundary.lisp",
+    "books/store-identity-reserve.lisp",
+    "books/store-identity-sequence-invariants.lisp",
+    "books/store-identity.lisp",
+    "books/store-import-publication.lisp",
+    "books/store-import-stream.lisp",
+    "books/store-init-log-publication.lisp",
+    "books/store-init-publication.lisp",
+    "books/store-intern.lisp",
+    "books/store-log-buffer-cost.lisp",
+    "books/store-log-buffer.lisp",
+    "books/store-log-damage.lisp",
+    "books/store-log-durable.lisp",
+    "books/store-log-entry-bound.lisp",
+    "books/store-log-failed-barrier.lisp",
+    "books/store-log-history-ceiling.lisp",
+    "books/store-log-kernel-concrete.lisp",
+    "books/store-log-open-barriers.lisp",
+    "books/store-log-open-scan-cost.lisp",
+    "books/store-log-open-scan.lisp",
+    "books/store-log-prefix-durable.lisp",
+    "books/store-log-reclaim.lisp",
+    "books/store-log-recover-copy.lisp",
+    "books/store-log-rotate-spare.lisp",
+    "books/store-log-route-phases.lisp",
+    "books/store-log-route-programs.lisp",
+    "books/store-log-route.lisp",
+    "books/store-log-stream.lisp",
+    "books/store-log-walk-once.lisp",
+    "books/store-maintenance-reserve.lisp",
+    "books/store-node-correspondence.lisp",
+    "books/store-node-existing-invariants.lisp",
+    "books/store-node-invariants-base.lisp",
+    "books/store-node-invariants.lisp",
+    "books/store-node-resolution.lisp",
+    "books/store-node-retention.lisp",
+    "books/store-node-traces-prepare.lisp",
+    "books/store-node-traces.lisp",
+    "books/store-node.lisp",
+    "books/store-observed-traces.lisp",
+    "books/store-observed.lisp",
+    "books/store-open-bridge.lisp",
+    "books/store-open-node-bridge.lisp",
+    "books/store-open-pre-c1.lisp",
+    "books/store-open-replay-refusal.lisp",
+    "books/store-prepare-carried.lisp",
+    "books/store-prepare-correspondence.lisp",
+    "books/store-prepare-served.lisp",
+    "books/store-profile-carried.lisp",
+    "books/store-profile-facts.lisp",
+    "books/store-profile-namespace.lisp",
+    "books/store-profile-open.lisp",
+    "books/store-reclaim-buffer.lisp",
+    "books/store-reclaim-holders.lisp",
+    "books/store-reclaim-owner-holders.lisp",
+    "books/store-reclaim-pack.lisp",
+    "books/store-reclaim-stream.lisp",
+    "books/store-reclaim.lisp",
+    "books/store-records-field.lisp",
+    "books/store-recover-stream.lisp",
+    "books/store-replay-bound.lisp",
+    "books/store-sweep.lisp",
+    "books/stx-lace-rows.lisp",
+    "books/substrate-committed-row.lisp",
+    "books/substrate-profile-row.lisp",
+    "books/tls-handshake-budget.lisp",
+    "books/tls-handshake-decision.lisp",
+    "books/tls-key-exchange.lisp",
+    "books/tls-proxy.lisp",
+    "books/topic-history-recovery-invariants.lisp",
+    "books/topic-history-store-invariants.lisp",
+    "books/transit-bound.lisp",
+    "books/transit-header-limits.lisp",
+    "books/transit-same-decision.lisp",
+    "books/visibility-join.lisp",
+    "books/wire-export.lisp",
+    "books/withdrawal-index-carried.lisp"
+  ],
+  "shared": [
+    "books/assumptions-durable.lisp",
+    "books/assumptions-pgs-host-io.lisp",
+    "books/assumptions.lisp",
+    "books/byte-store-invariants.lisp",
+    "books/byte-store.lisp",
+    "books/crypto-attach.lisp",
+    "books/def-buffer.lisp",
+    "books/deflate-inflate.lisp",
+    "books/frame-invariants.lisp",
+    "books/frame-trailer.lisp",
+    "books/history-image-row-encode.lisp",
+    "books/history-pages-append-grown.lisp",
+    "books/history-pages-arith.lisp",
+    "books/history-pages-exec.lisp",
+    "books/history-pages-grow-append.lisp",
+    "books/history-pages-grow-cap.lisp",
+    "books/history-pages-grow-then-append.lisp",
+    "books/history-pages-grow.lisp",
+    "books/history-pages-import.lisp",
+    "books/history-pages-nest.lisp",
+    "books/history-pages-placed-write.lisp",
+    "books/history-pages-placed.lisp",
+    "books/history-pages-read.lisp",
+    "books/history-pages-relocate.lisp",
+    "books/history-pages-row.lisp",
+    "books/history-pages-step.lisp",
+    "books/history-pages-view.lisp",
+    "books/history-pages-words.lisp",
+    "books/history-pages-write-exec.lisp",
+    "books/history-pages-write-keys.lisp",
+    "books/history-pages-write.lisp",
+    "books/history-pages.lisp",
+    "books/history-records.lisp",
+    "books/pagestore-exec.lisp",
+    "books/pagestore-words-blake3.lisp",
+    "books/pagestore-words.lisp",
+    "books/pagestore.lisp",
+    "books/payload-deflate.lisp",
+    "books/payload-lz-value.lisp",
+    "books/proto/adt-bytes-lib.lisp",
+    "books/proto/adt-bytes.lisp",
+    "books/proto/adt-key-lib.lisp",
+    "books/sha256.lisp",
+    "books/store-checkpoint-buffer.lisp",
+    "books/store-checkpoint-codec.lisp",
+    "books/store-tree-codec-program-guards.lisp",
+    "books/store-tree-codec.lisp"
+  ],
+  "private": [
+    "books/history-paged.lisp",
+    "books/history-pages-resident.lisp"
+  ],
+  "include_frontier": [
+    "books/history-records.lisp"
+  ],
+  "shared_consumer_witness": {
+    "books/assumptions-durable.lisp": "books/acceptance-payload-ref.lisp",
+    "books/assumptions-pgs-host-io.lisp": "books/acceptance-payload-ref.lisp",
+    "books/assumptions.lisp": "books/acceptance-payload-ref.lisp",
+    "books/byte-store-invariants.lisp": "books/acceptance-payload-ref.lisp",
+    "books/byte-store.lisp": "books/acceptance-payload-ref.lisp",
+    "books/crypto-attach.lisp": "books/acceptance-payload-ref.lisp",
+    "books/def-buffer.lisp": "books/acceptance-payload-ref.lisp",
+    "books/deflate-inflate.lisp": "books/acceptance-payload-ref.lisp",
+    "books/frame-invariants.lisp": "books/acceptance-payload-ref.lisp",
+    "books/frame-trailer.lisp": "books/acceptance-payload-ref.lisp",
+    "books/pagestore-words.lisp": "books/acceptance-payload-ref.lisp",
+    "books/payload-deflate.lisp": "books/acceptance-payload-ref.lisp",
+    "books/payload-lz-value.lisp": "books/acceptance-payload-ref.lisp",
+    "books/sha256.lisp": "books/acceptance-payload-ref.lisp",
+    "books/store-checkpoint-buffer.lisp": "books/acceptance-payload-ref.lisp",
+    "books/store-checkpoint-codec.lisp": "books/acceptance-payload-ref.lisp",
+    "books/store-tree-codec-program-guards.lisp": "books/acceptance-payload-ref.lisp",
+    "books/store-tree-codec.lisp": "books/acceptance-payload-ref.lisp",
+    "books/pagestore.lisp": "books/catalog-paged-attach.lisp",
+    "books/history-image-row-encode.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-append-grown.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-arith.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-exec.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-grow-append.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-grow-cap.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-grow-then-append.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-grow.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-import.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-nest.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-placed-write.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-placed.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-read.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-relocate.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-row.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-step.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-view.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-words.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-write-exec.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-write-keys.lisp": "books/history-root-figure.lisp",
+    "books/history-pages-write.lisp": "books/history-root-figure.lisp",
+    "books/history-pages.lisp": "books/history-root-figure.lisp",
+    "books/history-records.lisp": "books/history-root-figure.lisp",
+    "books/pagestore-exec.lisp": "books/history-root-figure.lisp",
+    "books/pagestore-words-blake3.lisp": "books/history-root-figure.lisp",
+    "books/proto/adt-bytes-lib.lisp": "books/history-root-figure.lisp",
+    "books/proto/adt-bytes.lisp": "books/history-root-figure.lisp",
+    "books/proto/adt-key-lib.lisp": "books/history-root-figure.lisp"
+  },
+  "independent_include_path_for_shared": {
+    "books/assumptions-durable.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      },
+      {
+        "from": "books/assumptions.lisp",
+        "line": 46,
+        "to": "books/assumptions-durable.lisp"
+      }
+    ],
+    "books/assumptions-pgs-host-io.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      },
+      {
+        "from": "books/assumptions.lisp",
+        "line": 477,
+        "to": "books/assumptions-pgs-host-io.lisp"
+      }
+    ],
+    "books/assumptions.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      }
+    ],
+    "books/byte-store-invariants.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      },
+      {
+        "from": "books/assumptions.lisp",
+        "line": 45,
+        "to": "books/byte-store-invariants.lisp"
+      }
+    ],
+    "books/byte-store.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      },
+      {
+        "from": "books/assumptions.lisp",
+        "line": 45,
+        "to": "books/byte-store-invariants.lisp"
+      },
+      {
+        "from": "books/byte-store-invariants.lisp",
+        "line": 48,
+        "to": "books/byte-store.lisp"
+      }
+    ],
+    "books/crypto-attach.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 36,
+        "to": "books/store-checkpoint-buffer.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-buffer.lisp",
+        "line": 46,
+        "to": "books/store-checkpoint-codec.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-codec.lisp",
+        "line": 33,
+        "to": "books/frame-trailer.lisp"
+      },
+      {
+        "from": "books/frame-trailer.lisp",
+        "line": 41,
+        "to": "books/crypto-attach.lisp"
+      }
+    ],
+    "books/def-buffer.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      },
+      {
+        "from": "books/assumptions.lisp",
+        "line": 46,
+        "to": "books/assumptions-durable.lisp"
+      },
+      {
+        "from": "books/assumptions-durable.lisp",
+        "line": 13,
+        "to": "books/payload-lz-value.lisp"
+      },
+      {
+        "from": "books/payload-lz-value.lisp",
+        "line": 15,
+        "to": "books/payload-deflate.lisp"
+      },
+      {
+        "from": "books/payload-deflate.lisp",
+        "line": 26,
+        "to": "books/deflate-inflate.lisp"
+      },
+      {
+        "from": "books/deflate-inflate.lisp",
+        "line": 83,
+        "to": "books/def-buffer.lisp"
+      }
+    ],
+    "books/deflate-inflate.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      },
+      {
+        "from": "books/assumptions.lisp",
+        "line": 46,
+        "to": "books/assumptions-durable.lisp"
+      },
+      {
+        "from": "books/assumptions-durable.lisp",
+        "line": 13,
+        "to": "books/payload-lz-value.lisp"
+      },
+      {
+        "from": "books/payload-lz-value.lisp",
+        "line": 15,
+        "to": "books/payload-deflate.lisp"
+      },
+      {
+        "from": "books/payload-deflate.lisp",
+        "line": 26,
+        "to": "books/deflate-inflate.lisp"
+      }
+    ],
+    "books/frame-invariants.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 36,
+        "to": "books/store-checkpoint-buffer.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-buffer.lisp",
+        "line": 46,
+        "to": "books/store-checkpoint-codec.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-codec.lisp",
+        "line": 33,
+        "to": "books/frame-trailer.lisp"
+      },
+      {
+        "from": "books/frame-trailer.lisp",
+        "line": 40,
+        "to": "books/frame-invariants.lisp"
+      }
+    ],
+    "books/frame-trailer.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 36,
+        "to": "books/store-checkpoint-buffer.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-buffer.lisp",
+        "line": 46,
+        "to": "books/store-checkpoint-codec.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-codec.lisp",
+        "line": 33,
+        "to": "books/frame-trailer.lisp"
+      }
+    ],
+    "books/history-image-row-encode.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 9,
+        "to": "books/history-image-row-encode.lisp"
+      }
+    ],
+    "books/history-pages-append-grown.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 16,
+        "to": "books/history-pages-append-grown.lisp"
+      }
+    ],
+    "books/history-pages-arith.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 8,
+        "to": "books/history-pages-arith.lisp"
+      }
+    ],
+    "books/history-pages-exec.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      },
+      {
+        "from": "books/history-pages-read.lisp",
+        "line": 16,
+        "to": "books/history-pages-row.lisp"
+      },
+      {
+        "from": "books/history-pages-row.lisp",
+        "line": 6,
+        "to": "books/history-pages-exec.lisp"
+      }
+    ],
+    "books/history-pages-grow-append.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 16,
+        "to": "books/history-pages-append-grown.lisp"
+      },
+      {
+        "from": "books/history-pages-append-grown.lisp",
+        "line": 13,
+        "to": "books/history-pages-grow-append.lisp"
+      }
+    ],
+    "books/history-pages-grow-cap.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 16,
+        "to": "books/history-pages-append-grown.lisp"
+      },
+      {
+        "from": "books/history-pages-append-grown.lisp",
+        "line": 13,
+        "to": "books/history-pages-grow-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-append.lisp",
+        "line": 14,
+        "to": "books/history-pages-grow-cap.lisp"
+      }
+    ],
+    "books/history-pages-grow-then-append.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      }
+    ],
+    "books/history-pages-grow.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      }
+    ],
+    "books/history-pages-import.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      }
+    ],
+    "books/history-pages-nest.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      }
+    ],
+    "books/history-pages-placed-write.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      }
+    ],
+    "books/history-pages-placed.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      }
+    ],
+    "books/history-pages-read.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      }
+    ],
+    "books/history-pages-relocate.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      }
+    ],
+    "books/history-pages-row.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      },
+      {
+        "from": "books/history-pages-read.lisp",
+        "line": 16,
+        "to": "books/history-pages-row.lisp"
+      }
+    ],
+    "books/history-pages-step.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      }
+    ],
+    "books/history-pages-view.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 50,
+        "to": "books/history-pages-view.lisp"
+      }
+    ],
+    "books/history-pages-words.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      },
+      {
+        "from": "books/history-pages-read.lisp",
+        "line": 16,
+        "to": "books/history-pages-row.lisp"
+      },
+      {
+        "from": "books/history-pages-row.lisp",
+        "line": 6,
+        "to": "books/history-pages-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-exec.lisp",
+        "line": 5,
+        "to": "books/history-pages-words.lisp"
+      }
+    ],
+    "books/history-pages-write-exec.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      }
+    ],
+    "books/history-pages-write-keys.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      }
+    ],
+    "books/history-pages-write.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      }
+    ],
+    "books/history-pages.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      },
+      {
+        "from": "books/history-pages-read.lisp",
+        "line": 16,
+        "to": "books/history-pages-row.lisp"
+      },
+      {
+        "from": "books/history-pages-row.lisp",
+        "line": 6,
+        "to": "books/history-pages-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-exec.lisp",
+        "line": 4,
+        "to": "books/history-pages.lisp"
+      }
+    ],
+    "books/history-records.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      }
+    ],
+    "books/pagestore-exec.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      },
+      {
+        "from": "books/history-pages-read.lisp",
+        "line": 16,
+        "to": "books/history-pages-row.lisp"
+      },
+      {
+        "from": "books/history-pages-row.lisp",
+        "line": 6,
+        "to": "books/history-pages-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-exec.lisp",
+        "line": 6,
+        "to": "books/pagestore-exec.lisp"
+      }
+    ],
+    "books/pagestore-words-blake3.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      },
+      {
+        "from": "books/history-pages-read.lisp",
+        "line": 16,
+        "to": "books/history-pages-row.lisp"
+      },
+      {
+        "from": "books/history-pages-row.lisp",
+        "line": 6,
+        "to": "books/history-pages-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-exec.lisp",
+        "line": 4,
+        "to": "books/history-pages.lisp"
+      },
+      {
+        "from": "books/history-pages.lisp",
+        "line": 42,
+        "to": "books/pagestore-words-blake3.lisp"
+      }
+    ],
+    "books/pagestore-words.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      },
+      {
+        "from": "books/assumptions.lisp",
+        "line": 477,
+        "to": "books/assumptions-pgs-host-io.lisp"
+      },
+      {
+        "from": "books/assumptions-pgs-host-io.lisp",
+        "line": 13,
+        "to": "books/pagestore-words.lisp"
+      }
+    ],
+    "books/pagestore.lisp": [
+      {
+        "from": "books/catalog-paged-attach.lisp",
+        "line": 32,
+        "to": "books/catalog-paged.lisp"
+      },
+      {
+        "from": "books/catalog-paged.lisp",
+        "line": 58,
+        "to": "books/def-representation-pages.lisp"
+      },
+      {
+        "from": "books/def-representation-pages.lisp",
+        "line": 52,
+        "to": "books/pagestore.lisp"
+      }
+    ],
+    "books/payload-deflate.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      },
+      {
+        "from": "books/assumptions.lisp",
+        "line": 46,
+        "to": "books/assumptions-durable.lisp"
+      },
+      {
+        "from": "books/assumptions-durable.lisp",
+        "line": 13,
+        "to": "books/payload-lz-value.lisp"
+      },
+      {
+        "from": "books/payload-lz-value.lisp",
+        "line": 15,
+        "to": "books/payload-deflate.lisp"
+      }
+    ],
+    "books/payload-lz-value.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 33,
+        "to": "books/assumptions.lisp"
+      },
+      {
+        "from": "books/assumptions.lisp",
+        "line": 46,
+        "to": "books/assumptions-durable.lisp"
+      },
+      {
+        "from": "books/assumptions-durable.lisp",
+        "line": 13,
+        "to": "books/payload-lz-value.lisp"
+      }
+    ],
+    "books/proto/adt-bytes-lib.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      },
+      {
+        "from": "books/history-pages-read.lisp",
+        "line": 16,
+        "to": "books/history-pages-row.lisp"
+      },
+      {
+        "from": "books/history-pages-row.lisp",
+        "line": 6,
+        "to": "books/history-pages-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-exec.lisp",
+        "line": 4,
+        "to": "books/history-pages.lisp"
+      },
+      {
+        "from": "books/history-pages.lisp",
+        "line": 39,
+        "to": "books/proto/adt-bytes.lisp"
+      },
+      {
+        "from": "books/proto/adt-bytes.lisp",
+        "line": 52,
+        "to": "books/proto/adt-bytes-lib.lisp"
+      }
+    ],
+    "books/proto/adt-bytes.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      },
+      {
+        "from": "books/history-pages-read.lisp",
+        "line": 16,
+        "to": "books/history-pages-row.lisp"
+      },
+      {
+        "from": "books/history-pages-row.lisp",
+        "line": 6,
+        "to": "books/history-pages-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-exec.lisp",
+        "line": 4,
+        "to": "books/history-pages.lisp"
+      },
+      {
+        "from": "books/history-pages.lisp",
+        "line": 39,
+        "to": "books/proto/adt-bytes.lisp"
+      }
+    ],
+    "books/proto/adt-key-lib.lisp": [
+      {
+        "from": "books/history-root-figure.lisp",
+        "line": 28,
+        "to": "books/history-root-credit.lisp"
+      },
+      {
+        "from": "books/history-root-credit.lisp",
+        "line": 5,
+        "to": "books/history-image-row-step.lisp"
+      },
+      {
+        "from": "books/history-image-row-step.lisp",
+        "line": 5,
+        "to": "books/history-image-build-rows.lisp"
+      },
+      {
+        "from": "books/history-image-build-rows.lisp",
+        "line": 7,
+        "to": "books/history-records.lisp"
+      },
+      {
+        "from": "books/history-records.lisp",
+        "line": 49,
+        "to": "books/history-pages-import.lisp"
+      },
+      {
+        "from": "books/history-pages-import.lisp",
+        "line": 15,
+        "to": "books/history-pages-step.lisp"
+      },
+      {
+        "from": "books/history-pages-step.lisp",
+        "line": 31,
+        "to": "books/history-pages-grow-then-append.lisp"
+      },
+      {
+        "from": "books/history-pages-grow-then-append.lisp",
+        "line": 15,
+        "to": "books/history-pages-relocate.lisp"
+      },
+      {
+        "from": "books/history-pages-relocate.lisp",
+        "line": 4,
+        "to": "books/history-pages-grow.lisp"
+      },
+      {
+        "from": "books/history-pages-grow.lisp",
+        "line": 12,
+        "to": "books/history-pages-placed-write.lisp"
+      },
+      {
+        "from": "books/history-pages-placed-write.lisp",
+        "line": 13,
+        "to": "books/history-pages-nest.lisp"
+      },
+      {
+        "from": "books/history-pages-nest.lisp",
+        "line": 5,
+        "to": "books/history-pages-placed.lisp"
+      },
+      {
+        "from": "books/history-pages-placed.lisp",
+        "line": 13,
+        "to": "books/history-pages-write-keys.lisp"
+      },
+      {
+        "from": "books/history-pages-write-keys.lisp",
+        "line": 17,
+        "to": "books/history-pages-write-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-write-exec.lisp",
+        "line": 7,
+        "to": "books/history-pages-write.lisp"
+      },
+      {
+        "from": "books/history-pages-write.lisp",
+        "line": 14,
+        "to": "books/history-pages-read.lisp"
+      },
+      {
+        "from": "books/history-pages-read.lisp",
+        "line": 16,
+        "to": "books/history-pages-row.lisp"
+      },
+      {
+        "from": "books/history-pages-row.lisp",
+        "line": 6,
+        "to": "books/history-pages-exec.lisp"
+      },
+      {
+        "from": "books/history-pages-exec.lisp",
+        "line": 4,
+        "to": "books/history-pages.lisp"
+      },
+      {
+        "from": "books/history-pages.lisp",
+        "line": 39,
+        "to": "books/proto/adt-bytes.lisp"
+      },
+      {
+        "from": "books/proto/adt-bytes.lisp",
+        "line": 53,
+        "to": "books/proto/adt-key-lib.lisp"
+      }
+    ],
+    "books/sha256.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 35,
+        "to": "books/sha256.lisp"
+      }
+    ],
+    "books/store-checkpoint-buffer.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 36,
+        "to": "books/store-checkpoint-buffer.lisp"
+      }
+    ],
+    "books/store-checkpoint-codec.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 36,
+        "to": "books/store-checkpoint-buffer.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-buffer.lisp",
+        "line": 46,
+        "to": "books/store-checkpoint-codec.lisp"
+      }
+    ],
+    "books/store-tree-codec-program-guards.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 36,
+        "to": "books/store-checkpoint-buffer.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-buffer.lisp",
+        "line": 46,
+        "to": "books/store-checkpoint-codec.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-codec.lisp",
+        "line": 32,
+        "to": "books/store-tree-codec-program-guards.lisp"
+      }
+    ],
+    "books/store-tree-codec.lisp": [
+      {
+        "from": "books/acceptance-payload-ref.lisp",
+        "line": 33,
+        "to": "books/store-files-traces.lisp"
+      },
+      {
+        "from": "books/store-files-traces.lisp",
+        "line": 20,
+        "to": "books/store-files-invariants.lisp"
+      },
+      {
+        "from": "books/store-files-invariants.lisp",
+        "line": 8,
+        "to": "books/store-files.lisp"
+      },
+      {
+        "from": "books/store-files.lisp",
+        "line": 32,
+        "to": "books/store-records-field.lisp"
+      },
+      {
+        "from": "books/store-records-field.lisp",
+        "line": 36,
+        "to": "books/store-checkpoint-buffer.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-buffer.lisp",
+        "line": 46,
+        "to": "books/store-checkpoint-codec.lisp"
+      },
+      {
+        "from": "books/store-checkpoint-codec.lisp",
+        "line": 31,
+        "to": "books/store-tree-codec.lisp"
+      }
+    ]
+  },
+  "source_detected_export_masks": [
+    {
+      "book": "books/store-records-field.lisp",
+      "line": 175,
+      "before": "fn-sfr-theory-before-disk",
+      "after": "fn-sfr-theory-after-disk",
+      "hidden_books": [
+        "books/consumer-event-index-read.lisp",
+        "books/consumer-event-index.lisp",
+        "books/history-columns-logic.lisp",
+        "books/history-image-row-encode.lisp",
+        "books/history-pages-append-grown.lisp",
+        "books/history-pages-arith.lisp",
+        "books/history-pages-exec.lisp",
+        "books/history-pages-grow-append.lisp",
+        "books/history-pages-grow-cap.lisp",
+        "books/history-pages-grow-then-append.lisp",
+        "books/history-pages-grow.lisp",
+        "books/history-pages-import.lisp",
+        "books/history-pages-nest.lisp",
+        "books/history-pages-placed-write.lisp",
+        "books/history-pages-placed.lisp",
+        "books/history-pages-read.lisp",
+        "books/history-pages-relocate.lisp",
+        "books/history-pages-row.lisp",
+        "books/history-pages-step.lisp",
+        "books/history-pages-view.lisp",
+        "books/history-pages-words.lisp",
+        "books/history-pages-write-exec.lisp",
+        "books/history-pages-write-keys.lisp",
+        "books/history-pages-write.lisp",
+        "books/history-pages.lisp",
+        "books/history-records-disk.lisp",
+        "books/history-records.lisp",
+        "books/msgid-index-concrete.lisp",
+        "books/msgid-index.lisp",
+        "books/pagestore-exec.lisp",
+        "books/pagestore-words-blake3.lisp",
+        "books/pagestore.lisp",
+        "books/proto/adt-bytes-lib.lisp",
+        "books/proto/adt-bytes.lisp",
+        "books/proto/adt-key-lib.lisp",
+        "books/proto/adt-lib.lisp"
+      ]
+    }
+  ],
+  "literal_graph_shared_without_masks": [
+    "books/assumptions-durable.lisp",
+    "books/assumptions-pgs-host-io.lisp",
+    "books/assumptions.lisp",
+    "books/byte-store-invariants.lisp",
+    "books/byte-store.lisp",
+    "books/crypto-attach.lisp",
+    "books/def-buffer.lisp",
+    "books/deflate-inflate.lisp",
+    "books/frame-invariants.lisp",
+    "books/frame-trailer.lisp",
+    "books/history-image-row-encode.lisp",
+    "books/history-pages-append-grown.lisp",
+    "books/history-pages-arith.lisp",
+    "books/history-pages-exec.lisp",
+    "books/history-pages-grow-append.lisp",
+    "books/history-pages-grow-cap.lisp",
+    "books/history-pages-grow-then-append.lisp",
+    "books/history-pages-grow.lisp",
+    "books/history-pages-import.lisp",
+    "books/history-pages-nest.lisp",
+    "books/history-pages-placed-write.lisp",
+    "books/history-pages-placed.lisp",
+    "books/history-pages-read.lisp",
+    "books/history-pages-relocate.lisp",
+    "books/history-pages-row.lisp",
+    "books/history-pages-step.lisp",
+    "books/history-pages-view.lisp",
+    "books/history-pages-words.lisp",
+    "books/history-pages-write-exec.lisp",
+    "books/history-pages-write-keys.lisp",
+    "books/history-pages-write.lisp",
+    "books/history-pages.lisp",
+    "books/history-records.lisp",
+    "books/pagestore-exec.lisp",
+    "books/pagestore-words-blake3.lisp",
+    "books/pagestore-words.lisp",
+    "books/pagestore.lisp",
+    "books/payload-deflate.lisp",
+    "books/payload-lz-value.lisp",
+    "books/proto/adt-bytes-lib.lisp",
+    "books/proto/adt-bytes.lisp",
+    "books/proto/adt-key-lib.lisp",
+    "books/sha256.lisp",
+    "books/store-checkpoint-buffer.lisp",
+    "books/store-checkpoint-codec.lisp",
+    "books/store-tree-codec-program-guards.lisp",
+    "books/store-tree-codec.lisp"
+  ],
+  "partition_matches_literal_graph": true,
+  "fixtures": "PASS: masked include, redundant include after mask, dependency before mask, LOCAL exclusion"
+}

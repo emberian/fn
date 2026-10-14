@@ -128,6 +128,7 @@
 (include-book "bp-node-host-machine")
 (include-book "bp-evidence-host-names")
 (include-book "owner-retain-carried")
+(include-book "owner-retain-live")
 (include-book "bp-handoff-report")
 (include-book "tcpcl-delivery-invariants")
 (include-book "resource-syncer")

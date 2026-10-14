@@ -260,7 +260,10 @@
                        (mv-nth 0 (fn-rtc-rearm (mv-nth 0 (fn-hlp-acc-deliver s1 r q)))))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-rtc-free-slot-has-incarnation-room (i 0) (slots (fn-rtc-slots s1)))
+                 (:instance fn-rtc-free-slot-index-type (i 0) (slots (fn-rtc-slots s1))))
            :in-theory (union-theories '(fn-hll-accept-branch fn-hlp-acc-deliver fn-hlp-acc-prep fn-hlp-acc-jinc fn-hlp-acc-j fn-hlm-init
+                                        fn-rtc-slot unicity-of-0 commutativity-of-+ fix posp
                                         fn-rtc-get-of-cons car-cons cdr-cons (:e fn-rtc-get) (:e zp) (:e nfix) (:e binary-+) (:e unary--) natp mv-nth (:e mv-nth))
                                       (theory 'minimal-theory))))))
 (local (defthm fn-hlp-deliver-accept
@@ -318,8 +321,11 @@
                          (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots st)) st)))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-hld-begin fn-hlp-bev fn-rtc-st-free-slot fn-rtc-st$a-free-slot fn-hld-readers fn-rtc-st-slot fn-rtc-st$a-slot
+                                               fn-rtc-slot unicity-of-0 commutativity-of-+ fix posp (:e binary-+) (:e unary--)
                                                natp mv-nth (:e mv-nth) (:type-prescription fn-rtc-free-slot))
-                                             (theory 'minimal-theory))))))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-rtc-free-slot-has-incarnation-room (i 0) (slots (fn-rtc-slots st)))
+                 (:instance fn-rtc-free-slot-index-type (i 0) (slots (fn-rtc-slots st))))))))
 (local (defun fn-hlp-accept-onlyp (acts)
   (declare (xargs :guard t))
   (if (consp acts)
@@ -1595,8 +1601,11 @@
                                            (mv-nth 0 (fn-hll-x-step* (fn-hlp-bev st r) 1 st))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-hld-begin fn-hlp-bev fn-rtc-st-free-slot fn-rtc-st$a-free-slot fn-hld-readers fn-rtc-st-slot fn-rtc-st$a-slot
+                                               fn-rtc-slot unicity-of-0 commutativity-of-+ fix posp (:e binary-+) (:e unary--)
                                                natp mv-nth (:e mv-nth) (:type-prescription fn-rtc-free-slot))
-                                             (theory 'minimal-theory))))))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-rtc-free-slot-has-incarnation-room (i 0) (slots (fn-rtc-slots st)))
+                 (:instance fn-rtc-free-slot-index-type (i 0) (slots (fn-rtc-slots st))))))))
 (local (defthm fn-hlp-begin-fail
   (implies (not (and (natp r) (< r (expt 2 64)) (fn-rtc-free-slot 0 (fn-rtc-slots st))
                      (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses st))))

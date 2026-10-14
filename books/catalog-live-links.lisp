@@ -508,13 +508,14 @@
             :in-theory (e/d (fn-cat$c-scan-down) (fn-cat$corr-base fn-cat$c-live-at-p
                                                    fn-cat-live-numberp)))))
 
-(defthm fn-cpl-first-skips
+(defthmd fn-cpl-first-skips
   (implies (and (natp a) (natp m) (natp top) (<= a m) (<= m top)
                 (or (equal (fn-cat-live-first g a top c) 0)
                     (< m (fn-cat-live-first g a top c))))
            (not (fn-cat-live-numberp g m c)))
   :hints (("Goal" :induct (fn-cat-live-first g a top c)
            :in-theory (disable fn-cat-live-numberp))))
+(local (in-theory (enable fn-cpl-first-skips)))
 
 (defthm fn-cpl-last-from-gap
   (implies (and (fn-cat-live-numberp g j c) (natp j) (natp m) (<= j m)
@@ -527,7 +528,7 @@
            :in-theory (disable fn-cat-live-numberp))
           ("Subgoal *1/1" :use ((:instance fn-cpl-first-skips (a (+ 1 j)))))))
 
-(defthm fn-cpl-last-skips
+(defthmd fn-cpl-last-skips
   (implies (and (natp m) (natp b) (<= m b) (posp m)
                 (or (equal (fn-cat-live-last g b c) 0)
                     (< (fn-cat-live-last g b c) m)))

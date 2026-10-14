@@ -1,18 +1,18 @@
-;; fn: the catalog, the generic (lane paged-catalog-2, 2026-10-01: split from
-;; books/catalog-logic.lisp, which keeps the logical side, the old
-;; foundation fn-cat$c, the correspondence and every obligation).  The split
-;; is the arena's (books/payload-arena.lisp over payload-arena-extent-logic):
-;; `attach-stobj' must precede the generic's `defabsstobj', so an
-;; implementation book (books/catalog-paged.lisp) includes the logical side
-;; without the generic, and books/catalog-paged-attach.lisp attaches it
-;; before this book.  Every book above includes this one unchanged.
+;; fn: the catalog generic, with the same logical side as catalog-logic.
+;; This book includes catalog-paged and attaches fn-cat-paged before fn-cat
+;; is introduced.  Every compiled caller uses the paged creator and exports;
+;; fn-cat$c remains the correspondence reference, never the generic's
+;; executable foundation.
 
 (in-package "ACL2")
 (include-book "catalog-logic")
 
 ; -----------------------------------------------------------------------------
 ; The catalog.  The exports are stated over the list; `:attachable t' lets
-; an image attach another implementation of the same logical side.
+; this book select the paged implementation before introduction.
+
+(include-book "catalog-paged")
+(attach-stobj fn-cat fn-cat-paged)
 
 (defabsstobj fn-cat
   :foundation fn-cat$c
@@ -46,6 +46,22 @@
             (fn-cat-index-health :logic fn-cat$a-index-health :exec fn-cat$c-index-health))
   :corr-fn-exists t
   :attachable t)
+
+; OW1: this generic is introduced only with its concrete implementation.
+(assert-event
+ (and (equal (cdr (assoc-eq 'fn-cat
+                           (table-alist 'attach-stobj-table (w state))))
+             'fn-cat-paged)
+      (let* ((generic (access absstobj-info
+                              (getpropc 'fn-cat 'absstobj-info nil (w state))
+                              :absstobj-tuples))
+             (impl (access absstobj-info
+                           (getpropc 'fn-cat-paged 'absstobj-info nil (w state))
+                           :absstobj-tuples))
+             (g-creator (assoc-eq 'create-fn-cat generic))
+             (i-creator (assoc-eq 'create-fn-cat-paged impl)))
+        (and (consp g-creator) (consp i-creator)
+             (equal (caddr g-creator) (caddr i-creator))))))
 
 ; -----------------------------------------------------------------------------
 ; The logical view, opened: a theorem over `fn-cat' is a theorem over the

@@ -12,6 +12,7 @@
 ; writer; books/history-pages-write-keys.lisp its keystone.
 (in-package "ACL2")
 (include-book "history-pages-read")
+(local (in-theory (enable adt-nth-0)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
