@@ -462,12 +462,12 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             # identical explicit capacities, retaining their exact status/limits.
             made = image.run(["operator", fcfg, "init", "--budget", "4000",
                               "--profile", "development", "--max-transactions", "16384",
-                              "--max-history-octets", "8388608", "local.test"])
+                              "--max-history-octets", "33554432", "local.test"])
             self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stdout + refused.stderr)
             self.assertEqual(made.returncode, EXIT.OK, made.stdout + made.stderr)
             status = self.status(image, fcfg)
             self.assertEqual(status[0], EXIT.OK, status[1] + status[2])
-            self.assertIn(b"max-transactions=16384 max-history-octets=8388608", status[1])
+            self.assertIn(b"max-transactions=16384 max-history-octets=33554432", status[1])
             files = sorted(tree(fresh))
             shutil.rmtree(fresh, True)
             return [refused.returncode, refused.stdout, refused.stderr,
