@@ -26,7 +26,8 @@
                               (nth *fn-lbc-escape-store-get* value))))))))
 ; The only column snapshot observation is logical, not a served copy.
 ; All independent publication algebra keeps this changing observation opaque.
-(defun-nx fn-lc-columns (fn-lbc) (fn-lc-columns-value fn-lbc))
+(defun-nx fn-lc-columns (fn-lbc) (ec-call (fn-lc-columns-value fn-lbc)))
+(verify-guards fn-lc-columns)
 
 (defun fn-lc-max-address (pages)
   (declare (xargs :guard t :verify-guards nil))

@@ -41,7 +41,7 @@
 ; replacement correspondence is introduced. Maintenance packets pass through.
 (defun fn-lc-append-prepared-columns (row segs fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (fn-lbc-p fn-lbc) :verify-guards nil))
-  (if row (fn-lbc-append-row row segs fn-lbc) fn-lbc))
+  (if row (ec-call (fn-lbc-append-row row segs fn-lbc)) fn-lbc))
 
 (defun fn-lc-prepare-tail (records id unit segs)
   (declare (xargs :guard t :verify-guards nil))

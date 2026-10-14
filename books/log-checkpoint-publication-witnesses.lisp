@@ -3,7 +3,8 @@
 (include-book "log-checkpoint-publication")
 (defun fn-lc-proof-empty-columns ()
  (declare (xargs :guard t :verify-guards nil))
- (fn-lc-columns-value '(nil nil nil (nil nil nil) nil nil nil nil nil nil)))
+ (ec-call (fn-lc-columns-value '(nil nil nil (nil nil nil) nil nil nil nil nil nil))))
+(verify-guards fn-lc-proof-empty-columns)
 (defthm fn-lc-created-columns-ground-refinement
  (equal (fn-lc-columns (create-fn-lbc)) (fn-lc-proof-empty-columns))
  :hints (("Goal" :in-theory (enable fn-lc-columns create-fn-lbc create-fn-dmap
