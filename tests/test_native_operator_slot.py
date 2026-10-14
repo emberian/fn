@@ -142,9 +142,19 @@ class NativeOperatorSlotRaiseTests(OperatorSlotCase, unittest.TestCase):
     IMAGE = PRODUCTION
 
     def test_the_slot_allows_the_live_raise_at_public_saturation(self):
+        # Measure this node's own capacity K, then configure K-2 so that a raise to K-1
+        # still fits the memory (which holds K public readers plus the operator slot).
+        # At public saturation the raise must go through the private slot and be admitted;
+        # before STEP 5 it was refused until a reader left.
         self.node.start()
+        capacity = self.public_capacity()
+        self.assertGreaterEqual(capacity, 3)
+        self.node.stop()
+        self.node.operator("policy", "set", "exposure-connections", str(capacity - 2), expect=EXIT_OK)
+        self.node.start()
+        self.assertEqual(self.public_capacity(), capacity - 2)
         self.saturate()
-        result = self.node.operator("policy", "set", "exposure-connections", "45")
+        result = self.node.operator("policy", "set", "exposure-connections", str(capacity - 1))
         self.assertEqual(result.returncode, EXIT_OK, result.stderr.decode())
         self.assertIsNone(self.node.process.poll())
 
