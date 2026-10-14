@@ -1,6 +1,6 @@
 # FAM5 — four reds and D2
 
-Current disposition: A28/main’s A pair fixes are applied in the section below; the original fifth-family STOPs are historical.
+Current disposition: the complete project-owned recognizer-bridge family is treated; K-U64 matches dev exactly and all six final gates pass. See [A: recognizer bridges, complete](#a-recognizer-bridges-complete). Earlier STOPs and one-pair findings below are historical.
 
 **The index-provider and pool call-depth failures have one size/serialization cause, repaired by default-disabling ADT-LEN-REGION-BELOW-BODY. Served-columns and served-catalog-view are STOPs for main’s fifth family. All six static gates pass.** No commits or certification jobs.
 
@@ -199,3 +199,125 @@ The fresh view session loads through FN-SCV-XDIFF, then admits all 67 unchanged 
 | `timeout 180 python3 tools/interface_emit.py --check` | 0 | [log](fam5-a-gate-interface.log) |
 
 All six static gates pass after the five-file source repair. The source token/enable byte audit, census fixtures and diff whitespace check pass. Owned sessions `fam5-a-scol` and `fam5-a-scv` were stopped by name; [columns stop](fam5-a-scol-stop.log), [view stop](fam5-a-scv-stop.log). No commits or certification jobs. The unrelated untracked ONE-WORLD-B-LOCAL-VOCABULARY tracker item was not opened or changed. **Work stops for the seat’s recertify; certification of this modified closure is not claimed.**
+
+## A: recognizer bridges, complete
+
+**The complete project-owned family in the three requested implementation closures is treated: 52 exported recognizer bridges, comprising 36 literal theorem events and 16 generated rules. K-U64-OCTETS admits with only the SCC bridge disabled in exactly dev’s two Rules and five steps. All six final gates pass. STOP for the seat’s recertify; no commits or certification jobs.**
+
+Parent/source control: `83563270a3ae0b88eecc4f2b6af56ace22de5b4a`. This supersedes the earlier one-bridge-at-a-time scope; the original FAM5 and A measurements above remain historical. The r10 refusal is `build/acl2/certify-20261014T061941Z-2596546/books--charged-totals-header.certify.log`, from `run-20261014T061731Z-57c9` in submit-r10.log.
+
+### Complete discovery, including generated and normalized rules
+
+The script first walks non-LOCAL project include edges from history-paged, catalog-paged and payload-arena-extent: respectively 137, 177 and 23 project books, 177 distinct books in their union at the parent. It records every exported literal call-to-call EQUAL/IFF candidate, with LOCAL/non-rewrite exclusions retained separately. It then measures all three **certified include** worlds in cached-only hbox sessions, enumerating the exported universal theory rather than only enabled runes. Disabled-by-default family members are retained in the inventory. [Source inventory](fam5-bridges-source-inventory.json), [admitted theorem inventory](fam5-bridges-complete.json).
+
+The final check reads ACL2’s actual normalized REWRITE-RULE records (`:rune`, `:equiv`, `:lhs`, `:rhs`, hypotheses count), checks membership in each exported universal theory, and discards DEFINITION records and logical operators. This covers conditional/conjunctive surface statements and generated events. Predicate identification uses admitted automatic Boolean result types and equivalences to such predicates, with IFF predicates retained; names do not select the project family. It distinguishes the byte/extent/tree recognizers from list/stobj-returning functions such as LOOKUP, STAMP and ZERO-LOOP despite their trailing P. The normalized check finds **the same 52 project names, no additional project member and no surface-only member**. [Normalized record audit](fam5-bridges-normalized-audit.json), [query helpers](fam5-bridges-record-helpers-v3.lisp), [checker](fam5_bridges_record_audit.py).
+
+All query worlds use one compatible cached dependency set for the exact parent. The normalized-query session uses an isolated parent archive so the modified working tree cannot be mistaken for a certified dependency closure. The control/inventory tools install cached sets only; no source-loading fallback or certification occurs.
+
+Project ownership is explicit: the initial ACL2 world’s rules are subtracted. Five system-library rules are inventoried separately and unchanged under the worktree-only edit boundary: `LIST-EQUIV-WHEN-ATOM-RIGHT`, `LIST-EQUIV-WHEN-ATOM-LEFT`, `ELEMENT-LIST-NONEMPTY-P-OF-SINGLETON-NON-TRUE-LIST`, `ELEMENT-LIST-NONEMPTY-P-OF-SINGLETON-TRUE-LIST`, `ELEMENT-LIST-NONEMPTY-P-OF-CONS`. They have no defining event in project books/. Neither LOCAL helpers such as ADT-TREE-OCTET-LISTP-IS-ADT-OCTETSP nor non-rewrite declarations are silently counted as exported project rules.
+
+### Every project member and its census
+
+All listed literal events are now DEFTHMD (including already-opt-in members); all generated members are emitted DEFTHMD by their generator. No formula, hypothesis, hint or rule class changes. U is still the successful dev/qualifying-other-lane union minus the same seven consumer exclusions. Counts below are book counts; complete event/guard provenance is in p1-enables.json.
+
+| Rune | Defining book | Treatment | Dev / other / consumer U |
+| --- | --- | --- | ---: |
+| ADT-G-COLP-IS-ALL-ELT-P | books/proto/adt-lib.lisp | literal | 0 / 0 / 0 |
+| ADT-KCORR-MEM | books/proto/adt-key-lib.lisp | literal | 2 / 0 / 2 |
+| ADT-KGOOD-OF-CORR | books/proto/adt-key-lib.lisp | literal | 0 / 0 / 0 |
+| ADT-REC-P-OF-LIST1 | books/def-representation-lib.lisp | literal | 6 / 8 / 7 |
+| ADT-TREE-OKP-IS-SCCB-TREEP | books/def-representation-tree-walk.lisp | literal | 3 / 3 / 2 |
+| FN-ACCEPTED-IFF-ID-MEMBER | books/acceptance-invariants.lisp | literal | 20 / 20 / 20 |
+| FN-ARENA-BYTES$C-GET-PAYLOAD-OKP-BRIDGE | books/payload-arena-bytes.lisp | generator | 1 / 1 / 1 |
+| FN-ARENA-BYTES$C-PAYLOAD-LENP-IS | books/payload-arena-bytes.lisp | generator | 1 / 1 / 1 |
+| FN-ARENA-BYTES$C-PAYLOAD-OFFP-IS | books/payload-arena-bytes.lisp | generator | 1 / 1 / 1 |
+| FN-ARENA-BYTES$C-POOLP-IS | books/payload-arena-bytes.lisp | generator | 1 / 1 / 1 |
+| FN-ARENA-BYTESP-IS-SCALAR-SEQ-P | books/payload-arena-bytes.lisp | generator | 1 / 1 / 1 |
+| FN-ARENA-P-IS-PAYLOAD-LISTP | books/payload-arena.lisp | literal | 16 / 15 / 16 |
+| FN-ARENA-PAGEDP-IS-SCALAR-SEQ-P | books/payload-arena-paged.lisp | generator | 0 / 0 / 0 |
+| FN-ARN-EXTENTP-OF-LIST | books/payload-arena-extent-logic.lisp | literal | 3 / 3 / 3 |
+| FN-ARN-LZ-EXTENTP-OF-LIST | books/payload-arena-extent-logic.lisp | literal | 1 / 1 / 1 |
+| FN-ARTICLE-FIELD-CLOSEDP-OF-CLOSE-FIELD | books/article.lisp | literal | 2 / 2 / 2 |
+| FN-ARTICLE-OPEN-FIELD-CLOSEDP-IS-FIELD-CLOSEDP | books/article.lisp | literal | 2 / 2 / 2 |
+| FN-ARTICLES-FRESHP-IS-ONE-PASS | books/acceptance.lisp | literal | 1 / 1 / 1 |
+| FN-ARX-FILESP-IS-TRUE-LISTP | books/payload-arena-extent.lisp | literal | 1 / 1 / 1 |
+| FN-ARX-PAGE-BYTESP-IS-OCTETS-BUFP | books/payload-arena-extent.lisp | literal | 1 / 1 / 1 |
+| FN-CAT$P-LIVEP-IS-LIVE | books/catalog-paged.lisp | literal | 1 / 1 / 0 |
+| FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP | books/catalog-paged.lisp | literal | 3 / 3 / 2 |
+| FN-CPL-LIVE-AT-P-IS-LIVE | books/catalog-live-links.lisp | literal | 1 / 1 / 1 |
+| FN-CPL-OKP-IS-ALL-GOODP | books/catalog-live-links.lisp | literal | 0 / 0 / 0 |
+| FN-CROWP-IS-SEQ-P | books/catalog-paged.lisp | generator | 1 / 1 / 0 |
+| FN-DLZ$C-GET-OCTET-OKP-BRIDGE | books/decoded-payload-buffer.lisp | generator | 1 / 1 / 1 |
+| FN-DLZ$C-OCTETP-IS | books/decoded-payload-buffer.lisp | generator | 1 / 1 / 1 |
+| FN-DLZ$C-POOLP-IS | books/decoded-payload-buffer.lisp | generator | 1 / 1 / 1 |
+| FN-DLZP-IS-SCALAR-SEQ-P | books/decoded-payload-buffer.lisp | generator | 0 / 0 / 0 |
+| FN-HIST$CP-IS-IX-CP | books/history-columns-foundation.lisp | generator | 0 / 0 / 0 |
+| FN-HIST-P-IS-TRUE-LISTP | books/history-columns.lisp | literal | 10 / 11 / 11 |
+| FN-HP-IN-BLOCK-RBLOCK-C-IS-IN-REGION | books/history-pages-grow-cap.lisp | literal | 1 / 1 / 1 |
+| FN-HP-IN-BLOCK-RBLOCK-IS-IN-REGION | books/history-pages-grow.lisp | literal | 1 / 1 / 1 |
+| FN-HP-VHOLD-IS-X | books/history-pages-read.lisp | literal | 4 / 2 / 4 |
+| FN-HRC-SFXP-IS-TRUE-LISTP | books/history-records.lisp | literal | 9 / 8 / 9 |
+| FN-KS-ALL-BOUNDP-IS-SUBSET | books/acceptance-alloc.lisp | literal | 1 / 1 / 1 |
+| FN-KS-DISTINCTP-IS-NODUPP | books/acceptance-alloc.lisp | literal | 1 / 1 / 1 |
+| FN-KS-SUBSETP-IS-SUBSET-LOGIC | books/acceptance-alloc.lisp | literal | 1 / 1 / 1 |
+| FN-MPXT2P-IS-FN-MPXTP | books/msgid-pages-exec.lisp | literal | 1 / 1 / 0 |
+| FN-NO-DUPLICATESP-IS-KS-NODUPP | books/acceptance-alloc.lisp | literal | 1 / 1 / 1 |
+| FN-NODE-ARTICLES-HAVE-ARCHIVE-BINDINGSP-IS-INDEXED | books/node.lisp | literal | 1 / 1 / 1 |
+| FN-OCT-OCTETS-P-IS-OCTET-LISTP | books/octets-stobj.lisp | literal | 15 / 16 / 17 |
+| FN-OCT-PREFIX-EQUALP-IS-LIST-PREFIXP | books/octets-stobj.lisp | literal | 1 / 1 / 1 |
+| FN-OCTETS-PG-P-IS-OCTET-LISTP | books/pagestore-words.lisp | generator | 13 / 12 / 13 |
+| FN-RETAIN-KNOWN-ID-SCANP-IS-KNOWN-IDP | books/retention.lisp | literal | 1 / 1 / 1 |
+| FN-RETAIN-KS-DISJOINTP-KS-IS-LOGIC | books/retention.lisp | generator | 0 / 0 / 0 |
+| FN-RETAIN-KS-DISJOINTP-SCAN-AFTER-FILL | books/retention.lisp | generator | 1 / 1 / 1 |
+| FN-RETAIN-KS-DISJOINTP-WALK-IS-LOGIC | books/retention.lisp | generator | 0 / 0 / 0 |
+| FN-RETAIN-NO-DUPLICATESP-IS-NO-DUPLICATESP | books/retention.lisp | literal | 0 / 0 / 0 |
+| FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP | books/catalog-paged.lisp | literal | 3 / 3 / 2 |
+| FN-SCCB-SCC-OCTETP-IS-CBOR-OCTETP | books/store-checkpoint-buffer.lisp | literal | 7 / 8 / 8 |
+| FN-SUBSETP-IS-KS-SUBSET-LOGIC | books/acceptance-alloc.lisp | literal | 1 / 1 / 1 |
+
+### Generators, private proofs, and fan-out
+
+Ten template sites in five existing generators are transformed by one script with fixtures: proto/adt (column, pool and get-OKP bridges); def-representation (scalar/record recognizers); def-representation-index (foundation recognizer); def-buffer (octet-list recognizer); def-keyset-check (three predicate refinements). This changes the design of record rather than adding instance twins. Scalar recognizers with an invariant still conclude AND and remain outside this direct-call family; the template chooses DEFTHMD only for its direct recognizer form. [Transformation](fam5_bridges_templates.py), [template/byte audit](fam5-bridges-byte-audit.json).
+
+Those shared templates also emit the same bridge classes outside the original three closures. The census therefore covers **all 61 existing generated rule names across 33 current declaration sites**, not just the 16 observed in the closures. The registry includes their successful definition-summary provenance, verifies the current declaring instance, and excludes scalar invariant forms. With the existing opener/linear/skip entries and literal members, the complete census list has **102 rules**. [Full registry and fan-out](fam5-bridges-registry.json).
+
+Generated bridges keep the generator’s uniform **internal** proof environment through `fn-proof-bridge-private-enable` in the small new `books/proof-bridge-policy.lisp`: immediately after emitting its own DEFTHMD, a generator emits a LOCAL enable for its internal proofs. This is uniform for future instances and uses no frozen name allow-list. These private events do not authorize consumer opens. Where a representation ENCAPSULATE ends that private scope, the producer book receives an additional LOCAL enable after the declaration **only when its own successful historical Rules require it**. Ordinary consumer enables likewise follow U. The two roles are separate in p1-enables.json (`generated_internal_private_events` versus `generated_defining_enable_events`).
+
+The new event builder admits with its guard verified in a fresh cached-only hbox session (two source forms, zero prover steps). Controls check both a current generated name and a fresh name produce exactly the private LOCAL event; a new instance does not require historical-name bootstrapping. This is event/guard admission, not certification. [Start](fam5-bridges-policy-uniform-start.log), [controls](fam5-bridges-policy-uniform-controls.log).
+
+### Provenance, exclusions and byte identity
+
+The regenerated census processes 175 current subjects and changes 120 files relative to the parent (119 tracked files plus the new proof-only event builder). Most changes are derived combined enable-line insertions/replacements. The independent audit checks every literal theorem’s entire name/formula/hints/rule-class tail byte-for-byte, the ten permitted template transformations, preservation of unrelated events, scalar invariant handling, template idempotence, and exact non-enable bytes in all other consumers. [Audit](fam5-bridges-byte-audit.json).
+
+The seven consumer exclusions remain exactly the original set; no excluded book receives an imported-family line at its include anchor. Five are byte-identical. Catalog-paged and msgid-pages-exec have only selected defining-event/private-proof exceptions; ordinary excluded imports are not relabeled as defining uses. The catalog-paged historical imported uses of ADT-REC-P-OF-LIST1 and ADT-TREE-OKP-IS-SCCB-TREEP remain excluded from automatic consumer enables. Existing explicit hints remain unchanged; whole-book proof acceptance belongs to the seat’s recertify.
+
+Four qualifying historical subjects no longer exist at HEAD: `books/catalog-columns-guards.lisp`, `books/checkpoint-payloads-exec.lisp`, `books/extent-cache.lisp`, `books/over-render-lease.lisp`. Their evidence and empty enable placement are retained in p1-enables.json; no D68-retired file or layout is recreated. U itself is not reduced to hide them.
+
+ADT-LEN-REGION-BELOW-BODY’s DEFTHMD is retained. Its p1-enables.json defining entry explicitly has zero_historical_users=true, empty evidence and empty U, with no enable; LAST-SKIPS’ zero-user entry is retained too. The regular census keeps the same October/all-event and September/guard-only scopes, FN_CERTIFY_SUCCESS requirement, DEFTHM/DEFUN/VERIFY-GUARDS summaries, own/ancestry exclusions, and separate four proto-guard authorizations. Dotted REWRITE subrunes are matched exactly by event name, and `$` names are shell-quoted for the read-only remote scan.
+
+Generation: `timeout 900 python3 build/vertical-runs/one-world/p1_enables.py --scan`; `timeout 180 python3 build/vertical-runs/one-world/p1_enables.py --apply`; `timeout 30 python3 build/vertical-runs/one-world/p1_enables.py --report`. Apply is repeated idempotently. [P1.md](P1.md), [p1-census.json](p1-census.json), [p1-enables.json](p1-enables.json), [p1-enables.txt](p1-enables.txt) are regenerated. Intermediate-plan acceptance code was removed; current files must equal immutable HEAD or the exact generated result, and are checked again before writing.
+
+### K-U64-OCTETS: exact dev proof
+
+| World/control | Result | Rules | Steps | ACL2 seconds |
+| --- | --- | --- | ---: | ---: |
+| Parent/r10 baseline | same refusal | includes FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP and ADT-OCTETSP expansion | 12,280 | 0.18 |
+| Only FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP disabled in session | admits unchanged local theorem | `(:REWRITE FN-SCC-U64-SHAPE)`, `(:TYPE-PRESCRIPTION FN-SCC-OCTET-LISTP)` | 5 | 0.02 |
+| Dev successful certificate | admits | exactly the same two Rules | 5 | historical |
+
+The dev reference is `hbox:/tank/fn/scratch/spans-view-walks/native-c19-vw/tree/build/acl2/certify-20261012T091354Z-3204821/books--charged-totals-header.certify.log:838`. Three local successful dev summaries and the hbox reference agree on the two Rules and five steps. The SCC→ADT bridge displaced the goal’s native SCC recognizer so the existing U64 shape theorem could not match; disabling only the bridge restores that match and avoids induction. No consumer statement, induction hint or arithmetic bound is changed. [Baseline](fam5-bridges-u64-baseline.log), [control](fam5-bridges-u64-control.log), [comparison](fam5-bridges-u64-comparison.json), [local history](fam5-bridges-dev-history.json), [hbox history](fam5-bridges-dev-remote-history.json).
+
+### Final gates and shutdown
+
+| Command | Exit | Evidence |
+| --- | ---: | --- |
+| `timeout 180 python3 tools/one_world_check.py` | 0 | [log](fam5-bridges-gate-one-world.log) |
+| `timeout 180 python3 tools/book_roots_check.py` | 0 | [log](fam5-bridges-gate-book-roots.log) |
+| `timeout 180 python3 tools/host_check.py --attach-order` | 0 | [log](fam5-bridges-gate-host-attach-order.log) |
+| `timeout 180 python3 tools/host_check.py --world` | 0 | [log](fam5-bridges-gate-host-world.log) |
+| `timeout 180 python3 tools/extract/world.py --check` | 0 | [log](fam5-bridges-gate-extract-world.log) |
+| `timeout 180 python3 tools/interface_emit.py --check` | 0 | [log](fam5-bridges-gate-interface.log) |
+
+All six gates pass at the final source state; the existing exclusion/undecidable-case scopes remain unchanged. The source/fixture audit and diff whitespace check pass. These are static gates and narrow cached-world controls, not certification of the modified 120-file closure.
+
+Owned sessions stopped by name: fam5-bridges-u64, fam5-bridges-world, fam5-bridges-records and fam5-bridges-policy-uniform; the earlier policy prototype had already expired and its named stop confirms no live session. Corresponding `fam5-bridges-*-stop.log` files record the results. Only owned sessions were addressed. No laptop ACL2, non-REPL box job, certification, commit, push, deployment, external model, or other seat’s file edit. **STOP for the seat’s recertify.**

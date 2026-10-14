@@ -247,9 +247,10 @@
         (if (fn-cp-escapedp h) (list (fn-held-payload h) (fn-held-withdrawn h)) nil)))
 (fn-payload-kind fn-cp-tree-of :handle "returns the held payload handle in the escaped remainder")
 
-(defthm fn-scc-octet-listp-is-adt-octetsp
+(defthmd fn-scc-octet-listp-is-adt-octetsp
   (equal (fn-scc-octet-listp x) (adt-octetsp x))
   :hints (("Goal" :in-theory (enable adt-octetsp fn-scc-octet-listp fn-scc-octetp unsigned-byte-p))))
+(local (in-theory (enable fn-scc-octet-listp-is-adt-octetsp)))
 
 (defthmd fn-cbor-octet-listp-is-adt-octetsp
   (equal (fn-cbor-octet-listp x) (adt-octetsp x))

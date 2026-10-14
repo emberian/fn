@@ -1,7 +1,11 @@
 books/catalog-live-links.lisp	FN-CPL-FIRST-SKIPS
 books/catalog-paged.lisp	
-books/catalog-pages.lisp	FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP
-books/charged-totals-header-cost.lisp	ADT-NTH-0 ADT-NTH-1+
+books/catalog-pages.lisp	FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP
+books/charged-totals-header-cost.lisp	ADT-NTH-0 ADT-NTH-1+ FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP
+books/def-buffer.lisp	
+books/def-keyset-check.lisp	
+books/def-representation-index.lisp	
+books/def-representation.lisp	
 books/history-image-all-proof.lisp	ADT-NTH-0
 books/history-image-binding.lisp	ADT-NTH-0 ADT-NTH-1+
 books/history-image-build-rows.lisp	ADT-NTH-0 ADT-NTH-1+
@@ -54,6 +58,7 @@ books/proto/adt-consumer-position.lisp	ADT-NTH-0 ADT-NTH-1+
 books/proto/adt-key-lib.lisp	ADT-NTH-0 ADT-NTH-1+
 books/proto/adt-nest-lib.lisp	ADT-NTH-0 ADT-NTH-1+
 books/proto/adt-topic-accepted-type.lisp	ADT-NTH-0 ADT-NTH-1+
+books/proto/adt.lisp	
 books/store-records-field.lisp	ADT-NTH-0 ADT-NTH-1+
 host/bp-release-owner-host.lisp	ADT-NTH-0 ADT-NTH-1+
 host/index-connection-repin-prepare-host.lisp	ADT-NTH-0
@@ -66,3 +71,4 @@ host/workflow-host.lisp	ADT-NTH-0 ADT-NTH-1+
 tests/acl2/history-image-binding-tests.lisp	ADT-NTH-0 ADT-NTH-1+
 tests/acl2/history-image-build-rows-tests.lisp	ADT-NTH-0
 tests/acl2/history-image-canonical-tests.lisp	ADT-NTH-0 ADT-NTH-1+
+books/proof-bridge-policy.lisp	
