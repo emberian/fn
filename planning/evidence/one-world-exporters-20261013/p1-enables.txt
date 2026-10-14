@@ -1,10 +1,12 @@
 books/catalog-live-links.lisp	FN-CPL-FIRST-SKIPS
 books/catalog-paged.lisp	
-books/catalog-pages.lisp	FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP
+books/catalog-pages.lisp	ADT-TP-NTHCDR-SHORT FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP
 books/charged-totals-header-cost.lisp	ADT-NTH-0 ADT-NTH-1+ FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP
 books/def-buffer.lisp	
 books/def-keyset-check.lisp	
 books/def-representation-index.lisp	
+books/def-representation-pageread.lisp	ADT-TP-NTHCDR-SHORT
+books/def-representation-pages.lisp	ADT-TP-NTHCDR-SHORT
 books/def-representation.lisp	
 books/history-image-all-proof.lisp	ADT-NTH-0
 books/history-image-binding.lisp	ADT-NTH-0 ADT-NTH-1+
