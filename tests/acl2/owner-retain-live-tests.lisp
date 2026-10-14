@@ -125,6 +125,7 @@
     (fn-owner-close . fn-owner-retain-close-keeps-live)
     (fn-owner-fault . fn-owner-retain-fault-keeps-live)
     (fn-owner-open-peer . fn-owner-retain-open-peer-keeps-live)
+    (fn-owner-open . fn-owner-retain-open-keeps-live)
     (fn-owner-install-node-secret . fn-owner-retain-install-node-secret-keeps-live)
     (fn-owner-apply-limit-profile . fn-owner-retain-apply-limit-profile-keeps-live)))
 

@@ -108,3 +108,14 @@
  :in-theory '(fn-owner-retain-retained-statep fn-owner-retain-statep
               fn-owner-captured-view-follows-store
               fn-owner-store-is-configured-store-by-definition fn-k1-open-whole-state-projections))))
+(defthm fn-owner-retain-open-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep (mv-nth 2 (fn-owner-open state)) fn-arena))
+  :hints (("Goal"
+    :use ((:instance fn-k1-open-reader-and-restore-context
+            (oc (fn-owner-ocfg state)) (views (fn-owner-reader-views state))
+            (acfg (fn-owner-auth (fn-owner-callback-at-reader-view state)))))
+    :in-theory '(fn-owner-retain-livep fn-owner-retain-statep
+                 fn-owner-captured-view-follows-store
+                 fn-owner-store-is-configured-store-by-definition
+                 fn-k1-open-whole-state-projections))))

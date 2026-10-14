@@ -19,6 +19,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-retain-frame")
 (include-book "../../books/owner-host-relation") ; the fn-ohr-* keystones
+(include-book "../../books/owner-retain-captured-host-frame")
 (include-book "../../books/payload-kinds")       ; the kinds (fn-cbor-octet-listp)
 (include-book "must-fail-checked")
 
@@ -27,7 +28,9 @@
 
 (def-owner-writer fn-owner-callback-close
   :via (fn-ohr-step-close-preserves-carried-relation
-        fn-owner-callback-close-branch-unfolds))
+        fn-owner-callback-close-branch-unfolds
+        fn-k1-retain-statep-implies-captured-views
+        (fn-k1-close-captured-views (views (fn-owner-reader-views state)))))
 
 (assert-event
  (equal (getpropc 'fn-owner-callback-close-preserves-retain-state 'theorem nil (w state))
@@ -37,12 +40,16 @@
  (equal (cdr (assoc-eq 'fn-owner-callback-close (table-alist 'fn-carried-writers (w state))))
         '(:profile fn-owner-retain :theorem fn-owner-callback-close-preserves-retain-state
           :via (fn-ohr-step-close-preserves-carried-relation
-                fn-owner-callback-close-branch-unfolds)
+                fn-owner-callback-close-branch-unfolds
+                fn-k1-retain-statep-implies-captured-views
+                (fn-k1-close-captured-views (views (fn-owner-reader-views state))))
           :opens nil :lemmas nil :step nil :bridges nil :hyps nil
           :put-keys nil :uncovered nil :hand-hints nil)))
 
 (def-owner-writer fn-owner-callback-fault
-  :via (fn-ohr-fault-preserves-carried-relation))
+  :via (fn-ohr-fault-preserves-carried-relation
+        fn-k1-retain-statep-implies-captured-views
+        (fn-k1-fault-captured-views (views (fn-owner-reader-views state)))))
 
 (assert-event
  (equal (getpropc 'fn-owner-callback-fault-preserves-retain-state 'theorem nil (w state))
@@ -51,6 +58,11 @@
 
 (def-owner-writer fn-owner-callback-open-peer
   :via ((fn-ohr-open-peer-preserves-carried-relation
+         (peer (fn-store-octets->string peer-octets))
+         (acfg (fn-owner-auth state)))
+        fn-k1-retain-statep-implies-captured-views
+        (fn-k1-open-peer-captured-views
+         (views (fn-owner-reader-views state))
          (peer (fn-store-octets->string peer-octets))
          (acfg (fn-owner-auth state)))))
 
