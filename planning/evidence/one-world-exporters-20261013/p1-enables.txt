@@ -1,53 +1,65 @@
-books/charged-totals-header-cost.lisp
-books/history-image-binding.lisp
-books/history-image-build-rows.lisp
-books/history-image-census.lisp
-books/history-image-concrete.lisp
-books/history-image-dirty-proof.lisp
-books/history-image-model-step.lisp
-books/history-image-place-invariant.lisp
-books/history-image-place-proof.lisp
-books/history-image-place.lisp
-books/history-image-plan-proof.lisp
-books/history-image-row-step.lisp
-books/history-image-snapshot.lisp
-books/history-paged-adopt.lisp
-books/history-paged.lisp
-books/history-pages-append-grown.lisp
-books/history-pages-exec.lisp
-books/history-pages-grow-append.lisp
-books/history-pages-grow.lisp
-books/history-pages-import.lisp
-books/history-pages-nest.lisp
-books/history-pages-placed-write.lisp
-books/history-pages-placed.lisp
-books/history-pages-read.lisp
-books/history-pages-relocate-run.lisp
-books/history-pages-relocate-step.lisp
-books/history-pages-resident.lisp
-books/history-pages-row.lisp
-books/history-pages-step.lisp
-books/history-pages-view.lisp
-books/history-pages-write-exec.lisp
-books/history-pages-write-keys.lisp
-books/history-pool-columns.lisp
-books/history-records-disk.lisp
-books/history-records.lisp
-books/history-root-credit.lisp
-books/history-root-status.lisp
-books/proto/adt-bytes.lisp
-books/proto/adt-compact-lib.lisp
-books/proto/adt-config-groups.lisp
-books/proto/adt-config-policy.lisp
-books/proto/adt-consumer-position.lisp
-books/proto/adt-key-lib.lisp
-books/proto/adt-nest-lib.lisp
-books/proto/adt-topic-accepted-type.lisp
-books/store-records-field.lisp
-host/bp-release-owner-host.lisp
-host/owner-host.lisp
-host/page-read-host.lisp
-host/reader-host.lisp
-host/workflow-host.lisp
-tests/acl2/history-image-binding-tests.lisp
-tests/acl2/history-image-canonical-tests.lisp
+books/charged-totals-header-cost.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-all-proof.lisp	ADT-NTH-0
+books/history-image-binding.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-build-rows.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-census.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-concrete.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-content-proof.lisp	ADT-NTH-0
+books/history-image-dirty-proof.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-model-step.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-open-content.lisp	ADT-NTH-0
+books/history-image-place-invariant.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-place-proof.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-place.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-plan-proof.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-row-proof.lisp	ADT-NTH-0
+books/history-image-row-step.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-image-snapshot.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-paged-adopt.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-paged.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-append-grown.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-exec.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-grow-append.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-grow-cap.lisp	ADT-NTH-0
+books/history-pages-grow-then-append.lisp	ADT-NTH-0
+books/history-pages-grow.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-import.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-nest.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-placed-write.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-placed.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-read.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-relocate-run.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-relocate-step.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-resident.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-row.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-step.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-view.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-write-exec.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-write-keys.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-pages-write.lisp	ADT-NTH-0
+books/history-pages.lisp	ADT-NTH-0
+books/history-pool-columns.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-records-disk.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-records.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-root-credit.lisp	ADT-NTH-0 ADT-NTH-1+
+books/history-root-status.lisp	ADT-NTH-0 ADT-NTH-1+
+books/proto/adt-bytes.lisp	ADT-NTH-0 ADT-NTH-1+
+books/proto/adt-compact-lib.lisp	ADT-NTH-1+
+books/proto/adt-config-groups.lisp	ADT-NTH-1+
+books/proto/adt-config-policy.lisp	ADT-NTH-1+
+books/proto/adt-consumer-position.lisp	ADT-NTH-0 ADT-NTH-1+
+books/proto/adt-key-lib.lisp	ADT-NTH-0 ADT-NTH-1+
+books/proto/adt-nest-lib.lisp	ADT-NTH-0 ADT-NTH-1+
+books/proto/adt-topic-accepted-type.lisp	ADT-NTH-0 ADT-NTH-1+
+books/store-records-field.lisp	ADT-NTH-0 ADT-NTH-1+
+host/bp-release-owner-host.lisp	ADT-NTH-0 ADT-NTH-1+
+host/index-connection-repin-prepare-host.lisp	ADT-NTH-0
+host/owner-host.lisp	ADT-NTH-0 ADT-NTH-1+
+host/page-decoded-window-host.lisp	ADT-NTH-0
+host/page-read-host.lisp	ADT-NTH-0 ADT-NTH-1+
+host/page-window-executor-host.lisp	ADT-NTH-0
+host/reader-host.lisp	ADT-NTH-0 ADT-NTH-1+
+host/workflow-host.lisp	ADT-NTH-0 ADT-NTH-1+
+tests/acl2/history-image-binding-tests.lisp	ADT-NTH-0 ADT-NTH-1+
+tests/acl2/history-image-build-rows-tests.lisp	ADT-NTH-0
+tests/acl2/history-image-canonical-tests.lisp	ADT-NTH-0 ADT-NTH-1+

@@ -59,7 +59,7 @@
   (set-difference-theories (current-theory :here)
                            (theory 'fn-sfr-theory-before-columns))))
 (include-book "history-records-disk")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (deftheory fn-sfr-theory-after-disk (current-theory :here))
 
 (defun fn-sfr-basedp (f)

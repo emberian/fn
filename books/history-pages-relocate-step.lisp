@@ -7,7 +7,7 @@
 ; is private: its placement is published only after :done.
 (in-package "ACL2")
 (include-book "history-pages-relocate")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defun fn-hpr-cursorp (x)

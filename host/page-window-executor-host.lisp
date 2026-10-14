@@ -482,6 +482,7 @@
 (definterface fn-owner-page-window-work-permittedp :class :common-lisp-compliant)
 
 (include-book "../books/payload-arena")
+(local (in-theory (enable adt-nth-0)))
 
 ; Caller authorization comes from the captured provider row and live logical
 ; holder. This getter alone never grants authority to an arbitrary handle.

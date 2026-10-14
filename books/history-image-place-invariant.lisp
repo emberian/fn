@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "history-image-place")
 (include-book "history-image-cursor-proof")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defun fn-his-cursors-at (rcs lens)

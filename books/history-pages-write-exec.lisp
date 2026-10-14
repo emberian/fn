@@ -7,7 +7,7 @@
 (include-book "history-pages-write")
 (include-book "history-pages-arith")
 (include-book "history-image-row-encode")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------

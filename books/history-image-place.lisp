@@ -4,7 +4,7 @@
 (include-book "history-image-plan")
 (include-book "history-image-row-encode")
 (include-book "history-image-cursors")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 
 (defconst *fn-his-rc0* '(0 0 nil))
 (defconst *fn-his-pw0*

@@ -4,7 +4,7 @@
 (include-book "history-page-buffers")
 (include-book "history-image-columns")
 (include-book "snapshot-source-token")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 
 ; phase,count,ordinal,offset,pool-limit,child,token,key,encoded,column,capture,lease.
 (defun fn-hpcx-shapep (c)

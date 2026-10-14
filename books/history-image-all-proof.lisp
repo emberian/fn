@@ -3,6 +3,7 @@
 (include-book "history-image-row-proof")
 (include-book "history-image-model-step")
 (include-book "history-pages-append-grown")
+(local (in-theory (enable adt-nth-0)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defthm fn-his-pes-len-append

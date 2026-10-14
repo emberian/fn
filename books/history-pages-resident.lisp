@@ -4,7 +4,7 @@
 ; fill boundary; the event-only generic history export cannot swallow it.
 (in-package "ACL2")
 (include-book "history-pages-placed")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defthm fn-hp-resident-range-subrange

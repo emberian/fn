@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "history-image-build-rows")
 (include-book "history-pages-relocate-run")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defun fn-his-row-cursorp (cursor)

@@ -9,6 +9,7 @@
 ; old image this way before the nest machinery applies.
 (in-package "ACL2")
 (include-book "history-pages-grow")
+(local (in-theory (enable adt-nth-0)))
 (local (include-book "arithmetic/top" :dir :system))
 (local (in-theory (disable floor mod pgs-true-list-fix-when-true-listp pgs-ptab-p-true-listp fn-cp-id-length-bound
                            adt-len-region-below-body adt-body append-atom-under-list-equiv pgs-append-assoc

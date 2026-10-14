@@ -558,9 +558,10 @@
   :hints (("Goal" :in-theory (enable nth))))
 (local (in-theory (enable adt-nth-1+)))
 
-(defthm adt-nth-0
+(defthmd adt-nth-0
   (equal (nth 0 x) (car x))
   :hints (("Goal" :in-theory (enable nth))))
+(local (in-theory (enable adt-nth-0)))
 
 ; The lookup: walk the key's bucket; a candidate answers only when its slot
 ; is in range, live, and its key is EXACTLY K.

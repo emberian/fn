@@ -1,7 +1,7 @@
 ; Host entries on fn-hrecs$c wrap the generated page-store quanta.
 (in-package "ACL2")
 (include-book "history-image-canonical")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 
 (defun fn-his-build-open (plan fn-hrecs$c)
  (declare (xargs :stobjs fn-hrecs$c :guard (fn-his-planp plan)))

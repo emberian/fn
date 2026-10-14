@@ -15,7 +15,7 @@
 ; keeps -- is not proved here; it is the owner wiring's obligation.
 (in-package "ACL2")
 (include-book "history-pages-placed")
-(local (in-theory (enable adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (disable floor mod pgs-true-list-fix-when-true-listp pgs-ptab-p-true-listp fn-cp-id-length-bound
