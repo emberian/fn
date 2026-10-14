@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
+(include-book "moderation-verbs")
+(include-book "owner-results")
 (include-book "owner-served-bound")
 (include-book "topic-history-local-proposals")
 (include-book "article-buffer")

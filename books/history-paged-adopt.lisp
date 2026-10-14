@@ -3,6 +3,7 @@
 ; publisher. No page image is copied and no live old root is overwritten.
 (in-package "ACL2")
 (include-book "history-paged")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 (defstobj fn-hrecs$s

@@ -5,6 +5,7 @@
 ; FNADTSN2 representation; this is not another history store.
 (in-package "ACL2")
 (include-book "history-records")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 
 ; Cooperative scheduling cadence of the publisher's existing row loop.
 ; This does not bound the page codec's relocation or a record's byte size.

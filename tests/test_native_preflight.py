@@ -113,6 +113,26 @@ class NativePreflightTests(unittest.TestCase):
         self.run_gate()
         self.assertEqual(self.calls[0][0][1:3], ["-I", "-S"])
 
+    def test_one_world_gate_runs_the_scanner_and_reuses_success(self):
+        output = io.BytesIO()
+        self.assertEqual(preflight.run_gate(self.root, self.cache, 'one-world',
+                         runner=self.runner, output=output), 0)
+        self.assertEqual(self.calls[0][0][1:],
+                         ['-I', '-S', 'tools/one_world_check.py'])
+        self.assertEqual(preflight.run_gate(self.root, self.cache, 'one-world',
+                         runner=self.runner, output=output), 0)
+        self.assertEqual(len(self.calls), 1)
+        self.assertIn(b'REUSED one-world', output.getvalue())
+
+    def test_one_world_failure_is_propagated_without_a_receipt(self):
+        def failed(command, **kwargs):
+            return subprocess.CompletedProcess(command, 1, stdout=b'OUTSIDE-OWNER\n')
+        output = io.BytesIO()
+        self.assertEqual(preflight.run_gate(self.root, self.cache, 'one-world',
+                         runner=failed, output=output), 1)
+        self.assertIn(b'OUTSIDE-OWNER', output.getvalue())
+        self.assertEqual(list(self.cache.glob('*.json')), [])
+
     def test_internal_file_symlink_is_hashed_and_retargeting_invalidates(self):
         link = self.root / "link.lisp"
         link.symlink_to("subject.lisp")

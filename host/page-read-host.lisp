@@ -5,8 +5,8 @@
 (in-package "ACL2")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
-(include-book "../books/payload-arena-attach")
-(include-book "../books/history-paged-attach")
+(include-book "../books/payload-arena")
+(include-book "../books/history-columns")
 (include-book "../books/page-read-ownership")
 (include-book "../books/page-discovery-ledger")
 (include-book "../books/cold-read-layout")
@@ -501,6 +501,7 @@
 
 
 (include-book "../books/page-read-startup")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 
 ; DEFAULT allowance is distinct from DATA6 binding revision and complete allocation installation.
 ; Bits start clear; actual native startup confirms each constructor/reserve

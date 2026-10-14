@@ -29,10 +29,10 @@
 (include-book "../books/owner-authority-state")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
-(include-book "../books/payload-arena-attach")
-(include-book "../books/history-paged-attach")
+(include-book "../books/payload-arena")
+(include-book "../books/history-columns")
 (include-book "../books/history-root-status")
-(include-book "../books/catalog-paged-attach")
+(include-book "../books/catalog")
 (include-book "../books/owner-report-capture")
 (include-book "../books/index-writer-ticket")
 (include-book "../books/catalog-may-seal")
@@ -6504,6 +6504,7 @@ itself."
 
 ; Serialized indexed reader completion follows its actual owner STATE subjects.
 (include-book "index-reader-request-host")
+(local (in-theory (enable adt-nth-0 adt-nth-1+ fn-cbor-octet-listp-is-adt-octetsp)))
 
 ; Pre-factory classifier under the SAME admitted O section as read evaluation.
 ; It previews the first wire event without installing wire/owner/STATE changes.

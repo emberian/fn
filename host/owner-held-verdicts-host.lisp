@@ -11,8 +11,8 @@
 ; compares the swapped owner with a restarted one.
 (in-package "ACL2")
 ; the attachments precede the stobjs they implement (host_check --attach-order)
-(include-book "../books/payload-arena-attach")
-(include-book "../books/history-paged-attach")
+(include-book "../books/payload-arena")
+(include-book "../books/history-columns")
 (include-book "../books/definterface")
 (include-book "../books/owner-state-accessors")
 (include-book "../books/store-node")

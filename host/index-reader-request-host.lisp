@@ -4,9 +4,9 @@
 (logic)
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
-(include-book "../books/payload-arena-attach")
-(include-book "../books/history-paged-attach")
-(include-book "../books/catalog-paged-attach")
+(include-book "../books/payload-arena")
+(include-book "../books/history-columns")
+(include-book "../books/catalog")
 (include-book "../books/index-reader-request")
 (include-book "../books/index-reader-step")
 (include-book "../books/index-reader-actor")

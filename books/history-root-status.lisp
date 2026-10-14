@@ -14,6 +14,7 @@
 (include-book "history-root-credit")
 (include-book "native-live-status")
 (include-book "history-capture-state")
+(local (in-theory (enable adt-nth-0 adt-nth-1+)))
 
 (defun fn-hrs-line (status)
   (declare (xargs :guard t))
