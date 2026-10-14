@@ -22,6 +22,28 @@ NOW = dt.datetime(2026, 10, 4, 16, 0, tzinfo=dt.timezone.utc)
 
 
 class BoxTableTests(unittest.TestCase):
+    def test_fixed_certification_limits(self):
+        self.assertEqual(box_table.certify_limits("hbox"), (8, 24))
+        self.assertEqual(box_table.certify_limits("persvati"), (8, 24))
+
+    def test_extra_boxes_declare_their_own_certification_limits(self):
+        env = self.table({"cloud1": {"like": "hbox"},
+                          "cloud2": {"like": "persvati", "certify_jobs": 3,
+                                     "load_ceiling": 6},
+                          "cloud3": {"like": "hbox", "certify_jobs": 2}})
+        rows = box_table.extra_boxes(FIXED, env, NOW)
+        self.assertIsNone(rows["cloud1"]["certify_jobs"])
+        self.assertIsNone(rows["cloud1"]["load_ceiling"])
+        with self.assertRaisesRegex(ValueError, "own certify_jobs"):
+            box_table.certify_limits("cloud1", env)
+        self.assertEqual(box_table.certify_limits("cloud2", env), (3, 6))
+        with self.assertRaisesRegex(ValueError, "own load_ceiling"):
+            box_table.certify_limits("cloud3", env)
+        for field in ("certify_jobs", "load_ceiling"):
+            for value in (0, -1, True, "auto", "4", 2.5):
+                with self.subTest(field=field, value=value), self.assertRaises(SystemExit):
+                    box_table.extra_boxes(FIXED, self.table({"cloud1": {field: value}}), NOW)
+
     def table(self, boxes):
         handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
         self.addCleanup(os.unlink, handle.name)
