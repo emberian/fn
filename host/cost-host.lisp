@@ -175,4 +175,4 @@
 (def-cost fn-mcr-free :unaccounted (fn-mcr-base fn-mcr-cache true-list-fix fn-mcr-ops-credit fn-mcr-completion fn-mcr-runtime fn-mcr-hroot))
 (def-cost fn-mcr-credit-of :unaccounted (hons-assoc-equal))
 (def-cost fn-oas-held :unaccounted (fn-oas-article-conns))
-(def-cost fn-nop-parse-command :unaccounted (fn-nop-help-text fn-nop-parse-run fn-nop-parse-init fn-nop-parse-post fn-nop-watch-seconds fn-nop-profile-decimal fn-ncfg-nth fn-nop-parse-store fn-native-config-show fn-nop-parse-peering fn-cevg-parse fn-nop-parse-moderate fn-cevg-moderation-parse fn-nop-parse-administration fn-nop-parse-principal fn-nop-parse-keys fn-nop-parse-carry fn-nop-parse-tls fn-nop-parse-account))
+(def-cost fn-nop-parse-command :unaccounted (fn-nop-help-text fn-nop-parse-run fn-nop-parse-init fn-nop-parse-post fn-nop-watch-seconds fn-nop-profile-decimal fn-nop-parse-store fn-native-config-show fn-nop-parse-peering fn-cevg-parse fn-nop-parse-moderate fn-cevg-moderation-parse fn-nop-parse-administration fn-nop-parse-principal fn-nop-parse-keys fn-nop-parse-carry fn-nop-parse-tls fn-nop-parse-account))
