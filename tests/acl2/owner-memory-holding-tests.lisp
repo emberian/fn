@@ -882,17 +882,17 @@
 
 (with-guard-checking-event :all
  (assert-event (let ((actual (fn-adm-operator-open *m28-oc2* nil *m28-b2* 2 2 nil
-                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-limit3* *m28-after*))
+                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m28-after*))
        (mutant (m28-operator-borrowed-slot *m28-oc2* nil *m28-b2* 2 2 nil
-                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-limit3* *m28-after*)))
+                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m28-after*)))
  (and (fn-held-p *m28-row*) (and (fn-ocl-relation *m28-oc2*)
        (fn-cstp-carriedp (fn-own-store (fn-ocfg-owner *m28-oc2*))))
-      (equal (fn-adm-installed-capacity *m22a-profile* *m22a-img* *m22a-cfg* *m28-limit3* *m22a-tot*) 2)
+      (equal (fn-adm-installed-capacity *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m22a-tot*) 2)
       (fn-adm-run-memory-admitp *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit3* *m22a-tot* *m28-row* 2 2)
-      (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-limit3* *m22a-tot*)
+      (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-after-limit2* *m22a-tot*)
       (fn-adm-memory-admitp *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 2 2)
-          *m28-limit3* *m22a-tot* *m28-row*)
-      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-limit3* *m28-after*))
+          *m28-after-limit2* *m22a-tot* *m28-row*)
+      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-after-limit2* *m28-after*))
       (equal (fn-adm-operator-open-word actual) :refused)
       (equal (fn-adm-operator-open-reason actual) :operator-slot-memory)
       (equal (fn-adm-operator-open-word mutant) :admitted)
