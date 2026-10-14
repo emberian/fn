@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "log-checkpoint-commit")
 (include-book "defkeystone")
+(local (in-theory (disable fn-lc-tail-history fn-lc-tail-scan fn-lc-scan-bytes fn-lc-decode-tail-records)))
 (defthm fn-lc-commit-prepared-retains-segments
  (equal (mv-nth 2 (fn-lc-commit-prepared records segs fn-lbc)) segs)
  :hints (("Goal" :induct (fn-lc-commit-prepared records segs fn-lbc)

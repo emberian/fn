@@ -23,7 +23,8 @@
            (list (fn-lc-map-observation-tree-enc
                   (list (list (nth *fn-lbc-number-store* value)
                               (nth *fn-lbc-summary-groups* value)
-                              (nth *fn-lbc-escape-store-get* value))))))))
+                              (nth *fn-lbc-escape-store-get* value)
+                              (nth *fn-lbc-slot-escape-keys* value))))))))
 ; The only column snapshot observation is logical, not a served copy.
 ; All independent publication algebra keeps this changing observation opaque.
 (defun-nx fn-lc-columns (fn-lbc) (ec-call (fn-lc-columns-value fn-lbc)))

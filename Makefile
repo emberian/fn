@@ -1635,6 +1635,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/lb-log-open-model \
 	books/lb-log-open-properties \
 	books/log-checkpoint-admission \
+	books/log-checkpoint-adoption \
 	books/log-checkpoint-allocation \
 	books/log-checkpoint-allocation-proof \
 	books/log-checkpoint-backpressure \
@@ -1655,6 +1656,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/log-checkpoint-publication-proof \
 	books/log-checkpoint-publication-witnesses \
 	books/log-checkpoint-record \
+	books/log-checkpoint-record-frame \
+	books/log-checkpoint-open-read-trace \
+	books/log-checkpoint-open-guards \
+	books/log-checkpoint-open \
+	tests/acl2/lc-record-frame-tests \
 	books/log-checkpoint-selection-proof \
 	books/log-checkpoint-tail \
 	books/log-checkpoint-teeth-wrappers \
@@ -1665,6 +1671,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/lc-bounded-check-tests \
 	tests/acl2/lc-initial-correspondence-tests \
 	tests/acl2/lc-grounded-id-search-tests \
+	tests/acl2/lc-open-id-search-tests \
+	tests/acl2/lc-open-read-counterexample-tests \
 	tests/acl2/lc-record-effect-tests \
 	tests/acl2/lc-pool-span-counterexample-tests \
 	tests/acl2/lc-bridge-teeth-tests \

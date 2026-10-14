@@ -33,6 +33,10 @@
   (e/d (fn-lg-entry-okp fn-lg-slice-records fn-lg-unpack-okp fn-lg-open-bound
           fn-frame-result-okp)
        (fn-frame-open fn-frame-result-kind fn-lg-unpack fn-lg-unpack-exactp fn-lg-recordsp)))))
+(local (defthm fn-lc-length-of-conditional-entry
+ (equal (len (append (if move (list a) (if article (list b) c)) rest))
+        (+ (if (or move article) 1 (len c)) (len rest)))
+ :hints (("Goal" :cases (move article)))))
 (defthm fn-lc-scan-count-with-terminal
  (<= (len (nth 2 (fn-lc-scan-bytes bytes prev unit max fuel)))
      (+ (len (nth 1 (fn-lc-scan-bytes bytes prev unit max fuel)))
