@@ -56,6 +56,14 @@
        (fn-lc-behind-release-check 6)
        (fn-lc-behind-release-check 7)
        (fn-lc-behind-release-check 8))))
+; P13 (condition (b)): the default arm releases a refused member. A batch
+; refused at START completes each member with the word, so :complete gives
+; :rendered (its refusal line); a stopped batch keeps the existing policy.
+(assert-event
+ (and (equal (fn-ocs-member-release :complete :publication-behind t) :rendered)
+      (equal (fn-ocs-member-release :complete :publication-behind nil) :rendered)
+      (equal (fn-ocs-member-release :stop :publication-behind t) :uncertain-reply)
+      (equal (fn-ocs-member-release :stop :publication-behind nil) :close)))
 ; Existing release policy is preserved for every action/word/renderability.
 (defthm fn-lc-publication-behind-release-preserves-the-policy
  (equal (fn-ocs-member-release action word renderable)
