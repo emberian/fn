@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-3")
-(include-book "output-command-admission")
-(include-book "output-tariff-families")
 (include-book "output-admission-line")
 (include-book "arena-reader-pins")
 (include-book "owner-reader-read")
@@ -105,6 +103,7 @@
 (include-book "served-columns")
 (include-book "store-log-open-scan")
 (include-book "owner-commit-held")
+(include-book "over-render-plan")
 (include-book "owner-reconfig-lock")
 (include-book "bp-node-progress-bridge")
 (include-book "app-pattern")

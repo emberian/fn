@@ -159,3 +159,6 @@
 (include-book "bp-fnbs-replay")
 (include-book "bp-fnbs-inspect")
 (include-book "bp-fnbs-namespace")
+(include-book "bp-fnbs-publication")
+(include-book "bp-clock-domain")
+(include-book "bp-fnbs-delivery-replay")
