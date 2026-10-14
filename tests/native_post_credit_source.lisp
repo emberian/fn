@@ -2,6 +2,23 @@
 ; Not a saved-image run, parser/wire exercise, or proof of the 60k native schedule.
 (load "tests/native_developer_store_heap_source.lisp")
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-heap-operator-profile (config-path words)
+  (declare (ignorable config-path words))
+  (harness-stub-reached 'fnn-heap-operator-profile "host/native/heap.lisp"))
+;;; ---- derived stubs: END ----
 (defmacro include-book (&rest args) (declare (ignore args)) nil)
 (defmacro local (&rest args) (declare (ignore args)) nil)
 (defmacro defthm (&rest args) (declare (ignore args)) nil)
