@@ -271,8 +271,7 @@
                               (mv-nth 0 (fn-rtc-deliver (fn-rtc-end-use s e) (fn-rtc-e-id e) (fn-rtc-e-inc e)
                                           (fn-rtc-opened-ev s e) q))))))
   :hints (("Goal" :use fn-rtc-opened-step-is
-           :in-theory (e/d (fn-rtc-opened-ev) (fn-rtc-opened-step-is fn-rtc-step fn-rtc-rearm fn-rtc-deliver fn-rtc-end-use
-                                               fn-rtc-acts-on-p fn-rtc-ev fn-rtc-delivered-outcome fn-rtc-find-use fn-rtc-key))))))
+           :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-opened-ev))))))
 
 (local (defthm fn-rtc-opened-end-use-removes-key
   (implies (and (fn-rtc-invp s) (fn-rtc-acts-on-p s e) (eq (fn-rtc-get 0 e) :opened))

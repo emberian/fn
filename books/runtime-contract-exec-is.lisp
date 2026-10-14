@@ -645,11 +645,12 @@
                                 (back (list :workspace rid rinc))
                                 (t '(:free)))
                           (fn-rtc-b-bytes b)))))
-  :hints (("Goal" :use fn-rtc-lease-return-landed-bytes
-           :in-theory (e/d (fn-rtc-lease-return)
-                           (fn-rtc-lease-return-landed-bytes fn-rtc-find-use fn-rtc-key fn-rtc-completionp
-                            fn-rtc-landed fn-rtc-delivered-outcome fn-rtc-splice fn-rtc-current-p
-                            fn-rtc-delivered-outcome-of-landed fn-rtc-handed-to-live-p)))))
+ :hints (("Goal" :use fn-rtc-lease-return-landed-bytes
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-rtc-lease-return fn-rtc-b-bytes fn-rtc-get-of-cons car-cons cdr-cons
+     (:executable-counterpart fn-rtc-get) (:executable-counterpart nfix)
+     (:executable-counterpart zp) (:executable-counterpart binary-+)
+     (:executable-counterpart unary--) (:executable-counterpart equal))))))
 
 (local (defthm fn-rtc-xis-st-gen-is
   (implies (fn-rtc-st-p fn-rtc-st)
@@ -784,13 +785,48 @@
   (implies (fn-rtc-st-p fn-rtc-st)
            (equal (fn-rtc-x-step* e q fn-rtc-st)
                   (fn-rtc-step* fn-rtc-st (fn-rtc-landed e fn-rtc-st) q)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-x-step* fn-rtc-step*)
-                                  (fn-rtc-landed fn-rtc-end-use fn-rtc-find-use fn-rtc-key
-                                   fn-rtc-delivered-outcome fn-rtc-x-delivered-outcome
-                                   fn-rtc-accept-branch fn-rtc-close-branch fn-rtc-deliver fn-rtc-rearm
-                                   fn-rtc-get nfix member-equal mv-nth fn-rtc-e-kind fn-rtc-e-id
-                                   fn-rtc-e-inc fn-rtc-e-outcome fn-rtc-use-bound fn-rtc-nslots
-                                   fn-rtc-nbufs fn-rtc-u-hd fn-rtc-h-buf fn-rtc-h-len fn-rtc-ev fn-rtc-landed-of-hand fn-rtc-landed-of-opened)))))
+ :hints (("Goal" :in-theory (set-difference-theories
+  (union-theories (theory 'minimal-theory)
+   '((:DEFINITION FN-RTC-ACTS-ON-P)
+    (:DEFINITION FN-RTC-BYTES)
+    (:DEFINITION FN-RTC-E-DATA)
+    (:DEFINITION FN-RTC-GRANT-UNIT)
+    (:DEFINITION FN-RTC-HAND-DELIVERS-P)
+    (:DEFINITION FN-RTC-STEP*)
+    (:DEFINITION FN-RTC-X-STEP*)
+    (:DEFINITION NOT)
+    (:EXECUTABLE-COUNTERPART EQUAL)
+    (:EXECUTABLE-COUNTERPART MEMBER-EQUAL)
+    (:EXECUTABLE-COUNTERPART NOT)
+    (:REWRITE FN-RTC-ACTS-ON-P-OF-LANDED)
+    (:REWRITE FN-RTC-DELIVERED-OUTCOME-OF-LANDED)
+    (:REWRITE FN-RTC-EV-NAMES-ITS-INSTANCE)
+    (:REWRITE FN-RTC-HAND-DELIVERS-P-OF-LANDED)
+    (:REWRITE FN-RTC-LANDED-DATA-OF-OPENED)
+    (:REWRITE FN-RTC-LANDED-ID)
+    (:REWRITE FN-RTC-LANDED-INC)
+    (:REWRITE FN-RTC-LANDED-KEY)
+    (:REWRITE FN-RTC-LANDED-KIND)
+    (:REWRITE FN-RTC-NFIX-OF-E-ID)
+    (:REWRITE FN-RTC-ST-CONFIG-IS)
+    (:REWRITE FN-RTC-ST-FILL-IS-LEN-BYTES)
+    (:REWRITE FN-RTC-ST-P-OF-SPEC-END-USE)
+    (:REWRITE FN-RTC-ST-USES-IS)
+    (:REWRITE FN-RTC-X-ACCEPT-BRANCH-IS)
+    (:REWRITE FN-RTC-X-ACTS-ON-P-IS)
+    (:REWRITE FN-RTC-X-CLOSE-BRANCH-IS)
+    (:REWRITE FN-RTC-X-DELIVER-IS)
+    (:REWRITE FN-RTC-X-END-USE-IS)
+    (:REWRITE FN-RTC-X-GRANT-IS)
+    (:REWRITE FN-RTC-X-HAND-DELIVERS-P-IS)
+    (:REWRITE FN-RTC-X-REARM-IS)
+    (:REWRITE FN-RTC-XIS-NFIX-NFIX)
+    (:REWRITE FN-RTC-XIS-ST-GEN-IS)
+    (:REWRITE FN-RTC-XIS-ST-OWNER-IS)
+    (:REWRITE FN-RTC-XIS-ST-P-OF-DELIVER)
+    (:REWRITE FN-RTC-XIS-ST-P-OF-GRANT)
+    (:TYPE-PRESCRIPTION FN-RTC-COMPLETIONP-BOOLEAN)))
+  '(mv-nth fn-rtc-st-p-is-shapep fn-rtc-landed-of-hand fn-rtc-landed-of-opened)))))
 
 (defthm fn-rtc-x-step-is
   (implies (fn-rtc-st-p fn-rtc-st)

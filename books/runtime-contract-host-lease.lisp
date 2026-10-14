@@ -44,7 +44,12 @@
   (and (equal (mv-nth 2 (fn-hlm-step m ev st q)) 1)
        (equal (fn-rtc-reqs-octets (mv-nth 1 (fn-hlm-step m ev st q))) 0)
        (<= (len (mv-nth 1 (fn-hlm-step m ev st q))) 1)
-       (<= (fn-rtc-size (mv-nth 0 (fn-hlm-step m ev st q))) 1)))
+       (<= (fn-rtc-size (mv-nth 0 (fn-hlm-step m ev st q))) 1))
+  :hints (("Goal" :in-theory
+    (union-theories (theory 'minimal-theory)
+      '(fn-hlm-step fn-rtc-reqs-octets fn-rtc-size len mv-nth
+        car-cons cdr-cons (:executable-counterpart fn-rtc-get)
+        (:executable-counterpart equal) (:executable-counterpart zp))))))
 
 (defun fn-hlm-init () (declare (xargs :guard t)) nil)
 (defun fn-hlm-static-init (j) (declare (xargs :guard t) (ignore j)) nil)

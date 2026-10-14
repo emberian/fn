@@ -341,6 +341,12 @@
                               (true-listp (fn-rtc-get h pool))
                               (equal (len (fn-rtc-get h pool)) 3))))))
 
+(local
+ (defthm fn-rtc-c-buf-cap-of-nfix
+ (equal (fn-rtc-buf-cap (nfix h) cfg) (fn-rtc-buf-cap h cfg))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-rtc-buf-cap nfix natp (:type-prescription nfix)))))))
+
 (defthm fn-rtc-c-shapep-buffer
   (implies (fn-rtc-shapep s)
            (and (fn-cbor-octet-listp (fn-rtc-get 2 (fn-rtc-buffer h s)))
@@ -349,9 +355,9 @@
                          (and (natp (fn-rtc-get 0 (fn-rtc-buffer h s)))
                               (true-listp (fn-rtc-buffer h s))
                               (equal (len (fn-rtc-buffer h s)) 3)))))
-  :hints (("Goal" :in-theory (e/d () (fn-rtc-c-pool-shapep-get))
-           :use ((:instance fn-rtc-c-pool-shapep-get (pool (fn-rtc-pool s)) (k 0)
-                            (cfg (fn-rtc-config s)))))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-rtc-shapep fn-rtc-buffer fn-rtc-c-buf-cap-of-nfix unicity-of-0 fix (:type-prescription nfix) (:executable-counterpart natp) (:executable-counterpart nfix) (:executable-counterpart binary-+)))
+  :use ((:instance fn-rtc-c-pool-shapep-get (pool (fn-rtc-pool s)) (k 0) (cfg (fn-rtc-config s)))))))
 
 (defthm fn-rtc-st-set-meta{preserved}
   (implies (fn-rtc-st$ap fn-rtc-st)

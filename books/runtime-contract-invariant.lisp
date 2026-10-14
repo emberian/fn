@@ -740,6 +740,12 @@
   :rule-classes nil
   :hints (("Goal" :induct (fn-rtc-index-induct k i pool)
            :in-theory (disable fn-rtc-pool-buf-p fn-rtc-b-owner)))))
+(local
+ (defthm fn-rtc-inv-pool-home-zero-by-definition
+ (implies (fn-rtc-pool-buf-p h cfg) (equal (fn-rtc-home h cfg) 0))
+ :hints (("Goal" :in-theory (e/d (fn-rtc-pool-buf-p fn-rtc-home)
+  (fn-rtc-nhome fn-rtc-qfixed fn-rtc-nbufs))))))
+
 (local (defthm fn-rtc-request-keeps-free-pool-buffer
   (implies (and (posp id) (natp h) (fn-rtc-pool-buf-p h (fn-rtc-config s))
                 (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) '(:free)))
@@ -747,7 +753,7 @@
                   (fn-rtc-buffer h s)))
   :hints (("Goal" :in-theory
            (e/d (fn-rtc-request)
-                (fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen
+                (fn-rtc-home fn-rtc-pool-buf-p fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen
                  fn-rtc-h-off fn-rtc-h-len fn-rtc-splice fn-rtc-buf-cap fn-rtc-cap
                  fn-rtc-kind-out-p fn-rtc-hand-target-okp fn-rtc-live-p fn-rtc-extrap
                  fn-rtc-nslots fn-rtc-nstatic fn-rtc-nbufs fn-rtc-s-inc fn-rtc-s-status

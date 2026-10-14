@@ -24,7 +24,18 @@
 (defthm fn-rtc-rearm-actions-ok
   (and (fn-rtc-actions-okp (mv-nth 1 (fn-rtc-rearm s)) (mv-nth 0 (fn-rtc-rearm s)))
        (fn-rtc-actions-kinded-p (mv-nth 1 (fn-rtc-rearm s))))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-rearm) (fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-free-slot fn-rtc-kind-out-p)))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(len natp nfix fn-rtc-next-op (:type-prescription nfix) fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant fn-rtc-actions-okp
+    fn-rtc-actions-kinded-p fn-rtc-actions-okp-append fn-rtc-actions-kinded-append
+    fn-rtc-actionp fn-rtc-recorded-key fn-rtc-find-use fn-rtc-key
+    fn-rtc-issue-frame fn-rtc-get-of-cons car-cons cdr-cons mv-nth
+    (:type-prescription fn-rtc-next-op)
+    (:executable-counterpart fn-rtc-action-argsp)
+    (:executable-counterpart fn-rtc-get) (:executable-counterpart natp)
+    (:executable-counterpart member-equal) (:executable-counterpart equal)
+    (:executable-counterpart nfix) (:executable-counterpart zp)
+    (:executable-counterpart binary-+) (:executable-counterpart unary--)
+    (:executable-counterpart len))))))
 
 (defthm fn-rtc-actions-okp-through-rearm
   (implies (and (fn-rtc-actions-okp acts s) (fn-rtc-actions-kinded-p acts))

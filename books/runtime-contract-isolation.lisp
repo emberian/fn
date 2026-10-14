@@ -1309,7 +1309,8 @@
                                         (mv-nth 1 (fn-rtc-request r j inc s2)))))
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
-             '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit
+             '(fn-rtc-live-p fn-rtc-current-p
+               fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit
                fn-rtc-local-ranked-equal-parts fn-rtc-ranked-equal-p fn-rtc-uses-of
                fn-rtc-visible-buffer fn-rtc-of-slot-p fn-rtc-owner-equality-fields
                fn-rtc-with-accessors fn-rtc-slot-of-with fn-rtc-mstate-of-with fn-rtc-issue-frame fn-rtc-next-op-of-with

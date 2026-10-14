@@ -78,8 +78,13 @@
 (local (defthm fn-hl-rtc-config-pool-fields
   (and (equal (fn-rtc-npool (fn-hl-rtc-config profile cfg q nstatic qfixed capf qs cs)) (fn-mm-cfg-holders cfg))
        (equal (fn-rtc-capl (fn-hl-rtc-config profile cfg q nstatic qfixed capf qs cs)) (fn-hl-article-capl profile q)))
-  :hints (("Goal" :in-theory (e/d (fn-hl-rtc-config fn-rtc-npool fn-rtc-capl fn-rtc-get)
-                                  (fn-hl-article-capl fn-mm-cfg-holders fn-mm-cfg-connections))))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-hl-rtc-config fn-rtc-npool fn-rtc-capl fn-rtc-get
+               nfix natp posp car-cons cdr-cons
+               (:type-prescription fn-mm-cfg-holders)
+               (:executable-counterpart nfix) (:executable-counterpart zp)))
+           :use fn-hl-article-capl-is-a-lease))))
 
 (local (defthm fn-hl-large-reply-holds-the-article
   (<= (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile))) *fn-cbud-reply-status-octets*)

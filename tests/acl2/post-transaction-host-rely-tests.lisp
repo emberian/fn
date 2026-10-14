@@ -741,7 +741,9 @@
      (:executable-counterpart fn-rtc-nstatic)
      (:executable-counterpart natp))))))
 
-; P13: finite request-domain obstruction, with verified fixture guards.
+; P14: ACQ teeth replacing P13's current-contract obstruction.
+; The old acquire/complement retain the S2 cause as historical mutants.
+
 ; A finite host request with a typed, but non-current, listener incarnation.
 (defun p13-request-domain-scene (fn-rtc-st)
  (declare (xargs :stobjs fn-rtc-st :guard t :verify-guards nil))
@@ -762,53 +764,188 @@
 (defconst *p13-request-domain-before* (nth 0 *p13-request-domain-result*))
 (defconst *p13-request-domain-after* (nth 1 *p13-request-domain-result*))
 (defconst *p13-request-domain-op* '(:request 0 1 ((:acquire 3))))
-(defthm p13-request-domain-ground-facts
- (and (fn-rtc-st-cfg-okp *fn-pth-rely-cfg*)
-      (equal (fn-rtc-slot 0 *p13-request-domain-before*) '(0 :live nil))
-      (not (fn-rtc-current-p 0 1 *p13-request-domain-before*))
-      (equal (nth 2 *p13-request-domain-result*) nil)
-      (equal (fn-rtc-b-owner (fn-rtc-buffer 3 *p13-request-domain-after*)) '(:workspace 0 1))
-      (not (fn-rtc-pool-okp 0 (fn-rtc-pool *p13-request-domain-after*) *p13-request-domain-after*))))
-(defthm p13-request-domain-init-is-before
- (equal (mv-nth 0 (fn-pth-init *fn-pth-rely-cfg*)) *p13-request-domain-before*)
- :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
-  '((:executable-counterpart fn-pth-init) (:executable-counterpart mv-nth))))))
-(defthm p13-request-domain-host-run-reaches-after
- (equal (fn-pth-host-run (mv-nth 0 (fn-pth-init *fn-pth-rely-cfg*))
-                         (list *p13-request-domain-op*) 100000)
-        *p13-request-domain-after*)
- :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
-  '(fn-pth-host-run p13-request-domain-init-is-before car-cons cdr-cons mv-nth
-    (:executable-counterpart fn-rtc-get) (:executable-counterpart fn-rtc-requests)
-    (:executable-counterpart equal))))))
-(defthm p13-request-domain-after-is-reachable
- (fn-pth-reachablep *p13-request-domain-after*)
- :hints (("Goal" :use ((:instance fn-pth-reachablep-suff
-  (s *p13-request-domain-after*) (profile *fn-bs-profile-development*)
-  (mcfg *fn-pth-rely-mcfg*) (q0 100000) (ops0 (list *p13-request-domain-op*))))
-  :in-theory (union-theories (theory 'minimal-theory)
-   '(p13-request-domain-host-run-reaches-after car-cons cdr-cons
-     (:executable-counterpart fn-rtc-st-cfg-okp)
-     (:executable-counterpart fn-hl-rtc-config) (:executable-counterpart fn-rtc-configp)
-     (:executable-counterpart fn-rtc-nstatic) (:executable-counterpart natp))))))
-(defthm p13-request-domain-after-is-not-product-invariant
- (not (fn-pth-invp *p13-request-domain-after*))
- :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
-  '(fn-pth-invp (:executable-counterpart fn-rtc-pool-okp) (:executable-counterpart fn-rtc-pool))))))
-(defthm p13-request-domain-after-is-shaped
- (fn-rtc-shapep *p13-request-domain-after*))
-(value-triple *p13-request-domain-result*)
+
+(defun p14-old-req-acquire (r id inc s)
+  (declare (xargs :guard t))
+  (let* ((h (fn-rtc-get 1 r)) (b (fn-rtc-buffer h s)))
+    (if (and (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+             (equal (fn-rtc-home h (fn-rtc-config s)) (nfix id))
+             (equal (fn-rtc-b-owner b) '(:free)))
+        (mv (fn-rtc-with-buffer h (list (+ 1 (fn-rtc-b-gen b)) (list :workspace id inc) nil) s)
+            nil nil 1)
+      (mv s nil (list r) 1))))
+(defun p14-acquire-without-posp (r id inc s)
+  (declare (xargs :guard t))
+  (let* ((h (fn-rtc-get 1 r)) (b (fn-rtc-buffer h s)))
+    (if (and (fn-rtc-live-p id inc s)
+             (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+             (equal (fn-rtc-home h (fn-rtc-config s)) (nfix id))
+             (equal (fn-rtc-b-owner b) '(:free)))
+        (mv (fn-rtc-with-buffer h (list (+ 1 (fn-rtc-b-gen b)) (list :workspace id inc) nil) s) nil nil 1)
+      (mv s nil (list r) 1))))
+(defun p14-acquire-without-live-p (r id inc s)
+  (declare (xargs :guard t))
+  (let* ((h (fn-rtc-get 1 r)) (b (fn-rtc-buffer h s)))
+    (if (and (posp id)
+             (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+             (equal (fn-rtc-home h (fn-rtc-config s)) (nfix id))
+             (equal (fn-rtc-b-owner b) '(:free)))
+        (mv (fn-rtc-with-buffer h (list (+ 1 (fn-rtc-b-gen b)) (list :workspace id inc) nil) s) nil nil 1)
+      (mv s nil (list r) 1))))
+(defun p14-old-req-state-okp (r id inc s)
+ (let* ((h (fn-rtc-get 1 r)) (g (fn-rtc-get 2 r)) (off (fn-rtc-get 3 r))
+        (b (fn-rtc-buffer h s)))
+  (case (fn-rtc-get 0 r)
+   (:acquire (and (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                  (equal (fn-rtc-home h (fn-rtc-config s)) (nfix id))
+                  (equal (fn-rtc-b-owner b) '(:free))))
+   (:write (and (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                (equal (fn-rtc-b-owner b) (list :workspace id inc))
+                (equal (fn-rtc-b-gen b) g)
+                (<= off (len (fn-rtc-b-bytes b)))
+                (<= (+ off (len (fn-rtc-get 4 r))) (fn-rtc-buf-cap h (fn-rtc-config s)))))
+   (:release (and (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                  (equal (fn-rtc-b-owner b) (list :workspace id inc))
+                  (equal (fn-rtc-b-gen b) g)))
+   (:close (and (fn-rtc-live-p id inc s) (< (fn-rtc-nstatic (fn-rtc-config s)) (nfix id))))
+   (:cancel (and (fn-rtc-current-p id inc s)
+                 (fn-rtc-kind-out-p (fn-rtc-get 1 r) id inc (fn-rtc-uses s))))
+   (:submit
+    (let* ((kind (fn-rtc-get 1 r)) (hd (fn-rtc-get 2 r)) (extra (fn-rtc-get 3 r))
+           (h (fn-rtc-h-buf hd)) (b (fn-rtc-buffer h s)) (o (fn-rtc-b-owner b))
+           (own (equal o (list :workspace id inc))))
+     (and (fn-rtc-live-p id inc s)
+          (implies (eq kind :hand)
+                   (and (<= 1 (nfix id))
+                        (< (fn-rtc-get 0 extra) (fn-rtc-nslots (fn-rtc-config s)))
+                        (not (equal (fn-rtc-get 0 extra) (nfix id)))
+                        (implies (< (fn-rtc-nstatic (fn-rtc-config s)) (nfix id))
+                                 (<= (fn-rtc-get 0 extra) (fn-rtc-nstatic (fn-rtc-config s))))))
+          (or (eq kind :hand)
+              (not (fn-rtc-kind-out-p (if (eq kind :pool) :wait kind) id inc (fn-rtc-uses s))))
+          (if (or (eq kind :pool) (not (fn-rtc-buffered-kind-p kind))) t
+            (and (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                 (equal (fn-rtc-b-gen b) (fn-rtc-h-gen hd))
+                 (cond ((member-eq kind *fn-rtc-in-kinds*)
+                        (and own (<= (fn-rtc-h-off hd) (len (fn-rtc-b-bytes b)))
+                             (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
+                                 (fn-rtc-buf-cap h (fn-rtc-config s)))))
+                       ((eq kind :hand) (and own (equal (fn-rtc-h-len hd) (len (fn-rtc-b-bytes b)))))
+                       (t (and (or own (equal o (list :leased id inc :out)))
+                               (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd)) (len (fn-rtc-b-bytes b)))
+                               (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
+                                   (fn-rtc-buf-cap h (fn-rtc-config s)))))))))))
+   (otherwise nil))))
 (verify-guards p13-request-domain-scene)
 (verify-guards p13-request-domain-local)
-(value-triple (cw "P13 REQUEST DOMAIN: ~x0~%" *p13-request-domain-result*))
-(defthm p13-request-domain-u64-bridge-premise-is-false
- (and (fn-pth-reachablep *p13-request-domain-after*)
-      (fn-rtc-st-cfg-okp (fn-rtc-config *p13-request-domain-after*))
-      (fn-rtc-st-p *p13-request-domain-after*)
-      (not (fn-pth-invp *p13-request-domain-after*)))
- :hints (("Goal" :use (p13-request-domain-after-is-reachable
-                         p13-request-domain-after-is-not-product-invariant
-                         p13-request-domain-after-is-shaped
-     (:instance fn-rtc-st-p-is-shapep (x *p13-request-domain-after*)))
-  :in-theory (union-theories (theory 'minimal-theory)
-   '((:executable-counterpart fn-rtc-st-cfg-okp) (:executable-counterpart fn-rtc-config))))))
+(verify-guards p14-old-req-acquire)
+(verify-guards p14-acquire-without-posp)
+(verify-guards p14-acquire-without-live-p)
+
+(defthm p14-development-init-is-the-fixture-before
+ (equal (mv-nth 0 (fn-pth-init *fn-pth-rely-cfg*)) *p13-request-domain-before*)
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '((:executable-counterpart fn-pth-init) (:executable-counterpart mv-nth))))))
+
+; Complete historical after-state printed by c6s/request-domain-guards.log:55–68.
+; This literal is independent of the old acquire body being tested.
+(defconst *p14-acq-S2-after*
+ '((3 4 0 1 0 1 66560 3 65667)
+   ((0 :live nil) (1 :live 0) (0 :free nil))
+   ((0 (:free) nil) (0 (:free) nil) (0 (:free) nil) (1 (:workspace 0 1) nil))
+   ((:accept 0 0 1 nil) (:opened 1 1 0 nil))
+   (nil (:closed 0 nil nil nil 0 0 nil nil nil nil nil nil nil) nil) 2))
+(defthm p14-acq-T1-old-acquire-reproduces-whole-S2-after-state
+ (equal (mv-nth 0 (p14-old-req-acquire '(:acquire 3) 0 1 *p13-request-domain-before*))
+        *p14-acq-S2-after*)
+ :rule-classes nil)
+
+(defthm p14-acq-T1-old-acquire-takes-both-listener-pairs
+ (and (equal (fn-rtc-slot 0 *p13-request-domain-before*) '(0 :live nil))
+      (equal (mv-nth 2 (p14-old-req-acquire '(:acquire 3) 0 1 *p13-request-domain-before*)) nil)
+      (equal (mv-nth 2 (p14-old-req-acquire '(:acquire 3) 0 0 *p13-request-domain-before*)) nil)
+      (equal (fn-rtc-buffer 3 (mv-nth 0 (p14-old-req-acquire '(:acquire 3) 0 1 *p13-request-domain-before*)))
+             '(1 (:workspace 0 1) nil))
+      (equal (fn-rtc-buffer 3 (mv-nth 0 (p14-old-req-acquire '(:acquire 3) 0 0 *p13-request-domain-before*)))
+             '(1 (:workspace 0 0) nil))
+      (not (fn-pth-invp (mv-nth 0 (p14-old-req-acquire '(:acquire 3) 0 1 *p13-request-domain-before*)))))
+ :rule-classes nil)
+(defthm p14-acq-T1-real-requests-refuse-both-with-no-state-change
+ (and (equal (mv-nth 0 (fn-rtc-requests '((:acquire 3)) 0 1 *p13-request-domain-before*)) *p13-request-domain-before*)
+      (equal (mv-nth 2 (fn-rtc-requests '((:acquire 3)) 0 1 *p13-request-domain-before*)) '((:acquire 3)))
+      (equal (mv-nth 0 (fn-rtc-requests '((:acquire 3)) 0 0 *p13-request-domain-before*)) *p13-request-domain-before*)
+      (equal (mv-nth 2 (fn-rtc-requests '((:acquire 3)) 0 0 *p13-request-domain-before*)) '((:acquire 3)))
+      (equal *p13-request-domain-after* *p13-request-domain-before*)
+      (equal (nth 2 *p13-request-domain-result*) '((:acquire 3))))
+ :rule-classes nil)
+
+; T2 is a request-arm tooth: this closing state is not claimed reachable.
+(defconst *p14-acq-closing*
+ (fn-rtc-with-slot 1 '(1 :closing 0) *p13-request-domain-before*))
+(defthm p14-acq-T2-closing-at-current-incarnation-is-refused
+ (and (fn-rtc-current-p 1 1 *p14-acq-closing*)
+      (equal (fn-rtc-home 0 (fn-rtc-config *p14-acq-closing*)) 1)
+      (equal (fn-rtc-b-owner (fn-rtc-buffer 0 *p14-acq-closing*)) '(:free))
+      (equal (mv-nth 0 (fn-rtc-requests '((:acquire 0)) 1 1 *p14-acq-closing*)) *p14-acq-closing*)
+      (equal (mv-nth 2 (fn-rtc-requests '((:acquire 0)) 1 1 *p14-acq-closing*)) '((:acquire 0))))
+ :rule-classes nil)
+
+; A home-0 buffer is acquirable by nobody, which matches fn-rtc-pool-okp
+; (a workspace owner has posp id); this is not lost capacity.
+(defthm p14-acq-T3-live-positive-caller-acquires-own-development-home
+ (and (posp 1) (fn-rtc-live-p 1 1 *p13-request-domain-before*)
+      (equal (fn-rtc-home 0 (fn-rtc-config *p13-request-domain-before*)) 1)
+      (equal (fn-rtc-b-owner (fn-rtc-buffer 0 *p13-request-domain-before*)) '(:free))
+      (equal (mv-nth 2 (fn-rtc-requests '((:acquire 0)) 1 1 *p13-request-domain-before*)) nil)
+      (equal (fn-rtc-buffer 0 (mv-nth 0 (fn-rtc-requests '((:acquire 0)) 1 1 *p13-request-domain-before*)))
+             '(1 (:workspace 1 1) nil)))
+ :rule-classes nil)
+(defthm p14-acq-T4-posp-removal-revives-current-listener-case
+ (and (fn-rtc-live-p 0 0 *p13-request-domain-before*)
+      (equal (mv-nth 2 (p14-acquire-without-posp '(:acquire 3) 0 0 *p13-request-domain-before*)) nil)
+      (equal (fn-rtc-buffer 3 (mv-nth 0 (p14-acquire-without-posp '(:acquire 3) 0 0 *p13-request-domain-before*)))
+             '(1 (:workspace 0 0) nil))
+      (equal (mv-nth 2 (fn-rtc-req-acquire '(:acquire 3) 0 0 *p13-request-domain-before*)) '((:acquire 3))))
+ :rule-classes nil)
+(defthm p14-acq-T4-live-p-removal-revives-positive-stale-caller-case
+ (and (equal (fn-rtc-slot 1 *p13-request-domain-before*) '(1 :live 0))
+      (posp 1) (not (fn-rtc-live-p 1 2 *p13-request-domain-before*))
+      (equal (fn-rtc-home 0 (fn-rtc-config *p13-request-domain-before*)) 1)
+      (equal (mv-nth 2 (p14-acquire-without-live-p '(:acquire 0) 1 2 *p13-request-domain-before*)) nil)
+      (equal (fn-rtc-buffer 0 (mv-nth 0 (p14-acquire-without-live-p '(:acquire 0) 1 2 *p13-request-domain-before*)))
+             '(1 (:workspace 1 2) nil))
+      (equal (mv-nth 0 (fn-rtc-req-acquire '(:acquire 0) 1 2 *p13-request-domain-before*)) *p13-request-domain-before*)
+      (equal (mv-nth 2 (fn-rtc-req-acquire '(:acquire 0) 1 2 *p13-request-domain-before*)) '((:acquire 0))))
+ :rule-classes nil)
+
+; Retain the two P14 S2 negations against the old complement; this small
+; model fixture is unchanged and neither factor requires reachability.
+(defconst *p14-factor-state*
+ '((3 4 0 1 0 1 66560 3 65667)
+   ((0 :live nil) (1 :live 0) (0 :free nil))
+   ((0 (:free) nil) (0 (:free) nil) (0 (:free) nil) (0 (:free) nil))
+   nil (nil nil nil) 0))
+(defthm p14-frozen-acquire-factor-is-ground-false
+ (not
+  (implies (equal (fn-rtc-get 0 '(:acquire 3)) :acquire)
+   (iff (not (mv-nth 2 (fn-rtc-req-acquire '(:acquire 3) 0 1 *p14-factor-state*)))
+    (and (fn-pth-req-data-okp '(:acquire 3))
+         (p14-old-req-state-okp '(:acquire 3) 0 1 *p14-factor-state*)))))
+ :rule-classes nil)
+(defthm p14-frozen-dispatched-factor-is-ground-false
+ (not
+  (iff (not (mv-nth 2 (fn-rtc-request '(:acquire 3) 0 1 *p14-factor-state*)))
+   (and (fn-pth-req-data-okp '(:acquire 3))
+        (p14-old-req-state-okp '(:acquire 3) 0 1 *p14-factor-state*))))
+ :rule-classes nil)
+(defthm p14-new-complement-satisfies-both-factors-on-the-same-state
+ (and
+  (implies (equal (fn-rtc-get 0 '(:acquire 3)) :acquire)
+   (iff (not (mv-nth 2 (fn-rtc-req-acquire '(:acquire 3) 0 1 *p14-factor-state*)))
+    (and (fn-pth-req-data-okp '(:acquire 3))
+         (fn-pth-req-state-okp '(:acquire 3) 0 1 *p14-factor-state*))))
+  (iff (not (mv-nth 2 (fn-rtc-request '(:acquire 3) 0 1 *p14-factor-state*)))
+   (and (fn-pth-req-data-okp '(:acquire 3))
+        (fn-pth-req-state-okp '(:acquire 3) 0 1 *p14-factor-state*))))
+ :rule-classes nil)

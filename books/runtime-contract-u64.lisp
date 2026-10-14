@@ -43,10 +43,7 @@
            (and (true-listp (fn-rtc-slots fn-rtc-st))
                 (equal (len (fn-rtc-slots fn-rtc-st))
                        (fn-rtc-nslots (fn-rtc-config fn-rtc-st)))))
-  :hints (("Goal" :in-theory
-           (e/d (fn-rtc-st-p-is-shapep fn-rtc-shapep)
-                (fn-rtc-configp fn-rtc-pool-shapep fn-rtc-nslots fn-rtc-nbufs
-                 fn-rtc-config fn-rtc-slots fn-rtc-mstates fn-rtc-pool fn-rtc-get))))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-st-p-is-shapep fn-rtc-shapep))))))
 (defthm fn-rtc-x-slots-exhausted-loop-is
   (implies (and (fn-rtc-st-p fn-rtc-st) (natp i) (natp nstatic)
                 (equal n (fn-rtc-nslots (fn-rtc-config fn-rtc-st))))
@@ -68,6 +65,10 @@
            (equal (fn-rtc-x-slots-exhaustedp fn-rtc-st)
                   (fn-rtc-slots-exhaustedp 0 (fn-rtc-nstatic (fn-rtc-config fn-rtc-st))
                                            (fn-rtc-slots fn-rtc-st))))
-  :hints (("Goal" :in-theory
-           (e/d (fn-rtc-x-slots-exhaustedp fn-rtc-st-config fn-rtc-x-slots-exhausted-loop-is)
-                (fn-rtc-x-slots-exhausted-loop fn-rtc-slots-exhaustedp fn-rtc-nslots fn-rtc-nstatic)))))
+  :hints (("Goal"  :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-x-slots-exhaustedp fn-rtc-st-config-is
+               fn-rtc-x-slots-exhausted-loop-is nthcdr natp
+               (:type-prescription fn-rtc-nstatic)
+               (:executable-counterpart zp) (:executable-counterpart nfix)
+               (:executable-counterpart natp))))))
