@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.12
-"""Write known-red admissions, owner transfers, re-files and closed-item retirements.
+"""Write known-red admissions, re-admissions, transfers, re-files and retirements.
 
 Validate with train's parsers; retirement leaves append-only amendments intact.
 """
@@ -181,6 +181,9 @@ def validate(root: Path, rows_text: str, amendments_text: str) -> tuple[list, li
             error = train.refile_item_error(record, item_data(root, record['item']))
             if error:
                 raise train.TrainError(error)
+    errors = train.readmission_errors(records, rows, lambda name: item_data(root, name))
+    if errors:
+        raise train.TrainError('; '.join(errors))
     context = SimpleNamespace(root=root)
     before = train.amendments_at(context, train.train_base())
     if records[:len(before)] != before:
@@ -217,16 +220,28 @@ def operate(root: Path, args) -> int:
         if args.command == 'check':
             print(f'known reds: {len(rows)} rows, {len(records)} amendment records; valid')
             return 0
-        if args.command == 'add':
+        if args.command in ('add', 'readmit'):
             if args.kind == 'native':
                 native_module(root, args.subject)
             if any((r['kind'], r['subject']) == (args.kind, args.subject) for r in rows):
                 raise train.TrainError(f'row already exists: {args.kind} {args.subject}')
+            previous = [r for r in records if (r['kind'], r['subject']) == (args.kind, args.subject)]
+            if args.command == 'add' and previous:
+                raise train.TrainError('subject has an amendment chain; use readmit after retirement')
+            if args.command == 'readmit':
+                if not previous:
+                    raise train.TrainError('re-admission requires an earlier amendment and retirement')
+                if args.item == previous[-1]['item']:
+                    raise train.TrainError('re-admission target must differ from the retiring item')
+                if item_state(root, previous[-1]['item']) not in train.CLOSED_ITEM_STATES:
+                    raise train.TrainError('re-admission requires a retired row under a closed item')
             if item_state(root, args.item) in train.CLOSED_ITEM_STATES:
                 raise train.TrainError(f'repair item is closed: {args.item}')
             commit_sha(root, args.dev_sha)
             row = {k: getattr(args, k) for k in train.KNOWN_RED_FIELDS}
             record = {k: getattr(args, k) for k in train.AMENDMENT_FIELDS}
+            if args.command == 'readmit':
+                record.update(readmit_from=previous[-1]['item'], evidence=args.evidence)
             new_rows = append_entry(rows_text, 'rows', row)
         else:
             matches = [r for r in rows if r['subject'] == args.subject]
@@ -236,16 +251,19 @@ def operate(root: Path, args) -> int:
             previous = [r for r in records if (r['kind'], r['subject']) == (row['kind'], row['subject'])]
             if not previous:
                 raise train.TrainError(ORIGINAL_ROW)
+            # readmit_from identifies one transition, not later transfers/re-files.
+            predecessor = dict(previous[-1])
+            predecessor.pop('readmit_from', None)
             if args.command == 'refile':
                 if args.item == row['item']:
                     raise train.TrainError('re-file target must differ from the row item')
-                record = dict(previous[-1], item=args.item, item_from=row['item'], ruling=args.ruling)
+                record = dict(predecessor, item=args.item, item_from=row['item'], ruling=args.ruling)
                 error = train.refile_item_error(record, item_data(root, args.item))
                 if error:
                     raise train.TrainError(error)
                 field, value = 'item', args.item
             else:
-                record = dict(previous[-1], owner=args.owner, ruling=args.ruling, transfer_from=row['owner'])
+                record = dict(predecessor, owner=args.owner, ruling=args.ruling, transfer_from=row['owner'])
                 field, value = 'owner', args.owner
             _, _, entries = array_entries(rows_text, 'rows')
             row_start = next(start for value, start, _ in entries if value == row)
@@ -267,10 +285,13 @@ def operate(root: Path, args) -> int:
 def main(argv=None, *, root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
-    add = commands.add_parser('add')
-    add.add_argument('--kind', choices=('native', 'check'), required=True)
-    for field in ('subject', 'item', 'owner', 'dev-sha', 'evidence', 'ruling'):
-        add.add_argument('--' + field, required=True)
+    for command in ('add', 'readmit'):
+        admission = commands.add_parser(
+            command, help='admit a new subject' if command == 'add'
+            else 're-admit a retired subject under a new open item')
+        admission.add_argument('--kind', choices=('native', 'check'), required=True)
+        for field in ('subject', 'item', 'owner', 'dev-sha', 'evidence', 'ruling'):
+            admission.add_argument('--' + field, required=True)
     transfer = commands.add_parser('transfer')
     for field in ('subject', 'owner', 'ruling'):
         transfer.add_argument('--' + field, required=True)

@@ -2013,6 +2013,85 @@ class BaselineGateTests(TrainBase):
         self.assertFalse(rec["dangling_amendments"])
         self.assertFalse(rec["invalid_refiles"])
 
+    def test_readmission_parser_accepts_fresh_measurement_and_later_transitions(self):
+        first = self.amendment('t.new')
+        readmit = dict(self.amendment('t.new', item='KR-TARGET', owner='builder-M'),
+                       readmit_from='KR-X', dev_sha='012345678', evidence='recurrence log')
+        for later in [dict(self.amendment('t.new', item='KR-TARGET'),
+                           dev_sha=readmit['dev_sha'], transfer_from='builder-M'),
+                      dict(self.amendment('t.new', item='KR-NEXT', owner='builder-M'),
+                           dev_sha=readmit['dev_sha'], item_from='KR-TARGET')]:
+            with self.subTest(later=later):
+                self.assertEqual(train.parse_amendments(self.amendments(first, readmit, later)),
+                                 [first, readmit, later])
+
+    def test_readmission_parser_refuses_invalid_links_and_missing_evidence(self):
+        first = self.amendment('t.new')
+        readmit = dict(first, item='KR-TARGET', readmit_from='KR-X', evidence='recurrence')
+        for bad in [dict(readmit, readmit_from='OTHER'), dict(readmit, item='KR-X'),
+                    dict(readmit, evidence=''), dict(readmit, evidence=None),
+                    {k: v for k, v in readmit.items() if k != 'evidence'},
+                    dict(readmit, dev_sha='not-a-sha'),
+                    dict(readmit, transfer_from='builder-B'), dict(readmit, item_from='KR-X')]:
+            with self.subTest(record=bad), self.assertRaises(train.TrainError):
+                train.parse_amendments(self.amendments(first, bad))
+        with self.assertRaises(train.TrainError):
+            train.parse_amendments(self.amendments(readmit))
+
+    def test_admit_retire_readmit_is_live_then_new_item_retires_again(self):
+        self.on_dev(self.rows())
+        first = self.amendment('t.new')
+        g, rec = self.gate_amended(self.rows('t.new'), self.amendments(first))
+        self.assertEqual(rec['rc'], 0, g.stdout)
+        g, rec = self.gate_with(self.rows(), item_state='landed')
+        self.assertEqual(rec['rc'], 0, g.stdout)
+        readmit = dict(self.amendment('t.new', item='KR-TARGET', owner='builder-M'),
+                       readmit_from='KR-X', dev_sha='012345678', evidence='recurrence log')
+        target = self.work / 'planning/repair/items/KR-TARGET.json'
+        target.write_text('{"state": "open", "owner": "builder-M"}')
+        rows = self.rows('t.new', item='KR-TARGET').replace('builder-B', 'builder-M')
+        g, rec = self.gate_amended(rows, self.amendments(first, readmit))
+        self.assertEqual(rec['rc'], 0, g.stdout)
+        self.assertEqual((rec['rows'], rec['amended']), (1, 1))
+        self.assertEqual(train.known_reds_at(train.Train(self.work), 'HEAD'), json.loads(rows)['rows'])
+        self.assertFalse(rec['invalid_readmissions'])
+        self.assertIn('non-regressing against 1 known reds, 1 amended', self.train('status').stdout)
+        target.write_text('{"state": "closed", "owner": "builder-M"}')
+        g, rec = self.gate_with(self.rows())
+        self.assertEqual(rec['rc'], 0, g.stdout)
+        self.assertEqual(rec['rows'], 0)
+        self.assertFalse(rec['dangling_amendments'])
+
+    def test_readmission_gate_checks_retirement_and_target_ownership(self):
+        self.on_dev(self.rows())
+        first = self.amendment('t.new')
+        readmit = dict(self.amendment('t.new', item='KR-TARGET', owner='builder-M'),
+                       readmit_from='KR-X', evidence='recurrence log')
+        source = self.work / 'planning/repair/items/KR-X.json'
+        target = self.work / 'planning/repair/items/KR-TARGET.json'
+        rows = self.rows('t.new', item='KR-TARGET').replace('builder-B', 'builder-M')
+        for source_state, target_data, message in [
+                ('open', {'state': 'open', 'owner': 'builder-M'}, 'source'),
+                ('closed', None, 'missing'),
+                ('closed', {'state': 'closed', 'owner': 'builder-M'}, 'not open'),
+                ('closed', {'state': 'unknown', 'owner': 'builder-M'}, 'not open'),
+                ('closed', {'state': 'open', 'owner': 'builder-B'}, 'owner')]:
+            with self.subTest(source=source_state, target=target_data):
+                source.write_text(json.dumps({'state': source_state}))
+                if target_data is None:
+                    target.unlink()
+                else:
+                    target.write_text(json.dumps(target_data))
+                g, rec = self.gate_amended(rows, self.amendments(first, readmit))
+                self.assertEqual(rec['rc'], 1, g.stdout)
+                self.assertIn(message, rec['invalid_readmissions'][0])
+        # Even after retirement, every earlier readmission link remains checked.
+        source.write_text('{"state": "open"}')
+        target.write_text('{"state": "closed", "owner": "builder-M"}')
+        g, rec = self.gate_amended(self.rows(), self.amendments(first, readmit))
+        self.assertEqual(rec['rc'], 1, g.stdout)
+        self.assertIn('source', rec['invalid_readmissions'][0])
+
     def test_a_malformed_amendments_file_fails(self):
         self.on_dev(self.rows("t.a"))
         for text in ("not json\n", '{"amendments": {}}\n', '{"amendments": [{"kind": "native"}]}\n',
