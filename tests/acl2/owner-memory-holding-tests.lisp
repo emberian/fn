@@ -627,6 +627,17 @@
  :hints (("Goal" :by fn-adm-run-gate-keeps-the-operator-slot-funded)))
 
 
+; The old-held-only-admission tooth needs a gap: at *m28-after-limit2* the row
+; fits beside two held readers, and three holders after it are unfunded.  The
+; limit is derived, so a pricing under which one holder no longer separates
+; them fails here by name instead of leaving the mutant vacuous.
+(assert-event
+ (and (fn-adm-memory-admitp *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 2 2)
+                            *m28-after-limit2* *m22a-tot* *m28-row*)
+      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2)
+                         *m28-after-limit2* *m28-after*)))
+ :msg "M28 OLD-HELD-ONLY-ADMISSION gap: three holders are unfunded at *m28-after-limit2*")
+
 (defkeystone m28-run-admitted-record-keeps-the-operator-slot-funded
 (implies (and (natp capacity)
                 (<= (nfix held) (fn-adm-reader-count (fn-mm-cfg-connections cfg) capacity))
@@ -638,7 +649,7 @@
  :breaks ((capacity ((capacity nil) (held 2) (limit *m28-after-limit2*)))
 (covered ((held 3) (limit *m28-after-limit3*)))
 (admitted ((limit 0))))
- :mutations ((old-held-only-admission (:hypothesis admitted (fn-adm-memory-admitp profile img (fn-adm-priced-cfg cfg held capacity) limit tot row)) ((limit *m28-limit3*)) :fault "the old record gate admits a real row that consumes the already-funded operator slot"))
+ :mutations ((old-held-only-admission (:hypothesis admitted (fn-adm-memory-admitp profile img (fn-adm-priced-cfg cfg held capacity) limit tot row)) ((limit *m28-after-limit2*)) :fault "the old record gate admits a real row that consumes the already-funded operator slot"))
  :hints (("Goal" :by fn-adm-run-admitted-record-keeps-the-operator-slot-funded)))
 
 
