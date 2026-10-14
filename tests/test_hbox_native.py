@@ -30,6 +30,26 @@ def cleanup_recorded_group(process, pid_file):
     process.wait(timeout=5)
 
 
+
+def isolated_launcher(root):
+    """Real launcher and Git revision, with generated state in its own tree."""
+    import shutil
+    tree = root / "worktree"
+    (tree / "tools").mkdir(parents=True)
+    for tool in (ROOT / "tools").iterdir():
+        if tool.name == "hbox_native.sh":
+            shutil.copy(tool, tree / "tools" / tool.name)
+        else:
+            (tree / "tools" / tool.name).symlink_to(tool)
+    for name in ("tests", "books", "host", "specs", "fixtures", "planning"):
+        (tree / name).symlink_to(ROOT / name)
+    git = ["git", "-C", str(tree), "-c", "user.name=fixture", "-c", "user.email=fixture@invalid",
+           "-c", "gc.auto=0", "-c", "maintenance.auto=false"]
+    scratch_git([*git, "init", "-q"], check=True, capture_output=True)
+    scratch_git([*git, "commit", "--allow-empty", "-q", "-m", "fixture"], check=True, capture_output=True)
+    return tree / "tools/hbox_native.sh"
+
+
 def install_identity_stub(root):
     (root / "fakeidentity.py").write_text('''import hashlib, os, re, sys
 command = sys.argv[1]
@@ -430,6 +450,7 @@ echo REACHED
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as directory:
+            launcher = isolated_launcher(Path(directory))
             log = Path(directory) / "calls"
             for tool in ("ssh", "rsync"):
                 stub = Path(directory) / tool
@@ -441,14 +462,14 @@ echo REACHED
             env["FN_HBOX"] = "hbox"
             for rev, keeps in ((".", "--exclude=*.cert"), ("HEAD", "! -name '*.cert'")):
                 log.write_text("")
-                done = subprocess.run(["sh", str(SCRIPT), "--detach", "--no-build", "--name", "t",
+                done = subprocess.run(["sh", str(launcher), "--detach", "--no-build", "--name", "t",
                                        "--label", "l", rev, "tests.test_native_owner"],
                                       cwd=ROOT, env=env, capture_output=True, text=True,
                                       timeout=120)
                 self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
                 self.assertIn(keeps, log.read_text())
                 log.write_text("")
-                subprocess.run(["sh", str(SCRIPT), "--detach", "--name", "t", "--label", "l",
+                subprocess.run(["sh", str(launcher), "--detach", "--name", "t", "--label", "l",
                                 rev, "tests.test_native_owner"], cwd=ROOT, env=env,
                                capture_output=True, text=True, timeout=120)
                 self.assertNotIn(".cert", log.read_text())
@@ -459,6 +480,7 @@ echo REACHED
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as directory:
+            launcher = isolated_launcher(Path(directory))
             log = Path(directory) / "calls"
             answers = Path(directory) / "runs"
             stub = Path(directory) / "ssh"
@@ -476,7 +498,7 @@ echo REACHED
                                 ("", "no run of t on hbox holds them")):
                 answers.write_text(held)
                 log.write_text("")
-                done = subprocess.run(["sh", str(SCRIPT), "--no-build", "--name", "t", "--label",
+                done = subprocess.run(["sh", str(launcher), "--no-build", "--name", "t", "--label",
                                        "fresh", ".", "tests.test_native_owner"], cwd=ROOT,
                                       env=env, capture_output=True, text=True, timeout=120,
                                       stdin=subprocess.DEVNULL)
@@ -1086,6 +1108,7 @@ class DetachedByDefaultTests(unittest.TestCase):
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as directory:
+            launcher = isolated_launcher(Path(directory))
             log = Path(directory) / "calls"
             for tool in ("ssh", "rsync"):
                 stub = Path(directory) / tool
@@ -1096,9 +1119,8 @@ class DetachedByDefaultTests(unittest.TestCase):
                 stub.chmod(0o755)
             env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}", "FN_HBOX": "hbox"}
             label = "detach-test-%d" % os.getpid()
-            record = ROOT / "build" / "hbox-native" / f"{label}.run"
-            self.addCleanup(lambda: record.unlink(missing_ok=True))
-            started = subprocess.run(["sh", str(SCRIPT), "--no-build", "--name", "t", "--label", label,
+            record = launcher.parent.parent / "build" / "hbox-native" / f"{label}.run"
+            started = subprocess.run(["sh", str(launcher), "--no-build", "--name", "t", "--label", label,
                                       "HEAD", "tests.test_native_owner"],
                                      cwd=ROOT, env=env, capture_output=True, text=True, timeout=120,
                                      stdin=subprocess.DEVNULL)
@@ -1117,7 +1139,7 @@ class DetachedByDefaultTests(unittest.TestCase):
             self.assertEqual(fields["log"], fields["dir"] + "/run.log")
             # No wait_for poll happened: the start did not attach.
             self.assertNotIn("test -f", log.read_text())
-            status = subprocess.run(["sh", str(SCRIPT), "status", label], cwd=ROOT, env=env,
+            status = subprocess.run(["sh", str(launcher), "status", label], cwd=ROOT, env=env,
                                     capture_output=True, text=True, timeout=60,
                                     stdin=subprocess.DEVNULL)
             self.assertEqual(status.returncode, 0, status.stderr)
@@ -1130,6 +1152,7 @@ class DetachedByDefaultTests(unittest.TestCase):
         source = "d" * 40
         for log_line, want in ((f"== source commit {source}", source), ("== load 1 2 3", None)):
             with tempfile.TemporaryDirectory() as directory:
+                launcher = isolated_launcher(Path(directory))
                 for tool in ("ssh", "rsync"):
                     stub = Path(directory) / tool
                     install_identity_stub(Path(directory))
@@ -1139,9 +1162,8 @@ class DetachedByDefaultTests(unittest.TestCase):
                     stub.chmod(0o755)
                 env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}", "FN_HBOX": "hbox"}
                 label = "reuse-test-%d-%d" % (os.getpid(), want is None)
-                record = ROOT / "build" / "hbox-native" / f"{label}.run"
-                self.addCleanup(lambda: record.unlink(missing_ok=True))
-                started = subprocess.run(["sh", str(SCRIPT), "--reuse-image", "t/native-earlier",
+                record = launcher.parent.parent / "build" / "hbox-native" / f"{label}.run"
+                started = subprocess.run(["sh", str(launcher), "--reuse-image", "t/native-earlier",
                                           "--images", "developer", "--name", "t", "--label", label,
                                           "HEAD", "tests.test_native_owner"],
                                          cwd=ROOT, env=env, capture_output=True, text=True, timeout=120,
@@ -1156,7 +1178,11 @@ class DetachedByDefaultTests(unittest.TestCase):
                 self.assertEqual(fields["source"], want)
 
     def test_attach_without_a_record_names_the_runs_here(self):
-        answer = subprocess.run(["sh", str(SCRIPT), "attach", "no-such-label"], cwd=ROOT,
+        import tempfile
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        launcher = isolated_launcher(Path(temp.name))
+        answer = subprocess.run(["sh", str(launcher), "attach", "no-such-label"], cwd=ROOT,
                                 capture_output=True, text=True, timeout=60)
         self.assertEqual(answer.returncode, 2)
         self.assertIn("no record", answer.stderr)
@@ -1248,6 +1274,7 @@ class NativeGenerationLockTests(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            launcher = isolated_launcher(root)
             run_dir = root / "run"
             run_dir.mkdir()
             install_flock(root)
@@ -1275,7 +1302,7 @@ raise SystemExit(subprocess.call(["/bin/sh", "-c", command]))
                    "REMOTE_RUN": remote, "LOCAL_RUN": str(run_dir)}
             with (run_dir / "run.lock").open("a") as held:
                 fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                done = subprocess.run(["sh", str(SCRIPT), "--box", "hbox", "--name", "t",
+                done = subprocess.run(["sh", str(launcher), "--box", "hbox", "--name", "t",
                     "--label", label, "--no-build", "HEAD", "tests.test_native_owner"],
                     cwd=ROOT, env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=20)
                 self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
@@ -1298,6 +1325,14 @@ if "cat > " in command and "/run.sh" in command and os.environ.get("BLOCK_SHIPPI
         if time.monotonic() >= until: raise SystemExit(3)
         time.sleep(.01)
 if "remaining=5" in command:
+    if os.environ.get("WAIT_READBACK"):
+        (root / "readback-ready").touch()
+        until = time.monotonic() + 30
+        while not (root / "readback-release").exists():
+            if time.monotonic() >= until: raise SystemExit(3)
+            time.sleep(.01)
+    if (root / "identity").exists():
+        print((root / "identity").read_text()); raise SystemExit(0)
     raise SystemExit(subprocess.call([sys.executable, str(root / "fakeidentity.py"), command]))
 sys.stdin.buffer.read()
 ''')
@@ -1310,16 +1345,15 @@ sys.stdin.buffer.read()
         import time
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            launcher = isolated_launcher(root)
             env = self.launch_fixture(root)
             label = "local-overlap-" + str(os.getpid())
-            record = ROOT / "build/hbox-native" / (label + ".run")
-            self.addCleanup(lambda: record.unlink(missing_ok=True))
-            self.addCleanup(lambda: record.with_suffix(".lock").unlink(missing_ok=True))
+            record = launcher.parent.parent / "build/hbox-native" / (label + ".run")
             args = ["--box", "hbox", "--name", "t", "--label", label, "--no-build", "HEAD", "tests.test_native_owner"]
             pid_file = root / "launcher.pid"
             with (root / "launcher.log").open("w") as log:
                 first = subprocess.Popen(["sh", "-c", 'echo $$ > "$1"; shift; exec sh "$@"',
-                    "launch-test", str(pid_file), str(SCRIPT), *args],
+                    "launch-test", str(pid_file), str(launcher), *args],
                     cwd=ROOT, env={**env, "BLOCK_SHIPPING": "1"}, stdout=log, stderr=log, start_new_session=True)
                 try:
                     until = time.monotonic() + 10
@@ -1329,7 +1363,7 @@ sys.stdin.buffer.read()
                     pending = record.read_bytes()
                     self.assertIn(b"launch_id=", pending)
                     self.assertNotIn(b"pgid=", pending)
-                    second = subprocess.run(["sh", str(SCRIPT), *args], cwd=ROOT, env=env,
+                    second = subprocess.run(["sh", str(launcher), *args], cwd=ROOT, env=env,
                         capture_output=True, text=True, timeout=15)
                     self.assertNotEqual(second.returncode, 0)
                     self.assertIn("same-label launch already in progress", second.stderr)
@@ -1344,12 +1378,11 @@ sys.stdin.buffer.read()
         import tempfile
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            launcher = isolated_launcher(root)
             env = self.launch_fixture(root)
             label = "mismatch-" + str(os.getpid())
-            record = ROOT / "build/hbox-native" / (label + ".run")
-            self.addCleanup(lambda: record.unlink(missing_ok=True))
-            self.addCleanup(lambda: record.with_suffix(".lock").unlink(missing_ok=True))
-            done = subprocess.run(["sh", str(SCRIPT), "--box", "hbox", "--name", "t", "--label", label,
+            record = launcher.parent.parent / "build/hbox-native" / (label + ".run")
+            done = subprocess.run(["sh", str(launcher), "--box", "hbox", "--name", "t", "--label", label,
                 "--no-build", "HEAD", "tests.test_native_owner"], cwd=ROOT,
                 env={**env, "FN_TEST_ID_MISMATCH": "1"}, capture_output=True, text=True, timeout=30)
             self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
@@ -1358,17 +1391,173 @@ sys.stdin.buffer.read()
             pending = record.read_text()
             self.assertIn("launch_id=", pending)
             self.assertNotIn("pgid=", pending)
-            directory = subprocess.run(["sh", str(SCRIPT), "status", label, "--dir"], cwd=ROOT,
+            directory = subprocess.run(["sh", str(launcher), "status", label, "--dir"], cwd=ROOT,
                 env=env, capture_output=True, text=True, timeout=10)
             self.assertEqual(directory.returncode, 0, directory.stderr)
             self.assertIn("hbox:/tank/fn/scratch/t/native-" + label, directory.stdout)
-            adopted = subprocess.run(["sh", str(SCRIPT), "adopt", label], cwd=ROOT, env=env,
+            adopted = subprocess.run(["sh", str(launcher), "adopt", label], cwd=ROOT, env=env,
                 capture_output=True, text=True, timeout=15)
             self.assertEqual(adopted.returncode, 0, adopted.stdout + adopted.stderr)
             self.assertIn("adopted", adopted.stdout)
             self.assertIn("pgid=4242", record.read_text())
             self.assertEqual(next(l for l in pending.splitlines() if l.startswith("launch_id=")),
                              next(l for l in record.read_text().splitlines() if l.startswith("launch_id=")))
+
+    def wait_barrier(self, path, process, seconds=10):
+        import time
+        until = time.monotonic() + seconds
+        while not path.exists() and process.poll() is None and time.monotonic() < until:
+            time.sleep(.01)
+        self.assertTrue(path.exists(), path)
+
+    def test_delayed_start_after_launcher_death_keeps_pending_id_adoptable(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); launcher = isolated_launcher(root)
+            env = self.launch_fixture(root)
+            label = "pending"
+            record = launcher.parent.parent / "build/hbox-native/pending.run"
+            args = ["--box", "hbox", "--name", "t", "--label", label, "--no-build", "HEAD", "tests.test_native_owner"]
+            with (root / "launcher.log").open("w") as log:
+                first = subprocess.Popen(["sh", "-c", 'echo $$ > "$1"; shift; exec sh "$@"',
+                    "fixture", str(root / "launcher.pid"), str(launcher), *args], cwd=ROOT,
+                    env={**env, "WAIT_READBACK": "1"}, stdout=log, stderr=log, start_new_session=True)
+                delayed = None
+                try:
+                    self.wait_barrier(root / "readback-ready", first)
+                    pending = record.read_bytes()
+                    # The continuation belongs to launch A but has not started
+                    # its generation; it survives A's local launcher death.
+                    continuation = root / "delayed.py"
+                    continuation.write_text("""import hashlib, os, time
+from pathlib import Path
+root = Path(__file__).parent
+(root / 'delayed.pid').write_text(str(os.getpid()))
+fields = dict(line.split('=', 1) for line in RECORD.read_text().splitlines())
+(root / 'delayed-ready').touch()
+until = time.monotonic() + 10
+while not (root / 'start-release').exists():
+    if time.monotonic() >= until: raise SystemExit(3)
+    time.sleep(.01)
+pid = os.getpid()
+prefix = 'fn-native-' + hashlib.sha256(os.fsencode(fields['dir'])).hexdigest() + f'-{pid}-888'
+(root / 'identity').write_text(f"{fields['launch_id']} {pid} 888 {prefix}\\n")
+""".replace("RECORD", "Path(" + repr(str(record)) + ")"))
+                    delayed = subprocess.Popen([sys.executable, str(continuation)], start_new_session=True,
+                                               stdout=log, stderr=log)
+                    self.wait_barrier(root / "delayed-ready", delayed)
+                    cleanup_recorded_group(first, root / "launcher.pid")
+                    calls = (root / "calls").read_bytes()
+                    retry = subprocess.run(["sh", str(launcher), *args], cwd=ROOT, env=env,
+                                           capture_output=True, text=True, timeout=15)
+                    self.assertEqual(retry.returncode, 2, retry.stdout + retry.stderr)
+                    self.assertIn("use adopt pending", retry.stderr)
+                    self.assertEqual(record.read_bytes(), pending)
+                    self.assertEqual((root / "calls").read_bytes(), calls)
+                    (root / "start-release").touch()
+                    self.assertEqual(delayed.wait(timeout=5), 0, (root / "launcher.log").read_text())
+                    adopted = subprocess.run(["sh", str(launcher), "adopt", label], cwd=ROOT, env=env,
+                                             capture_output=True, text=True, timeout=15)
+                    self.assertEqual(adopted.returncode, 0, adopted.stdout + adopted.stderr)
+                    self.assertIn("pgid=" + (root / "delayed.pid").read_text(), record.read_text())
+                    self.assertEqual(next(l for l in pending.decode().splitlines() if l.startswith("launch_id=")),
+                                     next(l for l in record.read_text().splitlines() if l.startswith("launch_id=")))
+                finally:
+                    cleanup_recorded_group(first, root / "launcher.pid")
+                    if delayed is not None: cleanup_recorded_group(delayed, root / "delayed.pid")
+
+    def test_stop_lock_keeps_scope_handles_until_cleanup_after_leader_exit(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); launcher = isolated_launcher(root)
+            self.launch_fixture(root)
+            run = root / "run"; run.mkdir()
+            api = {"__name__": "fixture"}
+            exec(SCRIPT.read_text().split("    cat <<'PROCESS'\n", 1)[1].split("\nPROCESS\n", 1)[0], api)
+            prefix = api["scope_prefix"](run, 4242, 888)
+            units = [prefix + "-1.scope", prefix + "-2.scope"]
+            (run / "scopes").write_text("\n".join(units) + "\n")
+            (run / "scope-prefix").write_text(prefix)
+            (run / "run.starttime").write_text("888")
+            (run / "status").write_text("143")
+            proc = root / "proc/4242"; proc.mkdir(parents=True)
+            (proc / "cmdline").write_bytes(b"sh\0" + os.fsencode(run / "run.sh") + b"\0")
+            record = launcher.parent.parent / "build/hbox-native/cleanup.run"
+            record.parent.mkdir(parents=True)
+            record.write_text(f"box=stub\ndir={run}\npid=4242\npgid=4242\nstarttime=888\n")
+            before = record.read_bytes()
+            systemctl = root / "systemctl"
+            systemctl.write_text('#!/bin/sh\ncase "$2" in show) printf "LoadState=loaded\nActiveState=active\n" ;; stop) printf "%s\n" "$4" >> "$FIXTURE_ROOT/stopped-units" ;; esac\n')
+            systemctl.chmod(0o755)
+            ssh = root / "ssh"
+            ssh.write_text("#!" + sys.executable + "\n" + """import os, sys, time
+from pathlib import Path
+from types import SimpleNamespace
+root = Path(os.environ['FIXTURE_ROOT'])
+api = {'__name__': 'fixture'}
+exec(sys.stdin.read(), api)
+original = api['stop_scopes']
+def cleanup(*args):
+    (root / 'cleanup-ready').touch()
+    until = time.monotonic() + 10
+    while not (root / 'cleanup-release').exists():
+        if time.monotonic() >= until: raise RuntimeError('cleanup barrier expired')
+        time.sleep(.01)
+    return original(*args)
+api.update(os=SimpleNamespace(fsencode=os.fsencode, pidfd_open=lambda p: 701, close=lambda fd: None),
+           signal=SimpleNamespace(SIGTERM=15, SIGKILL=9, pidfd_send_signal=lambda *a: None),
+           process_stat=lambda *a: (4242, 888), leader_exited=lambda *a: True, stop_scopes=cleanup)
+raise SystemExit(api['stop_run'](4242, 888, root / 'run', root / 'proc'))
+""")
+            ssh.chmod(0o755)
+            env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"], "FIXTURE_ROOT": str(root)}
+            with (root / "stop.log").open("w") as log:
+                stopper = subprocess.Popen(["sh", "-c", 'echo $$ > "$1"; shift; exec sh "$@"',
+                    "fixture", str(root / "stopper.pid"), str(launcher), "stop", "cleanup"], cwd=ROOT,
+                    env=env, stdout=log, stderr=log, start_new_session=True)
+                try:
+                    self.wait_barrier(root / "cleanup-ready", stopper)
+                    successor = subprocess.run(["sh", str(launcher), "--box", "hbox", "--name", "t", "--label", "cleanup",
+                        "--no-build", "HEAD", "tests.test_native_owner"], cwd=ROOT, env=env,
+                        capture_output=True, text=True, timeout=15)
+                    self.assertEqual(successor.returncode, 1, successor.stdout + successor.stderr)
+                    self.assertIn("same-label launch already in progress", successor.stderr)
+                    self.assertEqual(record.read_bytes(), before)
+                    self.assertEqual((run / "scopes").read_text().splitlines(), units)
+                    (root / "cleanup-release").touch()
+                    self.assertEqual(stopper.wait(timeout=5), 0, (root / "stop.log").read_text())
+                    self.assertEqual((root / "stopped-units").read_text().splitlines(), units)
+                finally:
+                    cleanup_recorded_group(stopper, root / "stopper.pid")
+
+    def test_publication_and_waiter_release_label_lock(self):
+        import fcntl
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); launcher = isolated_launcher(root)
+            env = self.launch_fixture(root)
+            waiter = launcher.parent / "wait_for.sh"
+            waiter.unlink()  # This fixture's symlink, never the shared helper.
+            waiter.write_text('#!/bin/sh\necho $$ > "$FIXTURE_ROOT/waiter.pid"\n'
+                'python3 -c "import os; os.fstat(7)" 2>/dev/null && touch "$FIXTURE_ROOT/bad-fd"\n'
+                'touch "$FIXTURE_ROOT/wait-ready"\n'
+                "timeout 10 sh -c 'while [ ! -f \"$FIXTURE_ROOT/wait-release\" ]; do sleep .01; done'\n")
+            with (root / "wait.log").open("w") as log:
+                process = subprocess.Popen(["sh", "-c", 'echo $$ > "$1"; shift; exec sh "$@"', "fixture",
+                    str(root / "launcher.pid"), str(launcher), "--wait", "--box", "hbox", "--name", "t", "--label", "wait",
+                    "--no-build", "HEAD", "tests.test_native_owner"], cwd=ROOT,
+                    env={**env, "FIXTURE_ROOT": str(root)}, stdout=log, stderr=log, start_new_session=True)
+                try:
+                    self.wait_barrier(root / "wait-ready", process)
+                    self.assertFalse((root / "bad-fd").exists())
+                    record = launcher.parent.parent / "build/hbox-native/wait.run"
+                    self.assertIn("pgid=4242", record.read_text())
+                    with record.with_suffix(".lock").open("a") as held:
+                        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    (root / "wait-release").touch()
+                    process.wait(timeout=5)
+                finally:
+                    cleanup_recorded_group(process, root / "launcher.pid")
 
     def test_publication_cannot_replace_a_successor_local_record(self):
         import tempfile
@@ -1552,8 +1741,7 @@ touch "$S/later"
                 fake = root / "python3"
                 fake.write_text('''#!/bin/sh
 case "$1" in *gate_walls.py)
-if [ -f "$S/metadata-interrupted" ]; then echo '{"recollected": true}'; exit 0; fi
-touch "$S/metadata-interrupted"; echo $$ > "$S/metadata.pid"; touch "$S/ready"; sleep .3; exit 1 ;;
+echo $$ > "$S/metadata.pid"; touch "$S/ready"; sleep .3; echo '{"collected": true}'; exit 0 ;;
 *) exec REAL_PYTHON "$@" ;;
 esac
 '''.replace("REAL_PYTHON", str(sys.executable)))
@@ -1561,7 +1749,7 @@ esac
                 self.assert_group_stop(shell, root, prepared + body)
                 self.assertIn(hashlib.sha256(b"stop checksum witness\n").hexdigest(),
                               (root / "SHA256SUMS").read_text())
-                self.assertEqual(json.loads((root / "gate_walls.json").read_text()), {"recollected": True})
+                self.assertEqual(json.loads((root / "gate_walls.json").read_text()), {"collected": True})
                 self.assertEqual((root / "run.log").read_text().count("== load at end:"), 1)
 
     def test_step_143_distinguishes_stop_flag_from_unsignalled_failure(self):
@@ -1587,6 +1775,7 @@ esac
         import tempfile
         with tempfile.TemporaryDirectory(prefix="fn-stop-display-") as directory:
             root = Path(directory)
+            launcher = isolated_launcher(root)
             ssh = root / "ssh"
             # Existing transport commands run locally; no real SSH is reached.
             ssh.write_text('#!/bin/sh\n[ "$1" != -n ] || shift\nshift\nexec /bin/sh -c "$1"\n')
@@ -1596,16 +1785,15 @@ esac
             (root / "run.log").write_text("== done status 143\n")
             (root / "SHA256SUMS").write_text("fixture hashes\n")
             label = f"stop-display-{os.getpid()}"
-            record = ROOT / "build/hbox-native" / (label + ".run")
+            record = launcher.parent.parent / "build/hbox-native" / (label + ".run")
             record.parent.mkdir(parents=True, exist_ok=True)
             record.write_text(f"box=stub\ndir={root}\npid=4242\npgid=4242\nstarttime=888\n")
-            self.addCleanup(lambda: record.unlink(missing_ok=True))
             env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]}
             for stopped in (True, False):
                 if not stopped:
                     (root / "stopped").unlink()
                 for mode, code in (("status", 0), ("attach", 143)):
-                    done = subprocess.run(["sh", str(SCRIPT), mode, label], cwd=ROOT, env=env,
+                    done = subprocess.run(["sh", str(launcher), mode, label], cwd=ROOT, env=env,
                                           capture_output=True, text=True, timeout=10, stdin=subprocess.DEVNULL)
                     self.assertEqual(done.returncode, code, done.stdout + done.stderr)
                     self.assertIn("stopped (143)" if stopped else "status 143", done.stdout)
@@ -1712,6 +1900,80 @@ touch "$S/later"
                         if (root / "child.pid").exists():
                             try: os.kill(int((root / "child.pid").read_text()), signal.SIGKILL)
                             except ProcessLookupError: pass
+
+    def test_zero_grace_before_term_handler_is_recovery_failure(self):
+        import contextlib
+        import io
+        import signal
+        import tempfile
+        import time
+        for shell in self.shells:
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); run = root / "run.sh"
+                run.write_text(self.prepare(root, True) +
+                    """step long sh -c 'echo $$ > "$S/child.pid"; touch "$S/ready"; exec sleep 30'
+finish 0
+""")
+                with (root / "run.log").open("w") as log:
+                    process = subprocess.Popen([shell, str(run)], start_new_session=True, stdout=log, stderr=log)
+                    try:
+                        until = time.monotonic() + 5
+                        while not (root / "ready").exists() and time.monotonic() < until: time.sleep(.01)
+                        self.assertTrue((root / "ready").exists())
+                        api, pid, signals = self.escalation_fixture(root, process, run)
+                        # Freeze the test's recorded leader before TERM: its
+                        # trap cannot acknowledge cancellation ahead of KILL.
+                        os.kill(pid, signal.SIGSTOP)
+                        out, err = io.StringIO(), io.StringIO()
+                        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                            rc = api["stop_run"](pid, 888, root, root / "proc", grace=0)
+                        self.assertEqual(rc, 2, out.getvalue() + err.getvalue())
+                        self.assertIn("recovery failed", err.getvalue())
+                        self.assertIn(str(root), err.getvalue())
+                        self.assertEqual(signals, [signal.SIGTERM, signal.SIGKILL])
+                        self.assertIsNotNone(process.poll())
+                        self.assertFalse((root / "status").exists())
+                        self.assertFalse((root / "stopped").exists())
+                        self.assert_pid_gone(int((root / "child.pid").read_text()))
+                    finally:
+                        cleanup_recorded_group(process, root / "test.pid")
+
+    def test_term_after_normal_publication_cannot_change_final_status(self):
+        import signal
+        import tempfile
+        import time
+        for shell in self.shells:
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); run = root / "run.sh"
+                run.write_text(self.prepare(root, True) + """
+echo() {
+    case "$*" in '== done status '*)
+        touch "$S/published"
+        timeout 10 sh -c 'while [ ! -f "$S/release" ]; do sleep .01; done'
+        ;;
+    esac
+    command echo "$@"
+}
+finish 0
+""")
+                with (root / "run.log").open("w") as log:
+                    process = subprocess.Popen([shell, str(run)], start_new_session=True, stdout=log, stderr=log)
+                    try:
+                        until = time.monotonic() + 5
+                        while not (root / "published").exists() and time.monotonic() < until: time.sleep(.01)
+                        self.assertTrue((root / "published").exists())
+                        pid = int((root / "test.pid").read_text()); self.assertEqual(pid, process.pid)
+                        self.assertEqual((root / "status").read_text(), "0\n")
+                        os.killpg(pid, signal.SIGTERM)
+                        time.sleep(.1)
+                        self.assertEqual((root / "status").read_text(), "0\n")
+                        self.assertFalse((root / "stopped").exists())
+                        (root / "release").touch()
+                        self.assertEqual(process.wait(timeout=5), 0, (root / "run.log").read_text())
+                        self.assertEqual((root / "status").read_text(), "0\n")
+                        self.assertFalse((root / "stopped").exists())
+                    finally:
+                        cleanup_recorded_group(process, root / "test.pid")
 
     def test_hung_artifact_collectors_have_timeout_and_kill_backstops(self):
         import json
@@ -1913,6 +2175,8 @@ class NativeStopTests(unittest.TestCase):
         (self.run_dir / "run.starttime").write_text("888\n")
         (self.run_dir / "scope-prefix").write_text(self.api["scope_prefix"](self.run_dir, 4242, 888) + "\n")
         self.identity()
+        (self.run_dir / "status").write_text("143\n")
+        (self.run_dir / "stopped").write_text("TERM fixture\n")
 
     def identity(self, pgid=4242, starttime=888, cmdline=None):
         # Parenthesized comm exercises spaces and ')' without shifting field 22.
@@ -2093,11 +2357,27 @@ else:
     def test_scope_query_without_properties_is_not_mistaken_for_already_stopped(self):
         self.exercise_scope_state("malformed", 2, "cleanup failed: state query omitted", ["show"])
 
+    def test_esrch_cleanup_without_final_status_is_recovery_failure(self):
+        import errno
+        self.fake_os.pidfd_open.side_effect = ProcessLookupError(errno.ESRCH, "gone")
+        (self.run_dir / "status").unlink()
+        rc, out, err = self.stop()
+        self.assertEqual(rc, 2)
+        self.assertIn("was already gone", out)
+        self.assertIn("recovery failed", err)
+        self.assertIn(str(self.run_dir), err)
+        self.assertEqual([e[1] for e in self.events if e[0] == "scope"], self.units)
+        self.assertFalse((self.run_dir / "status").exists())
+
     def test_grace_escalates_through_the_same_pidfd_before_scope_cleanup(self):
         from unittest import mock
         self.api["leader_exited"] = mock.Mock(side_effect=[False, True])
+        (self.run_dir / "status").unlink()
+        (self.run_dir / "stopped").unlink()
         rc = self.api["stop_run"](4242, 888, self.run_dir, self.proc, grace=0)
-        self.assertEqual(rc, 0)
+        self.assertEqual(rc, 2)
+        self.assertFalse((self.run_dir / "status").exists())
+        self.assertFalse((self.run_dir / "stopped").exists())
         self.assertEqual([c.args for c in self.fake_signal.pidfd_send_signal.call_args_list],
                          [(701, 15, None, 4), (701, 9, None, 4)])
         self.assertEqual([e[0] for e in self.events], ["open", "signal", "signal", "query", "scope", "query", "scope", "close"])
@@ -2118,7 +2398,7 @@ else:
                         next(i for i, e in enumerate(self.events) if e[0] == "scope"))
         self.assertIn("sent TERM through pidfd", out)
         self.assertIn("run.sh writes status 143 when it exits", out)
-        self.assertFalse((self.run_dir / "status").exists())  # stop is not a status writer
+        self.assertEqual((self.run_dir / "status").read_text(), "143\n")  # stop is not a status writer
         self.assertNotIn("os.kill", self.code)
         self.assertNotIn("killpg", self.code)
 
@@ -2205,6 +2485,7 @@ else:
 
     def test_stop_transport_uses_recorded_starttime_and_legacy_stop_refuses(self):
         import shlex
+        launcher = isolated_launcher(self.root)
         command = self.root / "command"
         source = self.root / "source"
         ssh = self.root / "ssh"
@@ -2212,37 +2493,36 @@ else:
                        '\ncat > ' + shlex.quote(str(source)) + '\n')
         ssh.chmod(0o755)
         label = f"stop-unit-{os.getpid()}"
-        record = ROOT / "build/hbox-native" / (label + ".run")
+        record = launcher.parent.parent / "build/hbox-native" / (label + ".run")
         record.parent.mkdir(parents=True, exist_ok=True)
-        self.addCleanup(lambda: record.unlink(missing_ok=True))
         record.write_text(f"box=hbox\ndir={self.run_dir}\npid=9999\npgid=4242\nstarttime=888\n")
         env = {**os.environ, "PATH": str(self.root) + os.pathsep + os.environ["PATH"]}
-        request = subprocess.run(["sh", str(SCRIPT), "stop", label], cwd=ROOT, env=env,
+        request = subprocess.run(["sh", str(launcher), "stop", label], cwd=ROOT, env=env,
                                  capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
         self.assertEqual(request.returncode, 0, request.stderr)
         self.assertIn(f"python3 - stop 4242 888 {self.run_dir}", command.read_text())
         self.assertNotIn("9999", command.read_text())
         self.assertEqual(source.read_text().strip(), self.code.strip())
-        explicit = subprocess.run(["sh", str(SCRIPT), "stop", label, "--grace", "2"], cwd=ROOT,
+        explicit = subprocess.run(["sh", str(launcher), "stop", label, "--grace", "2"], cwd=ROOT,
                                   env=env, capture_output=True, text=True, timeout=30)
         self.assertEqual(explicit.returncode, 0, explicit.stderr)
         self.assertIn(f"python3 - stop 4242 888 {self.run_dir} 2", command.read_text())
         command.write_text("")
-        invalid = subprocess.run(["sh", str(SCRIPT), "stop", label, "--grace", "-1"], cwd=ROOT,
+        invalid = subprocess.run(["sh", str(launcher), "stop", label, "--grace", "-1"], cwd=ROOT,
                                  env=env, capture_output=True, text=True, timeout=30)
         self.assertEqual(invalid.returncode, 2)
         self.assertIn("nonnegative integer", invalid.stderr)
         self.assertEqual(command.read_text(), "")
         command.write_text("")
         record.write_text(f"box=hbox\ndir={self.run_dir}\npid=4242\npgid=4242\n")
-        refused = subprocess.run(["sh", str(SCRIPT), "stop", label], cwd=ROOT, env=env,
+        refused = subprocess.run(["sh", str(launcher), "stop", label], cwd=ROOT, env=env,
                                  capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
         self.assertEqual(refused.returncode, 2)
         self.assertIn("lacks a safe starttime", refused.stderr)
         self.assertEqual(command.read_text(), "")
         record.write_text(f"box=hbox\ndir={self.run_dir}\npid=4242\n")
         for mode in ("status", "attach", "stop"):
-            refused = subprocess.run(["sh", str(SCRIPT), mode, label], cwd=ROOT, env=env,
+            refused = subprocess.run(["sh", str(launcher), mode, label], cwd=ROOT, env=env,
                                      capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
             self.assertEqual(refused.returncode, 2, refused.stdout + refused.stderr)
             self.assertIn("use adopt " + label, refused.stderr)

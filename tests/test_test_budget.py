@@ -130,6 +130,37 @@ class TestBudgetRunner(unittest.TestCase):
                 unittest.main()
         """))
         (package / "empty.py").write_text("import unittest\n")
+        (package / "subtests.py").write_text(textwrap.dedent("""
+            import unittest
+            class SubTests(unittest.TestCase):
+                def test_failures(self):
+                    for value in (1, 2):
+                        with self.subTest(value=value):
+                            self.fail("subTest assertion")
+                    with self.subTest(value=3):
+                        pass
+                def test_passing(self):
+                    for value in (1, 2):
+                        with self.subTest(value=value):
+                            self.assertGreater(value, 0)
+                def test_error(self):
+                    with self.subTest(value=1):
+                        raise RuntimeError("subTest error")
+                def test_skips(self):
+                    for value in (1, 2):
+                        with self.subTest(value=value):
+                            self.skipTest("subTest opt-in unset")
+                def test_partial_skip(self):
+                    with self.subTest(value=1):
+                        self.skipTest("subTest opt-in unset")
+                    with self.subTest(value=2):
+                        pass
+                def test_failure_then_skip(self):
+                    with self.subTest(value=1):
+                        self.fail("subTest assertion")
+                    with self.subTest(value=2):
+                        self.skipTest("subTest opt-in unset")
+        """))
         self.environment = mock.patch.dict(
             os.environ, {"PYTHONPATH": str(self.directory)
                          + os.pathsep + os.environ.get("PYTHONPATH", "")})
@@ -176,6 +207,63 @@ class TestBudgetRunner(unittest.TestCase):
         self.assertFalse(record["passed"])
         self.assertFalse(record["over_budget"])
         self.assertEqual(record["failures"], 1)
+
+    def subtest_record(self, method):
+        subject = "budgetcases.subtests.SubTests." + method
+        done = subprocess.run(
+            [sys.executable, str(ROOT / "tools/test_budget.py"), "--one",
+             "budgetcases.subtests", "--cases", subject], cwd=ROOT,
+            capture_output=True, text=True,
+            env=dict(os.environ, FN_VERDICT_STORE=""), timeout=60)
+        record = json.loads(next(line[len(test_budget.RESULT_PREFIX):]
+                                 for line in done.stdout.splitlines()
+                                 if line.startswith(test_budget.RESULT_PREFIX)))
+        return done, record, subject
+
+    def test_failing_subtests_emit_one_red_parent_case(self):
+        done, record, subject = self.subtest_record("test_failures")
+        self.assertEqual(done.returncode, 1, done.stderr)
+        self.assertEqual(record["failures"], 2)
+        self.assertEqual(record["cases"], [[subject, "FAIL"]])
+
+    def test_all_passing_subtests_emit_ok_parent_case(self):
+        done, record, subject = self.subtest_record("test_passing")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(record["cases"], [[subject, "ok"]])
+
+    def test_subtest_error_emits_red_parent_case(self):
+        done, record, subject = self.subtest_record("test_error")
+        self.assertEqual(done.returncode, 1, done.stderr)
+        self.assertEqual(record["errors"], 1)
+        self.assertEqual(record["cases"], [[subject, "ERROR"]])
+
+    def test_subtest_skips_keep_parent_and_parameters_without_negative_executed(self):
+        for method, count in (("test_skips", 2), ("test_partial_skip", 1)):
+            with self.subTest(method=method):
+                done, record, subject = self.subtest_record(method)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                self.assertEqual(record["cases"], [[subject, "skip"]])
+                self.assertEqual(record["executed"], 1)
+                self.assertEqual(record["skipped"], count)
+                self.assertEqual([case for case, _ in record["skips"]], [subject] * count)
+                self.assertIn("value=1", record["skips"][0][1])
+                from tools import dev_control, train
+                text = f"RC budgetcases.subtests 0\n" + test_budget.RESULT_PREFIX + json.dumps(record)
+                classified = dev_control.classify([record["module"]], train.parse_image_results(text),
+                    dev_control.result_details(text), [], "fixture", "/run")
+                self.assertEqual([entry["subject"] for entry in classified["not_run"]], [subject])
+                if count == 2:
+                    self.assertIn("value=2", classified["not_run"][0]["reason"])
+
+    def test_subtest_red_is_not_erased_by_skip_or_parent_success(self):
+        _, record, subject = self.subtest_record("test_failure_then_skip")
+        self.assertEqual(record["cases"], [[subject, "FAIL"]])
+        import io
+        result = test_budget._TimedResult(unittest.runner._WritelnDecorator(io.StringIO()), True, 0)
+        parent = unittest.FunctionTestCase(lambda: None)
+        result._case(parent, "ERROR")
+        result.addSuccess(parent)
+        self.assertEqual(result.cases, [(parent.id(), "ERROR")])
 
     def test_a_module_past_its_budget_is_terminated_and_reported_over(self):
         record = self.run_module("slow", 2)

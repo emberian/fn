@@ -22,6 +22,18 @@
 (defun fnn-bps-read-profile (root)
   (declare (ignorable root))
   (harness-stub-reached 'fnn-bps-read-profile "host/native/bp-service.lisp"))
+(defun fnn-olo-admin-observe (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-olo-admin-observe "host/native/operator.lisp"))
+(defun fnn-olo-profile (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-olo-profile "host/native/operator.lisp"))
+(defun fnn-olo-socket-present (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-olo-socket-present "host/native/operator.lisp"))
+(defun fnn-olo-status-tail (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-olo-status-tail "host/native/operator.lisp"))
 ;;; ---- derived stubs: END ----
 (selected-source "books/native-config.lisp"
  '(fn-native-config-store fn-native-config-cold-resources fn-native-config-output-resources))

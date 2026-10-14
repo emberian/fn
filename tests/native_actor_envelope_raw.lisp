@@ -229,6 +229,8 @@
    (defun fn-fs-actor-join-action) (defun fn-fs-inbox-admit)))
 (load-deployed-forms "host/native/owner.lisp"
  '((defstruct (fnn-owner-service (:constructor %make-fnn-owner-service)))
+   (defstruct (fnn-syncer-grant (:constructor %make-fnn-syncer-grant)))
+   (defstruct (fnn-owner-job (:constructor %make-fnn-owner-job)))
    (defstruct (fnn-owner-actor (:constructor %make-fnn-owner-actor)))
    (defmacro fnn-with-roster) (defvar *fnn-actor-thread-maker*)
    (defvar *fnn-actor-thread-joiner*) (defvar *fnn-actor-start-signal*)
@@ -240,6 +242,16 @@
    (defmacro def-actor)
    (def-actor fnn-owner-spawn-syncer) (def-actor fnn-owner-spawn-committer)
    (defun fnn-owner-actor-join) (defun fnn-owner-start-syncer)))
+;; Keep the section fixture's recorded physical log leaf while supplying the
+;; real store structure to the extracted commit pipeline's other dependencies.
+(let ((recording-log (symbol-function 'fnn-store-log)))
+  (load-deployed-forms "host/native/io.lisp"
+   '((defstruct (fnn-store (:constructor %make-fnn-store)))))
+  (setf (symbol-function 'fnn-store-log) recording-log))
+(check (null (fnn-store-log nil)) "recorded post-section log leaf remains available")
+(unless (find-package "ACL2_*1*_ACL2") (make-package "ACL2_*1*_ACL2" :use nil))
+(load-deployed-forms "host/native/extent.lisp"
+ '((defstruct (fnn-cold-worker (:constructor %make-fnn-cold-worker)))))
 
 ;; The declarations: ACL2 accepted both deployed def-actors as they loaded
 ;; (the table holds them as written), and refuses what the book does not

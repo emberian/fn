@@ -272,7 +272,8 @@ IMAGE_RULES = (
     ("the heap probe, a launcher or host/native/",
      ("books/heap-figure.lisp", "packaging/fn", "packaging/launcher-decide.sh",
       "tools/build_native_host.sh", "tools/extract/core_launcher.py", "host/native/"),
-     ("tests.test_native_operator_verbs", "tests.test_native_heap_from_profile") + SERVED_NATIVES),
+     ("tests.test_native_operator_verbs", "tests.test_native_heap_from_profile",
+      "tests.test_native_nntp_post_probe") + SERVED_NATIVES),
     # The store's memory and reservation model: what a full store admits and
     # keeps for its maintenance work (train 89: a charge change let the store
     # fill until the reserved BP transfer was refused; the module passed on
@@ -851,6 +852,30 @@ def makefile_root_list(text: str) -> list[str]:
     return [token for token in match.group(1).replace("\\\n", " ").split() if token]
 
 
+def _changed_host_books(t: Train) -> tuple[list[str], list[str]]:
+    """Changed host books in the Makefile closure, and those listed as roots.
+
+    host/native/ is raw Lisp, never a book (certify_books.BOOK_NAME).
+    Follow certs' local include graph rather than treating every host file,
+    including unreferenced files or subdirectories, as a certifiable book.
+    """
+    changed = [book for book in _changed_roots(t, "host")
+               if not book.startswith("host/native/")]
+    makefile = t.root / "Makefile"
+    if not changed or not makefile.is_file():
+        return [], []
+    import certs
+
+    try:
+        roots = makefile_root_list(makefile.read_text(encoding="utf-8"))
+        closure = certs.include_graph(t.root, roots)
+    except (OSError, ValueError) as error:
+        raise TrainError(f"cannot select changed host books from Makefile closure: {error}") from error
+    books = [book for book in changed if book in closure]
+    listed = set(roots)
+    return books, [book for book in books if book in listed]
+
+
 def _added_roots(t: "Train") -> list[str]:
     """Roots HEAD's Makefile lists that origin/dev's does not.  A book that
     becomes a root without changing (a kept claim nothing certified, a test
@@ -958,11 +983,14 @@ def certify_selection(t: Train) -> dict:
     """The train's changed inputs, affected roots and critical witnesses."""
     books = _changed_roots(t, "books")
     tests = _changed_roots(t, "tests/acl2")
-    witnesses = _critical_witness_roots(t.root, books)
+    host_books, host_roots = _changed_host_books(t)
+    changed = [*books, *tests, *host_books]
+    witnesses = _critical_witness_roots(t.root, changed)
     added = _added_roots(t)
-    return {"books": books, "added": added,
+    # Naming a changed book as a root alone does not select its includers.
+    return {"affected_by": changed, "added": added,
             "roots": list(dict.fromkeys([*BOX_CERT_BOOKS,
-                                          *books, *tests, *witnesses, *added]))}
+                                          *books, *tests, *host_roots, *witnesses, *added]))}
 
 
 def certify_command(t: Train, box: str, selection: dict | None = None) -> list[str]:
@@ -972,7 +1000,7 @@ def certify_command(t: Train, box: str, selection: dict | None = None) -> list[s
     if added:
         say(f"certify: {len(added)} root(s) new in the Makefile: " + ", ".join(added))
     argv = [PY, "tools/farm.py"]
-    for book in selection["books"]:
+    for book in selection["affected_by"]:
         argv += ["--affected-by", book]
     argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", box, *selection["roots"]]
     return argv
