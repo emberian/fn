@@ -142,6 +142,7 @@
           (ops0 *pthrt-prefix-ops*) (ops1 (list *pthrt-hand-op*)) (q 100000)))
     :in-theory (union-theories (theory 'minimal-theory)
         '(pthrt-reading-state pthrt-host-run-of-append
+          (:executable-counterpart fn-rtc-st-cfg-okp)
           (:executable-counterpart fn-rtc-configp) (:executable-counterpart fn-rtc-nstatic)
           (:executable-counterpart fn-hl-rtc-config) (:executable-counterpart binary-append)
           (:executable-counterpart natp))))))
@@ -660,3 +661,154 @@
        (:executable-counterpart fn-ptx-step1)
        (:executable-counterpart fn-ptx-wfp)
        (:executable-counterpart fn-ptx-fields-fit))))))))
+
+; P13: admitted-domain inhabitation and the excluded huge-slot tooth.
+; Ground excluded-domain tooth: no 2^64-slot state is materialized.
+(defconst *r11-id-u64* (expt 2 64))
+(defconst *r11-id-mcfg* (list *r11-id-u64* nil 0 0 nil 0 0 0 nil 0 1))
+(defconst *r11-id-cfg*
+ (fn-hl-rtc-config *fn-bs-profile-development* *r11-id-mcfg* 100000
+                   *fn-pth-nstatic* 0 0 *fn-pth-qs* *fn-pth-cs*))
+(defthm r11-host-config-does-not-bound-slot-id
+ (and (fn-rtc-configp *r11-id-cfg*)
+      (< *r11-id-u64* (fn-rtc-nslots *r11-id-cfg*))))
+(defthm r11-bounded-inc-does-not-type-reply-target
+ (not (fn-pth-req-data-okp
+       (list :submit :hand '(3 1 0 1) (list *r11-id-u64* 1)))))
+(defthm r11-closed-owner-reply-copies-unbounded-sender-id
+ (equal (nth 1 (mv-nth 1
+         (fn-ptx-step (fn-ptx-closed)
+           (list :handed '(:done 0) 1 1 *r11-id-u64* 1 '(3 1 0 0)) nil 100000)))
+        (list :submit :hand '(3 0 0 1) (list *r11-id-u64* 1)))
+ :hints (("Goal" :use pthrt-nil-acc-fits
+   :in-theory (union-theories (theory 'minimal-theory)
+     (union-theories
+      '(fn-ptx-step fn-ptx-step1 fn-ptx-wfp fn-ptx-fields-fit fn-ptx-mk
+        fn-ptx-answer fn-ptx-closed pthrt-nil-acc-fits car-cons cdr-cons mv-nth)
+      (set-difference-theories (executable-counterpart-theory :here)
+       '((:executable-counterpart fn-ptx-step) (:executable-counterpart fn-ptx-step1)
+         (:executable-counterpart fn-ptx-wfp) (:executable-counterpart fn-ptx-fields-fit))))))))
+
+(defthm r11-current-hand-target-check-does-not-bound-sender-id
+ (fn-rtc-hand-target-okp '(1 1) *r11-id-u64*
+  (fn-rtc-make *r11-id-cfg* nil nil nil nil 0)))
+(defthm r11-reply-data-demands-both-source-scalars-below-u64
+ (implies (and (natp fid) (<= 1 fid) (natp finc))
+  (iff (fn-pth-req-data-okp (list :submit :hand '(3 1 0 1) (list fid finc)))
+       (and (< fid (expt 2 64)) (< finc (expt 2 64)))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-req-data-okp fn-rtc-kind-extrap fn-rtc-extrap fn-rtc-handlep
+    fn-rtc-h-off fn-rtc-get natp len true-listp mv-nth car-cons cdr-cons
+    (:executable-counterpart expt) (:executable-counterpart equal)
+    (:executable-counterpart member-equal) (:executable-counterpart fn-rtc-buffered-kind-p)
+    (:executable-counterpart zp) (:executable-counterpart nfix))))))
+
+(defthm pthrt-p13-huge-config-is-not-admitted
+ (and (fn-rtc-configp *r11-id-cfg*)
+      (equal (fn-rtc-nslots *r11-id-cfg*) (+ 2 (expt 2 64)))
+      (not (fn-rtc-st-cfg-okp *r11-id-cfg*))
+      (not (fn-rtc-extrap (list (expt 2 64) 1)))))
+
+(defthm pthrt-p13-reading-config-is-admitted
+ (fn-rtc-st-cfg-okp *fn-pth-rely-cfg*))
+(defconst *pthrt-p13-default-cfg*
+ (fn-hl-rtc-config *fn-bs-profile-defaults* *fn-pth-rely-mcfg* 100000
+                  *fn-pth-nstatic* 0 0 *fn-pth-qs* *fn-pth-cs*))
+(defthm pthrt-p13-default-config-is-admitted
+ (fn-rtc-st-cfg-okp *pthrt-p13-default-cfg*))
+(defthm pthrt-p13-development-initial-state-is-reachable
+ (fn-pth-reachablep (mv-nth 0 (fn-pth-init *fn-pth-rely-cfg*)))
+ :hints (("Goal" :use ((:instance fn-pth-reachablep-suff
+  (s (mv-nth 0 (fn-pth-init *fn-pth-rely-cfg*)))
+  (profile *fn-bs-profile-development*) (mcfg *fn-pth-rely-mcfg*) (q0 100000) (ops0 nil)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-pth-host-run pthrt-p13-reading-config-is-admitted
+     (:executable-counterpart fn-rtc-st-cfg-okp)
+     (:executable-counterpart fn-hl-rtc-config)
+     (:executable-counterpart fn-rtc-configp)
+     (:executable-counterpart fn-rtc-nstatic)
+     (:executable-counterpart natp))))))
+(defthm pthrt-p13-default-initial-state-is-reachable
+ (fn-pth-reachablep (mv-nth 0 (fn-pth-init *pthrt-p13-default-cfg*)))
+ :hints (("Goal" :use ((:instance fn-pth-reachablep-suff
+  (s (mv-nth 0 (fn-pth-init *pthrt-p13-default-cfg*)))
+  (profile *fn-bs-profile-defaults*) (mcfg *fn-pth-rely-mcfg*) (q0 100000) (ops0 nil)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-pth-host-run pthrt-p13-default-config-is-admitted
+     (:executable-counterpart fn-rtc-st-cfg-okp)
+     (:executable-counterpart fn-hl-rtc-config)
+     (:executable-counterpart fn-rtc-configp)
+     (:executable-counterpart fn-rtc-nstatic)
+     (:executable-counterpart natp))))))
+
+; P13: finite request-domain obstruction, with verified fixture guards.
+; A finite host request with a typed, but non-current, listener incarnation.
+(defun p13-request-domain-scene (fn-rtc-st)
+ (declare (xargs :stobjs fn-rtc-st :guard t :verify-guards nil))
+ (mv-let (fn-rtc-st acts) (fn-pth-x-init *fn-pth-rely-cfg* fn-rtc-st)
+  (declare (ignore acts))
+  (let ((before (fn-rtc-x-state fn-rtc-st)))
+   (mv-let (fn-rtc-st acts refused cost)
+    (fn-rtc-x-requests '((:acquire 3)) 0 1 fn-rtc-st)
+    (declare (ignore acts cost))
+    (mv fn-rtc-st (list before (fn-rtc-x-state fn-rtc-st) refused))))))
+(defun p13-request-domain-local ()
+ (declare (xargs :guard t :verify-guards nil))
+ (with-local-stobj fn-rtc-st
+  (mv-let (fn-rtc-st result) (p13-request-domain-scene fn-rtc-st) result)))
+(with-guard-checking-event nil
+ (make-event
+  (value `(defconst *p13-request-domain-result* ',(p13-request-domain-local)))))
+(defconst *p13-request-domain-before* (nth 0 *p13-request-domain-result*))
+(defconst *p13-request-domain-after* (nth 1 *p13-request-domain-result*))
+(defconst *p13-request-domain-op* '(:request 0 1 ((:acquire 3))))
+(defthm p13-request-domain-ground-facts
+ (and (fn-rtc-st-cfg-okp *fn-pth-rely-cfg*)
+      (equal (fn-rtc-slot 0 *p13-request-domain-before*) '(0 :live nil))
+      (not (fn-rtc-current-p 0 1 *p13-request-domain-before*))
+      (equal (nth 2 *p13-request-domain-result*) nil)
+      (equal (fn-rtc-b-owner (fn-rtc-buffer 3 *p13-request-domain-after*)) '(:workspace 0 1))
+      (not (fn-rtc-pool-okp 0 (fn-rtc-pool *p13-request-domain-after*) *p13-request-domain-after*))))
+(defthm p13-request-domain-init-is-before
+ (equal (mv-nth 0 (fn-pth-init *fn-pth-rely-cfg*)) *p13-request-domain-before*)
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '((:executable-counterpart fn-pth-init) (:executable-counterpart mv-nth))))))
+(defthm p13-request-domain-host-run-reaches-after
+ (equal (fn-pth-host-run (mv-nth 0 (fn-pth-init *fn-pth-rely-cfg*))
+                         (list *p13-request-domain-op*) 100000)
+        *p13-request-domain-after*)
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-host-run p13-request-domain-init-is-before car-cons cdr-cons mv-nth
+    (:executable-counterpart fn-rtc-get) (:executable-counterpart fn-rtc-requests)
+    (:executable-counterpart equal))))))
+(defthm p13-request-domain-after-is-reachable
+ (fn-pth-reachablep *p13-request-domain-after*)
+ :hints (("Goal" :use ((:instance fn-pth-reachablep-suff
+  (s *p13-request-domain-after*) (profile *fn-bs-profile-development*)
+  (mcfg *fn-pth-rely-mcfg*) (q0 100000) (ops0 (list *p13-request-domain-op*))))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(p13-request-domain-host-run-reaches-after car-cons cdr-cons
+     (:executable-counterpart fn-rtc-st-cfg-okp)
+     (:executable-counterpart fn-hl-rtc-config) (:executable-counterpart fn-rtc-configp)
+     (:executable-counterpart fn-rtc-nstatic) (:executable-counterpart natp))))))
+(defthm p13-request-domain-after-is-not-product-invariant
+ (not (fn-pth-invp *p13-request-domain-after*))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-invp (:executable-counterpart fn-rtc-pool-okp) (:executable-counterpart fn-rtc-pool))))))
+(defthm p13-request-domain-after-is-shaped
+ (fn-rtc-shapep *p13-request-domain-after*))
+(value-triple *p13-request-domain-result*)
+(verify-guards p13-request-domain-scene)
+(verify-guards p13-request-domain-local)
+(value-triple (cw "P13 REQUEST DOMAIN: ~x0~%" *p13-request-domain-result*))
+(defthm p13-request-domain-u64-bridge-premise-is-false
+ (and (fn-pth-reachablep *p13-request-domain-after*)
+      (fn-rtc-st-cfg-okp (fn-rtc-config *p13-request-domain-after*))
+      (fn-rtc-st-p *p13-request-domain-after*)
+      (not (fn-pth-invp *p13-request-domain-after*)))
+ :hints (("Goal" :use (p13-request-domain-after-is-reachable
+                         p13-request-domain-after-is-not-product-invariant
+                         p13-request-domain-after-is-shaped
+     (:instance fn-rtc-st-p-is-shapep (x *p13-request-domain-after*)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '((:executable-counterpart fn-rtc-st-cfg-okp) (:executable-counterpart fn-rtc-config))))))

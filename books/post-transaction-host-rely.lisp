@@ -680,3 +680,28 @@
       (:executable-counterpart fn-rtc-get) (:executable-counterpart nfix)
       (:executable-counterpart zp) (:executable-counterpart equal)
       (:executable-counterpart not))))))
+
+; P13: RTC-U64 facts transported by the existing product-layer generator.
+; Use the layer generator's own functional-instance substitutions and events.
+(make-event
+ (let* ((copied (fn-rtc-layer-alist 'fn-pth (append *fn-rtc-layer-spec-fns* *fn-rtc-layer-exec-fns*)))
+        (alist (append '((fn-rtc-m-init . fn-pthm-init)
+                         (fn-rtc-m-static-init . fn-pthm-static-init)
+                         (fn-rtc-m-step . fn-pth-m-step)
+                         (fn-rtc-m-committedp . fn-pthm-committedp)
+                         (fn-rtc-m-c . fn-pthm-c)
+                         (fn-rtc-m-max-reqs . fn-pthm-max-reqs)
+                         (fn-rtc-m-max-state . fn-pthm-max-state)
+                         (fn-rtc-mx-step . fn-pthm-step)) copied))
+        (fi (fn-rtc-layer-fi-alist alist))
+        (obligations (append (list 'natp)
+          (fn-rtc-layer-names 'fn-pth
+            '(fn-rtc-m-constants fn-rtc-mx-step-is-m-step fn-rtc-m-step-is-charged
+              fn-rtc-m-step-requests-are-bounded fn-rtc-m-init-is-bounded
+              fn-rtc-m-step-state-is-bounded fn-rtc-m-init-is-uncommitted
+              fn-rtc-m-static-init-is-bounded fn-rtc-m-static-init-is-uncommitted
+              fn-rtc-m-commits-only-on-fsync-done)))))
+  (value (cons 'progn
+    (fn-rtc-layer-keystone-events
+      '(fn-rtc-slot-id-and-incarnation-are-u64 fn-rtc-step*-keeps-fixed-width-admission)
+      'fn-pth alist fi (strip-cdrs copied) obligations (w state))))))
