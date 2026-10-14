@@ -24,6 +24,8 @@ field defaults to that row's and may be given:
     images             where published image sets live ("" for none)
     openssl            bundled: the OpenSSL 3.5.8 under /tank/fn/toolchains (D64)
     check_jobs         remote_check's default make -j ("" for none)
+    inn_src            installed INN tree for native interoperability tests;
+                       extra boxes must declare their own installation
     pick               false keeps the box out of tools/boxes.sh --pick
     until              UTC expiry; a row past it is ignored, so a torn-down
                        box drops out even when the file outlives it
@@ -54,7 +56,8 @@ PATH = re.compile(r"[A-Za-z0-9_./~-]*")
 # What each fixed row holds beyond tools/farm.py HOSTS.
 FIXED = {
     "hbox": {"scratch": "/tank/fn/scratch", "gates": "/tank/fn/gates",
-             "images": "/tank/fn/images", "openssl": "bundled", "check_jobs": "6"},
+             "images": "/tank/fn/images", "openssl": "bundled", "check_jobs": "6",
+             "inn_src": "/tank/fn/inn/2.7.4"},
     "persvati": {"scratch": "~/fn-gates", "gates": "fn-gates", "images": "",
                  "openssl": "bundled", "check_jobs": ""},
 }
@@ -104,11 +107,12 @@ def extra_boxes(fixed: dict | None = None, environ=None, now: dt.datetime | None
                 continue
         row = {field: fixed[like][field] for field in FARM_FIELDS if field in fixed[like]}
         row.update(FIXED[like])
+        row.pop("inn_src", None)  # sharing a toolchain does not install INN
         row.update({"pick": True, "cores": None, "like": like, "until": until})
         row.update({key: value for key, value in given.items() if key != "like"})
         row["check_jobs"] = str(row["check_jobs"] or "")
         for field in ("acl2", "image_acl2", "load_acl2", "sbcl", "cache", "wrap",
-                      "scratch", "gates", "images"):
+                      "scratch", "gates", "images", "inn_src"):
             if not PATH.fullmatch(str(row.get(field, ""))):
                 raise SystemExit(f"box_table: {path}: {name}: bad {field} {row[field]!r}")
         if row["openssl"] != "bundled":
@@ -121,6 +125,15 @@ def farm_rows(fixed: dict, environ=None) -> dict:
     """The extra boxes as tools/farm.py HOSTS rows (farm fields only)."""
     return {name: {field: row[field] for field in FARM_FIELDS if field in row}
             for name, row in extra_boxes(fixed, environ).items()}
+
+
+def native_test_env(box: str, environ=None) -> dict[str, str]:
+    """Installed test dependencies, without enabling slow/soak opt-ins."""
+    # Fixed boxes need no personal config lookup.
+    row = FIXED.get(box)
+    if row is None:
+        row = extra_boxes(environ=environ).get(box, {})
+    return {"FN_INN_SRC": row["inn_src"]} if row.get("inn_src") else {}
 
 
 def env_line(box: str, environ=None) -> str | None:

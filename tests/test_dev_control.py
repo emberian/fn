@@ -5,9 +5,10 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import unittest
 from unittest import mock
 
-from tools import dev_control, train
+from tools import box_table, dev_control, test_budget, train
 from tests.test_train import TrainBase, sh
 
 
@@ -104,9 +105,51 @@ class DevControlTests(TrainBase):
         self.assertEqual(out.strip(), self.label)
         launch = next(argv for argv in self.calls if 'tools/hbox_native.sh' in argv)
         self.assertEqual(launch, ['timeout', '600', 'sh', 'tools/hbox_native.sh', '--box', 'hbox',
-                                  '--label', self.label, '--allow-skips', '--detach', self.sha,
+                                  '--label', self.label, '--allow-skips', '--detach',
+                                  '--env', 'FN_INN_SRC=/tank/fn/inn/2.7.4', self.sha,
                                   *sorted(self.expected)])
         self.assertTrue(self.record_path.exists())
+
+    def test_launch_uses_selected_box_fact(self):
+        with mock.patch.object(box_table, 'native_test_env', return_value={
+                'FN_INN_SRC': '/fixture/inn'}) as facts:
+            rc, _, err = self.invoke('launch', '--sha', self.sha)
+        self.assertEqual(rc, 0, err)
+        facts.assert_called_once_with('hbox')
+        launch = next(argv for argv in self.calls if 'tools/hbox_native.sh' in argv)
+        self.assertEqual(launch[launch.index('--env') + 1], 'FN_INN_SRC=/fixture/inn')
+
+    def test_fixed_box_without_inn_does_not_get_hbox_path(self):
+        self.assertEqual(box_table.native_test_env('persvati'), {})
+
+    def test_registered_subtest_parent_matches_both_readers(self):
+        module = 'tests.test_native_foreign_format_open'
+        class ForeignFormatOpenTest(unittest.TestCase):
+            def test_a_store_of_another_format_is_refused_by_name(self):
+                for args in (('operator', 'health'), ('operator', 'status')):
+                    with self.subTest(args=args):
+                        self.fail('foreign format refusal')
+        ForeignFormatOpenTest.__module__ = module
+        ForeignFormatOpenTest.__qualname__ = 'ForeignFormatOpenTest'
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(ForeignFormatOpenTest)
+        out = io.StringIO()
+        with mock.patch.object(unittest.defaultTestLoader, 'loadTestsFromName', return_value=suite), \
+                mock.patch.object(test_budget, 'store_verdict'), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            rc = test_budget.run_one(module)
+        self.assertEqual(rc, 1)
+        text = f'RC {module} {rc}\n' + out.getvalue()
+        results = train.parse_image_results(text)
+        subject = module + '.ForeignFormatOpenTest.test_a_store_of_another_format_is_refused_by_name'
+        self.assertEqual(results[module]['cases'], {subject: 'FAIL'})
+        rows = json.loads((test_budget.ROOT / train.KNOWN_REDS).read_text())['rows']
+        self.assertTrue(any(row['subject'] == subject for row in rows))
+        verdict, detail = train.image_verdict({module: ['fixture']},
+            dict(source=self.sha, modules=results), self.sha, rows)
+        self.assertEqual((verdict, detail['known_reds']), (0, [subject]))
+        classified = dev_control.classify([module], results, dev_control.result_details(text),
+                                          rows, 'hbox', '/fixture')
+        self.assertEqual(classified, dict(new=[], retire=[], not_run=[]))
 
     def test_launch_refuses_load_at_or_above_24(self):
         for load in (24, 24.01, 50):

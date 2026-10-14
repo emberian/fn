@@ -17,9 +17,10 @@ from types import SimpleNamespace
 import uuid
 
 if __package__:
-    from . import train
+    from . import box_table, train
     from .known_reds import commit_sha
 else:
+    import box_table
     import train
     from known_reds import commit_sha
 
@@ -118,7 +119,10 @@ def launch(root: Path, box: str, requested: str | None) -> str:
         if load >= 24:
             raise train.TrainError(f'{box} load {load:g} is not under 24; launch refused')
         argv = ['timeout', '600', 'sh', 'tools/hbox_native.sh', '--box', box, '--label', label,
-                '--allow-skips', '--detach', sha, *modules(root, sha)]
+                '--allow-skips', '--detach']
+        for name, value in box_table.native_test_env(box).items():
+            argv += ['--env', name + '=' + value]
+        argv += [sha, *modules(root, sha)]
         result = subprocess.run(argv, cwd=root, capture_output=True, text=True, timeout=605)
         if result.returncode:
             raise train.TrainError(f'native launch failed (rc {result.returncode}): '
@@ -163,7 +167,9 @@ def classify(expected: list[str], results: dict, details: dict, rows: list[dict]
         def entry(subject, **fields):
             return dict(subject=subject, module=module, log=log, **fields)
         detail = details.get(module, {})
-        reasons = dict(detail.get('skips') or [])
+        reasons = {}
+        for case, reason in detail.get('skips') or []:
+            reasons[case] = reasons[case] + '; ' + reason if case in reasons else reason
         if module not in results:
             carried = '; '.join(f'{case}: {why}' for case, why in reasons.items()) or detail.get('load_error')
             reason = 'missing module result' + (': ' + carried if carried else '')
