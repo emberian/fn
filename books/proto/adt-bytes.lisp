@@ -660,7 +660,7 @@
   (implies (equal m (len x))
            (equal (nth m (append x (list p))) p)))
 
-(defthm adt-len-region-below-body
+(defthmd adt-len-region-below-body
   (implies (and (natp r) (< r (len regs)))
            (<= (len (nth r regs)) (len (adt-body regs))))
   :rule-classes :linear

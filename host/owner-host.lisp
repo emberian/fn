@@ -6504,7 +6504,7 @@ itself."
 
 ; Serialized indexed reader completion follows its actual owner STATE subjects.
 (include-book "index-reader-request-host")
-(local (in-theory (enable adt-nth-0 adt-nth-1+)))
+(local (in-theory (enable adt-nth-0 adt-nth-1+ fn-cbor-octet-listp-is-adt-octetsp)))
 
 ; Pre-factory classifier under the SAME admitted O section as read evaluation.
 ; It previews the first wire event without installing wire/owner/STATE changes.

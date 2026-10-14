@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""P1: derive LOCAL opener enables from successful certificate Rules lists.
+"""P1: derive LOCAL pair-rule enables from successful certificate Rules lists.
 
-Run --runes ADT-NTH-1+ ADT-NTH-0 --scan (fresh dev and provenance census),
+Run --scan with the default openers, serialization bound and A28 pair rules,
 then --apply, then --report after the six static gates.
 --provenance reuses recorded dev evidence for exactly the same rune list.
 Remote mode only reads the two existing dev-reference certify-log trees.
 Consumers equal HEAD with only a single deterministic combined enable line
-inserted/replaced. The library has the explicitly authorized DEFTHMD change
-and one defining-book LOCAL enable immediately after each opener.
+inserted/replaced. Defining libraries have only selected DEFTHMD token changes
+and immediate LOCAL enables when the successful-history census requires them.
 """
 import argparse
 import glob
@@ -33,8 +33,18 @@ LANE_GUARD_GLOB = LANE_GLOB.replace('202610*', '202609*')
 REMOTE_GUARD_GLOBS = [p.replace('202610*', '202609*') for p in REMOTE_GLOBS]
 GUARD_KINDS = {'DEFUN', 'DEFUND', 'VERIFY-GUARDS', 'VERIFY-GUARDS+'}
 LINE = '(local (in-theory (enable adt-nth-1+)))\n'
-RUNES = ('ADT-NTH-0', 'ADT-NTH-1+')
+RUNES = ('ADT-LEN-REGION-BELOW-BODY', 'ADT-NTH-0', 'ADT-NTH-1+',
+         'FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP', 'FN-CPL-FIRST-SKIPS', 'FN-CPL-LAST-SKIPS')
 LIB = 'books/proto/adt-key-lib.lisp'
+RUNE_LIBRARIES = {'ADT-NTH-0': LIB, 'ADT-NTH-1+': LIB,
+                  'ADT-LEN-REGION-BELOW-BODY': 'books/proto/adt-bytes.lisp',
+                  'FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP': 'books/catalog-paged.lisp',
+                  'FN-CPL-FIRST-SKIPS': 'books/catalog-live-links.lisp',
+                  'FN-CPL-LAST-SKIPS': 'books/catalog-live-links.lisp'}
+RUNE_CLASSES = {'ADT-NTH-0': 'REWRITE', 'ADT-NTH-1+': 'REWRITE',
+                'ADT-LEN-REGION-BELOW-BODY': 'LINEAR',
+                'FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP': 'REWRITE',
+                'FN-CPL-FIRST-SKIPS': 'REWRITE', 'FN-CPL-LAST-SKIPS': 'REWRITE'}
 EXCLUDED = {
     'books/' + name + '.lisp': 'direct-history-columns book: explicitly excluded from book-level enable'
     for name in ('msgid-pages', 'msgid-pages-exec', 'msgid-linear-exec',
@@ -46,7 +56,10 @@ SUMMARY = re.compile(r'^Form:[ \t]*(.*?)\nRules:[ \t]*(.*?)(?=\n\S|\Z)', re.M | 
 
 
 def rune_pattern(runes):
-    return r'\(:REWRITE\s+(' + '|'.join(re.escape(r) for r in runes) + r')\)'
+    # Capture the name in group 1, preserving the census evidence schema.
+    classes = '|'.join(RUNE_CLASSES[r] + r'\s+' + re.escape(r) for r in runes)
+    return (r'\(:(?=(?:' + classes + r')\))(?:REWRITE|LINEAR)\s+(' + '|'.join(re.escape(r) for r in runes) +
+            r')\)')
 
 
 def enable_line(runes):
@@ -55,23 +68,37 @@ def enable_line(runes):
 
 def without_enable_lines(text):
     return ''.join(line for line in text.splitlines(keepends=True)
-                   if line not in {enable_line(('ADT-NTH-0',)), LINE, enable_line(('ADT-NTH-0', 'ADT-NTH-1+'))})
+                   if not is_enable_line(line))
 
 
-def library_change(parent, lr):
+def is_enable_line(line):
+    match = re.fullmatch(r'\(local \(in-theory \(enable ([a-z0-9+ -]+)\)\)\)\n', line)
+    names = tuple(n.upper() for n in match[1].split()) if match else ()
+    return bool(names and set(names) <= set(RUNE_LIBRARIES) and line == enable_line(names))
+
+
+def library_change(parent, lr, book, needed):
     tree = lr.parse(parent)
-    hits = lr.match(None, tree.forms, deep=False, head='defthm', name='adt-nth-0')
-    assert len(hits) == 1, 'parent must contain the ordinary ADT-NTH-0 event'
-    event = hits[0].node
-    pos = parent.index('\n', event.end) + 1
-    token = event.items[0]
-    changed = lr.write(parent, [(token.start, token.end, 'defthmd'),
-                                (pos, pos, enable_line(('ADT-NTH-0',)))])
-    # The only non-enable edit is this one authorized DEFTHM -> DEFTHMD token.
-    expected = lr.write(parent, [(token.start, token.end, 'defthmd')])
+    edits, tokens, positions = [], [], []
+    for rune in RUNES:
+        if RUNE_LIBRARIES[rune] != book:
+            continue
+        hits = [hit for h in ('defthm', 'defthmd')
+                for hit in lr.match(None, tree.forms, deep=False, head=h, name=rune.lower())]
+        assert len(hits) == 1, (book, rune)
+        event = hits[0].node
+        pos = parent.index('\n', event.end) + 1
+        positions.append(pos)
+        token = event.items[0]
+        if token.low == 'defthm':
+            tokens.append((token.start, token.end, 'defthmd'))
+        line = enable_line((rune,))
+        if rune in needed and parent[pos:pos + len(line)] != line:
+            edits.append((pos, pos, line))
+    changed = lr.write(parent, tokens + edits)
+    expected = lr.write(parent, tokens)
     assert without_enable_lines(changed) == without_enable_lines(expected)
-    assert changed.count(LINE) == parent.count(LINE) == 1
-    return changed, pos
+    return changed, min(positions)
 
 
 def census(patterns, remote=False, kinds=None):
@@ -80,7 +107,7 @@ def census(patterns, remote=False, kinds=None):
     # use the opener. Tail checks still account for every named log.
     candidates = set()
     for first in range(0, len(paths), 400):
-        found = subprocess.run(['rg', '-i', '-l', rune_pattern(RUNES), '--',
+        found = subprocess.run(['rg', '--pcre2', '-i', '-l', rune_pattern(RUNES), '--',
                                 *paths[first:first + 400]], capture_output=True, timeout=60)
         assert found.returncode in (0, 1), found.stderr.decode()
         candidates.update(found.stdout.decode().splitlines())
@@ -157,6 +184,11 @@ def fixtures():
     assert len([m for m in SUMMARY.finditer(wrapped) if single.search(m[2])]) == 1
     zero = good.replace('ADT-NTH-1+', 'ADT-NTH-0')
     assert [m[1].upper() for s in SUMMARY.finditer(zero) for m in two.finditer(s[2])] == ['ADT-NTH-0']
+    linear = re.compile(rune_pattern(('ADT-LEN-REGION-BELOW-BODY',)), re.I)
+    assert linear.search('(:LINEAR ADT-LEN-REGION-BELOW-BODY)')[1] == 'ADT-LEN-REGION-BELOW-BODY'
+    assert not linear.search('(:REWRITE ADT-LEN-REGION-BELOW-BODY)')
+    assert not linear.search('(:LINEAR ADT-LEN-REGION-BELOW-BODY-DECOY)')
+    assert without_enable_lines(enable_line(RUNES) + 'keep\n') == 'keep\n'
 
 
 def git(root, *args):
@@ -319,10 +351,10 @@ def main():
     args.add_argument('--provenance', action='store_true', help='rescan lane logs with HEAD ancestry classes; reuse recorded dev evidence')
     args.add_argument('--apply', action='store_true')
     args.add_argument('--report', action='store_true')
-    args.add_argument('--runes', nargs='+', default=list(RUNES), help='opener names (canonical order is sorted)')
+    args.add_argument('--runes', nargs='+', default=list(RUNES), help='pair-rule names (canonical order is sorted)')
     opts = args.parse_args()
     RUNES = tuple(sorted(set(r.upper() for r in opts.runes)))
-    assert RUNES and set(RUNES) <= {'ADT-NTH-0', 'ADT-NTH-1+'}, RUNES
+    assert RUNES and set(RUNES) <= set(RUNE_LIBRARIES), RUNES
     RUNE = re.compile(rune_pattern(RUNES), re.I)
     fixtures()
     if opts.scan_remote:
@@ -343,7 +375,7 @@ def main():
         assert remote['logs'] > 0, 'No remote reference logs found'
         for book, evidence in remote['books'].items():
             dev['books'].setdefault(book, [])[:0] = evidence
-        data = {'head': git(root, 'rev-parse', 'HEAD').decode().strip(), 'gate_prefix': 'p1e',
+        data = {'head': git(root, 'rev-parse', 'HEAD').decode().strip(), 'gate_prefix': 'fam5',
                 'runes': list(RUNES),
                 'dev': dev,
                 'remote_scope': {k: v for k, v in remote.items() if k != 'books'},
@@ -414,17 +446,29 @@ def main():
             path = root / Path(book).parent / (node.items[1].text[1:-1] + '.lisp')
             return path.resolve().relative_to(root).as_posix()
 
-        def exports_rune(book, seen):
-            if book == LIB:
-                return True
-            if book in seen:
-                return False
-            seen = seen | {book}
-            for form in source(book).forms:
-                for node, local in includes(form):
-                    dep = target(book, node)
-                    if not local and dep and exports_rune(dep, seen):
-                        return True
+        export_cache = {}
+
+        def exports_rune(book, seen, rune):
+            key = book, rune
+            if key in export_cache:
+                return export_cache[key]
+            # Visit each book once. Recursive path copying revisited diamonds
+            # exponentially when the target library was absent from a branch.
+            visited, pending = set(seen), [book]
+            while pending:
+                current = pending.pop()
+                if current == RUNE_LIBRARIES[rune]:
+                    export_cache[key] = True
+                    return True
+                if current in visited:
+                    continue
+                visited.add(current)
+                for form in source(current).forms:
+                    for node, local in includes(form):
+                        dep = target(current, node)
+                        if not local and dep:
+                            pending.append(dep)
+            export_cache[key] = False
             return False
 
         plans, judgment, undefined, existing = {}, {}, [], []
@@ -447,14 +491,25 @@ def main():
                   for book in data['U']}
         for book in authorized:
             needed[book] = sorted(set(needed.get(book, [])) | {'ADT-NTH-1+'})
-        selected = sorted(needed)
+        selected = sorted(set(needed) | {RUNE_LIBRARIES[r] for r in RUNES})
+        for book in selected:
+            needed.setdefault(book, [])
+        # Exclusions still forbid consumer lines at the include anchor. A
+        # selected defining event has its established immediate LOCAL-enable
+        # exception, derived from the same qualifying history before removing
+        # consumer exclusions. Keep those sets and this exception distinct.
+        defining_needed = {
+            book: sorted(r for r in RUNES if RUNE_LIBRARIES[r] == book and
+                         book in set(data['per_rune'][r]['U_dev']) |
+                                    set(data['per_rune'][r]['U_lane_other']))
+            for book in {RUNE_LIBRARIES[r] for r in RUNES}}
         # read_head_sources already covers all tracked books; all named guards
         # use that same immutable source/insertion check as census selections.
         for book in selected:
             parent = head_sources[book]
             tree = lr.parse(parent)
-            if book == LIB:
-                changed, pos = library_change(parent, lr) if 'ADT-NTH-0' in RUNES else (parent, parent.index(LINE))
+            if book in {RUNE_LIBRARIES[r] for r in RUNES}:
+                changed, pos = library_change(parent, lr, book, defining_needed[book])
                 current = (root / book).read_bytes().decode('utf-8', 'surrogateescape')
                 assert current in (parent, changed), (book, 'concurrent/non-P1 library change')
                 plans[book] = (parent, changed, pos)
@@ -467,9 +522,10 @@ def main():
                 if wrapped:
                     judgment[book] = {'wrapped_includes': wrapped,
                                       'anchor': tree.text[anchor.start:anchor.end]}
-                defined = any(dep and exports_rune(dep, set())
-                              for f in tree.forms if f.end <= anchor.end
-                              for n, _ in includes(f) for dep in [target(book, n)])
+                defined = all(any(dep and exports_rune(dep, set(), rune)
+                                 for f in tree.forms if f.end <= anchor.end
+                                 for n, _ in includes(f) for dep in [target(book, n)])
+                              for rune in needed[book])
             if not defined:
                 undefined.append(book)
             end = tree.text.find('\n', anchor.end)
@@ -479,11 +535,14 @@ def main():
             assert not remainder or remainder.startswith(';'), (book, remainder)
             pos = end + 1
             line = enable_line(needed[book])
-            assert parent.count(LINE) in (0, 1), (book, 'duplicate committed enables')
-            if parent.count(LINE):
-                assert 'ADT-NTH-1+' in needed[book], (book, 'committed enable lost historical provenance')
-                assert parent[pos:pos + len(LINE)] == LINE, (book, 'existing enable at a different anchor')
-                changed = lr.write(parent, [(pos, pos + len(LINE), line)])
+            old_lines = [l for l in parent.splitlines(keepends=True) if is_enable_line(l)]
+            assert len(old_lines) <= 1, (book, 'duplicate committed enables')
+            if old_lines:
+                old_line = old_lines[0]
+                old_runes = set(re.findall(r'(?:adt|fn)-[a-z0-9+-]+', old_line))
+                assert old_runes <= {r.lower() for r in needed[book]}, (book, 'committed enable lost historical provenance')
+                assert parent[pos:pos + len(old_line)] == old_line, (book, 'existing enable at a different anchor')
+                changed = lr.write(parent, [(pos, pos + len(old_line), line)])
                 existing.append(book)
             else:
                 changed = lr.write(parent, [(pos, pos, line)])
@@ -502,12 +561,16 @@ def main():
             if current != changed:
                 path.write_bytes(changed.encode('utf-8', 'surrogateescape'))
         data['edited'] = sorted(plans)
+        data['gate_prefix'] = 'fam5-a' if 'FN-CPL-LAST-SKIPS' in RUNES else 'fam5'
         data['needed_runes'] = needed
+        data['defining_needed_runes'] = defining_needed
         data['changed_from_parent'] = sorted(book for book, (parent, changed, _) in plans.items() if parent != changed)
         data['byte_identity'] = {'consumer_enable_lines_only': True,
-                                 'library_exception': 'DEFTHM ADT-NTH-0 -> DEFTHMD, plus its LOCAL enable'}
+                                 'library_exception': 'selected pair-rule DEFTHM -> DEFTHMD, plus derived defining-book LOCAL enables'}
         for rune in RUNES:
-            data['per_rune'][rune]['enabled_books'] = sorted(b for b, rs in needed.items() if rune in rs)
+            data['per_rune'][rune]['enabled_books'] = sorted(
+                {b for b, rs in needed.items() if rune in rs} |
+                {b for b, rs in defining_needed.items() if rune in rs})
         data['existing_enables'] = sorted(existing)
         data['new_enables'] = sorted(set(plans) - set(existing))
         data['authorized_guard_repairs'] = sorted(authorized)
@@ -530,12 +593,27 @@ def main():
                     'runes': ['ADT-NTH-1+'],
                     'event': name.upper() + '$C-POOLW', 'control': controls[name],
                     'not_historical_certificate_evidence': True})
-        package = {book: {'runes': needed[book],
-                           'enable_lines': ([LINE.rstrip(), enable_line(('ADT-NTH-0',)).rstrip()]
-                                            if book == LIB and 'ADT-NTH-0' in RUNES else
+        package = {book: {'runes': sorted(set(needed[book]) | set(defining_needed.get(book, []))),
+                           'consumer_runes': needed[book],
+                           'defining_runes': defining_needed.get(book, []),
+                           'enable_lines': ([l.rstrip() for l in plans[book][1].splitlines(keepends=True) if is_enable_line(l)]
+                                            if book in set(RUNE_LIBRARIES.values()) else
                                             [enable_line(needed[book]).rstrip()]),
-                           'placement': 'after each defining DEFTHMD' if book == LIB else 'after last top-level include',
+                           'placement': 'after each defining DEFTHMD; prior consumer enables retained' if book in set(RUNE_LIBRARIES.values()) else 'after last top-level include',
                            'evidence': evidence[book]} for book in plans}
+        # A disabled rule with no historical users still needs explicit census
+        # evidence. Keep the book-keyed package stable; annotate the definition
+        # book rather than inventing a consumer or an enable.
+        for rune in RUNES:
+            package[RUNE_LIBRARIES[rune]].setdefault('defined_runes', {})[rune] = {
+                'class': RUNE_CLASSES[rune], 'default': 'disabled',
+                'users': data['per_rune'][rune],
+                'evidence': [dict(entry, world=world)
+                             for world, books in [('dev', data['dev']['books']),
+                                                  ('lane_other', data['provenance']['other']['books'])]
+                             for entries in books.values() for entry in entries if rune in entry['runes']],
+                'zero_historical_users': not data['per_rune'][rune]['U_dev'] and
+                                         not data['per_rune'][rune]['U_lane_other']}
         (out / 'p1-enables.json').write_text(json.dumps(package, indent=2) + '\n')
         print(json.dumps({'edited': len(plans), 'judgment': judgment,
                           'U': len(data['U']), 'own_only': len(data['own_only']),
@@ -546,11 +624,11 @@ def main():
 
 def report(out):
     data = json.loads((out / 'p1-census.json').read_text())
-    lines = ['# P1 — derived LOCAL ADT-NTH-0 / ADT-NTH-1+ enables', '',
+    lines = ['# P1 — derived LOCAL ' + ' / '.join(data['runes']) + ' enables', '',
              f"At parent `{data['head']}`, |U_dev| = {len(data['U_dev'])}, |U_lane_other| = {len(data['U_lane_other'])}, "
              f"|U_lane_own| = {len(data['U_lane_own'])}, |U_lane_ancestry_excluded| = {len(data['U_lane_ancestry_excluded'])}, "
              f"|U| = {len(data['U'])}; own-only books = {len(data['own_only'])}. "
-             f"{len(data['edited'])} subjects have LOCAL enables (one combined line per consumer; two defining-book lines in adt-key-lib): "
+             f"{len(data['edited'])} subjects have LOCAL enables (one combined line per consumer; individual defining-book enables): "
              f"{len(data.get('existing_enables', []))} already committed, "
              f"{len(data.get('new_enables', data['edited']))} newly selected. "
              f"{len(data['changed_from_parent'])} files differ from the parent. No proof or certificate is claimed.", '',
@@ -578,7 +656,7 @@ def report(out):
         lines.append('| ' + rune + ' | ' + ' | '.join(str(len(sets[k])) for k in
                      ('U_dev', 'U_lane_other', 'U_lane_own', 'U_lane_ancestry_excluded', 'U', 'enabled_books')) + ' |')
     lines += ['', f"Total union of enabled books: **{len(data['edited'])}**. "
-              'Only ADT-NTH-0/1+ are in scope under Seat A28; the scan and ruling are in [P1E.md](P1E.md).', '',
+              'ADT-NTH-0/1+ retain the P1E ruling; the added size/serialization rule and controls are in [FAM5.md](FAM5.md).', '',
               '## Remote log scope', '']
     for pattern in REMOTE_GLOBS + REMOTE_GUARD_GLOBS:
         lines.append(f'- Read-only hbox: `{pattern}`.')
@@ -609,7 +687,11 @@ def report(out):
         lines.append(f'- `{book}`: {reason}; {status}; no book-level enable.')
     for book in data['excluded_dev_users']:
         events = sorted({event for e in data['dev']['books'][book] for event in e['events']})
-        lines.append(f"  Dev events in `{book}`: {', '.join(events)}. Event-level handling required; no book-level enable authorized.")
+        defining = data.get('defining_needed_runes', {}).get(book, [])
+        handling = ('Selected defining-event exception only: immediate LOCAL enable for ' +
+                    ', '.join(defining) + '; no consumer enable at the include anchor.'
+                    if defining else 'Event-level handling required; no book-level enable authorized.')
+        lines.append(f"  Dev events in `{book}`: {', '.join(events)}. {handling}")
     lines += ['', f"## U_lane minus U_dev ({len(data['lane_only'])})", '',
               'Coverage difference only; enable decisions follow log provenance.']
     lines += ['- `' + book + '`' for book in data['lane_only']] or ['None.']
@@ -628,8 +710,8 @@ def report(out):
               'Each consumer is asserted byte-for-byte equal to HEAD after removing only the canonical P1 enable lines; '
               'the exact new text is also constructed from HEAD by one insertion or replacement at the same anchor. '
               'Runes are uppercase-sorted, rendered lowercase, and only the runes selected for that book are enabled. '
-              'Consumers use their last raw top-level include-book. The library preserves the ADT-NTH-1+ defining enable '
-              'and receives the explicitly authorized ADT-NTH-0 DEFTHMD token change plus its immediate LOCAL enable. '
+              'Consumers use their last raw top-level include-book. The defining libraries preserve prior opener enables '
+              'and receive only the selected DEFTHM-to-DEFTHMD tokens and derived immediate LOCAL enables. '
               'The rune is reachable through non-local exported include closures at every insertion point. '
               'Undefined at insertion: none.', '', 'Wrapped include-book judgment:']
     for book, item in data['judgment'].items():

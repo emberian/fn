@@ -6,6 +6,7 @@
 ; function is hand written here.
 (in-package "ACL2")
 (include-book "catalog-paged")
+(local (in-theory (enable fn-cbor-octet-listp-is-adt-octetsp)))
 
 ; The catalog's rows as the fn-crow rows of the columns (fn-cp-row-of).
 (defun fn-pck-crow-rows (h)

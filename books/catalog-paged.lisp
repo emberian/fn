@@ -251,9 +251,10 @@
   (equal (fn-scc-octet-listp x) (adt-octetsp x))
   :hints (("Goal" :in-theory (enable adt-octetsp fn-scc-octet-listp fn-scc-octetp unsigned-byte-p))))
 
-(defthm fn-cbor-octet-listp-is-adt-octetsp
+(defthmd fn-cbor-octet-listp-is-adt-octetsp
   (equal (fn-cbor-octet-listp x) (adt-octetsp x))
   :hints (("Goal" :in-theory (enable adt-octetsp fn-cbor-octet-listp fn-cbor-octetp unsigned-byte-p))))
+(local (in-theory (enable fn-cbor-octet-listp-is-adt-octetsp)))
 
 ; The Message-ID's octets (fn-record-string-octets of a Message-ID string
 ; is one; clamped so that any row's column is typed).

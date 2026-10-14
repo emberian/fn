@@ -1,3 +1,6 @@
+books/catalog-live-links.lisp	FN-CPL-FIRST-SKIPS
+books/catalog-paged.lisp	
+books/catalog-pages.lisp	FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP
 books/charged-totals-header-cost.lisp	ADT-NTH-0 ADT-NTH-1+
 books/history-image-all-proof.lisp	ADT-NTH-0
 books/history-image-binding.lisp	ADT-NTH-0 ADT-NTH-1+
@@ -54,7 +57,7 @@ books/proto/adt-topic-accepted-type.lisp	ADT-NTH-0 ADT-NTH-1+
 books/store-records-field.lisp	ADT-NTH-0 ADT-NTH-1+
 host/bp-release-owner-host.lisp	ADT-NTH-0 ADT-NTH-1+
 host/index-connection-repin-prepare-host.lisp	ADT-NTH-0
-host/owner-host.lisp	ADT-NTH-0 ADT-NTH-1+
+host/owner-host.lisp	ADT-NTH-0 ADT-NTH-1+ FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP
 host/page-decoded-window-host.lisp	ADT-NTH-0
 host/page-read-host.lisp	ADT-NTH-0 ADT-NTH-1+
 host/page-window-executor-host.lisp	ADT-NTH-0
