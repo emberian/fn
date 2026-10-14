@@ -384,7 +384,7 @@
 
 ; M28 whole STEP 5 teeth: real model/owner producers and checked mutants.
 (include-book "../../books/catalog-record")
-(local (defun m28-tooth-row (n)
+(defun m28-tooth-row (n)
  (declare (xargs :guard t :verify-guards nil))
  (with-local-stobj fn-arena
   (mv-let (row fn-arena)
@@ -392,7 +392,7 @@
     (fn-record-make 0 0 0 "<m28-step5@example.invalid>"
       (make-list (nfix n) :initial-element 65) '("fn.test") "o0" "s0" "e0" (nfix n) 841000011)
     nil 0 fn-arena)
-   row))))
+   row)))
 (defconst *m28-row* (m28-tooth-row 4))
 (defconst *m28-after* (fn-adm-after *m22a-tot* *m28-row*))
 (defconst *m28-limit0* (max
@@ -438,7 +438,7 @@
 (defconst *m28-slot-oc* (cdr (fn-exp-at 1 *m28-slot*)))
 (defconst *m28-slot-bank* (fn-exp-at 2 *m28-slot*))
 (defconst *m28-slot-id* (fn-exp-at 6 *m28-slot*))
-(local (defun m28-operator-reader-first
+(defun m28-operator-reader-first
   (oc acfg bank configured capacity operator-id profile img cfg limit tot)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((held (nfix (fn-adm-hh-count bank)))
@@ -464,9 +464,9 @@
          (if (and (equal (fn-own-next-id (fn-ocfg-owner (cdr opened))) (1+ id))
                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner (cdr opened)))))
            (list :admit opened (fn-adm-hh-open bank id nil) (1+ held) id nil id)
-           (fn-adm-operator-open-refusal oc bank operator-id :operator-owner-bound))))))))
+           (fn-adm-operator-open-refusal oc bank operator-id :operator-owner-bound)))))))
 
-(local (defun m28-operator-without-slot-check
+(defun m28-operator-without-slot-check
   (oc acfg bank configured capacity operator-id profile img cfg limit tot)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((held (nfix (fn-adm-hh-count bank)))
@@ -491,9 +491,9 @@
          (if (and (equal (fn-own-next-id (fn-ocfg-owner (cdr opened))) (1+ id))
                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner (cdr opened)))))
            (list :admit opened (fn-adm-hh-open bank id nil) (1+ held) id nil id)
-           (fn-adm-operator-open-refusal oc bank operator-id :operator-owner-bound))))))))
+           (fn-adm-operator-open-refusal oc bank operator-id :operator-owner-bound)))))))
 
-(local (defun m28-operator-borrowed-slot
+(defun m28-operator-borrowed-slot
   (oc acfg bank configured capacity operator-id profile img cfg limit tot)
   (declare (xargs :guard t :verify-guards nil) (ignore profile img limit tot))
   (let* ((held (nfix (fn-adm-hh-count bank)))
@@ -519,7 +519,7 @@
          (if (and (equal (fn-own-next-id (fn-ocfg-owner (cdr opened))) (1+ id))
                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner (cdr opened)))))
            (list :admit opened (fn-adm-hh-open bank id nil) (1+ held) id nil id)
-           (fn-adm-operator-open-refusal oc bank operator-id :operator-owner-bound))))))))
+           (fn-adm-operator-open-refusal oc bank operator-id :operator-owner-bound)))))))
 
 ; Close both public readers after the legal saturated slot admission.
 ; The remaining private row reaches below saturation through real closes.
@@ -889,14 +889,14 @@
   :msg "M28-OLD-ADMISSION-CONSUMES-FUNDED-SLOT"))
 
 ; The same reserve/prepare/publish/finish machine as store-node-tests.
-(local (defun m28-grown-store (s row)
+(defun m28-grown-store (s row)
  (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
  (let* ((reserved (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
                       :frontier-file :ok) :frontier-replace :ok) :frontier-directory :ok))
         (prepared (fn-sn-prepare reserved row))
         (published (fn-sn-io (fn-sn-io (fn-sn-io prepared :record-file :ok)
                       :record-link :ok) :record-directory :ok)))
-  (fn-sn-finish published))))
+  (fn-sn-finish published)))
 (defconst *m28-grown-store* (m28-grown-store *m22a-store* *m28-edge-row*))
 (defconst *m28-grown-oc0*
  (fn-ocfg-make (fn-own-start *m28-grown-store* 3) *m22a-config* nil nil))

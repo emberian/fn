@@ -34,9 +34,9 @@
         (equal (fn-mm-cfg-cold installed) (fn-mm-cfg-cold *omrt-floor-cfg*))
         (equal (fn-adm-installed-capacity *omrt-profile* *omrt-img* installed *omrt-floor-limit* *omrt-tot*) k)))))
 
-(local (defun omrt-old-cold-add-cfg (cfg lease-octets)
+(defun omrt-old-cold-add-cfg (cfg lease-octets)
   (declare (xargs :guard t))
-  (update-nth 6 (+ (fn-mm-cfg-cold cfg) (nfix lease-octets)) (true-list-fix cfg))))
+  (update-nth 6 (+ (fn-mm-cfg-cold cfg) (nfix lease-octets)) (true-list-fix cfg)))
 
 ; Removal/mutation tooth: the actual retired cold-add definition, evaluated
 ; against the same funded configuration; its second search loses readers.

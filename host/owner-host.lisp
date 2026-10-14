@@ -4867,14 +4867,44 @@
 ; The generic reader opener remains an internal source API; native admin uses the operator entry.
 
 ; Sync and capture the full run in the same serialized owner step.
+(local
+ (defthm fn-owner-operator-boundp-global1-when-bound-by-definition
+  (implies (boundp-global key state)
+           (boundp-global1 key state))
+  :hints (("Goal" :in-theory '(boundp-global)))))
+
+(local
+ (defthm fn-owner-put-credits-preserves-state-p1
+  (implies (state-p1 state)
+           (state-p1 (fn-owner-put-credits l state)))
+  :hints (("Goal" :in-theory (e/d (fn-owner-put-credits) (put-global))))))
+
+(local
+ (defthm fn-owner-held-callback-operator-open-preserves-state-p1
+  (implies (state-p1 state)
+           (state-p1 (mv-nth 2
+             (fn-owner-held-callback-operator-open
+               profile img full limit tot capacity operator-id state))))
+  :hints (("Goal" :in-theory
+    (e/d (fn-owner-held-callback-operator-open
+          fn-owner-held-callback-operator-open-at
+          fn-owner-callback-at-reader-view fn-owner-callback-at-working-view
+          fn-owner-memory-held-install fn-owner-install-ocfg
+          fn-owner-callback-install-effects fn-owner-install-served-effects)
+         (fn-adm-operator-open fn-owner-core fn-owner-reader-views
+          fn-owner-ocfg fn-ocfg-at-reader-view fn-ocfg-with-view
+          fn-owner-auth put-global boundp-global))))))
+
 (defun fn-owner-operator-open (fn-hist state)
   (declare (xargs :stobjs (fn-hist state)
                   :guard (boundp-global 'fn-owner state)
                   :verify-guards t
-                  :guard-hints (("Goal" :in-theory (e/d (fn-owner-record-totals)
+                  :guard-hints (("Goal" :in-theory (e/d (fn-owner-record-totals
+                    fn-owner-operator-boundp-global1-when-bound-by-definition
+                    fn-owner-held-callback-operator-open-preserves-state-p1)
                     (fn-owner-store fn-hist-sync fn-hist-totals-carried
                      fn-owner-memory-run-cfg fn-owner-config
-                     fn-owner-held-callback-operator-open put-global boundp-global))))))
+                     fn-owner-held-callback-operator-open put-global boundp-global boundp-global1))))))
   (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
     (let* ((r (if (boundp-global 'fn-owner-memory-run state)
                   (f-get-global 'fn-owner-memory-run state) nil))
