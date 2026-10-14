@@ -162,19 +162,51 @@ FIXED = {
 # signed withdrawal, which needs FN_TEST_OPENSSL's ML-DSA-65; dev-health
 # 2026-09-27).  The opt-ins stay the helper's own modules'.
 TOOLS = ("FN_TEST_OPENSSL", "FN_OPENSSL", "FN_NATIVE_TEST_ROOT")
-# Read but never set by the script: each needs something this run does not
-# build or means a different image.  A module reading one gets a note, and
-# the cases it gates skip (reported, never counted as passing).
-MANUAL = {
+# Daily control opts into these functional cases against its source-matched
+# images.  Each exercises small fixtures, not a load/soak measurement:
+# clone: a compacted history's authorship survives copying (test_native_checkpoint);
+# consumer E2: local registration/ack/refusal and reopen (test_native_consumer_e2);
+# poll E2: one signed composite and a lost ack reply (test_native_consumer_e2);
+# inspect: fixed cursor decoder vectors (test_native_consumer_inspect);
+# project bounds: sparse overbound files refused before reading (test_native_consumer_project_bounds);
+# topic local: fixed signed root/report admission, replay and two compactions (test_native_topic_local);
+# topic metadata: fixed signed field/carrier vectors (test_native_topic_metadata).
+# Keep measurement gates out of daily control; their cases state these costs:
+# FN_PULL_SOAK_SECONDS: minute-spaced pulls for the requested duration
+#   (tests/test_native_peer_pull.py, test_soak_two_nodes_and_an_unproducible_listing).
+# FN_RUN_SLOW: 1,100 peer requests, 6,440 s on a loaded hbox
+#   (tests/test_native_peer_rows_growth.py, test_a_peer_carries_more_than_the_old_row_cap).
+# FN_P5_SCALE: 20,000 articles, about 20 minutes to build on tmpfs
+#   (tests/test_native_pack_chain.py, test_scale_store_compacts_into_a_chain).
+# FN_RUN_IMAGE_HEAP: 1,000 2 KiB posts, 32 idle connections, 20 s idle
+#   (tests/test_native_image_heap.py, module workload).
+# FN_RUN_RECLAIM_RSS: resident-set measurements at 1k and 10k articles
+#   (tests/test_native_reclaim_walk.py, test_resident_set_of_a_pass_at_1k_and_10k).
+# FN_NATIVE_RECLAIM_SEAL_SCALE: K expired articles plus three kept per K
+#   (tests/test_native_reclaim_seal_cost.py, module cost curve: 500,2000,8000).
+# FN_STATUS_SCALE_FIXTURES: 100k/1m stores; the 1m fixture needs an 80G scope
+#   (tests/test_native_status_scale.py, module workload).
+# FN_LOAD_CELLS: selected load cells/repetitions in a 16G scope
+#   (tests/test_native_load.py); e.g. W2 preloads 10k articles and runs four
+#   20 s reader phases (tools/load/workloads.json, readers).
+DAILY_FUNCTIONAL_OPT_INS = {
     "FN_RUN_NATIVE_CLONE": "opt-in for a combined E2/checkpoint developer image",
-    "FN_RUN_RELOCATION_E2E": "opt-in; also needs FN_BUILD_OPENSSL_PREFIX (a second OpenSSL build)",
-    "FN_BUILD_OPENSSL_PREFIX": "the build-time OpenSSL for the relocation case",
     "FN_RUN_CONSUMER_E2E": "opt-in for the consumer E2 gate",
     "FN_RUN_CONSUMER_POLL_E2E": "opt-in; requires the ACL2-owned consumer poll command",
     "FN_RUN_CONSUMER_INSPECT": "opt-in for consumer inspect",
     "FN_RUN_CONSUMER_PROJECT_BOUNDS": "opt-in for consumer project bounds",
     "FN_RUN_TOPIC_LOCAL_E2E": "opt-in for a source-matched topic image",
     "FN_RUN_TOPIC_METADATA_E2E": "opt-in for the source-matched topic-metadata gate",
+}
+# Read but never set by the script: each needs something this run does not
+# build, means a different image, or requires an explicit functional or
+# measurement opt-in.  A module reading one gets a note, and the cases it
+# gates skip (reported, never counted as passing).  Daily control explicitly
+# supplies DAILY_FUNCTIONAL_OPT_INS; other launches retain their opt-in policy.
+MANUAL = {
+    **DAILY_FUNCTIONAL_OPT_INS,
+    "FN_RUN_RELOCATION_E2E": "opt-in; also needs FN_BUILD_OPENSSL_PREFIX (a second OpenSSL build)",
+    "FN_BUILD_OPENSSL_PREFIX": "the build-time OpenSSL for the relocation case",
     "FN_NATIVE_BP_NODE_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST (the DTN developer image by --env)",
     "FN_NATIVE_READER_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST",
     "FN_NATIVE_SOURCE_ROOT": "defaults to the tree the module runs from",
