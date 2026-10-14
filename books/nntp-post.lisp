@@ -559,7 +559,7 @@
 (defun fn-post-store-refusalp (completion)
   (declare (xargs :guard t))
   (and (member-equal completion
-                     '(:refused :duplicate :conflict :malformed :unaffordable
+                     '(:refused :duplicate :conflict :malformed :unaffordable :publication-behind
                        ;; The memory gate refuses the article at the run's
                        ;; limit, T and H admitting it (books/admission-
                        ;; memory.lisp fn-adm-article-word; K-ADMIT):
@@ -617,6 +617,8 @@
 (defun fn-post-store-refusal-text (kind)
   (declare (xargs :guard t))
   (cond
+   ((equal kind :publication-behind)
+    "the log's publication is behind, nothing was stored (publication-behind); try again shortly")
    ((equal kind :duplicate)
     "this article is already stored here")
    ((equal kind :conflict)

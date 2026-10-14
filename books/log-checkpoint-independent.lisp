@@ -1,0 +1,13 @@
+; LC independent proofs; changing LB observations remain opaque.
+(in-package "ACL2")
+(include-book "log-checkpoint-admission")
+(include-book "log-checkpoint-allocation")
+(include-book "log-checkpoint-locator-teeth")
+(include-book "log-checkpoint-delta")
+(include-book "log-checkpoint-backpressure")
+(include-book "log-checkpoint-selection-proof")
+(include-book "log-checkpoint-bridge")
+(include-book "log-checkpoint-control-proof")
+(include-book "log-checkpoint-id-preservation")
+(include-book "log-checkpoint-publication-proof")
+(include-book "log-checkpoint-write-budget")

@@ -1613,6 +1613,37 @@ ACL2_BOOKS ?= books/defrecord \
 	books/log-locator-resolves \
 	books/log-verified-map \
 	books/catalog-columns-guards \
+	books/log-checkpoint-admission \
+	books/log-checkpoint-allocation \
+	books/log-checkpoint-backpressure \
+	books/log-checkpoint-bridge \
+	books/log-checkpoint-budget \
+	books/log-checkpoint-commit \
+	books/log-checkpoint-control \
+	books/log-checkpoint-control-proof \
+	books/log-checkpoint-delta \
+	books/log-checkpoint-guard-support \
+	books/log-checkpoint-header \
+	books/log-checkpoint-id-preservation \
+	books/log-checkpoint-independent \
+	books/log-checkpoint-independent-guards \
+	books/log-checkpoint-locator-teeth \
+	books/log-checkpoint-publication \
+	books/log-checkpoint-publication-algebra \
+	books/log-checkpoint-publication-proof \
+	books/log-checkpoint-publication-witnesses \
+	books/log-checkpoint-selection-proof \
+	books/log-checkpoint-tail \
+	books/log-checkpoint-teeth-wrappers \
+	books/log-checkpoint-total-accessors \
+	books/log-checkpoint-values \
+	books/log-checkpoint-write-budget \
+	books/log-cleaning \
+	tests/acl2/lc-bounded-check-tests \
+	tests/acl2/lc-bridge-teeth-tests \
+	tests/acl2/lc-control-teeth-tests \
+	tests/acl2/lc-publication-behind-tests \
+	tests/acl2/lc-publication-teeth-tests \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
 	tests/acl2/catalog-raw-low-tests \

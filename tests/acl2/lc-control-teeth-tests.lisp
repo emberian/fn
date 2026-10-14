@@ -1,0 +1,28 @@
+(in-package "ACL2")
+(include-book "../../books/log-checkpoint-control-proof")
+(defun fn-lc-control-tooth-valid-row (handle)
+ (declare (xargs :guard (natp handle) :verify-guards nil))
+ (fn-held-make 0 1 1 "<a@x>" handle '("fn.test") "o" "s" "e" 1 5
+  (fn-hf-make 24 14 1 nil)
+  (fn-hc-make (fn-stx-make-verdict :unverified nil 0) nil 0) nil nil))
+(defun fn-lc-control-tooth-events ()
+ (declare (xargs :guard t :verify-guards nil))
+ (list (fn-store-retention-event-make :undertake 0 0 0 "forward-lc" "subject" "evidence" 10)
+       (fn-store-retention-event-make :release 1 1 1 "forward-lc" "subject" "evidence" 0)))
+(defteeth fn-lc-control-of-determines-the-rest
+ :claim (((rows (equal (fn-lc-history-rows configs prefix)
+                      (fn-lc-history-rows configs other-prefix)))
+          (control (equal (fn-lc-control-of (fn-lc-history-at configs prefix))
+                          (fn-lc-control-of (fn-lc-history-at configs other-prefix)))))
+          (equal (fn-ock-recover-full configs frontier (append prefix suffix) max-conns)
+                 (fn-ock-recover-full configs frontier (append other-prefix suffix) max-conns)))
+ :subject fn-ock-recover-full
+ :witness ((configs (list *fn-cfg-default-record*)) (frontier 8) (max-conns 4)
+           (prefix (list (fn-lc-control-tooth-valid-row 0)))
+           (other-prefix (list (fn-lc-control-tooth-valid-row 0))) (suffix nil))
+ :breaks ((rows ((other-prefix (list (fn-lc-control-tooth-valid-row 1)))))
+          (control ((prefix nil) (other-prefix (fn-lc-control-tooth-events)))))
+ :mutations ((refuses-valid-owner (:conclusion
+            (equal (fn-ock-recover-full configs frontier (append prefix suffix) max-conns) :fault))
+            nil :fault "the valid recovered owner is replaced by a refusal")))
+(defteeth-check (fn-lc-control-of-determines-the-rest))

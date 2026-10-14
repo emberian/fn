@@ -1066,7 +1066,7 @@
           ((equal completion :history-exhausted) 436)
           ;; PRF-335: a full outbound feed queue is "not now" too: the peer
           ;; it waits on drains, and the sender keeps the article.
-          ((equal completion :feed-queue-full) 436)
+          ((member-equal completion '(:feed-queue-full :publication-behind)) 436)
           ((fn-post-store-refusalp completion) (if (equal kind :ihave) 437 439))
           ((equal dk :defer) 436)
           (t (if (equal kind :ihave) 437 439)))))
@@ -1098,7 +1098,7 @@
               ((equal completion :clock-unusable)
                (fn-peer-single ps (fn-proto-text "IHAVE" :retry-no-clock)))
               ((member-equal completion '(:unaffordable :memory
-                                          :history-exhausted :feed-queue-full))
+                                          :history-exhausted :feed-queue-full :publication-behind))
                (fn-peer-single ps (string-append "436 retry later; "
                                                  (fn-post-store-refusal-text completion))))
               ((fn-post-store-refusalp completion)

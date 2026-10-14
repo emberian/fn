@@ -342,6 +342,12 @@
 (defun fn-ocs-member-release (action word renderable)
   (declare (xargs :guard t))
   (cond ((eq word :uncertain) :own-uncertain)
+        ;; A completed preflight refusal returns every member's rendered
+        ;; refusal. A stopped batch retains the existing close/recovery policy.
+        ((eq word :publication-behind)
+         (cond ((eq action :complete) :rendered)
+               (renderable :uncertain-reply)
+               (t :close)))
         ((eq action :complete) :rendered)
         (renderable :uncertain-reply)
         (t :close)))
