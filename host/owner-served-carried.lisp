@@ -165,10 +165,11 @@
            (fn-adm-transport-rearm :exposure oc xs lim acfg peer address now
                                    bank old-id configured capacity)))))
          (fn-own-store (fn-ocfg-owner oc)))
-  :hints (("Goal" :in-theory (union-theories
+  :hints (("Goal" :use ((:instance m28-held-exposure-open-keeps-store (bank (fn-adm-hh-return bank old-id))))
+   :in-theory (union-theories
    '(fn-adm-transport-rearm fn-adm-held-open-refusal fn-exp-open-ocfg
      fn-exp-at-of-cons m28-rearm-owner-selector-of-rollback-by-definition
-     m28-held-exposure-open-keeps-store car-cons cdr-cons
+     car-cons cdr-cons
      (:executable-counterpart fn-exp-at) (:executable-counterpart equal)
      (:executable-counterpart posp) (:executable-counterpart member-equal))
    (theory 'minimal-theory))))))
@@ -207,7 +208,7 @@
      fn-owner-memory-held-install fn-owner-callback-install-effects
      fn-owner-install-served-effects fn-owner-store-is-configured-store-by-definition
      fn-sbud-oc-store fn-owner-ocfg-of-other-global-put fn-owner-ocfg-of-install-ocfg
-     m28-exposure-transport-rearm-keeps-store fn-exp-at fn-exp-open-ocfg
+     m28-exposure-transport-rearm-keeps-store
      mv-nth nth zp car-cons cdr-cons
      (:executable-counterpart equal) (:executable-counterpart zp))))))
 
