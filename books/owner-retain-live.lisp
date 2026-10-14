@@ -1,10 +1,7 @@
 ; K1 live owner retention: completed-cut invariant and host writer frames.
 (in-package "ACL2")
-; Attachment headers precede the shared arena predicate. K1 supports the
-; existing served row; there is no second retained-state carried row.
-(include-book "payload-arena-attach")
-(include-book "history-paged-attach")
-(include-book "catalog-paged-attach")
+; K1 supports the existing served row; there is no second retained-state
+; carried row. The generics attach their implementations themselves (one-world).
 (include-book "owner-retain-carried")
 (include-book "owner-retain-livep")
 (include-book "owner-retain-frame")
