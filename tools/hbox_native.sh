@@ -959,6 +959,7 @@ static_gate() {
 }
 step world-check static_gate world-check tools/extract/world.py --check
 step interfaces-check static_gate interfaces-check tools/interface_emit.py --check
+step pins-framed static_gate pins-framed tools/carried_entries.py --frame fn-owner-pins-carried --check
 # A repository declaration is not evidence its book is in this image.
 # Reject a missing native entry before spending time on certification.
 step host-books static_gate host-books tools/host_check.py --books

@@ -3100,6 +3100,8 @@ check:
 # only shrinks.  Source-level, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/owner_globals_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_owner_globals_check
+	@$(CHECK_STEP) $(PYTHON) tools/carried_entries.py --frame fn-owner-pins-carried --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_carried_entries
 
 # Host-called octet-list codecs (D27, row Q2 of COMPLETE-BEFORE-6.6.0): a host
 # dispatch that hands a codec an octet list consed from a byte vector
