@@ -1,0 +1,509 @@
+| File:line | Retired twin encoded | Action |
+|---|---|---|
+| tests/native_harness.py:468 | Old probe refusal word in diagnostic documentation | Restated on machine-cannot-hold-the-pools; refusal retention is unchanged. |
+| tests/native_harness.py:1269 | Profile-sized run refusal in Node.launch contract | Restated on resident LIMIT, pools, observed reopen and address space; configure derives C′. |
+| tests/native_harness.py:1441 | Peer reservation compared with resident MemoryMax | Restated on the peer grant’s address-space check and configure’s C′. |
+| tests/test_native_harness.py:29 | Connection-budget startup refusal word and fault exit | Restated mock and diagnostic assertion on memory-cannot-hold-the-store capacity=0, exit refused (1). |
+| tests/test_native_harness.py:90 | machine-cannot-hold-profile mock | Restated on the current pools refusal, preserved verbatim beyond the diagnostic tail. |
+| tests/test_native_harness.py:230 | Huge profile heap as startup refusal diagnostic | Restated mock and retained-log assertion on configure’s capacity=0 refusal. |
+| tests/test_native_harness.py:310 | Mock heap below machine; pinned propagation assertion | Restated mock with reservation above LIMIT; launcher assertions derive heap and stack from its own probe line. |
+| tests/native_mux_budget_observe_raw.lisp:14 | Retired machine observation for the connection-budget decision | Deleted observation; reaching that obsolete seam is now an error. |
+| tests/native_mux_budget_observe_raw.lisp:57 | Assertion requiring retired machine observation | Restated: core and memory coordinates observed off the owner section, with no obsolete machine comparison; lease install remains required. |
+| tests/test_native_mux_budget_observe.py:1 | Runner description of retired machine comparison | Restated on memory coordinates and core observations. |
+| tests/native_output_startup_raw-mock.lisp:165 | Whole-profile fn-mca-figure-octets output startup floor | Restated recording seam on fn-prstartup-serve-store-need; the old subject is no longer provided. |
+| tests/native_output_startup_raw-mock.lisp:260 | Resident machine comparison in startup mock | Deleted observation; obsolete seam now errors. |
+| tests/native_output_startup_raw-mock.lisp:281 | Connection-budget diagnostic as startup authority | Restated on configure’s memory-capacity-line. |
+| tests/native_output_startup_raw-mock.lisp:300 | Held output installer asserted profile-sized floor | Restated: exact serve-store-need inputs include resident observation, peer, workers, cache and root; held configure installs a lease. |
+| tests/native_output_startup_raw-mock.lisp:310 | Reclaim opt-in asserted profile-sized output floor | Restated: same LIMIT protection; reclaim-live still reaches credits/configure through the service. |
+| tests/native_output_startup_raw-mock.lisp:311 | Connection-budget refusal granted no children | Restated: configure refuses by its exact capacity=0 line; credits/syncer and funded output remain installed, no connection lease granted. Derived stubs regenerated through harness_check. |
+| tests/native_output_custody_raw.lisp:35 | Whole-profile startup floor in isolated custody fixture | Deleted profile tariff with comment: this fixture has no Store; protect actual captured occupied runtime and preserve custody/settlement assertions. |
+| tests/native_output_response_lease_counterpart.lisp:53 | Whole-profile startup floor in isolated lease fixture | Deleted profile tariff with the same no-Store explanation; protect captured occupied runtime and preserve lease lifetime assertions. |
+| tests/test_native_reclaim_walk.py:24 | Opt-in expected a larger profile-sized heap | Restated documentation: same resident LIMIT and launch; enabled reclaim is charged inside LIMIT. |
+| tests/test_native_reclaim_walk.py:53 | Work reserve held at profile’s whole-store bounds | Restated on the memory gate’s resident LIMIT. |
+| tests/test_native_reclaim_walk.py:250 | Full-profile reopen/reclaim-excess sizing and nondecreasing heap assertion | Restated: both empty-store probes accept; reported heap and LIMIT pairs are equal, with no pinned figures. |
+| tests/test_native_heap_from_profile.py:7 | Module described run sizing/refusal by whole profile | Restated on core content + LIMIT + pools, four current probe refusal causes, and configure’s C′. |
+| tests/test_native_heap_from_profile.py:24 | Next-run machine field described as entire cgroup observation | Restated: machine=L reports resident LIMIT after pools. |
+| tests/test_native_heap_from_profile.py:35 | Scale profile expected refused at run and stopped status | Restated summary on successful fresh-store run and stopped header-only status. |
+| tests/test_native_heap_from_profile.py:778 | Test name and scale setup described profile-size startup refusal | Restated on init’s separate target-budget refusal and the written scale store serving; assert 0 < C′ < configured C from its own capacity line, without pinning C′. |
+| tests/test_native_peering.py:810 | Default profile claimed unlaunchable due to whole-store heap | Restated: T=12 exercises transaction-full transit; the run serves at C′. |
+| tests/test_native_peering.py:1190 | Profile heap claimed to fit fixed 24 GiB scope | Restated on workload/reply charges inside the memory gate. |
+| tests/test_native_bounds_join.py:31 | Pinned profile heap compared with 40G resident scope | Restated on LIMIT launch and configure’s reply capacity. |
+| tests/test_native_bounds_join.py:175 | Few transactions chosen to keep profile heap inside resident scope | Restated on small stored workload and holder reply charges within LIMIT. |
+| tests/test_native_image_floor.py:278 | Full-store heap and any smaller heap claimed refused | Restated: start at the probe’s address-space reservation and stack; configure derives C′. |
+| tests/test_native_image_differential.py:136 | Normalized heap explained by old whole-profile figure | Restated explanation on image content + LIMIT + pools, preserving core-dependent normalization. |
+| tests/test_native_installed_start.py:5 | Installed run described as fn-heap-decide over whole profile | Restated on fn-mo-serve-decide over resident LIMIT, pools and address space. |
+| tests/test_native_start_every_preset.py:6 | Served probe described as fn-heap-decide | Restated on fn-mo-serve-decide; other commands retain fn-heap-command-decide. |
+| tests/test_native_start_every_preset.py:18 | Written preset expected skipped/refused at run for profile size | Restated: init may refuse its target budget, written fresh stores launch at LIMIT and serve at C′. Existing 1G BP pools refusal/2G 85-percent case retained. |
+| tests/test_native_heap_default_source.py:14 | Source-runner case named machine-fit | Renamed to resident-launch; underlying restated seam assertions retained. |
+| tools/load/driver.py:1017 | L-FRESH probe described as refusing profile size | Restated on pools, store reopen and address space; configure derives C′ or refuses capacity=0. |
+| tools/load/driver.py:1154 | Connection capacity described as old startup/budget bound | Restated on live policy admission and memory-gate C′. |
+| tools/load/driver.py:1180 | Pinned default 32/requested connection count chosen as run capacity | Restated: open served_capacity+1 derived from running status; record latest node-rendered memory capacity line. Missing exposure-capacity evidence fails the cell. |
+| tools/load/workloads.json:109 | Huge-article preset justified by profile heap exceeding 16GB | Deleted retired 25.7GB/resident-budget claim; describe C′ within LIMIT. |
+| tools/load/workloads.json:266 | Reader cell described a fixed default connection cap | Restated: the memory gate derives serving capacity C′; the explicit policy request and recorded refusals remain workload inputs. |
+| tools/load/workloads.json:402 | L-FRESH workload expected profile-size refusal | Restated on probe’s current causes and configure’s C′. |
+| tools/load/workloads.json:515 | Connection cell described startup/profile-derived cap | Restated on reported serving capacity, C′ and live exposure-connections requests. |
+
+Scanned 444 files; 42 hits in 18 files. Locations above are in the final edited files.
+
+Known reds left untouched:
+tests/test_native_mux.py:134 connections_cost
+tests/test_native_operator_verbs.py:678 OPERATOR-STATUS-OBSERVED-SIZING
+
+Intentionally retained current behaviour:
+Requested init target-budget refusals (including the init-only machine-cannot-hold-profile skip in start_every_preset).
+limits_live/header_limits fixed dynamic-space fixture: fn-lim-decide still compares the live profile-change figure with the running reservation; this is a policy-change decision, not a run-sizing twin.
+Resident cgroup/RSS measurements, profile article/record/transaction bounds, peer profile authority, and reopening every admitted store under the same resident budget.
+Already-restated BP 1G pools refusal / 2G below-launch tooth and control_reply_fit pools refusal.
+
+Scanned with no retired-twin hit (424 files):
+tests/native_actor_envelope_raw.lisp
+tests/native_admin_authorize_boundary_raw.lisp
+tests/native_admin_cleanup_raw-mock.lisp
+tests/native_anchor_acquisition-mock.lisp
+tests/native_application_cleanup_source.lisp
+tests/native_arena_return_source.lisp
+tests/native_arena_span_into_raw.lisp
+tests/native_article_ready_source.lisp
+tests/native_article_stream_source.lisp
+tests/native_auth_lock_raw-mock.lisp
+tests/native_await_lifetime_raw.lisp
+tests/native_bp_app_clock_raw-mock.lisp
+tests/native_bp_app_tally-mock.lisp
+tests/native_bp_budget_input_raw-mock.lisp
+tests/native_bp_channel_admission_raw-mock.lisp
+tests/native_bp_forward_cursor_raw.lisp
+tests/native_bp_forward_session_raw-mock.lisp
+tests/native_bp_fragment_turn_raw-mock.lisp
+tests/native_bp_heap_source.lisp
+tests/native_bp_listener_off_lock_raw-mock.lisp
+tests/native_bp_listener_stop_raw-mock.lisp
+tests/native_bp_lock_return_source.lisp
+tests/native_bp_node_admission_lock_raw-mock.lisp
+tests/native_bp_open_custody_raw-mock.lisp
+tests/native_bp_owner_startup_source-mock.lisp
+tests/native_bp_prefix_probe_source.lisp
+tests/native_bp_profile_raw.lisp
+tests/native_bp_profile_return_source-mock.lisp
+tests/native_bp_received_source_raw-mock.lisp
+tests/native_bp_resume_raw-mock.lisp
+tests/native_bp_root_cleanup_raw.lisp
+tests/native_bp_send_boundary_raw-mock.lisp
+tests/native_bp_session_bank_raw-mock.lisp
+tests/native_bp_transit_identity_raw.lisp
+tests/native_bpapp_acquisition_raw-mock.lisp
+tests/native_bpsec_core_observation.lisp
+tests/native_bpsec_crypto.lisp
+tests/native_bpsec_registered_source_observation.lisp
+tests/native_bpsec_source_observation.lisp
+tests/native_catalog_root_install_raw-mock.lisp
+tests/native_catchup_spool_source.lisp
+tests/native_checkpoint_abandon_raw-mock.lisp
+tests/native_checkpoint_cleanup_source-mock.lisp
+tests/native_checkpoint_image_readback_raw-mock.lisp
+tests/native_checkpoint_load_release-mock.lisp
+tests/native_checkpoint_read_error_raw.lisp
+tests/native_checkpoint_walk_yield-mock.lisp
+tests/native_command_cleanup_source-mock.lisp
+tests/native_committer_actor_raw.lisp
+tests/native_consumer_frame_raw-mock.lisp
+tests/native_consumer_peer_raw.lisp
+tests/native_consumer_poll_cli_raw-mock.lisp
+tests/native_crypto_primitives.lisp
+tests/native_crypto_saved_image.lisp
+tests/native_decoded_constructor_source.lisp
+tests/native_decoded_hold_raw.lisp
+tests/native_decoded_issue_raw-mock.lisp
+tests/native_decoded_startup_raw-mock.lisp
+tests/native_decoded_worker_raw-mock.lisp
+tests/native_deflater_raw.lisp
+tests/native_developer_selectors_raw-mock.lisp
+tests/native_export_terminal_source-mock.lisp
+tests/native_extent_observer_raw.lisp
+tests/native_feed_actor_raw.lisp
+tests/native_feed_cleanup_source.lisp
+tests/native_feed_credential_raw-mock.lisp
+tests/native_feed_fair_round_raw.lisp
+tests/native_feed_peer_octets_raw-mock.lisp
+tests/native_feed_service_raw-mock.lisp
+tests/native_fnfd_budget_raw-mock.lisp
+tests/native_frames_boundary_raw.lisp
+tests/native_header_query_source.lisp
+tests/native_heap_default_source-mock.lisp
+tests/native_heap_diagnostic_policy_source-mock.lisp
+tests/native_history_builder_raw-mock.lisp
+tests/native_history_root_raw-mock.lisp
+tests/native_hybrid_signatures-mock.lisp
+tests/native_immutable_close_source.lisp
+tests/native_import_manifest_raw-mock.lisp
+tests/native_init_resume_source-mock.lisp
+tests/native_io_prelude.lisp
+tests/native_io_progress_raw.lisp
+tests/native_ion_lifetime_raw.lisp
+tests/native_journal_stream_source.lisp
+tests/native_limit_pool_raw-mock.lisp
+tests/native_list_seal_raw-mock.lisp
+tests/native_live_config_cache_raw-mock.lisp
+tests/native_live_profile_source-mock.lisp
+tests/native_log_rotation_durable_raw.lisp
+tests/native_log_terminal_source.lisp
+tests/native_lz_scalar_raw.lisp
+tests/native_mux_cleanup_raw.lisp
+tests/native_mux_lifecycle_raw.lisp
+tests/native_newnews_allocation_raw.lisp
+tests/native_node_secret_return_source-mock.lisp
+tests/native_nov_metadata_image.lisp
+tests/native_observation_raw.lisp
+tests/native_operator_diagnostics_source-mock.lisp
+tests/native_output_preflight_raw-mock.lisp
+tests/native_output_response_lease_raw-mock.lisp
+tests/native_output_retirement_raw.lisp
+tests/native_output_window_raw.lisp
+tests/native_owner_background_raw.lisp
+tests/native_owner_bound_commit_raw.lisp
+tests/native_owner_carrier_dispatch_raw.lisp
+tests/native_owner_chunk_loop_raw-mock.lisp
+tests/native_owner_cold_result_observation_raw.lisp
+tests/native_owner_consumer_local_raw-mock.lisp
+tests/native_owner_consumer_raw.lisp
+tests/native_owner_group_codes_raw.lisp
+tests/native_owner_install_cleanup_source.lisp
+tests/native_owner_pool_startup_source-mock.lisp
+tests/native_owner_publication_raw.lisp
+tests/native_owner_shared_action_raw.lisp
+tests/native_owner_startup_custody_source.lisp
+tests/native_owner_terminal_cohorts_source.lisp
+tests/native_payload_lifecycle_raw.lisp
+tests/native_payload_return_source.lisp
+tests/native_peer_authored_accept_raw-mock.lisp
+tests/native_peer_bank_startup_source-mock.lisp
+tests/native_peer_invite_dispatch_raw-mock.lisp
+tests/native_peer_policy_source.lisp
+tests/native_peer_raw_key_component.lisp
+tests/native_peer_round_driver_raw-mock.lisp
+tests/native_post_seal_gate_refusal_raw-mock.lisp
+tests/native_publication_lock_raw-mock.lisp
+tests/native_pull_append_raw-mock.lisp
+tests/native_pull_journal_registry_raw.lisp
+tests/native_pull_lifecycle_raw.lisp
+tests/native_reclaim_capture_raw.lisp
+tests/native_reclaim_decision_source-mock.lisp
+tests/native_reclaim_slot_raw.lisp
+tests/native_reconfig_history_raw.lisp
+tests/native_reconfig_phased_raw-mock.lisp
+tests/native_redeem_input_source.lisp
+tests/native_redeem_send_raw-mock.lisp
+tests/native_response_identity_raw.lisp
+tests/native_response_window_raw.lisp
+tests/native_retention_identity_route_raw-mock.lisp
+tests/native_retire_observation_source-mock.lisp
+tests/native_rotation_cleanup_source-mock.lisp
+tests/native_section_envelope_raw.lisp
+tests/native_snapshot_actor_raw.lisp
+tests/native_socket_read_quantum_raw.lisp
+tests/native_span_models.lisp
+tests/native_starttls_cursor_raw.lisp
+tests/native_store_cleanup_source.lisp
+tests/native_store_identity_frame_raw-mock.lisp
+tests/native_string_line_allocation_raw.lisp
+tests/native_syncer_custody_raw-mock.lisp
+tests/native_syncer_pipeline_escape_raw-mock.lisp
+tests/native_syncer_typed_raw.lisp
+tests/native_tcpcl_acquisition_raw-mock.lisp
+tests/native_tcpcl_frame_cursor_raw-mock.lisp
+tests/native_tcpcl_progress_turn_raw-mock.lisp
+tests/native_tcpcl_retained_turn_raw-mock.lisp
+tests/native_tcpcl_source_control_raw-mock.lisp
+tests/native_tls_client.lisp
+tests/native_tls_probe_off_lock_raw.lisp
+tests/native_tls_selfsigned_failure_raw.lisp
+tests/native_tls_transport.lisp
+tests/native_trace_hotspots_raw.lisp
+tests/native_trace_raw.lisp
+tests/native_trace_restart_raw.lisp
+tests/native_trace_snapshot_raw.lisp
+tests/native_unwind_cleanup_escalation_raw.lisp
+tests/native_web_article_producer_raw.lisp
+tests/native_web_article_stream_raw.lisp
+tests/native_web_list_stream_raw.lisp
+tests/native_web_over_stream_raw.lisp
+tests/native_web_page_cursor_raw.lisp
+tests/native_web_post_stream_raw.lisp
+tests/native_web_private_begin_raw.lisp
+tests/native_web_progress_raw-mock.lisp
+tests/native_web_reactor_raw-mock.lisp
+tests/native_web_terminal_raw-mock.lisp
+tests/native_zin_owed_raw.lisp
+tests/test_native_accept_maintenance.py
+tests/test_native_account_adoption_transport.py
+tests/test_native_admin.py
+tests/test_native_admin_cleanup.py
+tests/test_native_agent_wait.py
+tests/test_native_app_journal.py
+tests/test_native_arena_identity.py
+tests/test_native_arena_span_into_image.py
+tests/test_native_article_quiet.py
+tests/test_native_article_slots.py
+tests/test_native_article_subject.py
+tests/test_native_auth.py
+tests/test_native_auth_admin_fidelity.py
+tests/test_native_auth_lock.py
+tests/test_native_block_fault_ownership.py
+tests/test_native_bounds_blob.py
+tests/test_native_bp_app_clock.py
+tests/test_native_bp_app_tally.py
+tests/test_native_bp_carry_abandon.py
+tests/test_native_bp_channel_admission.py
+tests/test_native_bp_heap_source.py
+tests/test_native_bp_listener_off_lock.py
+tests/test_native_bp_node_admission_lock.py
+tests/test_native_bp_open_custody.py
+tests/test_native_bp_owner_startup_source.py
+tests/test_native_bp_prefix_probe_source.py
+tests/test_native_bp_profile.py
+tests/test_native_bp_resume.py
+tests/test_native_bp_send_boundary.py
+tests/test_native_bp_transit_identity.py
+tests/test_native_bpapp_acquisition.py
+tests/test_native_build_scripts.py
+tests/test_native_capacity_vector.py
+tests/test_native_catchup_spool_source.py
+tests/test_native_checkpoint.py
+tests/test_native_checkpoint_abandon.py
+tests/test_native_checkpoint_abandon_raw.py
+tests/test_native_checkpoint_auto.py
+tests/test_native_checkpoint_image_readback.py
+tests/test_native_checkpoint_load_release.py
+tests/test_native_checkpoint_walk_yield.py
+tests/test_native_cold_line_deadline.py
+tests/test_native_cold_line_quanta.py
+tests/test_native_cold_off_loop.py
+tests/test_native_commit_log.py
+tests/test_native_compress.py
+tests/test_native_compression.py
+tests/test_native_conformance.py
+tests/test_native_consumer_e2.py
+tests/test_native_consumer_exchange.py
+tests/test_native_consumer_exchange_two_nodes.py
+tests/test_native_consumer_identity.py
+tests/test_native_consumer_inspect.py
+tests/test_native_consumer_project_bounds.py
+tests/test_native_control.py
+tests/test_native_control_across_peers.py
+tests/test_native_control_authority.py
+tests/test_native_control_evidence.py
+tests/test_native_control_filing.py
+tests/test_native_control_reply_fit.py
+tests/test_native_crash_correspondence.py
+tests/test_native_crash_model.py
+tests/test_native_credits.py
+tests/test_native_cut_map.py
+tests/test_native_decoded_custody.py
+tests/test_native_digest.py
+tests/test_native_entry_guard.py
+tests/test_native_expiry.py
+tests/test_native_extent_identity.py
+tests/test_native_feed_credential.py
+tests/test_native_feed_fair_round.py
+tests/test_native_feed_idle.py
+tests/test_native_feed_reply_cold.py
+tests/test_native_feed_temporary.py
+tests/test_native_feed_tls_read.py
+tests/test_native_feed_tls_ready.py
+tests/test_native_fence_boundary.py
+tests/test_native_fitness.py
+tests/test_native_foreign_format_open.py
+tests/test_native_friends_accounts.py
+tests/test_native_friends_feed.py
+tests/test_native_frozen_relocation.py
+tests/test_native_fuzz_nntp.py
+tests/test_native_group_access.py
+tests/test_native_group_authority.py
+tests/test_native_group_name_bound.py
+tests/test_native_group_policy.py
+tests/test_native_header_limits.py
+tests/test_native_header_lines.py
+tests/test_native_heap_graph.py
+tests/test_native_host_lifecycle.py
+tests/test_native_hybrid_author.py
+tests/test_native_image_heap.py
+tests/test_native_image_profiles.py
+tests/test_native_implicit_tls.py
+tests/test_native_import_manifest.py
+tests/test_native_import_publication.py
+tests/test_native_index_writer_turn.py
+tests/test_native_init_publication.py
+tests/test_native_init_resume.py
+tests/test_native_init_resume_source.py
+tests/test_native_init_status_probe.py
+tests/test_native_initializer_fidelity.py
+tests/test_native_injection_info.py
+tests/test_native_install.py
+tests/test_native_ion_ltp.py
+tests/test_native_ion_receipt_recovery.py
+tests/test_native_ion_workflow.py
+tests/test_native_journal_stream.py
+tests/test_native_journal_stream_source.py
+tests/test_native_journal_torn.py
+tests/test_native_key_statements.py
+tests/test_native_known_abort.py
+tests/test_native_lexical_exits.py
+tests/test_native_limits_live.py
+tests/test_native_list_seal.py
+tests/test_native_listener_v6.py
+tests/test_native_live_reconfiguration.py
+tests/test_native_load.py
+tests/test_native_log.py
+tests/test_native_log_compaction.py
+tests/test_native_log_damage.py
+tests/test_native_log_sink.py
+tests/test_native_maintenance_live.py
+tests/test_native_mixed_history.py
+tests/test_native_moderation.py
+tests/test_native_moderation_outcome.py
+tests/test_native_mux_proxy_timer.py
+tests/test_native_mux_roster_order.py
+tests/test_native_mux_start_waiting.py
+tests/test_native_newnews_wildmat.py
+tests/test_native_nntp_post_probe.py
+tests/test_native_nov_metadata.py
+tests/test_native_offlock_probe.py
+tests/test_native_open_depth.py
+tests/test_native_operator_campaign.py
+tests/test_native_operator_cli.py
+tests/test_native_operator_diagnostics_source.py
+tests/test_native_operator_refusals.py
+tests/test_native_operator_verdicts.py
+tests/test_native_operator_walk.py
+tests/test_native_outcome_algebra.py
+tests/test_native_outside_in.py
+tests/test_native_over_cursor_cost.py
+tests/test_native_over_pins.py
+tests/test_native_over_window.py
+tests/test_native_overlay.py
+tests/test_native_own_cancel.py
+tests/test_native_owner.py
+tests/test_native_owner_carrier_dispatch.py
+tests/test_native_owner_offlock.py
+tests/test_native_owner_pool_startup_source.py
+tests/test_native_owner_scheduler.py
+tests/test_native_owner_startup_custody_source.py
+tests/test_native_pack_chain.py
+tests/test_native_page_io.py
+tests/test_native_parser_turn_boundary.py
+tests/test_native_pattern_pubsub.py
+tests/test_native_peer_by_name.py
+tests/test_native_peer_catchup.py
+tests/test_native_peer_hostile_feed.py
+tests/test_native_peer_invite.py
+tests/test_native_peer_misbehaving.py
+tests/test_native_peer_pull.py
+tests/test_native_peer_round_driver.py
+tests/test_native_peer_rows_growth.py
+tests/test_native_post_seal_gate.py
+tests/test_native_preflight.py
+tests/test_native_profile.py
+tests/test_native_program_check.py
+tests/test_native_protected_peering.py
+tests/test_native_public_exposure.py
+tests/test_native_public_limits.py
+tests/test_native_publication_lock.py
+tests/test_native_pull_append.py
+tests/test_native_pull_journal_registry.py
+tests/test_native_raw_dispatch_image.py
+tests/test_native_raw_dispatch_trap.py
+tests/test_native_raw_scripts.py
+tests/test_native_reader_clients.py
+tests/test_native_reader_freshness.py
+tests/test_native_reader_index.py
+tests/test_native_reclaim_decision_source.py
+tests/test_native_reclaim_in_flight.py
+tests/test_native_reclaim_seal_cost.py
+tests/test_native_reconfig_phased.py
+tests/test_native_recovery.py
+tests/test_native_redeem_input_source.py
+tests/test_native_redeem_send_boundary.py
+tests/test_native_replay_determinism.py
+tests/test_native_resilience_cuts.py
+tests/test_native_retire_observation_source.py
+tests/test_native_reuse.py
+tests/test_native_sasl.py
+tests/test_native_scalar_mv.py
+tests/test_native_scaling.py
+tests/test_native_served_cost.py
+tests/test_native_served_crash_model.py
+tests/test_native_served_differential.py
+tests/test_native_served_line_stack.py
+tests/test_native_shared_owner_bench.py
+tests/test_native_slow_disk.py
+tests/test_native_snapshot_bless.py
+tests/test_native_source_corpus.py
+tests/test_native_source_corpus_bp.py
+tests/test_native_source_provenance.py
+tests/test_native_source_runner.py
+tests/test_native_source_world.py
+tests/test_native_starttls.py
+tests/test_native_state_checkpoint.py
+tests/test_native_status_live_posts.py
+tests/test_native_status_scale.py
+tests/test_native_storage_codec.py
+tests/test_native_store_export.py
+tests/test_native_store_identity.py
+tests/test_native_store_lineage.py
+tests/test_native_store_mount_identity.py
+tests/test_native_tcpcl_acquisition.py
+tests/test_native_tls_handshake_budget.py
+tests/test_native_tls_key_exchange.py
+tests/test_native_tls_probe_off_lock.py
+tests/test_native_tls_proxy.py
+tests/test_native_tls_reload.py
+tests/test_native_tls_transport.py
+tests/test_native_topic_local.py
+tests/test_native_topic_metadata.py
+tests/test_native_trace.py
+tests/test_native_two_host_protected_gate.py
+tests/test_native_verdicts.py
+tests/test_native_visibility_join.py
+tests/test_native_web.py
+tests/test_native_web_progress.py
+tests/test_native_web_terminal.py
+tools/load/FAULTS.md
+tools/load/__init__.py
+tools/load/bars.json
+tools/load/cells.py
+tools/load/faults.py
+tools/load/faults_bp.py
+tools/load/peers.py
+tools/load/result.py
+tools/load/sweep.json
+tools/load/sweep.py
+tools/load/w7_extent.py
+tools/load/workloads.py
+tools/native_mixed_workload.py
+tools/native_source_load.lisp
+
+Files changed (18):
+tests/native_harness.py
+tests/native_mux_budget_observe_raw.lisp
+tests/native_output_custody_raw.lisp
+tests/native_output_response_lease_counterpart.lisp
+tests/native_output_startup_raw-mock.lisp
+tests/test_native_bounds_join.py
+tests/test_native_harness.py
+tests/test_native_heap_default_source.py
+tests/test_native_heap_from_profile.py
+tests/test_native_image_differential.py
+tests/test_native_image_floor.py
+tests/test_native_installed_start.py
+tests/test_native_mux_budget_observe.py
+tests/test_native_peering.py
+tests/test_native_reclaim_walk.py
+tests/test_native_start_every_preset.py
+tools/load/driver.py
+tools/load/workloads.json
+
+Validation:
+All 13 edited .py files parsed with ast.parse; edited workloads.json decoded; edited Lisp forms parsed.
+python3 -m unittest tests.test_native_heap_default_source tests.test_native_raw_scripts.RawHarnessTests.test_output_startup_raw_mock tests.test_native_mux_budget_observe: 5 tests, OK.
+Derived stubs regenerated with harness_check.harness_scans + with_stub_block, restricted to native_output_startup_raw-mock.lisp; current block and stub arities checked.
+git diff --check passed; secrets_check: 18 files, 0 findings.
+Image-needing modules, ACL2 custody/lease witnesses, and load cells were not executed, per brief. No books/ or host/ changes; no box job, commit or push.

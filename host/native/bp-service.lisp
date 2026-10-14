@@ -1450,16 +1450,20 @@ signals with SERVICE still holding its locks; its owner releases them."
 ;;; contexts; it does not authorize decoded Store reads.
 (defstruct fnn-bp-served-owner-custody claimed started stopped)
 
-(defun fnn-bp-served-owner-start (custody root max-connections)
-  (let ((root (fnn-absolute root)))
+(defun fnn-bp-served-owner-start (custody root max-connections &optional bp-terms)
+  (let* ((root (fnn-absolute root))
+         (profile (fnn-heap-store-profile root))
+         (observed (list (fnn-heap-img-observation profile) (fnn-heap-resident-observations)
+                         (fnn-heap-config-octets root profile) (fnn-heap-address-observations)
+                         (fnn-heap-image-observation) (fnn-peer-flight-profile root))))
   (fnn-owner-claim-run-authority *fnn-owner-caller-reservation*)
   (setf (fnn-bp-served-owner-custody-claimed custody) t)
   (multiple-value-bind (plan peer-capture)
       (fnn-owner-page-read-startup
        root max-connections nil nil
-       (lambda () (setf (fnn-bp-served-owner-custody-started custody) t)))
+       (lambda () (setf (fnn-bp-served-owner-custody-started custody) t)) bp-terms observed)
     (declare (ignore plan))
-  (let ((service (fnn-owner-install root max-connections)))
+  (let ((service (fnn-owner-install root max-connections nil bp-terms observed)))
     ;; Retain the actual Store even if retiring recovery-only borrows escapes.
     (fnn-owner-retain-run-authority service)
     (fnn-owner-peer-flight-startup service peer-capture)

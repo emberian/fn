@@ -1,0 +1,10 @@
+{
+  "generated_by": "tools/native_memory_figures.py",
+  "connection_fixed_without_tls": 369664,
+  "connection_fixed_with_tls": 500736,
+  "source_sha256": {
+    "books/connection-budget.lisp": "fea1f78910e600e6e94162e839c958991c03e5578bc819d4473152628d9e641a",
+    "books/connection-read-quantum.lisp": "0b8c8bcc72a441d4929e4eb3e7b602cd80c98e0529f653afe305617859e5d523",
+    "books/heap-figure.lisp": "d256744ca57263c90d96419ff3d938f18908631bf7bfc8dcfbb1fd9b86be83a2"
+  }
+}

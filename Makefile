@@ -259,6 +259,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-transaction-driver-tests \
 	books/owner-connection-state \
 	books/owner-connection-callbacks \
+	books/owner-memory-holding \
+	books/owner-memory-run \
+	books/memory-run-cost \
+	tests/acl2/owner-memory-holding-tests \
+	tests/acl2/owner-memory-run-tests \
+	tests/acl2/memory-run-cost-tests \
 	books/owner-connection-callback-refinement \
 	tests/acl2/owner-connection-callback-tests \
 	tests/acl2/owner-connection-callback-additional-tests \
@@ -694,8 +700,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-startup-host-tests \
 	books/output-reservation \
 	tests/acl2/output-reservation-tests \
-	books/reclaim-reservation \
-	tests/acl2/reclaim-reservation-tests \
 	books/resource-output \
 	tests/acl2/resource-output-tests \
 	tests/acl2/resource-syncer-tests \
@@ -710,6 +714,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/resource-vector-relations \
 	tests/acl2/resource-vector-relations-tests \
 	books/resource-vector-relations-heap \
+	tests/acl2/resource-vector-relations-heap-tests \
 	books/resource-vector-exec \
 	tests/acl2/resource-vector-exec-tests \
 	books/resource-vector-tree \

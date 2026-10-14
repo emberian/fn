@@ -288,14 +288,13 @@
 
 ; defkeystone derives the claim from TERM's source `implies'/`and'.
 (defun fn-dk-source-hyps (term)
-  (declare (xargs :mode :program))
-  (if (and (consp term) (eq (car term) 'implies) (true-listp term)
-           (equal (len term) 3))
-      (let ((h (cadr term)))
-        (if (and (consp h) (eq (car h) 'and))
-            (cdr h)
-          (list h)))
-    nil))
+ (declare (xargs :mode :program))
+ (cond ((and (consp term) (member-eq (car term) '(let let*))
+             (true-listp term) (equal (len term) 3))
+        (fn-dk-source-hyps (caddr term)))
+       ((and (consp term) (eq (car term) 'implies) (true-listp term) (equal (len term) 3))
+        (let ((h (cadr term))) (if (and (consp h) (eq (car h) 'and)) (cdr h) (list h))))
+       (t nil)))
 
 (defun fn-dk-source-concl (term)
   (declare (xargs :mode :program))
@@ -317,15 +316,26 @@
       nil
     (cons (list (car labels) (car hyps)) (fn-dk-pairs (cdr labels) (cdr hyps)))))
 
+(defun fn-dk-scoped-impliesp (term)
+ (declare (xargs :mode :program))
+ (cond ((and (consp term) (member-eq (car term) '(let let*))
+             (true-listp term) (equal (len term) 3))
+        (fn-dk-scoped-impliesp (caddr term)))
+       (t (and (consp term) (eq (car term) 'implies)
+               (true-listp term) (equal (len term) 3)))))
+
 (defun fn-dk-claim-of (name term kvs)
-  (declare (xargs :mode :program))
-  ; the claim a defkeystone form states: TERM's hypotheses under :hyps or
-  ; H1..Hn, and its conclusion
+ (declare (xargs :mode :program))
+ ; Split a scoped implication, while retaining the bindings for its teeth.
+ ; A hypothesis-free LET is the whole conclusion, as before LET support.
+ (if (and (consp term) (member-eq (car term) '(let let*))
+          (true-listp term) (equal (len term) 3)
+          (fn-dk-scoped-impliesp (caddr term)))
+  (list (car term) (cadr term) (fn-dk-claim-of name (caddr term) kvs))
   (let* ((hyps (fn-dk-source-hyps term))
-         (labels (if (assoc-keyword :hyps kvs)
-                     (fn-dk-get :hyps kvs)
+         (labels (if (assoc-keyword :hyps kvs) (fn-dk-get :hyps kvs)
                    (fn-dk-default-labels 1 (len hyps) name))))
-    (list (fn-dk-pairs labels hyps) (fn-dk-source-concl term))))
+   (list (fn-dk-pairs labels hyps) (fn-dk-source-concl term)))))
 
 ; ---------------------------------------------------------------------------
 ; The spec's shapes.

@@ -1,0 +1,37 @@
+LINE memory capacity=31 of 31 bound-by=configured sum=380 MB limit=126284 MB
+cfg (31 NIL 8388608 8388608 NIL 0 0 0 256 18 NIL NIL 120) pools 4270656
+small C=0 holders=0
+  base(img) 324902528 [309.85 MiB]
+  owner 119264
+  connections 0 = 0 x fixed 369664 + large-pool 0 (holders 0 x large-reply 666176; over-window-octets 666176, article reply 66560, over-window-fit 1 lines x nov-line 20818)
+  inflight 12886848 = request 9445184 + articles 3441664 + handshakes 0 + cold 0
+  maintenance 304824
+  live 13310936 collector 20104950 SUM 358318414 [341.72 MiB]
+  reopen: owner 119264 open 0 ckpt-load 197037 maint 304824 headroom 32768 live 653893 collector 16940689 NEED 342497110 [326.63 MiB]
+small C=1 holders=1
+  base(img) 324902528 [309.85 MiB]
+  owner 119264
+  connections 1035840 = 1 x fixed 369664 + large-pool 666176 (holders 1 x large-reply 666176; over-window-octets 666176, article reply 66560, over-window-fit 1 lines x nov-line 20818)
+  inflight 12886848 = request 9445184 + articles 3441664 + handshakes 0 + cold 0
+  maintenance 304824
+  live 14346776 collector 20363910 SUM 359613214 [342.95 MiB]
+  reopen: owner 119264 open 0 ckpt-load 197037 maint 304824 headroom 32768 live 653893 collector 16940689 NEED 342497110 [326.63 MiB]
+small C=31 holders=31
+  base(img) 324902528 [309.85 MiB]
+  owner 119264
+  connections 32111040 = 31 x fixed 369664 + large-pool 20651456 (holders 31 x large-reply 666176; over-window-octets 666176, article reply 66560, over-window-fit 1 lines x nov-line 20818)
+  inflight 12886848 = request 9445184 + articles 3441664 + handshakes 0 + cold 0
+  maintenance 304824
+  live 45421976 collector 28132710 SUM 398457214 [380.00 MiB]
+  reopen: owner 119264 open 0 ckpt-load 197037 maint 304824 headroom 32768 live 653893 collector 16940689 NEED 342497110 [326.63 MiB]
+AT 256 MiB: limit 264164800 capacity NIL line refused memory-cannot-hold-the-store capacity=0 of 31 bound-by=store sum=342 MB limit=251 MB
+AT 1024 MiB: limit 1069471168 capacity 31 line memory capacity=31 of 31 bound-by=configured sum=380 MB limit=1019 MB
+development C=1 holders=1
+  base(img) 324902528 [309.85 MiB]
+  owner 119264
+  connections 562926784 = 1 x fixed 369664 + large-pool 562557120 (holders 1 x large-reply 562557120; over-window-octets 562557120, article reply 66560, over-window-fit 1 lines x nov-line 17579910)
+  inflight 555026944 = request 551585280 + articles 3441664 + handshakes 0 + cold 0
+  maintenance 304824
+  live 1118377816 collector 296371670 SUM 1739652014 [1659.06 MiB]
+  reopen: owner 119264 open 0 ckpt-load 17138915 maint 304824 headroom 32768 live 17595771 collector 21176158 NEED 363674457 [346.83 MiB]
+dev profile ((102 110 45 115 116 111 114 101 45 49 48) 128 25165824 17138486 32768 65535 256 128 1048576 1048576 1048576 1048576 1048576 64 256 16384)

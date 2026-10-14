@@ -29,7 +29,8 @@ NATIVE_MEMORY = "40G"
 # large articles and the long-References POSTs exceed (the 805th POST was
 # refused `no capacity' on batch AR's image). 256 MiB of history, 16,384
 # transactions, the 4 MiB article and its record at 16 groups per article:
-# the launcher's figure for it is 18,311 MB, which --mem 40G holds.
+# the served run launches at resident LIMIT plus core content and pools;
+# configure derives C' for these replies within LIMIT.
 INIT_PROFILE = ("--profile", "development", "--max-transactions", "16384",
                 "--max-history-octets", str(256 << 20),
                 "--max-record-octets", "4199563",
@@ -172,8 +173,8 @@ class LargeReplyTests(JoinFixture):
 
 
 MIB10 = 10 * 1024 * 1024
-# PKT-693 (lane thread-stacks): a 16 MiB article field, few transactions so
-# the launcher's figure stays inside the module's --mem.  Since heap-pool
+# PKT-693 (lane thread-stacks): a 16 MiB article field and a small stored
+# workload; the memory gate prices its holders' replies within LIMIT.  Since heap-pool
 # (B9, 2026-09-28) the history gate charges an article its record figure
 # plus its header charge at its worst, every payload octet a header octet at
 # *fn-sbud-header-weight* 8 (books/store-budget-article.lisp

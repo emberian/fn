@@ -71,6 +71,23 @@
   :hints (("Goal" :in-theory '(fn-owner-put-credits
                                fn-orh-retain-statep-of-other-global-put))))
 
+; The held bank is an auxiliary global, including after a logical close
+; while physical disposal is outstanding.  It frames the carried Store.
+(defthm fn-orh-retain-statep-of-held-open
+  (equal (fn-owner-retain-statep (fn-owner-memory-held-open id physical state))
+         (fn-owner-retain-statep state))
+  :hints (("Goal" :in-theory '(fn-owner-memory-held-open
+                               fn-orh-retain-statep-of-other-global-put))))
+
+
+
+; The admission's returned bank is installed without changing owner or carry.
+(defthm fn-orh-retain-statep-of-held-install
+ (equal (fn-owner-retain-statep (fn-owner-memory-held-install result state))
+        (fn-owner-retain-statep state))
+ :hints (("Goal" :in-theory '(fn-owner-memory-held-install
+                             fn-orh-retain-statep-of-other-global-put))))
+
 ; -----------------------------------------------------------------------------
 ; The writers.
 
@@ -84,6 +101,8 @@
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-close id fn-arena state))))
   :hints (("Goal" :in-theory '(fn-owner-close fn-owner-callback-close
+                               fn-adm-operator-close
+                               fn-owner-memory-held-bank fn-orh-retain-statep-of-other-global-put
                                mv-nth nth zp car-cons cdr-cons
                                (:executable-counterpart zp)
                                fn-orh-retain-statep-of-put-credits
@@ -99,6 +118,8 @@
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-fault id state))))
   :hints (("Goal" :in-theory '(fn-owner-fault fn-owner-callback-fault
+                               fn-adm-operator-close
+                               fn-owner-memory-held-bank fn-orh-retain-statep-of-other-global-put
                                mv-nth nth zp car-cons cdr-cons
                                (:executable-counterpart zp)
                                fn-orh-retain-statep-of-put-credits
@@ -109,10 +130,55 @@
                  (:instance fn-owner-retain-statep-implies-lgoc
                             (state state))))))
 
+;; M28 (STEP 5 merge): the priced peer open installs exactly the ocfg open's
+;; result, or leaves the ocfg unchanged. This is the named frame fact K1's retained-state
+;; proofs of fn-owner-open-peer take (books/owner-retain-live.lisp).
+(defthm fn-adm-peer-open-opens-the-ocfg-open-or-nothing
+  (let ((opened (fn-exp-at 1 (fn-adm-peer-open oc peer acfg bank configured capacity))))
+    (or (equal opened (cons nil oc))
+        (equal opened (fn-ocfg-open-peer oc peer acfg))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-adm-peer-open fn-adm-held-open fn-adm-held-open-refusal fn-exp-at nth zp car-cons cdr-cons (:executable-counterpart zp) (:executable-counterpart nth) (:executable-counterpart fn-exp-at) (:executable-counterpart member-equal) (:executable-counterpart equal) (:executable-counterpart binary-+) (:executable-counterpart unary--)) (theory 'minimal-theory)))))
+
+(local (defthm m24-peer-open-owner-preserves-carried-relation
+ (implies (fn-lgoc-invariantp oc)
+  (fn-lgoc-invariantp (cdr (fn-exp-at 1
+    (fn-adm-held-open :peer oc xs lim acfg peer address now bank configured capacity)))))
+ :hints (("Goal" :use fn-ohr-open-peer-preserves-carried-relation
+ :in-theory (union-theories '(fn-adm-held-open fn-adm-held-open-refusal fn-exp-at-of-cons
+   car-cons cdr-cons (:executable-counterpart fn-exp-at)
+   (:executable-counterpart posp) (:executable-counterpart member-equal))
+  (theory 'minimal-theory))))))
+
+(local (defthm m24-rollback-owner-by-definition
+ (equal (fn-exp-at 1 (update-nth 3 peak (update-nth 2 bank r))) (fn-exp-at 1 r))
+ :hints (("Goal" :expand ((update-nth 3 peak (update-nth 2 bank r))
+ (update-nth 2 bank r) (fn-exp-at 1 r))
+ :in-theory (union-theories '(fn-exp-at update-nth car-cons cdr-cons fn-cstp-car-update-nth fn-cstp-cdr-update-nth adt-consp-of-update-nth
+   (:executable-counterpart zp) (:executable-counterpart binary-+))
+  (theory 'minimal-theory))))))
+
+(local (defthm m24-peer-transfer-owner-preserves-carried-relation
+ (implies (fn-lgoc-invariantp oc)
+  (fn-lgoc-invariantp (cdr (fn-exp-at 1
+    (fn-adm-transport-rearm :peer oc xs lim acfg peer address now
+                            bank old-id configured capacity)))))
+ :hints (("Goal" :use ((:instance m24-rollback-owner-by-definition
+    (r (fn-adm-held-open :peer oc xs lim acfg peer address now
+                         (fn-adm-hh-return bank old-id) configured capacity))
+    (peak (nfix (fn-adm-hh-count bank))))) :in-theory (union-theories
+ '(fn-adm-transport-rearm fn-adm-held-open-refusal fn-exp-at-of-cons
+   m24-rollback-owner-by-definition m24-peer-open-owner-preserves-carried-relation
+   car-cons cdr-cons (:executable-counterpart fn-exp-at)
+   (:executable-counterpart posp) (:executable-counterpart member-equal))
+ (theory 'minimal-theory))))))
+
 (defthm fn-owner-open-peer-preserves-retain-state
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-open-peer peer-octets state))))
-  :hints (("Goal" :in-theory '(fn-owner-open-peer fn-owner-callback-open-peer
+  :hints (("Goal" :in-theory '(fn-owner-open-peer fn-owner-held-callback-open-peer
+                               fn-owner-memory-held-install fn-adm-peer-open
+                               fn-exp-at m24-peer-open-owner-preserves-carried-relation
                                mv-nth nth zp car-cons cdr-cons
                                (:executable-counterpart zp)
                                fn-orh-retain-statep-of-other-global-put
@@ -124,6 +190,101 @@
                             (acfg (fn-owner-auth state)))
                  (:instance fn-owner-retain-statep-implies-lgoc
                             (state state))))))
+
+(defthm fn-owner-peer-rearm-preserves-retain-state
+ (implies (fn-owner-retain-statep state)
+  (fn-owner-retain-statep (mv-nth 2 (fn-owner-peer-rearm peer-octets old-id state))))
+ :hints (("Goal" :in-theory '(fn-owner-peer-rearm fn-owner-held-callback-open-peer
+  fn-owner-memory-held-install fn-exp-at mv-nth nth zp car-cons cdr-cons
+  (:executable-counterpart zp) m24-peer-transfer-owner-preserves-carried-relation
+  fn-orh-retain-statep-of-other-global-put fn-orh-retain-statep-of-install-served-effects
+  fn-orh-retain-statep-of-install-ocfg)
+  :use ((:instance fn-owner-retain-statep-implies-lgoc (state state))))))
+
+(local (defthm m24-legacy-exposure-keeps-store-by-definition
+ (equal (fn-own-store (fn-ocfg-owner (fn-exp-open-ocfg
+          (fn-ocar-exp-open oc xs lim acfg peer address now))))
+        (fn-own-store (fn-ocfg-owner oc)))
+ :hints (("Goal" :in-theory (union-theories
+ '(fn-ocar-exp-open fn-exp-open-ocfg fn-exp-at-of-cons car-cons cdr-cons
+   fn-ocar-ocfg-open-keeps-store fn-ohr-open-peer-keeps-store-and-view
+   (:executable-counterpart fn-exp-at) (:executable-counterpart posp))
+ (theory 'minimal-theory))))))
+
+(local (defthm m24-legacy-exposure-preserves-carried-relation
+ (implies (fn-lgoc-invariantp oc)
+  (fn-lgoc-invariantp (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now))))
+ :hints (("Goal"
+  :use ((:instance fn-ohr-carried-of-same-store
+          (x (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now))))
+        (:instance fn-ohr-carried-implies-ocl-relation)
+        (:instance fn-ohr-exposure-open-preserves-ocl-relation)
+        (:instance m24-legacy-exposure-keeps-store-by-definition))
+  :in-theory (union-theories nil (theory 'minimal-theory))))))
+
+; Selector wiring only: the exposure owner accessor is field one.
+(local (defthm m24-legacy-exposure-owner-at-preserves-carried-relation-by-definition
+ (implies (fn-lgoc-invariantp oc)
+  (fn-lgoc-invariantp (fn-exp-at 1 (fn-ocar-exp-open oc xs lim acfg peer address now))))
+ :hints (("Goal" :use m24-legacy-exposure-preserves-carried-relation
+  :in-theory (union-theories '(fn-exp-open-ocfg) (theory 'minimal-theory))))))
+
+(local (defthm m24-exposure-admission-preserves-carried-relation
+ (implies (fn-lgoc-invariantp oc)
+  (fn-lgoc-invariantp (fn-exp-open-ocfg (fn-exp-at 1
+   (fn-adm-held-open :exposure oc xs lim acfg peer address now bank configured capacity)))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-adm-held-open fn-adm-held-open-refusal fn-exp-open-ocfg
+    fn-exp-at-of-cons m24-legacy-exposure-owner-at-preserves-carried-relation-by-definition
+    car-cons cdr-cons (:executable-counterpart fn-exp-at)
+    (:executable-counterpart posp) (:executable-counterpart member-equal))
+  (theory 'minimal-theory))))))
+
+
+
+; Selector wiring only: the transition result contains the exposure result.
+(local (defthm m24-exposure-admission-owner-at-preserves-carried-relation-by-definition
+ (implies (fn-lgoc-invariantp oc)
+  (fn-lgoc-invariantp (fn-exp-at 1 (fn-exp-at 1
+   (fn-adm-held-open :exposure oc xs lim acfg peer address now bank configured capacity)))))
+ :hints (("Goal" :use m24-exposure-admission-preserves-carried-relation
+  :in-theory (union-theories '(fn-exp-open-ocfg) (theory 'minimal-theory))))))
+
+(local (defthm m24-exposure-transfer-preserves-carried-relation
+ (implies (fn-lgoc-invariantp oc)
+  (fn-lgoc-invariantp (fn-exp-open-ocfg (fn-exp-at 1
+   (fn-adm-transport-rearm :exposure oc xs lim acfg peer address now bank old-id configured capacity)))))
+ :hints (("Goal" :use ((:instance m24-rollback-owner-by-definition
+    (r (fn-adm-held-open :exposure oc xs lim acfg peer address now
+                         (fn-adm-hh-return bank old-id) configured capacity))
+    (peak (nfix (fn-adm-hh-count bank))))) :in-theory (union-theories
+  '(fn-adm-transport-rearm fn-adm-held-open-refusal fn-exp-open-ocfg
+    fn-exp-at-of-cons m24-rollback-owner-by-definition
+    m24-exposure-admission-owner-at-preserves-carried-relation-by-definition
+    car-cons cdr-cons (:executable-counterpart fn-exp-at)
+    (:executable-counterpart posp) (:executable-counterpart member-equal))
+  (theory 'minimal-theory))))))
+
+; Selector wiring only: the wrapper installs field one of the exposure result.
+(local (defthm m24-exposure-transfer-owner-at-preserves-carried-relation-by-definition
+ (implies (fn-lgoc-invariantp oc)
+  (fn-lgoc-invariantp (fn-exp-at 1 (fn-exp-at 1
+   (fn-adm-transport-rearm :exposure oc xs lim acfg peer address now
+                           bank old-id configured capacity)))))
+ :hints (("Goal" :use m24-exposure-transfer-preserves-carried-relation
+  :in-theory (union-theories '(fn-exp-open-ocfg) (theory 'minimal-theory))))))
+
+(defthm fn-owner-exposure-rearm-preserves-retain-state
+ (implies (fn-owner-retain-statep state)
+  (fn-owner-retain-statep (mv-nth 2
+   (fn-owner-exposure-rearm family address peer-octets old-id state))))
+ :hints (("Goal" :in-theory '(fn-owner-exposure-rearm fn-owner-held-callback-exposure-open
+  fn-orh-retain-statep-of-held-install fn-exp-at fn-exp-open-ocfg mv-nth nth zp car-cons cdr-cons
+  (:executable-counterpart zp)
+  m24-exposure-transfer-owner-at-preserves-carried-relation-by-definition
+  fn-orh-retain-statep-of-other-global-put fn-orh-retain-statep-of-install-served-effects
+  fn-orh-retain-statep-of-install-ocfg)
+  :use ((:instance fn-owner-retain-statep-implies-lgoc (state state))))))
 
 (defthm fn-owner-install-node-secret-preserves-retain-state
   (implies (fn-owner-retain-statep state)

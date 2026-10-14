@@ -5599,16 +5599,16 @@
           "note": "PRF-144 part 1 at the BP boundary (lane history-columns-3): under R (fn-hist-of-storep) the history stobj's Message-ID answer is the walk fn-bpaj-record-for-msgid of the Store's history."
         },
         {
-          "name": "fn-hist-refresh-is-the-history",
-          "note": "ESTABLISHMENT at every read (lane history-columns-3, books/history-columns-relation.lisp): the host's refresh before each index-free reader (host/store-node-host.lisp fn-host-hist-sync: a whole load after a store open or reset, else the sync of the rows committed since) answers the Store's history, so R holds at the read. Replaces fn-ceis-io-preserves-indexed and the owner-store-indexed establishment/preservation of the retired store-node event index (field 13)."
+          "kind": "theorem",
+          "name": "fn-hist-refresh-is-the-history"
         },
         {
-          "name": "fn-hist-sync-after-run-is-the-history",
-          "note": "PRESERVATION (history-columns-2, PRF-301): a stobj equal to the owner's history before any run of owner steps, synced after it, is the history after it (under fn-own-relation)."
+          "kind": "theorem",
+          "name": "fn-hist-sync-after-run-is-the-history"
         },
         {
-          "name": "fn-bpaj-dispatch-fast-is-checked",
-          "note": "The dispatch over the history stobj is the checked walk fn-bpaj-dispatch under fn-bpaj-statep, fn-sn-statep and R (lane history-columns-3). Replaces fn-osi-live-dispatch-fast-is-checked."
+          "kind": "theorem",
+          "name": "fn-bpaj-dispatch-fast-is-checked"
         }
       ]
     },
@@ -7988,35 +7988,11 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-cbud-bound-holds-its-connections"
+          "name": "fn-adm-capacity-fits"
         },
         {
           "kind": "theorem",
-          "name": "fn-cbud-bound-is-the-most"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cbud-limit-holds-its-connections"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cbud-limit-is-the-most"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cbud-run-decide-holds-the-capacity"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cbud-run-decide-refuses-exactly-past-the-limit"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cbud-admitted-connections-fit-the-machine"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cbud-deltas-refusal-keeps-the-machine-held"
+          "name": "fn-adm-capacity-is-the-most"
         },
         {
           "kind": "theorem",
@@ -9474,6 +9450,7 @@
           "name": "fn-lgob-three-barrier-open-after-the-copy-is-the-five"
         },
         {
+          "kind": "theorem",
           "name": "fn-lgrc-open-keeps-the-relation-at-every-cut"
         }
       ],
@@ -16764,11 +16741,11 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-crv-accepted-launch-fits-observed-machine"
+          "name": "fn-mo-serve-holds-every-admitted-store"
         },
         {
           "kind": "theorem",
-          "name": "fn-crv-accepted-launch-funds-pool-dynamic-allowance"
+          "name": "fn-mo-serve-launch-fits-the-address-space"
         }
       ],
       "pending_subject": "Host launcher calls component. Explicit supported policy factory/init consumer and actual image/native evidence pending; positive explicit-policy operator branch currently unreachable-in-composition."
@@ -17276,34 +17253,28 @@
       "id": "PRF-1176",
       "events": [
         {
-          "name": "fn-stce-resume-retains-existing-evidence",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+          "kind": "theorem",
+          "name": "fn-stce-resume-retains-existing-evidence"
         },
         {
-          "name": "fn-stce-publish-retains-the-envelope",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+          "kind": "theorem",
+          "name": "fn-stce-publish-retains-the-envelope"
         },
         {
-          "name": "fn-stce-resume-preserves-cursor-witness",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+          "kind": "theorem",
+          "name": "fn-stce-resume-preserves-cursor-witness"
         },
         {
-          "name": "fn-stce-publish-conflict-refuses-authority",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+          "kind": "theorem",
+          "name": "fn-stce-publish-conflict-refuses-authority"
         },
         {
-          "name": "fn-stce-start-has-cursor-shape",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+          "kind": "theorem",
+          "name": "fn-stce-start-has-cursor-shape"
         },
         {
-          "name": "fn-stce-resume-preserves-cursor-shape",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+          "kind": "theorem",
+          "name": "fn-stce-resume-preserves-cursor-shape"
         },
         {
           "kind": "theorem",
@@ -17409,39 +17380,32 @@
       "id": "PRF-1189",
       "events": [
         {
-          "name": "fn-stcp-enc-drive-work-bound",
-          "pending_subject": true,
-          "note": "Explicit profile component only; actual host caller and boundary refinement remain open."
+          "kind": "theorem",
+          "name": "fn-stcp-enc-drive-work-bound"
         },
         {
-          "name": "fn-stcp-dec-drive-work-bound",
-          "pending_subject": true,
-          "note": "Explicit profile component only; actual host caller and boundary refinement remain open."
+          "kind": "theorem",
+          "name": "fn-stcp-dec-drive-work-bound"
         },
         {
-          "name": "fn-stcp-dec-drive-borrowed-refinement",
-          "pending_subject": true,
-          "note": "Actual host caller remains open; decoder component induction carries cursor and exact work under borrowed string source."
+          "kind": "theorem",
+          "name": "fn-stcp-dec-drive-borrowed-refinement"
         },
         {
-          "name": "fn-stcp-enc-drive-preserves-bounds",
-          "pending_subject": true,
-          "note": "Shallow numeric/control preservation component certified at matching private closure; actual host caller remains open."
+          "kind": "theorem",
+          "name": "fn-stcp-enc-drive-preserves-bounds"
         },
         {
-          "name": "fn-stcp-dec-drive-preserves-bounds",
-          "pending_subject": true,
-          "note": "Shallow numeric/control preservation component certified at matching private closure; actual host caller remains open."
+          "kind": "theorem",
+          "name": "fn-stcp-dec-drive-preserves-bounds"
         },
         {
-          "name": "fn-stcp-enc-drive-acc-is-drive",
-          "pending_subject": true,
-          "note": "Additive accumulator execution equivalence component; later execution roots pending certification and actual host caller remains open. Counter equivalence requires acl2-numberp initial accumulator; cursor equivalence is unconditional."
+          "kind": "theorem",
+          "name": "fn-stcp-enc-drive-acc-is-drive"
         },
         {
-          "name": "fn-stcp-dec-drive-acc-is-drive",
-          "pending_subject": true,
-          "note": "Additive accumulator execution equivalence component; later execution roots pending certification and actual host caller remains open. Counter equivalence requires acl2-numberp initial accumulator; cursor equivalence is unconditional."
+          "kind": "theorem",
+          "name": "fn-stcp-dec-drive-acc-is-drive"
         }
       ]
     },
@@ -18418,11 +18382,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-cbud-live-held-charges-current-and-active"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cbud-live-held-releases-only-unneeded-slots"
+          "name": "fn-adm-cfg-holding-handshakes-charges-every-handshake"
         }
       ]
     },
@@ -18497,10 +18457,6 @@
         {
           "kind": "theorem",
           "name": "fn-prstartup-admitted-capacity-is-funded"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-prstartup-accepted-default-launch-fits-machine"
         }
       ]
     },
@@ -19007,6 +18963,87 @@
       ]
     },
     {
+      "id": "PRF-10008",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mm-launch-holds-the-store-and-the-reservation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10009",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mm-launch-refuses-only-by-the-model"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10010",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-holds-every-admitted-store"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10011",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-refuses-only-by-the-model"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10012",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-launch-fits-the-address-space"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10013",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-startup-admits-the-pool"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10014",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-output-pool-is-held"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10015",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-plan-is-held-to-the-pool"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10016",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-launch-holds-its-pools"
+        }
+      ]
+    },
+    {
       "id": "PRF-10006",
       "events": [
         {
@@ -19048,6 +19085,166 @@
         {
           "kind": "theorem",
           "name": "fn-lgo-history-ceiling-bounds-the-intern"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10017",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-exposure-open-admits-below-held-reader-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-peer-open-admits-below-held-reader-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-transport-rearm-admits-below-held-reader-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-reader-open-admits-below-held-reader-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-held-admissions-compose-with-installed-capacity"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10018",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-connections-cover-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-connections-equal-reader-count-when-covered"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-gate-bounds-the-held-instant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-gate-holds-the-retained-lease"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-admitted-config-change-keeps-the-operator-slot-funded"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10019",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-installed-capacity-is-proved-or-zero"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-zero-capacity-refuses-new-readers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-zero-capacity-refuses-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-absent-capacity-and-zero-are-distinct"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-installed-zero-has-the-zero-diagnostic"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10020",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-launch-conserves-the-resident-partition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-bp-launch-admits-its-startup"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100001",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-priced-cfg-keeps-the-installed-bank"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100000",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-lease-startup-keeps-its-bank-readers"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100002",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-capacity-is-nil-exactly-when-no-slot-fits"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100003",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-operator-open-admits-exactly-a-free-funded-slot"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100004",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-operator-refusal-is-named"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100005",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-operator-open-below-saturation-is-the-reader-open"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100006",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-run-gate-keeps-the-operator-slot-funded"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100007",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-adm-run-admitted-record-keeps-the-operator-slot-funded"
         }
       ]
     }

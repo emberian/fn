@@ -3,18 +3,21 @@
 Lane connection-multiplexing (2026-09-26; PKT-605; HST-024; PRF-223).  Over
 each image (developer and production):
 
-1. A capacity the machine cannot hold beside the store is refused by name at
-   `run` (books/connection-budget.lisp fn-cbud-run-decide): exit 1, the line
-   `refused connections-exceed-memory capacity=C holds=B per-connection=K
-   KiB machine=M MB`, and nothing listens.
-2. Under a capacity it holds, the service log names the bound (`connections
-   holds=B per-connection=K KiB`), 300 held connections add no thread (the
-   loops serve them; the worker-per-connection host added 300), each costs
-   the node less than 64 KiB of resident memory at rest, and every one of
-   them is served (a GROUP on each).
-3. A live raise past the bound is refused by name (`connections-exceed-
-   memory`) and changes nothing; a raise within it is published, and the
-   capacity is then exactly what is admitted (the busy 400 after it).
+1. A capacity the memory cannot hold is bounded by name at `run`: the run's
+   capacity is the memory gate's C' (books/admission-memory.lisp
+   fn-adm-capacity; PRF-223's statement since L-RUN-LAUNCH), the service
+   log's line `memory capacity=C' of C bound-by=TERM ...` names it below the
+   configured C, and the run serves.
+2. Under a capacity it holds, the service log names it (`memory
+   capacity=C' of C bound-by=configured`), 300 held connections add no
+   thread (the loops serve them; the worker-per-connection host added 300),
+   each costs the node less than 64 KiB of resident memory at rest, and
+   every one of them is served (a GROUP on each).
+3. A live raise the memory gate does not hold is refused by name
+   (`connections-exceed-memory`, host/owner-host.lisp
+   fn-owner-memory-candidate-refusal) and changes nothing; a raise it holds
+   is published, the capacity recomputed (fn-owner-memory-recapacity), and
+   is then exactly what is admitted (the busy 400 after it).
 
     tools/hbox_native.sh --images developer,production . tests.test_native_mux
 """
@@ -33,9 +36,7 @@ from tests.native_harness import EXIT, Node, native_image, requires
 PRODUCTION = native_image("FN_NATIVE_HOST")
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 BUSY = b"400 too many connections; try again later\r\n"
-HOLDS = re.compile(rb"connections holds=(\d+) per-connection=(\d+) KiB")
-REFUSED = re.compile(r"refused connections-exceed-memory capacity=(\d+) holds=(\d+) "
-                     r"per-connection=(\d+) KiB machine=(\d+) MB")
+MEMORY = re.compile(rb"memory capacity=(\d+) of (\d+) bound-by=(\S+)")
 CAPACITY = re.compile(
     r"^exposure capacity connections=(\d+) capacity=(\d+) per-address=(\d+) trusted=(\S+)$",
     re.M)
@@ -116,30 +117,29 @@ class MuxCase:
         sock = socket.create_connection(("127.0.0.1", self.port), timeout=30)
         return sock, first_line(sock)
 
-    def test_a_capacity_the_machine_cannot_hold_is_refused_at_start(self):
+    def test_a_capacity_the_memory_cannot_hold_is_bounded_at_start(self):
         self.policy(4000000)
-        owner = self.node.start(ready=None)
-        self.node.exited(EXIT.REFUSED, timeout=300)
-        stderr = owner.stderr.since(0).decode("ascii", "replace")
-        found = REFUSED.search(stderr)
-        self.assertIsNotNone(found, stderr[-2000:])
-        capacity, holds, per, machine = map(int, found.groups())
-        self.assertEqual(capacity, 4000000)
-        self.assertLess(holds, capacity)
-        self.assertGreater(per, 0)
-        self.assertGreater(machine, 0)
-        self.assertIn(found.group(0), self.log.read_text("ascii", "replace"))
-        with self.assertRaises(OSError):
-            socket.create_connection(("127.0.0.1", self.port), timeout=2).close()
+        self.node.start()
+        found = MEMORY.search(self.log.read_bytes())
+        self.assertIsNotNone(found, self.log.read_bytes()[-2000:])
+        held, configured, term = int(found.group(1)), int(found.group(2)), found.group(3)
+        self.assertEqual(configured, 4000000)
+        self.assertGreater(held, 0)
+        self.assertLess(held, configured)
+        self.assertNotEqual(term, b"configured")
+        sock, line = self.open_one()
+        sock.close()
+        self.assertTrue(line.startswith(b"20"), line)
 
     def test_connections_cost_no_thread_and_the_bound_is_kept_live(self):
         self.policy(HELD + 20)
         owner = self.node.start()
         log = self.log.read_bytes()
-        found = HOLDS.search(log)
+        found = MEMORY.search(log)
         self.assertIsNotNone(found, log[-2000:])
-        holds, per = int(found.group(1)), int(found.group(2))
-        self.assertGreaterEqual(holds, HELD + 20)
+        holds = int(found.group(1))
+        self.assertEqual((holds, int(found.group(2)), found.group(3)),
+                         (HELD + 20, HELD + 20, b"configured"))
         pid = owner.pid
         sock, line = self.open_one()
         self.assertTrue(line.startswith(b"20"), line)
@@ -158,9 +158,9 @@ class MuxCase:
         self.assertLessEqual(threads_after, threads_before + 1,
                              (threads_before, threads_after))
         per_connection = (rss_after - rss_before) / (HELD - 1)
-        print("NATIVE-MUX holds={} per-connection-figure={} KiB threads={}->{} "
+        print("NATIVE-MUX capacity={} threads={}->{} "
               "rss={}->{} kB rss-per-connection={:.1f} kB".format(
-                  holds, per, threads_before, threads_after, rss_before, rss_after,
+                  holds, threads_before, threads_after, rss_before, rss_after,
                   per_connection))
         self.assertLess(per_connection, 64, (rss_before, rss_after))
         # Every held connection is served.
@@ -169,8 +169,9 @@ class MuxCase:
         for sock in self.held:
             self.assertTrue(first_line(sock).startswith(b"211 "))
 
-        # A live raise past the bound is refused by name and changes nothing.
-        refused = self.policy(holds + 1, expected=None)
+        # A live raise the memory gate does not hold is refused by name and
+        # changes nothing.
+        refused = self.policy(4000000, expected=None)
         self.assertNotEqual(refused.returncode, 0, refused)
         text = (refused.stdout + refused.stderr).decode("ascii", "replace").lower()
         self.assertIn("connections-exceed-memory", text)

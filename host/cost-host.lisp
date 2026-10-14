@@ -79,8 +79,7 @@
 (def-cost fn-ncfg-nth :visits (+ 1 m) :sizes ((m (nfix n))))
 (def-cost fn-native-config-reclaim-livep :visits 32)
 (def-cost fn-mca-figure-octets :unaccounted (fn-mca-base-octets fn-heap-with-nursery))
-(def-cost fn-rrv-extend-reservation
-  :unaccounted (fn-rrv-extra-octets fn-heap-grow-runtime-dynamic fn-heap-machine-octets fn-crv-nth))
+; Shared launch rows derive in books/memory-run-cost.lisp after image-world.
 (def-cost fn-owner-page-window-span-at :unaccounted (fn-owner-page-read-ledger fn-pwr-span-at))
 (def-cost fn-owner-page-window-cache-span-at :unaccounted (fn-owner-page-read-ledger fn-pwc-span-at))
 (def-cost fn-owner-page-decoded-job-span-at :unaccounted (fn-owner-page-read-ledger fn-dwj-span-at))
@@ -165,3 +164,34 @@
 (def-cost fn-owner-cfg-capture)
 (def-cost fn-owner-held-verdicts)
 (def-cost fn-owner-sco-count :unaccounted (fn-sf-records-count))
+
+; Derived auxiliary memory writer costs, not declared ceilings.
+(def-cost fn-owner-memory-physical-return
+ :unaccounted (fn-owner-memory-held-return))
+(def-cost fn-owner-open
+ :unaccounted (fn-owner-held-callback-open))
+(def-cost fn-owner-open-peer
+ :unaccounted (fn-owner-held-callback-open-peer))
+(def-cost fn-owner-peer-rearm
+ :unaccounted (fn-owner-held-callback-open-peer))
+(def-cost fn-owner-exposure-rearm
+ :unaccounted (fn-owner-held-callback-exposure-open))
+(def-cost fn-owner-memory-lease-install
+ :unaccounted (fn-adm-installed-lease-allocation))
+(def-cost fn-owner-memory-reclaim-complete
+ :unaccounted (fn-owner-memory-recapacity mv-nth))
+
+; STEP 5 operator dispatch; derived costs, unresolved work is explicit.
+(def-cost fn-owner-operator-open
+ :unaccounted (fn-owner-record-totals fn-owner-memory-run-cfg
+               fn-owner-held-callback-operator-open mv-nth
+               fn-exp-at true-list-fix update-nth))
+(def-cost fn-adm-operator-open-word :unaccounted (fn-exp-at))
+(def-cost fn-adm-operator-open-id :unaccounted (fn-exp-at))
+(def-cost fn-adm-operator-open-reason :unaccounted (fn-exp-at))
+(def-cost fn-owner-close :unaccounted (fn-owner-callback-close mv-nth fn-adm-operator-close
+                                       fn-exp-at true-list-fix update-nth))
+(def-cost fn-owner-fault :unaccounted (fn-owner-callback-fault mv-nth fn-adm-operator-close
+                                       fn-exp-at true-list-fix update-nth))
+
+(def-cost fn-ores-config-refused)

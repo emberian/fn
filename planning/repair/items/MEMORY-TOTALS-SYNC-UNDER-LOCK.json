@@ -1,0 +1,13 @@
+{
+ "category": "lock-discipline",
+ "detail": "lock_discipline_check against a dev export (364f0c053): dev 24 new / 19 stale; lane 9ab1229dc 25 / 18. The +1 key is R2|fnn-extent-pread|O:sb-alien:alien-funcall at 122 sites (baseline 111, dev 103); fn-pgs-fill-frame and fnn-extent-read-stall rise by the same 19. The only new owner-held paths are fn-owner-record-totals and fn-owner-memory-recapacity. Standing rule: durable I/O under the owner mutex becomes ACL2-ordered quanta, with no exception rows. Retired by moving the totals sync out from under the lock (coordinator ruling 10-14).",
+ "file": "host/owner-host.lisp",
+ "id": "MEMORY-TOTALS-SYNC-UNDER-LOCK",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "lock-discipline-check",
+ "state": "open",
+ "title": "The history-totals sync (fn-owner-record-totals) runs cold page reads under the owner mutex: R2 fnn-extent-pread|O, +19 sites, via fn-owner-operator-open and fn-owner-memory-recapacity (lane memory-run-launch STEP 5)",
+ "updated": "2026-10-14T13:28:19Z"
+}

@@ -864,4 +864,34 @@
                                            (table-alist 'fn-teeth (w state)))))
         :unguarded))
 
+(defkeystone fn-dkt-lexical-scope
+ (let* ((a (nfix x)) (b (1+ a)))
+  (implies (< 0 a) (< 1 b)))
+ :id :test
+ :subject nfix :hyps (positive) :witness ((x 1))
+ :breaks ((positive ((x 0))))
+ :mutations ((off-by-one (:conclusion (< 2 b)) ((x 1))
+             :fault "The scoped conclusion skips the first positive count.")))
+
+(defconst *fn-dkt-nested-term*
+ '(let ((a (nfix x)))
+   (let* ((b (1+ a)))
+    (implies (< 0 a) (< 1 b)))))
+(defconst *fn-dkt-nested-claim*
+ '(let ((a (nfix x)))
+   (let* ((b (1+ a)))
+    (((positive (< 0 a))) (< 1 b)))))
+(assert-event
+ (equal (fn-dk-claim-of 'fn-dkt-nested-scope *fn-dkt-nested-term* '(:hyps (positive)))
+        *fn-dkt-nested-claim*))
+(defkeystone fn-dkt-nested-scope
+ (let ((a (nfix x)))
+  (let* ((b (1+ a)))
+   (implies (< 0 a) (< 1 b))))
+ :id :test
+ :subject nfix :hyps (positive) :witness ((x 1))
+ :breaks ((positive ((x 0))))
+ :mutations ((off-by-one (:conclusion (< 2 b)) ((x 1))
+             :fault "Nested scope must retain both binders for the bound.")))
+
 (defteeth-check)

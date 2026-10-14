@@ -2,8 +2,8 @@
 
 The decided-launch ruling (2026-10-04): every installed node is started
 by packaging/fn.  In its installed layout the launcher runs the image's
-heap probe (`heap -- operator CONFIG run`: books/heap-figure.lisp
-fn-heap-decide over the store profile and this machine) and starts the
+heap probe (`heap -- operator CONFIG run`: books/heap-command.lisp
+fn-mo-serve-decide over resident LIMIT, pools and address space) and starts the
 owner at that heap and control stack.  On dev at d5b0b9100 every such
 start was refused ("cold startup refused: invalid runtime capture";
 lane cold-start's fix, lane/cold-start@ae4e1cc95).  No native caught it,

@@ -31,152 +31,6 @@
        (not (<= (fn-prstartup-required-heap (fn-prstartup-file-capacity plan) 4 "/tmp/store")
                 1024)))))
 
-; A launcher that reserved only the protected figure has no default backing.
-; The exact DEFAULT contribution makes the minimum selected pool affordable.
-(defconst *prst-launch-base* '(:heap 256 "custom" 8192 1024 20))
-(defconst *prst-launch*
- (fn-prstartup-extend-operation-reservation *prst-launch-base* :run nil "/tmp/store" 4 8
-                                           '(83886080 . 67108864) '(8589934592) nil nil))
-(assert-event
- (and (equal (fn-prstartup-nth 0 *prst-launch*) :heap)
-      ; 259: the decoded worker's requested-window child is the profile's
-      ; :read-window-octets (262144) since window-read 390408000, in
-      ; fn-dwb-reusable-baseline-vector via fn-prstartup-baseline-heap.
-      (equal (fn-prstartup-nth 1 *prst-launch*) 259)
-      (equal (fn-prstartup-nth 4 *prst-launch*) 1024)
-      (equal (fn-prstartup-nth 5 *prst-launch*) 20)
-      (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 *prst-launch*)
-             '(83886080 . 67108864) (fn-prstartup-nth 4 *prst-launch*) (fn-prstartup-nth 5 *prst-launch*))
-          (fn-heap-machine-octets '(8589934592)))
-      (equal (fn-prstartup-status
-              (fn-prstartup-plan 268435456 67108864 268435456 "/tmp/store" 4 1048576 4194304 8 256 (fn-prstartup-read-reserve 196677 4))) :refused)
-      (fn-prstartup-planp
-       (fn-prstartup-plan (* 1048576 (fn-prstartup-nth 1 *prst-launch*)) 67108864 268435456
-                           "/tmp/store" 4 1048576 4194304 8 256
-                           (fn-prstartup-read-reserve (fn-prstartup-read-extent nil) 4)))))
-(assert-event
- (and (equal (fn-prstartup-extend-operation-reservation *prst-launch-base* :status nil "/tmp/store" 4 8
-                                                       '(83886080 . 67108864) '(8589934592) nil nil) *prst-launch-base*)
-      (equal (fn-prstartup-extend-operation-reservation *prst-launch-base* :run '(complete) "/tmp/store" 4 8
-                                                       '(83886080 . 67108864) '(8589934592) nil nil) *prst-launch-base*)))
-; Literal removal of each machine-fit hypothesis; the other is retained.
-(assert-event
- (let* ((cold '(complete))
-        (d (fn-prstartup-extend-default-reservation *prst-launch-base* cold "/tmp/store" 4 8 100 nil nil nil)))
-  (and cold (equal (fn-prstartup-nth 0 d) :heap)
-       (not (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) 100
-                  (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d)) (fn-heap-machine-octets nil))))))
-(assert-event
- (let* ((cold nil)
-        (d (fn-prstartup-extend-default-reservation *prst-launch-base* cold "/tmp/store" 4 8 100 nil nil nil)))
-  (and (not cold) (not (equal (fn-prstartup-nth 0 d) :heap))
-       (not (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) 100
-                  (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d)) (fn-heap-machine-octets nil))))))
-
-; Discriminating runtime trigger growth: naive 128+1 MiB spends collector room.
-(assert-event
- (let* ((old (* 128 1048576)) (extra 1048576) (cap (* 64 1048576))
-        (backing (- old (* 2 (fn-heap-nursery-trigger old cap))))
-        (naive (+ old extra))
-        (next (fn-heap-grow-runtime-dynamic old extra cap)))
-  (and (< naive (+ backing extra (* 2 (fn-heap-nursery-trigger naive cap))))
-       (<= (+ backing extra (* 2 (fn-heap-nursery-trigger next cap))) next)
-       (<= (+ old extra) next))))
-
-; Launcher and startup agree (cold-start, 2026-10-04; ADMISSION-RESERVES-NOT-REOPEN,
-; 2026-10-08).  A run is sized for the FULL store, so the launcher's figure and
-; the startup's protected allowance take the same (no) observation: a
-; development store at exactly its launcher's DEFAULT-extended figure is
-; admitted whatever the store on disk held, and a heap one MiB below the
-; DECIDED figure is refused by name, for each preset
-; (fn-prstartup-run-starts-at-the-decided-figure,
-; fn-prstartup-run-refuses-below-the-decided-figure).
-(defconst *prst-run-core* '(615110568 . 517243296))
-; The host trigger the figures are taken at: books/profile-limits.lisp's :gc-nursery-mib
-; (+fnn-gc-nursery-octets+), not a copy of its value.
-(defconst *prst-nursery* (* 1048576 (fn-profile-limit :gc-nursery-mib)))
-(defconst *prst-fresh* '(0 . 0))
-(defconst *prst-run-machine* (list (* 24 1073741824)))
-(defconst *prst-run*
- (fn-prstartup-extend-operation-reservation
-  (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* *prst-run-core*
-                                    *prst-nursery* *prst-run-machine* 32 *prst-fresh*)
-  :run nil "/tmp/store" 4 8 *prst-run-core* *prst-run-machine*
-  *fn-bs-profile-development* *prst-fresh*))
-(assert-event
- (let ((dyn (* 1048576 (fn-prstartup-nth 1 *prst-run*))))
-  (and (equal (fn-prstartup-nth 0 *prst-run*) :heap)
-       (fn-prstartup-planp
-        (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
-                                   *prst-run-core* *prst-nursery* nil nil 32 "/tmp/store" 4 8 1024
-                                   *prst-fresh*))
-       ; the observation is not read: unobserved and a grown store alike
-       (fn-prstartup-planp
-        (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
-                                   *prst-run-core* *prst-nursery* nil nil 32 "/tmp/store" 4 8 1024
-                                   nil))
-       (fn-prstartup-planp
-        (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
-                                   *prst-run-core* *prst-nursery* nil nil 32 "/tmp/store" 4 8 1024
-                                   '(9437184)))
-       (stringp (fn-prstartup-refusal-line '(:refused :default-pool-heap-not-held))))))
-
-; The decided figure starts and one MiB below it is refused by name, at the
-; trigger the host sets in that heap, for each preset (a 126 GiB machine).
-(defun prst-decided-agrees (profile)
- (declare (xargs :mode :program))
- (let* ((machine (list (* 126288 1048576)))
-        (decided (fn-heap-reserve-operation-decide :run profile *prst-run-core*
-                                                   *prst-nursery* machine 32 nil))
-        (dyn (* 1048576 (fn-prstartup-nth 1 decided)))
-        (below (- dyn 1048576)))
-  (and (equal (fn-prstartup-nth 0 decided) :heap)
-       (equal (fn-heap-operation-figure-octets :run profile *prst-run-core* *prst-nursery* nil)
-              (fn-heap-operation-figure-octets :run profile *prst-run-core* *prst-nursery*
-                                               '(9437184 . 100)))
-       (<= (fn-prstartup-protected profile *prst-run-core*
-                                   (fn-heap-nursery-trigger dyn *prst-nursery*)
-                                   nil 32 '(9437184))
-           dyn)
-       (< below
-          (fn-prstartup-protected profile *prst-run-core*
-                                  (fn-heap-nursery-trigger below *prst-nursery*)
-                                  nil 32 '(9437184)))
-       (equal (fn-prstartup-default-plan below (cdr *prst-run-core*) profile *prst-run-core*
-                                         (fn-heap-nursery-trigger below *prst-nursery*)
-                                         nil nil 32 "/tmp/store" 4 8 1024 '(9437184))
-              '(:refused :default-pool-heap-not-held)))))
-(assert-event (prst-decided-agrees *fn-bs-profile-development*))
-(assert-event (prst-decided-agrees *fn-heap-small-profile*))
-(assert-event (prst-decided-agrees *fn-bs-profile-scale*))
-
-; KEYSTONE fn-prstartup-launch-admits-owner-protected, its fields
-; (cold-start, 2026-10-04; scenarios-2 SCEN-INSTALLED-HEAP-NOT-HELD).
-; Satisfiable: the extension above admits, and an owner whose image
-; observation exceeds the probe's (same core file) passes its protected check
-; at the heap it got.  Teeth: drop the core-file hypothesis (an owner core
-; with a larger file) and the check fails at that heap; the base figure alone
-; (no launch floor) fails for the larger owner observation, as on 6107ceb56.
-(defconst *prst-owner-core* '(615110568 . 600000000))
-(assert-event
- (let* ((dyn (* 1048576 (fn-prstartup-nth 1 *prst-run*)))
-        (n (fn-heap-nursery-trigger dyn (* 1048576 (fn-profile-limit :gc-nursery-mib)))))
-  (and (equal (fn-prstartup-nth 0 *prst-run*) :heap)
-       (equal (fn-heap-core-file *prst-owner-core*) (fn-heap-core-file *prst-run-core*))
-       (<= (fn-prstartup-protected *fn-bs-profile-development* *prst-owner-core* n nil 32 *prst-fresh*)
-           dyn)
-       (not (<= (fn-prstartup-protected *fn-bs-profile-development* '(1615110568 . 1600000000)
-                                        n nil 32 *prst-fresh*)
-                dyn)))))
-(assert-event
- (let* ((base (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* '(615110568 . 300000000)
-                                                *prst-nursery* *prst-run-machine* 32 *prst-fresh*))
-        (dyn (* 1048576 (fn-prstartup-nth 1 base))))
-  (and (equal (fn-prstartup-nth 0 base) :heap)
-       (not (<= (fn-prstartup-protected *fn-bs-profile-development* *prst-owner-core*
-                  (fn-heap-nursery-trigger dyn *prst-nursery*) nil 32 *prst-fresh*)
-                dyn)))))
-
 ; THE READS IN FLIGHT (lane pool-refusal, 2026-10-05).  KEYSTONES
 ; fn-prstartup-plan-holds-the-reads-in-flight and
 ; fn-prstartup-reserve-admits-a-read, their fields.  The extent of the
@@ -237,7 +91,7 @@
                                       '(0 0 0 0 0) (list 0 0 8 4 4)
                                       1 18446744073709551615 (fn-prs-worker-demand *prst-e* 208 0 0))))
         :read-resources-unavailable))
-; The launcher's served run grows by the reserve too.
+; The served run's DEFAULT pool (books/heap-command.lisp fn-mo-serve-pools) carries the reserve too.
 (assert-event
  (equal (fn-prstartup-launch-extra *fn-bs-profile-development* 4 8 "/tmp/store")
         (+ (fn-prstartup-required-heap 9 4 "/tmp/store")
@@ -258,23 +112,7 @@
         (<= (fn-cwq-queue-octets)
             (fn-prstartup-launch-extra *fn-bs-profile-development* 4 8 "/tmp/store")))))
 ; TEETH-62 BEGIN
-; The two page-read-startup keystones with their teeth (TEETH CONTRACT v1).  The admitted-capacity keystone states its antecedent inside a `let'; its removal is a mutation.
-(defteeth fn-prstartup-accepted-default-launch-fits-machine
-  :claim (((no-cold (not cold)) (accepted (equal (fn-prstartup-nth 0
-                        (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed)) :heap)))
-          (let ((d (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed)))
-   (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) core
-                                  (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d))
-       (fn-heap-machine-octets observations))))
-  :subject fn-prstartup-extend-default-reservation
-  :witness ((base *prst-launch-base*) (cold nil) (root "/tmp/store") (workers 4) (cache-limit 8) (core '(83886080 . 67108864)) (observations '(8589934592)) (profile nil) (observed nil))
-  :breaks ((no-cold ((base *prst-launch-base*) (cold '(complete)) (root "/tmp/store") (workers 4) (cache-limit 8) (core 100) (observations nil) (profile nil) (observed nil)))
-           (accepted ((base *prst-launch-base*) (cold nil) (root "/tmp/store") (workers 4) (cache-limit 8) (core 100) (observations nil) (profile nil) (observed nil))))
-  :mutations ((read-against-unobserved-machine
-               (:conclusion (let ((d (fn-prstartup-extend-default-reservation base cold root workers cache-limit core observations profile observed))) (<= (fn-heap-reservation-octets (fn-prstartup-nth 1 d) core (fn-prstartup-nth 4 d) (fn-prstartup-nth 5 d)) (fn-heap-machine-octets nil))))
-               ((base *prst-launch-base*) (cold nil) (root "/tmp/store") (workers 4) (cache-limit 8) (core '(83886080 . 67108864)) (observations '(8589934592)) (profile nil) (observed nil))
-               :fault "the bound read against an unobserved machine")))
-
+; The page-read-startup keystone with its teeth (TEETH CONTRACT v1).  It states its antecedent inside a `let'; its removal is a mutation.  The served run's launch and startup keystones are books/heap-command.lisp's and books/peer-flight-startup.lisp's (L-RUN-LAUNCH).
 (defteeth fn-prstartup-admitted-capacity-is-funded
   :claim (() (let ((plan (fn-prstartup-plan dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve))) (implies (equal (fn-prstartup-nth 0 plan) :admitted) (and (natp (fn-prstartup-file-capacity plan))
         (<= (max 8 (+ 1 (nfix cache-limit))) (fn-prstartup-file-capacity plan))

@@ -1603,6 +1603,45 @@ class DefkeystoneExpansionTests(unittest.TestCase):
     that book and requires the Python expansion to equal the same literal,
     so the static tools and ACL2 cannot drift apart silently."""
 
+    def test_hypothesis_free_let_is_the_whole_conclusion(self):
+        term = ledger.read_forms("(let ((x (f y))) (and (p x) (q x)))")[0]
+        self.assertEqual(ledger.defkeystone_claim(ledger.Sym("k"), term, {}),
+                         [[], term])
+
+    def test_decoded_credential_keeps_its_original_claim_and_teeth(self):
+        source = (self.BOOK.parent / "feed-connection-teeth-tests.lisp").read_text()
+        form = next(f for f in ledger.read_forms(source)
+                    if ledger.head(f) == "defkeystone" and str(f[1]) == "fct-decoded-credential")
+        parts = ledger.defkeystone_parts(form)
+        self.assertIsNotNone(parts)
+        self.assertEqual(parts["claim"], [[], form[2]])
+        self.assertGreater(len(ledger.teeth_events(parts, "defkeystone")), 1)
+
+    def test_outer_let_keeps_hypothesis_scope(self):
+        form = ledger.Reader("(defkeystone lexical (let* ((a (nfix x)) (b (1+ a))) "
+                             "(implies (< 0 a) (< 1 b))) :subject nfix :hyps (positive) "
+                             ":witness ((x 1)) :breaks ((positive ((x 0)))) "
+                             ":mutations ((off (:conclusion (< 2 b)) ((x 1)) :fault \"off by one\")))").top_level()[0][0]
+        parts = ledger.defkeystone_parts(form)
+        self.assertIsNotNone(parts)
+        self.assertEqual([str(x) for x in parts["labels"]], ["positive"])
+        self.assertEqual(ledger.head(parts["claim"]), "let*")
+        self.assertEqual(ledger.head(parts["hyps"][0]), "let*")
+
+    def test_nested_let_let_star_claim_matches_the_acl2_literal(self):
+        constants, forms = self.constants()
+        term = constants["*fn-dkt-nested-term*"][1]
+        expected = constants["*fn-dkt-nested-claim*"][1]
+        self.assertEqual(ledger.defkeystone_claim(ledger.Sym("fn-dkt-nested-scope"), term,
+                                                {":hyps": [ledger.Sym("positive")]}), expected)
+        form = next(f for f in forms if ledger.head(f) == "defkeystone"
+                    and str(f[1]) == "fn-dkt-nested-scope")
+        parts = ledger.defkeystone_parts(form)
+        self.assertIsNotNone(parts)
+        self.assertEqual(parts["claim"], expected)
+        self.assertEqual(ledger.head(parts["hyps"][0]), "let")
+        self.assertEqual(ledger.head(parts["hyps"][0][-1]), "let*")
+
     BOOK = Path(__file__).resolve().parents[1] / "tests/acl2/defkeystone-tests.lisp"
 
     def constants(self) -> dict:
@@ -1633,7 +1672,11 @@ class DefkeystoneExpansionTests(unittest.TestCase):
     def test_the_sample_is_the_form_the_book_admits(self):
         constants, forms = self.constants()
         admitted = [form for form in forms if ledger.head(form) == "defkeystone"]
-        self.assertEqual(admitted, [constants["*fn-dkt-sample*"][1]])
+        lexical = [form for form in admitted if str(form[1]) == "fn-dkt-lexical-scope"]
+        self.assertEqual(len(lexical), 1)
+        self.assertEqual([form for form in admitted if str(form[1]) not in
+                          {"fn-dkt-lexical-scope", "fn-dkt-nested-scope"}],
+                         [constants["*fn-dkt-sample*"][1]])
 
     def test_the_book_sees_the_keystone_and_its_teeth(self):
         source = self.BOOK.read_text(encoding="utf-8")
@@ -1664,7 +1707,7 @@ class DefkeystoneExpansionTests(unittest.TestCase):
                           "fn-dkt-assumed-one", "fn-dkt-scoped",
                           "fn-dkt-cell-positive", "fn-dkt-two-cells",
                           "fn-dkt-two-cells-built", "fn-dkt-snapshot",
-                          "fn-dkt-sk-positive"})
+                          "fn-dkt-sk-positive", "fn-dkt-lexical-scope", "fn-dkt-nested-scope"})
         # a bound :derived-by a def-cost row is a theorem of its book too
         self.assertIn("fn-dkt-walk-of-true-list-visits-steps", names)
         self.assertEqual(set(book.teeth_owed), {"fn-dkt-add-adds-source"})

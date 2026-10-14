@@ -465,7 +465,7 @@ def stderr_digest(text):
     A start refused for memory (lane ops-fixes) prints its refusal and then
     the parts that do not fit; a long enough breakdown pushed the one line
     that says why (`fn: refused init-budget-cannot-hold-profile ...',
-    `machine-cannot-hold-profile') out of the kept tail, and a lane read the
+    `machine-cannot-hold-the-pools') out of the kept tail, and a lane read the
     failure as a silent one (feed-queue, 2026-09-27).  The refusal lines are
     read from the whole of stderr, whatever its length."""
     decoded = (text or b"").decode("utf-8", "replace")
@@ -1276,8 +1276,10 @@ class Node:
         starts (ruling of 2026-10-04): through packaging/fn in its installed
         layout (installed_launcher), which runs the image's own heap probe,
         `heap -- WORDS', and starts the owner at the heap and control stack
-        ACL2 decides for this store profile and this machine -- or refuses,
-        by name, a profile the machine cannot hold.  Every native used to
+        ACL2 decides for the resident LIMIT, pools and address space.
+        Configure derives C' from the memory gate; the probe refuses pools
+        or observed store reopen that cannot fit, unobserved memory, or an
+        address-space reservation that cannot fit.  Every native used to
         start the image at its saved 32000 MB, so an installed node's
         startup refusal ("invalid runtime capture", cold-start 2026-10-04)
         went unseen by all of them.  A test whose subject needs a fixed heap
@@ -1446,11 +1448,10 @@ def decided_launch(node, image=None):
     """The environment of a run at the heap and control stack the installed
     launcher (packaging/fn) decides for NODE's served run: its own probe,
     `heap -- operator CONFIG run`, which reads the store profile, the peer
-    flight profile and this machine (a cgroup's MemoryMax included).  A run
-    at the image launcher's figure (32000 MB) on a smaller machine holds no
-    peer worker reservation (books/peer-flight-startup.lisp
-    fn-prstartup-peer-native-grant refuses its start), which an installed
-    node, launched at the probe's figure, never meets."""
+    flight profile and the resident and address-space observations.  The
+    probe's heap holds the core's content, resident LIMIT and pools; the
+    peer grant compares its reservation with address space.  Configure
+    derives the serving capacity C' from the memory gate at that LIMIT."""
     probe = node.invoke("heap", "--", "operator", node.config, "run", image=image)
     out = probe.stdout.decode("utf-8", "replace")
     node.case.assertEqual(probe.returncode, 0, out + probe.stderr.decode("utf-8", "replace"))

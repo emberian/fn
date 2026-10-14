@@ -13,9 +13,9 @@
 ;   the heap reservation       books/heap-reservation.lisp
 ;   PRF-198 / HST-013          fn-heap-reserve-decide: the dynamic space,
 ;                              the core and THREADS stacks fit the machine
-;   the connection budget      books/connection-budget.lisp
-;   PRF-223                    fn-cbud-run-decide: CAPACITY connections'
-;                              resident octets fit the machine
+;   the run's capacity         books/admission-memory.lisp
+;   PRF-223                    fn-adm-capacity: C' connections' serving
+;                              sum fits the resident limit (L-RUN-LAUNCH)
 ;
 ; This book and books/resource-vector-relations-heap.lisp (the heap and
 ; connection relations, whose include closure is the owner's, so they are
@@ -44,11 +44,11 @@
 ;                                       the reservation's octets against
 ;                                       the machine's and whose :workers
 ;                                       coordinate is the threads
-;   fn-rv-connection-budget-funds-the-root
-;                                       a held capacity is a funded root
+;   fn-rv-connection-capacity-funds-the-root
+;                                       a run's capacity C' is a funded root
 ;                                       whose :resident coordinate is the
-;                                       resident figure of CAPACITY
-;                                       connections against the machine
+;                                       serving sum at C' against the
+;                                       resident limit
 ;
 ; What this does not do: move any mechanism onto the vector (stage 6's
 ; definterface :operation lane does that, specs/resource-vector.md) or

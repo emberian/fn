@@ -1,0 +1,74 @@
+=== conv
+CORE (248946304 . 136689072) OBS NIL
+  BASE image-dynamic 136689072
+  BASE state-history 16793728
+  BASE state-handles 786432
+  BASE state-records 136314880
+  BASE state-record-headers 67108864
+  BASE open-chunk-lists 79691776
+  BASE open-suffix-vectors 16777216
+  BASE open-per-record 33554432
+  BASE inflight-lists 7864320
+  BASE taken-submission-lists 1580864
+  BASE octet-buffers 50725002
+  BASE articles 3441664
+  BASE history-roots 56760640
+  BASE-SUM 608088890 BASE 608088890 UNATTRIBUTED 0
+  COLLECTOR-ROOM 16777216 FIG 624866106 MB 596 ROUNDING 85190
+  THREADS 35 = mux 2 + control-clients 16 + fixed 13 + cold 4; STACK-KIB 1024 RUNTIME 4194304
+  CORE-FILE 248946304 BASE-RESERVATION 1057398400
+  NURSERY-CAP 8388608 (gc-nursery-mib 8)
+  FLOOR-BASE image-dynamic 248946304
+  FLOOR-BASE state-history 16793728
+  FLOOR-BASE state-handles 786432
+  FLOOR-BASE state-records 136314880
+  FLOOR-BASE state-record-headers 67108864
+  FLOOR-BASE open-chunk-lists 79691776
+  FLOOR-BASE open-suffix-vectors 16777216
+  FLOOR-BASE open-per-record 33554432
+  FLOOR-BASE inflight-lists 7864320
+  FLOOR-BASE taken-submission-lists 1580864
+  FLOOR-BASE octet-buffers 50725002
+  FLOOR-BASE articles 3441664
+  FLOOR-BASE history-roots 56760640
+  FLOOR-BASE-SUM 720346122 FLOOR-BASE 720346122 FLOOR 737123338 (collector-room 16777216)
+  EXTRA 4256408 = baseline-heap 2671872 + registration 1008 + read-reserve 1583528 (extent 196677 demand 393834 queue 8192)
+  D 737123338 (heap 624951296 floor 737123338) GROWN 741379746 = d+extra 741379746 / with-nursery(backing+extra) 741379746; MB 708
+  TOTAL 1174838912 = heap 742391808 + core-file 248946304 + threads 183500800; MB 1121
+=== drain
+CORE (244030520 . 134992320) OBS NIL
+  BASE image-dynamic 134992320
+  BASE state-history 16793728
+  BASE state-handles 786432
+  BASE state-records 136314880
+  BASE state-record-headers 67108864
+  BASE open-chunk-lists 79691776
+  BASE open-suffix-vectors 16777216
+  BASE open-per-record 33554432
+  BASE inflight-lists 7864320
+  BASE taken-submission-lists 1580864
+  BASE octet-buffers 50725002
+  BASE articles 3441664
+  BASE history-roots 56760640
+  BASE-SUM 606392138 BASE 606392138 UNATTRIBUTED 0
+  COLLECTOR-ROOM 16777216 FIG 623169354 MB 595 ROUNDING 733366
+  THREADS 34 = mux 2 + control-clients 16 + fixed 12 + cold 4; STACK-KIB 1024 RUNTIME 4194304
+  CORE-FILE 244030520 BASE-RESERVATION 1046191160
+  NURSERY-CAP 8388608 (gc-nursery-mib 8)
+  FLOOR-BASE image-dynamic 244030520
+  FLOOR-BASE state-history 16793728
+  FLOOR-BASE state-handles 786432
+  FLOOR-BASE state-records 136314880
+  FLOOR-BASE state-record-headers 67108864
+  FLOOR-BASE open-chunk-lists 79691776
+  FLOOR-BASE open-suffix-vectors 16777216
+  FLOOR-BASE open-per-record 33554432
+  FLOOR-BASE inflight-lists 7864320
+  FLOOR-BASE taken-submission-lists 1580864
+  FLOOR-BASE octet-buffers 50725002
+  FLOOR-BASE articles 3441664
+  FLOOR-BASE history-roots 56760640
+  FLOOR-BASE-SUM 715430338 FLOOR-BASE 715430338 FLOOR 732207554 (collector-room 16777216)
+  EXTRA 4256408 = baseline-heap 2671872 + registration 1008 + read-reserve 1583528 (extent 196677 demand 393834 queue 8192)
+  D 732207554 (heap 623902720 floor 732207554) GROWN 736463962 = d+extra 736463962 / with-nursery(backing+extra) 736463962; MB 703
+  TOTAL 1159437368 = heap 737148928 + core-file 244030520 + threads 178257920; MB 1106

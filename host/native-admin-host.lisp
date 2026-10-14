@@ -60,11 +60,11 @@
 
 (definterface fn-native-admin-host-query-report
   :class ::program)
-(defun fn-native-admin-host-owner-reconfigure (id plan fn-arena state)
+(defun fn-native-admin-host-owner-reconfigure (id plan fn-arena fn-hist state)
   ; The live arm.  The delta list, labels as strings, is ACL2's
   ; (`fn-native-admin-plan-deltas', books/native-admin.lisp); this bridge
   ; only hands it to the owner's staging step.
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program))
   ; PRF-099: an :extend-peer plan's delta is built over the live owner's
   ; peer table (`fn-native-admin-plan-deltas-over').
   ;; PRF-164: an `account invite' plan's pending row expires from the live
@@ -86,27 +86,27 @@
                            (fn-native-admin-result-value plan)
                            (fn-cfg-value (fn-owner-config state)))))
         (if (equal (car account-plan) :ok)
-            (fn-owner-reconfigure-deltas id (cadr account-plan) fn-arena state)
-          (value (fn-ores-config-refused (cadr account-plan))))))
+            (fn-owner-reconfigure-deltas id (cadr account-plan) fn-arena fn-hist state)
+          (mv nil (fn-ores-config-refused (cadr account-plan)) fn-hist state))))
      ;; PKT-709: a bind of a consumer name no registration declared is
      ;; refused by name (books/consumer-owner-local.lisp fn-col-bind-refusal).
      ((and (equal (fn-native-admin-result-kind plan) :consumer-bind)
            (fn-col-bind-refusal (fn-sn-consumer (fn-own-store (fn-owner-core state)))
                                 (fn-native-admin-result-name plan)
                                 (fn-native-admin-result-value plan)))
-      (value (fn-ores-config-refused
+      (mv nil (fn-ores-config-refused
               (fn-col-bind-refusal (fn-sn-consumer (fn-own-store (fn-owner-core state)))
                                    (fn-native-admin-result-name plan)
-                                   (fn-native-admin-result-value plan)))))
+                                   (fn-native-admin-result-value plan))) fn-hist state))
      (deltas
-      (fn-owner-reconfigure-deltas id deltas fn-arena state))
+      (fn-owner-reconfigure-deltas id deltas fn-arena fn-hist state))
      ;; No delta for this plan over the live owner's tables: the result
      ;; says so, never a previous request's reason (PKT-453 (a)).
      ;; Row S5: `peer set''s refusal over the live record, or
      ;; :no-such-peer, by ACL2's name (fn-native-admin-plan-refusal-over).
-     (t (value (fn-ores-config-refused
+     (t (mv nil (fn-ores-config-refused
                 (fn-native-admin-plan-refusal-over
-                 plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))))))
+                 plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))) fn-hist state)))))
 (defun fn-native-admin-host-apply (plan stamp state)
   ;; STAMP is the record stamp fn-native-admin-clock-observation built
   ;; (host/native/admin.lisp fnn-admin-clock-plan); every record this
@@ -308,8 +308,8 @@
 ;; connection-independent credential table (auth.toml's rows, then the
 ;; redeemed rows: fn-auth-config-with-accounts) and the profile's
 ;; max-credentials BOUND.  Only a :redeem plan stages its one delta.
-(defun fn-acct-host-owner-redeem-stage (pcid id salt bound fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+(defun fn-acct-host-owner-redeem-stage (pcid id salt bound fn-arena fn-hist state)
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program))
   (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
          (req (and conn (fn-auth-redeem-waitp (fn-own-conn-session conn))
                    (fn-auth-redeem-request (fn-own-conn-session conn))))
@@ -326,10 +326,10 @@
          (state (f-put-global 'fn-acct-redeem-plan plan state)))
     (if (equal (car plan) :redeem)
         (fn-owner-reconfigure-deltas pcid (list (fn-acct-plan-delta plan))
-                                     fn-arena state)
+                                     fn-arena fn-hist state)
       ;; The plan's own reason (a previous request's reason used to stand
       ;; in the retired reason slot here).
-      (value (fn-ores-config-refused (cadr plan))))))
+      (mv nil (fn-ores-config-refused (cadr plan)) fn-hist state))))
 
 (defun fn-acct-host-owner-redeem-word (published state)
   (declare (xargs :stobjs state :mode :program))

@@ -1,0 +1,30 @@
+== core 256
+probe: heap=343 MB profile=small machine=246 MB stack=1024 KB threads=36 
+greet 200 fn-nntp experimental server ready
+post? 340 send article to be posted
+post 240 article received OK
+article 220 0 <m21-1791810585704697626@fresh.invalid> article follows
+VmHWM: 78168 kB VmRSS: 73608 kB RssAnon: 19908 kB RssFile: 53700 kB 
+memory capacity=31 of 31 bound-by=configured sum=212 MB limit=246 MB
+== core 1024
+probe: heap=1111 MB profile=small machine=1014 MB stack=1024 KB threads=36 
+greet 200 fn-nntp experimental server ready
+post? 340 send article to be posted
+post 240 article received OK
+article 220 0 <m21-1791810590031282882@fresh.invalid> article follows
+VmHWM: 80312 kB VmRSS: 73480 kB RssAnon: 19804 kB RssFile: 53676 kB 
+memory capacity=31 of 31 bound-by=configured sum=215 MB limit=1014 MB
+== host 256
+probe: heap=924 MB profile=small machine=246 MB stack=1024 KB threads=36 
+host 256 no LISTENING after 1s
+refused memory-cannot-hold-the-store capacity=0 of 31 bound-by=store sum=759 MB limit=246 MB
+refused operator run refused memory-cannot-hold-the-store capacity=0 of 31 bound-by=store sum=759 MB limit=246 MB
+== host 1024
+probe: heap=1692 MB profile=small machine=1014 MB stack=1024 KB threads=36 
+greet 200 fn-nntp experimental server ready
+post? 340 send article to be posted
+post 240 article received OK
+article 220 0 <m21-1791810598675035115@fresh.invalid> article follows
+VmHWM: 162472 kB VmRSS: 162472 kB RssAnon: 21940 kB RssFile: 140532 kB 
+memory capacity=31 of 31 bound-by=configured sum=797 MB limit=1014 MB
+LFRESH-DONE

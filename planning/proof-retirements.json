@@ -1,0 +1,27 @@
+{
+  "description": "Rows that left planning/proofs.json, each with its reason, written only by `tools/ledger.py --retire` (superseded: by another row; deferred: until a named landing, restored by `--restore`).  `ledger.py --check` refuses a row the fork point had that the tree lacks with no row here.",
+  "rows": [
+    {
+      "id": "PRF-10021",
+      "why": "superseded",
+      "to": "PRF-10017",
+      "owner": "M24",
+      "ruling": "M24 2026-10-12: cached-union cardinality is supporting defteeth under the hosted held-bound keystones PRF-10017, not a host keystone",
+      "item": null,
+      "row": {
+        "id": "PRF-10021",
+        "title": "Cached held count equals the logical and physical custody union cardinality",
+        "statement": "fn-adm-hh-cached-count-is-the-union-cardinality (defkeystone fn-adm-hh-cached-union-keystone, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-hh-count.",
+        "milestone": "M24",
+        "requirements": [],
+        "depends_on": [],
+        "assumptions": [],
+        "evidence": [
+          "tests/acl2/owner-memory-holding-tests.lisp"
+        ],
+        "evidence_digest": "5e62443c26a654fa"
+      },
+      "events": null
+    }
+  ]
+}

@@ -1262,7 +1262,7 @@ F1_POOL = ('Default startup: fnn-owner-page-read-startup -> '
            'fn-owner-page-read-install-default -> fn-owner-page-read-install-baseline. '
            'No external enable switch: [resources] cold_heap_octets/cold_workers/'
            'cold_descriptors/cold_read_ids/cold_file_ids are parsed but '
-           'fn-prstartup-default-plan refuses explicit cold policy as '
+           'fn-prstartup-default-plan-with-peer refuses explicit cold policy as '
            ':unpriced-complete-cold-profile; leave them absent.')
 
 
