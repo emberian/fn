@@ -76,6 +76,8 @@ class ForeignFormatOpenTest(unittest.TestCase):
                 self.assertEqual(rc, REFUSED, out)
                 self.assertIn(foreign.LINE, out)
                 self.assertNotIn(GENERIC, out)
+                if args[0] == "operator" and args[2] == "health":
+                    self.assertTrue(out.startswith("health exit=01 state=refused\n"), out)
         self.assertEqual(tree(store), before)
 
     def test_the_same_store_with_its_own_profile_opens(self):

@@ -1,6 +1,7 @@
 ; Teeth for books/owner-maintenance-request.lisp (row S3, lane operability-2).
 (in-package "ACL2")
 (include-book "../../books/owner-maintenance-request")
+(local (include-book "../../books/defkeystone"))
 
 ; The route: a live owner answers, a held lock refuses by name, and only a
 ; free lock (no owner, or a crashed owner's stale socket) starts the offline
@@ -113,3 +114,38 @@
 (assert-event
  (and (not (equal (fn-omr-inspect-status (fn-omr-inspect-word nil)) :accepted))
       (not (equal (car (fn-native-operator-inspect-report *omr-msgid* nil)) 0))))
+
+; The native foreign-format fixture, pinned by store-profile-open-tests.
+(defconst *omr-foreign-format-config*
+ '(70 78 83 77 1 1 0 0 0 37 0 11 102 110 45 115
+   116 111 114 101 45 49 49 0 0 0 0 0 0 0 1 0
+   0 0 0 0 0 0 2 0 0 0 0 0 0 0 3 45
+   225 223 249 8 199 206 214 99 193 26 231 104 203 173 29 80
+   39 17 66 154 220 34 25 66 202 71 109 249 123 146 142))
+(assert-event (equal (fn-spo-config-open *omr-foreign-format-config*)
+                     '(:refused :store-format)))
+(assert-event
+ (equal (fn-nh-report-exit
+          (fn-omr-stopped-health-report nil *omr-foreign-format-config* *omr-header* 0 nil))
+        1))
+(assert-event
+ (equal (take (len (fn-record-string-octets "health exit=01 state=refused
+"))
+              (fn-omr-stopped-health-report
+                  nil *omr-foreign-format-config* *omr-header* 0 nil))
+        (fn-record-string-octets "health exit=01 state=refused
+")))
+(assert-event
+ (natp (search (fn-record-string-octets
+                "open refused reason=store-format: not an fn store of this release: redeploy fresh")
+               (fn-omr-stopped-health-report nil *omr-foreign-format-config* *omr-header* 0 nil))))
+(assert-event
+ (equal (fn-nh-report-exit
+          (fn-omr-stopped-health-report nil (fn-record-string-octets "not a store") *omr-header* 0 nil))
+        1))
+(assert-event
+ (equal (fn-nh-report-exit
+          (fn-omr-stopped-health-report nil (fn-bs-config-frame-for-profile :development) *omr-header* 0 nil))
+        18))
+(defteeth-check (fn-omr-stopped-health-carries-config-refusal-exit
+                 fn-omr-opened-stopped-health-preserves-not-running-report))

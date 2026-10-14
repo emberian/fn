@@ -140,7 +140,8 @@ class HealthClassTests(unittest.TestCase):
                      "health exit=20 state=fenced reason=starting",
                      "health exit=19 state=none-held (some states unobserved)"):
             self.assertEqual(self.classify(line), "wait", line)
-        for line in ("health exit=21 state=exhausted",
+        for line in ("health exit=01 state=refused",
+                     "health exit=21 state=exhausted",
                      "health exit=22 state=unqualified-profile format=9",
                      "health exit=23 state=space-pressure",
                      "health exit=28 state=disk stalled"):

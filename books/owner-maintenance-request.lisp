@@ -38,6 +38,7 @@
 (include-book "store-checkpoint-codec")
 (include-book "store-profile-open")
 (include-book "native-health")
+(local (include-book "defkeystone"))
 
 ; -----------------------------------------------------------------------------
 ; The route
@@ -240,24 +241,124 @@
                       *fn-nls-lf*))
       (list 1 (append (fn-nls-text (fn-omr-open-refusal-text open)) *fn-nls-lf*)))))
 
-; `health' on a stopped store: the not-running header (its exit code is the
-; header's, fn-nh-report-exit), how the last run ended, then the stopped
-; report's lines; nothing replayed.  LAST is the last-run observation
+; `health' on a stopped store carries a refused config's exit; an opened
+; config keeps the not-running report byte for byte. The last-run and
+; stopped-report lines follow either header; nothing is replayed.  LAST is the last-run observation
 ; `fn-nh-last-run-words' takes (nil when the image keeps none).
 (defun fn-omr-stopped-health-report (last config-octets header journal-octets obs)
   (declare (xargs :guard t :verify-guards nil))
   (let ((report (fn-omr-stopped-report config-octets header journal-octets obs)))
-    (append (fn-nh-not-running-header)
+    (append (if (equal (car report) 0)
+                (fn-nh-not-running-header)
+              (append (fn-nh-exit-prefix) (fn-nh-digit2 (car report))
+                      (fn-nls-text " state=refused") *fn-nls-lf*))
             (fn-nh-last-run-words last)
             (cadr report)
-            ; The ten states (books/native-health.lisp *fn-nh-states*) over a
-            ; store this process has not opened (no replay, row S3): each
-            ; `unobserved', by name, never a guess; `status --replay' observes
-            ; them.  Only when the config opened (the refusal stands alone).
             (if (equal (car report) 0)
                 (fn-nh-lines (fn-nh-verdict nil nil 0 :unobserved :unobserved :unobserved)
                              *fn-nh-states*)
               nil))))
+
+(local
+ (defun fn-omr-stopped-health-report-with-unconditional-not-running-header (last config-octets header journal-octets obs)
+   (declare (xargs :guard t :verify-guards nil))
+   (let ((report (fn-omr-stopped-report config-octets header journal-octets obs)))
+     (append (fn-nh-not-running-header)
+             (fn-nh-last-run-words last)
+             (cadr report)
+             ; The ten states (books/native-health.lisp *fn-nh-states*) over a
+             ; store this process has not opened (no replay, row S3): each
+             ; `unobserved', by name, never a guess; `status --replay' observes
+             ; them.  Only when the config opened (the refusal stands alone).
+             (if (equal (car report) 0)
+                 (fn-nh-lines (fn-nh-verdict nil nil 0 :unobserved :unobserved :unobserved)
+                              *fn-nh-states*)
+               nil)))))
+
+; The host's actual exit extractor carries the configuration refusal's exit;
+; the report also keeps the complete named refusal text.
+(defkeystone fn-omr-stopped-health-carries-config-refusal-exit
+  (implies (not (equal (car (fn-spo-config-open config-octets)) :opened))
+           (equal (fn-nh-report-exit
+                   (fn-omr-stopped-health-report
+                     last config-octets header journal-octets obs))
+                  (car (fn-omr-stopped-report config-octets header journal-octets obs))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-omr-stopped-health-report fn-omr-stopped-report
+                 fn-nh-report-exit fn-nh-nth fn-nh-exit-prefix fn-nh-digit2 fn-nh-digit-value)
+                (fn-spo-config-open fn-omr-open-refusal-text fn-nh-last-run-words
+                 fn-nh-lines fn-nh-verdict))))
+  :subject fn-omr-stopped-health-report
+  :hyps (config-refused)
+  :witness ((last nil)
+            (config-octets '(70 78 83 77 1 1 0 0 0 37 0 11 102 110 45 115
+                             116 111 114 101 45 49 49 0 0 0 0 0 0 0 1 0
+                             0 0 0 0 0 0 2 0 0 0 0 0 0 0 3 45
+                             225 223 249 8 199 206 214 99 193 26 231 104 203 173 29 80
+                             39 17 66 154 220 34 25 66 202 71 109 249 123 146 142))
+            (header nil) (journal-octets 0) (obs nil))
+  :breaks ((config-refused
+             ((config-octets (fn-bs-config-frame-for-profile :development)))))
+  :mutations
+  ((unconditional-not-running-header
+     (:conclusion
+       (equal (fn-nh-report-exit
+                (fn-omr-stopped-health-report-with-unconditional-not-running-header
+                  last config-octets header journal-octets obs))
+              (car (fn-omr-stopped-report config-octets header journal-octets obs))))
+     ()
+     :fault "The old body loses the config refusal exit: foreign-format config yields 18 instead of 1.")))
+
+(local
+ (defthm fn-omr-stopped-report-exit-when-opened-by-definition
+   (implies (equal (car (fn-spo-config-open config-octets)) :opened)
+            (equal (car (fn-omr-stopped-report config-octets header journal-octets obs)) 0))
+   :rule-classes nil
+   :hints (("Goal" :in-theory
+            (union-theories (theory 'minimal-theory)
+             '((:definition fn-omr-stopped-report) (:rewrite car-cons)))))))
+
+(local
+ (defthm fn-omr-opened-stopped-health-is-unconditional-not-running-report
+   (implies (equal (car (fn-spo-config-open config-octets)) :opened)
+            (equal (fn-omr-stopped-health-report last config-octets header journal-octets obs)
+                   (fn-omr-stopped-health-report-with-unconditional-not-running-header
+                     last config-octets header journal-octets obs)))
+   :hints (("Goal" :use fn-omr-stopped-report-exit-when-opened-by-definition
+            :in-theory
+            (union-theories (theory 'minimal-theory)
+             '((:definition fn-omr-stopped-health-report)
+               (:definition fn-omr-stopped-health-report-with-unconditional-not-running-header)))))))
+
+; Export the byte-for-byte frame statement with the old body inline, so no
+; local helper survives into the product world or creates a compatibility API.
+(defthm fn-omr-opened-stopped-health-preserves-not-running-report
+  (implies (equal (car (fn-spo-config-open config-octets)) :opened)
+    (equal (fn-omr-stopped-health-report last config-octets header journal-octets obs)
+      (let ((report (fn-omr-stopped-report config-octets header journal-octets obs)))
+        (append (fn-nh-not-running-header)
+                (fn-nh-last-run-words last)
+                (cadr report)
+                (if (equal (car report) 0)
+                    (fn-nh-lines
+                      (fn-nh-verdict nil nil 0 :unobserved :unobserved :unobserved)
+                      *fn-nh-states*)
+                  nil)))))
+  :hints (("Goal" :use fn-omr-opened-stopped-health-is-unconditional-not-running-report
+           :in-theory
+           (union-theories (theory 'minimal-theory)
+            '((:definition fn-omr-stopped-health-report-with-unconditional-not-running-header))))))
+
+(defteeth fn-omr-opened-stopped-health-preserves-not-running-report
+  :claim (((config-opened (equal (car (fn-spo-config-open config-octets)) :opened))) (equal (fn-omr-stopped-health-report last config-octets header journal-octets obs) (let ((report (fn-omr-stopped-report config-octets header journal-octets obs))) (append (fn-nh-not-running-header) (fn-nh-last-run-words last) (cadr report) (if (equal (car report) 0) (fn-nh-lines (fn-nh-verdict nil nil 0 :unobserved :unobserved :unobserved) *fn-nh-states*) nil)))))
+  :subject fn-omr-stopped-health-report
+  :witness ((last nil) (config-octets (fn-bs-config-frame-for-profile :development))
+            (header nil) (journal-octets 0) (obs nil))
+  :breaks ((config-opened ((config-octets (quote (70 78 83 77 1 1 0 0 0 37 0 11 102 110 45 115 116 111 114 101 45 49 49 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 3 45 225 223 249 8 199 206 214 99 193 26 231 104 203 173 29 80 39 17 66 154 220 34 25 66 202 71 109 249 123 146 142))))))
+  :mutations ((lost-first-report-octet
+    (:conclusion (equal (cdr (fn-omr-stopped-health-report last config-octets header journal-octets obs))
+                       (let ((report (fn-omr-stopped-report config-octets header journal-octets obs))) (append (fn-nh-not-running-header) (fn-nh-last-run-words last) (cadr report) (if (equal (car report) 0) (fn-nh-lines (fn-nh-verdict nil nil 0 :unobserved :unobserved :unobserved) *fn-nh-states*) nil)))))
+    () :fault "The opened-config frame must preserve every report octet, including its first header octet.")))
 
 ; The stopped report never replays: its count line is a function of the
 ; header's sequence and the journal's octets alone.

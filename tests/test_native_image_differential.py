@@ -46,6 +46,7 @@ import socket
 import subprocess
 import tempfile
 import unittest
+import sys
 from pathlib import Path
 
 from tests.native_harness import EXIT, free_port, native_image, start, stop_and_diagnostics
@@ -82,28 +83,41 @@ class Image:
 
     def __init__(self, path, checked, work):
         self.path, self.checked, self.work = path, checked, Path(work)
-        text = Path(path).read_text()
-        line = next(l for l in text.splitlines() if l.startswith("exec "))
-        words = shlex.split(line.replace("${SBCL_USER_ARGS}", ""))[1:]
-        self.runtime = words[:words.index("--end-runtime-options") + 1]
-        home = re.search(r"SBCL_HOME='([^']*)'", text)
-        self.home = home.group(1) if home else None
         self.deps = path + ".world-deps"
         self.out = self.work / ("world-reads-" + Path(path).name)
+        self.launcher = Path(path).resolve()
+        if checked:
+            # Keep the image's WHOLE launcher, including its production heap
+            # probe. Only insert the world-read check before ACL2 restarts.
+            # The probe recursively invokes this same launcher and core.
+            text = self.launcher.read_text()
+            lines = text.splitlines(keepends=True)
+            execs = [n for n, line in enumerate(lines) if line.startswith("exec ")]
+            if len(execs) != 1 or " --eval " not in lines[execs[0]]:
+                raise ValueError("image launcher has no unique restart exec: " + path)
+            n = execs[0]
+            original = lines[n]
+            checked_exec = original.replace(" --eval ",
+                                            " --load " + shlex.quote(str(CHECK)) + " --eval ", 1)
+            # A deliberate world mutation/trap belongs to the command, after
+            # its ordinary heap probe. Arming it in the probe would replace
+            # the check's exit 72 with the launcher's missing-figure fault.
+            lines[n] = ('case "${1:-}:${2:-}" in\n'
+                        '  --fn:heap) ' + original.rstrip() + ' ;;\n'
+                        '  *) ' + checked_exec.rstrip() + ' ;;\n'
+                        'esac\n')
+            self.work.mkdir(parents=True, exist_ok=True)
+            self.launcher = self.work / (Path(path).name + "-world-check")
+            self.launcher.write_text("".join(lines))
+            self.launcher.chmod(0o755)
+            Path(str(self.launcher) + ".core").symlink_to(Path(path + ".core").resolve())
 
     def argv(self, args):
-        top = ["--no-userinit"]
-        if self.checked:
-            top += ["--load", str(CHECK)]
-        top += ["--eval", "(acl2::sbcl-restart)", "--disable-debugger",
-                "--end-toplevel-options", "--fn"]
-        return self.runtime + top + [str(a) for a in args]
+        return [str(self.launcher), "--fn"] + [str(a) for a in args]
 
     def env(self, **extra):
         env = {k: v for k, v in os.environ.items()
                if not k.startswith(("FN_NATIVE_", "FN_WORLD_DEPS", "SBCL_"))}
-        if self.home:
-            env["SBCL_HOME"] = self.home
         if self.checked:
             env["FN_WORLD_DEPS"] = self.deps
             env["FN_WORLD_DEPS_OUT"] = str(self.out)
@@ -160,6 +174,66 @@ def article(n, octets=None, groups="local.test"):
     return ("From: author@example.invalid\r\nDate: Sat, 26 Sep 2026 12:00:00 +0000\r\n"
             "Newsgroups: {}\r\nSubject: differential {}\r\n"
             "Message-ID: <diff-{}@example.invalid>\r\n\r\n{}".format(groups, n, n, body))
+
+
+class ImageLauncherSourceTests(unittest.TestCase):
+    def test_both_twins_run_the_launcher_decision_and_checked_load_precedes_restart(self):
+        from tools.extract.core_launcher import launcher
+        with tempfile.TemporaryDirectory(dir=ROOT / "build/devctl") as directory:
+            work = Path(directory)
+            runtime = work / "runtime"
+            runtime.write_text("#!" + sys.executable + "\n" +
+                               "import json, os, sys\n" +
+                               "args = sys.argv[1:]\n" +
+                               "if args[args.index('--fn') + 1] == 'heap':\n" +
+                               "    assert '--load' not in args, 'check armed in heap probe'\n" +
+                               "    print('heap=417 MB profile=control machine=1024 MB stack=512 KB threads=1')\n" +
+                               "elif os.environ.get('FN_WORLD_DEPS_USE') and '--load' in args: sys.exit(72)\n" +
+                               "else: print(json.dumps(args))\n")
+            runtime.chmod(0o755)
+            image = work / "fn-host"
+            Path(str(image) + ".core").write_bytes(b"control")
+            image.write_text(launcher(str(runtime), str(work), str(image) + ".core", "13", "512KB"))
+            image.chmod(0o755)
+            for checked in (False, True):
+                with self.subTest(checked=checked):
+                    twin = Image(str(image), checked, work)
+                    result = twin.run(["store", "ROOT", "status"])
+                    self.assertEqual(result.returncode, 0, result.stderr.decode())
+                    args = json.loads(result.stdout)
+                    heaps = [args[n + 1] for n, word in enumerate(args) if word == "--dynamic-space-size"]
+                    self.assertEqual(heaps, ["13", "417"])
+                    self.assertEqual(args[-4:], ["--fn", "store", "ROOT", "status"])
+                    self.assertEqual("--load" in args, checked)
+                    if checked:
+                        self.assertEqual(args[args.index("--load") + 1], str(CHECK))
+                        self.assertLess(args.index("--load"), args.index("--eval"))
+                        trapped = twin.run(["--version"], FN_WORLD_DEPS_USE="ens")
+                        self.assertEqual(trapped.returncode, 72, trapped.stderr.decode())
+
+    def test_checked_launcher_creates_a_not_yet_created_work_directory(self):
+        from tools.extract.core_launcher import launcher
+        with tempfile.TemporaryDirectory(dir=ROOT / "build/devctl") as directory:
+            base = Path(directory)
+            image = base / "fn-host"
+            runtime = base / "runtime"
+            runtime.write_text("#!/bin/sh\nprintf 'control startup\\n'\n")
+            runtime.chmod(0o755)
+            Path(str(image) + ".core").write_bytes(b"control")
+            image.write_text(launcher(str(runtime), str(base), str(image) + ".core", "13", "512KB"))
+            image.chmod(0o755)
+            work = base / "not-created" / "mutation-run"
+            self.assertFalse(work.exists())
+            twin = Image(str(image), True, work)
+            self.assertTrue(work.is_dir())
+            self.assertTrue(twin.launcher.is_file())
+            self.assertEqual(Path(str(twin.launcher) + ".core").resolve(),
+                             Path(str(image) + ".core"))
+            # Heap itself needs no decision probe; this checks execution from
+            # the new directory without constructing a second fake decision.
+            result = twin.run(["heap"])
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertEqual(result.stdout, b"control startup\n")
 
 
 class Session:
