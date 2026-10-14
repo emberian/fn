@@ -145,33 +145,17 @@
   :hints (("Goal" :in-theory (e/d (fn-opub-coherentp fn-opl-holdsp)
                                   (fn-opub-get fn-opub-put)))))
 
-; Due/request change only scheduling flags, never the holder coordinates.
-(local
- (defthm fn-opub-pending-keeps-coherence-by-definition
-  (equal (fn-opub-coherentp (fn-opub-put :pending value r))
-         (fn-opub-coherentp r))
-  :hints (("Goal" :in-theory (e/d (fn-opub-coherentp)
-                                 (fn-opub-get fn-opub-put fn-opl-holdsp))))))
-(local
- (defthm fn-opub-requested-keeps-coherence-by-definition
-  (equal (fn-opub-coherentp (fn-opub-put :requested value r))
-         (fn-opub-coherentp r))
-  :hints (("Goal" :in-theory (e/d (fn-opub-coherentp)
-                                 (fn-opub-get fn-opub-put fn-opl-holdsp))))))
-
 (defthm fn-opub-due-preserves-coherence
   (implies (fn-opub-coherentp r)
            (fn-opub-coherentp (mv-nth 1 (fn-opub-due r profile count suffix budget space now))))
-  :hints (("Goal" :in-theory (e/d (fn-opub-due)
-                                  (fn-opub-coherentp fn-opub-get fn-opub-put
-                                   fn-ock-requested-next fn-opl-attempted fn-opl-blockedp)))))
+  :hints (("Goal" :in-theory (e/d (fn-opub-coherentp)
+                                  (fn-opub-get fn-opub-put fn-opl-holdsp)))))
 
 (defthm fn-opub-request-preserves-coherence
   (implies (fn-opub-coherentp r)
            (fn-opub-coherentp (mv-nth 1 (fn-opub-request r profile count budget space now))))
-  :hints (("Goal" :in-theory (e/d (fn-opub-request)
-                                  (fn-opub-coherentp fn-opub-get fn-opub-put
-                                   fn-ock-request-word fn-opl-attempted fn-opl-blockedp)))))
+  :hints (("Goal" :in-theory (e/d (fn-opub-coherentp)
+                                  (fn-opub-get fn-opub-put fn-opl-holdsp)))))
 
 (defthm fn-opub-done-preserves-coherence
   (implies (fn-opub-coherentp r)

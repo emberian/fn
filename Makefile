@@ -260,6 +260,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-connection-state \
 	books/owner-connection-callbacks \
 	books/owner-memory-holding \
+	books/owner-memory-run-cfg \
+	tests/acl2/owner-memory-run-cfg-tests \
 	books/owner-memory-commit \
 	tests/acl2/pinned-charge-tests \
 	tests/acl2/pinned-charge-host-tests \

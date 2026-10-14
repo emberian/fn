@@ -266,6 +266,7 @@
 (include-book "../books/admission-memory")
 (include-book "../books/heap-command")
 (include-book "../books/owner-memory-holding")
+(include-book "../books/owner-memory-run-cfg")
 (include-book "../books/owner-memory-run")
 (include-book "../books/cold-read-reservation")
 ; PRF-986 (PKT-639): the TLS handshake admission (fn-owner-handshake-admit/
@@ -1707,21 +1708,6 @@
 ; (`fn-owner-memory-capacity-line', fn-adm-capacity-line: C', C, the term
 ; that bound it, the sum and the limit).  :refused when no connection fits;
 ; the host refuses to serve by that line.
-(defun fn-owner-memory-cfg (v tlsp trigger pub-trigger live cold profile window server config)
-  (declare (xargs :guard t))
-  (list (fn-exp-connections-capacity v) tlsp trigger pub-trigger live 0
-        (if cold (car (fn-crv-pool-budget cold profile)) 0)
-        (fn-cfg-limit v "tls-handshakes-in-flight")
-        window (len server) nil nil (nfix config)))
-
-(defun fn-owner-memory-run-cfg-of (r v cfg conns most lease flight)
-  (declare (xargs :guard t))
-  (let ((full (fn-owner-memory-cfg v (fn-exp-at 5 r) (fn-exp-at 2 r) (fn-exp-at 3 r) (fn-exp-at 6 r)
-                                   (fn-exp-at 7 r) (fn-exp-at 4 r) (fn-exp-at 8 r) (fn-oag-agent cfg)
-                                   (fn-exp-at 9 r))))
-    (update-nth 15 (max (fn-adm-pin-octets conns) (nfix most))
-      (update-nth 14 lease (fn-adm-cfg-holding-handshakes full flight)))))
-
 ; The pools the launch funded beside the model's terms: books/heap-command.lisp
 ; fn-mo-serve-pools, the probe's own (host/native/heap.lisp fnn-heap-serve-decision).
 
@@ -6787,67 +6773,6 @@ itself."
    (list r envelope resident)))
 
 (definterface fn-owner-memory-config-edge-observation :class :program)
-
-; Rev 4's pure keystones share the sole host cfg definition above.
-; Moving them to an includable book would require that book to include this
-; host file, while its STATE corollaries depend on the book: an include cycle.
-(local
- (defthm pin-pure-builder-article-high
-  (equal (fn-mm-cfg-article-high
-           (fn-owner-memory-run-cfg-of r v cfg conns most lease flight))
-         (max (fn-adm-pin-octets conns) (nfix most)))
-  :hints (("Goal" :in-theory (union-theories
-    '(fn-owner-memory-run-cfg-of fn-mm-cfg-article-high fn-mm-nat
-      fn-clq-true-list-fix-id nth-update-nth true-listp-update-nth
-      (:type-prescription fn-adm-cfg-holding-handshakes)
-      (:type-prescription fn-adm-pin-octets-is-natural)
-      nfix natp max (:type-prescription nfix))
-    (theory 'minimal-theory))))))
-(local (set-default-hints
- '((quote (:use fn-adm-pin-octets-covers-member
-           :in-theory (union-theories
-            '(fn-mm-large-reply fn-mm-served-article-octets
-              fn-adm-priced-cfg-keeps-the-article-high pin-pure-builder-article-high
-              max nfix natp (:type-prescription fn-adm-pin-octets-is-natural)
-              (:type-prescription nfix))
-            (theory 'minimal-theory)))))))
-(defthm fn-owner-memory-run-cfg-of-charges-every-pinned-connection
-  (implies (member-equal c conns)
-           (<= (+ (* 2 (nfix (fn-inj-config-max-octets (fn-own-conn-config c))))
-                  *fn-cbud-reply-status-octets*)
-               (fn-mm-large-reply profile
-                 (fn-adm-priced-cfg (fn-owner-memory-run-cfg-of r v cfg conns most lease flight)
-                                    held cap)))))
-(local (set-default-hints
- '((quote (:use ((:instance fn-owner-memory-run-cfg-of-charges-every-pinned-connection
-                 (conns (fn-own-conns (mv-nth 1 (fn-osb-install o values))))
-                 (profile values))
-                (:instance fn-osb-install-keeps-the-connections (profile values)))
-          :in-theory (theory 'minimal-theory))))))
-(defthm fn-osb-install-keeps-every-pin-charged
-  (implies (member-equal c (fn-own-conns o))
-           (<= (+ (* 2 (nfix (fn-inj-config-max-octets (fn-own-conn-config c))))
-                  *fn-cbud-reply-status-octets*)
-               (fn-mm-large-reply values
-                 (fn-adm-priced-cfg
-                  (fn-owner-memory-run-cfg-of r v cfg (fn-own-conns (mv-nth 1 (fn-osb-install o values)))
-                                              most lease flight)
-                  held cap)))))
-(local (set-default-hints
- '((quote (:in-theory (union-theories
-            '(fn-mm-served-article-octets fn-adm-priced-cfg-keeps-the-article-high
-              pin-pure-builder-article-high max nfix natp
-              (:type-prescription fn-adm-pin-octets-is-natural)
-              (:type-prescription nfix))
-            (theory 'minimal-theory)))))))
-(defthm fn-owner-memory-run-cfg-of-charge-falls-to-the-current-profile
-  (implies (and (<= (fn-adm-pin-octets conns) (nfix (fn-bs-profile-max-article-octets profile)))
-                (<= (nfix most) (nfix (fn-bs-profile-max-article-octets profile))))
-           (equal (fn-mm-served-article-octets profile
-                    (fn-adm-priced-cfg (fn-owner-memory-run-cfg-of r v cfg conns most lease flight)
-                                       held cap))
-                  (nfix (fn-bs-profile-max-article-octets profile)))))
-(local (set-default-hints nil))
 
 ; Live apply changes the profile/configuration, preserving the entire pin set.
 (local

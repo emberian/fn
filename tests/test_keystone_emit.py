@@ -442,35 +442,6 @@ class NewWitnessClasses(unittest.TestCase):
             self.assertIn("registered existing claim PRF-10017", out.getvalue())
             self.assertIn("record certificate cache unavailable", out.getvalue())
 
-    def test_a_host_logic_subject_must_be_called_and_host_reached(self):
-        graph = SimpleNamespace(books=[], hosts=["host/owner-host.lisp"],
-                                book_defs={"nfix"}, known={"nfix", "host-builder"},
-                                stobj_names=set(), reachable=set(), host_reachable={"host-builder"})
-        for claim, called in (("(equal (host-builder x) x)", True),
-                              ("(let ((unused (host-builder x))) (equal (nfix x) x))", False)):
-            with self.subTest(claim=claim):
-                form = ke.ledger.read_forms(
-                    "(defkeystone host-claim " + claim + " :subject host-builder "
-                    ":witness ((x 1)) :breaks nil :mutations "
-                    "((off (:conclusion (< 1 (nfix x))) () :fault \"off\")))")[0]
-                stone = ke.Keystone("tests/acl2/k.lisp", 1, form)
-                with mock.patch("reach_check.Graph", return_value=graph), \
-                        mock.patch("reach_check.theorem_forms", return_value={}) as read, \
-                        mock.patch.object(ke, "host_line", return_value="host/owner-host.lisp:1"):
-                    problems, reached = ke.subject_findings([stone])
-                read.assert_called_once_with(["host/owner-host.lisp"])
-                self.assertEqual(not problems, called)
-                self.assertEqual(bool(reached), called)
-        graph.host_reachable = set()
-        with mock.patch("reach_check.Graph", return_value=graph), \
-                mock.patch("reach_check.theorem_forms", return_value={}):
-            problems, reached = ke.subject_findings([ke.Keystone("tests/acl2/k.lisp", 1,
-                ke.ledger.read_forms("(defkeystone host-claim (equal (host-builder x) x) "
-                    ":subject host-builder :witness ((x 1)) :breaks nil :mutations "
-                    "((off (:conclusion (< 1 (nfix x))) () :fault \"off\")))")[0])])
-        self.assertTrue(any("reached by no host line" in p for p in problems))
-        self.assertEqual(reached, {})
-
     def test_subject_check_reads_the_claim_bindings(self):
         form = ke.ledger.read_forms('''
           (defkeystone scoped (let ((a (nfix x)))

@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-3")
-(include-book "output-command-admission")
 (include-book "output-tariff-families")
 (include-book "output-admission-line")
 (include-book "arena-reader-pins")

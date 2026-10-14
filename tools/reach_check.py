@@ -783,7 +783,6 @@ class Graph:
                                     seen.add(nxt)
                                     self.via[nxt] = name
                                     work.append(nxt)
-        self.host_reachable = seen & set(host_defs)
         self.reachable = seen & set(self.book_defs)
         self.shadow = self.generated_shadow(seen)
         # Campaign-tied: book functions a crash campaign names in its code,

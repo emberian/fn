@@ -19249,6 +19249,15 @@
       ]
     },
     {
+      "id": "PRF-100008",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-memory-run-cfg-of-charges-every-pinned-connection"
+        }
+      ]
+    },
+    {
       "id": "PRF-100009",
       "events": [
         {
@@ -19258,41 +19267,20 @@
       ]
     },
     {
-      "id": "PRF-100011",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-owner-memory-gate-charge-falls-to-the-current-profile"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owner-memory-run-cfg-of-charge-falls-to-the-current-profile"
-        }
-      ]
-    },
-    {
-      "id": "PRF-100008",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-owner-memory-gate-charges-every-pinned-connection"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-owner-memory-run-cfg-of-charges-every-pinned-connection"
-        }
-      ]
-    },
-    {
       "id": "PRF-100010",
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-owner-live-apply-keeps-every-pin-charged"
-        },
+          "name": "fn-osb-install-keeps-every-pin-charged"
+        }
+      ]
+    },
+    {
+      "id": "PRF-100011",
+      "events": [
         {
           "kind": "theorem",
-          "name": "fn-osb-install-keeps-every-pin-charged"
+          "name": "fn-owner-memory-run-cfg-of-charge-falls-to-the-current-profile"
         }
       ]
     }

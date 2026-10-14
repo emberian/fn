@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-store-test-part-1")
-(include-book "owner-prepare-served")
 (include-book "history-columns-store")
 (include-book "store-carried-folds")
 (include-book "owner-log-route")
@@ -76,6 +75,7 @@
 (include-book "admission-memory")
 (include-book "heap-command")
 (include-book "owner-memory-holding")
+(include-book "owner-memory-run-cfg")
 (include-book "owner-memory-run")
 (include-book "cold-read-reservation")
 (include-book "tls-proxy")

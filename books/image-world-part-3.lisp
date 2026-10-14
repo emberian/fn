@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
-(include-book "history-root-status")
 (include-book "index-writer-ticket")
 (include-book "catalog-may-seal")
 (include-book "owner-catalog-root-state")
@@ -105,6 +104,7 @@
 (include-book "connection-budget")
 (include-book "admission-memory")
 (include-book "owner-memory-holding")
+(include-book "owner-memory-run-cfg")
 (include-book "owner-memory-run")
 (include-book "tls-proxy")
 (include-book "owner-readers-transitions")
@@ -119,3 +119,4 @@
 (include-book "owner-queued-work")
 (include-book "owner-cold-line")
 (include-book "owner-resource-line")
+(include-book "output-command-admission")

@@ -526,8 +526,7 @@ def lazy_reachable():
         if not graph:
             import reach_check
             graph.append(reach_check.Graph())
-        if (subject in graph[0].reachable
-                or subject in getattr(graph[0], "host_reachable", set())):
+        if subject in graph[0].reachable:
             return True
         # The host implements these model programs as I/O, rather than
         # calling their Lisp list constructors. Require both reach_check's

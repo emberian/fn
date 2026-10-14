@@ -198,19 +198,6 @@
 ; A rewritten event decodes to the tombstoned record: every field of the
 ; record the event held, with the payload replaced by its tombstone and the
 ; charge released to the history unit.
-; The codec premise is already part of the rewrite decision. Keep expiry
-; and holder policy opaque while carrying that premise to the round trip.
-(local
- (defthm fn-rclp-rewrites-new-recordp-by-definition
-  (implies (fn-rclp-rewrites-p octets ctx)
-   (fn-record-p (fn-rclp-tombstoned
-                 (fn-record-result-record (fn-record-decode-exact octets)))))
-  :hints (("Goal" :in-theory
-   (e/d (fn-rclp-rewrites-p)
-        (fn-rclp-ctx-reclaimable fn-rclp-tombstoned fn-record-p
-         fn-record-result-okp fn-record-result-record
-         fn-rcl-payload-profilep fn-rcl-tombstonep))))))
-
 (defthm fn-rclp-event-decodes-to-the-tombstoned-record
   (implies (fn-rclp-rewrites-p octets ctx)
            (let ((new (fn-record-decode-exact (fn-rclp-event octets ctx)))
@@ -241,19 +228,13 @@
                          *fn-rclp-history-unit*)
                   (equal (fn-record-stamp (fn-record-result-record new))
                          (fn-record-stamp old)))))
-  :hints (("Goal" :in-theory
-                  (e/d (fn-rclp-event)
-                       (fn-rclp-rewrites-p fn-rclp-ctx-reclaimable fn-rclp-tombstoned
-                        fn-record-p))
-                  :use (fn-rclp-rewrites-new-recordp-by-definition
-                        (:instance fn-record-round-trip-succeeds
+  :hints (("Goal" :in-theory (disable fn-rclp-tombstoned)
+                  :use ((:instance fn-record-round-trip-succeeds
                                    (record (fn-rclp-tombstoned
                                             (fn-record-result-record
                                              (fn-record-decode-exact octets)))))))
           (and stable-under-simplificationp
-               '(:in-theory (e/d (fn-rclp-tombstoned)
-                                 (fn-rclp-rewrites-p fn-rclp-ctx-reclaimable
-                                  fn-record-p))))))
+               '(:in-theory (enable fn-rclp-tombstoned)))))
 
 ; PRF-1089: the actual host-called per-event rewrite preserves the selected
 ; relay-v1 commitment, in addition to every record identity field above.

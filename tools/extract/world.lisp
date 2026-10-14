@@ -413,6 +413,7 @@
 (include-book "../../books/connection-budget")
 (include-book "../../books/admission-memory")
 (include-book "../../books/owner-memory-holding")
+(include-book "../../books/owner-memory-run-cfg")
 (include-book "../../books/owner-memory-run")
 (include-book "../../books/tls-proxy")
 (include-book "../../books/owner-readers-transitions")

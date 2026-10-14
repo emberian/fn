@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
-(include-book "feed-pause")
-(include-book "served-catalog-owner")
 (include-book "served-catalog-owner-keyed")
 (include-book "owner-prepare-correspondence")
 (include-book "owner-store-budget")
@@ -50,6 +48,7 @@
 (include-book "connection-budget")
 (include-book "admission-memory")
 (include-book "owner-memory-holding")
+(include-book "owner-memory-run-cfg")
 (include-book "owner-memory-run")
 (include-book "tls-proxy")
 (include-book "owner-open-carried")
