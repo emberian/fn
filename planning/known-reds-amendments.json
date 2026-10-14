@@ -743,6 +743,16 @@
    "item": "MEMORY-TOTALS-SYNC-UNDER-LOCK",
    "owner": "builder-M",
    "ruling": "coordinator 2026-10-14: not baselined; known red by amendment, +19 sites, until MEMORY-TOTALS-SYNC-UNDER-LOCK moves the totals sync out from under the lock"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start",
+   "dev_sha": "c5baa6563",
+   "item": "MEMORY-PRESSURE-START-SIZING",
+   "owner": "builder-M",
+   "ruling": "M28 10-14: the case's earlier item MEMORY-2G-PROFILE-SEMANTICS is landed, and the red recurs (slot plus over-window give public capacity 0 here; in OVER's world the launcher's offline-adapter sizing scales with the configured connections), so it is re-admitted into the open item MEMORY-PRESSURE-START-SIZING, owned by builder-M, under B25's readmit ruling (confirmed by M29 at 49e2602b0)",
+   "readmit_from": "MEMORY-2G-PROFILE-SEMANTICS",
+   "evidence": "hbox:/tank/fn/scratch/memory-run-launch/native-m28-2g-b/logs/test-tests.test_native_heap_from_profile.log"
   }
  ]
 }

@@ -211,6 +211,13 @@
    "item": "MEMORY-TOTALS-SYNC-UNDER-LOCK",
    "owner": "builder-M",
    "evidence": "lane memory-run-launch @9ab1229dc vs a dev export at 364f0c053: R2|fnn-extent-pread|O:sb-alien:alien-funcall reached from 122 owner-held sites (baseline 111, dev 103), +19 through fn-owner-record-totals and fn-owner-memory-recapacity (the history-totals sync's cold page reads under the owner mutex, via fn-owner-operator-open and recapacity)."
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start",
+   "item": "MEMORY-PRESSURE-START-SIZING",
+   "owner": "builder-M",
+   "evidence": "hbox:/tank/fn/scratch/memory-run-launch/native-m28-2g-b/logs/test-tests.test_native_heap_from_profile.log"
   }
  ]
 }
