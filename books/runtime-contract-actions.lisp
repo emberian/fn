@@ -48,13 +48,23 @@
            (fn-rtc-req-pre (fn-rtc-free-slot 0 (fn-rtc-slots s1)) inc
                            (fn-rtc-with-mstate (fn-rtc-free-slot 0 (fn-rtc-slots s1)) m
                              (fn-rtc-with-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) (list inc :live r) s1))))
-  :hints (("Goal" :in-theory (disable fn-rtc-free-slot))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-req-pre fn-rtc-req-pre-of-frames fn-rtc-slot-of-with
+               fn-rtc-with-accessors fn-rtc-slot-accessors fn-rtc-s-res
+               fn-rtc-action-argp fn-rtc-get-of-cons car-cons cdr-cons natp nfix
+               unicity-of-0 fix commutativity-of-+
+               (:executable-counterpart expt) (:executable-counterpart fn-rtc-get)
+               (:executable-counterpart zp)))
+           :use ((:instance fn-rtc-free-slot-natp (i 0) (slots (fn-rtc-slots s1)))
+                 (:instance fn-rtc-free-slot-in-range (i 0) (slots (fn-rtc-slots s1)))))))
 
 (defun fn-rtc-accept-slot (s1) (declare (xargs :guard t)) (fn-rtc-free-slot 0 (fn-rtc-slots s1)))
 (defun fn-rtc-accept-inc (s1) (declare (xargs :guard t))
   (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1))))
 (defun fn-rtc-accept-go-p (s1 out) (declare (xargs :guard t))
   (and (eq (fn-rtc-get 0 out) :done) (fn-rtc-free-slot 0 (fn-rtc-slots s1))
+       (fn-rtc-inc-roomp (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1))
        (natp (fn-rtc-get 1 out)) (< (fn-rtc-get 1 out) (expt 2 64))))
 (defun fn-rtc-accept-prepared (s1 out) (declare (xargs :guard t))
   (fn-rtc-with-mstate (fn-rtc-accept-slot s1) (fn-rtc-m-init)
@@ -77,7 +87,10 @@
                                                                     (fn-rtc-accept-inc s1)
                                                                     (fn-rtc-ev :accept out (fn-rtc-accept-slot s1) (fn-rtc-accept-inc s1) nil) q))))
                 (mv-nth 0 (fn-rtc-rearm s1)))))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (fn-rtc-deliver fn-rtc-rearm fn-rtc-free-slot)))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-accept-branch fn-rtc-accept-go-p fn-rtc-accept-prepared
+               fn-rtc-accept-slot fn-rtc-accept-inc fn-rtc-ev)))))
 
 (defthm fn-rtc-accept-branch-actions-ok
   (implies (fn-rtc-uses-ops-natp (fn-rtc-uses s1))

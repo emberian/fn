@@ -1,0 +1,13 @@
+{
+ "category": "collapse",
+ "detail": "Consumers (build/vertical-runs/owner-retain/A23-PILOT-CONSUMERS.txt): books/owner-retain-frame.lisp:96 def-carried-profile fn-owner-retain :row fn-owner-retain-carried; tests/acl2/owner-retain-frame-tests.lisp:118,135,139,141; self-asserts books/owner-retain-carried.lisp:215,225,227. Fix: restate the profile over fn-owner-served-carried (its relation implies the pilot's), port the frame tests, delete the pilot row and its asserts in the same landing. Then delete each weaker *-preserves-retain-state theorem (books/owner-retain-carried.lisp, owner-retain-transitions.lisp, host/owner-retain-host.lisp) that no remaining proof :uses; most are lemmas of the retained-state proofs in books/owner-retain-live.lisp and stay. Starts after K1 lands.",
+ "file": "books/owner-retain-carried.lisp",
+ "id": "OWNER-RETAIN-PILOT-ROW-TWIN",
+ "notes": [],
+ "owner": "A",
+ "severity": "medium",
+ "source": "A24, owner-retain K1 collapse follow-up (coordinator ruling: a second carried row is a twin), 2026-10-12",
+ "state": "open",
+ "title": "The pilot carried row fn-owner-retain-carried is a twin of the served row fn-owner-served-carried (which now carries the stronger fn-owner-retain-retained-statep): move its one consumer onto the served row and delete the pilot",
+ "updated": "2026-10-13T02:25:57Z"
+}

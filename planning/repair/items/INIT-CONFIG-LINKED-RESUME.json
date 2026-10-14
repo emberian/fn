@@ -1,0 +1,14 @@
+{
+ "category": "recovery",
+ "detail": "fnn-initialize (io.lisp:2630) takes its existing-profile branch on a retry once config.json is published; that branch calls fnn-load-config-overlay (io.lisp:2589, reached at :2660/:2676), which observes the config/ namespace. At the init-config-linked cut the namespace is still empty (generation one is never created), so the observation is refused (store: ACL2 refused configuration namespace observation, FAULT/4) and the documented remedy, run init again if it was interrupted, fails. Evidence: tests native test_the_probe_resumes_an_incomplete_development_init, first subtest, run l4-pr3; mechanism in build/lanes/log-l4/build/codex/l4-probe/REPORT.md section Native result and equivalence (L17). log-l4@07765f795 asserts probe = re-run init at every cut, so it follows the fix. Fix: the resume path treats an empty config/ namespace under a published config.json as the cut before generation one and completes it (create generation one from the published profile), never overlays it; the existing-profile overlay applies only once generation one exists. Regression: the l4 probe native's init-config-linked subtest requires OK for both probe and re-run init.",
+ "file": "host/native/io.lisp",
+ "id": "INIT-CONFIG-LINKED-RESUME",
+ "line": "2660",
+ "notes": [],
+ "owner": "A",
+ "severity": "medium",
+ "source": "L17 finding from hbox native run l4-pr3 (lane/log-l4@9a22b4cc4), 2026-10-12",
+ "state": "open",
+ "title": "An init interrupted at the init-config-linked cut (config.json published, config/ empty) cannot be resumed by store ROOT init: the retry's live-limits overlay refuses the empty configuration namespace before generation one exists",
+ "updated": "2026-10-12T20:56:52Z"
+}

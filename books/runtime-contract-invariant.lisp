@@ -7,6 +7,21 @@
 (in-package "ACL2")
 (include-book "runtime-contract-invariant-ops")
 
+; Keep logical constructor inductions independent of an already-loaded concrete pool.
+(local (make-event
+  (if (getpropc 'fn-rtc-c-free-slots-is-rep 'theorem nil (w state))
+      '(in-theory (disable fn-rtc-c-free-slots-is-rep
+                           fn-rtc-c-free-pool-is-rep fn-rtc-c-make-list-ac-is-rep
+                           fn-rtc-c-set-is-update-nth))
+    '(value-triple :concrete-constructor-aliases-absent))))
+
+
+; This executable refinement normalizes only one key field; keep the matched tuple intact.
+(local (make-event
+  (if (getpropc 'fn-rtc-kind-of-find-use 'theorem nil (w state))
+      '(in-theory (disable fn-rtc-kind-of-find-use))
+    '(value-triple :executable-key-alias-absent))))
+
 (local (in-theory (disable fn-rtc-accept-branch-keeps-foreign fn-rtc-accept-branch-no-slot-keeps-buffers
                            fn-rtc-accept-branch-not-done-keeps-buffers fn-rtc-close-branch-keeps-foreign
                            fn-rtc-deliver-keeps-foreign fn-rtc-end-use-keeps-workspaces fn-rtc-end-use-structure
@@ -310,7 +325,7 @@
            :expand ((fn-rtc-slots-okp 0 (fn-rtc-slots s))))))
 
 (defthm fn-rtc-free-slotp
-  (implies (natp inc) (fn-rtc-slotp (list inc :free nil))))
+  (implies (fn-rtc-u64p inc) (fn-rtc-slotp (list inc :free nil))))
 
 (defthm fn-rtc-statics-okp-get
   (implies (and (fn-rtc-statics-okp j n slots) (natp j) (natp k)
@@ -329,12 +344,14 @@
   (implies (and (fn-rtc-resource-invp s) (natp id))
            (fn-rtc-resource-invp (fn-rtc-retire-drained id s)))
   :hints (("Goal" :cases ((equal id 0)) :in-theory
-           (e/d (fn-rtc-retire-drained)
+           (e/d (fn-rtc-retire-drained fn-rtc-slot)
                 (fn-rtc-configp fn-rtc-slots-okp fn-rtc-pool-okp-unfolds
                  fn-rtc-uses-okp fn-rtc-mstates-okp fn-rtc-uses-of-slot-p
                  fn-rtc-s-inc fn-rtc-s-status fn-rtc-get fn-rtc-slotp fn-rtc-nslots fn-rtc-nbufs
-                 fn-rtc-resource-invp-listener))
-           :use fn-rtc-resource-invp-listener)))
+                 fn-rtc-resource-invp-listener fn-rtc-slots-is-slot))
+           :use (fn-rtc-resource-invp-listener
+                 (:instance fn-rtc-slots-okp-incarnation-u64
+                  (i 0) (j id) (slots (fn-rtc-slots s)))))))
 
 (defun fn-rtc-draining-okp-except (id i slots uses)
   (declare (xargs :guard (and (natp id) (natp i)) :measure (len slots)))
@@ -420,7 +437,7 @@
                  fn-rtc-free-pool-buf fn-rtc-oldest-wait)))))
 
 (defthm fn-rtc-fresh-opened-use-okp
-  (implies (and (natp id) (natp inc) (<= 1 id) (<= id (fn-rtc-nstatic (fn-rtc-config s)))
+  (implies (and (natp id) (fn-rtc-u64p inc) (<= 1 id) (<= id (fn-rtc-nstatic (fn-rtc-config s)))
                 (< id (fn-rtc-nslots (fn-rtc-config s)))
                 (fn-rtc-current-p id inc s))
            (fn-rtc-use-okp (list :opened id inc (fn-rtc-next-op s) nil)
@@ -677,7 +694,7 @@
                  fn-rtc-s-inc fn-rtc-s-status fn-rtc-b-owner fn-rtc-b-gen)))))
 
 (defthm fn-rtc-core-invp-activate-slot
-  (implies (and (fn-rtc-core-invp s) (posp id) (natp inc) (natp r) (< r (expt 2 64))
+  (implies (and (fn-rtc-core-invp s) (posp id) (fn-rtc-u64p inc) (natp r) (< r (expt 2 64))
                 (equal (fn-rtc-s-status (fn-rtc-slot id s)) :free))
            (fn-rtc-core-invp (fn-rtc-with-slot id (list inc :live r) s)))
   :hints (("Goal" :in-theory
@@ -969,10 +986,16 @@
 
 (defthm fn-rtc-free-slot-of-set-free
   (implies (and (natp i) (natp k) (fn-rtc-free-slot i slots)
-                (equal (fn-rtc-s-status slot) :free))
+                (equal (fn-rtc-s-status slot) :free)
+                (or (fn-rtc-slot-selectablep slot)
+                    (not (fn-rtc-slot-selectablep (fn-rtc-get k slots)))))
            (fn-rtc-free-slot i (fn-rtc-set k slot slots)))
   :hints (("Goal" :induct (fn-rtc-index-induct k i slots)
-           :in-theory (disable fn-rtc-s-status))))
+           :do-not '(generalize)
+           :expand ((fn-rtc-set k slot slots)
+                    (fn-rtc-free-slot i (fn-rtc-set k slot slots)))
+           :in-theory (e/d (fn-rtc-free-slot fn-rtc-set fn-rtc-get)
+             (fn-rtc-s-status fn-rtc-slot-selectablep fn-rtc-inc-roomp fn-rtc-s-inc)))))
 
 (defthm fn-rtc-close-state-keeps-free-slot
   (implies (and (natp id) (fn-rtc-free-slot 0 (fn-rtc-slots s))
@@ -1503,7 +1526,7 @@
 (defthm fn-rtc-use-okp-natural-fields
   (implies (fn-rtc-use-okp w s)
            (and (natp (fn-rtc-get 1 w)) (natp (fn-rtc-get 2 w)) (natp (fn-rtc-get 3 w))))
-  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-use-okp fn-rtc-usep)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-use-okp fn-rtc-usep fn-rtc-u64p-implies-natp)))))
 
 (local (defthm fn-rtc-pool-grant-state-pool-length
   (equal (len (fn-rtc-pool (fn-rtc-pool-grant-state w h s))) (len (fn-rtc-pool s)))

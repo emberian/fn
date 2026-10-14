@@ -136,6 +136,23 @@
 ; reads and writes as exports; results put the stobj first, as the twins
 ; return their state first.
 
+; The permanent-exhaustion decision: direct slot reads, bounded by NSLOTS.
+(defun fn-rtc-x-slots-exhausted-loop (i n nstatic fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st
+                  :guard (and (natp i) (natp n) (natp nstatic))
+                  :measure (nfix (- (nfix n) (nfix i)))))
+  (if (< (nfix i) (nfix n))
+      (and (or (zp i) (<= (nfix i) (nfix nstatic))
+               (not (fn-rtc-inc-roomp (fn-rtc-st-slot (nfix i) fn-rtc-st))))
+           (fn-rtc-x-slots-exhausted-loop (+ 1 (nfix i)) n nstatic fn-rtc-st))
+    t))
+
+(defun fn-rtc-x-slots-exhaustedp (fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st))
+  (let ((cfg (fn-rtc-st-config fn-rtc-st)))
+    (fn-rtc-x-slots-exhausted-loop 0 (fn-rtc-nslots cfg)
+                                  (fn-rtc-nstatic cfg) fn-rtc-st)))
+
 (defun fn-rtc-x-current-p (id inc fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st))
   (let ((slot (fn-rtc-st-slot id fn-rtc-st)))
@@ -511,7 +528,7 @@
   (declare (xargs :stobjs fn-rtc-st))
   (let ((j (fn-rtc-st-free-slot fn-rtc-st))
         (r (fn-rtc-get 1 out)))
-    (if (and (eq (fn-rtc-get 0 out) :done) j (natp r) (< r (expt 2 64)))
+    (if (and (eq (fn-rtc-get 0 out) :done) j (fn-rtc-inc-roomp (fn-rtc-st-slot j fn-rtc-st)) (natp r) (< r (expt 2 64)))
         (let* ((jinc (+ 1 (fn-rtc-s-inc (fn-rtc-st-slot j fn-rtc-st))))
                (fn-rtc-st (fn-rtc-st-set-slot j (list jinc :live r) fn-rtc-st))
                (fn-rtc-st (fn-rtc-st-set-mstate j (fn-rtc-m-init) fn-rtc-st)))

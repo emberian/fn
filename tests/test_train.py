@@ -647,10 +647,10 @@ class NewFixtureTests(unittest.TestCase):
         self.assertEqual(report["gates"]["fetched_policy"]["rc"], 7)
 
     def test_cmd_gate_preserves_names_order_output_and_return_codes(self):
-        # Literal order from 9fe40c34a plus b-cost-gate's two gates after ascii,
+        # Literal order from 9fe40c34a plus the cost, book-roots and harness gates after ascii,
         # independent of this implementation.
         baseline_gates = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-                          "cost_obligations", "book_roots", "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
+                          "cost_obligations", "book_roots", "harness", "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
         self.assertEqual(train.GATES, baseline_gates)
         for rc in (0, 7):
             p = self.train("gate", extra_env={"STUB_RC_ledger_check": str(rc)})
@@ -662,7 +662,7 @@ class NewFixtureTests(unittest.TestCase):
             self.assertIn(summary + "\n", p.stdout)
             self.assertEqual(self.stub_log(), [
                 "ledger --check", "current_view --check", "main_last_check ", "keystone_emit --check",
-                "cost_obligations --check", "book_roots_check ",
+                "cost_obligations --check", "book_roots_check ", "harness_check --quiet",
                 "lock_discipline_check --json",
                 "lock_discipline_check --json", "test_ledger ", "test_keystone_emit ",
                 "test_keystone_critical ", "test_train ", "test_farm "])
@@ -1857,6 +1857,56 @@ class BaselineGateTests(TrainBase):
         ok = dict(first, owner="builder-M", transfer_from=first["owner"])
         self.assertEqual(len(train.parse_amendments(self.amendments(first, ok))), 2)
 
+    def test_parser_accepts_refile_with_same_owner_and_measured_sha(self):
+        first = self.amendment("t.a")
+        second = dict(first, item="KR-TARGET", item_from="KR-X", ruling="re-file ruling")
+        self.assertEqual(train.parse_amendments(self.amendments(first, second)), [first, second])
+
+    def test_parser_refuses_invalid_refiles_and_transfer_changing_item(self):
+        first = self.amendment("t.a")
+        refile = dict(first, item="KR-TARGET", item_from="KR-X")
+        bad = [dict(refile, owner="builder-M"), dict(refile, item_from="WRONG"),
+               dict(refile, dev_sha="0000000"), dict(refile, item="KR-X"),
+               dict(first, transfer_from="builder-B", owner="builder-M", item="KR-TARGET")]
+        for second in bad:
+            with self.subTest(record=second), self.assertRaises(train.TrainError):
+                train.parse_amendments(self.amendments(first, second))
+        with self.assertRaises(train.TrainError):
+            train.parse_amendments(self.amendments(refile))
+
+    def test_refile_gate_refuses_closed_missing_or_differently_owned_target(self):
+        self.on_dev(self.rows("t.a"))
+        first = self.amendment("t.new")
+        refile = dict(first, item="KR-TARGET", item_from="KR-X")
+        target = self.work / "planning/repair/items/KR-TARGET.json"
+        rows = json.loads(self.rows("t.a", "t.new"))
+        rows["rows"][1]["item"] = "KR-TARGET"
+        for item, message in [(None, "missing"),
+                              ({"state": "closed", "owner": "builder-B"}, "closed"),
+                              ({"state": "open", "owner": "builder-M"}, "owner")]:
+            with self.subTest(item=item):
+                if item is not None:
+                    target.write_text(json.dumps(item))
+                g, rec = self.gate_amended(json.dumps(rows), self.amendments(first, refile))
+                self.assertEqual(rec["rc"], 1, g.stdout)
+                self.assertEqual(len(rec["invalid_refiles"]), 1)
+                self.assertIn(message, rec["invalid_refiles"][0])
+        target.write_text('{"state": "open", "owner": "builder-B"}\n')
+        g, rec = self.gate_amended(json.dumps(rows), self.amendments(first, refile))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+
+    def test_refile_gate_accepts_closed_umbrella_as_history(self):
+        self.on_dev(self.rows("t.new"))
+        first = self.amendment("t.new")
+        refile = dict(first, item="KR-TARGET", item_from="KR-X")
+        (self.work / "planning/repair/items/KR-TARGET.json").write_text(
+            '{"state": "open", "owner": "builder-B"}\n')
+        (self.work / "planning/repair/items/KR-X.json").write_text('{"state": "closed"}\n')
+        g, rec = self.gate_amended(self.rows("t.new", item="KR-TARGET"), self.amendments(first, refile))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertFalse(rec["dangling_amendments"])
+        self.assertFalse(rec["invalid_refiles"])
+
     def test_a_malformed_amendments_file_fails(self):
         self.on_dev(self.rows("t.a"))
         for text in ("not json\n", '{"amendments": {}}\n', '{"amendments": [{"kind": "native"}]}\n',
@@ -2110,6 +2160,37 @@ with mock.patch.object(book_roots_check.ledger, "ROOT", Path.cwd()):
 
     def test_gates_lists_book_roots(self):
         self.assertIn("book_roots", train.GATES)
+
+
+class HarnessGateTests(TrainBase):
+    def test_a_clean_harness_passes(self):
+        g = self.train("gate")
+        self.assertEqual(g.returncode, 0, g.stdout + g.stderr)
+        self.assertIn("harness_check --quiet", self.stub_log())
+        self.assertIn("tools/harness_check.py --quiet  -> rc 0", g.stdout)
+        self.assertTrue((self.work / "build/train/logs/gate-harness.log").is_file())
+        record = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        self.assertEqual(record["gates"]["harness"]["rc"], 0)
+        self.assertEqual(record["gates"]["harness"]["head"], self.head())
+
+    def test_a_harness_finding_fails_and_refuses_push(self):
+        sha = self.lane("a", {"other.txt": "ok\n"})
+        self.assertEqual(self.train("merge", f"a@{sha}").returncode, 0)
+        before = self.origin_rev("dev")
+        g = self.train("gate", extra_env={"STUB_RC_harness_check_quiet": "1"})
+        self.assertEqual(g.returncode, 1, g.stdout + g.stderr)
+        record = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        self.assertEqual(record["gates"]["harness"]["rc"], 1)
+        self.assertEqual(record["gates"]["harness"]["head"], self.head())
+        self.assertTrue(all(gate["rc"] == 0 for name, gate in record["gates"].items()
+                            if name != "harness"), g.stdout + g.stderr)
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("gate harness failed (rc 1); push refused", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
+
+    def test_gates_lists_harness(self):
+        self.assertIn("harness", train.GATES)
 
 
 class AsciiGateTests(unittest.TestCase):

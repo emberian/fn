@@ -203,6 +203,124 @@ class KnownRedsTests(TrainBase):
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(train._baseline_gate(train.Train(self.work))[0], 0)
 
+    def target_item(self, state='open', owner='builder-B'):
+        path = self.item_path.with_name('KR-TARGET.json')
+        path.write_text(json.dumps({'state': state, 'owner': owner}) + '\n')
+        return path
+
+    def refile(self, subject=None, item='KR-TARGET'):
+        return self.invoke('refile', '--subject', subject or self.SUBJECT,
+                           '--item', item, '--ruling', 're-file ruling')
+
+    def test_refile_changes_only_item_bytes_and_appends_once_each(self):
+        self.assertEqual(self.add()[0], 0)
+        self.target_item()
+        # Preserve noncanonical whitespace, CRLF and UTF-8 in both files.
+        for path in (self.rows_path, self.amendments_path):
+            text = path.read_text().replace('"note": ', '"note" :  ')
+            path.write_bytes(text.replace('\n', '\r\n').encode())
+        before_rows, before_amendments = self.snapshot()
+        records = train.parse_amendments(before_amendments.decode())
+        original_write = Path.write_bytes
+        with mock.patch.object(Path, 'write_bytes', autospec=True,
+                               side_effect=original_write) as writer:
+            rc, out, err = self.refile()
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(out, f'refile: native {self.SUBJECT} KR-X -> KR-TARGET\n')
+        self.assertEqual([call.args[0] for call in writer.call_args_list],
+                         [self.rows_path, self.amendments_path])
+        at = before_rows.rfind(b'"item": "KR-X"')
+        self.assertEqual(self.rows_path.read_bytes(), before_rows[:at] +
+                         before_rows[at:].replace(b'"item": "KR-X"', b'"item": "KR-TARGET"', 1))
+        after = train.parse_amendments(self.amendments_path.read_bytes().decode())
+        self.assertEqual(after, [*records, dict(records[-1], item='KR-TARGET',
+                                              item_from='KR-X', ruling='re-file ruling')])
+        _, _, entries = known_reds.array_entries(before_amendments.decode(), 'amendments')
+        offset = len(before_amendments.decode()[:entries[-1][2]].encode())
+        self.assertEqual(self.amendments_path.read_bytes()[:offset], before_amendments[:offset])
+        self.assertTrue(self.amendments_path.read_bytes().endswith(before_amendments[offset:]))
+        self.assertEqual(self.invoke('check')[0], 0)
+
+    def test_refile_refusals_leave_both_files_byte_identical(self):
+        self.assertEqual(self.add()[0], 0)
+        cases = [(state, 'builder-B', self.SUBJECT, 'KR-TARGET', 'closed')
+                 for state in sorted(train.CLOSED_ITEM_STATES)]
+        cases += [('open', 'builder-M', self.SUBJECT, 'KR-TARGET', 'owner'),
+                  ('open', 'builder-B', self.SUBJECT, 'KR-X', 'differ'),
+                  ('open', 'builder-B', 'missing', 'KR-TARGET', 'exactly one row'),
+                  ('open', 'builder-B', self.SUBJECT, 'MISSING', 'repair item')]
+        for state, owner, subject, item, message in cases:
+            with self.subTest(state=state, owner=owner, subject=subject, item=item):
+                self.target_item(state, owner)
+                before = self.snapshot()
+                rc, out, err = self.refile(subject, item)
+                self.assertEqual(rc, 1, err)
+                self.assertEqual(out, '')
+                self.assertIn(message, err)
+                self.assertEqual(self.snapshot(), before)
+
+    def test_refile_refuses_ambiguous_subject_without_writes(self):
+        self.assertEqual(self.add()[0], 0)
+        self.assertEqual(self.add(kind='check')[0], 0)
+        self.target_item()
+        before = self.snapshot()
+        rc, _, err = self.refile()
+        self.assertEqual(rc, 1)
+        self.assertIn('exactly one row', err)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_check_refuses_refile_target_owner_mismatch(self):
+        self.assertEqual(self.add()[0], 0)
+        self.target_item()
+        self.assertEqual(self.refile()[0], 0)
+        self.target_item(owner='builder-M')
+        before = self.snapshot()
+        rc, _, err = self.invoke('check')
+        self.assertEqual(rc, 1)
+        self.assertIn('owner', err)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_transfer_after_refile_cannot_disagree_with_target_owner(self):
+        self.assertEqual(self.add()[0], 0)
+        self.target_item()
+        self.assertEqual(self.refile()[0], 0)
+        before = self.snapshot()
+        rc, _, err = self.invoke('transfer', '--subject', self.SUBJECT,
+                                 '--owner', 'builder-M', '--ruling', 'transfer ruling')
+        self.assertEqual(rc, 1)
+        self.assertIn('owner', err)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_umbrella_admission_transfer_refile_close_retire_chain(self):
+        umbrella_rows = self.rows_path.read_bytes()
+        self.assertEqual(self.add()[0], 0)
+        rc, _, err = self.invoke('transfer', '--subject', self.SUBJECT,
+                                 '--owner', 'builder-M', '--ruling', 'transfer ruling')
+        self.assertEqual(rc, 0, err)
+        target = self.target_item(owner='builder-M')
+        rc, _, err = self.refile()
+        self.assertEqual(rc, 0, err)
+        records = train.parse_amendments(self.amendments_path.read_text())
+        self.assertEqual(len(records), 3)
+        self.assertEqual(records[-1], dict(records[-2], item='KR-TARGET', item_from='KR-X',
+                                          ruling='re-file ruling'))
+        self.commit(self.work, 'fixture re-filed dev')
+        sh(self.work, 'git', '-C', str(self.work), 'update-ref', 'refs/remotes/origin/dev', self.head())
+        target.write_text('{"state": "closed", "owner": "builder-M"}\n')
+        amendments_before = self.amendments_path.read_bytes()
+        rc, out, err = self.invoke('retire', '--item', 'KR-TARGET')
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(out, f'retire: native {self.SUBJECT}\n')
+        self.assertEqual(self.snapshot(), (umbrella_rows, amendments_before))
+        self.assertEqual(self.invoke('check')[0], 0)
+        self.commit(self.work, 'fixture re-file retirement')
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc, result = train._baseline_gate(train.Train(self.work))
+        self.assertEqual(rc, 0, result)
+        self.assertEqual(result['gone'], [['native', self.SUBJECT]])
+        self.assertEqual(result['rows'], 1)
+        self.assertEqual(train.parse_known_reds(self.rows_path.read_text()), [self.original])
+
     def test_transfer_original_baseline_row_refuses_exact_reason(self):
         before = self.snapshot()
         rc, _, err = self.invoke('transfer', '--subject', self.original['subject'], '--owner', 'new', '--ruling', 'rule')

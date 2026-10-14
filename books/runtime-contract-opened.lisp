@@ -6,7 +6,7 @@
 ; :opened arm of `fn-rtc-step*'; this book carries the proofs).
 
 (in-package "ACL2")
-(include-book "runtime-contract-invariant")
+(include-book "runtime-contract-invariant-facts")
 (include-book "runtime-contract-isolation")
 
 (local (defthm fn-rtc-opened-use-is-static-lemma
@@ -55,10 +55,9 @@
 (local (defthm fn-rtc-opened-pool-of-end-use
   (implies (not (fn-rtc-handlep (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))))
            (equal (fn-rtc-pool (fn-rtc-end-use s e)) (fn-rtc-pool s)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-end-use fn-rtc-end-lease fn-rtc-retire-drained fn-rtc-with-slot fn-rtc-with-uses fn-rtc-make
-                                   fn-rtc-pool fn-rtc-config)
-                                  (fn-rtc-find-use fn-rtc-key fn-rtc-completionp fn-rtc-handlep fn-rtc-slot fn-rtc-remove-use
-                                   fn-rtc-uses-of-slot-p fn-rtc-set))))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-end-use fn-rtc-end-lease fn-rtc-retire-drained fn-rtc-with-accessors))))))
 
 (local (defthm fn-rtc-opened-view-of-end-use
   (implies (not (fn-rtc-handlep (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))))
@@ -132,16 +131,12 @@
                                   (fn-rtc-find-use fn-rtc-key fn-rtc-completionp fn-rtc-slot fn-rtc-s-inc fn-rtc-s-status
                                    fn-rtc-e-id fn-rtc-e-inc))))))
 
-(local (defthm fn-rtc-invp-statics-okp
-  (implies (fn-rtc-invp s)
-           (fn-rtc-statics-okp 1 (fn-rtc-nstatic (fn-rtc-config s)) (fn-rtc-slots s)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-invp) (fn-rtc-statics-okp fn-rtc-nstatic))))
-  :rule-classes nil))
+
 
 (local (defthm fn-rtc-static-slot-at
   (implies (and (fn-rtc-invp s) (natp k) (<= 1 k) (<= k (fn-rtc-nstatic (fn-rtc-config s))))
            (equal (fn-rtc-slot k s) '(1 :live 0)))
-  :hints (("Goal" :use (fn-rtc-invp-statics-okp
+  :hints (("Goal" :use (fn-rtc-invp-has-static-records
                         (:instance fn-rtc-statics-okp-get (j 1) (n (fn-rtc-nstatic (fn-rtc-config s))) (slots (fn-rtc-slots s))))
            :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-slot (:executable-counterpart nfix) (:executable-counterpart natp) fn-rtc-nstatic nfix))))))
 

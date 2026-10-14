@@ -75,7 +75,8 @@ it was measured, the item, the owner, the coordinator ruling; ruled 2026-10-09
 rewritten or dropped amendment record, and refuses an amendment that names no
 present row (unless the row was retired and its item is closed), so amendments
 cannot be stockpiled.  `push` and `status` print the amendment count beside
-the row count.
+the row count; later records may transfer ownership within an item or re-file
+to the same owner's open retirement item while preserving the measured dev SHA.
 
 The image gate.  A train whose diff touches the heap probe, a launcher or
 host/native/ (IMAGE_RULES) must run the rule's native modules
@@ -108,6 +109,9 @@ books/, specs/ or tests/acl2/ changed since it, and the local checks
 (LOCAL_BOX_CHECKS) are all 0 at HEAD; the gate then records the sha it
 inherits from (coordinator ruling, 2026-10-07, during the hbox outage).  Any
 other case refuses: the train runs `boxstep` first.
+
+The `harness` gate runs `harness_check.py --quiet` to refuse findings such as
+the acl2-arity finding in tests/test_premise_audit.py that train C16 carried onto dev.
 """
 from __future__ import annotations
 
@@ -248,7 +252,7 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "cost_obligations", "book_roots",
+         "cost_obligations", "book_roots", "harness",
          "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
 
 # The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
@@ -478,20 +482,36 @@ def parse_amendments(text: str) -> list[dict]:
         key = (rec["kind"], rec["subject"])
         prev = last.get(key)
         if prev is not None:
-            # An owner transfer (coordinator 2026-10-09): a later record for
-            # the same row names the owner it takes over from, with the first
-            # record's item and dev sha.  The earlier records stay as written
-            # (the measured owner); the last one is the row's current owner.
-            if not (rec.get("transfer_from") == prev["owner"] and rec["owner"] != prev["owner"]
-                    and rec["item"] == prev["item"] and rec["dev_sha"] == prev["dev_sha"]):
+            # Later records either transfer ownership with the same item
+            # (coordinator 2026-10-09), or re-file to a different item with
+            # the same owner and item_from naming the previous item (2026-10-13).
+            # Both retain dev_sha; earlier records stay as written, and the
+            # latest record names the row's current owner and retirement item.
+            transfer = (rec.get("transfer_from") == prev["owner"]
+                        and rec["owner"] != prev["owner"] and rec["item"] == prev["item"])
+            refile = (rec.get("item_from") == prev["item"]
+                      and rec["item"] != prev["item"] and rec["owner"] == prev["owner"])
+            if not (rec["dev_sha"] == prev["dev_sha"] and (transfer or refile)):
                 raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice "
-                                 "(a later record must be an owner transfer: transfer_from the "
-                                 "previous owner, the same item and dev_sha, a new owner)")
-        elif "transfer_from" in rec:
-            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]}: a transfer with no "
+                                 "(a later record must retain dev_sha and either transfer_from "
+                                 "the previous owner with the same item and a new owner, or "
+                                 "item_from the previous item with the same owner and a new item)")
+        elif "transfer_from" in rec or "item_from" in rec:
+            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]}: a transfer or re-file with no "
                              "earlier record")
         last[key] = rec
     return records
+
+
+def refile_item_error(record: dict, item: dict | None) -> str | None:
+    """A live re-file's target must exist, be open, and belong to its owner."""
+    if item is None:
+        return f"re-file target repair item is missing: {record['item']}"
+    if item.get("state") in CLOSED_ITEM_STATES:
+        return f"re-file target repair item is closed: {record['item']}"
+    if item.get("owner") != record["owner"]:
+        return f"re-file target repair item owner differs from record: {record['item']}"
+    return None
 
 
 def amendments_at(t: "Train", rev: str) -> list[dict]:
@@ -1170,11 +1190,16 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
         return 1, {"error": "missing"}
     items = t.root / "planning" / "repair" / "items"
 
-    def item_state(name):
+    def item_data(name):
         try:
-            return json.loads((items / f"{name}.json").read_text()).get("state"), True
+            data = json.loads((items / f"{name}.json").read_text())
+            return data if isinstance(data, dict) else None
         except (OSError, ValueError):
-            return None, False
+            return None
+
+    def item_state(name):
+        data = item_data(name)
+        return (data.get("state"), True) if data is not None else (None, False)
 
     unowned, closed = [], []
     for row in head_rows:
@@ -1192,7 +1217,7 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
     gone = sorted(keys(dev_rows) - keys(head_rows)) if dev_rows is not None else []
     # append-only: every record on origin/dev is at HEAD, unchanged and in order
     rewritten = head_amend[:len(dev_amend)] != dev_amend
-    dangling, mismatched = [], []
+    dangling, mismatched, invalid_refiles = [], [], []
     for k, a in amended.items():
         row = row_by_key.get(k)
         if row is None:
@@ -1201,6 +1226,10 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
                 dangling.append(f"{k[0]} {k[1]}")
         elif (row["item"], row["owner"]) != (a["item"], a["owner"]):
             mismatched.append(f"{k[0]} {k[1]}")
+        if row is not None and "item_from" in a:
+            error = refile_item_error(a, item_data(a["item"]))
+            if error:
+                invalid_refiles.append(f"{k[0]} {k[1]}: {error}")
     for k in added:
         say(f"  known red ADDED by this train (rows shrink only): {k[0]} {k[1]}")
     for k in admitted:
@@ -1211,6 +1240,8 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
         say(f"  amendment names no known-red row (amendments cannot be stockpiled): {k}")
     for k in mismatched:
         say(f"  amendment disagrees with its row on item or owner: {k}")
+    for error in invalid_refiles:
+        say(f"  {error}")
     for k in unowned:
         say(f"  known red with no repair item: {k}")
     for k in closed:
@@ -1219,11 +1250,12 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
     say(f"baseline: {len(head_rows)} row(s), {n_amended} amended; added {len(added)}; "
         f"added by amendment {len(admitted)}; gone {len(gone)}"
         + ("; first baseline (none on origin/dev)" if dev_rows is None else ""))
-    rc = 1 if (added or unowned or closed or rewritten or dangling or mismatched) else 0
+    rc = 1 if (added or unowned or closed or rewritten or dangling or mismatched or invalid_refiles) else 0
     return rc, {"rows": len(head_rows), "amended": n_amended, "added": [list(k) for k in added],
                 "admitted": [list(k) for k in admitted], "gone": [list(k) for k in gone],
                 "amendments_rewritten": rewritten, "dangling_amendments": dangling,
                 "mismatched_amendments": mismatched,
+                "invalid_refiles": invalid_refiles,
                 "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
 
 
@@ -1900,6 +1932,8 @@ GATE_FUNCTIONS = {
         t, "cost_obligations", ["tools/cost_obligations.py", "--check"]), {}),
     "book_roots": lambda t: (_reported_check_gate(
         t, "book_roots", ["tools/book_roots_check.py"]), {}),
+    "harness": lambda t: (_reported_check_gate(
+        t, "harness", ["tools/harness_check.py", "--quiet"]), {}),
     "box_step": _box_step_gate,
     "lock_delta": _lock_delta_gate,
     "baseline": _baseline_gate,

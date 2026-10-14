@@ -9,6 +9,15 @@
 (in-package "ACL2")
 (include-book "runtime-contract-keystones")
 
+; Keep logical constructor inductions independent of an already-loaded concrete pool.
+(local (make-event
+  (if (getpropc 'fn-rtc-c-free-slots-is-rep 'theorem nil (w state))
+      '(in-theory (disable fn-rtc-c-free-slots-is-rep
+                           fn-rtc-c-free-pool-is-rep fn-rtc-c-make-list-ac-is-rep
+                           fn-rtc-c-set-is-update-nth))
+    '(value-triple :concrete-constructor-aliases-absent))))
+
+
 ; These proofs are written against the base book's theory; the keystone
 ; book's later rules (structure and frame lemmas for T7-T15) are kept out.
 (local (in-theory (disable fn-rtc-accept-branch-keeps-foreign fn-rtc-accept-branch-no-slot-keeps-buffers
@@ -264,6 +273,19 @@
            :in-theory (disable fn-rtc-pool-okp-unfolds fn-rtc-uses-okp
                                fn-rtc-slots-okp fn-rtc-mstates-okp
                                fn-rtc-draining-okp fn-rtc-configp fn-rtc-get))))
+
+(defthm fn-rtc-core-invp-slot-incarnation-u64
+  (implies (fn-rtc-core-invp s) (fn-rtc-u64p (fn-rtc-s-inc (fn-rtc-slot j s))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-core-invp fn-rtc-slot)
+                   (fn-rtc-slots-is-slot fn-rtc-slots-okp fn-rtc-slotp fn-rtc-u64p fn-rtc-s-inc)))))
+(defthm fn-rtc-core-current-incarnation-u64
+  (implies (and (fn-rtc-core-invp s) (fn-rtc-current-p id inc s)) (fn-rtc-u64p inc))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-current-p)
+                   (fn-rtc-core-invp fn-rtc-slot fn-rtc-s-inc fn-rtc-s-status fn-rtc-u64p)))))
+(defthm fn-rtc-core-active-incarnation-u64
+  (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s)) (fn-rtc-u64p inc))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-instance-active-p)
+                   (fn-rtc-core-invp fn-rtc-slot fn-rtc-s-inc fn-rtc-s-status fn-rtc-u64p)))))
 
 (defthm fn-rtc-acquire-preserves-core-invp
   (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s))
@@ -575,7 +597,7 @@
 
 (defthm fn-rtc-fresh-unbuffered-use-okp
   (implies (and (member-eq kind '(:fsync :close :accept :timer :extend))
-                (natp id) (natp inc) (< id (fn-rtc-nslots (fn-rtc-config s)))
+                (natp id) (fn-rtc-u64p inc) (< id (fn-rtc-nslots (fn-rtc-config s)))
                 (fn-rtc-current-p id inc s)
                 (iff (eq kind :accept) (equal id 0))
                 (implies (eq kind :close)
@@ -858,7 +880,8 @@
 (defthm fn-rtc-hand-submit-preserves-core-invp
   (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s)
                 (fn-rtc-live-p id inc s) (fn-rtc-submit-okp :hand hd id inc s)
-                (fn-rtc-hand-target-okp extra id s))
+                (fn-rtc-hand-target-okp extra id s)
+                (fn-rtc-kind-extrap :hand extra))
            (fn-rtc-core-invp (fn-rtc-hand-submit-state hd extra id inc s)))
   :hints (("Goal" :in-theory
            (e/d (fn-rtc-buffer-okp)
@@ -881,7 +904,7 @@
                                   (fn-rtc-b-owner fn-rtc-buffer fn-rtc-h-buf fn-rtc-handlep)))))
 
 (local (defthm fn-rtc-fresh-wait-use-okp
-  (implies (and (natp id) (not (equal id 0)) (natp inc)
+  (implies (and (natp id) (not (equal id 0)) (fn-rtc-u64p inc)
                 (< id (fn-rtc-nslots (fn-rtc-config s)))
                 (fn-rtc-current-p id inc s))
            (fn-rtc-use-okp (list :wait id inc (fn-rtc-next-op s) nil)
@@ -898,7 +921,8 @@
                     fn-rtc-nslots fn-rtc-nbufs fn-rtc-configp fn-rtc-s-inc fn-rtc-s-status
                     fn-rtc-h-buf fn-rtc-hand-target-okp fn-rtc-nstatic fn-rtc-use-bound mv-nth
                     fn-rtc-buffered-submit-preserves-core-invp fn-rtc-hand-submit-preserves-core-invp)
-           :use ((:instance fn-rtc-hand-submit-preserves-core-invp
+           :use ((:instance fn-rtc-hand-submit-okp-owner (hd (fn-rtc-get 2 r)))
+                 (:instance fn-rtc-hand-submit-preserves-core-invp
                   (hd (fn-rtc-get 2 r)) (extra (fn-rtc-get 3 r)))
                  (:instance fn-rtc-buffered-submit-preserves-core-invp
                   (kind (fn-rtc-get 1 r)) (hd (fn-rtc-get 2 r)))))))

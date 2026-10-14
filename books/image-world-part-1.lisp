@@ -209,3 +209,4 @@
 (include-book "consumer-remote-event-buffer")
 (include-book "store-checkpoint-buffer")
 (include-book "store-checkpoint-reader")
+(include-book "store-checkpoint-tables")

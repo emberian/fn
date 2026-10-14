@@ -648,7 +648,7 @@
                   :measure (nfix (- (fn-rtc-c-slots-length fn-rtc-st$c) (nfix i)))))
   (let ((i (nfix i)))
     (if (< i (fn-rtc-c-slots-length fn-rtc-st$c))
-        (if (and (not (zp i)) (eq (fn-rtc-get 1 (fn-rtc-c-slotsi i fn-rtc-st$c)) :free))
+        (if (and (not (zp i)) (fn-rtc-slot-selectablep (fn-rtc-c-slotsi i fn-rtc-st$c)))
             i
           (fn-rtc-c-free-slot-loop (+ 1 i) fn-rtc-st$c))
       nil)))
