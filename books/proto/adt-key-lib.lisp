@@ -550,7 +550,10 @@
 
 (local (in-theory (disable adt-nth-open-local adt-update-nth-open-local)))
 
-(defthm adt-nth-1+
+; Disabled by default: it opens every fixed field index (nth 4 x) into
+; (nth 3 (cdr x)), against the house field vocabulary; proofs that walk
+; concrete indices enable it locally (one-world pairs, PAIRFIX.md).
+(defthmd adt-nth-1+
   (implies (natp j) (equal (nth (+ 1 j) x) (nth j (cdr x))))
   :hints (("Goal" :in-theory (enable nth))))
 
