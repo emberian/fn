@@ -5,12 +5,13 @@
  "id": "ONE-WORLD-B-LOCAL-VOCABULARY",
  "notes": [
   "10-14 05:26 Per-rule exceptions B retires (one-world, main 10-14): defthmd + census local enables for ADT-NTH-0, ADT-NTH-1+ (adt-key-lib), ADT-LEN-REGION-BELOW-BODY (adt-bytes), FN-CBOR-OCTET-LISTP-IS-ADT-OCTETSP and FN-SCC-OCTET-LISTP-IS-ADT-OCTETSP (catalog-paged), FN-CPL-FIRST-SKIPS and FN-CPL-LAST-SKIPS (catalog-live-links), ADT-TP-NTHCDR-SHORT (def-representation-pages); 68 books carry census enables (planning/evidence/one-world-exporters-20261013/p1-enables.txt). Six families; ADT-TP-NTHCDR-SHORT was the last. B deletes these exceptions and the census script once implementation vocabulary is LOCAL.",
-  "10-14 09:03 Also retires the X/X4/X5 snapshot export structure (history-columns, store-records-field): deleting it at 3ee787c5c reddened admission-memory, checkpoint-codec, checkpoint-payloads-extent (r13), so it stays until B."
+  "10-14 09:03 Also retires the X/X4/X5 snapshot export structure (history-columns, store-records-field): deleting it at 3ee787c5c reddened admission-memory, checkpoint-codec, checkpoint-payloads-extent (r13), so it stays until B.",
+  "10-14 18:50 2026-10-14 A29, main ruling A (event-closed S*): LOCAL acts per event, so each generic's export set is S* = every rune of every event contributing a rune to the measured S. Measured (build/b-runs/B-S-STAR.json): history-paged S 4,790 -> S* 7,255 of U 12,431; catalog-paged 6,669 -> 10,575 of 21,285; payload-arena-extent 1,225 -> 1,879 of 3,479. FOLLOW-ON DEBT (measured): 2,465 / 3,906 / 654 companion runes are exported only because they share an event with a needed rune (mostly defstobj/defabsstobj accessor families); a later event-splitting landing retires them."
  ],
  "owner": "builder-A",
  "severity": "medium",
  "source": "one-world-D2-FAM5",
  "state": "open",
  "title": "one-world B: implementation books export only what their attach needs; internal vocabulary LOCAL (A's next landing; the real G4 move)",
- "updated": "2026-10-14T13:03:06Z"
+ "updated": "2026-10-14T22:50:18Z"
 }
