@@ -27,6 +27,12 @@
 (defun fnn-heap-history-observation (root profile)
   (declare (ignorable root profile))
   (harness-stub-reached 'fnn-heap-history-observation "host/native/heap.lisp"))
+(defun fnn-olo-admin-observe (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-olo-admin-observe "host/native/operator.lisp"))
+(defun fnn-olo-profile (instance)
+  (declare (ignorable instance))
+  (harness-stub-reached 'fnn-olo-profile "host/native/operator.lisp"))
 ;;; ---- derived stubs: END ----
 (declaim (declaration xargs))
 (defmacro defconst (name value) `(defparameter ,name ,value))

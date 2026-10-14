@@ -89,7 +89,7 @@
       (when (and (consp f)
                  (or (and (eq (car f) 'defstruct)
                           (member (if (consp (second f)) (caadr f) (second f))
-                                  '(fnn-owner-service fnn-response-capture)))
+                                  '(fnn-owner-service fnn-response-capture fnn-owner-cold-read)))
                      (and (eq (car f) 'defvar) (eq (second f) '*fnn-response-capture*))
                      (and (eq (car f) 'defun) (eq (second f) 'fnn-owner-response-window-close))))
         (eval f)))))

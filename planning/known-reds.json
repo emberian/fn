@@ -137,37 +137,9 @@
   },
   {
    "kind": "native",
-   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_preflight_raw_mock",
-   "item": "DEVCTL-RAW-SCRIPTS-LEASE",
-   "owner": "builder-A",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_response_lease_raw_mock",
-   "item": "DEVCTL-RAW-SCRIPTS-LEASE",
-   "owner": "builder-A",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_output_startup_raw_mock",
-   "item": "DEVCTL-RAW-SCRIPTS-LEASE",
-   "owner": "builder-A",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
    "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_post_seal_gate_refusal_raw_mock",
    "item": "DEVCTL-POST-SEAL-GATE-CLASSIFIER",
    "owner": "builder-P",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_raw_scripts.RawHarnessTests.test_response_window_raw",
-   "item": "DEVCTL-RAW-SCRIPTS-LEASE",
-   "owner": "builder-A",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): native_*_raw-mock.lisp exited 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_raw_scripts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
