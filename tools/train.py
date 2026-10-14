@@ -56,7 +56,11 @@ shown by `status`).
 `certify BOX` certifies the affected closure of the train: every Makefile
 root transitively affected by a changed book, every root the train adds to
 the Makefile's ACL2_BOOKS, plus the critical witness tests
-of affected theorem books (COORDINATION section 5: the affected closure
+of affected theorem books. Selection first rewrites the current tree's
+uncommitted teeth manifest, logging the writer in build/train/logs/certify-teeth.log;
+a failed writer or missing output refuses selection before farm submission.
+Lane-check's BOX command report uses the same selection and refresh, even after
+regen (COORDINATION section 5: the affected closure
 certifies on the exact artifact before a push, regardless of tree size; the
 lane selection, direct includers only, missed the far consumers of trains 49
 and 58).
@@ -186,8 +190,8 @@ REGEN_OUTPUTS = (
 )
 # The box step's emits, fetched into build/box/ beside stamp.json and never
 # committed (coordinator ruling 2026-10-09 19:50 on the registers DECISION;
-# tools/box_artifacts.py is their one reader).  The regen step's teeth
-# manifest is build/teeth-obligations.json, likewise uncommitted.
+# tools/box_artifacts.py is their one reader).  Regen and certify selection
+# write build/teeth-obligations.json, likewise uncommitted.
 HBOX_OUTPUTS = tuple(str(box_artifacts.DIR / name) for name in box_artifacts.ARTIFACTS)
 TEETH_MANIFEST = "build/teeth-obligations.json"
 
@@ -724,6 +728,11 @@ def cmd_merge(t: Train, args) -> int:
 
 # --------------------------------------------------------------------------- regen
 
+def teeth_manifest_command() -> list[str]:
+    """The manifest writer shared by regen and current-tree certify selection."""
+    return [PY, "tools/keystone_emit.py", "--write-manifest"]
+
+
 def _commit_named(t: Train, paths, msg: str) -> bool:
     # a path may be a glob pathspec (the world files: a regen can add or drop
     # a -part-N link), so additions and deletions under it are committed too
@@ -760,10 +769,10 @@ def cmd_regen(t: Train, args) -> int:
         ("ledger", [PY, "tools/ledger.py", "--write"]),
         # the raw harnesses' derived-stub blocks (31 had drifted by train 51)
         ("stubs", [PY, "tools/harness_check.py", "--write-stubs"]),
-        # the teeth obligation manifest of the merged tree, written to
-        # build/teeth-obligations.json (uncommitted); the keystone gate and
-        # certify's critical witnesses read it
-        ("teeth", [PY, "tools/keystone_emit.py", "--write-manifest"]),
+        # rewrite the post-merge/regenerated tree's uncommitted manifest for
+        # the keystone gate; certify selection writes its own current-tree
+        # manifest because a books train certifies BEFORE regen
+        ("teeth", teeth_manifest_command()),
         # docs/resource-contract.md's generated block: its counts read the
         # merged tree (train 89 shipped 27 of 30 A-* rows when it was not here)
         ("resource_contract", [PY, "tools/resource_contract.py", "--write"]),
@@ -893,7 +902,7 @@ def _added_roots(t: "Train") -> list[str]:
 
 def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
     """Critical teeth whose theorem's closure or own closure changed, from
-    regen's manifest.
+    the current-tree manifest just written by certify_selection.
 
     `book` defines the theorem; `owner_book` supplies its teeth and may be
     a test outside the Makefile roots. Include that test even when only a
@@ -980,11 +989,28 @@ def emit_remote_command(tree: str, envs: str, box: str, seed: str) -> str:
 
 
 def certify_selection(t: Train) -> dict:
-    """The train's changed inputs, affected roots and critical witnesses."""
+    """Select inputs and witnesses, rewriting the current tree's manifest
+    first whenever a book, test book or host book changed.
+
+    This also runs for lane-check's BOX command report; accurate commands
+    require current witnesses. Discard any old manifest before the writer so
+    a successful exit without output cannot silently reuse stale witnesses.
+    """
     books = _changed_roots(t, "books")
     tests = _changed_roots(t, "tests/acl2")
     host_books, host_roots = _changed_host_books(t)
     changed = [*books, *tests, *host_books]
+    if changed:
+        # no changed book selects no witness and reads no manifest: a tools
+        # train does not pay the writer (~170 s on the laptop at C18)
+        manifest = t.root / TEETH_MANIFEST
+        manifest.unlink(missing_ok=True)
+        rc = t.run("certify-teeth", teeth_manifest_command())
+        if rc != 0 or not manifest.is_file():
+            log = t.logs / "certify-teeth.log"
+            tail = "\n".join(log.read_text().splitlines()[-30:])
+            reason = f"writer failed rc {rc}" if rc != 0 else f"writer did not write {manifest}"
+            raise TrainError(f"cannot select critical witnesses: {reason} (log: {log})\n{tail}")
     witnesses = _critical_witness_roots(t.root, changed)
     added = _added_roots(t)
     # Naming a changed book as a root alone does not select its includers.
@@ -994,7 +1020,10 @@ def certify_selection(t: Train) -> dict:
 
 
 def certify_command(t: Train, box: str, selection: dict | None = None) -> list[str]:
-    """The train's farm submit command, also used by lane-check."""
+    """Build the farm command, refreshing the manifest unless selection is supplied.
+
+    Lane-check supplies its freshly computed selection to avoid a second write.
+    """
     selection = certify_selection(t) if selection is None else selection
     added = selection["added"]
     if added:
@@ -2086,7 +2115,11 @@ def lane_check_tree(t: Train, name: str, dev: str) -> Train:
 
 def lane_check_box_commands(t: Train, gates: dict | None = None,
                             files: list[str] | None = None) -> dict[str, tuple[str, str]]:
-    """BOX decisions from real gate results, under this checkout's policy."""
+    """BOX decisions from real gates and a freshly written teeth manifest.
+
+    The report computes current witnesses, so it runs the same writer as certify;
+    this is part of lane-check's local work, not a pure print/dry-run path.
+    """
     if gates is None:
         rc, record = GATE_FUNCTIONS["box_step"](t)
         box_gate = {"rc": rc, **record}

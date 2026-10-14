@@ -62,6 +62,10 @@ if mode == "write" and name == "resource_contract" and os.environ.get("STUB_CONT
 if mode == "write" and name == "ledger":
     with open("planning/proofs.json", "a") as f:
         f.write("regen\\n")
+if name == "keystone_emit" and mode == "write-manifest" and not os.environ.get("STUB_RC_keystone_emit_write-manifest"):
+    os.makedirs("build", exist_ok=True)
+    with open("build/teeth-obligations.json", "w") as f:
+        f.write(os.environ.get("STUB_TEETH", '{"entries": []}'))
 sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 '''
 STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
@@ -562,15 +566,9 @@ class NewFixtureTests(unittest.TestCase):
         self.assertIn("lane-check verdict: FAIL", p.stdout)
 
     def test_box_certify_uses_the_train_affected_books_and_added_roots(self):
-        manifest_stub = STUB.replace('sys.exit(int(os.environ.get(',
-            'if name == "keystone_emit" and mode == "write-manifest":\n'
-            '    os.makedirs("build", exist_ok=True)\n'
-            '    with open("build/teeth-obligations.json", "w") as f: json.dump({"entries": []}, f)\n'
-            'sys.exit(int(os.environ.get(')
         (self.seed / "books").mkdir(exist_ok=True)
         sha = self.lane("books", {"books/a.lisp": "(in-package \"ACL2\")\n",
-                                  "Makefile": "ACL2_BOOKS = books/new-root\n",
-                                  "tools/keystone_emit.py": manifest_stub})
+                                  "Makefile": "ACL2_BOOKS = books/new-root\n"})
         p = self.check_lane("books", sha)
         self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
         line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check certify: BOX"))
@@ -585,16 +583,10 @@ class NewFixtureTests(unittest.TestCase):
 
     def test_box_certify_for_a_changed_test_matches_the_train_command(self):
         (self.seed / "tests/acl2").mkdir(parents=True, exist_ok=True)
-        manifest_stub = STUB.replace('sys.exit(int(os.environ.get(',
-            'if name == "keystone_emit" and mode == "write-manifest":\n'
-            '    os.makedirs("build", exist_ok=True)\n'
-            '    with open("build/teeth-obligations.json", "w") as f: json.dump({"entries": []}, f)\n'
-            'sys.exit(int(os.environ.get(')
         self.advance_dev({
             "Makefile": "ACL2_BOOKS = tests/acl2/base-tests tests/acl2/consumer-tests\n",
             "tests/acl2/base-tests.lisp": '(in-package "ACL2")\n',
             "tests/acl2/consumer-tests.lisp": '(include-book "base-tests")\n',
-            "tools/keystone_emit.py": manifest_stub,
         })
         sh(self.work, "git", "fetch", "-q", "origin")
         sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
@@ -603,7 +595,7 @@ class NewFixtureTests(unittest.TestCase):
         p = self.check_lane("test-book", sha)
         line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check certify: BOX"))
         command = shlex.split(line.removeprefix("lane-check certify: BOX "))
-        with mock.patch.object(train, "PY", sys.executable):
+        with mock.patch.object(train, "PY", sys.executable), mock.patch.dict(os.environ, self.env):
             self.assertEqual(command, ["timeout", "3600",
                 *train.certify_command(train.Train(self.scratch("test-book")), "hbox")])
         self.assertIn("--affected-by", command)
@@ -1434,6 +1426,105 @@ class CertWorldWitnessTests(unittest.TestCase):
         self.assertIn("FN_CERT_WORLD_REQUIRED and no ACL2 launcher", required.stderr)
 
 
+class CertifySelectionTests(unittest.TestCase):
+    """Selection refreshes its manifest before trusting any critical witnesses."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="train-selection-")
+        self.addCleanup(temporary.cleanup)
+        self.t = train.Train.__new__(train.Train)
+        self.t.root = Path(temporary.name)
+        self.t.logs = self.t.root / "build/train/logs"
+        self.manifest = self.t.root / train.TEETH_MANIFEST
+        self.entries = [{"critical": "durability", "book": "books/b.lisp",
+                         "owner_book": "tests/acl2/current-witness.lisp"}]
+
+    def select(self, writer):
+        with mock.patch.object(train.subprocess, "run", side_effect=writer) as run, \
+                mock.patch.object(train, "_changed_roots", side_effect=[["books/b"], []]), \
+                mock.patch.object(train, "_changed_host_books", return_value=([], [])), \
+                mock.patch.object(train, "_added_roots", return_value=[]), \
+                mock.patch("certs.closure", return_value={"books/b": "fixture-key"}), \
+                contextlib.redirect_stdout(io.StringIO()):
+            selection = train.certify_selection(self.t)
+        run.assert_called_once_with(train.teeth_manifest_command(), cwd=self.t.root,
+                                    env=None, capture_output=True, text=True)
+        return selection
+
+    def write_current(self, *args, **kwargs):
+        self.assertFalse(self.manifest.exists(), "old manifests cannot survive a no-output writer")
+        self.manifest.write_text(json.dumps({"entries": self.entries}))
+        return SimpleNamespace(returncode=0, stdout="current teeth written\n", stderr="")
+
+    def test_fresh_tree_writes_manifest_before_selecting_witnesses(self):
+        self.assertFalse(self.manifest.exists())
+        selection = self.select(self.write_current)
+        self.assertIn("tests/acl2/current-witness", selection["roots"])
+        self.assertEqual(json.loads(self.manifest.read_text())["entries"], self.entries)
+        self.assertEqual((self.t.logs / "certify-teeth.log").read_text(), "current teeth written\n")
+
+    def test_stale_manifest_is_replaced_before_selection(self):
+        self.manifest.parent.mkdir(parents=True)
+        stale = dict(self.entries[0], owner_book="tests/acl2/stale-witness.lisp")
+        self.manifest.write_text(json.dumps({"entries": [stale]}))
+        selection = self.select(self.write_current)
+        self.assertIn("tests/acl2/current-witness", selection["roots"])
+        self.assertNotIn("tests/acl2/stale-witness", selection["roots"])
+
+    def test_nonzero_writer_raises_with_log_tail_before_any_submission(self):
+        self.manifest.parent.mkdir(parents=True)
+        self.manifest.write_text('{"entries": []}')
+        output = "\n".join(["discarded first line", *[f"line {i}" for i in range(30)]]) + "\n"
+        result = SimpleNamespace(returncode=7, stdout=output, stderr="writer refused\n")
+        with mock.patch.object(self.t, "dirty", return_value=False), \
+                mock.patch.object(self.t, "head", return_value="a" * 40), \
+                mock.patch.object(train.subprocess, "run", return_value=result) as run, \
+                mock.patch.object(train, "_changed_roots", side_effect=[["books/b"], []]), \
+                mock.patch.object(train, "_changed_host_books", return_value=([], [])), \
+                contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(train.TrainError) as raised:
+                train.cmd_certify(self.t, SimpleNamespace(box="hbox"))
+        self.assertIn("writer failed rc 7", str(raised.exception))
+        self.assertIn(str(self.t.logs / "certify-teeth.log"), str(raised.exception))
+        self.assertIn("line 29\nwriter refused", str(raised.exception))
+        self.assertNotIn("discarded first line", str(raised.exception))
+        run.assert_called_once_with(train.teeth_manifest_command(), cwd=self.t.root,
+                                    env=None, capture_output=True, text=True)
+        self.assertFalse(self.manifest.exists())
+
+    def test_success_without_output_refuses_both_fresh_and_stale_manifests(self):
+        for stale in (False, True):
+            with self.subTest(stale=stale):
+                if stale:
+                    self.manifest.write_text('{"entries": []}')
+                result = SimpleNamespace(returncode=0, stdout="no manifest written\n", stderr="")
+                with self.assertRaises(train.TrainError) as raised:
+                    self.select(lambda *args, **kwargs: result)
+                self.assertIn("writer did not write", str(raised.exception))
+                self.assertIn(str(self.t.logs / "certify-teeth.log"), str(raised.exception))
+                self.assertIn("no manifest written", str(raised.exception))
+                self.assertFalse(self.manifest.exists())
+
+    def test_no_changed_book_runs_no_writer_and_reads_no_manifest(self):
+        # a tools train selects no witness, so it does not pay the writer
+        self.manifest.parent.mkdir(parents=True)
+        self.manifest.write_text("not json: never read")
+        with mock.patch.object(train.subprocess, "run", side_effect=AssertionError("unexpected write")), \
+                mock.patch.object(train, "_changed_roots", side_effect=[[], []]), \
+                mock.patch.object(train, "_changed_host_books", return_value=([], [])), \
+                mock.patch.object(train, "_added_roots", return_value=[]), \
+                contextlib.redirect_stdout(io.StringIO()):
+            selection = train.certify_selection(self.t)
+        self.assertEqual(selection["affected_by"], [])
+        self.assertEqual(selection["roots"], list(dict.fromkeys(train.BOX_CERT_BOOKS)))
+
+    def test_precomputed_selection_builds_command_without_another_write(self):
+        selection = {"roots": ["tests/acl2/current-witness"], "added": [], "affected_by": ["books/b"]}
+        with mock.patch.object(train.subprocess, "run", side_effect=AssertionError("unexpected write")):
+            command = train.certify_command(self.t, "hbox", selection)
+        self.assertIn("tests/acl2/current-witness", command)
+
+
 class CertifyTests(TrainBase):
     """`train.py certify BOX`: one farm run, then the emits in that run's tree."""
 
@@ -1446,8 +1537,6 @@ class CertifyTests(TrainBase):
         sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
         sh(self.work, "git", "fetch", "-q", "origin")
         sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
-        # the regen step's manifest (keystone_emit --write-manifest), uncommitted
-        (self.work / "build/teeth-obligations.json").write_text('{"entries": []}\n')
         ssh = self.tmp / "ssh-stub"
         ssh.write_text(SSH_STUB)
         ssh.chmod(0o755)
@@ -1629,7 +1718,7 @@ class CertifyTests(TrainBase):
             "tests/acl2/unrelated-witness.lisp": '(in-package "ACL2")\n',
             "tests/acl2/noncritical-witness.lisp": '(in-package "ACL2")\n',
         })
-        (self.work / "build/teeth-obligations.json").write_text(json.dumps({"entries": entries}))
+        self.env["STUB_TEETH"] = json.dumps({"entries": entries})
         sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
         self.merge({"books/b.lisp": '(in-package "ACL2")\n; changed\n'})
         result = self.train("certify", "hbox")  # witnesses ride the default lane mode too
@@ -1660,7 +1749,7 @@ class CertifyTests(TrainBase):
                 '(include-book "../../books/theorem")\n(include-book "../../books/teeth")\n',
             "tests/acl2/unrelated-witness.lisp": '(in-package "ACL2")\n',
         })
-        (self.work / "build/teeth-obligations.json").write_text(json.dumps({"entries": entries}))
+        self.env["STUB_TEETH"] = json.dumps({"entries": entries})
         sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
         self.merge({"books/teeth.lisp": '(in-package "ACL2")\n; changed\n'})
         result = self.train("certify", "hbox")
@@ -3144,7 +3233,9 @@ class ImageGateTests(TrainBase):
         self.assertEqual(rec["need"], sorted(train.BP_NATIVES))
         self.assertIn(path, g.stdout)
         t = train.Train(self.work)
-        command = train.lane_check_box_commands(t, t.load()["gates"], [path])["image"]
+        with mock.patch.object(train, "PY", sys.executable), mock.patch.dict(os.environ, self.env), \
+                contextlib.redirect_stdout(io.StringIO()):
+            command = train.lane_check_box_commands(t, t.load()["gates"], [path])["image"]
         self.assertEqual(command[0], "BOX")
         self.assertEqual(command[1].split()[7:], sorted(train.BP_NATIVES))
         self.set_image(train.BP_NATIVES)
