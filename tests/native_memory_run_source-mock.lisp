@@ -89,14 +89,18 @@
  (incf *refreshes*) (setf (gethash 'fn-owner-memory-capacity state) 2)
  (values fn-hist state))
 (let ((state (make-hash-table)))
- (setf (gethash 'fn-owner-memory-run state) (copy-list '(nil 1000 0 0 nil nil nil nil 0 1)))
+ (setf (gethash 'fn-owner-memory-run state) (copy-list '(nil 1000 0 0 nil nil nil nil 0 1 nil)))
+ (assert (= (first (second (fn-owner-memory-gate state))) 33))
+ ;; A carried natural operator id occupies the already-counted private row.
+ (setf (nth 10 (gethash 'fn-owner-memory-run state)) 0)
  (assert (= (first (second (fn-owner-memory-gate state))) 32))
+ (setf (nth 10 (gethash 'fn-owner-memory-run state)) nil)
  (setf (nth 9 (gethash 'fn-owner-memory-run state)) 2
        (gethash 'fn-owner-memory-capacity state) 2)
- (assert (= (first (second (fn-owner-memory-gate state))) 32))
+ (assert (= (first (second (fn-owner-memory-gate state))) 33))
  ;; The policy bound falls further; it must continue charging actual held.
  (setf *configured* 1)
- (assert (= (first (second (fn-owner-memory-gate state))) 32))
+ (assert (= (first (second (fn-owner-memory-gate state))) 33))
  (setf (gethash 'fn-owner-memory-capacity state) 0)
  (assert (= (fn-owner-memory-max-conns state) 0))
  (let ((limits (fn-owner-callback-exposure-limits state)))

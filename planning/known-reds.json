@@ -197,6 +197,13 @@
    "item": "DEVCTL-M-SIZING",
    "owner": "builder-M",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): verdict key carries FN_NATIVE_LAUNCHER_SHA256, expected {'absent': 'build/fn-host'}; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_verdicts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_topic_local.NativeTopicLocalTest.test_history_reopens_and_survives_compaction",
+   "item": "OFFLINE-SCAN-STORE-READ-RESOURCES",
+   "owner": "builder-L",
+   "evidence": "hbox:/tank/fn/scratch/b-control-optins/native-optins-2b6c0fca0/logs/test-tests.test_native_topic_local.log"
   }
  ]
 }

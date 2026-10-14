@@ -109,7 +109,7 @@
   (let* ((installed (fn-adm-lease-startup-cfg *omrt-profile* *omrt-img*
                      *omrt-floor-cfg* *omrt-floor-limit* *omrt-tot* 1048576))
          (lowered (fn-adm-cfg-at installed 10))
-         (held (fn-adm-run-gate-held 0 10 10))
+         (held (fn-adm-run-gate-held 0 10 10 nil))
          (priced (fn-adm-priced-cfg lowered held 10)))
    (and (equal (fn-adm-installed-capacity *omrt-profile* *omrt-img* installed
                  *omrt-floor-limit* *omrt-tot*) 64)

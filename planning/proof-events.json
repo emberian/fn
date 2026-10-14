@@ -19131,6 +19131,10 @@
         {
           "kind": "theorem",
           "name": "fn-adm-priced-gate-holds-the-retained-lease"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-admitted-config-change-keeps-the-operator-slot-funded"
         }
       ]
     },

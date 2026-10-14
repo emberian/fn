@@ -23820,10 +23820,13 @@
       "depends_on": [],
       "assumptions": [],
       "evidence": [
-        "tests/acl2/admission-memory-tests.lisp"
+        "tests/acl2/admission-memory-tests.lisp",
+        "tests/acl2/owner-memory-holding-tests.lisp",
+        "tests/test_native_operator_slot.py"
       ],
-      "evidence_digest": "719c3298f7e8ef0e",
+      "evidence_digest": "3f390a229ba01753",
       "keystone_subjects": {
+        "fn-adm-admitted-config-change-keeps-the-operator-slot-funded": "fn-mm-gate-p",
         "fn-adm-priced-connections-cover-held": "fn-adm-priced-connections",
         "fn-adm-priced-connections-equal-reader-count-when-covered": "fn-adm-priced-connections",
         "fn-adm-priced-gate-bounds-the-held-instant": "fn-adm-priced-cfg",
@@ -23833,7 +23836,8 @@
         "fn-adm-priced-connections-cover-held",
         "fn-adm-priced-connections-equal-reader-count-when-covered",
         "fn-adm-priced-gate-bounds-the-held-instant",
-        "fn-adm-priced-gate-holds-the-retained-lease"
+        "fn-adm-priced-gate-holds-the-retained-lease",
+        "fn-adm-admitted-config-change-keeps-the-operator-slot-funded"
       ]
     },
     {

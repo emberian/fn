@@ -1,20 +1,8 @@
-; Teeth for books/owner-retain-frame.lisp: the owner profile proves REAL owner
-; writers.  The callback-level writers of books/owner-connection-callbacks.lisp
-; are the bodies of the host entries fn-owner-close, fn-owner-fault and
-; fn-owner-open-peer (host/owner-host.lisp, each a one-line wrapper), so the
-; declarations here are the stage-5 tier-A hand proofs
-; (host/owner-retain-host.lisp on lane/stage-5b) minus the wrapper: the same
-; keystones (:via), the same callees opened, the generated statement.
-;
-;   1. Three accepted writers; their generated statements pinned; the row
-;      records the keystones and the written globals.
-;   2. The legacy carrier's refusals: a function that puts 'fn-owner
-;      directly; one that installs a value no keystone covers; the
-;      profile's installers and carried globals as declared.
-;   3. The row over the pilot: the transitions are the pilot's three
-;      prepares then the three callbacks; def-carried-check re-checks it
-;      (completeness is vacuous here: no fn-interfaces entry); the generated
-;      ROW-FN-carries equals the writer's theorem by formula.
+; Teeth for the owner profile's actual close and fault callback writers.
+; The exclusive unpriced peer-open writer fixture retired with that callback
+; under STATEMENTS-7 R4. Held reader/peer/exposure behavior is exercised in
+; owner-connection-callback-tests and its additional/captured test books.
+; The generated carrier row here contains the pilot prepares, close and fault.
 
 (in-package "ACL2")
 (include-book "../../books/owner-retain-frame")
@@ -49,15 +37,9 @@
         '(implies (fn-owner-retain-statep state)
                   (fn-owner-retain-statep (mv-nth '2 (fn-owner-callback-fault id state))))))
 
-(def-owner-writer fn-owner-callback-open-peer
-  :via ((fn-ohr-open-peer-preserves-carried-relation
-         (peer (fn-store-octets->string peer-octets))
-         (acfg (fn-owner-auth state)))))
 
-(assert-event
- (equal (fn-cd-get :put-keys (cdr (assoc-eq 'fn-owner-callback-open-peer
-                                          (table-alist 'fn-carried-writers (w state)))))
-        '(fn-owner-log-line)))
+
+
 
 ; ---------------------------------------------------------------------------
 ; 2. The legacy carrier's refusals.
@@ -120,7 +102,7 @@
  (equal (strip-cars (fn-cd-get :transitions
                                (cdr (assoc-eq 'ort-row (table-alist 'fn-carried (w state))))))
         '(fn-owner-prepare-identity fn-owner-prepare-consumer fn-owner-prepare-topic
-          fn-owner-callback-close fn-owner-callback-fault fn-owner-callback-open-peer)))
+          fn-owner-callback-close fn-owner-callback-fault)))
 (def-carried-check ort-row)
 ; the row's statement carries the world's guard (the stobj recognizers ACL2
 ; conjoins included); it is proved from the writer's stronger theorem by :use

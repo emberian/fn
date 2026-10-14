@@ -94,10 +94,7 @@
   (list (fn-adm-hh-close bank id)
         (if (equal id operator-id) nil operator-id)))
 
-(defun fn-owner-memory-held-close (id state)
- (declare (xargs :stobjs state :guard t))
- (f-put-global 'fn-owner-memory-held-bank
-  (fn-adm-hh-close (fn-owner-memory-held-bank state) id) state))
+
 
 (defun fn-owner-memory-held-return (id state)
  (declare (xargs :stobjs state :guard t))
@@ -620,6 +617,19 @@
           (and (natp operator-id)
                (fn-exp-at 1 (fn-exp-lookup operator-id (fn-adm-hh-rows bank)))
                (not (fn-exp-at 2 (fn-exp-lookup operator-id (fn-adm-hh-rows bank))))))))
+
+(defthm fn-adm-operator-statep-with-no-operator
+  (implies (fn-adm-hh-representsp bank) (fn-adm-operator-statep bank nil))
+  :hints (("Goal" :in-theory (e/d (fn-adm-operator-statep)
+                                 (fn-adm-hh-representsp)))))
+
+; The host install initializes this bank and run field 11 to NIL.
+(defthm fn-adm-initial-bank-has-no-operator
+ (fn-adm-operator-statep (fn-adm-hh-initial) nil)
+ :hints (("Goal"
+  :use ((:instance fn-adm-operator-statep-with-no-operator (bank (fn-adm-hh-initial)))
+        fn-adm-hh-initial-represents-the-empty-union)
+  :in-theory (theory 'minimal-theory))))
 
 (defun fn-adm-operator-open-id (result)
  (declare (xargs :guard t))

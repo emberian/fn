@@ -607,6 +607,9 @@ class NewFixtureTests(unittest.TestCase):
             self.assertEqual(command, ["timeout", "3600",
                 *train.certify_command(train.Train(self.scratch("test-book")), "hbox")])
         self.assertIn("--affected-by", command)
+        self.assertNotIn("--jobs", command, "farm owns the fixed per-box default")
+        self.assertNotIn("auto", command)
+        self.assertNotIn("--force", command, "lane-check respects load admission")
         self.assertEqual(command[command.index("--affected-by") + 1], "tests/acl2/base-tests")
         self.assertEqual(command[command.index("hbox") + 1:],
                          [*train.BOX_CERT_BOOKS, "tests/acl2/base-tests"])
@@ -1633,6 +1636,9 @@ class CertifyTests(TrainBase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         submit = next(line for line in self.stub_log() if line.startswith("farm "))
         words = submit.split()
+        self.assertNotIn("--jobs", words, "farm owns the fixed per-box default")
+        self.assertNotIn("auto", words)
+        self.assertNotIn("--force", words, "trains respect shared-box load admission")
         self.assertEqual(words.count("tests/acl2/special-witness"), 1)
         self.assertNotIn("tests/acl2/unrelated-witness", words)
         self.assertNotIn("tests/acl2/noncritical-witness", words)

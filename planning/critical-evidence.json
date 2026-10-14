@@ -8,6 +8,13 @@
    "mutation": "tests/acl2/accounts-tests.lisp::expires-as-seconds",
    "provenance": "keystone_critical.py --declare sha256:f130342d91ee15af0777c99358eff4733f9e7e1ee7e9aac5ce551752150bb8de"
   },
+  "fn-adm-admitted-config-change-keeps-the-operator-slot-funded": {
+   "subject": "fn-mm-gate-p",
+   "host_test": "tests/test_native_operator_slot.py::test_unchanged_policy_at_the_memory_edge_returns_the_exact_refusal_text",
+   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-UNCHANGED-CONFIG-HISTORY-EDGE",
+   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::without-config-octets",
+   "provenance": "keystone_critical.py --declare sha256:101518f4a604646442cbca9bde9f1bf249d232d271791c20304583b33744e285"
+  },
   "fn-adm-capacity-is-nil-exactly-when-no-slot-fits": {
    "subject": "fn-adm-capacity",
    "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
@@ -53,16 +60,16 @@
   "fn-adm-run-admitted-record-keeps-the-operator-slot-funded": {
    "subject": "fn-mm-gate-p",
    "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
-   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-GROWN-STORE-EDGE-ADMITS-OPERATOR",
-   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::M28-OLD-ADMISSION-CONSUMES-FUNDED-SLOT",
-   "provenance": "keystone_critical.py --declare sha256:a2408d83055b20632510506abfdead4adde68c48e45f3d665209c39635d6effe"
+   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-DECREASE-GROWTH-OPERATOR-OPEN",
+   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::without-free-slot-admission",
+   "provenance": "keystone_critical.py --declare sha256:9d5d32adcd8452ce4aa95b617c635744ae2760db5c64ad19f71aa21e9ab88255"
   },
   "fn-adm-run-gate-keeps-the-operator-slot-funded": {
    "subject": "fn-adm-run-gate-held",
    "host_test": "tests/test_native_operator_slot.py::test_the_slot_allows_the_live_raise_at_public_saturation",
-   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-FUNDED-SATURATION-AND-SECOND",
-   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::old-held-only-gate",
-   "provenance": "keystone_critical.py --declare sha256:c767be16fdbacdd55a8c859f9e47d3b90756a71a02bf59bd4a62bbb624d48ff0"
+   "trace_witness": "tests/acl2/owner-memory-holding-tests.lisp::M28-DECREASE-GROWTH-OPERATOR-OPEN",
+   "mutation": "tests/acl2/owner-memory-holding-tests.lisp::M28-OLD-PRICE-THREE-FAILS-FOUR",
+   "provenance": "keystone_critical.py --declare sha256:64c037e043b4bfb3e7bb94855d2aca8b443e82fcb06293171e8310ef39891eca"
   },
   "fn-arena-seal-buffer{correspondence}": {
    "subject": "fn-arena-seal-buffer",

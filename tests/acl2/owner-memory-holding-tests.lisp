@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/owner-memory-holding")
+(include-book "../../books/owner-memory-run") ; fn-adm-installed-lease-allocation (R2 decrease fixture)
 (include-book "../../books/defkeystone")
 (include-book "../../books/config-observed")
 (include-book "../../books/config-store-steps")
@@ -610,27 +611,40 @@
  :hints (("Goal" :by fn-adm-operator-open-below-saturation-is-the-reader-open)))
 
 
+; R1 executable mutation: exactly the run gate with the free-slot term removed.
+(defun m28-run-gate-without-free-slot (held configured capacity operator-id)
+ (declare (xargs :guard t) (ignore operator-id))
+ (if (natp capacity)
+     (max (nfix held) (1+ (fn-adm-reader-count configured capacity)))
+   (nfix held)))
+
 (defkeystone m28-run-gate-keeps-the-operator-slot-funded
 (implies (and (natp capacity)
-                (<= (nfix held) (fn-adm-reader-count (fn-mm-cfg-connections cfg) capacity))
                 (fn-mm-gate-p profile img
-                  (fn-adm-priced-cfg cfg (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity) capacity)
+                  (fn-adm-priced-cfg cfg (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity operator-id)
+                                     capacity)
                   limit tot))
-           (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (1+ (nfix held)) capacity) limit tot))
+           (fn-mm-gate-p profile img
+             (fn-adm-priced-cfg cfg (+ (nfix held) (if operator-id 0 1)) capacity) limit tot))
  :id "PRF-100006" :restates fn-adm-run-gate-keeps-the-operator-slot-funded :subject fn-adm-run-gate-held :rule-classes nil
- :witness ((oc *m28-oc2*) (acfg nil) (bank *m28-b2*) (configured 2) (capacity 2) (operator-id nil) (profile *m22a-profile*) (img *m22a-img*) (cfg *m22a-cfg*) (limit *m28-limit3*) (tot *m22a-tot*) (held 2) (row *m28-row*) (id 2))
- :hyps (capacity covered holding)
+ :witness ((capacity 2) (operator-id nil) (profile *m22a-profile*) (img *m22a-img*)
+           (cfg *m22a-cfg*) (limit *m28-limit4*) (tot *m22a-tot*) (held 3) (row *m28-row*))
+ :hyps (capacity holding)
  :breaks ((capacity ((capacity nil) (held 2) (limit *m28-limit2*)))
-(covered ((held 3) (limit *m28-limit3*)))
-(holding ((limit 0))))
- :mutations ((old-held-only-gate (:hypothesis holding (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg held capacity) limit tot)) ((limit *m28-limit2*)) :fault "the old gate prices only held readers and leaves no funded operator slot"))
+          (holding ((limit 0))))
+ :mutations ((old-held-only-gate
+   (:hypothesis holding (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg held capacity) limit tot))
+   ((held 2) (limit *m28-limit2*)) :fault "the former held-only gate consumes the free slot")
+  (without-free-slot-gate
+   (:hypothesis holding (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (m28-run-gate-without-free-slot held (fn-mm-cfg-connections cfg) capacity operator-id) capacity) limit tot))
+   ((held 3) (limit *m28-limit3*)) :fault "after decreasing public capacity to 2, price 3 leaves the operator's fourth place unfunded"))
  :hints (("Goal" :by fn-adm-run-gate-keeps-the-operator-slot-funded)))
 
 
-; The old-held-only-admission tooth needs a gap: at *m28-after-limit2* the row
-; fits beside two held readers, and three holders after it are unfunded.  The
-; limit is derived, so a pricing under which one holder no longer separates
-; them fails here by name instead of leaving the mutant vacuous.
+; The old-held-only-admission tooth needs a gap (O8's measurement in the merged OVER world, 10-14): at
+; *m28-after-limit2* the row fits beside two held readers, and three holders after it are unfunded.  The
+; limit is derived, so a pricing under which one holder no longer separates them fails here by name,
+; instead of leaving the mutant vacuous.
 (assert-event
  (and (fn-adm-memory-admitp *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 2 2)
                             *m28-after-limit2* *m22a-tot* *m28-row*)
@@ -640,16 +654,20 @@
 
 (defkeystone m28-run-admitted-record-keeps-the-operator-slot-funded
 (implies (and (natp capacity)
-                (<= (nfix held) (fn-adm-reader-count (fn-mm-cfg-connections cfg) capacity))
-                (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity))
-           (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (1+ (nfix held)) capacity) limit (fn-adm-after tot row)))
+                (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity operator-id))
+           (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (+ (nfix held) (if operator-id 0 1)) capacity) limit (fn-adm-after tot row)))
  :id "PRF-100007" :restates fn-adm-run-admitted-record-keeps-the-operator-slot-funded :subject fn-mm-gate-p :rule-classes nil
- :witness ((oc *m28-oc2*) (acfg nil) (bank *m28-b2*) (configured 2) (capacity 2) (operator-id nil) (profile *m22a-profile*) (img *m22a-img*) (cfg *m22a-cfg*) (limit *m28-after-limit3*) (tot *m22a-tot*) (held 2) (row *m28-row*) (id 2))
- :hyps (capacity covered admitted)
+ :witness ((capacity 2) (operator-id nil) (profile *m22a-profile*) (img *m22a-img*)
+           (cfg *m22a-cfg*) (limit *m28-after-limit4*) (tot *m22a-tot*) (held 3) (row *m28-row*))
+ :hyps (capacity admitted)
  :breaks ((capacity ((capacity nil) (held 2) (limit *m28-after-limit2*)))
-(covered ((held 3) (limit *m28-after-limit3*)))
-(admitted ((limit 0))))
- :mutations ((old-held-only-admission (:hypothesis admitted (fn-adm-memory-admitp profile img (fn-adm-priced-cfg cfg held capacity) limit tot row)) ((limit *m28-after-limit2*)) :fault "the old record gate admits a real row that consumes the already-funded operator slot"))
+          (admitted ((limit 0))))
+ :mutations ((old-held-only-admission
+   (:hypothesis admitted (fn-adm-memory-admitp profile img (fn-adm-priced-cfg cfg held capacity) limit tot row))
+   ((held 2) (limit *m28-after-limit2*)) :fault "the former held-only gate consumes the free slot")
+  (without-free-slot-admission
+   (:hypothesis admitted (fn-adm-memory-admitp profile img (fn-adm-priced-cfg cfg (m28-run-gate-without-free-slot held (fn-mm-cfg-connections cfg) capacity operator-id) capacity) limit tot row))
+   ((held 3) (limit *m28-after-limit3*)) :fault "after decreasing public capacity to 2, price 3 leaves the operator's fourth place unfunded"))
  :hints (("Goal" :by fn-adm-run-admitted-record-keeps-the-operator-slot-funded)))
 
 
@@ -880,19 +898,25 @@
       (equal (fn-adm-hh-rearm bank *m28-zero-slot-id* *m28-zero-slot-id*) bank)))
   :msg "M28-PUBLIC-ADMISSION-AND-REARM-KEEP-PRIVATE-ROW"))
 
+;; The old-admission scenario's limit holds in BOTH pricings (this lane's window term and OVER's field-13
+;; line, measured by O8 10-14): at least *m28-limit3* (three holders fit before the row), at least
+;; *m28-after-limit2* (the row fits beside two), and below *m28-after-limit3* (three holders after it are
+;; unfunded), since the row adds to both.
+(defconst *m28-old-slot-limit* (max *m28-limit3* *m28-after-limit2*))
+
 (with-guard-checking-event :all
  (assert-event (let ((actual (fn-adm-operator-open *m28-oc2* nil *m28-b2* 2 2 nil
-                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m28-after*))
+                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-old-slot-limit* *m28-after*))
        (mutant (m28-operator-borrowed-slot *m28-oc2* nil *m28-b2* 2 2 nil
-                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m28-after*)))
+                     *m22a-profile* *m22a-img* *m22a-cfg* *m28-old-slot-limit* *m28-after*)))
  (and (fn-held-p *m28-row*) (and (fn-ocl-relation *m28-oc2*)
        (fn-cstp-carriedp (fn-own-store (fn-ocfg-owner *m28-oc2*))))
-      (equal (fn-adm-installed-capacity *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit2* *m22a-tot*) 2)
-      (fn-adm-run-memory-admitp *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit3* *m22a-tot* *m28-row* 2 2)
-      (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-after-limit2* *m22a-tot*)
+      (equal (fn-adm-installed-capacity *m22a-profile* *m22a-img* *m22a-cfg* *m28-old-slot-limit* *m22a-tot*) 2)
+      (fn-adm-run-memory-admitp *m22a-profile* *m22a-img* *m22a-cfg* *m28-after-limit3* *m22a-tot* *m28-row* 2 2 nil)
+      (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-old-slot-limit* *m22a-tot*)
       (fn-adm-memory-admitp *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 2 2)
-          *m28-after-limit2* *m22a-tot* *m28-row*)
-      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-after-limit2* *m28-after*))
+          *m28-old-slot-limit* *m22a-tot* *m28-row*)
+      (not (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2) *m28-old-slot-limit* *m28-after*))
       (equal (fn-adm-operator-open-word actual) :refused)
       (equal (fn-adm-operator-open-reason actual) :operator-slot-memory)
       (equal (fn-adm-operator-open-word mutant) :admitted)
@@ -930,15 +954,182 @@
       (equal (fn-adm-installed-capacity *m22a-profile* *m22a-img* *m22a-cfg*
                   *m28-edge-limit* *m22a-tot*) 2)
       (fn-adm-run-memory-admitp *m22a-profile* *m22a-img* *m22a-cfg* *m28-edge-limit*
-                   *m22a-tot* *m28-edge-row* 2 2)
+                   *m22a-tot* *m28-edge-row* 2 2 nil)
       (equal *m28-edge-after* (fn-adm-after *m22a-tot* *m28-edge-row*))
       (fn-mm-gate-p *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m22a-cfg* 3 2)
                    *m28-edge-limit* *m28-edge-after*)
       (not (fn-adm-run-memory-admitp *m22a-profile* *m22a-img* *m22a-cfg* *m28-edge-limit*
-                    *m22a-tot* *m28-edge-next* 2 2))
+                    *m22a-tot* *m28-edge-next* 2 2 nil))
       (fn-adm-operator-slot-freep nil)
       (equal (fn-adm-operator-open-word r) :admitted)
       (equal (fn-adm-admission-held r) 3)
       (equal (fn-adm-operator-open-id r) (fn-exp-at 6 r))
       (fn-adm-operator-statep (fn-exp-at 2 r) (fn-exp-at 6 r))))
   :msg "M28-GROWN-STORE-EDGE-ADMITS-OPERATOR"))
+
+
+; R2 exact staged encoding, unchanged C/H, at the pre-change edge.
+(defconst *m28-config-deltas* (list (fn-cfg-set-policy "posting-policy" "open")))
+(defconst *m28-config-record* (fn-ocfg-reconfig-record *m28-oc2* *m28-config-deltas*))
+(defconst *m28-config-octets* (len (fn-cfg-encode *m28-config-record*)))
+(defconst *m28-config-cfg*
+ (update-nth 12 (+ (fn-mm-cfg-config *m22a-cfg*) *m28-config-octets*)
+             (true-list-fix *m22a-cfg*)))
+(defconst *m28-config-limit* (max
+ (fn-mm-sum *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m28-config-cfg* 3 2) *m22a-tot*)
+ (fn-mm-reopen-need *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m28-config-cfg* 3 2) *m22a-tot*)))
+
+(defconst *m28-config-no-slot-limit* (max
+ (fn-mm-sum *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m28-config-cfg* 2 nil) *m22a-tot*)
+ (fn-mm-reopen-need *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m28-config-cfg* 2 nil) *m22a-tot*)))
+
+(defkeystone m28-admitted-config-change-keeps-the-operator-slot-funded
+(implies (and (natp capacity)
+                (fn-adm-config-change-admitp profile img cfg limit tot held capacity operator-id octets))
+           (fn-mm-gate-p profile img
+             (fn-adm-priced-cfg (update-nth 12 (+ (fn-mm-cfg-config cfg) (nfix octets)) (true-list-fix cfg))
+                                (+ (nfix held) (if operator-id 0 1)) capacity)
+             limit tot))
+ :id "PRF-10018" :restates fn-adm-admitted-config-change-keeps-the-operator-slot-funded
+ :subject fn-mm-gate-p :rule-classes nil
+ :witness ((capacity 2) (operator-id nil) (profile *m22a-profile*) (img *m22a-img*)
+           (cfg *m22a-cfg*) (limit *m28-config-limit*) (tot *m22a-tot*) (held 2)
+           (octets *m28-config-octets*))
+ :hyps (capacity admitted)
+ :breaks ((capacity ((capacity nil) (limit *m28-config-no-slot-limit*)))
+          (admitted ((limit 0))))
+ :mutations ((without-config-octets
+   (:hypothesis admitted
+    (fn-adm-config-change-admitp profile img cfg limit tot held capacity operator-id 0))
+   ((limit *m28-limit3*)) :fault "an unchanged-C/H policy record still grows configuration history"))
+ :hints (("Goal" :by fn-adm-admitted-config-change-keeps-the-operator-slot-funded)))
+
+(with-guard-checking-event :all
+ (assert-event
+  (and (fn-cfg-recordp *m28-config-record*) (posp *m28-config-octets*)
+       (equal (fn-mm-cfg-connections *m28-config-cfg*) (fn-mm-cfg-connections *m22a-cfg*))
+       (equal (fn-mm-cfg-handshakes *m28-config-cfg*) (fn-mm-cfg-handshakes *m22a-cfg*))
+       (fn-adm-config-change-admitp *m22a-profile* *m22a-img* *m22a-cfg*
+         *m28-limit3* *m22a-tot* 2 2 nil 0)
+       (not (fn-adm-config-change-admitp *m22a-profile* *m22a-img* *m22a-cfg*
+         *m28-limit3* *m22a-tot* 2 2 nil *m28-config-octets*)))
+  :msg "M28-UNCHANGED-CONFIG-HISTORY-EDGE"))
+
+; R1: actual policy decrease with three public holders, paired private close,
+; durable publication, actual record publication, then a fresh operator open.
+(include-book "../../books/config-owner-publish")
+(defconst *m28-decrease-configs*
+ (list *fn-cfg-default-record*
+       (fn-cfg-record-make 1 0 2
+         (list (fn-cfg-set-limit "exposure-connections" 3)) *fn-cfg-default-stamp*)))
+(defconst *m28-decrease-open* (fn-cpo-open-observed *m28-decrease-configs* 0 nil))
+(defconst *m28-decrease-store3*
+ (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-open-state *m28-decrease-open*)
+   :recovery-barrier :ok) :recovery-barrier :ok) :recovery-barrier :ok))
+(defconst *m28-decrease-config3* (fn-ocl-store-config *m28-decrease-store3*))
+(defconst *m28-decrease-oc0*
+ (fn-ocfg-make
+   (fn-own-observe (fn-own-start *m28-decrease-store3* 4)
+     (fn-clock-observation 5000000 1790000000000 0 t))
+   *m28-decrease-config3* nil nil))
+(defconst *m28-decrease-r1* (fn-adm-reader-open *m28-decrease-oc0* nil (fn-adm-hh-initial) 3 3))
+(defconst *m28-decrease-r2* (fn-adm-reader-open (cdr (fn-exp-at 1 *m28-decrease-r1*)) nil
+                           (fn-exp-at 2 *m28-decrease-r1*) 3 3))
+(defconst *m28-decrease-r3* (fn-adm-reader-open (cdr (fn-exp-at 1 *m28-decrease-r2*)) nil
+                           (fn-exp-at 2 *m28-decrease-r2*) 3 3))
+(defconst *m28-decrease-oc3* (cdr (fn-exp-at 1 *m28-decrease-r3*)))
+(defconst *m28-decrease-bank3* (fn-exp-at 2 *m28-decrease-r3*))
+(defconst *m28-decrease-deltas* (list (fn-cfg-set-limit "exposure-connections" 2)))
+(defconst *m28-decrease-record* (fn-ocfg-reconfig-record *m28-decrease-oc3* *m28-decrease-deltas*))
+(defconst *m28-decrease-cfg3*
+ (update-nth 14 (fn-adm-installed-lease-allocation *m22a-profile*
+                  (fn-adm-public-readers-cfg (update-nth 0 3 *m22a-cfg*) 3) 16384)
+   (update-nth 12 (+ (len (fn-cfg-encode (car *m28-decrease-configs*)))
+                       (len (fn-cfg-encode (cadr *m28-decrease-configs*))))
+     (update-nth 0 3 (true-list-fix *m22a-cfg*)))))
+(defconst *m28-decrease-cfg2*
+ (update-nth 12 (+ (fn-mm-cfg-config *m28-decrease-cfg3*)
+                   (len (fn-cfg-encode *m28-decrease-record*)))
+   (update-nth 0 2 *m28-decrease-cfg3*)))
+(defconst *m28-decrease-limit* (max
+ (fn-mm-sum *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m28-decrease-cfg2* 4 2) *m28-after*)
+ (fn-mm-reopen-need *m22a-profile* *m22a-img* (fn-adm-priced-cfg *m28-decrease-cfg2* 4 2) *m28-after*)))
+(defconst *m28-decrease-private*
+ (fn-adm-operator-open *m28-decrease-oc3* nil *m28-decrease-bank3* 3 3 nil
+   *m22a-profile* *m22a-img* *m28-decrease-cfg3* *m28-decrease-limit* *m22a-tot*))
+(defconst *m28-decrease-staged*
+ (fn-ocfg-reconfigure (cdr (fn-exp-at 1 *m28-decrease-private*))
+   (fn-adm-operator-open-id *m28-decrease-private*) *m28-decrease-deltas*))
+(defconst *m28-decrease-closed*
+ (fn-ocfg-close *m28-decrease-staged* (fn-adm-operator-open-id *m28-decrease-private*)))
+(defconst *m28-decrease-paired-close*
+ (fn-adm-operator-close (fn-exp-at 2 *m28-decrease-private*)
+   (fn-exp-at 6 *m28-decrease-private*) (fn-adm-operator-open-id *m28-decrease-private*)))
+(defconst *m28-decrease-published*
+ (mv-list 2 (fn-ocl-publish *m28-decrease-closed* 3 32768)))
+(defconst *m28-decrease-oc2* (cadr *m28-decrease-published*))
+(defconst *m28-decrease-grown-store*
+ (m28-grown-store (fn-own-store (fn-ocfg-owner *m28-decrease-oc2*)) *m28-row*))
+(defconst *m28-decrease-grown-oc*
+ (fn-ocfg-with-owner *m28-decrease-oc2*
+   (fn-ocl-owner-with-store (fn-ocfg-owner *m28-decrease-oc2*) *m28-decrease-grown-store*)))
+
+(with-guard-checking-event :all
+ (assert-event
+  (let* ((bank (fn-exp-at 0 *m28-decrease-paired-close*))
+         (operator-id (fn-exp-at 1 *m28-decrease-paired-close*))
+         (held (fn-adm-hh-count bank))
+         (opened (fn-adm-operator-open *m28-decrease-grown-oc* nil bank 2 2 operator-id
+                    *m22a-profile* *m22a-img* *m28-decrease-cfg2* *m28-decrease-limit* *m28-after*)))
+   (and (fn-sn-open-okp *m28-decrease-open*)
+        (fn-ocl-relation *m28-decrease-oc3*) (fn-adm-hh-representsp *m28-decrease-bank3*)
+        (equal (fn-adm-hh-count *m28-decrease-bank3*) 3)
+        (equal (fn-adm-operator-open-word *m28-decrease-private*) :admitted)
+        (equal (fn-adm-admission-held *m28-decrease-private*) 4)
+        (equal (fn-ocfg-staged *m28-decrease-staged*) *m28-decrease-record*)
+        (fn-adm-config-change-admitp *m22a-profile* *m22a-img*
+          (update-nth 0 2 *m28-decrease-cfg3*) *m28-decrease-limit* *m22a-tot* 4 2
+          (fn-exp-at 6 *m28-decrease-private*) (len (fn-cfg-encode *m28-decrease-record*)))
+        (equal (car *m28-decrease-published*) :durable)
+        (equal (fn-exp-connections-capacity (fn-cfg-value (fn-ocfg-config *m28-decrease-oc2*))) 2)
+        (equal held 3) (equal operator-id nil) (fn-adm-operator-statep bank operator-id)
+        (fn-adm-run-memory-admitp *m22a-profile* *m22a-img* *m28-decrease-cfg2*
+          *m28-decrease-limit* *m22a-tot* *m28-row* held 2 operator-id)
+        (fn-mm-gate-p *m22a-profile* *m22a-img*
+          (fn-adm-priced-cfg *m28-decrease-cfg2* (+ held (if operator-id 0 1)) 2)
+          *m28-decrease-limit* *m28-after*)
+        (fn-sn-statep *m28-decrease-grown-store*)
+        (fn-cstp-carriedp *m28-decrease-grown-store*)
+        (equal (fn-sf-records-count (fn-sn-files *m28-decrease-grown-store*)) 1)
+        (equal (fn-ct-charged (fn-sf-records (fn-sn-files *m28-decrease-grown-store*)) :resident)
+               *m28-after*)
+        (fn-sn-committed-recordp (fn-sn-node *m28-decrease-grown-store*) *m28-row*)
+        (fn-ocl-relation *m28-decrease-grown-oc*)
+        (equal (fn-adm-operator-open-word opened) :admitted)
+        (equal (fn-adm-admission-held opened) 4)
+        (equal (fn-adm-operator-open-id opened) (fn-exp-at 6 opened))
+        (fn-adm-operator-statep (fn-exp-at 2 opened) (fn-exp-at 6 opened))))
+  :msg "M28-DECREASE-GROWTH-OPERATOR-OPEN"))
+
+(with-guard-checking-event :all
+ (assert-event
+  (let* ((held 3) (capacity 2) (operator-id nil)
+         (old-price (m28-run-gate-without-free-slot held 2 capacity operator-id)))
+   (and (natp capacity) (equal operator-id nil) (equal held 3)
+        (equal old-price 3)
+        (equal (fn-adm-run-gate-held held 2 capacity operator-id) 4)
+        (fn-mm-gate-p *m22a-profile* *m22a-img*
+          (fn-adm-priced-cfg *m22a-cfg* old-price capacity) *m28-limit3* *m22a-tot*)
+        (not (fn-mm-gate-p *m22a-profile* *m22a-img*
+          (fn-adm-priced-cfg *m22a-cfg* (+ (nfix held) (if operator-id 0 1)) capacity)
+          *m28-limit3* *m22a-tot*))))
+  :msg "M28-OLD-PRICE-THREE-FAILS-FOUR"))
+
+
+(with-guard-checking-event :all
+ (assert-event
+  (and (fn-adm-hh-representsp (fn-adm-hh-initial))
+       (fn-adm-operator-statep (fn-adm-hh-initial) nil)
+       (fn-adm-hh-representsp *m28-decrease-bank3*)
+       (fn-adm-operator-statep *m28-decrease-bank3* nil))
+  :msg "M28-NO-OPERATOR-ESTABLISHMENT"))

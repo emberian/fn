@@ -17,10 +17,11 @@ from types import SimpleNamespace
 import uuid
 
 if __package__:
-    from . import box_table, train
+    from . import box_table, native_env, train
     from .known_reds import commit_sha
 else:
     import box_table
+    import native_env
     import train
     from known_reds import commit_sha
 
@@ -122,6 +123,8 @@ def launch(root: Path, box: str, requested: str | None) -> str:
                 '--allow-skips', '--detach']
         for name, value in box_table.native_test_env(box).items():
             argv += ['--env', name + '=' + value]
+        for name in native_env.DAILY_FUNCTIONAL_OPT_INS:
+            argv += ['--env', name + '=1']
         argv += [sha, *modules(root, sha)]
         result = subprocess.run(argv, cwd=root, capture_output=True, text=True, timeout=605)
         if result.returncode:

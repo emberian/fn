@@ -17,7 +17,7 @@
          (next (fn-ocfg-with-view (cdr opened) working))
          (entry-view (fn-owner-obligation-view state))
          (credits (f-get-global 'fn-owner-credits state)))
-    (mv-let (erp actual-id state) (fn-owner-callback-open state)
+    (mv-let (erp actual-id state) (fn-owner-held-callback-open state)
       (value
        (and (consp views) antecedent
             (not erp)

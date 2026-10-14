@@ -321,6 +321,20 @@ through the normal administrative control reply. No refusal is invented."
         (fnn-owner-action 'fn-owner-close
           (fnn-core 'fn-adm-operator-open-id second))))))
 
+(defun fnn-config-memory-edge-stage (cid stage)
+  "Developer-only R2 witness: configure at ACL2's exact current binding gate.
+The policy request then reaches fn-adm-config-change-admitp through the real
+owner staging path. The probe forwards its actual refusal text."
+  (destructuring-bind (r envelope resident)
+      (fnn-core 'fn-owner-memory-config-edge-observation *the-live-state*)
+    (fnn-owner-core 'fn-owner-memory-gate-install
+      (nth 0 r) (list resident) (nth 2 r) (nth 3 r) (nth 4 r) (nth 5 r)
+      (nth 6 r) (nth 7 r) (nth 1 envelope) (nth 2 envelope) (nth 3 envelope)
+      (nth 4 envelope) (nth 5 envelope) (nth 8 r)
+      (nth 6 envelope) (nth 7 envelope) (nth 8 envelope))
+    (fnn-owner-core 'fn-owner-memory-reclaim-complete)
+    (funcall stage cid)))
+
 (defun fnn-rc-do-stage (run stage)
   "Open through ACL2's operator admission and carry its refusal unchanged."
   (let* ((opened (fnn-owner-core 'fn-owner-operator-open))
@@ -330,9 +344,11 @@ through the normal administrative control reply. No refusal is invented."
       (setf (fnn-rc-reason run) (fnn-core 'fn-adm-operator-open-reason opened))
       (return-from fnn-rc-do-stage word))
     (let* ((result (unwind-protect
-                       (if (fnn-developer-selector "FN_NATIVE_OPERATOR_SLOT_TEST")
-                           (fnn-operator-slot-test-stage cid stage)
-                         (funcall stage cid))
+                       (cond ((fnn-developer-selector "FN_NATIVE_OPERATOR_SLOT_TEST")
+                              (fnn-operator-slot-test-stage cid stage))
+                             ((fnn-developer-selector "FN_NATIVE_CONFIG_MEMORY_EDGE_TEST")
+                              (fnn-config-memory-edge-stage cid stage))
+                             (t (funcall stage cid)))
                      (fnn-owner-action 'fn-owner-close cid)))
            (staged (fnn-core 'fn-ores-config-word result)))
       (cond ((eq staged :staged)

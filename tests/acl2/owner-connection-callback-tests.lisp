@@ -22,9 +22,9 @@
 
 ; Actual guard metadata, not source declarations or runtime installation.
 (assert-event
- (and (eq (symbol-class 'fn-owner-callback-open (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-owner-callback-open-peer (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-owner-callback-exposure-open (w state)) :common-lisp-compliant)
+ (and (eq (symbol-class 'fn-owner-held-callback-open (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-owner-held-callback-open-peer (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-owner-held-callback-exposure-open (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-owner-callback-close (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-owner-callback-fault (w state)) :common-lisp-compliant)))
 
@@ -37,6 +37,8 @@
          ; A sentinel in the parked obligation view: the callbacks keep it
          ; (books/owner-obligation-state.lisp; no install writes it).
          (state (f-put-global 'fn-owner-obligation-view :ocbt-parked-view state))
+         (state (f-put-global 'fn-owner-memory-held-bank (fn-adm-hh-initial) state))
+         (state (f-put-global 'fn-owner-memory-capacity nil state))
          (state (fn-owner-install-ocfg *ocbt-owner* state)))
     state))
 
@@ -48,7 +50,7 @@
          (entry-credits (f-get-global 'fn-owner-credits state))
          (opened-view (fn-owner-obligation-view state))
          (antecedent (fn-ocl-relation selected)))
-    (mv-let (erp id state) (fn-owner-callback-open state)
+    (mv-let (erp id state) (fn-owner-held-callback-open state)
       (let* ((opened-ok
                (and antecedent (not erp) (equal id 0)
                     (equal (fn-owner-ocfg state) (cdr reference))
@@ -102,7 +104,7 @@
   (with-local-stobj fn-arena
     (mv-let (checked fn-arena state)
       (let* ((state (ocbt-initialize state)))
-        (mv-let (open-erp id state) (fn-owner-callback-open state)
+        (mv-let (open-erp id state) (fn-owner-held-callback-open state)
           (let* ((before (fn-owner-ocfg state))
                  (next (fn-ocfg-close before id))
                  (credits (fn-owner-credits state))
@@ -145,7 +147,7 @@
          (reference (fn-ocfg-open selected (fn-owner-auth state)))
          (remaining (boundp-global 'fn-owner state))
          (omitted (fn-ocl-relation selected)))
-    (mv-let (erp id state) (fn-owner-callback-open state)
+    (mv-let (erp id state) (fn-owner-held-callback-open state)
       (value (and remaining (not omitted) (not erp) (equal id 0)
                   (not (equal (fn-owner-ocfg state) (cdr reference))))))))
 

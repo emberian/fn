@@ -79,11 +79,7 @@
   :hints (("Goal" :in-theory '(fn-owner-memory-held-open
                                fn-orh-retain-statep-of-other-global-put))))
 
-(defthm fn-orh-retain-statep-of-held-close
-  (equal (fn-owner-retain-statep (fn-owner-memory-held-close id state))
-         (fn-owner-retain-statep state))
-  :hints (("Goal" :in-theory '(fn-owner-memory-held-close
-                               fn-orh-retain-statep-of-other-global-put))))
+
 
 ; The admission's returned bank is installed without changing owner or carry.
 (defthm fn-orh-retain-statep-of-held-install
@@ -105,9 +101,8 @@
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-close id fn-arena state))))
   :hints (("Goal" :in-theory '(fn-owner-close fn-owner-callback-close
-                               fn-adm-operator-close fn-owner-memory-held-close
+                               fn-adm-operator-close
                                fn-owner-memory-held-bank fn-orh-retain-statep-of-other-global-put
-                               fn-orh-retain-statep-of-held-close
                                mv-nth nth zp car-cons cdr-cons
                                (:executable-counterpart zp)
                                fn-orh-retain-statep-of-put-credits
@@ -123,9 +118,8 @@
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (mv-nth 2 (fn-owner-fault id state))))
   :hints (("Goal" :in-theory '(fn-owner-fault fn-owner-callback-fault
-                               fn-adm-operator-close fn-owner-memory-held-close
+                               fn-adm-operator-close
                                fn-owner-memory-held-bank fn-orh-retain-statep-of-other-global-put
-                               fn-orh-retain-statep-of-held-close
                                mv-nth nth zp car-cons cdr-cons
                                (:executable-counterpart zp)
                                fn-orh-retain-statep-of-put-credits

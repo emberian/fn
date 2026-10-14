@@ -1550,7 +1550,8 @@
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((oc (fn-owner-ocfg state))
          (cp (fn-sn-consumer (fn-own-store (fn-ocfg-owner oc))))
-         (reason (fn-ocfg-reconfig-refusal oc id deltas))
+         (reason (if (fn-ocfg-reconfig-okp oc id deltas) nil
+                   (fn-ocfg-reconfig-refusal oc id deltas)))
          ; Same ACL2 authority step as durable config/recovery. This normal
          ; refusal occurs before staging or any native configuration write.
          ; Stage 0 (planning/design-store-representation-2026-10-01.md section
@@ -1851,7 +1852,7 @@
  (if (and (boundp-global 'fn-owner-memory-run state) (consp (f-get-global 'fn-owner-memory-run state)))
   (let* ((r (f-get-global 'fn-owner-memory-run state)) (cfg (fn-owner-config state))
          (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state)))
-   (list (nth 0 r) (fn-adm-priced-cfg full (fn-adm-run-gate-held (fn-owner-memory-held state) (fn-mm-cfg-connections full) (nth 9 r)) (nth 9 r)) (nth 1 r)))
+   (list (nth 0 r) (fn-adm-priced-cfg full (fn-adm-run-gate-held (fn-owner-memory-held state) (fn-mm-cfg-connections full) (nth 9 r) (fn-exp-at 10 r)) (nth 9 r)) (nth 1 r)))
   (list nil nil nil)))
 
 ; A LIVE RECONFIGURATION AND THE RUN'S CAPACITY (L-RUN-LAUNCH; PRF-223's
@@ -1865,7 +1866,7 @@
 ; connections alone fit, else :connections-exceed-memory.  The bound itself
 ; is fn-owner-memory-recapacity's at the reconfiguration's completion, over
 ; the totals synced again.
-(defun fn-owner-memory-candidate-refusal (v2 tot state)
+(defun fn-owner-memory-candidate-refusal (v2 tot octets state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (and (boundp-global 'fn-owner-memory-run state)
                 (consp (f-get-global 'fn-owner-memory-run state))))
@@ -1875,21 +1876,28 @@
            (v (fn-cfg-value cfg))
            (now (fn-owner-memory-run-cfg r v cfg state))
            (next (fn-owner-memory-run-cfg r v2 cfg state))
-           (cap (nth 9 r))
+           (cap (fn-exp-at 9 r))
            (c2 (fn-mm-cfg-connections next))
            (raises-c (< (fn-mm-cfg-connections now) c2))
            (raises-h (< (fn-mm-cfg-handshakes now) (fn-mm-cfg-handshakes next)))
            (held (fn-owner-memory-held state))
-           (priced-cap (if raises-c nil cap))
+           (operator-id (fn-exp-at 10 r))
+           ; A raise is checked at its new C, still reserving the private slot.
+           (projected-cap (if raises-c c2 cap))
            (profile (nth 4 r)) (img (nth 0 r)) (limit (nth 1 r)))
-      (cond ((not (or raises-c raises-h)) nil)
-            ((fn-mm-gate-p profile img (fn-adm-priced-cfg next held priced-cap) limit tot) nil)
-            ((and raises-h
-                  (fn-mm-gate-p profile img
-                                (fn-adm-priced-cfg (update-nth 7 (fn-mm-cfg-handshakes now) next) held priced-cap)
-                                limit tot))
-             :handshakes-exceed-memory)
-            (t :connections-exceed-memory)))))
+      (cond ((and (or raises-c raises-h)
+                  (not (fn-adm-config-change-admitp profile img next limit tot
+                         held projected-cap operator-id 0)))
+             (if (and raises-h
+                      (fn-adm-config-change-admitp profile img
+                        (update-nth 7 (fn-mm-cfg-handshakes now) next) limit tot
+                        held projected-cap operator-id 0))
+                 :handshakes-exceed-memory
+               :connections-exceed-memory))
+            ((not (fn-adm-config-change-admitp profile img next limit tot
+                    held projected-cap operator-id octets))
+             :config-exceeds-memory)
+            (t nil)))))
 
 ; After a durable live reconfiguration: C' over the published configuration
 ; and the synced totals, as the configure computed it (a raise the memory
@@ -1924,11 +1932,14 @@
   (let* ((oc (fn-owner-ocfg state))
          (v (fn-cfg-value (fn-ocfg-config oc)))
          (gen (+ 1 (fn-cfg-generation (fn-ocfg-config oc))))
-         (stamp (fn-own-clock (fn-ocfg-owner oc))))
+         (stamp (fn-own-clock (fn-ocfg-owner oc)))
+         (okp (fn-ocfg-reconfig-okp oc id deltas)))
     ;; The carried totals synced to the committed history (fn-owner-record-totals), so the
     ;; candidate is priced over the store as it is (Codex review F1 of L-RUN-LAUNCH).
     (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
-      (let ((memory (fn-owner-memory-candidate-refusal (fn-cfg-apply v gen stamp deltas) tot state)))
+      (let ((memory (and okp
+                     (fn-owner-memory-candidate-refusal (fn-cfg-apply v gen stamp deltas) tot
+                       (len (fn-cfg-encode (fn-ocfg-reconfig-record oc deltas))) state))))
         ;; The refusal is the staging step's result value (PRF-208,
         ;; adapter-retirement: books/owner-results.lisp fn-ores-config-refused),
         ;; which every live caller's recognizer accepts.
@@ -1984,7 +1995,9 @@
                    (row (fn-oii-identity-row event (fn-sn-keyring s)
                                              (fn-sn-keyring-generation s)
                                              (fn-arena-count fn-arena)))
-                   (gate (fn-owner-memory-gate state)))
+                   (r (if (boundp-global 'fn-owner-memory-run state)
+                        (f-get-global 'fn-owner-memory-run state) nil))
+                 (gate (fn-owner-memory-gate state)))
               (mv nil
                   ; The handle space (fn-adm-handle-room-p at N = 1: the
                   ; row's handle is the arena's count), then the memory.
@@ -1994,7 +2007,7 @@
                         ((and (not (equal row :bad))
                               (not (fn-adm-run-memory-admitp (fn-owner-store-profile state)
                                                          (first gate) (second gate)
-                                                         (third gate) tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state))))
+                                                         (third gate) tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state) (fn-exp-at 10 r))))
                          :memory)
                         (t verdict))
                   fn-hist state))))))))
@@ -2445,11 +2458,13 @@
                  ; for (PRF-284), handed on exactly when fn-adm-memory-admitp,
                  ; else 0 (KEYSTONES fn-adm-article-budget-admits-exactly-the-
                  ; three, fn-adm-admitted-row-keeps-the-gate).
+                 (r (if (boundp-global 'fn-owner-memory-run state)
+                        (f-get-global 'fn-owner-memory-run state) nil))
                  (gate (fn-owner-memory-gate state))
                  (budget (if (and row
                                   (fn-adm-run-memory-admitp (fn-owner-store-profile state)
                                                         (first gate) (second gate) (third gate)
-                                                        tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state)))
+                                                        tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state) (fn-exp-at 10 r)))
                              budget-tx
                            0))
                  (carry (fn-prc-refresh (fn-owner-retain-carry state)
@@ -2469,7 +2484,7 @@
                               (cons (fn-adm-run-article-word
                                      word (fn-owner-store-profile state)
                                      (first gate) (second gate) (third gate)
-                                     (fn-sbud-count s) bytes record debt tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state))
+                                     (fn-sbud-count s) bytes record debt tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state) (fn-exp-at 10 r))
                                     next))))
                  (state (if (not recordp)
                             state
@@ -2654,11 +2669,13 @@
                  ; for (PRF-284), handed on exactly when fn-adm-memory-admitp,
                  ; else 0 (KEYSTONES fn-adm-article-budget-admits-exactly-the-
                  ; three, fn-adm-admitted-row-keeps-the-gate).
+                 (r (if (boundp-global 'fn-owner-memory-run state)
+                        (f-get-global 'fn-owner-memory-run state) nil))
                  (gate (fn-owner-memory-gate state))
                  (budget (if (and row
                                   (fn-adm-run-memory-admitp (fn-owner-store-profile state)
                                                         (first gate) (second gate) (third gate)
-                                                        tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state)))
+                                                        tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state) (fn-exp-at 10 r)))
                              budget-tx
                            0))
                  ; The carried obligation-id trie, brought to the Store
@@ -2697,7 +2714,7 @@
                               (cons (fn-adm-run-article-word
                                      word (fn-owner-store-profile state)
                                      (first gate) (second gate) (third gate)
-                                     (fn-sbud-count s) bytes record debt tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state))
+                                     (fn-sbud-count s) bytes record debt tot row (fn-owner-memory-held state) (fn-owner-memory-capacity-read state) (fn-exp-at 10 r))
                                     next))))
                  (state (if (not recordp)
                             state
@@ -4912,7 +4929,12 @@
  (defthm fn-owner-put-credits-preserves-state-p1
   (implies (state-p1 state)
            (state-p1 (fn-owner-put-credits l state)))
-  :hints (("Goal" :in-theory (e/d (fn-owner-put-credits) (put-global))))))
+  :hints (("Goal" :in-theory
+    (union-theories
+     '(fn-owner-put-credits fn-sg-state-p1-of-put-global
+       put-global update-global-table global-table
+       (:executable-counterpart symbolp) (:executable-counterpart equal) (:executable-counterpart not))
+     (theory 'minimal-theory))))))
 
 (local
  (defthm fn-owner-held-callback-operator-open-preserves-state-p1
@@ -4921,14 +4943,17 @@
              (fn-owner-held-callback-operator-open
                profile img full limit tot capacity operator-id state))))
   :hints (("Goal" :in-theory
-    (e/d (fn-owner-held-callback-operator-open
-          fn-owner-held-callback-operator-open-at
-          fn-owner-callback-at-reader-view fn-owner-callback-at-working-view
-          fn-owner-memory-held-install fn-owner-install-ocfg
-          fn-owner-callback-install-effects fn-owner-install-served-effects)
-         (fn-adm-operator-open fn-owner-core fn-owner-reader-views
-          fn-owner-ocfg fn-ocfg-at-reader-view fn-ocfg-with-view
-          fn-owner-auth put-global boundp-global))))))
+    (union-theories
+     '(fn-owner-held-callback-operator-open
+       fn-owner-held-callback-operator-open-at
+       fn-owner-callback-at-reader-view fn-owner-callback-at-working-view
+       fn-owner-memory-held-install fn-owner-install-ocfg
+       fn-owner-callback-install-effects fn-owner-install-served-effects
+       fn-owner-put-credits-preserves-state-p1 fn-sg-state-p1-of-put-global
+       put-global update-global-table global-table (:executable-counterpart symbolp)
+       mv-nth nth zp car-cons cdr-cons (:executable-counterpart zp)
+       (:executable-counterpart equal) (:executable-counterpart not))
+     (theory 'minimal-theory))))))
 
 (defun fn-owner-operator-open (fn-hist state)
   (declare (xargs :stobjs (fn-hist state)
@@ -5675,7 +5700,7 @@
     (let* ((run (if (boundp-global 'fn-owner-memory-run state)
                     (f-get-global 'fn-owner-memory-run state) nil))
            (closed (fn-adm-operator-close (fn-owner-memory-held-bank state) (fn-exp-at 10 run) id))
-           (state (fn-owner-memory-held-close id state))
+           (state (f-put-global 'fn-owner-memory-held-bank (fn-exp-at 0 closed) state))
            (state (if (boundp-global 'fn-owner-memory-run state)
                       (f-put-global 'fn-owner-memory-run
                         (update-nth 10 (fn-exp-at 1 closed) (true-list-fix run)) state)
@@ -5706,7 +5731,7 @@
     (let* ((run (if (boundp-global 'fn-owner-memory-run state)
                     (f-get-global 'fn-owner-memory-run state) nil))
            (closed (fn-adm-operator-close (fn-owner-memory-held-bank state) (fn-exp-at 10 run) id))
-           (state (fn-owner-memory-held-close id state))
+           (state (f-put-global 'fn-owner-memory-held-bank (fn-exp-at 0 closed) state))
            (state (if (boundp-global 'fn-owner-memory-run state)
                       (f-put-global 'fn-owner-memory-run
                         (update-nth 10 (fn-exp-at 1 closed) (true-list-fix run)) state)
@@ -6739,3 +6764,21 @@ itself."
 
 (verify-guards fn-owner-memory-recapacity)
 (verify-guards fn-owner-memory-reclaim-complete)
+
+
+; R2 native developer probe reads the same gate and asks the book for its edge.
+
+
+; Read-only developer observation, after the real operator open synced totals.
+; Installation uses the existing configure and recapacity transitions.
+(defun fn-owner-memory-config-edge-observation (state)
+ (declare (xargs :stobjs state :mode :program))
+ (let* ((r (f-get-global 'fn-owner-memory-run state))
+        (envelope (f-get-global 'fn-owner-memory-envelope state))
+        (gate (fn-owner-memory-gate state))
+        (tot (cdr (f-get-global 'fn-owner-record-totals state)))
+        (resident (fn-adm-config-edge-resident (nth 4 r) (nth 0 r)
+                     (second gate) tot (nth 7 r) envelope)))
+   (list r envelope resident)))
+
+(definterface fn-owner-memory-config-edge-observation :class :program)

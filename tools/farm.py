@@ -9,7 +9,7 @@ the evidence and the certificate pairs rsynced back and published to the local
 cache.
 
     python3 tools/farm.py submit persvati --affected-by books/wire.lisp
-                            # --jobs auto (the default): tools/chain_schedule.py
+                            # fixed per-box jobs: tools/box_table.py
     python3 tools/farm.py wait persvati run-20260919T101500Z-4f2a
     python3 tools/farm.py status hbox --remote-root /tank/fn/gates/my-run
 
@@ -31,7 +31,8 @@ the difference between certifying what changed and certifying a whole dependency
 substrate for four new books.  ``wait`` blocks on that id, printing progress
 every poll and never spinning; it returns the runner's own exit code.  hbox's
 runner is wrapped in ``swarm-build``, which enforces a memory cap there: the
-containment is structural, not courtesy to another tenant (there is none).
+containment is structural. Shared-box certification uses a fixed job count
+and refuses admission at the box's one-minute load ceiling (tools/box_table.py).
 ``status`` takes one read-only remote snapshot. Before a terminal status exists,
 it reports exited and active *records*; these records are not a process-liveness
 check and may outlive a child. ACL2 can exit zero after a failed theorem. Only
@@ -67,6 +68,7 @@ from collections.abc import Callable
 import datetime as dt
 import functools
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -82,7 +84,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs
 from certify_books import BOOK_NAME
-import chain_schedule
 DEPENDENCY_NAME = re.compile(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)+")
 import native_program_check
 
@@ -1092,7 +1093,7 @@ def swarm_memory(value: str) -> list[str]:
     return ["env", f"SWARM_MEM_MAX={value}"]
 
 
-def submit(host: str, root: Path, books: list[str], jobs: int | str,
+def submit(host: str, root: Path, books: list[str], jobs: int | str | None,
            timeout_seconds: int, affected_by: list[str],
            remote: Path | None = None, closure: bool = False,
            cache: str | None = None, acl2: str | None = None,
@@ -1101,7 +1102,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
            pcert: bool = False, budget_seconds: int | None = None,
            require_origin: str | None = None,
            recertify: list[str] = (), images: str | None = None,
-           lane: bool = False, roots: list[str] | None = None) -> str:
+           lane: bool = False, roots: list[str] | None = None,
+           force: bool = False) -> str:
     """Mirror, install from the box's cache, and start the detached runner.
 
     `prepare(host, remote)` runs between the mirror and ACL2, on the box's
@@ -1114,6 +1116,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     against the argument, so a runner invocation that would seed the box's
     cache cannot start under a caller that asked for no publication.
     """
+    jobs = submit_jobs(host, jobs)
     if recertify and not incremental(closure, require_origin):
         raise FarmError("--recertify takes books out of the incremental cache "
                         "install; --closure and --require-origin do not make one")
@@ -1121,6 +1124,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     refuse_bad_book_names(root, books, affected_by, list(recertify))
     refuse_unselectable(root, books, affected_by, closure, lane, roots)
     refuse_unbalanced_sources(root)
+    admit_load(host, force)
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     take_submit_lock(host, remote, identifier, root)
@@ -1924,8 +1928,45 @@ def status(host: str, remote: Path, local_root: Path | None = None) -> int:
     return 0
 
 
-# tools/boxes.sh's seam for the reservation wait (the tests stub it).
+# tools/boxes.sh's seam for reservation waits and load admission (tests stub it).
 BOXES = subprocess.run
+
+
+def submit_jobs(host: str, jobs: int | str | None) -> int:
+    """Fixed-count shared-box rule, including the explicit environment override."""
+    try:
+        default, _ = box_table.certify_limits(host)
+    except ValueError as error:
+        raise FarmError(f"no farm run started: {error}") from None
+    value = jobs if jobs is not None else os.environ.get("FN_CERTIFY_JOBS", default)
+    if str(value) == "auto" or str(value).startswith("auto:"):
+        raise FarmError(f"no farm run started: shared-box fixed-job rule refuses "
+                        f"--jobs {value} on {host}; its fixed default is {default} jobs")
+    if not re.fullmatch(r"[0-9]+", str(value)) or int(value) <= 0:
+        raise FarmError("no farm run started: --jobs / FN_CERTIFY_JOBS must be "
+                        f"a positive count, got {value!r} ({host} default: {default})")
+    return int(value)
+
+
+def admit_load(host: str, force: bool = False) -> None:
+    """Read the existing boxes.sh probe before any submit side effect."""
+    _, ceiling = box_table.certify_limits(host)
+    try:
+        done = BOXES(["sh", str(Path(__file__).resolve().parent / "boxes.sh"),
+                      "--load", host], stdout=subprocess.PIPE, text=True,
+                     check=False, timeout=30)
+        load = float((done.stdout or "").strip())
+        if done.returncode or not math.isfinite(load) or load < 0:
+            raise ValueError("invalid load")
+    except (OSError, subprocess.TimeoutExpired, ValueError) as error:
+        raise FarmError(f"no farm run started: cannot read {host} one-minute load "
+                        f"(ceiling {ceiling}); retry later: {error}") from None
+    print(f"{host}: one-minute load {load:g}; ceiling {ceiling}"
+          + ("; --force overrides load admission" if force and load >= ceiling else ""),
+          file=sys.stderr)
+    if load >= ceiling and not force:
+        raise FarmError(f"no farm run started: {host} load {load:g} is at or above "
+                        f"ceiling {ceiling} (shared-box load rule); retry later")
 
 
 def honour_reservation(host: str) -> None:
@@ -2070,10 +2111,12 @@ def main(argv: list[str] | None = None) -> int:
                                      "all) picks the one with the lowest load per core")
     parser.add_argument("rest", nargs="*",
                         help="submit: book roots; wait, cancel: the run id (farm.py wait BOX RUN)")
-    parser.add_argument("--jobs", default=os.environ.get("FN_CERTIFY_JOBS", "auto"),
-                        help="concurrent ACL2s on the box: a count, or auto / auto:N "
-                             "(the default: the count that finishes the longest "
-                             "include chain soonest, tools/chain_schedule.py)")
+    parser.add_argument("--jobs", default=None,
+                        help="positive concurrent ACL2 count (default: the box table; "
+                             "FN_CERTIFY_JOBS overrides with a positive count); "
+                             "shared-box fixed-job rule refuses auto / auto:N")
+    parser.add_argument("--force", action="store_true",
+                        help="submit despite the box's load admission ceiling")
     parser.add_argument("--affected-by", action="append", default=[],
                         help="also certify every Makefile root whose closure "
                              "contains this book (repeatable).  With books named, "
@@ -2200,14 +2243,11 @@ def main(argv: list[str] | None = None) -> int:
             roots_listed = recertify_list([arguments.roots_from])
         except OSError as error:
             parser.error(f"--roots-from: {error}")
-    if arguments.action == "submit":
-        try:
-            chain_schedule.parse_jobs(arguments.jobs)
-        except ValueError:
-            parser.error(f"--jobs takes a positive count, auto or auto:N, "
-                         f"not {arguments.jobs!r}")
+    if arguments.force and arguments.action != "submit":
+        parser.error("--force belongs to submit")
     try:
         if arguments.action == "submit":
+            arguments.jobs = submit_jobs(arguments.host, arguments.jobs)
             if named_box:
                 honour_reservation(arguments.host)
             identifier = submit(arguments.host, root, list(arguments.rest),
@@ -2222,7 +2262,8 @@ def main(argv: list[str] | None = None) -> int:
                                 recertify=list(arguments.recertify),
                                 images=arguments.images
                                 or os.environ.get("FN_CERT_IMAGES") or None,
-                                lane=arguments.lane, roots=roots_listed)
+                                lane=arguments.lane, roots=roots_listed,
+                                force=arguments.force)
             print(identifier)
             print(f"{identifier}: on {arguments.host}; wait with `farm.py wait "
                   f"{arguments.host} {identifier}`", file=sys.stderr)

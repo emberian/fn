@@ -950,10 +950,20 @@ IMAGE_DEFAULTS = {
 # after it, a full replay before) and the header (`stopped checkpoint=N
 # journal-octets=B transactions-at-most=M` reads the checkpoint header the
 # compaction wrote; the exact count is `status --replay`'s) and the
-# checkpoint file's own line (`checkpoint-file octets=B modified=T`, the file
-# the compaction wrote).  One site for
+# checkpoint file's own line (`checkpoint-file=absent` before publication,
+# `checkpoint-file octets=B modified=T` after).  Both spellings have existed
+# since 96ff9365f; books/native-live-status.lisp:247 renders them.  Compaction
+# publishes that file (host/native/checkpoint.lisp:77, then
+# host/native/io.lisp:3356 installs it).
+# The charged-totals line is also checkpoint metadata, not the replayed
+# store's totals: host/native/io.lisp:6052 reads only that file's header and
+# :6141 renders and :6151 prints it; books/charged-totals-header.lisp:1217
+# renders absent or the snapshot.  Compaction writes the header first
+# (host/native/io.lisp:4009), so an absent header becomes populated by design.
+# One site for
 # every test comparing a report across a compaction (obstructions-7 item 66).
-STATUS_ACROSS_COMPACTION = ("open=", "stopped ", "checkpoint-file ")
+STATUS_ACROSS_COMPACTION = ("open=", "stopped ", "checkpoint-file ", "checkpoint-file=",
+                            "charged-totals ", "charged-totals=")
 
 
 def stable_status_lines(stdout, also=()):

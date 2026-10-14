@@ -915,20 +915,29 @@
     (update-nth 1 (fn-adm-reader-count (fn-exp-lim-total limits) capacity)
                 limits)))
 
-(defun fn-adm-run-gate-held (held configured capacity)
+(defun fn-adm-run-gate-held (held configured capacity operator-id)
   (declare (xargs :guard t))
   (if (natp capacity)
-      (max (nfix held) (1+ (fn-adm-reader-count configured capacity)))
+      (max (+ (nfix held) (if operator-id 0 1))
+           (1+ (fn-adm-reader-count configured capacity)))
     (nfix held)))
 
-(defun fn-adm-run-memory-admitp (profile img cfg limit tot row held capacity)
+(defun fn-adm-run-memory-admitp (profile img cfg limit tot row held capacity operator-id)
   (declare (xargs :guard t :verify-guards nil))
   (and (or (not (natp capacity)) (posp capacity))
        (fn-adm-memory-admitp profile img
                             (fn-adm-priced-cfg cfg
-                              (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity)
+                              (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity operator-id)
                               capacity)
                             limit tot row)))
+
+(defun fn-adm-config-change-admitp (profile img cfg limit tot held capacity operator-id octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-mm-gate-p profile img
+    (fn-adm-priced-cfg (update-nth 12 (+ (fn-mm-cfg-config cfg) (nfix octets)) (true-list-fix cfg))
+                       (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity operator-id)
+                       capacity)
+    limit tot))
 
 (defun fn-adm-installed-capacity-line (profile img cfg limit tot)
   (declare (xargs :guard t :verify-guards nil))
@@ -1000,7 +1009,7 @@
   :hints (("Goal" :in-theory (e/d (fn-adm-exposure-limits fn-adm-reader-count fn-exp-lim-total fn-exp-at fn-exp-admit-decision fn-exp-nat) (fn-exp-limits fn-exp-count-in fn-exp-window fn-exp-fails fn-exp-lim-auth-failures fn-exp-trusted-addressp fn-exp-count-address fn-exp-conns fn-exp-lim-per-address fn-exp-lim-trusted)))))
 
 (defthm fn-adm-zero-capacity-refuses-records
-  (not (fn-adm-run-memory-admitp profile img cfg limit tot row held 0))
+  (not (fn-adm-run-memory-admitp profile img cfg limit tot row held 0 operator-id))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-adm-run-memory-admitp))))
 
@@ -1139,6 +1148,8 @@
 
 (verify-guards fn-adm-run-memory-admitp)
 
+(verify-guards fn-adm-config-change-admitp)
+
 (local (defthm m22-capacity-binding-symbolp-by-definition
  (symbolp (fn-adm-capacity-binding profile img cfg limit tot))
  :rule-classes :type-prescription
@@ -1166,14 +1177,14 @@
 
 ; Refusal diagnostics use the same zero-aware decision as the record budget.
 (defun fn-adm-run-article-word
- (word profile img cfg limit used bytes-used record debt tot row held capacity)
+ (word profile img cfg limit used bytes-used record debt tot row held capacity operator-id)
  (declare (xargs :guard t :verify-guards nil))
  (let ((w (fn-cvec-article-refusal-word word profile used bytes-used record debt)))
   (if (and (equal w :unaffordable)
            (fn-cvec-article-transactions-admitp profile used debt)
            (fn-cvec-article-history-admitp profile bytes-used
              (fn-sbud-article-gate-figure (len (fn-record-payload record)) (len (fn-record-groups record))) debt)
-           (not (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity)))
+           (not (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity operator-id)))
    :memory w)))
 
 ; Field 14 is immutable under the priced-reader projection.
@@ -1197,23 +1208,46 @@
 
 (defthm fn-adm-run-gate-keeps-the-operator-slot-funded
   (implies (and (natp capacity)
-                (<= (nfix held) (fn-adm-reader-count (fn-mm-cfg-connections cfg) capacity))
                 (fn-mm-gate-p profile img
-                  (fn-adm-priced-cfg cfg (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity) capacity)
+                  (fn-adm-priced-cfg cfg (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity operator-id)
+                                     capacity)
                   limit tot))
-           (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (1+ (nfix held)) capacity) limit tot))
+           (fn-mm-gate-p profile img
+             (fn-adm-priced-cfg cfg (+ (nfix held) (if operator-id 0 1)) capacity) limit tot))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(m26-priced-projections-commute-by-definition fn-adm-run-gate-held fn-adm-priced-connections max nfix natp (:type-prescription fn-adm-reader-count)) (theory 'minimal-theory))
  :use ((:instance fn-adm-gate-antitone-in-the-connections
   (cfg (update-nth 10 nil (true-list-fix cfg)))
-  (j (fn-adm-priced-connections (1+ (nfix held)) (fn-mm-cfg-connections cfg) capacity))
-  (k (fn-adm-priced-connections (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity) (fn-mm-cfg-connections cfg) capacity)))))))
+  (j (fn-adm-priced-connections (+ (nfix held) (if operator-id 0 1)) (fn-mm-cfg-connections cfg) capacity))
+  (k (fn-adm-priced-connections (fn-adm-run-gate-held held (fn-mm-cfg-connections cfg) capacity operator-id) (fn-mm-cfg-connections cfg) capacity)))))))
 
 (defthm fn-adm-run-admitted-record-keeps-the-operator-slot-funded
   (implies (and (natp capacity)
-                (<= (nfix held) (fn-adm-reader-count (fn-mm-cfg-connections cfg) capacity))
-                (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity))
-           (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (1+ (nfix held)) capacity) limit (fn-adm-after tot row)))
+                (fn-adm-run-memory-admitp profile img cfg limit tot row held capacity operator-id))
+           (fn-mm-gate-p profile img (fn-adm-priced-cfg cfg (+ (nfix held) (if operator-id 0 1)) capacity) limit (fn-adm-after tot row)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-adm-run-memory-admitp fn-adm-memory-admitp) (theory 'minimal-theory))
  :use ((:instance fn-adm-run-gate-keeps-the-operator-slot-funded (tot (fn-adm-after tot row)))))))
+
+
+(local (defthm m28-config-history-keeps-connections-by-definition
+ (equal (fn-mm-cfg-connections
+          (update-nth 12 octets (true-list-fix cfg)))
+        (fn-mm-cfg-connections cfg))
+ :hints (("Goal" :in-theory (enable fn-mm-cfg-connections fn-mm-nat)))))
+
+(defthm fn-adm-admitted-config-change-keeps-the-operator-slot-funded
+  (implies (and (natp capacity)
+                (fn-adm-config-change-admitp profile img cfg limit tot held capacity operator-id octets))
+           (fn-mm-gate-p profile img
+             (fn-adm-priced-cfg (update-nth 12 (+ (fn-mm-cfg-config cfg) (nfix octets)) (true-list-fix cfg))
+                                (+ (nfix held) (if operator-id 0 1)) capacity)
+             limit tot))
+  :rule-classes nil
+  :hints (("Goal"
+   :use ((:instance fn-adm-run-gate-keeps-the-operator-slot-funded
+           (cfg (update-nth 12 (+ (fn-mm-cfg-config cfg) (nfix octets))
+                            (true-list-fix cfg)))))
+   :in-theory (union-theories
+     '(fn-adm-config-change-admitp m28-config-history-keeps-connections-by-definition)
+     (theory 'minimal-theory)))))
