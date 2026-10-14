@@ -1636,6 +1636,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/lb-log-open-properties \
 	books/log-checkpoint-admission \
 	books/log-checkpoint-adoption \
+	books/log-checkpoint-column-read \
+	books/log-checkpoint-cold-candidate \
+	books/log-checkpoint-cold-selector \
+	tests/acl2/lc-cold-candidate-tests \
+	tests/acl2/lc-cold-selection-tests \
 	books/log-checkpoint-allocation \
 	books/log-checkpoint-allocation-proof \
 	books/log-checkpoint-backpressure \
