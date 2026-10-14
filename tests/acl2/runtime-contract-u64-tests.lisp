@@ -20,7 +20,7 @@
 (with-guard-checking-event
  nil
  (assert-event
-  (let ((s '((2 0 0 0 0 0 0)
+  (let ((s '((2 0 0 0 0 0 0 0 0)
               ((0 :live nil) (18446744073709551615 :free nil))
               nil nil (nil nil) 1)))
     (mv-let (s2 acts2) (fn-rtc-rearm s)
@@ -52,7 +52,7 @@
   :hints (("Goal" :use fn-rtc-m-init-is-bounded
            :in-theory (disable fn-rtc-m-init-is-bounded))))
 (defthm fn-a24-t13-counterexample
-  (let* ((s '((2 0 0 0 0 0 0)
+  (let* ((s '((2 0 0 0 0 0 0 0 0)
               ((0 :live nil) (18446744073709551615 :draining 7))
               nil ((:timer 1 18446744073709551615 0 nil)) (nil nil) 1))
          (j 1)
@@ -112,7 +112,7 @@
 ; Removing INVP permits an already invalid incarnation to persist through an
 ; unmatched completion. The preservation claim needs its real state premise.
 (defthm fn-a24-invariant-bound-hypothesis-tooth
-  (let* ((s '((2 0 0 0 0 0 0)
+  (let* ((s '((2 0 0 0 0 0 0 0 0)
               ((0 :live nil) (18446744073709551616 :free nil))
               nil nil (nil nil) 1))
          (e '(:timer 1 0 99 (:done 0)))
@@ -131,7 +131,7 @@
                  (:executable-counterpart fn-rtc-step*))))))
 
 (defthm fn-a24-fresh-unbuffered-use-u64-tooth-nil
-  (let* ((s '((2 0 0 0 0 0 0) ((0 :live nil) (18446744073709551616 :live 7)) nil nil (nil nil) 0))
+  (let* ((s '((2 0 0 0 0 0 0 0 0) ((0 :live nil) (18446744073709551616 :live 7)) nil nil (nil nil) 0))
          (kind :timer) (id 1) (inc 18446744073709551616))
     (and (member-eq kind '(:fsync :close :accept :timer :extend))
          (natp id) (natp inc) (< id (fn-rtc-nslots (fn-rtc-config s)))
@@ -143,7 +143,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-rtc-issue))))
 (defthm fn-a24-fresh-wait-use-u64-tooth
-  (let* ((s '((2 0 0 0 0 0 0) ((0 :live nil) (18446744073709551616 :live 7)) nil nil (nil nil) 0))
+  (let* ((s '((2 0 0 0 0 0 0 0 0) ((0 :live nil) (18446744073709551616 :live 7)) nil nil (nil nil) 0))
          (id 1) (inc 18446744073709551616))
     (and (natp id) (not (equal id 0)) (natp inc)
          (< id (fn-rtc-nslots (fn-rtc-config s))) (fn-rtc-current-p id inc s)
@@ -152,7 +152,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-rtc-issue))))
 (defthm fn-a24-activate-slot-u64-tooth
-  (let* ((s '((2 0 0 0 0 0 0) ((0 :live nil) (0 :free nil)) nil nil (nil nil) 0))
+  (let* ((s '((2 0 0 0 0 0 0 0 0) ((0 :live nil) (0 :free nil)) nil nil (nil nil) 0))
          (id 1) (inc 18446744073709551616) (r 7))
     (and (fn-rtc-core-invp s) (posp id) (natp inc) (natp r) (< r (expt 2 64))
          (equal (fn-rtc-s-status (fn-rtc-slot id s)) :free)
@@ -162,7 +162,7 @@
      ((:executable-counterpart fn-rtc-core-invp) (:executable-counterpart fn-rtc-mstates-okp))))))
 
 (defthm fn-a24-hand-target-u64-counterexample
-  (let* ((s '((3 1 1 1 0 1 1)
+  (let* ((s '((3 1 1 1 0 1 1 0 0)
               ((0 :live nil) (1 :live 0) (0 :free nil))
               ((0 (:workspace 1 1) nil)) nil (nil nil nil) 0))
          (id 1) (inc 1) (hd '(0 0 0 0)) (extra '(2 18446744073709551616))
@@ -182,7 +182,7 @@
     ((:executable-counterpart fn-rtc-core-invp) (:executable-counterpart fn-rtc-mstates-okp))))))
 
 (defthm fn-a24-fresh-opened-use-u64-tooth
-  (let* ((s '((2 0 0 1 0 0 0)
+  (let* ((s '((2 0 0 1 0 0 0 0 0)
               ((0 :live nil) (18446744073709551616 :live 7))
               nil nil (nil nil) 0))
          (id 1) (inc 18446744073709551616))
@@ -197,7 +197,7 @@
 
 ; Each positive witness asserts the helper's entire bounded antecedent and result.
 (defthm fn-a27-fresh-unbuffered-use-u64-witness
-  (let* ((s '((2 0 0 0 0 0 0) ((0 :live nil) (1 :live 7)) nil nil (nil nil) 0))
+  (let* ((s '((2 0 0 0 0 0 0 0 0) ((0 :live nil) (1 :live 7)) nil nil (nil nil) 0))
          (kind :timer) (id 1) (inc 1))
     (and (member-eq kind '(:fsync :close :accept :timer :extend))
          (natp id) (fn-rtc-u64p inc) (< id (fn-rtc-nslots (fn-rtc-config s)))
@@ -209,7 +209,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-rtc-issue))))
 (defthm fn-a27-fresh-wait-use-u64-witness
-  (let* ((s '((2 0 0 0 0 0 0) ((0 :live nil) (1 :live 7)) nil nil (nil nil) 0))
+  (let* ((s '((2 0 0 0 0 0 0 0 0) ((0 :live nil) (1 :live 7)) nil nil (nil nil) 0))
          (id 1) (inc 1))
     (and (natp id) (not (equal id 0)) (fn-rtc-u64p inc)
          (< id (fn-rtc-nslots (fn-rtc-config s))) (fn-rtc-current-p id inc s)
@@ -218,7 +218,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-rtc-issue))))
 (defthm fn-a27-activate-slot-u64-witness
-  (let* ((s '((2 0 0 0 0 0 0) ((0 :live nil) (0 :free nil)) nil nil (nil nil) 0))
+  (let* ((s '((2 0 0 0 0 0 0 0 0) ((0 :live nil) (0 :free nil)) nil nil (nil nil) 0))
          (id 1) (inc 1) (r 7))
     (and (fn-rtc-core-invp s) (posp id) (fn-rtc-u64p inc) (natp r) (< r (expt 2 64))
          (equal (fn-rtc-s-status (fn-rtc-slot id s)) :free)
@@ -227,7 +227,7 @@
   :hints (("Goal" :in-theory (e/d (fn-rtc-core-invp fn-rtc-with-slot)
      ((:executable-counterpart fn-rtc-core-invp) (:executable-counterpart fn-rtc-mstates-okp))))))
 (defthm fn-a27-hand-submit-u64-witness
-  (let* ((s '((3 1 1 1 0 1 1)
+  (let* ((s '((3 1 1 1 0 1 1 0 0)
               ((0 :live nil) (1 :live 0) (0 :free nil))
               ((0 (:workspace 1 1) nil)) nil (nil nil nil) 0))
          (id 1) (inc 1) (hd '(0 0 0 0)) (extra '(2 1)))
@@ -242,7 +242,7 @@
   :hints (("Goal" :in-theory (e/d (fn-rtc-core-invp fn-rtc-hand-submit-state fn-rtc-issue)
     ((:executable-counterpart fn-rtc-core-invp) (:executable-counterpart fn-rtc-mstates-okp))))))
 (defthm fn-a27-fresh-opened-use-u64-witness
-  (let* ((s '((2 0 0 1 0 0 0) ((0 :live nil) (1 :live 7)) nil nil (nil nil) 0))
+  (let* ((s '((2 0 0 1 0 0 0 0 0) ((0 :live nil) (1 :live 7)) nil nil (nil nil) 0))
          (id 1) (inc 1))
     (and (natp id) (fn-rtc-u64p inc) (<= 1 id)
          (<= id (fn-rtc-nstatic (fn-rtc-config s)))
