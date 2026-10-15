@@ -1,32 +1,31 @@
-; Exact literal selected-only condition, SAT and eager-column mutation.
-; No universal selector theorem has been submitted.
+; Restated attempted-metadata condition, both positives and isolated mutations.
 (in-package "ACL2")
 (include-book "../../books/log-checkpoint-cold-selector")
 (include-book "lc-open-id-search-tests")
 (defun lcc-selector-claim (disk r mode)
  (declare (xargs :guard t :verify-guards nil))
-  (let ((out (fn-lc-cold-select disk r mode)))
+ (let ((out (fn-lc-cold-select disk r mode)))
   (and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
        (equal (fn-lc-at 5 out)
         (fn-lc-join
          (list (list :pread :root 0 (fn-lc-root-slot-octets))
                (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode)))))))
+         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
+       (fn-lc-cold-only-metadata-requests-p
+         (fn-lc-at 5 out) (fn-lc-cold-directory-path disk r mode)))))
 (defun lcc-selector-eager-mutant (disk r mode)
  (declare (xargs :guard t :verify-guards nil))
-  (let ((out (fn-lc-cold-select disk r mode)))
+ (let ((out (fn-lc-cold-select disk r mode)))
 (and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
-       (equal (fn-lc-join (fn-lc-at 5 out) (fn-lc-cold-page-program (list 2)))
+       (equal (fn-lc-at 5 out)
         (fn-lc-join
          (list (list :pread :root 0 (fn-lc-root-slot-octets))
                (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode)))))))
-(defun lcc-fallback-disk ()
- (declare (xargs :guard t :verify-guards nil))
- (let* ((disk (fn-lc-at 0 (lco-id5-input 1)))
-        (old (pgs-slot 0 (pgs-root-slots :lc disk)))
-        (new (pgs-make-rec 2 99 4 (+ 1 (pgs-digest nil)))))
-  (cons (pgs-pages disk) (list (cons :lc (cons old new))))))
+         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
+       (fn-lc-cold-only-metadata-requests-p
+         (fn-lc-join (fn-lc-at 5 out) (fn-lc-cold-page-program (list 2)))
+         (fn-lc-cold-directory-path disk r mode)))))
+
 (defun lcc-selector-fallback-control ()
  (declare (xargs :guard t :verify-guards nil))
  (let* ((disk (lcc-fallback-disk))
@@ -47,21 +46,21 @@
  ; Positive and checked eager-column mutation precede every proof attempt.
  (assert-event (lcc-selector-claim (fn-lc-at 0 (lco-id5-input 1)) :lc :eager))
  (assert-event (not (lcc-selector-eager-mutant (fn-lc-at 0 (lco-id5-input 1)) :lc :eager)))
- ; Complete ground refutation of the literal selected-only trace contract.
+ ; Rejected page99 is now part of the exact positive path.
  (assert-event
   (let ((out (lcc-selector-fallback-control)))
    (and (equal (fn-lc-head out) :ok) (equal (fn-lc-at 1 out) 0)
         (equal (fn-lc-at 2 out) '(1 0))
-        (not (fn-lc-at 5 out)) (fn-lc-at 6 out) (fn-lc-at 7 out)
+        (fn-lc-at 5 out) (fn-lc-at 6 out) (fn-lc-at 7 out)
         (equal (fn-lc-at 3 out)
           '((:pread :root 0 130) (:pread :root 1 130)
             (:pread :page 99 16384) (:pread :page 6 16384)
             (:pread :page 5 16384) (:pread :page 1 16384)
             (:pread :page 3 16384) (:pread :page 4 16384)))
-        (not (equal (fn-lc-at 3 out) (fn-lc-at 4 out))))))
- ; Print the complete closed term as well as asserting its refutation.
+        (equal (fn-lc-at 3 out) (fn-lc-at 4 out)))))
+ ; Print the complete positive fallback term.
  (value-triple (lcc-selector-fallback-control)))
 (verify-guards lcc-selector-claim)
 (verify-guards lcc-selector-eager-mutant)
-(verify-guards lcc-fallback-disk)
+
 (verify-guards lcc-selector-fallback-control)

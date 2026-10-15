@@ -1,11 +1,10 @@
-; LC3 must charge the column validation requested by the actual PGS selector.
-; A fresh empty checkpoint already contains one map/escape column page.
+; Coordinator A: same empty checkpoint is now a positive LC3 regression.
+; Honest rejected-directory fallback is a second positive regression.
 (in-package "ACL2")
 (include-book "lc-open-id-search-tests")
-(defun lco-empty-read-counterexample (fn-lbc)
+(defun lco-open-read-observation (disk input fn-lbc)
  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-p fn-lbc) :verify-guards nil))
- (let* ((input (lco-id5-input 1)) (disk (fn-lc-at 0 input))
-        (segs (fn-lc-at 3 input)) (beforep (fn-lbc-p fn-lbc)))
+ (let* ((segs (fn-lc-at 3 input)) (beforep (fn-lbc-p fn-lbc)))
   (mv-let (answer fn-lbc after-disk after-segs trace owner)
     (fn-lc-open disk :lc :eager (fn-lc-at 2 input) 8 4 segs (fn-lc-at 4 input) fn-lbc)
     (declare (ignore after-disk after-segs owner))
@@ -17,14 +16,20 @@
      (mv (list beforep (fn-lc-segsp segs) answer requested allowed
                (len (fn-lc-directory-path-pages disk :lc :eager))
                (fn-lc-pgs-open-requests disk :lc :eager)
-               (and beforep (fn-lc-segsp segs) (< allowed requested))) fn-lbc)))))
-(defun lco-empty-read-counterexample-run ()
+               (and beforep (fn-lc-segsp segs) (<= requested allowed)) trace) fn-lbc)))))
+(defun lco-open-read-regression-run (fallbackp)
  (declare (xargs :guard t :verify-guards nil))
- (with-local-stobj fn-lbc
-  (mv-let (result fn-lbc) (lco-empty-read-counterexample fn-lbc) result)))
+ (let* ((input (lco-id5-input 1))
+        (disk (if fallbackp (lcc-fallback-disk) (fn-lc-at 0 input))))
+  (with-local-stobj fn-lbc
+   (mv-let (result fn-lbc) (lco-open-read-observation disk input fn-lbc) result))))
 (encapsulate ()
  (local (defattach pgs-digest fn-lc-proof-digest))
- (assert-event (fn-lc-at 7 (lco-empty-read-counterexample-run)))
- (value-triple (lco-empty-read-counterexample-run)))
-(verify-guards lco-empty-read-counterexample)
-(verify-guards lco-empty-read-counterexample-run)
+ (assert-event (let ((out (lco-open-read-regression-run nil)))
+                (and (fn-lc-at 7 out) (equal (fn-lc-at 2 out) :ok))))
+ (assert-event (let ((out (lco-open-read-regression-run t)))
+                (and (fn-lc-at 7 out) (equal (fn-lc-at 2 out) :ok))))
+ (value-triple (list (lco-open-read-regression-run nil)
+                     (lco-open-read-regression-run t))))
+(verify-guards lco-open-read-observation)
+(verify-guards lco-open-read-regression-run)

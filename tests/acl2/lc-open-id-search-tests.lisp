@@ -2,24 +2,11 @@
 ; The finite family covers half-published rollover ids, both PGS modes,
 ; allocator exhaustion, and read-outcome prefixes.
 (in-package "ACL2")
+(include-book "lc-open-fixtures")
 (include-book "../../books/log-checkpoint-open")
 (include-book "../../books/log-checkpoint-publication-witnesses")
 (include-book "../../books/log-checkpoint-selection-proof")
-(defun lco-id5-input (code)
- (declare (xargs :guard t :verify-guards nil))
- (let* ((code (mod (nfix code) 64))
-        (n (if (equal (mod code 8) 7) 18446744073709551615 (mod code 8)))
-        (segs (list (list 0 nil nil) (list n nil nil)))
-        (configs (list *fn-cfg-default-record*))
-        (control (ec-call (fn-lc-control-of (list configs nil))))
-        (value '(nil nil nil (nil nil nil) nil nil nil nil nil nil nil))
-        (old (ec-call (fn-lc-columns-value value)))
-        (header (fn-lc-snapshot-header-value value
-                  (list :lc-header (list 0 0 0 8 *fn-lg-genesis*) n nil nil nil) control))
-        (disk (ec-call (fn-lc-proof-image-disk (ec-call (fn-lc-pages old header)))))
-        (mode (if (equal (mod (floor code 8) 2) 0) :eager :lazy))
-        (cut (case (mod (floor code 16) 4) (0 100) (1 0) (2 2) (otherwise 5))))
-   (list disk mode configs segs (ec-call (fn-lc-proof-ok-outcomes cut)))))
+
 (defun lco-id5-grounded-check (code fn-lbc)
  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-p fn-lbc) :verify-guards nil))
  (let* ((input (lco-id5-input code)) (disk (fn-lc-at 0 input))
@@ -75,7 +62,7 @@
 (encapsulate ()
  (local (defattach pgs-digest fn-lc-proof-digest))
  (assert-event (lco-id5-half-published-run)))
-(verify-guards lco-id5-input)
+
 (verify-guards lco-id5-grounded-check :hints (("Goal" :in-theory (enable fn-ag-less))))
 (verify-guards lco-id5-search)
 (verify-guards lco-id5-half-published-control)

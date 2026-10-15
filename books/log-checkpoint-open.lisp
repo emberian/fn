@@ -9,32 +9,48 @@
 (include-book "log-checkpoint-allocation")
 (include-book "log-checkpoint-allocation-proof")
 (include-book "log-checkpoint-open-read-trace")
+(include-book "log-checkpoint-cold-selector")
 
-(defun fn-lc-control-pages (control)
+; Logical column observations are projections of the selected mapping.
+; Column digest validation is the separately charged first-read operation;
+; native lazy installation/refinement remains B2.
+(defun fn-lc-cold-adopted-header (disk r mode)
  (declare (xargs :guard t :verify-guards nil))
- (ec-call (fn-lc-map-observation-pages-of
-            (list (ec-call (fn-lc-map-observation-tree-enc (list control)))))))
+ (fn-lc-header-of-open (fn-lc-cold-select disk r mode)))
+(defun fn-lc-cold-adopted-columns (disk r mode)
+ (declare (xargs :guard t :verify-guards nil))
+ (let* ((selected (fn-lc-cold-select disk r mode))
+        (header (fn-lc-header-of-open selected))
+        (lengths (fn-lc-layout-lengths header)))
+  (if (and (equal (fn-lc-head selected) :ok)
+           (fn-lc-lengths-p lengths) (equal (len lengths) 8))
+      (ec-call (pgs-contents
+        (fn-lc-take (fn-lc-lengths-sum lengths) (fn-lc-rest (fn-lc-at 6 selected)))
+        (pgs-pages disk))) :bad)))
+(defun fn-lc-cold-tail-entries (disk r mode segs)
+ (declare (xargs :guard t :verify-guards nil))
+ (fn-lc-at 2 (fn-lc-tail-scan segs (fn-lc-cold-adopted-header disk r mode))))
+(verify-guards fn-lc-cold-adopted-header)
+(verify-guards fn-lc-cold-adopted-columns)
+(verify-guards fn-lc-cold-tail-entries)
+
+
+
 (defun fn-lc-selected-control (disk r mode)
  (declare (xargs :guard t :verify-guards nil))
- (let* ((header (fn-lc-adopted-header disk r mode))
+ (let* ((header (fn-lc-cold-adopted-header disk r mode))
         (pages (fn-lc-at 5 header))
         (rows (ec-call (fn-lc-map-observation-of-pages pages)))
         (decoded (ec-call (fn-scc-decode-tree (fn-lc-head (fn-lc-head rows))))))
    (if (and (equal (fn-lc-head decoded) :ok)
             (equal (fn-lc-head (fn-lc-at 1 decoded)) :lc-control))
        (fn-lc-at 1 decoded) :bad)))
-(defun fn-lc-snapshot-header-value (value header control)
- (declare (xargs :guard t :verify-guards nil))
- (list :lc-header (fn-lc-header-S header) (fn-lc-header-next-id header)
-       (fn-lc-header-exhaustedp header)
-       (fn-lc-layout-pages (fn-lc-column-lengths-value value))
-       (fn-lc-control-pages control)))
-(defun-nx fn-lc-snapshot-header (fn-lbc header control)
- (ec-call (fn-lc-snapshot-header-value fn-lbc header control)))
+
+
 
 (defun fn-lc-replayed-header (disk r mode segs)
  (declare (xargs :guard t :verify-guards nil))
- (let* ((header (fn-lc-adopted-header disk r mode))
+ (let* ((header (fn-lc-cold-adopted-header disk r mode))
         (allocated (ec-call (fn-lc-allocation-header header segs)))
         (next (fn-lc-header-next-id allocated))
         (exhausted (fn-lc-header-exhaustedp allocated))
@@ -81,13 +97,8 @@
         (fn-lc-open-tail-program (cdr entries))) nil))
 (defun fn-lc-open-program (disk r mode segs)
  (declare (xargs :guard t :verify-guards nil))
- (let ((pages (fn-lc-memo-page-requests
-               (fn-lc-join (fn-lc-directory-path-pages disk r mode)
-                          (fn-lc-at 1 (fn-lc-pgs-open-requests disk r mode))))))
-  (fn-lc-join (list (list :pread :root 0 (fn-lc-root-slot-octets))
-                   (list :pread :root 1 (fn-lc-root-slot-octets)))
-   (fn-lc-join (fn-lc-open-page-program pages)
-              (fn-lc-open-tail-program (fn-lc-tail-entries disk r mode segs))))))
+ (fn-lc-join (fn-lc-at 5 (fn-lc-cold-select disk r mode))
+             (fn-lc-open-tail-program (fn-lc-cold-tail-entries disk r mode segs))))
 (defun fn-lc-read-octets (trace)
  (declare (xargs :guard t))
  (if (consp trace)
@@ -95,18 +106,14 @@
      (fn-lc-read-octets (cdr trace))) 0))
 (defun fn-lc-adopt (disk r mode segs fn-lbc)
  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-p fn-lbc) :verify-guards nil))
- (let* ((header (fn-lc-adopted-header disk r mode))
+ (let* ((selected (fn-lc-cold-select disk r mode))
+        (header (fn-lc-header-of-open selected))
         (lengths (fn-lc-layout-lengths header))
-        (columns (fn-lc-adopted-columns disk r mode))
+        (columns (fn-lc-cold-adopted-columns disk r mode))
         (value (fn-lc-decoded-columns columns lengths))
-        (trace (fn-lc-join
-                 (list (list :pread :root 0 (fn-lc-root-slot-octets))
-                       (list :pread :root 1 (fn-lc-root-slot-octets)))
-                 (fn-lc-open-page-program
-                   (fn-lc-memo-page-requests
-                    (fn-lc-join (fn-lc-directory-path-pages disk r mode)
-                      (fn-lc-at 1 (fn-lc-pgs-open-requests disk r mode))))))))
-   (if (and (fn-lc-headerp header) (fn-lc-lengths-p lengths)
+        (trace (fn-lc-at 5 selected)))
+   (if (and (equal (fn-lc-head selected) :ok)
+            (fn-lc-headerp header) (fn-lc-lengths-p lengths)
             (equal (len lengths) 8) (not (equal columns :bad))
             (fn-lc-decoded-columnsp value)
             (not (equal (fn-lc-selected-control disk r mode) :bad)))
@@ -168,7 +175,7 @@
  (let* ((program (fn-lc-open-program disk r mode segs))
         (cut (fn-lc-outcome-ok-count outcome (len program)))
         (trace (fn-lc-take (min (+ 1 cut) (len program)) program))
-        (header (fn-lc-adopted-header disk r mode)))
+        (header (fn-lc-cold-adopted-header disk r mode)))
    (if (not (equal cut (len program))) (mv :uncertain fn-lbc disk segs trace :fault)
     (mv-let (answer fn-lbc adopted-disk adopted-segs adopted-trace)
       (fn-lc-adopt disk r mode segs fn-lbc)
@@ -187,10 +194,10 @@
 (defun fn-lc-opened-owner (out)
  (declare (xargs :guard t)) (fn-lc-at 5 out))
 
-(verify-guards fn-lc-control-pages)
+
 (verify-guards fn-lc-selected-control)
-(verify-guards fn-lc-snapshot-header-value)
-(verify-guards fn-lc-snapshot-header)
+
+
 (verify-guards fn-lc-replayed-header)
 (verify-guards fn-lc-page-addresses)
 (verify-guards fn-lc-directory-path-pages)
