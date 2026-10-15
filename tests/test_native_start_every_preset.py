@@ -31,6 +31,7 @@ from tests.native_harness import (Acl2Session, EXIT, Node, acl2_boolean, environ
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 from tests.bp_producer import post_articles
+from tests.test_native_source_corpus_bp import spliced
 
 DTN = native_image("FN_NATIVE_DTN_DEVELOPER_HOST")
 # The presets as `operator CONFIG init` takes them: the small preset is the
@@ -154,9 +155,9 @@ class StartEveryPresetTests(unittest.TestCase):
         # (policy path-identity, set in the node fixture) and "!!" ahead of the
         # sender's Path (books/path-update fn-pu-edit-path); every other octet
         # is the sender's article.
-        self.assertTrue(article.startswith(b"Path: "), article[:80])
-        self.assertEqual(inspected.stdout,
-                         b"Path: receiver.bp.gate.invalid!!" + article[len(b"Path: "):])
+        expected = spliced(article, "receiver.bp.gate.invalid")
+        self.assertIsNotNone(expected, article[:120])
+        self.assertEqual(inspected.stdout, expected)
 
     def test_the_served_run_starts_at_every_preset(self):
         for preset in PRESETS:

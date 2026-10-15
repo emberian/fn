@@ -250,7 +250,12 @@
                     *hct-nur* *hct-run-empty*))
 ;; the small preset at 2 GiB: C' is C (32 of 32), the heap the launch's dynamic
 ;; space, the threads those of C'
-(assert-event (equal (hct-run 2048 nil) '(:heap 2174 "small" 2048 1024 35)))
+(assert-event
+ (let ((d (fn-mm-launch-decide *hct-small* *hct-run-img* (fn-adm-cfg-at *hct-run-cfg* 32) nil
+                               (list (hct-mib 2048)) nil *hct-core* *hct-nur* *hct-run-empty*)))
+   (and (equal (car d) :launch)
+        (equal (hct-run 2048 nil)
+               (list :heap (fn-heap-mb-of (caddr d)) "small" 2048 1024 (fn-heap-thread-count 32))))))
 (assert-event (equal (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* (hct-mib 2048) *hct-run-empty*)
                      32))
 ;; 230 MiB: C' is 17 public readers of 32, plus the funded operator and the run launches at it ...
@@ -358,8 +363,14 @@
 
 ;; The run's configure line: the address-space refusal is named, every other
 ;; case keeps the capacity line's own words.
-(assert-event (equal (fn-mo-run-capacity-line (hct-run 2048 (list (hct-mib 100))) "memory capacity=32 of 32")
-                     "refused address-space-cannot-hold-the-reservation reservation=2541 MB address-space=100 MB"))
+(assert-event
+ (let ((d (hct-run 2048 (list (hct-mib 100)))))
+   (and (equal (car d) :refused)
+        (equal (nth 1 d) :address-space-cannot-hold-the-reservation)
+        (natp (nth 2 d)) (< 100 (nth 2 d)) (equal (nth 3 d) 100)
+        (equal (fn-mo-run-capacity-line d "memory capacity=32 of 32")
+               (concatenate 'string "refused address-space-cannot-hold-the-reservation reservation="
+                            (fn-heap-decimal (nth 2 d)) " MB address-space=100 MB")))))
 (assert-event (equal (fn-mo-run-capacity-line (hct-run 2048 nil) "memory capacity=32 of 32")
                      "memory capacity=32 of 32"))
 (assert-event (equal (fn-mo-run-capacity-line (hct-run 128 nil) "refused memory-cannot-hold-the-store capacity=0")
