@@ -1245,6 +1245,9 @@
 
 (defun-nx fn-lbc-corr (fn-lbc rows log)
   (and (equal (fn-lbc-count fn-lbc) (len rows))
+       (equal (fn-lbc-directory-count (nth *fn-lbc-directory-store* fn-lbc))
+              (fn-lbc-count fn-lbc))
+       (fn-lb-log-model-segsp log)
        (equal (fn-lbc-summary-groups fn-lbc) (fn-lbc-row-group-keys rows))
        (fn-lbc-rows-corr 0 rows 0 fn-lbc log)
        (fn-lbc-tables-corr fn-lbc rows)

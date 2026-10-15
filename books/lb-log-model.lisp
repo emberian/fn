@@ -124,6 +124,27 @@
            (fn-lb-log-model-entriesp (cdr entries)))
     (null entries)))
 
+; The semantic payload is the parser observation of this segment's bytes.
+; Both ordinary wire payloads and raw reclaim tombstones bind the stored range.
+(defun fn-lb-log-model-entry-payloadp (entry bytes)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (true-listp entry) (true-listp bytes)
+       (let* ((payload (nth 6 entry))
+              (offset (nfix (nth 3 entry)))
+              (length (nfix (nth 4 entry))))
+         (and (<= (+ offset length) (len bytes))
+              (equal (if (fn-rcl-tombstonep payload)
+                         (fn-la-tombstone-raw payload)
+                       (fn-la-payload-wire payload))
+                     (take length (nthcdr offset bytes)))))))
+
+(defun fn-lb-log-model-entries-payloadp (entries bytes)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp entries)
+      (and (fn-lb-log-model-entry-payloadp (car entries) bytes)
+           (fn-lb-log-model-entries-payloadp (cdr entries) bytes))
+    (null entries)))
+
 (defun fn-lb-log-model-segsp (segs)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp segs)
@@ -131,6 +152,7 @@
            (unsigned-byte-p 64 (caar segs))
            (fn-cbor-octet-listp (cadar segs))
            (fn-lb-log-model-entriesp (caddar segs))
+           (fn-lb-log-model-entries-payloadp (caddar segs) (cadar segs))
            (fn-lb-log-model-segsp (cdr segs)))
     (null segs)))
 
