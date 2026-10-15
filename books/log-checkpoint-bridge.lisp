@@ -36,7 +36,15 @@
 (local (defthm fn-lc-length-of-conditional-entry
  (equal (len (append (if move (list a) (if article (list b) c)) rest))
         (+ (if (or move article) 1 (len c)) (len rest)))
- :hints (("Goal" :cases (move article)))))
+ :hints (("Goal" :cases (move article)
+   :in-theory (union-theories (theory 'minimal-theory)
+     '((:DEFINITION LEN)
+       (:DEFINITION NOT)
+       (:EXECUTABLE-COUNTERPART BINARY-+)
+       (:EXECUTABLE-COUNTERPART LEN)
+       (:REWRITE CDR-CONS)
+       (:REWRITE COMMUTATIVITY-OF-+)
+       (:REWRITE LEN-OF-APPEND)))))))
 (defthm fn-lc-scan-count-with-terminal
  (<= (len (nth 2 (fn-lc-scan-bytes bytes prev unit max fuel)))
      (+ (len (nth 1 (fn-lc-scan-bytes bytes prev unit max fuel)))

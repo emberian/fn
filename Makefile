@@ -1696,6 +1696,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/lc-grounded-id-search-tests \
 	tests/acl2/lc-open-fixtures \
 	tests/acl2/lc-open-id-search-tests \
+	tests/acl2/lc-cold-id5-tests \
 	tests/acl2/lc-open-read-counterexample-tests \
 	tests/acl2/lc-record-effect-tests \
 	tests/acl2/lc-pool-span-counterexample-tests \
