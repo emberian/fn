@@ -1643,6 +1643,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/lc-cold-candidate-tests \
 	tests/acl2/lc-cold-selection-tests \
 	tests/acl2/lc-cold-control-fallback-tests \
+	tests/acl2/lc-open-composite-counterexample-tests \
 	books/log-checkpoint-allocation \
 	books/log-checkpoint-allocation-proof \
 	books/log-checkpoint-backpressure \
@@ -1667,6 +1668,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/log-checkpoint-open-read-trace \
 	books/log-checkpoint-open-guards \
 	books/log-checkpoint-open \
+	books/log-checkpoint-open-bound \
 	tests/acl2/lc-record-frame-tests \
 	books/log-checkpoint-selection-proof \
 	books/log-checkpoint-tail \
