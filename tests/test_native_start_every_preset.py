@@ -150,7 +150,13 @@ class StartEveryPresetTests(unittest.TestCase):
         inspected = run([str(DEVELOPER), "--fn", "store", str(node.store_path), "inspect",
                          msgid.decode("ascii")], env=environment(), timeout=120)
         self.assertEqual(inspected.returncode, EXIT.OK, inspected.stderr)
-        self.assertEqual(inspected.stdout, article)
+        # The receiving store records the verified hop: its own path identity
+        # (policy path-identity, set in the node fixture) and "!!" ahead of the
+        # sender's Path (books/path-update fn-pu-edit-path); every other octet
+        # is the sender's article.
+        self.assertTrue(article.startswith(b"Path: "), article[:80])
+        self.assertEqual(inspected.stdout,
+                         b"Path: receiver.bp.gate.invalid!!" + article[len(b"Path: "):])
 
     def test_the_served_run_starts_at_every_preset(self):
         for preset in PRESETS:

@@ -337,7 +337,11 @@ unbounded (&rest or &key)."
     (fn-owner-tls-established :ok)
     ;; The plaintext open installs the SASL context (books/nntp-auth.lisp
     ;; (:sasl-context SEED BINDING)); it emits no reply.
-    (fn-owner-sasl-context :ok)))
+    (fn-owner-sasl-context :ok)
+    ;; The connection's physical reservation goes back to the owner's held
+    ;; bank when the mux finishes it (host/native/mux.lisp fnn-mux-finish,
+    ;; host/owner-host.lisp fn-owner-memory-physical-return).
+    (fn-owner-memory-physical-return :returned)))
 
 (defun fnn-owner-octets-global (name)
   (ecase name (fn-owner-output *output*)))
