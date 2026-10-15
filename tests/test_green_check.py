@@ -533,6 +533,49 @@ class BoxTests(Fixture):
         answer = json.loads(done.stdout)
         self.assertIsNone(answer["identity"])
 
+    def _entries(self, key, rows):
+        """Fixture entries under KEY: (origin, published_at, cert bytes, recorded sha or None)."""
+        for origin, published, cert, recorded in rows:
+            entry = self.cache / key / origin
+            entry.mkdir(parents=True)
+            (entry / "book.cert").write_bytes(cert)
+            sha = hashlib.sha256(cert).hexdigest() if recorded is None else recorded
+            (entry / "meta.json").write_text(json.dumps(
+                {"toolchain_identity": "rec", "published_at": published,
+                 "cert_sha256": sha, "book": "books/a"}))
+
+    def test_scan_answers_the_newest_entry_whose_cert_verifies(self):
+        # the newest cert is corrupt: the answer falls back to the next newest,
+        # and an entry at another identity never counts
+        self._entries("k", [("o1", "2026-10-01", b"one", None),
+                            ("o2", "2026-10-03", b"two", None),
+                            ("o3", "2026-10-05", b"three", "0" * 64)])
+        other = self.cache / "k" / "o4"
+        other.mkdir()
+        (other / "book.cert").write_bytes(b"four")
+        (other / "meta.json").write_text(json.dumps({"toolchain_identity": "other",
+                                                     "published_at": "2026-10-09"}))
+        self.assertEqual(green_check.scan(str(self.cache), ["k", "absent"], "rec")["k"]["origin"], "o2")
+
+    def test_scan_ties_go_to_the_later_origin(self):
+        self._entries("k", [("a", "2026-10-02", b"x", None), ("b", "2026-10-02", b"y", None)])
+        self.assertEqual(green_check.scan(str(self.cache), ["k"], "rec")["k"]["origin"], "b")
+
+    def test_scan_hashes_no_older_cert_once_one_verifies(self):
+        # C19 (10-14): hashing every origin's cert outran the 300 s ssh answer
+        self._entries("k", [(f"o{i}", f"2026-10-{i + 10}", b"c%d" % i, None) for i in range(8)])
+        opened = []
+        real_open = open
+
+        def counting(path, *args, **kwargs):
+            if str(path).endswith("book.cert"):
+                opened.append(Path(path).parent.name)
+            return real_open(path, *args, **kwargs)
+        with patch("builtins.open", side_effect=counting):
+            hit = green_check.scan(str(self.cache), ["k"], "rec")["k"]
+        self.assertEqual(hit["origin"], "o7")
+        self.assertEqual(opened, ["o7"])
+
     def test_the_record_launcher_is_the_farms_hbox_launcher(self):
         import farm
         self.assertEqual(green_check.RECORD_LAUNCHER, farm.HOSTS["hbox"]["acl2"])

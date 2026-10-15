@@ -111,30 +111,37 @@ def scan(cache: str, keys: list[str], identity: str | None) -> dict:
             origins = sorted(os.listdir(directory))
         except OSError:
             continue
-        best = None
-        for origin in origins:
+        # The answer is the newest entry at IDENTITY whose cert verifies
+        # (ties: the later origin in sorted order).  Read every meta.json,
+        # then hash certs newest first and stop at the first that verifies:
+        # hashing every origin's cert (up to 18 per key, ~1 GB per tree)
+        # outran the 300 s ssh answer on a saturated box (C19, 10-14).
+        candidates = []
+        for index, origin in enumerate(origins):
             entry = os.path.join(directory, origin)
             try:
                 with open(os.path.join(entry, "meta.json"), encoding="utf-8") as handle:
                     meta = json.load(handle)
-                if not isinstance(meta, dict) or meta.get("toolchain_identity") != identity:
-                    continue
+            except (OSError, ValueError):
+                continue
+            if not isinstance(meta, dict) or meta.get("toolchain_identity") != identity:
+                continue
+            candidates.append((str(meta.get("published_at", "")), index, origin, entry, meta))
+        for published_at, _index, origin, entry, meta in sorted(candidates, reverse=True):
+            try:
                 digest = hashlib.sha256()
                 with open(os.path.join(entry, "book.cert"), "rb") as cert:
                     for chunk in iter(lambda: cert.read(1 << 20), b""):
                         digest.update(chunk)
-                if meta.get("cert_sha256") and digest.hexdigest() != meta["cert_sha256"]:
-                    continue
-            except (OSError, ValueError):
+            except OSError:
                 continue
-            row = {"toolchain_identity": identity, "origin": origin,
-                   "published_at": str(meta.get("published_at", "")),
-                   "origin_host": meta.get("origin_host"),
-                   "cert_sha256": meta.get("cert_sha256"), "book": meta.get("book")}
-            if best is None or row["published_at"] >= best["published_at"]:
-                best = row
-        if best is not None:
-            found[key] = best
+            if meta.get("cert_sha256") and digest.hexdigest() != meta["cert_sha256"]:
+                continue
+            found[key] = {"toolchain_identity": identity, "origin": origin,
+                          "published_at": published_at,
+                          "origin_host": meta.get("origin_host"),
+                          "cert_sha256": meta.get("cert_sha256"), "book": meta.get("book")}
+            break
     return found
 
 
