@@ -735,6 +735,16 @@
    "owner": "builder-L",
    "ruling": "M28 traced the mechanism to fnn-command-log-scan-store missing fnn-extent-pool-open-context (a durable-log verb): owner L",
    "transfer_from": "builder-M"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_status_live_posts.NativeStatusLivePostsTests.test_status_after_live_posts_stays_within_the_slack",
+   "dev_sha": "150e2d6f4",
+   "item": "STATUS-LIVE-POSTS-SLACK",
+   "owner": "builder-M",
+   "ruling": "M29 2026-10-15: DEVCTL-M-SIZING's admission mechanism is repaired (60000/60000 accepted, bounded 440 retry, release shown by eventual acceptance); the remaining red is status growth 3.435 s over the 2.0 s slack, item STATUS-LIVE-POSTS-SLACK",
+   "transfer_from": "builder-B",
+   "item_from": "DEVCTL-M-SIZING"
   }
  ]
 }

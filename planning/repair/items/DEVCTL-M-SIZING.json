@@ -3,11 +3,13 @@
  "detail": "Cases: setUpClass (tests.test_native_image_differential.ReleaseAgainstReferenceTests); tests.test_native_store_lineage x3; tests.test_native_foreign_format_open (subTest operator health; matches only after the test_budget subTest fix); tests.test_native_verdicts KeyTests (FN_NATIVE_LAUNCHER_SHA256, launcher splice); tests.test_native_operator_verdicts developer_init; tests.test_native_status_live_posts (settle with builder-P). rows under DEV-CONTROL-UNTRACED-20261013 (a row's item is fixed at its first amendment record; the owner moves by known_reds.py transfer); triage build/coordinator/tools-builder-b/b24/DEVCTL-TRIAGE-20261013.md",
  "file": "host/native/",
  "id": "DEVCTL-M-SIZING",
- "notes": [],
+ "notes": [
+  "10-15 00:44 M29 2026-10-15: all seven rows green on hbox at lane memory-devctl-sizing (native-m29-devctl at 530163ba7: store_lineage 3/3, foreign_format_open 2/2, verdicts 8/8, operator_verdicts 4/4; native-m29-devctl-leg3 at 057f03acb: image_differential OK). status_live_posts's admission red is repaired (60000/60000 accepted) and its remaining status-slack red is re-filed to STATUS-LIVE-POSTS-SLACK."
+ ],
  "owner": "builder-M",
  "severity": "high",
  "source": "devctl-150e2d6f48a0",
- "state": "open",
+ "state": "closed",
  "title": "startup refusals and status from memory sizing: image_differential, store_lineage x3, foreign_format_open, verdicts key, operator_verdicts, status_live_posts",
- "updated": "2026-10-13T13:33:49Z"
+ "updated": "2026-10-15T04:44:48Z"
 }
