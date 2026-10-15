@@ -102,72 +102,286 @@
 (verify-guards fn-lc-cold-directory-path)
 
 
+; Address specification from the checkpoint format, not a candidate trace.
+(defun fn-lc-record-metadata-entries (table header)
+ (declare (xargs :guard t))
+ (let ((lengths (fn-lc-layout-lengths header)))
+  (if (and (fn-lc-headerp header) (fn-lc-lengths-p lengths)
+           (equal (len lengths) 8)
+           (equal (len table) (+ 1 (fn-lc-lengths-sum lengths)
+                              (len (fn-lc-at 4 header)) (len (fn-lc-at 5 header)))))
+      (fn-lc-cold-entries
+       (fn-lc-cold-range (+ (len (fn-lc-at 4 header)) (len (fn-lc-at 5 header)))
+                         (+ 1 (fn-lc-lengths-sum lengths))) table)
+    nil)))
+(defun fn-lc-record-metadata-addresses (rec pages)
+ (declare (xargs :guard t :verify-guards nil))
+ (let* ((directory (pgs-lookup (pgs-rec-dir-addr rec) pages))
+        (table (pgs-flatten (ec-call (pgs-contents directory pages))))
+        (header-address (fn-lc-head (fn-lc-head table)))
+        (header (pgs-lookup header-address pages)))
+  (cons (pgs-rec-dir-addr rec)
+   (fn-lc-join (fn-lc-cold-physical directory)
+    (if (consp table)
+        (cons header-address
+         (fn-lc-cold-physical (fn-lc-record-metadata-entries table header))) nil)))))
+; The stopping observer uses PGS verdicts. It never calls the candidate.
+(defun fn-lc-record-checked-control-path (rec table header pages)
+ (declare (xargs :guard t :verify-guards nil))
+ (fn-lc-pgs-checked-requests (fn-lc-record-metadata-entries table header)
+                           (pgs-rec-txid rec) :eager pages))
+(defun fn-lc-record-checked-table-path (rec pages directory)
+ (declare (xargs :guard t :verify-guards nil))
+ (let* ((txid (pgs-rec-txid rec))
+        (checked (fn-lc-pgs-checked-requests directory txid :eager pages))
+        (cs (ec-call (pgs-contents directory pages)))
+        (table (pgs-flatten cs)))
+  (if (or (ec-call (pgs-check-pages directory txid :eager pages 0 :table-damaged))
+          (ec-call (pgs-tables-verdict cs (pgs-rec-npages rec) txid 0))
+          (not (consp table))) checked
+    (let* ((entry (fn-lc-head table)) (address (fn-lc-head entry))
+           (header (pgs-lookup address pages)))
+     (fn-lc-join checked
+      (cons address
+       (if (ec-call (pgs-check-pages (list entry) txid :eager pages 0 :page-damaged)) nil
+        (fn-lc-record-checked-control-path rec table header pages))))))))
+(defun fn-lc-record-checked-metadata-path (rec pages)
+ (declare (xargs :guard t :verify-guards nil))
+ (let* ((address (pgs-rec-dir-addr rec)) (directory (pgs-lookup address pages)))
+  (if (not (pgs-rec-valid rec)) nil
+   (cons address
+    (if (pgs-dir-verdict rec directory (pgs-digest directory)) nil
+      (fn-lc-record-checked-table-path rec pages directory))))))
+(defun fn-lc-cold-prefix-p (prefix whole)
+ (declare (xargs :guard t))
+ (if (consp prefix)
+     (and (consp whole) (equal (car prefix) (car whole))
+          (fn-lc-cold-prefix-p (cdr prefix) (cdr whole)))
+   (equal prefix nil)))
+(defun fn-lc-cold-candidate-prefix-p (candidate rec pages)
+ (declare (xargs :guard t :verify-guards nil))
+ (let ((requests (fn-lc-at 3 candidate))
+       (addresses (fn-lc-record-metadata-addresses rec pages)))
+  (and (equal requests (fn-lc-record-checked-metadata-path rec pages))
+       (fn-lc-cold-prefix-p requests addresses)
+       (implies (equal (fn-lc-head (fn-lc-head candidate)) :ok)
+                (equal requests addresses)))))
+(defun fn-lc-cold-candidate-prefixes-p (order slots pages)
+ (declare (xargs :guard t :verify-guards nil))
+ (if (consp order)
+  (let* ((rec (pgs-slot (car order) slots))
+         (candidate (fn-lc-cold-candidate rec pages)))
+   (and (fn-lc-cold-candidate-prefix-p candidate rec pages)
+        (or (equal (fn-lc-head (fn-lc-head candidate)) :ok)
+            (fn-lc-cold-candidate-prefixes-p (cdr order) slots pages)))) t))
+(defun fn-lc-record-checked-path-order (order slots pages)
+ (declare (xargs :guard t :verify-guards nil))
+ (if (consp order)
+  (let* ((rec (pgs-slot (car order) slots))
+         (candidate (fn-lc-cold-candidate rec pages))
+         (requests (fn-lc-record-checked-metadata-path rec pages)))
+   (if (equal (fn-lc-head (fn-lc-head candidate)) :ok) requests
+    (fn-lc-join requests (fn-lc-record-checked-path-order (cdr order) slots pages)))) nil))
+(defun fn-lc-record-metadata-addresses-order (order slots pages)
+ (declare (xargs :guard t :verify-guards nil))
+ (if (consp order)
+  (let* ((rec (pgs-slot (car order) slots))
+         (candidate (fn-lc-cold-candidate rec pages))
+         (addresses (fn-lc-record-metadata-addresses rec pages)))
+   (if (equal (fn-lc-head (fn-lc-head candidate)) :ok) addresses
+    (fn-lc-join addresses (fn-lc-record-metadata-addresses-order (cdr order) slots pages)))) nil))
+(verify-guards fn-lc-record-metadata-addresses)
+(verify-guards fn-lc-record-checked-control-path)
+(verify-guards fn-lc-record-checked-table-path)
+(verify-guards fn-lc-record-checked-metadata-path)
+(verify-guards fn-lc-cold-candidate-prefix-p)
+(verify-guards fn-lc-cold-candidate-prefixes-p)
+(verify-guards fn-lc-record-checked-path-order)
+(verify-guards fn-lc-record-metadata-addresses-order)
+
+
 (local (include-book "../tests/acl2/lc-open-fixtures"))
 (local (include-book "log-checkpoint-selection-proof"))
+; The mutants change a candidate result BEFORE selector orchestration.
+; Both verdicts and every independent format/verdict specification stay fixed.
+(local (defun fn-lc-cold-mutant-candidate (rec pages mutation)
+ (let* ((one (fn-lc-cold-candidate rec pages)) (requests (fn-lc-at 3 one)))
+  (list (fn-lc-head one) (fn-lc-at 1 one) (fn-lc-at 2 one)
+   (if (equal mutation :eager-column) (fn-lc-join requests (list 2))
+       (remove-equal 99 requests))))))
+(local (defun fn-lc-cold-mutant-path-order (order slots pages mutation)
+ (if (consp order)
+  (let* ((candidate (fn-lc-cold-mutant-candidate (pgs-slot (car order) slots) pages mutation))
+         (requests (fn-lc-at 3 candidate)))
+   (if (equal (fn-lc-head (fn-lc-head candidate)) :ok) requests
+    (fn-lc-join requests (fn-lc-cold-mutant-path-order (cdr order) slots pages mutation)))) nil)))
+
 (encapsulate ()
  (local (defattach pgs-digest fn-lc-proof-digest))
- ; Whole-claim positives and isolated biting mutations BEFORE the proof.
- ; empty
- (assert-event (let* ((disk (fn-lc-at 0 (lco-id5-input 1))) (r :lc) (mode :eager))
- (let ((out (fn-lc-cold-select disk r mode)))
+ (assert-event (let ((disk (fn-lc-at 0 (lco-id5-input 1))) (r :lc) (mode :eager))
+ (let* ((out (fn-lc-cold-select disk r mode))
+        (order (fn-lc-cold-root-order disk r))
+        (slots (pgs-root-slots r disk))
+        (pages (pgs-pages disk)))
   (and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
-       (equal (fn-lc-at 5 out)
-        (fn-lc-join
-         (list (list :pread :root 0 (fn-lc-root-slot-octets))
-               (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
+       (and (fn-lc-cold-candidate-prefixes-p order slots pages)
+            (equal (fn-lc-at 5 out)
+             (fn-lc-join
+              (list (list :pread :root 0 (fn-lc-root-slot-octets))
+                    (list :pread :root 1 (fn-lc-root-slot-octets)))
+              (fn-lc-cold-page-program
+               (fn-lc-cold-first-requests
+                (fn-lc-record-checked-path-order order slots pages) nil)))))
        (fn-lc-cold-only-metadata-requests-p
-         (fn-lc-at 5 out) (fn-lc-cold-directory-path disk r mode))))))
- ; fallback
- (assert-event (let* ((disk (lcc-fallback-disk)) (r :lc) (mode :eager))
- (let ((out (fn-lc-cold-select disk r mode)))
+         (fn-lc-at 5 out)
+         (fn-lc-record-metadata-addresses-order order slots pages))))))
+ (assert-event (let ((disk (lcc-fallback-disk)) (r :lc) (mode :eager))
+ (let* ((out (fn-lc-cold-select disk r mode))
+        (order (fn-lc-cold-root-order disk r))
+        (slots (pgs-root-slots r disk))
+        (pages (pgs-pages disk)))
   (and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
-       (equal (fn-lc-at 5 out)
-        (fn-lc-join
-         (list (list :pread :root 0 (fn-lc-root-slot-octets))
-               (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
+       (and (fn-lc-cold-candidate-prefixes-p order slots pages)
+            (equal (fn-lc-at 5 out)
+             (fn-lc-join
+              (list (list :pread :root 0 (fn-lc-root-slot-octets))
+                    (list :pread :root 1 (fn-lc-root-slot-octets)))
+              (fn-lc-cold-page-program
+               (fn-lc-cold-first-requests
+                (fn-lc-record-checked-path-order order slots pages) nil)))))
        (fn-lc-cold-only-metadata-requests-p
-         (fn-lc-at 5 out) (fn-lc-cold-directory-path disk r mode))))))
- ; eager
- (assert-event (let* ((disk (fn-lc-at 0 (lco-id5-input 1))) (r :lc) (mode :eager))
- (not (let ((out (fn-lc-cold-select disk r mode)))
-(and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
-       (equal (fn-lc-at 5 out)
-        (fn-lc-join
-         (list (list :pread :root 0 (fn-lc-root-slot-octets))
-               (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
-       (fn-lc-cold-only-metadata-requests-p
-         (fn-lc-join (fn-lc-at 5 out) (fn-lc-cold-page-program (list 2)))
-         (fn-lc-cold-directory-path disk r mode)))))))
- ; drop99
- (assert-event (let* ((disk (lcc-fallback-disk)) (r :lc) (mode :eager))
- (not (let ((out (fn-lc-cold-select disk r mode)))
-(and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
-       (equal (remove-equal (list :pread :page 99 (fn-lc-page-octets)) (fn-lc-at 5 out))
-        (fn-lc-join
-         (list (list :pread :root 0 (fn-lc-root-slot-octets))
-               (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
-       (fn-lc-cold-only-metadata-requests-p
-         (fn-lc-at 5 out) (fn-lc-cold-directory-path disk r mode)))))))
+         (fn-lc-at 5 out)
+         (fn-lc-record-metadata-addresses-order order slots pages))))))
+ (assert-event
+  (let* ((disk (fn-lc-at 0 (lco-id5-input 1)))
+         (order (fn-lc-cold-root-order disk :lc))
+         (slots (pgs-root-slots :lc disk)) (pages (pgs-pages disk)))
+   (not (fn-lc-cold-only-metadata-requests-p
+    (fn-lc-cold-page-program (fn-lc-cold-mutant-path-order order slots pages :eager-column))
+    (fn-lc-record-metadata-addresses-order order slots pages)))))
+ (assert-event
+  (let* ((disk (lcc-fallback-disk)) (order (fn-lc-cold-root-order disk :lc))
+         (slots (pgs-root-slots :lc disk)) (pages (pgs-pages disk)))
+   (not (equal (fn-lc-cold-mutant-path-order order slots pages :drop-rejected)
+               (fn-lc-record-checked-path-order order slots pages)))))
 )
-(local (defthm fn-lc-cold-choice-order-agrees
+; Proof follows only after the complete controls above have passed.
+
+(local (defthm lcc-physical-true-list
+ (true-listp (fn-lc-cold-physical entries))))
+(local (defthm lcc-checked-true-list
+ (true-listp (fn-lc-pgs-checked-requests entries txid :eager pages))))
+(local (defthm lcc-checked-prefix
+ (fn-lc-cold-prefix-p (fn-lc-pgs-checked-requests entries txid :eager pages)
+                       (fn-lc-cold-physical entries))
+ :hints (("Goal" :induct (fn-lc-pgs-checked-requests entries txid :eager pages)
+  :in-theory (enable fn-lc-pgs-checked-requests pgs-entry-checked-p pgs-entry-verdict)))))
+(local (defthm lcc-checked-full
+ (implies (not (pgs-check-pages entries txid :eager pages i tag))
+  (equal (fn-lc-pgs-checked-requests entries txid :eager pages)
+         (fn-lc-cold-physical entries)))
+ :hints (("Goal" :induct (pgs-check-pages entries txid :eager pages i tag)
+  :in-theory (enable fn-lc-pgs-checked-requests pgs-entry-checked-p pgs-entry-verdict)))))
+(local (defthm lcc-prefix-of-append
+ (implies (fn-lc-cold-prefix-p a b)
+          (fn-lc-cold-prefix-p a (append b c)))))
+(local (defthm lcc-prefix-after-append
+ (implies (true-listp a)
+  (equal (fn-lc-cold-prefix-p (append a b) (append a c))
+         (fn-lc-cold-prefix-p b c)))))
+(local (defthm lcc-checked-nil
+ (equal (fn-lc-pgs-checked-requests nil txid mode pages) nil)))
+(local (defthm lcc-candidate-path
+ (equal (nth 3 (fn-lc-cold-candidate rec pages))
+        (fn-lc-record-checked-metadata-path rec pages))
+ :hints (("Goal" :in-theory
+  (e/d (fn-lc-cold-candidate fn-lc-cold-candidate-table fn-lc-cold-candidate-control
+        fn-lc-record-checked-metadata-path fn-lc-record-checked-table-path
+        fn-lc-record-checked-control-path fn-lc-record-metadata-entries)
+       (fn-lc-pgs-checked-requests pgs-check-pages pgs-tables-verdict
+        fn-lc-headerp fn-lc-layout-lengths fn-lc-lengths-p fn-lc-lengths-sum
+        fn-lc-cold-range fn-lc-cold-entries pgs-dir-verdict pgs-contents
+        pgs-flatten pgs-rec-valid pgs-rec-txid pgs-rec-npages pgs-rec-dir-addr
+        pgs-lookup pgs-check-pages-iff-good lcc-checked-full))))))
+(local (defthm lcc-checked-metadata-prefix
+ (fn-lc-cold-prefix-p (fn-lc-record-checked-metadata-path rec pages)
+                      (fn-lc-record-metadata-addresses rec pages))
+ :hints (("Goal" :in-theory
+  (e/d (fn-lc-record-checked-metadata-path fn-lc-record-checked-table-path
+        fn-lc-record-checked-control-path fn-lc-record-metadata-addresses)
+       (fn-lc-pgs-checked-requests pgs-check-pages pgs-tables-verdict
+        fn-lc-record-metadata-entries fn-lc-headerp fn-lc-layout-lengths
+        fn-lc-lengths-p fn-lc-lengths-sum fn-lc-cold-range fn-lc-cold-entries
+        pgs-dir-verdict pgs-contents pgs-flatten pgs-rec-valid
+        pgs-rec-txid pgs-rec-npages pgs-rec-dir-addr pgs-lookup pgs-check-pages-iff-good))))))
+(local (defthm lcc-accepted-full
+ (implies (equal (car (car (fn-lc-cold-candidate rec pages))) :ok)
+  (equal (fn-lc-record-checked-metadata-path rec pages)
+         (fn-lc-record-metadata-addresses rec pages)))
+ :hints (("Goal" :in-theory
+  (e/d (fn-lc-cold-candidate fn-lc-cold-candidate-table fn-lc-cold-candidate-control
+        fn-lc-record-checked-metadata-path fn-lc-record-checked-table-path
+        fn-lc-record-checked-control-path fn-lc-record-metadata-addresses
+        fn-lc-record-metadata-entries)
+       (fn-lc-pgs-checked-requests pgs-check-pages pgs-tables-verdict
+        fn-lc-headerp fn-lc-layout-lengths fn-lc-lengths-p fn-lc-lengths-sum
+        fn-lc-cold-range fn-lc-cold-entries pgs-dir-verdict pgs-contents
+        pgs-flatten pgs-rec-valid pgs-rec-txid pgs-rec-npages pgs-rec-dir-addr
+        pgs-lookup pgs-check-pages-iff-good))))))
+(local (defthm lcc-candidate-prefix
+ (fn-lc-cold-candidate-prefix-p (fn-lc-cold-candidate rec pages) rec pages)
+ :hints (("Goal" :in-theory
+  (e/d (fn-lc-cold-candidate-prefix-p)
+       (fn-lc-cold-candidate fn-lc-record-metadata-addresses
+        fn-lc-record-checked-metadata-path))))))
+(local (defthm lcc-all-candidate-prefixes
+ (fn-lc-cold-candidate-prefixes-p order slots pages)
+ :hints (("Goal" :induct (fn-lc-cold-candidate-prefixes-p order slots pages)
+   :in-theory (disable fn-lc-cold-candidate fn-lc-cold-candidate-prefix-p)))))
+(local (defthm lcc-choice-order-agrees
  (equal (car (fn-lc-cold-select-order order slots pages refusals))
         (fn-lc-cold-pgs-choice-order order slots pages refusals))
  :hints (("Goal" :induct (fn-lc-cold-select-order order slots pages refusals)
   :in-theory (disable fn-lc-cold-candidate)))))
-(local (defthm fn-lc-cold-path-order-agrees
+(local (defthm lcc-path-order-agrees
  (equal (nth 1 (fn-lc-cold-select-order order slots pages refusals))
-        (fn-lc-cold-path-order order slots pages))
+        (fn-lc-record-checked-path-order order slots pages))
  :hints (("Goal" :induct (fn-lc-cold-select-order order slots pages refusals)
-  :in-theory (disable fn-lc-cold-candidate)))))
-(local (defthm fn-lc-cold-metadata-of-append
+  :in-theory (disable fn-lc-cold-candidate fn-lc-record-checked-metadata-path)))))
+(local (defthm lcc-prefix-subset
+ (implies (fn-lc-cold-prefix-p a b) (subsetp-equal a b))))
+(local (defthm lcc-subset-weaken-right
+ (implies (subsetp-equal a b) (subsetp-equal a (append b c)))))
+(local (defthm lcc-subset-weaken-left
+ (implies (subsetp-equal a c) (subsetp-equal a (append b c)))))
+(local (defthm lcc-subset-append
+ (equal (subsetp-equal (append a b) c)
+        (and (subsetp-equal a c) (subsetp-equal b c)))))
+(local (defthm lcc-checked-subset
+ (subsetp-equal (fn-lc-record-checked-metadata-path rec pages)
+               (fn-lc-record-metadata-addresses rec pages))
+ :hints (("Goal" :use ((:instance lcc-checked-metadata-prefix))
+  :in-theory (disable fn-lc-record-checked-metadata-path fn-lc-record-metadata-addresses
+                     lcc-checked-metadata-prefix)))))
+(local (defthm lcc-path-subset
+ (subsetp-equal (fn-lc-record-checked-path-order order slots pages)
+               (fn-lc-record-metadata-addresses-order order slots pages))
+ :hints (("Goal" :induct (fn-lc-record-checked-path-order order slots pages)
+  :in-theory (disable fn-lc-cold-candidate fn-lc-record-checked-metadata-path
+                     fn-lc-record-metadata-addresses)))))
+(local (defthm lcc-memo-subset
+ (implies (subsetp-equal pages allowed)
+          (subsetp-equal (fn-lc-cold-first-requests pages seen) allowed))
+ :hints (("Goal" :induct (fn-lc-cold-first-requests pages seen)))))
+(local (defthm lcc-page-program-is-metadata
+ (implies (subsetp-equal pages allowed)
+  (fn-lc-cold-only-metadata-requests-p (fn-lc-cold-page-program pages) allowed))
+ :hints (("Goal" :induct (fn-lc-cold-page-program pages)))))
+(local (defthm lcc-metadata-of-append
  (equal (fn-lc-cold-only-metadata-requests-p (append a b) allowed)
         (and (fn-lc-cold-only-metadata-requests-p a allowed)
              (fn-lc-cold-only-metadata-requests-p b allowed)))))
-(local (defthm fn-lc-cold-metadata-cons-unfolds
+(local (defthm lcc-metadata-cons-unfolds
  (equal (fn-lc-cold-only-metadata-requests-p (cons request trace) allowed)
   (and (equal (fn-lc-head request) :pread)
        (or (and (equal (fn-lc-at 1 request) :root)
@@ -175,67 +389,68 @@
            (and (equal (fn-lc-at 1 request) :page)
                 (member-equal (fn-lc-at 2 request) allowed)))
        (fn-lc-cold-only-metadata-requests-p trace allowed)))))
-(local (defthm fn-lc-cold-page-program-is-metadata
- (implies (subsetp-equal pages allowed)
-  (fn-lc-cold-only-metadata-requests-p (fn-lc-cold-page-program pages) allowed))
- :hints (("Goal" :induct (fn-lc-cold-page-program pages)))))
-(local (defthm fn-lc-cold-subset-self
- (subsetp-equal pages pages)))
-(local (defthm fn-lc-cold-take-five-unfolds
+(local (defthm lcc-take-five-unfolds
  (equal (take 5 x) (list (car x) (nth 1 x) (nth 2 x) (nth 3 x) (nth 4 x)))
  :hints (("Goal" :in-theory (enable take nth)
   :expand ((take 5 x) (:free (y) (take 4 y)) (:free (y) (take 3 y))
            (:free (y) (take 2 y)) (:free (y) (take 1 y)))))))
 (defthm fn-lc-cold-selection-is-metadata-only
- (let ((out (fn-lc-cold-select disk r mode)))
+ (let* ((out (fn-lc-cold-select disk r mode))
+        (order (fn-lc-cold-root-order disk r))
+        (slots (pgs-root-slots r disk))
+        (pages (pgs-pages disk)))
   (and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
-       (equal (fn-lc-at 5 out)
-        (fn-lc-join
-         (list (list :pread :root 0 (fn-lc-root-slot-octets))
-               (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
+       (and (fn-lc-cold-candidate-prefixes-p order slots pages)
+            (equal (fn-lc-at 5 out)
+             (fn-lc-join
+              (list (list :pread :root 0 (fn-lc-root-slot-octets))
+                    (list :pread :root 1 (fn-lc-root-slot-octets)))
+              (fn-lc-cold-page-program
+               (fn-lc-cold-first-requests
+                (fn-lc-record-checked-path-order order slots pages) nil)))))
        (fn-lc-cold-only-metadata-requests-p
-         (fn-lc-at 5 out) (fn-lc-cold-directory-path disk r mode))))
+         (fn-lc-at 5 out)
+         (fn-lc-record-metadata-addresses-order order slots pages))))
+
  :rule-classes nil
  :hints (("Goal" :in-theory
-   (e/d (fn-lc-cold-select fn-lc-cold-pgs-choice fn-lc-cold-directory-path)
-        (fn-lc-cold-select-order fn-lc-cold-pgs-choice-order fn-lc-cold-path-order
-         fn-lc-cold-root-order fn-lc-cold-slot-refusals fn-lc-cold-first-requests
-         fn-lc-cold-candidate fn-lc-cold-page-program fn-lc-cold-only-metadata-requests-p)))))
+  (e/d (fn-lc-cold-select fn-lc-cold-pgs-choice)
+       (fn-lc-cold-select-order fn-lc-cold-pgs-choice-order
+        fn-lc-record-checked-path-order fn-lc-record-metadata-addresses-order
+        fn-lc-cold-candidate-prefixes-p fn-lc-cold-root-order fn-lc-cold-slot-refusals
+        fn-lc-cold-first-requests fn-lc-cold-candidate fn-lc-cold-page-program
+        fn-lc-cold-only-metadata-requests-p)))))
 (encapsulate ()
  (local (defattach pgs-digest fn-lc-proof-digest))
- (defteeth fn-lc-cold-selection-is-metadata-only
- :claim (let ((out (fn-lc-cold-select disk r mode)))
+(defteeth fn-lc-cold-selection-is-metadata-only
+ :claim (let* ((out (fn-lc-cold-select disk r mode))
+        (order (fn-lc-cold-root-order disk r))
+        (slots (pgs-root-slots r disk))
+        (pages (pgs-pages disk)))
   (() (and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
-       (equal (fn-lc-at 5 out)
-        (fn-lc-join
-         (list (list :pread :root 0 (fn-lc-root-slot-octets))
-               (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
+       (and (fn-lc-cold-candidate-prefixes-p order slots pages)
+            (equal (fn-lc-at 5 out)
+             (fn-lc-join
+              (list (list :pread :root 0 (fn-lc-root-slot-octets))
+                    (list :pread :root 1 (fn-lc-root-slot-octets)))
+              (fn-lc-cold-page-program
+               (fn-lc-cold-first-requests
+                (fn-lc-record-checked-path-order order slots pages) nil)))))
        (fn-lc-cold-only-metadata-requests-p
-         (fn-lc-at 5 out) (fn-lc-cold-directory-path disk r mode)))))
+         (fn-lc-at 5 out)
+         (fn-lc-record-metadata-addresses-order order slots pages)))))
  :subject fn-lc-cold-select
  :witness ((disk (fn-lc-at 0 (lco-id5-input 1))) (r :lc) (mode :eager))
  :breaks nil
- :mutations ((eager-column-validation (:conclusion (and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
-       (equal (fn-lc-at 5 out)
-        (fn-lc-join
-         (list (list :pread :root 0 (fn-lc-root-slot-octets))
-               (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
-       (fn-lc-cold-only-metadata-requests-p
-         (fn-lc-join (fn-lc-at 5 out) (fn-lc-cold-page-program (list 2)))
-         (fn-lc-cold-directory-path disk r mode))))
+ :mutations ((candidate-reads-column (:conclusion (fn-lc-cold-only-metadata-requests-p
+ (fn-lc-cold-page-program
+  (fn-lc-cold-mutant-path-order order slots pages :eager-column))
+ (fn-lc-record-metadata-addresses-order order slots pages)))
  ((disk (fn-lc-at 0 (lco-id5-input 1))) (r :lc) (mode :eager))
- :fault "selector validates column page 2; clause (c) alone must reject it")
- (drops-rejected-metadata (:conclusion (and (equal (fn-lc-take 5 out) (fn-lc-take 5 (fn-lc-cold-pgs-choice disk r mode)))
-       (equal (remove-equal (list :pread :page 99 (fn-lc-page-octets)) (fn-lc-at 5 out))
-        (fn-lc-join
-         (list (list :pread :root 0 (fn-lc-root-slot-octets))
-               (list :pread :root 1 (fn-lc-root-slot-octets)))
-         (fn-lc-cold-page-program (fn-lc-cold-directory-path disk r mode))))
-       (fn-lc-cold-only-metadata-requests-p
-         (fn-lc-at 5 out) (fn-lc-cold-directory-path disk r mode))))
+ :fault "candidate itself adds column page 2; independent format addresses reject clause (c-prime)")
+ (candidate-skips-rejection (:conclusion (equal (fn-lc-cold-mutant-path-order order slots pages :drop-rejected)
+        (fn-lc-record-checked-path-order order slots pages)))
  ((disk (lcc-fallback-disk)) (r :lc) (mode :eager))
- :fault "selector hides rejected directory page 99; clause (b) alone must reject it"))))
+ :fault "candidate itself omits rejected directory 99; independent stopping path rejects clause (b-prime)")))
+)
 (defteeth-check (fn-lc-cold-selection-is-metadata-only))
