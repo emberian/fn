@@ -1,5 +1,5 @@
-; Logical pool-span overflow control: the compact repeat term is proved,
-; never allocated or run. The state uses the actual fn-lbc recognizer/corr.
+; Permanent pool-span positive regression. The compact repeat term is proved,
+; never allocated or run. This must fail before C25 routing and pass after it.
 (in-package "ACL2")
 (include-book "lc-record-effect-tests")
 (local (defun lcs-disable-column-execution (runes)
@@ -56,7 +56,7 @@
                   :use ((:instance lcs-repeat-consp (acc nil))
                         (:instance lcs-repeat-car (acc nil)))
                   :expand ((binary-append (make-list-ac n item nil) tail))))))
-(defthm lcs-current-append-pool-span-counterexample
+(defthm lcs-accepted-record-wide-pool-span-regression
  (let* ((h (lct-held 0))
         (segs (fn-lb-log-model-append h *lct-payload* 1 nil))
         (entry (fn-lb-log-model-row-entry h segs))
@@ -69,8 +69,8 @@
         (fn-lc-locators-resolve fn-lbc segs)
         (fn-lc-fresh-recordp h a b segs)
         (equal (mv-nth 0 out) :ok)
-        (not (and (fn-lc-locators-resolve (mv-nth 1 out) (mv-nth 2 out))
-                  (fn-lbc-corr (mv-nth 1 out) (fn-cat$a-commit h nil) (mv-nth 2 out))))))
+        (and (fn-lc-locators-resolve (mv-nth 1 out) (mv-nth 2 out))
+             (fn-lbc-corr (mv-nth 1 out) (fn-cat$a-commit h nil) (mv-nth 2 out)))))
  :rule-classes nil
  :hints (("Goal" :expand ((:free (i fn-lbc) (fn-lbc-escape-cellsp i fn-lbc))
 (:free (i fn-lbc) (fn-lbc-number-escape-cellsp i fn-lbc))
