@@ -1781,6 +1781,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/lb-arena-log-binding \
 	books/lb-log-handle-allocation \
 	books/lb-log-open-model \
+	books/lb-log-guard-invariants \
 	books/lb-log-open-properties \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
