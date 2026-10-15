@@ -949,3 +949,257 @@
    (and (fn-pth-req-data-okp '(:acquire 3))
         (fn-pth-req-state-okp '(:acquire 3) 0 1 *p14-factor-state*))))
  :rule-classes nil)
+
+; R11 ruling: redundancy control and selector exhaustion teeth.
+(defun p15-accept-without-exhaustion (s1 out q)
+  (declare (xargs :guard t))
+  (let ((j (fn-rtc-free-slot 0 (fn-rtc-slots s1)))
+        (r (fn-rtc-get 1 out)))
+    (if (and (eq (fn-rtc-get 0 out) :done) j (natp r) (< r (expt 2 64)))
+        (let* ((jinc (+ 1 (fn-rtc-s-inc (fn-rtc-slot j s1))))
+               (s2 (fn-rtc-with-mstate
+                    j (fn-rtc-m-init)
+                    (fn-rtc-with-slot j (list jinc :live r) s1))))
+          (mv-let (s3 acts refused c)
+            (fn-rtc-deliver s2 j jinc (fn-rtc-ev :accept out j jinc nil) q)
+            (mv-let (s4 acts2) (fn-rtc-rearm s3)
+              (mv s4 (append acts acts2) refused c))))
+      (mv-let (s2 acts2) (fn-rtc-rearm s1)
+        (mv s2 acts2 nil 0)))))
+(verify-guards p15-accept-without-exhaustion)
+(defconst *p15-r11-exhausted*
+ '((3 4 0 1 0 1 66560 3 65667)
+   ((0 :live nil) (1 :live 0) (18446744073709551615 :free nil))
+   ((0 (:free) nil) (0 (:free) nil) (0 (:free) nil) (0 (:free) nil))
+   nil (nil nil nil) 0))
+(value-triple
+ (mv-let (after acts refused cost)
+  (p15-accept-without-exhaustion *p15-r11-exhausted* '(:done 0) 100000)
+  (cw "P15_R11_LITERAL selector=~x0 mutant-slot=~x1 acts=~x2 refused=~x3 cost=~x4~%"
+   (fn-rtc-free-slot 0 (fn-rtc-slots *p15-r11-exhausted*))
+   (fn-rtc-slot 2 after) acts refused cost)))
+(defthm p15-literal-exhaustion-mutant-does-not-select-the-exhausted-slot
+ (and (not (fn-rtc-free-slot 0 (fn-rtc-slots *p15-r11-exhausted*)))
+      (equal (fn-rtc-slot 2 (mv-nth 0 (p15-accept-without-exhaustion *p15-r11-exhausted* '(:done 0) 100000)))
+             '(18446744073709551615 :free nil))
+      (equal (p15-accept-without-exhaustion *p15-r11-exhausted* '(:done 0) 100000)
+             (fn-rtc-accept-branch *p15-r11-exhausted* '(:done 0) 100000))))
+(defthm p15-accept-exhaustion-conjunct-is-implied-by-selector
+ (implies (fn-rtc-free-slot 0 (fn-rtc-slots s))
+  (fn-rtc-inc-roomp (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s)) s)))
+ :hints (("Goal" :use
+   ((:instance fn-rtc-free-slot-has-incarnation-room (i 0) (slots (fn-rtc-slots s)))
+    (:instance fn-rtc-free-slot-index-type (i 0) (slots (fn-rtc-slots s))))
+   :in-theory (union-theories (theory 'minimal-theory)
+     '(fn-rtc-slot nfix natp posp default-+-1 default-+-2 unicity-of-0 fix commutativity-of-+
+       (:type-prescription fn-rtc-free-slot) (:executable-counterpart binary-+) (:executable-counterpart unary--))))))
+(defthm p15-literal-exhaustion-mutant-is-identical-for-every-state
+ (equal (p15-accept-without-exhaustion s out q) (fn-rtc-accept-branch s out q))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(p15-accept-without-exhaustion fn-rtc-accept-branch
+     p15-accept-exhaustion-conjunct-is-implied-by-selector)))))
+
+; R11 RULED: remove the one exhaustion property at its selector and branch sites.
+; The original branch-only mutant is retained above as a redundancy control.
+(defun p15b-slot-selectable-without-exhaustion (slot)
+ (declare (xargs :guard t))
+ (eq (fn-rtc-s-status slot) :free))
+(defun p15b-free-slot-without-exhaustion (i slots)
+  (declare (xargs :guard (natp i) :measure (len slots)
+    :hints (("Goal" :in-theory
+      (union-theories (theory 'minimal-theory)
+        '(len o< o-finp o-p natp (:type-prescription len)))))
+    :guard-hints (("Goal" :in-theory
+      (union-theories (theory 'minimal-theory)
+        '(natp default-+-1 default-+-2))))))
+  (if (consp slots)
+      (if (and (not (zp i)) (p15b-slot-selectable-without-exhaustion (car slots)))
+          i
+        (p15b-free-slot-without-exhaustion (+ 1 i) (cdr slots)))
+    nil))
+(defun p15b-accept-without-exhaustion (s1 out q)
+  (declare (xargs :guard t))
+  (let ((j (p15b-free-slot-without-exhaustion 0 (fn-rtc-slots s1)))
+        (r (fn-rtc-get 1 out)))
+    (if (and (eq (fn-rtc-get 0 out) :done) j (natp r) (< r (expt 2 64)))
+        (let* ((jinc (+ 1 (fn-rtc-s-inc (fn-rtc-slot j s1))))
+               (s2 (fn-rtc-with-mstate
+                    j (fn-rtc-m-init)
+                    (fn-rtc-with-slot j (list jinc :live r) s1))))
+          (mv-let (s3 acts refused c)
+            (fn-rtc-deliver s2 j jinc (fn-rtc-ev :accept out j jinc nil) q)
+            (mv-let (s4 acts2) (fn-rtc-rearm s3)
+              (mv s4 (append acts acts2) refused c))))
+      (mv-let (s2 acts2) (fn-rtc-rearm s1)
+        (mv s2 acts2 nil 0)))))
+(verify-guards p15b-slot-selectable-without-exhaustion)
+(verify-guards p15b-free-slot-without-exhaustion)
+(verify-guards p15b-accept-without-exhaustion)
+; Small ground selector teeth, not claims that these states are reachable.
+(defthm p15b-r11-exhaustion-removal-selects-a-retired-slot
+ (let ((slots '((0 :live nil) (1 :live 0)
+                (18446744073709551615 :free nil) (0 :free nil))))
+  (and (fn-rtc-slotp (fn-rtc-get 2 slots))
+       (not (fn-rtc-inc-roomp (fn-rtc-get 2 slots)))
+       (equal (p15b-free-slot-without-exhaustion 0 slots) 2)
+       (equal (fn-rtc-free-slot 0 slots) 3)
+       (equal (+ 1 (fn-rtc-s-inc
+                     (fn-rtc-get (p15b-free-slot-without-exhaustion 0 slots) slots)))
+              18446744073709551616)
+       (not (fn-rtc-u64p 18446744073709551616))))
+ :rule-classes nil)
+(defthm p15b-r11-retired-never-selected
+ (let ((slots '((0 :live nil) (1 :live 0) (18446744073709551615 :free nil))))
+  (and (fn-rtc-slotp (fn-rtc-get 2 slots))
+       (not (fn-rtc-slot-selectablep (fn-rtc-get 2 slots)))
+       (equal (p15b-free-slot-without-exhaustion 0 slots) 2)
+       (not (fn-rtc-free-slot 0 slots))))
+ :rule-classes nil)
+
+; The same ruled mutant actually overflows; all request/delivery frames below
+; are local to this proof, with no machine behavior assumption.
+(encapsulate ()
+(local
+(defthm p15b-r11-mv0-cons-by-definition
+ (equal (mv-nth 0 (cons a b)) a)
+ :hints (("Goal" :in-theory (enable mv-nth)))))
+(local
+(defthm p15b-r11-request-inc-frame
+ (equal (fn-rtc-s-inc (fn-rtc-slot j (mv-nth 0 (fn-rtc-request r id inc s))))
+        (fn-rtc-s-inc (fn-rtc-slot j s)))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '((:executable-counterpart zp) (:executable-counterpart nfix) fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
+    fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-live-p
+    fn-rtc-slot-of-with fn-rtc-slot-accessors fn-rtc-issue-frame
+    (:type-prescription fn-rtc-s-inc) (:type-prescription fn-rtc-nstatic) nfix natp car-cons cdr-cons mv-nth))))))
+(local
+(defthm p15b-r11-requests-inc-frame
+ (equal (fn-rtc-s-inc (fn-rtc-slot j (mv-nth 0 (fn-rtc-requests rs id inc s))))
+        (fn-rtc-s-inc (fn-rtc-slot j s)))
+ :hints (("Goal" :induct (fn-rtc-requests rs id inc s)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '((:executable-counterpart zp) (:executable-counterpart nfix) fn-rtc-requests p15b-r11-request-inc-frame mv-nth car-cons cdr-cons))))))
+(local
+(defthm p15b-r11-deliver-inc-frame
+ (equal (fn-rtc-s-inc (fn-rtc-slot j (mv-nth 0 (fn-rtc-deliver s id inc ev q))))
+        (fn-rtc-s-inc (fn-rtc-slot j s)))
+ :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+  '((:executable-counterpart zp) (:executable-counterpart nfix) fn-rtc-deliver p15b-r11-requests-inc-frame fn-rtc-slot-of-with p15b-r11-mv0-cons-by-definition car-cons cdr-cons))))))
+(defthm p15b-r11-mutant-accept-reaches-incarnation-2^64
+ (let ((after (mv-nth 0 (p15b-accept-without-exhaustion *p15-r11-exhausted* '(:done 0) 100000))))
+  (and (fn-rtc-slotp (fn-rtc-slot 2 *p15-r11-exhausted*))
+       (equal (fn-rtc-s-inc (fn-rtc-slot 2 *p15-r11-exhausted*)) 18446744073709551615)
+       (equal (fn-rtc-s-inc (fn-rtc-slot 2 after)) 18446744073709551616)
+       (not (fn-rtc-u64p (fn-rtc-s-inc (fn-rtc-slot 2 after))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+  '((:executable-counterpart zp) (:executable-counterpart nfix) p15b-accept-without-exhaustion p15b-r11-deliver-inc-frame
+    fn-rtc-slot-of-rearm fn-rtc-slot-of-with fn-rtc-slot-accessors
+    car-cons cdr-cons p15b-r11-mv0-cons-by-definition
+    (:executable-counterpart p15b-free-slot-without-exhaustion)
+    (:executable-counterpart fn-rtc-slots) (:executable-counterpart fn-rtc-get)
+    (:executable-counterpart fn-rtc-slot) (:executable-counterpart fn-rtc-slotp)
+    (:executable-counterpart fn-rtc-s-inc) (:executable-counterpart fn-rtc-u64p)
+    (:executable-counterpart nfix) (:executable-counterpart natp)
+    (:executable-counterpart expt) (:executable-counterpart binary-+)
+    (:executable-counterpart len) (:executable-counterpart <))))))
+)
+
+; Exercise the actual executable host begin, with a small allocated state.
+; :last-valid reaches LIVE incarnation 2^64-1; :exhausted never allocates it again.
+(defun p15b-r11-host-scene (mode fn-rtc-st)
+ (declare (xargs :stobjs fn-rtc-st :guard t))
+ (mv-let (fn-rtc-st okp left)
+  (fn-hld-init *fn-bs-profile-development* '(3 nil 0 0 nil 0 0 0 nil 0 3) 4 fn-rtc-st)
+  (declare (ignore left))
+  (let* ((fn-rtc-st (fn-rtc-st-set-slot 2
+                    (if (eq mode :last-valid) '(18446744073709551614 :free nil)
+                      '(18446744073709551615 :free nil)) fn-rtc-st))
+         (fn-rtc-st (fn-rtc-st-set-slot 3 (if (eq mode :skip) '(0 :free nil)
+                     '(18446744073709551615 :free nil)) fn-rtc-st))
+         (fn-rtc-st (fn-rtc-st-set-slot 4 '(18446744073709551615 :free nil) fn-rtc-st))
+         (fn-rtc-st (if (eq mode :exhausted) (fn-rtc-st-set-uses nil fn-rtc-st) fn-rtc-st))
+         (before (fn-rtc-x-state fn-rtc-st)))
+   (mv-let (fn-rtc-st id inc pending) (fn-hld-begin 7 fn-rtc-st)
+    (mv fn-rtc-st (list okp before (fn-rtc-x-state fn-rtc-st) id inc pending))))))
+(defun p15b-r11-host-fixture (mode)
+ (declare (xargs :guard t))
+ (with-local-stobj fn-rtc-st
+  (mv-let (fn-rtc-st result) (p15b-r11-host-scene mode fn-rtc-st) result)))
+(verify-guards p15b-r11-host-scene)
+(verify-guards p15b-r11-host-fixture)
+(make-event
+ (let ((last-valid (p15b-r11-host-fixture :last-valid))
+       (exhausted (p15b-r11-host-fixture :exhausted))
+       (skip (p15b-r11-host-fixture :skip)))
+  `(progn
+    (defconst *p15b-r11-last-valid* ',last-valid)
+    (defconst *p15b-r11-exhausted* ',exhausted)
+    (defconst *p15b-r11-skip* ',skip))))
+(with-guard-checking-event nil
+ (assert-event
+  (let* ((r *p15b-r11-last-valid*) (s (nth 1 r)) (s2 (nth 2 r)))
+   (and (car r) (fn-hll-invp s) (fn-hll-invp s2)
+        (fn-rtc-inc-roomp (fn-rtc-slot 2 s))
+        (equal (nth 3 r) 2) (equal (nth 4 r) 18446744073709551615)
+        (equal (fn-rtc-slot 2 s2) '(18446744073709551615 :live 7))
+        (fn-rtc-u64p (fn-rtc-s-inc (fn-rtc-slot 2 s2)))
+        (not (fn-rtc-inc-roomp (fn-rtc-slot 2 s2)))))))
+(with-guard-checking-event nil
+ (assert-event
+  (let* ((r *p15b-r11-exhausted*) (s (nth 1 r)) (s2 (nth 2 r)))
+   (and (car r) (fn-hll-invp s) (fn-hll-invp s2)
+        (fn-rtc-slots-exhaustedp 0 1 (fn-rtc-slots s))
+        (not (fn-rtc-free-slot 0 (fn-rtc-slots s)))
+        (equal (nth 3 r) nil) (equal (nth 4 r) :rtc-slots-exhausted)
+        (equal (nth 5 r) nil) (equal s2 s)))))
+
+(with-guard-checking-event nil
+ (assert-event
+  (let* ((r *p15b-r11-skip*) (s (nth 1 r)) (s2 (nth 2 r)))
+   (and (car r) (fn-hll-invp s) (fn-hll-invp s2)
+        (equal (fn-rtc-free-slot 0 (fn-rtc-slots s)) 3)
+        (equal (nth 3 r) 3) (equal (nth 4 r) 1)
+        (equal (fn-rtc-slot 2 s2) '(18446744073709551615 :free nil))
+        (equal (fn-rtc-slot 3 s2) '(1 :live 7))))))
+
+; ID+INC: the whole antecedent and a biting reachability-removal witness.
+(defthm p15b-live-slot-u64-whole-antecedent-witness
+ (and (fn-pth-reachablep *p13-request-domain-before*)
+      (natp 1)
+      (< 1 (fn-rtc-nslots (fn-rtc-config *p13-request-domain-before*)))
+      (equal (fn-rtc-s-status (fn-rtc-slot 1 *p13-request-domain-before*)) :live)
+      (< 1 (expt 2 64))
+      (< (fn-rtc-s-inc (fn-rtc-slot 1 *p13-request-domain-before*)) (expt 2 64)))
+ :rule-classes nil
+ :hints (("Goal" :use (pthrt-p13-development-initial-state-is-reachable
+                      p14-development-init-is-the-fixture-before)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '((:executable-counterpart fn-rtc-nslots) (:executable-counterpart fn-rtc-config)
+     (:executable-counterpart fn-rtc-slot) (:executable-counterpart fn-rtc-s-status)
+     (:executable-counterpart fn-rtc-s-inc) (:executable-counterpart natp)
+     (:executable-counterpart expt) (:executable-counterpart <)
+     (:executable-counterpart equal))))))
+; Removing reachability admits a live slot past the incarnation domain, even
+; under the same admitted configuration and all the remaining hypotheses.
+(defconst *p15b-scalar-unreachable*
+ (fn-rtc-with-slot 2 '(18446744073709551616 :live 0) *p13-request-domain-before*))
+(defthm p15b-live-slot-u64-reachability-removal-tooth
+ (and (fn-rtc-st-cfg-okp (fn-rtc-config *p15b-scalar-unreachable*))
+      (natp 2)
+      (< 2 (fn-rtc-nslots (fn-rtc-config *p15b-scalar-unreachable*)))
+      (equal (fn-rtc-s-status (fn-rtc-slot 2 *p15b-scalar-unreachable*)) :live)
+      (not (and (< 2 (expt 2 64))
+                (< (fn-rtc-s-inc (fn-rtc-slot 2 *p15b-scalar-unreachable*)) (expt 2 64))))
+      (not (fn-pth-reachablep *p15b-scalar-unreachable*)))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn-pth-live-slot-inc-below-2^64
+   (s *p15b-scalar-unreachable*) (id 2)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '((:executable-counterpart fn-rtc-st-cfg-okp)
+     (:executable-counterpart fn-rtc-nslots) (:executable-counterpart fn-rtc-config)
+     (:executable-counterpart fn-rtc-slot) (:executable-counterpart fn-rtc-s-status)
+     (:executable-counterpart fn-rtc-s-inc) (:executable-counterpart natp)
+     (:executable-counterpart expt) (:executable-counterpart <)
+     (:executable-counterpart equal))))))
