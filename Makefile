@@ -1672,12 +1672,24 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/lc-record-frame-tests \
 	books/log-checkpoint-selection-proof \
 	books/log-checkpoint-tail \
+	books/log-checkpoint-tail-positions \
 	books/log-checkpoint-teeth-wrappers \
 	books/log-checkpoint-total-accessors \
 	books/log-checkpoint-values \
 	books/log-checkpoint-write-budget \
 	books/log-cleaning \
+	books/log-cleaning-replay \
+	books/log-cleaning-move \
+	books/log-cleaning-complete \
+	books/log-cleaning-unlink \
+	books/log-cleaning-withdraw \
 	tests/acl2/lc-bounded-check-tests \
+	tests/acl2/lc-cleaning-fixture-snapshot \
+	tests/acl2/lc-cleaning-model-tests \
+	tests/acl2/lc-cleaning-owner-fixtures \
+	tests/acl2/lc-cleaning-open-move-tests \
+	tests/acl2/lc-unlink-payload-counterexample-tests \
+	tests/acl2/lc-withdraw-model-tests \
 	tests/acl2/lc-initial-correspondence-tests \
 	tests/acl2/lc-grounded-id-search-tests \
 	tests/acl2/lc-open-fixtures \
