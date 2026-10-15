@@ -86,9 +86,6 @@
 (defun fnn-bps-next-session (instance)
   (declare (ignorable instance))
   (harness-stub-reached 'fnn-bps-next-session "host/native/bp-service.lisp"))
-(defun fnn-bps-node-profile (instance)
-  (declare (ignorable instance))
-  (harness-stub-reached 'fnn-bps-node-profile "host/native/bp-service.lisp"))
 (defun fnn-bps-outcome (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-bps-outcome "host/native/bp-service.lisp"))
@@ -138,6 +135,11 @@
   (when *held-root-test*
    (test-grant bank 2 :incoming nil (make-fnn-tcl-conn :finished t :source-pending t)))
   (setq *held-bank* bank) bank))
+;; A served node reads the BP session profile and the node's profile before
+;; its owner starts (the run's bp terms, lane memory-run-launch STEP 5); the
+;; values only pass through to the stubbed owner start and session install.
+(defun fnn-bp-session-profile (&rest xs) (declare (ignore xs)) :session-profile)
+(defun fnn-bps-node-profile (&rest xs) (declare (ignore xs)) :node-profile)
 (defun fnn-bpnc-start (&rest xs) (declare (ignore xs)) :control)
 (defun fnn-bpc-advance-clock (&rest xs) (declare (ignore xs)))
 (defun fnn-bp-observation (&rest xs) xs)
