@@ -93,3 +93,9 @@
 (verify-guards fn-lc-clear-slot-owners)
 (verify-guards fn-lc-reindex-slots)
 (verify-guards fn-lc-commit-record)
+
+(defthm fn-lc-commit-record-retains-segments-by-definition
+ (equal (mv-nth 2 (fn-lc-commit-record h loc0 loc1 fn-lbc segs)) segs)
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+ '(fn-lc-commit-record mv-nth nth car-cons cdr-cons
+   (:executable-counterpart zp) (:executable-counterpart binary-+))))))

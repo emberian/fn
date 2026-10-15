@@ -12,7 +12,32 @@
 (def-representation fn-lc-map-observation (value :tree) :pages t)
 (defun fn-lc-columns-value (value)
   (declare (xargs :guard t :verify-guards nil))
-  (append (fn-lbc-rowwords-pages-of (nth *fn-lbc-row-store* value))
+  (append (fn-lc-tag-column-pages :rows 0
+            (fn-lbc-rowwords-pages-of (nth *fn-lbc-row-store* value)) (nth *fn-lbc-row-store* value))
+          (fn-lc-tag-column-pages :msgids 0
+            (fn-lbc-msgid-octets-pages-of (nth *fn-lbc-msgid-store* value)) nil)
+          (fn-lc-tag-column-pages :overviews 0
+            (fn-lbc-overview-octets-pages-of (nth *fn-lbc-overview-store* value)) nil)
+          (fn-lc-tag-column-pages :slots 0
+            (fn-lbc-msgid-slots-pages-of (nth *fn-lbc-slot-store* value)) nil)
+          (fn-lc-tag-column-pages :directory 0
+            (fn-lbc-directory-pages-of (nth *fn-lbc-directory-store* value)) nil)
+          (fn-lc-tag-column-pages :memberships 0
+            (fn-lbc-memberships-pages-of (nth *fn-lbc-membership-store* value)) nil)
+          (fn-lc-tag-column-pages :nov 0
+            (fn-lbc-nov-pages-of (nth *fn-lbc-nov-store* value)) nil)
+          (fn-lc-tag-column-pages :maps 0
+            (fn-lc-map-observation-pages-of
+           (list (fn-lc-map-observation-tree-enc
+                  (list (list (nth *fn-lbc-number-store* value)
+                              (nth *fn-lbc-summary-groups* value)
+                              (nth *fn-lbc-escape-store-get* value)
+                              (nth *fn-lbc-slot-escape-keys* value)))))) nil)))
+; The only column snapshot observation is logical, not a served copy.
+; All independent publication algebra keeps this changing observation opaque.
+(defthm fn-lc-columns-physical-producer-unchanged
+ (equal (fn-lc-column-pages (fn-lc-columns-value value))
+(append (fn-lbc-rowwords-pages-of (nth *fn-lbc-row-store* value))
           (fn-lbc-msgid-octets-pages-of (nth *fn-lbc-msgid-store* value))
           (fn-lbc-overview-octets-pages-of (nth *fn-lbc-overview-store* value))
           (fn-lbc-msgid-slots-pages-of (nth *fn-lbc-slot-store* value))
@@ -25,8 +50,18 @@
                               (nth *fn-lbc-summary-groups* value)
                               (nth *fn-lbc-escape-store-get* value)
                               (nth *fn-lbc-slot-escape-keys* value))))))))
-; The only column snapshot observation is logical, not a served copy.
-; All independent publication algebra keeps this changing observation opaque.
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+ '(fn-lc-columns-value fn-lc-column-pages-of-append fn-lc-column-pages-of-tagged
+   adt-true-list-fix-when-true-listp
+   (:type-prescription fn-lbc-rowwords-pages-of)
+   (:type-prescription fn-lbc-msgid-octets-pages-of)
+   (:type-prescription fn-lbc-overview-octets-pages-of)
+   (:type-prescription fn-lbc-msgid-slots-pages-of)
+   (:type-prescription fn-lbc-directory-pages-of)
+   (:type-prescription fn-lbc-memberships-pages-of)
+   (:type-prescription fn-lbc-nov-pages-of)
+   (:type-prescription fn-lc-map-observation-pages-of))))))
+
 (defun-nx fn-lc-columns (fn-lbc) (ec-call (fn-lc-columns-value fn-lbc)))
 (verify-guards fn-lc-columns)
 

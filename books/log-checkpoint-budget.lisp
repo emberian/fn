@@ -65,6 +65,11 @@
 (defun fn-lc-budget-induction (i count)
  (declare (xargs :guard t :measure (nfix count) :verify-guards nil))
  (if (mbe :logic (zp count) :exec (not (posp count))) i (fn-lc-budget-induction (+ 1 (nfix i)) (1- count))))
+(local (defthm fn-lc-subset-cons-super
+ (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))
+ :hints (("Goal" :induct (subsetp-equal x y)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(subsetp-equal member-equal (:induction subsetp-equal) car-cons cdr-cons))))))
 (defthm fn-lc-uncovered-delta-is-column-subset
  (implies (natp i)
   (subsetp-equal
@@ -74,9 +79,41 @@
    (fn-lc-shift-dirty-column
     (fn-lc-value-dirty-from (fn-lc-column-pages old) (fn-lc-column-pages new) i count))))
  :hints (("Goal" :induct (fn-lc-budget-induction i count)
-  :in-theory (e/d (fn-lc-value-dirty-from fn-lc-uncovered-dirty
-                   fn-lc-shift-dirty-column subsetp-equal)
-                  (fn-lc-pages fn-lc-column-pages fn-lc-page-at fn-lc-uncovered-pagep)))))
+  :in-theory (union-theories (theory 'minimal-theory) '((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+(:COMPOUND-RECOGNIZER ZP-COMPOUND-RECOGNIZER)
+
+(:DEFINITION FN-LC-SHIFT-DIRTY-COLUMN)
+(:DEFINITION FN-LC-UNCOVERED-DIRTY)
+(:DEFINITION FN-LC-VALUE-DIRTY-FROM)
+(:DEFINITION MEMBER-EQUAL)
+(:DEFINITION NATP)
+(:DEFINITION NOT)
+(:DEFINITION SUBSETP-EQUAL)
+(:DEFINITION SYNP) (:DEFINITION NFIX)
+(:EXECUTABLE-COUNTERPART BINARY-+)
+(:EXECUTABLE-COUNTERPART CONSP)
+(:EXECUTABLE-COUNTERPART FN-LC-SHIFT-DIRTY-COLUMN)
+(:EXECUTABLE-COUNTERPART NOT)
+(:EXECUTABLE-COUNTERPART SUBSETP-EQUAL)
+(:INDUCTION FN-LC-BUDGET-INDUCTION)
+(:REWRITE CAR-CONS)
+(:REWRITE CDR-CONS)
+(:REWRITE FN-LC-COLUMN-PAGE-OUTSIDE-DIRECTORY)
+(:REWRITE FN-LC-COLUMN-PAGES-PRESERVES-LENGTH)
+(:REWRITE FN-LC-UNCOVERED-NEW-PAGE-IS-COLUMN)
+(:REWRITE FN-LC-UNCOVERED-OLD-PAGE-IS-COLUMN)
+
+
+(:REWRITE FOLD-CONSTS-IN-+)
+(:REWRITE FN-LC-SUBSET-CONS-SUPER)
+
+
+(:TYPE-PRESCRIPTION FN-LC-SHIFT-DIRTY-COLUMN)
+(:TYPE-PRESCRIPTION FN-LC-UNCOVERED-DIRTY)
+(:TYPE-PRESCRIPTION FN-LC-UNCOVERED-PAGEP)
+(:TYPE-PRESCRIPTION FN-LC-VALUE-DIRTY-FROM)
+(:TYPE-PRESCRIPTION LEN)
+(:TYPE-PRESCRIPTION SUBSETP-EQUAL)))) ("Subgoal *1/2" :use ((:instance fn-lc-uncovered-growth-is-column-growth)))))
 
 (defun fn-lc-fuel-cut-induction (i small large)
  (declare (xargs :guard (acl2-numberp large) :measure (nfix small) :verify-guards nil))
@@ -458,11 +495,7 @@
  (implies (subsetp-equal x left) (subsetp-equal x (union-equal left right))))
 (defthm fn-lc-subset-append
  (iff (subsetp-equal (append x y) z) (and (subsetp-equal x z) (subsetp-equal y z))))
-(local
- (defthm fn-lc-subset-cons-super
-  (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))
-  :hints (("Goal" :induct (subsetp-equal x y)
-   :in-theory (enable subsetp-equal member-equal)))))
+
 (defthm fn-lc-subset-self (subsetp-equal x x))
 (defthm fn-lc-subset-append-right
  (implies (subsetp-equal x y) (subsetp-equal x (append prefix y))))

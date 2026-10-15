@@ -1,4 +1,4 @@
-; Independent decisions around the opaque append-export seam.
+; Independent decisions around the actual per-record fold.
 (in-package "ACL2")
 (include-book "log-checkpoint-commit")
 (include-book "defkeystone")
@@ -6,7 +6,12 @@
 (defthm fn-lc-commit-prepared-retains-segments
  (equal (mv-nth 2 (fn-lc-commit-prepared records segs fn-lbc)) segs)
  :hints (("Goal" :induct (fn-lc-commit-prepared records segs fn-lbc)
-          :in-theory (disable fn-lc-append-prepared-columns))))
+ :in-theory (union-theories (theory 'minimal-theory)
+ '(fn-lc-commit-prepared fn-lc-prepared-columns-retain-segments-by-definition
+   (:induction fn-lc-commit-prepared) mv-nth nth car-cons cdr-cons
+   (:type-prescription fn-lc-append-prepared-columns)
+   (:executable-counterpart zp) (:executable-counterpart binary-+)
+   (:executable-counterpart equal) (:executable-counterpart not))))))
 (defun fn-lc-teeth-empty-columns (fn-lbc)
  (declare (xargs :stobjs fn-lbc)) fn-lbc)
 

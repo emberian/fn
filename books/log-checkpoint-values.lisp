@@ -31,9 +31,49 @@
   (declare (xargs :guard (and (true-listp pages) (natp count)) :verify-guards nil))
   (fn-lc-observe-from 0 count pages))
 
+; Component labels and the resident row observation belong to the logical
+; observation only. The physical page producer removes them one-for-one.
+(defun fn-lc-tag-column-pages (kind ordinal pages row-value)
+ (declare (xargs :guard t))
+ (if (consp pages)
+  (cons (list :lc-column kind (nfix ordinal) (car pages) row-value)
+        (fn-lc-tag-column-pages kind (+ 1 (nfix ordinal)) (cdr pages) row-value)) nil))
+(defun fn-lc-column-page-value (page)
+ (declare (xargs :guard t))
+ (if (equal (fn-lc-head page) :lc-column) (fn-lc-at 3 page) page))
 (defun fn-lc-column-pages (columns)
-  (declare (xargs :guard t))
-  (true-list-fix columns))
+ (declare (xargs :guard t))
+ (if (consp columns)
+  (cons (fn-lc-column-page-value (car columns)) (fn-lc-column-pages (cdr columns))) nil))
+(defthm fn-lc-column-pages-preserves-length
+ (equal (len (fn-lc-column-pages columns)) (len columns))
+ :hints (("Goal" :induct (fn-lc-column-pages columns)
+ :in-theory (union-theories (theory 'minimal-theory)
+ '(fn-lc-column-pages len (:induction fn-lc-column-pages) car-cons cdr-cons)))))
+
+(defthm fn-lc-tag-column-pages-preserves-length
+ (equal (len (fn-lc-tag-column-pages kind ordinal pages row-value)) (len pages))
+ :hints (("Goal" :induct (fn-lc-tag-column-pages kind ordinal pages row-value)
+ :in-theory (union-theories (theory 'minimal-theory)
+ '(fn-lc-tag-column-pages len (:induction fn-lc-tag-column-pages) car-cons cdr-cons)))))
+
+(defthm fn-lc-column-pages-of-append
+ (equal (fn-lc-column-pages (append a b))
+        (append (fn-lc-column-pages a) (fn-lc-column-pages b)))
+ :hints (("Goal" :induct (fn-lc-column-pages a)
+ :in-theory (union-theories (theory 'minimal-theory)
+ '(fn-lc-column-pages binary-append (:induction fn-lc-column-pages) car-cons cdr-cons)))))
+
+(defthm fn-lc-column-pages-of-tagged
+ (equal (fn-lc-column-pages (fn-lc-tag-column-pages kind ordinal pages row-value))
+        (true-list-fix pages))
+ :hints (("Goal" :induct (fn-lc-tag-column-pages kind ordinal pages row-value)
+ :in-theory (union-theories (theory 'minimal-theory)
+ '(fn-lc-column-pages fn-lc-column-page-value fn-lc-tag-column-pages
+   true-list-fix fn-lc-head fn-lc-at-is-nth nth car-cons cdr-cons
+   (:induction fn-lc-tag-column-pages) (:executable-counterpart zp)
+   (:executable-counterpart binary-+) (:executable-counterpart equal))))))
+
 (defun fn-lc-directory-pages (columns header)
   (declare (xargs :guard t :verify-guards nil))
   (declare (ignore columns))
@@ -71,8 +111,8 @@
     nil))
 (defun fn-lc-dirty-column-pages (old new)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-lc-value-dirty-from (true-list-fix old) (true-list-fix new) 0
-    (max (len (true-list-fix old)) (len (true-list-fix new)))))
+  (fn-lc-value-dirty-from (fn-lc-column-pages old) (fn-lc-column-pages new) 0
+    (max (len (fn-lc-column-pages old)) (len (fn-lc-column-pages new)))))
 (defun fn-lc-in-either-range (i lo0 hi0 lo1 hi1)
   (declare (xargs :guard t :verify-guards nil))
   (or (and (<= (nfix lo0) (nfix i)) (< (nfix i) (nfix hi0)))

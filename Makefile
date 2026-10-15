@@ -1671,6 +1671,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/log-checkpoint-open \
 	books/log-checkpoint-open-bound \
 	books/log-checkpoint-composite \
+	books/log-checkpoint-owner-proof \
+	books/log-checkpoint-column-observations \
 	tests/acl2/lc-record-frame-tests \
 	books/log-checkpoint-selection-proof \
 	books/log-checkpoint-tail \
@@ -1682,12 +1684,18 @@ ACL2_BOOKS ?= books/defrecord \
 	books/log-cleaning \
 	books/log-cleaning-replay \
 	books/log-cleaning-move \
+	books/log-cleaning-byte-properties \
 	books/log-cleaning-complete \
 	books/log-cleaning-unlink \
+	books/log-cleaning-images \
+	books/log-cleaning-root-observations \
+	books/log-cleaning-cuts \
+	books/log-checkpoint-recovery \
 	books/log-cleaning-withdraw \
 	tests/acl2/lc-bounded-check-tests \
 	tests/acl2/lc-cleaning-fixture-snapshot \
 	tests/acl2/lc-cleaning-model-tests \
+	tests/acl2/lc-complete-cleaning-teeth-tests \
 	tests/acl2/lc-cleaning-owner-fixtures \
 	tests/acl2/lc-cleaning-open-move-tests \
 	tests/acl2/lc-unlink-payload-counterexample-tests \
@@ -1697,6 +1705,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/lc-open-fixtures \
 	tests/acl2/lc-open-id-search-tests \
 	tests/acl2/lc-cold-id5-tests \
+	tests/acl2/lc-composite-a5-tests \
+	tests/acl2/lc-record-fold-tests \
 	tests/acl2/lc-open-read-counterexample-tests \
 	tests/acl2/lc-record-effect-tests \
 	tests/acl2/lc-pool-span-counterexample-tests \
