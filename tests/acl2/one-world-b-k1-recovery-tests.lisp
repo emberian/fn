@@ -191,7 +191,11 @@
             (if (or (equal *b-k1-r-oc* :fault)
                     (not (fn-onb-open-okp (fn-ocfg-owner *b-k1-r-oc*))))
                 readers-before (fn-ordr-initial))))
-           (counterexample (and reset-instance before hyps (equal word :recovering) kept after)))
+           ;; The retired preservation formula is FALSE here: the current
+           ;; installer changes a nonempty readers record.
+           (old-preservation (equal (fn-ost-readers state) readers-before))
+           (counterexample (and reset-instance (not old-preservation)
+                                before hyps (equal word :recovering) kept after)))
       (prog2$
        (cw "B-K1-RECOVERY-RESTORED ~x0 BEFORE=~x1 HYPS=~x2 WORD=~x3 AFTER=~x4 READERS-KEPT=~x5 CAPTURE-FRONTIER=~x6 STORE-FRONTIER=~x7~%"
            counterexample before hyps word after kept
