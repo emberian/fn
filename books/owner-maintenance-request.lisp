@@ -288,6 +288,7 @@
                  fn-nh-report-exit fn-nh-nth fn-nh-exit-prefix fn-nh-digit2 fn-nh-digit-value)
                 (fn-spo-config-open fn-omr-open-refusal-text fn-nh-last-run-words
                  fn-nh-lines fn-nh-verdict))))
+  :id "PRF-100012"
   :subject fn-omr-stopped-health-report
   :hyps (config-refused)
   :witness ((last nil)

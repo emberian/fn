@@ -19050,6 +19050,15 @@
           "name": "fn-lgo-history-ceiling-bounds-the-intern"
         }
       ]
+    },
+    {
+      "id": "PRF-100012",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-omr-stopped-health-carries-config-refusal-exit"
+        }
+      ]
     }
   ]
 }
