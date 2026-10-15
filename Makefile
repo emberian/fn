@@ -1610,6 +1610,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/log-locator \
 	books/lb-log-model \
 	books/lb-log-model-properties \
+	books/catalog-columns-layout \
 	books/catalog-columns \
 	books/log-locator-resolves \
 	books/log-verified-map \
@@ -2265,6 +2266,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
 	tests/acl2/lb-open-bindings-tests \
+	tests/acl2/lb-pool-span-routing-tests \
 	tests/acl2/served-available-access-tests \
 	tests/acl2/served-available-critical-teeth-tests \
 	tests/acl2/served-access-revoke-tests \

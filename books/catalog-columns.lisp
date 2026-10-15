@@ -6,10 +6,7 @@
 ; unchanged abstract exports through a separate correspondence square.
 ; Full-row reads take LOG explicitly; resident reads do not take LOG.
 (in-package "ACL2")
-(include-book "def-representation-pages")
-(include-book "def-representation-pageread")
-(include-book "def-representation")
-(include-book "catalog-dense-map")
+(include-book "catalog-columns-layout")
 (include-book "nntp-projection")
 (include-book "lb-log-model")
 (include-book "log-locator")
@@ -18,85 +15,6 @@
 ; map's page predicates.  Use the same isolation as catalog-paged's schema.
 (local (in-theory (disable (tau-system) floor mod nth update-nth
                           fn-dm-zerosp fn-dmap$c-pgp fn-dpgp)))
-
-(def-representation fn-lbc-rowwords
-  (handle :u64)
-  (loc0 :u64)
-  (loc1 :u64)
-  (head-length :u64)
-  (stamp :u64)
-  (prefix-max :u64)
-  (txid :u64)
-  (generation :u64)
-  (charge :u64)
-  (msgid-hash :u64)
-  (msgid-offset :u64)
-  (msgid-length :u64)
-  (withdrawal-at :u64)
-  (withdrawal-by :u64)
-  (overview-offset :u64)
-  (flags :u64)
-  :pages t)
-
-(def-representation fn-lbc-msgid-octets
-  (octet :u8) :pages t)
-
-(def-representation fn-lbc-overview-octets
-  (octet :u8) :pages t)
-
-(def-representation fn-lbc-msgid-slots
-  (word :u64) :pages t)
-
-; The overview directory and membership runs are resident, page-addressed
-; columns.  They carry no obligation, subject, release, or context fields.
-; A directory position is also the sequence key of the sparse escape map.
-(def-representation fn-lbc-directory
-  (sequence :u64) (facts-octets :u64) (body-start :u64)
-  (body-start-present :bool) (body-lines :u64)
-  (nov-start :u64) (nov-length :u64)
-  (render-nov-start :u64) (render-nov-length :u64)
-  (groups-start :u64) (groups-count :u64)
-  (numbers-start :u64) (numbers-count :u64)
-  (article-ok :bool) (head-ok :bool)
-  (body-ok :bool) (raw-head-length :u64) (framed :bool)
-  :pages t)
-
-(def-representation fn-lbc-memberships
-  (group-start :u64) (group-length :u64) (number :u64)
-  :pages t)
-
-(def-representation fn-lbc-nov
-  (tomb :bool) (ok :bool)
-  (subject-start :u64) (subject-length :u64)
-  (from-start :u64) (from-length :u64)
-  (date-start :u64) (date-length :u64)
-  (msgid-start :u64) (msgid-length :u64)
-  (references-start :u64) (references-length :u64)
-  :pages t)
-
-(defstobj fn-lbc
-  (fn-lbc-row-store :type fn-lbc-rowwords)
-  (fn-lbc-msgid-store :type fn-lbc-msgid-octets)
-  (fn-lbc-overview-store :type fn-lbc-overview-octets)
-  (fn-lbc-number-store :type fn-dmap)
-  (fn-lbc-slot-store :type fn-lbc-msgid-slots)
-  (fn-lbc-directory-store :type fn-lbc-directory)
-  (fn-lbc-membership-store :type fn-lbc-memberships)
-  (fn-lbc-nov-store :type fn-lbc-nov)
-  (fn-lbc-summary-groups :type t :initially nil)
-  (fn-lbc-escape-store :type (hash-table eql))
-  (fn-lbc-slot-escape-keys :type t :initially nil)
-  :renaming ((fn-lbcp fn-lbc-p)))
-
-; Bit positions are shared by writers and readers.  RECLAIMED is checked
-; before section cuts; NOV-TOMB describes the persisted NOV fact, whereas
-; RECLAIMED describes the payload bound by LOG, including undecided rows.
-(defconst *fn-lbc-nov-ok-bit* 0)
-(defconst *fn-lbc-nov-tomb-bit* 1)
-(defconst *fn-lbc-withdrawn-bit* 2)
-(defconst *fn-lbc-escaped-bit* 3)
-(defconst *fn-lbc-ingest-verified-bit* 4)
-(defconst *fn-lbc-reclaimed-bit* 5)
 
 (defun fn-lbc-count (fn-lbc)
   (declare (xargs :stobjs fn-lbc))
@@ -437,9 +355,11 @@
 
 (defun fn-lbc-groups (i fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
-  (fn-lbc-membership-run
+  (let ((escape (fn-lbc-escape i :groups fn-lbc)))
+    (if escape (cdr escape)
+      (fn-lbc-membership-run
     (nfix (fn-lbc-directory-value i :groups-start fn-lbc))
-    (nfix (fn-lbc-directory-value i :groups-count fn-lbc)) nil fn-lbc))
+    (nfix (fn-lbc-directory-value i :groups-count fn-lbc)) nil fn-lbc))))
 
 (defun fn-lbc-numbers (i fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
@@ -478,7 +398,9 @@
 
 (defun fn-lbc-render-nov (i fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (and (eqlablep i) (alistp (fn-lbc-escape-store-get i fn-lbc))) :verify-guards nil))
-  (fn-lbc-nov-at (fn-lbc-directory-value i :render-nov-start fn-lbc) fn-lbc))
+  (let ((escape (fn-lbc-escape i :render-nov fn-lbc)))
+    (if escape (cdr escape)
+      (fn-lbc-nov-at (fn-lbc-directory-value i :render-nov-start fn-lbc) fn-lbc))))
 
 (defun fn-cat-served-projection (row)
   (declare (xargs :guard t))
@@ -605,6 +527,32 @@
         (fn-lbc-append-nov-texts (cdr texts) fn-lbc))
     fn-lbc))
 
+; Each packed span is representable; wider values retain their row escape.
+(defun fn-lbc-nov-texts (nov)
+ (declare (xargs :guard t :verify-guards nil))
+ (list (fn-hnov-subject nov) (fn-hnov-from nov) (fn-hnov-date nov)
+       (fn-hnov-msgid nov) (fn-hnov-references nov)))
+
+(def-loop fn-lbc-pool-spans-fitp (items numbersp offset)
+ :shape :step :over (items offset)
+ :done (or (atom items)
+           (not (and (unsigned-byte-p 64 offset)
+                     (unsigned-byte-p 64
+                       (len (fn-record-string-octets
+                              (if numbersp (fn-ag-car (car items)) (car items))))))))
+ :skip t :body :unused
+ :next ((cdr items)
+        (+ (nfix offset) (len (fn-record-string-octets
+              (if numbersp (fn-ag-car (car items)) (car items))))))
+ :skip-next ((cdr items)
+        (+ (nfix offset) (len (fn-record-string-octets
+              (if numbersp (fn-ag-car (car items)) (car items))))))
+ :tail (atom items) :guard t)
+
+(defun fn-lbc-nov-pool-fitp (nov offset)
+ (declare (xargs :guard t :verify-guards nil))
+ (and (fn-lbc-nov-smallp nov) (fn-lbc-pool-spans-fitp (fn-lbc-nov-texts nov) nil offset)))
+
 (defun fn-lbc-nov-spans (texts offset)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp texts)
@@ -617,9 +565,7 @@
 (defun fn-lbc-append-nov (nov fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (fn-lbc-nov-smallp nov)
                   :verify-guards nil))
-  (let* ((texts (list (fn-hnov-subject nov) (fn-hnov-from nov)
-                     (fn-hnov-date nov) (fn-hnov-msgid nov)
-                     (fn-hnov-references nov)))
+  (let* ((texts (fn-lbc-nov-texts nov))
          (record (cons (fn-hnov-tomb nov)
                        (cons (fn-hnov-ok nov)
                              (fn-lbc-nov-spans texts (fn-lbc-overview-pool-count fn-lbc)))))
@@ -656,7 +602,7 @@
   (fn-lbc-msgid-hash-octets (fn-record-string-octets msgid) 14695981039346656037))
 
 ; Appends the columns of an already committed row.  The log adapter's
-; directory supplies its locator and entry ordinal; no locator is invented
+; directory supplies its served locator; no locator is invented
 ; for a row absent from LOG.  The open and commit adapters use this worker.
 (defun fn-lbc-row-log-guardp (row log)
   (declare (xargs :guard (fn-lb-log-read-guardp log) :verify-guards nil))
@@ -680,6 +626,41 @@
            (fn-lbc-row-homes-guardp (cdr rows)))
     t))
 
+; One actual escape-cell builder, shared by native ingest and its proofs.
+(defun fn-lbc-row-escape-cell (row payload render-nov head-length max-stamp msgid-offset msgid-length i nov-start render-start groups-start numbers-start raw-head-length nov-small render-small groups-small numbers-small)
+ (declare (xargs :guard (fn-cat-rowp row) :verify-guards nil))
+ (let* ((facts (fn-held-facts row)) (nov (fn-hf-nov facts))
+        (w (fn-held-withdrawn row)))
+  (append
+             (fn-lbc-sparse-u64
+               '(:handle :head-length :stamp :prefix-max :txid :generation :charge
+                 :msgid-offset :msgid-length :withdrawal-at :withdrawal-by
+                 :overview-offset :sequence :facts-octets :body-start :body-lines
+                 :nov-start :render-nov-start :groups-start :groups-count
+                 :numbers-start :numbers-count :raw-head-length)
+               (list (fn-record-payload row) head-length (fn-record-stamp row) max-stamp
+                     (fn-record-txid row) (fn-record-generation row) (fn-record-charge row)
+                     msgid-offset msgid-length (nfix (car w)) (nfix (cdr w)) i
+                     (fn-record-sequence row) (fn-hf-octets facts)
+                     (nfix (fn-hf-body-start facts)) (fn-hf-body-lines facts)
+                     nov-start render-start groups-start (len (fn-record-groups row))
+                     numbers-start (len (fn-held-numbers row)) raw-head-length))
+             (if (and nov (not nov-small)) (list (cons :nov nov)) nil)
+             (if render-small nil (list (cons :render-nov render-nov)))
+             (if groups-small nil (list (cons :groups (fn-record-groups row))))
+             (if numbers-small nil (list (cons :numbers (fn-held-numbers row))))
+             (let ((shift (fn-lb-xref-shift-prefix payload)))
+               (if shift (list (cons :xref-body-prefix shift)) nil)))))
+
+; One flag encoding, consumed by the native writer and its type proof.
+(defun fn-lbc-row-flags (nov withdrawn escaped verified reclaimed)
+ (declare (xargs :guard t :verify-guards nil))
+ (+ (if (and (fn-hnov-p nov) (fn-hnov-ok nov)) 1 0)
+                   (if (and (fn-hnov-p nov) (fn-hnov-tomb nov)) 2 0)
+                   (if withdrawn 4 0) (if escaped 8 0)
+                   (if verified 16 0)
+                   (if reclaimed 32 0)))
+
 (defun fn-lbc-append-row (row log fn-lbc)
   (declare (xargs :stobjs fn-lbc :guard (and (fn-cat-rowp row) (fn-lb-log-read-guardp log) (fn-lbc-row-log-guardp row log) (fn-lbc-escape-cellsp 0 fn-lbc))
                   :verify-guards nil))
@@ -688,15 +669,23 @@
          (segment (fn-lb-log-model-row-segment row log))
          (payload (nth 6 entry))
          (facts (fn-held-facts row)) (nov (fn-hf-nov facts))
-         (nov-small (fn-lbc-nov-smallp nov))
+         (nov-small (fn-lbc-nov-pool-fitp nov (fn-lbc-overview-pool-count fn-lbc)))
          (render-nov (fn-hnov-of payload))
-         (numbers-small (fn-lbc-numbers-smallp (fn-held-numbers row)))
          (nov-start (fn-lbc-nov-record-count fn-lbc))
          (fn-lbc (if nov-small (fn-lbc-append-nov nov fn-lbc) fn-lbc))
+         (render-small (fn-lbc-nov-pool-fitp render-nov (fn-lbc-overview-pool-count fn-lbc)))
          (render-start (fn-lbc-nov-record-count fn-lbc))
-         (fn-lbc (fn-lbc-append-nov render-nov fn-lbc))
+         (fn-lbc (if render-small (fn-lbc-append-nov render-nov fn-lbc) fn-lbc))
+         (groups-small (fn-lbc-pool-spans-fitp (fn-record-groups row) nil
+                                             (fn-lbc-overview-pool-count fn-lbc)))
          (groups-start (fn-lbc-membership-record-count fn-lbc))
-         (fn-lbc (fn-lbc-append-memberships (fn-record-groups row) nil fn-lbc))
+         (fn-lbc (if groups-small
+                     (fn-lbc-append-memberships (fn-record-groups row) nil fn-lbc)
+                   fn-lbc))
+         (numbers-small
+           (and (fn-lbc-numbers-smallp (fn-held-numbers row))
+                (fn-lbc-pool-spans-fitp (fn-held-numbers row) t
+                                       (fn-lbc-overview-pool-count fn-lbc))))
          (numbers-start (fn-lbc-membership-record-count fn-lbc))
          (fn-lbc (if numbers-small
                      (fn-lbc-append-memberships (fn-held-numbers row) t fn-lbc)
@@ -711,31 +700,14 @@
          (max-stamp (max (nfix previous-max) (nfix (fn-record-stamp row))))
          (w (fn-held-withdrawn row))
          (escape
-           (append
-             (fn-lbc-sparse-u64
-               '(:handle :head-length :stamp :prefix-max :txid :generation :charge
-                 :msgid-offset :msgid-length :withdrawal-at :withdrawal-by
-                 :overview-offset :sequence :facts-octets :body-start :body-lines
-                 :nov-start :render-nov-start :groups-start :groups-count
-                 :numbers-start :numbers-count :raw-head-length)
-               (list (fn-record-payload row) head-length (fn-record-stamp row) max-stamp
-                     (fn-record-txid row) (fn-record-generation row) (fn-record-charge row)
-                     msgid-offset (len msgid-bytes) (nfix (car w)) (nfix (cdr w)) i
-                     (fn-record-sequence row) (fn-hf-octets facts)
-                     (nfix (fn-hf-body-start facts)) (fn-hf-body-lines facts)
-                     nov-start render-start groups-start (len (fn-record-groups row))
-                     numbers-start (len (fn-held-numbers row)) raw-head-length))
-             (if (and nov (not nov-small)) (list (cons :nov nov)) nil)
-             (if numbers-small nil (list (cons :numbers (fn-held-numbers row))))
-             (let ((shift (fn-lb-xref-shift-prefix payload)))
-               (if shift (list (cons :xref-body-prefix shift)) nil))))
-         (flags (+ (if (and (fn-hnov-p nov) (fn-hnov-ok nov)) 1 0)
-                   (if (and (fn-hnov-p nov) (fn-hnov-tomb nov)) 2 0)
-                   (if w 4 0) (if escape 8 0)
-                   (if (fn-arx-entry-ok
+           (fn-lbc-row-escape-cell row payload render-nov head-length max-stamp msgid-offset
+             (len msgid-bytes) i nov-start render-start groups-start numbers-start
+             raw-head-length nov-small render-small groups-small numbers-small))
+         (flags (fn-lbc-row-flags nov w escape
+                  (fn-arx-entry-ok
                          (fn-lb-entry-octets segment (nth 3 entry) log)
-                         (fn-lb-entry-protected-len segment (nth 3 entry) log)) 16 0)
-                   (if (fn-rcl-tombstonep payload) 32 0))))
+                         (fn-lb-entry-protected-len segment (nth 3 entry) log))
+                  (fn-rcl-tombstonep payload))))
     (mv-let (loc0 loc1) (fn-loc-make segment (nth 3 entry) (nth 4 entry))
       (let* ((words
                (list (fn-lbc-u64 (fn-record-payload row)) loc0 loc1
@@ -752,7 +724,7 @@
                      (if (natp (fn-hf-body-start facts)) t nil)
                      (fn-lbc-u64 (fn-hf-body-lines facts))
                      (fn-lbc-u64 nov-start) (if nov-small 1 0)
-                     (fn-lbc-u64 render-start) 1
+                     (fn-lbc-u64 render-start) (if render-small 1 0)
                      (fn-lbc-u64 groups-start) (fn-lbc-u64 (len (fn-record-groups row)))
                      (fn-lbc-u64 numbers-start) (fn-lbc-u64 (len (fn-held-numbers row)))
                      (equal (car (fn-nntp-section-of-bytes payload :article)) :ok)

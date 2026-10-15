@@ -864,6 +864,16 @@
 
 (verify-guards fn-lbc-nov-spans :guard-debug t)
 
+(verify-guards fn-lbc-nov-texts)
+(verify-guards fn-lbc-pool-spans-fitp-loop)
+(verify-guards fn-lbc-pool-spans-fitp)
+(verify-guards fn-lbc-nov-pool-fitp)
+
+(local
+ (defthm fn-lbc-nov-pool-fitp-implies-smallp
+  (implies (fn-lbc-nov-pool-fitp nov offset) (fn-lbc-nov-smallp nov))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-lbc-nov-pool-fitp))))))
+
 (verify-guards
   fn-lbc-append-nov
   :guard-debug
@@ -3202,10 +3212,34 @@
  (unsigned-byte-p 64 (+ (if a 1 0) (if b 2 0) (if c 4 0) (if d 8 0) (if e 16 0) (if f 32 0)))
  :hints (("Goal" :in-theory (union-theories (theory 'ground-zero) '(unsigned-byte-p integer-range-p))))))
 
+(local (defthm fn-lbg-cell-alist-of-append
+ (implies (and (alistp a) (alistp b)) (alistp (append a b)))
+ :hints (("Goal" :induct (append a b) :in-theory (enable alistp binary-append)))))
+(local (defthm fn-lbg-row-escape-cell-alistp
+ (alistp (fn-lbc-row-escape-cell row payload render-nov head-length max-stamp msgid-offset msgid-length i nov-start render-start groups-start numbers-start raw-head-length nov-small render-small groups-small numbers-small))
+ :hints (("Goal" :do-not '(preprocess) :do-not-induct t
+ :in-theory (set-difference-theories (union-theories (theory 'ground-zero)
+ '(fn-lbc-row-escape-cell fn-lbg-cell-alist-of-append fn-lbg-sparse-alist alistp)) '((tau-system)))))))
+(verify-guards fn-lbc-row-escape-cell
+ :hints (("Goal" :use ((:instance fn-lbg-row-withdrawal-spine)
+                             (:instance fn-cat-rowp-fields (h row)))
+ :in-theory (disable fn-lbc-sparse-u64 fn-lb-xref-shift-prefix fn-held-withdrawnp))))
+
+(verify-guards fn-lbc-row-flags)
+(local (defthm fn-lbg-row-flags-u64
+ (unsigned-byte-p 64 (fn-lbc-row-flags nov withdrawn escaped verified reclaimed))
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-lbg-xref-flags-fit-u64
+    (a (and (fn-hnov-p nov) (fn-hnov-ok nov)))
+    (b (and (fn-hnov-p nov) (fn-hnov-tomb nov)))
+    (c withdrawn) (d escaped) (e verified) (f reclaimed)))
+  :in-theory (union-theories (theory 'minimal-theory) '(fn-lbc-row-flags))))))
+
 (verify-guards
   fn-lbc-append-row
   :hints
   (("Goal"
+     :do-not '(preprocess)
      :use
      ((:instance fn-lbg-row-withdrawal-spine)
        (:instance
@@ -3221,6 +3255,9 @@
          (nov (fn-hnov-of (nth 6 (fn-lb-log-model-row-entry row log))))))
      :in-theory
      (disable
+       fn-lbc-row-escape-cell fn-lbc-row-flags
+       fn-lbc-nov-texts fn-lbc-nov-pool-fitp
+       fn-lbc-pool-spans-fitp fn-lbc-pool-spans-fitp-loop
        fn-lb-xref-shift-prefix
        fn-loc-make adt-rec-p adt-val-okp max nfix natp
        fn-lbg-row-withdrawal-spine
@@ -3664,7 +3701,7 @@
     :hints
     (("Goal"
        :in-theory
-       '(fn-lbc-append-row update-fn-lbc-row-store update-fn-lbc-directory-store fn-lbc-row-store fn-lbc-directory-store fn-lbc-rowwords-append-is-append fn-lbc-directory-append-is-append fn-lbg-escape-put-other-field fn-lbg-escape-frame-update fn-lbg-escape-extension-flexible fn-lbg-alist-append fn-lbg-sparse-alist alistp fn-lbg-row-nth-by-car fn-lbg-count-by-car fn-lbg-msgid-pool-append-count-frame fn-lbg-msgid-pool-append-row-column fn-lbg-msgid-pool-append-escape-frame fn-lbg-overview-pool-append-count-frame fn-lbg-overview-pool-append-row-column fn-lbg-overview-pool-append-escape-frame fn-lbg-append-nov-texts-count-frame fn-lbg-append-nov-texts-row-column fn-lbg-append-nov-texts-escape-frame fn-lbg-append-memberships-count-frame fn-lbg-append-memberships-row-column fn-lbg-append-memberships-escape-frame fn-lbg-append-nov-count-frame fn-lbg-append-nov-row-column fn-lbg-append-nov-escape-frame (:executable-counterpart equal) (:executable-counterpart car) (:executable-counterpart cdr) (:executable-counterpart <) (:executable-counterpart natp) (:executable-counterpart not) (:type-prescription len) (:type-prescription fn-lbc-count) (:type-prescription alistp) car-cons cdr-cons)))))
+       '(fn-lbc-append-row fn-lbg-row-escape-cell-alistp update-fn-lbc-row-store update-fn-lbc-directory-store fn-lbc-row-store fn-lbc-directory-store fn-lbc-rowwords-append-is-append fn-lbc-directory-append-is-append fn-lbg-escape-put-other-field fn-lbg-escape-frame-update fn-lbg-escape-extension-flexible fn-lbg-alist-append fn-lbg-sparse-alist alistp fn-lbg-row-nth-by-car fn-lbg-count-by-car fn-lbg-msgid-pool-append-count-frame fn-lbg-msgid-pool-append-row-column fn-lbg-msgid-pool-append-escape-frame fn-lbg-overview-pool-append-count-frame fn-lbg-overview-pool-append-row-column fn-lbg-overview-pool-append-escape-frame fn-lbg-append-nov-texts-count-frame fn-lbg-append-nov-texts-row-column fn-lbg-append-nov-texts-escape-frame fn-lbg-append-memberships-count-frame fn-lbg-append-memberships-row-column fn-lbg-append-memberships-escape-frame fn-lbg-append-nov-count-frame fn-lbg-append-nov-row-column fn-lbg-append-nov-escape-frame (:executable-counterpart equal) (:executable-counterpart car) (:executable-counterpart cdr) (:executable-counterpart <) (:executable-counterpart natp) (:executable-counterpart not) (:type-prescription len) (:type-prescription fn-lbc-count) (:type-prescription alistp) car-cons cdr-cons)))))
 
 (local
   (defthm
@@ -3796,6 +3833,13 @@
   (and (alistp cell) (not (assoc-eq :msgid-slot cell))))
  :hints (("Goal" :in-theory (disable fn-lbc-sparse-u64)))))
 
+(local (defthm fn-lbg-row-escape-cell-has-no-slot-key
+ (not (assoc-eq :msgid-slot (fn-lbc-row-escape-cell row payload render-nov head-length max-stamp msgid-offset msgid-length i nov-start render-start groups-start numbers-start raw-head-length nov-small render-small groups-small numbers-small)))
+ :hints (("Goal" :do-not '(preprocess) :do-not-induct t
+ :in-theory (set-difference-theories (union-theories (theory 'ground-zero)
+ '(fn-lbc-row-escape-cell fn-lbg-slot-absent-in-append fn-lbg-sparse-slot-absent
+ assoc-eq-exec-is-assoc-equal member-eq-exec-is-member-equal assoc-equal member-equal)) '((tau-system)))))))
+
 (local (defthm fn-lbg-escape-put-slot-key-column-frame
  (equal (nth *fn-lbc-slot-escape-keys* (fn-lbc-escape-store-put key cell fn-lbc))
         (nth *fn-lbc-slot-escape-keys* fn-lbc))
@@ -3839,7 +3883,7 @@
      fn-lbc-directory-append-is-append fn-lbg-escape-put-other-field
      fn-lbg-slot-values-other-field fn-lbg-slot-values-put-other-field fn-lbg-slot-values-extension-flexible
      fn-lbg-slot-absent-in-append fn-lbg-sparse-slot-absent
-     fn-lbg-row-escape-cell-slot-domain fn-lbg-alist-append fn-lbg-sparse-alist alistp
+     fn-lbg-row-escape-cell-slot-domain fn-lbg-row-escape-cell-has-no-slot-key fn-lbg-row-escape-cell-alistp fn-lbg-alist-append fn-lbg-sparse-alist alistp
      fn-lbg-row-nth-by-car fn-lbg-count-by-car
      fn-lbg-msgid-pool-append-count-frame fn-lbg-msgid-pool-append-row-column
      fn-lbg-msgid-pool-append-escape-frame fn-lbg-msgid-pool-append-slot-values-frame
@@ -3909,7 +3953,7 @@
 (local (defthm fn-lbg-len-append-singleton
  (equal (len (append x (list value))) (+ 1 (len x)))
  :hints (("Goal" :induct (append x (list value)) :in-theory (enable append len)))))
-(local (defthm fn-lbg-count-of-append-row
+(defthm fn-lbc-count-of-append-row
  (equal (fn-lbc-count (fn-lbc-append-row row log fn-lbc)) (+ 1 (fn-lbc-count fn-lbc)))
  :hints (("Goal" :do-not '(preprocess) :in-theory
   (union-theories
@@ -3925,19 +3969,19 @@
      (:executable-counterpart natp) (:executable-counterpart <)
      (:executable-counterpart nfix) car-cons cdr-cons
      (:type-prescription len) (:type-prescription fn-lbc-count))
-   (theory 'minimal-theory))))))
+   (theory 'minimal-theory)))))
 (local (defthm fn-lbg-number-put-row-count-frame
  (equal (fn-lbc-count (fn-lbc-number-put-row numbers i fn-lbc)) (fn-lbc-count fn-lbc))
  :hints (("Goal" :in-theory (e/d (fn-lbc-count) (fn-lbc-number-put-row fn-lbc-p))))))
-(local (defthm fn-lbg-count-of-rebuild-rows
+(defthm fn-lbc-count-of-rebuild-rows
  (equal (fn-lbc-count (fn-lbc-rebuild-rows rows log fn-lbc))
         (+ (len rows) (fn-lbc-count fn-lbc)))
  :hints (("Goal" :induct (fn-lbc-rebuild-rows rows log fn-lbc)
   :in-theory (e/d (fn-lbc-rebuild-rows)
-    (fn-lbc-append-row fn-lbc-number-put-row fn-lbc-count fn-lbg-count-by-car fn-lbc-p))))))
-(local (defthm fn-lbg-count-of-clear
+    (fn-lbc-append-row fn-lbc-number-put-row fn-lbc-count fn-lbg-count-by-car fn-lbc-p)))))
+(defthm fn-lbc-count-of-clear-columns
  (equal (fn-lbc-count (fn-lbc-clear-columns fn-lbc)) 0)
- :hints (("Goal" :in-theory (e/d (fn-lbc-count fn-lbc-clear-columns) (fn-lbc-p))))))
+ :hints (("Goal" :in-theory (e/d (fn-lbc-count fn-lbc-clear-columns) (fn-lbc-p)))))
 (local (defthm fn-lbg-count-other-field
  (implies (and (natp field) (< 0 field))
   (equal (fn-lbc-count (update-nth field value fn-lbc)) (fn-lbc-count fn-lbc)))
