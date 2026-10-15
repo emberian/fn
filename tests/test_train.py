@@ -1471,7 +1471,7 @@ class CertifySelectionTests(unittest.TestCase):
         self.assertIn("tests/acl2/current-witness", selection["roots"])
         self.assertNotIn("tests/acl2/stale-witness", selection["roots"])
 
-    def test_nonzero_writer_raises_with_log_tail_before_any_submission(self):
+    def test_a_refused_write_raises_with_log_tail_before_any_submission(self):
         self.manifest.parent.mkdir(parents=True)
         self.manifest.write_text('{"entries": []}')
         output = "\n".join(["discarded first line", *[f"line {i}" for i in range(30)]]) + "\n"
@@ -1484,13 +1484,26 @@ class CertifySelectionTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()):
             with self.assertRaises(train.TrainError) as raised:
                 train.cmd_certify(self.t, SimpleNamespace(box="hbox"))
-        self.assertIn("writer failed rc 7", str(raised.exception))
+        self.assertIn("did not write", str(raised.exception))
+        self.assertIn("rc 7", str(raised.exception))
         self.assertIn(str(self.t.logs / "certify-teeth.log"), str(raised.exception))
         self.assertIn("line 29\nwriter refused", str(raised.exception))
         self.assertNotIn("discarded first line", str(raised.exception))
         run.assert_called_once_with(train.teeth_manifest_command(), cwd=self.t.root,
                                     env=None, capture_output=True, text=True)
         self.assertFalse(self.manifest.exists())
+
+    def test_findings_that_do_not_hold_the_write_still_select(self):
+        # C19 (10-15): keystone_emit wrote the manifest and exited 1 for 11
+        # critical keystones whose witness book this certify was about to
+        # certify; selection must go on, reading the manifest it wrote.
+        def write_and_report(*args, **kwargs):
+            self.write_current()
+            return SimpleNamespace(returncode=1, stdout="critical gate: ... not certified\n", stderr="")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            selection = self.select(write_and_report)
+        self.assertIn("tests/acl2/current-witness", selection["roots"])
 
     def test_success_without_output_refuses_both_fresh_and_stale_manifests(self):
         for stale in (False, True):

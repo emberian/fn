@@ -58,7 +58,8 @@ root transitively affected by a changed book, every root the train adds to
 the Makefile's ACL2_BOOKS, plus the critical witness tests
 of affected theorem books. Selection first rewrites the current tree's
 uncommitted teeth manifest, logging the writer in build/train/logs/certify-teeth.log;
-a failed writer or missing output refuses selection before farm submission.
+a write the writer refused (no manifest) refuses selection before farm submission;
+findings that do not hold the write (e.g. critical witnesses not yet certified) are reported.
 Lane-check's BOX command report uses the same selection and refresh, even after
 regen (COORDINATION section 5: the affected closure
 certifies on the exact artifact before a push, regardless of tree size; the
@@ -1006,11 +1007,19 @@ def certify_selection(t: Train) -> dict:
         manifest = t.root / TEETH_MANIFEST
         manifest.unlink(missing_ok=True)
         rc = t.run("certify-teeth", teeth_manifest_command())
-        if rc != 0 or not manifest.is_file():
-            log = t.logs / "certify-teeth.log"
+        log = t.logs / "certify-teeth.log"
+        # The manifest was deleted above, so its presence is the writer's own
+        # word that it wrote: keystone_emit exits nonzero for findings that
+        # never hold the write hostage (critical keystones whose witness book
+        # is not yet certified at its closure key, which is what this certify
+        # is about to do; C19, 10-15), and a refused write leaves no file.
+        if not manifest.is_file():
             tail = "\n".join(log.read_text().splitlines()[-30:])
-            reason = f"writer failed rc {rc}" if rc != 0 else f"writer did not write {manifest}"
-            raise TrainError(f"cannot select critical witnesses: {reason} (log: {log})\n{tail}")
+            raise TrainError(f"cannot select critical witnesses: the writer did not write {manifest} "
+                             f"(rc {rc}; log: {log})\n{tail}")
+        if rc != 0:
+            say(f"certify-teeth: manifest written; keystone_emit reported findings (rc {rc}) that the "
+                f"keystone gate judges after certify (log: {log})")
     witnesses = _critical_witness_roots(t.root, changed)
     added = _added_roots(t)
     # Naming a changed book as a root alone does not select its includers.
