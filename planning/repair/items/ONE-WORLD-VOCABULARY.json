@@ -1,0 +1,12 @@
+{
+ "detail": "Landing B (10-14/15) measured that LOCAL-izing each generic's implementation closure to a strict universal seal needs either copies of ~361 shared library books (refused: a twin forest, collides on FN-RECORD-INTERNALS) or an in-place public/internal split of the shared libraries. Measurement protocol (main 10-14, binding for this item): the export set is the fixpoint of every edge ACL2 imposes when an UNCHANGED retained event is replayed in pass 2 with its target LOCAL (kinds so far: event incl. owning source form, logical support, constraint container, rule-class prerequisites), each kind named from ACL2 semantics with one ground refusal witness, joining by measurement; STOP line: an edge kind whose theorem-rule runes exceed 1% of the generic's U theorem-rule runes beyond those already accepted. Retirement targets: stobj/abstract-stobj declarations (companion + support debt). Evidence: lane one-world-b build/b-runs (B-S-*.txt, B-S-DSTAR/TSTAR/final reports, edge witnesses).",
+ "file": "books/history-paged.lisp",
+ "id": "ONE-WORLD-VOCABULARY",
+ "notes": [],
+ "owner": "A",
+ "severity": "medium",
+ "source": "ONE-WORLD-B-LOCAL-VOCABULARY",
+ "state": "open",
+ "title": "seal each generic's exported vocabulary: the leak is shared-library vocabulary, not generic-private; a vocabulary refactor (public/internal split of shared libraries and the stobj declarations), not a landing",
+ "updated": "2026-10-15T04:32:38Z"
+}
