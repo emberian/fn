@@ -374,6 +374,8 @@
            (fn-adm-rows-within (cdr records) profile))
     t))
 (encapsulate ()
+; Page coverage opens a ceiling term that fn-clq-ceiling-step expands repeatedly.
+(local (in-theory (disable pgs-run-pages-covers)))
 (local (defthm kb-nfix-nfix (equal (nfix (nfix a)) (nfix a))))
 (local (defthm kb-tot-fields-of-make
   (and (equal (fn-mm-tot-records (fn-mm-make-tot a b c d e f g h r)) (nfix a))

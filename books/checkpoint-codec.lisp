@@ -149,7 +149,7 @@
                              fn-cbor-result-value fn-cbor-result-rest)
                             (fn-cbor-decode-argument
                              fn-cbor-canonical-argumentp
-                             take nthcdr))))))
+                             take nthcdr pgs-len-of-nthcdr))))))
 
 (defthm fn-cpc-read-item-shrinks
   (implies (fn-cbor-result-okp (fn-cpc-read-item octets))
