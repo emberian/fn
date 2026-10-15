@@ -8,6 +8,7 @@
 (include-book "identity-retain-carried")
 (include-book "owner-connection-state")
 (include-book "owner-reader-view")
+(include-book "owner-readers-transitions")
 
 (defthm fn-owner-retain-carry-of-install-ocfg
   (equal (fn-owner-retain-carry (fn-owner-install-ocfg oc state))
@@ -351,3 +352,58 @@
             (theory 'minimal-theory)))))
 
 (in-theory (disable fn-owner-retain-statep fn-owner-prepare-identity fn-owner-finish-synced))
+
+; Establish the captured-view premise at initial reader installation and
+; the first capture from the actual recovery/start working-view producer.
+(local
+(defthm fn-one-world-b-start-store
+ (equal (fn-own-store (fn-own-start store max-conns)) store)
+ :hints (("Goal" :in-theory '(fn-own-start fn-own-refresh-keeps-fields
+                             fn-own-store-of-fn-own-make)))))
+
+(local
+(defthm fn-one-world-b-started-view-follows-files
+ (implies (natp (fn-sf-frontier (fn-sn-files store)))
+  (fn-captured-view-follows-files
+   (fn-own-view (fn-own-start store max-conns)) (fn-sn-files store)))
+ :hints (("Goal" :in-theory
+  (union-theories '(fn-captured-view-follows-files fn-own-start fn-own-refresh
+                    fn-own-store-of-fn-own-make fn-own-view-of-fn-own-make
+                    fn-own-view-fields-of-make-visible natp (:type-prescription len))
+                  (theory 'minimal-theory))))))
+
+(defthm fn-one-world-b-initial-readers-follow-ocfg
+ (fn-captured-views-follow-ocfg (fn-ordr-views (fn-ordr-initial)) oc)
+ :hints (("Goal" :in-theory (enable fn-ordr-initial fn-captured-views-follow-ocfg))))
+
+(defthm fn-one-world-b-started-view-follows-ocfg
+ (let ((oc (fn-ocfg-make (fn-own-start store max-conns) config pins staged)))
+  (implies (fn-lgoc-invariantp oc)
+   (fn-captured-view-follows-ocfg (fn-own-view (fn-ocfg-owner oc)) oc)))
+ :hints (("Goal"
+  :use ((:instance fn-ocl-relation-of-a-view-captured-before-appends
+                   (oc0 (fn-ocfg-make (fn-own-start store max-conns) config pins staged)) (oc (fn-ocfg-make (fn-own-start store max-conns) config pins staged)) (extra nil))
+        (:instance fn-lgoc-invariant-statep
+         (oc (fn-ocfg-make (fn-own-start store max-conns) config pins staged))))
+  :in-theory (union-theories
+   '(fn-captured-view-follows-ocfg fn-lgoc-invariantp
+     fn-one-world-b-started-view-follows-files fn-one-world-b-start-store
+     fn-ocfg-owner-of-fn-ocfg-make fn-lgoc-invariant-statep
+     fn-cstp-sn-statep-files fn-snt-typed-frontier-natural
+     fn-sf-state-records-are-true-list append-to-nil)
+   (theory 'minimal-theory)))))
+
+(defthm fn-one-world-b-start-capture-establishes-follows-ocfg
+ (let ((oc (fn-ocfg-make (fn-own-start store max-conns) config pins staged)))
+  (implies (fn-lgoc-invariantp oc)
+   (fn-captured-views-follow-ocfg
+    (fn-ordr-views
+     (fn-ordr-capture (fn-ordr-initial) :start
+                     (fn-own-view (fn-ocfg-owner oc)))) oc)))
+
+ :hints (("Goal" :use (fn-one-world-b-started-view-follows-ocfg)
+  :in-theory (union-theories
+   '(car-cons cdr-cons fn-ordr-initial fn-ordr-capture fn-ocv-capture fn-ordr-put
+     fn-ordr-views fn-ordr-make fn-captured-views-follow-ocfg
+     fn-ocfg-owner-of-fn-ocfg-make)
+   (theory 'minimal-theory)))))

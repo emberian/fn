@@ -358,6 +358,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-retain-frame-tests \
 	tests/acl2/owner-retain-live-tests \
 	tests/acl2/one-world-b-k1-recovery-tests \
+	tests/acl2/one-world-b-k1-establishment-tests \
 	books/def-carried-view \
 	tests/acl2/def-carried-view-tests \
 	books/def-keyset-check \
