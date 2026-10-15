@@ -23618,6 +23618,25 @@
         "fn-lgo-head-genesis-is-the-open-lineage-start",
         "fn-lgo-history-ceiling-bounds-the-intern"
       ]
+    },
+    {
+      "id": "PRF-100012",
+      "title": "stopped health carries a refused config's exit",
+      "statement": "fn-omr-stopped-health-carries-config-refusal-exit (defkeystone fn-omr-stopped-health-carries-config-refusal-exit, books/owner-maintenance-request.lisp); subject fn-omr-stopped-health-report.",
+      "milestone": "M29",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "books/owner-maintenance-request.lisp"
+      ],
+      "evidence_digest": "f89846e1ff69017b",
+      "keystone_subjects": {
+        "fn-omr-stopped-health-carries-config-refusal-exit": "fn-omr-stopped-health-report"
+      },
+      "events": [
+        "fn-omr-stopped-health-carries-config-refusal-exit"
+      ]
     }
   ]
 }

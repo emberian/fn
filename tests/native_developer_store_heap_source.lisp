@@ -1,0 +1,73 @@
+; Actual developer projection and ACL2 classification, no saved image required.
+(load "tests/native_bp_heap_source.lisp")
+(in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-heap-operator-profile (config-path words)
+  (declare (ignorable config-path words))
+  (harness-stub-reached 'fnn-heap-operator-profile "host/native/heap.lisp"))
+;;; ---- derived stubs: END ----
+(defun natp (x) (and (integerp x) (<= 0 x)))
+(defun zp (x) (not (posp x)))
+(defun nfix (x) (if (natp x) x 0))
+(defun true-listp (x) (if (consp x) (true-listp (cdr x)) (null x)))
+(defun len (x) (length x))
+(defun member-equal (x xs) (member x xs :test #'equal))
+(defun assoc-equal (x xs) (assoc x xs :test #'equal))
+(defmacro defconst (name value) `(defparameter ,name ,value))
+(source-functions "books/native-config.lisp" '(fn-ncfg-first fn-ncfg-rest fn-ncfg-second fn-ncfg-third fn-ncfg-nth))
+(source-functions "books/native-operator.lisp"
+ '(fn-nop-result fn-nop-usage fn-nop-refused fn-native-operator-result-status
+   fn-native-operator-result-command fn-native-operator-result-arguments
+   fn-native-operator-result-native-action fn-nop-parse-command fn-nop-parse-store))
+(source-functions "host/native-operator-host.lisp"
+ '(fn-native-operator-host-result-status fn-native-operator-host-result-native-action))
+(source-functions "books/owner-maintenance-request.lisp" '(fn-omr-status-replayp))
+(source-functions "books/heap-figure.lisp" '(fn-heap-operation-observes-p))
+(source-functions "books/heap-command.lisp" '(fn-heap-command-growth fn-heap-action-growth))
+(with-open-file (in "books/heap-command.lisp")
+ (loop for form = (read in nil :eof) until (eq form :eof)
+  when (and (consp form) (eq (first form) 'defconst)
+            (eq (second form) '*fn-heap-action-growth*)) do (eval form)))
+(defun fnn-heap-history-observation (root profile)
+ (declare (ignore profile)) (list :history root))
+(when (second sb-ext:*posix-argv*)
+ (source-functions (second sb-ext:*posix-argv*) '(fnn-heap-command-profile-base)))
+(dolist (case '((("store" "ROOT" "status") :status "status" nil :header)
+               (("store" "ROOT" "status" "--replay") :status "status" t :reads)
+               (("store" "ROOT" "recover") :recover "recover" nil :lists)
+               (("store" "ROOT" "checkpoint") :checkpoint "checkpoint" nil :grows)
+               ;; A developer-only verb the ACL2 grammar does not know keeps the
+               ;; conservative unknown action (A29's grant condition (b)).
+               (("store" "ROOT" "frobnicate") nil "frobnicate" nil :grows)))
+ (let* ((argv (first case))
+        (projection (multiple-value-list (fnn-heap-command-profile-base argv)))
+        (action (third projection)) (command (nth 9 projection)) (replay (nth 10 projection))
+        (growth (fn-heap-command-growth action command replay)))
+  (format t "DEV-STORE argv=~s projection=~s class=~s~%" argv projection growth)
+  (if (second sb-ext:*posix-argv*)
+      (assert (eq growth :grows))
+    (progn
+     (assert (eq action (second case)))
+     (assert (equal command (third case)))
+     (assert (eq replay (fourth case)))
+     (assert (eq growth (fifth case)))
+     (assert (equal (nth 6 projection) "/captured/ROOT"))
+     ;; An offline verb that reads the history still observes it (A29's
+     ;; condition (c)): the observation is present exactly when ACL2 says the
+     ;; action observes history.
+     (assert (eq (and (nth 3 projection) t)
+                 (and (fnn-core 'fn-heap-operation-observes-p action) t)))
+     (when (eq action :recover) (assert (equal (nth 3 projection) '(:history "/captured/ROOT"))))))))
+(format t "PASS actual developer store heap projection~%")

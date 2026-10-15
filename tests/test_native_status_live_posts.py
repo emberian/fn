@@ -17,7 +17,7 @@ no fixture: format changes do not strand it):
 * `store init' a fresh store; the owner opens it; `status' answers, exit 0,
   twice (T0 the faster);
 * FN_STATUS_POSTS (default 60,000) articles are POSTed over 8 connections,
-  every one 240 -- each a live acceptance, so N = V, where the old render was
+  every article eventually 240 (bounded retry of the command-stage memory 440) -- each a live acceptance, so N = V, where the old render was
   N x V verdict steps (9.3 s more at 20,000 on hbox);
 * `status' answers again, exit 0, twice (T1 the faster), its articles=N grown
   by the POSTs, and T1 - T0 stays under FN_STATUS_SLACK seconds (default 2.0).
@@ -45,6 +45,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.native_harness import ROOT, Node, native_image, requires
 
@@ -62,6 +63,51 @@ def article(i):
             "Subject: status %d\r\nDate: Mon, 28 Sep 2026 06:00:00 +0000\r\n"
             "Message-ID: <hts-%06d@status.example.invalid>\r\n\r\n"
             % (i, i)).encode("ascii") + b"status line body\r\n" * 8
+
+
+MEMORY_440 = b"440 posting not permitted now; the articles in flight fill the memory, try again later\r\n"
+POST_RETRY_SECONDS = 60
+
+
+def post_eventually(client, payload):
+    "Retry only a command-stage transient refusal; never resend a submitted body."
+    deadline = time.monotonic() + POST_RETRY_SECONDS
+    retries = 0
+    while True:
+        first, final = client.post(payload)
+        if final is not None or first != MEMORY_440:
+            return (final or first).decode(errors="replace").strip(), retries
+        if time.monotonic() >= deadline:
+            raise TimeoutError("article never admitted after memory 440 within 60 seconds")
+        retries += 1
+        time.sleep(0.05)
+
+
+class PostRetrySourceTests(unittest.TestCase):
+    def test_memory_refusal_retries_the_same_article_until_accepted(self):
+        client = mock.Mock()
+        client.post.side_effect = [(MEMORY_440, None), (b"340 send article\r\n", b"240 article received OK\r\n")]
+        with mock.patch(__name__ + ".time.sleep"):
+            reply, count = post_eventually(client, b"same article")
+        self.assertEqual(reply, "240 article received OK")
+        self.assertEqual(count, 1)
+        self.assertEqual(client.post.call_args_list, [mock.call(b"same article")] * 2)
+
+    def test_permanent_refusal_and_post_body_outcome_are_never_retried(self):
+        for first, final in [(b"440 posting disabled\r\n", None),
+                             (b"340 send article\r\n", b"441 posting failed\r\n")]:
+            client = mock.Mock()
+            client.post.return_value = first, final
+            post_eventually(client, b"article")
+            client.post.assert_called_once()
+
+    def test_continuous_memory_refusal_fails_the_eventual_acceptance_claim(self):
+        client = mock.Mock()
+        client.post.return_value = MEMORY_440, None
+        with mock.patch(__name__ + ".time.monotonic", side_effect=[0, POST_RETRY_SECONDS]):
+            with self.assertRaisesRegex(TimeoutError, "never admitted"):
+                post_eventually(client, b"article")
+        client.post.assert_called_once()
 
 
 @requires(IMAGE)
@@ -93,11 +139,16 @@ class NativeStatusLivePostsTests(unittest.TestCase):
         found = re.search(r"\barticles=(\d+)", text)
         return r.returncode, seconds, int(found.group(1)) if found else None, text
 
-    def poster(self, indices, replies):
-        with self.node.session(timeout=600, greeting=None) as client:
-            for i in indices:
-                first, final = client.post(article(i))
-                replies.append((final or first).decode(errors="replace").strip())
+    def poster(self, indices, replies, retried, errors):
+        try:
+            with self.node.session(timeout=60, greeting=None) as client:
+                for i in indices:
+                    reply, retries = post_eventually(client, article(i))
+                    replies.append(reply)
+                    if retries:
+                        retried.append(retries)
+        except Exception as error:
+            errors.append(repr(error))
 
     def test_status_after_live_posts_stays_within_the_slack(self):
         init = self.node.store("init", *FLAGS, "fn.test", timeout=900)
@@ -113,9 +164,9 @@ class NativeStatusLivePostsTests(unittest.TestCase):
         t0 = min(s for _, s, _, _ in before)
         n0 = before[-1][2]
 
-        replies = []
+        replies, retried, errors = [], [], []
         threads = [threading.Thread(target=self.poster,
-                                    args=(range(k, POSTS, CONNECTIONS), replies))
+                                    args=(range(k, POSTS, CONNECTIONS), replies, retried, errors))
                    for k in range(CONNECTIONS)]
         started = time.monotonic()
         for t in threads:
@@ -124,8 +175,11 @@ class NativeStatusLivePostsTests(unittest.TestCase):
             t.join()
         accepted = sum(1 for r in replies if r.startswith("240"))
         self.out(step="posts", posted=len(replies), accepted=accepted,
+                 retries=sum(retried), errors=errors,
                  seconds=round(time.monotonic() - started, 1),
                  other=sorted(set(r for r in replies if not r.startswith("240")))[:5])
+        self.assertEqual(errors, [])
+        self.assertEqual(len(replies), POSTS)
         self.assertEqual(accepted, POSTS)
 
         after = [self.status() for _ in range(2)]

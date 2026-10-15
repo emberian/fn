@@ -4715,6 +4715,21 @@ it."
                      (cons deliver socket))
                nil)))))
 
+(defun fnn-owner-post-credit-trace (outcome)
+  "Owner held: developer-only counters after a POST reservation transition.
+The existing pipeline selector gates every line; ACL2 computes every count."
+  (when (fnn-developer-selector "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE")
+    (let* ((credits (fnn-global 'fn-owner-credits))
+           (ops (fnn-core 'fn-mcr-ops credits))
+           (oc (fnn-global 'fn-owner)))
+      (fnn-err "POST-CREDIT outcome=~(~a~) slots=~d held=~d budget=~d total=~d free=~d open=~d sealed=~d"
+               outcome (fnn-global 'fn-owner-article-slots)
+               (fnn-core 'fn-oas-held oc)
+               (fnn-core 'fn-mcr-budget credits) (fnn-core 'fn-mcr-total credits)
+               (fnn-core 'fn-mcr-free credits)
+               (fnn-core 'fn-mcr-credit-of :open ops)
+               (fnn-core 'fn-mcr-credit-of :sealed ops)))))
+
 (defun fnn-owner-commit-start-locked (service &key (seal t))
   "START (books/owner-commit-pipeline.lisp): drain at most the operator's
 batch bound of queued members into the log's open batch, each through its
@@ -4811,11 +4826,13 @@ nil when nothing was queued (or the store does not commit through the log)."
                 ;; Lane credits (books/owner-credits.lisp fn-mca-seal): the
                 ;; taken members' credit is the batch in flight's until its
                 ;; COMPLETE, whatever their connections do meanwhile.
-                (fnn-owner-action 'fn-owner-credits-seal))
+                (fnn-owner-action 'fn-owner-credits-seal)
+                (fnn-owner-post-credit-trace :sealed))
               ;; Nothing kept (every member a refusal told at its drain):
               ;; nothing of theirs is written or held (fn-mca-settle).
               (when (and (null members) (not uncertain))
-                (fnn-owner-action 'fn-owner-credits-settle)))
+                (fnn-owner-action 'fn-owner-credits-settle)
+                (fnn-owner-post-credit-trace :drain-refused)))
           (fnn-store-indeterminate (e)
             (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
             (setq uncertain t))))
@@ -5022,6 +5039,7 @@ members."
        ;; Lane credits (fn-mca-stop): the service exits; nothing is admitted
        ;; again.
        (fnn-owner-action 'fn-owner-credits-stop)
+       (fnn-owner-post-credit-trace :stop)
        (fnn-err "a log batch of ~d member~:p is uncertain; the store needs recovery"
                 (length members))
        ;; Each member is answered from the owner before the stop (campaign
@@ -5041,6 +5059,7 @@ members."
        ;; Lane credits (fn-mca-batch-done): the barrier returned; the batch's
        ;; buffers are the syncer's no longer.
        (fnn-owner-action 'fn-owner-credits-batch-done)
+       (fnn-owner-post-credit-trace :complete)
        ;; After the barrier: the lines, in order.  The members' feed
        ;; resolutions were the batch job's :resolutions phase, after the
        ;; barrier and before this quantum (lane owner-offlock).
@@ -7264,6 +7283,7 @@ EPIPE and the client saw a bare close)."
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
          (fnn-owner-refresh-read-octets service)
+         (fnn-owner-post-credit-trace :read)
          (unless (fnn-core 'fn-splan-step-p step)
            (fnn-fault "owner returned a malformed served step"))
          ;; Capture the response's lifetime before leaving this quantum.
@@ -7339,7 +7359,8 @@ EPIPE and the client saw a bare close)."
                       (lambda (publication) (fnn-owner-feed-flush service publication))
                       (lambda (publication) (fnn-owner-feed-flush service publication)))
                    ;; Lane credits (fn-mca-settle): written synchronously.
-                   (fnn-owner-action 'fn-owner-credits-settle))
+                   (fnn-owner-action 'fn-owner-credits-settle)
+                   (fnn-owner-post-credit-trace :synchronous))
                (when (and reply-cid (not (= reply-cid cid)))
                  (fnn-fault "writer drained a different connection"))
                (setq completion done uncertain stop)))

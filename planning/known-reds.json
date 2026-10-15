@@ -109,27 +109,6 @@
   },
   {
    "kind": "native",
-   "subject": "tests.test_native_foreign_format_open.ForeignFormatOpenTest.test_a_store_of_another_format_is_refused_by_name",
-   "item": "DEVCTL-M-SIZING",
-   "owner": "builder-M",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): subTest (operator health): exit 18 not-running where REFUSED 1 was expected; test_budget recorded no red case; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_foreign_format_open.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
-   "subject": "setUpClass (tests.test_native_image_differential.ReleaseAgainstReferenceTests)",
-   "item": "DEVCTL-M-SIZING",
-   "owner": "builder-M",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): cold startup refused: the process heap does not hold the store's protected runtime; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_image_differential.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_operator_verdicts.NativeOperatorVerdictTests.test_developer_init_reads_profile_flags_and_refuses_flag_groups",
-   "item": "DEVCTL-M-SIZING",
-   "owner": "builder-M",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): fn store ... status returned 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_operator_verdicts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
    "subject": "unittest.loader._FailedTest.test_native_owner_measure",
    "item": "DEVCTL-B-HARNESS",
    "owner": "builder-B",
@@ -173,30 +152,9 @@
   {
    "kind": "native",
    "subject": "tests.test_native_status_live_posts.NativeStatusLivePostsTests.test_status_after_live_posts_stays_within_the_slack",
-   "item": "DEVCTL-M-SIZING",
+   "item": "STATUS-LIVE-POSTS-SLACK",
    "owner": "builder-M",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): 12232 != 60000; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_status_live_posts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_over_a_suffix_is_refused_by_name",
-   "item": "DEVCTL-M-SIZING",
-   "owner": "builder-M",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): not-running where a refusal by name was expected; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_store_lineage.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_a_diverged_copy_checkpoint_with_an_empty_suffix_is_refused_by_name",
-   "item": "DEVCTL-M-SIZING",
-   "owner": "builder-M",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): not-running where a refusal by name was expected; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_store_lineage.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_store_lineage.StoreLineageTests.test_this_checkpoint_against_the_copy_log_is_refused_by_name",
-   "item": "DEVCTL-M-SIZING",
-   "owner": "builder-M",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): not-running where a refusal by name was expected; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_store_lineage.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
    "kind": "native",
@@ -204,13 +162,6 @@
    "item": "DEVCTL-D-HELD",
    "owner": "builder-B",
    "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): a store on another filesystem opened instead of REFUSED 1; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_store_mount_identity.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_verdicts.KeyTests.test_the_key_covers_the_module_its_helpers_the_harness_the_runner_and_the_images",
-   "item": "DEVCTL-M-SIZING",
-   "owner": "builder-M",
-   "evidence": "dev red found by B24's control run devctl-150e2d6f48a0 (hbox, dev 150e2d6f4): verdict key carries FN_NATIVE_LAUNCHER_SHA256, expected {'absent': 'build/fn-host'}; log hbox:/tank/fn/scratch/integrate-20261013c/native-devctl-150e2d6f48a0/logs/test-tests.test_native_verdicts.log; owner untraced (item DEV-CONTROL-UNTRACED-20261013)"
   },
   {
    "kind": "native",

@@ -82,7 +82,7 @@ class StoreLineageTests(scp.StateCheckpointFixture):
 
     def assert_foreign_lineage(self, theirs, mine, open_line):
         self.path().write_bytes(theirs)
-        status = self.op("status")
+        status = self.op("status", "--replay")
         self.assertNotEqual(status.returncode, EXIT_OK, status.stdout.decode())
         self.assertIn(b"open refused reason=foreign-lineage", status.stderr)
         # Refused, not damaged, not uncertain: nothing was written or dropped.

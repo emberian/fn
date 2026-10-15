@@ -1,0 +1,12 @@
+{
+ "detail": "DEVCTL-M-SIZING row 8 at 530163ba7 (hbox native-m29-devctl): posts accepted 60000 of 60000 with 234638 command-stage memory-440 retries over 6675 s; status t0 0.139 s, t1 3.575 s, growth 3.435 s against SLACK 2.0. The POST-CREDIT counters did not reach the node log under FN_NATIVE_OWNER_TEST_PIPELINE_TRACE (the selector is not passed through the harness's node env), so release is shown by eventual acceptance, not by counters. Owed: trace what status reads that grows with the store (status vs status --replay path) and whether the 2.0 s slack is a stated bound or a guess; and route the counters through the harness env.",
+ "file": "tests/test_native_status_live_posts.py",
+ "id": "STATUS-LIVE-POSTS-SLACK",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "native",
+ "state": "open",
+ "title": "status after 60000 live POSTs grows 3.4 s over its 2.0 s slack (admission red retired: all 60000 accepted with bounded 440 retries)",
+ "updated": "2026-10-15T04:44:36Z"
+}

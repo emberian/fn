@@ -3626,6 +3626,20 @@
 (definterface fn-nop-parse-store
   :class :common-lisp-compliant)
 
+; DEVCTL-M-SIZING: existing guard-t parser/count accessors, no new decisions.
+; The developer heap projection uses the same command grammar as the operator.
+(definterface fn-nop-parse-command
+  :class :common-lisp-compliant
+  :kinds ())
+
+; Developer pipeline trace: all arithmetic remains in ACL2.
+(definterface fn-oas-held :class :common-lisp-compliant :kinds ())
+(definterface fn-mcr-ops :class :common-lisp-compliant :kinds ())
+(definterface fn-mcr-budget :class :common-lisp-compliant :kinds ())
+(definterface fn-mcr-total :class :common-lisp-compliant :kinds ())
+(definterface fn-mcr-free :class :common-lisp-compliant :kinds ())
+(definterface fn-mcr-credit-of :class :common-lisp-compliant :kinds ())
+
 (definterface fn-osn-bless-open-needed
   :class :common-lisp-compliant)
 
@@ -3725,6 +3739,8 @@
 ; host/native/io.lisp dispatches it (lane operability-2/-5).
 (definterface fn-omr-stopped-health-report
   :class :ideal
+  :keystones (fn-omr-stopped-health-carries-config-refusal-exit
+              fn-omr-opened-stopped-health-preserves-not-running-report)
   :exempt ((journal-octets "a COUNT of octets (the journal files' lstat sizes), a natural the report nfixes; not bytes")
            (config-octets "fn-spo-config-open decides the open verdict first and refuses a malformed config by name")))
 
