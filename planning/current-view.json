@@ -658,17 +658,17 @@
     },
     {
       "id": "PRF-1268",
-      "name": "published handshake charges",
-      "contract": "Durable publication and settled handshake exits charge max(published TLS limit,still-owned admissions); refused proposals do not change the held charge.",
+      "name": "handshake scratch charged by the memory gate",
+      "contract": "Every TLS handshake in flight holds its scratch within the term the memory gate charges (fn-mm-inflight), whatever the live limit: the run's cfg counts the owner's flight (fn-adm-cfg-holding-handshakes). Successor of the connection budget's held-charge model, retired by L-RUN-LAUNCH 64700b8fc (the run's capacity is the gate's C').",
       "host": {
-        "function": "fn-owner-connection-held-refresh",
+        "function": "fn-owner-memory-run-cfg",
         "file": "host/owner-host.lisp"
       },
-      "keystone": "fn-cbud-live-held-charges-current-and-active",
+      "keystone": "fn-adm-cfg-holding-handshakes-charges-every-handshake",
       "profile": "default",
-      "latest": "Connection-budget and exact teeth certified in certify-20261003T104044Z-1503690; actual host adapter outcome-injection fixture PASS, archived sol-access-native-faults-2026-10-03.",
-      "obstruction": "Inherited cached dependency manifests need assembled-tree evidence reconciliation; no immutable saved-image result or deployment is claimed.",
-      "next": "Integrate source and reconcile exact existing manifests, then run the selected actual native protocol/fault packet on the convergence image.",
+      "latest": "Repointed 2026-10-15 (M29): the held-charge keystone and its host refresh were retired as a twin of the memory equation in 64700b8fc; the successor keystone is certified in lane memory-run-launch's certify of record run-20261014T171546Z-679e.",
+      "obstruction": "No native packet yet exercises the handshake term at a live limit change.",
+      "next": "A native case that holds handshakes in flight across a live limit apply and reads the capacity line.",
       "tested": null
     },
     {
@@ -733,19 +733,18 @@
     },
     {
       "id": "operator-default-launch",
-      "name": "DEFAULT launcher and configured next-run resource projection",
-      "contract": "For an accepted DEFAULT run with no explicit cold policy, the extended selected reservation fits the captured least positive machine allowance; STATUS and HEALTH use the same actual configuration policy chain. This is a partial selected storage projection.",
+      "name": "served run launch at the resident limit",
+      "contract": "A served run launches at the configure's LIMIT (the least resident observation less the pools it funds) with its pools; when it launches, the limit is observed and the whole reservation fits the least address-space observation. It refuses by name otherwise. Successor of the DEFAULT launcher's profile-bound extension chain, retired by L-RUN-LAUNCH 64700b8fc.",
       "host": {
-        "function": "fn-prstartup-extend-operation-reservation",
+        "function": "fnn-heap-serve-decision",
         "file": "host/native/heap.lisp"
       },
-      "keystone": "fn-prstartup-accepted-default-launch-fits-machine",
-      "bridge": "fn-prstartup-operation-extension-refines-default-by-definition",
+      "keystone": "fn-mo-serve-launch-fits-the-address-space",
       "tested": null,
       "profile": "default",
-      "latest": "Actual DEFAULT/output/peer heap source consumers, real inert peer policy files, retained private-bank constructor cuts and snapshot/peer terminal conjunction pass. Foundation69b owns actual protected nursery growth and current-worker machine admission; source guard evidence remains separate from normal certification. Earlier manifests remain valid for their exact source coordinates.",
-      "obstruction": "Matching normal certificate/image, expanded init-budget/reopen refinement, protected recovery partition and complete tariff remain open; no physical deployment claim.",
-      "next": "Integration composes Foundation69b, Bounds bank+a121 creator-custody fix, Runtime2c7 snapshot observer and this native consumer once; the History initializer then supplies the current nonempty Store physical command driver."
+      "latest": "Repointed 2026-10-15 (M29): fn-prstartup-accepted-default-launch-fits-machine and its extension chain were retired in 64700b8fc; K-L3b is certified in lane memory-run-launch's certify of record run-20261014T171546Z-679e and its natives (m29-c18) launch the served run at every preset.",
+      "obstruction": "heap_from_profile's machine-cannot-hold case stays a known red (MEMORY-PRESSURE-START-SIZING).",
+      "next": "Retire MEMORY-PRESSURE-START-SIZING once OVER landing 2 removes the over-window term at 2G."
     },
     {
       "id": "durable-after-ack",
