@@ -47,7 +47,10 @@
 (dolist (case '((("store" "ROOT" "status") :status "status" nil :header)
                (("store" "ROOT" "status" "--replay") :status "status" t :reads)
                (("store" "ROOT" "recover") :recover "recover" nil :lists)
-               (("store" "ROOT" "checkpoint") :checkpoint "checkpoint" nil :grows)))
+               (("store" "ROOT" "checkpoint") :checkpoint "checkpoint" nil :grows)
+               ;; A developer-only verb the ACL2 grammar does not know keeps the
+               ;; conservative unknown action (A29's grant condition (b)).
+               (("store" "ROOT" "frobnicate") nil "frobnicate" nil :grows)))
  (let* ((argv (first case))
         (projection (multiple-value-list (fnn-heap-command-profile-base argv)))
         (action (third projection)) (command (nth 9 projection)) (replay (nth 10 projection))
@@ -60,5 +63,11 @@
      (assert (equal command (third case)))
      (assert (eq replay (fourth case)))
      (assert (eq growth (fifth case)))
-     (assert (equal (nth 6 projection) "/captured/ROOT"))))))
+     (assert (equal (nth 6 projection) "/captured/ROOT"))
+     ;; An offline verb that reads the history still observes it (A29's
+     ;; condition (c)): the observation is present exactly when ACL2 says the
+     ;; action observes history.
+     (assert (eq (and (nth 3 projection) t)
+                 (and (fnn-core 'fn-heap-operation-observes-p action) t)))
+     (when (eq action :recover) (assert (equal (nth 3 projection) '(:history "/captured/ROOT"))))))))
 (format t "PASS actual developer store heap projection~%")
