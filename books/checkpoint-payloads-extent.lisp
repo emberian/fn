@@ -132,8 +132,7 @@
                              (b (append (fn-cpl-trailer p) post)))
                   (:instance cpl-e-nthcdr-append (a pre) (b (append (fn-cpl-frame p) post))))
             :in-theory (disable cpl-e-nthcdr-sum cpl-e-nthcdr-append
-                                cpl-e-take-append fn-cpl-frame fn-cpl-trailer fn-scc-header
-                                adt-nthcdr-of-append-less)))))
+                                cpl-e-take-append fn-cpl-frame fn-cpl-trailer fn-scc-header)))))
 
 ; KEYSTONE.  Sealing the descriptor of a ref into the payload arena denotes the
 ; payload: the new handle's payload is the octets the durable file holds at
@@ -160,5 +159,4 @@
                  cpl-payload-in-file fn-cpl-frame-len cpl-header-len)
            :in-theory (e/d (fn-cpl-extent fn-cpl-ref-offset fn-cpl-ref-len fn-arn-extent-guardp)
                            (fn-arena-seal-extent-payload cpl-holds-gen cpl-payload-in-file
-                            fn-cpl-frame-len fn-cpl-frame fn-cpl-trailer
-                            fn-hp-nthcdr-nthcdr)))))
+                            fn-cpl-frame-len fn-cpl-frame fn-cpl-trailer)))))
