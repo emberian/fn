@@ -15,6 +15,7 @@
 (include-book "newnews-stream-cost")
 (include-book "page-read-issue-source-cost")
 (include-book "allocation-turn-source-cost")
+(include-book "memory-run-cost")
 (include-book "../host/cost-host")
 
 (def-cost-check-all)

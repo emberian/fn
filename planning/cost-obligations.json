@@ -4,15 +4,15 @@
  "counts": {
   "proved": 6,
   "partial": 4,
-  "derived": 106,
-  "none": 1746
+  "derived": 122,
+  "none": 1734
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 4,
-   "derived": 105,
-   "none": 1030
+   "derived": 121,
+   "none": 1017
   },
   "ideal": {
    "proved": 0,
@@ -24,7 +24,7 @@
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 572
+   "none": 573
   }
  },
  "families": {
@@ -66,6 +66,7 @@
   ]
  },
  "undispatched_declarations": [
+  "fn-bpsp-node-capacity",
   "fn-clt-mv",
   "fn-clt-nested",
   "fn-clt-row-caller",
@@ -85,6 +86,7 @@
   "fn-lxc-capped-p",
   "fn-lxc-digits-value",
   "fn-lxc-words",
+  "fn-mca-figure-octets",
   "fn-mm-cfg-rho",
   "fn-mm-cfg-trigger",
   "fn-mm-collector",
@@ -104,9 +106,13 @@
   "fn-mo-digits",
   "fn-mo-drop-key",
   "fn-mo-prefixp",
+  "fn-mo-serve-decide",
+  "fn-mo-serve-pool-threads",
+  "fn-mo-serve-pools",
   "fn-mo-status-kib-octets",
   "fn-mo-tot-log-at-least",
   "fn-ncfg-nth",
+  "fn-owner-open",
   "fn-rce-exercise-items",
   "fn-scat-group-low-top",
   "fn-scat-top-viewp",
@@ -261,6 +267,42 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-adm-operator-open-id",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-exp-at"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-adm-operator-open-reason",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-exp-at"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-adm-operator-open-word",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-exp-at"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-aj-host-authorize",
@@ -1043,16 +1085,6 @@
   },
   {
    "name": "fn-bph-command-plan",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-bph-extend-reservation",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -3798,16 +3830,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-crv-extend-reservation",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-crw-supportedp",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -4450,16 +4472,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-heap-figure-octets",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-heap-history-listing-bound",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -4634,16 +4646,6 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": "books/memory-entry-cost.lisp"
-  },
-  {
-   "name": "fn-heap-status-decide",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
   },
   {
    "name": "fn-heap-thread-count",
@@ -6582,19 +6584,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-mca-figure-octets",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
-    "fn-heap-with-nursery",
-    "fn-mca-base-octets"
-   ],
-   "theorem": null,
-   "declared_in": "host/cost-host.lisp"
-  },
-  {
    "name": "fn-mm-collector-cfg",
    "class": "common-lisp-compliant",
    "claim": "derived",
@@ -6639,6 +6628,41 @@
    ],
    "theorem": null,
    "declared_in": "books/memory-entry-cost.lisp"
+  },
+  {
+   "name": "fn-mo-serve-bp-store-need",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-crv-pool-budget",
+    "fn-mm-launch-dynamic",
+    "fn-mo-serve-run-limit",
+    "fn-prstartup-launch-extra",
+    "true-list-fix"
+   ],
+   "theorem": null,
+   "declared_in": "books/memory-run-cost.lisp"
+  },
+  {
+   "name": "fn-mo-serve-run-decide",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-heap-profile-word",
+    "fn-mm-least-observation",
+    "fn-mm-reopen-need",
+    "fn-mo-serve-cfg",
+    "fn-mo-serve-dynamic",
+    "fn-mo-serve-limit",
+    "fn-mo-serve-total-pools",
+    "true-list-fix"
+   ],
+   "theorem": null,
+   "declared_in": "books/memory-run-cost.lisp"
   },
   {
    "name": "fn-mxa-deferral-line",
@@ -9761,6 +9785,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-ores-config-refused",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
    "name": "fn-ores-config-word",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -10037,16 +10071,6 @@
   },
   {
    "name": "fn-ort-window-step",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-orv-extend-reservation",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -10997,12 +11021,19 @@
   {
    "name": "fn-owner-close",
    "class": "common-lisp-compliant",
-   "claim": "none",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-adm-operator-close",
+    "fn-exp-at",
+    "fn-owner-callback-close",
+    "mv-nth",
+    "true-list-fix",
+    "update-nth"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-compress-min-octets",
@@ -11335,6 +11366,18 @@
    "declared_in": null
   },
   {
+   "name": "fn-owner-exposure-rearm",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-owner-held-callback-exposure-open"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
    "name": "fn-owner-exposure-release",
    "class": "program",
    "claim": "none",
@@ -11347,12 +11390,19 @@
   {
    "name": "fn-owner-fault",
    "class": "common-lisp-compliant",
-   "claim": "none",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-adm-operator-close",
+    "fn-exp-at",
+    "fn-owner-callback-fault",
+    "mv-nth",
+    "true-list-fix",
+    "update-nth"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-feed-auth-policy",
@@ -12055,6 +12105,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-owner-memory-config-edge-observation",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-owner-memory-configure",
    "class": "program",
    "claim": "none",
@@ -12073,6 +12133,43 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-owner-memory-lease-install",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-adm-installed-lease-allocation"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-owner-memory-physical-return",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-owner-memory-held-return"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-owner-memory-reclaim-complete",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-owner-memory-recapacity",
+    "mv-nth"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-moderation-plan",
@@ -12125,24 +12222,34 @@
    "declared_in": null
   },
   {
-   "name": "fn-owner-open",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-owner-open-peer",
    "class": "common-lisp-compliant",
-   "claim": "none",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-owner-held-callback-open-peer"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-owner-operator-open",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-exp-at",
+    "fn-owner-held-callback-operator-open",
+    "fn-owner-memory-run-cfg",
+    "fn-owner-record-totals",
+    "mv-nth",
+    "true-list-fix",
+    "update-nth"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-operator-refusal-reason",
@@ -13053,6 +13160,18 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-owner-peer-rearm",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-owner-held-callback-open-peer"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-owner-peer-revoked-event",
@@ -14037,16 +14156,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-pfr-extend-operation-reservation",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-pfr-flight-demand",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -14637,26 +14746,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-prstartup-default-plan-with-peer",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-prstartup-extend-operation-reservation",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-prstartup-file-capacity",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -14678,16 +14767,6 @@
   },
   {
    "name": "fn-prstartup-install-status",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-prstartup-peer-native-grant",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -14725,6 +14804,59 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-prstartup-run-default-plan",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-mo-serve-bp-need",
+    "fn-mo-serve-run-limit",
+    "fn-pfr-at",
+    "fn-pfr-policy-p",
+    "fn-prstartup-default-plan-with-peer",
+    "fn-prstartup-launch-extra",
+    "fn-prstartup-plan",
+    "fn-prstartup-read-extent",
+    "fn-prstartup-read-reserve",
+    "fn-prstartup-serve-protected"
+   ],
+   "theorem": null,
+   "declared_in": "books/memory-run-cost.lisp"
+  },
+  {
+   "name": "fn-prstartup-run-peer-native-grant",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-mm-least-observation",
+    "fn-mo-serve-bp-need",
+    "fn-mo-serve-run-limit",
+    "fn-pfr-at",
+    "fn-pfr-startup-grant",
+    "fn-prstartup-peer-native-grant",
+    "fn-prstartup-peer-protected",
+    "fn-prstartup-planp"
+   ],
+   "theorem": null,
+   "declared_in": "books/memory-run-cost.lisp"
+  },
+  {
+   "name": "fn-prstartup-run-store-need",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-mo-serve-run-limit",
+    "fn-prstartup-serve-protected"
+   ],
+   "theorem": null,
+   "declared_in": "books/memory-run-cost.lisp"
   },
   {
    "name": "fn-prstartup-status",
@@ -15475,21 +15607,6 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
-  },
-  {
-   "name": "fn-rrv-extend-reservation",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
-    "fn-crv-nth",
-    "fn-heap-grow-runtime-dynamic",
-    "fn-heap-machine-octets",
-    "fn-rrv-extra-octets"
-   ],
-   "theorem": null,
-   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-sbud-post-boundary",

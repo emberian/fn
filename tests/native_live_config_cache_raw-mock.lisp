@@ -19,6 +19,12 @@
 (defun fnn-admin-plan-reason (plan)
   (declare (ignorable plan))
   (harness-stub-reached 'fnn-admin-plan-reason "host/native/admin.lisp"))
+(defun fnn-config-memory-edge-stage (cid stage)
+  (declare (ignorable cid stage))
+  (harness-stub-reached 'fnn-config-memory-edge-stage "host/native/admin.lisp"))
+(defun fnn-operator-slot-test-stage (cid stage)
+  (declare (ignorable cid stage))
+  (harness-stub-reached 'fnn-operator-slot-test-stage "host/native/admin.lisp"))
 (defun fnn-owner-compaction-request (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-compaction-request "host/native/admin.lisp"))
@@ -118,9 +124,22 @@
                        (list* 'defun (cadr form) (caddr form)
                               (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare)))
                                          (cdddr form))))))))
+; Execute the shipped result accessors instead of encoding their new shape here.
+(declaim (declaration xargs))
+(dolist (spec '(("books/public-exposure-selectors.lisp" fn-exp-at)
+                ("books/owner-memory-holding.lisp" fn-adm-operator-open-word)
+                ("books/owner-memory-holding.lisp" fn-adm-operator-open-id)
+                ("books/owner-memory-holding.lisp" fn-adm-operator-open-reason)))
+ (destructuring-bind (path name) spec
+  (with-open-file (stream path)
+   (loop for form = (read stream nil :eof) until (eq form :eof)
+    when (and (consp form) (eq (car form) 'defun) (eq (cadr form) name)) do (eval form)))))
 (defun fnn-core (name &rest args)
   (push (cons name args) *calls*)
   (case name
+    (fn-adm-operator-open-word (apply #'fn-adm-operator-open-word args))
+    (fn-adm-operator-open-id (apply #'fn-adm-operator-open-id args))
+    (fn-adm-operator-open-reason (apply #'fn-adm-operator-open-reason args))
     (fn-nret-request (apply #'fn-nret-request args))
     ;; Receipt reads are served by the control owner: a reconfiguration argv
     ;; is not one (the real ACL2 definition).
@@ -144,7 +163,7 @@
 (defun fnn-owner-core (name &rest args)
   (push (cons name args) *calls*)
   (case name
-    (fn-owner-open 7)
+    (fn-owner-operator-open '(:admit nil nil 0 7 nil nil))
     (fn-owner-cfg-capture :capture)
     (fn-owner-feed-journal-prefix-size 0)
     ;; PKT-827 (b): the staged record applies to the carried configuration.

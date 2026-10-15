@@ -138,7 +138,6 @@
 (include-book "../books/heap-open-nursery")
 (include-book "../books/public-exposure-reply")
 (include-book "../books/idle-collection")
-(include-book "../books/reclaim-reservation")
 (include-book "../books/consumer-poll-projection")
 (include-book "../books/app-pattern")
 (include-book "../books/app-pattern-delivery")
@@ -229,7 +228,6 @@
 (definterface fn-rlo-output :class :common-lisp-compliant)
 (definterface fn-rlo-physical :class :common-lisp-compliant)
 (definterface fn-rlo-drainedp :class :common-lisp-compliant)
-(definterface fn-heap-figure-octets :class :common-lisp-compliant)
 (definterface fn-orv-startup-slots :class :common-lisp-compliant)
 (definterface fn-orv-startup-grant :class :common-lisp-compliant)
 
@@ -3003,6 +3001,15 @@
               fn-heap-command-decide-otherwise-is-todays)
   :exempt ((config-octets "a count of octets, NIL when unobserved (natp in the body: the adapter)")))
 
+;; The served run's launch (books/heap-command.lisp, L-RUN-LAUNCH;
+;; host/native/heap.lisp fnn-heap-serve-decision): the pools the run funds,
+;; their threads, and the launch at the run's LIMIT.
+
+
+
+;; A BP served command's session capacity, one of the launch's pools
+;; (books/bp-session-profile.lisp; host/native/heap.lisp fnn-heap-serve-decision).
+
 (definterface fn-heap-command-growth
   :class :common-lisp-compliant)
 
@@ -3045,35 +3052,11 @@
 (definterface fn-mm-collector-cfg
   :class :common-lisp-compliant)
 
-(definterface fn-crv-extend-reservation
-  :class :common-lisp-compliant
-  :keystones (fn-crv-accepted-launch-fits-observed-machine
-              fn-crv-accepted-launch-funds-pool-dynamic-allowance))
-
-(definterface fn-orv-extend-reservation
-  :class :common-lisp-compliant
-  :keystones (fn-orv-accepted-launch-fits-observed-machine
-              fn-orv-accepted-launch-funds-output-dynamic-allowance))
-
-(definterface fn-rrv-extend-reservation
-  :class :common-lisp-compliant
-  :keystones (fn-rrv-accepted-launch-fits-observed-machine
-              fn-rrv-accepted-launch-funds-the-reclaim-reserve
-              fn-rrv-accepted-launch-holds-the-live-figure))
-
-(definterface fn-mca-figure-octets
-  :class :common-lisp-compliant
-  :keystones (fn-mca-initial-funds-exactly-the-articles))
-
 (definterface fn-heap-reserve-report-line
   :class :common-lisp-compliant)
 
 (definterface fn-heap-reserve-run-connections
   :class :common-lisp-compliant)
-
-(definterface fn-heap-status-decide
-  :class :common-lisp-compliant
-  :keystones (fn-heap-status-decide-is-the-launchers-run-reservation))
 
 (definterface fn-heap-thread-count
   :class :common-lisp-compliant)
@@ -4339,17 +4322,12 @@
 (definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
 
 ; DEFAULT launcher backing; actual host consumers share captured observations.
-(definterface fn-prstartup-extend-operation-reservation :class :common-lisp-compliant)
-
 ; Actual bounded BP heap projection and stopping-aware log admission consumers.
 (definterface fn-bph-command-plan :class :common-lisp-compliant :kinds ((argv true-listp)))
 (definterface fn-bph-refusal-line :class :common-lisp-compliant)
 (definterface fn-bph-node-serve-p :class :common-lisp-compliant :kinds ((argv true-listp)))
 (definterface fn-bph-node-journal :class :common-lisp-compliant :kinds ((argv true-listp)))
 (definterface fn-bph-node-transfer :class :common-lisp-compliant :kinds ((argv true-listp)))
-; The probe's BP extension and the node's startup check read one capacity figure.
-(definterface fn-bph-extend-reservation :class :common-lisp-compliant
-  :keystones (fn-bph-extended-reservation-holds-bp-sessions))
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
 (definterface fn-native-config-cold-resources :class :common-lisp-compliant)
 (definterface fn-native-config-output-resources :class :common-lisp-compliant)
@@ -4442,12 +4420,9 @@
               fn-pfp-catch-up-admission-is-identity-elsewhere))
 (definterface fn-pfp-catch-up-refusal-line :class :common-lisp-compliant)
 (definterface fn-pfr-policy-p :class :common-lisp-compliant)
-(definterface fn-pfr-extend-operation-reservation :class :common-lisp-compliant
-  :keystones ((fn-pfd-default-launches-where-its-extra-fits :via fn-pfr-extend-reservation)))
 (definterface fn-pfr-operation-observes-p :class :common-lisp-compliant)
 
-(definterface fn-prstartup-default-plan-with-peer :class :common-lisp-compliant)
-(definterface fn-prstartup-peer-native-grant :class :common-lisp-compliant)
+(definterface fn-prstartup-run-store-need :class :common-lisp-compliant)
 (definterface fn-prstartup-peer-native-refusal-line :class :common-lisp-compliant)
 
 ; Host-called entries the raw host dispatches and no declaration named
@@ -4510,3 +4485,11 @@
 (definterface fn-nco-wire-step :class :common-lisp-compliant
   :keystones (fn-nco-unknown-receipt-status))
 (definterface fn-nco-work-class :class :common-lisp-compliant)
+
+;; Shared launch subjects: all pool/pricing arithmetic belongs to ACL2.
+(definterface fn-mo-serve-run-decide :class :common-lisp-compliant
+ :keystones (fn-mo-serve-launch-conserves-the-resident-partition fn-mo-serve-bp-launch-admits-its-startup))
+(definterface fn-mo-serve-bp-store-need :class :common-lisp-compliant
+ :keystones (fn-mo-serve-bp-launch-admits-its-startup))
+(definterface fn-prstartup-run-default-plan :class :common-lisp-compliant)
+(definterface fn-prstartup-run-peer-native-grant :class :common-lisp-compliant)

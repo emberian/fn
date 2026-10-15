@@ -735,6 +735,14 @@
    "owner": "builder-L",
    "ruling": "M28 traced the mechanism to fnn-command-log-scan-store missing fnn-extent-pool-open-context (a durable-log verb): owner L",
    "transfer_from": "builder-M"
+  },
+  {
+   "kind": "check",
+   "subject": "check-fast:lock_discipline_check:R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "dev_sha": "364f0c053",
+   "item": "MEMORY-TOTALS-SYNC-UNDER-LOCK",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-14: not baselined; known red by amendment, +19 sites, until MEMORY-TOTALS-SYNC-UNDER-LOCK moves the totals sync out from under the lock"
   }
  ]
 }

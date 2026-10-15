@@ -4,20 +4,6 @@
  "rows": [
   {
    "kind": "native",
-   "subject": "tests.test_native_image_floor.ProductionTests.test_fresh_node_serves_in_256_mb",
-   "item": "LOAD-L-FRESH-0b4d3b183",
-   "owner": "builder-M",
-   "evidence": "CONVERGE-4 row 19b, red by design (RULINGS priority 3); drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_image_heap.ImageHeapBarTests.test_nmem3_clean_resident_set_is_within_the_bar",
-   "item": "IMAGE-HEAP-LONG-RESIDENT",
-   "owner": "builder-M",
-   "evidence": "CONVERGE-4 row 23, red by design (RULINGS priority 3); drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
-  },
-  {
-   "kind": "native",
    "subject": "tests.test_native_bounds_join.PostHeapUnderMutexTests.test_large_post_allocates_less_than_one_article_list_under_the_mutex",
    "item": "FILL-BOUNDS-JOIN-POST-HEAP",
    "owner": "builder-P",
@@ -218,6 +204,13 @@
    "item": "OFFLINE-SCAN-STORE-READ-RESOURCES",
    "owner": "builder-L",
    "evidence": "hbox:/tank/fn/scratch/b-control-optins/native-optins-2b6c0fca0/logs/test-tests.test_native_topic_local.log"
+  },
+  {
+   "kind": "check",
+   "subject": "check-fast:lock_discipline_check:R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "item": "MEMORY-TOTALS-SYNC-UNDER-LOCK",
+   "owner": "builder-M",
+   "evidence": "lane memory-run-launch @9ab1229dc vs a dev export at 364f0c053: R2|fnn-extent-pread|O:sb-alien:alien-funcall reached from 122 owner-held sites (baseline 111, dev 103), +19 through fn-owner-record-totals and fn-owner-memory-recapacity (the history-totals sync's cold page reads under the owner mutex, via fn-owner-operator-open and recapacity)."
   }
  ]
 }

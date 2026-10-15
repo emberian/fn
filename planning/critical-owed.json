@@ -1766,57 +1766,7 @@
    "item": "PRF-1349",
    "book": "books/cbor-invariants.lisp"
   },
-  "fn-cbud-admitted-connections-fit-the-machine": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
-  "fn-cbud-bound-holds-its-connections": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
-  "fn-cbud-bound-is-the-most": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
-  "fn-cbud-deltas-refusal-keeps-the-machine-held": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
-  "fn-cbud-limit-holds-its-connections": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
-  "fn-cbud-limit-is-the-most": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
-  "fn-cbud-live-held-charges-current-and-active": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
-  "fn-cbud-live-held-releases-only-unneeded-slots": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
   "fn-cbud-read-covers-the-step": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
-  "fn-cbud-run-decide-holds-the-capacity": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/connection-budget.lisp"
-  },
-  "fn-cbud-run-decide-refuses-exactly-past-the-limit": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/connection-budget.lisp"
@@ -1970,16 +1920,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-checkpoint-open.lisp"
-  },
-  "fn-crv-accepted-launch-fits-observed-machine": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/cold-read-reservation.lisp"
-  },
-  "fn-crv-accepted-launch-funds-pool-dynamic-allowance": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/cold-read-reservation.lisp"
   },
   "fn-csp-framer-window-accounts-for-every-octet": {
    "class": "parser-boundary",
@@ -5220,11 +5160,6 @@
    "class": "identity-binding",
    "item": "PRF-1347",
    "book": "books/provenance.lisp"
-  },
-  "fn-prstartup-accepted-default-launch-fits-machine": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-startup.lisp"
   },
   "fn-prstartup-admitted-capacity-is-funded": {
    "class": "resource-reservation",

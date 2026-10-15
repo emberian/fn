@@ -1,0 +1,281 @@
+host/native/control.lisp:552: R1 VIOLATION lambda@host/native/control.lisp:fnn-control-launch-client#lambda1: thread root reaches O-protected fnn-live-stobj in fnn-fresh-stobj:8554 without holding O
+host/native/control.lisp:552: R1 VIOLATION lambda@host/native/control.lisp:fnn-control-launch-client#lambda1: thread root reaches O-protected *the-live-state* in fnn-owner-serialized-with-control-turn:3273 without holding O
+host/native/auth-admin.lisp:540: R10 VIOLATION fnn-native-auth-admin-execute: fnn-close of a descriptor this function did not open and no close row declares
+host/native/bp-control.lisp:16: R10 VIOLATION fnn-bpnc-release-lease: fnn-close of a descriptor this function did not open and no close row declares
+host/native/bp-service.lisp:127: R10 VIOLATION fnn-bps-release: fnn-close of a descriptor this function did not open and no close row declares
+host/native/bp.lisp:165: R10 VIOLATION fnn-bp-sequence-lock: fnn-close inside ignore-errors: an ambiguous close is swallowed
+host/native/bp.lisp:214: R10 VIOLATION fnn-bp-reserve-sequence: fnn-close of a descriptor this function did not open and no close row declares
+host/native/control-transport.lisp:57: R10 VIOLATION fnn-control-acquire-lease: fnn-close inside ignore-errors: an ambiguous close is swallowed
+host/native/control-transport.lisp:66: R10 VIOLATION fnn-control-release-lease: fnn-close inside ignore-errors: an ambiguous close is swallowed
+host/native/io.lisp:2699: R10 VIOLATION fnn-initialize: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:2759: R10 VIOLATION fnn-store-close: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:3659: R10 VIOLATION fnn-record-filesystem-at-init: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:5296: R10 VIOLATION fnn-publication-unlock: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:8484: R10 VIOLATION fnn-log-open-read-only: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:9092: R10 VIOLATION fnn-log-scan-segments: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:9123: R10 VIOLATION fnn-log-read-closed-segment: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:9152: R10 VIOLATION fnn-log-read-active-segment: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:9599: R10 VIOLATION fnn-log-write-history: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:9835: R10 VIOLATION fnn-command-log-scan-store: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:9863: R10 VIOLATION fnn-command-log: fnn-close of a descriptor this function did not open and no close row declares
+host/native/io.lisp:9884: R10 VIOLATION fnn-command-log: fnn-close of a descriptor this function did not open and no close row declares
+host/native/operator.lisp:288: R10 VIOLATION fnn-operator-log-tail: fnn-close inside ignore-errors: an ambiguous close is swallowed
+host/native/owner.lisp:1229: R10 VIOLATION fnn-owner-feed-close: fnn-close of a descriptor this function did not open and no close row declares
+host/native/owner.lisp:1281: R10 VIOLATION fnn-owner-feed-open: fnn-close inside ignore-errors: an ambiguous close is swallowed
+host/native/owner.lisp:8992: R10 VIOLATION fnn-owner-journal-open: fnn-close inside ignore-errors: an ambiguous close is swallowed
+host/native/peer-invite.lisp:63: R10 VIOLATION fnn-pinv-fill: fnn-close of a descriptor this function did not open and no close row declares
+host/native/peer-invite.lisp:76: R10 VIOLATION fnn-pinv-call-reserved: fnn-close inside ignore-errors: an ambiguous close is swallowed
+host/native/pull-service.lisp:157: R10 VIOLATION fnn-pull-journal-open: fnn-close inside ignore-errors: an ambiguous close is swallowed
+host/native/pull-service.lisp:210: R10 VIOLATION fnn-catchup-journal-open: fnn-close inside ignore-errors: an ambiguous close is swallowed
+host/native/auth.lisp:81: R1b VIOLATION fnn-native-auth-install: *fnn-native-auth-live-path* written with no lock at host/native/auth.lisp:81 (fnn-native-auth-install); 1 write site(s), 2 access site(s) across 2 actor(s), no common lock
+host/native/auth.lisp:81: R1b VIOLATION fnn-native-auth-install: *fnn-native-auth-live-policy* written with no lock at host/native/auth.lisp:81 (fnn-native-auth-install); 1 write site(s), 3 access site(s) across 2 actor(s), no common lock
+host/native/bp-app.lisp:358: R1b VIOLATION fnn-command-bp-app-receive: fnn-owner-service-listener written with no lock at host/native/bp-app.lisp:358 (fnn-command-bp-app-receive); 2 write site(s), 3 access site(s) across 29 actor(s), no common lock
+host/native/bp-node.lisp:56: R1b VIOLATION fnn-bpnode-request-result: *fnn-owner-transit-detail* written with no lock at host/native/bp-node.lisp:56 (fnn-bpnode-request-result); 11 write site(s), 16 access site(s) across 7 actor(s), no common lock
+host/native/bp-node.lisp:511: R1b VIOLATION fnn-command-bp-node-resume: *fnn-bpnode-budgets* written with no lock at host/native/bp-node.lisp:511 (fnn-command-bp-node-resume); 2 write site(s), 3 access site(s) across 3 actor(s), no common lock
+host/native/extent.lisp:276: R1b VIOLATION fnn-live-page-read-pool: *fnn-page-read-pool* written with no lock at host/native/extent.lisp:276 (fnn-live-page-read-pool); 1 write site(s), 2 access site(s) across 13 actor(s), no common lock
+host/native/extent.lisp:458: R1b VIOLATION fnn-extent-executor-actual-return: fnn-cold-worker-phase: unlocked-read; writes under [('E',), ('E', 'O')], 26 access site(s), no common lock
+host/native/extent.lisp:879: R1b VIOLATION fnn-extent-window-release: fnn-cold-worker-token: unlocked-read; writes under [('E',), ('E', 'O')], 11 access site(s), no common lock
+host/native/extent.lisp:1038: R1b VIOLATION fnn-extent-executor-start: *fnn-cold-stopping* written with no lock at host/native/extent.lisp:1038 (fnn-extent-executor-start); 2 write site(s), 10 access site(s) across 10 actor(s), no common lock
+host/native/extent.lisp:1055: R1b VIOLATION fnn-extent-executor-start: fnn-cold-worker-thread written with no lock at host/native/extent.lisp:1055 (fnn-extent-executor-start); 1 write site(s), 11 access site(s) across 9 actor(s), no common lock
+host/native/io.lisp:230: R1b VIOLATION fnn-durable-step: *fnn-section-step* written with no lock at host/native/io.lisp:230 (fnn-durable-step); 3 write site(s), 9 access site(s) across 34 actor(s), no common lock
+host/native/io.lisp:315: R1b VIOLATION fnn-live-octets: *fnn-octets* written with no lock at host/native/io.lisp:315 (fnn-live-octets); 1 write site(s), 2 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:342: R1b VIOLATION fnn-live-octets-pub: *fnn-octets-pub* written with no lock at host/native/io.lisp:342 (fnn-live-octets-pub); 1 write site(s), 2 access site(s) across 3 actor(s), no common lock
+host/native/io.lisp:433: R1b VIOLATION fnn-live-arena: *fnn-arena* written with no lock at host/native/io.lisp:433 (fnn-live-arena); 1 write site(s), 2 access site(s) across 28 actor(s), no common lock
+host/native/io.lisp:454: R1b VIOLATION fnn-live-cat: *fnn-cat* written with no lock at host/native/io.lisp:454 (fnn-live-cat); 2 write site(s), 3 access site(s) across 28 actor(s), no common lock
+host/native/io.lisp:460: R1b VIOLATION fnn-live-hist: *fnn-hist* written with no lock at host/native/io.lisp:460 (fnn-live-hist); 3 write site(s), 4 access site(s) across 28 actor(s), no common lock
+host/native/io.lisp:959: R1b VIOLATION fnn-random-state-forget: *fnn-random-state* written with no lock at host/native/io.lisp:959 (fnn-random-state-forget); 2 write site(s), 4 access site(s) across 12 actor(s), no common lock
+host/native/io.lisp:1038: R1b VIOLATION fnn-open-streams: *fnn-stdout* written with no lock at host/native/io.lisp:1038 (fnn-open-streams); 1 write site(s), 21 access site(s) across 16 actor(s), no common lock
+host/native/io.lisp:1043: R1b VIOLATION fnn-open-streams: *fnn-stderr* written with no lock at host/native/io.lisp:1043 (fnn-open-streams); 1 write site(s), 10 access site(s) across 40 actor(s), no common lock
+host/native/io.lisp:1087: R1b VIOLATION fnn-test-entropy: *fnn-test-entropy-draws* written with no lock at host/native/io.lisp:1087 (fnn-test-entropy); 1 write site(s), 2 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:1230: R1b VIOLATION fnn-journal-write: *fnn-journal-w* written with no lock at host/native/io.lisp:1230 (fnn-journal-write); 5 write site(s), 8 access site(s) across 2 actor(s), no common lock
+host/native/io.lisp:1288: R1b VIOLATION fnn-log-writer-loop: *fnn-owner-log-fd* written with no lock at host/native/io.lisp:1288 (fnn-log-writer-loop); 4 write site(s), 14 access site(s) across 18 actor(s), no common lock
+host/native/io.lisp:1515: R1b VIOLATION fnn-cold-guard-cache-prepare: *fnn-cold-entry-guard-specs* written with no lock at host/native/io.lisp:1515 (fnn-cold-guard-cache-prepare); 1 write site(s), 3 access site(s) across 10 actor(s), no common lock
+host/native/io.lisp:3010: R1b VIOLATION fnn-state-checkpoint-adopt-image: *fnn-extent-image-id* written with no lock at host/native/io.lisp:3010 (fnn-state-checkpoint-adopt-image); 1 write site(s), 5 access site(s) across 3 actor(s), no common lock
+host/native/io.lisp:3849: R1b VIOLATION fnn-checkpoint-write-arena-steps: *fnn-checkpoint-frames* written with no lock at host/native/io.lisp:3849 (fnn-checkpoint-write-arena-steps); 1 write site(s), 2 access site(s) across 3 actor(s), no common lock
+host/native/io.lisp:7042: R1b VIOLATION fnn-select-image-profile: *fnn-image-profile* written with no lock at host/native/io.lisp:7042 (fnn-select-image-profile); 1 write site(s), 2 access site(s) across 26 actor(s), no common lock
+host/native/io.lisp:7683: R1b VIOLATION fnn-lz-current-dict: *fnn-lz-current* written with no lock at host/native/io.lisp:7683 (fnn-lz-current-dict); 1 write site(s), 2 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:7690: R1b VIOLATION fnn-lz-dicts: *fnn-lz-dicts* written with no lock at host/native/io.lisp:7690 (fnn-lz-dicts); 1 write site(s), 2 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:7719: R1b VIOLATION fnn-store-compress-min: fnn-log-lz-min written with no lock at host/native/io.lisp:7719 (fnn-store-compress-min); 3 write site(s), 4 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:7749: R1b VIOLATION fnn-log-compress: fnn-log-lz written with no lock at host/native/io.lisp:7749 (fnn-log-compress); 1 write site(s), 2 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:8488: R1b VIOLATION fnn-log-batch-reset: fnn-log-count written with no lock at host/native/io.lisp:8488 (fnn-log-batch-reset); 2 write site(s), 7 access site(s) across 10 actor(s), no common lock
+host/native/io.lisp:8488: R1b VIOLATION fnn-log-batch-reset: fnn-log-octets written with no lock at host/native/io.lisp:8488 (fnn-log-batch-reset); 2 write site(s), 3 access site(s) across 10 actor(s), no common lock
+host/native/io.lisp:8944: R1b VIOLATION fnn-log-rotate: fnn-log-path written with no lock at host/native/io.lisp:8944 (fnn-log-rotate); 1 write site(s), 6 access site(s) across 11 actor(s), no common lock
+host/native/io.lisp:8947: R1b VIOLATION fnn-log-rotate: fnn-log-dir-pending written with no lock at host/native/io.lisp:8947 (fnn-log-rotate); 2 write site(s), 3 access site(s) across 11 actor(s), no common lock
+host/native/io.lisp:8947: R1b VIOLATION fnn-log-rotate: fnn-log-extent written with no lock at host/native/io.lisp:8947 (fnn-log-rotate); 3 write site(s), 6 access site(s) across 11 actor(s), no common lock
+host/native/io.lisp:8947: R1b VIOLATION fnn-log-rotate: fnn-log-genesis written with no lock at host/native/io.lisp:8947 (fnn-log-rotate); 2 write site(s), 5 access site(s) across 5 actor(s), no common lock
+host/native/io.lisp:8947: R1b VIOLATION fnn-log-rotate: fnn-log-index written with no lock at host/native/io.lisp:8947 (fnn-log-rotate); 2 write site(s), 9 access site(s) across 5 actor(s), no common lock
+host/native/io.lisp:8947: R1b VIOLATION fnn-log-rotate: fnn-log-kernel written with no lock at host/native/io.lisp:8947 (fnn-log-rotate); 16 write site(s), 45 access site(s) across 11 actor(s), no common lock
+host/native/io.lisp:8947: R1b VIOLATION fnn-log-rotate: fnn-log-pending written with no lock at host/native/io.lisp:8947 (fnn-log-rotate); 4 write site(s), 8 access site(s) across 11 actor(s), no common lock
+host/native/io.lisp:9456: R1b VIOLATION fnn-log-take: fnn-log-members written with no lock at host/native/io.lisp:9456 (fnn-log-take); 2 write site(s), 3 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:9565: R1b VIOLATION fnn-log-write-history: fnn-log-bmax written with no lock at host/native/io.lisp:9565 (fnn-log-write-history); 2 write site(s), 6 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:9565: R1b VIOLATION fnn-log-write-history: fnn-log-omax written with no lock at host/native/io.lisp:9565 (fnn-log-write-history); 2 write site(s), 3 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:9591: R1b VIOLATION fnn-log-write-history: fnn-log-reserved written with no lock at host/native/io.lisp:9591 (fnn-log-write-history); 2 write site(s), 3 access site(s) across 7 actor(s), no common lock
+host/native/io.lisp:9690: R1b VIOLATION fnn-log-seal-capture: fnn-log-sealed: unlocked-read; writes under [('K',), ('K', 'O')], 5 access site(s), no common lock
+host/native/mux.lisp:1788: R1b VIOLATION fnn-mux-iterate: fnn-mux-loop-polling written with no lock at host/native/mux.lisp:1788 (fnn-mux-iterate); 2 write site(s), 4 access site(s) across 2 actor(s), no common lock
+host/native/mux.lisp:1818: R1b VIOLATION fnn-mux-iterate: fnn-mux-loop-passes written with no lock at host/native/mux.lisp:1818 (fnn-mux-iterate); 1 write site(s), 4 access site(s) across 3 actor(s), no common lock
+host/native/mux.lisp:1952: R1b VIOLATION fnn-mux-start: fnn-owner-service-mux: unlocked-read; writes under [('R',)], 10 access site(s), no common lock
+host/native/operator-live.lisp:39: R1b VIOLATION fnn-operator-execute-run: *fnn-owner-last-fault* written with no lock at host/native/operator-live.lisp:39 (fnn-operator-execute-run); 4 write site(s), 9 access site(s) across 28 actor(s), no common lock
+host/native/operator-live.lisp:67: R1b VIOLATION fnn-operator-execute-run: *fnn-health-min-percent* written with no lock at host/native/operator-live.lisp:67 (fnn-operator-execute-run); 1 write site(s), 2 access site(s) across 2 actor(s), no common lock
+host/native/operator-live.lisp:77: R1b VIOLATION fnn-operator-execute-run: *fnn-owner-log-path* written with no lock at host/native/operator-live.lisp:77 (fnn-operator-execute-run); 2 write site(s), 4 access site(s) across 3 actor(s), no common lock
+host/native/owner.lisp:381: R1b VIOLATION fnn-connection-custody-publish-raw: fnn-owner-service-connection-head written with no lock at host/native/owner.lisp:381 (fnn-connection-custody-publish-raw); 2 write site(s), 4 access site(s) across 28 actor(s), no common lock
+host/native/owner.lisp:381: R1b VIOLATION fnn-connection-custody-publish-raw: fnn-owner-service-connection-raw-token written with no lock at host/native/owner.lisp:381 (fnn-connection-custody-publish-raw); 3 write site(s), 7 access site(s) across 28 actor(s), no common lock
+host/native/owner.lisp:634: R1b VIOLATION fnn-owner-refresh-read-octets: fnn-owner-service-read-octets written with no lock at host/native/owner.lisp:634 (fnn-owner-refresh-read-octets); 1 write site(s), 2 access site(s) across 5 actor(s), no common lock
+host/native/owner.lisp:1497: R1b VIOLATION fnn-owner-feed-close-all: fnn-owner-service-feeds written with no lock at host/native/owner.lisp:1497 (fnn-owner-feed-close-all); 3 write site(s), 7 access site(s) across 9 actor(s), no common lock
+host/native/owner.lisp:2535: R1b VIOLATION fnn-owner-space-observe-if-due: fnn-owner-service-space-need written with no lock at host/native/owner.lisp:2535 (fnn-owner-space-observe-if-due); 3 write site(s), 4 access site(s) across 16 actor(s), no common lock
+host/native/owner.lisp:3025: R1b VIOLATION fnn-owner-stop-service-locked: fnn-owner-service-exit-code: unlocked-read; writes under [('R',)], 7 access site(s), no common lock
+host/native/owner.lisp:3028: R1b VIOLATION fnn-owner-stop-service-locked: fnn-owner-service-stopping: unlocked-read; writes under [('R',)], 43 access site(s), no common lock
+host/native/owner.lisp:4520: R1b VIOLATION fnn-owner-note-queued: fnn-owner-service-queued: unlocked-read; writes under [('C', 'O')], 9 access site(s), no common lock
+host/native/owner.lisp:4961: R1b VIOLATION fnn-owner-start-syncer: fnn-owner-service-synced written with no lock at host/native/owner.lisp:4961 (fnn-owner-start-syncer); 2 write site(s), 4 access site(s) across 4 actor(s), no common lock
+host/native/owner.lisp:5925: R1b VIOLATION fnn-owner-control-arm-fault: *fnn-owner-control-fault-consumed*: unlocked-read; writes under [('O',)], 2 access site(s), no common lock
+host/native/owner.lisp:6306: R1b VIOLATION fnn-owner-cold-enqueue-locked: fnn-owner-service-cold-head: unlocked-read; writes under [('O',)], 7 access site(s), no common lock
+host/native/owner.lisp:7414: R1b VIOLATION fnn-owner-maybe-retire: fnn-owner-service-retire written with no lock at host/native/owner.lisp:7414 (fnn-owner-maybe-retire); 2 write site(s), 11 access site(s) across 9 actor(s), no common lock
+host/native/owner.lisp:7420: R1b VIOLATION fnn-owner-maybe-retire: *fnn-sigterm-requested* written with no lock at host/native/owner.lisp:7420 (fnn-owner-maybe-retire); 3 write site(s), 16 access site(s) across 7 actor(s), no common lock
+host/native/owner.lisp:8976: R1b VIOLATION fnn-owner-journal-open: *fnn-journal-fd* written with no lock at host/native/owner.lisp:8976 (fnn-owner-journal-open); 3 write site(s), 12 access site(s) across 17 actor(s), no common lock
+host/native/owner.lisp:9095: R1b VIOLATION fnn-owner-maybe-reopen-log: *fnn-owner-log-handled* written with no lock at host/native/owner.lisp:9095 (fnn-owner-maybe-reopen-log); 1 write site(s), 3 access site(s) across 3 actor(s), no common lock
+host/native/owner.lisp:9391: R1b VIOLATION fnn-owner-run: *fnn-owner-measure* written with no lock at host/native/owner.lisp:9391 (fnn-owner-run); 1 write site(s), 14 access site(s) across 17 actor(s), no common lock
+host/native/owner.lisp:9442: R1b VIOLATION fnn-owner-run: *fnn-owner-time-service* written with no lock at host/native/owner.lisp:9442 (fnn-owner-run); 2 write site(s), 7 access site(s) across 16 actor(s), no common lock
+host/native/owner.lisp:9457: R1b VIOLATION fnn-owner-run: fnn-owner-service-connection-fault-operation written with no lock at host/native/owner.lisp:9457 (fnn-owner-run); 2 write site(s), 3 access site(s) across 3 actor(s), no common lock
+host/native/owner.lisp:9457: R1b VIOLATION fnn-owner-run: fnn-owner-service-tls-context written with no lock at host/native/owner.lisp:9457 (fnn-owner-run); 1 write site(s), 11 access site(s) across 4 actor(s), no common lock
+host/native/tls.lisp:399: R1b VIOLATION fnn-tls-initialize: *fnn-tls-libraries*: unlocked-read; writes under [('XTLSINIT',)], 3 access site(s), no common lock
+host/native/tls.lisp:411: R1b VIOLATION fnn-tls-initialize: *fnn-tls-version*: unlocked-read; writes under [('XTLSINIT',)], 3 access site(s), no common lock
+host/native/web-host.lisp:1040: R1b VIOLATION fnn-web-start: *fnn-web-face* written with no lock at host/native/web-host.lisp:1040 (fnn-web-start); 2 write site(s), 4 access site(s) across 2 actor(s), no common lock
+host/native/control.lisp:239: R2 UNRESOLVED fnn-control-live-status-answer: a callable value binding is called while holding ['O']
+host/native/extent.lisp:237: R2 VIOLATION fnn-extent-read-stall: io leaf probe-file runs while holding E; reached from 8 site(s) under E, e.g. fn-durable-realize-octet (host/native/extent.lisp:1728)
+host/native/extent.lisp:237: R2 VIOLATION fnn-extent-read-stall: sleep leaf sleep runs while holding E; reached from 8 site(s) under E, e.g. fn-durable-realize-octet (host/native/extent.lisp:1728)
+host/native/extent.lisp:237: R2 VIOLATION fnn-extent-read-stall: io leaf probe-file runs while holding O; reached from 102 site(s) under O, e.g. fnn-native-auth-publish-bindings (host/native/admin.lisp:683)
+host/native/extent.lisp:237: R2 VIOLATION fnn-extent-read-stall: sleep leaf sleep runs while holding O; reached from 102 site(s) under O, e.g. fnn-native-auth-publish-bindings (host/native/admin.lisp:683)
+host/native/extent.lisp:245: R2 VIOLATION fnn-extent-pread: io leaf sb-alien:alien-funcall runs while holding E; reached from 8 site(s) under E, e.g. fn-durable-realize-octet (host/native/extent.lisp:1728)
+host/native/extent.lisp:245: R2 VIOLATION fnn-extent-pread: io leaf sb-alien:alien-funcall runs while holding O; reached from 102 site(s) under O, e.g. fnn-native-auth-publish-bindings (host/native/admin.lisp:683)
+host/native/extent.lisp:1308: R2 VIOLATION fnn-extent-read-entry: io leaf fnn-extent-pread runs while holding E; reached from 6 site(s) under E, e.g. fn-durable-realize-octet (host/native/extent.lisp:1728)
+host/native/extent.lisp:1308: R2 VIOLATION fnn-extent-read-entry: io leaf fnn-extent-pread runs while holding O; reached from 47 site(s) under O, e.g. fnn-owner-account-redeem (host/native/admin.lisp:745)
+host/native/extent.lisp:2039: R2 VIOLATION fn-pgs-fill-frame: io leaf fnn-extent-pread runs while holding E; reached from 2 site(s) under E, e.g. fn-pgs-fill-frame (host/native/extent.lisp:2039)
+host/native/extent.lisp:2039: R2 VIOLATION fn-pgs-fill-frame: io leaf fnn-extent-pread runs while holding O; reached from 88 site(s) under O, e.g. fnn-native-auth-publish-bindings (host/native/admin.lisp:683)
+host/native/io.lisp:593: R2 VIOLATION fnn-open: io leaf sb-posix:open runs while holding K; reached from 1 site(s) under K, e.g. fnn-log-append-capture (host/native/io.lisp:8075)
+host/native/io.lisp:593: R2 VIOLATION fnn-open: io leaf sb-posix:open runs while holding O; reached from 51 site(s) under O, e.g. fnn-owner-account-redeem (host/native/admin.lisp:718)
+host/native/io.lisp:656: R2 VIOLATION fnn-close: io leaf sb-posix:close runs while holding E; reached from 1 site(s) under E, e.g. fnn-extent-close (host/native/extent.lisp:2118)
+host/native/io.lisp:656: R2 VIOLATION fnn-close: io leaf sb-posix:close runs while holding K; reached from 2 site(s) under K, e.g. fnn-log-append-capture (host/native/io.lisp:8075)
+host/native/io.lisp:656: R2 VIOLATION fnn-close: io leaf sb-posix:close runs while holding O; reached from 73 site(s) under O, e.g. fnn-owner-account-redeem (host/native/admin.lisp:718)
+host/native/io.lisp:658: R2 VIOLATION fnn-fstat: io leaf sb-posix:fstat runs while holding K; reached from 1 site(s) under K, e.g. fnn-log-append-capture (host/native/io.lisp:8075)
+host/native/io.lisp:658: R2 VIOLATION fnn-fstat: io leaf sb-posix:fstat runs while holding O; reached from 16 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:661: R2 VIOLATION fnn-lstat: io leaf sb-posix:lstat runs while holding O; reached from 22 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:244)
+host/native/io.lisp:677: R2 VIOLATION fnn-durable-barrier: io leaf sb-posix:fcntl runs while holding O; reached from 49 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:682: R2 VIOLATION fnn-durable-barrier: io leaf sb-posix:fsync runs while holding O; reached from 49 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:710: R2 VIOLATION fnn-read-fd: io leaf sb-unix:unix-read runs while holding O; reached from 11 site(s) under O, e.g. fnn-owner-account-redeem (host/native/admin.lisp:718)
+host/native/io.lisp:715: R2 VIOLATION fnn-write-all: io leaf sb-unix:unix-write runs while holding O; reached from 18 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:244)
+host/native/io.lisp:715: R2 VIOLATION fnn-write-range: io leaf sb-unix:unix-write runs while holding O; reached from 33 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:864: R2 VIOLATION fnn-list-directory: io leaf sb-posix:opendir runs while holding O; reached from 4 site(s) under O, e.g. fnn-bpapp-open-journal (host/native/bp-app.lisp:311)
+host/native/io.lisp:867: R2 VIOLATION fnn-list-directory: io leaf sb-posix:readdir runs while holding O; reached from 4 site(s) under O, e.g. fnn-bpapp-open-journal (host/native/bp-app.lisp:311)
+host/native/io.lisp:872: R2 VIOLATION fnn-list-directory: io leaf sb-posix:closedir runs while holding O; reached from 4 site(s) under O, e.g. fnn-bpapp-open-journal (host/native/bp-app.lisp:311)
+host/native/io.lisp:931: R2 VIOLATION fnn-link: io leaf sb-posix:link runs while holding O; reached from 11 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:244)
+host/native/io.lisp:933: R2 VIOLATION fnn-replace: io leaf sb-posix:rename runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-reclaim-pass (host/native/owner.lisp:8886)
+host/native/io.lisp:935: R2 VIOLATION fnn-mkdir: io leaf sb-posix:mkdir runs while holding O; reached from 4 site(s) under O, e.g. fnn-bpapp-open-journal (host/native/bp-app.lisp:311)
+host/native/io.lisp:936: R2 VIOLATION fnn-chmod: io leaf sb-posix:chmod runs while holding O; reached from 35 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:939: R2 VIOLATION fnn-flock: io leaf fnn-%flock runs while holding O; reached from 6 site(s) under O, e.g. fnn-bpapp-open-journal (host/native/bp-app.lisp:311)
+host/native/io.lisp:3118: R2 VIOLATION fnn-state-checkpoint-file-observation: io leaf sb-posix:lstat runs while holding O; reached from 1 site(s) under O, e.g. fnn-control-live-status-legacy-answer (host/native/control.lisp:191)
+host/native/io.lisp:5242: R2 VIOLATION fnn-rename-no-replace: io leaf fnn-%import-renameat2 runs while holding O; reached from 3 site(s) under O, e.g. fnn-owner-maybe-publish-quantum (host/native/owner.lisp:8158)
+host/native/io.lisp:5259: R2 VIOLATION fnn-rename-no-replace: io leaf sb-posix:rename runs while holding O; reached from 3 site(s) under O, e.g. fnn-owner-maybe-publish-quantum (host/native/owner.lisp:8158)
+host/native/io.lisp:6514: R2 VIOLATION fnn-socket-shut: socket leaf sb-bsd-sockets:socket-close runs while holding R; reached from 1 site(s) under R, e.g. fnn-mux-adopt (host/native/mux.lisp:2095)
+host/native/io.lisp:7548: R2 VIOLATION fnn-log-pwrite: io leaf sb-posix:lseek runs while holding O; reached from 33 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:7557: R2 VIOLATION fnn-log-fdatasync: io leaf sb-alien:alien-funcall runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:7572: R2 VIOLATION fnn-log-preallocate: io leaf sb-alien:alien-funcall runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:7580: R2 VIOLATION fnn-log-preallocate: io leaf sb-posix:lseek runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:8272: R2 UNRESOLVED fnn-log-fence: unresolved callee funcall:*fnn-record-barrier-fault-observer*: its function is not a literal the checker can classify, and it runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:9394: R2 UNRESOLVED fnn-log-reserve: unresolved callee funcall:*fnn-identity-reservation-callback*: its function is not a literal the checker can classify, and it runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/io.lisp:9658: R2 VIOLATION fnn-log-await-sync: await leaf sb-thread:condition-wait runs while holding O; reached from 31 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+host/native/mux.lisp:349: R2 VIOLATION fnn-mux-wake-locked: io leaf sb-unix:unix-write runs while holding C; reached from 1 site(s) under C, e.g. fnn-owner-committer-loop (host/native/owner.lisp:5626)
+host/native/mux.lisp:349: R2 VIOLATION fnn-mux-wake-locked: io leaf sb-unix:unix-write runs while holding M; reached from 3 site(s) under M, e.g. fnn-mux-wake (host/native/mux.lisp:353)
+host/native/owner.lisp:1340: R2 VIOLATION fnn-owner-feed-append-locked: sleep leaf sleep runs while holding O; reached from 9 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:244)
+host/native/owner.lisp:1342: R2 VIOLATION fnn-owner-feed-append-locked: io leaf probe-file runs while holding O; reached from 9 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:244)
+host/native/owner.lisp:1342: R2 VIOLATION fnn-owner-feed-append-locked: sleep leaf sleep runs while holding O; reached from 9 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:244)
+host/native/owner.lisp:4161: R2 VIOLATION fnn-owner-consumer-entropy-observation: io leaf read-sequence runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-consumer-local-serialized (host/native/owner.lisp:4182)
+host/native/owner.lisp:8531: R2 VIOLATION fnn-reclaim-cut: io leaf probe-file runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-reclaim-pass (host/native/owner.lisp:8888)
+host/native/owner.lisp:8531: R2 VIOLATION fnn-reclaim-cut: sleep leaf sleep runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-reclaim-pass (host/native/owner.lisp:8888)
+host/native/owner.lisp:8539: R2 VIOLATION fnn-reclaim-cut: io leaf probe-file runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-reclaim-pass (host/native/owner.lisp:8888)
+host/native/owner.lisp:8541: R2 VIOLATION fnn-reclaim-cut: io leaf probe-file runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-reclaim-pass (host/native/owner.lisp:8888)
+host/native/owner.lisp:8541: R2 VIOLATION fnn-reclaim-cut: sleep leaf sleep runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-reclaim-pass (host/native/owner.lisp:8888)
+host/native/owner.lisp:8857: R2 VIOLATION fnn-owner-reclaim-pass: io leaf probe-file runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-reclaim-pass (host/native/owner.lisp:8857)
+host/native/owner.lisp:8858: R2 VIOLATION fnn-owner-reclaim-pass: io leaf delete-file runs while holding O; reached from 1 site(s) under O, e.g. fnn-owner-reclaim-pass (host/native/owner.lisp:8858)
+host/native/receiver-parser-turn.lisp:23: R2 UNRESOLVED fnn-owner-receiver-turn-parser-locked: a callable value callback is called while holding ['E']
+host/native/tls.lisp:603: R2 VIOLATION fnn-tls-server-candidate: io leaf sb-posix:stat runs while holding XTLSRELOAD; reached from 1 site(s) under XTLSRELOAD, e.g. fnn-tls-owner-reload (host/native/tls-reload.lisp:161)
+host/native/control.lisp:549: R4 VIOLATION fnn-control-launch-client: thread 'fn local control client' (fault policy connection) has no top-level serious-condition handler: an escaping condition ends it silently
+host/native/control.lisp:624: R4 VIOLATION fnn-control-start: thread 'fn local control accept' (fault policy connection) has no top-level serious-condition handler: an escaping condition ends it silently
+host/native/extent.lisp:1056: R4 VIOLATION fnn-extent-executor-start: thread 'fn cold executor' (fault policy private) has no top-level serious-condition handler: an escaping condition ends it silently
+host/native/io.lisp:1308: R4 VIOLATION fnn-log-writer-start: thread 'fn service log writer' (fault policy private) has no top-level serious-condition handler: an escaping condition ends it silently
+host/native/bp-app.lisp:371: R5 UNRESOLVED fnn-command-bp-app-receive: lock object (sb-thread:make-mutex)
+host/native/owner.lisp:5626: R5 VIOLATION fnn-owner-committer-loop: undeclared lock edge C -> M
+host/native/owner.lisp:6143: R5 UNRESOLVED lambda@host/native/owner.lisp:fnn-owner-await-logical#lambda1: lock object lock
+host/native/owner.lisp:6153: R5 UNRESOLVED fnn-owner-await-logical: lock object (sb-thread:make-mutex)
+host/native/owner.lisp:6158: R5 UNRESOLVED fnn-owner-await-logical: lock object (sb-thread:make-mutex)
+host/native/io.lisp:1478: R6 EXCEPTION fnn-entry-guard-spec: touches synchronized table *fnn-entry-guard-specs* on the fnn-call path [declared: read-mostly guard-spec cache, filled once per entry name (io.lisp:1278); F6: to move to image build time]
+host/native/io.lisp:1481: R6 EXCEPTION fnn-entry-guard-spec: touches synchronized table *fnn-entry-guard-specs* on the fnn-call path [declared: read-mostly guard-spec cache, filled once per entry name (io.lisp:1278); F6: to move to image build time]
+host/native/bp-service.lisp:1072: R7 VIOLATION fnn-bps-publish-generation: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/control.lisp:140: R7 VIOLATION fnn-control-send-reply: handler clause error consumes ['fault'] without routing it to the fence
+host/native/control.lisp:326: R7 VIOLATION fnn-control-handle-client: handler clause fnn-store-fault consumes ['fault'] without routing it to the fence
+host/native/control.lisp:326: R7 VIOLATION fnn-control-handle-client: handler clause fnn-store-indeterminate consumes ['indet'] without routing it to the fence
+host/native/control.lisp:573: R7 VIOLATION fnn-control-accept-loop: handler clause sb-bsd-sockets:socket-error routes connection-local ['socket'] to the fence (a client/peer event stops the node)
+host/native/dev-repl.lisp:60: R7 VIOLATION fnn-dev-evaluate: handler clause serious-condition consumes ['fault', 'indet'] without routing it to the fence
+host/native/heap.lisp:66: R7 VIOLATION fnn-heap-read-small: handler clause error consumes ['fault'] without routing it to the fence
+host/native/heap.lisp:254: R7 VIOLATION fnn-heap-history-observation: handler clause error consumes ['fault'] without routing it to the fence
+host/native/heap.lisp:280: R7 VIOLATION fnn-heap-history-octets: handler clause error consumes ['fault'] without routing it to the fence
+host/native/io.lisp:1232: R7 VIOLATION fnn-journal-write: handler clause error consumes ['fault'] without routing it to the fence
+host/native/io.lisp:1259: R7 VIOLATION fnn-log-write-item: handler clause error consumes ['fault'] without routing it to the fence
+host/native/io.lisp:1387: R7 VIOLATION fnn-log-line: handler clause error consumes ['fault'] without routing it to the fence
+host/native/io.lisp:3720: R7 VIOLATION fnn-checkpoint-revision: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:376: R7 VIOLATION fnn-mux-tls-log: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:381: R7 VIOLATION fnn-mux-tls-log: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:934: R7 VIOLATION fnn-mux-z-in: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1274: R7 VIOLATION fnn-mux-handshake-refused: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1335: R7 VIOLATION fnn-mux-start-waiting-handshake: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1339: R7 VIOLATION fnn-mux-start-waiting-handshake: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1640: R7 VIOLATION fnn-mux-dispatch: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1670: R7 VIOLATION fnn-mux-timers: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1726: R7 VIOLATION fnn-mux-take-inbox: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1751: R7 VIOLATION fnn-mux-take-arrived: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1804: R7 VIOLATION fnn-mux-iterate: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1916: R7 VIOLATION fnn-mux-stop-loop: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/owner.lisp:1346: R7 VIOLATION fnn-owner-feed-append-locked: handler clause ignore-errors consumes ['fault', 'indet'] without routing it to the fence
+host/native/owner.lisp:2524: R7 VIOLATION fnn-owner-space-event: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/owner.lisp:3147: R7 VIOLATION fnn-owner-classify-escape-locked: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/owner.lisp:3495: R7 VIOLATION fnn-owner-attempt: handler clause fnn-store-indeterminate consumes ['indet'] without routing it to the fence
+host/native/owner.lisp:3715: R7 VIOLATION fnn-owner-attempt-filled: handler clause fnn-store-indeterminate consumes ['indet'] without routing it to the fence
+host/native/owner.lisp:4603: R7 VIOLATION fnn-owner-commit-start-locked: handler clause fnn-store-indeterminate consumes ['indet'] without routing it to the fence
+host/native/owner.lisp:4778: R7 VIOLATION fnn-owner-batch-effect: handler clause serious-condition consumes ['fault'] without routing it to the fence
+host/native/owner.lisp:4843: R7 VIOLATION fnn-owner-commit-release-member: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/owner.lisp:4968: R7 VIOLATION lambda@host/native/owner.lisp:fnn-owner-start-syncer#lambda1: handler clause serious-condition consumes ['fault', 'indet'] without routing it to the fence
+host/native/owner.lisp:5543: R7 VIOLATION fnn-owner-commit-pipeline: handler clause fnn-store-indeterminate consumes ['indet'] without routing it to the fence
+host/native/owner.lisp:5610: R7 VIOLATION fnn-owner-committer-loop: handler clause serious-condition routes connection-local ['refusal'] to the fence (a client/peer event stops the node)
+host/native/owner.lisp:6747: R7 VIOLATION fnn-owner-cold-reap: handler clause fnn-store-error routes connection-local ['refusal'] to the fence (a client/peer event stops the node)
+host/native/owner.lisp:7323: R7 VIOLATION fnn-owner-retire-refuse: handler clause error consumes ['fault'] without routing it to the fence
+host/native/owner.lisp:7994: R7 VIOLATION fnn-owner-publish-captured: handler clause serious-condition consumes ['fault', 'indet'] without routing it to the fence
+host/native/owner.lisp:8308: R7 VIOLATION fnn-owner-export-captured: handler clause serious-condition routes connection-local ['refusal'] to the fence (a client/peer event stops the node)
+host/native/pull-service.lisp:264: R7 VIOLATION fnn-pull-journal-append: handler clause ignore-errors consumes ['fault', 'indet'] without routing it to the fence
+host/native/signatures.lisp:274: R7 VIOLATION fnn-hsig-observe-raw: handler clause error consumes ['fault'] without routing it to the fence
+host/native/tcpcl.lisp:469: R7 VIOLATION fnn-tcl-source-tick: handler clause error consumes ['fault', 'indet'] without routing it to the fence
+host/native/tcpcl.lisp:551: R7 VIOLATION fnn-tcl-act: handler clause error consumes ['fault', 'indet'] without routing it to the fence
+host/native/tcpcl.lisp:818: R7 VIOLATION fnn-tcl-session: handler clause ignore-errors consumes ['fault'] without routing it to the fence
+host/native/mux.lisp:1137: R8 VIOLATION lambda@host/native/mux.lisp:fnn-mux-await#lambda1: push into fnn-mux-loop-arrived under ['M'] with no lifecycle check of the receiver under M (no lifecycle flag is declared)
+host/native/mux.lisp:2129: R8 VIOLATION fnn-mux-adopt-place: push into fnn-mux-loop-inbox under ['M'] with no lifecycle check of the receiver under M (no lifecycle flag is declared)
+host/native/io.lisp:9658: R9 VIOLATION fnn-log-await-sync: actor mux-loop parks in sb-thread:condition-wait
+host/native/owner.lisp:2818: R9 VIOLATION fnn-section-run: actor accept enters the gate (class $class) and may wait behind a barrier
+host/native/owner.lisp:2831: R9 VIOLATION fnn-section-run-cleanup: actor accept enters the gate (class $class) and may wait behind a barrier
+lock_discipline_check: 2518 functions/roots, 25377 analyzed sites, 0 unreadable files, 18.4 s
+  R1   violation    2  unresolved    0  exception    0
+  R1b  violation   72  unresolved    0  exception    0
+  R2   violation   54  unresolved    4  exception    0
+  R4   violation    4  unresolved    0  exception    0
+  R5   violation    1  unresolved    4  exception    0
+  R6   violation    0  unresolved    0  exception    2
+  R7   violation   45  unresolved    0  exception    0
+  R8   violation    2  unresolved    0  exception    0
+  R9   violation    3  unresolved    0  exception    0
+  R10  violation   27  unresolved    0  exception    0
+  total 220; baselined 209 rows (weight 846); new 24; stale baseline rows 19; enclave 8 functions + 1 files (0 excepted)
+lock_discipline_check: ENCLAVE R1b|fnn-extent-executor-actual-return|fnn-cold-worker-phase:unlocked-read (count 1, baseline 0) host/native/extent.lisp:458 R1b fnn-extent-executor-actual-return: fnn-cold-worker-phase: unlocked-read; writes under [('E',), ('E', 'O')], 26 access site(s), no common lock
+lock_discipline_check: NEW R2|fn-pgs-fill-frame|E:fnn-extent-pread (count 2, baseline 0) host/native/extent.lisp:2039 R2 fn-pgs-fill-frame: io leaf fnn-extent-pread runs while holding E; reached from 2 site(s) under E, e.g. fn-pgs-fill-frame (host/native/extent.lisp:2039)
+lock_discipline_check: NEW R2|fn-pgs-fill-frame|O:fnn-extent-pread (count 88, baseline 0) host/native/extent.lisp:2039 R2 fn-pgs-fill-frame: io leaf fnn-extent-pread runs while holding O; reached from 88 site(s) under O, e.g. fnn-native-auth-publish-bindings (host/native/admin.lisp:683)
+lock_discipline_check: NEW R2|fnn-chmod|O:sb-posix:chmod (count 35, baseline 31) host/native/io.lisp:936 R2 fnn-chmod: io leaf sb-posix:chmod runs while holding O; reached from 35 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-close|O:sb-posix:close (count 73, baseline 58) host/native/io.lisp:656 R2 fnn-close: io leaf sb-posix:close runs while holding O; reached from 73 site(s) under O, e.g. fnn-owner-account-redeem (host/native/admin.lisp:718)
+lock_discipline_check: NEW R2|fnn-control-live-status-answer|unresolved:binding (count 1, baseline 0) host/native/control.lisp:239 R2 fnn-control-live-status-answer: a callable value binding is called while holding ['O']
+lock_discipline_check: NEW R2|fnn-durable-barrier|O:sb-posix:fcntl (count 49, baseline 40) host/native/io.lisp:677 R2 fnn-durable-barrier: io leaf sb-posix:fcntl runs while holding O; reached from 49 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-durable-barrier|O:sb-posix:fsync (count 49, baseline 40) host/native/io.lisp:682 R2 fnn-durable-barrier: io leaf sb-posix:fsync runs while holding O; reached from 49 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-extent-read-stall|E:probe-file (count 8, baseline 0) host/native/extent.lisp:237 R2 fnn-extent-read-stall: io leaf probe-file runs while holding E; reached from 8 site(s) under E, e.g. fn-durable-realize-octet (host/native/extent.lisp:1728)
+lock_discipline_check: NEW R2|fnn-extent-read-stall|E:sleep (count 8, baseline 0) host/native/extent.lisp:237 R2 fnn-extent-read-stall: sleep leaf sleep runs while holding E; reached from 8 site(s) under E, e.g. fn-durable-realize-octet (host/native/extent.lisp:1728)
+lock_discipline_check: NEW R2|fnn-extent-read-stall|O:probe-file (count 102, baseline 0) host/native/extent.lisp:237 R2 fnn-extent-read-stall: io leaf probe-file runs while holding O; reached from 102 site(s) under O, e.g. fnn-native-auth-publish-bindings (host/native/admin.lisp:683)
+lock_discipline_check: NEW R2|fnn-extent-read-stall|O:sleep (count 102, baseline 0) host/native/extent.lisp:237 R2 fnn-extent-read-stall: sleep leaf sleep runs while holding O; reached from 102 site(s) under O, e.g. fnn-native-auth-publish-bindings (host/native/admin.lisp:683)
+lock_discipline_check: NEW R2|fnn-log-await-sync|O:sb-thread:condition-wait (count 31, baseline 21) host/native/io.lisp:9658 R2 fnn-log-await-sync: await leaf sb-thread:condition-wait runs while holding O; reached from 31 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-log-fdatasync|O:sb-alien:alien-funcall (count 30, baseline 20) host/native/io.lisp:7557 R2 fnn-log-fdatasync: io leaf sb-alien:alien-funcall runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-log-fence|O:funcall:*fnn-record-barrier-fault-observer* (count 30, baseline 0) host/native/io.lisp:8272 R2 fnn-log-fence: unresolved callee funcall:*fnn-record-barrier-fault-observer*: its function is not a literal the checker can classify, and it runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-log-preallocate|O:sb-alien:alien-funcall (count 30, baseline 20) host/native/io.lisp:7572 R2 fnn-log-preallocate: io leaf sb-alien:alien-funcall runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-log-preallocate|O:sb-posix:lseek (count 30, baseline 20) host/native/io.lisp:7580 R2 fnn-log-preallocate: io leaf sb-posix:lseek runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-log-pwrite|O:sb-posix:lseek (count 33, baseline 23) host/native/io.lisp:7548 R2 fnn-log-pwrite: io leaf sb-posix:lseek runs while holding O; reached from 33 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-log-reserve|O:funcall:*fnn-identity-reservation-callback* (count 30, baseline 0) host/native/io.lisp:9394 R2 fnn-log-reserve: unresolved callee funcall:*fnn-identity-reservation-callback*: its function is not a literal the checker can classify, and it runs while holding O; reached from 30 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R2|fnn-open|O:sb-posix:open (count 51, baseline 44) host/native/io.lisp:593 R2 fnn-open: io leaf sb-posix:open runs while holding O; reached from 51 site(s) under O, e.g. fnn-owner-account-redeem (host/native/admin.lisp:718)
+lock_discipline_check: NEW R2|fnn-read-fd|O:sb-unix:unix-read (count 11, baseline 0) host/native/io.lisp:710 R2 fnn-read-fd: io leaf sb-unix:unix-read runs while holding O; reached from 11 site(s) under O, e.g. fnn-owner-account-redeem (host/native/admin.lisp:718)
+lock_discipline_check: NEW R2|fnn-write-all|O:sb-unix:unix-write (count 18, baseline 0) host/native/io.lisp:715 R2 fnn-write-all: io leaf sb-unix:unix-write runs while holding O; reached from 18 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:244)
+lock_discipline_check: NEW R2|fnn-write-range|O:sb-unix:unix-write (count 33, baseline 0) host/native/io.lisp:715 R2 fnn-write-range: io leaf sb-unix:unix-write runs while holding O; reached from 33 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:240)
+lock_discipline_check: NEW R7|fnn-dev-evaluate|swallow:serious-condition:fault,indet (count 1, baseline 0) host/native/dev-repl.lisp:60 R7 fnn-dev-evaluate: handler clause serious-condition consumes ['fault', 'indet'] without routing it to the fence
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R1b|fnn-bp-profile-arrival|*fnn-bp-profile-arrival-ms*:unlocked-write (count 0, baseline 1)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R1b|fnn-bp-profile-points|*fnn-bp-profile-points*:unlocked-write (count 0, baseline 1)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R1|lambda@host/native/bp.lisp:fnn-command-bp-receive#lambda3|O:fnn-bps-tcpcl-admission:fnn-owner-core (count 0, baseline 1)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-close|XSNAP:sb-posix:close (count 0, baseline 2)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-durable-barrier|XSNAP:sb-posix:fcntl (count 0, baseline 1)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-durable-barrier|XSNAP:sb-posix:fsync (count 0, baseline 1)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-extent-pread|E:sb-alien:alien-funcall (count 8, baseline 11)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-extent-pread|O:sb-alien:alien-funcall (count 102, baseline 111)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-extent-read-entry|E:fnn-extent-pread (count 6, baseline 11)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-extent-read-entry|O:fnn-extent-pread (count 47, baseline 85)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-log-pwrite|K:sb-posix:lseek (count 0, baseline 1)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-lstat|K:sb-posix:lstat (count 0, baseline 1)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-open|XSNAP:sb-posix:open (count 0, baseline 1)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-owner-batch-fence|O:probe-file (count 0, baseline 4)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-owner-batch-fence|O:sleep (count 0, baseline 8)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-owner-feed-append-locked|O:probe-file (count 9, baseline 10)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-owner-feed-append-locked|O:sleep (count 18, baseline 20)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-rename-no-replace|K:fnn-%import-renameat2 (count 0, baseline 1)
+lock_discipline_check: STALE baseline row (lower it with --lower-stale): R2|fnn-rename-no-replace|K:sb-posix:rename (count 0, baseline 1)
+lock_discipline_check: CALLBACK-AUDIT callback_contexts lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda2: its why text names bp-node.lisp:998 but the ordinal resolves to host/native/bp-node.lisp:1022 -- a lambda insert moved it: re-declare the row (declare_callback_contexts cannot see a move)
+lock_discipline_check: CALLBACK-AUDIT callback_contexts lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda7: its why text names bp-node.lisp:1019 but the ordinal resolves to host/native/bp-node.lisp:1043 -- a lambda insert moved it: re-declare the row (declare_callback_contexts cannot see a move)
+lock_discipline_check: CALLBACK-AUDIT callback_contexts lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda8: its why text names bp-node.lisp:1022 but the ordinal resolves to host/native/bp-node.lisp:1046 -- a lambda insert moved it: re-declare the row (declare_callback_contexts cannot see a move)
+lock_discipline_check: CALLBACK-AUDIT callback_contexts lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda2: its why text names bp-node.lisp:1127 but the ordinal resolves to host/native/bp-node.lisp:1151 -- a lambda insert moved it: re-declare the row (declare_callback_contexts cannot see a move)
+lock_discipline_check: CALLBACK-AUDIT callback_contexts lambda@host/native/bp-app.lisp:fnn-command-bp-app-receive#lambda4: its why text names bp-app.lisp:379 but the ordinal resolves to host/native/bp-app.lisp:375 -- a lambda insert moved it: re-declare the row (declare_callback_contexts cannot see a move)
+lock_discipline_check: 24 new key(s), 19 stale

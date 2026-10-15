@@ -635,10 +635,10 @@
 ; in flight under the host's limits hold at most the scratch the machine
 ; figure charges for them (books/connection-budget.lisp
 ; fn-cbud-handshake-octets), and at most the scratch of any SLOTS at least
-; that L: the held slots of a live reconfiguration
-; (fn-cbud-deltas-refusal-keeps-the-machine-held: the held slots are at
-; least the configuration's L, and never fall while the run lives, so the
-; handshakes admitted under an L since lowered are still charged).
+; that L: the slots the memory gate charges after a live reconfiguration
+; (books/admission-memory.lisp fn-adm-cfg-holding-handshakes: the live L or the
+; handshakes still in flight, the larger, so the handshakes admitted under an L
+; since lowered are still charged).
 (defthm fn-hsb-scratch-within-the-machine-term
   (implies (fn-hsb-okp s (fn-hsb-limits rate inflight deadline))
            (and (<= (* (len (fn-hsb-flight s)) *fn-cbud-handshake-scratch-octets*)

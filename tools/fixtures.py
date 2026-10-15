@@ -85,8 +85,10 @@ OPENSSL_TEST = "/tank/fn/toolchains/openssl-3.5.8"
 # than an owner admits; H is 512 MiB, room for 10,000 articles of 32 KiB.
 # So: the presets' R, A and G with room for the recipes' N.  Every recipe
 # runs in a 40 GB unit, as tools/service_envelope.py's do: in a 24 GB unit
-# the owner of a scale-sized profile refuses to start
-# (`connections-exceed-memory ... holds=0`, books/connection-budget.lisp).
+# the memory gate holds fewer of a scale-sized profile's connections than the
+# recipes open (`memory capacity=C' of C', books/admission-memory.lisp
+# fn-adm-capacity; before L-RUN-LAUNCH the connection budget refused the run,
+# `connections-exceed-memory ... holds=0`).
 CAPACITY = ("--max-transactions", "1048576", "--max-history-octets", "536870912",
             "--max-open-suffix", "65536", "--max-record-octets", "17138486",
             "--max-article-octets", "32768", "--max-groups-per-article", "65535")

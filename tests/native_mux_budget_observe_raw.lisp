@@ -1,4 +1,4 @@
-;;; The budget install observes the machine and the core file before its owner
+;;; The budget install observes memory coordinates and the core file before its owner
 ;;; section (lock discipline R2): no stat or /proc read under the owner mutex.
 (require :sb-posix)
 (require :sb-bsd-sockets)
@@ -6,12 +6,23 @@
 (in-package "ACL2")
 
 
+;; Extract the real service record: its captured launch observations and BP terms
+;; are part of the installer input, not ad-hoc accessor twins in this raw world.
+(defconstant +fnn-exit-ok+ 0)
+(defun load-deployed-forms (path wanted)
+  (with-open-file (stream path)
+    (loop for form = (read stream nil :eof) until (eq form :eof)
+      when (and (consp form) (member (list (car form) (cadr form)) wanted :test #'equal))
+        do (eval form) (setf wanted (remove (list (car form) (cadr form)) wanted :test #'equal))
+      finally (assert (null wanted)))))
+(load-deployed-forms "host/native/owner.lisp"
+ '((defstruct (fnn-owner-service (:constructor %make-fnn-owner-service)))))
+
 (defvar *in-section* nil)
 (defvar *violations* nil)
 (defvar *seen* nil)
 (defun observe (name) (push name *seen*) (when *in-section* (push name *violations*)))
-(defun fnn-owner-service-store (service) (declare (ignore service)) :store)
-(defun fnn-heap-machine-octets () (observe :machine) 1000)
+(defun fnn-heap-machine-octets () (error "retired resident/reservation comparison reached"))
 (defun fnn-heap-core-octets () (observe :core) 10)
 (defun fnn-owner-serialized (service cid thunk &optional class)
   (declare (ignore service cid class))
@@ -20,7 +31,9 @@
 (defun fnn-mux-thread-stack-octets () 5)
 (defun fnn-owner-core (name &rest args) (declare (ignore name)) (push args *seen*) :hold)
 (defun fnn-store-config (store) store)
-(defun fnn-owner-service-reclaim-live (service) (declare (ignore service)) nil)
+(defun fnn-store-root (store) (declare (ignore store)) "/fixture")
+(defun fnn-gc-nursery-octets () 7)
+(defun fnn-extent-cache-limit () 8)
 (defun fnn-owner-syncer-install (&rest args) (declare (ignore args)))
 (defun fnn-owner-output-install (&rest args) (declare (ignore args)))
 ;; The real installer initializes in-memory lease state; it observes no files.
@@ -43,13 +56,10 @@
   (unless (and *in-section* (equal observed '(:observed))) (error "configure outside the section"))
   :hold)
 (defconstant +fnn-gc-nursery-octets+ 7)
-(with-open-file (stream "host/native/mux.lisp")
-  (loop for form = (read stream nil :eof) until (eq form :eof)
-        when (and (consp form) (eq (car form) 'defun) (eq (cadr form) 'fnn-mux-budget-install))
-          do (eval form) (return)))
-(unless (eq (fnn-mux-budget-install :service nil) :hold) (error "decision"))
+(load-deployed-forms "host/native/mux.lisp" '((defun fnn-mux-budget-install)))
+(unless (eq (fnn-mux-budget-install (%make-fnn-owner-service :store :store) nil) :hold) (error "decision"))
 (when *violations* (error "observed inside the owner section: ~s" *violations*))
 (unless (member :lease-install *seen*) (error "lease install missing"))
-(unless (and (member :machine *seen*) (member :core *seen*) (member :memory *seen*))
+(unless (and (member :core *seen*) (member :memory *seen*))
   (error "observations missing"))
 (format t "native mux budget observe: PASS~%")

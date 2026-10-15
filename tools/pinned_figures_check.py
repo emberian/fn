@@ -29,12 +29,12 @@ FIGURES = ("*fn-heap-reclaim-record-octets*", "*fn-heap-storeless-thread-octets*
 # Test books whose heap decisions are not derived figures, with the reason.
 EXEMPT = {
     "tests/acl2/heap-figure-tests.lisp": "the producer's own golden examples",
+    "tests/acl2/heap-breakdown-tests.lisp": "fn-heap-breakdown's own golden rows (its 6 MiB open-record-lists row equals the storeless thread figure by coincidence)",
     "tests/acl2/cold-read-reservation-tests.lisp": "the extender under test: its golden and its input base",
     "tests/acl2/output-reservation-tests.lisp": "the extender under test: its golden and its input base",
     "tests/acl2/bp-heap-command-tests.lisp": "an input base reservation",
     "tests/acl2/page-read-startup-tests.lisp": "an input base reservation",
     "tests/acl2/peer-flight-reservation-tests.lisp": "an input base reservation",
-    "tests/acl2/reclaim-reservation-tests.lisp": "an input base reservation",
     "tests/acl2/limits-live-tests.lisp": "decisions handed to the line and word formatters",
     "tests/acl2/native-control-line-tests.lisp": "a decision handed to the line formatter",
 }

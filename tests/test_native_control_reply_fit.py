@@ -15,8 +15,8 @@ The witnesses, on the developer image:
 * `init` one octet past the ceiling (H raised with it) is refused by that
   name, exit 1, and writes no config.json; at the ceiling it is written.
   An installed node on a test machine then refuses to run it by name
-  (`machine-cannot-hold-profile`: the ceiling store's heap figure is
-  hundreds of GB).  This case used to "serve" it by starting the image at
+  (`machine-cannot-hold-the-pools`: the ceiling profile's DEFAULT pool
+  alone exceeds the least resident observation).  This case used to "serve" it by starting the image at
   its saved 32000 MB, which no installed launcher does (the decided-launch
   ruling, 2026-10-04; tests/native_harness.py Node.launch).
 
@@ -84,10 +84,12 @@ class ControlReplyFitTests(ControlReplyFitFixture):
                           "--max-history-octets", str(CEILING), "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertEqual(self.profile_line()["max-record-octets"], CEILING)
+        # The ceiling profile's DEFAULT pool exceeds the least resident
+        # observation, so the probe refuses before the owner's configure.
         process, stderr = self.node.try_start(image=self.image)
         self.assertIsNotNone(stderr, "an installed node started the ceiling store here")
         self.assertEqual(process.returncode, EXIT_REFUSED, stderr)
-        self.assertIn("machine-cannot-hold-profile", stderr)
+        self.assertIn("machine-cannot-hold-the-pools", stderr)
 
 
 if __name__ == "__main__":

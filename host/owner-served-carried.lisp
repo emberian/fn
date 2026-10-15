@@ -61,6 +61,236 @@
 (include-book "owner-retain-host")
 (include-book "../books/owner-retain-live")
 
+; Auxiliary memory writers frame K1's retained-state invariant.
+(defthm fn-owner-memory-physical-return-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state)
+          (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-memory-physical-return id state))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-physical-return fn-owner-memory-held-return fn-owner-retain-retained-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-memory-lease-install-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state)
+          (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-memory-lease-install profile cfg quantum state))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-lease-install fn-owner-retain-retained-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-record-totals-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state)
+          (fn-owner-retain-retained-statep (mv-nth 2 (fn-owner-record-totals fn-hist state))))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-record-totals fn-owner-retain-retained-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-memory-recapacity-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state)
+          (fn-owner-retain-retained-statep (mv-nth 1 (fn-owner-memory-recapacity fn-hist state))))
+ :hints (("Goal" :use (fn-owner-record-totals-keeps-retained-state) :in-theory (union-theories
+  '(fn-owner-memory-recapacity
+    fn-owner-retain-retained-statep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-memory-reclaim-complete-keeps-retained-state
+ (implies (fn-owner-retain-retained-statep state)
+          (fn-owner-retain-retained-statep (mv-nth 3 (fn-owner-memory-reclaim-complete fn-hist state))))
+ :hints (("Goal" :use (fn-owner-memory-recapacity-keeps-retained-state) :in-theory (union-theories
+  '(fn-owner-memory-reclaim-complete
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+; Transport rearm changes admission/bank custody, never the carried Store.
+; The rollback only changes fields two and three of the admission result.
+(local
+ (defthm m28-rearm-owner-selector-of-rollback-by-definition
+  (equal (fn-exp-at 1 (update-nth 3 peak (update-nth 2 bank r)))
+         (fn-exp-at 1 r))
+  :hints (("Goal"
+    :expand ((update-nth 3 peak (update-nth 2 bank r))
+             (update-nth 2 bank r) (fn-exp-at 1 r))
+    :in-theory (union-theories
+     '(fn-exp-at update-nth car-cons cdr-cons fn-cstp-car-update-nth
+       fn-cstp-cdr-update-nth adt-consp-of-update-nth
+       (:executable-counterpart zp) (:executable-counterpart binary-+))
+     (theory 'minimal-theory))))))
+
+(local
+ (defthm m28-held-peer-open-keeps-store
+  (equal (fn-own-store (fn-ocfg-owner (cdr (fn-exp-at 1
+           (fn-adm-held-open :peer oc xs lim acfg peer address now
+                            bank configured capacity)))))
+         (fn-own-store (fn-ocfg-owner oc)))
+  :hints (("Goal" :in-theory (union-theories
+   '(fn-adm-held-open fn-adm-held-open-refusal fn-exp-at-of-cons
+     fn-ohr-open-peer-keeps-store-and-view car-cons cdr-cons
+     (:executable-counterpart fn-exp-at) (:executable-counterpart equal)
+     (:executable-counterpart posp) (:executable-counterpart member-equal))
+   (theory 'minimal-theory))))))
+
+(local
+ (defthm m28-peer-transport-rearm-keeps-store
+  (equal (fn-own-store (fn-ocfg-owner (cdr (fn-exp-at 1
+           (fn-adm-transport-rearm :peer oc xs lim acfg peer address now
+                                   bank old-id configured capacity)))))
+         (fn-own-store (fn-ocfg-owner oc)))
+  :hints (("Goal" :in-theory (union-theories
+   '(fn-adm-transport-rearm fn-adm-held-open-refusal fn-exp-at-of-cons
+     m28-rearm-owner-selector-of-rollback-by-definition
+     m28-held-peer-open-keeps-store car-cons cdr-cons
+     (:executable-counterpart fn-exp-at) (:executable-counterpart equal)
+     (:executable-counterpart posp) (:executable-counterpart member-equal))
+   (theory 'minimal-theory))))))
+
+(local
+ (defthm m28-held-exposure-open-keeps-store
+  (equal (fn-own-store (fn-ocfg-owner (fn-exp-open-ocfg (fn-exp-at 1
+           (fn-adm-held-open :exposure oc xs lim acfg peer address now
+                            bank configured capacity)))))
+         (fn-own-store (fn-ocfg-owner oc)))
+  :hints (("Goal" :in-theory (union-theories
+   '(fn-adm-held-open fn-adm-held-open-refusal fn-exp-open-ocfg
+     fn-ocar-exp-open fn-exp-at-of-cons fn-ocar-ocfg-open-keeps-store
+     fn-ohr-open-peer-keeps-store-and-view car-cons cdr-cons
+     (:executable-counterpart fn-exp-at) (:executable-counterpart equal)
+     (:executable-counterpart posp) (:executable-counterpart member-equal))
+   (theory 'minimal-theory))))))
+
+(local
+ (defthm m28-exposure-transport-rearm-keeps-store
+  (equal (fn-own-store (fn-ocfg-owner (fn-exp-open-ocfg (fn-exp-at 1
+           (fn-adm-transport-rearm :exposure oc xs lim acfg peer address now
+                                   bank old-id configured capacity)))))
+         (fn-own-store (fn-ocfg-owner oc)))
+  :hints (("Goal" :use ((:instance m28-held-exposure-open-keeps-store (bank (fn-adm-hh-return bank old-id))))
+   :in-theory (union-theories
+   '(fn-adm-transport-rearm fn-adm-held-open-refusal fn-exp-open-ocfg
+     fn-exp-at-of-cons m28-rearm-owner-selector-of-rollback-by-definition
+     car-cons cdr-cons
+     (:executable-counterpart fn-exp-at) (:executable-counterpart equal)
+     (:executable-counterpart posp) (:executable-counterpart member-equal))
+   (theory 'minimal-theory))))))
+
+(local
+ (defthm m28-owner-peer-rearm-keeps-store
+  (equal (fn-owner-store (mv-nth 2 (fn-owner-peer-rearm peer-octets old-id state)))
+         (fn-owner-store state))
+  :hints (("Goal" :in-theory
+   '(fn-owner-peer-rearm fn-owner-held-callback-open-peer
+     fn-owner-memory-held-install fn-owner-callback-install-effects
+     fn-owner-install-served-effects fn-owner-store-is-configured-store-by-definition
+     fn-sbud-oc-store fn-owner-ocfg-of-other-global-put fn-owner-ocfg-of-install-ocfg
+     m28-peer-transport-rearm-keeps-store fn-exp-at mv-nth nth zp car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart zp))))))
+
+(local
+ (defthm m28-owner-peer-open-keeps-store
+  (equal (fn-owner-store (mv-nth 2 (fn-owner-open-peer peer-octets state)))
+         (fn-owner-store state))
+  :hints (("Goal" :in-theory
+   '(fn-owner-open-peer fn-owner-held-callback-open-peer fn-adm-peer-open
+     fn-owner-memory-held-install fn-owner-callback-install-effects
+     fn-owner-install-served-effects fn-owner-store-is-configured-store-by-definition
+     fn-sbud-oc-store fn-owner-ocfg-of-other-global-put fn-owner-ocfg-of-install-ocfg
+     m28-held-peer-open-keeps-store fn-exp-at mv-nth nth zp car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart zp))))))
+
+(local
+ (defthm m28-owner-exposure-rearm-keeps-store
+  (equal (fn-owner-store (mv-nth 2
+           (fn-owner-exposure-rearm family address peer-octets old-id state)))
+         (fn-owner-store state))
+  :hints (("Goal" :in-theory
+   '(fn-owner-exposure-rearm fn-owner-held-callback-exposure-open
+     fn-owner-memory-held-install fn-owner-callback-install-effects
+     fn-owner-install-served-effects fn-owner-store-is-configured-store-by-definition
+     fn-sbud-oc-store fn-owner-ocfg-of-other-global-put fn-owner-ocfg-of-install-ocfg
+     m28-exposure-transport-rearm-keeps-store
+     mv-nth nth zp car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart zp))))))
+
+; The old proofs supply statep; the open/rearm Store frames supply retainedp.
+; These old theorems remain in owner-retain-host because they are cited here.
+(defthm fn-owner-peer-rearm-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep
+             (mv-nth 2 (fn-owner-peer-rearm peer-octets old-id state))))
+  :hints (("Goal"
+    :use (fn-owner-peer-rearm-preserves-retain-state
+          fn-owner-retain-open-peer-keeps-retained-state)
+    :in-theory '(fn-owner-retain-retained-statep
+                 m28-owner-peer-rearm-keeps-store m28-owner-peer-open-keeps-store))))
+
+; K1 has no exposure-open theorem: that entry is :program. Its underlying
+; open preserves Store, just as K1's peer-open retained-state proof requires.
+(defthm fn-owner-exposure-rearm-keeps-retained-state
+  (implies (fn-owner-retain-retained-statep state)
+           (fn-owner-retain-retained-statep
+             (mv-nth 2 (fn-owner-exposure-rearm family address peer-octets old-id state))))
+  :hints (("Goal"
+    :use fn-owner-exposure-rearm-preserves-retain-state
+    :in-theory '(fn-owner-retain-retained-statep m28-owner-exposure-rearm-keeps-store))))
+
+;; M28 (K1 coverage, A28 grant): this lane's five carried writers keep fn-owner-retain-livep.
+(defthm fn-owner-memory-physical-return-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 2 (fn-owner-memory-physical-return id state)) fn-arena))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-physical-return fn-owner-memory-held-return fn-owner-retain-livep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-memory-lease-install-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 2 (fn-owner-memory-lease-install profile cfg quantum state)) fn-arena))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-memory-lease-install fn-owner-retain-livep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-record-totals-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 2 (fn-owner-record-totals fn-hist state)) fn-arena))
+ :hints (("Goal" :in-theory (union-theories
+  '(fn-owner-record-totals fn-owner-retain-livep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-memory-recapacity-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 1 (fn-owner-memory-recapacity fn-hist state)) fn-arena))
+ :hints (("Goal" :use (fn-owner-record-totals-keeps-live) :in-theory (union-theories
+  '(fn-owner-memory-recapacity fn-owner-retain-livep-of-other-global-put
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-memory-reclaim-complete-keeps-live
+ (implies (fn-owner-retain-livep state fn-arena)
+          (fn-owner-retain-livep (mv-nth 3 (fn-owner-memory-reclaim-complete fn-hist state)) fn-arena))
+ :hints (("Goal" :use (fn-owner-memory-recapacity-keeps-live) :in-theory (union-theories
+  '(fn-owner-memory-reclaim-complete
+    mv-nth nth car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp))
+  (theory 'minimal-theory)))))
+
+(defthm fn-owner-peer-rearm-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep
+             (mv-nth 2 (fn-owner-peer-rearm peer-octets old-id state)) fn-arena))
+  :hints (("Goal"
+    :use fn-owner-peer-rearm-preserves-retain-state
+    :in-theory '(fn-owner-retain-livep m28-owner-peer-rearm-keeps-store))))
+
+(defthm fn-owner-exposure-rearm-keeps-live
+  (implies (fn-owner-retain-livep state fn-arena)
+           (fn-owner-retain-livep
+             (mv-nth 2 (fn-owner-exposure-rearm family address peer-octets old-id state)) fn-arena))
+  :hints (("Goal"
+    :use fn-owner-exposure-rearm-preserves-retain-state
+    :in-theory '(fn-owner-retain-livep m28-owner-exposure-rearm-keeps-store))))
+
 (def-carried fn-owner-served-carried
   :invariant fn-owner-retain-retained-statep
   ; K1 retained establishment; the same recovery producers and assumptions.
@@ -79,7 +309,13 @@
                  :witness ((fn-owner-retain-witness-oc) nil (make-list 32 :initial-element 0)
                            (create-fn-arena$a) (create-fn-cat$a) (create-fn-hist$a)
                            (fn-owner-retain-witness-state))))
-  :transitions ((fn-owner-cfg-capture fn-owner-retain-cfg-capture-keeps-retained-state)
+  :transitions (
+                (fn-owner-exposure-rearm fn-owner-exposure-rearm-keeps-retained-state)
+                (fn-owner-peer-rearm fn-owner-peer-rearm-keeps-retained-state)
+                (fn-owner-memory-physical-return fn-owner-memory-physical-return-keeps-retained-state)
+                (fn-owner-memory-lease-install fn-owner-memory-lease-install-keeps-retained-state)
+                (fn-owner-memory-reclaim-complete fn-owner-memory-reclaim-complete-keeps-retained-state)
+                (fn-owner-cfg-capture fn-owner-retain-cfg-capture-keeps-retained-state)
                 (fn-owner-prepare-identity fn-owner-retain-identity-keeps-retained-state)
                 (fn-owner-prepare-consumer fn-owner-retain-consumer-keeps-retained-state)
                 (fn-owner-prepare-topic fn-owner-retain-topic-keeps-retained-state)
@@ -209,7 +445,7 @@
                 fn-owner-memory-gate-install
                 fn-owner-moderation-plan
                 fn-owner-next-store-coordinates fn-owner-next-txid
-                fn-owner-observe fn-owner-oex-capture fn-owner-open
+                fn-owner-observe fn-owner-oex-capture fn-owner-open fn-owner-operator-open
                 fn-owner-operator-refusal-reason fn-owner-operator-submit
                 fn-owner-orc-capture fn-owner-orc-finish
                 fn-owner-orc-instant-stage fn-owner-orc-request

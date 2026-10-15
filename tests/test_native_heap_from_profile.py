@@ -4,10 +4,11 @@
 The installed `bin/fn` (packaging/fn with libexec/fn beside it) no longer
 runs every command under the image launcher's `--dynamic-space-size 32000`:
 it first runs the same image as `heap -- ARGV`, where ACL2 decides the
-figure from the command's store profile and this machine's memory
-(books/heap-figure.lisp `fn-heap-decide'), and then execs the command with
-that figure; a profile the machine cannot hold is refused there by name,
-exit 1, and nothing else runs.
+figure (books/heap-command.lisp `fn-mo-serve-decide' for a run), then execs
+the command with it.  A run holds core content + resident LIMIT + pools;
+the probe refuses unobserved memory, pools or observed store reopen that
+cannot fit, or address space that cannot hold the reservation.  Configure
+derives the capacity C' from the memory gate.
 
 The case is the friend's machine: the module runs under a 2 GiB memory
 limit (tools/hbox_native.sh --mem 2G: `systemd-run --user --scope -p
@@ -20,7 +21,8 @@ name, outside a limit of at most 2 GiB.
   fn-heap-init-decide, judging the first run of the empty store it makes:
   reservation-after-flip); the small node here is the small preset's fields
   named at init: `status' prints the next run's figure over the store on
-  disk, `heap=N MB profile=small machine=2048 MB'.  The node starts under
+  disk, `heap=N MB profile=small machine=L MB', L the resident LIMIT after
+  the pools.  The node starts under
   that figure, takes 100 POSTs of
   2 KiB, serves them (ARTICLE, OVER), publishes one automatic checkpoint
   (K = 128: at 64), stops, reopens from the checkpoint and serves them
@@ -30,8 +32,8 @@ name, outside a limit of at most 2 GiB.
   name with both numbers (lane
   membership-budget); `init --budget 16384 --profile scale'
   writes it for that target (`within-budget=no target-budget=16384 MB'),
-  and the launcher refuses its `run' and `status' by name (an empty
-  development store's run fits 2 GiB since lane heap-bounds, B4).
+  and its empty store serves at the capacity the memory gate derives;
+  stopped `status' holds the header and is accepted.
 * FreshInitTests (also without a small limit): conservative sizing,
   `init --largest', `init --budget MB' (below the machine: init
   warns by name with both figures), and the default mission
@@ -39,6 +41,7 @@ name, outside a limit of at most 2 GiB.
 """
 import base64
 import hashlib
+import json
 import os
 import resource
 import re
@@ -71,12 +74,18 @@ CAPACITY_CONNECTIONS = 200
 # books/nntp-post.lisp fn-post-store-refusal-text of :memory.
 MEMORY_REFUSAL = (b"441 posting failed; the store is full: no capacity for this article "
                   b"(memory); the node's operator can raise it")
-# `status' prints the launcher's run reservation (books/heap-reservation.lisp
-# fn-heap-status-decide): the heap line with the stack and the threads.
+# `status' prints the next run's launch (books/heap-command.lisp
+# fn-mo-serve-decide, L-RUN-LAUNCH): the dynamic space, the profile's word,
+# the run's resident LIMIT (the least resident observation less the pools),
+# the stack and the threads.
 HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB"
                        r" stack=\d+ KB threads=\d+$", re.M)
+# A served run the memory cannot hold: the launch's refusal of an observed store
+# whose reopen exceeds the run's LIMIT, or the configure's when no connection
+# fits (books/admission-memory.lisp fn-adm-capacity-line).
 REFUSED = re.compile(
-    r"refused machine-cannot-hold-profile heap=(\d+) MB machine=(\d+) MB")
+    r"refused (?:machine-cannot-hold-the-store need=\d+ MB machine=\d+ MB"
+    r"|memory-cannot-hold-the-store capacity=0 of \d+ bound-by=\S+ sum=\d+ MB limit=\d+ MB)")
 # What `init' prints (books/heap-reservation.lisp fn-heap-init-report-line).
 INIT_LINE = re.compile(r"^init: profile=([a-z]+) sizing=([a-z]+) "
                        r"reservation=(\d+) MB budget=(\d+) MB within-budget=(yes|no)$",
@@ -96,6 +105,60 @@ INIT_REFUSED = re.compile(r"refused init-budget-cannot-hold-profile profile=([a-
 # bound C', the model's sum at C' over the carried store and the limit.
 CAPACITY_LINE = re.compile(rb"memory capacity=(\d+) of (\d+) bound-by=([a-z-]+) "
                            rb"sum=(\d+) MB limit=(\d+) MB")
+
+
+
+UINT32_MAX = 4294967295
+
+
+def connection_pressure(limit_octets, fixed_octets):
+    """A codec-valid count whose fixed term exceeds the observed limit."""
+    # Below the ceiling, pressure=L+1 exceeds L for every positive fixed term.
+    # At the ceiling, the required inequality is UINT32_MAX*F>L; even F>=2
+    # covers the four boundary cases below, but cannot cover every larger L.
+    pressure = min(limit_octets + 1, UINT32_MAX)
+    if pressure * fixed_octets <= limit_octets:
+        raise ValueError("uint32 connection ceiling does not exceed this limit")
+    return pressure
+
+
+def connection_fixed_octets():
+    """ACL2-generated fn-cbud-conn-octets(0,nil), a TLS-independent lower bound."""
+    generator = "tools/native_memory_figures.py"
+    figures = json.loads((ROOT / "tests/native_memory_figures.json").read_text())
+    required = {"books/connection-budget.lisp", "books/connection-read-quantum.lisp",
+                "books/heap-figure.lisp"}
+    digests = figures.get("source_sha256", {})
+    if figures.get("generated_by") != generator or required != digests.keys():
+        raise AssertionError("stale native memory figures: run python3 " + generator)
+    for source, expected in digests.items():
+        if hashlib.sha256((ROOT / source).read_bytes()).hexdigest() != expected:
+            raise AssertionError("stale native memory figure input " + source +
+                                 ": run python3 " + generator)
+    return figures["connection_fixed_without_tls"]
+
+
+class ConnectionPressureTests(unittest.TestCase):
+    def test_stale_figure_names_its_input_and_generator(self):
+        from unittest.mock import patch
+        figures = json.loads((ROOT / "tests/native_memory_figures.json").read_text())
+        figures["source_sha256"]["books/connection-budget.lisp"] = "0" * 64
+        with patch("tests.test_native_heap_from_profile.json.loads", return_value=figures):
+            with self.assertRaisesRegex(AssertionError,
+                    "books/connection-budget.lisp: run python3 tools/native_memory_figures.py"):
+                connection_fixed_octets()
+
+    def test_uint32_boundary_and_four_gib_ceiling(self):
+        fixed = connection_fixed_octets()
+        for limit, expected in ((4294967294, 4294967295),
+                                (4294967295, 4294967295),
+                                (4 * 1024 ** 3, 4294967295),
+                                (4 * 1024 ** 3 + 1, 4294967295)):
+            with self.subTest(limit=limit):
+                pressure = connection_pressure(limit, fixed)
+                self.assertEqual(pressure, expected)
+                self.assertGreater(pressure * fixed, limit)
+                self.assertLessEqual(pressure, UINT32_MAX)
 
 
 def cgroup_limit():
@@ -424,8 +487,16 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertIsNotNone(heap, out)
         figure, word, machine = int(heap.group(1)), heap.group(2), int(heap.group(3))
         self.assertEqual(word, "small")
-        self.assertEqual(machine, LIMIT // (1024 * 1024))
-        self.assertLessEqual(figure, machine)
+        # The launch's decision (books/heap-command.lisp fn-mo-serve-decide,
+        # KEYSTONES fn-mo-serve-holds-every-admitted-store,
+        # fn-mo-serve-refuses-only-by-the-model,
+        # fn-mo-serve-launch-fits-the-address-space): the run's LIMIT is the
+        # cgroup's less the pools it funds; the dynamic
+        # space holds the core's content and LIMIT (L-RUN-LAUNCH), so it is
+        # larger than LIMIT, and the resident set stays within the cgroup
+        # (the VmHWM assertions below).
+        self.assertLessEqual(machine, LIMIT // (1024 * 1024))
+        self.assertGreater(figure, machine)
         print("NATIVE-HEAP figure={} MB machine={} MB".format(figure, machine))
 
         ids = ["<heap-{}@example.invalid>".format(n) for n in range(100)]
@@ -464,8 +535,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         over the carried store (books/admission-memory.lisp fn-adm-capacity),
         and serves at C': the gate prices C' connections and the readers
         accepted are bounded by it (books/owner-connection-callbacks.lisp
-        fn-owner-memory-max-conns lowers the bound to C'+1;
-        fn-owner-callback-exposure-total-within-the-memory-capacity).
+        fn-adm-exposure-open compares the held custody with min(C, C'),
+        including ended connections awaiting physical disposal).
 
         The tooth is C' below C under the 2 GiB cgroup, bound by a PERMANENT
         term.  A 4 MiB article bound makes each holder's article reply
@@ -494,7 +565,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
 
         The registered keystones this exercises: the run starts only when
         the owner's configure answers :hold, which is the launch decision
-        fn-mo-run-decide answering :heap (books/heap-command.lisp,
+        fn-mo-run-decide answering :heap (its launch, books/memory-model.lisp
+        fn-mm-launch-decide; books/heap-command.lisp,
         PRF-10004 holds the store at C', PRF-10005 refuses only by the
         model) over the serving sum fn-mm-sum (books/memory-model.lisp,
         PRF-10002 the instant within the sum, PRF-10003 the sum grows with
@@ -515,7 +587,7 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertNotEqual(term, "configured")
         self.assertEqual(term, "article-reply",
                          "the permanent term binds, not the retiring OVER window")
-        # C'+1 sockets here, the owner's as many: well inside 1,024 descriptors.
+        # C' admitted sockets and one refused attempt, inside 1,024 descriptors.
         self.assertLess(cap, 400)
         body = ("z" * 72 + "\r\n") * 28
         readers = []
@@ -527,6 +599,14 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 self.assertTrue(extra.greeting.startswith(b"400 "), extra.greeting)
             finally:
                 extra.sock.close()
+            # At C' held public readers, the private staging open takes the
+            # priced operator slot (STEP 5: public capacity is the funded total
+            # less that slot), so the live change is admitted, not refused until
+            # a reader leaves (the retired operator-opener limitation (a)).
+            control = self.run_fn("operator", config, "policy", "set",
+                                  "exposure-connections", str(configured - 1))
+            self.assertEqual(control.returncode, EXIT_OK, text(control))
+            self.assertIn("ACCEPTED", text(control))
             # C' is the most connections the gate holds over the store at
             # configure, so the room left is under one connection's charge
             # (one article reply here) and a store that grows spends it: each
@@ -610,6 +690,16 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 r"\b(articles|signed)=(\d+)", replay.stdout.decode())}
 
         # With room: P enrolled and granted `keys', a succession is admitted.
+        # The room is derived, not the remainder C' happens to leave (under
+        # one connection's charge, which a statement's row may exceed: 10-12,
+        # 2007 of 2008 MB at C' = 122): the run is priced at C' - 1, which
+        # leaves at least one connection's charge free.
+        self.start()
+        cap, configured, term = self.capacity()
+        self.stop()
+        roomy = self.run_fn("operator", config, "policy", "set",
+                            "exposure-connections", str(max(1, cap - 1)))
+        self.assertEqual(roomy.returncode, EXIT_OK, text(roomy))
         self.start()
         helper.enrol_and_grant(self.node)
         with Client(port, timeout=300) as client:
@@ -623,6 +713,9 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         base = counts()
         self.assertGreaterEqual(base["signed"], 1, base)
 
+        restored = self.run_fn("operator", config, "policy", "set",
+                               "exposure-connections", str(CAPACITY_CONNECTIONS))
+        self.assertEqual(restored.returncode, EXIT_OK, text(restored))
         # Without room: fill with one reader and minimal posts
         # until an ordinary POST is refused, which must be by the memory's
         # word, then POST the revocation, signed by the succeeded keys.
@@ -733,7 +826,10 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         heap = HEAP_LINE.search(status.stdout.decode())
         self.assertIsNotNone(heap, text(status))
-        self.assertLessEqual(int(heap.group(1)), int(heap.group(3)))
+        # The launched heap is address space: the core's content, LIMIT and
+        # the pools (books/heap-command.lisp fn-mo-serve-decide), so it exceeds
+        # `machine' (LIMIT) by design; the resident set is the gate's, held
+        # below (VmHWM within the limit before and after the restart).
         print("NATIVE-HEAP full store: {}".format(heap.group(0)))
         self.start()
         with Client(port, timeout=300) as client:
@@ -749,9 +845,10 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         init REFUSES it by name with both numbers and makes nothing (ember,
         2026-09-27: lane membership-budget), unless `init --budget MB' names a
         target budget that holds it: then it is written for that machine
-        (`within-budget=no target-budget=16384 MB', the scale preset) and
-        the launcher refuses its run here by name; its stopped status holds
-        no store and is accepted."""
+        (`within-budget=no target-budget=16384 MB', the scale preset).  Its
+        run is not sized by the profile: the empty store serves here at the
+        capacity the memory gate derives; its stopped status holds no store
+        and is accepted."""
         config, port = self.config("development")
         refused = self.run_fn("operator", config, "init", "--profile", "development",
                               "local.test")
@@ -774,10 +871,9 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         print("NATIVE-HEAP init refused reservation={} MB budget={} MB".format(
             found.group(3), found.group(4)))
         # The store written for a bigger machine: since lane heap-bounds (B4)
-        # an EMPTY development store's run fits 2 GiB (the open's chunk is
-        # bounded by the input, and a run sizes the open by the store on
-        # disk), so the launcher's refusal is shown on the scale preset,
-        # whose state at its bounds alone is past 2 GiB.  The target budget
+        # an EMPTY development store's reopen fits 2 GiB.  Scale's init
+        # target budget is still priced at its bounds; its served run now
+        # launches at LIMIT and derives C' after the open.  The target budget
         # is the scale store's own reservation, as init's refusal names it
         # (never a figure written here: 16384 MB held it until the scale
         # figure grew past it).
@@ -792,17 +888,31 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertRegex(made.stdout.decode(),
                          r"init: profile=scale sizing=requested reservation=\d+ MB "
                          r"budget=\d+ MB within-budget=no target-budget=" + target.group(3) + " MB")
-        # The launcher refuses its run by name; its stopped `status' holds the
-        # checkpoint header and the configuration history, not the store
-        # (books/heap-command.lisp fn-mo-header-decide-holds-the-header), so
-        # it is accepted here (lane memory, landing 2).
-        result = self.run_fn("operator", config, "run")
-        self.assertEqual(result.returncode, EXIT_REFUSED, text(result))
-        found = REFUSED.search(text(result))
-        self.assertIsNotNone(found, text(result))
-        self.assertGreater(int(found.group(1)), int(found.group(2)))
-        self.assertEqual(int(found.group(2)), LIMIT // (1024 * 1024))
-        self.assertEqual(result.stdout, b"")
+        # Observe this node's LIMIT before constructing pressure. An empty
+        # scale store may fit every configured reader after OVER is leased.
+        self.start()
+        self.capacity()
+        observed = CAPACITY_LINE.search(self.node.process.stderr.since(0))
+        self.assertIsNotNone(observed)
+        limit_mib = int(observed.group(5))
+        self.assertGreater(limit_mib, 0)
+        first_hwm = self.stop()
+        # The codec row is uint32. ACL2's generated fixed connection term
+        # proves pressure exceeds even the line's unprinted MiB fraction.
+        fixed = connection_fixed_octets()
+        pressure = connection_pressure(limit_mib * MIB, fixed)
+        self.assertGreater(pressure * fixed, (limit_mib + 1) * MIB)
+        changed = self.run_fn("operator", config, "policy", "set",
+                              "exposure-connections", str(pressure))
+        self.assertEqual(changed.returncode, EXIT_OK, text(changed))
+        self.start()
+        cap, configured, term = self.capacity()
+        self.assertEqual(configured, pressure)
+        self.assertGreater(cap, 0)
+        self.assertLess(cap, configured, term)
+        self.assertNotEqual(term, "configured")
+        hwm = self.stop()
+        self.assertLess(max(first_hwm, hwm) * 1024, LIMIT)
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         self.assertIn("max-history-octets=", status.stdout.decode())

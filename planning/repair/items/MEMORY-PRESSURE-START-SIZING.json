@@ -1,0 +1,13 @@
+{
+ "category": "memory",
+ "detail": "tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start. In this lane's world (lane memory-run-launch @839d46e10, hbox native-m28-2g-b) the first scale start refuses 'capacity=0 of 31 bound-by=over-window': the slot's second place, where the OVER window term leaves room for one. In OVER's world (lane/over @5cd18fd28, hbox native-l2-o8-3) the launcher refuses 'machine-cannot-hold-profile heap=17726 MB machine=2048 MB sized by the offline adapter (pre-payload-only figure, under-bounds the store): header totals unseen'. That is the offline-adapter sizing L-RUN-LAUNCH replaces elsewhere, still reached on this path. Retired when the pre-launch sizing reads the run's derived capacity, or when the test drives the pressure through a live reconfigure (statement-first; M).",
+ "file": "host/native/launcher-sizing",
+ "id": "MEMORY-PRESSURE-START-SIZING",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "native",
+ "state": "open",
+ "title": "heap_from_profile's C3 pressure case (exposure-connections at uint32 scale under a 2 GiB cgroup) does not reach a serving run: the pre-launch sizing scales with the CONFIGURED connections, not the run's C'",
+ "updated": "2026-10-14T14:12:29Z"
+}

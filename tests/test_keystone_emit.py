@@ -306,6 +306,260 @@ class WriteManifest(unittest.TestCase):
 
 
 class NewWitnessClasses(unittest.TestCase):
+    def test_check_cannot_scope_away_findings_even_with_write(self):
+        for flags in (["--check"], ["--check", "--write"]):
+            with self.subTest(flags=flags), contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as refused:
+                ke.main(flags + ["--id", "PRF-10017"])
+            self.assertEqual(refused.exception.code, 2)
+
+    def test_scoped_registry_write_preserves_other_ids(self):
+        form = ke.ledger.read_forms('''
+          (defkeystone scoped (<= 0 (nfix x)) :id "PRF-10017"
+            :subject nfix :witness ((x 1))
+            :mutations ((off (:conclusion (< 1 (nfix x))) ((x 1)) :fault "off")))
+        ''')[0]
+        other = {"id": "PRF-001", "keystone_subjects": {"old": "f"}}
+        with tempfile.TemporaryDirectory() as directory:
+            proofs, events = [Path(directory) / name for name in ("proofs.json", "events.json")]
+            proofs.write_text(json.dumps({"proofs": [other, {"id": "PRF-10017"}]}))
+            events.write_text(json.dumps({"targets": [{"id": "PRF-001", "events": []}]}))
+            with mock.patch.object(ke, "PROOFS", proofs), mock.patch.object(ke, "PROOF_EVENTS", events):
+                self.assertEqual(ke.registry_findings([ke.Keystone("tests/acl2/k.lisp", 1, form)],
+                                                     True, {"PRF-10017"}), [])
+            self.assertEqual(json.loads(proofs.read_text())["proofs"][0], other)
+            self.assertEqual(json.loads(events.read_text())["targets"][1]["events"][0]["name"], "scoped")
+
+    def test_record_cache_failure_does_not_block_valid_registry_write(self):
+        import green_check
+        form = ke.ledger.read_forms('''
+          (defkeystone scoped (<= 0 (nfix x)) :id "PRF-10017"
+            :subject nfix :witness ((x 1))
+            :mutations ((off (:conclusion (< 1 (nfix x))) ((x 1)) :fault "off")))
+        ''')[0]
+        out = io.StringIO()
+        with mock.patch.object(ke, "forms_in", return_value=[("tests/acl2/k.lisp", 1, form)]), \
+                mock.patch.object(ke, "subject_findings", return_value=([], {})), \
+                mock.patch.object(ke, "registry_findings", return_value=[]) as registry, \
+                mock.patch.object(ke, "gate", side_effect=green_check.CacheUnavailable("unavailable")), \
+                mock.patch.object(ke, "CRITICAL", []), contextlib.redirect_stdout(out):
+            self.assertEqual(ke.main(["--write"]), 1)
+        self.assertTrue(any(call.args[1] for call in registry.call_args_list))
+        self.assertIn("record certificate cache unavailable", out.getvalue())
+
+    def test_register_claimed_never_allocates(self):
+        form = ke.ledger.read_forms('''
+          (defkeystone scoped (<= 0 (nfix x)) :id "PRF-10017"
+            :subject nfix :witness ((x 1))
+            :mutations ((off (:conclusion (< 1 (nfix x))) ((x 1)) :fault "off")))
+        ''')[0]
+        stone = ke.Keystone("tests/acl2/k.lisp", 1, form)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "proofs.json"
+            path.write_text('{"proofs": []}')
+            before = path.read_bytes()
+            with mock.patch.object(ke, "PROOFS", path), \
+                    mock.patch("next_id.read_ledger", return_value=[{
+                        "id": "PRF-10017", "lane": "memory-run-launch"}]), \
+                    mock.patch("next_id.claim", side_effect=AssertionError("must not allocate")), \
+                    mock.patch.object(ke.ledger, "stamped_evidence", side_effect=lambda row, _: row):
+                row, errors = ke.register_claimed(stone, "memory-run-launch", "M24", "Held admissions")
+            self.assertEqual(errors, [])
+            self.assertEqual(row["id"], "PRF-10017")
+            self.assertEqual(path.read_bytes(), before)
+
+    def test_refused_register_write_leaves_registry_bytes_unchanged(self):
+        form = ke.ledger.read_forms("""
+          (defkeystone scoped (<= 0 (nfix x)) :id "PRF-10017"
+            :subject nfix :witness ((x 1))
+            :mutations ((off (:conclusion (< 1 (nfix x))) ((x 1)) :fault "off")))
+        """)[0]
+        orphan = ke.ledger.read_forms(ke.ledger.source_text(form).replace(
+            '"PRF-10017"', '"PRF-99999"').replace('scoped', 'orphan'))[0]
+        for refusal in ("subject", "registry"):
+            with self.subTest(refusal=refusal), tempfile.TemporaryDirectory() as directory:
+                proofs, events = [Path(directory) / name for name in ("proofs.json", "events.json")]
+                proofs.write_text('{ "proofs": [] }\n')
+                events.write_text('{ "targets": [] }\n')
+                before = proofs.read_bytes(), events.read_bytes()
+                forms = [("tests/acl2/k.lisp", 1, form)]
+                if refusal == "registry":
+                    forms.append(("tests/acl2/k.lisp", 2, orphan))
+                out = io.StringIO()
+                with mock.patch.object(ke, "PROOFS", proofs), \
+                        mock.patch.object(ke, "PROOF_EVENTS", events), \
+                        mock.patch.object(ke, "forms_in", return_value=forms), \
+                        mock.patch.object(ke, "subject_findings", return_value=(
+                            ["subject is not host-reached"] if refusal == "subject" else [], {})), \
+                        mock.patch.object(ke, "gate", return_value=[]), \
+                        mock.patch.object(ke, "CRITICAL", []), \
+                        mock.patch("next_id.read_ledger", return_value=[{
+                            "id": "PRF-10017", "lane": "memory-run-launch"}]), \
+                        mock.patch("next_id.claim", side_effect=AssertionError("must not allocate")), \
+                        mock.patch.object(ke.ledger, "stamped_evidence", side_effect=lambda row, _: row), \
+                        contextlib.redirect_stdout(out):
+                    self.assertEqual(ke.main([
+                        "--write", "--register-id", "PRF-10017", "--register-name", "scoped",
+                        "--lane", "memory-run-launch", "--milestone", "M24", "--title", "Held admissions"]), 1)
+                self.assertIn("--write refused", out.getvalue())
+                self.assertEqual((proofs.read_bytes(), events.read_bytes()), before)
+                self.assertNotIn("registered existing claim", out.getvalue())
+
+    def test_register_write_commits_validated_row_and_citations_without_cache(self):
+        import green_check
+        form = ke.ledger.read_forms("""
+          (defkeystone scoped (<= 0 (nfix x)) :id "PRF-10017"
+            :subject nfix :witness ((x 1))
+            :mutations ((off (:conclusion (< 1 (nfix x))) ((x 1)) :fault "off")))
+        """)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            proofs, events = [Path(directory) / name for name in ("proofs.json", "events.json")]
+            other = {"id": "PRF-001", "keystone_subjects": {"kept": "f"}}
+            proofs.write_text(json.dumps({"proofs": [other]}))
+            events.write_text('{"targets": []}')
+            out = io.StringIO()
+            with mock.patch.object(ke, "PROOFS", proofs), \
+                    mock.patch.object(ke, "PROOF_EVENTS", events), \
+                    mock.patch.object(ke, "forms_in", return_value=[("tests/acl2/k.lisp", 1, form)]), \
+                    mock.patch.object(ke, "subject_findings", return_value=([], {})), \
+                    mock.patch.object(ke, "gate", side_effect=green_check.CacheUnavailable("unavailable")), \
+                    mock.patch.object(ke, "CRITICAL", []), \
+                    mock.patch("next_id.read_ledger", return_value=[{
+                        "id": "PRF-10017", "lane": "memory-run-launch"}]), \
+                    mock.patch("next_id.claim", side_effect=AssertionError("must not allocate")), \
+                    mock.patch.object(ke.ledger, "stamped_evidence", side_effect=lambda row, _: row), \
+                    contextlib.redirect_stdout(out):
+                self.assertEqual(ke.main([
+                    "--write", "--id", "PRF-10017", "--register-id", "PRF-10017",
+                    "--register-name", "scoped", "--lane", "memory-run-launch",
+                    "--milestone", "M24", "--title", "Held admissions"]), 1)
+            rows = json.loads(proofs.read_text())["proofs"]
+            self.assertEqual(rows[0], other)
+            self.assertEqual(rows[1]["id"], "PRF-10017")
+            self.assertEqual(rows[1]["keystone_subjects"], {"scoped": "nfix"})
+            self.assertEqual(json.loads(events.read_text())["targets"], [{
+                "id": "PRF-10017", "events": [{"kind": "theorem", "name": "scoped"}]}])
+            self.assertIn("registered existing claim PRF-10017", out.getvalue())
+            self.assertIn("record certificate cache unavailable", out.getvalue())
+
+    def test_subject_check_reads_the_claim_bindings(self):
+        form = ke.ledger.read_forms('''
+          (defkeystone scoped (let ((a (nfix x)))
+            (implies (< 0 a) (< 1 (+ 1 a))))
+            :subject nfix :witness ((x 1)) :breaks ((h1 ((x 0))))
+            :mutations ((off (:conclusion (< 2 (+ 1 a))) ((x 1)) :fault "off")))
+        ''')[0]
+        graph = SimpleNamespace(books={}, book_defs={"nfix"}, stobj_names=set(),
+                                export_of={}, reachable={"nfix"})
+        with mock.patch("reach_check.Graph", return_value=graph), \
+                mock.patch("reach_check.theorem_forms", return_value={}), \
+                mock.patch.object(ke, "host_line", return_value="host/a.lisp:1"):
+            problems, reached = ke.subject_findings([ke.Keystone("tests/acl2/k.lisp", 1, form)])
+        self.assertEqual(problems, [])
+        self.assertEqual(reached, {"scoped": "host/a.lisp:1"})
+
+    def test_subject_rejects_a_variable_named_like_a_reachable_function(self):
+        form = ke.ledger.read_forms('''
+          (defkeystone scoped
+            (let ((fn-adm-peer-open (nfix x)))
+              (implies (< 0 fn-adm-peer-open) (< 1 (+ 1 fn-adm-peer-open))))
+            :subject fn-adm-peer-open :witness ((x 1)) :breaks ((h1 ((x 0))))
+            :mutations ((off (:conclusion (< 2 (+ 1 fn-adm-peer-open)))
+                             ((x 1)) :fault "off")))
+        ''')[0]
+        graph = SimpleNamespace(books={}, book_defs={"nfix", "fn-adm-peer-open"},
+                                stobj_names=set(), reachable={"nfix", "fn-adm-peer-open"})
+        with mock.patch("reach_check.Graph", return_value=graph), \
+                mock.patch("reach_check.theorem_forms", return_value={}):
+            problems, reached = ke.subject_findings([ke.Keystone("tests/acl2/k.lisp", 1, form)])
+        self.assertEqual(reached, {})
+        self.assertEqual(len(problems), 1)
+        self.assertIn("is not a function", problems[0])
+
+    def test_subject_rejects_an_unused_bound_call(self):
+        form = ke.ledger.read_forms('''
+          (defkeystone scoped
+            (let ((unused (fn-adm-peer-open x nil nil nil 1 1)))
+              (implies (< 0 (nfix x)) (< 1 (+ 1 (nfix x)))))
+            :subject fn-adm-peer-open :witness ((x 1)) :breaks ((h1 ((x 0))))
+            :mutations ((off (:conclusion (< 2 (+ 1 (nfix x))))
+                             ((x 1)) :fault "off")))
+        ''')[0]
+        graph = SimpleNamespace(books={}, book_defs={"nfix", "fn-adm-peer-open"},
+                                stobj_names=set(), reachable={"nfix", "fn-adm-peer-open"})
+        with mock.patch("reach_check.Graph", return_value=graph), \
+                mock.patch("reach_check.theorem_forms", return_value={}):
+            problems, reached = ke.subject_findings([ke.Keystone("tests/acl2/k.lisp", 1, form)])
+        self.assertEqual(reached, {})
+        self.assertEqual(len(problems), 1)
+
+    def test_subject_findings_follow_declared_binders_and_literal_positions(self):
+        peer = "(fn-adm-peer-open v nil nil nil 1 1)"
+        store = ("(fn-prstartup-run-store-need profile core nursery output peer "
+                 "workers cache-limit root resident bp-terms)")
+        cases = [
+            ("declared-mv-variable-is-not-a-call",
+             "(<= 0 (mv-let (fn-adm-peer-open y) (mv 0 (nfix x)) "
+             "(declare (ignore fn-adm-peer-open)) y))", "fn-adm-peer-open", False),
+            ("declared-let-producer-is-reached",
+             "(natp (let ((a " + store + ")) (declare (ignorable a)) a))",
+             "fn-prstartup-run-store-need", True),
+            ("lambda-unused-call-after-string-is-not-a-subject",
+             '(equal ((lambda (x y) (declare (ignore y)) x) "fixed" '
+             + peer + ') "fixed")', "fn-adm-peer-open", False),
+            ("declared-mv-producer-is-reached",
+             "(natp (mv-let (unused value) (mv 0 " + store + ") "
+             "(declare (ignore unused)) value))", "fn-prstartup-run-store-need", True),
+            ("plain-mv-producer-is-reached",
+             "(equal (mv-let (unused value) (mv 0 " + peer + ") value) nil)",
+             "fn-adm-peer-open", True),
+            ("declared-let-star-producer-is-reached",
+             "(natp (let* ((a " + store + ") (b a)) "
+             "(declare (ignorable a)) b))", "fn-prstartup-run-store-need", True),
+            ("lambda-used-call-after-string-is-reached",
+             '(equal ((lambda (x y) (declare (ignore x)) y) "fixed" '
+             + peer + ') nil)', "fn-adm-peer-open", True),
+            ("literal-matching-a-binding-name-is-inert",
+             '(let ((a ' + peer + ')) (equal ((lambda (x) x) "a") "a"))',
+             "fn-adm-peer-open", False),
+        ]
+        defined = {"nfix", "fn-adm-peer-open", "fn-prstartup-run-store-need"}
+        graph = SimpleNamespace(books={}, book_defs=defined, stobj_names=set(),
+                                reachable=defined)
+        for label, claim, subject, expected in cases:
+            for from_theorem in (False, True):
+                with self.subTest(case=label, from_theorem=from_theorem):
+                    form = ke.ledger.read_forms(
+                        '(defkeystone scoped ' + claim + ' :subject ' + subject
+                        + ' :witness ((x 1)) :breaks nil :mutations '
+                        + '((off (:conclusion (< 1 (nfix x))) ((x 1)) :fault "off")))')[0]
+                    stone = ke.Keystone("tests/acl2/k.lisp", 1, form)
+                    self.assertIsNotNone(stone.parts)
+                    original = ke.render(form)
+                    theorems = ({"scoped": ("books/k.lisp", ke.render([
+                        ke.Sym("defthm"), ke.Sym("scoped"), form[2]]))}
+                        if from_theorem else {})
+                    with mock.patch("reach_check.Graph", return_value=graph), \
+                            mock.patch("reach_check.theorem_forms", return_value=theorems), \
+                            mock.patch.object(ke, "host_line", return_value="host/a.lisp:1"):
+                        problems, reached = ke.subject_findings([stone])
+                    self.assertEqual(ke.render(form), original)
+                    if expected:
+                        self.assertEqual(problems, [])
+                        self.assertEqual(reached, {"scoped": "host/a.lisp:1"})
+                    else:
+                        self.assertEqual(reached, {})
+                        self.assertEqual(len(problems), 1)
+                        self.assertIn("is not a function", problems[0])
+
+    def test_call_heads_follow_parallel_sequential_and_shadowed_bindings(self):
+        parallel = ke.ledger.read_forms("(let ((a (f x)) (b (g a))) (h b))")[0]
+        sequential = ke.ledger.read_forms("(let* ((a (f x)) (b (g a))) (h b))")[0]
+        shadowed = ke.ledger.read_forms("(let ((a (f x))) (let ((a 0)) (h a)))")[0]
+        self.assertEqual(ke.claim_call_heads(parallel), {"g", "h"})
+        self.assertEqual(ke.claim_call_heads(sequential), {"f", "g", "h"})
+        self.assertEqual(ke.claim_call_heads(shadowed), {"h"})
+
     def test_scoped_claim_preserves_labels_and_scopes_mutation(self):
         form = ke.ledger.read_forms('''
           (defteeth scoped

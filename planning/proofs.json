@@ -8502,8 +8502,8 @@
     },
     {
       "id": "PRF-223",
-      "title": "A served connection's memory is named and a node refuses, by name, at start and at every live change, a connection capacity the machine cannot hold beside the store's heap figure, the core and the fixed threads; every connection fn-exp-open admits under an accepted capacity, trusted sources included, fits the machine",
-      "statement": "books/connection-budget.lisp. The subjects are fn-cbud-run-decide, which host/owner-host.lisp fn-owner-connection-budget calls once per run after recovery and before listen (host/native/mux.lisp fnn-mux-budget-install, from host/native/owner.lisp fnn-owner-run), and fn-cbud-deltas-refusal, which host/owner-host.lisp fn-owner-reconfigure-deltas calls before any live reconfiguration is staged (native-admin, peer-invite and auth all reach it), over the host's observations (the machine: heap-figure's fn-heap-machine-octets; the core's length; the fixed threads, 12 + 2 I/O loops + the control clients; the thread control stack) and the store's profile (heap-figure's fn-heap-figure-octets is the base's heap; the profile's largest article A sizes the connection). The per-connection figure is fn-cbud-conn-octets: a heap part (the connection record, its input of two reads of the largest size a served step may read (fn-cbud-step-read-octets, called by host/owner-host.lisp fn-owner-read-octets from host/native/owner.lisp fnn-owner-refresh-read-octets under the owner mutex after the exposure install and after every served step; host/native/mux.lisp reads into one buffer per I/O loop of that size: 512 octets under a step rate, fn-cbud-step-read-octets-under-a-rate-by-definition, so exposure-steps-per-second keeps its meaning in octets; 4 KiB without one (the measured trade between steps and the owner mutex hold: planning/evidence/input-loop-2-2026-09-27.md), fn-cbud-step-read-octets-is-bounded; the figure holds two, fn-cbud-read-covers-the-step; lane input-loop-2), the one reply of the STATED WORKLOAD -- the largest article rendered, 2A + 1,024 -- and the parser's command line as an octet list, 32 octets per octet; the body of an article in flight is PRF-377's pool) and a native part (kernel socket buffers; the TLS session when a context is loaded); the record, kernel and TLS constants are measurements (tests/test_native_mux.py pins the resident cost). fn-cbud-bound-holds-its-connections: when the base (the store's heap figure, the core, the threads with their stacks and 4 MiB of runtime each) fits the machine, the base plus n connections at the whole per-connection figure fits for every n up to fn-cbud-bound; fn-cbud-bound-is-the-most: one more does not. The resident heap is at most the process's dynamic space, so fn-cbud-resident-octets of n connections is min(dynamic, figure + n x heap part) + the rest of the base + n x native part, and fn-cbud-limit is the larger of fn-cbud-bound and the dynamic space's bound (the whole dynamic space plus each connection's native part). KEYSTONE fn-cbud-limit-holds-its-connections: when either way holds the base (fn-cbud-base-fitsp), the resident figure of every n up to the limit is within the machine; fn-cbud-limit-is-the-most: of limit + 1 it is not. KEYSTONE fn-cbud-run-decide-holds-the-capacity: an accepted run (:hold L) has capacity <= L, L the limit, and the resident figure of capacity connections within the machine; fn-cbud-run-decide-refuses-exactly-past-the-limit: it refuses exactly when the capacity passes the limit or the base does not fit. KEYSTONE fn-cbud-admitted-connections-fit-the-machine: under PRF-211's hypotheses, when the live capacity is within the limit and the base fits, an admission (fn-exp-admit-decision = (:admit)) with nconns held leaves the resident figure of nconns + 1 within the machine; the trusted range exempts no connection from the capacity (fn-exp-open-refuses-exactly-at-the-capacity). KEYSTONE fn-cbud-deltas-refusal-keeps-the-machine-held (lane tls-handshake-budget-2, with PRF-986's term): the run holds its observations and the handshake slots it charged (fn-cbud-run-held); a delta list the refusal passes is the run's decision re-made on those observations with the applied configuration's capacity and the larger of the held slots and its own tls-handshakes-in-flight, so the resident figure of the new capacity, with L x *fn-cbud-handshake-scratch-octets* of handshake scratch in the base's rest (native memory, outside the dynamic space; fn-cbud-handshake-octets when a TLS context is loaded), is within the machine; lowering L never lowers the charge while the run lives; refused by name, :handshakes-exceed-memory when the capacity alone holds under the held slots, :connections-exceed-memory otherwise. Lane zero-copy-commit (2026-09-28): fn-cbud-launch-decide and its theorem are gone (no caller since lane reservation-figure); the body of an article in flight left the per-connection heap part (the parser term is the command line only) for the store figure's pool of article credits, admitted by the served read (PRF-377). Not claimed: replies larger than the stated workload's (range OVER/LISTGROUP) until replies are rendered in windows (PKT-644); the measured constants as theorems; that the probe sees the live capacity (it cannot: PKT-644).",
+      "title": "A served connection's memory is named, and the run's connection capacity is the most connections the memory gate holds at the run's resident limit (C'); a run no connection fits is refused by name at start, and a live raise the gate does not hold is refused by name before anything is staged",
+      "statement": "books/connection-budget.lisp names a served connection's heap and native terms (fn-cbud-conn-octets) and the TLS handshakes' scratch (fn-cbud-handshake-octets), which the memory equation charges (books/memory-model.lisp fn-mm-sum). Since L-RUN-LAUNCH the run's capacity is books/admission-memory.lisp fn-adm-capacity: host/owner-host.lisp fn-owner-memory-configure computes it once per run after recovery and before listen (host/native/mux.lisp fnn-mux-budget-install), fn-owner-memory-recapacity after every durable live reconfiguration, and fn-owner-memory-candidate-refusal refuses by name (:connections-exceed-memory, :handshakes-exceed-memory) a candidate whose raise the gate does not hold over the run's carried totals. fn-adm-capacity-fits: C' is at most C and the gate holds at C'; fn-adm-capacity-is-the-most: no count up to C above C' passes the gate; C' is a funded root of the resource vector (books/resource-vector-relations-heap.lisp fn-rv-connection-capacity-funds-the-root). The read size of a served step is bounded (fn-cbud-step-read-octets-is-bounded) and held by the figure (fn-cbud-read-covers-the-step). Before L-RUN-LAUNCH the subject was fn-cbud-run-decide's own resident model (the profile's whole store and every thread's runtime against the machine), retired as a twin of the gate.",
       "milestone": "M6",
       "requirements": [
         "HST-024"
@@ -8527,14 +8527,8 @@
       ],
       "progress_note": "Lane connection-multiplexing 2026-09-27: certified itself, persvati run-20260927T015456Z-53f5 (manifest certify-20260927T015536Z-1751083: book 5.2 s, tests 2.7 s).",
       "events": [
-        "fn-cbud-bound-holds-its-connections",
-        "fn-cbud-bound-is-the-most",
-        "fn-cbud-limit-holds-its-connections",
-        "fn-cbud-limit-is-the-most",
-        "fn-cbud-run-decide-holds-the-capacity",
-        "fn-cbud-run-decide-refuses-exactly-past-the-limit",
-        "fn-cbud-admitted-connections-fit-the-machine",
-        "fn-cbud-deltas-refusal-keeps-the-machine-held",
+        "fn-adm-capacity-fits",
+        "fn-adm-capacity-is-the-most",
         "fn-cbud-step-read-octets-is-bounded",
         "fn-cbud-read-covers-the-step"
       ],
@@ -18385,7 +18379,7 @@
     {
       "id": "PRF-1082",
       "title": "Explicit cold-resource launcher extension covers dynamic allowance and observed machine",
-      "statement": "Subject fn-crv-extend-reservation in books/cold-read-reservation.lisp, called by host/native/heap.lisp fnn-heap-reservation. If the extension is accepted, the rounded heap covers the previous accepted heap plus the explicit cold_heap_octets. If the supplied policy is valid and the extension is accepted, heap+core+stacks+thread runtime fit the observed machine. The added cold_workers remain reserved for service lifetime; per-job settlement is separate. The positive explicit-policy operator branch is unreachable-in-composition until the measured native pool factory/consumer is supported; current run rejects explicit resources by name. This is a numerical launcher component, not an allocator, bounded preparation, full productive profile or checkpoint/recovery rescue claim.",
+      "statement": "Subject fn-mo-serve-decide in books/heap-command.lisp (L-RUN-LAUNCH), called by host/native/heap.lisp fnn-heap-serve-decision: an explicit cold policy's pool budget (books/cold-read-reservation.lisp fn-crv-pool-budget) is one of the served run's pools (fn-mo-serve-pools): the resident LIMIT excludes it, the launched dynamic space holds it beside the core's content and LIMIT (fn-mo-serve-holds-every-admitted-store), its workers are the launch's pool threads, and the whole reservation fits every address-space observation (fn-mo-serve-launch-fits-the-address-space). Before L-RUN-LAUNCH the subject was fn-crv-extend-reservation, which grew a profile-bound figure by the pool and compared the reservation with memory.max; retired.",
       "milestone": "M5",
       "requirements": [
         "STO-020"
@@ -18395,8 +18389,8 @@
       ],
       "assumptions": [],
       "events": [
-        "fn-crv-accepted-launch-fits-observed-machine",
-        "fn-crv-accepted-launch-funds-pool-dynamic-allowance"
+        "fn-mo-serve-holds-every-admitted-store",
+        "fn-mo-serve-launch-fits-the-address-space"
       ],
       "evidence": [
         "books/cold-read-reservation.lisp",
@@ -22023,8 +22017,8 @@
     },
     {
       "id": "PRF-1268",
-      "title": "Live connection charge follows the published TLS limit and still-owned handshakes",
-      "statement": "books/connection-budget.lisp fn-cbud-live-held, called by host/owner-host.lisp fn-owner-connection-held-refresh at durable fn-owner-reconfigure-complete and fn-owner-handshake-done. For a present held record, fn-cbud-live-held-charges-current-and-active charges exactly max(actual active count, published configuration handshake limit) and preserves each of the eight machine/profile observations. fn-cbud-live-held-releases-only-unneeded-slots: when actual active and published limit both fit the previous slots, refreshing never increases those slots. Preflight still uses max(previous charge,candidate limit), protecting concurrent old-generation admissions while the candidate persists; the live charge is not installed by proposal/staging/refusal/unstage. Teeth affirm every hypothesis and conclusion and isolate each omitted hypothesis. Actual host raw fixture injects staging/publication outcomes and exercises unchanged refusal charge, durable lowering with twelve still-active slots, settled reduction to four, duplicate done and upward publication.",
+      "title": "The memory gate charges the published TLS limit and every still-owned handshake",
+      "statement": "books/admission-memory.lisp fn-adm-cfg-holding-handshakes, called by host/owner-host.lisp fn-owner-memory-run-cfg for every gate evaluation (fn-owner-memory-gate) and at every live reconfiguration's check and recapacity: the gate's handshake allowance is the larger of the published limit and the handshakes still in flight (fn-owner-memory-handshakes-in-flight), so a lowering does not release still-active handshakes' scratch. fn-adm-cfg-holding-handshakes-charges-every-handshake: with a TLS context every handshake in flight is within the scratch the gate charges. Before L-RUN-LAUNCH the subject was the connection budget's held record (fn-cbud-live-held), retired with that budget.",
       "milestone": "M4",
       "requirements": [
         "HST-024"
@@ -22035,15 +22029,17 @@
       ],
       "assumptions": [],
       "events": [
-        "fn-cbud-live-held-charges-current-and-active",
-        "fn-cbud-live-held-releases-only-unneeded-slots"
+        "fn-adm-cfg-holding-handshakes-charges-every-handshake"
       ],
       "evidence": [
         "planning/evidence/manifests/certify-20261003T104044Z-1503690.json"
       ],
       "note": "Exact keystone book and teeth certification passed in the cited per-book entries; certified_claims and current_view confirm each keystone at this source/include closure. Global runs separately record prior failing harness/unsupported standalone host fragment entries, and inherited unrelated cached dependency provenance remains a separate convergence concern. Immutable saved-image protocol observation and deployment are not claimed.",
       "evidence_digest": "b06dcedffc91554d",
-      "progress_note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/sol-access-native-faults-2026-10-03.md were never committed and are in neither the evidence archive nor any tree searched; dropped."
+      "progress_note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/sol-access-native-faults-2026-10-03.md were never committed and are in neither the evidence archive nor any tree searched; dropped.",
+      "keystone_subjects": {
+        "fn-adm-cfg-holding-handshakes-charges-every-handshake": "fn-adm-cfg-holding-handshakes"
+      }
     },
     {
       "id": "PRF-1277",
@@ -22728,8 +22724,7 @@
         "tests/acl2/page-read-startup-host-tests.lisp"
       ],
       "events": [
-        "fn-prstartup-admitted-capacity-is-funded",
-        "fn-prstartup-accepted-default-launch-fits-machine"
+        "fn-prstartup-admitted-capacity-is-funded"
       ],
       "evidence": [
         "tests/acl2/page-read-startup-tests.lisp",
@@ -23585,6 +23580,177 @@
       ]
     },
     {
+      "id": "PRF-10008",
+      "title": "The model's launch holds the observed store and its reopen within the resident limit, the reservation within the address space, and a dynamic space holding the core's content and the limit (MEMORY-RUN-LAUNCH-MODEL K4)",
+      "statement": "fn-mm-launch-holds-the-store-and-the-reservation (defkeystone mmt-launch-holds-the-store-and-the-reservation, tests/acl2/memory-model-tests.lisp); subject fn-mm-launch-decide (books/memory-model.lisp), reached by the run's configure (host/owner-host.lisp fn-owner-memory-configure through books/heap-command.lisp fn-mo-run-decide): a :launch decision's limit is a natural holding the serving sum and the reopen need, within the configured figure and every resident observation, its reservation within every address-space observation, and its dynamic space holds the core's content and the limit.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/memory-model-tests.lisp"
+      ],
+      "evidence_digest": "6ac1944f671f6fad",
+      "keystone_subjects": {
+        "fn-mm-launch-holds-the-store-and-the-reservation": "fn-mm-launch-decide"
+      },
+      "events": [
+        "fn-mm-launch-holds-the-store-and-the-reservation"
+      ]
+    },
+    {
+      "id": "PRF-10009",
+      "title": "The model's launch refuses only by the model: a resident limit the gate holds at, with the reservation within the address space, launches (MEMORY-RUN-LAUNCH-MODEL K5)",
+      "statement": "fn-mm-launch-refuses-only-by-the-model (defkeystone mmt-launch-refuses-only-by-the-model, tests/acl2/memory-model-tests.lisp); subject fn-mm-launch-decide (books/memory-model.lisp): when the gate holds at the resident limit over the observed totals and the launch reservation fits every address-space observation (or none is observed), the decision is :launch; no reservation is compared with a resident limit.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/memory-model-tests.lisp"
+      ],
+      "evidence_digest": "bfaa2d7b43630bda",
+      "keystone_subjects": {
+        "fn-mm-launch-refuses-only-by-the-model": "fn-mm-launch-decide"
+      },
+      "events": [
+        "fn-mm-launch-refuses-only-by-the-model"
+      ]
+    },
+    {
+      "id": "PRF-10010",
+      "title": "The served run's launched heap holds the core's content of any process of its core file, the reopen of every store the memory gate admits at the run's LIMIT, and the pools (L-RUN-LAUNCH K-L2)",
+      "statement": "fn-mo-serve-holds-every-admitted-store (defkeystone hct-serve-holds-every-admitted-store, tests/acl2/heap-command-tests.lisp); subject fn-mo-serve-decide (books/heap-command.lisp), called by host/native/heap.lisp fnn-heap-serve-decision (the run's probe): a :heap launch's megabytes hold the content of every owner core with the same file, the reopen need of any totals the gate holds at the run's LIMIT (whatever image and coordinates price it), and the pools the run funds.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/heap-command-tests.lisp"
+      ],
+      "evidence_digest": "f7bc6e5b6bedaa39",
+      "keystone_subjects": {
+        "fn-mo-serve-holds-every-admitted-store": "fn-mo-serve-decide"
+      },
+      "events": [
+        "fn-mo-serve-holds-every-admitted-store"
+      ]
+    },
+    {
+      "id": "PRF-10011",
+      "title": "The served run's launch refuses only by the model (L-RUN-LAUNCH K-L3)",
+      "statement": "fn-mo-serve-refuses-only-by-the-model (defkeystone hct-serve-refuses-only-by-the-model, tests/acl2/heap-command-tests.lisp); subject fn-mo-serve-decide (books/heap-command.lisp): with a resident observation, the observed store's reopen within LIMIT (or the totals unseen) and the whole reservation within the address space (or none observed), the probe launches; no reservation is compared with memory.max or physical memory.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/heap-command-tests.lisp"
+      ],
+      "evidence_digest": "7e544ec9d18e82f2",
+      "keystone_subjects": {
+        "fn-mo-serve-refuses-only-by-the-model": "fn-mo-serve-decide"
+      },
+      "events": [
+        "fn-mo-serve-refuses-only-by-the-model"
+      ]
+    },
+    {
+      "id": "PRF-10012",
+      "title": "The served run's whole reservation fits every address-space observation, and an observed store reopens within LIMIT at the owner's coordinates (L-RUN-LAUNCH K-L3b)",
+      "statement": "fn-mo-serve-launch-fits-the-address-space (defkeystone hct-serve-launch-fits-the-address-space, tests/acl2/heap-command-tests.lisp); subject fn-mo-serve-decide (books/heap-command.lisp): a :heap launch has a natural LIMIT, its reservation (the dynamic space, the core file, every thread it answers) is within every address-space observation, and an observed store's reopen need, at any configuration whose reopen coordinates are the probe's, is within LIMIT.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/heap-command-tests.lisp"
+      ],
+      "evidence_digest": "5288fc892a7ae1f2",
+      "keystone_subjects": {
+        "fn-mo-serve-launch-fits-the-address-space": "fn-mo-serve-decide"
+      },
+      "events": [
+        "fn-mo-serve-launch-fits-the-address-space"
+      ]
+    },
+    {
+      "id": "PRF-10013",
+      "title": "The owner starts what the probe launched: its DEFAULT pool plan is admitted and its peer native grant held at the launched space (L-RUN-LAUNCH K-L4)",
+      "statement": "fn-mo-serve-startup-admits-the-pool (defkeystone pfrst-serve-startup-admits-the-pool, tests/acl2/peer-flight-startup-tests.lisp); subject fn-prstartup-default-plan-with-peer (books/peer-flight-startup.lisp), called by host/native/owner.lisp fnn-owner-page-read-startup: at the dynamic space fn-mo-serve-decide launched, an owner of the same core file, its content at most its observation and its least resident observation at most the probe's, admits its DEFAULT pool plan at the trigger it sets in that space, and with a peer flight holds its native grant against the same address-space observations.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/peer-flight-startup-tests.lisp"
+      ],
+      "evidence_digest": "0036a2af1f64dcfc",
+      "keystone_subjects": {
+        "fn-mo-serve-startup-admits-the-pool": "fn-mo-serve-decide"
+      },
+      "events": [
+        "fn-mo-serve-startup-admits-the-pool"
+      ]
+    },
+    {
+      "id": "PRF-10014",
+      "title": "The owner's output pool is held where the probe launched (L-RUN-LAUNCH K-L4c)",
+      "statement": "fn-mo-serve-output-pool-is-held (defkeystone pfrst-serve-output-pool-is-held, tests/acl2/peer-flight-startup-tests.lisp); subject fn-prstartup-run-store-need (books/peer-flight-startup.lisp), called by host/native/mux.lisp fnn-mux-budget-install for books/output-reservation.lisp fn-orv-startup-grant: whenever fn-mo-serve-run-decide decides :heap, with the same core file and the owner's least resident observation at most the probe's, the store's need at the owner's observations and the output pool fit the launched dynamic space; bp-terms is free in both the decision and the need.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/peer-flight-startup-tests.lisp"
+      ],
+      "evidence_digest": "9c167fd43af05a66",
+      "keystone_subjects": {
+        "fn-mo-serve-output-pool-is-held": "fn-prstartup-run-store-need"
+      },
+      "events": [
+        "fn-mo-serve-output-pool-is-held"
+      ]
+    },
+    {
+      "id": "PRF-10015",
+      "title": "The owner's DEFAULT pool plan is funded with no more than the need the launch deducted (L-RUN-LAUNCH K-L4d)",
+      "statement": "fn-mo-serve-plan-is-held-to-the-pool (defkeystone pfrst-serve-plan-is-held-to-the-pool, tests/acl2/peer-flight-startup-tests.lisp); subject fn-prstartup-default-plan-with-peer (books/peer-flight-startup.lisp), called by host/native/owner.lisp fnn-owner-page-read-startup: the plan's funded budget is at most the DEFAULT pool's need fn-prstartup-launch-extra, which fn-mo-serve-pools deducted from the run's resident LIMIT, plus its workers' native storage; the launch's dynamic space beyond it stays the store's. Before Codex review F2 the plan was funded with all remaining dynamic space.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/peer-flight-startup-tests.lisp"
+      ],
+      "evidence_digest": "3d539e4ebb55b2ef",
+      "keystone_subjects": {
+        "fn-mo-serve-plan-is-held-to-the-pool": "fn-prstartup-default-plan-with-peer"
+      },
+      "events": [
+        "fn-mo-serve-plan-is-held-to-the-pool"
+      ]
+    },
+    {
+      "id": "PRF-10016",
+      "title": "A launch's pools are within its least resident observation (L-RUN-LAUNCH K-L2p)",
+      "statement": "fn-mo-serve-launch-holds-its-pools (defkeystone hct-serve-launch-holds-its-pools, tests/acl2/heap-command-tests.lisp); subject fn-mo-serve-decide (books/heap-command.lisp), called by host/native/heap.lisp fnn-heap-serve-decision: a :heap decision has a resident observation, and its pools (fn-mo-serve-pools: the DEFAULT pool or cold budget, the output pool, the peer flight's heap and workers) are at most the least of them; pools beyond it are refused by name (:machine-cannot-hold-the-pools), where before they clipped LIMIT to 0 and launched (native m21-lrl-2, tests.test_native_control_reply_fit).",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/heap-command-tests.lisp"
+      ],
+      "evidence_digest": "88f046fcc607110f",
+      "keystone_subjects": {
+        "fn-mo-serve-launch-holds-its-pools": "fn-mo-serve-decide"
+      },
+      "events": [
+        "fn-mo-serve-launch-holds-its-pools"
+      ]
+    },
+    {
       "id": "PRF-10006",
       "title": "The read-only probe's suffix: the charged totals of the log past a checkpoint, read before the open, bound the charged fold of every row the open recovers (exact in eight fields, HISTORY at the record's own ceiling); a probe that cannot see the dropped segments still bounds it",
       "statement": "books/store-log-open-scan.lisp (landing 2a and 2a-host). KEYSTONES L2-1 fn-lgo-run-is-the-fold, L2-2 fn-lgo-chain-is-the-fold, L2-3 fn-lgo-fold-is-the-wire-fold, L2-4 fn-lgo-wire-fold-covers-the-replay, L2-5 fn-lgo-observed-covers-the-opened-store, L2H-1 fn-lgo-fold-from-no-skip-bounds-any-skip, L2H-2 fn-lgo-host-suffix-covers-the-opened-store, L2H-3 fn-lgo-scan-plan-scans-every-present-segment, L2H-4 fn-lgo-head-genesis-is-the-open-lineage-start, L2H-5 fn-lgo-history-ceiling-bounds-the-intern (books/store-log-history-ceiling.lisp: the row the intern builds at any handle, keyring and natural generation has HISTORY at most the record's ceiling). The host subject is host/native/heap.lisp fnn-heap-log-suffix (definterfaces fn-lgo-scan-plan, fn-lgo-fold, fn-lgo-head-genesis, fn-lgo-suffix-settled).",
@@ -23618,6 +23784,262 @@
         "fn-lgo-head-genesis-is-the-open-lineage-start",
         "fn-lgo-history-ceiling-bounds-the-intern"
       ]
+    },
+    {
+      "id": "PRF-10017",
+      "title": "Held reader admissions and same-step transport transfer preserve the installed memory capacity",
+      "statement": "fn-adm-held-admissions-compose-with-installed-capacity (defkeystone m24t-held-admissions-compose-with-installed-capacity, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-exposure-open.",
+      "milestone": "M24",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "8c351d92a415f866",
+      "events": [
+        "fn-adm-exposure-open-admits-below-held-reader-bound",
+        "fn-adm-peer-open-admits-below-held-reader-bound",
+        "fn-adm-transport-rearm-admits-below-held-reader-bound",
+        "fn-adm-reader-open-admits-below-held-reader-bound",
+        "fn-adm-held-admissions-compose-with-installed-capacity"
+      ],
+      "keystone_subjects": {
+        "fn-adm-exposure-open-admits-below-held-reader-bound": "fn-adm-exposure-open",
+        "fn-adm-held-admissions-compose-with-installed-capacity": "fn-adm-operator-open",
+        "fn-adm-peer-open-admits-below-held-reader-bound": "fn-adm-peer-open",
+        "fn-adm-reader-open-admits-below-held-reader-bound": "fn-adm-reader-open",
+        "fn-adm-transport-rearm-admits-below-held-reader-bound": "fn-adm-transport-rearm"
+      }
+    },
+    {
+      "id": "PRF-10018",
+      "title": "Held connection pricing bounds the instantaneous memory need and retained lease",
+      "statement": "fn-adm-priced-connections-cover-held (defkeystone m22-adm-priced-connections-cover-held, tests/acl2/admission-memory-tests.lisp); subject fn-adm-priced-connections.",
+      "milestone": "M24",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/admission-memory-tests.lisp",
+        "tests/acl2/owner-memory-holding-tests.lisp",
+        "tests/test_native_operator_slot.py"
+      ],
+      "evidence_digest": "3f390a229ba01753",
+      "keystone_subjects": {
+        "fn-adm-admitted-config-change-keeps-the-operator-slot-funded": "fn-mm-gate-p",
+        "fn-adm-priced-connections-cover-held": "fn-adm-priced-connections",
+        "fn-adm-priced-connections-equal-reader-count-when-covered": "fn-adm-priced-connections",
+        "fn-adm-priced-gate-bounds-the-held-instant": "fn-adm-priced-cfg",
+        "fn-adm-priced-gate-holds-the-retained-lease": "fn-adm-priced-cfg"
+      },
+      "events": [
+        "fn-adm-priced-connections-cover-held",
+        "fn-adm-priced-connections-equal-reader-count-when-covered",
+        "fn-adm-priced-gate-bounds-the-held-instant",
+        "fn-adm-priced-gate-holds-the-retained-lease",
+        "fn-adm-admitted-config-change-keeps-the-operator-slot-funded"
+      ]
+    },
+    {
+      "id": "PRF-10019",
+      "title": "Installed capacity is proved fitting or zero and zero remains distinct from absence",
+      "statement": "fn-adm-installed-capacity-is-proved-or-zero (defkeystone m22-adm-installed-capacity-is-proved-or-zero, tests/acl2/admission-memory-tests.lisp); subject fn-adm-installed-capacity.",
+      "milestone": "M24",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/admission-memory-tests.lisp"
+      ],
+      "evidence_digest": "c07599e92edc4943",
+      "keystone_subjects": {
+        "fn-adm-absent-capacity-and-zero-are-distinct": "fn-adm-reader-count",
+        "fn-adm-installed-capacity-is-proved-or-zero": "fn-adm-installed-capacity",
+        "fn-adm-installed-zero-has-the-zero-diagnostic": "fn-adm-installed-capacity-line",
+        "fn-adm-zero-capacity-refuses-new-readers": "fn-adm-exposure-limits",
+        "fn-adm-zero-capacity-refuses-records": "fn-adm-run-memory-admitp"
+      },
+      "events": [
+        "fn-adm-installed-capacity-is-proved-or-zero",
+        "fn-adm-zero-capacity-refuses-new-readers",
+        "fn-adm-zero-capacity-refuses-records",
+        "fn-adm-absent-capacity-and-zero-are-distinct",
+        "fn-adm-installed-zero-has-the-zero-diagnostic"
+      ]
+    },
+    {
+      "id": "PRF-10020",
+      "title": "Served launch conserves the resident partition and funds BP startup at its decided need",
+      "statement": "fn-mo-serve-launch-conserves-the-resident-partition (defkeystone m22-mo-serve-launch-conserves-the-resident-partition, tests/acl2/heap-command-tests.lisp); subject fn-mo-serve-total-pools.",
+      "milestone": "M24",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/heap-command-tests.lisp"
+      ],
+      "evidence_digest": "136a10d2578b28ba",
+      "keystone_subjects": {
+        "fn-mo-serve-bp-launch-admits-its-startup": "fn-mo-serve-run-decide",
+        "fn-mo-serve-launch-conserves-the-resident-partition": "fn-mo-serve-total-pools"
+      },
+      "events": [
+        "fn-mo-serve-launch-conserves-the-resident-partition",
+        "fn-mo-serve-bp-launch-admits-its-startup"
+      ]
+    },
+    {
+      "id": "PRF-100001",
+      "title": "Priced connection configuration retains the installed bank floor",
+      "statement": "fn-adm-priced-cfg-keeps-the-installed-bank (defkeystone m26-priced-cfg-keeps-the-installed-bank, tests/acl2/owner-memory-run-tests.lisp); subject fn-adm-priced-cfg.",
+      "milestone": "M26",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-run-tests.lisp"
+      ],
+      "evidence_digest": "d04e7abbd3540383",
+      "keystone_subjects": {
+        "fn-adm-priced-cfg-keeps-the-installed-bank": "fn-adm-priced-cfg"
+      },
+      "events": [
+        "fn-adm-priced-cfg-keeps-the-installed-bank"
+      ]
+    },
+    {
+      "id": "PRF-100000",
+      "title": "Installing the bank preserves its funded public readers",
+      "statement": "fn-adm-lease-startup-keeps-its-bank-readers (defkeystone m26-lease-startup-keeps-its-bank-readers, tests/acl2/owner-memory-run-tests.lisp); subject fn-adm-lease-startup-cfg.",
+      "milestone": "M26",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-run-tests.lisp"
+      ],
+      "evidence_digest": "3e50a4357cccff56",
+      "keystone_subjects": {
+        "fn-adm-lease-startup-keeps-its-bank-readers": "fn-adm-lease-startup-cfg"
+      },
+      "events": [
+        "fn-adm-lease-startup-keeps-its-bank-readers"
+      ]
+    },
+    {
+      "id": "PRF-100002",
+      "title": "capacity is nil exactly when no slot fits",
+      "statement": "fn-adm-capacity-is-nil-exactly-when-no-slot-fits (defkeystone m28-capacity-is-nil-exactly-when-no-slot-fits, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-capacity.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "f22486105c54bbc6",
+      "events": [
+        "fn-adm-capacity-is-nil-exactly-when-no-slot-fits"
+      ],
+      "keystone_subjects": {
+        "fn-adm-capacity-is-nil-exactly-when-no-slot-fits": "fn-adm-capacity"
+      }
+    },
+    {
+      "id": "PRF-100003",
+      "title": "operator open admits exactly a free funded slot",
+      "statement": "fn-adm-operator-open-admits-exactly-a-free-funded-slot (defkeystone m28-operator-open-admits-exactly-a-free-funded-slot, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-operator-open.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "dba0d450c227573e",
+      "events": [
+        "fn-adm-operator-open-admits-exactly-a-free-funded-slot"
+      ],
+      "keystone_subjects": {
+        "fn-adm-operator-open-admits-exactly-a-free-funded-slot": "fn-adm-operator-open"
+      }
+    },
+    {
+      "id": "PRF-100004",
+      "title": "operator refusal is named",
+      "statement": "fn-adm-operator-refusal-is-named (defkeystone m28-operator-refusal-is-named, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-operator-open.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "231bb5a45717695c",
+      "events": [
+        "fn-adm-operator-refusal-is-named"
+      ],
+      "keystone_subjects": {
+        "fn-adm-operator-refusal-is-named": "fn-adm-operator-open"
+      }
+    },
+    {
+      "id": "PRF-100005",
+      "title": "operator open below saturation is the reader open",
+      "statement": "fn-adm-operator-open-below-saturation-is-the-reader-open (defkeystone m28-operator-open-below-saturation-is-the-reader-open, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-operator-open.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "eb986f0fb25060dc",
+      "events": [
+        "fn-adm-operator-open-below-saturation-is-the-reader-open"
+      ],
+      "keystone_subjects": {
+        "fn-adm-operator-open-below-saturation-is-the-reader-open": "fn-adm-operator-open"
+      }
+    },
+    {
+      "id": "PRF-100006",
+      "title": "run gate keeps the operator slot funded",
+      "statement": "fn-adm-run-gate-keeps-the-operator-slot-funded (defkeystone m28-run-gate-keeps-the-operator-slot-funded, tests/acl2/owner-memory-holding-tests.lisp); subject fn-adm-run-gate-held.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "d088ab9253ec398e",
+      "events": [
+        "fn-adm-run-gate-keeps-the-operator-slot-funded"
+      ],
+      "keystone_subjects": {
+        "fn-adm-run-gate-keeps-the-operator-slot-funded": "fn-adm-run-gate-held"
+      }
+    },
+    {
+      "id": "PRF-100007",
+      "title": "run admitted record keeps the operator slot funded",
+      "statement": "fn-adm-run-admitted-record-keeps-the-operator-slot-funded (defkeystone m28-run-admitted-record-keeps-the-operator-slot-funded, tests/acl2/owner-memory-holding-tests.lisp); subject fn-mm-gate-p.",
+      "milestone": "M28",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/owner-memory-holding-tests.lisp"
+      ],
+      "evidence_digest": "f4ccd3fdb2eb0f7c",
+      "events": [
+        "fn-adm-run-admitted-record-keeps-the-operator-slot-funded"
+      ],
+      "keystone_subjects": {
+        "fn-adm-run-admitted-record-keeps-the-operator-slot-funded": "fn-mm-gate-p"
+      }
     }
   ]
 }

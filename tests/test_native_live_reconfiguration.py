@@ -63,8 +63,9 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertIn("(fn-native-admin-plan-deltas-over plan "
                       "(fn-cfg-peers (fn-cfg-value (fn-owner-config state))))",
                       " ".join(body.split()))
-        # (the arena threaded through since the records flip)
-        self.assertIn("(fn-owner-reconfigure-deltas id deltas fn-arena state)", body)
+        # (the arena threaded through since the records flip; the history
+        # since L-RUN-LAUNCH, so a raise is priced over the synced totals)
+        self.assertIn("(fn-owner-reconfigure-deltas id deltas fn-arena fn-hist state)", body)
         # No delta constructor and no octet/string conversion in the bridge:
         # the labels' type is decided once, in the book.
         for forbidden in ("fn-cfg-create-group", "fn-cfg-remove-group",
@@ -149,7 +150,7 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
             return self.native_admin[at:self.native_admin.index("\n(def", at + 10)]
         stage = fn("fnn-rc-do-stage")
         order = [stage.index(word) for word in (
-            "'fn-owner-open", "(funcall stage cid)", "'fn-owner-close")]
+            "'fn-owner-operator-open", "(funcall stage cid)", "'fn-owner-close")]
         self.assertEqual(order, sorted(order))
         self.assertIn("(fnn-admin-publish-effect", fn("fnn-rc-do-publish"))
         self.assertIn("'fn-owner-reconfigure-complete", fn("fnn-rc-do-complete"))
@@ -160,12 +161,15 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertIn("(fnn-owner-live-reconfigure", arm)
 
     def test_the_live_arm_reads_the_open_connection_id_as_an_id(self):
-        # `fn-owner-open' answers an integer id or NIL; `fnn-owner-action'
+        # The operator result's ACL2 accessors supply word, id and reason; `fnn-owner-action'
         # faults on anything but a keyword, so reading the id through it
         # stopped the owner on every live request (dabebb84, V0-CFG-LIVE).
         start = self.native_admin.index("(defun fnn-rc-do-stage ")
         body = self.native_admin[start:self.native_admin.index("(defun fnn-rc-do-authorize", start)]
-        self.assertIn("(fnn-owner-core 'fn-owner-open)", body)
+        self.assertIn("(fnn-owner-core 'fn-owner-operator-open)", body)
+        for accessor in ("word", "id", "reason"):
+            self.assertIn("'fn-adm-operator-open-" + accessor, body)
+        self.assertNotIn("(or staged :none)", body)
         self.assertNotIn("(fnn-owner-action 'fn-owner-open)", body)
         def body_of(text, head):
             at = text.index(head)
@@ -173,18 +177,18 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         bridge = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
         # Since 1bf2ddcaf the host entry fn-owner-open is the guarded
         # callback of books/owner-connection-callbacks.lisp.
-        self.assertIn("(fn-owner-callback-open state)",
+        self.assertIn("(fn-owner-held-callback-open state)",
                       body_of(bridge, "(defun fn-owner-open (state)"))
         book = (ROOT / "books" / "owner-connection-callbacks.lisp").read_text(encoding="ascii")
         # Since PKT-828 the open runs open-at at the reader view and puts the
         # working view back; the id is answered there.
-        open_body = body_of(book, "(defun fn-owner-callback-open (state)")
+        open_body = body_of(book, "(defun fn-owner-held-callback-open (state)")
         order = [open_body.index(word) for word in (
             "(fn-owner-callback-at-reader-view state)",
-            "(fn-owner-callback-open-at state)",
+            "(fn-owner-held-callback-open-at state)",
             "(fn-owner-callback-at-working-view working state)")]
         self.assertEqual(order, sorted(order))
-        self.assertIn("(value id)", body_of(book, "(defun fn-owner-callback-open-at (state)"))
+        self.assertIn("(value id)", body_of(book, "(defun fn-owner-held-callback-open-at (state)"))
 
     def test_publication_is_authorized_on_the_stores_own_lock_observation(self):
         start = self.native_admin.index("(defun fnn-admin-authorize")

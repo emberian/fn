@@ -47,6 +47,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.native_harness import EXIT, free_port, native_image, start, stop_and_diagnostics
 
@@ -91,13 +92,41 @@ class Image:
         self.deps = path + ".world-deps"
         self.out = self.work / ("world-reads-" + Path(path).name)
 
-    def argv(self, args):
+    def argv(self, args, runtime=None):
         top = ["--no-userinit"]
         if self.checked:
             top += ["--load", str(CHECK)]
         top += ["--eval", "(acl2::sbcl-restart)", "--disable-debugger",
                 "--end-toplevel-options", "--fn"]
-        return self.runtime + top + [str(a) for a in args]
+        return (self.runtime if runtime is None else runtime) + top + [str(a) for a in args]
+
+    def launch_argv(self, args, env, timeout=300):
+        words = [str(a) for a in args]
+        if len(words) < 3 or words[0] != "operator" or words[2] != "run":
+            return self.argv(words)
+        # Match fn_decide_heap's boot heap and probe the same runtime words
+        # for each image.  The saved exec line's heap is for offline commands.
+        core_octets = Path(self.path + ".core").stat().st_size
+        boot = (core_octets + 1048575) // 1048576 + 128
+        env.pop("FN_LOG_EXTENT_CAP", None)
+        probe = subprocess.run(
+            [self.path, "--fn", "heap", "--", *words],
+            env=dict(env, SBCL_USER_ARGS="--dynamic-space-size {}".format(boot)),
+            cwd=self.work, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=timeout, check=False)
+        out = probe.stdout.decode("utf-8", "replace")
+        heap = re.search(r"^heap=(\d+) MB\b", out)
+        stack = re.search(r"\bstack=(\d+) KB\b", out)
+        if probe.returncode != 0 or not (heap and stack):
+            raise AssertionError("{} heap probe exit={}: {}{}".format(
+                self.path, probe.returncode, out, probe.stderr.decode("utf-8", "replace")))
+        extent = re.search(r"\bextent=(\d+)\b", out)
+        if extent:
+            env["FN_LOG_EXTENT_CAP"] = extent.group(1)
+        runtime = self.runtime[:-1] + [
+            "--dynamic-space-size", heap.group(1),
+            "--control-stack-size", stack.group(1) + "KB", self.runtime[-1]]
+        return self.argv(words, runtime)
 
     def env(self, **extra):
         env = {k: v for k, v in os.environ.items()
@@ -111,12 +140,14 @@ class Image:
         return env
 
     def run(self, args, timeout=300, **extra):
-        return subprocess.run(self.argv(args), env=self.env(**extra), cwd=self.work,
+        env = self.env(**extra)
+        return subprocess.run(self.launch_argv(args, env, timeout), env=env, cwd=self.work,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               timeout=timeout, check=False)
 
     def start(self, args, **extra):
-        return start(self.argv(args), env=self.env(**extra), cwd=self.work)
+        env = self.env(**extra)
+        return start(self.launch_argv(args, env), env=env, cwd=self.work)
 
     def reads(self):
         """(kind, text) of every classified first read the check wrote."""
@@ -128,19 +159,84 @@ class Image:
         return lines
 
 
+class ImageLaunchTests(unittest.TestCase):
+    """Launch plumbing with independent per-image probe answers; no native core."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="fn-diff-launch-")
+        self.addCleanup(self.tmp.cleanup)
+        self.work = Path(self.tmp.name)
+
+    def image(self, name, checked):
+        path = self.work / name
+        path.write_text('exec /fake/sbcl --dynamic-space-size 1797 '
+                        '--control-stack-size 1024KB --core fake.core '
+                        '${SBCL_USER_ARGS} --end-runtime-options "$@"\n')
+        Path(str(path) + ".core").write_bytes(b"core")
+        return Image(str(path), checked, self.work)
+
+    def test_each_served_start_uses_its_own_probe_and_runtime_words(self):
+        words = ["operator", self.work / "node.toml", "run", "--once"]
+        for name, checked, heap, stack in (("full", False, 25244, 1536),
+                                           ("stripped", True, 24831, 2048)):
+            with self.subTest(image=name):
+                image = self.image(name, checked)
+                probe = subprocess.CompletedProcess([], 0,
+                    f"heap={heap} MB stack={stack} KB extent=4096\n".encode(), b"")
+                with mock.patch.object(subprocess, "run", return_value=probe) as run_probe, \
+                        mock.patch(__name__ + ".start") as start_owner:
+                    image.start(words, FN_LOG_EXTENT_CAP="stale")
+                argv, = start_owner.call_args.args
+                self.assertEqual(run_probe.call_args.args[0],
+                                 [image.path, "--fn", "heap", "--", *map(str, words)])
+                self.assertEqual(run_probe.call_args.kwargs["env"]["SBCL_USER_ARGS"],
+                                 "--dynamic-space-size 129")
+                self.assertNotIn("FN_LOG_EXTENT_CAP", run_probe.call_args.kwargs["env"])
+                self.assertEqual(argv[:len(image.runtime) + 4], image.runtime[:-1] + [
+                    "--dynamic-space-size", str(heap), "--control-stack-size",
+                    str(stack) + "KB", "--end-runtime-options"])
+                self.assertEqual(argv[-len(words):], list(map(str, words)))
+                self.assertEqual("--load" in argv, checked)
+                self.assertEqual(start_owner.call_args.kwargs["env"]["FN_LOG_EXTENT_CAP"], "4096")
+
+    def test_synchronous_served_run_probes_but_offline_keeps_saved_runtime(self):
+        image = self.image("full", False)
+        words = ["operator", "node.toml", "run"]
+        probe = subprocess.CompletedProcess([], 0, b"heap=25244 MB stack=1536 KB\n", b"")
+        result = subprocess.CompletedProcess([], 1, b"", b"reason=checkpoint-damaged")
+        with mock.patch.object(subprocess, "run", side_effect=[probe, result]) as run:
+            self.assertIs(image.run(words), result)
+        self.assertIn("25244", run.call_args.args[0])
+        offline = ["operator", "node.toml", "status"]
+        with mock.patch.object(subprocess, "run", return_value=result) as run:
+            image.run(offline)
+        run.assert_called_once()
+        self.assertEqual(run.call_args.args[0], image.argv(offline))
+
+    def test_refused_or_incomplete_probe_never_starts_an_owner(self):
+        image = self.image("full", False)
+        for code, out in ((1, b"refused memory\n"), (0, b"heap=25244 MB\n")):
+            with self.subTest(code=code, out=out), \
+                    mock.patch.object(subprocess, "run", return_value=
+                                      subprocess.CompletedProcess([], code, out, b"")), \
+                    mock.patch(__name__ + ".start") as start_owner:
+                with self.assertRaisesRegex(AssertionError, "heap probe"):
+                    image.start(["operator", "node.toml", "run"])
+                start_owner.assert_not_called()
+
+
 def normalize(data, *roots):
     text = data.decode("utf-8", "replace")
     for root in roots:
         text = text.replace(str(root), "<T>")
     text = re.sub(r"\bpid[= ]\d+", "pid=<N>", text)
-    # heap-figure's figure counts the image's core file (books/heap-figure.lisp
-    # fn-heap-figure-octets): the full core is larger by design, an input.
+    # The run reserves its image content + LIMIT + pools (fn-mo-serve-decide);
+    # offline commands retain their own sizing.  Image content is an input.
     text = re.sub(r"\bheap=\d+ MB", "heap=<core-dependent> MB", text)
     text = re.sub(r"\breservation=\d+ MB", "reservation=<core-dependent> MB", text)
-    # The connections the run holds (books/connection-budget.lisp
-    # fn-cbud-limit, connection-multiplexing) are the machine's room beside
-    # that figure and the core's mappings: core-dependent the same way.
-    text = re.sub(r"\bholds=\d+", "holds=<core-dependent>", text)
+    # The within-budget verdict compares that core-dependent reservation with the budget, so
+    # it is core-dependent too (release and reference differ only in their image content).
+    text = re.sub(r"\bwithin-budget=(?:yes|no)(?: target-budget=\d+ MB)?", "within-budget=<core-dependent>", text)
     # Wall-clock readings: a file's modification time, an accept's time.
     text = re.sub(r"\bmodified=\d+", "modified=<clock>", text)
     text = re.sub(r"\btime=\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "time=<clock>", text)
@@ -363,8 +459,18 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             fcfg = config(Path(str(store) + "-fresh.toml"), fresh, free_port())
             refused = image.run(["operator", fcfg, "init", "--budget", "1000",
                                  "--profile", "scale", "local.test"])
-            made = image.run(["operator", fcfg, "init", "--budget", "4000", "local.test"])
+            # Capacity-free init selects a funded rung using this image's core
+            # file and dynamic content (fn-pfd-init-decide -> fn-heap-init-decide).
+            # Full and stripped cores are distinct physical inputs. Compare
+            # identical explicit capacities, retaining their exact status/limits.
+            made = image.run(["operator", fcfg, "init", "--budget", "4000",
+                              "--profile", "development", "--max-transactions", "16384",
+                              "--max-history-octets", "33554432", "local.test"])
+            self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stdout + refused.stderr)
+            self.assertEqual(made.returncode, EXIT.OK, made.stdout + made.stderr)
             status = self.status(image, fcfg)
+            self.assertEqual(status[0], EXIT.OK, status[1] + status[2])
+            self.assertIn(b"max-transactions=16384 max-history-octets=33554432", status[1])
             files = sorted(tree(fresh))
             shutil.rmtree(fresh, True)
             return [refused.returncode, refused.stdout, refused.stderr,

@@ -7204,6 +7204,10 @@ tree root), or stop the build."
     ;; inside a named owner section of host/native/admin.lisp
     ;; (fnn-admin-test-fault), so the natives observe the declared boundary.
     "FN_NATIVE_ADMIN_FAULT"
+    ;; lane memory-run-launch: overlapping private opens exercise the funded operator slot.
+    "FN_NATIVE_OPERATOR_SLOT_TEST"
+    ;; R2: unchanged-C/H configuration history at the ACL2-decided gate edge.
+    "FN_NATIVE_CONFIG_MEMORY_EDGE_TEST"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
     "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_TEST_DISK_STALL_FILE" "FN_NATIVE_TEST_READ_STALL_FILE" "FN_NATIVE_TEST_JOURNAL_FAIL_FILE" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE" "FN_NATIVE_FAULT_BACKTRACE"
     "FN_NATIVE_COUNT_LOOKUPS"

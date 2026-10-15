@@ -1,0 +1,10 @@
+L-FRESH, extracted fn-core of a99ba80e3 (hbox native-m20-lrl-2 tree, build/core/fn-core; extract-check PASS incl. 1c),
+fresh small store on /dev/shm, the launcher's own probe under systemd-run MemoryMax:
+== fn-core 256
+probe: heap=343 MB profile=small machine=251 MB stack=1024 KB threads=36
+POST 240, ARTICLE 220; VmHWM: 76520 kB VmRSS: 68524 kB RssAnon: 17620 kB RssFile: 50904 kB
+memory capacity=31 of 31 bound-by=configured sum=212 MB limit=251 MB
+== fn-core 1024
+probe: heap=1111 MB profile=small machine=1019 MB stack=1024 KB threads=36
+POST 240, ARTICLE 220; VmHWM: 79004 kB VmRSS: 68904 kB RssAnon: 17692 kB RssFile: 51212 kB
+memory capacity=31 of 31 bound-by=configured sum=214 MB limit=1019 MB
