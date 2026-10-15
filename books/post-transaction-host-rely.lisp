@@ -1026,6 +1026,7 @@
                       (if (consp b1) (list h1 h3) nil))))
   (and (fn-ptx-okp m)
    (fn-cbor-octet-listp (fn-ptx-kd-last (fn-ptx-kd m)))
+   (implies flight (fn-cbor-octet-listp (fn-rtc-get 1 (fn-ptx-hs m))))
    (< (fn-ptx-ext m) (expt 2 64)) (< (fn-ptx-nxt m) (expt 2 64))
    (fn-pth-i-owner-uses (fn-rtc-uses s) m)
    (implies (fn-ptx-expected m)
@@ -1145,10 +1146,10 @@
           (fn-pth-i-post-state (fn-ptx-closed) s))
  :hints (("Goal" :use (fn-ptx-closed-is-ok)
   :in-theory (union-theories (theory 'minimal-theory)
-   (cons 'fn-pth-i-post-state (cons 'fn-pth-i-queue
+   (append '(fn-pth-i-post-state fn-pth-i-queue fn-ptx-in-flight-p)
     (remove-equal nil
      (loop$ for rune in (current-theory :here) collect
-       (if (equal (car rune) :executable-counterpart) rune nil)))))))))
+       (if (equal (car rune) :executable-counterpart) rune nil))))))))
 
 
 ; From c6a/p15b-I-shape.lisp
@@ -3753,6 +3754,12 @@
                (fn-pth-i-post-storage m s))
           (fn-pth-i-post-storage m (fn-rtc-with-buffer h b s)))
  :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-pth-i-visible-buffer-of-storage-update (j (fn-ptx-cur-bp (fn-ptx-cur m))) (leasedp (fn-ptx-in-flight-p (fn-ptx-ph m))))
+        (:instance fn-pth-i-visible-bytes-of-storage-update (j (fn-ptx-cur-bp (fn-ptx-cur m))))
+        (:instance fn-pth-i-visible-buffer-of-storage-update (j (fn-ptx-buf-h (fn-ptx-b1 m))) (leasedp (fn-ptx-in-flight-p (fn-ptx-ph m))))
+        (:instance fn-pth-i-visible-bytes-of-storage-update (j (fn-ptx-buf-h (fn-ptx-b1 m))))
+        (:instance fn-pth-i-visible-buffer-of-storage-update (j (fn-ptx-buf-h (fn-ptx-b3 m))) (leasedp (fn-ptx-in-flight-p (fn-ptx-ph m))))
+        (:instance fn-pth-i-visible-bytes-of-storage-update (j (fn-ptx-buf-h (fn-ptx-b3 m)))))
   :in-theory (union-theories (theory 'minimal-theory)
    '(fn-pth-i-post-storage fn-pth-i-queue-of-storage-update
      fn-pth-i-post-of-storage-update fn-pth-i-visible-buffer-of-storage-update
@@ -6854,3 +6861,624 @@
    '(fn-pth-i-end-with-mstate fn-pth-i-runtime-with-mstate fn-pth-i-post-storage-with-mstate
      fn-rtc-with-accessors fn-rtc-requests-keeps-mstates fn-rtc-mstate fn-pth-i-owner-machine-index
      fn-rtc-mstate-of-with fn-rtc-get-of-set (:executable-counterpart nfix) (:executable-counterpart natp))))))
+
+
+; I-AMEND-1: hashing establishes the octet trailer consumed by commit.
+(defthm fn-pth-i-b3-octets-are-cbor-octets
+ (implies (fn-b3-octet-listp x) (fn-cbor-octet-listp x))
+ :hints (("Goal" :induct (fn-b3-octet-listp x)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-b3-octet-listp fn-cbor-octet-listp fn-cbor-octetp)))))
+
+(defthm fn-pth-i-finish-digest-is-octets
+ (fn-cbor-octet-listp (fn-ptx-finish-digest pos st n spans id inc pool))
+ :hints (("Goal"
+  :use ((:instance fn-ptx-finish-digest-shape (fn-rtc-st pool)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-pth-i-b3-octets-are-cbor-octets)))))
+
+(defthm fn-pth-i-end-does-not-enter-flight
+ (not (fn-ptx-in-flight-p (fn-ptx-ph (mv-nth 0 (fn-ptx-end m o kd ext fenced committed id inc st)))))
+ :hints (("Goal" :in-theory (union-theories
+  (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+  '(fn-ptx-end-0 fn-ptx-start-0 fn-ptx-in-flight-p fn-ptx-accessors-of-mk
+    fn-hld-mv-nth-0-cons car-cons cdr-cons
+    (:executable-counterpart equal) (:executable-counterpart member-equal))))))
+
+(defthm fn-pth-i-hash-establishes-flight-trailer-octets
+ (let ((m2 (mv-nth 0 (fn-ptx-hash m q id inc st))))
+  (implies (and (equal (fn-ptx-ph m) :hashing)
+                (fn-ptx-in-flight-p (fn-ptx-ph m2)))
+           (fn-cbor-octet-listp (fn-rtc-get 1 (fn-ptx-hs m2)))))
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-pth-i-end-does-not-enter-flight
+    (m (fn-ptx-chg m :committed nil)) (o :refused) (kd (fn-ptx-kd m))
+    (ext (fn-ptx-ext m)) (fenced nil) (committed nil)))
+  :in-theory (union-theories
+   (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-ptx-hash-0 fn-ptx-accessors-of-mk fn-ptx-in-flight-p
+     fn-pth-i-finish-digest-is-octets fn-rtc-get-of-cons
+     car-cons cdr-cons fn-hld-mv-nth-0-cons
+     (:executable-counterpart equal) (:executable-counterpart member-equal)
+     (:executable-counterpart nfix) (:executable-counterpart zp) (:executable-counterpart binary-+))))))
+
+(defthm fn-pth-i-step-preserves-flight-trailer-octets
+ (let ((m2 (mv-nth 0 (fn-ptx-step m ev st q))))
+  (implies (and (fn-ptx-in-flight-p (fn-ptx-ph m))
+                (fn-cbor-octet-listp (fn-rtc-get 1 (fn-ptx-hs m))))
+           (implies (fn-ptx-in-flight-p (fn-ptx-ph m2))
+                    (fn-cbor-octet-listp (fn-rtc-get 1 (fn-ptx-hs m2))))))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (union-theories
+   (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-ptx-end-0 fn-ptx-start-0 fn-ptx-step fn-ptx-step1-0 fn-ptx-in-flight-p fn-ptx-accessors-of-mk
+     fn-pth-i-end-does-not-enter-flight fn-ptx-broken
+     fn-hld-mv-nth-0-cons car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart member-equal))))))
+
+
+; I-AMEND-1 clause is preserved by every machine step, including entry.
+(defthm fn-pth-i-reading-does-not-enter-flight
+ (implies (equal (fn-ptx-ph m) :reading)
+          (not (fn-ptx-in-flight-p (fn-ptx-ph (mv-nth 0 (fn-ptx-read m q id inc st))))))
+ :hints (("Goal" :use (fn-ptx-read-fields)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-ptx-in-flight-p member-equal (:executable-counterpart equal)
+     (:executable-counterpart member-equal))))))
+
+(defthm fn-pth-i-step-keeps-flight-trailer-clause
+ (let ((m2 (mv-nth 0 (fn-ptx-step m ev st q))))
+  (implies (implies (fn-ptx-in-flight-p (fn-ptx-ph m))
+                    (fn-cbor-octet-listp (fn-rtc-get 1 (fn-ptx-hs m))))
+           (implies (fn-ptx-in-flight-p (fn-ptx-ph m2))
+                    (fn-cbor-octet-listp (fn-rtc-get 1 (fn-ptx-hs m2))))))
+ :hints (("Goal" :do-not-induct t
+  :cases ((fn-ptx-in-flight-p (fn-ptx-ph m)))
+  :use ((:instance fn-pth-i-step-preserves-flight-trailer-octets)
+        (:instance fn-pth-i-hash-establishes-flight-trailer-octets
+          (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev)))
+        (:instance fn-pth-i-reading-does-not-enter-flight
+          (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev))))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-ptx-opened fn-ptx-end-0 fn-ptx-step fn-ptx-step1-0 fn-ptx-accessors-of-mk fn-ptx-start-0
+     fn-ptx-in-flight-p fn-ptx-broken fn-pth-i-end-does-not-enter-flight
+     fn-hld-mv-nth-0-cons car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart member-equal))))))
+
+
+; Actual owner end delivery consumes the admitted end composition.
+(defthm fn-pth-i-post-storage-chain-and-extents
+ (implies (fn-pth-i-post-storage m s)
+  (and (fn-cbor-octet-listp (fn-ptx-kd-last (fn-ptx-kd m)))
+       (< (fn-ptx-ext m) (expt 2 64)) (< (fn-ptx-nxt m) (expt 2 64))
+       (implies (fn-ptx-in-flight-p (fn-ptx-ph m))
+                (fn-cbor-octet-listp (fn-rtc-get 1 (fn-ptx-hs m))))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-i-post-storage)))))
+
+(defthm fn-pth-i-kd-commit-last
+ (equal (fn-ptx-kd-last (fn-ptx-kd-commit kd trailer elen)) trailer)
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-ptx-kd-commit fn-ptx-kd-last fn-ptx-kd-mk fn-rtc-get-of-cons
+    car-cons cdr-cons (:executable-counterpart nfix) (:executable-counterpart zp)
+    (:executable-counterpart binary-+))))))
+
+(defthm fn-pth-i-owner-end-deliver
+ (let* ((m (fn-rtc-mstate 1 s)) (old (fn-ptx-chg m :committed nil))
+        (end (fn-ptx-end old o kd ext fenced committed 1 1 s))
+        (step (fn-ptx-step m ev s (nfix q))))
+  (implies (and (fn-pth-i-runtime s) (fn-pth-i-post-storage old s)
+                (fn-pth-i-owner-uses (fn-rtc-uses s) nil)
+                (member-eq (fn-ptx-ph old) '(:reading :hashing :extending :extsyncing :payload-writing :log-writing :committing))
+                (fn-cbor-octet-listp (fn-ptx-kd-last kd)) (< (nfix ext) (expt 2 64))
+                (equal (fn-rtc-ev-id ev) 1) (equal (fn-rtc-ev-inc ev) 1)
+                (equal (mv-nth 0 step) (mv-nth 0 end))
+                (equal (mv-nth 1 step) (mv-nth 1 end))
+                (fn-ptx-okp (mv-nth 0 end)))
+   (and (fn-pth-i (mv-nth 0 (fn-pth-deliver s 1 1 ev q)))
+        (not (mv-nth 2 (fn-pth-deliver s 1 1 ev q))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-ptx-step-reads-view (m (fn-rtc-mstate 1 s)) (st s) (q (nfix q)))
+        (:instance fn-pth-i-end-after-machine
+          (m (fn-ptx-chg (fn-rtc-mstate 1 s) :committed nil))))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-rtc-view-state fn-pth-deliver fn-pth-m-step fn-pthm-step
+     fn-hld-mv-nth-0-cons fn-pth-i-mv-nth-2-cons-by-definition
+     car-cons cdr-cons)))))
+
+
+; All actual in-flight owner completions preserve full I and have no refusals.
+(defthm fn-pth-i-flight-end-machine-results
+ (let* ((ph (fn-ptx-ph m)) (kind (fn-rtc-get 0 ev))
+        (tag (fn-rtc-get 0 (fn-rtc-get 1 ev))) (n (fn-rtc-get 1 (fn-rtc-get 1 ev)))
+        (commit (and (equal ph :committing) (equal tag :done)))
+        (kd (if commit (fn-ptx-kd-commit (fn-ptx-kd m) (fn-rtc-get 1 (fn-ptx-hs m)) (fn-ptx-elen m)) (fn-ptx-kd m)))
+        (ext (if commit (fn-ptx-nxt m) (fn-ptx-ext m)))
+        (o (if commit :posted (if (member-eq ph '(:extending :extsyncing)) :refused :uncertain)))
+        (end (fn-ptx-end (fn-ptx-chg m :committed nil) o kd ext (not commit) commit
+                        (fn-rtc-ev-id ev) (fn-rtc-ev-inc ev) st)))
+  (implies (and (fn-ptx-okp m)
+                (or (and (equal ph :extending) (equal kind :extend) (not (equal tag :done)))
+                    (and (equal ph :extsyncing) (equal kind :fsync) (not (equal tag :done)))
+                    (and (member-eq ph '(:payload-writing :log-writing)) (equal kind :pwrite)
+                         (not (and (equal tag :done) (equal n (fn-ptx-span-n (fn-ptx-k m) m)))))
+                    (and (equal ph :committing) (equal kind :fsync))))
+           (and (equal (mv-nth 0 (fn-ptx-step m ev st q)) (mv-nth 0 end))
+                (equal (mv-nth 1 (fn-ptx-step m ev st q)) (mv-nth 1 end))
+                (fn-ptx-okp (mv-nth 0 end)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-ptx-step-keeps-ok)
+  :cases ((equal (fn-ptx-ph m) :extending) (equal (fn-ptx-ph m) :extsyncing)
+          (equal (fn-ptx-ph m) :payload-writing) (equal (fn-ptx-ph m) :log-writing))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-ptx-step fn-ptx-step1 fn-ptx-okp-wfp fn-hld-mv-nth-0-cons
+     fn-pth-i-mv-nth-1-cons-by-definition car-cons cdr-cons
+     member-equal (:executable-counterpart equal) (:executable-counterpart member-equal))))))
+
+(defthm fn-pth-i-flight-end-host-delivery
+ (let* ((m (fn-rtc-mstate 1 s)) (ph (fn-ptx-ph m))
+        (tag (fn-rtc-get 0 (fn-rtc-get 1 ev))) (n (fn-rtc-get 1 (fn-rtc-get 1 ev))))
+  (implies (and (fn-pth-i s) (fn-ptx-in-flight-p ph)
+                (fn-rtc-completionp e) (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))
+                (equal (fn-rtc-e-id e) 1) (equal (fn-rtc-e-inc e) 1)
+                (equal (fn-rtc-e-kind e) (fn-ptx-expected m))
+                (equal (fn-rtc-ev-id ev) 1) (equal (fn-rtc-ev-inc ev) 1)
+                (equal (fn-rtc-get 0 ev) (fn-ptx-expected m))
+                (or (and (member-eq ph '(:extending :extsyncing)) (not (equal tag :done)))
+                    (and (member-eq ph '(:payload-writing :log-writing))
+                         (not (and (equal tag :done) (equal n (fn-ptx-span-n (fn-ptx-k m) m)))))
+                    (equal ph :committing)))
+           (and (fn-pth-i (mv-nth 0 (fn-pth-deliver (fn-rtc-end-use s e) 1 1 ev q)))
+                (not (mv-nth 2 (fn-pth-deliver (fn-rtc-end-use s e) 1 1 ev q))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :cases ((equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :extending)
+          (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :extsyncing)
+          (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :payload-writing)
+          (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :log-writing))
+  :use (fn-pth-i-before-machine-after-end-use
+        (:instance fn-pth-i-owner-protocol-after-expected-completion (m2 nil))
+        (:instance fn-pth-i-post-storage-machine-facts (m (fn-rtc-mstate 1 s)) (s (fn-rtc-end-use s e)))
+        (:instance fn-pth-i-post-storage-chain-and-extents (m (fn-rtc-mstate 1 s)) (s (fn-rtc-end-use s e)))
+        (:instance fn-pth-i-post-storage-m0 (m (fn-rtc-mstate 1 s)) (s (fn-rtc-end-use s e)))
+        (:instance fn-pth-i-flight-end-machine-results (m (fn-rtc-mstate 1 s)) (st (fn-rtc-end-use s e)) (q (nfix q)))
+        (:instance fn-pth-i-owner-end-deliver (s (fn-rtc-end-use s e)) (kd (if (and (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :committing) (equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done)) (fn-ptx-kd-commit (fn-ptx-kd (fn-rtc-mstate 1 s)) (fn-rtc-get 1 (fn-ptx-hs (fn-rtc-mstate 1 s))) (fn-ptx-elen (fn-rtc-mstate 1 s))) (fn-ptx-kd (fn-rtc-mstate 1 s)))) (ext (if (and (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :committing) (equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done)) (fn-ptx-nxt (fn-rtc-mstate 1 s)) (fn-ptx-ext (fn-rtc-mstate 1 s)))) (o (if (and (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :committing) (equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done)) :posted (if (member-eq (fn-ptx-ph (fn-rtc-mstate 1 s)) '(:extending :extsyncing)) :refused :uncertain)))
+          (fenced (not (and (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :committing) (equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done)))) (committed (and (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :committing) (equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done)))))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-pth-i-mstate-of-end-use fn-pth-i-kd-commit-last fn-ptx-expected
+     fn-ptx-in-flight-p fn-ptx-accessors-of-mk member-equal nfix natp
+     (:type-prescription fn-ptx-ext) (:type-prescription fn-ptx-nxt)
+     (:executable-counterpart equal) (:executable-counterpart member-equal)
+     (:executable-counterpart nfix) (:executable-counterpart zp))))))
+
+(defthm fn-pth-i-direct-owner-completion-is-expected
+ (let ((m (fn-rtc-mstate 1 s)))
+  (implies (and (fn-pth-i s) (fn-rtc-acts-on-p s e) (equal (fn-rtc-e-id e) 1)
+                (not (equal (fn-rtc-e-kind e) :hand))
+                (not (and (equal (fn-ptx-ph m) :closed) (equal (fn-rtc-e-kind e) :opened))))
+           (and (fn-ptx-expected m) (equal (fn-rtc-e-kind e) (fn-ptx-expected m)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-pth-i-runtime-and-post-state-by-definition
+        (:instance fn-pth-i-post-storage-and-protocol-by-definition (m (fn-rtc-mstate 1 s)))
+        fn-pth-i-direct-owner-completion
+        (:instance fn-rtc-matching-use-fields (uses (fn-rtc-uses s)))
+        (:instance fn-rtc-kind-out-of-found-use (key (fn-rtc-key e)) (uses (fn-rtc-uses s)))
+        (:instance fn-pth-i-owner-kind-out-is-protocol-kind (m (fn-rtc-mstate 1 s))
+          (kind (fn-rtc-e-kind e)) (inc 1) (uses (fn-rtc-uses s))))
+  :in-theory (theory 'minimal-theory))))
+
+(defthm fn-pth-i-owner-flight-end-step
+ (let* ((m (fn-rtc-mstate 1 s)) (ph (fn-ptx-ph m))
+        (out (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e))
+        (tag (fn-rtc-get 0 out)) (n (fn-rtc-get 1 out)))
+  (implies (and (fn-pth-i s) (fn-ptx-in-flight-p ph)
+                (fn-rtc-acts-on-p s e) (equal (fn-rtc-e-id e) 1)
+                (not (equal (fn-rtc-e-kind e) :hand))
+                (or (and (member-eq ph '(:extending :extsyncing)) (not (equal tag :done)))
+                    (and (member-eq ph '(:payload-writing :log-writing))
+                         (not (and (equal tag :done) (equal n (fn-ptx-span-n (fn-ptx-k m) m)))))
+                    (equal ph :committing)))
+           (and (fn-pth-i (mv-nth 0 (fn-pth-step s e q)))
+                (not (mv-nth 2 (fn-pth-step* s e q))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-pth-i-runtime-and-post-state-by-definition fn-pth-i-direct-owner-completion
+        fn-pth-i-direct-owner-completion-is-expected
+        (:instance fn-pth-i-flight-end-host-delivery
+          (ev (fn-rtc-ev (fn-rtc-e-kind e)
+                (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e) 1 1 nil))))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-pth-step fn-pth-step* fn-pth-i-rearm fn-ptx-expected fn-ptx-in-flight-p member-equal
+     fn-rtc-acts-on-p fn-rtc-hand-delivers-p fn-rtc-ev fn-rtc-ev-id fn-rtc-ev-inc fn-rtc-get-of-cons
+     fn-hld-mv-nth-0-cons fn-pth-i-mv-nth-2-cons-by-definition car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart fn-rtc-get)
+     (:executable-counterpart nfix) (:executable-counterpart zp) (:executable-counterpart binary-+))))))
+
+(defthm fn-pth-i-owner-flight-step
+ (implies (and (fn-pth-i s) (fn-ptx-in-flight-p (fn-ptx-ph (fn-rtc-mstate 1 s)))
+               (fn-rtc-acts-on-p s e) (equal (fn-rtc-e-id e) 1)
+               (not (equal (fn-rtc-e-kind e) :hand)))
+          (and (fn-pth-i (mv-nth 0 (fn-pth-step s e q)))
+               (not (mv-nth 2 (fn-pth-step* s e q)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :cases ((equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :extending)
+          (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :extsyncing)
+          (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :payload-writing)
+          (equal (fn-ptx-ph (fn-rtc-mstate 1 s)) :log-writing))
+  :use (fn-pth-i-direct-owner-completion-is-expected fn-pth-i-owner-flight-end-step
+        fn-pth-i-owner-extend-done-step fn-pth-i-owner-extsync-done-step
+        fn-pth-i-owner-payload-done-step fn-pth-i-owner-log-done-step)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-ptx-in-flight-p fn-ptx-expected member-equal
+     (:executable-counterpart equal) (:executable-counterpart member-equal))))))
+
+
+; Reading: real free-home selection/admission and actual refusal completions.
+(defthm fn-pth-i-free-view-is-real-home
+ (implies (and (natp h) (equal (fn-rtc-st-v-owner h 1 1 s) '(:free)))
+  (and (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) '(:free))
+       (equal (fn-rtc-home h (fn-rtc-config s)) 1)
+       (equal (fn-ptx-gen h 1 1 s) (fn-rtc-b-gen (fn-rtc-buffer h s)))))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-rtc-st-v-owner fn-rtc-st$a-v-owner fn-ptx-gen fn-rtc-st-v-gen fn-rtc-st$a-v-gen
+     fn-rtc-vb fn-rtc-view fn-rtc-c-get-of-view-pool fn-rtc-view-own-p fn-rtc-view-mine-p
+     fn-rtc-buffer fn-rtc-buffer-accessors fn-rtc-get-of-cons
+     nfix natp default-+-1 default-+-2 unicity-of-0 fix
+     (:type-prescription fn-rtc-b-gen) car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart nfix)
+     (:executable-counterpart zp) (:executable-counterpart fn-rtc-get)
+     (:executable-counterpart binary-+) (:executable-counterpart fn-rtc-b-owner))))))
+
+(defthm fn-pth-i-free-selection-properties
+ (let ((h (fn-ptx-free i skip 1 1 s)))
+  (implies h
+   (and (natp h) (< h (fn-rtc-nstatic-home (fn-rtc-config s)))
+        (< h (fn-rtc-nbufs (fn-rtc-config s))) (not (equal h skip))
+        (equal (fn-rtc-st-v-owner h 1 1 s) '(:free)))))
+ :hints (("Goal" :induct (fn-ptx-free i skip 1 1 s)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-ptx-free fn-rtc-st-config fn-rtc-st$a-config min nfix natp
+     default-+-1 default-+-2 unicity-of-0 fix
+     (:type-prescription fn-rtc-nstatic-home) (:type-prescription fn-rtc-nbufs)
+     (:type-prescription fn-ptx-free-natp-or-nil)
+     (:executable-counterpart equal) (:executable-counterpart nfix)
+     (:executable-counterpart zp) (:executable-counterpart binary-+))))))
+
+(defthm fn-pth-i-free-selection-is-small-and-untracked
+ (let ((h (fn-ptx-free i skip 1 1 s)))
+  (implies (and (fn-pth-i-runtime s) (fn-pth-i-post-storage m s) h)
+           (and (< h *fn-pth-qs*) (fn-pth-i-storage-avoids m h))))
+ :hints (("Goal" :do-not-induct t
+  :use (fn-pth-i-free-selection-properties
+        (:instance fn-pth-i-free-view-is-real-home (h (fn-ptx-free i skip 1 1 s)))
+        (:instance fn-pth-i-storage-avoids-invisible (h (fn-ptx-free i skip 1 1 s))))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-pth-i-runtime fn-pth-i-visible-buffer (:executable-counterpart equal))))))
+
+(defthm fn-pth-i-acquire-free-home
+ (let ((r (list :acquire h)))
+  (implies (and (fn-pth-i-runtime s) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                (equal (fn-rtc-home h (fn-rtc-config s)) 1)
+                (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) '(:free)))
+           (and (not (mv-nth 2 (fn-rtc-request r 1 1 s)))
+                (equal (mv-nth 0 (fn-rtc-request r 1 1 s))
+                       (fn-rtc-with-buffer h (list (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h s))) '(:workspace 1 1) nil) s)))))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-pth-i-runtime fn-rtc-request fn-rtc-req-acquire fn-rtc-live-p fn-rtc-current-p
+     fn-rtc-s-inc fn-rtc-s-status fn-rtc-get-of-cons fn-hld-mv-nth-0-cons
+     fn-pth-i-mv-nth-2-cons-by-definition nfix natp posp car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart nfix)
+     (:executable-counterpart zp) (:executable-counterpart binary-+))))))
+
+(defthm fn-pth-i-read-refusal-machine-results
+ (let ((read (fn-ptx-read m q 1 1 s))
+       (end (fn-ptx-end (fn-ptx-chg m :committed nil) :refused (fn-ptx-kd m) (fn-ptx-ext m) nil nil 1 1 s)))
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :reading)
+                (not (equal (fn-ptx-ph (mv-nth 0 read)) :hashing)))
+           (and (equal (mv-nth 0 read) (mv-nth 0 end))
+                (equal (mv-nth 1 read) (mv-nth 1 end))
+                (fn-ptx-okp (mv-nth 0 end)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-ptx-read-ok (id 1) (inc 1) (st s)))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-ptx-read fn-ptx-accessors-of-mk fn-hld-mv-nth-0-cons
+     fn-pth-i-mv-nth-1-cons-by-definition car-cons cdr-cons
+     (:executable-counterpart equal))))))
+
+(defthm fn-pth-i-read-refusal-host-delivery
+ (let ((m (fn-rtc-mstate 1 s)))
+  (implies (and (fn-pth-i s) (equal (fn-ptx-ph m) :reading)
+                (fn-rtc-completionp e) (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))
+                (equal (fn-rtc-e-id e) 1) (equal (fn-rtc-e-inc e) 1) (equal (fn-rtc-e-kind e) :timer)
+                (equal (fn-rtc-ev-id ev) 1) (equal (fn-rtc-ev-inc ev) 1) (equal (fn-rtc-get 0 ev) :timer)
+                (not (equal (fn-ptx-ph (mv-nth 0 (fn-ptx-read m (nfix q) 1 1 (fn-rtc-end-use s e)))) :hashing)))
+           (and (fn-pth-i (mv-nth 0 (fn-pth-deliver (fn-rtc-end-use s e) 1 1 ev q)))
+                (not (mv-nth 2 (fn-pth-deliver (fn-rtc-end-use s e) 1 1 ev q))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-pth-i-before-machine-after-end-use
+        (:instance fn-pth-i-owner-protocol-after-expected-completion (m2 nil))
+        (:instance fn-pth-i-post-storage-machine-facts (m (fn-rtc-mstate 1 s)) (s (fn-rtc-end-use s e)))
+        (:instance fn-pth-i-post-storage-chain-and-extents (m (fn-rtc-mstate 1 s)) (s (fn-rtc-end-use s e)))
+        (:instance fn-pth-i-post-storage-m0 (m (fn-rtc-mstate 1 s)) (s (fn-rtc-end-use s e)))
+        (:instance fn-pth-i-read-refusal-machine-results (m (fn-rtc-mstate 1 s)) (s (fn-rtc-end-use s e)) (q (nfix q)))
+        (:instance fn-pth-i-owner-end-deliver (s (fn-rtc-end-use s e)) (o :refused)
+          (kd (fn-ptx-kd (fn-rtc-mstate 1 s))) (ext (fn-ptx-ext (fn-rtc-mstate 1 s))) (fenced nil) (committed nil)))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-pth-i-mstate-of-end-use fn-ptx-expected fn-ptx-accessors-of-mk
+     fn-ptx-step fn-ptx-step1 fn-ptx-okp-wfp fn-hld-mv-nth-0-cons
+     fn-pth-i-mv-nth-1-cons-by-definition car-cons cdr-cons nfix natp
+     (:type-prescription fn-ptx-ext) (:executable-counterpart equal)
+     (:executable-counterpart member-equal) (:executable-counterpart nfix) (:executable-counterpart zp))))))
+
+(defthm fn-pth-i-owner-read-refusal-step
+ (let ((m (fn-rtc-mstate 1 s)))
+  (implies (and (fn-pth-i s) (equal (fn-ptx-ph m) :reading)
+                (fn-rtc-acts-on-p s e) (equal (fn-rtc-e-id e) 1)
+                (not (equal (fn-rtc-e-kind e) :hand))
+                (not (equal (fn-ptx-ph (mv-nth 0 (fn-ptx-read m (nfix q) 1 1 (fn-rtc-end-use s e)))) :hashing)))
+           (and (fn-pth-i (mv-nth 0 (fn-pth-step s e q)))
+                (not (mv-nth 2 (fn-pth-step* s e q))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-pth-i-runtime-and-post-state-by-definition fn-pth-i-direct-owner-completion
+        fn-pth-i-direct-owner-completion-is-expected
+        (:instance fn-pth-i-read-refusal-host-delivery
+          (ev (fn-rtc-ev :timer
+                (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e) 1 1 nil))))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-pth-step fn-pth-step* fn-pth-i-rearm fn-ptx-expected
+     fn-rtc-acts-on-p fn-rtc-hand-delivers-p fn-rtc-ev fn-rtc-ev-id fn-rtc-ev-inc fn-rtc-get-of-cons
+     fn-hld-mv-nth-0-cons fn-pth-i-mv-nth-2-cons-by-definition car-cons cdr-cons
+     (:executable-counterpart equal) (:executable-counterpart fn-rtc-get) (:executable-counterpart member-equal)
+     (:executable-counterpart nfix) (:executable-counterpart zp) (:executable-counterpart binary-+))))))
+
+
+; Read setup: typed request effects and composition through two owner homes.
+(defthm fn-pth-i-member-append-used
+ (iff (member-equal a (append x y))
+      (or (member-equal a x) (member-equal a y)))
+ :hints (("Goal" :induct (binary-append x y)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(binary-append member-equal car-cons cdr-cons)))))
+
+(defthm fn-pth-i-queue-grow-used
+ (implies (and (fn-pth-i-queue ps s used) (fn-pth-i-queue-avoids ps h))
+          (fn-pth-i-queue ps s (append used (list h))))
+ :hints (("Goal" :induct (fn-pth-i-queue ps s used)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-pth-i-queue fn-pth-i-queue-avoids fn-pth-i-member-append-used
+     binary-append member-equal car-cons cdr-cons)))))
+
+(defthm fn-pth-i-append-nil-for-true-lists
+ (implies (true-listp x) (equal (append x nil) x))
+ :hints (("Goal" :induct (true-listp x)
+  :in-theory (union-theories (theory 'minimal-theory) '(true-listp binary-append car-cons cdr-cons)))))
+
+(defthm fn-pth-i-splice-empty-is-data
+ (implies (fn-cbor-octet-listp data) (equal (fn-rtc-splice nil 0 data) data))
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-cbor-octet-listp-implies-true-listp (xs data)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-rtc-splice fn-rtc-true-list-fix-identity fn-pth-i-append-nil-for-true-lists
+     fn-rtc-c-nthcdr-past-len binary-append nfix natp
+     (:type-prescription len) (:executable-counterpart min) (:executable-counterpart len)
+     (:executable-counterpart true-listp) (:executable-counterpart true-list-fix)
+     (:executable-counterpart take) (:executable-counterpart nfix)
+     (:executable-counterpart binary-+) (:executable-counterpart equal))))))
+
+(defthm fn-pth-i-fill-empty-workspace
+ (let ((r (list :write h g 0 data)))
+  (implies (and (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) '(:workspace 1 1))
+                (equal (fn-rtc-b-gen (fn-rtc-buffer h s)) g)
+                (not (fn-rtc-b-bytes (fn-rtc-buffer h s)))
+                (fn-cbor-octet-listp data) (<= (len data) (fn-rtc-buf-cap h (fn-rtc-config s))))
+           (and (not (mv-nth 2 (fn-rtc-request r 1 1 s)))
+                (equal (mv-nth 0 (fn-rtc-request r 1 1 s))
+                       (fn-rtc-with-buffer h (list g '(:workspace 1 1) data) s)))))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-rtc-request fn-rtc-req-write fn-pth-i-splice-empty-is-data fn-rtc-get-of-cons
+     fn-hld-mv-nth-0-cons fn-pth-i-mv-nth-2-cons-by-definition nfix natp car-cons cdr-cons
+     default-+-1 default-+-2 unicity-of-0 fix
+     (:type-prescription len)
+     (:executable-counterpart equal) (:executable-counterpart nfix)
+     (:executable-counterpart zp) (:executable-counterpart len) (:executable-counterpart binary-+))))))
+
+(defthm fn-pth-i-acquire-home-components
+ (let* ((r (list :acquire h)) (s2 (mv-nth 0 (fn-rtc-request r 1 1 s))))
+  (implies (and (fn-pth-i-runtime s) (fn-pth-i-post-storage m s) (fn-pth-i-storage-avoids m h)
+                (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                (equal (fn-rtc-home h (fn-rtc-config s)) 1)
+                (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) '(:free)))
+           (and (fn-pth-i-runtime s2) (fn-pth-i-post-storage m s2)
+                (equal s2 (fn-rtc-with-buffer h (list (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h s))) '(:workspace 1 1) nil) s))
+                (equal (fn-rtc-uses s2) (fn-rtc-uses s))
+                (not (mv-nth 2 (fn-rtc-request r 1 1 s))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-pth-i-acquire-free-home
+        (:instance fn-pth-i-runtime-request (r (list :acquire h)) (id 1) (inc 1))
+        (:instance fn-pth-i-post-storage-untracked-request (r (list :acquire h))))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '((:type-prescription fn-rtc-request) (:type-prescription fn-rtc-with-buffer) fn-rtc-with-accessors fn-rtc-get-of-cons car-cons cdr-cons nfix natp
+     (:executable-counterpart fn-rtc-get) (:executable-counterpart equal)
+     (:executable-counterpart nfix) (:executable-counterpart zp)
+     (:executable-counterpart binary-+) (:executable-counterpart member-equal))))))
+
+(defthm fn-pth-i-fill-home-components
+ (let* ((r (list :write h g 0 data)) (s2 (mv-nth 0 (fn-rtc-request r 1 1 s))))
+  (implies (and (fn-pth-i-runtime s) (fn-pth-i-post-storage m s) (fn-pth-i-storage-avoids m h)
+                (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) '(:workspace 1 1))
+                (equal (fn-rtc-b-gen (fn-rtc-buffer h s)) g)
+                (not (fn-rtc-b-bytes (fn-rtc-buffer h s)))
+                (fn-cbor-octet-listp data) (<= (len data) (fn-rtc-buf-cap h (fn-rtc-config s))))
+           (and (fn-pth-i-runtime s2) (fn-pth-i-post-storage m s2)
+                (equal s2 (fn-rtc-with-buffer h (list g '(:workspace 1 1) data) s))
+                (equal (fn-rtc-uses s2) (fn-rtc-uses s))
+                (not (mv-nth 2 (fn-rtc-request r 1 1 s))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-pth-i-fill-empty-workspace
+        (:instance fn-pth-i-runtime-request (r (list :write h g 0 data)) (id 1) (inc 1))
+        (:instance fn-pth-i-post-storage-untracked-request (r (list :write h g 0 data))))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '((:type-prescription fn-rtc-request) (:type-prescription fn-rtc-with-buffer) fn-rtc-with-accessors fn-rtc-get-of-cons car-cons cdr-cons nfix natp
+     (:executable-counterpart fn-rtc-get) (:executable-counterpart equal)
+     (:executable-counterpart nfix) (:executable-counterpart zp)
+     (:executable-counterpart binary-+) (:executable-counterpart member-equal))))))
+
+(defthm fn-pth-i-buffer-of-acquire-home
+ (implies (and (fn-pth-i-runtime s) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+               (equal (fn-rtc-home h (fn-rtc-config s)) 1)
+               (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) '(:free)))
+  (equal (fn-rtc-buffer j (mv-nth 0 (fn-rtc-request (list :acquire h) 1 1 s)))
+         (if (equal (nfix j) h)
+             (list (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h s))) '(:workspace 1 1) nil)
+           (fn-rtc-buffer j s))))
+ :hints (("Goal" :do-not-induct t
+  :use (fn-pth-i-acquire-free-home fn-pth-i-runtime-shape-by-definition
+        (:instance fn-rtc-buffer-of-with (h j) (k h)
+          (b (list (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h s))) '(:workspace 1 1) nil))))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-rtc-shapep nfix natp (:type-prescription fn-rtc-request)
+     (:executable-counterpart equal))))))
+
+(defthm fn-pth-i-buffer-of-fill-home
+ (implies (and (fn-pth-i-runtime s) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+               (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) '(:workspace 1 1))
+               (equal (fn-rtc-b-gen (fn-rtc-buffer h s)) g)
+               (not (fn-rtc-b-bytes (fn-rtc-buffer h s)))
+               (fn-cbor-octet-listp data) (<= (len data) (fn-rtc-buf-cap h (fn-rtc-config s))))
+  (equal (fn-rtc-buffer j (mv-nth 0 (fn-rtc-request (list :write h g 0 data) 1 1 s)))
+         (if (equal (nfix j) h) (list g '(:workspace 1 1) data) (fn-rtc-buffer j s))))
+ :hints (("Goal" :do-not-induct t
+  :use (fn-pth-i-fill-empty-workspace fn-pth-i-runtime-shape-by-definition
+        (:instance fn-rtc-buffer-of-with (h j) (k h) (b (list g '(:workspace 1 1) data))))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-rtc-shapep nfix natp (:type-prescription fn-rtc-request)
+     (:executable-counterpart equal))))))
+
+(defthm fn-pth-i-runtime-pool-length-by-definition
+ (implies (fn-pth-i-runtime s)
+          (equal (len (fn-rtc-pool s)) (fn-rtc-nbufs (fn-rtc-config s))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  '(fn-pth-i-runtime fn-rtc-shapep)))))
+
+(defthm fn-pth-i-acquire-two-homes
+ (let* ((g1 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h1 s)))) (g3 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h3 s))))
+   (rs (list (list :acquire h1) (list :acquire h3))) (s2 (mv-nth 0 (fn-rtc-requests rs 1 1 s))))
+  (implies (and (fn-pth-i-runtime s) (fn-pth-i-post-storage m s) (fn-pth-i-owner-uses (fn-rtc-uses s) m)
+    (fn-pth-i-storage-avoids m h1) (fn-pth-i-storage-avoids m h3)
+    (natp h1) (natp h3) (not (equal h1 h3))
+    (< h1 (fn-rtc-nbufs (fn-rtc-config s))) (< h3 (fn-rtc-nbufs (fn-rtc-config s)))
+    (equal (fn-rtc-home h1 (fn-rtc-config s)) 1) (equal (fn-rtc-home h3 (fn-rtc-config s)) 1)
+    (equal (fn-rtc-b-owner (fn-rtc-buffer h1 s)) '(:free)) (equal (fn-rtc-b-owner (fn-rtc-buffer h3 s)) '(:free)))
+   (and (fn-pth-i-runtime s2) (fn-pth-i-post-storage m s2)
+    (equal (fn-rtc-buffer h1 s2) (list g1 '(:workspace 1 1) nil))
+    (equal (fn-rtc-buffer h3 s2) (list g3 '(:workspace 1 1) nil))
+    (equal (fn-rtc-uses s2) (fn-rtc-uses s))
+    (not (mv-nth 2 (fn-rtc-requests rs 1 1 s))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t :do-not '(preprocess)
+  :use ((:instance fn-pth-i-acquire-home-components (h h1)) (:instance fn-pth-i-acquire-home-components (h h3) (s (mv-nth 0 (fn-rtc-request (list :acquire h1) 1 1 s)))))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-pth-i-runtime-pool-length-by-definition fn-rtc-len-of-set fn-pth-i-buffer-of-acquire-home fn-pth-i-buffer-of-fill-home fn-rtc-request-config-frame fn-rtc-requests fn-rtc-with-accessors fn-rtc-buffer-of-with fn-rtc-buffer-accessors fn-rtc-get-of-cons
+     fn-hld-mv-nth-0-cons fn-pth-i-mv-nth-2-cons-by-definition binary-append member-equal car-cons cdr-cons
+     nfix natp default-+-1 default-+-2 unicity-of-0 fix
+     (:type-prescription fn-rtc-b-gen) (:type-prescription len)
+     (:type-prescription fn-rtc-request) (:type-prescription fn-rtc-requests)
+     (:executable-counterpart equal) (:executable-counterpart fn-rtc-get)
+     (:executable-counterpart nfix) (:executable-counterpart zp) (:executable-counterpart binary-+)
+     (:executable-counterpart member-equal))))))
+
+(defthm fn-pth-i-fill-two-homes
+ (let* (
+   (rs (list (list :write h1 g1 0 data1) (list :write h3 g3 0 data3))) (s2 (mv-nth 0 (fn-rtc-requests rs 1 1 s))))
+  (implies (and (fn-pth-i-runtime s) (fn-pth-i-post-storage m s) (fn-pth-i-owner-uses (fn-rtc-uses s) m)
+    (fn-pth-i-storage-avoids m h1) (fn-pth-i-storage-avoids m h3)
+    (natp h1) (natp h3) (not (equal h1 h3))
+    (< h1 (fn-rtc-nbufs (fn-rtc-config s))) (< h3 (fn-rtc-nbufs (fn-rtc-config s)))
+    (equal (fn-rtc-b-owner (fn-rtc-buffer h1 s)) '(:workspace 1 1)) (equal (fn-rtc-b-owner (fn-rtc-buffer h3 s)) '(:workspace 1 1))
+    (equal (fn-rtc-b-gen (fn-rtc-buffer h1 s)) g1) (equal (fn-rtc-b-gen (fn-rtc-buffer h3 s)) g3)
+    (not (fn-rtc-b-bytes (fn-rtc-buffer h1 s))) (not (fn-rtc-b-bytes (fn-rtc-buffer h3 s)))
+    (fn-cbor-octet-listp data1) (fn-cbor-octet-listp data3)
+    (<= (len data1) (fn-rtc-buf-cap h1 (fn-rtc-config s))) (<= (len data3) (fn-rtc-buf-cap h3 (fn-rtc-config s))))
+   (and (fn-pth-i-runtime s2) (fn-pth-i-post-storage m s2)
+    (equal (fn-rtc-buffer h1 s2) (list g1 '(:workspace 1 1) data1))
+    (equal (fn-rtc-buffer h3 s2) (list g3 '(:workspace 1 1) data3))
+    (equal (fn-rtc-uses s2) (fn-rtc-uses s))
+    (not (mv-nth 2 (fn-rtc-requests rs 1 1 s))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t :do-not '(preprocess)
+  :use ((:instance fn-pth-i-fill-home-components (h h1) (g g1) (data data1)) (:instance fn-pth-i-fill-home-components (h h3) (g g3) (data data3) (s (mv-nth 0 (fn-rtc-request (list :write h1 g1 0 data1) 1 1 s)))))
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   '(fn-pth-i-runtime-pool-length-by-definition fn-rtc-len-of-set fn-pth-i-buffer-of-acquire-home fn-pth-i-buffer-of-fill-home fn-rtc-request-config-frame fn-rtc-requests fn-rtc-with-accessors fn-rtc-buffer-of-with fn-rtc-buffer-accessors fn-rtc-get-of-cons
+     fn-hld-mv-nth-0-cons fn-pth-i-mv-nth-2-cons-by-definition binary-append member-equal car-cons cdr-cons
+     nfix natp default-+-1 default-+-2 unicity-of-0 fix
+     (:type-prescription fn-rtc-b-gen) (:type-prescription len)
+     (:type-prescription fn-rtc-request) (:type-prescription fn-rtc-requests)
+     (:executable-counterpart equal) (:executable-counterpart fn-rtc-get)
+     (:executable-counterpart nfix) (:executable-counterpart zp) (:executable-counterpart binary-+)
+     (:executable-counterpart member-equal))))))
+
+(defthm fn-pth-i-acquire-fill-two-homes
+ (let* ((g1 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h1 s))))
+        (g3 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h3 s))))
+        (rs (list (list :acquire h1) (list :acquire h3)
+                  (list :write h1 g1 0 data1) (list :write h3 g3 0 data3)))
+        (s2 (mv-nth 0 (fn-rtc-requests rs 1 1 s))))
+  (implies (and (fn-pth-i-runtime s) (fn-pth-i-post-storage m s)
+                (fn-pth-i-owner-uses (fn-rtc-uses s) m)
+                (fn-pth-i-storage-avoids m h1) (fn-pth-i-storage-avoids m h3)
+                (natp h1) (natp h3) (not (equal h1 h3))
+                (< h1 (fn-rtc-nbufs (fn-rtc-config s))) (< h3 (fn-rtc-nbufs (fn-rtc-config s)))
+                (equal (fn-rtc-home h1 (fn-rtc-config s)) 1) (equal (fn-rtc-home h3 (fn-rtc-config s)) 1)
+                (equal (fn-rtc-b-owner (fn-rtc-buffer h1 s)) '(:free))
+                (equal (fn-rtc-b-owner (fn-rtc-buffer h3 s)) '(:free))
+                (fn-cbor-octet-listp data1) (fn-cbor-octet-listp data3)
+                (<= (len data1) (fn-rtc-buf-cap h1 (fn-rtc-config s)))
+                (<= (len data3) (fn-rtc-buf-cap h3 (fn-rtc-config s))))
+           (and (fn-pth-i-runtime s2) (fn-pth-i-post-storage m s2)
+                (equal (fn-rtc-buffer h1 s2) (list g1 '(:workspace 1 1) data1))
+                (equal (fn-rtc-buffer h3 s2) (list g3 '(:workspace 1 1) data3))
+                (equal (fn-rtc-uses s2) (fn-rtc-uses s))
+                (not (mv-nth 2 (fn-rtc-requests rs 1 1 s))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+ :use ((:instance fn-pth-i-acquire-two-homes)
+       (:instance fn-pth-i-fill-two-homes (s (mv-nth 0 (fn-rtc-requests (list (list :acquire h1) (list :acquire h3)) 1 1 s))) (g1 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h1 s)))) (g3 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h3 s)))))
+       (:instance fn-pth-i-requests-append-state (rs (list (list :acquire h1) (list :acquire h3))) (tail (list (list :write h1 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h1 s))) 0 data1) (list :write h3 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h3 s))) 0 data3))) (id 1) (inc 1))
+       (:instance fn-pth-i-requests-append-refused (rs (list (list :acquire h1) (list :acquire h3))) (tail (list (list :write h1 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h1 s))) 0 data1) (list :write h3 (+ 1 (fn-rtc-b-gen (fn-rtc-buffer h3 s))) 0 data3))) (id 1) (inc 1)))
+ :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+  '(fn-rtc-requests-config-frame fn-rtc-buffer-accessors fn-rtc-get-of-cons
+    binary-append car-cons cdr-cons nfix natp default-+-1 default-+-2 unicity-of-0 fix
+    (:type-prescription fn-rtc-requests) (:type-prescription fn-rtc-b-gen) (:type-prescription len)
+    (:executable-counterpart equal) (:executable-counterpart fn-rtc-get)
+    (:executable-counterpart nfix) (:executable-counterpart zp) (:executable-counterpart binary-+))))))
+
+
+; Present reading storage facts used by the successful read construction.
+(defthm fn-pth-i-reading-storage-facts
+ (implies (and (fn-pth-i-post-storage m s) (equal (fn-ptx-ph m) :reading))
+  (and (not (fn-ptx-b1 m)) (not (fn-ptx-b3 m))
+       (fn-pth-i-post (fn-ptx-cur m) s nil)
+       (equal (len (fn-rtc-b-bytes (fn-rtc-buffer (fn-ptx-cur-bp (fn-ptx-cur m)) s)))
+              (fn-ptx-cur-len (fn-ptx-cur m)))
+       (fn-pth-i-queue (fn-ptx-q m) s (list (fn-ptx-cur-bp (fn-ptx-cur m))))
+       (equal (len (fn-ptx-kd-last (fn-ptx-kd m))) 32)))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-pth-i-post-storage fn-ptx-okp fn-ptx-in-flight-p binary-append
+     (:executable-counterpart equal) (:executable-counterpart member-equal)
+     (:executable-counterpart consp) car-cons cdr-cons)))))

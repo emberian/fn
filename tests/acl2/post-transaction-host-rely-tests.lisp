@@ -1203,3 +1203,79 @@
      (:executable-counterpart fn-rtc-s-inc) (:executable-counterpart natp)
      (:executable-counterpart expt) (:executable-counterpart <)
      (:executable-counterpart equal))))))
+
+
+; I-AMEND-1: the evaluated S2 injection is excluded; exact old-I mutant bites.
+; Injected state, not claimed reachable. The actual executor remains unchanged.
+(make-event
+ (let* ((world (w state))
+        (ev (get-event 'fn-pth-i-post-state world))
+        (clause '(implies flight (fn-cbor-octet-listp (fn-rtc-get 1 (fn-ptx-hs m)))))
+        (names '((fn-pth-i-post-state . p15f-old-i-post-state) (fn-pth-i . p15f-old-i))))
+  (if (equal (pthrt-r9-count-conjunct ev clause) 1)
+   (value (list 'progn
+    (pthrt-r8-rename (pthrt-r9-remove-conjunct ev clause) names)
+    (pthrt-r8-rename (get-event 'fn-pth-i world) names)))
+   (er soft 'p15f-old-i "Expected exactly the I-AMEND-1 clause."))))
+
+(defun p15f-find-committing (obs)
+ (declare (xargs :guard t :verify-guards nil))
+ (if (consp obs)
+  (if (equal (fn-ptx-ph (fn-rtc-mstate 1 (nth 1 (car obs)))) :committing)
+   (car obs) (p15f-find-committing (cdr obs))) nil))
+
+(defun p15f-before-committing-ops (obs)
+ (declare (xargs :guard t :verify-guards nil))
+ (if (consp obs)
+  (if (equal (fn-ptx-ph (fn-rtc-mstate 1 (nth 1 (car obs)))) :committing)
+   nil (cons (car (car obs)) (p15f-before-committing-ops (cdr obs)))) nil))
+
+(defun p15f-commit-trailer-scene (fn-rtc-st)
+ (declare (xargs :stobjs fn-rtc-st :guard t :verify-guards nil))
+ (mv-let (fn-rtc-st observations)
+  (pthrt-r8-fixed-execute (p15f-before-committing-ops *pthrt-host-observations*) fn-rtc-st)
+  (declare (ignore observations))
+  (let* ((original (fn-rtc-x-state fn-rtc-st))
+         (m (fn-rtc-st-mstate 1 fn-rtc-st))
+         (hs (fn-ptx-hs m))
+         (bad-m (fn-ptx-chg m :hs (list (fn-rtc-get 0 hs) (make-list 32 :initial-element 256) (fn-rtc-get 2 hs))))
+         (fn-rtc-st (fn-rtc-st-set-mstate 1 bad-m fn-rtc-st))
+         (before (fn-rtc-x-state fn-rtc-st))
+         (e (nth 1 (nth 0 (p15f-find-committing *pthrt-host-observations*))))
+         (before-st-p (fn-rtc-st-p fn-rtc-st))
+         (landing-unchanged (equal (fn-rtc-landed e before) e)))
+   (mv-let (fn-rtc-st acts refused cost) (fn-pth-x-step* e 100000 fn-rtc-st)
+    (declare (ignore acts cost))
+    (let* ((after (fn-rtc-x-state fn-rtc-st)) (ma (fn-rtc-mstate 1 after)))
+     (mv fn-rtc-st
+      (list :original-old-I (p15f-old-i original) :before-old-I (p15f-old-i before) :after-old-I (p15f-old-i after)
+            :original-I (fn-pth-i original) :original-okp (fn-ptx-okp m)
+            :before-I (fn-pth-i before) :before-okp (fn-ptx-okp bad-m)
+            :before-st-p before-st-p :landing-unchanged landing-unchanged
+            :completion e :acts-on (fn-rtc-acts-on-p before e)
+            :after-I (fn-pth-i after) :after-phase (fn-ptx-ph ma)
+            :after-chain-octets (fn-cbor-octet-listp (fn-ptx-kd-last (fn-ptx-kd ma)))
+            :refused refused :original original :before before :after after)))))))
+
+(defun p15f-commit-trailer-fixture ()
+ (declare (xargs :guard t :verify-guards nil))
+ (with-local-stobj fn-rtc-st
+  (mv-let (fn-rtc-st result) (p15f-commit-trailer-scene fn-rtc-st) result)))
+
+(with-guard-checking-event nil
+ (make-event
+  (value (list 'defconst '*p15f-i-commit-tooth* (list 'quote (p15f-commit-trailer-fixture))))))
+
+(with-guard-checking-event nil
+ (assert-event
+  (let ((r *p15f-i-commit-tooth*))
+   (and (cadr (member-eq :original-I r)) (cadr (member-eq :original-old-I r))
+        (cadr (member-eq :original-okp r))
+        (not (cadr (member-eq :before-I r))) (cadr (member-eq :before-old-I r))
+        (cadr (member-eq :before-okp r)) (cadr (member-eq :before-st-p r))
+        (equal (cadr (member-eq :completion r)) '(:fsync 1 1 12 (:done 0)))
+        (cadr (member-eq :landing-unchanged r)) (cadr (member-eq :acts-on r))
+        (not (cadr (member-eq :refused r)))
+        (equal (cadr (member-eq :after-phase r)) :idle)
+        (not (cadr (member-eq :after-chain-octets r)))
+        (not (cadr (member-eq :after-I r))) (not (cadr (member-eq :after-old-I r)))))))
