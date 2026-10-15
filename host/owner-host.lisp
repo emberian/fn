@@ -1900,10 +1900,11 @@
            (state-p1 (mv-nth 3 (fn-owner-record-totals fn-hist state))))
   :rule-classes nil
   :hints (("Goal" :in-theory
-    (e/d (fn-owner-record-totals)
-         (fn-owner-store fn-hist-sync fn-hist-count fn-hist-totals-carried
-          fn-hist-stored-most-carried fn-adm-memory-cache-make
-          fn-adm-memory-cache-totals fn-adm-memory-cache-most state-p1))))))
+    (union-theories
+     '(fn-owner-record-totals mv-nth nth zp car-cons cdr-cons
+       put-global update-global-table global-table
+       fn-sg-state-p1-of-put-global)
+     (theory 'minimal-theory))))))
 
 (local
  (defthm fn-owner-record-totals-boundp
@@ -1911,10 +1912,12 @@
            (boundp-global key (mv-nth 3 (fn-owner-record-totals fn-hist state))))
   :rule-classes nil
   :hints (("Goal" :in-theory
-    (e/d (fn-owner-record-totals)
-         (fn-owner-store fn-hist-sync fn-hist-count fn-hist-totals-carried
-          fn-hist-stored-most-carried fn-adm-memory-cache-make
-          fn-adm-memory-cache-totals fn-adm-memory-cache-most state-p1))))))
+    (union-theories
+     '(fn-owner-record-totals mv-nth nth zp car-cons cdr-cons
+       boundp-global boundp-global1 get-global global-table
+       put-global update-global-table nth-update-nth assoc-add-pair
+       state-p1-forward)
+     (theory 'minimal-theory))))))
 
 (defun fn-owner-memory-recapacity (fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state) :verify-guards t
@@ -6835,9 +6838,15 @@ itself."
          (equal (fn-own-conns (fn-owner-core state2))
                 (fn-own-conns (fn-owner-core state))))))
   :hints (("Goal" :in-theory
-   (e/d (fn-owner-apply-limit-profile fn-owner-replace-core fn-owner-core fn-owner-ocfg
-         fn-ocfg-with-owner fn-owner-install-ocfg)
-        (fn-osb-install fn-own-conns fn-pvc-make))))))
+   (union-theories
+    '(fn-owner-apply-limit-profile fn-owner-replace-core fn-owner-core
+      fn-ocfg-with-owner fn-ocfg-owner-of-fn-ocfg-make
+      fn-owner-install-ocfg
+      fn-osb-install-keeps-the-connections
+      boundp-global boundp-global1 get-global global-table
+      put-global update-global-table nth-update-nth assoc-add-pair
+      mv-nth nth zp car-cons cdr-cons)
+    (theory 'minimal-theory))))))
 ; PINNED-CHARGE: exact approved host keystones.
 (local (set-default-hints
  '((quote (:use ((:instance fn-owner-memory-run-cfg-of-charges-every-pinned-connection
