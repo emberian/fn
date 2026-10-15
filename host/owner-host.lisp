@@ -1894,12 +1894,44 @@
 ; holds is admitted, one it no longer holds is bounded), and its line.  The
 ; configure's C' is at most the configured C (fn-adm-capacity-fits), so a
 ; raise is admitted only here.
+(local
+ (defthm fn-owner-record-totals-state-p1
+  (implies (state-p1 state)
+           (state-p1 (mv-nth 3 (fn-owner-record-totals fn-hist state))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (e/d (fn-owner-record-totals)
+         (fn-owner-store fn-hist-sync fn-hist-count fn-hist-totals-carried
+          fn-hist-stored-most-carried fn-adm-memory-cache-make
+          fn-adm-memory-cache-totals fn-adm-memory-cache-most state-p1))))))
+
+(local
+ (defthm fn-owner-record-totals-boundp
+  (implies (and (state-p1 state) (symbolp key) (boundp-global key state))
+           (boundp-global key (mv-nth 3 (fn-owner-record-totals fn-hist state))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (e/d (fn-owner-record-totals)
+         (fn-owner-store fn-hist-sync fn-hist-count fn-hist-totals-carried
+          fn-hist-stored-most-carried fn-adm-memory-cache-make
+          fn-adm-memory-cache-totals fn-adm-memory-cache-most state-p1))))))
+
 (defun fn-owner-memory-recapacity (fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state) :verify-guards t
-                  :guard-hints (("Goal" :in-theory
-                   (disable fn-hist-totals-carried fn-hist-sync fn-owner-store
-                            fn-owner-memory-run-cfg fn-adm-installed-capacity
-                            fn-adm-installed-capacity-line fn-record-string-octets)))))
+                  :guard-hints (("Goal"
+                    :use ((:instance fn-owner-record-totals-state-p1)
+                          (:instance fn-owner-record-totals-boundp (key 'fn-owner))
+                          (:instance fn-owner-record-totals-boundp (key 'fn-owner-memory-run)))
+                    :do-not-induct t
+                    :in-theory
+                    (union-theories
+                     '(boundp-global boundp-global1 get-global global-table mv-nth not
+                       put-global update-global-table fn-sg-state-p1-of-put-global
+                       nth-update-nth state-p-implies-and-forward-to-state-p1 state-p1-forward
+                       fn-hist-p-is-true-listp
+                       (:type-prescription state-p) (:type-prescription state-p1)
+                       (:type-prescription true-list-fix))
+                     (theory 'minimal-theory))))))
   (if (not (and (boundp-global 'fn-owner-memory-run state)
                 (consp (f-get-global 'fn-owner-memory-run state))))
       (mv fn-hist state)
@@ -4949,12 +4981,20 @@
   (declare (xargs :stobjs (fn-hist state)
                   :guard (boundp-global 'fn-owner state)
                   :verify-guards t
-                  :guard-hints (("Goal" :in-theory (e/d (fn-owner-record-totals
-                    fn-owner-operator-boundp-global1-when-bound-by-definition
-                    fn-owner-held-callback-operator-open-preserves-state-p1)
-                    (fn-owner-store fn-hist-sync fn-hist-totals-carried
-                     fn-owner-memory-run-cfg fn-owner-config
-                     fn-owner-held-callback-operator-open put-global boundp-global boundp-global1))))))
+                  :guard-hints (("Goal"
+                    :use ((:instance fn-owner-record-totals-state-p1)
+                          (:instance fn-owner-record-totals-boundp (key 'fn-owner)))
+                    :do-not-induct t
+                    :in-theory
+                    (union-theories
+                     '(boundp-global boundp-global1 get-global global-table mv-nth not
+                       put-global update-global-table fn-sg-state-p1-of-put-global
+                       nth-update-nth state-p-implies-and-forward-to-state-p1 state-p1-forward
+                       fn-hist-p-is-true-listp
+                       fn-owner-held-callback-operator-open-preserves-state-p1
+                       (:type-prescription state-p) (:type-prescription state-p1)
+                       (:type-prescription true-list-fix))
+                     (theory 'minimal-theory))))))
   (mv-let (tot most fn-hist state) (fn-owner-record-totals fn-hist state)
     (let* ((r (if (boundp-global 'fn-owner-memory-run state)
                   (f-get-global 'fn-owner-memory-run state) nil))
@@ -5716,7 +5756,19 @@
 ; defect and not a served event.
 (defun fn-owner-fault (id state)
   (declare (xargs :stobjs (state) :guard (boundp-global 'fn-owner state)
-                  :verify-guards t))
+                  :verify-guards t
+                  :guard-hints (("Goal" :in-theory
+                    (union-theories
+                     '(fn-owner-callback-fault fn-owner-installed-state-p1
+                       fn-owner-put-credits-preserves-state-p1
+                       fn-owner-callback-effects-preserve-state-p1
+                       fn-sg-state-p1-of-put-global
+                       boundp-global boundp-global1 get-global global-table
+                       put-global update-global-table mv-nth nth zp car-cons cdr-cons
+                       nth-update-nth state-p-implies-and-forward-to-state-p1 state-p1-forward
+                       (:type-prescription state-p) (:type-prescription state-p1)
+                       (:type-prescription true-list-fix))
+                     (theory 'minimal-theory))))))
   (mv-let (erp word state) (fn-owner-callback-fault id state)
     (let* ((run (if (boundp-global 'fn-owner-memory-run state)
                     (f-get-global 'fn-owner-memory-run state) nil))

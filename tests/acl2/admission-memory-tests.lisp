@@ -647,7 +647,8 @@
           (string-downcase (symbol-name
             (fn-adm-capacity-binding *m22-profile* *m22-img* cfg limit *m22-empty*)))
           " sum=" (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* cfg *m22-empty*))
-          " MB limit=" (fn-adm-mb-down limit) " MB")))
+          " MB limit=" (fn-adm-mb-down limit) " MB large="
+          (fn-heap-decimal (fn-mm-large-reply *m22-profile* cfg)))))
     (and (equal found 0) (equal cap 0)
          (equal (fn-adm-installed-capacity-line *m22-profile* *m22-img* cfg limit *m22-empty*) expected)
          (not (equal (fn-adm-capacity-line *m22-profile* *m22-img* cfg limit *m22-empty*) expected)))))
@@ -791,7 +792,7 @@
           (fn-adm-capacity-binding profile img cfg limit tot)))
         " sum=" (fn-adm-mb-up
           (fn-mm-sum profile img (fn-adm-cfg-at cfg 0) tot))
-        " MB limit=" (fn-adm-mb-down limit) " MB")))
+        " MB limit=" (fn-adm-mb-down limit) " MB large=" (fn-heap-decimal (fn-mm-large-reply profile cfg)))))
  :id "PRF-10019"
  :rule-classes nil
  :restates fn-adm-installed-zero-has-the-zero-diagnostic
@@ -826,11 +827,13 @@
         (equal zero-line (concatenate 'string
           "refused memory-cannot-hold-the-store capacity=0 of 1 bound-by=store sum="
           (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* (fn-adm-cfg-at cfg 0) *m22-empty*))
-          " MB limit=" (fn-adm-mb-down zero-limit) " MB"))
+          " MB limit=" (fn-adm-mb-down zero-limit) " MB large="
+          (fn-heap-decimal (fn-mm-large-reply *m22-profile* cfg))))
         (equal positive-line (concatenate 'string
           "memory capacity=1 of 1 bound-by=configured sum="
           (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* funded *m22-empty*))
-          " MB limit=" (fn-adm-mb-down positive-limit) " MB"))
+          " MB limit=" (fn-adm-mb-down positive-limit) " MB large="
+          (fn-heap-decimal (fn-mm-large-reply *m22-profile* cfg))))
         (not (equal (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* funded *m22-empty*))
                     (fn-adm-mb-up (fn-mm-sum *m22-profile* *m22-img* (fn-adm-cfg-at cfg 1) *m22-empty*))))))))
 
