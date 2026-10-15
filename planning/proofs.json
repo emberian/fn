@@ -23627,14 +23627,16 @@
       "requirements": [],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
       "evidence": [
         "books/owner-maintenance-request.lisp"
       ],
       "evidence_digest": "f89846e1ff69017b",
       "keystone_subjects": {
         "fn-omr-stopped-health-carries-config-refusal-exit": "fn-omr-stopped-health-report"
-      }
+      },
+      "events": [
+        "fn-omr-stopped-health-carries-config-refusal-exit"
+      ]
     }
   ]
 }
