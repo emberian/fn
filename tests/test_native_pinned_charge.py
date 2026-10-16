@@ -11,7 +11,7 @@ import tempfile
 import time
 import unittest
 
-from tests.native_harness import Client, EXIT, Node, ROOT, native_image, requires
+from tests.native_harness import Client, EXIT, Node, ROOT, durable_root, native_image, requires
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 CAPACITY = re.compile(rb"(?:memory capacity=|refused memory-cannot-hold-the-store capacity=)[^\r\n]* large=(\d+)")
@@ -36,9 +36,7 @@ class PinnedChargeSourceTests(unittest.TestCase):
 @requires(DEVELOPER)
 class NativePinnedChargeTests(unittest.TestCase):
     def setUp(self):
-        temp_root = ROOT / "build/test-tmp"
-        temp_root.mkdir(parents=True, exist_ok=True)
-        self.directory = tempfile.TemporaryDirectory(prefix="pinned-charge-", dir=temp_root)
+        self.directory = tempfile.TemporaryDirectory(prefix="pinned-charge-", dir=durable_root())
         self.addCleanup(self.directory.cleanup)
         self.node = Node(self, DEVELOPER, root=Path(self.directory.name),
                          extra='[resources]\nreclaim_live = true\n[auth]\nrequired = false\nprotected_only = false\n')
@@ -51,9 +49,10 @@ class NativePinnedChargeTests(unittest.TestCase):
         self.addCleanup(self.close_reader)
 
     def start(self):
+        self.capacity_cursor = 0
         owner = self.node.start(env={"SBCL_USER_ARGS": "--dynamic-space-size 4096",
                                      "FN_NATIVE_MEMORY_CAPACITY": "1"})
-        pidfile = self.node.root / "pinned-charge-owner.pid"
+        pidfile = self.node.root / f"pinned-charge-owner-{owner.pid}.pid"
         pidfile.write_text(str(owner.pid) + "\n")
         # All harness cleanup signals read the PID recorded for this exact child.
         def recorded_signal(number):
@@ -122,8 +121,10 @@ class NativePinnedChargeTests(unittest.TestCase):
         body = b"x" * 76 + b"\r\n"
         payload = header + body * (remaining // len(body)) + b"x" * (remaining % len(body)) + b"\r\n"
         self.assertEqual(len(payload), 61440)
+        self.start()
         self.node.post(message_id, payload, expect=EXIT.OK)
         self.node.operator("retention", "expire", "fn.test", "purge", "30", expect=EXIT.OK)
+        self.node.stop()
         self.start()
         self.reader = Client(self.node.port)
         self.shrink()

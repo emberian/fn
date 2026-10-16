@@ -133,6 +133,9 @@
 (defun fnn-owner-action (name &rest args)
   (declare (ignore args)) (ownerp)
   (assert (eq name 'fn-owner-reconfigure-complete)) :durable)
+;; mux.lisp's printer only emits an opt-in diagnostic under the owner mutex;
+;; diagnostics are silent in this fixture and add no reconfiguration event.
+(defun fnn-owner-memory-print-capacity () (ownerp) nil)
 (defun fnn-owner-service-store (s) s)
 (defun fnn-store-config (s) (declare (ignore s)) *profile*)
 (defun (setf fnn-store-config) (v s) (declare (ignore s)) (setf *profile* v))
