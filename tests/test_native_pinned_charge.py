@@ -131,12 +131,19 @@ class NativePinnedChargeTests(unittest.TestCase):
         self.assertEqual(len(payload), 61440)
         self.start()
         self.node.post(message_id, payload, expect=EXIT.OK)
+        # MOST charges the STORED octets (fn-adm-stored-article-most over
+        # fn-hf-octets): the posted payload plus the headers the node adds.
+        with Client(self.node.port) as client:
+            stored = client.article(message_id)
+        self.assertIsNotNone(stored)
+        self.assertGreater(len(stored), len(payload))
+        status = 132096 - 2 * 65536
         self.node.operator("retention", "expire", "fn.test", "purge", "30", expect=EXIT.OK)
         self.record_shrink()
         self.node.stop()
         # The owner starts at A=10240 over a store that still holds the 60k
         # article: stored MOST, not A, sets the large term.
-        self.start(123904)
+        self.start(2 * len(stored) + status)
         self.mark_capacity()
         result = self.node.operator("store", "reclaim", expect=EXIT.OK, timeout=120)
         self.assertIn(b"reclaimed=1", result.stdout + result.stderr)
