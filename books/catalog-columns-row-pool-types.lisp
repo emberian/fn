@@ -10,8 +10,10 @@
 
 (defthm fn-lbc-string-octets-are-octets
  (fn-cbor-octet-listp (fn-record-string-octets text))
- :hints (("Goal" :in-theory (union-theories (theory 'ground-zero)
- '(fn-record-string-octets fn-lbrpt-string-aux-octets)))))
+ :hints (("Goal" :in-theory (set-difference-theories
+ (union-theories (theory 'ground-zero)
+ '(fn-record-string-octets fn-lbrpt-string-aux-octets fn-cbor-octet-listp))
+ '((tau-system))))))
 
 (defthm fn-lbc-u64-has-native-type
  (unsigned-byte-p 64 (fn-lbc-u64 x))
