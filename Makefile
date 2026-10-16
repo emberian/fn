@@ -362,6 +362,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-keyset-check-tests \
 	books/def-cost \
 	tests/acl2/def-cost-tests \
+	tests/acl2/def-cost-call-counts-tests \
 	books/def-cost-lambda-tests \
 	books/acceptance \
 	books/acceptance-invariants \
@@ -1759,10 +1760,31 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-columns-open-held-types \
 	books/catalog-columns-open-log-domains \
 	books/catalog-columns-native-open-invariant \
+	books/catalog-columns-native-open-clear \
 	books/catalog-columns-pool-properties \
 	books/catalog-columns-pool-refinement \
 	books/catalog-columns-pool-text-properties \
 	books/catalog-columns-served \
+	books/catalog-columns-read-cost \
+	books/catalog-columns-served-preservation \
+	books/catalog-columns-append-invariant \
+	books/catalog-columns-append-resolver-domains \
+	books/catalog-columns-append-resolved-preservation \
+	books/log-verified-map-reset \
+	books/catalog-columns-command-reads \
+	books/catalog-columns-command-availability \
+	books/catalog-columns-command-refinement \
+	books/catalog-columns-command-cost \
+	books/catalog-columns-command-cost-refinement \
+	books/catalog-columns-newnews-cost \
+	books/catalog-columns-withdraw-row \
+	books/catalog-columns-withdraw-row-frames \
+	books/catalog-columns-withdraw-row-escape \
+	books/catalog-columns-withdraw-row-bit-properties \
+	books/catalog-columns-withdraw-row-native-types \
+	books/catalog-columns-withdraw-row-readback \
+	books/catalog-columns-withdraw-row-guard-preservation \
+	books/catalog-columns-withdraw-row-value-frames \
 	books/lb-log-layout \
 	books/log-verified-map-properties \
 	books/catalog-columns-properties \
@@ -1783,6 +1805,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/lb-log-open-model \
 	books/lb-log-guard-invariants \
 	books/lb-log-open-properties \
+	books/lb-log-reclaim-model \
+	books/lb-log-reclaim-properties \
+	books/lb-log-reclaim-guard-properties \
+	books/lb-log-reclaim-domains \
+	books/lb-log-payload-identity \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
 	tests/acl2/catalog-raw-low-tests \
@@ -2358,6 +2385,28 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
 	tests/acl2/lb-open-bindings-tests \
+	tests/acl2/lb-writer-binding-fixtures \
+	tests/acl2/lb-writer-binding-native-tests \
+	tests/acl2/lb-writer-binding-logical-witnesses \
+	tests/acl2/lb-writer-binding-teeth \
+	tests/acl2/lb-catalog-binding-observation \
+	tests/acl2/lb-open-binding-teeth \
+	tests/acl2/lb-reclaim-binding-teeth \
+	tests/acl2/lb-append-binding-teeth \
+	tests/acl2/lb-cost-proof-theory \
+	tests/acl2/lb-column-read-cost-teeth \
+	tests/acl2/lb-newnews-cost-teeth \
+	tests/acl2/lb-retrieval-cost-teeth \
+	tests/acl2/lb-group-cost-teeth \
+	tests/acl2/lb-command-cost-teeth \
+	tests/acl2/lb-verification-preservation-teeth \
+	tests/acl2/lb-zero-read-cost-teeth \
+	tests/acl2/lb-reclaimed-read-cost-teeth \
+	tests/acl2/lb-verification-read-cost-teeth \
+	tests/acl2/lb-section-length-cost-teeth \
+	tests/acl2/lb-served-append-teeth \
+	tests/acl2/lb-cross-kind-unlink-case \
+	tests/acl2/lb-reclaim-bindings-tests \
 	tests/acl2/lb-pool-span-routing-tests \
 	tests/acl2/lb-recognizer-repair-fixtures \
 	tests/acl2/lb-recognizer-repair-aliases \

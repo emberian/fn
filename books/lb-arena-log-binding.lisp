@@ -94,33 +94,111 @@
  (equal (fn-lb-log-model-row-entry-in sequence handle nil) nil)
  :hints (("Goal" :in-theory '(fn-lb-log-model-row-entry-in)))))
 
-(local (defthm fn-lbal-log-payload-append-agrees
- (implies (and (natp (fn-record-payload query)) (equal (fn-lb-log-payload query log) expected)
- (implies (equal (fn-record-payload query) (fn-record-payload row)) (equal payload expected)))
+
+
+
+
+; Binding preservation does not require catalog row types, including nil-key shadow cases.
+(local (defthm fn-lbwr-entry-append-preserves-observation
+ (implies
+  (and (equal (let ((old (fn-lb-log-model-row-entry-in sequence handle entries)))
+                (if old (nth 6 old) fallback)) expected)
+       (implies (fn-lb-log-model-row-entry-in sequence handle tail)
+         (equal (nth 6 (fn-lb-log-model-row-entry-in sequence handle tail)) expected)))
+  (equal (let ((entry (fn-lb-log-model-row-entry-in sequence handle (append entries tail))))
+            (if entry (nth 6 entry) fallback)) expected))
+ :rule-classes nil
+ :hints (("Goal" :induct (fn-lb-log-model-row-entry-in sequence handle entries)
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-lb-log-model-row-entry-in binary-append nth))))))
+
+(local (defthm fn-lbwr-appended-directory
+ (equal (caddr (fn-lb-log-model-append-to-segment row payload segment))
+        (append (caddr segment)
+          (list (car (last (caddr (fn-lb-log-model-append-to-segment row payload segment)))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-lb-log-model-append-to-segment fn-lbal-last-appended-entry))))))
+
+(local (defthm fn-lbwr-appended-key-and-payload
+ (let ((entry (car (last (caddr (fn-lb-log-model-append-to-segment row payload segment))))))
+  (and (equal (nth 5 entry) (fn-record-payload row))
+       (equal (nth 6 entry) payload) (equal (nth 8 entry) (fn-record-sequence row))))
+ :hints (("Goal" :do-not-induct t
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-lb-log-model-append-to-segment fn-lbal-last-appended-entry nth))))))
+
+(local (defthm fn-lbwr-segment-append-preserves-observation
+ (implies
+  (and (equal (let ((old (fn-lb-log-model-row-entry-in sequence handle (caddr segment))))
+                (if old (nth 6 old) fallback)) expected)
+       (implies (and (equal sequence (fn-record-sequence row))
+                     (equal handle (fn-record-payload row))) (equal payload expected)))
+  (equal (let ((entry (fn-lb-log-model-row-entry-in sequence handle
+                       (caddr (fn-lb-log-model-append-to-segment row payload segment)))))
+            (if entry (nth 6 entry) fallback)) expected))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+ :use ((:instance fn-lbwr-appended-directory)
+       (:instance fn-lbwr-entry-append-preserves-observation
+         (entries (caddr segment))
+         (tail (list (car (last (caddr (fn-lb-log-model-append-to-segment row payload segment))))))))
+ :expand ((fn-lb-log-model-row-entry-in sequence handle
+            (list (car (last (caddr (fn-lb-log-model-append-to-segment row payload segment)))))))
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-lbal-row-entry-in-nil fn-lbwr-appended-key-and-payload (:executable-counterpart fn-lb-log-model-row-entry-in)))))))
+
+(local (defthm fn-lbwr-log-append-preserves-observation
+ (implies (and (equal (fn-lb-log-payload query log) expected)
+               (implies (equal (fn-record-payload query) (fn-record-payload row))
+                        (equal payload expected)))
  (equal (fn-lb-log-payload query (fn-lb-log-model-append row payload target log)) expected))
+ :rule-classes nil
  :hints (("Goal" :induct (fn-lb-log-model-append row payload target log)
  :in-theory (union-theories (theory 'ground-zero)
  '(fn-lb-log-model-append fn-lbal-log-payload-of-cons fn-lbal-log-payload-of-atom
- fn-lbal-segment-append-row-entry fn-lbal-segment-new-entry-is-present fn-lbal-segment-new-entry-payload fn-lbal-row-entry-in-nil))))))
+   fn-lbal-row-entry-in-nil)))
+ ("Subgoal *1/1"  :use ((:instance fn-lbwr-segment-append-preserves-observation
+          (sequence (fn-record-sequence query)) (handle (fn-record-payload query))
+          (segment (car log)) (fallback (fn-lb-log-payload query (cdr log))))
+       (:instance fn-lbwr-segment-append-preserves-observation
+          (sequence (fn-record-sequence query)) (handle (fn-record-payload query))
+          (segment (list target nil nil)) (fallback nil))))
+ ("Subgoal *1/2"  :use ((:instance fn-lbwr-segment-append-preserves-observation
+          (sequence (fn-record-sequence query)) (handle (fn-record-payload query))
+          (segment (car log)) (fallback (fn-lb-log-payload query (cdr log))))
+       (:instance fn-lbwr-segment-append-preserves-observation
+          (sequence (fn-record-sequence query)) (handle (fn-record-payload query))
+          (segment (list target nil nil)) (fallback nil))))
+ ("Subgoal *1/3"  :use ((:instance fn-lbwr-segment-append-preserves-observation
+          (sequence (fn-record-sequence query)) (handle (fn-record-payload query))
+          (segment (car log)) (fallback (fn-lb-log-payload query (cdr log))))
+       (:instance fn-lbwr-segment-append-preserves-observation
+          (sequence (fn-record-sequence query)) (handle (fn-record-payload query))
+          (segment (list target nil nil)) (fallback nil))))
+)))
 
-(local (defthm fn-lbal-typed-row-append-binding
- (implies (and (fn-cat-rowp query)
- (equal (fn-nntp-payload-bytes (fn-record-payload query) fn-arena) (fn-lb-log-payload query log)))
- (equal (fn-lb-log-payload query (fn-lb-log-model-append row (fn-nntp-payload-bytes (fn-record-payload row) fn-arena) target log))
-        (fn-nntp-payload-bytes (fn-record-payload query) fn-arena)))
+(local (defthm fn-lbwr-single-row-append-binding
+ (implies
+  (equal (fn-nntp-payload-bytes (fn-record-payload query) fn-arena)
+         (fn-lb-log-payload query log))
+  (equal (fn-lb-log-payload query
+           (fn-lb-log-model-append row (fn-nntp-payload-bytes (fn-record-payload row) fn-arena) target log))
+         (fn-nntp-payload-bytes (fn-record-payload query) fn-arena)))
  :hints (("Goal" :do-not-induct t
- :use ((:instance fn-cat-rowp-fields (h query))
-       (:instance fn-lbal-log-payload-append-agrees (expected (fn-nntp-payload-bytes (fn-record-payload query) fn-arena))
+ :use ((:instance fn-lbwr-log-append-preserves-observation
+        (expected (fn-nntp-payload-bytes (fn-record-payload query) fn-arena))
         (payload (fn-nntp-payload-bytes (fn-record-payload row) fn-arena))))
  :in-theory (theory 'ground-zero)))))
 
 (defthm fn-lb-arena-is-log-of-append
- (implies (and (fn-cat$ap rows) (fn-lb-arena-is-log fn-arena rows log))
+ (implies (fn-lb-arena-is-log fn-arena rows log)
  (fn-lb-arena-is-log fn-arena rows
- (fn-lb-log-model-append row (fn-nntp-payload-bytes (fn-record-payload row) fn-arena) target log)))
+  (fn-lb-log-model-append row (fn-nntp-payload-bytes (fn-record-payload row) fn-arena) target log)))
  :hints (("Goal" :induct (fn-lb-arena-is-log fn-arena rows log)
  :in-theory (union-theories (theory 'ground-zero)
- '(fn-cat$ap fn-cat-rowsp fn-cat-rowp-fields fn-lb-arena-is-log fn-lbal-typed-row-append-binding)))))
+ '(fn-lb-arena-is-log fn-lbwr-single-row-append-binding)))))
 
 (defthm fn-lb-arena-is-log-of-withdraw
  (implies (and (fn-lb-arena-is-log fn-arena rows log) (natp target))
@@ -189,16 +267,16 @@
  :hints (("Goal" :induct (len a) :in-theory (union-theories (theory 'ground-zero) '(nth len zp binary-append))))))
 
 (local (defthm fn-lbal-new-seal-payload
- (implies (fn-arena-p fn-arena)
- (equal (fn-nntp-payload-bytes (fn-arena-count fn-arena) (fn-arena-seal-list payload fn-arena)) payload))
+ (equal (fn-nntp-payload-bytes (fn-arena-count fn-arena) (fn-arena-seal-list payload fn-arena)) payload)
  :hints (("Goal" :do-not-induct t
- :use ((:instance fn-arena-seal-list-is-append (xs payload))
-       (:instance fn-lbal-nth-append-at-length (a fn-arena) (x payload)))
+ :use ((:instance fn-arena-seal-new-handle (xs payload)))
  :in-theory (union-theories (theory 'ground-zero)
- '(fn-nntp-payload-bytes fn-arena-count-is-len fn-arena-seal-list-len fn-arena-payload-is-nth))))))
+ '(fn-nntp-payload-bytes fn-arena-seal-count fn-arena-count-is-len))))))
+
+
 
 (defthm fn-lb-arena-is-log-of-commit
- (implies (and (fn-arena-p fn-arena) (fn-cat$ap rows)
+ (implies (and
  (fn-lb-arena-is-log fn-arena rows log)
  (fn-scol-handles-below rows (fn-arena-count fn-arena))
  (equal (fn-record-payload h) (fn-arena-count fn-arena))
@@ -222,7 +300,7 @@
  :in-theory (union-theories (theory 'ground-zero) '(fn-arena-count-is-len natp)))))
 
 (defthm fn-lb-arena-is-log-of-allocated-commit
- (implies (and (fn-arena-p fn-arena) (fn-cat$ap rows)
+ (implies (and
  (fn-lb-arena-is-log fn-arena rows log)
  (fn-scol-handles-below rows (fn-arena-count fn-arena))
  (equal (fn-record-payload h) (fn-arena-count fn-arena))

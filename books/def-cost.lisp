@@ -15,7 +15,23 @@
 ;                                         ; optional logical cons dimension, same body
 ;     [:unaccounted (F ...)]                 ; the callees the derivation cannot cost:
 ;                                            ; checked EQUAL to the derived set
+;     [:calls ((TAG (TARGET...) [:unaccounted (...) :measure-hints H :stop-at (FN...) :argument N]) ...)]
 ;     [:hints H] [:measure-hints H])         ; the bound's and the twin's admission hints
+;
+; LOGICAL CALL COORDINATES. :calls uses the SAME translated-body walker,
+; charging one at a marked callee boundary, while still charging marked calls
+; in its arguments. Other defined callees are followed through their actual
+; bodies; primitive operations and native field accesses contain no nested
+; logical call. Opaque/unsupported callees remain unaccounted, indexed by
+; (TAG . FN), never silently zero. FN-TAG is derived from the body, not guards
+; or host syscalls; ordinary route/guard visit accounting is unchanged.
+; :stop-at names separately accounted call boundaries; their entire calls
+; contribute zero to this coordinate, while their evaluated arguments still count.
+; :argument N sums NFIX of actual argument N at each marked boundary;
+; omitted, each marked boundary contributes one. It derives requested byte
+; counts and offsets from executed call arguments without a parallel planner.
+; A tag has one target/boundary/argument signature throughout a world. def-cost-check re-derives
+; every coordinate and validates its source, formals, twin and canonical tag.
 ;
 ; THE TWINS.  `NAME-visits' is a definition with NAME's control structure,
 ; written from NAME's TRANSLATED BODY in the world (never from a user term):
@@ -214,7 +230,7 @@
 
 (defconst *fn-cost-keys*
   '(:visits :sizes :unaccounted :hints :measure-hints
-    :conses :cons-unaccounted :cons-hints))
+    :conses :cons-unaccounted :cons-hints :calls))
 
 (defun fn-cost-dimension-key (key dimension)
   (declare (xargs :mode :program))
@@ -229,10 +245,14 @@
 
 (defun fn-cost-dimension-name (fn part dimension)
   (declare (xargs :mode :program))
-  (packn-pos (append (list fn)
+  (if (and (consp dimension) (eq (car dimension) :calls))
+      (packn-pos (append (list fn) (and (eq part :route) (list '-route))
+                        (list '- (cadr dimension))
+                        (and (eq part :bound) (list '-bound))) fn)
+    (packn-pos (append (list fn)
                     (and (eq part :route) (list '-route))
                     (list (if (eq dimension :conses) '-conses '-visits))
-                    (and (eq part :bound) (list '-bound))) fn))
+                    (and (eq part :bound) (list '-bound))) fn)))
 
 ; ---------------------------------------------------------------------------
 ; Term plumbing (:program).
@@ -322,6 +342,26 @@
   (mv-let (fs as) (fn-cost-used-bindings formals actuals (all-vars body))
     (if (atom fs) body (cons (list 'lambda fs body) as))))
 
+(defun fn-cost-call-primitivep (fn)
+ (declare (xargs :mode :program))
+ (or (member-eq fn '(if quote return-last acl2-numberp unary-/ coerce rationalp realpart imagpart intern-in-package-of-symbol))
+     (and (assoc-eq fn *fn-cost-contracts*)
+          (not (equal (subseq (symbol-name fn) 0 (min 3 (length (symbol-name fn)))) "FN-")))))
+(defun fn-cost-call-reach (pending seen unknown targets boundaries w)
+ (declare (xargs :mode :program))
+ (if (atom pending) (if unknown :unknown :none)
+  (let* ((fn (car pending)) (rest (cdr pending))
+         (body (getpropc fn 'unnormalized-body nil w)))
+   (cond ((member-eq fn targets) :yes)
+         ((member-eq fn boundaries) (fn-cost-call-reach rest (cons fn seen) unknown targets boundaries w))
+         ((member-eq fn seen) (fn-cost-call-reach rest seen unknown targets boundaries w))
+         ((or (fn-cost-call-primitivep fn) (getpropc fn 'stobj-function nil w))
+          (fn-cost-call-reach rest (cons fn seen) unknown targets boundaries w))
+         ((and body (not (eq (symbol-class fn w) :program))
+                    (not (getpropc fn 'constrainedp nil w)))
+          (fn-cost-call-reach (append (fn-cost-calls body) rest) (cons fn seen) unknown targets boundaries w))
+         (t (fn-cost-call-reach rest (cons fn seen) t targets boundaries w))))))
+
 (mutual-recursion
  (defun fn-cost-term-dimension (term self stack fuel w dimension)
    (declare (xargs :mode :program))
@@ -359,7 +399,9 @@
  (defun fn-cost-call-dimension (fn actuals self stack fuel w dimension)
    (declare (xargs :mode :program))
    ; the contract of FN on ACTUALS
-   (let ((row (assoc-eq fn (if (eq dimension :conses) *fn-cost-cons-contracts* *fn-cost-contracts*)))
+   (if (and (consp dimension) (eq (car dimension) :calls))
+       (fn-cost-call-count-callee fn actuals self stack fuel w dimension)
+    (let ((row (assoc-eq fn (if (eq dimension :conses) *fn-cost-cons-contracts* *fn-cost-contracts*)))
          (body (getpropc fn 'unnormalized-body nil w)))
      (cond
       (row (mv (fn-cost-contract-term row actuals) nil))
@@ -394,6 +436,30 @@
              (mv (list (fn-cost-unknown-name dimension) (kwote fn) (cons 'list actuals)) (list fn))
            (mv (fn-cd-subst c (pairlis$ (getpropc fn 'formals nil w) actuals)) nil))))
       (t (mv (list (fn-cost-unknown-name dimension) (kwote fn) (cons 'list actuals)) (list fn)))))))
+(defun fn-cost-call-count-callee (fn actuals self stack fuel w dimension)
+ (declare (xargs :mode :program))
+ (let* ((targets (caddr dimension)) (boundaries (cadddr dimension)) (argument (car (cddddr dimension))) (tag (cadr dimension))
+        (row (cdr (assoc-equal (list fn tag) (table-alist 'fn-cost-call-counts w))))
+        (body (getpropc fn 'unnormalized-body nil w))
+        (reach (fn-cost-call-reach (list fn) nil nil targets boundaries w))
+        (unknown (list 'fn-cost-unaccounted (kwote (cons tag fn)) (cons 'list actuals))))
+  (cond ((member-eq fn targets)
+         (mv (if (natp argument) (list 'nfix (nth argument actuals)) ''1) nil))
+        ((member-eq fn boundaries) (mv ''0 nil))
+        ((eq reach :none) (mv ''0 nil))
+        ((eq fn self) (mv (cons (fn-cost-dimension-name fn :body dimension) actuals) nil))
+        ((and row (equal targets (fn-cost-get :targets row))
+                   (equal boundaries (fn-cost-get :stop-at row))
+                   (equal argument (fn-cost-get :argument row)))
+         (mv (cons (fn-cost-get :twin row) actuals) (fn-cost-get :unaccounted row)))
+        ((and body (not (eq (symbol-class fn w) :program))
+              (not (getpropc fn 'constrainedp nil w))
+              (not (member-eq fn stack)) (not (fn-cost-recursivep fn w))
+              (< (fn-cost-nodes body) *fn-cost-inline-nodes*) (not (zp fuel)))
+         (mv-let (cost un) (fn-cost-term-dimension body self (cons fn stack) (1- fuel) w dimension)
+          (mv (fn-cd-subst cost (pairlis$ (getpropc fn 'formals nil w) actuals)) un)))
+        (t (mv unknown (list fn))))))
+)
 
 
 (defun fn-cost-term (term self stack fuel w)
@@ -711,7 +777,7 @@
          (rtwin (fn-cost-dimension-name fn :route dimension))
          (rcost (fn-cost-value-term (fn-cd-subst (car cost) alist) w))
          (bcost (fn-cost-value-term (fn-cd-subst (cdr cost) alist) w))
-         (recursive (fn-cost-recursivep fn w))
+         (recursive (fn-cost-mentions (cdr cost) (list twin)))
          (j (getpropc fn 'justification nil w))
          (measure (and recursive j (fn-cd-subst (access justification j :measure) alist)))
          (rel (and recursive j (access justification j :rel)))
@@ -769,6 +835,166 @@
   (declare (xargs :mode :program))
   (fn-cost-events-dimension fn kvs route cost unaccounted sizes bound w :visits))
 
+; Derived logical call coordinates; the ordinary visit/allocation derivations remain intact.
+(defun fn-cost-call-targets-problem (targets w)
+ (declare (xargs :mode :program))
+ (if (atom targets) (and targets (msg "targets must be a proper list"))
+  (let ((fn (car targets)))
+   (cond ((or (not (symbolp fn)) (member-eq fn '(if quote return-last))
+              (eq (getpropc fn 'formals :none w) :none)
+              (eq (symbol-class fn w) :program))
+          (msg "marked target ~x0 is not an executable logical function" fn))
+         (t (fn-cost-call-targets-problem (cdr targets) w))))))
+
+(defun fn-cost-call-signature (targets boundaries argument)
+ (declare (xargs :mode :program))
+ (if (or boundaries (natp argument))
+     (list :targets targets :stop-at boundaries :argument argument) targets))
+
+(defun fn-cost-call-argument-problem (targets argument w)
+ (declare (xargs :mode :program))
+ (if (atom targets) nil
+  (if (< argument (len (getpropc (car targets) 'formals nil w)))
+   (fn-cost-call-argument-problem (cdr targets) argument w)
+   (msg "argument ~x0 is outside marked target ~x1's arity" argument (car targets)))))
+
+(defun fn-cost-call-spec-problem (fn spec w)
+ (declare (xargs :mode :program))
+ (let ((tag (car spec)) (targets (cadr spec)))
+  (cond ((not (and (true-listp spec) (symbolp tag) tag (consp targets)
+                   (true-listp targets) (symbol-listp targets) (no-duplicatesp-eq targets)
+                   (keyword-value-listp (cddr spec))))
+         (msg "call count must be (TAG (TARGET...) [:unaccounted (...) :measure-hints H :stop-at (FN...) :argument N])"))
+        ((fn-cd-unknown-keys (cddr spec) '(:unaccounted :measure-hints :stop-at :argument))
+         (msg "unknown call count keyword(s): ~x0" (fn-cd-unknown-keys (cddr spec) '(:unaccounted :measure-hints :stop-at :argument))))
+        ((and (assoc-keyword :argument (cddr spec))
+              (not (natp (fn-cost-get :argument (cddr spec)))))
+         (msg ":argument must be a zero-based natural argument index"))
+        ((and (assoc-keyword :argument (cddr spec))
+              (fn-cost-call-argument-problem targets (fn-cost-get :argument (cddr spec)) w))
+         (fn-cost-call-argument-problem targets (fn-cost-get :argument (cddr spec)) w))
+        ((not (and (true-listp (fn-cost-get :stop-at (cddr spec)))
+                    (symbol-listp (fn-cost-get :stop-at (cddr spec)))
+                    (no-duplicatesp-eq (fn-cost-get :stop-at (cddr spec)))))
+         (msg ":stop-at must be a proper duplicate-free list of logical callees"))
+        ((intersectp-eq targets (fn-cost-get :stop-at (cddr spec)))
+         (msg "a counted target cannot also be a stopped boundary"))
+        ((not (true-listp (fn-cost-get :unaccounted (cddr spec))))
+         (msg "call count :unaccounted must be a proper list"))
+        ((member-eq tag '(visits route-visits conses route-conses visits-bound conses-bound))
+         (msg "call tag ~x0 collides with a standard cost coordinate" tag))
+        (t
+         (let* ((key (list fn tag))
+                (oldtargets (cdr (assoc-eq tag (table-alist 'fn-cost-call-tags w))))
+                (twin (fn-cost-dimension-name fn :body (list :calls tag targets))))
+          (cond ((assoc-equal key (table-alist 'fn-cost-call-counts w))
+                 (msg "~x0 already has call coordinate ~x1" fn tag))
+                ((not (eq (getpropc twin 'formals :none w) :none))
+                 (msg "generated call twin ~x0 already exists" twin))
+                ((and oldtargets (not (equal oldtargets (fn-cost-call-signature targets (fn-cost-get :stop-at (cddr spec)) (fn-cost-get :argument (cddr spec))))))
+                 (msg "call tag ~x0 has different marked targets in this world" tag))
+                (t (or (fn-cost-call-targets-problem targets w)
+                       (fn-cost-call-targets-problem (fn-cost-get :stop-at (cddr spec)) w)))))))))
+
+(defun fn-cost-call-events-one (fn spec w)
+ (declare (xargs :mode :program))
+ (let* ((problem (fn-cost-call-spec-problem fn spec w))
+        (tag (car spec)) (targets (cadr spec))
+        (boundaries (fn-cost-get :stop-at (cddr spec)))
+        (argument (fn-cost-get :argument (cddr spec)))
+        (dimension (list :calls tag targets boundaries argument))
+        (twin (fn-cost-dimension-name fn :body dimension))
+        (alist (fn-cost-stobj-alist fn w))
+        (formals (fn-cost-rename (getpropc fn 'formals nil w) alist))
+        (j (getpropc fn 'justification nil w))
+        (measure (and j (fn-cd-subst (access justification j :measure) alist)))
+        (rel (and j (access justification j :rel)))
+        (def (if alist 'defun-nx 'defun)))
+  (if problem (mv problem nil)
+   (mv-let (cost un)
+    (fn-cost-term-dimension (getpropc fn 'unnormalized-body nil w)
+                     fn nil *fn-cost-fuel* w dimension)
+    (if (not (and (subsetp-eq un (fn-cost-get :unaccounted (cddr spec)))
+                  (subsetp-eq (fn-cost-get :unaccounted (cddr spec)) un)))
+     (mv (msg "~x0 call coordinate ~x1 has unaccounted callees ~x2; declaration says ~x3"
+               fn tag un (fn-cost-get :unaccounted (cddr spec))) nil)
+     (mv nil
+      `((,def ,twin ,formals
+          (declare ,@(and formals `((ignorable ,@formals)))
+                   (xargs :verify-guards nil
+                     ,@(and measure (fn-cost-mentions cost (list twin)) (list :measure measure))
+                     ,@(and rel (fn-cost-mentions cost (list twin)) (list :well-founded-relation rel))
+                     ,@(and j (fn-cost-mentions cost (list twin)) (list :ruler-extenders :all))
+                     ,@(and (fn-cost-get :measure-hints (cddr spec))
+                       (list :hints (fn-cost-get :measure-hints (cddr spec))))))
+          ,(fn-cost-value-term (fn-cd-subst cost alist) w))
+        (table fn-cost-call-tags ',tag ',(fn-cost-call-signature targets boundaries argument))
+        (table fn-cost-call-counts '(,fn ,tag)
+         '(:targets ,targets :stop-at ,boundaries :argument ,argument :twin ,twin :body-cost ,cost :unaccounted ,un
+           :formals ,(getpropc fn 'formals nil w)
+           :source-body ,(getpropc fn 'unnormalized-body nil w)
+           :coordinate :logical-calls)))))))))
+
+(defun fn-cost-call-events-list (fn specs w)
+ (declare (xargs :mode :program))
+ (if (atom specs)
+  (if specs (mv (msg ":calls must be a proper list") nil) (mv nil nil))
+  (mv-let (problem one) (fn-cost-call-events-one fn (car specs) w)
+   (if problem (mv problem nil)
+    (mv-let (problem rest) (fn-cost-call-events-list fn (cdr specs) w)
+     (if problem (mv problem nil) (mv nil (append one rest))))))))
+
+(defun fn-cost-call-check-rows (fn rows w)
+ (declare (xargs :mode :program))
+ (if (atom rows) nil
+  (let* ((key (caar rows)) (row (cdar rows)) (tag (cadr key)))
+   (if (not (eq (car key) fn)) (fn-cost-call-check-rows fn (cdr rows) w)
+    (mv-let (cost un)
+     (fn-cost-term-dimension (getpropc fn 'unnormalized-body nil w) fn nil *fn-cost-fuel* w
+                      (list :calls tag (fn-cost-get :targets row) (fn-cost-get :stop-at row) (fn-cost-get :argument row)))
+     (cond ((not (equal (fn-cost-call-signature (fn-cost-get :targets row) (fn-cost-get :stop-at row) (fn-cost-get :argument row))
+                              (cdr (assoc-eq tag (table-alist 'fn-cost-call-tags w)))))
+            (msg "~x0 call coordinate ~x1 disagrees with its canonical targets" fn tag))
+           ((fn-cost-call-targets-problem (fn-cost-get :targets row) w)
+            (fn-cost-call-targets-problem (fn-cost-get :targets row) w))
+           ((or (fn-cost-call-targets-problem (fn-cost-get :stop-at row) w)
+                (intersectp-eq (fn-cost-get :targets row) (fn-cost-get :stop-at row)))
+            (msg "~x0 call coordinate ~x1 has invalid stopped boundaries" fn tag))
+           ((and (fn-cost-get :argument row)
+                 (or (not (natp (fn-cost-get :argument row)))
+                     (fn-cost-call-argument-problem (fn-cost-get :targets row) (fn-cost-get :argument row) w)))
+            (msg "~x0 call coordinate ~x1 has an invalid argument index" fn tag))
+           ((not (equal (fn-cost-get :source-body row) (getpropc fn 'unnormalized-body nil w)))
+            (msg "~x0 call coordinate ~x1 has stale source body" fn tag))
+           ((not (equal (fn-cost-get :formals row) (getpropc fn 'formals nil w)))
+            (msg "~x0 call coordinate ~x1 has stale formals" fn tag))
+           ((not (equal (fn-cost-get :twin row) (fn-cost-dimension-name fn :body (list :calls tag nil))))
+            (msg "~x0 call coordinate ~x1 names the wrong twin" fn tag))
+           ((not (and (equal cost (fn-cost-get :body-cost row))
+                      (subsetp-eq un (fn-cost-get :unaccounted row))
+                      (subsetp-eq (fn-cost-get :unaccounted row) un)))
+            (msg "~x0 call coordinate ~x1 no longer derives from this world" fn tag))
+           (t (fn-cost-call-check-rows fn (cdr rows) w))))))))
+
+(defun fn-cost-call-events (fn specs w)
+ (declare (xargs :mode :program))
+ (cond ((not (true-listp specs)) (mv (msg ":calls must be a proper list") nil))
+       ((not (no-duplicatesp-eq (strip-cars specs)))
+        (mv (msg "a call tag is declared twice for ~x0" fn) nil))
+       (t (fn-cost-call-events-list fn specs w))))
+(defun fn-cost-call-check-problem (fn w)
+ (declare (xargs :mode :program))
+ (fn-cost-call-check-rows fn (table-alist 'fn-cost-call-counts w) w))
+(defun fn-cost-call-orphans-problem (rows w)
+ (declare (xargs :mode :program))
+ (if (atom rows) nil
+  (let ((key (caar rows)))
+   (if (and (true-listp key) (equal (len key) 2)
+            (assoc-eq (car key) (table-alist 'fn-cost w)))
+    (fn-cost-call-orphans-problem (cdr rows) w)
+    (msg "call coordinate ~x0 has no ordinary def-cost row" key)))))
+
+
 (defmacro def-cost (fn &rest kvs)
   `(progn
      (make-event
@@ -776,7 +1002,12 @@
         (fn-cost-problem ',fn ',kvs (w state))
         (if problem
             (er soft 'def-cost "~x0: ~@1" ',fn problem)
-          (value (fn-cost-events ',fn ',kvs route cost unaccounted sizes bound (w state))))))
+          (mv-let (call-problem call-events)
+            (fn-cost-call-events ',fn (fn-cost-get :calls ',kvs) (w state))
+            (if call-problem (er soft 'def-cost "~x0: ~@1" ',fn call-problem)
+              (value (cons 'progn
+                       (cons (fn-cost-events ',fn ',kvs route cost unaccounted sizes bound (w state))
+                             call-events))))))))
      ,@(and (or (assoc-keyword :conses kvs) (assoc-keyword :cons-unaccounted kvs))
             `((make-event
                (mv-let (problem route cost unaccounted sizes bound)
@@ -790,7 +1021,7 @@
 ; guard or interface declaration refuses.
 (defun fn-cost-check-problem (fn w)
   (declare (xargs :mode :program))
-  (let ((row (cdr (assoc-eq fn (table-alist 'fn-cost w)))))
+  (let ((ordinary-problem (let ((row (cdr (assoc-eq fn (table-alist 'fn-cost w)))))
     (if (null row)
         (msg "no cost row for ~x0 in this world" fn)
       (mv-let (msg route rcost bcost unaccounted)
@@ -819,7 +1050,8 @@
                             (subsetp-eq cun (fn-cost-get :cons-unaccounted row))
                             (subsetp-eq (fn-cost-get :cons-unaccounted row) cun))
                        nil
-                     (msg "~x0: logical cons derivation changed" fn))))))))))
+                     (msg "~x0: logical cons derivation changed" fn)))))))))))
+    (or ordinary-problem (fn-cost-call-check-problem fn w))))
 
 (defmacro def-cost-check (fn)
   `(make-event
@@ -840,7 +1072,8 @@
 (defmacro def-cost-check-all ()
   `(make-event
     (let* ((rows (table-alist 'fn-cost (w state)))
-           (problem (fn-cost-check-all-problem rows (w state))))
+           (problem (or (fn-cost-call-orphans-problem (table-alist 'fn-cost-call-counts (w state)) (w state))
+                        (fn-cost-check-all-problem rows (w state)))))
       (if problem
           (er soft 'def-cost-check-all "~@0" problem)
         (value `(value-triple ,(len rows)))))))
