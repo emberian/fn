@@ -276,7 +276,7 @@
                  (:instance fn-scj-versions-atmost-find-conn (conns (fn-own-conns o)))))))
 
 (defthm fn-sjh-op-ocar-ocfg-open-owner
-  (equal (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))
+  (equal (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))
          (let* ((o (fn-ocfg-owner oc))
                 (raw (cdr (fn-ocar-own-open o (fn-auth-config-with-accounts
                                                acfg (fn-cfg-value (fn-ocfg-config oc)))))))
@@ -287,7 +287,7 @@
 
 (defthm fn-sjh-op-ocar-ocfg-open-facts2
   (let* ((o (fn-ocfg-owner oc))
-         (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))))
+         (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))))
     (and (equal (fn-own-store o2) (fn-own-store o))
          (equal (fn-own-view o2) (fn-own-view o))
          (implies (and (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
@@ -309,7 +309,7 @@
 (defthm fn-sjh-op-okp-of-open-at-view
   (let* ((o (fn-ocfg-owner oc))
          (o1 (fn-ocfg-owner oc1))
-         (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg)) (fn-own-view o)))))
+         (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg profile)) (fn-own-view o)))))
     (implies (and (fn-sjh-okp o pending fn-arena fn-cat)
                   (equal (fn-own-store o1) (fn-own-store o))
                   (equal (fn-own-conns o1) (fn-own-conns o))
@@ -329,10 +329,10 @@
                             (n (fn-own-view-version (fn-own-view (fn-ocfg-owner oc))))
                             (m (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))))
                  (:instance fn-scj-invp-by-parts (o (fn-ocfg-owner oc))
-                            (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg))
+                            (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg profile))
                                                                   (fn-own-view (fn-ocfg-owner oc))))))
                  (:instance fn-sjh-okp-of-same-store-and-view (o (fn-ocfg-owner oc))
-                            (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg))
+                            (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg profile))
                                                                   (fn-own-view (fn-ocfg-owner oc))))))))))
 
 ; KEYSTONE (fn-owner-open, a capture held).  host/owner-host.lisp
@@ -343,7 +343,7 @@
 ; and no newer than the working view (fn-sjh-views-okp, named).
 (defthm fn-sjh-okp-at-owner-open-captured
   (let ((o2 (fn-ocfg-owner
-             (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg))
+             (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg profile))
                                 (fn-own-view (fn-ocfg-owner oc))))))
     (implies (and (consp views)
                   (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
@@ -358,7 +358,7 @@
 ; KEYSTONE (fn-owner-open, no capture): fn-ocar-ocfg-open at the working view.
 (defthm fn-sjh-okp-at-owner-open
   (implies (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
-           (fn-sjh-okp (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg))) pending fn-arena fn-cat))
+           (fn-sjh-okp (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile))) pending fn-arena fn-cat))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-scj-versions-okp) (theory 'minimal-theory))
            :use ((:instance fn-sjh-okp-unfolds (o (fn-ocfg-owner oc)))
@@ -367,16 +367,16 @@
                  (:instance fn-sjh-op-ocar-ocfg-open-facts2
                             (n (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))))
                  (:instance fn-scj-invp-by-parts (o (fn-ocfg-owner oc))
-                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))))
+                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))))
                  (:instance fn-sjh-okp-of-same-store-and-view (o (fn-ocfg-owner oc))
-                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))))))))
+                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))))))))
 
 ; KEYSTONE (fn-owner-exposure-open): the owner of fn-ocar-exp-open's result
 ; -- a refused accept keeps the owner, an admitted one opens a reader
 ; (fn-ocar-ocfg-open) or a peer (fn-ocfg-open-peer).
 (defthm fn-sjh-okp-at-owner-exposure-open
   (implies (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
-           (fn-sjh-okp (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now)))
+           (fn-sjh-okp (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now profile)))
                        pending fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-ocar-exp-open fn-exp-open-ocfg fn-exp-at)
                                   (fn-ocar-ocfg-open fn-ocfg-open-peer fn-sjh-okp fn-exp-admit-decision

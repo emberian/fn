@@ -12,7 +12,7 @@
 (defconst *ocl-t-open*
   (cdr (fn-ocfg-open
         (fn-ocfg-make (fn-own-start *cpo-t-ready* 3)
-                      *ocl-t-cfg* nil nil) nil)))
+                      *ocl-t-cfg* nil nil) nil nil)))
 (defconst *ocl-t-before*
   (fn-ocfg-make (fn-ocfg-owner *ocl-t-open*)
                 *ocl-t-cfg* (fn-ocfg-pins *ocl-t-open*)
@@ -55,7 +55,7 @@
                 (fn-ocfg-config *ocl-t-after*)
                 (fn-ocfg-pins *ocl-t-after*) *cpo-t-create*))
 (defconst *ocl-t-created* (fn-ocl-complete *ocl-t-create-before*))
-(defconst *ocl-t-new-open* (cdr (fn-ocfg-open *ocl-t-created* nil)))
+(defconst *ocl-t-new-open* (cdr (fn-ocfg-open *ocl-t-created* nil nil)))
 (assert-event (null (fn-ocfg-staged *ocl-t-created*)))
 (assert-event (fn-ocl-relation *ocl-t-created*))
 (assert-event (fn-ocl-view-configp *ocl-t-created*))
@@ -153,7 +153,7 @@
   (fn-ocfg-make
    (fn-ocfg-owner *ocl-t-new-open*)
    (fn-ocfg-config *ocl-t-new-open*)
-   (fn-ocfg-pin-set 0 (fn-ocfg-config *ocl-t-new-open*)
+   (fn-ocfg-pin-set 0 (cons (fn-ocfg-config *ocl-t-new-open*) nil)
                     (fn-ocfg-pins *ocl-t-new-open*))
    nil))
 (assert-event
@@ -198,10 +198,10 @@
 (assert-event (not (fn-ocl-relation *ocl-t-stale-next-pin*)))
 (assert-event
  (not (fn-ocl-relation
-       (cdr (fn-ocfg-open *ocl-t-stale-next-pin* nil)))))
+       (cdr (fn-ocfg-open *ocl-t-stale-next-pin* nil nil)))))
 (assert-event
  (not (equal (fn-ocfg-conn-config
-              (cdr (fn-ocfg-open *ocl-t-stale-next-pin* nil)) 1)
+              (cdr (fn-ocfg-open *ocl-t-stale-next-pin* nil nil)) 1)
              (fn-ocfg-config *ocl-t-stale-next-pin*))))
 (assert-event
  (member-equal

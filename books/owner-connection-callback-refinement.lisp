@@ -134,7 +134,7 @@
           (views (fn-owner-reader-views state))
           (working (fn-own-view (fn-ocfg-owner oc)))
           (selected (fn-ocfg-at-reader-view oc views))
-          (opened (fn-ocfg-open selected (fn-owner-auth state)))
+          (opened (fn-ocfg-open selected (fn-owner-auth state) (fn-owner-store-profile state)))
           (id (fn-own-next-id (fn-ocfg-owner selected)))
           (next (if (consp views) (fn-ocfg-with-view (cdr opened) working)
                   (cdr opened)))
@@ -163,7 +163,8 @@
            :use ((:instance fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation
                    (oc (fn-ocfg-at-reader-view
                          (fn-owner-ocfg state) (fn-owner-reader-views state)))
-                   (acfg (fn-owner-auth state))))
+                   (acfg (fn-owner-auth state))
+                   (profile (fn-owner-store-profile state))))
            :in-theory
            (e/d (fn-owner-callback-open fn-owner-callback-open-at
                  fn-owner-callback-at-reader-view fn-owner-callback-at-working-view
@@ -180,7 +181,7 @@
 (defthm fn-owner-callback-peer-open-complete-effects
   (let* ((peer (fn-store-octets->string peer-octets))
          (id (fn-own-next-id (fn-owner-core state)))
-         (opened (fn-ocfg-open-peer (fn-owner-ocfg state) peer (fn-owner-auth state)))
+         (opened (fn-ocfg-open-peer (fn-owner-ocfg state) peer (fn-owner-auth state) (fn-owner-store-profile state)))
          (actual (mv-nth 2 (fn-owner-callback-open-peer peer-octets state))))
     (and
      (equal (mv-nth 0 (fn-owner-callback-open-peer peer-octets state)) nil)
@@ -225,7 +226,7 @@
           (id (fn-own-next-id (fn-owner-core state)))
           (r (fn-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
                (fn-owner-callback-exposure-limits state) (fn-owner-auth state)
-               peer (cons family address) (fn-owner-exposure-now state)))
+               peer (cons family address) (fn-owner-exposure-now state) (fn-owner-store-profile state)))
           (effects (fn-exp-open-effects r))
           (actual (mv-nth 2 (fn-owner-callback-exposure-open
                               family address peer-octets state))))
@@ -270,7 +271,8 @@
                    (peer (let ((p (and peer-octets (fn-store-octets->string peer-octets))))
                            (if (equal p :bad) nil p)))
                    (address (cons family address))
-                   (now (fn-owner-exposure-now state))))
+                   (now (fn-owner-exposure-now state))
+                   (profile (fn-owner-store-profile state))))
            :in-theory
            (e/d (fn-owner-callback-exposure-open fn-owner-callback-install-effects
                  fn-owner-install-served-effects fn-owner-ocfg fn-owner-core

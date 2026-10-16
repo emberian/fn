@@ -18,7 +18,7 @@
 ; The stale-pin owner: the relation's fn-ocfg-pins-pin-conns-only fails.
 (defconst *ohrt-stale*
   (fn-ocfg-make (fn-ocfg-owner *ohrt-oc*) (fn-ocfg-config *ohrt-oc*)
-                (cons (cons 77 (fn-ocfg-config *ohrt-oc*)) (fn-ocfg-pins *ohrt-oc*))
+                (cons (cons 77 (cons (fn-ocfg-config *ohrt-oc*) nil)) (fn-ocfg-pins *ohrt-oc*))
                 (fn-ocfg-staged *ohrt-oc*)))
 (assert-event (not (fn-ocl-relation *ohrt-stale*)))
 
@@ -89,7 +89,7 @@
 ; the open does not ask the record); the connection is installed and pinned at
 ; the live configuration; the relation and the carried relation hold after.
 (defconst *ohrt-peer-id* (fn-own-next-id (fn-ocfg-owner *ohrt-oc*)))
-(defconst *ohrt-peered* (fn-ocfg-open-peer *ohrt-oc* "p" nil))
+(defconst *ohrt-peered* (fn-ocfg-open-peer *ohrt-oc* "p" nil nil))
 (assert-event (fn-ocl-relation (cdr *ohrt-peered*)))
 (assert-event (and (car *ohrt-peered*)
                    (fn-own-find-conn *ohrt-peer-id* (fn-own-conns (fn-ocfg-owner (cdr *ohrt-peered*))))
@@ -97,10 +97,10 @@
                           (fn-ocfg-config *ohrt-oc*))
                    (equal (fn-own-store (fn-ocfg-owner (cdr *ohrt-peered*)))
                           (fn-own-store (fn-ocfg-owner *ohrt-oc*)))))
-(assert-event (fn-lgoc-invariantp (cdr (fn-ocfg-open-peer *lgt-oc0* "p" nil))))
+(assert-event (fn-lgoc-invariantp (cdr (fn-ocfg-open-peer *lgt-oc0* "p" nil nil))))
 ; Removal witness (the hypothesis): the stale-pin owner fails the relation
 ; before and after the peer open.
-(assert-event (not (fn-ocl-relation (cdr (fn-ocfg-open-peer *ohrt-stale* "p" nil)))))
+(assert-event (not (fn-ocl-relation (cdr (fn-ocfg-open-peer *ohrt-stale* "p" nil nil)))))
 ; MUTATION witness (PKT-888 as it was): the peer open's owner installed with the
 ; pin table untouched (what fn-ocfg-with-owner does, and fn-ocfg-open-peer did)
 ; fails the relation: the new connection has no pin.
@@ -111,7 +111,7 @@
 ; both arms): the host-called open with a resolved peer keeps the relation.
 (assert-event (fn-ocl-relation
                (fn-exp-open-ocfg (fn-ocar-exp-open *ohrt-oc* (fn-exp-initial) (fn-exp-lim-make 8 4 1000 600 600 3 8 nil)
-                                                   nil "p" '(:inet 127 0 0 1) 0))))
+                                                   nil "p" '(:inet 127 0 0 1) 0 nil))))
 
 ; =============================================================================
 ; OUTCOME (fn-ohr-outcome-preserves-ocl-relation, PRF-932; PKT-889): the bite.
@@ -125,7 +125,7 @@
 (defconst *ohrt-b0* (fn-ocfg-make (fn-own-start *cpo-t-ready* 3) *ocl-t-cfg* nil nil))
 (defconst *ohrt-b1* (fn-ocfg-observe (fn-ocfg-with-owner *ohrt-b0* (fn-own-configure (fn-ocfg-owner *ohrt-b0*) *own-config*))
                                      *own-post-obs*))
-(defconst *ohrt-b2* (cdr (fn-ocfg-open *ohrt-b1* nil)))
+(defconst *ohrt-b2* (cdr (fn-ocfg-open *ohrt-b1* nil nil)))
 (defconst *ohrt-b4* (fn-ocl-complete (fn-ocfg-make (fn-ocfg-owner *ohrt-b2*) *ocl-t-cfg* (fn-ocfg-pins *ohrt-b2*) *cpo-t-increase*)))
 (assert-event (and (fn-ocl-relation *ohrt-b4*)
                    (equal (fn-ocfg-conn-generation *ohrt-b4* 0) 2)
@@ -195,8 +195,8 @@
 ; EXPOSURE OPEN, reader arm (fn-ohr-exposure-open-preserves-ocl-relation with
 ; PEER nil): the host-called open admits connection 2 and keeps the relation.
 (defconst *ohrt-exp-lim* (fn-exp-lim-make 8 4 1000 600 600 3 8 nil))
-(assert-event (and (equal (fn-exp-open-id (fn-ocar-exp-open *ohrt-oc* (fn-exp-initial) *ohrt-exp-lim* nil nil '(:inet 127 0 0 1) 0)) 2)
-                   (fn-ocl-relation (fn-exp-open-ocfg (fn-ocar-exp-open *ohrt-oc* (fn-exp-initial) *ohrt-exp-lim* nil nil '(:inet 127 0 0 1) 0)))))
+(assert-event (and (equal (fn-exp-open-id (fn-ocar-exp-open *ohrt-oc* (fn-exp-initial) *ohrt-exp-lim* nil nil '(:inet 127 0 0 1) 0 nil)) 2)
+                   (fn-ocl-relation (fn-exp-open-ocfg (fn-ocar-exp-open *ohrt-oc* (fn-exp-initial) *ohrt-exp-lim* nil nil '(:inet 127 0 0 1) 0 nil)))))
 ; FINISH-SYNCED (fn-ohr-finish-synced-preserves-ocl-relation): the :completing
 ; owner *ohrt-b8* above has nothing staged; fn-rix-ocfg-complete over a history
 ; stobj loaded with the history it reads (fn-hist-of-storep by construction,

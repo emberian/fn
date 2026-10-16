@@ -187,11 +187,13 @@
 ; configuration reads it through fn-ocfg-conn-config, unchanged.
 (defun fn-ocfg-conn-config (oc id)
   (declare (xargs :guard t))
-  (car (cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc)))))
+  (mbe :logic (car (cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc))))))
 
 (defun fn-ocfg-conn-profile (oc id)
   (declare (xargs :guard t))
-  (cdr (cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc)))))
+  (mbe :logic (cdr (cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
+       :exec (fn-ag-cdr (fn-ag-cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc))))))
 
 (defun fn-ocfg-conn-generation (oc id)
   (declare (xargs :guard t))
@@ -747,8 +749,8 @@
   (implies (and (fn-ocfg-statep oc)
                 (fn-own-find-conn
                  (fn-own-next-id (fn-ocfg-owner oc))
-                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))
-           (equal (fn-ocfg-conn-config (cdr (fn-ocfg-open oc acfg))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))
+           (equal (fn-ocfg-conn-config (cdr (fn-ocfg-open oc acfg profile))
                                        (fn-own-next-id (fn-ocfg-owner oc)))
                   (fn-ocfg-config oc)))
   :hints (("Goal" :in-theory (enable (:d fn-ocfg-open) (:d fn-ocfg-conn-config)
@@ -761,7 +763,7 @@
 ; Opening another connection never moves an existing pin.
 (defthm fn-ocfg-open-keeps-every-existing-pin
   (implies (fn-ocfg-pin-find id (fn-ocfg-pins oc))
-           (equal (fn-ocfg-pin-find id (fn-ocfg-pins (cdr (fn-ocfg-open oc acfg))))
+           (equal (fn-ocfg-pin-find id (fn-ocfg-pins (cdr (fn-ocfg-open oc acfg profile))))
                   (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
   :hints (("Goal" :in-theory (enable (:d fn-ocfg-open)))))
 
@@ -782,40 +784,40 @@
 ; connection bound refuses the open and installs nothing, so no connection
 ; sits at the identifier (tests/acl2/owner-config-tests.lisp).
 (defthm fn-ocfg-open-begins-unbound
-  (implies (car (fn-ocfg-open oc acfg))
+  (implies (car (fn-ocfg-open oc acfg profile))
            (and (fn-own-find-conn
                  (fn-own-next-id (fn-ocfg-owner oc))
-                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg)))))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile)))))
                 (not (fn-auth-session-peer
                       (fn-own-conn-session
                        (fn-own-find-conn
                         (fn-own-next-id (fn-ocfg-owner oc))
                         (fn-own-conns
-                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))))
                 (not (fn-auth-session-subject
                       (fn-own-conn-session
                        (fn-own-find-conn
                         (fn-own-next-id (fn-ocfg-owner oc))
                         (fn-own-conns
-                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))))
                 (not (fn-auth-session-pending
                       (fn-own-conn-session
                        (fn-own-find-conn
                         (fn-own-next-id (fn-ocfg-owner oc))
                         (fn-own-conns
-                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))))
                 (not (fn-auth-session-tlsp
                       (fn-own-conn-session
                        (fn-own-find-conn
                         (fn-own-next-id (fn-ocfg-owner oc))
                         (fn-own-conns
-                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))))
                 (not (fn-auth-session-handshakingp
                       (fn-own-conn-session
                        (fn-own-find-conn
                         (fn-own-next-id (fn-ocfg-owner oc))
                         (fn-own-conns
-                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))))
+                         (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))))))
   :rule-classes nil
   :hints (("Goal"
            :do-not-induct t

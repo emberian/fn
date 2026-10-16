@@ -973,7 +973,7 @@
                  (:instance fn-ocl-replace-connection-preserves-histories-under-pin-set
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (next-oc (cdr (fn-ocfg-read oc id octets fn-arena)))
-                            (cfg (fn-ocfg-config oc))
+                            (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id)))
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))))
@@ -983,16 +983,16 @@
                                      id (fn-own-conns
                                          (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))
                                     (fn-own-conns (fn-ocfg-owner oc))))
-                            (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
+                            (pins (fn-ocfg-pins oc)) (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))))
                  (:instance fn-ocl-pin-set-keeps-pins-pin-conns-only
                             (conns (fn-own-replace-conn
                                     (fn-own-find-conn
                                      id (fn-own-conns
                                          (cdr (fn-own-read (fn-ocfg-owner oc) id octets fn-arena))))
                                     (fn-own-conns (fn-ocfg-owner oc))))
-                            (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
+                            (pins (fn-ocfg-pins oc)) (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))))
                  (:instance fn-ocl-pin-set-keeps-pins-okp
-                            (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
+                            (pins (fn-ocfg-pins oc)) (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))))
                  (:instance fn-ocl-own-read-survivor-had-original
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-replace-connection-preserves-histories

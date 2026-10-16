@@ -442,19 +442,19 @@
 
 (defconst *osi-open0*
   (fn-ocfg-make (fn-own-start (fn-sn-initial *own-groups* 10) 2) *own-peer-cfg* nil nil))
-(defconst *osi-full* (cdr (fn-ocfg-open (cdr (fn-ocfg-open *osi-open0* nil)) nil)))
+(defconst *osi-full* (cdr (fn-ocfg-open (cdr (fn-ocfg-open *osi-open0* nil nil)) nil nil)))
 (assert-event (fn-ocfg-statep *osi-full*))
 (assert-event (equal (len (fn-own-conns (fn-ocfg-owner *osi-full*))) 2))
 (assert-event (equal (fn-own-max-conns (fn-ocfg-owner *osi-full*)) 2))
-(assert-event (equal (fn-ocfg-open *osi-full* nil) (cons nil *osi-full*)))
+(assert-event (equal (fn-ocfg-open *osi-full* nil nil) (cons nil *osi-full*)))
 
 ; Hypothesis (the bound is reached).  Below it the open succeeds: a greeting
 ; and a new connection.
 (assert-event (fn-ocfg-statep *osi-open0*))
 (assert-event (< (len (fn-own-conns (fn-ocfg-owner *osi-open0*)))
                  (fn-own-max-conns (fn-ocfg-owner *osi-open0*))))
-(assert-event (consp (car (fn-ocfg-open *osi-open0* nil))))
-(must-fail-checked (assert-event (equal (fn-ocfg-open *osi-open0* nil) (cons nil *osi-open0*))))
+(assert-event (consp (car (fn-ocfg-open *osi-open0* nil nil))))
+(must-fail-checked (assert-event (equal (fn-ocfg-open *osi-open0* nil nil) (cons nil *osi-open0*))))
 
 ; Hypothesis (fn-ocfg-statep).  The same full owner with its identifier
 ; counter wound back onto an open connection: the refused open still writes
@@ -470,8 +470,8 @@
 (assert-event (not (fn-ocfg-statep *osi-wound*)))
 (assert-event (<= (fn-own-max-conns (fn-ocfg-owner *osi-wound*))
                   (len (fn-own-conns (fn-ocfg-owner *osi-wound*)))))
-(assert-event (not (equal (fn-ocfg-open *osi-wound* nil) (cons nil *osi-wound*))))
-(must-fail-checked (assert-event (equal (fn-ocfg-open *osi-wound* nil) (cons nil *osi-wound*))))
+(assert-event (not (equal (fn-ocfg-open *osi-wound* nil nil) (cons nil *osi-wound*))))
+(must-fail-checked (assert-event (equal (fn-ocfg-open *osi-wound* nil nil) (cons nil *osi-wound*))))
 
 ; The fault wrapper: its equation at a reachable connection, and K-FAULT-2
 ; over it.  The one hypothesis, other /= id: the faulted connection itself

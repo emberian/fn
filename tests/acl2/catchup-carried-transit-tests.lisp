@@ -26,7 +26,7 @@
                        (fn-own-configure (fn-ocfg-owner *sck-configured*)
                                          *own-config*))
    *pt-obs*))
-(defconst *sck-open* (cdr (fn-ocfg-open-peer *sck-start* "innA" nil)))
+(defconst *sck-open* (cdr (fn-ocfg-open-peer *sck-start* "innA" nil nil)))
 (defconst *sck-offered*
   (cdr (in-arena-fn-ocfg-read
         *sr-arena* *sck-open* 0

@@ -255,14 +255,14 @@
 ; The configured owner's connection arms (books/owner-config.lisp fn-ocfg-step).
 (defthm fn-scj-invp-of-ocfg-open
   (implies (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-           (fn-scj-invp (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))) fn-arena fn-cat))
+           (fn-scj-invp (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))) fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-open)
                                   (fn-own-open fn-own-reader-context fn-own-find-conn
                                    fn-ocfg-pin-add fn-auth-config-with-accounts)))))
 
 (defthm fn-scj-invp-of-ocfg-open-peer
   (implies (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-           (fn-scj-invp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))) fn-arena fn-cat))
+           (fn-scj-invp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))) fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-open-peer fn-ocfg-with-owner)
                                   (fn-own-open-peer fn-auth-config-with-accounts)))))
 
@@ -465,12 +465,12 @@
 
 (defthm fn-scj-versions-atmost-of-ocfg-open
   (implies (fn-scj-versions-okp (fn-ocfg-owner oc))
-           (fn-scj-versions-okp (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg)))))
+           (fn-scj-versions-okp (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile)))))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-open) (fn-own-open fn-own-reader-context fn-own-find-conn fn-ocfg-pin-add fn-auth-config-with-accounts)))))
 
 (defthm fn-scj-versions-atmost-of-ocfg-open-peer
   (implies (fn-scj-versions-okp (fn-ocfg-owner oc))
-           (fn-scj-versions-okp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg)))))
+           (fn-scj-versions-okp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile)))))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-open-peer fn-ocfg-with-owner) (fn-own-open-peer fn-auth-config-with-accounts)))))
 
 (defthm fn-scj-versions-atmost-of-ocfg-close

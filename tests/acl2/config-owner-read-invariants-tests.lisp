@@ -10,7 +10,7 @@
 (defconst *ocri-new-group*
   (append (fn-nntp-string-octets "GROUP fn.live") '(13 10)))
 (assert-event (fn-ocri-relation *ocri-live*))
-(defconst *ocri-third-open* (cdr (fn-ocfg-open *ocri-live* nil)))
+(defconst *ocri-third-open* (cdr (fn-ocfg-open *ocri-live* nil nil)))
 (assert-event (fn-ocri-relation *ocri-third-open*))
 (assert-event
  (let ((conn (fn-own-find-conn 2 (fn-own-conns (fn-ocfg-owner *ocri-third-open*))))
@@ -110,10 +110,10 @@
      *ocri-bad-conn* (fn-own-conns (fn-ocfg-owner *ocri-live*))))))
 (assert-event (not (fn-ocri-relation *ocri-bad-oc*)))
 (assert-event
- (not (fn-ocri-relation (cdr (fn-ocfg-open *ocri-bad-oc* nil)))))
+ (not (fn-ocri-relation (cdr (fn-ocfg-open *ocri-bad-oc* nil nil)))))
 (must-fail-checked
  (defthm ocri-open-without-carried-wire-and-index
-   (fn-ocri-relation (cdr (fn-ocfg-open *ocri-bad-oc* nil)))))
+   (fn-ocri-relation (cdr (fn-ocfg-open *ocri-bad-oc* nil profile)))))
 (assert-event
  (not (equal
        (fn-own-tls-result-owner

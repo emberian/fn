@@ -820,9 +820,9 @@
            :use ((:instance fn-auth-open-session-is-consistent (tlsp nil))))))
 
 (defthm fn-ohr-open-peer-keeps-store-and-view
-  (and (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))
+  (and (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))))
               (fn-own-store (fn-ocfg-owner oc)))
-       (equal (fn-own-view (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))
+       (equal (fn-own-view (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))))
               (fn-own-view (fn-ocfg-owner oc))))
   :hints (("Goal" :in-theory (enable fn-ocfg-open-peer fn-own-open-peer))))
 
@@ -830,9 +830,9 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-own-find-conn
                  (fn-own-next-id (fn-ocfg-owner oc))
-                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))))))
            (equal (fn-ocfg-conn-config
-                   (cdr (fn-ocfg-open-peer oc peer acfg))
+                   (cdr (fn-ocfg-open-peer oc peer acfg profile))
                    (fn-own-next-id (fn-ocfg-owner oc)))
                   (fn-ocfg-config oc)))
   :hints (("Goal"
@@ -854,23 +854,23 @@
    (and (fn-ocl-relation oc)
         (fn-own-find-conn
          (fn-own-next-id (fn-ocfg-owner oc))
-         (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))))
+         (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))))))
    (fn-ocl-conn-historyp
-    (cdr (fn-ocfg-open-peer oc peer acfg))
+    (cdr (fn-ocfg-open-peer oc peer acfg profile))
     (fn-own-find-conn
      (fn-own-next-id (fn-ocfg-owner oc))
-     (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg)))))))
+     (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile)))))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-ohr-open-peer-pins-current-configuration
                  (:instance fn-ocl-unchanged-view-new-pin-is-historical
-                            (next (cdr (fn-ocfg-open-peer oc peer acfg)))
+                            (next (cdr (fn-ocfg-open-peer oc peer acfg profile)))
                             (conn
                              (fn-own-find-conn
                               (fn-own-next-id (fn-ocfg-owner oc))
                               (fn-own-conns
                                (fn-ocfg-owner
-                                (cdr (fn-ocfg-open-peer oc peer acfg))))))))
+                                (cdr (fn-ocfg-open-peer oc peer acfg profile))))))))
            :in-theory (e/d (fn-ocfg-open-peer fn-own-open-peer)
                            (fn-ocl-relation fn-ocl-conn-historyp
                             fn-cpr-replay fn-cst-replay-node
@@ -881,10 +881,10 @@
   (implies
    (and (fn-ocl-conn-historyp oc conn)
         (fn-ocfg-pin-find (fn-own-conn-id conn) (fn-ocfg-pins oc)))
-   (fn-ocl-conn-historyp (cdr (fn-ocfg-open-peer oc peer acfg)) conn))
+   (fn-ocl-conn-historyp (cdr (fn-ocfg-open-peer oc peer acfg profile)) conn))
   :hints (("Goal"
            :use ((:instance fn-ocl-conn-historyp-under-same-store-and-pin
-                            (next (cdr (fn-ocfg-open-peer oc peer acfg)))))
+                            (next (cdr (fn-ocfg-open-peer oc peer acfg profile)))))
            :in-theory (enable fn-ocfg-open-peer fn-ocfg-conn-config
                               fn-ocfg-pin-add fn-ocfg-pin-find))))
 
@@ -892,7 +892,7 @@
   (implies
    (and (fn-ocl-conns-historyp oc conns)
         (fn-ocfg-conns-pinnedp conns (fn-ocfg-pins oc)))
-   (fn-ocl-conns-historyp (cdr (fn-ocfg-open-peer oc peer acfg)) conns))
+   (fn-ocl-conns-historyp (cdr (fn-ocfg-open-peer oc peer acfg profile)) conns))
   :hints (("Goal" :induct (fn-ocl-conns-historyp oc conns)
            :in-theory (e/d (fn-ocfg-conns-pinnedp fn-ocl-conns-historyp)
                            (fn-ocl-conn-historyp fn-ocfg-open-peer)))))
@@ -900,9 +900,9 @@
 (defthm fn-ohr-open-peer-preserves-all-connection-histories
   (implies (fn-ocl-relation oc)
            (fn-ocl-conns-historyp
-            (cdr (fn-ocfg-open-peer oc peer acfg))
+            (cdr (fn-ocfg-open-peer oc peer acfg profile))
             (fn-own-conns
-             (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))))
+             (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-ohr-open-peer-new-connection-is-historical
@@ -918,7 +918,7 @@
 ; KEYSTONE (PRF-931): the peer open keeps the configured owner's relation.
 (defthm fn-ohr-open-peer-preserves-ocl-relation
   (implies (fn-ocl-relation oc)
-           (fn-ocl-relation (cdr (fn-ocfg-open-peer oc peer acfg))))
+           (fn-ocl-relation (cdr (fn-ocfg-open-peer oc peer acfg profile))))
   :hints (("Goal"
            :use (fn-ohr-open-peer-preserves-all-connection-histories
                  (:instance fn-own-ids-below-next-p-of-open
@@ -929,7 +929,7 @@
                               (fn-own-next-id (fn-ocfg-owner oc))
                               (fn-own-conns
                                (fn-ocfg-owner
-                                (cdr (fn-ocfg-open-peer oc peer acfg))))))))
+                                (cdr (fn-ocfg-open-peer oc peer acfg profile))))))))
            :in-theory (e/d (fn-ocl-relation fn-ocfg-open-peer fn-own-open-peer
                             fn-ocl-config-historyp fn-ocl-unique-conn-idsp
                             fn-ocl-view-historyp fn-ocl-view-configp
@@ -941,9 +941,9 @@
 
 (defthm fn-ohr-open-peer-preserves-carried-relation
   (implies (fn-lgoc-invariantp oc)
-           (fn-lgoc-invariantp (cdr (fn-ocfg-open-peer oc peer acfg))))
+           (fn-lgoc-invariantp (cdr (fn-ocfg-open-peer oc peer acfg profile))))
   :hints (("Goal" :use ((:instance fn-ohr-carried-of-same-store
-                                   (x (cdr (fn-ocfg-open-peer oc peer acfg)))))
+                                   (x (cdr (fn-ocfg-open-peer oc peer acfg profile)))))
            :in-theory (disable fn-ocfg-open-peer))))
 
 ; ---------------------------------------------------------------------------
@@ -955,7 +955,7 @@
 ; fn-ohr-open-peer-preserves-ocl-relation below).
 (defthm fn-ohr-exposure-open-preserves-ocl-relation
   (implies (fn-ocl-relation oc)
-           (fn-ocl-relation (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now))))
+           (fn-ocl-relation (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now profile))))
   :hints (("Goal" :use (fn-ocar-exp-open-is-exp-open-under-ocl-relation)
            :in-theory (e/d (fn-exp-open fn-exp-open-ocfg fn-exp-at)
                            (fn-ocar-exp-open-is-exp-open-under-ocl-relation fn-ocar-exp-open
@@ -1802,7 +1802,7 @@
                  (:instance fn-ohr-replace-connection-preserves-histories-under-pin-set
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
                             (next-oc (cdr (fn-ocfg-read-step oc id event fn-arena)))
-                            (cfg (fn-ocfg-config oc))
+                            (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id)))
                             (next (fn-own-find-conn
                                    id (fn-own-conns
                                        (cdr (fn-own-read-step (fn-ocfg-owner oc) id event fn-arena))))))
@@ -1812,16 +1812,16 @@
                                      id (fn-own-conns
                                          (cdr (fn-own-read-step (fn-ocfg-owner oc) id event fn-arena))))
                                     (fn-own-conns (fn-ocfg-owner oc))))
-                            (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
+                            (pins (fn-ocfg-pins oc)) (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))))
                  (:instance fn-ocl-pin-set-keeps-pins-pin-conns-only
                             (conns (fn-own-replace-conn
                                     (fn-own-find-conn
                                      id (fn-own-conns
                                          (cdr (fn-own-read-step (fn-ocfg-owner oc) id event fn-arena))))
                                     (fn-own-conns (fn-ocfg-owner oc))))
-                            (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
+                            (pins (fn-ocfg-pins oc)) (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))))
                  (:instance fn-ocl-pin-set-keeps-pins-okp
-                            (pins (fn-ocfg-pins oc)) (cfg (fn-ocfg-config oc)))
+                            (pins (fn-ocfg-pins oc)) (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))))
                  (:instance fn-ohr-read-step-survivor-had-original
                             (o (fn-ocfg-owner oc)))
                  (:instance fn-ocl-replace-connection-preserves-histories

@@ -107,7 +107,8 @@
                  (:instance fn-orcn-pin-find-of-pins-at
                             (conns (fn-own-conns (fn-ocfg-owner
                                                   (fn-orcp-swapped-ocfg live-oc rebuilt-oc))))
-                            (cfg (fn-ocfg-config rebuilt-oc)))
+                            (cfg (fn-ocfg-config rebuilt-oc))
+                            (pins (fn-ocfg-pins live-oc)))
                  (:instance fn-orcn-bounded-member
                             (conns (fn-own-conns (fn-ocfg-owner
                                                   (fn-orcp-swapped-ocfg live-oc rebuilt-oc))))

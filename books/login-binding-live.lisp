@@ -694,8 +694,8 @@
                                        (fn-ocfg-pins oc)))
                 (fn-own-find-conn
                  (fn-own-next-id (fn-ocfg-owner oc))
-                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))
-           (equal (fn-ocfg-conn-config (cdr (fn-ocfg-open oc acfg))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))
+           (equal (fn-ocfg-conn-config (cdr (fn-ocfg-open oc acfg profile))
                                        (fn-own-next-id (fn-ocfg-owner oc)))
                   (fn-ocfg-config oc)))
   :hints (("Goal" :in-theory (enable fn-ocfg-open fn-ocfg-conn-config
@@ -717,7 +717,7 @@
                                         (fn-lb-pairs-deltas pairs)) fn-arena))
          (result (fn-ocl-publish staged generation max-octets))
          (published (mv-nth 1 result))
-         (opened (cdr (fn-ocfg-open published acfg)))
+         (opened (cdr (fn-ocfg-open published acfg profile)))
          (new (fn-own-next-id (fn-ocfg-owner published))))
     (implies (and (not (fn-ocfg-staged oc))
                   (equal (mv-nth 0 result) :durable)

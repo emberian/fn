@@ -751,7 +751,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (let* ((o (fn-ocfg-owner oc))
          (id (fn-own-next-id o))
          (conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner
-                                                    (cdr (fn-ocfg-open oc acfg)))))))
+                                                    (cdr (fn-ocfg-open oc acfg profile)))))))
     (implies (and (not (fn-own-find-conn id (fn-own-conns o)))
                   conn)
              (equal (fn-own-conn-config conn) (fn-own-config o))))
@@ -771,7 +771,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
   (let* ((o (fn-ocfg-owner oc))
          (id (fn-own-next-id o))
          (conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner
-                                                    (cdr (fn-ocfg-open oc acfg)))))))
+                                                    (cdr (fn-ocfg-open oc acfg profile)))))))
     (implies (and (fn-oag-identity-setp cfg)
                   (equal (fn-own-config o) (fn-oag-post-config cfg max-octets))
                   (not (fn-own-find-conn id (fn-own-conns o)))

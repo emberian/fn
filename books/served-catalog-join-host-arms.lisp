@@ -420,8 +420,8 @@
 ; configured step's (:open-peer PEER _ ACFG).
 (defthm fn-sjh-okp-at-owner-open-peer
   (implies (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
-           (fn-sjh-okp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))) pending fn-arena fn-cat))
+           (fn-sjh-okp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))) pending fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-step) (fn-sjh-okp fn-ocfg-open-peer fn-ocfg-open fn-ocfg-advance
                                                   fn-ocfg-close fn-ocfg-fault fn-ocfg-read fn-ocfg-read-step
                                                   fn-ocfg-reconfigure fn-ocfg-complete fn-ocfg-pass))
-           :use ((:instance fn-sjh-okp-of-ocfg-conn-event (event (list :open-peer peer nil acfg)))))))
+           :use ((:instance fn-sjh-okp-of-ocfg-conn-event (event (list :open-peer peer nil acfg profile)))))))

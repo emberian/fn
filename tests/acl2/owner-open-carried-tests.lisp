@@ -16,11 +16,11 @@
 
 (defconst *ocar-t-oc* *acar-t-committed*)
 (defconst *ocar-t-id* (fn-own-next-id (fn-ocfg-owner *ocar-t-oc*)))
-(defconst *ocar-t-opened* (fn-ocar-ocfg-open *ocar-t-oc* *aut-required*))
+(defconst *ocar-t-opened* (fn-ocar-ocfg-open *ocar-t-oc* *aut-required* nil))
 (assert-event (fn-ocl-relation *ocar-t-oc*))
 (assert-event (consp (fn-state-articles
                       (fn-own-view-archive (fn-own-view (fn-ocfg-owner *ocar-t-oc*))))))
-(assert-event (equal *ocar-t-opened* (fn-ocfg-open *ocar-t-oc* *aut-required*)))
+(assert-event (equal *ocar-t-opened* (fn-ocfg-open *ocar-t-oc* *aut-required* nil)))
 ; Non-degenerate: the greeting is written, a connection is installed at the
 ; old next id and pinned, and its reader session records the projection and
 ; pins the store's node and the live configuration.
@@ -46,10 +46,10 @@
 ; admitted under public-exposure-tests' limits, the same witness owner.
 (defconst *ocar-t-xr*
   (fn-ocar-exp-open *ocar-t-oc* (fn-exp-initial) *pxt-lim* *aut-required*
-                    nil *pxt-a* 5000))
+                    nil *pxt-a* 5000 nil))
 (assert-event (equal *ocar-t-xr*
                      (fn-exp-open *ocar-t-oc* (fn-exp-initial) *pxt-lim*
-                                  *aut-required* nil *pxt-a* 5000)))
+                                  *aut-required* nil *pxt-a* 5000 nil)))
 (assert-event (equal (fn-exp-open-id *ocar-t-xr*) *ocar-t-id*))
 (assert-event (consp (fn-exp-open-effects *ocar-t-xr*)))
 
@@ -72,8 +72,8 @@
 
 (defconst *ocar-t-bad-oc* *acar-t-bad-view-oc*)
 (assert-event (not (fn-ocl-relation *ocar-t-bad-oc*)))
-(assert-event (not (equal (fn-ocar-ocfg-open *ocar-t-bad-oc* *aut-required*)
-                          (fn-ocfg-open *ocar-t-bad-oc* *aut-required*))))
+(assert-event (not (equal (fn-ocar-ocfg-open *ocar-t-bad-oc* *aut-required* nil)
+                          (fn-ocfg-open *ocar-t-bad-oc* *aut-required* nil))))
 (assert-event
  (let ((id (fn-own-next-id (fn-ocfg-owner *ocar-t-bad-oc*))))
    (and (equal (fn-nntp-session-projected
@@ -82,7 +82,7 @@
                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner
                                                       (cdr (fn-ocar-ocfg-open
                                                             *ocar-t-bad-oc*
-                                                            *aut-required*))))))))
+                                                            *aut-required* nil))))))))
                t)
         (equal (fn-nntp-session-projected
                 (fn-auth-reader-session
@@ -90,24 +90,24 @@
                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner
                                                       (cdr (fn-ocfg-open
                                                             *ocar-t-bad-oc*
-                                                            *aut-required*))))))))
+                                                            *aut-required* nil))))))))
                nil))))
-(assert-event (not (equal (fn-ocar-ocfg-open *ocar-t-bad-oc* *aut-required*)
-          (fn-ocfg-open *ocar-t-bad-oc* *aut-required*))))
+(assert-event (not (equal (fn-ocar-ocfg-open *ocar-t-bad-oc* *aut-required* nil)
+          (fn-ocfg-open *ocar-t-bad-oc* *aut-required* nil))))
 (must-fail-checked
  (defthm fn-ocar-t-ocfg-open-without-relation
-   (equal (fn-ocar-ocfg-open *ocar-t-bad-oc* *aut-required*)
-          (fn-ocfg-open *ocar-t-bad-oc* *aut-required*))))
+   (equal (fn-ocar-ocfg-open *ocar-t-bad-oc* *aut-required* profile)
+          (fn-ocfg-open *ocar-t-bad-oc* *aut-required* profile))))
 (assert-event (not (equal (fn-ocar-exp-open *ocar-t-bad-oc* (fn-exp-initial) *pxt-lim*
-                            *aut-required* nil *pxt-a* 5000)
+                            *aut-required* nil *pxt-a* 5000 nil)
           (fn-exp-open *ocar-t-bad-oc* (fn-exp-initial) *pxt-lim*
-                       *aut-required* nil *pxt-a* 5000))))
+                       *aut-required* nil *pxt-a* 5000 nil))))
 (must-fail-checked
  (defthm fn-ocar-t-exp-open-without-relation
    (equal (fn-ocar-exp-open *ocar-t-bad-oc* (fn-exp-initial) *pxt-lim*
-                            *aut-required* nil *pxt-a* 5000)
+                            *aut-required* nil *pxt-a* 5000 profile)
           (fn-exp-open *ocar-t-bad-oc* (fn-exp-initial) *pxt-lim*
-                       *aut-required* nil *pxt-a* 5000))))
+                       *aut-required* nil *pxt-a* 5000 profile))))
 
 ; -----------------------------------------------------------------------------
 ; The steps' hypotheses, each alone (the others hold on the witness values).

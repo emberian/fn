@@ -17,7 +17,7 @@
         (fn-cfg-record-make 1 7 2 (list (fn-cfg-set-capacity 1)) *fn-cfg-default-stamp*)))
 (defconst *orrd-t-rebuilt-oc* (cadr (fn-orcp-rebuild *orrd-t-events* *orrd-t-configs* 8 4)))
 (defconst *orrd-t-opened*
-  (cdr (fn-ocfg-open (fn-orrd-barriers *orrd-t-rebuilt-oc* *fn-sf-recovery-barrier-count*) nil)))
+  (cdr (fn-ocfg-open (fn-orrd-barriers *orrd-t-rebuilt-oc* *fn-sf-recovery-barrier-count*) nil nil)))
 (defconst *orrd-t-msgid* (fn-nntp-string-octets "<orrd@example.invalid>"))
 (defconst *orrd-t-groups* (list (fn-nntp-string-octets "fn.letters")))
 (defconst *orrd-t-source*

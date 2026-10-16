@@ -248,7 +248,7 @@
                                        id (fn-own-conns
                                            (fn-ocfg-owner
                                             (fn-ocfg-advance oc id)))))
-                            (cfg (fn-ocfg-config oc))))
+                            (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id)))))
            :in-theory (e/d (fn-ocfg-advance)
                            (fn-ocl-relation fn-ocl-conns-historyp
                             fn-own-advance-result
@@ -283,17 +283,19 @@
                                     (cdr (fn-own-advance-result
                                           (fn-ocfg-owner oc) id)))))
                  (:instance fn-ocl-pin-set-preserves-pins-okp
-                            (cfg (fn-ocfg-config oc))
+                            (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id)))
                             (pins (fn-ocfg-pins oc)))
                  (:instance fn-ocl-pin-set-preserves-connection-coverage
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
-                            (pins (fn-ocfg-pins oc)))
+                            (pins (fn-ocfg-pins oc))
+                            (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))))
                  (:instance fn-ocl-pin-set-preserves-pin-domain
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
-                            (pins (fn-ocfg-pins oc)))
+                            (pins (fn-ocfg-pins oc))
+                            (cfg (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))))
                  (:instance fn-ocl-replace-preserves-conns-pinned
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
-                            (pins (fn-ocfg-pin-set id (fn-ocfg-config oc)
+                            (pins (fn-ocfg-pin-set id (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))
                                                    (fn-ocfg-pins oc)))
                             (next (fn-own-find-conn
                                    id (fn-own-conns
@@ -301,7 +303,7 @@
                                         (fn-ocfg-advance oc id))))))
                  (:instance fn-ocl-replace-preserves-pins-point-to-conns
                             (conns (fn-own-conns (fn-ocfg-owner oc)))
-                            (pins (fn-ocfg-pin-set id (fn-ocfg-config oc)
+                            (pins (fn-ocfg-pin-set id (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id))
                                                    (fn-ocfg-pins oc)))
                             (next (fn-own-find-conn
                                    id (fn-own-conns

@@ -1,0 +1,286 @@
+diff --git a/books/served-catalog-join-frame-conns.lisp b/books/served-catalog-join-frame-conns.lisp
+index 33af57326..87a8ff0cd 100644
+--- a/books/served-catalog-join-frame-conns.lisp
++++ b/books/served-catalog-join-frame-conns.lisp
+@@ -255,14 +255,14 @@
+ ; The configured owner's connection arms (books/owner-config.lisp fn-ocfg-step).
+ (defthm fn-scj-invp-of-ocfg-open
+   (implies (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+-           (fn-scj-invp (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))) fn-arena fn-cat))
++           (fn-scj-invp (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))) fn-arena fn-cat))
+   :hints (("Goal" :in-theory (e/d (fn-ocfg-open)
+                                   (fn-own-open fn-own-reader-context fn-own-find-conn
+                                    fn-ocfg-pin-add fn-auth-config-with-accounts)))))
+ 
+ (defthm fn-scj-invp-of-ocfg-open-peer
+   (implies (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+-           (fn-scj-invp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))) fn-arena fn-cat))
++           (fn-scj-invp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))) fn-arena fn-cat))
+   :hints (("Goal" :in-theory (e/d (fn-ocfg-open-peer fn-ocfg-with-owner)
+                                   (fn-own-open-peer fn-auth-config-with-accounts)))))
+ 
+@@ -465,12 +465,12 @@
+ 
+ (defthm fn-scj-versions-atmost-of-ocfg-open
+   (implies (fn-scj-versions-okp (fn-ocfg-owner oc))
+-           (fn-scj-versions-okp (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg)))))
++           (fn-scj-versions-okp (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile)))))
+   :hints (("Goal" :in-theory (e/d (fn-ocfg-open) (fn-own-open fn-own-reader-context fn-own-find-conn fn-ocfg-pin-add fn-auth-config-with-accounts)))))
+ 
+ (defthm fn-scj-versions-atmost-of-ocfg-open-peer
+   (implies (fn-scj-versions-okp (fn-ocfg-owner oc))
+-           (fn-scj-versions-okp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg)))))
++           (fn-scj-versions-okp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile)))))
+   :hints (("Goal" :in-theory (e/d (fn-ocfg-open-peer fn-ocfg-with-owner) (fn-own-open-peer fn-auth-config-with-accounts)))))
+ 
+ (defthm fn-scj-versions-atmost-of-ocfg-close
+diff --git a/books/served-catalog-join-host-arms.lisp b/books/served-catalog-join-host-arms.lisp
+index c0e4373aa..4c22e0c95 100644
+--- a/books/served-catalog-join-host-arms.lisp
++++ b/books/served-catalog-join-host-arms.lisp
+@@ -420,8 +420,8 @@
+ ; configured step's (:open-peer PEER _ ACFG).
+ (defthm fn-sjh-okp-at-owner-open-peer
+   (implies (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
+-           (fn-sjh-okp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))) pending fn-arena fn-cat))
++           (fn-sjh-okp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))) pending fn-arena fn-cat))
+   :hints (("Goal" :in-theory (e/d (fn-ocfg-step) (fn-sjh-okp fn-ocfg-open-peer fn-ocfg-open fn-ocfg-advance
+                                                   fn-ocfg-close fn-ocfg-fault fn-ocfg-read fn-ocfg-read-step
+                                                   fn-ocfg-reconfigure fn-ocfg-complete fn-ocfg-pass))
+-           :use ((:instance fn-sjh-okp-of-ocfg-conn-event (event (list :open-peer peer nil acfg)))))))
++           :use ((:instance fn-sjh-okp-of-ocfg-conn-event (event (list :open-peer peer nil acfg profile)))))))
+diff --git a/books/served-catalog-join-host-entries.lisp b/books/served-catalog-join-host-entries.lisp
+index 51ff67b98..440b8167c 100644
+--- a/books/served-catalog-join-host-entries.lisp
++++ b/books/served-catalog-join-host-entries.lisp
+@@ -276,7 +276,7 @@
+                  (:instance fn-scj-versions-atmost-find-conn (conns (fn-own-conns o)))))))
+ 
+ (defthm fn-sjh-op-ocar-ocfg-open-owner
+-  (equal (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))
++  (equal (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))
+          (let* ((o (fn-ocfg-owner oc))
+                 (raw (cdr (fn-ocar-own-open o (fn-auth-config-with-accounts
+                                                acfg (fn-cfg-value (fn-ocfg-config oc)))))))
+@@ -287,7 +287,7 @@
+ 
+ (defthm fn-sjh-op-ocar-ocfg-open-facts2
+   (let* ((o (fn-ocfg-owner oc))
+-         (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))))
++         (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))))
+     (and (equal (fn-own-store o2) (fn-own-store o))
+          (equal (fn-own-view o2) (fn-own-view o))
+          (implies (and (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
+@@ -309,7 +309,7 @@
+ (defthm fn-sjh-op-okp-of-open-at-view
+   (let* ((o (fn-ocfg-owner oc))
+          (o1 (fn-ocfg-owner oc1))
+-         (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg)) (fn-own-view o)))))
++         (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg profile)) (fn-own-view o)))))
+     (implies (and (fn-sjh-okp o pending fn-arena fn-cat)
+                   (equal (fn-own-store o1) (fn-own-store o))
+                   (equal (fn-own-conns o1) (fn-own-conns o))
+@@ -329,10 +329,10 @@
+                             (n (fn-own-view-version (fn-own-view (fn-ocfg-owner oc))))
+                             (m (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))))
+                  (:instance fn-scj-invp-by-parts (o (fn-ocfg-owner oc))
+-                            (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg))
++                            (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg profile))
+                                                                   (fn-own-view (fn-ocfg-owner oc))))))
+                  (:instance fn-sjh-okp-of-same-store-and-view (o (fn-ocfg-owner oc))
+-                            (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg))
++                            (o2 (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open oc1 acfg profile))
+                                                                   (fn-own-view (fn-ocfg-owner oc))))))))))
+ 
+ ; KEYSTONE (fn-owner-open, a capture held).  host/owner-host.lisp
+@@ -343,7 +343,7 @@
+ ; and no newer than the working view (fn-sjh-views-okp, named).
+ (defthm fn-sjh-okp-at-owner-open-captured
+   (let ((o2 (fn-ocfg-owner
+-             (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg))
++             (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg profile))
+                                 (fn-own-view (fn-ocfg-owner oc))))))
+     (implies (and (consp views)
+                   (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
+@@ -358,7 +358,7 @@
+ ; KEYSTONE (fn-owner-open, no capture): fn-ocar-ocfg-open at the working view.
+ (defthm fn-sjh-okp-at-owner-open
+   (implies (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
+-           (fn-sjh-okp (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg))) pending fn-arena fn-cat))
++           (fn-sjh-okp (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile))) pending fn-arena fn-cat))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-scj-versions-okp) (theory 'minimal-theory))
+            :use ((:instance fn-sjh-okp-unfolds (o (fn-ocfg-owner oc)))
+@@ -367,16 +367,16 @@
+                  (:instance fn-sjh-op-ocar-ocfg-open-facts2
+                             (n (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))))
+                  (:instance fn-scj-invp-by-parts (o (fn-ocfg-owner oc))
+-                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))))
++                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))))
+                  (:instance fn-sjh-okp-of-same-store-and-view (o (fn-ocfg-owner oc))
+-                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))))))))
++                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))))))))
+ 
+ ; KEYSTONE (fn-owner-exposure-open): the owner of fn-ocar-exp-open's result
+ ; -- a refused accept keeps the owner, an admitted one opens a reader
+ ; (fn-ocar-ocfg-open) or a peer (fn-ocfg-open-peer).
+ (defthm fn-sjh-okp-at-owner-exposure-open
+   (implies (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
+-           (fn-sjh-okp (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now)))
++           (fn-sjh-okp (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now profile)))
+                        pending fn-arena fn-cat))
+   :hints (("Goal" :in-theory (e/d (fn-ocar-exp-open fn-exp-open-ocfg fn-exp-at)
+                                   (fn-ocar-ocfg-open fn-ocfg-open-peer fn-sjh-okp fn-exp-admit-decision
+diff --git a/books/served-catalog-join-host-views.lisp b/books/served-catalog-join-host-views.lisp
+index 983b21d93..d88e8b76a 100644
+--- a/books/served-catalog-join-host-views.lisp
++++ b/books/served-catalog-join-host-views.lisp
+@@ -630,29 +630,29 @@
+ 
+ (defthm fn-sjh-viewsp-at-owner-open-peer
+   (implies (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat)
+-           (fn-sjh-viewsp views (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))) fn-cat))
++           (fn-sjh-viewsp views (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))) fn-cat))
+   :hints (("Goal" :in-theory (e/d (fn-ocfg-step) (fn-sjh-viewsp fn-ocfg-open-peer fn-ocfg-open fn-ocfg-advance
+                                                   fn-ocfg-close fn-ocfg-fault fn-ocfg-read fn-ocfg-read-step
+                                                   fn-ocfg-reconfigure fn-ocfg-complete fn-ocfg-pass))
+-           :use ((:instance fn-sjh-viewsp-of-ocfg-step-view-event (event (list :open-peer peer nil acfg)))))))
++           :use ((:instance fn-sjh-viewsp-of-ocfg-step-view-event (event (list :open-peer peer nil acfg profile)))))))
+ 
+ (defthm fn-sjh-viewsp-at-owner-open
+   (implies (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat)
+-           (fn-sjh-viewsp views (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg))) fn-cat))
++           (fn-sjh-viewsp views (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile))) fn-cat))
+   :hints (("Goal" :in-theory '(fn-sjh-viewsp-of-same-view)
+            :use ((:instance fn-sjh-op-ocar-ocfg-open-facts2 (n 0))))))
+ 
+ (defthm fn-sjh-viewsp-at-owner-open-captured
+   (implies (fn-sjh-viewsp views2 (fn-ocfg-owner oc) fn-cat)
+            (fn-sjh-viewsp views2
+-                          (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg))
++                          (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg profile))
+                                                             (fn-own-view (fn-ocfg-owner oc))))
+                           fn-cat))
+   :hints (("Goal" :in-theory '(fn-ocfg-with-view-keeps-the-rest fn-sjh-viewsp-of-same-view))))
+ 
+ (defthm fn-sjh-viewsp-at-owner-exposure-open
+   (implies (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat)
+-           (fn-sjh-viewsp views (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now)))
++           (fn-sjh-viewsp views (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now profile)))
+                           fn-cat))
+   :hints (("Goal" :in-theory (e/d (fn-ocar-exp-open fn-exp-open-ocfg fn-exp-at)
+                                   (fn-ocar-ocfg-open fn-ocfg-open-peer fn-sjh-viewsp fn-exp-admit-decision
+@@ -761,7 +761,7 @@
+ ; views carried, fn-sjh-views-okp holds (fn-sjh-viewsp-gives-views-okp).
+ (defthm fn-sjh-okp-at-owner-open-captured-carried
+   (let ((o2 (fn-ocfg-owner
+-             (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg))
++             (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg profile))
+                                 (fn-own-view (fn-ocfg-owner oc))))))
+     (implies (and (consp views)
+                   (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)
+diff --git a/tests/acl2/served-catalog-join-frame-conns-tests.lisp b/tests/acl2/served-catalog-join-frame-conns-tests.lisp
+index d56fc489b..34cce8d9c 100644
+--- a/tests/acl2/served-catalog-join-frame-conns-tests.lisp
++++ b/tests/acl2/served-catalog-join-frame-conns-tests.lisp
+@@ -125,7 +125,7 @@
+ 
+ ;; The catalog is the host's load of the store's rows under the view's index
+ ;; (OC's own); OC2 is the configured owner the open runs on.
+-(defun scjfc-open-run (oc oc2 fn-arena fn-cat)
++(defun scjfc-open-run (oc oc2 profile fn-arena fn-cat)
+   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+   (let* ((fn-arena (fn-arena-clear fn-arena))
+          (fn-arena (fn-arn-seal-many *scjfc-payloads* fn-arena))
+@@ -133,7 +133,7 @@
+          (fn-cat (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
+                                         (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o)))) fn-arena fn-cat))
+          (o2 (fn-ocfg-owner oc2))
+-         (after (fn-ocfg-owner (cdr (fn-ocfg-open oc2 nil))))
++         (after (fn-ocfg-owner (cdr (fn-ocfg-open oc2 nil profile))))
+          (conn (car (fn-own-conns after))))
+     (mv (list (scjfc-invp o2 fn-arena fn-cat)
+               (scjfc-invp after fn-arena fn-cat)
+@@ -144,13 +144,13 @@
+               (scjfc-conn-pinp conn fn-arena fn-cat))
+         fn-arena fn-cat)))
+ 
+-(defun scjfc-open-exec (oc oc2)
++(defun scjfc-open-exec (oc oc2 profile)
+   (declare (xargs :mode :program))
+   (with-local-stobj fn-arena
+     (mv-let (result fn-arena)
+       (with-local-stobj fn-cat
+         (mv-let (result fn-arena fn-cat)
+-          (scjfc-open-run oc oc2 fn-arena fn-cat)
++          (scjfc-open-run oc oc2 profile fn-arena fn-cat)
+           (mv result fn-arena)))
+       result)))
+ 
+@@ -164,7 +164,7 @@
+ ; 1. The antecedent (all five conjuncts), the conclusion (all five over one
+ ; more connection), the new record at the view's pin, the view live and the
+ ; record pinned.
+-(assert-event (equal (scjfc-open-exec *scjfc-oc* *scjfc-oc*)
++(assert-event (equal (scjfc-open-exec *scjfc-oc* *scjfc-oc* nil)
+                      (list *scjfc-all* *scjfc-all* 0 1 t t t)))
+ 
+ ; 2. The view not live over the catalog: the same owner, its two articles
+@@ -181,7 +181,7 @@
+ (assert-event (equal (fn-state-articles (fn-own-view-archive *scjfc-reversed*)) (reverse *scjfc-arts*)))
+ ; Retained: the record's pin fields are the view's.  Omitted: the view is
+ ; live.  Conclusion: the record is pinned -- false.
+-(assert-event (equal (nthcdr 4 (scjfc-open-exec *scjfc-oc* *scjfc-oc-rev*))
++(assert-event (equal (nthcdr 4 (scjfc-open-exec *scjfc-oc* *scjfc-oc-rev* nil))
+                      (list t nil nil)))
+ 
+ ; -----------------------------------------------------------------------------
+@@ -240,7 +240,7 @@
+ ; the open (the new record at the view's version, 2); the advance's two
+ ; bounds are the last two values of 3 (before, with pins at 2 under the view
+ ; at 3, and after).
+-(defconst *scjfc-opened* (fn-ocfg-owner (cdr (fn-ocfg-open *scjfc-oc* nil))))
++(defconst *scjfc-opened* (fn-ocfg-owner (cdr (fn-ocfg-open *scjfc-oc* nil nil))))
+ (assert-event (fn-scj-conns-versions-atmostp (fn-own-conns (fn-ocfg-owner *scjfc-oc*))
+                                              (fn-own-view-version (fn-own-view (fn-ocfg-owner *scjfc-oc*)))))
+ (assert-event (fn-scj-conns-versions-atmostp (fn-own-conns *scjfc-opened*)
+diff --git a/tests/acl2/served-catalog-source-scan-tests.lisp b/tests/acl2/served-catalog-source-scan-tests.lisp
+index 865e835cb..c240ab03e 100644
+--- a/tests/acl2/served-catalog-source-scan-tests.lisp
++++ b/tests/acl2/served-catalog-source-scan-tests.lisp
+@@ -186,11 +186,11 @@
+      (mv v fn-octets))) v)))
+ (assert-event (ssct-owner-effects-run "GROUP fn.test"))
+ (assert-event (ssct-owner-effects-run "LISTGROUP fn.test"))
+-(defun ssct-response-domain (command fn-octets fn-arena fn-cat)
++(defun ssct-response-domain (command fn-octets profile fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
+  (let* ((oc (cdr (fn-ocfg-open
+                   (fn-ocfg-make (fn-own-start (fn-sn-initial *ssct-groups* 10) 4)
+-                                (fn-cfg-initial) nil nil) nil)))
++                                (fn-cfg-initial) nil nil) nil profile)))
+         (o (fn-ocfg-owner oc))
+         (conn (car (fn-own-conns o)))
+         (id (fn-own-conn-id conn))
+@@ -204,7 +204,7 @@
+            (<= (fn-own-tls-result-consumed result) (nfix (fn-octets-len fn-octets)))
+            (equal (fn-own-tls-result-consumed result) (len (ssct-line "OVER"))))
+       fn-octets)))
+-(defun ssct-response-domain-run (command)
++(defun ssct-response-domain-run (command profile)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-octets
+   (mv-let (v fn-octets)
+@@ -212,9 +212,9 @@
+     (mv-let (v fn-octets fn-arena)
+      (with-local-stobj fn-cat
+       (mv-let (v fn-octets fn-cat)
+-       (mv-let (v fn-octets) (ssct-response-domain command fn-octets fn-arena fn-cat)
++       (mv-let (v fn-octets) (ssct-response-domain command fn-octets profile fn-arena fn-cat)
+         (mv v fn-octets fn-cat))
+        (mv v fn-octets fn-arena)))
+      (mv v fn-octets))) v)))
+-(assert-event (ssct-response-domain-run "GROUP fn.test"))
+-(assert-event (ssct-response-domain-run "LISTGROUP fn.test"))
++(assert-event (ssct-response-domain-run "GROUP fn.test" nil))
++(assert-event (ssct-response-domain-run "LISTGROUP fn.test" nil))

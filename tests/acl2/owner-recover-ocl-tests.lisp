@@ -53,7 +53,7 @@
 (assert-event (equal (fn-cfg-generation (fn-ocfg-config *orec-t-oc*)) 3))
 ; The admin open after recovery (fn-owner-open, owner-host.lisp:1337) pins
 ; connection 0 and keeps both premises.
-(defconst *orec-t-admin* (cdr (fn-ocfg-open *orec-t-oc* nil)))
+(defconst *orec-t-admin* (cdr (fn-ocfg-open *orec-t-oc* nil nil)))
 (assert-event (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *orec-t-admin*))))
 (assert-event (fn-ocl-relation *orec-t-admin*))
 

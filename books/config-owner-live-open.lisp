@@ -44,9 +44,9 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-own-find-conn
                  (fn-own-next-id (fn-ocfg-owner oc))
-                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))
+                 (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))
            (equal (fn-ocfg-conn-config
-                   (cdr (fn-ocfg-open oc acfg))
+                   (cdr (fn-ocfg-open oc acfg profile))
                    (fn-own-next-id (fn-ocfg-owner oc)))
                   (fn-ocfg-config oc)))
   :hints (("Goal"
@@ -479,23 +479,23 @@
    (and (fn-ocl-relation oc)
         (fn-own-find-conn
          (fn-own-next-id (fn-ocfg-owner oc))
-         (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))
+         (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))
    (fn-ocl-conn-historyp
-    (cdr (fn-ocfg-open oc acfg))
+    (cdr (fn-ocfg-open oc acfg profile))
     (fn-own-find-conn
      (fn-own-next-id (fn-ocfg-owner oc))
-     (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg)))))))
+     (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile)))))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-ocl-open-pins-current-physical-configuration
                  (:instance fn-ocl-unchanged-view-new-pin-is-historical
-                            (next (cdr (fn-ocfg-open oc acfg)))
+                            (next (cdr (fn-ocfg-open oc acfg profile)))
                             (conn
                              (fn-own-find-conn
                               (fn-own-next-id (fn-ocfg-owner oc))
                               (fn-own-conns
                                (fn-ocfg-owner
-                                (cdr (fn-ocfg-open oc acfg))))))))
+                                (cdr (fn-ocfg-open oc acfg profile))))))))
            :in-theory (e/d (fn-ocfg-open fn-own-open)
                            (fn-ocl-relation fn-ocl-conn-historyp
                             fn-cpr-replay fn-cst-replay-node
@@ -504,10 +504,10 @@
 
 (defthm fn-ocl-open-keeps-store-and-view
   (and (equal (fn-own-store
-               (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))
+               (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))
               (fn-own-store (fn-ocfg-owner oc)))
        (equal (fn-own-view
-               (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))
+               (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))
               (fn-own-view (fn-ocfg-owner oc))))
   :hints (("Goal" :in-theory (enable fn-ocfg-open fn-own-open))))
 
@@ -526,17 +526,17 @@
   (implies
    (and (fn-ocl-conn-historyp oc conn)
         (fn-ocfg-pin-find (fn-own-conn-id conn) (fn-ocfg-pins oc)))
-   (fn-ocl-conn-historyp (cdr (fn-ocfg-open oc acfg)) conn))
+   (fn-ocl-conn-historyp (cdr (fn-ocfg-open oc acfg profile)) conn))
   :hints (("Goal"
            :use ((:instance fn-ocl-conn-historyp-under-same-store-and-pin
-                            (next (cdr (fn-ocfg-open oc acfg)))))
+                            (next (cdr (fn-ocfg-open oc acfg profile)))))
            :in-theory (enable fn-ocfg-conn-config))))
 
 (defthm fn-ocl-open-preserves-existing-connection-histories
   (implies
    (and (fn-ocl-conns-historyp oc conns)
         (fn-ocfg-conns-pinnedp conns (fn-ocfg-pins oc)))
-   (fn-ocl-conns-historyp (cdr (fn-ocfg-open oc acfg)) conns))
+   (fn-ocl-conns-historyp (cdr (fn-ocfg-open oc acfg profile)) conns))
   :hints (("Goal" :induct (fn-ocl-conns-historyp oc conns)
            :in-theory (e/d (fn-ocfg-conns-pinnedp
                             fn-ocl-conns-historyp)
@@ -585,9 +585,9 @@
 (defthm fn-ocl-open-preserves-all-connection-histories
   (implies (fn-ocl-relation oc)
            (fn-ocl-conns-historyp
-            (cdr (fn-ocfg-open oc acfg))
+            (cdr (fn-ocfg-open oc acfg profile))
             (fn-own-conns
-             (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))
+             (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-ocl-open-new-connection-has-historical-pin
@@ -643,7 +643,7 @@
 
 (defthm fn-ocl-open-preserves-historical-relation
   (implies (fn-ocl-relation oc)
-           (fn-ocl-relation (cdr (fn-ocfg-open oc acfg))))
+           (fn-ocl-relation (cdr (fn-ocfg-open oc acfg profile))))
   :hints (("Goal"
            :use (fn-ocl-open-preserves-all-connection-histories
                  (:instance fn-own-ids-below-next-p-of-open
@@ -654,7 +654,7 @@
                               (fn-own-next-id (fn-ocfg-owner oc))
                               (fn-own-conns
                                (fn-ocfg-owner
-                                (cdr (fn-ocfg-open oc acfg))))))))
+                                (cdr (fn-ocfg-open oc acfg profile))))))))
            :in-theory (e/d (fn-ocl-relation fn-ocfg-open fn-own-open
                             fn-ocl-config-historyp
                             fn-ocl-view-historyp fn-ocl-view-configp)

@@ -775,7 +775,7 @@
 ; (fn-exp-trusted-address-is-never-refused-by-address).
 
 (defthm fn-exp-open-admits-within-the-limits-in-force
-  (let* ((r (fn-exp-open oc xs lim acfg peer address now))
+  (let* ((r (fn-exp-open oc xs lim acfg peer address now profile))
          (before (fn-exp-count-address address (fn-exp-conns xs)))
          (after (fn-exp-count-address address
                                       (fn-exp-conns (fn-exp-open-state r)))))
@@ -791,7 +791,7 @@
                                   (fn-exp-count-in fn-exp-window)))))
 
 (defthm fn-exp-open-never-exceeds-a-limit-in-force
-  (let* ((r (fn-exp-open oc xs lim acfg peer address now))
+  (let* ((r (fn-exp-open oc xs lim acfg peer address now profile))
          (before (fn-exp-count-address address (fn-exp-conns xs)))
          (after (fn-exp-count-address address
                                       (fn-exp-conns (fn-exp-open-state r)))))
@@ -804,7 +804,7 @@
 ; A refused open answers the 400 and changes neither the owner nor the
 ; connections: the host sends REFUSAL and closes (RFC 3977 5.1.1 note [2]).
 (defthm fn-exp-open-refusal-is-a-400-and-opens-nothing
-  (let ((r (fn-exp-open oc xs lim acfg peer address now)))
+  (let ((r (fn-exp-open oc xs lim acfg peer address now profile)))
     (implies (not (equal (car (fn-exp-admit-decision
                                xs lim (len (fn-own-conns (fn-ocfg-owner oc)))
                                address now))
@@ -1097,7 +1097,7 @@
                 (member-equal x (fn-exp-ids (fn-exp-conns
                                              (fn-exp-open-state
                                               (fn-exp-open oc xs lim acfg peer
-                                                           address now)))))))
+                                                           address now profile)))))))
   :hints (("Goal" :in-theory (e/d (fn-exp-open fn-exp-open-state fn-exp-with)
                                   (fn-exp-register fn-exp-admit-decision
                                    fn-exp-counters-bump fn-exp-line

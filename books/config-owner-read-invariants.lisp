@@ -180,7 +180,7 @@
 
 (defthm fn-ocri-open-preserves-historical-reader-relation
   (implies (fn-ocri-relation oc)
-           (fn-ocri-relation (cdr (fn-ocfg-open oc acfg))))
+           (fn-ocri-relation (cdr (fn-ocfg-open oc acfg profile))))
   :hints (("Goal"
            :use (fn-ocl-open-preserves-historical-relation
                  (:instance fn-ocri-own-open-preserves-reader-pins

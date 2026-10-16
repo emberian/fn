@@ -12,7 +12,7 @@
  (fn-ordr-put :views views (fn-ost-readers state)) state))
          (selected (fn-ocfg-at-reader-view (fn-owner-ocfg state) views))
          (antecedent (fn-ocl-relation selected))
-         (opened (fn-ocfg-open selected (fn-owner-auth state)))
+         (opened (fn-ocfg-open selected (fn-owner-auth state) (fn-owner-store-profile state)))
          (id (fn-own-next-id (fn-ocfg-owner selected)))
          (next (fn-ocfg-with-view (cdr opened) working))
          (entry-view (fn-owner-obligation-view state))

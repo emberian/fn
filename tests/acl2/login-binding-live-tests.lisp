@@ -207,7 +207,7 @@
 (defconst *lblt-cfg-q*
   (fn-cfg-make 3 (fn-cfg-apply-delta *lblt-v-p* 3 0
                                      (fn-lb-binding-delta *lblt-name* *lblt-q*))))
-(defconst *lblt-oc* (fn-ocfg-make *lbt-o* *lblt-cfg-q* (list (cons 5 *lblt-cfg-p*)) nil))
+(defconst *lblt-oc* (fn-ocfg-make *lbt-o* *lblt-cfg-q* (list (cons 5 (cons *lblt-cfg-p* nil))) nil))
 (defconst *lblt-events*
   (list (list :reconfigure 6 (list (fn-lb-binding-delta *lblt-guest* nil)))))
 (assert-event (fn-ocfg-pin-find 5 (fn-ocfg-pins *lblt-oc*)))
@@ -291,8 +291,8 @@
 (defconst *lblt-0* (fn-ocfg-make (fn-own-start *cpo-t-ready* 4) *ocl-t-cfg* nil nil))
 (defconst *lblt-clocked*
   (in-arena-fn-ocfg-step *sr-arena* *lblt-0* (list :observe (fn-clock-observation 5000000 1790000000000 0 t))))
-(defconst *lblt-a* (cdr (fn-ocfg-open *lblt-clocked* nil)))
-(defconst *lblt-admin* (cdr (fn-ocfg-open *lblt-a* nil)))
+(defconst *lblt-a* (cdr (fn-ocfg-open *lblt-clocked* nil nil)))
+(defconst *lblt-admin* (cdr (fn-ocfg-open *lblt-a* nil nil)))
 (defconst *lblt-pairs-q* (list (cons *lblt-name* *lblt-q*)))
 (defconst *lblt-file-q* (list (cons *lblt-name* *lblt-q*)))
 (defconst *lblt-staged*
@@ -303,7 +303,7 @@
                              (fn-cfg-record-generation (fn-ocfg-staged *lblt-staged*))
                              *lblt-max*)))
 (defconst *lblt-published* (cadr *lblt-pub*))
-(defconst *lblt-b* (cdr (fn-ocfg-open *lblt-published* nil)))
+(defconst *lblt-b* (cdr (fn-ocfg-open *lblt-published* nil nil)))
 (defconst *lblt-new* (fn-own-next-id (fn-ocfg-owner *lblt-published*)))
 ; fn-lb-a-publication-keeps-every-open-connections-table: A's table is the
 ; one it opened with (no binding), across the publication.
@@ -331,10 +331,10 @@
                                        (fn-ocfg-pins (cadr *lblt-wrong*)))))
 (assert-event (fn-own-find-conn
                (fn-own-next-id (fn-ocfg-owner (cadr *lblt-wrong*)))
-               (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open (cadr *lblt-wrong*) nil))))))
+               (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open (cadr *lblt-wrong*) nil nil))))))
 (assert-event (null (fn-lb-binding *lblt-name*
                                    (fn-lb-conn-bindings
-                                    (cdr (fn-ocfg-open (cadr *lblt-wrong*) nil))
+                                    (cdr (fn-ocfg-open (cadr *lblt-wrong*) nil nil))
                                     (fn-own-next-id (fn-ocfg-owner (cadr *lblt-wrong*)))))))
 (must-fail-checked
  (defthm lblt-anew-without-durable
@@ -342,7 +342,7 @@
                                          (fn-lb-pairs-deltas pairs)) fn-arena))
           (result (fn-ocl-publish staged generation max-octets))
           (published (mv-nth 1 result))
-          (opened (cdr (fn-ocfg-open published acfg)))
+          (opened (cdr (fn-ocfg-open published acfg profile)))
           (new (fn-own-next-id (fn-ocfg-owner published))))
      (implies (and (not (fn-ocfg-staged oc))
                    (fn-ocl-config-historyp staged)
@@ -387,7 +387,7 @@
   (mv-list 2 (fn-ocl-publish *lblt-st1* (fn-cfg-record-generation (fn-ocfg-staged *lblt-st1*))
                              *lblt-max*)))
 (defconst *lblt-new1* (fn-own-next-id (fn-ocfg-owner (cadr *lblt-pub1*))))
-(defconst *lblt-b1* (cdr (fn-ocfg-open (cadr *lblt-pub1*) nil)))
+(defconst *lblt-b1* (cdr (fn-ocfg-open (cadr *lblt-pub1*) nil nil)))
 (assert-event (fn-ocfg-staged *lblt-oc1*))
 (assert-event (equal (car *lblt-pub1*) :durable))
 (assert-event (fn-ocl-config-historyp *lblt-st1*))
@@ -401,14 +401,14 @@
 ; table); an open never overwrites a pin, so the new connection keeps it.
 (defconst *lblt-oc4*
   (fn-ocfg-make (fn-ocfg-owner *lblt-admin*) (fn-ocfg-config *lblt-admin*)
-                (fn-ocfg-pin-add 2 (fn-ocfg-config *lblt-admin*) (fn-ocfg-pins *lblt-admin*))
+                (fn-ocfg-pin-add 2 (cons (fn-ocfg-config *lblt-admin*) nil) (fn-ocfg-pins *lblt-admin*))
                 nil))
 (defconst *lblt-st4* (in-arena-fn-ocfg-step *sr-arena* *lblt-oc4* (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
 (defconst *lblt-pub4*
   (mv-list 2 (fn-ocl-publish *lblt-st4* (fn-cfg-record-generation (fn-ocfg-staged *lblt-st4*))
                              *lblt-max*)))
 (defconst *lblt-new4* (fn-own-next-id (fn-ocfg-owner (cadr *lblt-pub4*))))
-(defconst *lblt-b4* (cdr (fn-ocfg-open (cadr *lblt-pub4*) nil)))
+(defconst *lblt-b4* (cdr (fn-ocfg-open (cadr *lblt-pub4*) nil nil)))
 (assert-event (equal *lblt-new4* 2))
 (assert-event (not (fn-ocfg-staged *lblt-oc4*)))
 (assert-event (equal (car *lblt-pub4*) :durable))
@@ -420,13 +420,13 @@
 ; (5) The opened connection: the owner is at max-conns (two more readers
 ; opened before the re-binding), so the open after the publication admits
 ; nothing and no pin is made for the identifier.
-(defconst *lblt-oc5* (cdr (fn-ocfg-open (cdr (fn-ocfg-open *lblt-admin* nil)) nil)))
+(defconst *lblt-oc5* (cdr (fn-ocfg-open (cdr (fn-ocfg-open *lblt-admin* nil nil)) nil nil)))
 (defconst *lblt-st5* (in-arena-fn-ocfg-step *sr-arena* *lblt-oc5* (list :reconfigure 1 (fn-lb-pairs-deltas *lblt-pairs-q*))))
 (defconst *lblt-pub5*
   (mv-list 2 (fn-ocl-publish *lblt-st5* (fn-cfg-record-generation (fn-ocfg-staged *lblt-st5*))
                              *lblt-max*)))
 (defconst *lblt-new5* (fn-own-next-id (fn-ocfg-owner (cadr *lblt-pub5*))))
-(defconst *lblt-b5* (cdr (fn-ocfg-open (cadr *lblt-pub5*) nil)))
+(defconst *lblt-b5* (cdr (fn-ocfg-open (cadr *lblt-pub5*) nil nil)))
 (assert-event (equal (len (fn-own-conns (fn-ocfg-owner *lblt-oc5*)))
                      (fn-own-max-conns (fn-ocfg-owner *lblt-oc5*))))
 (assert-event (not (fn-ocfg-staged *lblt-oc5*)))

@@ -125,7 +125,7 @@
 
 ;; The catalog is the host's load of the store's rows under the view's index
 ;; (OC's own); OC2 is the configured owner the open runs on.
-(defun scjfc-open-run (oc oc2 fn-arena fn-cat)
+(defun scjfc-open-run (oc oc2 profile fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   (let* ((fn-arena (fn-arena-clear fn-arena))
          (fn-arena (fn-arn-seal-many *scjfc-payloads* fn-arena))
@@ -133,7 +133,7 @@
          (fn-cat (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
                                         (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o)))) fn-arena fn-cat))
          (o2 (fn-ocfg-owner oc2))
-         (after (fn-ocfg-owner (cdr (fn-ocfg-open oc2 nil))))
+         (after (fn-ocfg-owner (cdr (fn-ocfg-open oc2 nil profile))))
          (conn (car (fn-own-conns after))))
     (mv (list (scjfc-invp o2 fn-arena fn-cat)
               (scjfc-invp after fn-arena fn-cat)
@@ -144,13 +144,13 @@
               (scjfc-conn-pinp conn fn-arena fn-cat))
         fn-arena fn-cat)))
 
-(defun scjfc-open-exec (oc oc2)
+(defun scjfc-open-exec (oc oc2 profile)
   (declare (xargs :mode :program))
   (with-local-stobj fn-arena
     (mv-let (result fn-arena)
       (with-local-stobj fn-cat
         (mv-let (result fn-arena fn-cat)
-          (scjfc-open-run oc oc2 fn-arena fn-cat)
+          (scjfc-open-run oc oc2 profile fn-arena fn-cat)
           (mv result fn-arena)))
       result)))
 
@@ -164,7 +164,7 @@
 ; 1. The antecedent (all five conjuncts), the conclusion (all five over one
 ; more connection), the new record at the view's pin, the view live and the
 ; record pinned.
-(assert-event (equal (scjfc-open-exec *scjfc-oc* *scjfc-oc*)
+(assert-event (equal (scjfc-open-exec *scjfc-oc* *scjfc-oc* nil)
                      (list *scjfc-all* *scjfc-all* 0 1 t t t)))
 
 ; 2. The view not live over the catalog: the same owner, its two articles
@@ -181,7 +181,7 @@
 (assert-event (equal (fn-state-articles (fn-own-view-archive *scjfc-reversed*)) (reverse *scjfc-arts*)))
 ; Retained: the record's pin fields are the view's.  Omitted: the view is
 ; live.  Conclusion: the record is pinned -- false.
-(assert-event (equal (nthcdr 4 (scjfc-open-exec *scjfc-oc* *scjfc-oc-rev*))
+(assert-event (equal (nthcdr 4 (scjfc-open-exec *scjfc-oc* *scjfc-oc-rev* nil))
                      (list t nil nil)))
 
 ; -----------------------------------------------------------------------------
@@ -240,7 +240,7 @@
 ; the open (the new record at the view's version, 2); the advance's two
 ; bounds are the last two values of 3 (before, with pins at 2 under the view
 ; at 3, and after).
-(defconst *scjfc-opened* (fn-ocfg-owner (cdr (fn-ocfg-open *scjfc-oc* nil))))
+(defconst *scjfc-opened* (fn-ocfg-owner (cdr (fn-ocfg-open *scjfc-oc* nil nil))))
 (assert-event (fn-scj-conns-versions-atmostp (fn-own-conns (fn-ocfg-owner *scjfc-oc*))
                                              (fn-own-view-version (fn-own-view (fn-ocfg-owner *scjfc-oc*)))))
 (assert-event (fn-scj-conns-versions-atmostp (fn-own-conns *scjfc-opened*)

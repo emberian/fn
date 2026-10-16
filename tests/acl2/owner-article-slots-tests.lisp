@@ -170,14 +170,14 @@
                            (append *fn-cfg-default-change*
                                    (list (fn-cfg-set-peer-delta *oahx-peer-record*)))
                            *fn-cfg-default-stamp*))))
-(defun oahx-with-peer (oc)
+(defun oahx-with-peer (oc profile)
   (declare (xargs :mode :program))
   (fn-ocfg-with-owner
    oc (fn-ocfg-owner (cdr (fn-ocfg-open-peer (fn-ocfg-make (fn-ocfg-owner oc) *oahx-peer-cfg*
                                                            (fn-ocfg-pins oc) (fn-ocfg-staged oc))
-                                             "p" nil)))))
+                                             "p" nil profile)))))
 (defconst *oahx-peer* (fn-own-next-id (fn-ocfg-owner *oahx-queued*)))
-(defconst *oahx-peered* (oahx-with-peer *oahx-queued*))
+(defconst *oahx-peered* (oahx-with-peer *oahx-queued* nil))
 (assert-event (equal *oahx-peer* 2))
 (assert-event (fn-own-find-conn *oahx-peer* (fn-own-conns (fn-ocfg-owner *oahx-peered*))))
 (assert-event (equal (fn-oas-held *oahx-peered*) 1))
@@ -265,7 +265,7 @@
 ; one read, taken (three slots) and refused whole (two): either way
 ; connection 0's record, and so its article mode, is as it was.
 (defconst *oahx-admit2* (oast-read *oahx-queued* *orrt-views* 0 *t2r-post* *t2-s1* 2))
-(defconst *oahx-mid2* (oahx-with-peer (fn-own-tls-result-owner *oahx-admit2*)))
+(defconst *oahx-mid2* (oahx-with-peer (fn-own-tls-result-owner *oahx-admit2*) nil))
 (assert-event (and (fn-oas-articlep *oahx-mid2* 0) (equal (fn-oas-held *oahx-mid2*) 2)))
 (defconst *oahx-t-taken* (oast-read *oahx-mid2* *orrt-views* *oahx-peer* *oahx-takethis* *t2-s1* 3))
 (defconst *oahx-t-refused* (oast-read *oahx-mid2* *orrt-views* *oahx-peer* *oahx-takethis* *t2-s1* 2))

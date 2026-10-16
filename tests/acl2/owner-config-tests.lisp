@@ -71,7 +71,7 @@
 (assert-event (equal (fn-own-next-id (fn-ocfg-owner *ocfg-t-0*)) 0))
 
 ; Connection 0 opens under generation 1.
-(defconst *ocfg-t-1* (cdr (fn-ocfg-open *ocfg-t-0* nil)))
+(defconst *ocfg-t-1* (cdr (fn-ocfg-open *ocfg-t-0* nil nil)))
 (assert-event (fn-ocfg-statep *ocfg-t-1*))
 (assert-event (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-t-1*))))
 (assert-event (equal (fn-own-next-id (fn-ocfg-owner *ocfg-t-1*)) 1))
@@ -85,7 +85,7 @@
 (assert-event (fn-ocfg-statep *ocfg-t-2*))
 
 ; Connection 1 opens under generation 2, beside connection 0 at generation 1.
-(defconst *ocfg-t-3* (cdr (fn-ocfg-open *ocfg-t-2* nil)))
+(defconst *ocfg-t-3* (cdr (fn-ocfg-open *ocfg-t-2* nil nil)))
 (assert-event (fn-ocfg-statep *ocfg-t-3*))
 (assert-event (equal (fn-own-next-id (fn-ocfg-owner *ocfg-t-3*)) 2))
 
@@ -169,9 +169,9 @@
 ; configuration is generation 2.  The wrong value is a whole configuration,
 ; not an absence.
 (defconst *ocfg-t-stale*
-  (fn-ocfg-make *ocfg-t-owner0* *ocfg-t-g2* (list (cons 0 *ocfg-t-g1*)) nil))
+  (fn-ocfg-make *ocfg-t-owner0* *ocfg-t-g2* (list (cons 0 (cons *ocfg-t-g1* nil))) nil))
 (assert-event (not (fn-ocfg-statep *ocfg-t-stale*)))
-(defconst *ocfg-t-stale-open* (cdr (fn-ocfg-open *ocfg-t-stale* nil)))
+(defconst *ocfg-t-stale-open* (cdr (fn-ocfg-open *ocfg-t-stale* nil nil)))
 (assert-event (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-t-stale-open*))))
 (assert-event (not (equal (fn-ocfg-conn-config *ocfg-t-stale-open* 0)
                           (fn-ocfg-config *ocfg-t-stale*))))
@@ -186,10 +186,10 @@
 (defconst *ocfg-t-full0*
   (fn-ocfg-make (fn-own-start (fn-sn-initial *ocfg-t-groups* 10) 1)
                 *ocfg-t-g1* nil nil))
-(defconst *ocfg-t-full1* (cdr (fn-ocfg-open *ocfg-t-full0* nil)))
+(defconst *ocfg-t-full1* (cdr (fn-ocfg-open *ocfg-t-full0* nil nil)))
 (assert-event (fn-ocfg-statep *ocfg-t-full1*))
 (assert-event (equal (fn-own-next-id (fn-ocfg-owner *ocfg-t-full1*)) 1))
-(defconst *ocfg-t-full2* (cdr (fn-ocfg-open *ocfg-t-full1* nil)))
+(defconst *ocfg-t-full2* (cdr (fn-ocfg-open *ocfg-t-full1* nil nil)))
 (assert-event (not (fn-own-find-conn 1 (fn-own-conns (fn-ocfg-owner *ocfg-t-full2*)))))
 (assert-event (not (equal (fn-ocfg-conn-config *ocfg-t-full2* 1)
                           (fn-ocfg-config *ocfg-t-full1*))))
@@ -273,8 +273,8 @@
                             2 (fn-ocfg-pins (in-arena-fn-ocfg-run *sr-arena* *ocfg-t-3* (list '(:open)))))
                            (fn-ocfg-pin-find 2 (fn-ocfg-pins *ocfg-t-3*))))))
 (assert-event (with-guard-checking :none
-               (equal (cdr (fn-ocfg-pin-find
-                            2 (fn-ocfg-pins (in-arena-fn-ocfg-run *sr-arena* *ocfg-t-3* (list '(:open))))))
+               (equal (car (cdr (fn-ocfg-pin-find
+                            2 (fn-ocfg-pins (in-arena-fn-ocfg-run *sr-arena* *ocfg-t-3* (list '(:open)))))))
                       *ocfg-t-g2*)))
 
 ; Hypothesis 2, (not (fn-ocfg-repins-forp id events)): a list that DOES
@@ -348,20 +348,20 @@
                 *ocfg-t-g1* nil nil))
 (defconst *ocfg-l-clocked*
   (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-0* (list :observe (fn-clock-observation 5000000 1790000000000 0 t))))
-(defconst *ocfg-l-reader* (cdr (fn-ocfg-open *ocfg-l-clocked* nil)))
+(defconst *ocfg-l-reader* (cdr (fn-ocfg-open *ocfg-l-clocked* nil nil)))
 (assert-event (fn-ocfg-statep *ocfg-l-reader*))
 (assert-event (equal (fn-ocfg-conn-generation *ocfg-l-reader* 0) 1))
 
-(defun ocfg-l-live-admin (oc deltas fn-arena)
+(defun ocfg-l-live-admin (oc deltas profile fn-arena)
   ; The host's three events around one private connection, returning the
   ; state at the instant before durability and the published state.
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((cid (fn-own-next-id (fn-ocfg-owner oc)))
-         (opened (cdr (fn-ocfg-open oc nil)))
+         (opened (cdr (fn-ocfg-open oc nil profile)))
          (staged (fn-ocfg-step (fn-ocfg-step opened (list :reconfigure cid deltas) fn-arena)
                                (list :close cid) fn-arena)))
     (list opened staged (fn-ocfg-step staged (list :complete) fn-arena))))
-(bpr-lift ocfg-l-live-admin 2)
+(bpr-lift ocfg-l-live-admin 3)
 
 (defconst *ocfg-l-deltas1*
   (list (fn-cfg-create-group "fn.dtn" *fn-cfg-default-policy-id*)))
@@ -373,7 +373,7 @@
 (assert-event (fn-cfg-peerp *ocfg-l-peer*))
 (defconst *ocfg-l-deltas2* (list (fn-cfg-set-peer-delta *ocfg-l-peer*)))
 
-(defconst *ocfg-l-run1* (in-arena-ocfg-l-live-admin *sr-arena* *ocfg-l-reader* *ocfg-l-deltas1*))
+(defconst *ocfg-l-run1* (in-arena-ocfg-l-live-admin *sr-arena* *ocfg-l-reader* *ocfg-l-deltas1* nil))
 (defconst *ocfg-l-open1* (first *ocfg-l-run1*))
 (defconst *ocfg-l-staged1* (second *ocfg-l-run1*))
 (defconst *ocfg-l-pub1* (third *ocfg-l-run1*))
@@ -383,7 +383,7 @@
 (assert-event (equal (fn-cnode-served-of (fn-ocfg-config *ocfg-l-pub1*))
                      '("fn.letters" "fn.test" "fn.dtn")))
 
-(defconst *ocfg-l-run2* (in-arena-ocfg-l-live-admin *sr-arena* *ocfg-l-pub1* *ocfg-l-deltas2*))
+(defconst *ocfg-l-run2* (in-arena-ocfg-l-live-admin *sr-arena* *ocfg-l-pub1* *ocfg-l-deltas2* nil))
 (defconst *ocfg-l-open2* (first *ocfg-l-run2*))
 (defconst *ocfg-l-staged2* (second *ocfg-l-run2*))
 (defconst *ocfg-l-pub2* (third *ocfg-l-run2*))
@@ -457,7 +457,7 @@
                      '(:store (:io :record-file :ok))
                      '(:store (:io :record-link :ok))
                      '(:store (:io :record-directory :ok))))
-   *ocfg-t-g1* (list (cons 0 *ocfg-t-g1*)) nil))
+   *ocfg-t-g1* (list (cons 0 (cons *ocfg-t-g1* nil))) nil))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store (fn-ocfg-owner *ocfg-l-completing*))))
                      :completing))
 (defconst *ocfg-l-refused* (in-arena-fn-ocfg-step *sr-arena* *ocfg-l-completing* (list :reconfigure 0 nil)))
@@ -597,7 +597,7 @@
   (fn-ocfg-make (fn-own-start (fn-sn-initial *ocfg-t-groups* 10) 3)
                 *ocfg-r-cfg* nil nil))
 (assert-event (fn-ocfg-statep *ocfg-r-0*))
-(defconst *ocfg-r-1* (cdr (fn-ocfg-open *ocfg-r-0* *ocfg-r-acfg*)))
+(defconst *ocfg-r-1* (cdr (fn-ocfg-open *ocfg-r-0* *ocfg-r-acfg* nil)))
 (defun ocfg-r-session (oc id)
   (fn-own-conn-session (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
 (assert-event (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-r-1*))))
@@ -618,7 +618,7 @@
                      *ocfg-r-principal*))
 
 ; The reconnect.
-(defmacro ocfg-r-reopen () '(fn-ocfg-open (ocfg-r-bound) *ocfg-r-acfg*))
+(defmacro ocfg-r-reopen () '(fn-ocfg-open (ocfg-r-bound) *ocfg-r-acfg* nil))
 (assert-event (car (ocfg-r-reopen)))
 (assert-event (equal (fn-own-next-id (fn-ocfg-owner (ocfg-r-bound))) 1))
 (assert-event (null (fn-auth-session-peer (ocfg-r-session (cdr (ocfg-r-reopen)) 1))))
@@ -627,7 +627,7 @@
 (assert-event (equal (fn-auth-session-peer (ocfg-r-session (cdr (ocfg-r-reopen)) 0))
                      "principal-peer"))
 (defmacro ocfg-r-closed-reopen ()
-  '(fn-ocfg-open (fn-ocfg-close (ocfg-r-bound) 0) *ocfg-r-acfg*))
+  '(fn-ocfg-open (fn-ocfg-close (ocfg-r-bound) 0) *ocfg-r-acfg* nil))
 (assert-event (car (ocfg-r-closed-reopen)))
 (assert-event (null (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner (cdr (ocfg-r-closed-reopen)))))))
 (assert-event (null (fn-auth-session-peer (ocfg-r-session (cdr (ocfg-r-closed-reopen)) 1))))
@@ -636,8 +636,8 @@
 ; The hypothesis, the open was accepted: an owner at its connection bound
 ; greets nobody and installs nothing, so no connection sits at the identifier
 ; and the conclusion's first conjunct is false.
-(defconst *ocfg-r-full* (cdr (fn-ocfg-open *ocfg-t-full1* *ocfg-r-acfg*)))
-(assert-event (null (car (fn-ocfg-open *ocfg-t-full1* *ocfg-r-acfg*))))
+(defconst *ocfg-r-full* (cdr (fn-ocfg-open *ocfg-t-full1* *ocfg-r-acfg* nil)))
+(assert-event (null (car (fn-ocfg-open *ocfg-t-full1* *ocfg-r-acfg* nil))))
 (assert-event (null (fn-own-find-conn (fn-own-next-id (fn-ocfg-owner *ocfg-t-full1*))
                                       (fn-own-conns (fn-ocfg-owner *ocfg-r-full*)))))
 
@@ -646,17 +646,111 @@
      (implies (and ,@hyps)
               (and (fn-own-find-conn
                     (fn-own-next-id (fn-ocfg-owner oc))
-                    (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg)))))
+                    (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile)))))
                    (not (fn-auth-session-peer
                          (fn-own-conn-session
                           (fn-own-find-conn
                            (fn-own-next-id (fn-ocfg-owner oc))
                            (fn-own-conns
-                            (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))))))))
+                            (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))))))))
      :rule-classes nil
      :hints (("Goal" :do-not-induct t
               :use ((:instance fn-ocfg-open-begins-unbound))
               :in-theory (disable fn-ocfg-open fn-own-find-conn
                                   fn-auth-session-peer)))))
-(ocfg-r-unbound-thm ocfg-r-unbound-full ((car (fn-ocfg-open oc acfg))))
+(ocfg-r-unbound-thm ocfg-r-unbound-full ((car (fn-ocfg-open oc acfg profile))))
 (local (must-fail-checked (ocfg-r-unbound-thm ocfg-r-unbound-without-acceptance ())))
+
+; -----------------------------------------------------------------------------
+; PIN-VALUE profile teeth (ruling B): an open pins its own profile, and a
+; configuration move preserves the two different profiles already held.
+(include-book "../../books/owner-reclaim-pass")
+
+(defconst *ocfg-pv-p1* '(:profile :first))
+(defconst *ocfg-pv-p2* '(:profile :second))
+(assert-event (not (equal *ocfg-pv-p1* *ocfg-pv-p2*)))
+
+; The old bare-CFG table value is rejected, even though CFG itself is valid.
+(assert-event
+ (and (fn-cfgp *ocfg-t-g1*)
+      (not (fn-ocfg-pins-okp (list (cons 0 *ocfg-t-g1*))))))
+
+; The whole antecedent: a valid starting state, free ID 0, and an accepted
+; open with an actual connection and a pin at that ID.
+(defconst *ocfg-pv-first* (cdr (fn-ocfg-open *ocfg-t-0* nil *ocfg-pv-p1*)))
+(assert-event
+ (and (fn-ocfg-statep *ocfg-t-0*)
+      (equal (fn-own-next-id (fn-ocfg-owner *ocfg-t-0*)) 0)
+      (not (fn-ocfg-pin-find 0 (fn-ocfg-pins *ocfg-t-0*)))
+      (not (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-t-0*))))
+      (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-pv-first*)))
+      (fn-ocfg-statep *ocfg-pv-first*)
+      (equal (fn-ocfg-conn-profile *ocfg-pv-first* 0) *ocfg-pv-p1*)
+      (equal (fn-ocfg-conn-config *ocfg-pv-first* 0) (fn-ocfg-config *ocfg-t-0*))))
+
+; Exact open mutant: only the pin-add value differs; PROFILE is dropped.
+(defun ocfg-pv-cfg-only-open (oc acfg profile)
+  (declare (xargs :guard t) (ignore profile))
+  (let* ((o (fn-ocfg-owner oc))
+         (id (fn-own-next-id o))
+         (opened (fn-own-open o (fn-auth-config-with-accounts
+                                 acfg (fn-cfg-value (fn-ocfg-config oc)))))
+         (raw (cdr opened))
+         (o2 (if (fn-own-find-conn id (fn-own-conns raw))
+                 (fn-own-reader-context raw id (fn-ocfg-config oc))
+               raw)))
+    (cons (car opened)
+          (fn-ocfg-make o2 (fn-ocfg-config oc)
+                        (if (fn-own-find-conn id (fn-own-conns o2))
+                            ; a new connection pins the LATEST configuration
+                            ; and the Store profile it is opened under
+                            (fn-ocfg-pin-add id (fn-ocfg-config oc)
+                                             (fn-ocfg-pins oc))
+                          (fn-ocfg-pins oc))
+                        (fn-ocfg-staged oc)))))
+(defconst *ocfg-pv-mutant* (cdr (ocfg-pv-cfg-only-open *ocfg-t-0* nil *ocfg-pv-p1*)))
+(assert-event
+ (and (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-pv-mutant*)))
+      (not (and (equal (fn-ocfg-conn-profile *ocfg-pv-mutant* 0) *ocfg-pv-p1*)
+                (equal (fn-ocfg-conn-config *ocfg-pv-mutant* 0)
+                       (fn-ocfg-config *ocfg-t-0*))))))
+(local
+ (must-fail-checked
+  (assert-event
+   (and (equal (fn-ocfg-conn-profile *ocfg-pv-mutant* 0) *ocfg-pv-p1*)
+        (equal (fn-ocfg-conn-config *ocfg-pv-mutant* 0)
+               (fn-ocfg-config *ocfg-t-0*))))))
+
+; Open ID 1 under a new live configuration and a different profile.
+(defconst *ocfg-pv-published*
+ (fn-ocfg-make (fn-ocfg-owner *ocfg-pv-first*) *ocfg-t-g2*
+               (fn-ocfg-pins *ocfg-pv-first*) nil))
+(defconst *ocfg-pv-two* (cdr (fn-ocfg-open *ocfg-pv-published* nil *ocfg-pv-p2*)))
+(assert-event
+ (and (fn-ocfg-statep *ocfg-pv-two*)
+      (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-pv-two*)))
+      (fn-own-find-conn 1 (fn-own-conns (fn-ocfg-owner *ocfg-pv-two*)))
+      (equal (fn-ocfg-conn-profile *ocfg-pv-two* 0) *ocfg-pv-p1*)
+      (equal (fn-ocfg-conn-profile *ocfg-pv-two* 1) *ocfg-pv-p2*)
+      (equal (fn-ocfg-conn-config *ocfg-pv-two* 0) *ocfg-t-g1*)
+      (equal (fn-ocfg-conn-config *ocfg-pv-two* 1) *ocfg-t-g2*)))
+
+(defconst *ocfg-pv-advanced* (fn-ocfg-advance *ocfg-pv-two* 0))
+(assert-event
+ (and (equal (car (fn-own-advance-result (fn-ocfg-owner *ocfg-pv-two*) 0)) :advanced)
+      (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-pv-advanced*)))
+      (fn-own-find-conn 1 (fn-own-conns (fn-ocfg-owner *ocfg-pv-advanced*)))
+      (equal (fn-ocfg-conn-config *ocfg-pv-advanced* 0) *ocfg-t-g2*)
+      (equal (fn-ocfg-conn-profile *ocfg-pv-advanced* 0) *ocfg-pv-p1*)
+      (equal (fn-ocfg-conn-profile *ocfg-pv-advanced* 1) *ocfg-pv-p2*)))
+
+; A rebuild with the other configuration makes the swap move both pins.
+(defconst *ocfg-pv-swapped*
+ (fn-orcp-swapped-ocfg *ocfg-pv-advanced* *ocfg-t-0*))
+(assert-event
+ (and (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocfg-pv-swapped*)))
+      (fn-own-find-conn 1 (fn-own-conns (fn-ocfg-owner *ocfg-pv-swapped*)))
+      (equal (fn-ocfg-conn-config *ocfg-pv-swapped* 0) *ocfg-t-g1*)
+      (equal (fn-ocfg-conn-config *ocfg-pv-swapped* 1) *ocfg-t-g1*)
+      (equal (fn-ocfg-conn-profile *ocfg-pv-swapped* 0) *ocfg-pv-p1*)
+      (equal (fn-ocfg-conn-profile *ocfg-pv-swapped* 1) *ocfg-pv-p2*)))

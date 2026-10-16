@@ -21,7 +21,7 @@
 (bpr-lift fn-ocfg-step 2)
 (defconst *ocp-clocked*
   (in-arena-fn-ocfg-step *sr-arena* *ocp-0* (list :observe (fn-clock-observation 5000000 1790000000000 0 t))))
-(defconst *ocp-open0* (cdr (fn-ocfg-open *ocp-clocked* nil)))
+(defconst *ocp-open0* (cdr (fn-ocfg-open *ocp-clocked* nil nil)))
 
 ; Reader 0 is mid-command: half of `GROUP fn.test' has arrived, no reply yet.
 (defconst *ocp-half* (fn-nntp-string-octets "GROUP fn.te"))
@@ -32,7 +32,7 @@
                           (fn-own-conns (fn-ocfg-owner *ocp-open0*)))))
 
 ; Connection 1 asks for a new group; ACL2 builds the delta and stages it.
-(defconst *ocp-admin* (cdr (fn-ocfg-open *ocp-reading* nil)))
+(defconst *ocp-admin* (cdr (fn-ocfg-open *ocp-reading* nil nil)))
 (defconst *ocp-deltas* (fn-ocl-request-deltas :create-group "fn.live"))
 (defconst *ocp-staged*
   (in-arena-fn-ocfg-step *sr-arena* *ocp-admin* (list :reconfigure 1 *ocp-deltas*)))
@@ -74,7 +74,7 @@
                      (car (in-arena-fn-ocfg-read *sr-arena* *ocp-reading* 0 *ocp-rest*))))
 (assert-event (consp (car (in-arena-fn-ocfg-read *sr-arena* *ocp-reading* 0 *ocp-rest*))))
 ; A connection opened after publication serves the new group.
-(defconst *ocp-new* (cdr (fn-ocfg-open *ocp-published* nil)))
+(defconst *ocp-new* (cdr (fn-ocfg-open *ocp-published* nil nil)))
 (assert-event (member-equal "fn.live" (fn-ocfg-served *ocp-new* 2)))
 ; The owner itself moved (store and posting configuration): the old
 ; headline's "owner unchanged" conjunct is false of the called path, which is

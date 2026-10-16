@@ -329,9 +329,9 @@
 (defthm fn-opc-direct-configured-entries-preserve-owner-relation
   (implies
    (fn-own-relation (fn-ocfg-owner oc))
-   (and (fn-own-relation (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))
+   (and (fn-own-relation (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))
         (fn-own-relation
-         (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))
+         (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))))
         (fn-own-relation
          (fn-ocfg-owner (cdr (fn-ocfg-read oc id octets fn-arena))))
         (fn-own-relation

@@ -14,7 +14,7 @@
   (list *fn-cfg-default-record*
         (fn-cfg-record-make 1 7 2 (list (fn-cfg-set-capacity 1)) *fn-cfg-default-stamp*)))
 (defconst *orcn-t-rebuilt-oc* (cadr (fn-orcp-rebuild *orcn-t-events* *orcn-t-configs* 8 4)))
-(defconst *orcn-t-live* (cdr (fn-ocfg-open *orcn-t-rebuilt-oc* nil)))
+(defconst *orcn-t-live* (cdr (fn-ocfg-open *orcn-t-rebuilt-oc* nil nil)))
 (defconst *orcn-t-next* (fn-orcp-swapped-ocfg *orcn-t-live* *orcn-t-rebuilt-oc*))
 
 ; -----------------------------------------------------------------------------

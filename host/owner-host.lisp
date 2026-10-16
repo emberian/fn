@@ -725,11 +725,7 @@
 (definterface fn-owner-apply-limit-profile
   :class :common-lisp-compliant)
 
-(defun fn-owner-store-profile (state)
-  (declare (xargs :stobjs state :guard t))
-  (if (boundp-global 'fn-owner-store-profile state)
-      (f-get-global 'fn-owner-store-profile state)
-    nil))
+; fn-owner-store-profile: defined unchanged in books/owner-connection-callbacks.
 
 ;; PRF-996: the running owner's carried (REQUESTED . FUNDED)
 ;; (books/limits-live.lisp fn-lim-carry-after): the profile the configuration
@@ -5080,7 +5076,7 @@
          (r (fn-ocar-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
                          (fn-owner-exposure-limits state) (fn-owner-auth state)
                          peer (cons family address)
-                         (fn-owner-exposure-now state)))
+                         (fn-owner-exposure-now state) (fn-owner-store-profile state)))
          (state (fn-owner-install-ocfg (fn-exp-open-ocfg r) state))
          (state (f-put-global 'fn-owner-exposure (fn-exp-open-state r) state)))
     (if (fn-exp-open-id r)

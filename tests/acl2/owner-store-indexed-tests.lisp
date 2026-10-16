@@ -66,11 +66,11 @@
 (bpr-lift fn-bpaj-transit-record-lookup 3)
 (bpr-lift fn-bpaj-node-record-committed-carriedp 2)
 (bpr-lift fn-bpi-node-wire-committedp 2)
-(bpr-lift fn-osi-live-owner 6)
-(bpr-lift fn-osi-live-store 6)
+(bpr-lift fn-osi-live-owner 7)
+(bpr-lift fn-osi-live-store 7)
 (make-event
  `(defconst *osi-store*
-    ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-events* *osi-frontier* 4 *osi-barriers*)))
+    ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-events* *osi-frontier* 4 *osi-barriers* nil)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *osi-store*)) :ready))
 (assert-event (fn-sn-statep *osi-store*))
 
@@ -144,10 +144,10 @@
             (:io :record-directory :ok) (:complete))))
 (make-event
  `(defconst *osi-before*
-    ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-enrolment* 1 4 *osi-barriers*)))
+    ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-enrolment* 1 4 *osi-barriers* nil)))
 (make-event
  `(defconst *osi-after*
-    ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-enrolment* 1 4 *osi-commit*)))
+    ',(in-arena-fn-osi-live-store *sr-arena* *osi-configs* nil *osi-enrolment* 1 4 *osi-commit* nil)))
 
 (assert-event (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-before*
                                             *bsb-request-octets* 1)
@@ -333,7 +333,7 @@
 ; both checks.
 (make-event
  `(defconst *osi-live-oc*
-    ',(in-arena-fn-osi-live-owner *sr-arena* *osi-configs* nil *osi-events* *osi-frontier* 4 *osi-barriers*)))
+    ',(in-arena-fn-osi-live-owner *sr-arena* *osi-configs* nil *osi-events* *osi-frontier* 4 *osi-barriers* nil)))
 (defconst *osi-live-oc-store* (fn-own-store (fn-ocfg-owner *osi-live-oc*)))
 (assert-event (equal *osi-live-oc-store* *osi-store*))
 (assert-event (fn-ocl-relation *osi-live-oc*))

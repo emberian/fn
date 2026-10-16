@@ -232,11 +232,11 @@
 ; KEYSTONE: fn-owner-open-peer installs fn-ocfg-open-peer's owner.
 (defthm fn-onbj-boundp-at-owner-open-peer
   (implies (fn-onb-boundp (fn-ocfg-owner oc))
-           (fn-onb-boundp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg)))))
+           (fn-onb-boundp (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile)))))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-step) (fn-onb-boundp fn-ocfg-open-peer fn-ocfg-open fn-ocfg-advance
                                                   fn-ocfg-close fn-ocfg-fault fn-ocfg-read fn-ocfg-read-step
                                                   fn-ocfg-reconfigure fn-ocfg-complete fn-ocfg-pass))
-           :use ((:instance fn-onbj-boundp-of-ocfg-conn-event (event (list :open-peer peer nil acfg)))))))
+           :use ((:instance fn-onbj-boundp-of-ocfg-conn-event (event (list :open-peer peer nil acfg profile)))))))
 
 ; -----------------------------------------------------------------------------
 ; The store's io steps (host/owner-host.lisp fn-owner-io): the store steps,
@@ -312,11 +312,11 @@
 ; keeps the store and the view (fn-sjh-op-ocar-ocfg-open-facts2).
 (defthm fn-onbj-boundp-at-owner-open
   (implies (fn-onb-boundp (fn-ocfg-owner oc))
-           (fn-onb-boundp (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))))
+           (fn-onb-boundp (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))))
   :hints (("Goal" :in-theory nil
            :use ((:instance fn-sjh-op-ocar-ocfg-open-facts2 (fn-arena nil) (fn-cat nil) (n 0))
                  (:instance fn-onb-boundp-of-same-store-and-view (o (fn-ocfg-owner oc))
-                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg)))))))))
+                            (o2 (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile)))))))))
 
 ; KEYSTONE (fn-owner-open, a capture held): opened at the captured reader
 ; view (fn-ocfg-at-reader-view), the working view put back
@@ -324,7 +324,7 @@
 (defthm fn-onbj-boundp-at-owner-open-captured
   (implies (fn-onb-boundp (fn-ocfg-owner oc))
            (fn-onb-boundp (fn-ocfg-owner
-                           (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg))
+                           (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg profile))
                                               (fn-own-view (fn-ocfg-owner oc))))))
   :hints (("Goal" :in-theory (union-theories '(fn-ocfg-at-reader-view fn-ocv-reader-view
                                                fn-ocfg-with-view-keeps-the-rest)
@@ -334,14 +334,14 @@
                  (:instance fn-sjh-op-ocar-ocfg-open-facts2 (fn-arena nil) (fn-cat nil) (n 0))
                  (:instance fn-onb-boundp-of-same-store-and-view (o (fn-ocfg-owner oc))
                             (o2 (fn-ocfg-owner
-                                 (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg))
+                                 (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg profile))
                                                     (fn-own-view (fn-ocfg-owner oc))))))))))
 
 ; KEYSTONE (fn-owner-exposure-open): a refused accept keeps the owner, an
 ; admitted one opens a reader (fn-ocar-ocfg-open) or a peer (fn-ocfg-open-peer).
 (defthm fn-onbj-boundp-at-owner-exposure-open
   (implies (fn-onb-boundp (fn-ocfg-owner oc))
-           (fn-onb-boundp (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now)))))
+           (fn-onb-boundp (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now profile)))))
   :hints (("Goal" :in-theory (e/d (fn-ocar-exp-open fn-exp-open-ocfg fn-exp-at)
                                   (fn-ocar-ocfg-open fn-ocfg-open-peer fn-onb-boundp fn-exp-admit-decision
                                    fn-exp-register fn-exp-pinned-acfg fn-exp-with fn-exp-counters-bump

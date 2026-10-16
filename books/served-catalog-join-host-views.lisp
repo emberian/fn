@@ -630,29 +630,29 @@
 
 (defthm fn-sjh-viewsp-at-owner-open-peer
   (implies (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat)
-           (fn-sjh-viewsp views (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))) fn-cat))
+           (fn-sjh-viewsp views (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))) fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-step) (fn-sjh-viewsp fn-ocfg-open-peer fn-ocfg-open fn-ocfg-advance
                                                   fn-ocfg-close fn-ocfg-fault fn-ocfg-read fn-ocfg-read-step
                                                   fn-ocfg-reconfigure fn-ocfg-complete fn-ocfg-pass))
-           :use ((:instance fn-sjh-viewsp-of-ocfg-step-view-event (event (list :open-peer peer nil acfg)))))))
+           :use ((:instance fn-sjh-viewsp-of-ocfg-step-view-event (event (list :open-peer peer nil acfg profile)))))))
 
 (defthm fn-sjh-viewsp-at-owner-open
   (implies (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat)
-           (fn-sjh-viewsp views (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg))) fn-cat))
+           (fn-sjh-viewsp views (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile))) fn-cat))
   :hints (("Goal" :in-theory '(fn-sjh-viewsp-of-same-view)
            :use ((:instance fn-sjh-op-ocar-ocfg-open-facts2 (n 0))))))
 
 (defthm fn-sjh-viewsp-at-owner-open-captured
   (implies (fn-sjh-viewsp views2 (fn-ocfg-owner oc) fn-cat)
            (fn-sjh-viewsp views2
-                          (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg))
+                          (fn-ocfg-owner (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg profile))
                                                             (fn-own-view (fn-ocfg-owner oc))))
                           fn-cat))
   :hints (("Goal" :in-theory '(fn-ocfg-with-view-keeps-the-rest fn-sjh-viewsp-of-same-view))))
 
 (defthm fn-sjh-viewsp-at-owner-exposure-open
   (implies (fn-sjh-viewsp views (fn-ocfg-owner oc) fn-cat)
-           (fn-sjh-viewsp views (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now)))
+           (fn-sjh-viewsp views (fn-ocfg-owner (fn-exp-open-ocfg (fn-ocar-exp-open oc xs lim acfg peer address now profile)))
                           fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-ocar-exp-open fn-exp-open-ocfg fn-exp-at)
                                   (fn-ocar-ocfg-open fn-ocfg-open-peer fn-sjh-viewsp fn-exp-admit-decision
@@ -761,7 +761,7 @@
 ; views carried, fn-sjh-views-okp holds (fn-sjh-viewsp-gives-views-okp).
 (defthm fn-sjh-okp-at-owner-open-captured-carried
   (let ((o2 (fn-ocfg-owner
-             (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg))
+             (fn-ocfg-with-view (cdr (fn-ocar-ocfg-open (fn-ocfg-at-reader-view oc views) acfg profile))
                                 (fn-own-view (fn-ocfg-owner oc))))))
     (implies (and (consp views)
                   (fn-sjh-okp (fn-ocfg-owner oc) pending fn-arena fn-cat)

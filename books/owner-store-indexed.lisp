@@ -222,9 +222,9 @@
   :hints (("Goal" :in-theory (enable fn-ocfg-with-owner))))
 
 (defthm fn-osi-ocfg-open-keeps-store
-  (and (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg))))
+  (and (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open oc acfg profile))))
               (fn-own-store (fn-ocfg-owner oc)))
-       (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg))))
+       (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-open-peer oc peer acfg profile))))
               (fn-own-store (fn-ocfg-owner oc)))
        (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocfg-read-step oc id event fn-arena))))
               (fn-own-store (fn-ocfg-owner oc)))
@@ -249,7 +249,7 @@
 (defthm fn-osi-exp-open-keeps-store
   (equal (fn-own-store (fn-ocfg-owner
                         (fn-exp-open-ocfg
-                         (fn-exp-open oc st limits auth peer address now))))
+                         (fn-exp-open oc st limits auth peer address now profile))))
          (fn-own-store (fn-ocfg-owner oc)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-exp-open fn-exp-open-ocfg fn-osi-exp-at-one
@@ -259,7 +259,7 @@
 (defthm fn-osi-ocar-exp-open-keeps-store
   (equal (fn-own-store (fn-ocfg-owner
                         (fn-exp-open-ocfg
-                         (fn-ocar-exp-open oc st limits auth peer address now))))
+                         (fn-ocar-exp-open oc st limits auth peer address now profile))))
          (fn-own-store (fn-ocfg-owner oc)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-ocar-exp-open fn-exp-open-ocfg fn-osi-exp-at-one
@@ -299,7 +299,7 @@
 ;
 ; The :step arm admits every owner event but the kernel crash
 ; (fn-osi-host-own-eventp), a superset of the events the host sends.
-(defun fn-osi-host-step (oc ev fn-arena)
+(defun fn-osi-host-step (oc ev profile fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((a (cadr ev)) (b (caddr ev)) (c (cadddr ev)))
     (case (car ev)
@@ -326,22 +326,22 @@
                                         (car (cddddr ev))))))
       (:outcome (fn-ocfg-with-owner
                  oc (cdr (fn-acar-own-outcome (fn-ocfg-owner oc) a b))))
-      (:open-peer (cdr (fn-ocfg-open-peer oc a b)))
+      (:open-peer (cdr (fn-ocfg-open-peer oc a b profile)))
       (:read-step (cdr (fn-ocfg-read-step oc a b fn-arena)))
-      (:open (cdr (fn-ocar-ocfg-open oc a)))
+      (:open (cdr (fn-ocar-ocfg-open oc a profile)))
       (:exposure-open
        (fn-exp-open-ocfg (fn-ocar-exp-open oc a b c (car (cddddr ev))
                                       (cadr (cddddr ev))
-                                      (caddr (cddddr ev)))))
+                                      (caddr (cddddr ev)) profile)))
       (:read (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc a b fn-arena)))
       (:fault (cdr (fn-ocfg-fault oc a)))
       (:observe (fn-ocfg-observe oc a))
       (otherwise oc))))
 
-(defun fn-osi-host-run (oc evs fn-arena)
+(defun fn-osi-host-run (oc evs profile fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (consp evs)
-      (fn-osi-host-run (fn-osi-host-step oc (car evs) fn-arena) (cdr evs) fn-arena)
+      (fn-osi-host-run (fn-osi-host-step oc (car evs) profile fn-arena) (cdr evs) profile fn-arena)
     oc))
 
 (defthm fn-osi-osb-install-keeps-store
@@ -350,14 +350,14 @@
                                   (fn-bs-profile-admittedp fn-osb-config
                                    fn-own-configure)))))
 
-(defun fn-osi-live-owner (configs prefix suffix frontier max-conns evs fn-arena)
+(defun fn-osi-live-owner (configs prefix suffix frontier max-conns evs profile fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (fn-osi-host-run (fn-osi-open configs prefix suffix frontier max-conns) evs fn-arena))
+  (fn-osi-host-run (fn-osi-open configs prefix suffix frontier max-conns) evs profile fn-arena))
 
-(defun fn-osi-live-store (configs prefix suffix frontier max-conns evs fn-arena)
+(defun fn-osi-live-store (configs prefix suffix frontier max-conns evs profile fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (fn-own-store (fn-ocfg-owner (fn-osi-live-owner configs prefix suffix
-                                                  frontier max-conns evs fn-arena))))
+                                                  frontier max-conns evs profile fn-arena))))
 
 ; KEYSTONE (PRF-144): the Store of every owner the host reaches from its
 ; open, by any sequence of the owners it installs, is indexed.  No

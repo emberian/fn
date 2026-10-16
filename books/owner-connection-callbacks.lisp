@@ -10,6 +10,13 @@
 (include-book "owner-log")
 (include-book "store-octet-entry")
 
+; Shared with owner-host: the profile supplied to every configured open.
+(defun fn-owner-store-profile (state)
+  (declare (xargs :stobjs state :guard t))
+  (if (boundp-global 'fn-owner-store-profile state)
+      (f-get-global 'fn-owner-store-profile state)
+    nil))
+
 (defthm fn-owner-callback-owner-bound-of-other-put
   (implies (and (boundp-global 'fn-owner state)
                 (not (equal key 'fn-owner)))
@@ -131,7 +138,7 @@
          ; fn-node-statep and the configuration's fn-cfgp from the relation
          ; instead of evaluating them per connection (PKT-455 (1)).
          (opened (fn-ocar-ocfg-open (fn-owner-ocfg state)
-                                    (fn-owner-auth state)))
+                                    (fn-owner-auth state) (fn-owner-store-profile state)))
          (state (fn-owner-install-ocfg (cdr opened) state))
          (state (fn-owner-callback-install-effects (car opened) state))
          (state (f-put-global 'fn-owner-log-line
@@ -189,7 +196,7 @@
          (r (fn-ocar-exp-open (fn-owner-ocfg state) (fn-owner-exposure-state state)
                          (fn-owner-callback-exposure-limits state) (fn-owner-auth state)
                          peer (cons family address)
-                         (fn-owner-exposure-now state)))
+                         (fn-owner-exposure-now state) (fn-owner-store-profile state)))
          (state (fn-owner-install-ocfg (fn-exp-open-ocfg r) state))
          (state (f-put-global 'fn-owner-exposure (fn-exp-open-state r) state)))
     (if (fn-exp-open-id r)
@@ -229,7 +236,7 @@
              ; a box where a configured peer is on loopback that was every
              ; client: the operator's credential reached nothing.
              (opened (fn-ocfg-open-peer (fn-owner-ocfg state) peer
-                                        (fn-owner-auth state)))
+                                        (fn-owner-auth state) (fn-owner-store-profile state)))
              (state (fn-owner-install-ocfg (cdr opened) state))
              (state (fn-owner-callback-install-effects (car opened) state))
              (state (f-put-global 'fn-owner-log-line

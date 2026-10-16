@@ -32,7 +32,7 @@
 (defconst *pxt-oc* (fn-ocfg-make *pxt-owner* (fn-cfg-initial) nil nil))
 
 (defmacro pxt-open (oc xs lim address now)
-  `(fn-exp-open ,oc ,xs ,lim *aut-required* nil ,address ,now))
+  `(fn-exp-open ,oc ,xs ,lim *aut-required* nil ,address ,now nil))
 
 ; -----------------------------------------------------------------------------
 ; The rows: absent rows take the listener's defaults; a row wins.

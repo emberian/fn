@@ -291,7 +291,7 @@
                         (fn-own-start (fn-sn-open-state opened) max-conns)
                         (fn-oag-post-config cfg *fn-record-max-payload*))
                        cfg nil nil))
-                  (admin (cdr (fn-ocfg-open oc acfg))))
+                  (admin (cdr (fn-ocfg-open oc acfg profile))))
              (fn-ocl-relation admin)))
   :rule-classes nil
   :hints (("Goal"

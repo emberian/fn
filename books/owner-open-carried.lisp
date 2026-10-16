@@ -263,8 +263,8 @@
 ; greeting effects and the owner alike, for every authentication policy.
 (defthm fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation
   (implies (fn-ocl-relation oc)
-           (equal (fn-ocar-ocfg-open oc acfg)
-                  (fn-ocfg-open oc acfg)))
+           (equal (fn-ocar-ocfg-open oc acfg profile)
+                  (fn-ocfg-open oc acfg profile)))
   :hints (("Goal"
            :use ((:instance fn-acar-ocl-relation-carries-view-statep)
                  (:instance fn-scar-ocl-relation-carries-node-statep)
@@ -325,8 +325,8 @@
 ; KEYSTONE for host/owner-host.lisp fn-owner-exposure-open.
 (defthm fn-ocar-exp-open-is-exp-open-under-ocl-relation
   (implies (fn-ocl-relation oc)
-           (equal (fn-ocar-exp-open oc xs lim acfg peer address now)
-                  (fn-exp-open oc xs lim acfg peer address now)))
+           (equal (fn-ocar-exp-open oc xs lim acfg peer address now profile)
+                  (fn-exp-open oc xs lim acfg peer address now profile)))
   :hints (("Goal" :in-theory (e/d (fn-exp-open)
                                   (fn-ocar-ocfg-open fn-ocfg-open
                                    fn-ocfg-open-peer fn-ocl-relation
@@ -351,7 +351,7 @@
                                   (fn-ocar-peer-open-reader)))))
 
 (defthm fn-ocar-ocfg-open-keeps-store
-  (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg))))
+  (equal (fn-own-store (fn-ocfg-owner (cdr (fn-ocar-ocfg-open oc acfg profile))))
          (fn-own-store (fn-ocfg-owner oc)))
   :hints (("Goal" :in-theory (e/d (fn-ocar-ocfg-open)
                                   (fn-ocar-own-open fn-ocar-own-reader-context)))))

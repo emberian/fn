@@ -474,7 +474,8 @@
 (def-loop fn-orcp-pins-at (conns cfg pins)
   :shape :map :over conns :elt c
   :body (cons (fn-own-conn-id c)
-              (cons cfg (cdr (cdr (fn-ocfg-pin-find (fn-own-conn-id c) pins))))))
+              (cons cfg (mbe :logic (cdr (cdr (fn-ocfg-pin-find (fn-own-conn-id c) pins)))
+                             :exec (fn-ag-cdr (fn-ag-cdr (fn-ocfg-pin-find (fn-own-conn-id c) pins)))))))
 
 ; What the swap installs (host/owner-host.lisp fn-owner-orcp-swap): the
 ; swapped owner under the rebuilt configuration, every connection pinned

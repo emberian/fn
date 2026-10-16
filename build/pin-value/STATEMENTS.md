@@ -8,6 +8,7 @@ This commit holds the statements: the definitions plus every theorem text whose 
 - `fn-ocfg-pins-okp`: the conjunct `(fn-cfgp (cdr (car pins)))` becomes `(fn-ocfg-pin-valuep (cdr (car pins)))`.
 - `fn-ocfg-conn-config (oc id)` = `(car (cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc))))`. Its consumers' formulas stay byte-identical.
 - NEW `fn-ocfg-conn-profile (oc id)` = `(cdr (cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc))))`.
+- Revision 1 (run 1's RED, a false guard at `fn-ocfg-conn-config` for a pin whose tail is an atom: `oc = '(nil nil ((0 . 3)) nil)`, `id = 0`): both projections and `fn-orcp-pins-at`'s profile read keep these LOGICAL bodies and execute through the total `fn-ag-car` / `fn-ag-cdr` (`mbe :exec`), as the record accessors in this book do. The guards stay `t`, and no hypothesis is added.
 - The opens gain PROFILE as their last argument, and a new connection pins `(cons (fn-ocfg-config oc) profile)`:
   - `fn-ocfg-open (oc acfg profile)`
   - `fn-ocfg-open-peer (oc peer acfg profile)`

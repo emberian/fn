@@ -90,7 +90,7 @@
 
 ; Keystone 2: the new connection pins the owner's configuration, and so the
 ; path-identity (fn-oag-configured-open-pins-the-path-identity).
-(defconst *oat-oc1* (cdr (fn-ocfg-open *oat-oc0* nil)))
+(defconst *oat-oc1* (cdr (fn-ocfg-open *oat-oc0* nil nil)))
 (defconst *oat-id* (fn-own-next-id (fn-ocfg-owner *oat-oc0*)))
 (defconst *oat-conn*
   (fn-own-find-conn *oat-id* (fn-own-conns (fn-ocfg-owner *oat-oc1*))))
@@ -121,7 +121,7 @@
 (defconst *oat-stale-oc* (fn-ocfg-make *oat-stale-owner* *oat-cfg* nil nil))
 (defconst *oat-stale-found*
   (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner
-                                     (cdr (fn-ocfg-open *oat-stale-oc* nil))))))
+                                     (cdr (fn-ocfg-open *oat-stale-oc* nil nil))))))
 (assert-event (consp *oat-stale-found*))
 (assert-event (not (equal (fn-own-conn-config *oat-stale-found*)
                           (fn-own-config *oat-stale-owner*))))
@@ -131,7 +131,7 @@
           (o (fn-ocfg-owner oc))
           (id (fn-own-next-id o))
           (conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner
-                                                     (cdr (fn-ocfg-open oc nil)))))))
+                                                     (cdr (fn-ocfg-open oc nil profile)))))))
      (implies conn
               (equal (fn-own-conn-config conn) (fn-own-config o))))
    :hints (("Goal" :in-theory (e/d (fn-ocfg-open)

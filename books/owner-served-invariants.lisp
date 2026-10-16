@@ -553,7 +553,7 @@
   (implies (and (fn-ocfg-statep oc)
                 (<= (nfix (fn-own-max-conns (fn-ocfg-owner oc)))
                     (len (fn-own-conns (fn-ocfg-owner oc)))))
-           (equal (fn-ocfg-open oc acfg) (cons nil oc)))
+           (equal (fn-ocfg-open oc acfg profile) (cons nil oc)))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-open fn-ocfg-statep)
                                   (fn-own-relation fn-own-open fn-ocfg-make-of-its-fields))
                   :use ((:instance fn-own-relation-has-no-connection-at-next-id
