@@ -1279,3 +1279,378 @@
         (equal (cadr (member-eq :after-phase r)) :idle)
         (not (cadr (member-eq :after-chain-octets r)))
         (not (cadr (member-eq :after-I r))) (not (cadr (member-eq :after-old-I r)))))))
+
+; P16t landing-2 defteeth. The reachability witnesses below use the actual
+; shipped config's init/host-run and fn-pth-reachablep-suff, not a surrogate
+; reachability predicate. Acceptance remains the checked K=0 attachment above.
+; Acceptance is the checked K=0 witness attached at this test book's start.
+; These I teeth do not depend on any particular acceptance result.
+(defthm p16t-i-fixture-reachable
+ (fn-pth-reachablep *p13-request-domain-before*)
+ :rule-classes nil
+ :hints (("Goal" :use (pthrt-p13-development-initial-state-is-reachable
+                       p14-development-init-is-the-fixture-before)
+  :in-theory (theory 'minimal-theory))))
+(defthm p16t-old-acquire-breaks-i
+ (not (fn-pth-i *p14-acq-S2-after*))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories '(fn-pth-i fn-pth-i-pool)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-pth-i))))))))
+(make-event
+ `(defthm p16t-i-positive-ground
+  ,(pthrt-r8-rename '(and (fn-pth-reachablep s) (fn-pth-i s))
+                      '((s . *p13-request-domain-before*)))
+  :rule-classes nil
+  :hints (("Goal" :use (p16t-i-fixture-reachable
+                        (:instance fn-pth-reachable-implies-i (s *p13-request-domain-before*)))
+    :in-theory (theory 'minimal-theory)))))
+(make-event
+ `(defthm p16t-i-removal-ground
+  ,(pthrt-r8-rename '(and (not (fn-pth-reachablep s)) (not (fn-pth-i s)))
+                      '((s . *p14-acq-S2-after*)))
+  :rule-classes nil
+  :hints (("Goal" :use (p16t-old-acquire-breaks-i
+                        (:instance fn-pth-reachable-implies-i (s *p14-acq-S2-after*)))
+    :in-theory (theory 'minimal-theory)))))
+(make-event
+ `(defthm p16t-i-mutation-ground
+  ,(pthrt-r8-rename
+   '(and (fn-pth-reachablep s) (fn-pth-i s)
+     (not (fn-pth-i (mv-nth 0 (p14-old-req-acquire '(:acquire 3) 0 1 s)))))
+   '((s . *p13-request-domain-before*)))
+  :rule-classes nil
+  :hints (("Goal" :use (p16t-i-positive-ground p16t-old-acquire-breaks-i
+                       p14-acq-T1-old-acquire-reproduces-whole-S2-after-state)
+    :in-theory (theory 'minimal-theory)))))
+(defteeth fn-pth-reachable-implies-i
+ :claim (((reachable (fn-pth-reachablep s))) (fn-pth-i s))
+ :subject fn-pth-host-run
+ :witness ((s *p13-request-domain-before*))
+ :witness-lemma p16t-i-positive-ground
+ :breaks ((reachable ((s *p14-acq-S2-after*))
+           :logical "The old ACQ body assigns workspace 3 to listener pair (0,1), whose live incarnation is 0; this state is unreachable."
+           :lemma p16t-i-removal-ground))
+ :mutations ((pre-acq-listener-workspace
+   (:conclusion (fn-pth-i (mv-nth 0 (p14-old-req-acquire '(:acquire 3) 0 1 s))))
+   ((s *p13-request-domain-before*))
+   :fault "The old pre-ACQ acquire body admits listener pair (0,1) and destroys I from the shipped development init. Acceptance uses the checked K=0 witness; this defect is independent of acceptance."
+   :lemma p16t-i-mutation-ground)))
+(defthm p16t-ready-state-is-reachable
+ (fn-pth-reachablep *pthrt-ready-state*)
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn-pth-reachablep-suff
+   (s *pthrt-ready-state*) (profile *fn-bs-profile-development*)
+   (mcfg *fn-pth-rely-mcfg*) (q0 100000) (ops0 *pthrt-prefix-ops*))
+   pthrt-prefix-reaches-ready-state)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(pthrt-p13-reading-config-is-admitted
+     (:executable-counterpart fn-rtc-st-cfg-okp)
+     (:executable-counterpart fn-rtc-configp) (:executable-counterpart fn-rtc-nstatic)
+     (:executable-counterpart fn-hl-rtc-config) (:executable-counterpart natp))))))
+(defthm p16t-ready-owner-delivery
+ (mv-nth 0 (fn-pth-owner-delivery *pthrt-ready-state* (nth 1 *pthrt-hand-op*) 100000)))
+(defthm p16t-ready-requests-are-nonempty
+ (consp (fn-pth-owner-requests *pthrt-ready-state* (nth 1 *pthrt-hand-op*) 100000))
+ :rule-classes nil
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+    (union-theories
+      '(fn-pth-owner-requests fn-pth-m-step fn-pthm-step fn-ptx-step fn-ptx-step1
+        fn-ptx-wfp fn-ptx-start fn-ptx-mk car-cons cdr-cons pthrt-nil-acc-fits)
+      (set-difference-theories (executable-counterpart-theory :here)
+       '((:executable-counterpart fn-pth-owner-requests)
+         (:executable-counterpart fn-pth-m-step) (:executable-counterpart fn-pthm-step)
+         (:executable-counterpart fn-ptx-step) (:executable-counterpart fn-ptx-step1)
+         (:executable-counterpart fn-ptx-wfp) (:executable-counterpart fn-ptx-start))))))))
+
+(defun p16t-ready-requests () '((:submit :timer nil (0))))
+(defthm p16t-ready-requests-observer-is-original
+ (equal (fn-pth-owner-requests *pthrt-ready-state* (nth 1 *pthrt-hand-op*) 100000) (p16t-ready-requests))
+ :rule-classes nil
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+    (union-theories
+      '(fn-pth-owner-requests fn-pth-m-step fn-pthm-step fn-ptx-step fn-ptx-step1
+        fn-ptx-wfp fn-ptx-start fn-ptx-mk car-cons cdr-cons pthrt-nil-acc-fits)
+      (set-difference-theories (executable-counterpart-theory :here)
+       '((:executable-counterpart fn-pth-owner-requests)
+         (:executable-counterpart fn-pth-m-step) (:executable-counterpart fn-pthm-step)
+         (:executable-counterpart fn-ptx-step) (:executable-counterpart fn-ptx-step1)
+         (:executable-counterpart fn-ptx-wfp) (:executable-counterpart fn-ptx-start))))))))
+
+(assert-event (consp (p16t-ready-requests)))
+
+; Exact old-hand-target run under the checked K=0 acceptance attachment.
+(defconst *p16t-listener-hand-before* (nth 1 (nth 5 *pthrt-r10-old-observations*)))
+(defconst *p16t-listener-hand-event* (nth 1 (nth 0 (nth 5 *pthrt-r10-old-observations*))))
+(defthm p16t-listener-hand-is-owner-delivery
+ (mv-nth 0 (fn-pth-owner-delivery *p16t-listener-hand-before* *p16t-listener-hand-event* 100000)))
+(defthm p16t-listener-hand-invalid-request-data
+ (not (fn-pth-reqs-data-okp
+       (fn-pth-owner-requests *p16t-listener-hand-before* *p16t-listener-hand-event* 100000)))
+ :rule-classes nil
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories
+    '(fn-pth-owner-requests fn-pth-m-step fn-pthm-step fn-ptx-step fn-ptx-step1
+      fn-ptx-wfp fn-ptx-fields-fit fn-ptx-mk fn-ptx-answer fn-rtc-view-state
+      pthrt-nil-acc-fits car-cons cdr-cons mv-nth)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-pth-owner-requests) (:executable-counterpart fn-pth-m-step)
+       (:executable-counterpart fn-pthm-step) (:executable-counterpart fn-ptx-step)
+       (:executable-counterpart fn-ptx-step1) (:executable-counterpart fn-ptx-wfp)
+       (:executable-counterpart fn-ptx-fields-fit))))))))
+(defthm p16t-listener-hand-refused
+ (consp (mv-nth 2 (fn-pth-step* *p16t-listener-hand-before* *p16t-listener-hand-event* 100000)))
+ :rule-classes nil
+ :hints (("Goal" :use pthrt-nil-acc-fits
+  :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories
+    '(fn-pth-step* fn-pth-deliver fn-pth-m-step fn-pthm-step fn-ptx-step fn-ptx-step1
+      fn-ptx-wfp fn-ptx-fields-fit fn-ptx-mk fn-ptx-answer fn-rtc-view-state
+      pthrt-nil-acc-fits car-cons cdr-cons mv-nth)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-pth-step*) (:executable-counterpart fn-pth-deliver)
+       (:executable-counterpart fn-pth-m-step) (:executable-counterpart fn-pthm-step)
+       (:executable-counterpart fn-ptx-step) (:executable-counterpart fn-ptx-step1)
+       (:executable-counterpart fn-ptx-wfp) (:executable-counterpart fn-ptx-fields-fit))))))))
+(defthm p16t-listener-hand-is-unreachable
+ (not (fn-pth-reachablep *p16t-listener-hand-before*))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-listener-hand-is-owner-delivery p16t-listener-hand-invalid-request-data
+  (:instance fn-pth-owner-requests-are-well-typed
+    (s *p16t-listener-hand-before*) (e *p16t-listener-hand-event*) (q 100000)))
+  :in-theory (union-theories (theory 'minimal-theory) '((:executable-counterpart natp))))))
+
+(defconst *p16t-open-op* (car (car *pthrt-host-observations*)))
+(defconst *p16t-open-after* (nth 2 (car *pthrt-host-observations*)))
+; Executable ground observer of the current five-field owner-trace body.
+; Its step result is proved by PTHRT-PREFIX-STEP-0, with no attachment rewrite.
+(defun p16t-open-trace ()
+ (list (list (mv-nth 1 (mv-list 2 (fn-pth-owner-delivery *p13-request-domain-before* (nth 1 *p16t-open-op*) 100000)))
+             (fn-rtc-view-state 1 1 *p13-request-domain-before*) 100000
+             (fn-pth-fo (nth 1 *p16t-open-op*))
+             (fn-rtc-view-state 1 1 *p16t-open-after*))))
+(defthm p16t-open-trace-is-the-original
+ (equal (fn-pth-owner-trace *p13-request-domain-before* (list *p16t-open-op*) 100000)
+        (p16t-open-trace))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+  (union-theories '(fn-pth-owner-trace pthrt-prefix-step-0 car-cons cdr-cons)
+   (set-difference-theories (executable-counterpart-theory :here)
+    '((:executable-counterpart fn-pth-owner-trace) (:executable-counterpart fn-pth-step))))))))
+(assert-event (consp (p16t-open-trace)))
+(defun p16t-open-machine () (nth 1 (fn-rtc-mstates *p16t-open-after*)))
+(defthm p16t-open-run-is-the-original
+ (equal (nth 1 (fn-rtc-mstates (fn-pth-host-run *p13-request-domain-before* (list *p16t-open-op*) 100000)))
+        (p16t-open-machine))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance pthrt-host-run-one-completion
+  (s *p13-request-domain-before*) (e (nth 1 *p16t-open-op*)) (q 100000)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(pthrt-prefix-step-0 (:executable-counterpart p16t-open-machine)
+     (:executable-counterpart nth) (:executable-counterpart fn-rtc-mstates))))))
+
+; Corrupt the owner's incarnation, keeping a real outstanding :opened use.
+(defconst *p16t-inc2-state*
+ (fn-rtc-with-uses '((:accept 0 0 1 nil) (:opened 1 2 0 nil))
+   (fn-rtc-with-slot 1 '(2 :live 0) *p13-request-domain-before*)))
+(defconst *p16t-inc2-ops*
+ (list (list :complete (update-nth 2 2 (nth 1 *p16t-open-op*)))))
+(defthm p16t-inc2-not-reachable
+ (not (fn-pth-reachablep *p16t-inc2-state*))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn-pth-reachable-implies-i (s *p16t-inc2-state*)))
+  :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-pth-i (:executable-counterpart fn-rtc-slot) (:executable-counterpart equal))))))
+(defthm p16t-inc2-trace-breaks-rely
+ (not (fn-ptx-trace-relies-p (nth 1 (fn-rtc-mstates *p16t-inc2-state*))
+        (fn-pth-owner-trace *p16t-inc2-state* *p16t-inc2-ops* 100000) 1 1))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+   (union-theories '(fn-pth-owner-trace fn-ptx-trace-relies-p nth fn-rtc-ev-id fn-rtc-ev-inc fn-rtc-get nfix zp car-cons cdr-cons)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-pth-owner-trace) (:executable-counterpart fn-ptx-trace-relies-p)
+       (:executable-counterpart fn-pth-step) (:executable-counterpart fn-ptx-step))))))))
+; Corrupt a static slot into a free slot: accepting a connection now allocates
+; slot 1 and reinitializes its machine, which the projected trace cannot hide.
+(defconst *p16t-free-owner-state*
+ (fn-rtc-with-slot 1 '(0 :free nil)
+   (fn-rtc-with-mstate 1 (p16t-open-machine) *p13-request-domain-before*)))
+(defconst *p16t-free-owner-ops* '((:complete (:accept 0 0 1 (:done 0)))))
+(defthm p16t-free-owner-not-reachable
+ (not (fn-pth-reachablep *p16t-free-owner-state*))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn-pth-reachable-implies-i (s *p16t-free-owner-state*)))
+  :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-pth-i (:executable-counterpart fn-rtc-slot) (:executable-counterpart equal))))))
+(defthm p16t-free-owner-run-differs
+ (not (equal (nth 1 (fn-rtc-mstates (fn-pth-host-run *p16t-free-owner-state* *p16t-free-owner-ops* 100000)))
+  (mv-nth 0 (fn-ptx-trace-run (nth 1 (fn-rtc-mstates *p16t-free-owner-state*))
+              (fn-pth-owner-trace *p16t-free-owner-state* *p16t-free-owner-ops* 100000) 1 1))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t :do-not '(preprocess) :use pthrt-nil-acc-fits
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+   (union-theories
+    '(fn-pth-host-run fn-pth-owner-trace fn-pth-step fn-pth-step* fn-pth-accept-branch
+      fn-pth-deliver fn-pth-m-step fn-pthm-step fn-ptx-step fn-ptx-step1
+      fn-ptx-wfp fn-ptx-fields-fit fn-ptx-mk fn-rtc-view-state
+      fn-pth-i-trace-run-machine-cons-by-definition fn-pth-i-trace-run-machine-atom-by-definition
+      pthrt-nil-acc-fits fn-hld-mv-nth-0-cons car-cons cdr-cons)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-ptx-trace-run) (:executable-counterpart fn-pth-host-run) (:executable-counterpart fn-pth-owner-trace)
+       (:executable-counterpart fn-pth-step) (:executable-counterpart fn-pth-step*)
+       (:executable-counterpart fn-pth-accept-branch) (:executable-counterpart fn-pth-deliver)
+       (:executable-counterpart fn-pth-m-step) (:executable-counterpart fn-pthm-step)
+       (:executable-counterpart fn-ptx-step) (:executable-counterpart fn-ptx-step1)
+       (:executable-counterpart fn-ptx-wfp) (:executable-counterpart fn-ptx-fields-fit))))))))
+
+(defthm p16t-od-positive-ground
+ (and (fn-pth-reachablep *pthrt-ready-state*) (natp 100000)
+      (mv-nth 0 (fn-pth-owner-delivery *pthrt-ready-state* (nth 1 *pthrt-hand-op*) 100000))
+      (fn-pth-reqs-data-okp (fn-pth-owner-requests *pthrt-ready-state* (nth 1 *pthrt-hand-op*) 100000)))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-ready-state-is-reachable p16t-ready-owner-delivery
+   (:instance fn-pth-owner-requests-are-well-typed
+      (s *pthrt-ready-state*) (e (nth 1 *pthrt-hand-op*)) (q 100000)))
+   :in-theory (union-theories (theory 'minimal-theory) '((:executable-counterpart natp))))))
+(defthm p16t-r0-positive-ground
+ (and (fn-pth-reachablep *pthrt-ready-state*) (natp 100000)
+      (mv-nth 0 (fn-pth-owner-delivery *pthrt-ready-state* (nth 1 *pthrt-hand-op*) 100000))
+      (not (mv-nth 2 (fn-pth-step* *pthrt-ready-state* (nth 1 *pthrt-hand-op*) 100000))))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-ready-state-is-reachable p16t-ready-owner-delivery
+   (:instance fn-pth-owner-requests-are-never-refused
+      (s *pthrt-ready-state*) (e (nth 1 *pthrt-hand-op*)) (q 100000)))
+   :in-theory (union-theories (theory 'minimal-theory) '((:executable-counterpart natp))))))
+(defthm p16t-r1-positive-ground
+ (and (fn-pth-reachablep *p13-request-domain-before*) (natp 100000)
+      (fn-ptx-trace-relies-p (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+          (fn-pth-owner-trace *p13-request-domain-before* (list *p16t-open-op*) 100000) 1 1))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-i-fixture-reachable
+   (:instance fn-pth-runs-keep-the-rely
+      (s *p13-request-domain-before*) (ops (list *p16t-open-op*)) (q 100000)))
+   :in-theory (union-theories (theory 'minimal-theory) '((:executable-counterpart natp))))))
+(defthm p16t-r2-positive-ground
+ (and (fn-pth-reachablep *p13-request-domain-before*) (natp 100000)
+      (equal (nth 1 (fn-rtc-mstates (fn-pth-host-run *p13-request-domain-before* (list *p16t-open-op*) 100000)))
+       (mv-nth 0 (fn-ptx-trace-run (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+          (fn-pth-owner-trace *p13-request-domain-before* (list *p16t-open-op*) 100000) 1 1))))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-i-fixture-reachable
+   (:instance fn-pth-owner-trace-is-the-machine-run
+      (s *p13-request-domain-before*) (ops (list *p16t-open-op*)) (q 100000)))
+   :in-theory (union-theories (theory 'minimal-theory) '((:executable-counterpart natp))))))
+(defun p16t-trace-with-lost-incarnation (trace)
+ (if (consp trace)
+  (cons (update-nth 0 (update-nth 3 0 (nth 0 (car trace))) (car trace)) (cdr trace)) trace))
+(defthm p16t-lost-incarnation-breaks-r1
+ (not (fn-ptx-trace-relies-p (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+        (p16t-trace-with-lost-incarnation
+          (fn-pth-owner-trace *p13-request-domain-before* (list *p16t-open-op*) 100000)) 1 1))
+ :rule-classes nil
+ :hints (("Goal" :use p16t-open-trace-is-the-original
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-ptx-trace-relies-p nth fn-rtc-ev-id fn-rtc-ev-inc fn-rtc-get nfix zp car-cons cdr-cons
+     (:executable-counterpart p16t-trace-with-lost-incarnation)
+     (:executable-counterpart p16t-open-trace) (:executable-counterpart fn-rtc-mstates)
+     (:executable-counterpart nth) (:executable-counterpart equal))))))
+(defthm p16t-noop-owner-breaks-r2
+ (not (equal (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+       (mv-nth 0 (fn-ptx-trace-run (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+          (fn-pth-owner-trace *p13-request-domain-before* (list *p16t-open-op*) 100000) 1 1))))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-r2-positive-ground p16t-open-run-is-the-original)
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+    '((:executable-counterpart fn-rtc-mstates) (:executable-counterpart nth)
+      (:executable-counterpart p16t-open-machine) (:executable-counterpart equal))))))
+
+; Full exact-claim conjuncts for the four packages awaiting premise drops.
+; K=0 is the checked acceptance attachment at the top of this test book.
+; Named ground facts witness defun-sk/nx terms without pretending to execute
+; their abstract stand-ins. Executable ground observers have equality proofs.
+(defthm p16t-od-removal-ground
+ (and (natp 100000)
+      (mv-nth 0 (fn-pth-owner-delivery *p16t-listener-hand-before* *p16t-listener-hand-event* 100000))
+      (not (fn-pth-reachablep *p16t-listener-hand-before*))
+      (not (fn-pth-reqs-data-okp (fn-pth-owner-requests *p16t-listener-hand-before* *p16t-listener-hand-event* 100000))))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-listener-hand-is-owner-delivery p16t-listener-hand-is-unreachable
+                       p16t-listener-hand-invalid-request-data)
+  :in-theory (union-theories (theory 'minimal-theory) '((:executable-counterpart natp))))))
+(defthm p16t-r0-removal-ground
+ (and (natp 100000)
+      (mv-nth 0 (fn-pth-owner-delivery *p16t-listener-hand-before* *p16t-listener-hand-event* 100000))
+      (not (fn-pth-reachablep *p16t-listener-hand-before*))
+      (not (not (mv-nth 2 (fn-pth-step* *p16t-listener-hand-before* *p16t-listener-hand-event* 100000)))))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-listener-hand-is-owner-delivery p16t-listener-hand-is-unreachable
+                       p16t-listener-hand-refused)
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth)) '((:executable-counterpart natp))))))
+; Fault: the exact old hand-target guard authorizes the listener's transfer.
+; Existing R10 executes the whole old/new host runs on identical ops and checks
+; that only the old run reaches this bad owner delivery (K=0 attachment).
+(defthm p16t-od-old-hand-mutation-ground
+ (and (natp 100000)
+      (mv-nth 0 (fn-pth-owner-delivery *p16t-listener-hand-before* *p16t-listener-hand-event* 100000))
+      (pthrt-r10-old-hand-target '(1 1) 0 *p16t-listener-hand-before*)
+      (not (fn-pth-reachablep *p16t-listener-hand-before*))
+      (not (fn-pth-reqs-data-okp (fn-pth-owner-requests *p16t-listener-hand-before* *p16t-listener-hand-event* 100000))))
+ :rule-classes nil
+ :hints (("Goal" :use p16t-od-removal-ground
+  :in-theory (union-theories (theory 'minimal-theory) '((:executable-counterpart pthrt-r10-old-hand-target))))))
+(defthm p16t-r0-old-hand-mutation-ground
+ (and (natp 100000)
+      (mv-nth 0 (fn-pth-owner-delivery *p16t-listener-hand-before* *p16t-listener-hand-event* 100000))
+      (pthrt-r10-old-hand-target '(1 1) 0 *p16t-listener-hand-before*)
+      (not (fn-pth-reachablep *p16t-listener-hand-before*))
+      (not (not (mv-nth 2 (fn-pth-step* *p16t-listener-hand-before* *p16t-listener-hand-event* 100000)))))
+ :rule-classes nil
+ :hints (("Goal" :use p16t-r0-removal-ground
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth)) '((:executable-counterpart pthrt-r10-old-hand-target))))))
+(defthm p16t-r1-removal-ground
+ (and (natp 100000) (not (fn-pth-reachablep *p16t-inc2-state*))
+  (not (fn-ptx-trace-relies-p (nth 1 (fn-rtc-mstates *p16t-inc2-state*))
+        (fn-pth-owner-trace *p16t-inc2-state* *p16t-inc2-ops* 100000) 1 1)))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-inc2-not-reachable p16t-inc2-trace-breaks-rely)
+  :in-theory (union-theories (theory 'minimal-theory) '((:executable-counterpart natp))))))
+; Fault: trace extraction loses the delivered incarnation (1 becomes 0).
+; The nonempty actual owner trace is otherwise unchanged; K=0 attachment.
+(defthm p16t-r1-mutation-ground
+ (and (fn-pth-reachablep *p13-request-domain-before*) (natp 100000)
+  (fn-ptx-trace-relies-p (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+          (fn-pth-owner-trace *p13-request-domain-before* (list *p16t-open-op*) 100000) 1 1)
+  (not (fn-ptx-trace-relies-p (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+        (p16t-trace-with-lost-incarnation
+          (fn-pth-owner-trace *p13-request-domain-before* (list *p16t-open-op*) 100000)) 1 1)))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-r1-positive-ground p16t-lost-incarnation-breaks-r1)
+  :in-theory (theory 'minimal-theory))))
+(defthm p16t-r2-removal-ground
+ (and (natp 100000) (not (fn-pth-reachablep *p16t-free-owner-state*))
+  (not (equal (nth 1 (fn-rtc-mstates (fn-pth-host-run *p16t-free-owner-state* *p16t-free-owner-ops* 100000)))
+   (mv-nth 0 (fn-ptx-trace-run (nth 1 (fn-rtc-mstates *p16t-free-owner-state*))
+              (fn-pth-owner-trace *p16t-free-owner-state* *p16t-free-owner-ops* 100000) 1 1)))))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-free-owner-not-reachable p16t-free-owner-run-differs)
+  :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth)) '((:executable-counterpart natp))))))
+; Fault: replace the owner step in the host run with a no-op. The real opened
+; delivery changes CLOSED to IDLE, so start != trace result; K=0 attachment.
+(defthm p16t-r2-mutation-ground
+ (and (fn-pth-reachablep *p13-request-domain-before*) (natp 100000)
+  (equal (nth 1 (fn-rtc-mstates (fn-pth-host-run *p13-request-domain-before* (list *p16t-open-op*) 100000)))
+       (mv-nth 0 (fn-ptx-trace-run (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+          (fn-pth-owner-trace *p13-request-domain-before* (list *p16t-open-op*) 100000) 1 1)))
+  (not (equal (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+       (mv-nth 0 (fn-ptx-trace-run (nth 1 (fn-rtc-mstates *p13-request-domain-before*))
+          (fn-pth-owner-trace *p13-request-domain-before* (list *p16t-open-op*) 100000) 1 1)))))
+ :rule-classes nil
+ :hints (("Goal" :use (p16t-r2-positive-ground p16t-noop-owner-breaks-r2)
+  :in-theory (set-difference-theories (theory 'minimal-theory) '(mv-nth)))))
+
+; Four remaining registrations await the proved UNWITNESSABLE premise drops
+; recorded in build/post-runs/l2/c6a/DROPS.md. No false removal is registered.
