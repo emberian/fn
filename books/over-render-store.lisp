@@ -49,6 +49,29 @@
            (fn-ovr-records-within-octets-or-reclaimedp (cdr records) a))
     t))
 
+(local
+ (defthm fn-ovrs-record-payload-within-the-record-ceiling
+   (implies (fn-record-p record)
+            (<= (len (fn-record-payload record)) *fn-record-max-payload*))
+   :hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp)))))
+
+(defthm fn-ovr-records-within-the-record-ceiling
+  (fn-ovr-records-within-octets-or-reclaimedp records *fn-record-max-payload*)
+  :hints (("Goal" :induct (len records)
+           :in-theory (e/d (fn-ovr-records-within-octets-or-reclaimedp)
+                           (fn-record-p fn-record-payload fn-rcl-tombstonep)))))
+
+(defthm fn-ovr-served-records-within-the-record-ceiling
+  (fn-ovr-records-within-octets-or-reclaimedp
+   (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)
+   *fn-record-max-payload*)
+  :hints (("Goal" :use
+           ((:instance fn-ovr-records-within-the-record-ceiling
+                       (records (fn-cat-history-articles
+                                 (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                 fn-arena))))
+           :in-theory (theory 'minimal-theory))))
+
 ; After selecting article records, no non-article disjunct is needed.
 (local
  (defun fn-ovrs-all-boundedp (records a limits)
@@ -224,3 +247,35 @@
                   (fn-ovr-records-parse-or-reclaimedp records (fn-o1-stored-header-limits limits agent))
                   (fn-ovr-records-within-octets-or-reclaimedp records a))
              (fn-ovr-rows-within-header a (fn-o1-stored-header-limits limits agent) fn-arena fn-cat))))
+
+(local
+ (defthm fn-ovrs-pool-line-cancels-framing
+   (equal (- (fn-ovr-over-capl hdr a (len server)) (fn-ovr-frame-max))
+          (+ 2 (fn-ovr-nov-line-header-bound hdr a server)))
+   :hints (("Goal"
+            :in-theory (union-theories
+                        (theory 'ground-zero)
+                        '(fn-ovr-over-capl-is-a-line-and-the-framing))))))
+
+(defthm fn-ovr-served-probes-within-the-pool-line
+  (let ((records (fn-cat-history-articles
+                  (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)))
+    (implies (and (fn-scol-okp fn-arena fn-cat)
+                  (fn-cat-ocl-relation oc fn-arena fn-cat)
+                  (fn-o1-records-filed-or-reclaimedp records)
+                  (fn-o1-cat-positionalp fn-cat)
+                  (fn-ovr-records-parse-or-reclaimedp records (fn-o1-stored-header-limits limits agent))
+                  (<= (nfix (fn-article-limit-octets (fn-o1-stored-header-limits limits agent))) (nfix hdr)))
+             (fn-ovr-probes-within group k top server v
+                                   (- (fn-ovr-over-capl hdr *fn-record-max-payload* (len server)) (fn-ovr-frame-max))
+                                   fn-arena fn-cat)))
+  :hints (("Goal"
+           :use (fn-ovr-served-records-within-the-record-ceiling
+                 (:instance fn-ovr-served-catalog-rows-within-header
+                            (a *fn-record-max-payload*))
+                 (:instance fn-ovr-probes-within-the-header-bound-any-view
+                            (a *fn-record-max-payload*)
+                            (limits (fn-o1-stored-header-limits limits agent))))
+           :in-theory
+           (union-theories (theory 'minimal-theory)
+                           '(fn-ovrs-pool-line-cancels-framing)))))

@@ -242,9 +242,9 @@
        (fn-mm-config-heap (fn-mm-cfg-config cfg)))))
 
 (defun fn-ovr-over-capl-of (profile cfg)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t) (ignore profile))
   (fn-ovr-over-capl (fn-mm-cfg-header-octets cfg)
-                    (fn-bs-profile-max-article-octets profile)
+                    *fn-record-max-payload*
                     (fn-mm-cfg-server-octets cfg)))
 
 ; M_connection: every connection's fixed part and at most P large replies.

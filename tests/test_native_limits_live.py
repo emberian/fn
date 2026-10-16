@@ -20,6 +20,7 @@ reopens with the new T).
 import hashlib
 import re
 
+from tools import fn_dev
 from tests.native_harness import EXIT_OK
 from tests.test_native_checkpoint_auto import AutoCheckpointFixture
 
@@ -149,6 +150,55 @@ class LimitsLiveTests(AutoCheckpointFixture):
         offline = self.policy("max-transactions", 3)
         self.assertEqual(offline.returncode, 1, offline.stderr.decode())
         self.assertIn(b"below-current-use: the store holds", offline.stderr)
+
+    def test_over_keeps_the_stored_length_after_lowering_article_admission(self):
+        self.init_small()
+        owner = self.start_owner()
+        message_id, payload = article("lowered-over", 0)
+        posted = self.node.post(message_id, payload)
+        self.assertEqual(posted.returncode, EXIT_OK, posted.stderr.decode())
+        with self.node.session() as client:
+            reply, stored = client.multiline("ARTICLE " + message_id)
+            self.assertTrue(reply.startswith(b"220 "), reply)
+            self.assertTrue(client.command("GROUP fn.test").startswith(b"211 "))
+            reply, before = client.multiline("OVER 1-1")
+            self.assertTrue(reply.startswith(b"224 "), reply)
+        length = len(stored)
+        self.assertGreater(length, 1)
+        lowered = self.policy("max-article-octets", 1)
+        self.assertEqual(lowered.returncode, EXIT_OK, lowered.stderr.decode())
+        self.node.stop(process=owner)
+
+        repl = self.node.root / "over-pool-repl.sock"
+        again = self.node.start(env={**RESERVATION, "FN_NATIVE_DEV_REPL": str(repl)})
+        with self.node.session() as client:
+            self.assertTrue(client.command("GROUP fn.test").startswith(b"211 "))
+            reply, after = client.multiline("OVER 1-1")
+            self.assertTrue(reply.startswith(b"224 "), reply)
+        self.assertEqual(after, before)
+        rows = after.splitlines()
+        self.assertEqual(len(rows), 1, after)
+        fields = rows[0].split(b"\t")
+        self.assertEqual(fields[4], message_id.encode("ascii"))
+        self.assertEqual(fields[6], str(length).encode("ascii"))
+
+        # ACL2 evaluates capl at its representation ceiling using the same
+        # carried configuration passed to fn-hld-init. Python reads the result.
+        ok, output = fn_dev.evaluate(repl, """
+          (let ((cfg (first (fnn-call 'fn-owner-lease-cfg *the-live-state*))))
+            (format t "OVER_POOL_EXPECTED=~d~%"
+              (fnn-core 'fn-ovr-over-capl
+                (fnn-core 'fn-mm-cfg-header-octets cfg)
+                (fnn-core 'fn-lim-ceiling "max-article-octets")
+                (fnn-core 'fn-mm-cfg-server-octets cfg))))
+        """, 60)
+        self.assertTrue(ok, output)
+        expected = re.search(r"OVER_POOL_EXPECTED=(\d+)", output)
+        self.assertIsNotNone(expected, output)
+        status = self.op("status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
+        self.assertIn("over-pool-line " + expected.group(1) + "\n", status.stdout.decode())
+        self.node.stop(process=again)
 
     def test_an_offline_change_is_recorded_and_every_restart_serves_it(self):
         self.init_small()

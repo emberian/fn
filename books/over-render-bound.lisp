@@ -256,3 +256,112 @@
            :in-theory (disable fn-ovr-probe-len fn-ovr-nov-line-header-bound fn-ovr-rows-within-header
                                fn-scol-okp fn-ovr-probe-len-is-the-length fn-article-limit-octets))
           ("Subgoal *1/2" :use ((:instance fn-ovrb-probe-within (j k))))))
+
+; The snapshot domain does not affect the per-row length bound.
+(local
+ (defthm fn-ovrb-any-stuff-one
+   (implies (not (equal (car line) 46))
+            (equal (fn-nntp-stuff-lines (list line)) (fn-nntp-crlf line)))
+   :hints (("Goal" :in-theory (enable fn-nntp-stuff-lines fn-wire-stuff-line)))))
+
+(local
+ (defthm fn-ovrb-any-scol-overview-of-facts
+   (implies (fn-scol-facts article fn-cat)
+            (equal (fn-scol-overview-of article fn-arena fn-cat)
+                   (let ((facts (fn-scol-facts article fn-cat)))
+                     (if (fn-hnov-ok (fn-hf-nov facts))
+                         (fn-ovr-column-over (fn-hf-nov facts) (fn-nntp-article-length article fn-arena)
+                                             (fn-hf-body-lines facts))
+                       (list :error)))))
+   :hints (("Goal" :in-theory (enable fn-scol-overview-of fn-scol-nov-overview fn-ovr-column-over)))))
+
+(local
+ (defthm fn-ovrb-any-scol-overview-of-no-facts
+   (implies (not (fn-scol-facts article fn-cat))
+            (equal (fn-scol-overview-of article fn-arena fn-cat)
+                   (fn-nov-overview article fn-arena)))
+   :hints (("Goal" :in-theory (enable fn-scol-overview-of)))))
+
+(local
+ (defthm fn-ovrb-any-column-over-okp
+   (fn-nov-okp (fn-ovr-column-over nov octets body))
+   :hints (("Goal" :in-theory (enable fn-nov-okp fn-ovr-column-over)))))
+
+(local (defthm fn-ovrb-any-served-lines-nil
+  (equal (fn-nov-served-lines-for-numbers-cat group nil server v fn-arena fn-cat) nil)
+  :hints (("Goal" :in-theory (enable fn-nov-served-lines-for-numbers-cat)))))
+
+(local (defthm fn-ovrb-any-lines-nil
+  (equal (fn-nov-lines-for-numbers-cat group nil v fn-arena fn-cat) nil)
+  :hints (("Goal" :in-theory (enable fn-nov-lines-for-numbers-cat)))))
+
+(local (defthm fn-ovrb-any-stuff-nil
+  (equal (fn-nntp-stuff-lines nil) nil)
+  :hints (("Goal" :in-theory (enable fn-nntp-stuff-lines)))))
+
+(local (defthm fn-ovrb-any-append-nil-tl (implies (true-listp x) (equal (append x nil) x))))
+
+(local (defthm fn-ovrb-any-len-append (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local (defthm fn-ovrb-any-number-len-is-len
+  (equal (fn-ovr-number-len group n server v fn-arena fn-cat)
+                  (len (fn-nntp-stuff-lines
+                        (if server
+                            (fn-nov-served-lines-for-numbers-cat group (list n) server v fn-arena fn-cat)
+                          (fn-nov-lines-for-numbers-cat group (list n) v fn-arena fn-cat)))))
+  :hints (("Goal" :in-theory (e/d (fn-ovr-number-len fn-nov-served-lines-for-numbers-cat
+                                   fn-nov-lines-for-numbers-cat fn-scol-tombstonep)
+                                  (fn-ovr-column-line-len fn-nov-served-line fn-nov-line fn-nov-overview
+                                   fn-hf-nov fn-scol-facts fn-scat-available-article fn-ovr-available-article
+                                   fn-nntp-article-tombstonep fn-nntp-stuff-lines fn-nntp-crlf
+                                   fn-scol-overview-of fn-ovr-column-over fn-nntp-article-length
+                                   fn-ovr-msgid-okp))))))
+(local (defthm fn-ovrb-any-probe-len-is-length
+  (equal (fn-ovr-probe-len group j server v fn-arena fn-cat)
+                  (len (fn-ovr-probe-octets group j server v fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (e/d (fn-ovr-probe-len fn-ovr-probe-octets fn-ovw-lines fn-scat-range-keep
+                                   fn-ovr-msgid-okp-is-idp)
+                                  (fn-ovr-number-len fn-nov-served-lines-for-numbers-cat
+                                   fn-nov-lines-for-numbers-cat fn-cnx-view-seq fn-held-number-in
+                                   fn-scat-msgid-idp fn-ovr-msgid-okp fn-nntp-stuff-lines))
+           :expand ((fn-cnx-range-aux group j j v fn-cat)
+                    (fn-cnx-range-aux group (+ 1 j) j v fn-cat))))))
+(local
+ (defthm fn-ovrb-any-probe-within
+   (implies (and (fn-scol-okp fn-arena fn-cat)
+                 (fn-ovr-rows-within-header a limits fn-arena fn-cat)
+                 (<= (nfix (fn-article-limit-octets limits)) (nfix hdr))
+                 )
+            (<= (fn-ovr-probe-len group j server v fn-arena fn-cat)
+                (+ 2 (fn-ovr-nov-line-header-bound hdr a server))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-ovrb-served-lines-within
+                             (numbers (fn-scat-range-keep group (fn-cnx-range-aux group j j v fn-cat) fn-cat)))
+                  (:instance fn-ovrb-lines-within
+                             (numbers (fn-scat-range-keep group (fn-cnx-range-aux group j j v fn-cat) fn-cat)))
+                  (:instance fn-ovrb-at-most-one
+                             (m (len (fn-scat-range-keep group (fn-cnx-range-aux group j j v fn-cat) fn-cat)))
+                             (b (fn-ovr-nov-line-header-bound hdr a server))
+                             (l (fn-ovr-probe-len group j server v fn-arena fn-cat))))
+            :in-theory (e/d (fn-ovr-probe-octets fn-ovw-lines)
+                            (fn-ovrb-served-lines-within fn-ovrb-lines-within fn-scat-range-keep fn-cnx-range-aux
+                             fn-nov-served-lines-for-numbers-cat fn-nov-lines-for-numbers-cat
+                             fn-nntp-stuff-lines fn-ovr-nov-line-header-bound fn-ovr-rows-within-header
+                             fn-scol-okp fn-article-limit-octets))))))
+
+
+; KO8: every probe of GROUP's numbers K..TOP is within the bound plus CRLF.
+(defthm fn-ovr-probes-within-the-header-bound-any-view
+  (implies (and (fn-scol-okp fn-arena fn-cat)
+                (fn-ovr-rows-within-header a limits fn-arena fn-cat)
+                (<= (nfix (fn-article-limit-octets limits)) (nfix hdr))
+                )
+           (fn-ovr-probes-within group k top server v
+                                 (+ 2 (fn-ovr-nov-line-header-bound hdr a server))
+                                 fn-arena fn-cat))
+  :hints (("Goal" :induct (fn-ovr-probes-within group k top server v
+                                                (+ 2 (fn-ovr-nov-line-header-bound hdr a server))
+                                                fn-arena fn-cat)
+           :in-theory (disable fn-ovr-probe-len fn-ovr-nov-line-header-bound fn-ovr-rows-within-header
+                               fn-scol-okp fn-ovr-probe-len-is-the-length fn-article-limit-octets))
+          ("Subgoal *1/2" :use ((:instance fn-ovrb-any-probe-within (j k))))))

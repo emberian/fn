@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
-(include-book "filed-stored")
 (include-book "index-writer-ticket")
 (include-book "catalog-may-seal")
 (include-book "owner-catalog-root-state")
@@ -121,3 +120,8 @@
 (include-book "owner-resource-line")
 (include-book "output-command-admission")
 (include-book "output-tariff-families")
+(include-book "output-admission-line")
+(include-book "arena-reader-pins")
+(include-book "owner-reader-read")
+(include-book "peer-carriage")
+(include-book "tls-handshake-budget")

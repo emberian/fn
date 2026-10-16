@@ -162,3 +162,4 @@
 (include-book "bp-fnbs-publication")
 (include-book "bp-clock-domain")
 (include-book "bp-fnbs-delivery-replay")
+(include-book "bp-fnbs-delivery-publication")

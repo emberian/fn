@@ -1,0 +1,12 @@
+{
+ "detail": "Split from OVER-PREMISES-ON-HOST-PATH by coordinator ruling (a), 2026-10-16. The term premise fn-ovr-records-parse-or-reclaimedp (books/over-render-store.lisp:34, assumed of the served-catalog history term by fn-ovr-served-catalog-rows-within-header and by O's new fn-ovr-served-probes-within-the-pool-line) is NEW in premise_audit --strict on hbox (native-l2-o8-4/o8-gates/premise_audit.log:5757, never concluded, assumed only of a term). It is a history fact over every writer, not structural: the served POST has fn-o1-stored-post-within-the-widened-limits (books/filed-stored.lisp:1038); transit, feed, BP ingress and reinjection have none; and the limits move with the injection agent's length (fn-o1-stored-header-limits). over-render-store.lisp:1-5 names Builder C as owner of the parse premise. Retirement: a conjunct of the O1 history invariant (books/filed-history.lisp fn-o1-rows-invp) carried through every arm, so premise_audit --strict no longer lists it; tooth: a writer arm storing an article past the widened limits is refused by name.",
+ "file": "books/over-render-store.lisp",
+ "id": "OVER-PARSE-PREMISE-HISTORY",
+ "notes": [],
+ "owner": "builder-C",
+ "severity": "medium",
+ "source": "o10-over-premises-20261016",
+ "state": "open",
+ "title": "The stored article parse premise fn-ovr-records-parse-or-reclaimedp is concluded over every writer of the history",
+ "updated": "2026-10-16T20:46:08Z"
+}

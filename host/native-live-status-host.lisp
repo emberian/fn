@@ -24,6 +24,7 @@
 ; (books/native-live-pages.lisp).
 (include-book "../books/native-live-pages")
 (include-book "../books/owner-operation-report")
+(include-book "../books/over-pool-line-status")
 (include-book "../books/definterface")
 (include-book "owner-host")
 
@@ -191,7 +192,8 @@
                                    (fn-otm-disk-lines sched)
                                    ;; PRF-996: the limit lines, as `health'.
                                    (fn-owner-limit-report state)
-                                   (fn-owner-hroot-status-lines state)))
+                                   (fn-owner-hroot-status-lines state)
+                                   (fn-ovr-pool-line-status state)))
                           (t nil))))))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached))))))))

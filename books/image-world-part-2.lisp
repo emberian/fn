@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
-(include-book "bp-fnbs-delivery-publication")
 (include-book "bp-app-handoff")
 (include-book "bp-receive-evidence")
 (include-book "bp-app-handoff-time")
@@ -161,3 +160,4 @@
 (include-book "owner-readers-state")
 (include-book "owner-authority-state")
 (include-book "history-root-status")
+(include-book "filed-stored")

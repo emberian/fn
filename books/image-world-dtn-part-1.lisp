@@ -170,3 +170,4 @@
 (include-book "store-log-route")
 (include-book "store-log-kernel-concrete")
 (include-book "store-log-stream")
+(include-book "store-log-damage")
