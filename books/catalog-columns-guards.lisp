@@ -507,6 +507,9 @@
   :hints
   (("Goal" :in-theory (enable always$ apply$ apply$-prim ev$-list badge))))
 
+(verify-guards fn-lb-log-model-entry-payloadp :guard-debug t)
+(verify-guards fn-lb-log-model-entries-payloadp :guard-debug t)
+
 (verify-guards
   fn-lb-log-model-segsp
   :guard-debug

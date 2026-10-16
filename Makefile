@@ -363,6 +363,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-keyset-check-tests \
 	books/def-cost \
 	tests/acl2/def-cost-tests \
+	tests/acl2/def-cost-call-counts-tests \
 	books/def-cost-lambda-tests \
 	books/acceptance \
 	books/acceptance-invariants \
@@ -1615,7 +1616,177 @@ ACL2_BOOKS ?= books/defrecord \
 	books/log-locator-resolves \
 	books/log-verified-map \
 	books/catalog-columns-guards \
+	books/catalog-columns-writer-frames \
+	books/catalog-columns-construction \
+	books/catalog-columns-storage-invariants \
+	books/catalog-columns-storage-growth \
+	books/catalog-columns-nov-span-properties \
+	books/catalog-columns-nov-allocation \
+	books/catalog-columns-membership-allocation \
+	books/catalog-columns-cross-store-allocation \
+	books/catalog-columns-pool-layout \
+	books/catalog-columns-pool-establishment \
+	books/catalog-columns-record-projections \
+	books/catalog-columns-pool-range-refinement \
+	books/catalog-columns-pool-reader-frames \
+	books/catalog-columns-record-reader-frames \
+	books/catalog-columns-membership-reader-frames \
+	books/catalog-columns-membership-run-frames \
+	books/catalog-columns-nov-text-readback \
+	books/catalog-columns-nov-byte-store \
+	books/catalog-columns-nov-readback \
+	books/catalog-columns-membership-single-readback \
+	books/catalog-columns-membership-run-readback \
+	books/catalog-columns-membership-row-types \
+	books/catalog-columns-row-projections \
+	books/catalog-columns-row-reader-frames \
+	books/catalog-columns-row-store-effects \
+	books/catalog-columns-sparse-decoder \
+	books/catalog-columns-row-cell-decoder \
+	books/catalog-columns-row-flag-properties \
+	books/catalog-columns-reader-writer-frames \
+	books/catalog-columns-row-write-composition \
+	books/catalog-columns-indexed-row-store \
+	books/catalog-columns-row-scalar-readback \
+	books/catalog-columns-pool-count-frames \
+	books/catalog-columns-row-value-properties \
+	books/catalog-columns-directory-value-properties \
+	books/catalog-columns-directory-bool-properties \
+	books/catalog-columns-row-word-properties \
+	books/catalog-columns-pool-model-frames \
+	books/catalog-columns-msgid-row-effect \
+	books/catalog-columns-msgid-readback \
+	books/catalog-columns-array-reader-frames \
+	books/catalog-columns-array-count-properties \
+	books/catalog-columns-row-cell-extras \
+	books/catalog-columns-allocated-reader-frames \
+	books/catalog-columns-row-escape-readback \
+	books/catalog-columns-row-array-readback \
+	books/catalog-columns-row-composite-readback \
+	books/catalog-columns-row-projection-readback \
+	books/catalog-columns-old-row-scalars \
+	books/catalog-columns-old-pool-readers \
+	books/catalog-columns-row-allocation-counts \
+	books/catalog-columns-row-pointer-layout \
+	books/catalog-columns-old-scalar-readers \
+	books/catalog-columns-msgid-prefix-readback \
+	books/catalog-columns-old-row-readback \
+	books/catalog-columns-row-pointer-properties \
+	books/catalog-columns-row-pointer-establishment \
+	books/catalog-columns-pointer-writer-frames \
+	books/catalog-columns-slot-count-frames \
+	books/catalog-columns-slot-escape-frames \
+	books/catalog-columns-slot-word-frames \
+	books/catalog-columns-slot-semantic-frames \
+	books/catalog-columns-pointer-slot-frames \
+	books/catalog-columns-slot-bit-properties \
+	books/catalog-columns-slot-flag-setter \
+	books/catalog-columns-flags-native-type \
+	books/catalog-columns-slot-flag-frames \
+	books/catalog-columns-slot-storage-types \
+	books/catalog-columns-slot-type-preservation \
+	books/catalog-columns-slot-index-frames \
+	books/catalog-columns-slot-array-frames \
+	books/catalog-columns-slot-served-frames \
+	books/catalog-columns-slot-corr-frames \
+	books/catalog-columns-slot-rows-corr-frames \
+	books/catalog-columns-old-row-corr-readback \
+	books/catalog-columns-row-log-readback \
+	books/catalog-columns-log-lookup-properties \
+	books/catalog-columns-row-home-readback \
+	books/catalog-columns-new-row-corr-readback \
+	books/catalog-columns-log-append-views \
+	books/catalog-columns-log-fresh-directory \
+	books/catalog-columns-log-append-segment \
+	books/catalog-columns-log-next-entry-type \
+	books/catalog-columns-log-sealed-slices \
+	books/catalog-columns-log-appended-range \
+	books/catalog-columns-log-new-range-readback \
+	books/catalog-columns-log-range-locator \
+	books/catalog-columns-log-fresh-readback \
+	books/catalog-columns-row-corr-after-log-append \
+	books/catalog-columns-log-octet-types \
+	books/catalog-columns-log-type-preservation \
+	books/catalog-columns-log-row-source \
+	books/catalog-columns-rows-corr-append \
+	books/catalog-columns-table-served-frames \
+	books/catalog-columns-rebuild-old-frames \
+	books/catalog-columns-rebuild-rows-correspondence \
+	books/catalog-columns-constructor-storage-types \
+	books/catalog-columns-child-append-types \
+	books/catalog-columns-constructor-helper-types \
+	books/catalog-columns-row-pool-types \
+	books/catalog-columns-constructor-native-types \
+	books/catalog-columns-summary-group-frames \
+	books/catalog-columns-open-rows-correspondence \
+	books/catalog-columns-number-map-effects \
+	books/catalog-columns-number-table-frames \
+	books/catalog-columns-number-row-readback \
+	books/catalog-columns-number-rebuild-readback \
+	books/catalog-columns-table-lane-frames \
+	books/catalog-columns-open-number-lookup \
+	books/catalog-columns-number-key-layout \
+	books/catalog-columns-number-cell-correspondence \
+	books/catalog-columns-summary-readback \
+	books/catalog-columns-open-summary-correspondence \
+	books/catalog-columns-open-summary-lookup \
+	books/catalog-columns-summary-value-layout \
+	books/catalog-columns-summary-cell-correspondence \
+	books/catalog-columns-open-tables-correspondence \
+	books/catalog-columns-slot-drop-readback \
+	books/catalog-columns-slot-native-readback \
+	books/catalog-columns-slot-put-storage \
+	books/catalog-columns-slot-cells-update \
+	books/catalog-columns-slot-insert-refinement \
+	books/catalog-columns-slot-owner-progress \
+	books/catalog-columns-slot-future-progress \
+	books/catalog-columns-slot-canonical-storage \
+	books/catalog-columns-slot-index-refinement \
+	books/catalog-columns-slot-storage-frames \
+	books/catalog-columns-slot-empty-metadata \
+	books/catalog-columns-slot-zero-storage \
+	books/catalog-columns-slot-build-start \
+	books/catalog-columns-open-slot-correspondence \
+	books/catalog-columns-open-catalog-correspondence \
+	books/catalog-columns-row-reconstruction \
+	books/catalog-columns-locator-native-types \
+	books/catalog-columns-row-locator-resolution \
+	books/catalog-columns-catalog-locator-resolution \
+	books/catalog-columns-served-establishment \
+	books/catalog-columns-log-home-preservation \
+	books/catalog-columns-log-old-row-preservation \
+	books/catalog-columns-log-source-preservation \
+	books/catalog-columns-open-source-preservation \
+	books/catalog-columns-open-new-row-source \
+	books/catalog-columns-open-interned-sources \
+	books/catalog-columns-open-held-types \
+	books/catalog-columns-open-log-domains \
+	books/catalog-columns-native-open-invariant \
+	books/catalog-columns-native-open-clear \
+	books/catalog-columns-pool-properties \
+	books/catalog-columns-pool-refinement \
+	books/catalog-columns-pool-text-properties \
 	books/catalog-columns-served \
+	books/catalog-columns-read-cost \
+	books/catalog-columns-served-preservation \
+	books/catalog-columns-append-invariant \
+	books/catalog-columns-append-resolver-domains \
+	books/catalog-columns-append-resolved-preservation \
+	books/log-verified-map-reset \
+	books/catalog-columns-command-reads \
+	books/catalog-columns-command-availability \
+	books/catalog-columns-command-refinement \
+	books/catalog-columns-command-cost \
+	books/catalog-columns-command-cost-refinement \
+	books/catalog-columns-newnews-cost \
+	books/catalog-columns-withdraw-row \
+	books/catalog-columns-withdraw-row-frames \
+	books/catalog-columns-withdraw-row-escape \
+	books/catalog-columns-withdraw-row-bit-properties \
+	books/catalog-columns-withdraw-row-native-types \
+	books/catalog-columns-withdraw-row-readback \
+	books/catalog-columns-withdraw-row-guard-preservation \
+	books/catalog-columns-withdraw-row-value-frames \
 	books/lb-log-layout \
 	books/log-verified-map-properties \
 	books/catalog-columns-properties \
@@ -1634,6 +1805,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/lb-arena-log-binding \
 	books/lb-log-handle-allocation \
 	books/lb-log-open-model \
+	books/lb-log-guard-invariants \
 	books/lb-log-open-properties \
 	books/log-checkpoint-admission \
 	books/log-checkpoint-adoption \
@@ -1717,6 +1889,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/lc-control-teeth-tests \
 	tests/acl2/lc-publication-behind-tests \
 	tests/acl2/lc-publication-teeth-tests \
+	books/lb-log-reclaim-model \
+	books/lb-log-reclaim-properties \
+	books/lb-log-reclaim-guard-properties \
+	books/lb-log-reclaim-domains \
+	books/lb-log-payload-identity \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
 	tests/acl2/catalog-raw-low-tests \
@@ -2296,7 +2473,32 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
 	tests/acl2/lb-open-bindings-tests \
+	tests/acl2/lb-writer-binding-fixtures \
+	tests/acl2/lb-writer-binding-native-tests \
+	tests/acl2/lb-writer-binding-logical-witnesses \
+	tests/acl2/lb-writer-binding-teeth \
+	tests/acl2/lb-catalog-binding-observation \
+	tests/acl2/lb-open-binding-teeth \
+	tests/acl2/lb-reclaim-binding-teeth \
+	tests/acl2/lb-append-binding-teeth \
+	tests/acl2/lb-cost-proof-theory \
+	tests/acl2/lb-column-read-cost-teeth \
+	tests/acl2/lb-newnews-cost-teeth \
+	tests/acl2/lb-retrieval-cost-teeth \
+	tests/acl2/lb-group-cost-teeth \
+	tests/acl2/lb-command-cost-teeth \
+	tests/acl2/lb-verification-preservation-teeth \
+	tests/acl2/lb-zero-read-cost-teeth \
+	tests/acl2/lb-reclaimed-read-cost-teeth \
+	tests/acl2/lb-verification-read-cost-teeth \
+	tests/acl2/lb-section-length-cost-teeth \
+	tests/acl2/lb-served-append-teeth \
+	tests/acl2/lb-cross-kind-unlink-case \
+	tests/acl2/lb-reclaim-bindings-tests \
 	tests/acl2/lb-pool-span-routing-tests \
+	tests/acl2/lb-recognizer-repair-fixtures \
+	tests/acl2/lb-recognizer-repair-aliases \
+	tests/acl2/lb-recognizer-repair-tests \
 	tests/acl2/served-available-access-tests \
 	tests/acl2/served-available-critical-teeth-tests \
 	tests/acl2/served-access-revoke-tests \
