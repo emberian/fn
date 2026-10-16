@@ -149,7 +149,15 @@ class NativePinnedChargeTests(unittest.TestCase):
         self.start(2 * stored + status)
         self.mark_capacity()
         result = self.node.operator("store", "reclaim", expect=EXIT.OK, timeout=120)
-        self.assertIn(b"reclaimed=1", result.stdout + result.stderr)
+        self.assertIn(b"reclaim installed", result.stdout + result.stderr)
+        # A live node's reply carries the receipt; the owner's install line
+        # carries the count (as tests/test_native_expiry.py reads it).
+        installed = re.compile(rb"RECLAIM installed records=[^\r\n]*")
+        self.node.process.stderr.wait_for(
+            lambda text: len(text) if installed.search(text) else None, 0, time.monotonic() + 30)
+        line = installed.findall(self.node.process.stderr.since(0))
+        self.assertEqual(len(line), 1, self.node.process.stderr.since(0)[-3000:])
+        self.assertIn(b"reclaimed=1", line[0], line)
         self.capacity(21504)
         with Client(self.node.port) as client:
             self.assertTrue(client.command("STAT " + message_id).startswith(b"430 article reclaimed"))
