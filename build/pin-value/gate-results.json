@@ -1,0 +1,77 @@
+{
+  "books/owner-config": {
+    "result": "PASS fresh load; illegal-to-certify-message NIL",
+    "closure": "001733738b4896432d0b0cc04861f7b2b84719f899bfafa9181e884e5342fa82",
+    "session": "pv2-owner-config",
+    "load_log": "/tmp/pin-value-pv2-owner-config.log",
+    "illegal_log": "/tmp/pin-value-pv2-owner-config-illegal.log"
+  },
+  "books/config-owner-live-open": {
+    "result": "PASS fresh load; illegal-to-certify-message NIL",
+    "closure": "aafc93c995baf14c09c80e37ed1b263908558d91d0dff010b3c5f414716bbb69",
+    "session": "pv2-live-open",
+    "load_log": "/tmp/pin-value-pv2-live-open.log",
+    "illegal_log": "/tmp/pin-value-pv2-live-open-illegal.log"
+  },
+  "books/public-exposure": {
+    "result": "PASS fresh load; illegal-to-certify-message NIL",
+    "closure": "e7fbc427a1042e285c582bc32b184dccabc32dcf034eca75cff1bc00818c98aa",
+    "session": "pv2-public-exposure",
+    "load_log": "build/pin-value/pv2-public-exposure-load.log",
+    "start_exit": 0,
+    "illegal_log": "build/pin-value/pv2-public-exposure-illegal.log",
+    "stop_exit": 0
+  },
+  "books/config-owner-live-read": {
+    "result": "PASS fresh load; illegal-to-certify-message NIL",
+    "closure": "c63ed482527e87696fe31568a638f2e07e21a3252b3eb8b6ccaacc7d546e519a",
+    "session": "pv2-config-owner-live-read",
+    "load_log": "build/pin-value/pv2-config-owner-live-read-load.log",
+    "start_exit": 0,
+    "illegal_log": "build/pin-value/pv2-config-owner-live-read-illegal.log",
+    "stop_exit": 0
+  },
+  "books/config-owner-read-invariants": {
+    "result": "PASS fresh load; illegal-to-certify-message NIL",
+    "closure": "841e552d4e6ae8b94fa2b6bf463989291c6554553afb0208c4b974c8df57b0d1",
+    "session": "pv2-config-owner-read-invariants",
+    "load_log": "build/pin-value/pv2-config-owner-read-invariants-load.log",
+    "start_exit": 0,
+    "illegal_log": "build/pin-value/pv2-config-owner-read-invariants-illegal.log",
+    "stop_exit": 0
+  },
+  "books/owner-prepare-correspondence": {
+    "result": "PASS fresh load; illegal-to-certify-message NIL",
+    "closure": "1ae70b26a46e34e458f1391ff5656f6021db5ceab0e9a2753fe25518954165c1",
+    "session": "pv2-owner-prepare-correspondence",
+    "load_log": "build/pin-value/pv2-owner-prepare-correspondence-load.log",
+    "start_exit": 0,
+    "illegal_log": "build/pin-value/pv2-owner-prepare-correspondence-illegal.log",
+    "stop_exit": 0
+  },
+  "books/owner-served-invariants": {
+    "result": "PASS fresh load; illegal-to-certify-message NIL",
+    "closure": "14e7ee2723b023623b18687eadf6e9985480d849047852f8f27990764d36284e",
+    "session": "pv2-owner-served-invariants",
+    "load_log": "build/pin-value/pv2-owner-served-invariants-load.log",
+    "start_exit": 0,
+    "illegal_log": "build/pin-value/pv2-owner-served-invariants-illegal.log",
+    "stop_exit": 0
+  },
+  "books/owner-open-carried": {
+    "result": "PASS fresh load; illegal-to-certify-message NIL",
+    "closure": "a7de7be2ef2db11b529915252e37780569a7e17bc4c42720e7512b5173a687bc",
+    "session": "pv2-owner-open-carried",
+    "load_log": "build/pin-value/pv2-owner-open-carried-load.log",
+    "start_exit": 0,
+    "illegal_log": "build/pin-value/pv2-owner-open-carried-illegal.log",
+    "stop_exit": 0
+  },
+  "books/owner-connection-callbacks": {
+    "result": "RED load",
+    "closure": "8d7fae447ba945b3077df774679fd044f90ac31a861a449e45d4813bfe82c713",
+    "session": "pv2-owner-connection-callbacks",
+    "load_log": "build/pin-value/pv2-owner-connection-callbacks-load.log",
+    "start_exit": 3
+  }
+}

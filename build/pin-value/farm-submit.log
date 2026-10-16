@@ -1,0 +1,5 @@
+run-20261016T220443Z-d87d: from hbox's cache, mode incremental, books 1835, toolchain_identity 8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c, installed 1241, kept 0, missing 594, removed 0, roots_installed 0, roots 519, certify 594, origins 18, fasl_installed 1241, fasl_missing 0
+run-20261016T220443Z-d87d: installed 1241 of 1835 books from 18 origin(s); certifying 594 (0 of 519 roots already certified at these forms)
+run-20261016T220443Z-d87d: certify id certify-20261016T220908Z-1545314
+run-20261016T220443Z-d87d: on hbox; wait with `farm.py wait hbox run-20261016T220443Z-d87d`
+run-20261016T220443Z-d87d

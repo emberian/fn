@@ -1,0 +1,6 @@
+proof-repl: session 'pv-owner-config' is on hbox (its record); --host laptop runs here
+NIL
+ACL2 !> :PASSED
+ACL2 !>
+
+[0.0 s]

@@ -1,0 +1,17 @@
+A30 to the PIN-VALUE worker, resume 2. Your RED is accepted, and the seat applied the repair as STATEMENTS revision 1 (see build/pin-value/STATEMENTS.md):
+- fn-ocfg-conn-config and fn-ocfg-conn-profile keep their logical bodies and execute through fn-ag-car / fn-ag-cdr (mbe :exec).
+- fn-orcp-pins-at's profile read does the same, inside its def-loop :body.
+- If def-loop refuses an mbe in :body, replace it with ONE named total helper in books/owner-reclaim-pass.lisp: (defun fn-orcp-pin-profile (id pins) (declare (xargs :guard t)) (mbe :logic (cdr (cdr (fn-ocfg-pin-find id pins))) :exec (fn-ag-cdr (fn-ag-cdr (fn-ocfg-pin-find id pins))))). Use it in the body, and report the change.
+- The same rule covers any further GUARD-only obligation of this kind in a frozen definition: a total exec branch with the logic unchanged. Record each one in REPORT.md; do not stop for it.
+Your mechanical edits are audited: erase_check 0/60, allow-list clean. Keep them.
+Continue the brief from TASK 2: proofs, then TASK 3 teeth, then the GATE: each changed book certifies alone on hbox, (@ illegal-to-certify-message) = NIL, erase_check, and the static gates. Same stop conditions, same rules, same allow-list; build/pin-value/repl.py is fine for the ssh control path. Finish with REPORT.md and STATE.md.
+RULES, VERBATIM AND BINDING (COORDINATION §9):
+No kill, pkill, killall or systemctl stop of anything you did not start, never by name or user match. Never any pattern kill (no `pkill -f <anything>`, no `pkill -x <bare word>`, no `killall`, no `kill -u`): a process you started is stopped by the PID in its PID file and only that; with no PID file, tell the coordinator; `pgrep -fl` is for looking only, never the argument to a kill. Every Codex and Sonnet brief quotes this block verbatim. `timeout` on every long command. Never `git stash`; never reset or checkout the shared `~/dev/fn`; `git -C /abs/path` for every repo command; one worktree per lane under `build/lanes/`, removed when its branch merges; commit named files only; prose commit messages via `git commit -F` ending `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. No bisecting: trace the tree and name the mechanism. Never run an unfiltered test suite. Disk low: stop writing, tell the coordinator, delete nothing. `python3 tools/secrets_check.py` before every push; push only `HEAD:lane/<name>`. No quick fixes. No weakened or narrowed statements. Generated files regenerated, registers only through their tools. Never edit another seat's files without its grant. The 51 dirty worktrees stay for ember. Delete nothing but your own files. No personal files or secrets to external models (Codex included). Write a remote job's PID file from inside the remote shell (echo $$ before exec), never an ssh wrapper's PID.
+
+EMBER'S RULE, VERBATIM AND BINDING:
+## Stopping processes: PID file or nothing (incident 2026-10-10)
+A subagent ran `pkill -f "cat" -u ember` to clear its own stuck `cat`. `-f` matches the whole command line, every app lives under `/Appli**cat**ions`, and 44 of my apps and agents got SIGTERM.
+- **Never kill by pattern.** No `pkill -f <anything>`, no `pkill -x <bare word>`, no `killall`, no `kill -u`.
+- **A process you started is stopped by the PID in its PID file**, and only that. Every detached job writes one (`nohup ... & echo $! > job.pid`). No PID file, no kill: tell me instead.
+- If you must look first, `pgrep -fl` and read the list; it is never the argument to a kill.
+- Every subagent brief you write quotes this block verbatim.
