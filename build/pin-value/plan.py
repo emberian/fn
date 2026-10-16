@@ -104,7 +104,7 @@ def widened(formula):
             return 'compound value'
     return None
 
-defs, thms, others = {}, [], []
+defs, thms, others, bodies = {}, [], [], {}
 for d in ('books', 'host', 'tests'):
     for dp, _, fs in os.walk(os.path.join(ROOT, d)):
         for fn in sorted(fs):
@@ -124,6 +124,7 @@ for d in ('books', 'host', 'tests'):
                     if kind == 'def':
                         fm = [x for x in formals if isinstance(x, str)] if isinstance(formals, list) else []
                         defs[name] = (rel, fm, set(syms(body)))
+                        bodies[name] = body
                     else:
                         thms.append((rel, name, body))
 
@@ -165,3 +166,38 @@ O = [(r, h) for r, h, f in others if set(syms(f)) & arity]
 print('OTHER FORMS %d (asserts, defteeth, tables naming the arity set)' % len(O))
 for (r, h), k in sorted(collections.Counter(O).items()):
     print('  O  %-60s %-20s x%d' % (r, h, k))
+
+# Pin-table producers: what reaches fn-ocfg-make's PINS slot (argument 3).
+# Every producer other than the pin primitives and an existing table builds
+# pin VALUES itself and must build (CFG . PROFILE).
+KNOWN = {'fn-ocfg-pin-add', 'fn-ocfg-pin-set', 'fn-ocfg-pin-remove', 'fn-ocfg-pins'}
+def heads(x):
+    if isinstance(x, list) and x and isinstance(x[0], str):
+        if x[0] == 'if':
+            for y in x[2:]:
+                yield from heads(y)
+        else:
+            yield x[0]
+    elif isinstance(x, str):
+        yield '<var>'
+P = set()
+for n, b in bodies.items():
+    for tm in subterms(b):
+        if tm and tm[0] == 'fn-ocfg-make' and len(tm) == 5:
+            for h in heads(tm[3]):
+                if h not in KNOWN and h != '<var>':
+                    P.add((defs[n][0], n, h))
+print('PIN PRODUCERS %d (definitions whose pins slot is built by something other than the pin primitives)' % len(P))
+for r, n, h in sorted(P):
+    print('  P  %-50s %-40s via %s' % (r, n, h))
+
+# A producer that builds pin values from a configuration alone also gains the
+# old table, so each surviving connection keeps its own pinned profile:
+# (fn-orcp-pins-at conns cfg pins).  Formulas naming it change by that
+# argument (and fn-orcn-pin-find-of-pins-at is also WIDENED above).
+PRODUCER_ARITY = {h for _, _, h in P}
+PA = [(r, n) for r, n, f in thms if set(syms(f)) & PRODUCER_ARITY and (r, n) not in wn]
+print('PRODUCER ARGUMENT %d (formulas naming %s, not already widened)' % (len(PA), ' '.join(sorted(PRODUCER_ARITY))))
+for r, n in sorted(PA):
+    print('  PA %-50s %s' % (r, n))
+print('GRAND TOTAL formulas %d' % (len(W) + len(A_only) + len([x for x in PA if x not in set(A_only)])))

@@ -154,3 +154,8 @@ OTHER FORMS 78 (asserts, defteeth, tables naming the arity set)
   O  tests/acl2/served-catalog-join-frame-conns-tests.lisp        assert-event         x2
   O  tests/acl2/served-catalog-join-frame-conns-tests.lisp        defconst             x1
   O  tests/acl2/served-catalog-source-scan-tests.lisp             assert-event         x2
+PIN PRODUCERS 1 (definitions whose pins slot is built by something other than the pin primitives)
+  P  books/owner-reclaim-pass.lisp                      fn-orcp-swapped-ocfg                     via fn-orcp-pins-at
+PRODUCER ARGUMENT 1 (formulas naming fn-orcp-pins-at, not already widened)
+  PA books/owner-reclaim-conns.lisp                     fn-orcn-swapped-ocfg-fields
+GRAND TOTAL formulas 69
