@@ -48,7 +48,7 @@ class NativePinnedChargeTests(unittest.TestCase):
         self.capacity_cursor = 0
         self.addCleanup(self.close_reader)
 
-    def start(self):
+    def start(self, expected=132096):
         self.capacity_cursor = 0
         owner = self.node.start(env={"SBCL_USER_ARGS": "--dynamic-space-size 4096",
                                      "FN_NATIVE_MEMORY_CAPACITY": "1"})
@@ -64,7 +64,7 @@ class NativePinnedChargeTests(unittest.TestCase):
                 except ProcessLookupError:
                     pass
         owner.signal = recorded_signal
-        self.capacity(132096)
+        self.capacity(expected)
         return owner
 
     def close_reader(self):
@@ -91,17 +91,25 @@ class NativePinnedChargeTests(unittest.TestCase):
         result = self.node.operator("policy", "set", "max-article-octets", "10240", expect=EXIT.OK)
         self.assertIn(b"applied limit max-article-octets=10240", result.stdout + result.stderr)
 
+    def record_shrink(self):
+        # books/limits-live.lisp fn-lim-article-decision (2675f2609): a changed
+        # max-article-octets is durable intent for the next start, never live.
+        result = self.node.operator("policy", "set", "max-article-octets", "10240", expect=EXIT.OK)
+        self.assertIn(b"recorded limit max-article-octets=10240 effective-at-next-start",
+                      result.stdout + result.stderr)
+
     def refresh(self):
         self.mark_capacity()
         self.node.operator("policy", "set", "posting-policy", "open", expect=EXIT.OK)
 
-    @unittest.skip("PIN-LIVE-APPLY-CAPACITY: waiting on A28 transition/locking statement")
+    @unittest.skip("PIN-LIVE-APPLY-CAPACITY: waiting on A28 transition/locking statement; and " + "PIN-LIVE-A: fn-lim-article-decision (books/limits-live.lisp, 2675f2609) records every max-article-octets change for the next start, so no live connection holds a pin above the served A")
     def test_retained_64k_reader_is_charged_after_live_shrink(self):
         self.start()
         self.reader = Client(self.node.port)
         self.shrink()
         self.capacity(132096)
 
+    @unittest.skip("PIN-LIVE-A: fn-lim-article-decision (books/limits-live.lisp, 2675f2609) records every max-article-octets change for the next start, so no live connection holds a pin above the served A")
     def test_closing_the_last_large_pin_restores_the_10k_term(self):
         self.start()
         self.reader = Client(self.node.port)
@@ -124,13 +132,11 @@ class NativePinnedChargeTests(unittest.TestCase):
         self.start()
         self.node.post(message_id, payload, expect=EXIT.OK)
         self.node.operator("retention", "expire", "fn.test", "purge", "30", expect=EXIT.OK)
+        self.record_shrink()
         self.node.stop()
-        self.start()
-        self.reader = Client(self.node.port)
-        self.shrink()
-        self.close_reader()
-        self.refresh()
-        self.capacity(123904)
+        # The owner starts at A=10240 over a store that still holds the 60k
+        # article: stored MOST, not A, sets the large term.
+        self.start(123904)
         self.mark_capacity()
         result = self.node.operator("store", "reclaim", expect=EXIT.OK, timeout=120)
         self.assertIn(b"reclaimed=1", result.stdout + result.stderr)
