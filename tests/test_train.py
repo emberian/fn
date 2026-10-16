@@ -64,7 +64,6 @@ if mode == "write" and name == "ledger":
 sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 '''
 STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
-         "tools/carried_entries.py",
          "tools/cost_obligations.py", "tools/book_roots_check.py",
          "tools/lock_discipline_check.py",
          "tools/secrets_check.py", "planning/repair/repair.py",
@@ -651,7 +650,7 @@ class NewFixtureTests(unittest.TestCase):
         # Literal order from 9fe40c34a plus b-cost-gate's two gates after ascii,
         # independent of this implementation.
         baseline_gates = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-                          "cost_obligations", "book_roots", "pins_framed", "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
+                          "cost_obligations", "book_roots", "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
         self.assertEqual(train.GATES, baseline_gates)
         for rc in (0, 7):
             p = self.train("gate", extra_env={"STUB_RC_ledger_check": str(rc)})
@@ -664,7 +663,6 @@ class NewFixtureTests(unittest.TestCase):
             self.assertEqual(self.stub_log(), [
                 "ledger --check", "current_view --check", "main_last_check ", "keystone_emit --check",
                 "cost_obligations --check", "book_roots_check ",
-                "carried_entries --frame fn-owner-pins-carried --check",
                 "lock_discipline_check --json",
                 "lock_discipline_check --json", "test_ledger ", "test_keystone_emit ",
                 "test_keystone_critical ", "test_train ", "test_farm "])

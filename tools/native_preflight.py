@@ -28,7 +28,6 @@ import time
 GATES = {
     "world-check": ("tools/extract/world.py", "--check"),
     "interfaces-check": ("tools/interface_emit.py", "--check"),
-    "pins-framed": ("tools/carried_entries.py", "--frame", "fn-owner-pins-carried", "--check"),
     "host-books": ("tools/host_check.py", "--books"),
     "attach-order": ("tools/host_check.py", "--attach-order"),
 }

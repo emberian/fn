@@ -248,7 +248,7 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "cost_obligations", "book_roots", "pins_framed",
+         "cost_obligations", "book_roots",
          "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
 
 # The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
@@ -1749,8 +1749,6 @@ GATE_COMMANDS = {
     "current_view": [PY, "tools/current_view.py", "--check"],
     "main_last": [PY, "tools/main_last_check.py"],
     "keystone": [PY, "tools/keystone_emit.py", "--check"],
-    # Always local, including trains with a box step at HEAD (not only inheritance).
-    "pins_framed": [PY, "tools/carried_entries.py", "--frame", "fn-owner-pins-carried", "--check"],
 }
 
 

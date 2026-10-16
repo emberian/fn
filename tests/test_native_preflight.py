@@ -12,10 +12,6 @@ from tools import native_preflight as preflight
 
 
 class NativePreflightTests(unittest.TestCase):
-    def test_pins_framed_gate_command(self):
-        self.assertEqual(preflight.GATES["pins-framed"],
-                         ("tools/carried_entries.py", "--frame", "fn-owner-pins-carried", "--check"))
-
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

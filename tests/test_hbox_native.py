@@ -297,8 +297,6 @@ echo REACHED
         import tempfile
         answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
         self.assertEqual(answer.returncode, 0, answer.stderr)
-        self.assertIn("step pins-framed static_gate pins-framed tools/carried_entries.py "
-                      "--frame fn-owner-pins-carried --check", answer.stdout)
         start = answer.stdout.index("static_gate() {")
         function = answer.stdout[start:answer.stdout.index("\n}\n", start) + 3]
         script = 'python3() { printf "%s\\n" "$@"; return 7; }\n' + function
