@@ -5,7 +5,7 @@
 #                     [--no-gauntlet] [--time-box persvati|none] [--label L] REV
 #
 # Certify is not a gate on this branch; this is.  In order:
-#   1. the host image builds on hbox (production, developer, dtn) for REV and
+#   1. the host image builds on hbox (production, developer, dtn, dtn-developer) for REV and
 #      the named native modules run against it: G5's peering/feed/pull/BP/DTN
 #      modules always, plus every tests.test_native_* module whose name holds
 #      one of --families (the families the change touched; name them, never
@@ -65,7 +65,7 @@ log "gate $LABEL at $SHA: $(printf %s "$MODULES" | wc -l | tr -d ' ') modules (G
 printf '%s\n' "$MODULES" > "$OUT/modules.txt"
 
 # 1. image + natives on hbox
-set -- --box hbox --allow-certify --images production,developer,dtn --label "$LABEL" --allow-skips --env FN_INN_SRC=/tank/fn/inn/2.7.4
+set -- --box hbox --allow-certify --images production,developer,dtn,dtn-developer --label "$LABEL" --allow-skips --env FN_INN_SRC=/tank/fn/inn/2.7.4
 [ -z "$REUSE" ] || set -- "$@" --reuse-image "$REUSE"
 log "hbox_native $* $REV ..."
 sh tools/hbox_native.sh "$@" "$SHA" $MODULES > "$OUT/hbox_native.launch.log" 2>&1 || { log "RED: hbox_native refused to launch (see $OUT/hbox_native.launch.log)"; exit 1; }
