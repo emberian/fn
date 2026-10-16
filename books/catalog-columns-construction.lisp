@@ -12,7 +12,7 @@
  (equal (fn-lbc-corr (fn-lbc-clear-columns fn-lbc) nil log)
         (fn-lb-log-model-segsp log))
  :hints (("Goal" :do-not-induct t
- :in-theory (e/d (fn-lbc-corr fn-lbc-clear-columns fn-lbc-count fn-lbc-slot-count make-list-ac fn-lbc-rows-corr fn-lbc-row-group-keys
+ :in-theory (e/d (fn-lbc-corr fn-lbc-clear-columns fn-lbc-count fn-lbc-slot-count make-list-ac fn-lbc-rows-corr fn-lb-retained-payloads-agreep fn-lbc-row-group-keys
   fn-lbc-directory-count-is-len fn-lbc-tables-corr fn-lbc-number-rows-covered fn-lbc-slots-corr fn-lbc-summaries-corr
   fn-lbc-slot-cells-corr fn-lbc-canonical-slots fn-lbc-canonical-slots-from
   fn-lbc-number-cells-corr fn-lbc-summary-cells-corr)

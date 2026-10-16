@@ -41,6 +41,10 @@
   (fn-lbc-escape-store-put i cell fn-lbc)))
 
 (verify-guards fn-lbc-set-withdrawal
- :hints (("Goal" :use ((:instance fn-lbc-flags-word-has-native-type))
- :in-theory (disable fn-lbc-p fn-lbc-value fn-lbc-escape-store-get
-  fn-lbc-escape-store-put fn-lbc-word floor mod |(floor x 2)|))))
+ :hints (("Goal"
+  :use ((:instance fn-lbc-flags-word-has-native-type)
+        (:instance fn-lbcwd-flags-fit
+         (flags (fn-lbc-word :flags i fn-lbc))
+         (escaped (not (and (unsigned-byte-p 64 version) (unsigned-byte-p 64 by))))))
+  :in-theory (disable fn-lbc-p fn-lbc-value fn-lbc-escape-store-get
+   fn-lbc-escape-store-put fn-lbc-word floor mod logior binary-logior))))

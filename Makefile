@@ -1608,6 +1608,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-wbv-trie \
 	books/log-locator \
 	books/lb-log-model \
+	books/lb-log-payload-agreement \
+	books/lb-log-payload-agreement-properties \
 	books/lb-log-model-properties \
 	books/catalog-columns-layout \
 	books/catalog-columns \
@@ -1785,6 +1787,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-columns-withdraw-row-readback \
 	books/catalog-columns-withdraw-row-guard-preservation \
 	books/catalog-columns-withdraw-row-value-frames \
+	books/catalog-columns-withdraw-row-composite-frames \
+	books/catalog-columns-withdraw-row-logical-effects \
+	books/catalog-columns-withdraw-row-projection \
+	books/catalog-columns-withdraw-row-correspondence \
+	books/catalog-columns-withdraw-rows-correspondence \
+	books/catalog-columns-live-number \
+	books/catalog-columns-row-correspondence \
+	books/catalog-columns-number-correspondence \
+	books/catalog-columns-live-extrema \
+	books/catalog-columns-withdraw-structural-effects \
 	books/lb-log-layout \
 	books/log-verified-map-properties \
 	books/catalog-columns-properties \
@@ -2396,6 +2408,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/lb-cost-proof-theory \
 	tests/acl2/lb-column-read-cost-teeth \
 	tests/acl2/lb-newnews-cost-teeth \
+	tests/acl2/lb-withdraw-row-tests \
 	tests/acl2/lb-retrieval-cost-teeth \
 	tests/acl2/lb-group-cost-teeth \
 	tests/acl2/lb-command-cost-teeth \
@@ -2406,6 +2419,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/lb-section-length-cost-teeth \
 	tests/acl2/lb-served-append-teeth \
 	tests/acl2/lb-cross-kind-unlink-case \
+	tests/acl2/lb-payload-agreement-producers \
+	tests/acl2/lb-payload-agreement-teeth \
 	tests/acl2/lb-reclaim-bindings-tests \
 	tests/acl2/lb-pool-span-routing-tests \
 	tests/acl2/lb-recognizer-repair-fixtures \

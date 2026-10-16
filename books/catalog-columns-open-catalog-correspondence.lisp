@@ -57,7 +57,8 @@
  (fn-lb-log-layoutp log) (fn-lb-log-model-segsp log) (fn-lb-log-rows-sourcep rows log))
  (fn-lbc-corr (fn-lbc-open-rebuild rows log fn-lbc) rows log))
  :hints (("Goal" :do-not-induct t
- :use ((:instance fn-lb-columns-directory-alignedp-of-open-rebuild)
+ :use ((:instance fn-lb-log-rows-sourcep-gives-payload-agreement)
+       (:instance fn-lb-columns-directory-alignedp-of-open-rebuild)
        (:instance fn-lbc-open-rebuild-establishes-rows-corr)
  (:instance fn-lbc-tables-corr-of-open-rebuild)
  (:instance fn-lbc-number-rows-covered-of-open-rebuild (rest rows))

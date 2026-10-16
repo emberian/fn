@@ -1,15 +1,11 @@
 ; Command candidate selection refines the existing available-number reference.
 (in-package "ACL2")
 (include-book "catalog-columns-command-availability")
+(include-book "catalog-columns-row-correspondence")
 (include-book "catalog-columns-selector-properties")
 (include-book "catalog-available-readers")
 
-(defthm fn-lbc-original-nov-is-abstract
- (implies (and (fn-lbc-p fn-lbc) (fn-cat$ap rows) (fn-lbc-corr fn-lbc rows log)
-               (natp i) (< i (len rows)))
-  (equal (fn-lbc-original-nov i fn-lbc) (fn-hf-nov (fn-held-facts (nth i rows)))))
- :hints (("Goal" :use fn-lbc-served-row-is-abstract
-  :in-theory (union-theories (theory 'ground-zero) '(fn-lbc-served-row fn-cat-served-projection)))))
+
 
 (local (defthm fn-lbccr-id-test-is-abstract
  (implies (and (fn-lbc-p fn-lbc) (fn-cat$ap rows) (fn-lbc-corr fn-lbc rows log)

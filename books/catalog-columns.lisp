@@ -9,6 +9,7 @@
 (include-book "catalog-columns-layout")
 (include-book "nntp-projection")
 (include-book "lb-log-model")
+(include-book "lb-log-payload-agreement")
 (include-book "log-locator")
 
 ; The row generator reasons about typed columns, not the unrelated dense
@@ -1248,6 +1249,7 @@
        (equal (fn-lbc-directory-count (nth *fn-lbc-directory-store* fn-lbc))
               (fn-lbc-count fn-lbc))
        (fn-lb-log-model-segsp log)
+       (fn-lb-retained-payloads-agreep rows log)
        (equal (fn-lbc-summary-groups fn-lbc) (fn-lbc-row-group-keys rows))
        (fn-lbc-rows-corr 0 rows 0 fn-lbc log)
        (fn-lbc-tables-corr fn-lbc rows)

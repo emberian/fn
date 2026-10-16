@@ -1,12 +1,14 @@
 ; Derived constructor support; local algebra does not escape this book.
 (in-package "ACL2")
 (include-book "catalog-columns-log-type-preservation")
+(include-book "lb-log-payload-agreement-properties")
 
 (defun-nx fn-lb-log-row-sourcep (row log)
  (let* ((entry (fn-lb-log-model-row-entry row log))
         (seg (fn-lb-log-model-row-segment row log))
         (off (nth 3 entry)) (count (nth 4 entry)) (payload (nth 6 entry)))
  (and entry
+  (fn-lb-log-row-copies-agreep row payload log)
   (equal (nth 7 entry) (fn-lb-log-model-homes row))
   (fn-arx-entry-ok (fn-lb-entry-octets seg off log) (fn-lb-entry-protected-len seg off log))
   (equal (fn-lb-log-model-read-range seg off count log) (fn-lb-log-model-next-range payload))
@@ -16,6 +18,11 @@
 (defun-nx fn-lb-log-rows-sourcep (rows log)
  (if (consp rows) (and (fn-lb-log-row-sourcep (car rows) log)
                       (fn-lb-log-rows-sourcep (cdr rows) log)) t))
+
+(defthm fn-lb-log-rows-sourcep-gives-payload-agreement
+ (implies (fn-lb-log-rows-sourcep rows log) (fn-lb-retained-payloads-agreep rows log))
+ :hints (("Goal" :induct (len rows) :in-theory (union-theories (theory 'ground-zero)
+  '(len fn-lb-log-rows-sourcep fn-lb-log-row-sourcep fn-lb-retained-payloads-agreep fn-lb-log-payload)))))
 
 (local (defthm fn-lblrs-handle-natural
  (implies (fn-cat-rowp row) (natp (fn-record-payload row)))
@@ -37,7 +44,7 @@
  :in-theory (union-theories (theory 'ground-zero)
  '(fn-lb-log-row-sourcep fn-lblrs-handle-natural fn-lb-log-append-fresh-row-entry
  fn-lb-log-append-fresh-row-segment fn-lb-log-next-entry-homes-by-definition
- fn-lb-log-next-entry-payload-by-definition (:type-prescription fn-lblrs-next-entry-present))))))
+ fn-lb-log-next-entry-payload-by-definition fn-lb-log-row-copies-agree-of-fresh-append (:type-prescription fn-lblrs-next-entry-present))))))
 
 (defthm fn-lbc-row-corr-from-row-source
  (implies (and (fn-cat-rowp row) (fn-lbc-row-log-guardp row log)

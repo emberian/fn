@@ -25,7 +25,9 @@
                (not (fn-lb-log-model-row-entry row log)))
  (fn-lb-log-row-sourcep old (fn-lb-log-model-append row payload target log)))
  :hints (("Goal" :do-not-induct t
- :use ((:instance fn-lb-log-row-entry-of-fresh-append-old)
+ :use ((:instance fn-lb-log-row-copies-agree-of-fresh-append-old
+         (expected (fn-lb-log-payload old log)))
+       (:instance fn-lb-log-row-entry-of-fresh-append-old)
        (:instance fn-lb-log-row-segment-of-fresh-append-old)
        (:instance fn-lb-log-append-preserves-existing-range
  (seg (fn-lb-log-model-row-segment old log))
@@ -37,7 +39,7 @@
        (:instance fn-lb-log-append-preserves-verified-entry
  (seg (fn-lb-log-model-row-segment old log)) (off (nth 3 (fn-lb-log-model-row-entry old log)))))
  :in-theory (set-difference-theories (union-theories (theory 'ground-zero)
- '(fn-lb-log-row-sourcep fn-lblsp-old-handle-natural fn-lblsp-next-range-not-bad fn-lblsp-home-frame-not-bad))
+ '(fn-lb-log-row-sourcep fn-lblsp-old-handle-natural fn-lblsp-next-range-not-bad fn-lblsp-home-frame-not-bad fn-lb-log-payload fn-lb-log-payload-of-fresh-append-old))
  '((tau-system))))))
 
 (defthm fn-lb-log-rows-sourcep-of-fresh-append-old

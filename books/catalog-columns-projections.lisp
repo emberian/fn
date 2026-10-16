@@ -2,29 +2,7 @@
 (in-package "ACL2")
 (include-book "catalog-columns-properties")
 
-(local (defthm fn-lbr10-served-projection-fields
- (implies (equal (fn-lbc-served-row i fn-lbc) (fn-cat-served-projection row))
-  (and (equal (fn-lbc-msgid i fn-lbc) (fn-record-msgid row))
-       (equal (fn-lbc-value i :handle fn-lbc) (fn-record-payload row))
-       (equal (fn-lbc-groups i fn-lbc) (fn-record-groups row))
-       (equal (fn-lbc-numbers i fn-lbc) (fn-held-numbers row))
-       (equal (fn-lbc-value i :stamp fn-lbc) (fn-record-stamp row))
-       (equal (fn-lbc-withdrawn i fn-lbc) (fn-held-withdrawn row))))
- :hints (("Goal" :in-theory (union-theories (theory 'ground-zero)
-  '(fn-lbc-served-row fn-cat-served-projection))))))
 
-(defthm fn-lbc-served-fields-are-abstract
- (implies (and (fn-lbc-p fn-lbc) (fn-cat$ap rows) (fn-lbc-corr fn-lbc rows log)
-               (natp i) (< i (len rows)))
-  (and (equal (fn-lbc-msgid i fn-lbc) (fn-record-msgid (nth i rows)))
-       (equal (fn-lbc-value i :handle fn-lbc) (fn-record-payload (nth i rows)))
-       (equal (fn-lbc-groups i fn-lbc) (fn-record-groups (nth i rows)))
-       (equal (fn-lbc-numbers i fn-lbc) (fn-held-numbers (nth i rows)))
-       (equal (fn-lbc-value i :stamp fn-lbc) (fn-record-stamp (nth i rows)))
-       (equal (fn-lbc-withdrawn i fn-lbc) (fn-held-withdrawn (nth i rows)))) )
- :hints (("Goal" :use ((:instance fn-lbc-served-row-is-abstract)
-                       (:instance fn-lbr10-served-projection-fields (row (nth i rows))))
- :in-theory (union-theories (theory 'ground-zero) '(natp)))))
 
 (defthm fn-lbc-article-is-row-article
  (implies (and (fn-lbc-p fn-lbc) (fn-cat$ap rows) (fn-lbc-corr fn-lbc rows log)
@@ -62,9 +40,7 @@
   (:instance fn-lbr10-row-stamp-natural (row (nth i rows))))
  :in-theory (union-theories (theory 'ground-zero) '(fn-cat$ap)))))
 
-(defthm fn-lbc-corr-count-is-length
- (implies (fn-lbc-corr fn-lbc rows log) (equal (fn-lbc-count fn-lbc) (len rows)))
- :hints (("Goal" :in-theory '(fn-lbc-corr))))
+
 
 (defthm fn-lbc-visible-is-row-visible
  (implies (and (fn-lbc-p fn-lbc) (fn-cat$ap rows) (fn-lbc-corr fn-lbc rows log)

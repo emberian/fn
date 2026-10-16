@@ -4,6 +4,19 @@
 (include-book "../../books/catalog-columns-served-establishment")
 (include-book "lb-writer-binding-fixtures")
 
+; Exact pre-ruling recognizer, retained only as this fault mutant.
+(defun-nx fn-lbr1-old-corr (fn-lbc rows log)
+  (and (equal (fn-lbc-count fn-lbc) (len rows))
+       (equal (fn-lbc-directory-count (nth *fn-lbc-directory-store* fn-lbc))
+              (fn-lbc-count fn-lbc))
+       (fn-lb-log-model-segsp log)
+       (equal (fn-lbc-summary-groups fn-lbc) (fn-lbc-row-group-keys rows))
+       (fn-lbc-rows-corr 0 rows 0 fn-lbc log)
+       (fn-lbc-tables-corr fn-lbc rows)
+       (fn-lbc-number-rows-covered rows rows fn-lbc)
+       (fn-lbc-slots-corr fn-lbc rows)
+       (fn-lbc-summaries-corr (fn-lbc-row-group-keys rows) rows fn-lbc)))
+
 (defconst *fn-lbw-cross-kind-a*
  (append '(0 70 78 45 82 67 76 50 13 10 46 13 10 13 10)
          (make-list 127 :initial-element 65) '(13 10)))
@@ -35,7 +48,7 @@
             (or (equal (subseq name 0 (min 7 (length name))) "FN-LBC-")
                 (equal (subseq name 0 (min 8 (length name))) "FN-DMAP-")
                 (equal (subseq name 0 (min 14 (length name))) "UPDATE-FN-LBC-")
-                (member-eq sym '(fn-lbr13-finish-single-row fn-lbw-cross-state create-fn-lbc create-fn-dmap))))
+                (member-eq sym '(fn-lbr13-finish-single-row fn-lbw-cross-state fn-lbr1-old-corr create-fn-lbc create-fn-dmap))))
        (cons r (fn-lbw-cross-definition-runes (cdr runes)))
      (fn-lbw-cross-definition-runes (cdr runes)))) nil)))
 
@@ -48,14 +61,17 @@
      (not (equal (subseq name 0 (min 7 (length name))) "FN-LBC-"))
      (not (equal (subseq name 0 (min 9 (length name))) "FN-LBR13-"))
      (not (equal (subseq name 0 (min 14 (length name))) "UPDATE-FN-LBC-"))
-     (not (member-eq sym '(create-fn-lbc fn-lbw-cross-state))))
+     (not (member-eq sym '(create-fn-lbc fn-lbw-cross-state fn-lbr1-old-corr
+       fn-lb-retained-payloads-agreep fn-lb-log-row-copies-agreep
+       fn-lb-log-entries-payload-agreep))))
     (cons r (fn-lbw-cross-pure-runes (cdr runes)))
     (fn-lbw-cross-pure-runes (cdr runes)))) nil)))
 
 (defthm fn-lbw-cross-kind-full-corr-control
  (and (fn-lb-log-model-segsp (fn-lbw-cross-log))
       (fn-lbc-p (fn-lbw-cross-state))
-      (fn-lbc-corr (fn-lbw-cross-state) (list (fn-lbw-cross-held)) (fn-lbw-cross-log))
+      (fn-lbr1-old-corr (fn-lbw-cross-state) (list (fn-lbw-cross-held)) (fn-lbw-cross-log))
+      (not (fn-lbc-corr (fn-lbw-cross-state) (list (fn-lbw-cross-held)) (fn-lbw-cross-log)))
       (equal (fn-lbc-loc0 0 (fn-lbw-cross-state)) 2)
       (equal (fn-lb-log-payload (fn-lbw-cross-held) (fn-lbw-cross-log)) *fn-lbw-cross-kind-a*)
       (equal (fn-lb-log-payload (fn-lbw-cross-held) (fn-lb-log-model-recycle 1 (fn-lbw-cross-log))) *fn-lbw-cross-kind-b*)
@@ -113,7 +129,7 @@
 (:free (keys table rows) (fn-lbc-number-cells-corr keys table rows)))
  :in-theory (union-theories (theory 'ground-zero)
   (union-theories (fn-lbw-cross-pure-runes (universal-theory :here))
-   (union-theories '(fn-lbw-cross-state fn-lbr13-finish-single-row update-fn-lbc-loc0 create-fn-lbc create-fn-dmap) (fn-lbw-cross-definition-runes (definition-theory (universal-theory :here)))))))))
+   (union-theories '(fn-lbw-cross-state fn-lbr13-finish-single-row update-fn-lbc-loc0 create-fn-lbc create-fn-dmap fn-lb-retained-payloads-agreep fn-lb-log-row-copies-agreep fn-lb-log-entries-payload-agreep) (fn-lbw-cross-definition-runes (definition-theory (universal-theory :here)))))))))
 
 (defthm fn-lbw-cross-kind-seal-readback
  (equal (fn-nntp-payload-bytes 0
@@ -125,13 +141,24 @@
  fn-arena-seal-list-is-append fn-arena-p (:executable-counterpart fn-arena$ap)
  create-fn-arena)))))
 
+(defthm fn-lbw-cross-kind-row-corr-control
+ (and (fn-lbc-row-corr 0 (fn-lbw-cross-held) 5 (fn-lbw-cross-state) (fn-lbw-cross-log))
+      (equal (fn-lbc-count (fn-lbw-cross-state)) 1))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t :use fn-lbw-cross-kind-full-corr-control
+  :in-theory (union-theories (theory 'ground-zero)
+   '(fn-lbr1-old-corr fn-lbc-rows-corr nfix max
+     (:executable-counterpart fn-lbw-cross-held)
+     (:executable-counterpart fn-record-stamp))))))
+
 (defthm fn-lbw-cross-kind-corr-resolve-and-arena-unlink-case
  (let* ((row (fn-lbw-cross-held)) (rows (list row))
         (log (fn-lbw-cross-log)) (columns (fn-lbw-cross-state))
         (arena (fn-arena-seal-list *fn-lbw-cross-kind-a* (create-fn-arena)))
         (after (fn-lb-log-model-recycle 1 log)))
   (and (fn-lbc-p columns) (fn-cat$ap rows)
-       (fn-lbc-corr columns rows log)
+       (fn-lbr1-old-corr columns rows log)
+       (not (fn-lbc-corr columns rows log))
        (fn-lc-locators-resolve columns log)
        (equal (fn-lbc-loc0 0 columns) 2)
        (fn-lb-arena-is-log arena rows log)
@@ -140,11 +167,14 @@
  :rule-classes nil
  :hints (("Goal" :do-not-induct t
  :use ((:instance fn-lbw-cross-kind-full-corr-control)
-       (:instance fn-lc-locators-resolve-from-catalog-corr
-         (fn-lbc (fn-lbw-cross-state)) (rows (list (fn-lbw-cross-held)))
+       (:instance fn-lbw-cross-kind-row-corr-control)
+       (:instance fn-lbc-corresponding-row-locator-resolves
+         (fn-lbc (fn-lbw-cross-state)) (row (fn-lbw-cross-held)) (i 0) (pm 5)
          (log (fn-lbw-cross-log))))
  :in-theory (union-theories (theory 'ground-zero)
  '(fn-lbw-cross-kind-seal-readback fn-lb-arena-is-log
+ fn-lc-locators-resolve fn-lc-resolve-from fn-lc-count natp
+ (:executable-counterpart fn-held-p)
  (:executable-counterpart fn-lbw-cross-held)
  (:executable-counterpart fn-record-payload)
  (:executable-counterpart fn-held-listp) (:executable-counterpart fn-cat$ap)

@@ -3,6 +3,7 @@
 (include-book "catalog-columns-served-preservation")
 (include-book "catalog-columns-log-old-row-preservation")
 (include-book "lb-log-guard-invariants")
+(include-book "lb-log-payload-agreement-properties")
 
 (local (defthm fn-lbai-old-handle-natural
  (implies (fn-cat-rowp old) (natp (fn-record-payload old)))
@@ -102,6 +103,16 @@
            (not (equal (fn-record-payload (car rows)) (fn-record-payload row))))
        (fn-lb-catalog-distinct-log-keyp row (cdr rows))) t))
 
+(defthm fn-lb-retained-agreement-survives-distinct-append
+ (implies (and (fn-cat-rowsp rows) (fn-lb-retained-payloads-agreep rows log)
+               (fn-lb-catalog-distinct-log-keyp row rows))
+  (fn-lb-retained-payloads-agreep rows (fn-lb-log-model-append row payload target log)))
+ :hints (("Goal" :induct (len rows)
+ :in-theory (union-theories (theory 'ground-zero)
+ '(len fn-cat-rowsp fn-lb-retained-payloads-agreep fn-lb-catalog-distinct-log-keyp
+   fn-lb-log-row-copies-agree-of-distinct-append fn-lbai-payload-of-distinct-append
+   fn-lbai-old-handle-natural)))))
+
 (local (defthm fn-lbai-rows-corr-survives-distinct-log-append
  (implies (and (fn-cat-rowsp rows) (fn-lbc-rows-corr i rows pm fn-lbc-v log)
                (fn-lb-catalog-distinct-log-keyp row rows))
@@ -118,7 +129,8 @@
   (fn-lbc-corr fn-lbc-v rows (fn-lb-log-model-append row payload target log)))
  :hints (("Goal" :do-not-induct t
   :in-theory (union-theories (theory 'ground-zero)
-   '(fn-lbc-corr fn-lbai-rows-corr-survives-distinct-log-append fn-lb-log-append-preserves-type)))))
+   '(fn-lbc-corr fn-lbai-rows-corr-survives-distinct-log-append
+     fn-lb-retained-agreement-survives-distinct-append fn-lb-log-append-preserves-type)))))
 
 (local (defthm fn-lbai-row-resolver-survives-distinct-append
  (implies (and (fn-cat-rowp old) (fn-lbc-row-corr i old pm fn-lbc-v log)

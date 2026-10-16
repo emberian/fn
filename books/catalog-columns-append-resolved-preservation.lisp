@@ -65,13 +65,27 @@
      fn-lbc-resolved-row-corr-survives-distinct-append
      fn-lbc-resolved-locator-survives-distinct-append len natp nfix))))))
 
+(local (defthm fn-lbarp-resolved-agreement-survives-distinct-append
+ (implies (and (natp i) (equal (fn-lbc-count fn-lbc-v) (+ i (len rows)))
+  (fn-lbc-rows-corr i rows pm fn-lbc-v log) (fn-lc-resolve-from i fn-lbc-v log)
+  (fn-lb-catalog-distinct-log-keyp row rows) (fn-lb-retained-payloads-agreep rows log))
+  (fn-lb-retained-payloads-agreep rows (fn-lb-log-model-append row payload target log)))
+ :hints (("Goal" :induct (fn-lbc-rows-corr i rows pm fn-lbc-v log)
+  :expand ((fn-lc-resolve-from i fn-lbc-v log))
+  :in-theory (union-theories (theory 'ground-zero)
+   '(fn-lbc-rows-corr fn-lb-catalog-distinct-log-keyp fn-lc-count
+     fn-lb-retained-payloads-agreep fn-lb-log-row-copies-agree-of-distinct-append
+     fn-lbarp-payload-survives-distinct-append fn-lbc-resolved-row-corr-handle-is-natural
+     len natp nfix))))))
+
 (defthm fn-lb-served-log-invp-of-append
  (implies (and (fn-lb-served-log-invp log fn-lb-vmap-v fn-lbc-v rows)
   (fn-lb-catalog-distinct-log-keyp row rows) (fn-cat-rowp row)
   (fn-cbor-octet-listp payload) (unsigned-byte-p 64 target))
   (fn-lb-served-log-invp (fn-lb-log-model-append row payload target log) fn-lb-vmap-v fn-lbc-v rows))
  :hints (("Goal" :do-not-induct t
-  :use ((:instance fn-lbarp-resolved-suffix-survives-distinct-append (i 0) (pm 0)))
+  :use ((:instance fn-lbarp-resolved-suffix-survives-distinct-append (i 0) (pm 0))
+        (:instance fn-lbarp-resolved-agreement-survives-distinct-append (i 0) (pm 0)))
   :in-theory (union-theories (theory 'ground-zero)
    '(fn-lb-served-log-invp fn-lbc-corr fn-lc-locators-resolve
      fn-lb-log-append-preserves-type fn-lb-verified-invp-of-append)))))
