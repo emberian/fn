@@ -132,18 +132,21 @@ class NativePinnedChargeTests(unittest.TestCase):
         self.start()
         self.node.post(message_id, payload, expect=EXIT.OK)
         # MOST charges the STORED octets (fn-adm-stored-article-most over
-        # fn-hf-octets): the posted payload plus the headers the node adds.
+        # fn-hf-octets): the posted payload plus the headers the node adds at
+        # injection. The overview's Bytes field (RFC 3977 8.3.1) is that size;
+        # ARTICLE is not, because it also carries the serve-time Xref line.
         with Client(self.node.port) as client:
-            stored = client.article(message_id)
-        self.assertIsNotNone(stored)
-        self.assertGreater(len(stored), len(payload))
+            status_line, overview = client.multiline(b"OVER " + message_id.encode())
+        self.assertTrue(status_line.startswith(b"224"), status_line)
+        stored = int(overview.split(b"\t")[6])
+        self.assertGreater(stored, len(payload))
         status = 132096 - 2 * 65536
         self.node.operator("retention", "expire", "fn.test", "purge", "30", expect=EXIT.OK)
         self.record_shrink()
         self.node.stop()
         # The owner starts at A=10240 over a store that still holds the 60k
         # article: stored MOST, not A, sets the large term.
-        self.start(2 * len(stored) + status)
+        self.start(2 * stored + status)
         self.mark_capacity()
         result = self.node.operator("store", "reclaim", expect=EXIT.OK, timeout=120)
         self.assertIn(b"reclaimed=1", result.stdout + result.stderr)
