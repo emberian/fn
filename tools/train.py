@@ -1135,6 +1135,31 @@ def _lock_keys(t: Train, cwd: Path) -> tuple[set[str] | None, str | None]:
     return keys, None
 
 
+LOCK_AMEND_PREFIX = "check-fast:lock_discipline_check:"
+
+
+def _lock_amendments(t: Train, keys) -> dict[str, dict | None]:
+    """For each key, None when no HEAD amendment names it, else the latest
+    record's item, dev_sha and that item's state ("missing" when absent)."""
+    latest = {}
+    for rec in amendments_at(t, "HEAD"):
+        if rec["kind"] == "check" and rec["subject"].startswith(LOCK_AMEND_PREFIX):
+            latest[rec["subject"][len(LOCK_AMEND_PREFIX):]] = rec
+    out = {}
+    for k in keys:
+        rec = latest.get(k)
+        if rec is None:
+            out[k] = None
+            continue
+        try:
+            item = json.loads((t.root / "planning" / "repair" / "items" / f"{rec['item']}.json").read_text())
+        except (OSError, ValueError):
+            item = None
+        state = "missing" if not isinstance(item, dict) else str(item.get("state"))
+        out[k] = {"item": rec["item"], "dev_sha": rec["dev_sha"], "state": state}
+    return out
+
+
 def _lock_owners(root: Path, keys) -> dict[str, list[dict]]:
     """For each key, the repair items naming it verbatim (id, owner, state)."""
     def strings(v):
@@ -1897,6 +1922,17 @@ def _lock_delta_gate(t: Train) -> tuple[int, dict]:
         # an open repair item; a key with no item, or whose every item is
         # closed, fails the gate too.  Nothing else exists.
         added, gone = sorted(new - old), sorted(old - new)
+        # A key this train adds is a known red only by an amendment record
+        # (coordinator 2026-10-15 03:40): the latest HEAD record for
+        # ("check", LOCK_AMEND_PREFIX + key) whose repair item is present and
+        # open.  The baseline gate owns the amendment's own validity.
+        try:
+            amended_by = _lock_amendments(t, added)
+        except TrainError as error:
+            say(f"lock delta: {error}")
+            return 1, {'error': str(error)}
+        amended = sorted(k for k in added if amended_by[k] and amended_by[k]["state"] == "open")
+        refused = sorted(k for k in added if k not in amended)
         owners = _lock_owners(t.root, sorted(new))
         reds = [{"key": k, "items": owners[k]} for k in sorted(new & old)]
         unowned = sorted(k for k in new & old if not owners[k])
@@ -1904,15 +1940,21 @@ def _lock_delta_gate(t: Train) -> tuple[int, dict]:
                         and all(i["state"] in CLOSED_ITEM_STATES for i in owners[k]))
         say(f"lock delta: added {added or '-'}; gone {gone or '-'}; "
             f"owned reds on dev {len(reds) - len(unowned) - len(closed)}")
-        for k in added:
-            say(f"  NEW lock key added by this train: {k}")
+        for k in amended:
+            a = amended_by[k]
+            say(f"  NEW lock key, known red by amendment ({a['item']}, measured at {a['dev_sha']}): {k}")
+        for k in refused:
+            a = amended_by[k]
+            why = "" if a is None else f" (its amendment's item {a['item']} is {a['state']})"
+            say(f"  NEW lock key added by this train: {k}{why}")
         for k in unowned:
             say(f"  UNOWNED lock key on dev (no repair item names it): {k}")
         for k in closed:
             say(f"  lock key persists but its items are closed: {k} "
                 + ", ".join(i["item"] for i in owners[k]))
-        rc = 1 if (added or unowned or closed) else 0
-        return rc, {'added': added, 'gone': gone, 'unowned': unowned, 'closed_items': closed, 'owned_reds': reds}
+        rc = 1 if (refused or unowned or closed) else 0
+        return rc, {'added': added, 'amended': amended, 'refused': refused, 'gone': gone,
+                    'unowned': unowned, 'closed_items': closed, 'owned_reds': reds}
 
 
 def _secrets_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:

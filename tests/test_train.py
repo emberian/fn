@@ -1127,7 +1127,7 @@ class PushTests(TrainBase):
     # ruling 21: the lock gate's table.  The only green is "no key added
     # relative to dev"; dev's own keys are an owned red list; a checker that
     # breaks its exit/JSON contract is a failure, never an empty set.
-    def lock_gate(self, dev_keys, head_keys, items=None):
+    def lock_gate(self, dev_keys, head_keys, items=None, head_files=None):
         files = {"lockkeys.json": json.dumps(dev_keys) + "\n", "src.txt": "lock gate dev\n"}
         idir = self.seed / "planning/repair/items"
         idir.mkdir(parents=True, exist_ok=True)
@@ -1138,6 +1138,9 @@ class PushTests(TrainBase):
         sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
         if head_keys is not None:
             (self.work / "lockkeys.json").write_text(json.dumps(head_keys) + "\n")
+            for name, body in (head_files or {}).items():
+                (self.work / name).parent.mkdir(parents=True, exist_ok=True)
+                (self.work / name).write_text(body)
             self.commit(self.work, "head lock keys")
         g = self.train("gate")
         st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
@@ -1156,6 +1159,46 @@ class PushTests(TrainBase):
         self.assertEqual(rec["added"], ["k1"])
         self.assertIn("NEW lock key added by this train: k1", g.stdout)
         self.assertNotEqual(g.returncode, 0)
+
+    # coordinator 2026-10-15 03:40: a key the train adds passes only when a
+    # HEAD amendment names it as check-fast:lock_discipline_check:<key> and
+    # the amendment's repair item is open.
+    def lock_amended(self, key, item_state="open"):
+        rec = {"kind": "check", "subject": "check-fast:lock_discipline_check:" + key,
+               "dev_sha": "abc123def", "item": "LOCK-AMEND", "owner": "builder-M",
+               "ruling": "coordinator: test"}
+        return {"planning/known-reds-amendments.json":
+                    json.dumps({"note": "append-only", "amendments": [rec]}) + "\n",
+                "planning/repair/items/LOCK-AMEND.json":
+                    json.dumps({"id": "LOCK-AMEND", "state": item_state, "owner": "builder-M"})}
+
+    def test_lock_key_added_by_train_passes_when_amended(self):
+        g, rec = self.lock_gate([], ["R2|f|O:x"], head_files=self.lock_amended("R2|f|O:x"))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual(rec["added"], ["R2|f|O:x"])
+        self.assertEqual(rec["amended"], ["R2|f|O:x"])
+        self.assertEqual(rec["refused"], [])
+        self.assertIn("known red by amendment (LOCK-AMEND, measured at abc123def): R2|f|O:x", g.stdout)
+
+    def test_lock_unamended_new_key_still_refused_beside_an_amended_one(self):
+        g, rec = self.lock_gate([], ["R2|f|O:x", "R2|f|O:y"], head_files=self.lock_amended("R2|f|O:x"))
+        self.assertEqual(rec["rc"], 1, g.stdout)
+        self.assertEqual(rec["amended"], ["R2|f|O:x"])
+        self.assertEqual(rec["refused"], ["R2|f|O:y"])
+        self.assertIn("NEW lock key added by this train: R2|f|O:y", g.stdout)
+        self.assertNotEqual(g.returncode, 0)
+
+    def test_lock_amendment_for_a_longer_key_does_not_cover(self):
+        g, rec = self.lock_gate([], ["R2|f|O:x"], head_files=self.lock_amended("R2|f|O:x-y"))
+        self.assertEqual(rec["rc"], 1, g.stdout)
+        self.assertEqual(rec["refused"], ["R2|f|O:x"])
+
+    def test_lock_amended_key_with_closed_item_is_refused(self):
+        g, rec = self.lock_gate([], ["R2|f|O:x"],
+                                head_files=self.lock_amended("R2|f|O:x", item_state="landed"))
+        self.assertEqual(rec["rc"], 1, g.stdout)
+        self.assertEqual(rec["refused"], ["R2|f|O:x"])
+        self.assertIn("its amendment's item LOCK-AMEND is landed", g.stdout)
 
     def test_lock_dev_key_owned_by_open_item_is_recorded_red_not_failure(self):
         g, rec = self.lock_gate(["R2|f|O:x"], None, {"LOCK-X": self.item("R2|f|O:x")})
