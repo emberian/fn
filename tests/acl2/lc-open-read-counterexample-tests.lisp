@@ -1,5 +1,5 @@
 ; Coordinator A: same empty checkpoint is now a positive LC3 regression.
-; Honest rejected-directory fallback is a second positive regression.
+; ID-6 refuses the rejected-directory fallback because its next-id is unknown.
 (in-package "ACL2")
 (include-book "lc-open-id-search-tests")
 (defun lco-open-read-observation (disk input fn-lbc)
@@ -28,7 +28,7 @@
  (assert-event (let ((out (lco-open-read-regression-run nil)))
                 (and (fn-lc-at 7 out) (equal (fn-lc-at 2 out) :ok))))
  (assert-event (let ((out (lco-open-read-regression-run t)))
-                (and (fn-lc-at 7 out) (equal (fn-lc-at 2 out) :ok))))
+                (and (fn-lc-at 7 out) (equal (fn-lc-at 2 out) :lc-next-id-unverifiable))))
  (value-triple (list (lco-open-read-regression-run nil)
                      (lco-open-read-regression-run t))))
 (verify-guards lco-open-read-observation)

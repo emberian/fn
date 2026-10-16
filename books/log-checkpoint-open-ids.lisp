@@ -1,6 +1,6 @@
 ; A6 cold-header ID-5: only segment shape is needed.
 ; The physical allocation reconciliation and unchanged output segments suffice;
-; no LB correspondence, pending export, or ID-6 M1/M2 model change is used.
+; no LB correspondence or pending export is used; M1 widens the allocation floor.
 (in-package "ACL2")
 
 (include-book "log-checkpoint-open")
@@ -196,9 +196,9 @@
 
 (local (defthm lca6-replayed-allocation-fields-by-definition
  (and (equal (fn-lc-header-next-id (fn-lc-replayed-header disk r mode segs))
-             (fn-lc-header-next-id (fn-lc-allocation-header (fn-lc-cold-adopted-header disk r mode) segs)))
+             (max (fn-lc-header-next-id (fn-lc-allocation-header (fn-lc-cold-adopted-header disk r mode) segs)) (fn-lc-records-max-next-id (fn-lc-examined-records disk r) (pgs-pages disk))))
       (equal (fn-lc-header-exhaustedp (fn-lc-replayed-header disk r mode segs))
-             (fn-lc-header-exhaustedp (fn-lc-allocation-header (fn-lc-cold-adopted-header disk r mode) segs))))
+             (or (fn-lc-header-exhaustedp (fn-lc-allocation-header (fn-lc-cold-adopted-header disk r mode) segs)) (fn-lc-records-any-exhausted-p (fn-lc-examined-records disk r) (pgs-pages disk)))))
  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
      '((:DEFINITION FN-LC-HEADER-EXHAUSTEDP)
        (:DEFINITION FN-LC-HEADER-NEXT-ID)
@@ -298,6 +298,24 @@
        (:TYPE-PRESCRIPTION FN-LC-REPLAY-POSITIONED-TAIL)
        (:TYPE-PRESCRIPTION LEN)))))))
 
+(local (defthm lca6-examined-exhaustion-boolean
+ (booleanp (fn-lc-records-any-exhausted-p recs pages))
+ :hints (("Goal" :induct (fn-lc-records-any-exhausted-p recs pages)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-lc-records-any-exhausted-p booleanp
+     (:induction fn-lc-records-any-exhausted-p)
+     (:executable-counterpart booleanp)))))))
+
+(local (defthm lca6-seg-cover-widen
+ (implies (and (fn-lc-seg-ids-allocatedp segs before before-ex)
+               (natp after) (<= before after) (implies before-ex after-ex))
+          (fn-lc-seg-ids-allocatedp segs after after-ex))
+ :hints (("Goal" :induct (fn-lc-seg-ids-allocatedp segs before before-ex)
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-lc-seg-ids-allocatedp fn-lc-id-allocatedp natp
+     (:induction fn-lc-seg-ids-allocatedp)
+     (:type-prescription fn-lc-seg-ids-allocatedp)))))))
+
 (defthm fn-lc-open-establishes-segment-ids-below-next
  (let* ((out (fn-lc-open disk r mode configs frontier max-conns segs outcome fn-lbc))
         (h (fn-lc-replayed-header disk r mode segs)))
@@ -308,16 +326,27 @@
  :rule-classes nil
  :hints (("Goal" :use (lca6-cold-header-format
    (:instance lca6-allocation-covers (header (fn-lc-cold-adopted-header disk r mode)))
-   (:instance lca6-allocation-floor (header (fn-lc-cold-adopted-header disk r mode))))
+   (:instance lca6-allocation-floor (header (fn-lc-cold-adopted-header disk r mode)))
+   (:instance lca6-seg-cover-widen
+    (before (fn-lc-header-next-id (fn-lc-allocation-header (fn-lc-cold-adopted-header disk r mode) segs))) (before-ex (fn-lc-header-exhaustedp (fn-lc-allocation-header (fn-lc-cold-adopted-header disk r mode) segs)))
+    (after (fn-lc-header-next-id (fn-lc-replayed-header disk r mode segs)))
+    (after-ex (fn-lc-header-exhaustedp (fn-lc-replayed-header disk r mode segs)))))
   :in-theory (union-theories (theory 'minimal-theory)
      '((:DEFINITION FN-LC-HEADER-IDS-COVERP)
+       (:DEFINITION FN-LC-SEGMENT-IDS-BELOW-NEXT)
+       (:DEFINITION FN-LC-KEY-IDS-ALLOCATEDP)
+       (:DEFINITION MAX)
+       (:DEFINITION NATP)
+       (:TYPE-PRESCRIPTION FN-LC-RECORDS-MAX-NEXT-ID)
+       (:REWRITE LCA6-EXAMINED-EXHAUSTION-BOOLEAN)
+       (:EXECUTABLE-COUNTERPART BOOLEANP)
+       (:EXECUTABLE-COUNTERPART FN-LC-KEY-IDS-ALLOCATEDP)
        (:DEFINITION NOT)
        (:EXECUTABLE-COUNTERPART EQUAL)
        (:EXECUTABLE-COUNTERPART FN-LC-HEADER-NEXT-ID)
        (:EXECUTABLE-COUNTERPART FN-LC-HEADERP)
        (:EXECUTABLE-COUNTERPART NOT)
        (:REWRITE DEFAULT-<-2)
-       (:REWRITE LCA6-ALLOCATION-FLOOR)
        (:REWRITE LCA6-OPEN-RETAINS-SEGMENTS)
        (:REWRITE LCA6-REPLAYED-ALLOCATION-FIELDS-BY-DEFINITION)
        (:TYPE-PRESCRIPTION FN-LC-HEADERP)

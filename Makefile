@@ -1845,6 +1845,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/log-checkpoint-composite \
 	books/log-checkpoint-owner-proof \
 	books/log-checkpoint-open-ids \
+	books/log-checkpoint-id6 \
+	books/log-checkpoint-id6-proof \
 	books/log-checkpoint-column-observations \
 	tests/acl2/lc-record-frame-tests \
 	books/log-checkpoint-selection-proof \
@@ -1879,11 +1881,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/lc-open-id-search-tests \
 	tests/acl2/lc-cold-id5-tests \
 	tests/acl2/lc-id6-search-tests \
+	tests/acl2/lc-id6-allocation-fields-counterexample-tests \
 	tests/acl2/lc-cold-id5-a6-tests \
 	tests/acl2/lc-composite-a5-tests \
 	tests/acl2/lc-record-fold-tests \
 	tests/acl2/lc-open-read-counterexample-tests \
+	tests/acl2/lc-pre3350-corr-mutant \
 	tests/acl2/lc-record-effect-tests \
+	tests/acl2/lc-record-span-shadow-tests \
 	tests/acl2/lc-pool-span-counterexample-tests \
 	tests/acl2/lc-bridge-teeth-tests \
 	tests/acl2/lc-control-teeth-tests \

@@ -1,8 +1,9 @@
-; Candidate refutation of the frozen unlink/arena statement. Two retained
+; Positive LB3350 rejection with an exact old-CORR mutant. Two retained
 ; copies have the same original sequence and handle. Current LOC0 names 2.
 ; Only copy 2's typed semantic PAYLOAD observation differs from its bytes.
 (in-package "ACL2")
 (include-book "lc-bounded-check-tests")
+(include-book "lc-pre3350-corr-mutant")
 (include-book "../../books/log-cleaning-complete")
 (include-book "../../books/log-cleaning-unlink")
 
@@ -43,8 +44,11 @@
  (with-local-stobj fn-lbc
   (mv-let (out fn-lbc) (lcu-control fn-lbc) out)))
 (verify-guards lcu-control-fixture)
-(assert-event
- (equal (lcu-control-fixture) '(t t t t t 1 1 2 :ok t (99) nil)))
+; Deliberately malformed semantic payload: outside the new SEGSP guard.
+; This logical control records the rejected state, not a guarded served call.
+(with-guard-checking-event :none
+ (assert-event
+ (equal (lcu-control-fixture) '(nil t t t t 1 1 2 :ok t (99) nil))))
 
 
 (local (defun lcu-disable-state-execution (runes)
@@ -90,7 +94,8 @@
         (fn-arena (fn-arena-seal-list *lct-payload* (create-fn-arena)))
         (out (fn-lc-unlink 1 nil :lc nil 2 segs '(:ok :ok) fn-lbc)))
   (and (fn-lbc-p fn-lbc) (fn-cat$ap rows) (fn-arena-p fn-arena)
-       (fn-lbc-corr fn-lbc rows segs)
+       (not (fn-lbc-corr fn-lbc rows segs))
+        (lct-pre3350-corr fn-lbc rows segs)
        (fn-lc-locators-resolve fn-lbc segs)
        (fn-lb-arena-is-log fn-arena rows segs)
        (not (fn-lc-any-row-names-segment 1 fn-lbc))
@@ -164,6 +169,8 @@
        (:DEFINITION FN-LBC-CANONICAL-SLOTS-FROM)
        (:DEFINITION FN-LBC-CLEAR-COLUMNS)
        (:DEFINITION FN-LBC-CORR)
+       (:DEFINITION LCT-PRE3350-CORR)
+       (:EXECUTABLE-COUNTERPART FN-LB-LOG-MODEL-SEGSP)
        (:DEFINITION FN-LBC-COUNT)
        (:DEFINITION FN-LBC-DIRECTORY-FIELD)
        (:DEFINITION FN-LBC-DIRECTORY-STORE)

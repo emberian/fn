@@ -1,6 +1,7 @@
 ; Ground full-antecedent controls precede the dependent keystone proof.
 (in-package "ACL2")
 (include-book "lc-bounded-check-tests")
+(include-book "lc-pre3350-corr-mutant")
 (include-book "../../books/log-checkpoint-record")
 (local (defun lcr-disable-column-execution (runes)
  (declare (xargs :guard t :verify-guards nil))
@@ -98,6 +99,8 @@
        (:DEFINITION FN-LBC-CANONICAL-SLOT-INSERT)
        (:DEFINITION FN-LBC-CANONICAL-SLOTS-FROM)
        (:DEFINITION FN-LBC-CORR)
+       (:DEFINITION LCT-PRE3350-CORR)
+       (:EXECUTABLE-COUNTERPART FN-LB-LOG-MODEL-SEGSP)
        (:DEFINITION FN-LBC-COUNT)
        (:DEFINITION FN-LBC-DIRECTORY-FIELD)
        (:DEFINITION FN-LBC-DIRECTORY-STORE)
@@ -451,6 +454,8 @@
        (:DEFINITION FN-LBC-CANONICAL-SLOT-INSERT)
        (:DEFINITION FN-LBC-CANONICAL-SLOTS-FROM)
        (:DEFINITION FN-LBC-CORR)
+       (:DEFINITION LCT-PRE3350-CORR)
+       (:EXECUTABLE-COUNTERPART FN-LB-LOG-MODEL-SEGSP)
        (:DEFINITION FN-LBC-COUNT)
        (:DEFINITION FN-LBC-DIRECTORY-FIELD)
        (:DEFINITION FN-LBC-DIRECTORY-STORE)
@@ -730,11 +735,9 @@
        (:REWRITE FN-LC-AT-IS-NTH)
        (:REWRITE FN-LC-COMMIT-RECORD-RETAINS-SEGMENTS-BY-DEFINITION))))))
 
-; Resume 5 named STOP: CORR permits a typed directory suffix when COUNT is
-; zero. APPEND-ROW appends its directory row rather than replacing ordinal
-; zero. All six frozen antecedents hold, acceptance succeeds and locators
-; still resolve, but full correspondence fails on the served facts.
-; This is a closed refutation, not a proof of the universal keystone.
+; LB3350 rejects the formerly admitted directory suffix at COUNT zero.
+; The exact old-CORR mutant still admits it; the historical regression name
+; is retained. This positive rejection is not the universal keystone proof.
 (defun lcr-extra-directory (fn-lbc)
  (declare (xargs :stobjs fn-lbc :guard (fn-lbc-p fn-lbc) :verify-guards nil))
  (stobj-let ((fn-lbc-directory (fn-lbc-directory-store fn-lbc)))
@@ -750,7 +753,8 @@
         (fn-lbc (lcr-extra-directory (create-fn-lbc)))
         (out (fn-lc-commit-record h a b fn-lbc segs)))
    (and (fn-lbc-p fn-lbc) (fn-cat$ap nil)
-        (fn-lbc-corr fn-lbc nil segs)
+        (not (fn-lbc-corr fn-lbc nil segs))
+        (lct-pre3350-corr fn-lbc nil segs)
         (fn-lc-locators-resolve fn-lbc segs)
         (fn-lc-fresh-recordp h a b segs)
         (equal (mv-nth 0 out) :ok)
@@ -812,6 +816,8 @@
        (:DEFINITION FN-LBC-AT)
        (:DEFINITION FN-LBC-CANONICAL-SLOTS-FROM)
        (:DEFINITION FN-LBC-CORR)
+       (:DEFINITION LCT-PRE3350-CORR)
+       (:EXECUTABLE-COUNTERPART FN-LB-LOG-MODEL-SEGSP)
        (:DEFINITION FN-LBC-COUNT)
        (:DEFINITION FN-LBC-DIRECTORY-FIELD)
        (:DEFINITION FN-LBC-DIRECTORY-STORE)

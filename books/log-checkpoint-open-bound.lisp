@@ -103,7 +103,7 @@
         (fn-lc-at 7 out) (<= (fn-lc-at 3 out) (fn-lc-at 5 out)))))
  (assert-event
   (let ((out (lco-a3-fixture :page99)))
-   (and (fn-lc-at 0 out) (fn-lc-at 1 out) (equal (fn-lc-at 2 out) :ok)
+   (and (fn-lc-at 0 out) (fn-lc-at 1 out) (equal (fn-lc-at 2 out) :lc-next-id-unverifiable)
         (equal (fn-lc-at 3 out) 98564) (equal (fn-lc-at 4 out) 98564)
         (<= (fn-lc-at 3 out) (fn-lc-at 4 out)))))
  (assert-event
