@@ -20,8 +20,10 @@
 
 (local (defthm fn-lblot-string-octets
  (fn-cbor-octet-listp (fn-record-string-octets text))
- :hints (("Goal" :in-theory (union-theories (theory 'ground-zero)
- '(fn-record-string-octets fn-lblot-string-octets-aux))))))
+ :hints (("Goal" :in-theory (set-difference-theories
+ (union-theories (theory 'ground-zero)
+ '(fn-record-string-octets fn-lblot-string-octets-aux fn-cbor-octet-listp))
+ '((tau-system)))))))
 
 (defthm fn-lb-log-model-text-octets-are-octets
  (fn-cbor-octet-listp (fn-lb-log-model-text-octets text))
