@@ -33,9 +33,17 @@
          (<= (fn-lc-header-next-id (fn-lc-adopted-header disk :lc mode))
              (fn-lc-header-next-id h))))))
  :hints (("Goal" :in-theory
-   (e/d (lco-id5-grounded-check)
-        (lco-id5-input fn-lc-open fn-lc-replayed-header fn-lc-header-ids-coverp
-         fn-lc-header-next-id fn-lc-adopted-header fn-lc-segsp fn-lbc-p)))))
+   (union-theories (theory 'minimal-theory)
+     '((:DEFINITION LCO-ID5-GROUNDED-CHECK)
+       (:DEFINITION MV-NTH)
+       (:DEFINITION NOT)
+       (:DEFINITION NTH)
+       (:EXECUTABLE-COUNTERPART EQUAL)
+       (:EXECUTABLE-COUNTERPART ZP)
+       (:REWRITE CAR-CONS)
+       (:REWRITE FN-LC-AT-IS-NTH)
+       (:TYPE-PRESCRIPTION FN-LC-OPEN)
+       (:TYPE-PRESCRIPTION LCO-ID5-INPUT))))))
 
 (defun lco-id5-search (code)
  (declare (xargs :guard t :verify-guards nil))

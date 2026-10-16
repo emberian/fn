@@ -34,8 +34,16 @@
                                  (nth 2 input) (nth 3 input) fn-lbc)))
          (subsetp-equal (fn-lc-seg-ids (mv-nth 2 out))
                         (fn-lc-seg-ids (nth 1 input)))))
- :hints (("Goal" :in-theory (e/d (lct-id3-grounded-check)
-                                (lct-id3-input fn-lc-commit)))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+     '((:COMPOUND-RECOGNIZER NATP-COMPOUND-RECOGNIZER)
+       (:DEFINITION LCT-ID3-GROUNDED-CHECK)
+       (:DEFINITION NTH)
+       (:EXECUTABLE-COUNTERPART ZP)
+       (:REWRITE FN-HP-MV-NTH-CONS)
+       (:REWRITE FN-LC-NTH-1-ALIAS)
+       (:REWRITE FN-LC-NTH-2-ALIAS)
+       (:REWRITE FN-LC-NTH-3-ALIAS)
+       (:TYPE-PRESCRIPTION LCT-ID3-INPUT))))))
 
 (defun lct-id3-search (code)
  (declare (xargs :guard t :verify-guards nil))
@@ -86,13 +94,25 @@
                                (fn-lc-adopted-header (mv-nth 2 out) :lc (nth 4 input)))
                               (fn-lc-header-exhaustedp header))))))
  :hints (("Goal" :in-theory
-  (e/d (lct-id4-grounded-check
-        fn-lc-stage-publishes-the-allocation-state-native-tooth-0
-        fn-lc-stage-publishes-the-allocation-state-native-tooth-1
-        fn-lc-stage-publishes-the-allocation-state-native-tooth-0-logic
-        fn-lc-stage-publishes-the-allocation-state-native-tooth-1-logic)
-       (lct-id4-input fn-lc-stage fn-lc-adopted-header
-        fn-lc-header-next-id fn-lc-header-exhaustedp)))))
+  (union-theories (theory 'minimal-theory)
+     '((:DEFINITION FN-LC-STAGE-PUBLISHES-THE-ALLOCATION-STATE-NATIVE-TOOTH-0)
+       (:DEFINITION FN-LC-STAGE-PUBLISHES-THE-ALLOCATION-STATE-NATIVE-TOOTH-0-LOGIC)
+       (:DEFINITION FN-LC-STAGE-PUBLISHES-THE-ALLOCATION-STATE-NATIVE-TOOTH-1)
+       (:DEFINITION FN-LC-STAGE-PUBLISHES-THE-ALLOCATION-STATE-NATIVE-TOOTH-1-LOGIC)
+       (:DEFINITION LCT-ID4-GROUNDED-CHECK)
+       (:DEFINITION MV-NTH)
+       (:DEFINITION NTH)
+       (:EXECUTABLE-COUNTERPART BINARY-+)
+       (:EXECUTABLE-COUNTERPART EQUAL)
+       (:EXECUTABLE-COUNTERPART NOT)
+       (:EXECUTABLE-COUNTERPART ZP)
+       (:REWRITE CAR-CONS)
+       (:REWRITE FN-LC-AT-IS-NTH)
+       (:REWRITE FN-LC-NTH-1-ALIAS)
+       (:REWRITE FN-LC-NTH-2-ALIAS)
+       (:REWRITE FN-LC-NTH-3-ALIAS)
+       (:TYPE-PRESCRIPTION FN-LC-STAGE)
+       (:TYPE-PRESCRIPTION LCT-ID4-INPUT))))))
 
 (defun lct-id4-search (code)
  (declare (xargs :guard t :verify-guards nil))

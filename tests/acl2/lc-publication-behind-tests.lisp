@@ -70,4 +70,5 @@
         (cond ((eq word :uncertain) :own-uncertain)
               ((eq action :complete) :rendered)
               (renderable :uncertain-reply) (t :close)))
- :hints (("Goal" :in-theory (enable fn-ocs-member-release))))
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+     '(fn-ocs-member-release)))))
