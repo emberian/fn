@@ -1296,7 +1296,7 @@
         (equal (fn-ocfg-pins (fn-ocfg-with-read-owner oc id owner repinned))
                (if (fn-own-find-conn id (fn-own-conns owner))
                    (if repinned
-                       (fn-ocfg-pin-set id (fn-ocfg-config oc) (fn-ocfg-pins oc))
+                       (fn-ocfg-pin-set id (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id)) (fn-ocfg-pins oc))
                      (fn-ocfg-pins oc))
                  (fn-ocfg-pin-remove id (fn-ocfg-pins oc))))
         (implies (and (fn-own-find-conn id (fn-own-conns owner))

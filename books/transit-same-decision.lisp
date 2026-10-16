@@ -352,7 +352,7 @@
 (local (defthm fn-tsd-found-pin-is-a-configuration
   (implies (and (fn-ocfg-pins-okp pins)
                 (fn-ocfg-pin-find id pins))
-           (fn-cfgp (cdr (fn-ocfg-pin-find id pins))))
+           (fn-cfgp (car (cdr (fn-ocfg-pin-find id pins)))))
   :hints (("Goal" :in-theory (enable fn-ocfg-pins-okp fn-ocfg-pin-find)))))
 ; KEYSTONE (PKT-202).
 (defthm fn-tsd-open-connection-pin-is-not-the-control-pin

@@ -337,7 +337,7 @@
            :in-theory (enable fn-ocfg-pin-set fn-ocfg-pins-pin-conns-only))))
 
 (defthm fn-ocl-pin-set-keeps-pins-okp
-  (implies (and (fn-ocfg-pins-okp pins) (fn-cfgp cfg))
+  (implies (and (fn-ocfg-pins-okp pins) (fn-ocfg-pin-valuep cfg))
            (fn-ocfg-pins-okp (fn-ocfg-pin-set id cfg pins)))
   :hints (("Goal" :induct (fn-ocfg-pin-set id cfg pins)
            :in-theory (e/d (fn-ocfg-pin-set fn-ocfg-pins-okp) (fn-cfgp)))))
@@ -452,7 +452,7 @@
         (equal (fn-ocfg-pins (fn-ocfg-with-read-owner oc id owner repinned))
                (if (fn-own-find-conn id (fn-own-conns owner))
                    (if repinned
-                       (fn-ocfg-pin-set id (fn-ocfg-config oc) (fn-ocfg-pins oc))
+                       (fn-ocfg-pin-set id (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id)) (fn-ocfg-pins oc))
                      (fn-ocfg-pins oc))
                  (fn-ocfg-pin-remove id (fn-ocfg-pins oc))))
         (implies (and (fn-own-find-conn id (fn-own-conns owner))

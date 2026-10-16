@@ -44,7 +44,9 @@
          (o (cdr advanced)))
     (fn-ocfg-make o (fn-ocfg-config oc)
                   (if (equal (car advanced) :advanced)
-                      (fn-ocfg-pin-set id (fn-ocfg-config oc) (fn-ocfg-pins oc))
+                      (fn-ocfg-pin-set id (cons (fn-ocfg-config oc)
+                                                (fn-ocfg-conn-profile oc id))
+                                       (fn-ocfg-pins oc))
                     (fn-ocfg-pins oc))
                   (fn-ocfg-staged oc))))
 

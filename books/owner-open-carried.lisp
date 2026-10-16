@@ -192,7 +192,7 @@
                                    fn-statep fn-nntp-safe-group-listp
                                    fn-node-statep fn-cfgp)))))
 
-(defun fn-ocar-ocfg-open (oc acfg)
+(defun fn-ocar-ocfg-open (oc acfg profile)
   (declare (xargs :guard t))
   (let* ((o (fn-ocfg-owner oc))
          (id (fn-own-next-id o))
@@ -205,7 +205,7 @@
     (cons (car opened)
           (fn-ocfg-make o2 (fn-ocfg-config oc)
                         (if (fn-own-find-conn id (fn-own-conns o2))
-                            (fn-ocfg-pin-add id (fn-ocfg-config oc)
+                            (fn-ocfg-pin-add id (cons (fn-ocfg-config oc) profile)
                                              (fn-ocfg-pins oc))
                           (fn-ocfg-pins oc))
                         (fn-ocfg-staged oc)))))
@@ -296,7 +296,7 @@
 ; fn-owner-exposure-open): fn-exp-open with its reader arm carried.  The
 ; peer arm (fn-ocfg-open-peer) is unchanged.
 
-(defun fn-ocar-exp-open (oc xs lim acfg peer address now)
+(defun fn-ocar-exp-open (oc xs lim acfg peer address now profile)
   (declare (xargs :guard t))
   (let* ((o (fn-ocfg-owner oc))
          (decision (fn-exp-admit-decision xs lim (len (fn-own-conns o))
@@ -305,8 +305,8 @@
         (let* ((id (fn-own-next-id o))
                (pinned (fn-exp-pinned-acfg acfg lim))
                (opened (if peer
-                           (fn-ocfg-open-peer oc peer pinned)
-                         (fn-ocar-ocfg-open oc pinned)))
+                           (fn-ocfg-open-peer oc peer pinned profile)
+                         (fn-ocar-ocfg-open oc pinned profile)))
                (oc2 (cdr opened))
                (openedp (and (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
                              t)))

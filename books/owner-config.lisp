@@ -180,10 +180,18 @@
   :hints (("Goal" :induct (fn-ocfg-pin-remove id pins)
            :in-theory (enable fn-ocfg-pin-remove fn-ocfg-pin-find))))
 
-; The connection's pinned configuration, and the served table at that pin.
+; The connection's pin is (CFG . PROFILE): the configuration it was opened
+; or last re-pinned under, and the Store profile it was opened under
+; (ruling B, 10-16: the profile rides this table, never a second one).  Its
+; configuration and its profile are the two projections; every reader of the
+; configuration reads it through fn-ocfg-conn-config, unchanged.
 (defun fn-ocfg-conn-config (oc id)
   (declare (xargs :guard t))
-  (cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
+  (car (cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc)))))
+
+(defun fn-ocfg-conn-profile (oc id)
+  (declare (xargs :guard t))
+  (cdr (cdr (fn-ocfg-pin-find id (fn-ocfg-pins oc)))))
 
 (defun fn-ocfg-conn-generation (oc id)
   (declare (xargs :guard t))
@@ -198,11 +206,18 @@
 ; -----------------------------------------------------------------------------
 ; The recognizer: the pin table's domain is exactly the open connections
 
+; A pin value: a well-formed configuration and the profile beside it.  The
+; profile is not constrained here; the owner's pin agreement (PIN4) relates
+; it to the connection's own limits, and PIN3 refuses an unadmitted one.
+(defun fn-ocfg-pin-valuep (v)
+  (declare (xargs :guard t))
+  (and (consp v) (fn-cfgp (car v))))
+
 (defun fn-ocfg-pins-okp (pins)
   (declare (xargs :guard t))
   (if (consp pins)
       (and (consp (car pins))
-           (fn-cfgp (cdr (car pins)))
+           (fn-ocfg-pin-valuep (cdr (car pins)))
            (fn-ocfg-pins-okp (cdr pins)))
     (null pins)))
 
@@ -462,7 +477,7 @@
 ; configuration it pins: the operator's credentials, then the accounts that
 ; configuration's redeemed rows name (PRF-164, books/nntp-auth.lisp
 ; fn-auth-config-with-accounts).
-(defun fn-ocfg-open (oc acfg)
+(defun fn-ocfg-open (oc acfg profile)
   (declare (xargs :guard t))
   (let* ((o (fn-ocfg-owner oc))
          (id (fn-own-next-id o))
@@ -476,7 +491,8 @@
           (fn-ocfg-make o2 (fn-ocfg-config oc)
                         (if (fn-own-find-conn id (fn-own-conns o2))
                             ; a new connection pins the LATEST configuration
-                            (fn-ocfg-pin-add id (fn-ocfg-config oc)
+                            ; and the Store profile it is opened under
+                            (fn-ocfg-pin-add id (cons (fn-ocfg-config oc) profile)
                                              (fn-ocfg-pins oc))
                           (fn-ocfg-pins oc))
                         (fn-ocfg-staged oc)))))
@@ -487,7 +503,9 @@
          (o (cdr advanced)))
     (fn-ocfg-make o (fn-ocfg-config oc)
                   (if (equal (car advanced) :advanced)
-                      (fn-ocfg-pin-set id (fn-ocfg-config oc) (fn-ocfg-pins oc))
+                      (fn-ocfg-pin-set id (cons (fn-ocfg-config oc)
+                                                (fn-ocfg-conn-profile oc id))
+                                       (fn-ocfg-pins oc))
                     (fn-ocfg-pins oc))
                   (fn-ocfg-staged oc))))
 
@@ -526,7 +544,9 @@
   (fn-ocfg-make owner (fn-ocfg-config oc)
                 (if (fn-own-find-conn id (fn-own-conns owner))
                     (if repinned
-                        (fn-ocfg-pin-set id (fn-ocfg-config oc) (fn-ocfg-pins oc))
+                        (fn-ocfg-pin-set id (cons (fn-ocfg-config oc)
+                                                  (fn-ocfg-conn-profile oc id))
+                                         (fn-ocfg-pins oc))
                       (fn-ocfg-pins oc))
                   (fn-ocfg-pin-remove id (fn-ocfg-pins oc)))
                 (fn-ocfg-staged oc)))
@@ -554,7 +574,7 @@
           id (fn-ocfg-pins (fn-ocfg-with-read-owner oc id owner repinned)))
          (if (fn-own-find-conn id (fn-own-conns owner))
              (if (and repinned (fn-ocfg-pin-find id (fn-ocfg-pins oc)))
-                 (cons id (fn-ocfg-config oc))
+                 (cons id (cons (fn-ocfg-config oc) (fn-ocfg-conn-profile oc id)))
                (fn-ocfg-pin-find id (fn-ocfg-pins oc)))
            nil))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-with-read-owner)
@@ -582,7 +602,7 @@
 ; lacked every peer connection, so the configured owner's relation was
 ; false from the first peer open on (PKT-888, lane owner-relation-2;
 ; books/owner-host-relation.lisp fn-ohr-open-peer-preserves-ocl-relation).
-(defun fn-ocfg-open-peer (oc peer acfg)
+(defun fn-ocfg-open-peer (oc peer acfg profile)
   (declare (xargs :guard t))
   (let* ((id (fn-own-next-id (fn-ocfg-owner oc)))
          (result (fn-own-open-peer (fn-ocfg-owner oc) peer
@@ -593,7 +613,8 @@
           (fn-ocfg-make (cdr result) (fn-ocfg-config oc)
                         (if (fn-own-find-conn id (fn-own-conns (cdr result)))
                             ; a new connection pins the LATEST configuration
-                            (fn-ocfg-pin-add id (fn-ocfg-config oc)
+                            ; and the Store profile it is opened under
+                            (fn-ocfg-pin-add id (cons (fn-ocfg-config oc) profile)
                                              (fn-ocfg-pins oc))
                           (fn-ocfg-pins oc))
                         (fn-ocfg-staged oc)))))
@@ -639,13 +660,14 @@
                               (fn-ocfg-eventp oc event))
                   :verify-guards nil))
   (case (car event)
-    (:open (cdr (fn-ocfg-open oc (cadr event))))
+    (:open (cdr (fn-ocfg-open oc (cadr event) (caddr event))))
     (:advance (fn-ocfg-advance oc (car (cdr event))))
     (:close (fn-ocfg-close oc (car (cdr event))))
     (:octets (cdr (fn-ocfg-read oc (car (cdr event)) (car (cdr (cdr event))) fn-arena)))
     (:read (cdr (fn-ocfg-read-step oc (car (cdr event)) (car (cdr (cdr event))) fn-arena)))
     (:open-peer (cdr (fn-ocfg-open-peer oc (car (cdr event))
-                                         (car (cdr (cdr (cdr event)))))))
+                                         (car (cdr (cdr (cdr event))))
+                                         (car (cdr (cdr (cdr (cdr event))))))))
     (:fault (cdr (fn-ocfg-fault oc (car (cdr event)))))
     (:reconfigure (fn-ocfg-reconfigure oc (car (cdr event)) (car (cdr (cdr event)))))
     (:complete (fn-ocfg-complete oc))

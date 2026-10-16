@@ -462,7 +462,7 @@
 ; (EFFECTS OC' XS' ID REFUSAL): the served greeting and the owner with the
 ; connection installed, or no effects, the owner unchanged and REFUSAL the
 ; 400 line the host sends before it closes.  ID is nil when nothing opened.
-(defun fn-exp-open (oc xs lim acfg peer address now)
+(defun fn-exp-open (oc xs lim acfg peer address now profile)
   (declare (xargs :guard t))
   (let* ((o (fn-ocfg-owner oc))
          (decision (fn-exp-admit-decision xs lim (len (fn-own-conns o))
@@ -471,8 +471,8 @@
         (let* ((id (fn-own-next-id o))
                (pinned (fn-exp-pinned-acfg acfg lim))
                (opened (if peer
-                           (fn-ocfg-open-peer oc peer pinned)
-                         (fn-ocfg-open oc pinned)))
+                           (fn-ocfg-open-peer oc peer pinned profile)
+                         (fn-ocfg-open oc pinned profile)))
                (oc2 (cdr opened))
                (openedp (and (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
                              t)))

@@ -601,7 +601,7 @@
                             fn-cst-replay-node)))))
 
 (defthm fn-ocl-pin-add-preserves-pins-okp
-  (implies (and (fn-cfgp cfg)
+  (implies (and (fn-ocfg-pin-valuep cfg)
                 (fn-ocfg-pins-okp pins))
            (fn-ocfg-pins-okp (fn-ocfg-pin-add id cfg pins)))
   :hints (("Goal" :in-theory (enable fn-ocfg-pin-add

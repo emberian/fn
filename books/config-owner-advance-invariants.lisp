@@ -201,7 +201,7 @@
                             fn-ocfg-pin-set
                             fn-cpr-replay fn-cst-replay-node)))))
 (defthm fn-ocl-pin-set-preserves-pins-okp
-  (implies (and (fn-cfgp cfg) (fn-ocfg-pins-okp pins))
+  (implies (and (fn-ocfg-pin-valuep cfg) (fn-ocfg-pins-okp pins))
            (fn-ocfg-pins-okp (fn-ocfg-pin-set id cfg pins)))
   :hints (("Goal" :induct (fn-ocfg-pin-set id cfg pins)
            :in-theory (enable fn-ocfg-pin-set fn-ocfg-pins-okp))))

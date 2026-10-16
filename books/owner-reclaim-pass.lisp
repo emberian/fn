@@ -469,10 +469,12 @@
 ; Every re-pinned connection's configuration pin moves to the rebuilt
 ; configuration, as fn-ocfg-advance moves the pin of the one connection it
 ; re-pins (books/owner-config.lisp): the connection now reads the rebuilt
-; view, which is that configuration's.
-(def-loop fn-orcp-pins-at (conns cfg)
+; view, which is that configuration's.  Its Store profile is the one PINS
+; (the live table) holds for it: a swap re-pins the view, never the profile.
+(def-loop fn-orcp-pins-at (conns cfg pins)
   :shape :map :over conns :elt c
-  :body (cons (fn-own-conn-id c) cfg))
+  :body (cons (fn-own-conn-id c)
+              (cons cfg (cdr (cdr (fn-ocfg-pin-find (fn-own-conn-id c) pins))))))
 
 ; What the swap installs (host/owner-host.lisp fn-owner-orcp-swap): the
 ; swapped owner under the rebuilt configuration, every connection pinned
@@ -481,7 +483,8 @@
   (declare (xargs :guard t :verify-guards nil))
   (let ((o (fn-orcp-swapped-owner (fn-ocfg-owner live-oc) (fn-ocfg-owner rebuilt-oc))))
     (fn-ocfg-make o (fn-ocfg-config rebuilt-oc)
-                  (fn-orcp-pins-at (fn-own-conns o) (fn-ocfg-config rebuilt-oc))
+                  (fn-orcp-pins-at (fn-own-conns o) (fn-ocfg-config rebuilt-oc)
+                                   (fn-ocfg-pins live-oc))
                   (fn-ocfg-staged live-oc))))
 
 (defun fn-orcp-conns-boundedp (conns domain)

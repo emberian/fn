@@ -44,9 +44,9 @@
 ; The pins the swap installs name every connection at CFG.
 (defthm fn-orcn-pin-find-of-pins-at
   (implies (member-equal c conns)
-           (equal (cdr (fn-ocfg-pin-find (fn-own-conn-id c) (fn-orcp-pins-at conns cfg)))
+           (equal (car (cdr (fn-ocfg-pin-find (fn-own-conn-id c) (fn-orcp-pins-at conns cfg pins))))
                   cfg))
-  :hints (("Goal" :induct (fn-orcp-pins-at conns cfg)
+  :hints (("Goal" :induct (fn-orcp-pins-at conns cfg pins)
                   :in-theory (enable fn-orcp-pins-at fn-ocfg-pin-find))))
 
 (defthm fn-orcn-bounded-member
@@ -79,7 +79,8 @@
                                      (fn-own-conns (fn-ocfg-owner live-oc))))
          (equal (fn-ocfg-pins next)
                 (fn-orcp-pins-at (fn-own-conns (fn-ocfg-owner next))
-                                 (fn-ocfg-config rebuilt-oc)))))
+                                 (fn-ocfg-config rebuilt-oc)
+                                 (fn-ocfg-pins live-oc)))))
   :hints (("Goal" :in-theory (e/d (fn-orcp-swapped-ocfg fn-orcp-swapped-owner
                                    fn-orcp-swap-base fn-own-set-conns)
                                   (fn-orcp-repin-conns fn-orcp-pins-at)))))
