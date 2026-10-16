@@ -1,0 +1,156 @@
+ARITY SET (15): fn-exp-open fn-ocar-exp-open fn-ocar-ocfg-open fn-ocfg-open fn-ocfg-open-peer fn-osi-host-run fn-osi-host-step fn-osi-live-owner fn-osi-live-store oahx-with-peer ocfg-l-live-admin scjfc-open-exec scjfc-open-run ssct-response-domain ssct-response-domain-run
+WIDENED 8
+  W  books/config-owner-advance-invariants.lisp         fn-ocl-pin-set-preserves-pins-okp                            cfgp
+  W  books/config-owner-live-open.lisp                  fn-ocl-pin-add-preserves-pins-okp                            cfgp
+  W  books/config-owner-live-read.lisp                  fn-ocl-pin-set-keeps-pins-okp                                cfgp
+  W  books/config-owner-live-read.lisp                  fn-ocl-with-read-owner-fields                                compound value
+  W  books/owner-config.lisp                            fn-ocfg-with-read-owner-pin-iff-survives                     built value
+  W  books/owner-host-relation.lisp                     fn-ohr-with-read-owner-fields                                compound value
+  W  books/owner-reclaim-conns.lisp                     fn-orcn-pin-find-of-pins-at                                  projection
+  W  books/transit-same-decision.lisp                   fn-tsd-found-pin-is-a-configuration                          cfgp
+ARGUMENT 60 (also widened: 0)
+  A  books/config-owner-live-open.lisp                  fn-ocl-open-keeps-store-and-view
+  A  books/config-owner-live-open.lisp                  fn-ocl-open-new-connection-has-historical-pin
+  A  books/config-owner-live-open.lisp                  fn-ocl-open-pins-current-physical-configuration
+  A  books/config-owner-live-open.lisp                  fn-ocl-open-preserves-all-connection-histories
+  A  books/config-owner-live-open.lisp                  fn-ocl-open-preserves-an-existing-connection-history
+  A  books/config-owner-live-open.lisp                  fn-ocl-open-preserves-existing-connection-histories
+  A  books/config-owner-live-open.lisp                  fn-ocl-open-preserves-historical-relation
+  A  books/config-owner-read-invariants.lisp            fn-ocri-open-preserves-historical-reader-relation
+  A  books/login-binding-live.lisp                      fn-lb-a-connection-opened-after-a-publication-is-bound-anew
+  A  books/login-binding-live.lisp                      fn-lb-open-pins-the-live-configuration-at-a-free-identifier
+  A  books/owner-agent.lisp                             fn-oag-configured-open-pins-the-path-identity
+  A  books/owner-agent.lisp                             fn-oag-open-pins-the-owner-config
+  A  books/owner-config.lisp                            fn-ocfg-open-begins-unbound
+  A  books/owner-config.lisp                            fn-ocfg-open-keeps-every-existing-pin
+  A  books/owner-config.lisp                            fn-ocfg-open-pins-the-live-configuration
+  A  books/owner-connection-callback-refinement.lisp    fn-owner-callback-exposure-open-reference-effects
+  A  books/owner-connection-callback-refinement.lisp    fn-owner-callback-peer-open-complete-effects
+  A  books/owner-connection-callback-refinement.lisp    fn-owner-callback-reader-open-reference-effects
+  A  books/owner-host-relation.lisp                     fn-ohr-exposure-open-preserves-ocl-relation
+  A  books/owner-host-relation.lisp                     fn-ohr-open-peer-keeps-store-and-view
+  A  books/owner-host-relation.lisp                     fn-ohr-open-peer-new-connection-is-historical
+  A  books/owner-host-relation.lisp                     fn-ohr-open-peer-pins-current-configuration
+  A  books/owner-host-relation.lisp                     fn-ohr-open-peer-preserves-all-connection-histories
+  A  books/owner-host-relation.lisp                     fn-ohr-open-peer-preserves-an-existing-connection-history
+  A  books/owner-host-relation.lisp                     fn-ohr-open-peer-preserves-carried-relation
+  A  books/owner-host-relation.lisp                     fn-ohr-open-peer-preserves-existing-connection-histories
+  A  books/owner-host-relation.lisp                     fn-ohr-open-peer-preserves-ocl-relation
+  A  books/owner-number-bound-join.lisp                 fn-onbj-boundp-at-owner-exposure-open
+  A  books/owner-number-bound-join.lisp                 fn-onbj-boundp-at-owner-open
+  A  books/owner-number-bound-join.lisp                 fn-onbj-boundp-at-owner-open-captured
+  A  books/owner-number-bound-join.lisp                 fn-onbj-boundp-at-owner-open-peer
+  A  books/owner-open-carried.lisp                      fn-ocar-exp-open-is-exp-open-under-ocl-relation
+  A  books/owner-open-carried.lisp                      fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation
+  A  books/owner-open-carried.lisp                      fn-ocar-ocfg-open-keeps-store
+  A  books/owner-prepare-correspondence.lisp            fn-opc-direct-configured-entries-preserve-owner-relation
+  A  books/owner-recover-ocl.lisp                       fn-orec-admin-open-after-recover-keeps-premises
+  A  books/owner-served-invariants.lisp                 fn-ocfg-open-at-the-bound-refuses
+  A  books/owner-store-indexed.lisp                     fn-osi-exp-open-keeps-store
+  A  books/owner-store-indexed.lisp                     fn-osi-ocar-exp-open-keeps-store
+  A  books/owner-store-indexed.lisp                     fn-osi-ocfg-open-keeps-store
+  A  books/public-exposure.lisp                         fn-exp-limits-never-drop-a-connection
+  A  books/public-exposure.lisp                         fn-exp-open-admits-within-the-limits-in-force
+  A  books/public-exposure.lisp                         fn-exp-open-never-exceeds-a-limit-in-force
+  A  books/public-exposure.lisp                         fn-exp-open-refusal-is-a-400-and-opens-nothing
+  A  books/served-catalog-join-frame-conns.lisp         fn-scj-invp-of-ocfg-open
+  A  books/served-catalog-join-frame-conns.lisp         fn-scj-invp-of-ocfg-open-peer
+  A  books/served-catalog-join-frame-conns.lisp         fn-scj-versions-atmost-of-ocfg-open
+  A  books/served-catalog-join-frame-conns.lisp         fn-scj-versions-atmost-of-ocfg-open-peer
+  A  books/served-catalog-join-host-arms.lisp           fn-sjh-okp-at-owner-open-peer
+  A  books/served-catalog-join-host-entries.lisp        fn-sjh-okp-at-owner-exposure-open
+  A  books/served-catalog-join-host-entries.lisp        fn-sjh-okp-at-owner-open
+  A  books/served-catalog-join-host-entries.lisp        fn-sjh-okp-at-owner-open-captured
+  A  books/served-catalog-join-host-entries.lisp        fn-sjh-op-ocar-ocfg-open-facts2
+  A  books/served-catalog-join-host-entries.lisp        fn-sjh-op-ocar-ocfg-open-owner
+  A  books/served-catalog-join-host-entries.lisp        fn-sjh-op-okp-of-open-at-view
+  A  books/served-catalog-join-host-views.lisp          fn-sjh-okp-at-owner-open-captured-carried
+  A  books/served-catalog-join-host-views.lisp          fn-sjh-viewsp-at-owner-exposure-open
+  A  books/served-catalog-join-host-views.lisp          fn-sjh-viewsp-at-owner-open
+  A  books/served-catalog-join-host-views.lisp          fn-sjh-viewsp-at-owner-open-captured
+  A  books/served-catalog-join-host-views.lisp          fn-sjh-viewsp-at-owner-open-peer
+ARGUMENT by book:
+    7 books/config-owner-live-open.lisp
+    1 books/config-owner-read-invariants.lisp
+    2 books/login-binding-live.lisp
+    2 books/owner-agent.lisp
+    3 books/owner-config.lisp
+    3 books/owner-connection-callback-refinement.lisp
+    9 books/owner-host-relation.lisp
+    4 books/owner-number-bound-join.lisp
+    3 books/owner-open-carried.lisp
+    1 books/owner-prepare-correspondence.lisp
+    1 books/owner-recover-ocl.lisp
+    1 books/owner-served-invariants.lisp
+    3 books/owner-store-indexed.lisp
+    4 books/public-exposure.lisp
+    4 books/served-catalog-join-frame-conns.lisp
+    1 books/served-catalog-join-host-arms.lisp
+    6 books/served-catalog-join-host-entries.lisp
+    5 books/served-catalog-join-host-views.lisp
+TOTAL 68
+CALL SITES 24
+  C  books/owner-config.lisp                            fn-ocfg-step                                       pure
+  C  books/owner-connection-callbacks.lisp              fn-owner-callback-exposure-open                    state
+  C  books/owner-connection-callbacks.lisp              fn-owner-callback-open-at                          state
+  C  books/owner-connection-callbacks.lisp              fn-owner-callback-open-peer                        state
+  C  books/owner-open-carried.lisp                      fn-ocar-exp-open                                   pure
+  C  books/owner-store-indexed.lisp                     fn-osi-host-run                                    pure
+  C  books/owner-store-indexed.lisp                     fn-osi-host-step                                   pure
+  C  books/owner-store-indexed.lisp                     fn-osi-live-owner                                  pure
+  C  books/owner-store-indexed.lisp                     fn-osi-live-store                                  pure
+  C  books/public-exposure.lisp                         fn-exp-open                                        pure
+  C  host/owner-host.lisp                               fn-owner-exposure-open                             state
+  C  tests/acl2/owner-article-slots-tests.lisp          oahx-with-peer                                     pure
+  C  tests/acl2/owner-config-tests.lisp                 ocfg-l-live-admin                                  pure
+  C  tests/acl2/owner-connection-callback-additional-tests.lisp ocbt-exposure-complete                             state
+  C  tests/acl2/owner-connection-callback-additional-tests.lisp ocbt-exposure-relation-removal                     state
+  C  tests/acl2/owner-connection-callback-additional-tests.lisp ocbt-peer-complete                                 state
+  C  tests/acl2/owner-connection-callback-additional-tests.lisp ocbt-selected-d-removal                            state
+  C  tests/acl2/owner-connection-callback-captured-tests.lisp ocbt-captured-reader-complete                      state
+  C  tests/acl2/owner-connection-callback-tests.lisp    ocbt-open-fault                                    state
+  C  tests/acl2/owner-connection-callback-tests.lisp    ocbt-reader-relation-removal                       state
+  C  tests/acl2/served-catalog-join-frame-conns-tests.lisp scjfc-open-exec                                    pure
+  C  tests/acl2/served-catalog-join-frame-conns-tests.lisp scjfc-open-run                                     pure
+  C  tests/acl2/served-catalog-source-scan-tests.lisp   ssct-response-domain                               pure
+  C  tests/acl2/served-catalog-source-scan-tests.lisp   ssct-response-domain-run                           pure
+OTHER FORMS 78 (asserts, defteeth, tables naming the arity set)
+  O  books/owner-config.lisp                                      deftheory            x1
+  O  books/owner-open-carried.lisp                                in-theory            x1
+  O  books/owner-store-indexed.lisp                               in-theory            x1
+  O  books/public-exposure.lisp                                   local                x1
+  O  tests/acl2/catchup-carried-transit-tests.lisp                defconst             x1
+  O  tests/acl2/config-owner-live-tests.lisp                      assert-event         x2
+  O  tests/acl2/config-owner-live-tests.lisp                      defconst             x2
+  O  tests/acl2/config-owner-publish-tests.lisp                   defconst             x3
+  O  tests/acl2/config-owner-read-invariants-tests.lisp           assert-event         x1
+  O  tests/acl2/config-owner-read-invariants-tests.lisp           defconst             x1
+  O  tests/acl2/config-owner-read-invariants-tests.lisp           must-fail-checked    x1
+  O  tests/acl2/login-binding-live-tests.lisp                     assert-event         x2
+  O  tests/acl2/login-binding-live-tests.lisp                     defconst             x7
+  O  tests/acl2/login-binding-live-tests.lisp                     must-fail-checked    x1
+  O  tests/acl2/owner-agent-tests.lisp                            defconst             x2
+  O  tests/acl2/owner-agent-tests.lisp                            must-fail-checked    x1
+  O  tests/acl2/owner-article-slots-tests.lisp                    defconst             x2
+  O  tests/acl2/owner-config-tests.lisp                           assert-event         x1
+  O  tests/acl2/owner-config-tests.lisp                           bpr-lift             x1
+  O  tests/acl2/owner-config-tests.lisp                           defconst             x8
+  O  tests/acl2/owner-config-tests.lisp                           defmacro             x3
+  O  tests/acl2/owner-config-tests.lisp                           ocfg-r-unbound-thm   x1
+  O  tests/acl2/owner-host-relation-tests.lisp                    assert-event         x4
+  O  tests/acl2/owner-host-relation-tests.lisp                    defconst             x2
+  O  tests/acl2/owner-open-carried-tests.lisp                     assert-event         x6
+  O  tests/acl2/owner-open-carried-tests.lisp                     defconst             x2
+  O  tests/acl2/owner-open-carried-tests.lisp                     must-fail-checked    x2
+  O  tests/acl2/owner-reclaim-conns-tests.lisp                    defconst             x1
+  O  tests/acl2/owner-reclaim-ready-tests.lisp                    defconst             x1
+  O  tests/acl2/owner-recover-ocl-tests.lisp                      defconst             x1
+  O  tests/acl2/owner-served-invariants-tests.lisp                assert-event         x3
+  O  tests/acl2/owner-served-invariants-tests.lisp                defconst             x1
+  O  tests/acl2/owner-served-invariants-tests.lisp                must-fail-checked    x2
+  O  tests/acl2/owner-store-indexed-tests.lisp                    bpr-lift             x2
+  O  tests/acl2/productive-read-chain-tests.lisp                  defconst             x1
+  O  tests/acl2/public-exposure-tests.lisp                        defmacro             x1
+  O  tests/acl2/served-catalog-join-frame-conns-tests.lisp        assert-event         x2
+  O  tests/acl2/served-catalog-join-frame-conns-tests.lisp        defconst             x1
+  O  tests/acl2/served-catalog-source-scan-tests.lisp             assert-event         x2
