@@ -1973,8 +1973,6 @@
      (:executable-counterpart member-equal) (:executable-counterpart equal)
      (:executable-counterpart nfix) (:executable-counterpart zp))))))
 
-(in-package "ACL2")
-
 ; Runtime I: all raw requests, including listener/alias and buffered submit cases.
 
 ; From p15b-I-listener-unbuffered.lisp
