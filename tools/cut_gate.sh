@@ -18,7 +18,8 @@
 #      T-CMD@10k and W1 (T-POST) on --time-box (persvati by default: hbox time
 #      figures are reported, never judged, LOAD-PROGRAM s.1) when the image
 #      can be copied there, else on hbox marked REPORTED.
-#   3. the guardrail from W13: VmHWM <= 249 MB and RssAnon+RssShmem <= 115 MB
+#   3. the guardrail from W13: VmHWM <= 249 MB (254,976 KiB) and RssAnon <= 115 MB
+#      (117,760 KiB; W13 reports no separate shmem figure)
 #      on the small preset (ember 2026-10-14: 1.5x the baseline).
 # Exit 0 only when the image built, no NEW native red, no gauntlet violation,
 # and the guardrail holds.  Everything streams to build/cut-gate/<label>/.
@@ -76,12 +77,15 @@ ssh hbox "cat $RUNDIR/run.log" > "$OUT/run.log" 2>/dev/null || true
 IMAGE_OK=0
 if ssh hbox "test -f $RUNDIR/tree/build/fn-host.core"; then IMAGE_OK=1; fi
 [ "$IMAGE_OK" = 1 ] || log "RED: the production image did not build (status $STATUS, $RUNDIR)"
+# run.log carries only the summary line; each module's verdict is the last
+# FN_TEST_BUDGET_RESULT line of logs/test-tests.<module>.log.
 NEWRED=; CARRIED=
-for m in $(grep -E '^tests\.test_native_[a-z0-9_]+ .*FAILED' "$OUT/run.log" | sed 's/^tests\.test_native_\([a-z0-9_]*\) .*/\1/' | sort -u); do
+for m in $(ssh hbox "cd $RUNDIR/logs && grep -L '\"failures\": 0, \"errors\": 0' test-tests.test_native_*.log 2>/dev/null" | sed 's/^test-tests\.test_native_//; s/\.log$//' | sort -u); do
     case " $PREEXISTING " in *" $m "*) CARRIED="$CARRIED $m" ;; *) NEWRED="$NEWRED $m" ;; esac
 done
-OKN=$(grep -c -E '^tests\.test_native_[a-z0-9_]+ .*OK' "$OUT/run.log" || true)
-log "natives: $OKN OK; carried reds:${CARRIED:- none}; NEW reds:${NEWRED:- none} (status $STATUS)"
+MODSUM=$(grep -E '^== modules: [0-9]+ OK' "$OUT/run.log" | tail -1 | sed 's/^== modules: //')
+OKN=$(printf %s "$MODSUM" | sed -n 's/^\([0-9]*\) OK.*/\1/p')
+log "natives: ${MODSUM:-no summary line}; carried reds:${CARRIED:- none}; NEW reds:${NEWRED:- none} (status $STATUS)"
 
 # 2. gauntlet
 GVIOL=; GUARD=unknown
@@ -89,50 +93,47 @@ if [ "$GAUNTLET" = 1 ] && [ "$IMAGE_OK" = 1 ]; then
     IMG=$RUNDIR/tree/build/fn-host
     GL=$LABEL-g
     log "gauntlet on hbox: F2S,F4,F6,W13 against $IMG"
-    python3 -m tools.load.driver box --box hbox --image "$IMG" --cell F2S,F4,F6,W13 --label "$GL" --rev "$SHA" > "$OUT/gauntlet.launch.log" 2>&1 || log "RED: gauntlet launch refused"
-    sh tools/wait_for.sh --host hbox --file "/tank/fn/scratch/load-harness/runs/$GL/status" --deadline 7200 > /dev/null 2>&1 || true
-    until ssh hbox "grep -q -v running /tank/fn/scratch/load-harness/runs/$GL/status" 2>/dev/null; do sleep 60; done
-    rsync -a "hbox:/tank/fn/scratch/load-harness/runs/$GL/" "$OUT/gauntlet/" > /dev/null 2>&1 || true
+    # driver box starts the job detached (setsid nohup) and its own ssh may
+    # time out after the start: the status file, not the exit, says whether
+    # the job runs.
+    python3 -m tools.load.driver box --box hbox --image "$IMG" --cell F2S,F4,F6,W13 --label "$GL" --rev "$SHA" > "$OUT/gauntlet.launch.log" 2>&1 || true
+    sleep 90
+    if ! ssh hbox "test -f /tank/fn/scratch/load-harness/runs/$GL/status"; then log "RED: gauntlet did not start (no status file; see $OUT/gauntlet.launch.log)"; GVIOL="launch"; fi
+    until [ -n "$GVIOL" ] || ssh hbox "grep -q -v running /tank/fn/scratch/load-harness/runs/$GL/status" 2>/dev/null; do sleep 60; done
+    rsync -a --exclude samples.json "hbox:/tank/fn/scratch/load-harness/runs/$GL/" "$OUT/gauntlet/" > /dev/null 2>&1 || true
     TL=$LABEL-t
-    if [ "$TIMEBOX" = persvati ] && ssh hbox "rsync -a $IMG $IMG.core $IMG.catalog persvati:~/fn-gates/cut-images/$LABEL/ 2>/dev/null"; then
+    if [ "$TIMEBOX" = persvati ] && ssh hbox "rsync -a $IMG $IMG.core $IMG.catalog persvati:/tank/fn/scratch/load-harness/images/$LABEL/ 2>/dev/null"; then
         log "time rows on persvati: T-CMD@10k,W1 (judged)"
-        python3 -m tools.load.driver box --box persvati --image "fn-gates/cut-images/$LABEL/fn-host" --cell T-CMD@10k,W1 --label "$TL" --rev "$SHA" --cores 12-23 > "$OUT/time.launch.log" 2>&1 || log "RED: time-row launch refused on persvati"
+        python3 -m tools.load.driver box --box persvati --image "/tank/fn/scratch/load-harness/images/$LABEL/fn-host" --cell T-CMD@10k,W1 --label "$TL" --rev "$SHA" --cores 12-23 > "$OUT/time.launch.log" 2>&1 || true
         TB=persvati
     else
         log "time rows on hbox: T-CMD@10k,W1 (REPORTED, not judged: hbox time figures are never judged)"
-        python3 -m tools.load.driver box --box hbox --image "$IMG" --cell T-CMD@10k,W1 --label "$TL" --rev "$SHA" > "$OUT/time.launch.log" 2>&1 || log "RED: time-row launch refused on hbox"
+        python3 -m tools.load.driver box --box hbox --image "$IMG" --cell T-CMD@10k,W1 --label "$TL" --rev "$SHA" > "$OUT/time.launch.log" 2>&1 || true
         TB=hbox
     fi
-    until ssh "$TB" "grep -q -v running /tank/fn/scratch/load-harness/runs/$TL/status 2>/dev/null || grep -q -v running ~/fn-gates/load-harness/runs/$TL/status 2>/dev/null"; do sleep 60; done
-    rsync -a "$TB:/tank/fn/scratch/load-harness/runs/$TL/" "$OUT/time/" > /dev/null 2>&1 || rsync -a "$TB:fn-gates/load-harness/runs/$TL/" "$OUT/time/" > /dev/null 2>&1 || true
+    sleep 90
+    if ssh "$TB" "test -f /tank/fn/scratch/load-harness/runs/$TL/status"; then
+        until ssh "$TB" "grep -q -v running /tank/fn/scratch/load-harness/runs/$TL/status" 2>/dev/null; do sleep 60; done
+        rsync -a --exclude samples.json "$TB:/tank/fn/scratch/load-harness/runs/$TL/" "$OUT/time/" > /dev/null 2>&1 || true
+    else log "RED: time rows did not start on $TB (no status file; see $OUT/time.launch.log)"; GVIOL="$GVIOL time-launch"; fi
     # verdicts and the guardrail, read from the result files
     R=$(python3 - "$OUT" <<'PY'
 import json,sys,glob,re
 out=sys.argv[1]; viol=[]; rows=[]; hwm=None; anon=None
-def walk(o,path=''):
-    global hwm,anon
-    if isinstance(o,dict):
-        for k,v in o.items():
-            kl=k.lower()
-            if isinstance(v,(int,float)):
-                if 'vmhwm' in kl and hwm is None: hwm=v
-                if ('rssanon' in kl or 'rss_anon' in kl) and anon is None: anon=v
-            walk(v,path+'/'+k)
-    elif isinstance(o,list):
-        for x in o: walk(x,path)
 for f in glob.glob(out+'/gauntlet/result.json')+glob.glob(out+'/time/result.json'):
     r=json.load(open(f))
     for c in r.get('cells',[]):
-        cid=c.get('cell') or c.get('id'); v=c.get('verdict') or c.get('judged') or {}
-        bars=c.get('bars') or v if isinstance(v,dict) else {}
-        for b,res in (bars.items() if isinstance(bars,dict) else []):
-            s=str(res.get('verdict',res) if isinstance(res,dict) else res)
-            rows.append((cid,b,s))
-            if 'FAIL' in s.upper() and 'F' in str(cid)[:1]: viol.append(f'{cid}:{b}')
-        if str(cid).startswith('W13'): walk(c)
+        cid=str(c.get('cell') or c.get('id'))
+        for b in c.get('bars',[]):
+            s=str(b.get('verdict')); rows.append((cid,b.get('bar'),s))
+            # judged rows of the gate: the fault corpus and the time bars; W13's
+            # L-HWM row judges the retired 128 MiB bar and is reported only
+            if s.upper().startswith('FAIL') and not cid.startswith('W13'): viol.append(f'{cid}:{b.get("bar")}')
+        if cid.startswith('W13'):
+            m=c.get('metrics',{}); hwm=m.get('rss_kib.hwm'); anon=m.get('rss_kib.anon')
 print('ROWS '+'; '.join(f'{c} {b}={s}' for c,b,s in rows))
 print('VIOL '+' '.join(viol))
-print(f'GUARD vmhwm_kib={hwm} rssanon_kib={anon}')
+print(f'GUARD vmhwm_kib={hwm} rssanon_kib={anon}')  # anon stands in for anon+shmem: W13 reports no shmem figure; pessimistic enough since shmem is in VmRSS-file
 PY
 )
     printf '%s\n' "$R" | tee -a "$OUT/gate.log"
