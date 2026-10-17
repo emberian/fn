@@ -1533,10 +1533,10 @@ class LintReportingTests(unittest.TestCase):
 
 
 class GeneratorMirrorTests(unittest.TestCase):
-    """The ledger's static mirrors of def-carried-view, def-carried-reader
-    and def-keyset-check (books/def-carried-view.lisp, def-keyset-check.lisp)
-    name every theorem the Lisp generators admit on the fixture books, so a
-    registry citation of a generated keystone resolves without evaluating."""
+    """The ledger's static mirror of def-keyset-check (books/def-keyset-check.lisp)
+    names every theorem the Lisp generator admits on the fixture book, so a
+    registry citation of a generated keystone resolves without evaluating.
+    (The def-carried-view mirror's fixture left with the breaking cut.)"""
 
     ROOT = Path(__file__).resolve().parents[1]
 
@@ -1551,22 +1551,6 @@ class GeneratorMirrorTests(unittest.TestCase):
             found[str(form[1])] = [str(e[1]) for e in expansion
                                    if ledger.head(e) in ("defthm", "defun")]
         return found
-
-    def test_carried_view_names_on_the_fixture_and_the_pilot(self):
-        views = self.generated("tests/acl2/def-carried-view-tests.lisp", "def-carried-view")
-        self.assertEqual(set(views), {"cvt", "cvx", "cvs"})
-        for thm in ("cvs-fresh", "cvs-stamp", "cvs-stampedp", "cvs-list-carryp", "cvs-carryp",
-                    "cvs-refresh-stamped", "cvs-carryp-of-refresh-stamped",
-                    "cvs-list-carryp-of-refresh", "cvs-stampedp-of-refresh-stamped"):
-            self.assertIn(thm, views["cvs"])
-        readers = self.generated("tests/acl2/def-carried-view-tests.lisp", "def-carried-reader")
-        self.assertEqual(readers["cvs-targetedp-fast"],
-                         ["cvs-targetedp-fast", "cvs-targetedp-fast-is-cvt-targetedp"])
-        for thm in ("cvt-carryp-of-refresh", "cvt-ws-of-refresh", "cvt-carryp-of-nil",
-                    "cvt-refresh-walks-the-delta", "cvt-tset-okp-of-extend", "cvt-cset-hasp-of-put"):
-            self.assertIn(thm, views["cvt"])
-        self.assertIn("cvx-carryp-of-nil", views["cvx"])
-        self.assertNotIn("cvx-tset-okp", views["cvx"])
 
     def test_keyset_check_names_on_the_fixture(self):
         checks = self.generated("tests/acl2/def-keyset-check-tests.lisp", "def-keyset-check")

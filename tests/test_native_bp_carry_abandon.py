@@ -6,8 +6,8 @@ waiver is durable in the carry journal (principal, reason), then the Store pin
 is released through the receipt's own retention event; a waiver of an
 obligation not held is refused by name with nothing written; a waiver whose
 Store event a process death cut off is completed, once, by the next writable
-open, and the waiver replays unchanged after every restart
-(books/bp-carry-waiver.lisp)."""
+open, and the waiver replays unchanged after every restart (the ACL2
+model, books/bp-carry-waiver.lisp, left with the breaking cut)."""
 
 import os
 import unittest
