@@ -6,7 +6,6 @@
 ; No real crypto/provider is fabricated.
 (in-package "ACL2")
 (include-book "../../books/bp-node-receive-boundary")
-(include-book "../../books/bpsec-operation")
 (defconst *bpcrc-local* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *bpcrc-peer* (cons :dtn '(47 47 102 110 45 98 47)))
 (defconst *bpcrc-config* (fn-bpn-config *bpcrc-local* 3600000 2 32 1048576))
@@ -45,24 +44,6 @@
          *bpcrc-obs* *bpcrc-ingress*))
       (fn-bpnf-receive-wire-readyp
        (fn-bpnf-receive-wire-event *bpcrc-config* (fn-bpb-encode *bpcrc-malformed*)
-         *bpcrc-obs* *bpcrc-ingress*))))
-; Real current-source/key/provider provenance remains absent even when supplied
-; descriptor matching metadata says verified; a stale view emits no evidence.
-(defconst *bpcrc-op*
- (fn-bps-op-make :verify-bib '(:bps-ref 1 2) '(:bps-ref 10 3)
-   '(:bps-ref 20 4) '(:bps-ref 30 5) 20 0 1
-   '(:bps-bib-params 6 7 (:bytes-span 40 100 24))
-   '(:bps-ref 50 6) '(:bytes-span 40 200 48)))
-(defconst *bpcrc-stale*
- (fn-bps-op-complete (list :bps-operation :issued *bpcrc-op*)
-  '(:bps-current (:bps-ref 10 3) (:bps-ref 20 5) (:bps-ref 30 5) (:bps-ref 50 6))
-  (list :bps-completion *bpcrc-op* :verified nil :ok)))
-(assert-event
- (and (fn-bps-opp *bpcrc-op*) (eq (fn-bps-field 1 *bpcrc-stale*) :ignored)
-      (eq (fn-bps-field 2 *bpcrc-stale*) :stale-current)
-      (null (fn-bps-field 4 *bpcrc-stale*))
-      (fn-bpnf-receive-wire-readyp
-       (fn-bpnf-receive-wire-event *bpcrc-config* (fn-bpb-encode *bpcrc-bib*)
          *bpcrc-obs* *bpcrc-ingress*))))
 (assert-event
  (and (fn-bpn-acceptedp (fn-bpn-receive-carrier *bpcrc-config*

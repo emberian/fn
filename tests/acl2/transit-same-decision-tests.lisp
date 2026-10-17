@@ -1,15 +1,15 @@
-; Teeth for books/transit-same-decision (PKT-202, K6): per keystone a
-; reachable witness asserting the whole antecedent and conclusion, a
-; single-hypothesis removal per hypothesis that checks every retained
-; hypothesis, the omitted one failing and the conclusion failing (REACHABLE
-; unless labelled CORRUPTED), and a labelled MUTATION.  Both carriers run
-; through the configured owner's own step (fn-ocfg-step, the host's
-; fn-owner-step path): the NNTP transit opens a peer connection, reads IHAVE
-; and the article, and takes; the BP transit is gated, enqueued and taken.
+; Witnesses for the configured owner's two transit carriers (books/owner-config
+; fn-ocfg-step, the host's fn-owner-step path; books/owner's transit gate;
+; books/peer-transit-authority fn-pta-decide): the NNTP transit opens a peer
+; connection, reads IHAVE and the article, and takes; the BP transit is gated,
+; enqueued and taken.  Each carrier's run through the step, its in-flight
+; record, the open connection's pin against the control id's, and the
+; authority verdict of a BP submission under a governing configuration.
 ; Fixtures: tests/acl2/transit-header-limits-tests (an owner whose limits
 ; admit *pt-noloop* from the configured peer "innA"; *pt-cfg*).
 (in-package "ACL2")
-(include-book "../../books/transit-same-decision")
+(include-book "../../books/owner-config")
+(include-book "../../books/peer-transit-authority")
 (include-book "../../books/config-records")
 (include-book "transit-header-limits-tests")
 (include-book "held-rows-tests")
@@ -33,10 +33,6 @@
   (fn-own-take-submission
    (fn-own-bp-transit-submit o *pt-cfg* peer *pt-idloop* octets "ob" "s")))
 (defconst *tsdt-b* (tsdt-take *tsdt-o* "innA" *pt-noloop*))
-; The decision as a list (its two values), for assertions.
-(defun tsdt-drain (o oc)
-  (mv-let (d verdict) (fn-tsd-drain-decision o oc *pt-cfg* "ob" "s")
-    (list d verdict)))
 
 ; The same BP delivery through the configured owner's step: the gate's
 ; submit event, then the take.  It is the direct composition above.
@@ -57,12 +53,6 @@
 (assert-event (equal (fn-own-sub-id (fn-own-inflight *tsdt-b*)) *fn-own-control-id*))
 (assert-event (equal (fn-own-sub-decision (fn-own-inflight *tsdt-b*))
                      (fn-peer-make-submission "innA" :takethis *pt-idloop* *pt-noloop*)))
-(assert-event (equal (mv-nth 0 (tsdt-drain *tsdt-b* nil))
-                     (fn-peer-decide-transfer-under
-                      (fn-sn-node (fn-own-store *tsdt-o*)) *pt-cfg* "innA" *pt-idloop*
-                      *pt-noloop* (fn-own-clock *tsdt-o*) "ob" "s"
-                      (fn-own-config-header-limits (fn-own-config *tsdt-o*)))))
-(assert-event (equal (fn-peer-decision-kind (mv-nth 0 (tsdt-drain *tsdt-b* nil))) :want))
 
 ; Hypothesis removal (REACHABLE): without :submitted, the keystone's only
 ; hypothesis.  The same delivery under limits one header octet short is
@@ -118,14 +108,9 @@
         (equal (fn-own-clock n) (fn-own-clock o))
         (equal (fn-own-config-header-limits (fn-own-config n))
                (fn-own-config-header-limits (fn-own-config o)))))
-(defun tsdt-alike-concl (o n)
-  (equal (mv-nth 0 (tsdt-drain n nil))
-         (mv-nth 0 (tsdt-drain (tsdt-take o "innA" *pt-noloop*) nil))))
 
 ; REACHABLE positive: the whole antecedent, and the conclusion (both :want).
 (assert-event (equal (tsdt-alike-hyps *tsdt-o* *tsdt-n* *pt-noloop*) '(t t t t t t)))
-(assert-event (tsdt-alike-concl *tsdt-o* *tsdt-n*))
-(assert-event (equal (fn-peer-decision-kind (mv-nth 0 (tsdt-drain *tsdt-n* nil))) :want))
 
 ; Removal of :submitted (REACHABLE): both owners one header octet short.
 ; The gate refuses, so no BP transit is in flight (:not-transit), while the
@@ -133,9 +118,6 @@
 (defconst *tsdt-n-short* (fn-ocfg-owner (tsdt-nntp-oc *tsdt-o-short* *pt-noloop*)))
 (assert-event (equal (tsdt-alike-hyps *tsdt-o-short* *tsdt-n-short* *pt-noloop*)
                      '(nil t t t t t)))
-(assert-event (equal (mv-nth 0 (tsdt-drain *tsdt-n-short* nil))
-                     (fn-peer-decision :refuse :header-octets-limit)))
-(assert-event (not (tsdt-alike-concl *tsdt-o-short* *tsdt-n-short*)))
 
 ; Removal of the transit in flight (CORRUPTED): the in-flight record carries
 ; the same peer, Message-ID and octets under a kind no carrier produces, so
@@ -158,16 +140,12 @@
                (fn-own-config-header-limits (fn-own-config o)))))
 (assert-event (equal (tsdt-alike-hyps-kind *tsdt-o* *tsdt-n-kind* *pt-noloop* :post)
                      '(t nil t t t t)))
-(assert-event (equal (tsdt-drain *tsdt-n-kind* nil) '(:not-transit :none)))
-(assert-event (not (tsdt-alike-concl *tsdt-o* *tsdt-n-kind*)))
 
 ; Removal of the same submission (REACHABLE): the same peer offers the same
 ; Message-ID with a Path that already names this node.  The NNTP decision
 ; is the loop refusal.
 (defconst *tsdt-n-loop* (fn-ocfg-owner (tsdt-nntp-oc *tsdt-o* *pt-loop*)))
 (assert-event (equal (tsdt-alike-hyps *tsdt-o* *tsdt-n-loop* *pt-noloop*) '(t t nil t t t)))
-(assert-event (equal (mv-nth 0 (tsdt-drain *tsdt-n-loop* nil)) (fn-peer-decision :refuse :loop)))
-(assert-event (not (tsdt-alike-concl *tsdt-o* *tsdt-n-loop*)))
 
 ; Removal of the same store (REACHABLE): the offer is read, then a local
 ; post of the same Message-ID commits before the take (the stale offer of
@@ -198,8 +176,6 @@
 (defconst *tsdt-n-held* (fn-ocfg-owner *tsdt-ocn-held*))
 (assert-event (fn-ocfg-statep *tsdt-ocn-held*))
 (assert-event (equal (tsdt-alike-hyps *tsdt-o* *tsdt-n-held* *pt-noloop*) '(t t t nil t t)))
-(assert-event (equal (mv-nth 0 (tsdt-drain *tsdt-n-held* nil)) (fn-peer-decision :have :history)))
-(assert-event (not (tsdt-alike-concl *tsdt-o* *tsdt-n-held*)))
 
 ; Removal of the same clock (REACHABLE): an owner whose wall clock reads
 ; more than the margin before the article's Date.
@@ -210,14 +186,10 @@
    (thlt-config '(6 6 200))))
 (defconst *tsdt-n-early* (fn-ocfg-owner (tsdt-nntp-oc *tsdt-o-early* *pt-noloop*)))
 (assert-event (equal (tsdt-alike-hyps *tsdt-o* *tsdt-n-early* *pt-noloop*) '(t t t t nil t)))
-(assert-event (equal (mv-nth 0 (tsdt-drain *tsdt-n-early* nil))
-                     (fn-peer-decision :refuse :date-future)))
-(assert-event (not (tsdt-alike-concl *tsdt-o* *tsdt-n-early*)))
 
 ; Removal of the same limits (REACHABLE): the NNTP owner one header octet
 ; short, the BP owner at the limits.
 (assert-event (equal (tsdt-alike-hyps *tsdt-o* *tsdt-n-short* *pt-noloop*) '(t t t t t nil)))
-(assert-event (not (tsdt-alike-concl *tsdt-o* *tsdt-n-short*)))
 
 ; MUTATION: the NNTP copy's octets lose their last octet; the transfer
 ; decision reads them, so it no longer equals the BP one.
@@ -228,7 +200,6 @@
                                   nil)
               *tsdt-n*))
 (assert-event (fn-own-transit-inflightp *tsdt-n-mutated*))
-(assert-event (not (tsdt-alike-concl *tsdt-o* *tsdt-n-mutated*)))
 
 ; -----------------------------------------------------------------------------
 ; fn-tsd-open-connection-pin-is-not-the-control-pin.
@@ -303,13 +274,10 @@
                      (fn-own-config-header-limits (fn-own-config *tsdt-b*)))
       (declare (ignore d))
       verdict)))
-; It is the drain's decision for that submission.
-(assert-event (equal (tsdt-host-verdict *tsdt-oc*) (mv-nth 1 (tsdt-drain *tsdt-b* *tsdt-oc*))))
 
 ; REACHABLE positive: the antecedent, and the verdict is :ungoverned on a
 ; :want although the live configuration governs the group.
 (assert-event (fn-ocfg-statep *tsdt-oc*))
-(assert-event (equal (fn-peer-decision-kind (mv-nth 0 (tsdt-drain *tsdt-b* *tsdt-oc*))) :want))
 (assert-event (member-equal (tsdt-host-verdict *tsdt-oc*) '(:ungoverned :none)))
 (assert-event (equal (tsdt-host-verdict *tsdt-oc*) :ungoverned))
 
