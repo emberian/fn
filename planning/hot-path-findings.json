@@ -643,17 +643,7 @@
       "class": "unexpected",
       "packet": "PKT-223"
     },
-    "fn-sf-record-has-pairp recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (a)"
-    },
     "fn-sf-record-listp recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (a)"
-    },
-    "fn-sf-success-listp recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
