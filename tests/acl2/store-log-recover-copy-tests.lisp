@@ -239,3 +239,31 @@
                                     (:exit)))))))
    (and (equal (fn-bs-durable-entry (fn-bsc-bs ok) :root "checkpoint") 5)
         (null (fn-bs-durable-entry (fn-bsc-bs (fn-lgrc-rl01-restarted-store)) :root "checkpoint")))))
+
+; Teeth for fn-lgrc-open-ops-is-the-hosted-programs (CONVERGE-2 row 2): the
+; equality pins order and membership.  Over symbolic operands, the open's ops
+; with journal/'s and the root's fences swapped, or the parent's fence
+; dropped, are not the instantiation of the hosted programs.
+(defun lgrct-open-env () (declare (xargs :guard t))
+  (list (cons :staging :stg) (cons :stage-recover "s") (cons :journal :j)
+        (cons :segment "k") (cons :staged 9) (cons :validated-prefix '(1 2))
+        (cons :root :r) (cons :parent :p)))
+(defun lgrct-hosted-open () (declare (xargs :guard t :verify-guards nil))
+  (fn-lgrc-instantiate (append (fn-lgrc-program) (fn-lg-open-program))
+                       (lgrct-open-env) nil 0))
+(assert-event
+ (equal (lgrct-hosted-open)
+        '((:create :stg "s" :ok) (:write 9 0 (1 2) :ok) (:fsync-file 9 :ok)
+          (:rename :stg "s" :j "k" :ok) (:fsync-dir :j :ok) (:fsync-dir :stg :ok)
+          (:fsync-dir :j :ok) (:fsync-dir :r :ok) (:fsync-dir :p :ok))))
+(assert-event
+ (not (equal (lgrct-hosted-open)
+             (fn-lgrc-instantiate
+              (append (fn-lgrc-program)
+                      '((:fence :root) (:fence :journal) (:fence :parent)))
+              (lgrct-open-env) nil 0))))
+(assert-event
+ (not (equal (lgrct-hosted-open)
+             (fn-lgrc-instantiate
+              (append (fn-lgrc-program) '((:fence :journal) (:fence :root)))
+              (lgrct-open-env) nil 0))))
