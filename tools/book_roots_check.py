@@ -24,12 +24,6 @@ _ORPHAN = (
     'outside every Makefile root at dev 402b65786 (first run of this check, 10-12); repair item BOOK-ROOTS-ORPHANS: its owner roots it with a certify of record or deletes it')
 P, O = _P_DRAFTS, _ORPHAN
 EXCLUDED: dict[str, str] = {
-    "books/acceptance-binding-held-gate.lisp": O,
-    "books/account-adoption-turn-continuation.lisp": O,
-    "books/consumer-authority-carried-fold.lisp": O,
-    "books/consumer-authority-carried-result.lisp": O,
-    "books/consumer-configured-authority-replay.lisp": O,
-    "books/consumer-configured-control-event.lisp": O,
     "books/held-composite-fields.lisp": O,
     "books/index-backing-publication-row-carry.lisp": O,
     "books/index-backing-row-carry.lisp": O,
