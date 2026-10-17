@@ -15,7 +15,7 @@ inbound half ends in the one acceptance path every article takes
 (`fn-node-prepare`/`fn-node-complete`, [node](../books/node.lisp)), whose
 outbound half is a durable per-peer queue stepped by the scheduler's
 contact/tick model, and whose peer table is a configuration record kind under
-[reconfiguration](reconfiguration.md). The DTN relay of [relay](relay.md) and
+[reconfiguration](reconfiguration.md). The DTN relay of
 [bp-design](bp-design.md) is the same profile over a different convergence
 layer; §1.4 says exactly which state is shared.
 
@@ -602,7 +602,7 @@ octets, exactly as for a POST.
 
 ### 1.4 The DTN relay is the same profile over another convergence layer
 
-| | TCP NNTP peer | BP peer (bp-design §1, relay.md) |
+| | TCP NNTP peer | BP peer (bp-design §1) |
 | --- | --- | --- |
 | Peer record | `fn-cfg-peerp` with `(:nntp host port)` | `fn-cfg-peerp` with `(:bp eid)`; the same `accept-groups`/`feed-groups`, the same `path-identity` |
 | Offer phase | `CHECK`/`IHAVE` before the bytes | none: the bundle arrives whole; offer and transfer collapse into one `(:bundle src octets)` event |
@@ -619,7 +619,7 @@ Shared, by construction once K6 lands: the peer record, `fn-peer-decide-transfer
 path, the provenance record, the history predicate, the loop check. Different:
 the offer phase, the response vocabulary, the outbound driver and journal, and
 what a positive reply means for retention. The relay's undertaking rule
-(relay.md) applies only to the BP side because only there does a receipt
+applies only to the BP side because only there does a receipt
 promise anything.
 
 ## 2. The inbound transit machine
@@ -1022,8 +1022,8 @@ capacity is per peer (`fn-peer-refused-record-keeps-every-other-key`,
 `fn-peer-refused-record-never-changes-another-peers-offer`). A future date is never remembered (it is
 acceptable later) and neither is a missing Path (the operator's to require).
 The memory is in memory only and is not persisted: a restart costs one
-re-parse per refused article and changes no answer. Its soundness is
-PRF-235 (books/peer-refused-offers.lisp `fn-prof-offer-answer-is-the-reparse`).
+re-parse per refused article and changes no answer. Its soundness was
+PRF-235 (`fn-prof-offer-answer-is-the-reparse`; its book left with the breaking cut).
 
 ### Relay date and Path checks (NNT-050)
 
@@ -1398,8 +1398,7 @@ followed by our identity is accepted.
 
 ### K3. Merge: two fn nodes peering both ways converge
 
-Over the fact-set model of REP-002 (`fn-exchange-merge`,
-`books/exchange.lisp:327`) and the lace merge (`fn-lace-merge`,
+Over the fact-set model of REP-002 (`fn-exchange-merge`; its book left with the breaking cut) and the lace merge (`fn-lace-merge`,
 `books/lace.lisp:105`). Nothing below is built: no book defines the
 projection of a node's committed articles to exchange facts
 `(schema kind message-id content-id origin incarnation sequence provenance)`
@@ -1432,7 +1431,7 @@ real port is the reader.
 ```
 
 The third conjunct is `fn-exchange-merge-commutative-member`
-(`books/exchange.lisp:392`) applied to the first two; the first two are the
+(exchange, deleted by the breaking cut) applied to the first two; the first two are the
 content. Local numbers, Xref and rendered Path are outside the fact
 projection, which is exactly REP-002's "modulo local numbering". The
 statement-level twin, for articles carrying `FN-Statement` (§6), replaces
@@ -1523,7 +1522,7 @@ must-fail that separates "acknowledged" from "written"); drop
 attempt ids; it is the relation, not a re-implementation. Teeth, as landed:
 five queued articles, a crash after the third `:feed-sent` with no outcome,
 and a reopened `CHECK` for that entry
-(`tests/acl2/feed-port-replay-tests.lisp`); dropping `fn-feed-drivenp`, the
+(the feed-port-replay tests book, deleted by the breaking cut); dropping `fn-feed-drivenp`, the
 landed form of the journal hypothesis, is a fabricated journal with two
 `239` outcomes for one attempt and a `239` for an entry never offered
 (`tests/acl2/peer-feed-tests.lisp`). The `:done`-by-`438` witness has no
@@ -1542,7 +1541,6 @@ does not carry feeds:
 | --- | --- | --- |
 | `fn-feed-at-most-one-accepted-outcome` | the theorem of that name | **Earned.** Same name, same content. The hypothesis is `fn-feed-drivenp` -- each record admissible in the state the fold had reached -- in place of the design's journal-validity hypothesis, and it is a check over the fold, never the conclusion. |
 | No TAKETHIS for a `:done` entry | `fn-feed-done-is-never-selected` with `fn-feed-tick-step-offers-the-selection` and `fn-feed-tick-step-is-silent-without-a-selection` | **Earned over `fn-feed-tick-step`**, the function the host calls once per scheduler tick, not over F_node, which does not carry the feed. `fn-feed-done-is-never-selected` carries `(fn-feed-selection f obs)` as a hypothesis: without it the statement is FALSE at `msgid` = `NIL` (a feed that selects nothing selects `NIL`, and `NIL` is not `:queued`), and the silent-without-a-selection theorem is the other half of the pair. |
-| Crash replay is the live feed modulo in-flight | `fn-feed-port-history-reconstructs-live`, `fn-feed-port-replay-is-live-modulo-inflight`, and `fn-own-feed-port-tick-replays-the-live-tick` (`books/feed-port-replay.lisp`) | **Earned for the bounded port and its generated FNFD record image.** The port calls `fn-feed-tick-step`, preserves the feed and emits no record/effect on refusal; replay of its generated records and the maintained feed agree in every durable field after `fn-feed-restart` normalizes an unresolved `:offered` or `:sent` entry to `:queued` and clears the socket. `tests/acl2/feed-port-replay-tests.lisp` has five queued articles, a crash after the third `:feed-sent`, a reopened CHECK for that entry, and a false-image `must-fail`. The equality assumes the persisted record sequence is the generated sequence; physical append/recovery correspondence is a separate open obligation. |
 | After restart an in-flight entry is resolved by an offer | `fn-feed-restart-emits-no-transfer` with `fn-feed-restart-then-tick-offers` | **Earned over `fn-feed-send`** -- the only producer of a TAKETHIS or an article block -- **and `fn-feed-tick-step`**, not over an F_node restart, which does not exist. Read the first one narrowly: `fn-feed-restart` also forgets the connection and `fn-feed-send` refuses a feed whose `fn-feed-conn` is not a `natp`, so the settled queue is not what it rests on. The statement that would need the settled queue is the one over the REOPENED feed, which is what the host does next; it is recorded open in the lane handoff. |
 
 The fifth keystone of the book has no row above because §4 does not state it:
@@ -2130,7 +2128,7 @@ signature verdict, historical local acceptance, current enrollment and
 current administrative authority stay separate facts (the mandate §5.4);
 `:fn-control` remains the only answer about authority. The theorem over the
 host-called read is `fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment`
-(books/owner-enrollment-read.lisp; host line host/owner-host.lisp
+(its book left with the breaking cut; host line host/owner-host.lisp
 `fn-owner-chunk-span-at`).
 
 NNT-036: a reader is told the current enrollment, in the node's pinned

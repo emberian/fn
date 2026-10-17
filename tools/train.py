@@ -283,7 +283,6 @@ IMAGE_RULES = (
       "books/heap-command.lisp", "books/heap-store-figure.lisp", "books/charged-totals.lisp",
       "books/history-totals-carried.lisp", "books/store-budget.lisp",
       "books/store-budget-article.lisp", "books/store-budget-naming.lisp",
-      "books/store-budget-stored.lisp", "books/store-budget-stored-post.lisp",
       "books/store-capacity-vector.lisp", "books/store-maintenance-reserve.lisp"),
      ("tests.test_native_capacity_vector",)),
     # The ACL2 host adapters explicitly include these books. Derive their

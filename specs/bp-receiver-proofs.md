@@ -8,8 +8,8 @@ success flag, and installs the receiver component of the returned joined
 state. Its served preflight/apply calls use `fn-bpaj-apply-record-fast`.
 These are distinct subjects.
 
-The source-admitted PKT-413 equation in `books/bp-native-app-replay-bridge.lisp`,
-`fn-bpaj-replay-receiver-is-receiver-replay`, projects both the actual replay
+The source-admitted PKT-413 equation `fn-bpaj-replay-receiver-is-receiver-replay`
+(its book, bp-native-app-replay-bridge, left with the breaking cut) projected both the actual replay
 success flag and its receiver state to the receiver-only replay result.
 Its explicit `fn-bpaj-receiver-only-recordsp` hypothesis excludes both
 `:request-transit-intent` and `:request-transit-context` records. This is a

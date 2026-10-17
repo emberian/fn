@@ -658,7 +658,7 @@ class NativePeeringTests(unittest.TestCase):
         transfer happens.  One peer's offer never changes another peer's
         answer: the second and third peers' CHECK draw 238 and IHAVE 335,
         their own transfer is refused 437, and only then do they draw 438
-        (tests/acl2/transit-hygiene-tests.lisp says the same).  With `relay-date-skew 3600' and `relay-require-path 1' set
+        With `relay-date-skew 3600' and `relay-require-path 1' set
         by the operator, an article dated two hours ahead is refused 437
         "dated in the future" and a Path-less one 437 "no Path"; an article
         within the skew and with a Path is accepted 235.  Nothing is

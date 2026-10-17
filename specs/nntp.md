@@ -161,8 +161,6 @@ NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9
 - `XPAT` is RFC 2980 §2.9 and has no RFC 3977 spelling a client could
   discover instead, so fn lists it as a private-extension label (RFC 3977
   §3.3.3: such a label begins with "X"). `XOVER` and `XHDR` stay unlisted.
-  `fn-auth-capability-lines-advertise-xpat` (`books/nntp-xpat.lisp`) is over
-  the block the served CAPABILITIES arm renders.
 - The pattern rule is §2.9's: "If there are additional arguments the are
   joined together separated by a single space to form one complete pattern."
   A second argument is therefore part of one pattern, not an alternative,
@@ -455,10 +453,7 @@ The ruling (lane durability-bugs, row I3, 2026-09-28): a number is ISSUED
 when a party outside the owner can observe it (a reader's GROUP, LISTGROUP,
 OVER or ARTICLE n, a web page, a log line, a feed, a consumer, a 240), and a
 number once issued is never issued again, across any number of crashes
-(PRF-903, books/number-durability.lisp: KEYSTONES
-fn-ndur-recovery-keeps-every-visible-number over the host's open,
-fn-ndur-prepare-never-allocates-below-the-watermark,
-fn-ndur-crash-trace-never-reissues-a-number). Every observation is of the
+(PRF-903; its book, number-durability, left with the breaking cut). Every observation is of the
 completed prefix, whose barrier returned fenced
 (fn-ocvm-reader-view-is-the-completed-prefix); the live status page's
 `articles=` count is the one exception, a count, not a number (PKT-885). A
@@ -1283,7 +1278,7 @@ the same read never claims an earlier anonymous article.
 
 D25 is unchanged. Generated Injection-Info is injecting-node metadata, not
 authored source, like the node's Cancel-Lock lines in front of the block
-(`fn-oii-stored-octets-keep-the-d25-subject`, books/owner-injection-info.lisp:
+(`fn-oii-stored-octets-keep-the-d25-subject`, whose book left with the breaking cut:
 the D25 subject of the octets the owner stores is the poster's source,
 whatever account, login, key epoch or complaints address wrote them): the injection inverse reads the line with or without
 parameters (books/injection.lisp fn-inj-strip-info), so a stored article

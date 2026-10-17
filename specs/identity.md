@@ -104,7 +104,7 @@ The book and its concrete hypothesis counterexamples have
 The initial failed attempt used older CBOR source and is retained separately.
 
 Books: `books/crypto-seam.lisp`, `books/hybrid-signature.lisp`,
-`books/hybrid-signature-invariants.lisp`, `books/principal.lisp`,
+`books/principal.lisp`,
 `books/principal-invariants.lisp`; tests `tests/acl2/crypto-seam-tests.lisp`,
 `tests/acl2/principal-tests.lisp`. The [decision packet](../planning/decision-packet-d09-d11.md)
 carries the proposals this profile assumes.

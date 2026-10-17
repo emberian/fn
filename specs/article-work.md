@@ -104,8 +104,8 @@ Measured on that same article by the executable cost model in
 `books/article-public-bound`, `fn-aw-parse` charges **46,833 work units**
 (30,195 before 575629468 carried the visible header values through the list
 parser), so the envelope is **about 23,558 times** the cost it bounds
-(1,103,275,316 / 46,833); both numbers are asserted as executable witnesses in
-`tests/acl2/article-work-tests.lisp`. That sample is retained across profile
+(1,103,275,316 / 46,833); both numbers were asserted as executable witnesses in
+the article-work tests book (deleted by the breaking cut). That sample is retained across profile
 changes for comparison; a separate 1,032-octet vector exercises the current
 256-header-line boundary, and a 257-header-line vector is rejected.
 The envelope is structurally loose whatever that measurement turns out to be:
@@ -124,8 +124,8 @@ for the original parser to compare against; none exists in this tree. The
 correspondence between the charges and the parser's recursion is therefore
 established **by construction, not by theorem**: the worker mirrors the
 parser's call graph branch for branch, it is checked by reading, and it is
-checked at specific inputs by the exact-charge vectors in
-`tests/acl2/article-work-tests.lisp`. A reader who accepts
+checked at specific inputs by the exact-charge vectors of
+the article-work tests book (deleted by the breaking cut). A reader who accepts
 `fn-article-parse-work-profile-bound` as a bound on the real parser is relying
 on that reading, not on a proof. This is the honest reading of the "exact
 correspondence with the actual parser for every ACL2 input" claim: it is true
@@ -140,10 +140,11 @@ and continuation branches. Malformed input and all early returns are included.
 
 ## Books and regression evidence
 
-The proof layers are `article-work-primitives`, `article-work-scanners`,
+The proof layers were `article-work-primitives`, `article-work-scanners`,
 `article-work` (field workers), `article-work-budget`, `article-public-work`
-(complete value correspondence) and `article-public-bound` (complete work bound).
-`tests/acl2/article-work-tests.lisp` checks exact charges for malformed atoms,
+(complete value correspondence) and `article-public-bound` (complete work bound);
+`article-work`, `article-work-budget`, `article-public-work`, `article-public-bound`
+and the tests book left with the breaking cut. That tests book checked exact charges for malformed atoms,
 improper spines, nested non-octets, empty articles and prefix-copy helpers; it
 also exercises exact source, line, field-count and continuation-count limits,
 including rejection before octet validation and opaque binary body bytes.

@@ -25,8 +25,7 @@ here), and shows as replies exactly the lines of the node's
 search is the node's `XPAT` over one stated window. The node decides which
 served articles are in that scope and match: the reply is XHDR's lines for the
 numbers in the range whose served article renders the field and matches, and
-a withdrawn number is never one of them (PRF-122,
-`books/nntp-search-scope.lisp`). The client keeps no index, builds no
+a withdrawn number is never one of them (PRF-122; its book, nntp-search-scope, left with the breaking cut). The client keeps no index, builds no
 visibility decision and states the window and the command on the page; a
 Message-ID with characters a wildmat cannot state is matched with `?` for each
 and the page says the match may include a near-identical identifier. An

@@ -116,8 +116,8 @@ the host tracks offsets and never reruns a state transition to finish a write.
 Quotas bound per-session staging and pending effects so one peer cannot monopolize
 the state owner merely by refusing to consume output.
 
-The executable direct-read schedule model is `books/host-model-machine.lisp`.
-It calls the current `fn-pio-direct-admit`, `fn-pio-direct-cancel` and
+The executable direct-read schedule model (the host-model-machine book,
+deleted by the breaking cut) calls the current `fn-pio-direct-admit`, `fn-pio-direct-cancel` and
 `fn-pio-direct-settle` entries, including their issued-row and descriptor-holder
 outputs. Cancellation and generation retirement retain the holder until physical
 return and owner settlement. Descriptor close additionally requires the actual
@@ -743,8 +743,7 @@ classes has waited through four `:commit` quanta in flight (the pass budget
 none waits: background waiters, the feeds' transit ticks and maintenance
 steps, arrive during nearly every barrier, and stopping at the first would
 unpipeline every batch), and the keystone
-`fn-ocf-control-waits-at-most-the-bound` (PRF-901,
-books/owner-commit-fairness.lisp) holds over the host's pick, wake and
+`fn-ocf-control-waits-at-most-the-bound` (PRF-901; its book, owner-commit-fairness, left with the breaking cut) holds over the host's pick, wake and
 commit events from any scheduler value: while a control request waits at
 every pick, before it is admitted (or the owner stops) at most 22 quanta run
 that are not `:inspect`, a reader during a barrier or a START-NEXT that took

@@ -111,7 +111,7 @@ root, a connection's sub-bank, ten reads that exhaust the read-identity
 coordinate while every octet has returned, the replayed completion, the
 destroy and the reserve's growth.
 
-## The tree: a node's accounting as one state (`books/resource-vector-tree.lisp`)
+## The tree: a node's accounting as one state
 
 A sub-bank that is a value of its own cannot be revoked by its parent's
 destroy (r06 F2): so the node's accounting is one state, `(ROOT SUBS)`,
@@ -134,10 +134,10 @@ phase 2, okp, with the row's demand as its budget. Keystones (PRF-1209):
   every step addressed to the destroyed sub-bank's token is `:stale` and
   leaves the tree.
 
-Teeth: `tests/acl2/resource-vector-tree-tests.lisp`. This tree is the shape
+Teeth: the resource-vector-tree tests book, deleted by the breaking cut. This tree is the shape
 of the typed ledger the host needs: one table, a row's owner a slot.
 
-## One accounting (`books/resource-vector-relations.lisp`, PRF-1210)
+## One accounting (PRF-1210)
 
 Each existing mechanism is a projection of the vector:
 
@@ -156,8 +156,7 @@ Each existing mechanism is a projection of the vector:
   "release the reusable coordinates only" is `fn-rv-settle`'s split; both
   are NEXT in the lane dump, cited nowhere.
 - PRF-198's heap reservation and PRF-223's connection budget as funded
-  roots (`books/resource-vector-relations-heap.lisp`,
-  `fn-rv-heap-reservation-funds-the-root`,
+  roots (`fn-rv-heap-reservation-funds-the-root`,
   `fn-rv-connection-budget-funds-the-root`): DRAFTED, not admitted, not a
   Makefile root, cited nowhere (its include closure is the owner's).
 
@@ -303,7 +302,7 @@ This is a source linkage check for an enforced projection; it does not prove
 funding transfer, total allocation, refusal work or native receipt honesty.
 The full operation gate remains owed and cannot be activated by annotation.
 
-`books/resource-operation.lisp` is the logical tree reference for the next
+The resource-operation book (deleted by the breaking cut) was the logical tree reference for the next
 connection/output slice. It uses the existing `fn-rt`/`fn-rv` transitions:
 owner baseline/reserve installation precedes sub-bank open; an explicitly
 funded gate draw precedes the operation draw; retained reusable output stays
