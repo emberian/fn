@@ -18,7 +18,7 @@ def fixture():
     j.stage("workload", "begun")
     j.client("response-hold", operation="hold", cid=7, group="211 5 1 5 fn.test")
     j.client("read", operation="read-prior", result="match", during_competing_work=True)
-    j.client("reclaim", operation="reclaim-1", installed=False, returncode=0)
+    j.client("reclaim", operation="reclaim-1", installed=False, returncode=EXIT.REFUSED)
     j.environment("fault-fired", operation="reclaim-1", boundary="reclaim-candidate-selected",
                   action="interleave", stage="performed", cid=7)
     j.stage("workload", "ended")

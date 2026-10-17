@@ -27,6 +27,8 @@ from . import contract
 from .journal import Journal
 from .scenario import Scenario, boundary_registry
 
+EXIT_REFUSED = 1  # the operator's refusal by name (tests/native_harness.py EXIT.REFUSED)
+
 KINDS = ("consistent", "violation", "inconclusive", "no-witness", "healing-overran",
          "harness-failure")
 
@@ -278,7 +280,10 @@ def check_reclaim_hold(scenario, journal, budget, healing, overran):
         return violation(clients["hold"], "response-operation-identity")
     if not str(clients["hold"].get("group", "")).startswith("211 5 "):
         return violation(clients["hold"], "productive-five-article-group")
-    if clients["reclaim-1"].get("installed") or clients["reclaim-1"].get("returncode") != 0:
+    # The deferred request is refused by name: a deferral (DEFERRED-READERS)
+    # is the operator's refusal, exit 1 (host/owner-host.lisp
+    # fn-owner-orc-request-status, Q16 (a); tests/native_harness.py EXIT.REFUSED).
+    if clients["reclaim-1"].get("installed") or clients["reclaim-1"].get("returncode") != EXIT_REFUSED:
         return violation(clients["reclaim-1"], "deferred-request-is-distinct")
     if (clients["reclaim-heal"].get("returncode") != 0
             or not clients["reclaim-heal"].get("installed")):
