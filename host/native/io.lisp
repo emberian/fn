@@ -9830,6 +9830,12 @@ segment' (tests/test_native_topic_local.py)."
                        (fnn-genesis-open store profile)))
          (unit (fnn-store-log-unit))
          (max (fnn-store-log-max store)))
+    ;; Stage 0: the page pool's unfunded context before the checkpoint load
+    ;; registers its image's extent, as every offline reader enters it
+    ;; (fnn-open-live-store; host/native/extent.lisp fnn-extent-pool-open-context).
+    ;; Without it a compacted store's checkpoint is refused
+    ;; READ-RESOURCES-UNAVAILABLE (OFFLINE-SCAN-STORE-READ-RESOURCES).
+    (fnn-extent-pool-open-context)
     (multiple-value-bind (status s) (fnn-state-checkpoint-load store)
       (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
              (log-position (first position))
