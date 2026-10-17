@@ -1,0 +1,1 @@
+lctw: io + hybrid-author consolidated (dedup, no cons removed at hybrid-author: source/signature/path conversion STILL conses; twin owed, item LIST-CODEC-HYBRID-AUTHOR-TWIN). Prune: journals now carry the plan's peer octets (journal slot peer-octets), fn-pull-plan-for stays ACL2's decision, no cons. No books changed; no generated files.
