@@ -38,7 +38,7 @@
 (in-package "ACL2")
 (include-book "proto/adt-bytes")
 (include-book "store-checkpoint-buffer")
-(include-book "history-columns")
+(include-book "history-columns-logic")
 (include-book "pagestore-words-blake3")
 (local (include-book "arithmetic/top" :dir :system))
 
