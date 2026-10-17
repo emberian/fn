@@ -623,8 +623,9 @@ class InstallTests(unittest.TestCase):
 
     def test_a_deleted_include_is_a_finding_not_an_abort(self):
         """FILL-CERTS-INSTALL-DELETED-BOOK: a parked book whose include a
-        decision deleted (books/acceptance-binding-held-gate over the deleted
-        books/held-record-shape) is one unreadable book, reported as such;
+        decision deleted (as the former books/acceptance-binding-held-gate was
+        over the deleted books/held-record-shape; the breaking cut removed
+        both) is one unreadable book, reported as such;
         every other pair still installs."""
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             _, cache = self.published(one, ["books/mid"])

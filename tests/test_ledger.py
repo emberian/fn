@@ -1567,15 +1567,6 @@ class GeneratorMirrorTests(unittest.TestCase):
             self.assertIn(thm, views["cvt"])
         self.assertIn("cvx-carryp-of-nil", views["cvx"])
         self.assertNotIn("cvx-tset-okp", views["cvx"])
-        wix = self.generated("books/withdrawal-index-carried.lisp", "def-carried-view")["fn-wix"]
-        for thm in ("fn-wix-carryp-of-refresh", "fn-wix-carryp-of-nil", "fn-wix-ws-of-refresh",
-                    "fn-wix-refresh", "fn-wix-ws", "fn-wix-tset", "fn-wix-cset"):
-            self.assertIn(thm, wix)
-        readers = self.generated("books/withdrawal-index-carried.lisp", "def-carried-reader")
-        self.assertEqual(readers["fn-wix-targetedp"],
-                         ["fn-wix-targetedp", "fn-wix-targetedp-is-pidx-targetedp"])
-        self.assertEqual(readers["fn-wix-targets-of"],
-                         ["fn-wix-targets-of", "fn-wix-targets-of-is-sca-targets-of"])
 
     def test_keyset_check_names_on_the_fixture(self):
         checks = self.generated("tests/acl2/def-keyset-check-tests.lisp", "def-keyset-check")
