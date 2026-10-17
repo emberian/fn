@@ -721,26 +721,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-transfer-exact-duplicate-no-overwrite"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-transfer-reserve-preserves-statep"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-transfer-add-chunk-preserves-statep"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-transfer-complete-entry-candidate-correct"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-transfer-complete-entry-candidate-byte-agreement"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-exchange-policy-ingest-trace-preserves-statep"
         },
         {
@@ -757,6 +737,31 @@
           "kind": "theorem",
           "name": "fn-transfer-missing-ranges-is-correct",
           "note": "no caller; v1"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-exact-duplicate-no-overwrite",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transfer.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-reserve-preserves-statep",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transfer-reservation.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-add-chunk-preserves-statep",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transfer-invariants.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-complete-entry-candidate-correct",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transfer-assembly-invariants.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-complete-entry-candidate-byte-agreement",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transfer-assembly-invariants.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         }
       ]
     },
@@ -1074,14 +1079,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-transfer-initial-statep"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-transfer-invalid-chunk-no-overwrite"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-article-successful-parse-syntax-p"
         },
         {
@@ -1111,14 +1108,6 @@
         {
           "kind": "theorem",
           "name": "fn-wildmat-successful-parse-text-parsedp"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-transfer-entry-candidate-work-value"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-transfer-entry-candidate-work-cost-bound"
         },
         {
           "kind": "theorem",
@@ -1159,6 +1148,26 @@
           "kind": "theorem",
           "name": "fn-transfer-missing-ranges-work-public-bound",
           "note": "no caller; v1"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-initial-statep",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transfer.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-invalid-chunk-no-overwrite",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transfer.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-entry-candidate-work-value",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transfer-work.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-entry-candidate-work-cost-bound",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transfer-work.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         }
       ],
       "note": "fn-wm-match-codepoints-work-cost-bound retained unchanged in books/wildmat-work.lisp and marked unreachable-in-composition in the PRF-016 statement. Not a hosted-event claim; no reach baseline exemption is added."
@@ -8563,30 +8572,38 @@
         {
           "kind": "theorem",
           "name": "fn-article-parse-under-work-input-bound"
+        }
+      ],
+      "deferred": [
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-under-admits-exactly-the-limits",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-header-limits.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-peer-decide-transfer-under-admits-exactly-the-limits"
+          "name": "fn-peer-decide-transfer-under-wants-only-what-transfer-wants",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-header-limits.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-peer-decide-transfer-under-wants-only-what-transfer-wants"
+          "name": "fn-own-bp-transit-submits-only-within-the-limits",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-header-limits.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-own-bp-transit-submits-only-within-the-limits"
+          "name": "fn-own-bp-transit-refuses-past-the-limits",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-header-limits.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-own-bp-transit-refuses-past-the-limits"
+          "name": "fn-own-control-decision-injects-only-within-the-limits",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-header-limits.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-own-control-decision-injects-only-within-the-limits"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-control-decision-refuses-past-the-limits-by-name"
+          "name": "fn-own-control-decision-refuses-past-the-limits-by-name",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-header-limits.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         }
       ]
     },
@@ -10921,31 +10938,38 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-tb-open-peer-body-limit-is-the-profile-bound"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-own-peer-body-limit-is-within-the-profile-bound"
         },
         {
           "kind": "theorem",
-          "name": "fn-tb-served-run-retains-at-most-the-body-limit"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tb-served-run-keeps-the-body-limit"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tb-served-step-keeps-the-body-limit"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-tb-open-peer-wire-is-the-peer-body-limit"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-peer-transfer-unreceived-effects-well-formed"
+        }
+      ],
+      "deferred": [
+        {
+          "kind": "theorem",
+          "name": "fn-tb-open-peer-body-limit-is-the-profile-bound",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-bound.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-run-retains-at-most-the-body-limit",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-bound.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-run-keeps-the-body-limit",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-bound.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-step-keeps-the-body-limit",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-bound.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-open-peer-wire-is-the-peer-body-limit",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-bound.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         }
       ]
     },
@@ -13420,11 +13444,14 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-tb-served-run-holds-at-most-the-body-limit-mid-article"
-        },
+          "name": "fn-wire-scan-is-span-fold"
+        }
+      ],
+      "deferred": [
         {
           "kind": "theorem",
-          "name": "fn-wire-scan-is-span-fold"
+          "name": "fn-tb-served-run-holds-at-most-the-body-limit-mid-article",
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-bound.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         }
       ]
     },
@@ -17004,226 +17031,271 @@
     },
     {
       "id": "PRF-1178",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
           "name": "fn-bps-head-drive-consumes-at-most-quantum",
-          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-head.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-head-drive-consumes-at-most-window",
-          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-head.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-head-drive-rest-is-exact-unconsumed-suffix",
-          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-head.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-consumes-at-most-quantum",
-          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-consumes-at-most-window",
-          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-rest-is-exact-unconsumed-suffix",
-          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-composes-quanta",
-          "pending_subject": "Actual ASB scheduling component preserves complete cursor/consumed-prefix/suffix under quantum cuts over one fixed input. No actual BP window provider or host installation; every-window reference refinement and cursor invariant remain open. Source admission is not normal certification."
+          "pending_subject": "Actual ASB scheduling component preserves complete cursor/consumed-prefix/suffix under quantum cuts over one fixed input. No actual BP window provider or host installation; every-window reference refinement and cursor invariant remain open. Source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-quanta.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-start-establishes-fixed-spine",
-          "pending_subject": "Actual ASB record representation component establishes/preserves fixed ordered cursor spine. Mutable field/grammar invariants, every-window reference refinement, immutable provider and actual BP host remain open. This ghost recognizer is not served per-step revalidation."
+          "pending_subject": "Actual ASB record representation component establishes/preserves fixed ordered cursor spine. Mutable field/grammar invariants, every-window reference refinement, immutable provider and actual BP host remain open. This ghost recognizer is not served per-step revalidation.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-spine.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-cursor-spine",
-          "pending_subject": "Actual ASB record representation component establishes/preserves fixed ordered cursor spine. Mutable field/grammar invariants, every-window reference refinement, immutable provider and actual BP host remain open. This ghost recognizer is not served per-step revalidation."
+          "pending_subject": "Actual ASB record representation component establishes/preserves fixed ordered cursor spine. Mutable field/grammar invariants, every-window reference refinement, immutable provider and actual BP host remain open. This ghost recognizer is not served per-step revalidation.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-spine.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-cursor-spine",
-          "pending_subject": "Actual ASB record representation component establishes/preserves fixed ordered cursor spine. Mutable field/grammar invariants, every-window reference refinement, immutable provider and actual BP host remain open. This ghost recognizer is not served per-step revalidation."
+          "pending_subject": "Actual ASB record representation component establishes/preserves fixed ordered cursor spine. Mutable field/grammar invariants, every-window reference refinement, immutable provider and actual BP host remain open. This ghost recognizer is not served per-step revalidation.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-spine.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-start-establishes-grammar-control",
-          "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open."
+          "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-control.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-grammar-control",
-          "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open."
+          "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-control.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-grammar-control",
-          "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open."
+          "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-control.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-readonly-subject",
-          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-position.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-source-coordinate",
-          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-position.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-offset-is-consumed-prefix",
-          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-position.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-offset-is-consumed-prefix",
-          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-position.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-start-establishes-source-range",
-          "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only."
+          "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-position.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-source-range",
-          "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only."
+          "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-position.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-source-range",
-          "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only."
+          "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-position.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-head-start-establishes-profile",
-          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-head-invariant.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-head-feed-preserves-profile",
-          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-head-invariant.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-head-feed-ready-is-typed-uint64",
-          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-head-invariant.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-head-drive-preserves-profile",
-          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-head-invariant.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-head-drive-ready-is-typed-uint64",
-          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-head-invariant.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-start-establishes-head-profile",
-          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-head-invariant.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-head-profile",
-          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-head-invariant.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-head-profile",
-          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-head-invariant.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-start-establishes-metadata-budget",
-          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only."
+          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-metadata.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-metadata-budget",
-          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only."
+          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-metadata.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-metadata-budget",
-          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only."
+          "pending_subject": "Actual ASB tracked operator metadata charge component; not a physical allocation/cost theorem. Ghost predicate never served; remaining grammar/span/window refinement, immutable provider and installed BP caller remain open. Source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-metadata.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-start-establishes-body-context",
-          "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-body.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-body-context",
-          "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-body.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-body-context",
-          "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB composite current-body span/source/head/range invariant. Ghost predicates never served; all accumulated-value spans, complete grammar/every-window refinement, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-body.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-start-establishes-aggregate-context",
-          "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-aggregate.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-aggregate-context",
-          "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-aggregate.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-aggregate-context",
-          "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB accumulated metadata span extent composed with current body/head/source range. Ghost predicates never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-aggregate.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-start-establishes-terminal-boundary",
-          "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-terminal.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-terminal-boundary",
-          "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-terminal.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-terminal-boundary",
-          "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB terminal PARSED implies DONE at exactly the declared source end. Ghost predicate never served; complete grammar/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-terminal.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-start-establishes-target-types",
-          "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-target-types.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-drive-preserves-target-types",
-          "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-target-types.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-target-types",
-          "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only."
+          "pending_subject": "Actual ASB uint64 target/pending and active duplicate/reversal scratch typing with typed head/fixed34 spine. Ghost predicates never served; complete grammar/count/uniqueness/every-window alpha, physical immutable backing/pinned lifetime and installed BP caller/crypto gate remain open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-asb-target-types.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-received-window-is-exact-concrete-slice",
-          "pending_subject": "Actual internal FnBprxSegmentWindow concrete array output boundary, with frozen/current/range/representation hypotheses and ghost alpha only. No registered backing/original held/block source pin or installed native caller; full parser/crypto/current-authority gate remains open. Proper-local source admission only."
+          "pending_subject": "Actual internal FnBprxSegmentWindow concrete array output boundary, with frozen/current/range/representation hypotheses and ghost alpha only. No registered backing/original held/block source pin or installed native caller; full parser/crypto/current-authority gate remains open. Proper-local source admission only.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-received-window.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         }
       ]
     },
@@ -17254,127 +17326,139 @@
     },
     {
       "id": "PRF-1179",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
           "name": "fn-bps-target-drive-work-does-not-exceed-quantum",
-          "pending_subject": "Additive metadata cursor scheduling component. No BP host installs fn-bps-target-step; full reference equivalence/state preservation and carried immutable provider/data-binding relation remain open. Source admission only, not normal certificate or actual-bundle authority."
+          "pending_subject": "Additive metadata cursor scheduling component. No BP host installs fn-bps-target-step; full reference equivalence/state preservation and carried immutable provider/data-binding relation remain open. Source admission only, not normal certificate or actual-bundle authority.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-target-cursor.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-target-drive-composes-quanta",
-          "pending_subject": "Additive metadata cursor scheduling component. No BP host installs fn-bps-target-step; full reference equivalence/state preservation and carried immutable provider/data-binding relation remain open. Source admission only, not normal certificate or actual-bundle authority."
+          "pending_subject": "Additive metadata cursor scheduling component. No BP host installs fn-bps-target-step; full reference equivalence/state preservation and carried immutable provider/data-binding relation remain open. Source admission only, not normal certificate or actual-bundle authority.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-target-cursor.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-target-start-establishes-fixed-spine",
-          "pending_subject": "Target cursor exact ordered record representation component. Actual BP host/provider and full mutable-field/reference graph invariant remain open. Ghost spine recognizer is never served revalidation."
+          "pending_subject": "Target cursor exact ordered record representation component. Actual BP host/provider and full mutable-field/reference graph invariant remain open. Ghost spine recognizer is never served revalidation.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-target-spine.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-target-drive-preserves-cursor-spine",
-          "pending_subject": "Target cursor exact ordered record representation component. Actual BP host/provider and full mutable-field/reference graph invariant remain open. Ghost spine recognizer is never served revalidation."
+          "pending_subject": "Target cursor exact ordered record representation component. Actual BP host/provider and full mutable-field/reference graph invariant remain open. Ghost spine recognizer is never served revalidation.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-target-spine.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-target-step-preserves-cursor-spine",
-          "pending_subject": "Target cursor exact ordered record representation component. Actual BP host/provider and full mutable-field/reference graph invariant remain open. Ghost spine recognizer is never served revalidation."
+          "pending_subject": "Target cursor exact ordered record representation component. Actual BP host/provider and full mutable-field/reference graph invariant remain open. Ghost spine recognizer is never served revalidation.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-target-spine.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         }
       ]
     },
     {
       "id": "PRF-1185",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
           "name": "fn-bps-op-evidence-requires-issued-current-verified",
-          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance."
+          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-operation.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-op-complete-preserves-operation",
-          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance."
+          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-operation.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-op-cancel-preserves-operation",
-          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance."
+          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-operation.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
           "name": "fn-bps-op-completion-never-reopens-retired-operation",
-          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance."
+          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance.",
+          "note": "cut/breaking M1-b park (2026-10-17): books/bpsec-operation.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         }
       ]
     },
     {
       "id": "PRF-1176",
-      "events": [
-        {
-          "name": "fn-stce-resume-retains-existing-evidence",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
-        },
-        {
-          "name": "fn-stce-publish-retains-the-envelope",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
-        },
-        {
-          "name": "fn-stce-resume-preserves-cursor-witness",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
-        },
-        {
-          "name": "fn-stce-publish-conflict-refuses-authority",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
-        },
-        {
-          "name": "fn-stce-start-has-cursor-shape",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
-        },
-        {
-          "name": "fn-stce-resume-preserves-cursor-shape",
-          "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
-        },
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
           "name": "fn-stce-scanned-slot-conflict-is-recorded",
           "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf/row adapter only."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-transcript.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; local committed transcript leaf/row adapter only."
         },
         {
           "kind": "theorem",
           "name": "fn-stce-row-start-carried-is-row-start",
           "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf/row adapter only."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-row.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; local committed transcript leaf/row adapter only."
         },
         {
           "kind": "theorem",
           "name": "fn-stce-committed-row-start-has-cursor-shape",
           "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf/row adapter only."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-row.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; local committed transcript leaf/row adapter only."
         },
         {
           "kind": "theorem",
           "name": "fn-stce-authority-start-pins-the-policy-source",
           "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; authority phase leaf only."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-row.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; authority phase leaf only."
         },
         {
           "kind": "theorem",
           "name": "fn-stce-authority-scan-keeps-the-pinned-source",
           "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; authority phase leaf only."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-row.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; authority phase leaf only."
         },
         {
           "kind": "theorem",
           "name": "fn-stce-authority-resolution-is-the-pinned-policy-source",
           "pending_subject": true,
-          "note": "Actual durable completion/cold replay caller installation remains open; authority phase leaf only."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-row.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; authority phase leaf only."
+        },
+        {
+          "name": "fn-stce-resume-retains-existing-evidence",
+          "pending_subject": true,
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-transcript.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-publish-retains-the-envelope",
+          "pending_subject": true,
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-transcript.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-resume-preserves-cursor-witness",
+          "pending_subject": true,
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-transcript.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-publish-conflict-refuses-authority",
+          "pending_subject": true,
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-transcript.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-start-has-cursor-shape",
+          "pending_subject": true,
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-transcript.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-resume-preserves-cursor-shape",
+          "pending_subject": true,
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-committed-transcript.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
         }
       ]
     },
@@ -17442,41 +17526,42 @@
     },
     {
       "id": "PRF-1189",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "name": "fn-stcp-enc-drive-work-bound",
           "pending_subject": true,
-          "note": "Explicit profile component only; actual host caller and boundary refinement remain open."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-commit-profile-codec.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Explicit profile component only; actual host caller and boundary refinement remain open."
         },
         {
           "name": "fn-stcp-dec-drive-work-bound",
           "pending_subject": true,
-          "note": "Explicit profile component only; actual host caller and boundary refinement remain open."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-commit-profile-codec.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Explicit profile component only; actual host caller and boundary refinement remain open."
         },
         {
           "name": "fn-stcp-dec-drive-borrowed-refinement",
           "pending_subject": true,
-          "note": "Actual host caller remains open; decoder component induction carries cursor and exact work under borrowed string source."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-commit-profile-refinement.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Actual host caller remains open; decoder component induction carries cursor and exact work under borrowed string source."
         },
         {
           "name": "fn-stcp-enc-drive-preserves-bounds",
           "pending_subject": true,
-          "note": "Shallow numeric/control preservation component certified at matching private closure; actual host caller remains open."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-commit-profile-bounds.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Shallow numeric/control preservation component certified at matching private closure; actual host caller remains open."
         },
         {
           "name": "fn-stcp-dec-drive-preserves-bounds",
           "pending_subject": true,
-          "note": "Shallow numeric/control preservation component certified at matching private closure; actual host caller remains open."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-commit-profile-bounds.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Shallow numeric/control preservation component certified at matching private closure; actual host caller remains open."
         },
         {
           "name": "fn-stcp-enc-drive-acc-is-drive",
           "pending_subject": true,
-          "note": "Additive accumulator execution equivalence component; later execution roots pending certification and actual host caller remains open. Counter equivalence requires acl2-numberp initial accumulator; cursor equivalence is unconditional."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-commit-profile-resume.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Additive accumulator execution equivalence component; later execution roots pending certification and actual host caller remains open. Counter equivalence requires acl2-numberp initial accumulator; cursor equivalence is unconditional."
         },
         {
           "name": "fn-stcp-dec-drive-acc-is-drive",
           "pending_subject": true,
-          "note": "Additive accumulator execution equivalence component; later execution roots pending certification and actual host caller remains open. Counter equivalence requires acl2-numberp initial accumulator; cursor equivalence is unconditional."
+          "note": "cut/breaking M1-b park (2026-10-17): books/substrate-commit-profile-resume.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Additive accumulator execution equivalence component; later execution roots pending certification and actual host caller remains open. Counter equivalence requires acl2-numberp initial accumulator; cursor equivalence is unconditional."
         }
       ]
     },
@@ -17988,26 +18073,27 @@
     },
     {
       "id": "PRF-1224",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
           "name": "fn-tsd-bp-gate-is-the-drain-decision",
-          "note": "KEYSTONE. Host: host/owner-host.lisp fn-owner-bp-transit-submit calls fn-own-bp-transit-submit-result; host/native/owner.lisp fnn-owner-complete-bp-transit-submission then decides through fn-owner-transit-decide (fn-pta-decide). Teeth: tests/acl2/transit-same-decision-tests.lisp."
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-same-decision.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | KEYSTONE. Host: host/owner-host.lisp fn-owner-bp-transit-submit calls fn-own-bp-transit-submit-result; host/native/owner.lisp fnn-owner-complete-bp-transit-submission then decides through fn-owner-transit-decide (fn-pta-decide). Teeth: tests/acl2/transit-same-decision-tests.lisp."
         },
         {
           "kind": "theorem",
           "name": "fn-tsd-nntp-and-bp-transit-decide-alike",
-          "note": "KEYSTONE. Host: fnn-owner-drain-one (NNTP) and fnn-owner-complete-bp-transit-submission (BP) both call fn-owner-transit-decide. Teeth: tests/acl2/transit-same-decision-tests.lisp."
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-same-decision.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | KEYSTONE. Host: fnn-owner-drain-one (NNTP) and fnn-owner-complete-bp-transit-submission (BP) both call fn-owner-transit-decide. Teeth: tests/acl2/transit-same-decision-tests.lisp."
         },
         {
           "kind": "theorem",
           "name": "fn-tsd-open-connection-pin-is-not-the-control-pin",
-          "note": "KEYSTONE. Where the carriers differ: under fn-ocfg-statep an open connection's pinned configuration (read by fn-owner-transit-decide for an NNTP transit) is never the control id's. Teeth: tests/acl2/transit-same-decision-tests.lisp (reachable open connection; reachable disconnect; corrupted pin table; mutation to the live configuration)."
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-same-decision.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | KEYSTONE. Where the carriers differ: under fn-ocfg-statep an open connection's pinned configuration (read by fn-owner-transit-decide for an NNTP transit) is never the control id's. Teeth: tests/acl2/transit-same-decision-tests.lisp (reachable open connection; reachable disconnect; corrupted pin table; mutation to the live configuration)."
         },
         {
           "kind": "theorem",
           "name": "fn-tsd-bp-transit-authority-is-ungoverned",
-          "note": "Where the carriers differ: the BP submission's authority verdict is over no configuration. Teeth: tests/acl2/transit-same-decision-tests.lisp (positive under a governing live configuration; corrupted control pin; mutation to the live configuration)."
+          "note": "cut/breaking M1-b park (2026-10-17): books/transit-same-decision.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md) | Where the carriers differ: the BP submission's authority verdict is over no configuration. Teeth: tests/acl2/transit-same-decision-tests.lisp (positive under a governing live configuration; corrupted control pin; mutation to the live configuration)."
         }
       ]
     },
@@ -18568,14 +18654,17 @@
     },
     {
       "id": "PRF-1303",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
-          "name": "fn-tclsctl-source-drive-keepalive-refines-session"
+          "name": "fn-tclsctl-source-drive-keepalive-refines-session",
+          "note": "cut/breaking M1-b park (2026-10-17): books/tcpcl-source-control-refinement.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception"
+          "name": "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception",
+          "note": "cut/breaking M1-b park (2026-10-17): books/tcpcl-source-control-refinement.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
         }
       ]
     },
