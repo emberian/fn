@@ -135,6 +135,41 @@ def arc_size():
     return read_kv("/proc/spl/kstat/zfs/arcstats", {"size"}).get("size") if Path("/proc/spl/kstat/zfs/arcstats").exists() else None
 
 
+def box_counters():
+    """Design seat: box-wide block-layer and ZIL counters, for per-phase deltas.
+    /sys/block/<dev>/stat fields: 0 reads, 2 sectors read, 4 writes, 6 sectors written, 15 flushes (when present)."""
+    out = {"blk": {}, "zil": {}}
+    with contextlib.suppress(OSError):
+        for d in sorted(os.listdir("/sys/block")):
+            if d.startswith(("loop", "ram", "zram", "dm-", "md", "sr", "zd")):
+                continue
+            with contextlib.suppress(OSError, ValueError):
+                f = [int(x) for x in Path("/sys/block/%s/stat" % d).read_text().split()]
+                out["blk"][d] = {"reads": f[0], "rsect": f[2], "writes": f[4], "wsect": f[6],
+                                 "flushes": f[15] if len(f) > 15 else None}
+    zp = Path("/proc/spl/kstat/zfs/zil")
+    if zp.exists():
+        with contextlib.suppress(OSError, ValueError):
+            for ln in zp.read_text().splitlines()[2:]:
+                p = ln.split()
+                if len(p) == 3:
+                    out["zil"][p[0]] = int(p[2])
+    return out
+
+
+def box_delta(a, b):
+    if not a or not b:
+        return None
+    blk = {}
+    for d, v in b["blk"].items():
+        if d in a["blk"]:
+            dv = {k: (v[k] - a["blk"][d][k]) if v[k] is not None and a["blk"][d][k] is not None else None for k in v}
+            if any(dv.values()):
+                blk[d] = dv
+    zil = {k: v - a["zil"].get(k, 0) for k, v in b["zil"].items() if v - a["zil"].get(k, 0)}
+    return {"blk": blk, "zil": zil}
+
+
 def fs_type(path):
     with contextlib.suppress(Exception):
         return subprocess.run(["stat", "-f", "-c", "%T", str(path)], capture_output=True, text=True, timeout=10).stdout.strip()
@@ -1538,12 +1573,14 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         write()
         for ph in spec["phases"]:
             before = proc_snapshot(node.pid) if node.pid else None
+            bc0, sf0 = box_counters(), store_files(node.store)
             cnt0 = (ctr.admitted, ctr.refused, dict(ctr.refusals))
             node.sampler.take_peak()
             t0 = time.monotonic()
             out = getattr(run, "phase_" + ph["kind"])(ph)
             secs = time.monotonic() - t0
             after = proc_snapshot(node.pid) if node.pid else None
+            bc1, sf1 = box_counters(), store_files(node.store)
             peak = node.sampler.take_peak()
             rec = {"name": ph["name"], "kind": ph["kind"], "seconds": round(secs, 3), "measure": bool(ph.get("measure")),
                    "status": out.pop("status", "ok")}
@@ -1555,6 +1592,11 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
                 rec["io"] = {"read_bytes": (after["io"].get("read_bytes", 0) - ((before or {}).get("io") or {}).get("read_bytes", 0)),
                              "write_bytes": (after["io"].get("write_bytes", 0) - ((before or {}).get("io") or {}).get("write_bytes", 0))} if before and before["cpu_s"] is not None and ph["kind"] != "reopen" else None
                 rec["cpu_s"] = round(after["cpu_s"] - before["cpu_s"], 2) if before and after.get("cpu_s") is not None and ph["kind"] != "reopen" else None
+            rec["box_io"] = box_delta(bc0, bc1)
+            if before and after and before.get("io") and after.get("io"):
+                rec["io_full"] = {k: after["io"].get(k, 0) - before["io"].get(k, 0) for k in after["io"]}
+            rec["store_files_delta"] = {k: v[0] - sf0.get(k, (0, 0))[0] for k, v in sf1.items() if sf0.get(k) != v}
+            rec["store_octets"] = sum(v[0] for v in sf1.values())
             ops = sum((st or {}).get("n", 0) for st in (rec.get("cmd") or {}).values())
             if ops and rec.get("cpu_s") is not None:
                 rec["ops"], rec["cpu_ms_per_op"] = ops, round(rec["cpu_s"] * 1000.0 / ops, 3)

@@ -1591,6 +1591,71 @@
    "policy": {
     "exposure-connections": 128
    }
+  },
+  "design-io": {
+   "about": "Design seat (2026-10-12): resource counts per operation on a real filesystem. Per phase: process /proc io (all six fields), box block-layer deltas (reads, writes, sectors, flushes per device), ZIL kstat deltas, store file growth. Control idle first.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 10000,
+    "octets": 2048,
+    "fixture": "curve/n{N}",
+    "require_fixture": true
+   },
+   "phases": [
+    {
+     "name": "idle-control",
+     "kind": "idle",
+     "seconds": 20
+    },
+    {
+     "name": "post-c1",
+     "kind": "post",
+     "count": 1000,
+     "octets": 2048,
+     "connections": 1,
+     "measure": true
+    },
+    {
+     "name": "settle-1",
+     "kind": "idle",
+     "seconds": 15
+    },
+    {
+     "name": "post-c8",
+     "kind": "post",
+     "duration_s": 20,
+     "octets": 2048,
+     "connections": 8
+    },
+    {
+     "name": "settle-2",
+     "kind": "idle",
+     "seconds": 15
+    },
+    {
+     "name": "article",
+     "kind": "read",
+     "readers": 1,
+     "count": 2000,
+     "cmd": "ARTICLE"
+    },
+    {
+     "name": "over40",
+     "kind": "read",
+     "readers": 1,
+     "count": 300,
+     "cmd": "OVER40"
+    },
+    {
+     "name": "publish",
+     "kind": "publish"
+    }
+   ]
   }
  },
  "cells": {
@@ -1635,7 +1700,8 @@
   "M-OWNER": "owner-per-record",
   "M-OWNER-WIDE": "owner-per-record-wide",
   "M-OWNER-GCP": "owner-per-record-gcp",
-  "W2M": "readers-3m"
+  "W2M": "readers-3m",
+  "DESIGN-IO": "design-io"
  },
  "stores": {
   "1k": 1000,
