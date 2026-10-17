@@ -4,14 +4,14 @@
  "counts": {
   "proved": 6,
   "partial": 4,
-  "derived": 106,
+  "derived": 107,
   "none": 1746
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 4,
-   "derived": 105,
+   "derived": 106,
    "none": 1030
   },
   "ideal": {
@@ -8955,6 +8955,35 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-nop-parse-command",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-cevg-moderation-parse",
+    "fn-cevg-parse",
+    "fn-native-config-show",
+    "fn-nop-help-text",
+    "fn-nop-parse-account",
+    "fn-nop-parse-administration",
+    "fn-nop-parse-carry",
+    "fn-nop-parse-init",
+    "fn-nop-parse-keys",
+    "fn-nop-parse-moderate",
+    "fn-nop-parse-peering",
+    "fn-nop-parse-post",
+    "fn-nop-parse-principal",
+    "fn-nop-parse-run",
+    "fn-nop-parse-store",
+    "fn-nop-parse-tls",
+    "fn-nop-profile-decimal",
+    "fn-nop-watch-seconds"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-nop-parse-store",

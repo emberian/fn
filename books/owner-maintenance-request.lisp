@@ -240,14 +240,18 @@
                       *fn-nls-lf*))
       (list 1 (append (fn-nls-text (fn-omr-open-refusal-text open)) *fn-nls-lf*)))))
 
-; `health' on a stopped store: the not-running header (its exit code is the
-; header's, fn-nh-report-exit), how the last run ended, then the stopped
-; report's lines; nothing replayed.  LAST is the last-run observation
+; `health' on a stopped store: the not-running header when the config opened
+; (its exit code is the header's, fn-nh-report-exit), else the config
+; refusal's own exit and state=refused; then how the last run ended and the
+; stopped report's lines; nothing replayed.  LAST is the last-run observation
 ; `fn-nh-last-run-words' takes (nil when the image keeps none).
 (defun fn-omr-stopped-health-report (last config-octets header journal-octets obs)
   (declare (xargs :guard t :verify-guards nil))
   (let ((report (fn-omr-stopped-report config-octets header journal-octets obs)))
-    (append (fn-nh-not-running-header)
+    (append (if (equal (car report) 0)
+                (fn-nh-not-running-header)
+              (append (fn-nh-exit-prefix) (fn-nh-digit2 (car report))
+                      (fn-nls-text " state=refused") *fn-nls-lf*))
             (fn-nh-last-run-words last)
             (cadr report)
             ; The ten states (books/native-health.lisp *fn-nh-states*) over a
