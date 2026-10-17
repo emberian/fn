@@ -667,7 +667,7 @@ class FaultFrameworkTests(unittest.TestCase):
         for spec in data['workloads'].values():
             for hook in spec.get('hooks', []):
                 self.assertTrue((root / hook).is_file(), hook)
-        hook = (root / 'planning/evidence/load/hooks/f2-crash.lisp').read_text()
+        hook = (root / 'tools/load/hooks/f2-crash.lisp').read_text()
         host = (root / 'host/native/io.lisp').read_text() + (root / 'host/native/owner.lisp').read_text()
         for boundary in faults.BOUNDARIES:
             self.assertIn(boundary, hook)
@@ -1019,7 +1019,8 @@ echo cell >> "$EVENTS"; exit 23''',
         self.assertIn('| 200000 | FAIL | 100000 | 2 |', out.getvalue())
 
     def test_ship_payload_is_shared_and_includes_w7_hook(self):
-        self.assertTrue(any('w7hook.lisp' in src for src, _ in driver.SHIP_FILES))
+        self.assertTrue(any(src == 'tools/' for src, _ in driver.SHIP_FILES))
+        self.assertTrue((driver.HOOKS / 'w7hook.lisp').is_file())
         with patch.object(driver, 'ssh', return_value=SimpleNamespace(check_returncode=lambda: None)) as ssh, \
                 patch.object(driver.subprocess, 'run', return_value=SimpleNamespace(returncode=0)) as run:
             driver.ship_tree('hbox', '/ship')

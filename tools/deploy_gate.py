@@ -1315,7 +1315,7 @@ def evidence_path(given: str | None, repo: Path, default_name: str) -> Path:
     if given:
         path = Path(given).expanduser()
         return path if path.is_absolute() else (repo / path)
-    return repo / "planning" / "evidence" / default_name
+    return repo / "build" / "evidence" / default_name   # gitignored: evidence never enters git
 
 
 def resolve(repo: Path, commit: str) -> tuple[str, str]:

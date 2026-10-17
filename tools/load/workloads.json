@@ -684,7 +684,7 @@
     }
    ],
    "hooks": [
-    "planning/evidence/load/hooks/f2-crash.lisp"
+    "tools/load/hooks/f2-crash.lisp"
    ]
   },
   "fault-framing": {
@@ -767,7 +767,7 @@
     }
    ],
    "hooks": [
-    "planning/evidence/load/hooks/f1-delay.lisp"
+    "tools/load/hooks/f1-delay.lisp"
    ]
   },
   "fault-index-saturation": {
@@ -793,7 +793,7 @@
     }
    ],
    "hooks": [
-    "planning/evidence/load/hooks/f4-index.lisp"
+    "tools/load/hooks/f4-index.lisp"
    ]
   },
   "fault-index-omission": {
@@ -1199,7 +1199,7 @@
     }
    ],
    "hooks": [
-    "planning/evidence/load/hooks/f2-crash.lisp"
+    "tools/load/hooks/f2-crash.lisp"
    ]
   },
   "extent-cache": {
@@ -1238,7 +1238,7 @@
     }
    ],
    "hooks": [
-    "planning/evidence/load/hooks/f4-index.lisp"
+    "tools/load/hooks/f4-index.lisp"
    ]
   },
   "owner-per-record": {
@@ -1467,7 +1467,7 @@
    }
   },
   "owner-per-record-gcp": {
-   "about": "owner-per-record's W1 fill with a candidate collector policy (planning/evidence/load/hooks/m34-gc-policy.lisp): a full collection whenever the dynamic usage passes 1.25 times the live usage at the last full collection plus twice the trigger. Builder M, memory landing 3+4: whether that policy holds the resident set to the equation's collector term, and what its pauses cost.",
+   "about": "owner-per-record's W1 fill with a candidate collector policy (tools/load/hooks/m34-gc-policy.lisp): a full collection whenever the dynamic usage passes 1.25 times the live usage at the last full collection plus twice the trigger. Builder M, memory landing 3+4: whether that policy holds the resident set to the equation's collector term, and what its pauses cost.",
    "preset": "filled",
    "groups": [
     "fn.letters",

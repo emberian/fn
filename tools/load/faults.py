@@ -464,7 +464,7 @@ class Campaign:
         work = parent.work / ('fault-%04d' % self.serial)
         work.mkdir()
         hook_name = 'f2-crash.lisp' if hook is True else hook
-        hooks = [Path(__file__).resolve().parents[2] / 'planning/evidence/load/hooks' / hook_name] if hook else []
+        hooks = [Path(__file__).resolve().parents[2] / 'tools/load/hooks' / hook_name] if hook else []
         node = type(parent)(parent.target, work, parent.flags, parent.groups,
                             parent.env['SBCL_USER_ARGS'], hooks, work / 'gc.log', {}, 1,
                             parent.heap_mode)
