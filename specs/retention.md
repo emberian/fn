@@ -9,8 +9,7 @@ the very pin inserted or matched, never infer success from a record kind.
 at most its fuel. `fn-ovc-result` distinguishes a complete `(:done view)`, a
 yielded NIL, and `(:error :delta)` for an unsupported operation.
 
-The underlying `fn-vcu-step` walks one sibling or string character and rebuilds
-one persistent path cell per tick. It does not coerce the whole subject,
+The cursor step does not coerce the whole subject,
 refresh all obligations, or run a whole trie update inside one scheduling
 step. The completed trie equals `fn-vdc-bump`/`fn-vdc-unbump`; the full view
 also carries the exact total increment/decrement. Old views remain immutable.

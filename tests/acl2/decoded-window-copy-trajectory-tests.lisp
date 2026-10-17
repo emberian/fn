@@ -1,5 +1,4 @@
 (in-package "ACL2")
-(include-book "../../books/decoded-window-copy-trajectory")
 (include-book "extent-window-compressed-tests")
 
 ; External raw-DEFLATE fixture: 251 A octets. The whole decoder and the

@@ -115,12 +115,7 @@ key and LISTGROUP query contract; they do not replace the Message-ID trie.
 
 The concrete writer issues generation and page reservations through the shared
 resource pool, dispatches one maintained builder continuation per step, and
-publishes the completed generation. Its internal census is
-`fn-iwd-census(op, pc, builder, pending, slotdepth, capacity)` in
-`books/index-writer-operation-demand.lisp`: the six selectors are
-`:generation-reserve`, `:generation-register`, `:page-reserve`,
-`:page-register`, `:writer-step`, and `:publish`. Index owns projection of
-those arguments from actual STATE/backing; they are not native row setters.
+publishes the completed generation.
 The census names the exact dispatcher entry and retains fixed metadata,
 chunk/recursion/scalar domains and old/new/shared source references. Tuple
 widths and array capacities are logical slots, never runtime byte tariffs.
@@ -133,9 +128,7 @@ geometry and do not directly populate PRS resident/disk/descriptor/worker/identi
 coordinates. The actual reserve contributes one spent identity; these metadata
 actions issue no disk I/O, descriptor registration or worker creation. Resident
 allowance still needs the selected compiled closure, retained overlap,
-collector and affine lifetime qualification. The installed source-domain and
-allowance lowering are absent: `fn-iwd-demand` returns
-`:runtime-operation-unavailable` and NIL even for a shaped family/table.
+collector and affine lifetime qualification.
 The helper locality theorem and literal census checks are a component of
 SCN-212; the host-called demand/caller, funding and native publication boundary
 remains planned, with no composed proof events claimed.

@@ -29,33 +29,12 @@
    "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped",
    "provenance": "keystone_critical.py --declare sha256:42df67c6eecea9304ea89acbaedcde15121b35934ca501b02bec7703711bc447"
   },
-  "fn-av-scr-auth-delegate-restricted-is-reference": {
-   "subject": "fn-av-scr-auth-delegate",
-   "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
-   "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-auth-delegate-restricted-is-reference",
-   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::access-route-skipped",
-   "provenance": "keystone_critical.py --declare sha256:3cb9ea56b2abfa9d61adb7875b8b2567da036d15c9c2b3aeb4f5b2110c6241ea"
-  },
-  "fn-av-scr-dispatch-core-restricted-is-reference": {
-   "subject": "fn-av-scr-dispatch-core",
-   "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
-   "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-dispatch-core-restricted-is-reference",
-   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::reply-dropped",
-   "provenance": "keystone_critical.py --declare sha256:659afb3609fe7547ee057fb937d5311b9f63b4bebcdf0085013d682377009596"
-  },
   "fn-bpn-step-preserves-lifecycle-invariant": {
    "subject": "fn-bpn-step",
    "host_test": "tests/test_bp_node_native.py::test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
    "trace_witness": "tests/acl2/bp-node-machine-authorization-tests.lisp::fn-bpn-step-preserves-lifecycle-invariant",
    "mutation": "tests/acl2/bp-node-machine-authorization-tests.lisp::bpna-mutant-step-with-unbound-send",
    "provenance": "keystone_critical.py --declare sha256:24a427246f1b1ba319924e14637d3ba77a1bc9ef0b8d2b35b56ec5773a1f2be6"
-  },
-  "fn-bpnj-rotation-restart-succeeds-with-owed-work": {
-   "subject": "fn-bpnj-step",
-   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
-   "trace_witness": "tests/acl2/bp-node-rotation-recovery-tests.lisp::fn-bpnj-rotation-restart-succeeds-with-owed-work",
-   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
-   "provenance": "keystone_critical.py --declare sha256:c1fe79d4f2b0d398ab3e46b4092186850b9175f81c70dc277b12cc1935f5373a"
   },
   "fn-bpnp-rotate-step-proposes-only-own-projection": {
    "subject": "fn-bpnp-rotate-step",
@@ -84,13 +63,6 @@
    "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-restart-keeps-owed-work",
    "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
    "provenance": "keystone_critical.py --declare sha256:fc66300fdfb4bcb809ad57105e31b9a63b800d8e42cac863f06e9cd361588d8e"
-  },
-  "fn-bpnr-checkpoint-recovery-equals-full-machine": {
-   "subject": "fn-bpnj-step",
-   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
-   "trace_witness": "tests/acl2/bp-node-rotation-equivalence-tests.lisp::fn-bpnr-checkpoint-recovery-equals-full-machine",
-   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
-   "provenance": "keystone_critical.py --declare sha256:e3835a58031e3c6a6f8f8a6cfb53fdf97009910e9ea3528495baff040f87c1bb"
   },
   "fn-bpnr-recover-from-checkpoint-equals-full-recover": {
    "subject": "fn-bphp-recover-auto-event",

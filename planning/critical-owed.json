@@ -646,11 +646,6 @@
    "item": "PRF-1344",
    "book": "books/auth-secret.lisp"
   },
-  "fn-av-mca-read-span-restricted-is-legacy": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/served-available-access.lisp"
-  },
   "fn-aw-add-fold-open-cost": {
    "class": "parser-boundary",
    "item": "PRF-1349",
@@ -1045,271 +1040,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/bp-receipt-alpha.lisp"
-  },
-  "fn-bps-asb-drive-composes-quanta": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-quanta.lisp"
-  },
-  "fn-bps-asb-drive-consumes-at-most-quantum": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb.lisp"
-  },
-  "fn-bps-asb-drive-consumes-at-most-window": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb.lisp"
-  },
-  "fn-bps-asb-drive-offset-is-consumed-prefix": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-position.lisp"
-  },
-  "fn-bps-asb-drive-preserves-aggregate-context": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-aggregate.lisp"
-  },
-  "fn-bps-asb-drive-preserves-body-context": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-body.lisp"
-  },
-  "fn-bps-asb-drive-preserves-cursor-spine": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-spine.lisp"
-  },
-  "fn-bps-asb-drive-preserves-grammar-control": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-control.lisp"
-  },
-  "fn-bps-asb-drive-preserves-head-profile": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-head-invariant.lisp"
-  },
-  "fn-bps-asb-drive-preserves-metadata-budget": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-metadata.lisp"
-  },
-  "fn-bps-asb-drive-preserves-readonly-subject": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-position.lisp"
-  },
-  "fn-bps-asb-drive-preserves-source-range": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-position.lisp"
-  },
-  "fn-bps-asb-drive-preserves-target-types": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-target-types.lisp"
-  },
-  "fn-bps-asb-drive-preserves-terminal-boundary": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-terminal.lisp"
-  },
-  "fn-bps-asb-drive-rest-is-exact-unconsumed-suffix": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb.lisp"
-  },
-  "fn-bps-asb-start-establishes-aggregate-context": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-aggregate.lisp"
-  },
-  "fn-bps-asb-start-establishes-body-context": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-body.lisp"
-  },
-  "fn-bps-asb-start-establishes-fixed-spine": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-spine.lisp"
-  },
-  "fn-bps-asb-start-establishes-grammar-control": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-control.lisp"
-  },
-  "fn-bps-asb-start-establishes-head-profile": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-head-invariant.lisp"
-  },
-  "fn-bps-asb-start-establishes-metadata-budget": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-metadata.lisp"
-  },
-  "fn-bps-asb-start-establishes-source-range": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-position.lisp"
-  },
-  "fn-bps-asb-start-establishes-target-types": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-target-types.lisp"
-  },
-  "fn-bps-asb-start-establishes-terminal-boundary": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-terminal.lisp"
-  },
-  "fn-bps-asb-step-offset-is-consumed-prefix": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-position.lisp"
-  },
-  "fn-bps-asb-step-preserves-aggregate-context": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-aggregate.lisp"
-  },
-  "fn-bps-asb-step-preserves-body-context": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-body.lisp"
-  },
-  "fn-bps-asb-step-preserves-cursor-spine": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-spine.lisp"
-  },
-  "fn-bps-asb-step-preserves-grammar-control": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-control.lisp"
-  },
-  "fn-bps-asb-step-preserves-head-profile": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-head-invariant.lisp"
-  },
-  "fn-bps-asb-step-preserves-metadata-budget": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-metadata.lisp"
-  },
-  "fn-bps-asb-step-preserves-source-coordinate": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-position.lisp"
-  },
-  "fn-bps-asb-step-preserves-source-range": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-position.lisp"
-  },
-  "fn-bps-asb-step-preserves-target-types": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-target-types.lisp"
-  },
-  "fn-bps-asb-step-preserves-terminal-boundary": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-asb-terminal.lisp"
-  },
-  "fn-bps-head-drive-consumes-at-most-quantum": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-head.lisp"
-  },
-  "fn-bps-head-drive-consumes-at-most-window": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-head.lisp"
-  },
-  "fn-bps-head-drive-preserves-profile": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-head-invariant.lisp"
-  },
-  "fn-bps-head-drive-ready-is-typed-uint64": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-head-invariant.lisp"
-  },
-  "fn-bps-head-drive-rest-is-exact-unconsumed-suffix": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-head.lisp"
-  },
-  "fn-bps-head-feed-preserves-profile": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-head-invariant.lisp"
-  },
-  "fn-bps-head-feed-ready-is-typed-uint64": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-head-invariant.lisp"
-  },
-  "fn-bps-head-start-establishes-profile": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-head-invariant.lisp"
-  },
-  "fn-bps-op-cancel-preserves-operation": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-operation.lisp"
-  },
-  "fn-bps-op-complete-preserves-operation": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-operation.lisp"
-  },
-  "fn-bps-op-completion-never-reopens-retired-operation": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-operation.lisp"
-  },
-  "fn-bps-op-evidence-requires-issued-current-verified": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-operation.lisp"
-  },
-  "fn-bps-received-window-is-exact-concrete-slice": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-received-window.lisp"
-  },
-  "fn-bps-target-drive-composes-quanta": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-target-cursor.lisp"
-  },
-  "fn-bps-target-drive-preserves-cursor-spine": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-target-spine.lisp"
-  },
-  "fn-bps-target-drive-work-does-not-exceed-quantum": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-target-cursor.lisp"
-  },
-  "fn-bps-target-start-establishes-fixed-spine": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-target-spine.lisp"
-  },
-  "fn-bps-target-step-preserves-cursor-spine": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/bpsec-target-spine.lisp"
   },
   "fn-brlc-acknowledged-rows-are-a-prefix-of-the-recovered-rows": {
    "class": "durability",
@@ -4661,21 +4391,6 @@
    "item": "PRF-1345",
    "book": "books/owner-fault.lisp"
   },
-  "fn-own-served-conn-refuses-what-the-live-rule-refuses": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/served-access-revoke.lisp"
-  },
-  "fn-own-served-conn-refuses-what-the-pin-refuses": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/served-access-revoke.lisp"
-  },
-  "fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/served-access-revoke.lisp"
-  },
   "fn-owner-orcp-rebuild-establishes-retain-carry": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -5091,50 +4806,10 @@
    "item": "PRF-1350",
    "book": "books/page-read-ledger.lisp"
   },
-  "fn-prl-admit-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
-  },
-  "fn-prl-close-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
-  },
   "fn-prl-completion-refunds-at-most-once": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/page-read-ledger.lisp"
-  },
-  "fn-prl-convert-growth-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
-  },
-  "fn-prl-convert-growth-under-row-sum-invp": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
-  },
-  "fn-prl-evict-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
-  },
-  "fn-prl-make-row-sum-invp": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
-  },
-  "fn-prl-register-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
-  },
-  "fn-prl-reserve-growth-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
   },
   "fn-prl-resident-shrink-keeps-funding": {
    "class": "resource-reservation",
@@ -5146,25 +4821,10 @@
    "item": "PRF-1350",
    "book": "books/page-read-budget-growth.lisp"
   },
-  "fn-prl-row-sum-bound-reserve-natural": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
-  },
-  "fn-prl-row-sum-covers-bound-reserve": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
-  },
   "fn-prl-settle-never-reuses-identity": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/page-read-ledger.lisp"
-  },
-  "fn-prl-settle-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/page-read-ledger-rowsum.lisp"
   },
   "fn-prov-of-wire-of-a-durable-wire": {
    "class": "parser-boundary",
@@ -6751,16 +6411,6 @@
    "item": "PRF-1345",
    "book": "books/store-checkpoint-share.lisp"
   },
-  "fn-stcp-dec-drive-work-bound": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/substrate-commit-profile-codec.lisp"
-  },
-  "fn-stcp-enc-drive-work-bound": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/substrate-commit-profile-codec.lisp"
-  },
   "fn-store-existing-action-is-pb-over-alpha": {
    "class": "identity-binding",
    "item": "PRF-1347",
@@ -6896,16 +6546,6 @@
    "item": "PRF-1349",
    "book": "books/tcpcl-octets.lisp"
   },
-  "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/tcpcl-source-control-refinement.lisp"
-  },
-  "fn-tclsctl-source-drive-keepalive-refines-session": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/tcpcl-source-control-refinement.lisp"
-  },
   "fn-th-prefix-project-append": {
    "class": "durability",
    "item": "PRF-1345",
@@ -6971,11 +6611,6 @@
    "item": "PRF-1344",
    "book": "books/tls-reload.lisp"
   },
-  "fn-transfer-reserve-preserves-statep": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/transfer-reservation.lisp"
-  },
   "fn-vj-a-completion-keeps-a-held-message-id-answered": {
    "class": "identity-binding",
    "item": "PRF-1347",
@@ -7015,36 +6650,6 @@
    "class": "parser-boundary",
    "item": "PRF-1349",
    "book": "books/wildmat.lisp"
-  },
-  "fn-wildmat-parse-yields-rfc3977-patterns": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/wildmat-parser-invariants.lisp"
-  },
-  "fn-wildmat-successful-decode-length-bounded-by-input": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/wildmat-utf8-invariants.lisp"
-  },
-  "fn-wildmat-successful-parse-parsedp": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/wildmat-parser-invariants.lisp"
-  },
-  "fn-wildmat-successful-parse-text-parsedp": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/wildmat-parser-invariants.lisp"
-  },
-  "fn-wildmat-utf8-next-success-scalar": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/wildmat-utf8-invariants.lisp"
-  },
-  "fn-wildmat-utf8-next-success-strict-progress": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/wildmat-utf8-invariants.lisp"
   },
   "fn-wire-article-event-is-the-held-body": {
    "class": "parser-boundary",

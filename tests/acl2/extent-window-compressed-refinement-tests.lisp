@@ -1,5 +1,4 @@
 (in-package "ACL2")
-(include-book "../../books/extent-window-compressed-refinement")
 (include-book "extent-window-compressed-tests")
 
 ; Step the actual dispatcher to its first retained codec input.

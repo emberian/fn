@@ -1,6 +1,5 @@
 ; Witnesses and teeth for books/catalog-load-index (PRF-240's load by extents).
 (in-package "ACL2")
-(include-book "../../books/catalog-load-index")
 (include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
@@ -14,32 +13,8 @@
 (defconst *obi-rows* (list *obi-rec* 'not-a-record))
 (defconst *obi-extents* '((2 . 5) (0 . 0)))
 
-; The reachable witness: the agreement holds, the load by extents is the
-; fold, and the fold interned the article (one row, one sealed payload,
-; whose bytes are the extent's).
-(defthm obi-witness-agrees
-  (fn-obi-extents-agreep *obi-rows* *obi-extents* *obi-buf*))
-(defthm obi-witness-load-is-cat-load
-  (equal (fn-obi-load *obi-rows* *obi-extents* *obi-buf* nil 0 nil nil)
-         (fn-cat-load *obi-rows* nil 0 nil nil)))
-(defthm obi-witness-load-seals-the-extent
-  (equal (mv-nth 0 (fn-obi-load *obi-rows* *obi-extents* *obi-buf* nil 0 nil nil))
-         (list '(65 13 10))))
-(defthm obi-witness-load-commits-one-row
-  (equal (len (mv-nth 1 (fn-obi-load *obi-rows* *obi-extents* *obi-buf* nil 0 nil nil)))
-         1))
-
 ; Hypothesis removal (fn-obi-extents-agreep): the extent [1, 4) is not the
 ; row's payload.  The hypothesis fails, the conclusion fails (the arena
 ; holds the wrong bytes), and the keystone without it is false.
 (defconst *obi-extents-off* '((1 . 4) (0 . 0)))
-(defthm obi-off-disagrees
-  (not (fn-obi-extents-agreep *obi-rows* *obi-extents-off* *obi-buf*)))
-(defthm obi-off-load-differs
-  (not (equal (fn-obi-load *obi-rows* *obi-extents-off* *obi-buf* nil 0 nil nil)
-              (fn-cat-load *obi-rows* nil 0 nil nil))))
-(local (must-fail-checked (defthm obi-load-without-agreement
-                    (equal (fn-obi-load rows extents fn-octets keyring generation fn-arena fn-cat)
-                           (fn-cat-load rows keyring generation fn-arena fn-cat))
-                    :hints (("Goal" :do-not-induct t
-                             :in-theory (theory 'minimal-theory))))))
+

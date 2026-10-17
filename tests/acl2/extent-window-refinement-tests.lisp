@@ -1,5 +1,4 @@
 (in-package "ACL2")
-(include-book "../../books/extent-window-refinement")
 (include-book "extent-window-capture-tests")
 
 ; Literal positive, both retained and newly captured bytes, after a real

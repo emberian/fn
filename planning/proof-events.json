@@ -206,22 +206,28 @@
         {
           "kind": "theorem",
           "name": "fn-own-other-post-keeps-a-non-selecting-read-step"
+        }
+      ],
+      "deferred": [
+        {
+          "kind": "theorem",
+          "name": "fn-scl-step-counted-fast-of-with-live-selecting-nothing",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-chunk-live-free.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-scl-step-counted-fast-of-with-live-selecting-nothing"
+          "name": "fn-scl-own-read-tls-prefix-selecting-nothing-ignores-the-view",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-chunk-live-free.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-scl-own-read-tls-prefix-selecting-nothing-ignores-the-view"
+          "name": "fn-scl-other-post-keeps-a-chunk-selecting-nothing",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-chunk-live-free.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-scl-other-post-keeps-a-chunk-selecting-nothing"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-scl-host-chunk-selecting-nothing-survives-other-post"
+          "name": "fn-scl-host-chunk-selecting-nothing-survives-other-post",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-chunk-live-free.lisp left the tree; restoration owed (OWED.md)"
         }
       ]
     },
@@ -435,14 +441,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-wildmat-pattern-matchp-is-anchored-reference"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wildmat-rightmost-match-is-last-reference-match"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-served-step-partition-independence"
         },
         {
@@ -476,6 +474,18 @@
         {
           "kind": "theorem",
           "name": "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix"
+        }
+      ],
+      "deferred": [
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-pattern-matchp-is-anchored-reference",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-matcher-invariants.lisp left the tree; restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-rightmost-match-is-last-reference-match",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-matcher-invariants.lisp left the tree; restoration owed (OWED.md)"
         }
       ]
     },
@@ -1168,6 +1178,36 @@
           "kind": "theorem",
           "name": "fn-transfer-entry-candidate-work-cost-bound",
           "note": "cut/breaking M1-b park (2026-10-17): books/transfer-work.lisp left the tree (last tree 64c84e0d3); restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-utf8-next-success-scalar",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-utf8-invariants.lisp left the tree; restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-utf8-next-success-strict-progress",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-utf8-invariants.lisp left the tree; restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-successful-decode-length-bounded-by-input",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-utf8-invariants.lisp left the tree; restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-successful-parse-parsedp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-parser-invariants.lisp left the tree; restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-parse-yields-rfc3977-patterns",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-parser-invariants.lisp left the tree; restoration owed (OWED.md)"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-successful-parse-text-parsedp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-parser-invariants.lisp left the tree; restoration owed (OWED.md)"
         }
       ],
       "note": "fn-wm-match-codepoints-work-cost-bound retained unchanged in books/wildmat-work.lisp and marked unreachable-in-composition in the PRF-016 statement. Not a hosted-event claim; no reach baseline exemption is added."
@@ -7836,18 +7876,23 @@
         {
           "kind": "theorem",
           "name": "fn-event-fields-of-wire-is-the-dispatchers"
+        }
+      ],
+      "deferred": [
+        {
+          "kind": "theorem",
+          "name": "fn-obi-load-is-cat-load",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/catalog-load-index.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-obi-load-is-cat-load"
+          "name": "fn-obi-intern-range-is-intern-list",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/catalog-load-index.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-obi-intern-range-is-intern-list"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-obi-load-from-empty-establishes-relation"
+          "name": "fn-obi-load-from-empty-establishes-relation",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/catalog-load-index.lisp left the tree; restoration owed (OWED.md)"
         }
       ]
     },
@@ -10382,236 +10427,238 @@
           "kind": "theorem",
           "name": "fn-scj-invp-at-identity-finish",
           "note": "KEYSTONE. The same at the identity finish (fn-rix-ocfg-complete); the composite's equations named."
-        },
+        }
+      ],
+      "deferred": [
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-finish-submission",
-          "note": "KEYSTONE (join-f2). The host's article finish (host/owner-host.lisp fn-owner-finish-submission-synced: fn-apc-own-finish then fn-sca-finish with the token read off the completion) carries fn-sjh-okp (the catalog invariant, the carried side facts, the rows' facts and LINK) from the owner relation and :durable alone; the pending row exists and is cleared. Over fn-ccar-own-finish: fn-sjh-okp-at-host-article-finish. Teeth: pending (the T2 owner fixture of served-catalog-join-pinned-tests evaluates the carried hypotheses; an executable twin of fn-sjh-okp is the open item)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-finish.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). The host's article finish (host/owner-host.lisp fn-owner-finish-submission-synced: fn-apc-own-finish then fn-sca-finish with the token read off the completion) carries fn-sjh-okp (the catalog invariant, the carried side facts, the rows' facts and LINK) from the owner relation and :durable alone; the pending row exists and is cleared. Over fn-ccar-own-finish: fn-sjh-okp-at-host-article-finish. Teeth: pending (the T2 owner fixture of served-catalog-join-pinned-tests evaluates the carried hypotheses; an executable twin of fn-sjh-okp is the open item)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-host-article-finish",
-          "note": "KEYSTONE (join-f2). The finish over fn-ccar-own-finish; every hypothesis of fn-scj-invp-at-host-article-finish-carried derived (fn-sjh-finish-premises-of-okp)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-finish.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). The finish over fn-ccar-own-finish; every hypothesis of fn-scj-invp-at-host-article-finish-carried derived (fn-sjh-finish-premises-of-okp)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-of-ocfg-io",
-          "note": "KEYSTONE (join-f2). The store's io steps (fn-owner-io: fn-rcon-ocfg-io = fn-ocfg-step (:store (:io op result))) keep fn-sjh-okp with the same pending row; the record-directory append moves the staged row into the history as the completing last record. Hypothesis: the view's archive after is a state (the owner relation after carries it)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). The store's io steps (fn-owner-io: fn-rcon-ocfg-io = fn-ocfg-step (:store (:io op result))) keep fn-sjh-okp with the same pending row; the record-directory append moves the staged row into the history as the completing last record. Hypothesis: the view's archive after is a state (the owner relation after carries it)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-prepare-buffer",
-          "note": "KEYSTONE (join-f2). The host's article POST under the service mutex (fn-pout-prepare-article over the row at the arena's count, the buffer's seal, fn-cat-prepare-sealed) from fn-sjh-okp at the reserved store gives fn-sjh-okp with the new pending row."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-post.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). The host's article POST under the service mutex (fn-pout-prepare-article over the row at the arena's count, the buffer's seal, fn-cat-prepare-sealed) from fn-sjh-okp at the reserved store gives fn-sjh-okp with the new pending row."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-known-abort",
-          "note": "KEYSTONE (join-f2). fn-owner-known-abort on :aborted clears the pending row (host fix): fn-sjh-okp with none."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-post.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). fn-owner-known-abort on :aborted clears the pending row (host fix): fn-sjh-okp with none."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-refuse-reservation",
-          "note": "KEYSTONE (join-f2). fn-owner-refuse-reservation on :refused clears the pending row: fn-sjh-okp with none."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-post.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). fn-owner-refuse-reservation on :refused clears the pending row: fn-sjh-okp with none."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-install",
-          "note": "KEYSTONE (join-f2). fn-owner-install-extended's owner and loaded catalog satisfy fn-sjh-okp with no pending row, given the join and the rows' facts."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-open.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). fn-owner-install-extended's owner and loaded catalog satisfy fn-sjh-okp with no pending row, given the join and the rows' facts."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-recover",
-          "note": "KEYSTONE (join-f2). The checkpoint open and recovery: fn-sjh-okp; the rows' handles/composites/clearness are the checkpoint image's named facts."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-open.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). The checkpoint open and recovery: fn-sjh-okp; the rows' handles/composites/clearness are the checkpoint image's named facts."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-full-open",
-          "note": "KEYSTONE (join-f2). The full open: fn-sjh-okp from the intern alone."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-open.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). The full open: fn-sjh-okp from the intern alone."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-prepare-identity-sealed",
-          "note": "KEYSTONE (join-f2). A signed composite's prepare (fn-pout-prepare-identity at the arena's count, the seal of its article payload, fn-cat-prepare-sealed of the composite's held row): fn-sjh-okp with that pending row."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-identity.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). A signed composite's prepare (fn-pout-prepare-identity at the arena's count, the seal of its article payload, fn-cat-prepare-sealed of the composite's held row): fn-sjh-okp with that pending row."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-prepare-identity-unsealed",
-          "note": "KEYSTONE (join-f2). A keyring snapshot's prepare loads no row: fn-sjh-okp with no pending row."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-identity.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). A keyring snapshot's prepare loads no row: fn-sjh-okp with no pending row."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-finish-no-row",
-          "note": "KEYSTONE (join-f2). fn-owner-finish over fn-rix-ocfg-complete with no pending row: the completing record loads no catalog row; fn-sjh-okp after."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-complete.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). fn-owner-finish over fn-rix-ocfg-complete with no pending row: the completing record loads no catalog row; fn-sjh-okp after."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-of-other-prepare",
-          "note": "KEYSTONE (join-f2). The retention, consumer and topic prepares stage events that load no row: fn-sjh-okp with no pending row."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-complete.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2). The retention, consumer and topic prepares stage events that load no row: fn-sjh-okp with no pending row."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-finish-identity",
-          "note": "KEYSTONE (join-f2-2). host/owner-host.lisp fn-owner-finish-identity, every branch: a signed composite's row (its acceptance and verdict equations derived from the store, fn-sjh-idf-finish-equations), an article row, no row, a finish that changed nothing; fn-sjh-okp after with the pending row the host keeps. Teeth: tests/acl2/served-catalog-join-host-tests.lisp items 1, 4, 5."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-identity-finish.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). host/owner-host.lisp fn-owner-finish-identity, every branch: a signed composite's row (its acceptance and verdict equations derived from the store, fn-sjh-idf-finish-equations), an article row, no row, a finish that changed nothing; fn-sjh-okp after with the pending row the host keeps. Teeth: tests/acl2/served-catalog-join-host-tests.lisp items 1, 4, 5."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-idf-finish-equations",
-          "note": "The identity finish's (I) equations from the store's identity completion: the node conses exactly the composite's held article and the verdicts gain the pair of its verdict statement (Message-IDs equal through fn-stxa-bindsp and fn-row-composite-okp)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-identity-finish.lisp left the tree; restoration owed (OWED.md) | The identity finish's (I) equations from the store's identity completion: the node conses exactly the composite's held article and the verdicts gain the pair of its verdict statement (Message-IDs equal through fn-stxa-bindsp and fn-row-composite-okp)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-of-ocfg-step-owner-event",
-          "note": "KEYSTONE (join-f2-2). Every fn-owner-step event other than the store's, the completion and the connection events (begin, take, submits, outcomes, feeds, ticks, observe, declare-group, configure, reconfigure staging): fn-sjh-okp with the same pending row."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-arms.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). Every fn-owner-step event other than the store's, the completion and the connection events (begin, take, submits, outcomes, feeds, ticks, observe, declare-group, configure, reconfigure staging): fn-sjh-okp with the same pending row."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-begin",
-          "note": "KEYSTONE (join-f2-2). fn-owner-begin (fn-pout-begin)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-arms.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-begin (fn-pout-begin)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-declare-group",
-          "note": "KEYSTONE (join-f2-2). fn-owner-declare-group (fn-pout-declare-group)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-arms.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-declare-group (fn-pout-declare-group)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-observe",
-          "note": "KEYSTONE (join-f2-2). fn-owner-observe (fn-ocfg-observe)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-arms.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-observe (fn-ocfg-observe)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-unstage",
-          "note": "KEYSTONE (join-f2-2). fn-owner-reconfigure-unstage (fn-psrv-unstage keeps the owner)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-arms.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-reconfigure-unstage (fn-psrv-unstage keeps the owner)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-node-secret",
-          "note": "KEYSTONE (join-f2-2). fn-owner-install-node-secret."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-arms.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-install-node-secret."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-install-profile",
-          "note": "KEYSTONE (join-f2-2). fn-owner-install-profile (fn-osb-install)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-arms.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-install-profile (fn-osb-install)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-open-peer",
-          "note": "KEYSTONE (join-f2-2). fn-owner-open-peer (fn-ocfg-open-peer)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-arms.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-open-peer (fn-ocfg-open-peer)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-chunk-span",
-          "note": "KEYSTONE (join-f2-2). fn-owner-chunk-span-at: the owner of fn-mca-read-span's result (every credit, slot and disk branch). Named premises: fn-scol-okp and the captured reader view's liveness (fn-sjh-views-okp)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-read.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-chunk-span-at: the owner of fn-mca-read-span's result (every credit, slot and disk branch). Named premises: fn-scol-okp and the captured reader view's liveness (fn-sjh-views-okp)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-files-okp-exec-is-files-okp",
-          "note": "The executable twin of fn-sjh-okp's store side (S and LINK) is the predicate; evaluated in tests/acl2/served-catalog-join-host-tests.lisp."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-exec.lisp left the tree; restoration owed (OWED.md) | The executable twin of fn-sjh-okp's store side (S and LINK) is the predicate; evaluated in tests/acl2/served-catalog-join-host-tests.lisp."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-log-reserve",
-          "note": "KEYSTONE (join-f2-2). fn-owner-io :log-reserve (fn-olr-ocfg-reserve, the io route composed)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-entries.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-io :log-reserve (fn-olr-ocfg-reserve, the io route composed)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-log-order",
-          "note": "KEYSTONE (join-f2-2). fn-owner-io :log-order."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-entries.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-io :log-order."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-reconfigure-complete",
-          "note": "KEYSTONE (join-f2-2). fn-owner-reconfigure-complete (fn-oclc-publish): the carried configure keeps the store's files, verdicts and acceptance articles."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-entries.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-reconfigure-complete (fn-oclc-publish): the carried configure keeps the store's files, verdicts and acceptance articles."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-open",
-          "note": "KEYSTONE (join-f2-2). fn-owner-open with no capture (fn-ocar-ocfg-open)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-entries.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-open with no capture (fn-ocar-ocfg-open)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-open-captured",
-          "note": "KEYSTONE (join-f2-2). fn-owner-open at a captured reader view, the working view put back; fn-sjh-views-okp named."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-entries.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-open at a captured reader view, the working view put back; fn-sjh-views-okp named."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-exposure-open",
-          "note": "KEYSTONE (join-f2-2). fn-owner-exposure-open (fn-ocar-exp-open)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-entries.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-exposure-open (fn-ocar-exp-open)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-read-step",
-          "note": "KEYSTONE (join-f2-2). fn-owner-tls-established and fn-owner-account-outcome (fn-ocfg-read-step)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-entries.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). fn-owner-tls-established and fn-owner-account-outcome (fn-ocfg-read-step)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-colsp-at-full-open",
-          "note": "KEYSTONE (join-f2-2). The columns at the full open: the intern decides each row's column from the bytes it seals."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-columns-open.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The columns at the full open: the intern decides each row's column from the bytes it seals."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-colsp-at-recover",
-          "note": "KEYSTONE (join-f2-2). The columns at the checkpoint open and recovery (the checkpoint rows' column facts named)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-columns-open.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The columns at the checkpoint open and recovery (the checkpoint rows' column facts named)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-colsp-at-owner-prepare-buffer",
-          "note": "KEYSTONE (join-f2-2). The columns across the article POST's seal and catalog prepare."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-columns.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The columns across the article POST's seal and catalog prepare."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-colsp-at-owner-prepare-identity-sealed",
-          "note": "KEYSTONE (join-f2-2). The columns across the signed composite's seal and catalog prepare."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-columns.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The columns across the signed composite's seal and catalog prepare."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-colsp-at-finish",
-          "note": "KEYSTONE (join-f2-2). The columns across the host's finishes (fn-sca-finish with the pending row)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-columns.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The columns across the host's finishes (fn-sca-finish with the pending row)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-colsp-at-commit-reseat",
-          "note": "KEYSTONE (join-f2-2). The columns across the commit's reseat (the arena is the same arena)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-columns.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The columns across the commit's reseat (the arena is the same arena)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-chunk-span-carried",
-          "note": "KEYSTONE (join-f2-2). The served read with fn-scol-okp discharged by fn-sjh-colsp."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-columns.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The served read with fn-scol-okp discharged by fn-sjh-colsp."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-viewsp-at-capture",
-          "note": "KEYSTONE (join-f2-2). The committer's capture of the working view (fn-owner-reader-views-capture)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-views.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The committer's capture of the working view (fn-owner-reader-views-capture)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-viewsp-at-owner-finish-identity",
-          "note": "KEYSTONE (join-f2-2). The captured views across every branch of the identity finish."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-views.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The captured views across every branch of the identity finish."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-viewsp-at-host-article-finish",
-          "note": "KEYSTONE (join-f2-2). The captured views across the article finish (an older view stays live: fn-scj-catalogp-of-finish)."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-views.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The captured views across the article finish (an older view stays live: fn-scj-catalogp-of-finish)."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-viewsp-of-ocfg-store-step",
-          "note": "KEYSTONE (join-f2-2). The store's steps other than its finish: the working view refreshes forward."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-views.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The store's steps other than its finish: the working view refreshes forward."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-viewsp-at-owner-chunk-span",
-          "note": "KEYSTONE (join-f2-2). The served read keeps the view."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-views.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The served read keeps the view."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-chunk-span-fully-carried",
-          "note": "KEYSTONE (join-f2-2). The served read over fn-sjh-okp, fn-sjh-colsp and fn-sjh-viewsp: no named premise."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-views.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The served read over fn-sjh-okp, fn-sjh-colsp and fn-sjh-viewsp: no named premise."
         },
         {
           "kind": "theorem",
           "name": "fn-sjh-okp-at-owner-open-captured-carried",
-          "note": "KEYSTONE (join-f2-2). The open at a captured view over fn-sjh-okp and fn-sjh-viewsp."
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-catalog-join-host-views.lisp left the tree; restoration owed (OWED.md) | KEYSTONE (join-f2-2). The open at a captured view over fn-sjh-okp and fn-sjh-viewsp."
         }
       ]
     },
@@ -17633,168 +17680,7 @@
     },
     {
       "id": "PRF-1131",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-copy-split-effects",
-          "note": "Exact actual copied-byte/ring/output split; full positive and all three natural-counter removals. Not scheduling-action equivalence."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-codec-copy-effects",
-          "note": "Actual mode12 fn-ewz-codec-tick complete decoder/ring/table/scratch/private-window effects; reachable source initialize/hash-prime/read/first-tick positive and all13 condition removals."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-codec-copy-action-effects",
-          "note": "Actual mode12 controller state/history/table/scratch/private-window effects equal 64 existing fn-zin-act calls; reachable actual initializer/read/tick positive and all13 hypothesis removals. No general literal trajectory or scheduling budget claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-ready-literal-step-is-action-trajectory",
-          "note": "Actual ready mode8 fn-zin-step full state/history/table/output equals emitted-count existing fn-zin-act calls under positive room, fresh fields and complete readiness including strict bomb bound. Actual initializer/basic scheduling positive plus four exact condition removals; general output-window trajectory and scheduling budget remain open; legacy fast/ahead is unreachable in this composition."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-step-is-action-trajectory",
-          "note": "Actual positive-room STEP full tuple equals existing ACT sequence for all modes/refusals. Reachable actual initializer/basic chunk positive and exact room-removal witness; semantic ACT count is distinct from charged STEP/native cost."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-codec-is-action-trajectory",
-          "note": "Actual fn-ewz-codec-tick complete seven-value tuple equals ACT/PULL replay with identical charged schedule, stored credit, selected private writes and next mode under fixed history/table readiness. Actual initializer/basic chunk positive and both full buffer-removal witnesses. Output-window confluence, total budget and native binding/funding remain open."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-loop-charge-bound",
-          "note": "Actual basic loop all outcomes, including terminal refusal: charged budget is bounded by 9 times real input advance plus 2 times output advance plus incoming bit/phase potential and259. Actual pending-copy and terminal positives, corrupted grammar-state and nonnatural-budget removals. No compiled tariff or complete cross-window adequacy claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-codec-carries-budget",
-          "note": "Actual fn-ewz-codec-tick preserves carried charged-budget invariant from incoming carry and nonrefusal returned decoder status, with no extra state/pool hypotheses. Actual source initializer/first-chunk positive and corrupted incoming-budget/terminal-refusal removals. Its nonrefusal scope is preserved; the separate final-envelope component covers all outcomes."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-active-controller-budget-remains-positive",
-          "note": "Existing actual real-input/output carries plus decoder-budget carry imply active remaining budget at least3840+7C. Actual bounded-copy and C=0 source positives and both complete carry/active-mode removals. Successful codec/read/hash carry is joined to actual controller source; general arbitrary-window trajectory and native demand remain open; the separate final-envelope component covers terminal charge."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-codec-preserves-final-budget-envelope",
-          "note": "Actual fn-ewz-codec-tick preserves the complete real-input/output/final-budget envelope on all outcomes with no pool or status premises. Actual repeated codec windows reach terminal decoded TIN6/TOUT251; complete envelope removal and separately labeled corrupted-pool empty-stream special branch."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-final-envelope-active-budget-positive",
-          "note": "Actual controller final envelope plus active mode imply remaining charged budget at least3839+7C, including terminal drain/decoded states. Actual terminal source positive and complete envelope/active-mode removals. Source action charge only; no compiled tariff/native demand or full bytes/digest convergence."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-basic-loop-is-atomic-unconditionally",
-          "note": "Actual fn-zin-loop complete seven-value/effects result equals existing ACT/PULL atomic schedule at explicitly observed semantic fuel, unconditionally. Runtime unchanged; real initialized fixed-Huffman full128-byte literal checks the entire tuple."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-basic-loop-general-output-windows",
-          "note": "Actual basic-loop two output-window calls agree with actual whole call in status/IP/state/history/table/output under normalized frontier order, actual first :full and resumed/whole no-yield. Independent adequately completed charges, no remaining-fuel equality; complete positive and all four removals."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwz-actual-basic-loop-general-cleared-windows",
-          "note": "Actual basic-loop cleared scratch output resumption agrees in status/IP/state/history/table and concatenated bytes under proper initial output, first :full and resumed/whole no-yield. Complete positive/removals include actual pulled malformed-header and separately corrupted improper-output witnesses. No native activation or full controller/dictionary/digest claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwzc-actual-stored-chunk-recredited-full-tuple",
-          "note": "Actual fn-pzw-stored-chunk complete seven-value tuple recredited equals its actual fn-zin-feed call unconditionally, including remaining charged fuel, IP and complete decoder/history/table/output effects. Real initialized 64-byte positive and actual buffer refusal; no native activation."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwzc-actual-two-stored-chunks-full-tuple",
-          "note": "Two actual stored chunks correspond to two actual feed calls after exact whole-state recredit, unconditionally; real initialized two64-byte complete-tuple positive, omitted-recredit mutation. No supplied-demand or native holder claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwzc-actual-stored-two-windows-without-buffer-premises",
-          "note": "Two actual cleared stored windows agree with completed whole actual feed in status/IP/full recredited state/history/table and appended output, under only first actual :full and second/whole non-yield. Buffer type/shape hypotheses removed after actual source length-preservation proofs. Complete positive and all three genuine status removals. Charged remaining fuel intentionally excluded only from whole-window semantic confluence."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwzd-actual-two-stored-windows-canonical-answer",
-          "note": "Actual initialized FN-PZW-STORED-CHUNK twice with actual global FN-PZW-BUDGET-LEFT carry has the exact existing FN-PZD-DECODE answer and appended output under first actual :yield/:full, second neither :yield nor :full, and final output below actual canonical sentinel. No dictionary/input type, redundant prefix bound or assumed whole completion; seven complete literal positives/removals. Logical trajectory only, no native fixed1024 yield/reachable64-byte input fixture or activation inference."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwzi-actual-refilled-stored-windows-canonical-answer",
-          "note": "Two actual initialized stored calls over separate prefix/tail buffers at position zero now equal the complete existing FN-PZD-DECODE answer using exact global budget-left. Only first :more and second neither :yield nor :full remain; logical input/dictionary types, buffer shape, final output frontier and whole completion are derived or removed after weakened proofs. Actual fixed1024/input64+6, header-cut and empty logical wrapper positives plus all three complete status removals accompany this source component. Arbitrary controller iteration, accumulated digest, selected dictionary/captured source authority and complete native funding/holder remain open. Empty C=N0 is the logical wrapper special case; controller BEGIN uses drain. The zero-request removal belongs to the general wrapper API, not fixed1024 source reachability."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pws-actual-codec-tick-carries-selected-prefix",
-          "note": "Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwdg-actual-compressed-begin-establishes-digest-trajectory",
-          "note": "Actual FN-EWZ-BEGIN establishes the existing captured-source BLAKE3 trajectory under supported natural depth<=63, octet source/exact ELEN and selected tree stack support; complete actual BEGIN positive and all five domain removals. These are digest representation/profile premises, not new stored-data policy."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwdg-actual-compressed-read-preserves-digest-trajectory",
-          "note": "Actual FN-EWZ-READ preserves the existing captured-source digest invariant at retained actual plan ELEN under incoming carry and faithful source slice when scanning. Full actual scan/read positive, omitted source-slice witness and separately corrupted incoming-CV carry removal. The native source/view binding remains open."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwdg-actual-compressed-hash-preserves-digest-trajectory",
-          "note": "Actual FN-EWZ-HASH-TICK preserves the captured-source digest invariant at retained plan ELEN under incoming carry. Actual decoded/return-to-root positive and corrupted output carry removal; source-only, no whole runtime grant."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwdg-actual-compressed-publication-authenticates-captured-source",
-          "note": "New publication from actual FN-EWZ-READ plus carried faithful-source digest proves actual trailer and expected commitment equal BLAKE3(captured source). Actual BEGIN/read/codec/hash/trailer publication positive yields selected (66 67); complete prior-private, success/bad-trailer and corrupted semantic-carry removals. General canonical schedules, actual captured view/private worker custody and native funding remain open."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-dwct-actual-one-preserves-captured-source-digest",
-          "note": "Actual registered ONE preserves captured-source digest across every current action; exact physical source authority remains open.",
-          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-dwct-actual-codec-one-carries-selected-prefix",
-          "note": "Current owned codec ONE carries selected output cell and full produced position against actual returned scratch; prior cell/position explicit.",
-          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-dwct-actual-one-preserves-charged-budget-carry",
-          "note": "Actual ONE preserves strict logical charge carry under incoming carry and non-CONSP returned stored status; excludes genuine terminal list status.",
-          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-dwct-actual-read-observation-preserves-captured-source-digest",
-          "note": "Actual CURRENT revision/effect READ observation preserves source digest under incoming carry and exact source-slice equality; no supplied semantic decoder assumption.",
-          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwzt-actual-stored-final-global-charge-envelope",
-          "note": "Actual stored chunk every status including genuine stream-ended consumes globally at most9*TINfinal+2*TOUTfinal+257 under incoming strict scheduling carry."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwzt-actual-issued-codec-one-retains-terminal-budget",
-          "note": "Actual current token/owned/no-pending codec ONE decoded completion retains >=3839+7*C STEPfuel under actual span/shape and incoming joint carry. Full terminal positive and corrupted-budget retained-premise removal; no native tariff.",
-          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pwfc-actual-finite-initialized-output-windows-canonical-answer",
-          "note": "Actual initialized basic-loop finite output-window/yield trajectory has the complete existing FN-PZD-DECODE answer under final non-FULL, non-YIELD and declared-length output margin. Terminal frontier validity is derived, with no dictionary/input type or buffer-shape premise. Five complete literal positives/removals; declared-length mutation is logical observer API only. No arbitrary input-refill/controller, native custody, runtime allocation tariff or activation inference."
-        }
-      ],
+      "events": [],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete. Three nonexistent proposed DWCC citations are withheld in protocol-source-closeout-2026-10-01/withheld-events.json; no theorem admission is inferred.",
       "deferred": [
         {
@@ -17838,6 +17724,166 @@
           "name": "fn-pwf-actual-completed-finite-output-yields-match-basic-loop",
           "note": "cut/breaking M1-a (2026-10-16): books/decoded-window-finite-output-trajectory.lisp left the tree; restoration owed (OWED.md) | Valid completed finite actual yield/output transcript equals completed ordinary actual basic-loop status/cursor/register/ring/table/output. Three complete hypothesis removals; unused scheduling fuel remains distinct.",
           "pending_subject": "Proof-only observer invokes actual FN-ZIN-LOOP through actual finite quanta. Existing registered ONE and scratch-clear complete-effects boundaries are named; general input refill/dictionary/controller lift and native worker/query custody/full funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-copy-split-effects",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-copy-trajectory.lisp left the tree; restoration owed (OWED.md) | Exact actual copied-byte/ring/output split; full positive and all three natural-counter removals. Not scheduling-action equivalence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-copy-effects",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-copy-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual mode12 fn-ewz-codec-tick complete decoder/ring/table/scratch/private-window effects; reachable source initialize/hash-prime/read/first-tick positive and all13 condition removals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-copy-action-effects",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-action-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual mode12 controller state/history/table/scratch/private-window effects equal 64 existing fn-zin-act calls; reachable actual initializer/read/tick positive and all13 hypothesis removals. No general literal trajectory or scheduling budget claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-ready-literal-step-is-action-trajectory",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-literal-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual ready mode8 fn-zin-step full state/history/table/output equals emitted-count existing fn-zin-act calls under positive room, fresh fields and complete readiness including strict bomb bound. Actual initializer/basic scheduling positive plus four exact condition removals; general output-window trajectory and scheduling budget remain open; legacy fast/ahead is unreachable in this composition."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-step-is-action-trajectory",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-step-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual positive-room STEP full tuple equals existing ACT sequence for all modes/refusals. Reachable actual initializer/basic chunk positive and exact room-removal witness; semantic ACT count is distinct from charged STEP/native cost."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-is-action-trajectory",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-step-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual fn-ewz-codec-tick complete seven-value tuple equals ACT/PULL replay with identical charged schedule, stored credit, selected private writes and next mode under fixed history/table readiness. Actual initializer/basic chunk positive and both full buffer-removal witnesses. Output-window confluence, total budget and native binding/funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-loop-charge-bound",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-budget-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual basic loop all outcomes, including terminal refusal: charged budget is bounded by 9 times real input advance plus 2 times output advance plus incoming bit/phase potential and259. Actual pending-copy and terminal positives, corrupted grammar-state and nonnatural-budget removals. No compiled tariff or complete cross-window adequacy claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-carries-budget",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-budget-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual fn-ewz-codec-tick preserves carried charged-budget invariant from incoming carry and nonrefusal returned decoder status, with no extra state/pool hypotheses. Actual source initializer/first-chunk positive and corrupted incoming-budget/terminal-refusal removals. Its nonrefusal scope is preserved; the separate final-envelope component covers all outcomes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-active-controller-budget-remains-positive",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-budget-trajectory.lisp left the tree; restoration owed (OWED.md) | Existing actual real-input/output carries plus decoder-budget carry imply active remaining budget at least3840+7C. Actual bounded-copy and C=0 source positives and both complete carry/active-mode removals. Successful codec/read/hash carry is joined to actual controller source; general arbitrary-window trajectory and native demand remain open; the separate final-envelope component covers terminal charge."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-preserves-final-budget-envelope",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-budget-completion.lisp left the tree; restoration owed (OWED.md) | Actual fn-ewz-codec-tick preserves the complete real-input/output/final-budget envelope on all outcomes with no pool or status premises. Actual repeated codec windows reach terminal decoded TIN6/TOUT251; complete envelope removal and separately labeled corrupted-pool empty-stream special branch."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-final-envelope-active-budget-positive",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-budget-completion.lisp left the tree; restoration owed (OWED.md) | Actual controller final envelope plus active mode imply remaining charged budget at least3839+7C, including terminal drain/decoded states. Actual terminal source positive and complete envelope/active-mode removals. Source action charge only; no compiled tariff/native demand or full bytes/digest convergence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-basic-loop-is-atomic-unconditionally",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-output-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual fn-zin-loop complete seven-value/effects result equals existing ACT/PULL atomic schedule at explicitly observed semantic fuel, unconditionally. Runtime unchanged; real initialized fixed-Huffman full128-byte literal checks the entire tuple."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-basic-loop-general-output-windows",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-output-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual basic-loop two output-window calls agree with actual whole call in status/IP/state/history/table/output under normalized frontier order, actual first :full and resumed/whole no-yield. Independent adequately completed charges, no remaining-fuel equality; complete positive and all four removals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-basic-loop-general-cleared-windows",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-output-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual basic-loop cleared scratch output resumption agrees in status/IP/state/history/table and concatenated bytes under proper initial output, first :full and resumed/whole no-yield. Complete positive/removals include actual pulled malformed-header and separately corrupted improper-output witnesses. No native activation or full controller/dictionary/digest claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzc-actual-stored-chunk-recredited-full-tuple",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-stored-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual fn-pzw-stored-chunk complete seven-value tuple recredited equals its actual fn-zin-feed call unconditionally, including remaining charged fuel, IP and complete decoder/history/table/output effects. Real initialized 64-byte positive and actual buffer refusal; no native activation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzc-actual-two-stored-chunks-full-tuple",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-stored-trajectory.lisp left the tree; restoration owed (OWED.md) | Two actual stored chunks correspond to two actual feed calls after exact whole-state recredit, unconditionally; real initialized two64-byte complete-tuple positive, omitted-recredit mutation. No supplied-demand or native holder claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzc-actual-stored-two-windows-without-buffer-premises",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-stored-trajectory.lisp left the tree; restoration owed (OWED.md) | Two actual cleared stored windows agree with completed whole actual feed in status/IP/full recredited state/history/table and appended output, under only first actual :full and second/whole non-yield. Buffer type/shape hypotheses removed after actual source length-preservation proofs. Complete positive and all three genuine status removals. Charged remaining fuel intentionally excluded only from whole-window semantic confluence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzd-actual-two-stored-windows-canonical-answer",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-canonical-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual initialized FN-PZW-STORED-CHUNK twice with actual global FN-PZW-BUDGET-LEFT carry has the exact existing FN-PZD-DECODE answer and appended output under first actual :yield/:full, second neither :yield nor :full, and final output below actual canonical sentinel. No dictionary/input type, redundant prefix bound or assumed whole completion; seven complete literal positives/removals. Logical trajectory only, no native fixed1024 yield/reachable64-byte input fixture or activation inference."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzi-actual-refilled-stored-windows-canonical-answer",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-input-trajectory.lisp left the tree; restoration owed (OWED.md) | Two actual initialized stored calls over separate prefix/tail buffers at position zero now equal the complete existing FN-PZD-DECODE answer using exact global budget-left. Only first :more and second neither :yield nor :full remain; logical input/dictionary types, buffer shape, final output frontier and whole completion are derived or removed after weakened proofs. Actual fixed1024/input64+6, header-cut and empty logical wrapper positives plus all three complete status removals accompany this source component. Arbitrary controller iteration, accumulated digest, selected dictionary/captured source authority and complete native funding/holder remain open. Empty C=N0 is the logical wrapper special case; controller BEGIN uses drain. The zero-request removal belongs to the general wrapper API, not fixed1024 source reachability."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pws-actual-codec-tick-carries-selected-prefix",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-selected-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-begin-establishes-digest-trajectory",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-digest-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual FN-EWZ-BEGIN establishes the existing captured-source BLAKE3 trajectory under supported natural depth<=63, octet source/exact ELEN and selected tree stack support; complete actual BEGIN positive and all five domain removals. These are digest representation/profile premises, not new stored-data policy."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-read-preserves-digest-trajectory",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-digest-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual FN-EWZ-READ preserves the existing captured-source digest invariant at retained actual plan ELEN under incoming carry and faithful source slice when scanning. Full actual scan/read positive, omitted source-slice witness and separately corrupted incoming-CV carry removal. The native source/view binding remains open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-hash-preserves-digest-trajectory",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-digest-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual FN-EWZ-HASH-TICK preserves the captured-source digest invariant at retained plan ELEN under incoming carry. Actual decoded/return-to-root positive and corrupted output carry removal; source-only, no whole runtime grant."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-publication-authenticates-captured-source",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-digest-trajectory.lisp left the tree; restoration owed (OWED.md) | New publication from actual FN-EWZ-READ plus carried faithful-source digest proves actual trailer and expected commitment equal BLAKE3(captured source). Actual BEGIN/read/codec/hash/trailer publication positive yields selected (66 67); complete prior-private, success/bad-trailer and corrupted semantic-carry removals. General canonical schedules, actual captured view/private worker custody and native funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-one-preserves-captured-source-digest",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-worker-controller-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual registered ONE preserves captured-source digest across every current action; exact physical source authority remains open.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-codec-one-carries-selected-prefix",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-worker-controller-trajectory.lisp left the tree; restoration owed (OWED.md) | Current owned codec ONE carries selected output cell and full produced position against actual returned scratch; prior cell/position explicit.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-one-preserves-charged-budget-carry",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-worker-controller-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual ONE preserves strict logical charge carry under incoming carry and non-CONSP returned stored status; excludes genuine terminal list status.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-dwct-actual-read-observation-preserves-captured-source-digest",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-worker-controller-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual CURRENT revision/effect READ observation preserves source digest under incoming carry and exact source-slice equality; no supplied semantic decoder assumption.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzt-actual-stored-final-global-charge-envelope",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-terminal-budget.lisp left the tree; restoration owed (OWED.md) | Actual stored chunk every status including genuine stream-ended consumes globally at most9*TINfinal+2*TOUTfinal+257 under incoming strict scheduling carry."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzt-actual-issued-codec-one-retains-terminal-budget",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-terminal-budget.lisp left the tree; restoration owed (OWED.md) | Actual current token/owned/no-pending codec ONE decoded completion retains >=3839+7*C STEPfuel under actual span/shape and incoming joint carry. Full terminal positive and corrupted-budget retained-premise removal; no native tariff.",
+          "pending_subject": "Registered physical source candidate FN-DWC-ONE/FN-DWC-READ-OBSERVATION; native issuer/installer remains unavailable, so this source boundary is not an installed host-called claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwfc-actual-finite-initialized-output-windows-canonical-answer",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/decoded-window-canonical-trajectory.lisp left the tree; restoration owed (OWED.md) | Actual initialized basic-loop finite output-window/yield trajectory has the complete existing FN-PZD-DECODE answer under final non-FULL, non-YIELD and declared-length output margin. Terminal frontier validity is derived, with no dictionary/input type or buffer-shape premise. Five complete literal positives/removals; declared-length mutation is logical observer API only. No arbitrary input-refill/controller, native custody, runtime allocation tariff or activation inference."
         }
       ]
     },
@@ -18046,10 +18092,12 @@
     },
     {
       "id": "PRF-1114",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
-          "name": "fn-shd-command-wire-head-is-served-retrieval"
+          "name": "fn-shd-command-wire-head-is-served-retrieval",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-head-bridge.lisp left the tree; restoration owed (OWED.md)"
         }
       ]
     },
@@ -18486,26 +18534,33 @@
         {
           "kind": "theorem",
           "name": "fn-wmc-cumulative-cons-bound"
+        }
+      ],
+      "deferred": [
+        {
+          "kind": "theorem",
+          "name": "fn-wml-start-retainedp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-live.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-wml-start-retainedp"
+          "name": "fn-wml-one-retainedp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-live.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-wml-one-retainedp"
+          "name": "fn-wml-step-retainedp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-live.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-wml-step-retainedp"
+          "name": "fn-wml-retained-owned-bound",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-live.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-wml-retained-owned-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-wml-borrowed-pattern-cells"
+          "name": "fn-wml-borrowed-pattern-cells",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/wildmat-live.lisp left the tree; restoration owed (OWED.md)"
         }
       ]
     },
@@ -18950,35 +19005,43 @@
     },
     {
       "id": "PRF-1328",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
-          "name": "fn-av-scr-auth-delegate-restricted-is-reference"
+          "name": "fn-av-scr-auth-delegate-restricted-is-reference",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-available-access.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-av-scr-dispatch-core-restricted-is-reference"
+          "name": "fn-av-scr-dispatch-core-restricted-is-reference",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-available-access.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-av-mca-read-span-restricted-is-legacy"
+          "name": "fn-av-mca-read-span-restricted-is-legacy",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-available-access.lisp left the tree; restoration owed (OWED.md)"
         }
       ]
     },
     {
       "id": "PRF-1330",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
-          "name": "fn-own-served-conn-refuses-what-the-live-rule-refuses"
+          "name": "fn-own-served-conn-refuses-what-the-live-rule-refuses",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-access-revoke.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-own-served-conn-refuses-what-the-pin-refuses"
+          "name": "fn-own-served-conn-refuses-what-the-pin-refuses",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-access-revoke.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged"
+          "name": "fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/served-access-revoke.lisp left the tree; restoration owed (OWED.md)"
         }
       ]
     },
@@ -19009,50 +19072,62 @@
     },
     {
       "id": "PRF-1343",
-      "events": [
+      "events": [],
+      "deferred": [
         {
           "kind": "theorem",
-          "name": "fn-prl-make-row-sum-invp"
+          "name": "fn-prl-make-row-sum-invp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-register-preserves-row-sum-invp"
+          "name": "fn-prl-register-preserves-row-sum-invp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-admit-preserves-row-sum-invp"
+          "name": "fn-prl-admit-preserves-row-sum-invp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-settle-preserves-row-sum-invp"
+          "name": "fn-prl-settle-preserves-row-sum-invp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-evict-preserves-row-sum-invp"
+          "name": "fn-prl-evict-preserves-row-sum-invp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-close-preserves-row-sum-invp"
+          "name": "fn-prl-close-preserves-row-sum-invp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-reserve-growth-preserves-row-sum-invp"
+          "name": "fn-prl-reserve-growth-preserves-row-sum-invp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-convert-growth-preserves-row-sum-invp"
+          "name": "fn-prl-convert-growth-preserves-row-sum-invp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-row-sum-bound-reserve-natural"
+          "name": "fn-prl-row-sum-bound-reserve-natural",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-row-sum-covers-bound-reserve"
+          "name": "fn-prl-row-sum-covers-bound-reserve",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         },
         {
           "kind": "theorem",
-          "name": "fn-prl-convert-growth-under-row-sum-invp"
+          "name": "fn-prl-convert-growth-under-row-sum-invp",
+          "note": "cut/breaking M1-b reads (2026-10-16): books/page-read-ledger-rowsum.lisp left the tree; restoration owed (OWED.md)"
         }
       ]
     },

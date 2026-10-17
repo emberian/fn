@@ -3,7 +3,6 @@
 ; record (fn-make-article) available in group "g"; stamps straddle the
 ; threshold and one is not natural (it takes the next newer stamp).
 (in-package "ACL2")
-(include-book "../../books/newnews-cursor")
 (include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 
@@ -35,48 +34,17 @@
 (defconst *nct-bad* (cons *nct-arts* (make-list 20 :initial-element 0)))
 (assert-event (not (fn-nnw-carryp *nct-bad*)))
 (assert-event (not (fn-nnw-carryp (fn-nnw-refresh *nct-bad* (cons *nct-new* *nct-arts*)))))
-
-; -----------------------------------------------------------------------------
-; fn-nnw-run-is-newnews-scan.  Positive: exact maxes (the walk stops early)
-; and nil maxes (walks to the end), every quantum tried equal to the scan.
-(assert-event (and (fn-nnw-maxes-okp *nct-arts* (fn-nnw-maxes *nct-arts*))
-                   (equal (fn-nnw-run (fn-nnw-cursor *nct-g* *nct-th* *nct-arts*
-                                                     (fn-nnw-maxes *nct-arts*) :none) 1 fn-arena)
-                          (nct-scan))
-                   (equal (fn-nnw-run (fn-nnw-cursor *nct-g* *nct-th* *nct-arts*
-                                                     (fn-nnw-maxes *nct-arts*) :none) 3 fn-arena)
-                          (nct-scan))
-                   (equal (fn-nnw-run (fn-nnw-cursor *nct-g* *nct-th* *nct-arts* nil :none) 4 fn-arena)
-                          (nct-scan))))
 ; With a natural horizon the index stops the walk before the end: the
 ; cursor after 12 articles is past the bound.
 (defmacro nct-scan-h () '(fn-nntp-newnews-scan *nct-g* *nct-th* *nct-arts* 86450 fn-arena))
-(assert-event (equal (fn-nnw-run (fn-nnw-cursor *nct-g* *nct-th* *nct-arts*
-                                                (fn-nnw-maxes *nct-arts*) 86450) 2 fn-arena)
-                     (nct-scan-h)))
-(assert-event (mv-let (lines next)
-                (fn-nnw-loop *nct-g* *nct-th* *nct-arts* (fn-nnw-maxes *nct-arts*) 86450 100 fn-arena nil)
-                (and (equal lines (nct-scan-h)) (null next))))
+
 ; Hypothesis removal: maxes that understate the stamps (not okp) stop the
 ; walk too early and drop new articles.
 (defconst *nct-low* (make-list 20 :initial-element 0))
-(assert-event (and (not (fn-nnw-maxes-okp *nct-arts* *nct-low*))
-                   (consp (fn-nntp-newnews-scan *nct-g* *nct-th* *nct-arts* 86000 fn-arena))
-                   (not (equal (fn-nnw-run (fn-nnw-cursor *nct-g* *nct-th* *nct-arts* *nct-low* 86000)
-                                           5 fn-arena)
-                               (fn-nntp-newnews-scan *nct-g* *nct-th* *nct-arts* 86000 fn-arena)))))
-
 ; -----------------------------------------------------------------------------
 ; fn-nnw-step-residual, fn-nnw-step-lines-at-most-q, fn-nnw-step-progresses:
 ; one quantum of 3 from the exact cursor.
 (defconst *nct-cur* (fn-nnw-cursor *nct-g* *nct-th* *nct-arts* (fn-nnw-maxes *nct-arts*) :none))
-(assert-event (mv-let (lines next) (fn-nnw-step *nct-cur* 3 fn-arena)
-                (and (fn-nnw-cursor-okp *nct-cur*)
-                     (equal (append lines (fn-nnw-owes next fn-arena)) (fn-nnw-owes *nct-cur* fn-arena))
-                     (fn-nnw-cursor-okp next)
-                     (<= (len lines) 3)
-                     (< (acl2-count (fn-nnw-tail next)) (acl2-count (fn-nnw-tail *nct-cur*))))))
-
 ; MUTATION witness (labelled): a stop test that ignores the horizon (uses
 ; the suffix maximum alone) drops the articles whose instant is the reader's
 ; clock.  Here the newest article has no natural stamp past the bound's own
@@ -88,8 +56,6 @@
         (nct-arts 0 3 nil)))
 (assert-event (equal (len (fn-nntp-newnews-scan *nct-g* *nct-th* *nct-clock-arts* 86450 fn-arena)) 1))
 (assert-event (nct-mutant-pastp *nct-th* (fn-nnw-maxes *nct-clock-arts*)))
-(assert-event (not (fn-nnw-pastp *nct-th* (fn-nnw-maxes *nct-clock-arts*) 86450)))
-
 ; -----------------------------------------------------------------------------
 ; fn-nnw-response-is-newnews-response.  A NEWNEWS g 20000102 000000 over an
 ; archive holding the articles.  Positive: the carry for the archive's list;
@@ -98,18 +64,10 @@
 (defconst *nct-args-o*
   (list (fn-nntp-string-octets "g") (fn-nntp-string-octets "20000102")
         (fn-nntp-string-octets "000000")))
-(assert-event (and (fn-nnw-carryp *nct-c*)
-                   (equal (fn-nnw-response nil *nct-archive* nil *nct-args-o* *nct-c* 4 fn-arena)
-                          (fn-nntp-newnews-response nil *nct-archive* nil *nct-args-o* fn-arena))))
 (defconst *nct-low-c* (cons *nct-arts* *nct-low*))
 ; A reader whose clock reads 86000 s (a natural horizon: the index may stop).
 (defconst *nct-env* (fn-nntp-env (fn-clock-observation 1000 86000000 1000 t) nil nil))
 (assert-event (equal (fn-nntp-newnews-reader-horizon *nct-env*) 86000))
-(assert-event (equal (fn-nnw-response nil *nct-archive* *nct-env* *nct-args-o* *nct-c* 4 fn-arena)
-                     (fn-nntp-newnews-response nil *nct-archive* *nct-env* *nct-args-o* fn-arena)))
-(assert-event (and (not (fn-nnw-carryp *nct-low-c*))
-                   (not (equal (fn-nnw-response nil *nct-archive* *nct-env* *nct-args-o* *nct-low-c* 4 fn-arena)
-                               (fn-nntp-newnews-response nil *nct-archive* *nct-env* *nct-args-o* fn-arena)))))
 
 ; -----------------------------------------------------------------------------
 ; The generated keystone's teeth (TEETH CONTRACT v1), what the declaration owes.

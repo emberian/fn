@@ -1463,7 +1463,7 @@
         "planning/evidence/wave-realignment-2026-09-19.md",
         "books/nntp-xref.lisp",
         "tests/test_native_reader_index.py",
-        "books/nov-line-projection.lisp"
+        "fdec9e4f9:books/nov-line-projection.lisp"
       ],
       "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open. LIST COUNTS (RFC 6048 section 2.2) answers each group's exact count from the pinned buckets (PRF-073), and a Message-ID retrieval answers the article's number in the selected group, or 0 (RFC 3977 section 6.2.1.2).",
       "keystones": [
@@ -3126,8 +3126,8 @@
         "planning/evidence/capacity-vector-2026-09-26.md",
         "books/store-carried-folds.lisp",
         "tests/acl2/store-carried-folds-tests.lisp",
-        "books/extent-window-source-words.lisp",
-        "books/extent-window-stream-semantics.lisp",
+        "fdec9e4f9:books/extent-window-source-words.lisp",
+        "fdec9e4f9:books/extent-window-stream-semantics.lisp",
         "tests/acl2/extent-window-stream-semantics-tests.lisp",
         "planning/evidence/extent-window-raw-semantics-source-2026-09-30.md"
       ],
@@ -5729,10 +5729,10 @@
         "books/payload-window.lisp",
         "books/extent-window-compressed.lisp",
         "tests/acl2/extent-window-compressed-tests.lisp",
-        "books/extent-window-compressed-input.lisp",
-        "tests/acl2/extent-window-compressed-input-tests.lisp",
-        "books/extent-window-compressed-output.lisp",
-        "tests/acl2/extent-window-compressed-output-tests.lisp",
+        "fdec9e4f9:books/extent-window-compressed-input.lisp",
+        "fdec9e4f9:tests/acl2/extent-window-compressed-input-tests.lisp",
+        "fdec9e4f9:books/extent-window-compressed-output.lisp",
+        "fdec9e4f9:tests/acl2/extent-window-compressed-output-tests.lisp",
         "planning/evidence/extent-window-output-source-2026-09-30.md"
       ]
     },

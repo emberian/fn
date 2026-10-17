@@ -1,7 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/pagestore-exec")
 (include-book "extent-window-stream-tests")
-(include-book "extent-window-stream-refinement-tests")
 (include-book "extent-window-plan-tests")
 (include-book "extent-window-buffer-tests")
 (include-book "extent-window-capture-tests")

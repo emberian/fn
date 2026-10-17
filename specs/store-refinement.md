@@ -271,8 +271,7 @@ publishes the accepted snapshot, and recovery resolves the retained snapshots.
 These writers can change the table. Recovery preserves the source context only
 when that source resolves its retained snapshots and those snapshots equal the
 actual identity replay of its durable history. The unchanged full retained
-Store relation at readiness establishes this premise
-(`fn-osr-ready-establishes-catalog-recovery-context`). This is proof-only coherence,
+Store relation at readiness establishes this premise. This is proof-only coherence,
 not a served history check. A matching generation alone does not establish that
 an arbitrary supplied context was computed under the source table. The held
 finish refinement retains its actual context hypothesis. Reachable enrollment,

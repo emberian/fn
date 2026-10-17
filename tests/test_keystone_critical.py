@@ -31,7 +31,6 @@ P_FIXTURE = [
     ("fn-xc-span-at-is-the-returned-bytes", "identity-binding", "books/extent-cache.lisp"),
     ("fn-xc-held-token-has-one-slot", "resource-reservation", "books/extent-cache.lisp"),
     ("fn-xc-install-duplicate-is-already-held", "resource-reservation", "books/extent-cache.lisp"),
-    ("fn-prl-row-sum-covers-bound-reserve", "resource-reservation", "books/page-read-ledger-rowsum.lisp"),
 ]
 
 

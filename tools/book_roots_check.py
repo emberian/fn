@@ -23,9 +23,6 @@ _ORPHAN = (
 O = _ORPHAN
 EXCLUDED: dict[str, str] = {
     "books/held-composite-fields.lisp": O,
-    "books/index-backing-publication-row-carry.lisp": O,
-    "books/index-backing-row-carry.lisp": O,
-    "books/index-backing-served-producer-carry.lisp": O,
 }
 
 
