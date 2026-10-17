@@ -72,6 +72,21 @@ def load(path=PATH):
     return data
 
 
+def select(data, keys):
+    """DATA with each lane cut to the cells KEYS names (comma-separated sweep
+    keys) and empty lanes dropped; None keeps every cell. An unknown key is an
+    error, so a typo never runs a smaller gate than asked."""
+    if not keys:
+        return data
+    want = [k for k in keys.split(',') if k]
+    known = {c['key'] for ln in data['lanes'] for c in ln['cells']}
+    missing = [k for k in want if k not in known]
+    if missing:
+        raise ValueError('unknown sweep key(s): ' + ','.join(missing))
+    lanes = [dict(ln, cells=[c for c in ln['cells'] if c['key'] in want]) for ln in data['lanes']]
+    return dict(data, lanes=[ln for ln in lanes if ln['cells']])
+
+
 def run_label(label, cell):
     return safe_name(label) + '-' + cell['key']
 
@@ -137,12 +152,15 @@ def queue_script(args, lane, data):
     return '\n'.join(lines) + '\n'
 
 
-def prepare_script(args, box):
+def prepare_script(args, box, data=None):
     directory = str(Path(image_path(args, box, {})).parent)
     q = shlex.quote
     sd = driver.BOX_BASE + '/sweeps/' + args.label
+    # The launchers the box's selected cells run (both when no selection).
+    names = sorted({c.get('image', 'fn-host') for ln in (data or {}).get('lanes', [])
+                    if ln['box'] == box for c in ln['cells']}) or ['fn-host', 'fn-host-developer']
     return ('set -eu\n' + '\n'.join('test -x ' + q(directory + '/' + name)
-                                  for name in ('fn-host', 'fn-host-developer')) +
+                                  for name in names) +
             '\ntest -s ' + q(directory + '/TREE_SHA') + '\nmkdir -p ' + q(driver.BOX_BASE + '/sweeps') +
             '\nmkdir ' + q(sd) + '\n')
 
@@ -172,9 +190,11 @@ def install_script(args, box, data):
 
 
 def cmd_plan_install(args):
-    data = load()
+    data = select(load(), getattr(args, 'cells', None))
     for box in ('persvati', 'hbox') if args.box == 'both' else (args.box,):
-        prepare = prepare_script(args, box)
+        if not any(ln['box'] == box for ln in data['lanes']):
+            continue
+        prepare = prepare_script(args, box, data)
         script = install_script(args, box, data)
         if args.cmd == 'plan':
             print('# ' + box + ' installation (tree shipped by driver.ship_tree)')
@@ -378,6 +398,7 @@ def main(argv=None):
         if name != 'table':
             p.add_argument('--image-dir', required=True, help='image directory on each box')
             p.add_argument('--persvati-image-dir', help='alternate image directory on persvati')
+            p.add_argument('--cells', help='only these sweep keys, comma-separated (e.g. tcmd-10k,w1-default)')
     probe = sub.add_parser('probe', help=argparse.SUPPRESS)
     probe.add_argument('--image', required=True)
     probe.add_argument('--out', required=True)

@@ -855,6 +855,23 @@ class ImageSweepTests(unittest.TestCase):
         self.assertEqual(w15['sweep'], ['1k', '10k', '25k', '50k', '100k'])
         self.assertEqual(w15['image'], 'fn-host-developer')
 
+    def test_cells_selects_a_subset_and_refuses_unknown_keys(self):
+        data = sweep.select(sweep.load(), 'tcmd-10k,w1-small')
+        self.assertEqual([ln['box'] for ln in data['lanes']], ['persvati'])
+        self.assertEqual([c['key'] for c in data['lanes'][0]['cells']], ['tcmd-10k', 'w1-small'])
+        self.assertEqual(len([c for ln in sweep.select(sweep.load(), None)['lanes'] for c in ln['cells']]), 29)
+        with self.assertRaises(ValueError):
+            sweep.select(sweep.load(), 'tcmd-10k,no-such-key')
+        prepare = sweep.prepare_script(self.args(box='persvati'), 'persvati', data)
+        self.assertIn('/images/persvati/fn-host\n', prepare + '\n')
+        self.assertNotIn('fn-host-developer', prepare)
+        with patch('sys.stdout', new_callable=io.StringIO) as out, patch.object(driver, 'ssh') as ssh:
+            self.assertEqual(sweep.main(['plan', '--box', 'persvati', '--image-dir', '/i', '--label', 't',
+                                         '--cells', 'tcmd-1k,w14']), 0)
+        ssh.assert_not_called()
+        runs = [ln for ln in out.getvalue().splitlines() if ln.startswith('run ')]
+        self.assertEqual([r.split()[1] for r in runs], ['t-tcmd-1k', 't-w14'])
+
     def test_plan_is_offline_contains_controls_and_valid_shell(self):
         data = sweep.load()
         with patch('sys.stdout', new_callable=io.StringIO) as out, patch.object(driver, 'ssh') as ssh:

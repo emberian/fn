@@ -2,7 +2,8 @@
 # tools/cut_gate.sh -- the classical gate of the breaking cut (cut/breaking).
 #
 #   tools/cut_gate.sh [--families F,G,...] [--reuse-image NAME/native-LABEL]
-#                     [--no-gauntlet] [--time-box persvati|none] [--label L] REV
+#                     [--no-gauntlet] [--time-box persvati|hbox] [--time-cells KEYS]
+#                     [--time-baseline LABEL] [--time-reps N] [--label L] REV
 #
 # Certify is not a gate on this branch; this is.  In order:
 #   1. the host image builds on hbox (production, developer, dtn, dtn-developer) for REV and
@@ -15,9 +16,21 @@
 #      PRE-EXISTING list below (control run #4 at 49b470a99, the branch base).
 #   2. the judged gauntlet rows: F2S, F4, F6 (fault corpus) and W13 (the
 #      memory guardrail cell) on hbox against the production image of step 1;
-#      T-CMD@10k and W1 (T-POST) on --time-box (persvati by default: hbox time
-#      figures are reported, never judged, LOAD-PROGRAM s.1) when the image
-#      can be copied there, else on hbox marked REPORTED.
+#      the time rows on --time-box.  persvati (default) is the site of record:
+#      the production image built on hbox is copied there (launcher's core path
+#      rewritten, core sha256 checked equal to hbox's; both boxes run
+#      /tank/fn/sbcl 2.6.8), then tools.load.sweep runs --time-cells (default
+#      T-CMD at 1k/10k/25k/50k, W1 default and small; w14 adds T-LIN) under
+#      the sweep's own admission (flock on cores 12-23, busy <= 4 probe,
+#      MemoryMax scope), --time-reps times (default 3).  The gate judges
+#      GAUNTLET.md's bars on each cell's per-metric MEDIAN over its admitted
+#      repetitions (busy <= 4 at start and end); the T-CMD exponent is the
+#      least-squares slope of log median-p99 on log n per command, as
+#      GAUNTLET.md derives it.  One repetition of a few-ms p99 flaps a 0.2
+#      exponent bar (measured 10-17: GROUP 0.03 at the base, 0.20 at 37d29e264).
+#      The sweep's own table (time-table.md) is kept beside, against
+#      --time-baseline (an earlier gate's LABEL-t) when given.  --time-box hbox runs T-CMD@10k and W1
+#      on hbox, REPORTED: hbox time figures are never judged (LOAD-PROGRAM s.1).
 #   3. the guardrail from W13: VmHWM <= 249 MB (254,976 KiB) and RssAnon <= 115 MB
 #      (117,760 KiB; W13 reports no separate shmem figure)
 #      on the small preset (ember 2026-10-14: 1.5x the baseline).
@@ -28,12 +41,21 @@
 set -eu
 cd "$(dirname "$0")/.."
 FAMILIES=; REUSE=; GAUNTLET=1; TIMEBOX=persvati; LABEL=
+TCELLS=tcmd-1k,tcmd-10k,tcmd-25k,tcmd-50k,w1-default,w1-small; TBASE=; TREPS=3
+# Time rows FAILING at the branch base 49b470a99 (persvati, 3 reps, M30 10-17),
+# "key:ROW" (tcmd:CMD for a derived exponent).  Carried: reported, not NEW.
+# Shrink only.  greeting: median p99 0.27/0.16/0.31/2.21 ms at 1k/10k/25k/50k,
+# slope 0.39 (drain 0.31; 37d29e264 0.33): a sub-ms p99 its 50k point carries.
+TCARRIED="tcmd:greeting"
 while [ $# -gt 1 ]; do
     case $1 in
         --families) FAMILIES=$2; shift 2 ;;
         --reuse-image) REUSE=$2; shift 2 ;;
         --no-gauntlet) GAUNTLET=0; shift ;;
         --time-box) TIMEBOX=$2; shift 2 ;;
+        --time-cells) TCELLS=$2; shift 2 ;;
+        --time-baseline) TBASE=$2; shift 2 ;;
+        --time-reps) TREPS=$2; shift 2 ;;
         --label) LABEL=$2; shift 2 ;;
         *) echo "cut_gate: unknown option $1" >&2; exit 2 ;;
     esac
@@ -101,26 +123,69 @@ if [ "$GAUNTLET" = 1 ] && [ "$IMAGE_OK" = 1 ]; then
     if ! ssh hbox "test -f /tank/fn/scratch/load-harness/runs/$GL/status"; then log "RED: gauntlet did not start (no status file; see $OUT/gauntlet.launch.log)"; GVIOL="launch"; fi
     until [ -n "$GVIOL" ] || ssh hbox "grep -q -v running /tank/fn/scratch/load-harness/runs/$GL/status" 2>/dev/null; do sleep 60; done
     rsync -a --exclude samples.json "hbox:/tank/fn/scratch/load-harness/runs/$GL/" "$OUT/gauntlet/" > /dev/null 2>&1 || true
-    TL=$LABEL-t
-    if [ "$TIMEBOX" = persvati ] && ssh hbox "rsync -a $IMG $IMG.core $IMG.catalog persvati:/tank/fn/scratch/load-harness/images/$LABEL/ 2>/dev/null"; then
-        log "time rows on persvati: T-CMD@10k,W1 (judged)"
-        python3 -m tools.load.driver box --box persvati --image "/tank/fn/scratch/load-harness/images/$LABEL/fn-host" --cell T-CMD@10k,W1 --label "$TL" --rev "$SHA" --cores 12-23 > "$OUT/time.launch.log" 2>&1 || true
-        TB=persvati
+    TL=$LABEL-t; TB=$TIMEBOX; TERR=
+    if [ "$TIMEBOX" = persvati ]; then
+        PD=/tank/fn/scratch/load-harness/images/$LABEL
+        log "time rows on persvati ($TCELLS, judged): copying $RUNDIR/tree/build -> persvati:$PD"
+        if ssh persvati sh -s -- "$RUNDIR/tree/build" "$PD" > "$OUT/time.copy.log" 2>&1 <<'COPY'
+set -eu
+B=$1; D=$2
+mkdir -p "$D"
+rsync -a "hbox:$B/fn-host" "hbox:$B/fn-host.core" "hbox:$B/TREE_SHA" "$D/"
+rsync -a "hbox:$B/lib/" "$D/lib/"
+sed -i "s#$B/#$D/#g" "$D/fn-host"
+if grep -o "/tank/fn/scratch/[^\" ]*" "$D/fn-host" | grep -v "^$D/"; then echo "a foreign path is left in the launcher" >&2; exit 3; fi
+want=$(ssh hbox "sha256sum $B/fn-host.core" | cut -d' ' -f1)
+have=$(sha256sum "$D/fn-host.core" | cut -d' ' -f1)
+[ "$want" = "$have" ] || { echo "core sha256 differs: hbox $want, persvati $have" >&2; exit 4; }
+echo "copied core $have tree $(cat "$D/TREE_SHA")"
+COPY
+        then
+            log "$(tail -1 "$OUT/time.copy.log")"
+            i=1
+            while [ "$i" -le "$TREPS" ]; do
+                TLI=$TL; [ "$i" = 1 ] || TLI=$TL-r$i
+                set -- --box persvati --image-dir "$PD" --label "$TLI" --cells "$TCELLS"
+                [ -z "$TBASE" ] || set -- "$@" --baseline "$TBASE"
+                python3 -m tools.load.sweep install "$@" >> "$OUT/time.launch.log" 2>&1 || { log "RED: sweep install refused for $TLI (see $OUT/time.launch.log)"; TERR="$TERR time-launch"; }
+                i=$((i + 1))
+            done
+        else log "RED: the image did not copy to persvati (see $OUT/time.copy.log)"; TERR="$TERR time-copy"; fi
+        if [ -z "$TERR" ]; then
+            i=1
+            while [ "$i" -le "$TREPS" ]; do
+                TLI=$TL; [ "$i" = 1 ] || TLI=$TL-r$i
+                # each queue's own PID file; ps only looks
+                QPID=$(ssh persvati "cat /tank/fn/scratch/load-harness/sweeps/$TLI/persvati.pid")
+                while ssh persvati "ps -p $QPID > /dev/null"; do sleep 60; done
+                for k in $(printf %s "$TCELLS" | tr ',' ' '); do
+                    mkdir -p "$OUT/time/$k/r$i"
+                    rsync -a --exclude samples.json "persvati:/tank/fn/scratch/load-harness/runs/$TLI-$k/" "$OUT/time/$k/r$i/" > /dev/null 2>&1 || true
+                done
+                i=$((i + 1))
+            done
+            set -- --label "$TL" --box persvati
+            [ -z "$TBASE" ] || set -- "$@" --baseline "$TBASE"
+            python3 -m tools.load.sweep table "$@" > "$OUT/time-table.md" 2> "$OUT/time-table.err" || log "RED: sweep table failed (see $OUT/time-table.err)"
+            log "time table: $OUT/time-table.md"
+        fi
     else
         log "time rows on hbox: T-CMD@10k,W1 (REPORTED, not judged: hbox time figures are never judged)"
         python3 -m tools.load.driver box --box hbox --image "$IMG" --cell T-CMD@10k,W1 --label "$TL" --rev "$SHA" > "$OUT/time.launch.log" 2>&1 || true
-        TB=hbox
+        sleep 90
+        if ssh hbox "test -f /tank/fn/scratch/load-harness/runs/$TL/status"; then
+            until ssh hbox "grep -q -v running /tank/fn/scratch/load-harness/runs/$TL/status" 2>/dev/null; do sleep 60; done
+            rsync -a --exclude samples.json "hbox:/tank/fn/scratch/load-harness/runs/$TL/" "$OUT/time/" > /dev/null 2>&1 || true
+        else log "RED: time rows did not start on hbox (no status file; see $OUT/time.launch.log)"; TERR="$TERR time-launch"; fi
     fi
-    sleep 90
-    if ssh "$TB" "test -f /tank/fn/scratch/load-harness/runs/$TL/status"; then
-        until ssh "$TB" "grep -q -v running /tank/fn/scratch/load-harness/runs/$TL/status" 2>/dev/null; do sleep 60; done
-        rsync -a --exclude samples.json "$TB:/tank/fn/scratch/load-harness/runs/$TL/" "$OUT/time/" > /dev/null 2>&1 || true
-    else log "RED: time rows did not start on $TB (no status file; see $OUT/time.launch.log)"; GVIOL="$GVIOL time-launch"; fi
+    GVIOL="$GVIOL$TERR"
     # verdicts and the guardrail, read from the result files
-    R=$(python3 - "$OUT" <<'PY'
-import json,sys,glob,re
-out=sys.argv[1]; viol=[]; rows=[]; hwm=None; anon=None
-for f in glob.glob(out+'/gauntlet/result.json')+glob.glob(out+'/time/result.json'):
+    R=$(python3 - "$OUT" "$TB" "$TCARRIED" <<'PY'
+import json,sys,glob,re,math,os
+out, tb, carried = sys.argv[1], sys.argv[2], sys.argv[3].split()
+viol=[]; rows=[]; hwm=None; anon=None
+time_files = [] if tb == 'persvati' else glob.glob(out+'/time/result.json')
+for f in glob.glob(out+'/gauntlet/result.json')+time_files:
     r=json.load(open(f))
     for c in r.get('cells',[]):
         cid=str(c.get('cell') or c.get('id'))
@@ -131,8 +196,70 @@ for f in glob.glob(out+'/gauntlet/result.json')+glob.glob(out+'/time/result.json
             if s.upper().startswith('FAIL') and not cid.startswith('W13'): viol.append(f'{cid}:{b.get("bar")}')
         if cid.startswith('W13'):
             m=c.get('metrics',{}); hwm=m.get('rss_kib.hwm'); anon=m.get('rss_kib.anon')
+# persvati time rows, judged here against GAUNTLET.md's bars from each cell's
+# result.json (bars.json judges T-CMD only together with an exponent the cell
+# cannot measure, and T-POST on CPU alone).  A row is judged only under the
+# sweep's admission: persvati cores 12-23 with busy <= 4 at start AND end;
+# otherwise it is reported "unjudged".  A FAIL is a violation unless carried
+# from the base (TCARRIED, "key:ROW").  The sweep's own table is kept beside.
+TBARS = {  # row: (metric, cmp, threshold)
+    'T-CMD p99 max':   ('cmd.p99_ms.max', 'le', 50),
+    'T-POST p50 c1':   ('post.p50_ms.c1', 'le', 20),
+    'T-POST p99 c1':   ('post.p99_ms.c1', 'le', 250),
+    'T-POST CPU c1':   ('post.cpu_ms_per_op.c1', 'le', 16),
+    'T-POST rate c1':  ('post.rate_c1', 'ge', 10),
+    'T-POST rate c8':  ('post.rate_c8', 'ge', 10),
+    'T-LIN ratio':     ('article.ratio_8n_over_n', 'le', 15.0),
+    'T-LIN exponent':  ('article.exponent', 'le', 1.1),
+}
+def admitted(c):
+    bx=c.get('box',{}); s0, s1 = bx.get('busy_cores_start'), bx.get('busy_cores_end')
+    return (bx.get('name') == 'persvati' and bx.get('busy_cores_set') == '12-23'
+            and isinstance(s0,(int,float)) and isinstance(s1,(int,float)) and s0 <= 4 and s1 <= 4)
+unjudged=[]
+if tb == 'persvati':
+    allc=True; pts={}
+    for kd in sorted(glob.glob(out+'/time/*/')):
+        key=kd.rstrip('/').split('/')[-1]
+        reps=[c for f in sorted(glob.glob(kd+'r*/result.json')) for c in json.load(open(f)).get('cells',[])]
+        good_reps=[c for c in reps if admitted(c)]
+        if key.startswith('tcmd') and not good_reps: allc=False
+        def med(met, cs):
+            vs=sorted(c.get('metrics',{}).get(met) for c in cs if isinstance(c.get('metrics',{}).get(met),(int,float)))
+            return None if not vs else (vs[len(vs)//2] if len(vs)%2 else (vs[len(vs)//2-1]+vs[len(vs)//2])/2)
+        tag=f'{len(good_reps)}/{len(reps)} reps'
+        for row,(met,cmp,th) in TBARS.items():
+            if not good_reps:
+                v=med(met, reps)
+                if v is None: continue
+                rows.append((key,row,f'unjudged {v} ({tag} admitted)')); unjudged.append(f'{key}:{row}'); continue
+            v=med(met, good_reps)
+            if v is None: continue
+            good = v <= th if cmp == 'le' else v >= th
+            rows.append((key,row,f'{"PASS" if good else "FAIL"} {round(v,3)} (median, {tag})'))
+            if not good and f'{key}:{row}' not in carried: viol.append(f'{key}:{row}')
+        if key.startswith('tcmd-') and good_reps:
+            n=int(re.search(r'tcmd-(\d+)k', key).group(1))*1000
+            for k in good_reps[0].get('metrics',{}):
+                mm=re.fullmatch(r'cmd\.p99_ms\.(\w+)', k)
+                if mm and mm.group(1) != 'max':
+                    v=med(k, good_reps)
+                    if v and v > 0: pts.setdefault(mm.group(1),[]).append((n,v))
+    # T-CMD exponent, derived as GAUNTLET.md does: per command, least squares
+    # of log p99 on log n over the T-CMD sizes run; bar <= 0.2.
+    for cmd,xy in sorted(pts.items()):
+        if len(xy) < 3: continue
+        xs=[math.log(x) for x,_ in xy]; ys=[math.log(y) for _,y in xy]
+        mx=sum(xs)/len(xs); my=sum(ys)/len(ys)
+        slope=sum((x-mx)*(y-my) for x,y in zip(xs,ys))/sum((x-mx)**2 for x in xs)
+        if not allc:
+            rows.append(('tcmd',f'T-CMD exponent {cmd}',f'unjudged {slope:.2f}')); unjudged.append(f'tcmd:{cmd}'); continue
+        good = slope <= 0.2
+        rows.append(('tcmd',f'T-CMD exponent {cmd}',f'{"PASS" if good else "FAIL"} {slope:.2f}'))
+        if not good and f'tcmd:{cmd}' not in carried: viol.append(f'tcmd:{cmd}')
 print('ROWS '+'; '.join(f'{c} {b}={s}' for c,b,s in rows))
 print('VIOL '+' '.join(viol))
+print('UNJUDGED '+' '.join(unjudged))
 print(f'GUARD vmhwm_kib={hwm} rssanon_kib={anon}')  # anon stands in for anon+shmem: W13 reports no shmem figure; pessimistic enough since shmem is in VmRSS-file
 PY
 )
