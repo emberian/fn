@@ -1,0 +1,7 @@
+def-loop :foldr, and three foldr twins replaced by it
+
+:foldr is the right fold with a non-list accumulator, executed as a left fold over the reversal (library theorem fn-dl-foldr-loop-is-foldr, no hypothesis). replay-identity-index fn-rii-kbuild-releases and fn-rii-kbuild-pins and stx-index fn-stx-index-of-store lose their hand loop, bridge and verify-guards. Tests: witnesses, a wrong-order mutation, refusals.
+
+Verified in clean REPL sessions (library delta inside a local-dropping encapsulate): all later events of the converted books admit, 0 refused.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
