@@ -75,13 +75,9 @@
   (declare (ignore service publication)) (push :flush *calls*))
 (defun fnn-owner-attempt-transit (&rest args)
   (declare (ignore args)) (push :attempt-transit *calls*) :durable)
-;; A BP transit commits what the owner has queued before its own record
-;; (host/native/owner.lisp fnn-owner-commit-queued-locked).  Nothing is
-;; queued here: the deployed answer for an empty queue is 0 members; it is
-;; counted apart from *calls*, whose order the checks below assert.
-(defvar *queued-commits* 0)
-(defun fnn-owner-commit-queued-locked (service)
-  (declare (ignore service)) (incf *queued-commits*) 0)
+;; What the owner has queued is committed before a BP transit's own record
+;; by the caller's quantum (host/native/owner.lisp fnn-owner-held-commit),
+;; not by fnn-owner-complete-bp-transit-submission, called directly here.
 
 ;; Retirement's intake fence (books/owner-retire-counted.lisp, the real
 ;; definition): this owner is not retiring, so intake is admitted.
@@ -124,5 +120,4 @@
   (assert (handler-case (progn (apply #'invoke-transit bad) nil)
             (boundary-fault () t)))
   (assert (equal *calls* '(fn-owner-take))))
-(assert (= *queued-commits* 5))
 (format t "native BP transit identity regression passed~%")

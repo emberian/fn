@@ -399,6 +399,7 @@
   "fnn-connection-scoped",
   "fnn-log-sealed-effect",
   "fnn-section-envelope",
+  "fnn-owner-held-commit",
   "fnn-with-observed-owner",
   "fnn-native-with-observation",
   "fnn-with-observed-mutex",
@@ -914,7 +915,7 @@
   }
  },
  "commit_pipeline": [
-  "fnn-owner-commit-queued-locked",
+  "fnn-owner-held-start",
   "fnn-owner-commit-sync"
  ],
  "close_primitives": [

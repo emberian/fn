@@ -70,7 +70,7 @@ class SchedulerSourceTests(unittest.TestCase):
         # quantum, which seals the next batch only after the replies.
         batch = owner[owner.index("(defun fnn-owner-commit-pipeline "):owner.index("(defun fnn-owner-committer-loop")]
         self.assertIn("'fn-otm-commit-event", owner)
-        self.assertIn("'fn-otm-committer-wake", owner)
+        self.assertIn("'fn-otm-held-committer-wake", owner)
         self.assertLess(batch.index("(fnn-owner-commit-start-locked service)"),
                         batch.index("(fnn-owner-start-syncer service gen job syncer-grant)"))
         self.assertLess(batch.index("(fnn-owner-start-syncer service gen job syncer-grant)"),
@@ -89,20 +89,28 @@ class SchedulerSourceTests(unittest.TestCase):
         self.assertIn(":inspect))", live)
         # Each member's reply is the release ACL2 names (fn-ocs-member-releases,
         # keystone fn-ocs-members-told-only-after-the-barrier): the COMPLETE
-        # takes ACL2's action, never a host-computed flag, and the inline
-        # commit asks fn-ocs-commit-step for its steps.
-        complete = owner[owner.index("(defun fnn-owner-commit-complete-locked "):owner.index("(defun fnn-owner-commit-step-action")]
+        # takes ACL2's action, never a host-computed flag, and the held
+        # commit asks fn-otm-held-event for its steps.
+        complete = owner[owner.index("(defun fnn-owner-commit-complete-locked "):owner.index("(defun fnn-owner-reader-capture ")]
         self.assertIn("'fn-ocs-member-releases action", complete)
         self.assertNotIn("(cons :close (second m))", complete)
-        inline = owner[owner.index("(defun fnn-owner-commit-queued-locked "):owner.index("(defun fnn-owner-commit-event ")]
-        self.assertIn("fnn-owner-commit-step-action", inline)
-        self.assertIn("'fn-ocs-commit-step", owner)
-        # fnn-core answers an mv function's FIRST value (the action): taking
-        # (first ...) of that keyword is a memory fault at nil in the saved
-        # image's compiled code (the operator post's inline commit, AW r4).
-        step = owner[owner.index("(defun fnn-owner-commit-step-action "):owner.index("(defun fnn-owner-commit-queued-locked ")]
-        self.assertIn("(fnn-core 'fn-ocs-commit-step phase event)", step)
-        self.assertNotIn("(first (fnn-core", step)
+        held = owner[owner.index("(defun fnn-owner-held-event "):owner.index("(defun fnn-owner-commit-pipeline ")]
+        self.assertIn("(fnn-call 'fn-otm-held-event (fnn-owner-gate-sched gate) event)", held)
+        self.assertIn("(fnn-core 'fn-och-held-event", held)
+        self.assertIn("'fn-otm-held-caller-wake", held)
+        self.assertNotIn("fnn-owner-commit-queued-locked", owner)
+        # The batch job never runs in a caller's quantum: START (quantum 1)
+        # and COMPLETE (quantum 2) are the caller's, the job is the syncer's.
+        start = owner[owner.index("(defun fnn-owner-held-start "):owner.index("(defun fnn-owner-held-await ")]
+        self.assertNotIn("fnn-owner-batch-job", start)
+        complete_held = owner[owner.index("(defun fnn-owner-held-complete "):owner.index("(defun fnn-owner-held-wait ")]
+        self.assertNotIn("fnn-owner-batch-job", complete_held)
+        self.assertIn("'fn-otm-held-committer-wake", owner)
+        # Every caller that may submit goes through the one wrapper.
+        for name, count in (("bp-app.lisp", 1), ("bp-node.lisp", 1), ("hybrid-control.lisp", 1)):
+            text = (ROOT / "host" / "native" / name).read_text()
+            self.assertEqual(text.count("(fnn-owner-held-commit "), count, name)
+        self.assertEqual(owner.count("(fnn-owner-held-commit\n   (fnn-owner-serialized service nil :poster)"), 1)
         commit_class = (ROOT / "books" / "owner-commit-class.lisp").read_text()
         self.assertIn("(fn-osch-next (fn-ocm-sched s) w)", commit_class)
         self.assertIn("(fn-osch-observe (fn-ocm-sched s) class hold-ms wait-ms)", commit_class)

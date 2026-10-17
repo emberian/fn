@@ -73,9 +73,7 @@
   (destructuring-bind
       (tag keyring-generation source ed-signature ml-signature ml-path) request
     (declare (ignore tag))
-    (fnn-owner-serialized
-     service nil
-     (lambda ()
+    (fnn-owner-held-commit (fnn-owner-serialized service nil)
       ;; The quantum's value is the answer; every refusing arm leaves through
       ;; this block, never across the quantum's boundary (lane failure-scope:
       ;; an unwind no condition explains is a fault).
@@ -191,7 +189,7 @@
                         (:absent (fnn-owner-identity-commit service event))
                         (t (fnn-fault "owner returned malformed existing action")))))
                   t))
-             (fnn-core 'fn-nhc-author-refusal :event nil)))))))))))
+             (fnn-core 'fn-nhc-author-refusal :event nil))))))))))
 
 (defun fnn-hybrid-control-handle (service frame)
   (when (typep frame 'fnn-octets)

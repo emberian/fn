@@ -55,6 +55,7 @@
     (fn-bpapp-receive-destination nil)
     (fn-id-hex-octets nil)))
 
+(load "tests/native_held_commit_prelude.lisp")
 (source-forms "books/owner-log.lisp" '(fn-olog-bp-app-class))
 (source-forms "host/native/bp.lisp" '(fnn-bp-tally fnn-bp-summary))
 (source-forms "host/native/bp-app.lisp" '(fnn-bpapp-deliver))

@@ -89,9 +89,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                   (receipt nil)
                   (receipt-id nil))
              (multiple-value-setq (result receipt receipt-id)
-               (fnn-quantum-bp
-                owner nil
-                (lambda ()
+               (fnn-owner-held-commit (fnn-quantum-bp owner nil)
                   ;; Config can change after preflight and before this lock.
                   ;; Authorize the fresh Store decision against the live
                   ;; owner configuration under serialization.
@@ -104,7 +102,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                                 (when (member accepted '(:accepted :duplicate))
                                   (fnn-core-state
                                    'fn-bprj-request-receipt-id request))))
-                    (values :refused nil nil)))))
+                    (values :refused nil nil))))
              (case result
                ((:accepted :duplicate)
                 (unless receipt

@@ -108,15 +108,10 @@
 ; Operator logging is a side effect after the ACL2 outcome. It does not make
 ; or persist the decision; count the deployed call without replacing either.
 (defun fnn-owner-log () (incf *bound-logs*))
-;; A bound submission commits what the owner has queued before its own
-;; record, in its own quantum (host/native/owner.lisp
-;; fnn-owner-commit-queued-locked).  Nothing is queued in this harness: the
-;; deployed answer for an empty queue is 0 members committed.
-(defparameter *bound-queued-commits* 0)
-(defun fnn-owner-commit-queued-locked (service)
-  (declare (ignore service))
-  (incf *bound-queued-commits*)
-  0)
+;; What the owner has queued is committed before a bound submission's own
+;; record by the caller's quantum (host/native/owner.lisp
+;; fnn-owner-held-commit), not by fnn-owner-complete-bound-submission, which
+;; this harness calls directly.
 ;; operator-config (7c80e4f6) put ACL2's file-first gate in front of the
 ;; commit callback (PKT-069, fn-owner-bound-commit-gate, KEYSTONE
 ;; fn-obc-commit-only-after-filing).  The ACL2 side is a recording stub here

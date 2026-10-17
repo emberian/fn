@@ -1013,12 +1013,17 @@ def verify_post_log_cut_map() -> None:
     if not (0 <= complete.find("(fnn-log-batch-finish ")
             < complete.rfind("(fnn-owner-commit-release-member ")):
         raise AssertionError("COMPLETE does not acknowledge before it delivers")
-    quantum = host_function(owner, "fnn-owner-commit-queued-locked")
-    order = [quantum.find(x) for x in ("(fnn-owner-commit-start-locked ",
-                                       "(fnn-owner-batch-job ",
-                                       "(fnn-owner-commit-complete-locked ")]
-    if not (0 <= order[0] < order[1] < order[2]):
-        raise AssertionError("the inline commit quantum's order is not START, SYNC, COMPLETE")
+    # A caller's held commit (ruling 19): START in the caller's quantum, the
+    # batch job on the syncer off the owner, COMPLETE in its second quantum.
+    started = host_function(owner, "fnn-owner-held-start")
+    waited = host_function(owner, "fnn-owner-held-wait")
+    completed = host_function(owner, "fnn-owner-held-complete")
+    if not ("(fnn-owner-commit-start-locked " in started
+            and "(fnn-owner-start-syncer " in waited
+            and "(fnn-owner-commit-complete-locked " in completed):
+        raise AssertionError("the held commit's order is not START, SYNC, COMPLETE")
+    if "(fnn-owner-batch-job " in started or "(fnn-owner-batch-job " in completed:
+        raise AssertionError("the held commit runs the batch job inside a caller's quantum")
     pipeline = host_function(owner, "fnn-owner-commit-pipeline")
     # The :complete call's member list is the batch's members less those a
     # stall already released (lane time-model-2: fnn-owner-unreleased), so
