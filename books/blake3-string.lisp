@@ -26,6 +26,7 @@
 
 (in-package "ACL2")
 (include-book "blake3")
+(local (include-book "blake3-list-spans"))
 
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -178,36 +179,15 @@
 ; M))'.  Each level is proved as books/blake3-stobj.lisp proves its own: the
 ; step and base cases apart, the induction only composing them.
 
-(local
- (defthm fn-b3s-nthx-of-firstn
-   (equal (fn-b3-nthx j (fn-b3-firstn n l))
-          (if (< (nfix j) (nfix n)) (fn-b3-nthx j l) 0))
-   :hints (("Goal" :induct (list (fn-b3-nthx j l) (fn-b3-firstn n l))))))
 
-(local
- (defthm fn-b3s-nthx-of-nthcdrx
-   (equal (fn-b3-nthx j (fn-b3-nthcdrx a l))
-          (fn-b3-nthx (+ (nfix a) (nfix j)) l))
-   :hints (("Goal" :induct (fn-b3-nthcdrx a l)))))
 
-(local
- (defthm fn-b3s-nthcdrx-of-firstn
-   (equal (fn-b3-nthcdrx k (fn-b3-firstn n l))
-          (fn-b3-firstn (- (nfix n) (nfix k)) (fn-b3-nthcdrx k l)))
-   :hints (("Goal" :induct (list (fn-b3-nthcdrx k l) (fn-b3-firstn n l))))))
 
-(local
- (defthm fn-b3s-nthcdrx-of-nthcdrx
-   (equal (fn-b3-nthcdrx k (fn-b3-nthcdrx p l))
-          (fn-b3-nthcdrx (+ (nfix k) (nfix p)) l))
-   :hints (("Goal" :induct (fn-b3-nthcdrx p l)))))
 
-(local
- (defthm fn-b3s-firstn-of-firstn
-   (implies (<= (nfix k) (nfix n))
-            (equal (fn-b3-firstn k (fn-b3-firstn n l))
-                   (fn-b3-firstn k l)))
-   :hints (("Goal" :induct (list (fn-b3-firstn k l) (fn-b3-firstn n l))))))
+
+
+
+
+
 
 (local
  (defthm fn-b3s-nthcdrx-of-zero

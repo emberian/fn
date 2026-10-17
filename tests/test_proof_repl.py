@@ -2864,6 +2864,66 @@ class ChangedDependencyTests(unittest.TestCase):
 
 
 
+class CachedOnlyTests(unittest.TestCase):
+    def test_conflicting_modes_refuse_before_host_selection_or_session_start(self):
+        for option in (("--ld", "books/base"), ("--source-deps",),
+                       ("--source-deps", "books/base"), ("--ld-missing",),
+                       ("--certify-missing",), ("--ld-leak",),
+                       ("--keep-source-prefix",)):
+            with self.subTest(option=option), \
+                    mock.patch.object(proof_repl, "resolve_auto_host") as resolve, \
+                    mock.patch.object(proof_repl, "run_remote") as remote, \
+                    mock.patch.object(proof_repl, "_start") as start, \
+                    contextlib.redirect_stderr(io.StringIO()) as error:
+                self.assertEqual(proof_repl.main(
+                    ["start", "cached", "books/example", "--host", "auto",
+                     "--cached-only", *option]), 2)
+                resolve.assert_not_called()
+                remote.assert_not_called()
+                start.assert_not_called()
+                self.assertIn("--cached-only cannot combine", error.getvalue())
+
+    def test_remote_changed_dependency_does_not_force_source_loading(self):
+        args = SimpleNamespace(command="start", name="cached", lane="l", remote_tree=None,
+                               host="hbox", book="books/example", ld=[], cached_only=True,
+                               source_deps=None, ld_missing=False, certify_missing=False,
+                               no_sync=False, acl2=None)
+        seen = []
+        with mock.patch.object(proof_repl, "box_settings",
+                               lambda host: {"acl2": "acl2", "cache": "/c"}), \
+                mock.patch.object(proof_repl, "refuse_or_wait_for_lease", lambda *a: None), \
+                mock.patch.object(proof_repl, "own_remote_tree", lambda a, h, l, t: t), \
+                mock.patch.object(proof_repl, "remember_host", lambda *a: None), \
+                mock.patch.object(proof_repl, "sync_files", return_value=[]), \
+                mock.patch.object(proof_repl, "sync_to", lambda *a: 0.0), \
+                mock.patch.object(proof_repl, "changed_dependencies",
+                                  return_value=["books/base"]) as changed, \
+                mock.patch.object(proof_repl.subprocess, "run",
+                                  lambda command, **kw: seen.append(command)
+                                  or SimpleNamespace(returncode=0)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(proof_repl.run_remote(args,
+                ["start", "cached", "books/example", "--host", "hbox", "--cached-only"]), 0)
+        changed.assert_not_called()
+        self.assertIn("--cached-only", seen[-1][-1])
+        self.assertNotIn("--ld", seen[-1][-1])
+
+    def test_exact_cache_miss_refuses_without_source_or_certification_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sessions = pathlib.Path(tmp)
+            fd = os.open(sessions / "lock", os.O_CREAT | os.O_RDWR, 0o600)
+            args = SimpleNamespace(name="cached", book="books/example", cached_only=True)
+            with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                    mock.patch.object(proof_repl, "open_session_lock", return_value=fd), \
+                    mock.patch.object(proof_repl, "install_closure",
+                                      return_value=(False, "exact cache miss", [])) as install, \
+                    mock.patch.object(proof_repl.subprocess, "Popen") as launch, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(args), 1)
+            self.assertEqual(install.call_args.args[1:3], ([], None))
+            launch.assert_not_called()
+
+
 class AttachmentOrderTests(unittest.TestCase):
     def test_event_detection_preserves_code_data_and_signatures(self):
         for text in ('(attach-stobj generic concrete)',

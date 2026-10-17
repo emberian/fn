@@ -28,6 +28,7 @@
 
 (in-package "ACL2")
 (include-book "blake3")
+(local (include-book "blake3-list-spans"))
 (include-book "octets-stobj")
 (include-book "octet-window")
 
@@ -204,11 +205,7 @@
             (fn-b3-nthx (- (nfix i) (len p)) w)))
    :hints (("Goal" :induct (fn-b3-nthx i p)))))
 
-(local
- (defthm fn-b3x-nthx-of-nthcdrx
-   (equal (fn-b3-nthx j (fn-b3-nthcdrx a l))
-          (fn-b3-nthx (+ (nfix a) (nfix j)) l))
-   :hints (("Goal" :induct (fn-b3-nthcdrx a l)))))
+
 
 (local
  (defthm fn-b3x-nthx-is-nth
@@ -241,30 +238,13 @@
            (equal (fn-b3x-byte i e prefix lp a fn-octets)
                   (if (< i e) (fn-b3-nthx i (fn-b3x-msg0 prefix a fn-octets)) 0))))
 
-(local
- (defthm fn-b3x-nthx-of-firstn
-   (equal (fn-b3-nthx j (fn-b3-firstn n l))
-          (if (< (nfix j) (nfix n)) (fn-b3-nthx j l) 0))
-   :hints (("Goal" :induct (list (fn-b3-nthx j l) (fn-b3-firstn n l))))))
 
-(local
- (defthm fn-b3x-nthcdrx-of-firstn
-   (equal (fn-b3-nthcdrx k (fn-b3-firstn n l))
-          (fn-b3-firstn (- (nfix n) (nfix k)) (fn-b3-nthcdrx k l)))
-   :hints (("Goal" :induct (list (fn-b3-nthcdrx k l) (fn-b3-firstn n l))))))
 
-(local
- (defthm fn-b3x-nthcdrx-of-nthcdrx
-   (equal (fn-b3-nthcdrx k (fn-b3-nthcdrx p l))
-          (fn-b3-nthcdrx (+ (nfix k) (nfix p)) l))
-   :hints (("Goal" :induct (fn-b3-nthcdrx p l)))))
 
-(local
- (defthm fn-b3x-firstn-of-firstn
-   (implies (<= (nfix k) (nfix n))
-            (equal (fn-b3-firstn k (fn-b3-firstn n l))
-                   (fn-b3-firstn k l)))
-   :hints (("Goal" :induct (list (fn-b3-firstn k l) (fn-b3-firstn n l))))))
+
+
+
+
 
 (local (in-theory (disable fn-b3-nthx fn-b3-nthcdrx fn-b3-firstn)))
 
