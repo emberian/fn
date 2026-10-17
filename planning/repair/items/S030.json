@@ -12,7 +12,8 @@
  "locus": "connections",
  "notes": [
   "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
-  "10-03 06:36 2026-10-03 codex-sol-web generated actor envelope and once-only independent physical/semantic cleanup; cancelled worker activation remains retained through return and sole whole-disposal receipt. Forced pause refutes934 early record removal and e259 second observer early semantic receipt. Raw current passes; native fault/custody image checks pending, no completed repair claim."
+  "10-03 06:36 2026-10-03 codex-sol-web generated actor envelope and once-only independent physical/semantic cleanup; cancelled worker activation remains retained through return and sole whole-disposal receipt. Forced pause refutes934 early record removal and e259 second observer early semantic receipt. Raw current passes; native fault/custody image checks pending, no completed repair claim.",
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 99022509d/4e409a9d6, superseded by 934b416cb+8e37db4f2; current site host/native/web-host.lisp fnn-web-advance serious-condition arm -> fnn-owner-thread-escape + fnn-web-finish, once-only fnn-web-cleanup of owner session/TLS/socket); local test tests/native_web_reactor_raw-mock.lisp PASS; native pending: web fault/custody image checks (wrapper:actor-top-boundary)"
  ],
  "owner": "codex-sol-web",
  "reviewer": "fnn-web-serve (web-host.lisp:275-280) re-raises every error that is not an os, socket or TLS error. The thread lambda (web-host.lisp:314-326) handles only sb-bsd-sockets:socket-error. The images are saved with --disable-debugger (build.lisp:622), so an unhandled error in this thread exits the whole process with code 1, not the owner's 3 or 4. That is worse than the reported 'web face dies silently'. Errors that reach this path include: fnn-fault outside any owner-serialized call (fnn-web-slice at web-host.lisp:63, 'more events than ACL2 allows' at 225, malformed-action faults), which never fenced the owner; and fnn-web-open's 'owner service is stopping' refusal (owner.lisp fnn-owner-serialized), which during an exit-3 stop can replace the uncertain code with 1. The leaked-session part is moot because the process dies, although fnn-web-request does lack an unwind-protect between :open and :close.",
@@ -21,7 +22,7 @@
  "sha": "8e37db4f2",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "title": "Web face thread lets non-socket errors escape the thread, and an opened owner session is never released on that path",
- "updated": "2026-10-03T10:36:03Z"
+ "updated": "2026-10-04T06:31:38Z"
 }

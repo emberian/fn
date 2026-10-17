@@ -1,3 +1,5 @@
+;;; S038 (admission before credit): a pass or a publication in flight refuses
+;;; the capture by name, (:deferred WORD NIL), before any credit is reserved.
 ;;; S114: actual capture -> history sync -> carried census -> credit reserve,
 ;;; entered through actual native trailing-stobj/value dispatch. Array and
 ;;; Store accessors, row-byte costs and captured result are recording seams.
@@ -45,8 +47,10 @@
  '((defun fn-hist-sync-aux) (defun fn-hist-sync)))
 (load-deployed-forms "books/history-columns-store.lisp"
  '((defun fn-hist-octets-advance) (defun fn-hist-bytes-carried)))
+(load-deployed-forms "books/owner-reclaim.lisp" '((defun fn-orc-capture-word)))
+(load-deployed-forms "books/owner-state-accessors.lisp" '((defun fn-owner-sco-global)))
 (load-deployed-forms "host/owner-host.lisp"
- '((defun fn-owner-record-octets) (defun fn-owner-orcp-capture)))
+ '((defun fn-owner-record-octets) (defun fn-owner-orc-pass) (defun fn-owner-orcp-capture)))
 (load-deployed-forms "host/native/io.lisp"
  '((defun fnn-trailing-kind) (defun fnn-live-stobj) (defun fnn-arena-then-state)
    (defun fnn-core-state)))
@@ -118,4 +122,25 @@
                  "sync and census visit only new committed row")
    (census-check (= (fn-mcr-credit-of :other (fn-mcr-ops (fn-owner-credits *the-live-state*))) 10)
                  "unrelated reservation retained"))))
+
+;; S038: the slot's admission precedes the reservation.  A pass in flight, or a
+;; publication in flight against a writing pass, is refused by name and the
+;; credits, the census cache and the capture are exactly as they were.
+(dolist (case '((:recorded nil :in-flight) (:dry-run nil :in-flight) (nil 7 :queued)))
+ (destructuring-bind (pass inflight word) case
+  (let* ((*the-live-state* (make-hash-table)) (*hist* (vector '(100)))
+         (*capture-count* 0) (*rows-read* nil)
+         (credits (fn-mcr-make 99999 0 0 0 0 0 '((:other . (0 . 10))))))
+   (setf (gethash :records *the-live-state*) '(100 200)
+         (gethash :credits *the-live-state*) credits
+         (gethash 'fn-owner-orc-pass *the-live-state*) pass
+         (gethash 'fn-owner-sco-inflight *the-live-state*) inflight)
+   (let ((answer (fnn-owner-core 'fn-owner-orcp-capture :recorded :clock nil 99999 :revision)))
+    (census-check (equal answer (list :deferred word nil))
+                  "a held slot is refused by name, third element nil")
+    (census-check (and (zerop *capture-count*) (equal credits (fn-owner-credits *the-live-state*)))
+                  "a held slot reserves no credit and captures nothing")
+    (census-check (and (null *rows-read*) (= (fn-hist-count *hist*) 1)
+                       (not (nth-value 1 (gethash 'fn-owner-record-octets *the-live-state*))))
+                  "a held slot touches neither the history nor the census cache")))))
 (format t "RECLAIM_CENSUS_PASS refused, admitted, missing and out-of-range cache through actual trailing-stobj dispatch~%")

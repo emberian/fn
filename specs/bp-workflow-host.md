@@ -165,8 +165,16 @@ directly with remote claims. SHA-256 frame checks detect corruption and provide
 no authentication. Receiver receipt emission requires its own durable context
 and decision path; the sender's receipt-intent means accepting returned evidence.
 
-FNWF currently allows 4,096 records, 16 MiB aggregate framed bytes, 16 KiB per
-record and 512-byte UTF-8 fields. The host validates framing, bounds, integer
+An application journal (FNWF, FNRJ, carry) admits the records and aggregate
+framed octets of its profile, `app-journal-profile` in the journal root
+(`books/app-journal.lisp`, D27): by default 2^20 records and 2^40 octets,
+raised offline with `app-journal profile STORE JOURNAL DOMAIN MAX-RECORDS
+MAX-OCTETS` and never lowered; any frame natural of at least three records and
+three widest frames is a profile, and every such profile names its records at
+one twenty-digit width (`fn-aj-record-name-fixed-width`). A journal opened
+under a profile smaller than what it holds is refused at recovery by name,
+never truncated. FNWF frames are at most 16 KiB per record with 512-byte UTF-8
+fields. The host validates framing, bounds, integer
 types, enums, UTF-8 and SHA-256. It validates these before constructing fixed Lisp
 forms; text is passed as decimal octets. ACL2 owns all workflow decisions.
 The filesystem, hash implementation, interpreted bridge and local policy remain

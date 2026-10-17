@@ -235,8 +235,10 @@ def journal_for(rec: dict, s: Scenario) -> Journal:
                           sel2["cut"], sel2["mode"], sel2["writes"]))
     phase = rec.get("first_phase", rec["phase"])
     outcome, articles = _recover_outcome(rec.get("recover"), rec.get("recover_out"))
-    if "NO-STORE" in str(rec.get("recover_out", "")):
-        outcome = "no-store"        # the cut preceded a durable init (the old state)
+    if any(w in str(rec.get("recover_out", "")) for w in ("NO-STORE", "INTERRUPTED-INIT")):
+        # the cut preceded a durable init (the old state); an unpublished
+        # ROOT.init-* beside it is named, and init's retry removes it (PKT-894)
+        outcome = "no-store"
     j.client("recover", operation="recover", outcome=outcome, phase="healing",
              returncode=rec.get("recover"), reinit=rec.get("reinit"),
              init_phase=(phase == "init"))

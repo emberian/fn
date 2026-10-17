@@ -1,8 +1,9 @@
 #!/bin/sh
+# witness: needs-acl2
 # Normal actual configured factory/plan discriminator; not a heap coverage claim.
 set -eu
 probe_root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-source_root=${1:?Pass an immutable assembled source tree}
+source_root=${1:-$probe_root}
 mkdir -p "$probe_root/build/runtime-tests"
 log="$probe_root/build/runtime-tests/native-newnews-allocation.log"
 input="$probe_root/build/runtime-tests/native-newnews-allocation.input.lisp"

@@ -116,3 +116,17 @@
 (assert-event (and (fn-bs-profile-validp *shbt-profile*) (fn-bs-profile-logp *shbt-profile*)))
 (assert-event (and (not (fn-bs-profile-validp nil)) (not (fn-bs-profile-logp nil))))
 (assert-event (and (not (fn-bs-profile-validp '(1 2 3))) (not (fn-bs-profile-logp '(1 2 3)))))
+
+; fn-store-charge-of-profile-article-is-representable (lane caps, D27):
+; witness at the development profile's largest article; the hypothesis
+; removed (a length past every profile's A, the codec ceiling) and the
+; conclusion's failure shown far past it.
+(assert-event
+ (let ((a (fn-bs-profile-max-article-octets *shbt-profile*)))
+   (and (fn-bs-profile-admittedp *shbt-profile*)
+        (posp (fn-store-charge a))
+        (fn-record-uint32p (fn-store-charge a)))))
+(assert-event (fn-record-uint32p (fn-store-charge *fn-record-max-payload*)))
+(assert-event
+ (not (fn-record-uint32p (fn-store-charge (* 4096 (+ 1 *fn-cbor-max-uint*))))))
+(assert-event (equal (fn-store-charge -1) 0))

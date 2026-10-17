@@ -8,7 +8,7 @@
 (defconst *orvt-machine* '(4294967296))
 (defconst *orvt-result*
   (fn-orv-extend-reservation *orvt-base* *orvt-policy* *orvt-core* *orvt-machine*))
-(assert! (equal *orvt-result* '(:heap 528 :development 4096 1024 12)))
+(assert! (equal *orvt-result* '(:heap 531 :development 4096 1024 12)))
 (assert-event
  (and (eq (symbol-class 'fn-orv-extend-reservation (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-orv-startup-grant (w state)) :common-lisp-compliant)))

@@ -1,10 +1,10 @@
-; Checkpoint host entries: the host marshals octets; ACL2 captures, encodes,
-; decodes, validates and restores.  The host computes only the SHA-256 trailer
-; (A-CRYPTO) and slices the suffix by the sequence ACL2 returned; ACL2
-; revalidates that suffix in fn-checkpoint-restore.  The generation-capture
-; entries (fn-store-checkpoint-protected, -differential) have no caller in the
-; native images since the Python Acl2Store bridge was retired (S117); specs/
-; checkpoint.md still cites them, so they stay until that claim is retired.
+; Checkpoint host entries: the clone-fence and rollover constants and
+; decisions host/native/checkpoint.lisp asks ACL2 (fn-cpa-*), and the offline
+; `operator ... store reclaim' folds over the record log.  The generation
+; checkpoint wrappers (capture, decode, restore, the differentials, the
+; directory-observation plan) had no caller once the Python Acl2Store bridge
+; was retired and are gone (S117); their books remain as the representation
+; checks.
 (in-package "ACL2")
 (include-book "../books/checkpoint-publish")
 (include-book "../books/checkpoint-auxiliary")
@@ -56,109 +56,6 @@
                   :guard (fn-cbor-octet-listp marker-octets)))
   (value (fn-cpa-clone-phase-of-octets
           (f-get-global 'fn-store-sn state) marker-octets)))
-
-; The protected prefix of a checkpoint generation captured from the decoded
-; durable records at the durable allocator frontier.  Capture replays the
-; records in ACL2 (fn-checkpoint-capture); Python never sees the node.
-;
-; The allocation domain is the live node's, read with the same accessor the
-; rest of the store host uses (fn-store-sn-domain).  `*fn-store-groups*' was
-; deleted with the compiled group table in 4ba5599; these three sites still
-; named it, so the retired Acl2Store bridge failed to load this file.
-;
-; Under the records flip the capture replays ROWS (the decoded events
-; interned into a local arena, books/store-intern.lisp fn-intern-events), and
-; a captured node holding an article would carry arena handles its frame does
-; not resolve: such a capture is refused by name (:error :arena) until the
-; checkpoint frame carries the arena's bytes (the same open item as the state
-; checkpoint, host/store-node-host.lisp fn-store-sco-decode).
-(defun fn-store-checkpoint-protected (octet-records frontier state)
-  (declare (xargs :stobjs state :mode :program
-                  :guard (fn-octet-list-listp octet-records)))
-  (let* ((decoded (fn-store-decode-records octet-records))
-         (records (if (equal decoded :bad) :bad
-                    (fn-store-intern-records-local decoded))))
-    (if (equal records :bad)
-        (value :bad)
-      (if (fn-store-rows-hold-handles-p records)
-          (value (list :error :arena))
-      (let ((captured (fn-checkpoint-capture (fn-store-sn-domain state)
-                                             (fn-store-sn-capacity state)
-                                             records frontier)))
-        (if (not (equal (car captured) :ok))
-            (value captured)
-          (value (fn-cpc-frame-protected
-                  (fn-checkpoint-capture-value captured)))))))))
-
-(defun fn-store-checkpoint-selection-protected (generation)
-  (declare (xargs :mode :program))
-  (fn-cpc-selection-protected generation))
-
-(defun fn-store-checkpoint-selection-decode (octets digest)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-cpc-selection-decode octets digest))
-
-; ACL2 owns the complete checkpoint directory vocabulary, its finite
-; observation bound, canonical decimal parsing/rendering, and the sorted
-; generation plan.  Hosts marshal directory-entry strings as UTF-8 octets.
-(defun fn-store-checkpoint-generation-name-octets (generation)
-  (declare (xargs :mode :program))
-  (let ((chars (fn-cpp-generation-name-chars generation)))
-    (if (equal chars :bad)
-        :bad
-      (fn-record-string-octets (coerce chars 'string)))))
-
-(defun fn-store-checkpoint-selection-name-octets ()
-  (declare (xargs :mode :program))
-  (fn-record-string-octets (coerce *fn-cpp-selection-name* 'string)))
-
-(defun fn-store-checkpoint-selection-read-bound ()
-  (declare (xargs :mode :program))
-  *fn-cpp-selection-read-bound*)
-
-; D27, PRF-171: the retained-generation capacity is the opened profile's
-; max-transactions plus one (`fn-cpp-generation-capacity'); VALUES is the
-; profile the host opened the store under (`fnn-store-config').
-(defun fn-store-checkpoint-generation-capacity (values)
-  (declare (xargs :mode :program))
-  (fn-cpp-generation-capacity (fn-bs-profile-max-transactions values)))
-
-(defun fn-store-checkpoint-namespace-observation-limit (values)
-  (declare (xargs :mode :program))
-  (fn-cpp-namespace-observation-limit
-   (fn-store-checkpoint-generation-capacity values)))
-
-(defun fn-store-checkpoint-name-octets->chars (octets)
-  (declare (xargs :mode :program))
-  (if (fn-cbor-octet-listp octets)
-      (coerce (fn-record-octets-string octets) 'list)
-    :bad))
-
-(defun fn-store-checkpoint-names-octets->chars (names)
-  (declare (xargs :mode :program))
-  (if (consp names)
-      (let ((name (fn-store-checkpoint-name-octets->chars (car names))))
-        (if (equal name :bad)
-            :bad
-          (let ((rest (fn-store-checkpoint-names-octets->chars (cdr names))))
-            (if (equal rest :bad) :bad (cons name rest)))))
-    (if (null names) nil :bad)))
-
-(defun fn-store-checkpoint-namespace-plan (name-octets values)
-  (declare (xargs :mode :program
-                  :guard (fn-octet-list-listp name-octets)))
-  (let ((names (fn-store-checkpoint-names-octets->chars name-octets)))
-    (if (equal names :bad) '(:error :octets)
-      (fn-cpp-namespace-plan names
-                             (fn-store-checkpoint-generation-capacity values)))))
-
-; The sorted generation plan is gap-checked here.  Exhaustion names both the
-; finite retained-generation policy and the enclosing uint32 codec domain.
-(defun fn-store-checkpoint-next-generation (generations values)
-  (declare (xargs :mode :program))
-  (fn-cpp-next-generation generations
-                          (fn-store-checkpoint-generation-capacity values)))
 
 ;; `operator CONFIG store reclaim [--dry-run]' over the record log
 ;; (host/native/checkpoint.lisp `fnn-log-reclaim-steps'): the host folds
@@ -247,64 +144,3 @@
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (value (fn-rci-decide-stream profile (fn-cfg-value (f-get-global 'fn-store-cfg state))
                                (f-get-global 'fn-store-sn state) acc dry fn-arena)))
-
-; Decode a selected generation against the live configuration and the
-; observed durable frontier and record count.  The accepted checkpoint is
-; installed for the restore call; the reply carries only its sequence and
-; frontier so the host can slice the suffix ACL2 will revalidate.
-(defun fn-store-checkpoint-decode (octets digest max-frontier max-sequence state)
-  (declare (xargs :stobjs state :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (let ((decoded (fn-cpc-frame-decode octets digest (fn-store-sn-domain state)
-                                      (fn-store-sn-capacity state) max-frontier
-                                      max-sequence)))
-    (if (not (fn-cpc-result-okp decoded))
-        (value decoded)
-      (let* ((checkpoint (fn-cpc-result-value decoded))
-             (state (f-put-global 'fn-store-checkpoint checkpoint state)))
-        (value (list :ok (fn-checkpoint-sequence checkpoint)
-                     (fn-checkpoint-frontier checkpoint)))))))
-
-; Restore the installed checkpoint with the suffix records at the observed
-; final frontier.  fn-checkpoint-restore is the proved subject
-; (fn-checkpoint-plus-suffix-equals-full-replay); its result node is kept for
-; the differential comparison below.
-(defun fn-store-checkpoint-restore (octet-suffix frontier state)
-  (declare (xargs :stobjs state :mode :program
-                  :guard (fn-octet-list-listp octet-suffix)))
-  (let* ((decoded (fn-store-decode-records octet-suffix))
-         (suffix (if (equal decoded :bad) :bad
-                   (fn-store-intern-records-local decoded))))
-    (if (equal suffix :bad)
-        (value (list :error :suffix-octets))
-      (if (fn-store-rows-hold-handles-p suffix)
-          (value (list :error :arena))
-      (let ((restored (fn-checkpoint-restore
-                       (f-get-global 'fn-store-checkpoint state)
-                       (fn-store-sn-domain state) (fn-store-sn-capacity state)
-                       suffix frontier)))
-        (if (not (equal (car restored) :ok))
-            (value restored)
-          (let ((state (f-put-global 'fn-store-checkpoint-node
-                                     (car (cdr restored)) state)))
-            (value :ok))))))))
-
-; The differential test: the node restored from checkpoint plus suffix against
-; the node the live composition rebuilt by full replay (fn-sn-open-observed).
-; This is a comparison of two values ACL2 computed, not a production
-; dependency; the host asserts on it only under its debug flag.
-(defun fn-store-checkpoint-differential (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (if (equal (f-get-global 'fn-store-checkpoint-node state)
-                    (fn-sn-node (f-get-global 'fn-store-sn state)))
-             t
-           nil)))
-
-; The node-only checkpoint is not a complete Store image.  Compare the
-; consumer, topic, derived index and historical authorship projections of the actual reopened
-; Store with an independent replay of its exact journal records.  This runs
-; once during selected-checkpoint diagnostics, never on a served request.
-(defun fn-store-checkpoint-auxiliary-differential (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-cpa-store-auxiliary-agrees
-          (f-get-global 'fn-store-sn state))))

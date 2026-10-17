@@ -4,20 +4,37 @@
 (include-book "../books/consumer-remote-dispatch")
 (include-book "../books/consumer-remote-query-profile")
 (include-book "../books/consumer-remote-operation-source")
+(include-book "../books/consumer-remote-bound")
+(include-book "../books/consumer-remote-config")
 (include-book "../books/consumer-remote-event-buffer")
 (include-book "../books/consumer-account-carries-state")
 (include-book "../books/consumer-account-state")
 (include-book "../books/owner-canonical-epoch")
 (include-book "../books/store-node-files-selector") ; fn-sn-files
 
-(defun fn-owner-remote-ingress (request protectedp g state)
+; D48 / PKT-673: the remote consumer is the account's bound consumer
+; (books/consumer-remote-bound.lisp).  ACL2 routes a decoded FNCR request
+; to the bound local operation or refuses it, reading the latest
+; configuration and credential table in the owner's turn; the host carries
+; the route to host/native/owner.lisp's consumer entries and compares
+; nothing (fn-crbd-route-is-the-accounts-bound-operation,
+; fn-crbd-operator-controls-stay-private).
+(defun fn-owner-consumer-remote-route (request state)
  (declare (xargs :stobjs state :mode :program))
- (if (not (boundp-global 'fn-owner state)) (value '(:unavailable :owner))
-  (let* ((files (fn-sn-files (fn-owner-store state)))
-         (cp (fn-sn-consumer (fn-owner-store state))))
-   (value (fn-cre-ingress request protectedp g cp
-            (fn-owner-canonical-epoch state) (fn-sf-records-count files)
-            (fn-owner-account-root-state state))))))
+ (if (not (boundp-global 'fn-owner state)) (value '(:refused :owner))
+  (value (fn-crbd-route request (fn-owner-ocfg state) (fn-owner-auth state)))))
+
+; POSITION and STATUS answer in the same owner turn as their gate, so no
+; configuration change can fall between the account's check and the read.
+(defun fn-owner-consumer-remote-read (request state)
+ (declare (xargs :stobjs state :mode :program))
+ (mv-let (erp route state) (fn-owner-consumer-remote-route request state)
+  (declare (ignore erp))
+  (case (car route)
+   (:position (fn-owner-consumer-local-position (cadr route) state))
+   (:status (fn-owner-consumer-local-status (cadr route) state))
+   (:refused (value route))
+   (otherwise (value '(:refused :operation))))))
 
 ; Auth/read policy/configured-generation are captured from the same owner.
 ; The selected CP cursor names the exact consumer; ingress checks current

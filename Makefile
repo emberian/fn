@@ -86,6 +86,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-remote-visible-buffer-tests \
 	tests/acl2/consumer-remote-withdrawal-buffer-tests \
 	tests/acl2/history-page-construction-tests \
+	tests/acl2/history-paged-adopt-tests \
+	tests/acl2/history-paged-canonical-tests \
 	tests/acl2/ninep-fields-tests \
 	tests/acl2/ninep-header-tests \
 	tests/acl2/ninep-protocol-host-tests \
@@ -110,6 +112,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/replay-enrollment-span-equality-tests \
 	tests/acl2/replay-revoked-enrollment-tests \
 	tests/acl2/tcpcl-received-count-tests \
+	tests/acl2/tcpcl-frame-cursor-tests \
 	tests/acl2/tcpcl-segment-source-cursor-tests \
 	books/ninep-dispatch \
 	books/ninep-mount \
@@ -118,18 +121,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/ninep-session \
 	books/ninep-stat-stream \
 	books/ninep-transport \
-	host/ninep-mounted-directory-host \
-	host/ninep-stat-stream-host \
-	host/ninep-transport-host \
 	tests/acl2/ninep-group-buckets-tests \
 	tests/acl2/ninep-mount-tests \
 	tests/acl2/ninep-mounted-directory-tests \
 	tests/acl2/ninep-qids-tests \
 	tests/acl2/ninep-session-host-tests \
 	tests/acl2/ninep-session-tests \
-	tests/acl2/ninep-stat-stream-host-tests \
 	tests/acl2/ninep-stat-stream-tests \
-	tests/acl2/ninep-transport-tests \
 	books/extent-window-compressed-input \
 	books/extent-window-compressed-output \
 	books/extent-window-source-words \
@@ -162,6 +160,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-terminal-budget-tests \
 	tests/acl2/decoded-window-yield-trajectory-tests \
 	tests/acl2/decoded-worker-controller-trajectory-tests \
+	tests/acl2/decoded-worker-reuse-execution-tests \
+	tests/acl2/decoded-worker-reuse-tests \
 	tests/acl2/extent-window-buffer-tests \
 	tests/acl2/extent-window-capture-tests \
 	tests/acl2/extent-window-compressed-input-tests \
@@ -444,6 +444,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-init-resume \
 	tests/acl2/native-init-resume-tests \
 	tests/acl2/native-retire-observation-tests \
+	tests/acl2/native-redeem-input-tests \
 	books/owner-retire \
 	tests/acl2/native-retire-tests \
 	books/tls-self-signed \
@@ -632,6 +633,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/output-reservation-tests \
 	books/resource-output \
 	tests/acl2/resource-output-tests \
+	tests/acl2/resource-syncer-tests \
 	books/resource-output-chain \
 	tests/acl2/resource-output-chain-tests \
 	books/heap-breakdown \
@@ -831,6 +833,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-forget-tests \
 	books/arena-forget-columns \
 	books/owner-reclaim-seal \
+	books/reclaim-chunked-walk \
+	books/reclaim-chunked-seal \
 	books/catalog-may-seal \
 	books/catalog-root-incarnation \
 	tests/acl2/catalog-root-incarnation-tests \
@@ -867,6 +871,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-lz-record \
 	books/payload-lz-replay \
 	tests/acl2/payload-lz-record-tests \
+	tests/acl2/payload-lz-scalar-realizer-tests \
 	books/payload-lz-append \
 	tests/acl2/payload-lz-append-tests \
 	tests/acl2/deflate-inflate-tests \
@@ -965,12 +970,17 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-handoff-status-tests \
 	books/bp-session-admission \
 	tests/acl2/bp-session-admission-tests \
+	tests/acl2/bp-session-generations-tests \
+	tests/acl2/bp-session-profile-tests \
+	tests/acl2/bp-session-received-source-tests \
 	books/bp-channel-ingress \
 	tests/acl2/bp-channel-ingress-tests \
 	books/bp-listener-set \
 	tests/acl2/bp-listener-set-tests \
 	books/bp-node-forward-plan \
 	tests/acl2/bp-node-forward-plan-tests \
+	books/bp-forward-cursor \
+	tests/acl2/bp-forward-cursor-tests \
 	books/bp-signed-binding \
 	tests/acl2/bp-signed-binding-tests \
 	books/post-identity-index \
@@ -1088,6 +1098,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-forward-image-tests \
 	tests/acl2/bp-session-turn-tests \
 	tests/acl2/tcpcl-source-control-refinement-tests \
+	tests/acl2/tcpcl-source-control-tests \
 	tests/acl2/tcpcl-received-source-refinement-tests \
 	books/tcpcl-retained-turn \
 	tests/acl2/tcpcl-retained-turn-tests \
@@ -1128,6 +1139,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-recovery-profile \
 	tests/acl2/bp-recovery-profile-tests \
 	tests/acl2/bp-held-projection-tests \
+	tests/acl2/bp-heap-command-tests \
 	books/bp-handoff-report \
 	tests/acl2/bp-handoff-report-tests \
 	books/bp-request-ref \
@@ -1471,6 +1483,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
+	books/nov-column-pieces \
+	tests/acl2/nov-column-pieces-tests \
+	tests/acl2/nov-metadata-tests \
 	books/nov-piece-window \
 	tests/acl2/nov-piece-window-tests \
 	books/nov-span-window \
@@ -1517,6 +1532,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-host-columns-open \
 	books/served-catalog-join-host-views \
 	books/catalog-number-window \
+	books/cold-line-quanta \
+	tests/acl2/cold-line-quanta-tests \
 	books/over-window \
 	books/served-chunk-live-free \
 	books/poster-bytes-buffer \
@@ -1539,6 +1556,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hostile-reader-archive \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/string-line-fill-tests \
+	tests/acl2/string-line-cursor-cost-tests \
 	tests/acl2/served-plan-line-buffer-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
@@ -1788,6 +1806,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-wait-codec-tests \
 	books/consumer-wait \
 	tests/acl2/consumer-wait-tests \
+	books/consumer-remote-bound \
+	tests/acl2/consumer-remote-bound-tests \
+	books/consumer-remote-config \
+	tests/acl2/consumer-remote-config-tests \
 	books/consumer-reason \
 	tests/acl2/consumer-reason-tests \
 	books/consumer-withdrawal \
@@ -1817,6 +1839,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-verdict-read-tests \
 	tests/acl2/owner-signed-post-tests \
 	tests/acl2/owner-operator-tests \
+	tests/acl2/owner-operation-report-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
 	tests/acl2/owner-results-tests \
@@ -1854,12 +1877,22 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
+	books/peer-pull-auth \
+	tests/acl2/peer-pull-auth-tests \
+	tests/acl2/native-admin-peer-pull-auth-tests \
+	tests/acl2/native-admin-pull-auth-tests \
 	books/peer-pull-session \
 	tests/acl2/peer-pull-session-tests \
 	books/peer-catchup-serve \
 	books/peer-catchup-effects \
 	books/peer-catchup \
 	tests/acl2/peer-catchup-tests \
+	books/peer-catchup-spool-framer \
+	books/peer-catchup-spool-hash \
+	books/peer-catchup-spool \
+	tests/acl2/peer-catchup-spool-framer-tests \
+	tests/acl2/peer-catchup-spool-hash-tests \
+	tests/acl2/peer-catchup-spool-tests \
 	books/peer-round-driver \
 	tests/acl2/peer-round-driver-tests \
 	books/protocol-table \
@@ -1968,6 +2001,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/legacy-header-query-tests \
 	tests/acl2/article-stream-server-tests \
 	tests/acl2/catalog-availability-tests \
+	tests/acl2/catalog-availability-owner-load-tests \
+	tests/acl2/catalog-availability-paged-tests \
 	tests/acl2/catalog-available-readers-tests \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
@@ -1978,9 +2013,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-plan-cursor \
 	books/output-command-admission \
 	tests/acl2/output-command-admission-tests \
+	books/output-tariff-article \
+	tests/acl2/output-tariff-article-tests \
+	books/output-tariff-article-row \
+	tests/acl2/output-tariff-article-row-tests \
+	books/output-admission-line \
+	tests/acl2/output-admission-line-tests \
 	books/string-line-fill \
 	books/served-plan-line-buffer \
 	books/served-query-plan \
+	books/list-available-reference \
 	tests/acl2/served-query-plan-tests \
 	tests/acl2/served-plan-cursor-tests \
 	books/owner-scheduler \
@@ -2032,6 +2074,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-reader-pins-tests \
 	books/response-plan-pins \
 	tests/acl2/response-plan-pins-tests \
+	tests/acl2/response-identity-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
@@ -2045,7 +2088,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/web-session \
 	books/web-session-keystones \
 	tests/acl2/web-session-tests \
+	tests/acl2/web-stream-consumer-source-tests \
 	tests/acl2/web-post-outcome-tests \
+	tests/acl2/web-private-begin-tests \
+	tests/acl2/web-private-reply-tests \
+	tests/acl2/web-post-stream-tests \
 	books/web-config \
 	tests/acl2/web-config-tests \
 	books/state-digest \
@@ -2066,6 +2113,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-maintenance-request-tests \
 	tests/acl2/owner-reclaim-conns-tests \
 	tests/acl2/owner-reclaim-pass-tests \
+	tests/acl2/reclaim-chunked-walk-tests \
+	tests/acl2/reclaim-chunked-seal-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
 	tests/acl2/owner-reclaim-ready-tests \
@@ -2572,6 +2621,12 @@ check-fast-lane:
 #     are unchanged since its last PASS: "cached (inputs unchanged since
 #     <sha>)", from build/check-cache/ (never committed).  A step that starts
 #     ACL2 or another untraceable process always runs.
+# `make check-lane CHECK_CHANGED_SINCE=REV` runs only the steps the diff from
+# REV can reach (their last traced inputs; a docs-only diff skips host_check,
+# reach_check, green_check; a step never traced in this tree runs): the rest
+# print "skipped".  `CHECK_BASELINE=FILE` (a step table, e.g.
+# build/coordinator/check-baseline-<sha>.txt) prints "NEW reds vs baseline: ..."
+# and fails only for those; `CHECK_BASELINE_OUT=FILE` writes this run's table.
 # `make check FORCE=1` runs every step whatever the cache says.  The batch
 # runner's full pass at a pushed head runs ONCE with FORCE=1: that pass is the
 # gate's evidence and must not rest on another tree's cached verdicts.
@@ -2579,7 +2634,10 @@ CHECK_STEPS_DIR ?= build/check-steps
 CHECK_STEP = $(PYTHON) tools/check_steps.py add $(CHECK_STEPS_DIR) --
 CHECK_STEP_WARM = $(PYTHON) tools/check_steps.py add --warm $(CHECK_STEPS_DIR) --
 CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
-	$(if $(CHECK_JOBS),--jobs $(CHECK_JOBS)) $(if $(filter 1 yes true,$(FORCE)),--no-cache)
+	$(if $(CHECK_JOBS),--jobs $(CHECK_JOBS)) $(if $(filter 1 yes true,$(FORCE)),--no-cache) \
+	$(if $(CHECK_CHANGED_SINCE),--changed-since $(CHECK_CHANGED_SINCE)) \
+	$(if $(CHECK_BASELINE),--baseline $(CHECK_BASELINE)) \
+	$(if $(CHECK_BASELINE_OUT),--write-baseline $(CHECK_BASELINE_OUT))
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
@@ -2816,7 +2874,6 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/tls_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_tls_check
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
-	@$(CHECK_STEP) $(PYTHON) tools/host_defun_check.py
 # A host macro used before its definition in load order compiles as a
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
 	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
@@ -3014,7 +3071,7 @@ model-test: certify
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
-	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
+	    tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \

@@ -94,7 +94,7 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
 ;;; recorded durably and the ack is released.
 
 (defstruct fnn-bp-tally
-  (accepted 0) (refused 0) (uncertain 0) (config nil) (wall nil) (wall-error nil)
+  (accepted 0) (refused 0) (deferred 0) (uncertain 0) (config nil) (wall nil) (wall-error nil)
   (journal nil) (spool-lock nil) (evidence-dir nil) (evidence-state nil)
   (last-adu nil) (last-reason nil)
   ;; ACL2's evidence record of this run (fn-bprc-note,
@@ -613,9 +613,14 @@ evidence."
                       (fnn-bp-session-word conn))))
 
 (defun fnn-bp-summary (tally)
-  (fnn-out "BP summary accepted=~d refused=~d uncertain=~d"
+  ;; A deferral (the owner busy, the clock unusable: the sender may retry) is
+  ;; not a refusal.  The line keeps its pinned three-field shape and names
+  ;; deferrals after it, only when there were some.
+  (fnn-out "BP summary accepted=~d refused=~d uncertain=~d~:[~; deferred=~:*~d~]"
            (fnn-bp-tally-accepted tally) (fnn-bp-tally-refused tally)
-           (fnn-bp-tally-uncertain tally)))
+           (fnn-bp-tally-uncertain tally)
+           (and (plusp (fnn-bp-tally-deferred tally))
+                (fnn-bp-tally-deferred tally))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; `bp send'

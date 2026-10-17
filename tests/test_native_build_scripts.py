@@ -104,7 +104,7 @@ class PartialSecretFiles(unittest.TestCase):
     def test_rotation_stage_removed_when_write_or_fsync_fails(self):
         # S073/S119: actual syscall-fault paths include close and cleanup
         # precedence, rather than one particular spelling of the unwind.
-        _raw_fixture(self, "native_io_progress.lisp")
+        _raw_fixture(self, "native_io_progress_raw.lisp")
 
     def test_write_new_unlinks_partial_file_on_failure(self):
         # S119

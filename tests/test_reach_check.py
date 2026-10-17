@@ -115,6 +115,33 @@ class GraphTests(unittest.TestCase):
         self.assertNotIn("fn-q-a", defs)
         self.assertNotIn("fn-q-make", defs)
 
+    def test_a_cursor_step_runs_the_consumers_call(self):
+        # books/def-cursor.lisp generates NAME-step; the host's batch runs it,
+        # and it runs the :call (and the :output-phase predicate), never the
+        # proof-only metric or the named proofs.
+        with tempfile.TemporaryDirectory() as tmp:
+            book = Path(tmp) / "c.lisp"
+            book.write_text(
+                '(def-cursor/output fn-zz (fn-arena)\n'
+                '  :call (fn-zz-one progress bytes fn-arena)\n'
+                '  :output-phase (fn-zz-outputp progress)\n'
+                '  :visit-proof fn-zz-visit-proof :visit-metric (fn-zz-ghost progress))\n'
+                '(def-cursor fn-yy ()\n'
+                '  :call (fn-yy-one progress) :visit-proof fn-yy-vp\n'
+                '  :visit-metric (len progress))\n', encoding="utf-8")
+            saved = reach_check.ROOT
+            reach_check.ROOT = Path(tmp)
+            try:
+                defs = reach_check.cursor_definitions([book])
+            finally:
+                reach_check.ROOT = saved
+        self.assertEqual(sorted(defs), ["fn-yy-step", "fn-zz-step"])
+        body = reach_check.Graph.symbols(defs["fn-zz-step"][1])
+        self.assertTrue({"fn-zz-one", "fn-zz-outputp"} <= body)
+        self.assertNotIn("fn-zz-ghost", body)
+        self.assertNotIn("fn-zz-visit-proof", body)
+        self.assertIn("fn-yy-one", reach_check.Graph.symbols(defs["fn-yy-step"][1]))
+
 
 class UnresolvedEventTests(unittest.TestCase):
     """S126 (sweep 2026-10-03): `--strict` never judged an event it could not

@@ -12,7 +12,8 @@
  "locus": "peer-services",
  "notes": [
   "10-02 22:30 fixed f48cf6e12 on lane/sweep-peer; in the next READY batch after S005",
-  "10-02 22:33 sent to runner in 5536e2f08; raw witness passes"
+  "10-02 22:33 sent to runner in 5536e2f08; raw witness passes",
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix f48cf6e12; current site host/native/bp-node.lisp forward-session close event driven when opened, line ~985); local test tests/native_bp_forward_session_raw-mock.lisp PASS (every opened session closes once); native pending: scenarios/catalog.json entry added by f48cf6e12"
  ],
  "owner": "sweep-peer",
  "reviewer": "bp-node.lisp:415-419: on-ready drives (:session peer session-id t ...) once the session is established. The close (:session ... nil 1) is driven only on the normal path (443-446) or in the handler's t branch (465-471). The (not sent) branch (450-451) only prints. A peer reset after SESS_INIT, when the open issued no send, leaves the session in the machine. fn-bpnrd-serve-rotation-due-p (books/bp-node-rotation-due.lisp:233-241) requires (null (fn-bpnp-sessions st)), so serve rotation is blocked until restart and the journal keeps growing. Reaching this needs the hop to reset during a forward session with nothing to send.",
@@ -21,7 +22,7 @@
  "sha": "f48cf6e12",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "title": "Forward session: a connection error before the attempt is issued skips the ACL2 session-close event",
- "updated": "2026-10-03T02:33:21Z"
+ "updated": "2026-10-04T06:31:38Z"
 }

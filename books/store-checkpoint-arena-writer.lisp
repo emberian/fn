@@ -42,7 +42,6 @@
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-scc-frames)
-                          (:definition fn-scc-le-digits)
                           (:definition fn-scc-nat-encodablep)
                           (:definition fn-scc-nat-octets)
                           (:definition fn-scc-seal)
@@ -246,7 +245,8 @@
  (defthm fn-scka-len-le-digits-bound
    (implies (and (natp n) (natp k) (< n (expt 256 k)))
             (<= (len (fn-scc-le-digits n)) k))
-   :hints (("Goal" :induct (fn-scc-u64 n k)))))
+   :hints (("Goal" :induct (fn-scc-u64 n k)
+            :in-theory (enable fn-scc-le-digits)))))
 
 ; A payload's length is written in at most eight octets.
 (defthm fn-scka-payload-of-digits

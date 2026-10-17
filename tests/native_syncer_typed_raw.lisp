@@ -5,13 +5,12 @@
 (in-package "ACL2")
 
 (load-deployed-forms "host/native/io.lisp"
- '((defun fnn-counterpart) (defun fnn-dispatch-function) (defun fnn-install-raw-dispatch)
+ '((defun fnn-counterpart)
    (defun fnn-guard-conjuncts) (defun fnn-entry-guard-spec)
    (defun fnn-entry-guard-describe) (defun fnn-entry-guard)
    (defun fnn-call) (defun fnn-core)))
-(defvar *fnn-dispatch-counterpart* nil)
-(defvar *fnn-raw-dispatch* (make-hash-table))
-(defvar *fnn-startup-creators* (make-hash-table))
+;; The dispatcher, its table and traps (D40): host/native/raw-trap.lisp.
+(load "host/native/raw-trap.lisp")
 (defvar *fnn-entry-guard-specs* (make-hash-table))
 ;; The six producer guards are T. No non-stobj kind recognizer is consulted.
 (defvar *fn-entry-guard-kinds* nil)
@@ -23,8 +22,8 @@
 ;; and the same native installation function that creates image dispatch.
 (check (= (fnn-install-raw-dispatch :report nil) 1) "validated exact creator ABI installed")
 (setf *fnn-dispatch-counterpart* t)
-(check (and (gethash 'create-fn-resource-ledger *fnn-startup-creators*)
-            (not (gethash 'fn-ros-issue *fnn-startup-creators*)))
+(check (and (fnn-raw-dispatch-creator-p 'create-fn-resource-ledger)
+            (not (fnn-raw-dispatch-creator-p 'fn-ros-issue)))
        "only actual registered creator allocation survives counterpart selection")
 (load-deployed-forms "host/native/owner.lisp"
  '((defstruct (fnn-syncer-grant (:constructor %make-fnn-syncer-grant)))

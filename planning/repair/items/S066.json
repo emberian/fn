@@ -11,7 +11,8 @@
  "line": "131",
  "locus": "connections",
  "notes": [
-  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification"
+  "10-02 22:32 coded on lane/host-lifecycle 4e409a9d6 (handed to runner); see lanedumps/host-lifecycle.md for verification",
+  "10-04 02:31 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix 4e409a9d6, superseded by 934b416cb; current site host/native/web-host.lisp fnn-web-advance/fnn-web-actor fault arms via fnn-owner-thread-escape, uncertain completion closes HTTP); local test tests/native_web_reactor_raw-mock.lisp PASS; native pending: wrapper:actor-top-boundary"
  ],
  "owner": "host-lifecycle",
  "reviewer": "(1) fnn-web-feed (web-host.lisp:104-131) catches fnn-store-error, which is the parent of fnn-store-fault and fnn-store-indeterminate (io.lisp:74-92), and returns :gone. books/web-session.lisp:1895-1902 turns :gone into a redirect to /signin that drops the session, so an uncertain outcome is shown as session-lost. The owner itself does fence: fnn-owner-shared-action-locked (owner.lisp) stops the service before re-signalling. So the 'keeps running' part holds only for host-side faults outside fnn-owner-serialized, such as line 128 and the render path; those are swallowed and the node keeps running. (2) fnn-web-serve re-signals any non-socket, non-TLS error (lines 276-279). The thread's handler-case catches only socket-error (line 323). Host faults outside serialized calls (lines 155, 169, 195, 203, 225, 263) escape the thread, and so does the fnn-refuse 'owner service is stopping' from fnn-web-open during a stop race. None of these reach fnn-owner-fault-service. The image runs with --disable-debugger (build.lisp:622), so an unhandled error there leaves the 3/4 exit-code discipline. Most of the fault triggers need malformed ACL2 output. The uncertain-shown-as-gone and stop-race paths are reachable.",
@@ -20,7 +21,7 @@
  "sha": "4e409a9d6",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "title": "Web face: host faults escape the thread without fencing, and a store fault or indeterminate outcome is reported to the session as :gone",
- "updated": "2026-10-03T02:32:57Z"
+ "updated": "2026-10-04T06:31:39Z"
 }

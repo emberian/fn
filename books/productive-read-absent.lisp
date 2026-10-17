@@ -38,6 +38,10 @@
          (cur (car (cdr (car effects))))
          (tail nil))
        (:instance
+         fn-pcr-newnews-cursor-never-expands-to-an-article-reply
+         (cur (car (cdr (car effects))))
+         (tail nil))
+       (:instance
          fn-ovw-expand-of-single-effects
          (text
            (if

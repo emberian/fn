@@ -15,6 +15,7 @@
 ; a block line of a well-formed response.
 (in-package "ACL2")
 (include-book "nntp")
+(local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 
 ; The five books of the nntp cluster withdraw their definitions at their
 ; export events (2026-09-19 split of books/nntp.lisp); this book reasons
@@ -159,6 +160,24 @@
   (implies (and (fn-nntp-decimal-tokenp token) (true-listp token))
            (fn-nov-clean-fieldp token)))
 
+(local
+ (defthm fn-nov-digit-character-is-clean
+   (implies (and (integerp digit) (<= 0 digit) (< digit 10))
+            (fn-nov-field-octetp (char-code (digit-to-char digit))))
+   :hints (("Goal" :in-theory (enable digit-to-char)))))
+
+(local
+ (defthm fn-nov-explode-decimal-is-clean
+   (implies (fn-nov-clean-fieldp (fn-nntp-string-octets-aux chars))
+            (fn-nov-clean-fieldp
+             (fn-nntp-string-octets-aux
+              (explode-nonnegative-integer number 10 chars))))
+   :hints (("Goal" :induct (explode-nonnegative-integer number 10 chars)
+                   :in-theory (disable floor mod digit-to-char)))))
+
+(defthm fn-nov-full-decimal-is-clean
+  (fn-nov-clean-fieldp (fn-nntp-decimal number)))
+
 (defthm fn-nov-decimal-field-is-clean
   (fn-nov-clean-fieldp (fn-nntp-decimal-field number)))
 
@@ -213,6 +232,7 @@
     fn-nov-clean-line-true-listp fn-nov-scrub-removes-crlf-pairs
     fn-nov-scrub-of-nil fn-nov-string-octets-aux-true-listp
     fn-nov-decimal-token-is-clean fn-nov-decimal-field-is-clean
+    fn-nov-full-decimal-is-clean
     fn-nov-append-pieces-of-cons))
 (in-theory (disable fn-nov-overviewp fn-nov-vocabulary))
 

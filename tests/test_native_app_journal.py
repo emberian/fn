@@ -107,6 +107,71 @@ class NativeApplicationJournalTests(unittest.TestCase):
         self.assertEqual(reopened.returncode, 0, reopened.stderr)
         self.assertIn("status=outstanding", reopened.stdout)
 
+    def enqueue_work(self, journal, work):
+        return self.invoke(
+            "app-journal", "workflow-enqueue", self.store, journal,
+            "1", "0", work, self.msgid, f"forward-{work}",
+            "dtn://fn-b/", "policy-a", f"terms-{work}",
+        )
+
+    def profile(self, journal, records, octets):
+        return self.invoke(
+            "app-journal", "profile", self.store, journal, "workflow",
+            str(records), str(octets),
+        )
+
+    def test_journal_capacity_is_the_operator_profile(self):
+        # D27 (B003): the records a journal admits are its profile's, not a
+        # constant.  An empty journal takes the smallest profile; full, the
+        # journal refuses the next intent and writes nothing; raised, it goes
+        # on; a lowering of a journal that holds records is refused.
+        journal = self.tmp / "workflow-profile"
+        small = self.profile(journal, 3, 1 << 20)
+        self.assertEqual(small.returncode, 0, small.stderr)
+        self.assertIn("max-records=3", small.stdout)
+        self.assertTrue((journal / "app-journal-profile").is_file())
+        self.initialize_workflow(journal)
+        first = self.enqueue_work(journal, "work-a")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(len(self.records(journal)), 3)
+
+        before = {p.name: p.read_bytes() for p in self.records(journal)}
+        full = self.enqueue_work(journal, "work-b")
+        self.assertEqual(full.returncode, 1, full.stderr)
+        self.assertIn("ACL2 refused application journal admission", full.stderr)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.records(journal)})
+
+        lowered = self.profile(journal, 3, (1 << 20) - 1)
+        self.assertEqual(lowered.returncode, 1, lowered.stderr)
+        self.assertIn("ACL2 refused max-records=3", lowered.stderr)
+
+        raised = self.profile(journal, 5, 1 << 20)
+        self.assertEqual(raised.returncode, 0, raised.stderr)
+        second = self.enqueue_work(journal, "work-b")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(len(self.records(journal)), 5)
+        reopened = self.invoke(
+            "app-journal", "workflow-status", self.store, journal, "work-b")
+        self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        self.assertIn("status=outstanding", reopened.stdout)
+
+    def test_journal_beyond_its_profile_is_refused_by_name(self):
+        # A journal whose profile file was replaced by a smaller one (copied
+        # from an empty journal) is refused at recovery, never truncated.
+        journal = self.tmp / "workflow-beyond"
+        self.initialize_workflow(journal)
+        self.assertEqual(self.enqueue_work(journal, "work-a").returncode, 0)
+        donor = self.tmp / "workflow-donor"
+        self.assertEqual(self.profile(donor, 3, 1 << 20).returncode, 0)
+        self.assertEqual(self.enqueue_work(journal, "work-b").returncode, 0)
+        (journal / "app-journal-profile").write_bytes(
+            (donor / "app-journal-profile").read_bytes())
+        refused = self.invoke(
+            "app-journal", "workflow-status", self.store, journal, "work-a")
+        self.assertEqual(refused.returncode, 1, refused.stderr)
+        self.assertIn("holds more than its profile admits", refused.stderr)
+        self.assertEqual(len(self.records(journal)), 5)
+
     def test_unsigned_receipt_profile_refuses_before_read_or_publication(self):
         journal = self.tmp / "workflow-auth-profile"
         receipt = self.tmp / "untrusted-receipt"

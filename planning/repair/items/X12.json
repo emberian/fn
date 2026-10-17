@@ -8,12 +8,13 @@
  "locus": "peer-services",
  "notes": [
   "10-02 22:22 code on lane/reclaim-retention 37456df07 (books/bp-payload-gate, PRF-1247); held to WIP 2 behind X01+S050",
-  "10-02 22:33 TRUE (fn-bpa-requestp accepts tombstone). on 2f27ae729: books/bp-payload-gate PRF-1247 gates request+ION producers; ION needs canonical pin; no native yet"
+  "10-02 22:33 TRUE (fn-bpa-requestp accepts tombstone). on 2f27ae729: books/bp-payload-gate PRF-1247 gates request+ION producers; ION needs canonical pin; no native yet",
+  "10-04 02:30 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (37456df07 + ce8cf421d, books/bp-payload-gate.lisp PRF-1247 fn-bppg-request-gate / fn-bppg-ion-adu, wired in host/bp-release-owner-host.lisp and host/workflow-host.lisp); local test none run; native pending: none named"
  ],
  "owner": "reclaim-retention",
  "severity": "high",
  "source": "coordinator",
- "state": "in-progress",
+ "state": "landed",
  "title": "tombstone accepted as BP ADU payload",
- "updated": "2026-10-03T02:33:28Z"
+ "updated": "2026-10-04T06:30:35Z"
 }

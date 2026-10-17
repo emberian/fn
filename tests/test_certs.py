@@ -1152,6 +1152,38 @@ class SnapshotOriginTests(unittest.TestCase):
                 "run")
             self.assertEqual(certs.install(worktree(two), cache).installed, 1)
 
+    def test_a_default_republish_keeps_a_snapshot_label(self):
+        """The lane that certified with FN_CERT_ORIGIN_KIND=run and then ran
+        `proof_repl start`, a certify or `certs.py publish` without it turned
+        its shareable entries back into foreign-local ones."""
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, cache = self.gate(one, kind="run")
+            kind = lambda: certs.read_meta(entry(cache, root, "books/mid"))["origin_kind"]
+            again = certs.publish(root, cache)
+            self.assertEqual((again.published, again.already, again.relabelled),
+                             (0, 1, 0))
+            self.assertEqual(kind(), "run")
+            self.assertEqual(certs.install(worktree(two), cache).installed, 1)
+            # Saying so is still how a snapshot becomes a live tree again.
+            certs.publish(root, cache, origin_kind="worktree")
+            self.assertEqual(kind(), "worktree")
+            # And the default never invents a snapshot: the next default
+            # publish of a live entry leaves it live.
+            certs.publish(root, cache)
+            self.assertEqual(kind(), "worktree")
+
+    def test_a_default_republish_does_not_relabel_another_origins_entry(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            gate, cache = self.gate(one, kind="run")
+            other = worktree(two, certified=["books/mid"])
+            manifest_for(other, ["books/mid"])
+            certs.publish(other, cache)
+            self.assertEqual(
+                certs.read_meta(entry(cache, gate, "books/mid"))["origin_kind"], "run")
+            self.assertEqual(
+                certs.read_meta(entry(cache, other, "books/mid"))["origin_kind"],
+                "worktree")
+
     def test_the_farm_runners_environment_supplies_the_kind(self):
         with tempfile.TemporaryDirectory() as one:
             with mock.patch.dict(os.environ, {"FN_CERT_ORIGIN_KIND": "run"}):
@@ -1908,8 +1940,19 @@ class InstallUmbrellasTests(unittest.TestCase):
 
     def test_remote_check_runs_it_after_the_per_book_install(self):
         text = (TOOLS / "remote_check.sh").read_text()
-        self.assertLess(text.index("tools/certs.py install 2>&1"),
-                        text.index("tools/certs.py install-umbrellas"))
+        # The install runs only when the tree's digest changed: the skip
+        # branch repeats the last umbrella summary and runs neither; the
+        # digest is recorded after BOTH installs, so an interrupted run
+        # (the marker was removed first) reinstalls the set.
+        per_book = text.index("tools/certs.py install > build/.certs-install.log")
+        umbrellas = text.index("tools/certs.py install-umbrellas > build/.certs-umbrellas.log")
+        self.assertLess(per_book, umbrellas)
+        self.assertEqual(text.count("tools/certs.py install-umbrellas"), 1,
+                         "only the install branch runs the umbrellas")
+        skipped = text.index("tail -n 1 build/.certs-umbrellas.log")
+        self.assertLess(skipped, per_book, "the skip branch precedes the install branch")
+        self.assertLess(text.index("rm -f build/.certs-installed"), per_book)
+        self.assertLess(umbrellas, text.index('> build/.certs-installed; fi'))
 
 
 class SimpleReport:

@@ -1,0 +1,14 @@
+{
+ "category": "proof-owed",
+ "file": "books/consumer-remote-operation-source.lisp",
+ "id": "TARIFF-OWED-FNCR-CONNECTION",
+ "notes": [
+  "10-04 00:42 Charge row from tariff2 (lane/tariff2@6b5f13fa2), to declare once the checker accepts it: (definterface fn-crf-open :class :common-lisp-compliant :operation (:stage :projection :funding fn-crf-install :tariff fn-fncr-connection-vector :draw fn-rl-draw :principal :connection :slot :dynamic :physical fn-crf-close :outcome fn-crf-close :retention :physical-and-operation :coverage (:resident :descriptors :workers :conn-ids) :unaccounted (DERIVED))) with DERIVED = exactly (def-cost fn-crf-open)'s output. Blocked on: books/definterface.lisp fn-di-operation-formp accepting :slot :dynamic only with :principal :connection; books/def-cost.lisp fn-cost-operation-drawp matching a draw over any non-constant slot term whose tariff argument calls the declared tariff (tariff successor's first step). Do NOT declare before that: today's checker refuses :slot :dynamic."
+ ],
+ "owner": "apps",
+ "severity": "high",
+ "source": "apps",
+ "state": "open",
+ "title": "FNCR connection class funded by an interim projection-stage draw (books/consumer-remote-operation-source.lisp fn-crf-open/fn-crf-close, private ledger, slot chosen per session). Owed: the per-connection charge row once definterface :operation takes :principal :connection (planning/design/tariff-2026-10-04.md Q2 amendment (i)); reconcile the class budget (max_sessions x vector) with the owner's heap reservation (fn-owner-connection-budget counts no remote session threads); a :operation declaration for fn-crf-open (the fixed-slot checker cannot state a per-session slot).",
+ "updated": "2026-10-04T04:42:06Z"
+}

@@ -1399,8 +1399,8 @@
          (fn-nov-date over) '(9)
          (fn-nov-msgid over) '(9)
          (fn-nov-references over) '(9)
-         (fn-nntp-decimal-field (fn-nov-bytes over)) '(9)
-         (fn-nntp-decimal-field (fn-nov-lines over)))))
+         (fn-nntp-decimal (fn-nov-bytes over)) '(9)
+         (fn-nntp-decimal (fn-nov-lines over)))))
 
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;

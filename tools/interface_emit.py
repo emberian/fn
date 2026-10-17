@@ -91,6 +91,8 @@ SOURCES = ("host/interfaces.lisp", "host/interfaces-extract.lisp",
 REGISTRY = ROOT / "planning" / "interfaces.json"
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
 RAW_DECLARATIONS = ROOT / "host" / "interfaces-raw.lisp"
+STEP_OF_STATUS = "keystone via fold; host-loop correspondence owed"
+
 KEYS = {":class", ":kinds", ":exempt", ":keystones", ":root", ":direct", ":delegates",
         ":raw-with", ":raw-guarded", ":operation"}
 
@@ -176,7 +178,15 @@ def declarations(root: Path = ROOT) -> list[dict]:
             exempt = {_sym(f): why for f, why in (kv.get(":exempt") or [])}
             keystones = []
             for entry in kv.get(":keystones") or []:
-                if isinstance(entry, list):
+                if isinstance(entry, list) and _sym(entry[1]) == ":step-of":
+                    # A theorem about the fold the host drives one step at a
+                    # time (books/definterface.lisp): never the entry's proof.
+                    row = {"theorem": _sym(entry[0]), "step_of": _sym(entry[2]),
+                           "status": STEP_OF_STATUS}
+                    if len(entry) > 3:
+                        row["step"] = _sym(entry[3])
+                    keystones.append(row)
+                elif isinstance(entry, list):
                     keystones.append({"theorem": _sym(entry[0]), "via": _sym(entry[2])})
                 else:
                     keystones.append({"theorem": _sym(entry)})
@@ -588,7 +598,11 @@ def render_registry(decls: list[dict], reading: dict) -> str:
                                                     if d["name"] in reading["dispatched"]),
                      "guard_verified": sum(1 for d in decls
                                            if d["class"] == "common-lisp-compliant"),
-                     "with_keystone": sum(1 for d in decls if d["keystones"]),
+                     # a :step-of keystone is about the fold, not the entry
+                     "with_keystone": sum(1 for d in decls
+                                          if any("step_of" not in k for k in d["keystones"])),
+                     "with_fold_keystone_only": sum(1 for d in decls if d["keystones"] and all(
+                         "step_of" in k for k in d["keystones"])),
                      "raw_dispatched": sum(1 for d in decls if d.get("raw_with") or d.get("raw_guarded") is not None)},
         # D40: every entry the host dispatches to its raw (guard-verified)
         # definition, with the theorems its declaration names; ACL2 checks

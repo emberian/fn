@@ -35,15 +35,19 @@
 ; -----------------------------------------------------------------------------
 ; The load's numbers are fresh (each commit assigns one past the high).
 
-(defthm fn-scj-freshp-of-load-from
+; The loader's fold (books/catalog-availability-owner-load.lisp): each row's
+; classification commits through fn-sca-load-held-row, or keeps the catalog.
+(defthm fn-scj-freshp-of-available-load-from
   (implies (fn-cnx-freshp c)
-           (fn-cnx-freshp (fn-sca-load-held-rows-from rows idx c)))
-  :hints (("Goal" :induct (fn-sca-load-held-rows-from rows idx c)
-           :in-theory (e/d (fn-sca-load-held-row) (fn-cnx-freshp fn-cat-commit-is-append)))))
+           (fn-cnx-freshp (fn-sca-load-held-available-from rows idx fn-arena c)))
+  :hints (("Goal" :induct (fn-sca-load-held-available-from rows idx fn-arena c)
+           :in-theory (e/d (fn-sca-load-held-available-row fn-sca-load-held-row)
+                           (fn-cnx-freshp fn-cat-commit-is-append)))))
 
 (defthm fn-scj-freshp-of-load
   (fn-cnx-freshp (fn-sca-load-held-rows rows idx fn-arena fn-cat))
-  :hints (("Goal" :in-theory (e/d (fn-sca-load-held-rows) (fn-sca-load-held-rows-from fn-cnx-freshp)))))
+  :hints (("Goal" :in-theory (e/d (fn-sca-load-held-rows)
+                                  (fn-sca-load-held-available-from fn-cnx-freshp)))))
 
 ; -----------------------------------------------------------------------------
 ; The owner the opens install.

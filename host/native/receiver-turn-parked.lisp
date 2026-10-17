@@ -467,17 +467,17 @@
         (otherwise (fnn-fixed-callback-fail 'fnn-owner-connection-settle-locked :settle-unresolved word)))
       (values word left))))
 
-(defun fnn-owner-connection-close-locked (service cid node faultp)
+(defun fnn-owner-connection-close-locked-kwb (service cid node faultp)
   "Logical close/fault followed by core settlement; held aliases stay rooted."
   (unless node
     (when (fnn-owner-connection-selected-p service)
       (fnn-fixed-callback-fail 'fn-owner-index-rx-close :custody-missing nil))
-    (return-from fnn-owner-connection-close-locked
+    (return-from fnn-owner-connection-close-locked-kwb
       (fnn-owner-action (if faultp 'fn-owner-fault 'fn-owner-close) cid)))
   (when (eq (fnn-connection-custody-phase node) :released)
-    (return-from fnn-owner-connection-close-locked :closed))
+    (return-from fnn-owner-connection-close-locked-kwb :closed))
   (when (eq (fnn-connection-custody-phase node) :retiring)
-    (return-from fnn-owner-connection-close-locked
+    (return-from fnn-owner-connection-close-locked-kwb
       (fnn-owner-connection-settle-locked
        service node (fnn-owner-service-connection-fuel service) nil)))
   (sb-thread:with-mutex (*fnn-extent-lock*)

@@ -8,7 +8,8 @@
  "line": "630",
  "locus": "committer",
  "notes": [
-  "10-02 22:33 interim pushed lane/sf-records 393d9143e (record-listp single-dispatch exec twin; teeth unrun, no cert/measure). Real cure = raw dispatch after carrier move (lane/stage-5b-carrier fa32ac06f WIP). See lanedumps/stage-5b.md"
+  "10-02 22:33 interim pushed lane/sf-records 393d9143e (record-listp single-dispatch exec twin; teeth unrun, no cert/measure). Real cure = raw dispatch after carrier move (lane/stage-5b-carrier fa32ac06f WIP). See lanedumps/stage-5b.md",
+  "10-04 02:33 ledger-close 2026-10-04: left in-progress: only the interim 393d9143e (fn-sf-record-listp single-dispatch exec twin, books/store-files.lisp) is in the tree; the guard at books/store-files.lisp:624 still evaluates (fn-sf-record-listp (fn-sf-records s) ...) and host/owner-host.lisp still carries fn-sn-statep guards (1361,1701,2213,...), lane/stage-5b-carrier fa32ac06f (raw dispatch) is not an ancestor; no per-call cost measurement; smallest fix: land the raw-dispatch carrier move so the owner-io guard is not re-run per call, then measure N=1000 POST"
  ],
  "owner": "stage-5b",
  "severity": "high",
@@ -17,5 +18,5 @@
  "source": "coordinator",
  "state": "in-progress",
  "title": "fn-owner-io guard revalidates whole store per call: O(store) per POST (raw dispatch / statep idiom)",
- "updated": "2026-10-03T02:33:59Z"
+ "updated": "2026-10-04T06:33:11Z"
 }

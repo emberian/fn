@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class BpSendBoundaryTests(unittest.TestCase):
     def schedule(self, mode, intended=None):
         args = [shutil.which("sbcl") or "sbcl", "--noinform", "--script",
-                "tests/native_bp_send_boundary_raw.lisp", mode]
+                "tests/native_bp_send_boundary_raw-mock.lisp", mode]
         result = subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=5)
         if intended and "BP_SEND_ASSERTION:" + intended in result.stdout:
             self.fail(intended)

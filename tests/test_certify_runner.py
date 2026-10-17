@@ -818,6 +818,67 @@ class MakefileRootsTests(unittest.TestCase):
             self.assertIn(wrapper, runner.local_closure([test]))
 
 
+class LaneSelectionTests(unittest.TestCase):
+    """`--lane`: the verdict a lane needs is its books and the next layer up,
+    never the image-world umbrellas `--affected-by` reaches."""
+
+    GRAPH = {
+        "books/base": [],
+        "books/mid": ["books/base"],
+        "books/top": ["books/mid"],
+        "books/other": ["books/base"],
+        "books/image-world": ["books/top", "books/other"],
+        "books/image-world-dtn": ["books/base"],
+        "tests/acl2/base-tests": ["books/base"],
+        "tests/acl2/mid-tests": ["books/mid"],
+        "tests/acl2/unrelated-tests": [],
+    }
+    UMBRELLAS = {"books/image-world", "books/image-world-dtn"}
+
+    def select(self, named, targets, order=()):
+        return runner.lane_selection(
+            named, targets, self.GRAPH, self.UMBRELLAS,
+            lambda book: book in self.GRAPH, list(order))
+
+    def test_a_target_is_its_direct_includers_and_its_own_tests_only(self):
+        self.assertEqual(
+            self.select([], ["books/base"]),
+            ["books/base", "books/mid", "books/other", "tests/acl2/base-tests"])
+        # one level only: `top` includes `mid`, not `base`; the umbrellas
+        # include both and are never taken.
+        self.assertEqual(
+            self.select([], ["books/mid"]),
+            ["books/mid", "books/top", "tests/acl2/mid-tests"])
+        self.assertEqual(self.select([], ["books/top"]), ["books/top"])
+
+    def test_named_books_come_first_and_makefile_order_sorts_the_includers(self):
+        self.assertEqual(
+            self.select(["books/top"], ["books/base"],
+                        order=["books/other", "books/mid"]),
+            ["books/top", "books/base", "books/other", "books/mid",
+             "tests/acl2/base-tests"])
+
+    def test_the_cli_selects_the_lane_and_refuses_lane_alone(self):
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "tests" / "acl2").mkdir(parents=True)
+            repository = FakeRepository(directory, {
+                "books/base": [], "books/mid": ["base"], "books/top": ["mid"],
+                "books/image-world": ["top"],
+                # outside every root, and its include does not resolve
+                "books/stray": ["missing"],
+                "tests/acl2/base-tests": ["../../books/base"]})
+            repository.write_makefile(["books/base", "books/mid", "books/top",
+                                       "books/image-world", "tests/acl2/base-tests"])
+            code, everything = repository.dry_run([], ["books/base"])
+            self.assertIn("books/image-world", everything)
+            code, listed = repository.dry_run([], ["books/base"], extra=["--lane"])
+            self.assertEqual(code, 0)
+            self.assertEqual(listed, ["books/base", "books/mid",
+                                      "tests/acl2/base-tests"])
+            with self.assertRaises(SystemExit):
+                repository.dry_run([], [], extra=["--lane"])
+
+
 class ClosureTests(unittest.TestCase):
     """`--closure`: a run that assumes the box holds no certificate at all."""
 
@@ -1205,6 +1266,36 @@ class CachePublishTests(unittest.TestCase):
             self.assertEqual(meta["toolchain"], TEST_COMPATIBILITY)
             self.assertEqual(meta["certification_provenance"]["runner_sha256"],
                              "b" * 64)
+
+    def kinds(self, repository) -> set[str]:
+        return {json.loads(path.read_text())["origin_kind"]
+                for path in repository.cache.rglob("meta.json")}
+
+    def test_the_origin_kind_reaches_every_entry_the_run_publishes(self):
+        """`--origin-kind run` and FN_CERT_ORIGIN_KIND=run are the same thing:
+        run-origin entries install from any other worktree on the machine, and
+        the default (a live worktree) does not."""
+        order, layered = ParallelScheduleTests.ORDER, ParallelScheduleTests.LAYERED
+        for label, extra, overrides, wanted in (
+                ("default", [], None, {"worktree"}),
+                ("flag", ["--origin-kind", "run"], None, {"run"}),
+                ("environment", [], {"FN_CERT_ORIGIN_KIND": "run"}, {"run"}),
+                ("flag wins", ["--origin-kind", "gate"],
+                 {"FN_CERT_ORIGIN_KIND": "run"}, {"gate"})):
+            with self.subTest(label), tempfile.TemporaryDirectory() as directory:
+                repository = FakeRepository(directory, layered)
+                _, manifest = repository.certify(
+                    order, jobs=1, extra=extra, environment_overrides=overrides)
+                self.assertEqual(self.kinds(repository), wanted)
+                self.assertEqual(manifest["cert_cache"]["origin_kind"], next(iter(wanted)))
+
+    def test_a_rerun_without_the_variable_keeps_the_run_label(self):
+        order, layered = ParallelScheduleTests.ORDER, ParallelScheduleTests.LAYERED
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, layered)
+            repository.certify(order, jobs=1, extra=["--origin-kind", "run"])
+            repository.certify(order, jobs=1)
+            self.assertEqual(self.kinds(repository), {"run"})
 
     def test_no_publish_leaves_the_cache_untouched(self):
         with tempfile.TemporaryDirectory() as directory:

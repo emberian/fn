@@ -23,7 +23,7 @@ import native_trace
 PREFIX = 'FN_MATCHER_GRAPH '
 SUBJECTS = ('books/wildmat-cursor.lisp', 'books/wildmat-work.lisp', 'books/wildmat.lisp',
             'books/nntp-responses.lisp')
-ASSETS = ('tools/native_heap_graph.lisp', 'tests/native_matcher_heap_raw.lisp', 'host/native/trace.lisp')
+ASSETS = ('tools/native_heap_graph.lisp', 'tools/native_matcher_heap_probe.lisp', 'host/native/trace.lisp')
 
 
 def digest(path):
@@ -122,7 +122,7 @@ def main():
     source = '(in-package "ACL2")\n' + '\n'.join(capacity_forms) + '\n' + \
              '(defttag :fn-matcher-heap-debug)\n' + \
              '(progn! (set-raw-mode t) (defparameter *fnmg-probe-root* ' + literal(remote) + ') ' + \
-             '(load ' + literal(remote + '/tests/native_matcher_heap_raw.lisp') + '))\n'
+             '(load ' + literal(remote + '/tools/native_matcher_heap_probe.lisp') + '))\n'
     (dest / 'input.lisp').write_text(source)
     (dest / 'sources.json').write_text(json.dumps({'sha256': snapshot, 'warm_tree': args.remote_tree,
         'warm_session': args.warm, 'remote_asset_root': remote, 'numeric_book_only': str(args.live_book)}, indent=2)+'\n')

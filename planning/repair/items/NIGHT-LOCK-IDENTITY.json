@@ -10,7 +10,8 @@
   "10-03 02:11 claimed: scope=['tools/lock_discipline_check.py', 'tools/lock_baseline_migrate.py', 'tools/lock_discipline_baseline.json', 'tests/test_lock_discipline_check.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys",
   "Baseline identity migration only: exact source046aa740f baseline bytes verified;374 rows, weight1609 preserved without --initial or added rows. 31 scoped tests pass. Served comparison at unchanged runtime bytes has412 findings before/after; new18->13, stale16->11. Remaining moved-site or actual new debt preserved.",
   "10-03 02:15 Source-only Grok advisory attempted with allowlist empty, tools/web/subagents explicitly forbidden, empty temporary cwd and minimal diff. CLI repeatedly initializes configured MCP and produced no review response after several minutes; stopped own process. This unavailable advisory does not certify or block the source change. No model tool invocation observed.",
-  "10-03 02:16 READY f24e2be0e;31 scoped checker tests pass. Identical-harness self-witness fails at base4740c59af with exact expected assertion, clean at head. Evidence planning/evidence/repair/NIGHT-LOCK-IDENTITY-85a7a139bfbb470982de68399368d24f.json hash66a36c653c52036897e15c8f9d967c64c7c2a5c295e2268595fff0cdff49b20c. Historical baseline translation preserves374 rows/weight1609; actual new paths stay new. Served comparison is a host-source inspection, not immutable image/proof qualification."
+  "10-03 02:16 READY f24e2be0e;31 scoped checker tests pass. Identical-harness self-witness fails at base4740c59af with exact expected assertion, clean at head. Evidence planning/evidence/repair/NIGHT-LOCK-IDENTITY-85a7a139bfbb470982de68399368d24f.json hash66a36c653c52036897e15c8f9d967c64c7c2a5c295e2268595fff0cdff49b20c. Historical baseline translation preserves374 rows/weight1609; actual new paths stay new. Served comparison is a host-source inspection, not immutable image/proof qualification.",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit f24e2be0e, ancestor; tools/lock_discipline_check.py + baseline migration); local test python3.12 -m unittest tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys PASS at HEAD; native pending: none (tooling)"
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -23,10 +24,10 @@
  ],
  "severity": "medium",
  "source": "served-convergence",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_lock_discipline_check.Baseline.test_comment_and_blank_line_shifts_preserve_callback_keys",
  "title": "Callback lock finding identities change under source line shifts",
- "updated": "2026-10-03T06:16:39Z",
+ "updated": "2026-10-04T06:28:43Z",
  "verify": {
   "base": "4740c59afffbb6f7f375450bed1e5052998670a6",
   "base_observation": {

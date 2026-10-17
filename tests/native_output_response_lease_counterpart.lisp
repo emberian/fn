@@ -19,13 +19,12 @@
 (fnout-load-host-forms "host/native/io.lisp"
  '((define-condition fnn-store-error) (define-condition fnn-store-fault)
    (define-condition fnn-entry-guard-fault) (defun fnn-fault)
-   (defun fnn-counterpart) (defun fnn-install-raw-dispatch)
-   (defun fnn-dispatch-function) (defun fnn-guard-conjuncts)
+   (defun fnn-counterpart)
+   (defun fnn-guard-conjuncts)
    (defun fnn-entry-guard-spec) (defun fnn-entry-guard-describe)
    (defun fnn-entry-guard) (defun fnn-call) (defun fnn-core)))
-(defvar *fnn-dispatch-counterpart* nil)
-(defvar *fnn-raw-dispatch* (make-hash-table :test 'eq))
-(defvar *fnn-startup-creators* (make-hash-table :test 'eq))
+;; The dispatcher, its table and traps (D40): host/native/raw-trap.lisp.
+(load "host/native/raw-trap.lisp")
 (defvar *fnn-entry-guard-specs* (make-hash-table :test 'eq))
 (defvar *fn-entry-guard-kinds* nil)
 (fnn-install-raw-dispatch :report nil)

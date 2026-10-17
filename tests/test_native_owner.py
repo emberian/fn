@@ -169,7 +169,15 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         paths = list(self._ancestors(envelope, "fnn-owner-measured"))
         self.assertEqual(len(paths), 1)
         self.assertIn("fnn-owner-shared-action-locked", [head(p) for p in paths[0]])
-        self.assertIn("with-mutex", [head(p)[-10:] for p in paths[0]])
+        # The owner mutex, taken through the observed form
+        # (fnn-with-observed-owner -> fnn-with-observed-mutex, io.lisp:
+        # sb-thread:with-mutex plus its hold observation).
+        self.assertIn("fnn-with-observed-owner", [head(p) for p in paths[0]])
+        observed = owner[owner.index("(defmacro fnn-with-observed-owner"):]
+        self.assertIn("`(fnn-with-observed-mutex (,lock :owner)", observed[:200])
+        io = (ROOT / "host/native/io.lisp").read_text(encoding="utf-8")
+        mutex = io[io.index("(defmacro fnn-with-observed-mutex"):]
+        self.assertIn("(sb-thread:with-mutex (,mutex ,@options)", mutex[:mutex.index("\n(def")])
         admission = list(self._ancestors(envelope, "admission"))
         self.assertTrue(admission and all("fnn-owner-shared-action-locked" in [head(p) for p in a]
                                           for a in admission))
@@ -541,7 +549,7 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         self.assertIn(":backlog +fnn-owner-listen-backlog+", source[start:])
 
     def test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step(self):
-        # tests/native_owner_chunk_loop_raw.lisp evaluates the deployed
+        # tests/native_owner_chunk_loop_raw-mock.lisp evaluates the deployed
         # connection life (host/native/mux.lisp), fnn-owner-handle-chunk and
         # fnn-owner-advance-clock against recording stubs, so the two 915
         # defects have a check that needs no image.  The harness extracts the
@@ -555,7 +563,7 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         sbcl, sbcl_env = runtime
         result = subprocess.run(
             [sbcl, "--noinform", "--script",
-             "tests/native_owner_chunk_loop_raw.lisp"],
+             "tests/native_owner_chunk_loop_raw-mock.lisp"],
             cwd=ROOT, env=sbcl_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=180, check=False)
         output = result.stdout.decode("utf-8", "replace")
@@ -564,7 +572,7 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
 
 
     def test_developer_selectors_gate_arm_the_owner_and_stop_synchronously(self):
-        # tests/native_developer_selectors_raw.lisp evaluates the deployed
+        # tests/native_developer_selectors_raw-mock.lisp evaluates the deployed
         # fnn-main, fnn-developer-selector and its gate, fnn-post-entry-fault,
         # fnn-owner-run-normalized, the control reply and the control stop
         # against recording stubs; the stop itself runs for real in forked
@@ -575,7 +583,7 @@ class NativeOwnerHandlerStructureTests(unittest.TestCase):
         sbcl, sbcl_env = runtime
         result = subprocess.run(
             [sbcl, "--noinform", "--script",
-             "tests/native_developer_selectors_raw.lisp"],
+             "tests/native_developer_selectors_raw-mock.lisp"],
             cwd=ROOT, env=sbcl_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             timeout=300, check=False)
         output = result.stdout.decode("utf-8", "replace")

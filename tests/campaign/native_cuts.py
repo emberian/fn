@@ -353,7 +353,7 @@ def verify_state_checkpoint_cut_map() -> None:
     # fnn-state-checkpoint-write is its two halves in order (Q16: the online
     # reclaim pass stages off the owner mutex and installs under it).
     top = host_function(source, "fnn-state-checkpoint-write")
-    if "(fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence))" not in top:
+    if "(fnn-state-checkpoint-install store (fnn-state-checkpoint-stage store octets sequence image))" not in top:
         raise AssertionError("fnn-state-checkpoint-write is not stage then install")
     write = (host_function(source, "fnn-state-checkpoint-stage")
              + host_function(source, "fnn-state-checkpoint-install"))
@@ -362,7 +362,7 @@ def verify_state_checkpoint_cut_map() -> None:
              # S045: the staged file is read back and verified after its
              # fence and before the rename that replaces the old checkpoint
              # (a read: no step of the program, no cut).
-             write.index("(fnn-state-checkpoint-verify store stage sequence)"),
+             write.index("(fnn-state-checkpoint-verify store stage sequence image)"),
              write.index("(fnn-replace stage (fnn-state-checkpoint-path store))"),
              write.index("(fnn-at store :state-checkpoint-replaced)"),
              write.index("(fnn-fsync-dir (fnn-store-root store))"),
@@ -561,13 +561,29 @@ def verify_init_publication_cut_map() -> None:
     if tuple(c.candidate for c in INIT_PUB_CUTS) != tuple(c.candidate for c in IMPORT_CUTS):
         raise AssertionError("init candidates differ from the import program's")
     source = (ROOT / "host/native/io.lisp").read_text()
+    # The admission (PKT-894): fnn-init-admit observes the leftover stage,
+    # its classification and whether a live init holds it before it asks
+    # ACL2, and discards only on ACL2's :discard-stage.
+    admit = host_function(source, "fnn-init-admit")
+    steps = [admit.index('(fnn-import-leftover-stage root-path "init")'),
+             admit.index("(fnn-import-classify leftover root-path)"),
+             admit.index("(fnn-init-stage-lock leftover)"),
+             admit.index("(fnn-core 'fn-bs-init-pub-admission"),
+             admit.index("((eq admission :discard-stage)"),
+             admit.index("(fnn-init-discard-tree leftover)")]
+    if steps != sorted(steps):
+        raise AssertionError("fnn-init-admit acts before ACL2 admits")
     body = host_function(source, "fnn-command-init-published")
-    order = [body.index('(fnn-import-leftover-stage root-path "init")'),
-             body.index("(fnn-import-classify leftover root-path)"),
-             body.index("(fnn-core 'fn-bs-init-pub-admission"),
+    order = [body.index("(fnn-init-admit root-path)"),
              body.index('(fnn-staged-publication\n       "init"')]
     if order != sorted(order):
         raise AssertionError("fnn-command-init-published publishes before ACL2 admits")
+    # The stage is held from its mkdir to the end (HOLD-STAGE), and the node
+    # secret is the plan's last file.
+    if not " ".join(body.split()).endswith("(fnn-core 'fn-bs-init-log-subdir-names) t) (fnn-out \"initialized ~a\" root-path) +fnn-exit-ok+)))"):
+        raise AssertionError("init's staged publication does not hold its stage")
+    if "(cons (fnn-node-secret-path stage) secret))" not in body:
+        raise AssertionError("init's plan does not carry the node secret last")
     operator = (ROOT / "host/native/operator.lisp").read_text()
     # The call, whitespace collapsed: the root, the groups, the profile and
     # (since batch AS's merge of store-mount-identity) the mission's
@@ -989,7 +1005,9 @@ def verify_post_log_cut_map() -> None:
     # it is found by its phase word, not its argument text.
     complete_at = re.search(r"\(fnn-owner-commit-complete-locked\s+service\s+:complete\s", pipeline)
     order = [pipeline.find("(fnn-owner-start-syncer "),
-             pipeline.find("(sb-thread:join-thread syncer"),
+             # The syncer is an actor: its physical join is the custody
+             # receipt (3bda776c6), not a bare join-thread.
+             pipeline.find("(fnn-owner-actor-join service syncer)"),
              complete_at.start() if complete_at else -1,
              pipeline.find("(fnn-log-seal-capture store)")]
     if not (0 <= order[0] < order[1] < order[2] < order[3]):

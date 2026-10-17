@@ -14,9 +14,13 @@ What this module checks:
   table, the candidate column is the import's, the host asks ACL2's
   admission before publishing and `operator init` runs this path
   (native_cuts.verify_init_publication_cut_map);
-* on the production image: init publishes and leaves no ROOT.init-*; an empty
-  ROOT.init-deadbeef0000 beside an absent ROOT is refused (exit 1,
-  reason=interrupted-init, naming it) and ROOT stays absent; the same name
+* on the production image: init publishes and leaves no ROOT.init-*, and the
+  published store carries keys/node-secret.key (PKT-894: the secret is the
+  plan's last file); status and recover beside an empty ROOT.init-deadbeef0000
+  and an absent ROOT name the stage and say to run init; init then removes
+  that unpublished stage and publishes (PKT-894, fn-bs-init-pub-admission's
+  :discard-stage; exit 0); a stage another live process holds (flock) is
+  refused (reason=init-in-progress) and kept; the same name
   beside the initialized ROOT is refused (reason=publication-uncertain); an
   empty directory at ROOT is refused (reason=store-path-exists) and stays
   empty;
@@ -25,9 +29,11 @@ What this module checks:
   SIGKILL ends the process; EIO exits 1 before the rename and 3 at or after
   it.  Afterwards ROOT is present exactly when the candidate allows it, and a
   present ROOT is the complete empty store (`status` exit 0,
-  transactions=0) that a second init refuses (STORE-EXISTS); an absent ROOT
-  leaves one staged directory, which the next init names
-  (reason=interrupted-init), after whose removal init succeeds;
+  transactions=0, the node secret present) that a second init refuses
+  (STORE-EXISTS); an absent ROOT leaves one staged directory, which the next
+  init removes before it publishes (exit 0, no stage left): the old state or
+  the new, never a store init must be helped out of (PKT-894, KEYSTONE
+  fn-bs-init-log-crash-retry-is-old-or-new, PRF-1040);
 * two init processes of one image killed at the same cut leave stages with
   different suffixes (PKT-819: the random state is seeded per process).
 
@@ -35,6 +41,8 @@ Not checked here: power loss (lane power-loss's campaign carries these cut
 names), and the non-Linux ROOT.lock path (OpenBSD evidence is scoped
 separately).  Runs on hbox with FN_NATIVE_HOST and FN_NATIVE_DEVELOPER_HOST.
 """
+import fcntl
+import os
 import shutil
 import signal
 import unittest
@@ -66,6 +74,8 @@ class InitFixture(ProfileFixture):
         return self.op("init", "--profile", "development", "fn.test", env=env)
 
     def assert_empty_store(self):
+        self.assertTrue((self.store / "keys" / "node-secret.key").is_file(),
+                        "the published store carries its node secret (PKT-894)")
         status = self.op("status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
         self.assertIn(b"transactions=0", status.stdout)
@@ -89,14 +99,8 @@ class InitPublicationTests(InitFixture):
     def test_publication_and_the_three_refusals(self):
         leftover = self.root / LEFTOVER
         leftover.mkdir()
-        refused = self.init_words()
-        text = (refused.stdout + refused.stderr).decode()
-        self.assertEqual(refused.returncode, EXIT_REFUSED, text)
-        self.assertIn("init refused reason=interrupted-init stage={}".format(leftover), text)
-        self.assertFalse(self.store.exists())
-        # PKT-781 (1), PRF-971: the other store actions name the stage too
-        # (fn-nsst-store-outcome), never NO-STORE's "run init", which init
-        # itself refuses while the stage remains.
+        # PKT-781 (1), PRF-971: the store actions name the stage and say to
+        # run init (fn-nsst-store-outcome), never NO-STORE.
         for verb in ("status", "recover"):
             answer = self.op(verb)
             text = (answer.stdout + answer.stderr).decode()
@@ -104,8 +108,33 @@ class InitPublicationTests(InitFixture):
             self.assertIn("INTERRUPTED-INIT", text.upper(), text)
             self.assertNotIn("NO-STORE", text.upper(), text)
             self.assertIn("its stage {} remains".format(leftover), text)
+            self.assertIn("Run: fn operator CONFIG init", text)
             self.assertFalse(self.store.exists())
-        leftover.rmdir()
+        # A stage a live process holds is another init's: refused, kept.
+        fd = os.open(str(leftover), os.O_RDONLY)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            held = self.init_words()
+            text = (held.stdout + held.stderr).decode()
+            self.assertEqual(held.returncode, EXIT_REFUSED, text)
+            self.assertIn("init refused reason=init-in-progress stage={}".format(leftover), text)
+            self.assertTrue(leftover.is_dir())
+            self.assertFalse(self.store.exists())
+        finally:
+            os.close(fd)
+        # PKT-894: unheld, the stage is an earlier init's unpublished one;
+        # init removes it and publishes.
+        (leftover / "journal").mkdir()
+        (leftover / "journal" / "000001.log").write_bytes(b"\0" * 8)
+        (leftover / "config.json").write_bytes(b"{}")
+        retried = self.init_words()
+        text = (retried.stdout + retried.stderr).decode()
+        self.assertEqual(retried.returncode, EXIT_OK, text)
+        self.assertIn("init removed {}".format(leftover), text)
+        self.assertFalse(leftover.exists())
+        self.assertEqual(self.stages(), [])
+        self.assert_empty_store()
+        shutil.rmtree(self.store)
         bare = self.op("status")
         self.assertEqual(bare.returncode, EXIT_REFUSED, bare.stderr.decode())
         self.assertIn("NO-STORE", (bare.stdout + bare.stderr).decode().upper())
@@ -172,12 +201,8 @@ class InitCutTests(InitFixture):
             self.assertIn(str(stages[0]), text)
         retried = self.init_words()
         text = (retried.stdout + retried.stderr).decode()
-        self.assertEqual(retried.returncode, EXIT_REFUSED, text)
-        self.assertIn("init refused reason=interrupted-init stage={}".format(stages[0]), text)
-        self.assertFalse(self.store.exists())
-        shutil.rmtree(stages[0])
-        retried = self.init_words()
-        self.assertEqual(retried.returncode, EXIT_OK, retried.stderr.decode())
+        self.assertEqual(retried.returncode, EXIT_OK, text)
+        self.assertIn("init removed {}".format(stages[0]), text)
         self.assertEqual(self.stages(), [])
         self.assert_empty_store()
         return "absent"

@@ -1,11 +1,11 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 6: every health code and refusal
-Date: Sun, 27 Sep 2026 12:02:00 +0000
-Message-ID: <fn-faq-6-20260927@fn.fg-goose.online>
+Date: Sun, 04 Oct 2026 12:02:00 +0000
+Message-ID: <fn-faq-6-20261004@fn.fg-goose.online>
 Archive-name: fn-faq/part6
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-27
+Last-modified: 2026-10-04
 Summary: The health states and POST refusals, from fn's own tables.
 
 Written from fn's own tables, so complete.

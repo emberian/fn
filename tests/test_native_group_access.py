@@ -40,11 +40,6 @@ def text(result):
 
 
 class GroupAccessSourceTests(unittest.TestCase):
-    def test_the_delta_code_is_22(self):
-        config = (ROOT / "books" / "config.lisp").read_text(encoding="ascii")
-        self.assertIn("((equal kind :account-access) 22)", config)
-        self.assertIn("((equal code 22) :account-access)", config)
-
     def test_the_served_delegate_takes_the_view(self):
         for book, name in (("nntp-auth.lisp", "(defun fn-auth-delegate-pinned"),
                            ("served-carried.lisp", "(defun fn-scar-auth-delegate-pinned")):

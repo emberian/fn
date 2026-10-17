@@ -1,0 +1,13 @@
+{
+ "category": "defect",
+ "file": "books/definterface.lisp",
+ "id": "DI-RAW-WITH-RELATEDNESS-VACUOUS",
+ "notes": [],
+ "owner": "generators",
+ "severity": "high",
+ "slice": "integrator2",
+ "source": "integrator2",
+ "state": "open",
+ "title": "books/definterface.lisp's :raw-with relatedness clause is near-vacuous: fn-di-related-fnnames collects the all-fnnames of each translated concluding theorem, which include IMPLIES (and the other connectives a translated formula carries), and fn-di-unrelated-theorem only asks a named theorem to share one name with that set, so any implication passes. Seen at ed0e2be02: for fn-hroot-index-demand the related set is (FN-HIST$P-WFP FN-HIST$PCORR FN-HIST$P-WFP IMPLIES), and fn-hist$p-root-is-physical (about fn-hist$pp / fn-hrecs$cp / fn-hist$p-root) is accepted through IMPLIES alone. Fix: exclude ACL2 primitives and logical connectives (implies, if, not, and the like) from the related-names set and from the theorem's names before intersecting; teeth: a must-fail-checked case in tests/acl2/definterface-tests.lisp whose named bridge mentions only IMPLIES/AND beside unrelated functions. Re-check the existing :raw-with rows against the corrected clause (the hroot readers' fn-hist$p-root-is-physical is the first suspect).",
+ "updated": "2026-10-04T12:03:53Z"
+}

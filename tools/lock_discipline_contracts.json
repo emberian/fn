@@ -168,10 +168,53 @@
     "(fnn-owner-service-output-ledger-lock)"
    ],
    "why": "Private typed output projection. Startup O precedes this leaf; semantic methods operate only private ledger, no live STATE/arena and no callback to O while held."
+  },
+  "XWEB": {
+   "match": [
+    "(fnn-web-face-lock)"
+   ],
+   "why": "lane lock-rows-2: the web face's completion/job mutex (host/native/web-host.lisp). Every acquisition is a short in-memory critical section over the face and connection records (job mailbox, completion cells, disposal claims, cleanup debts), or the wake descriptor protocol: fnn-web-wake-locked writes one byte to a non-blocking pipe and fnn-web-close-wakes-locked closes the two pipe ends under it so no publisher can write a closed fd. No other declared lock is taken inside it except the diagnostic writer queue (the cleanup-failure fnn-err of fnn-unwind-cleanups); the semantic actor's job wait releases it (condition-wait)",
+   "io_leaves_ok": [
+    "sb-unix:unix-write",
+    "sb-posix:close"
+   ],
+   "why_io": "only the wake pipe's one-byte write and its two closes; both ends are set non-blocking (fnn-web-start), so neither can wait"
+  },
+  "XCSP": {
+   "match": [
+    "(fnn-csp-worker-lock)"
+   ],
+   "why": "lane lock-rows-2: the catchup spool worker's request/completion cell (host/native/catchup-spool.lisp). Pure in-memory phase transitions and the worker's own condition-wait; the descriptor I/O (fnn-csp-worker-perform) runs between two acquisitions, never inside one"
+  },
+  "XPFB": {
+   "match": [
+    "(fnn-peer-flight-bank-lock)"
+   ],
+   "why": "lane lock-rows-2: the peer-flight bank's ledger mutex (host/native/catchup-spool.lisp fnn-peer-flight-bank-drained/-draw/-work/-settle). Serializes the bank-private resource ledger (fn-rl-draw / fn-rl-settle on the bank's own ledger object, the pure fn-csp-/fn-pfr- helpers); no live Store, owner state, I/O or other lock inside"
+  },
+  "XFJ": {
+   "match": [
+    "(fnn-owner-feed-journal-lock)"
+   ],
+   "io_ok": true,
+   "why": "lane lock-rows-2: one FNFD feed journal's append lock (host/native/owner.lisp, struct comment 'one append (write, fsync, phase) at a time'). Held by fnn-owner-feed-append and the feed batch writer/barrier, both off the owner mutex and under it (a feed tick or a bound submission's inline commit); no other declared lock is taken inside it",
+   "why_io": "the frame write and the append-barrier fsync are the lock's purpose: they must be serialized per journal and the barrier must follow the writes it covers under the same lock; a journal is private to its feed, so no other service path waits on it"
+  },
+  "XTRACE": {
+   "match": [
+    "(fnn-trace-state-lock)"
+   ],
+   "why": "lane lock-rows-2: the opt-in native trace collector's private mutex (host/native/trace.lisp fnn-trace-begin/-finish/-snapshot): a leaf taken by fnn-trace-span, and so by every fnn-owner-measured use, under whatever lock the measured form runs under; its critical sections only reserve or complete one row (no hook, I/O, ACL2 or other lock)"
+  },
+  "XOBS": {
+   "match": [
+    "(fnn-native-observation-lock)"
+   ],
+   "why": "lane ACTORS: the native observer's private record mutex (host/native/owner.lisp fnn-native-observation-reserve/-complete/-events): a leaf taken for a row update by fnn-with-observed-owner/-mutex and fnn-observed-condition-wait under whatever lock they observe; it calls no hook, I/O, ACL2 or other lock"
   }
  },
  "lock_order": {
-  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check",
+  "comment": "the declared partial order (deputy section 1c + Astra 3.3 + Astra D7's added edges O->M, E->Q, A->Q); transitively closed by the check Lane ACTORS: XOBS (the observer's record mutex) nests under every observed lock; E -> XCRYPTO (host/native/admin.lisp fnn-owner-limit-serialized publishes the limit record under the extent mutex: the stage name's random hex takes *fnn-random-state-lock*, a leaf). Lane lock-rows-2: O -> XFJ (a feed tick or a bound submission appends under the owner mutex) and O -> XTRACE (fnn-trace-span, so fnn-owner-measured, takes the opt-in trace collector leaf); XWEB, S, XSYNCER -> Q (fnn-unwind-cleanups logs a failed cleanup with fnn-err, which offers its line to the writer queue, under the lock the cleanup runs in; Q is the terminal log queue).",
   "O": [
    "G",
    "R",
@@ -191,37 +234,47 @@
    "XTLSRELOAD",
    "XTLSCTX",
    "XSYNCER",
-   "XOUTPUT"
+   "XOUTPUT",
+   "XOBS",
+   "XTRACE",
+   "XFJ"
   ],
   "C": [
    "G",
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "G": [
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "R": [
    "A",
    "M",
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "K": [
    "E",
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "E": [
    "XOUTPUT",
    "Q",
    "XPZD",
-   "J"
+   "J",
+   "XOBS",
+   "XCRYPTO"
   ],
   "A": [
    "Q",
-   "J"
+   "J",
+   "XOBS"
   ],
   "XCTLBUF": [
    "O"
@@ -240,6 +293,18 @@
    "Q",
    "J",
    "XTLSINIT"
+  ],
+  "M": [
+   "XOBS"
+  ],
+  "XWEB": [
+   "Q"
+  ],
+  "S": [
+   "Q"
+  ],
+  "XSYNCER": [
+   "Q"
   ]
  },
  "direct_owner_sites": [
@@ -259,6 +324,9 @@
   "fnn-owner-attempt-handlers",
   "fnn-owner-measured",
   "fnn-posix",
+  "fnn-unwind-cleanups",
+  "fnn-with-history-image",
+  "fnn-bps-with-send-socket",
   "fnn-stdout-guard",
   "fnn-core-cold-values",
   "fnn-core-cold-single",
@@ -277,8 +345,31 @@
   "fnn-section-envelope",
   "fnn-with-observed-owner",
   "fnn-native-with-observation",
-  "fnn-with-observed-mutex"
+  "fnn-with-observed-mutex",
+  "fnn-extent-native-observe",
+  "fnn-trace-span"
  ],
+ "thread_thunk_wrappers": [
+  "fnn-native-observed-thread-thunk"
+ ],
+ "realization_via": {
+  "fnn-arena-pin": ["fnn-arena-pins-step"],
+  "fnn-arena-unpin": ["fnn-arena-pins-step"],
+  "fnn-arena-retire": ["fnn-arena-pins-step"],
+  "fnn-arena-clear-p": ["fnn-arena-pins-step"],
+  "fnn-log-reseat-fenced": ["fnn-arena-retire"],
+  "fnn-log-batch-finish": ["fnn-log-reseat-fenced"],
+  "fnn-finish": ["fnn-log-reseat-fenced"],
+  "fnn-owner-commit-complete-locked": ["fnn-log-batch-finish"],
+  "fnn-owner-publish-prepared": ["fnn-finish"],
+  "fnn-owner-attempt": ["fnn-owner-publish-prepared"],
+  "fnn-owner-release-pending-extents-locked": ["fnn-arena-clear-p"],
+  "fnn-owner-reclaim-pass": ["fnn-arena-pin"],
+  "fnn-owner-response-pin": ["fnn-owner-response-pin-step"],
+  "fnn-owner-response-unpin": ["fnn-owner-response-pin-step"],
+  "fnn-owner-cold-transfer-result-locked": ["fnn-extent-direct-settle"],
+  "fnn-extent-executor-loop": ["fnn-extent-executor-actual-return"]
+ },
  "gated_macros": {
   "fnn-section-envelope": {
    "class_position": 1,
@@ -529,11 +620,45 @@
    "issue_core": "fn-pio-direct-admit",
    "why": "a window job runs on the same persistent worker activation as an issued read"
   },
+  "fnn-extent-decoded-window-pread": {
+   "kind": "window-lease",
+   "callers": [
+    "fnn-extent-decoded-window-run"
+   ],
+   "activation": "fnn-extent-executor-loop",
+   "job": "fnn-extent-executor-job",
+   "release": "fnn-extent-executor-actual-return",
+   "issue": "fnn-extent-issue-window",
+   "issue_core": "fn-owner-page-decoded-window-acquire-projected",
+   "why": "lane lock-rows-2: the decoded window's one physical read, called only by fnn-extent-decoded-window-run, which fnn-extent-executor-job runs on the persistent worker activation (extent.lisp, the decodedp arm) for a token fnn-extent-issue-window admitted through the decoded acquire; the descriptor is fetched under E in fnn-extent-decoded-window-run and the worker's actual return is announced by the loop only after the job returns"
+  },
   "fnn-snapshot-source-read-page": {
    "kind": "file-pin",
    "acquire_core": "fn-owner-page-file-pin-read",
    "release": "fnn-extent-discovery-release",
    "why": "snapshot page lease: acquired under O+E, released in the unwind-protect cleanup or handed off (owner.lisp:4898-4917)"
+  }
+ },
+ "callback_contexts": {
+  "lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda2": {
+   "runs_in": "fnn-command-bp-node",
+   "why": "fnn-connection-scoped's word callback of a passive session; bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock"
+  },
+  "lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda7": {
+   "runs_in": "fnn-command-bp-node",
+   "why": "fnn-tcl-begin's :session-admit callback (channel admission); bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock"
+  },
+  "lambda@host/native/bp-node.lisp:fnn-bpnode-passive-begin#lambda8": {
+   "runs_in": "fnn-command-bp-node",
+   "why": "the grant's turn (fnn-bpsg-turn), funcalled by fnn-bp-session-loop; bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock"
+  },
+  "lambda@host/native/bp-node.lisp:fnn-command-bp-node#lambda2": {
+   "runs_in": "fnn-command-bp-node",
+   "why": "*fnn-bpnode-control-pump*, let-bound by fnn-command-bp-node and funcalled by the node's own waits; bp-node serve's single serialized loop (fnn-bp-session-loop, specs/bp-node-machine.md 9.1): the callback is stored in the session grant or bound for its turn and called only from that loop's turns, on the command's thread, inside its dynamic extent, holding no lock"
+  },
+  "lambda@host/native/bp-app.lisp:fnn-command-bp-app-receive#lambda4": {
+   "runs_in": "fnn-command-bp-app-receive",
+   "why": "bp-app receive's *fnn-tcl-deliver* binding, called by fnn-tcl-session for one accepted connection; fnn-accept-loop runs each handler to completion on the command's thread (io.lisp), no lock held"
   }
  },
  "threads": {
@@ -549,42 +674,6 @@
    "fault_policy": "private",
    "why": "persistent cold workers (extent.lisp:534)"
   },
-  "fnn-owner-start-syncer": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-commit-pipeline",
-   "fault_policy": "fence",
-   "why": "one issued log barrier job (owner.lisp:3344)"
-  },
-  "fnn-owner-start-committer": {
-   "registry": null,
-   "join": "fnn-owner-run",
-   "fault_policy": "fence",
-   "why": "the batching committer (owner.lisp:3714)"
-  },
-  "fnn-owner-maybe-publish-quantum": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "fence",
-   "why": "checkpoint publisher (owner.lisp:5257)"
-  },
-  "fnn-owner-export-start": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "fence",
-   "why": "exporter (owner.lisp:5307)"
-  },
-  "fnn-owner-start-tls-accept": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "connection",
-   "why": "additional plain/implicit-TLS listener (owner.lisp:5934)"
-  },
-  "fnn-mux-start": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "fence",
-   "why": "fixed I/O loops (mux.lisp:1373)"
-  },
   "fnn-control-launch-client": {
    "registry": "fnn-control-state-workers",
    "join": "fnn-control-close",
@@ -596,24 +685,6 @@
    "join": "fnn-control-close",
    "fault_policy": "connection",
    "why": "local control listener (control.lisp:529)"
-  },
-  "fnn-feed-service-start": {
-   "registry": null,
-   "join": "fnn-feed-service-close",
-   "fault_policy": "private",
-   "why": "feed runtime (feed-service.lisp:596)"
-  },
-  "fnn-pull-service-start": {
-   "registry": null,
-   "join": "fnn-pull-service-close",
-   "fault_policy": "private",
-   "why": "pull runtime (pull-service.lisp:568)"
-  },
-  "fnn-web-start": {
-   "registry": "fnn-owner-service-workers",
-   "join": "fnn-owner-wait-workers",
-   "fault_policy": "connection",
-   "why": "web face (web-host.lisp:312)"
   }
  },
  "after_deregistration_ok": [
@@ -704,7 +775,8 @@
   "fnn-socket-fd"
  ],
  "close_sites": {
-  "fnn-extent-close": "the :close realization: closes a registered extent fd after fn-pio-file-clear-p (realization row :close)"
+  "fnn-extent-close": "the :close realization: closes a registered extent fd after fn-pio-file-clear-p (realization row :close)",
+  "fnn-csp-worker-loop": "the catch-up spool worker's own descriptor: fnn-csp-worker-perform's :open (O_EXCL, then unlink) on this worker thread stores it in the worker; the loop's exit retires the number, then closes it once (host/native/catchup-spool.lisp)"
  },
  "unlocked_publication": {},
  "exceptions": [],
@@ -719,7 +791,11 @@
    "fnn-extent-issue-direct",
    "fnn-snapshot-source-read-page",
    "fnn-snapshot-source-root-acquire"
-  ]
+  ],
+  "files": [
+   "host/native/admin.lisp"
+  ],
+  "files_why": "lane ACTORS (rebuild step 0, the admin pilot): every owner section of host/native/admin.lisp is a declared def-section (fnn-quantum-control) and no function in it classifies a condition; strict by file, so a later hand wrapper or an undeclared quantum there fails --check with no baseline escape"
  },
  "realization": [
   {

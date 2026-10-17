@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/reclaim-chunked-seal.lisp",
+ "id": "DI-OWED-STEP-OF-PREDICT-ACC",
+ "notes": [],
+ "owner": "generators",
+ "severity": "high",
+ "slice": "integrator2",
+ "source": "integrator2",
+ "state": "open",
+ "title": "Host loop = fold correspondence owed for fn-rcw-predict-acc-step (host/interfaces.lisp :step-of fn-rcw-predict-acc-steps), for both keystones fn-rcw-predict-acc-steps-is-predict and fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open. The host calls the step once per chunk and drives the iteration itself; no theorem equates that loop with fn-rcw-predict-acc-steps. Owed (generators: def-loop/def-cursor driver): a generated host loop whose equation with the fold is proved; until then neither keystone is the entry's proof.",
+ "updated": "2026-10-04T10:40:05Z"
+}

@@ -11,7 +11,8 @@
  "locus": "operator-verbs",
  "notes": [
   "10-02 23:08 fixed; source-level test only",
-  "Residual close cleanup and primary-error precedence repaired after current source trace. Actual exclusive writer real-file fixture injects write/fsync/close and double failures: original source RED, repaired source PASS; descriptor closes once and owned path is absent. Historical write/fsync patch preserved. Image-level self-signed pair qualification remains pending."
+  "Residual close cleanup and primary-error precedence repaired after current source trace. Actual exclusive writer real-file fixture injects write/fsync/close and double failures: original source RED, repaired source PASS; descriptor closes once and owned path is absent. Historical write/fsync patch preserved. Image-level self-signed pair qualification remains pending.",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 77d7d412a, residual close cleanup per item notes; host/native/tls.lisp); local test test_ssc_write_new_unlinks_what_it_created_on_failure PASS at HEAD; native pending: immutable image qualification"
  ],
  "owner": "GPT-6.1-Sol / sol-access",
  "reviewer": "fnn-tls-ssc-write-new (tls.lisp:1026-1035) does O_CREAT|O_EXCL, then write-all and fsync inside unwind-protect, and only closes the fd on failure; it never unlinks. In fnn-tls-self-signed-write (1064-1071), a failed key write leaves a partial key file. A failed cert write unlinks only key-path and leaves the partial cert-path. A retry then fails the lstat-based ACL2 outcome (operator.lisp:150-153), so the operator has to delete the file by hand. This only happens on ENOSPC or EIO during an operator command.",
@@ -19,7 +20,7 @@
  "severity": "low",
  "sha": "77d7d412a",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "title": "Self-signed pair writer leaves partial key or cert files behind, and the next run is refused because the paths exist",
- "updated": "2026-10-03T11:04:00Z"
+ "updated": "2026-10-04T06:28:44Z"
 }

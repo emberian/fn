@@ -22,9 +22,15 @@
 ;      bound the teeth do not state), the world refusals (not a theorem; the
 ;      claim differs from the theorem; declared twice), and the two witness
 ;      modes (:witness-lemma, a :lemma on a removal) with :must-fail t.
+;   5. `:derived-by RECORD' bound to the world (c09 must-fix 3): a visit
+;      bound derived by its subject's def-cost row, V the row's route twin,
+;      admitted and recorded; each refusal of `fn-dt-derivation-problem'
+;      (not the subject, no fn-cost row, no twin of the bound's kind, V not
+;      calling the twin) by its exact value, and defteeth refusing one.
 
 (in-package "ACL2")
 (include-book "../../books/defkeystone")
+(include-book "../../books/def-cost") ; section 5: :derived-by against a fn-cost row
 (include-book "must-fail-checked")
 
 (defun fn-dkt-add (x y)
@@ -451,3 +457,82 @@
  (fn-dk-lemma-check fn-dkt-add-adds-again car-cons ((x 3) (y 4))
                     (and (natp x) (< x 10) (<= (fix y) (fn-dkt-add x y))) "witness")
  :unchecked "fn-dk-lemma-check refuses by name (:lemma-differs): car-cons is not the ground claim")
+
+; ---------------------------------------------------------------------------
+; 5. :derived-by is checked against the world.  fn-dkt-walk's def-cost row
+; (no declared bound, so nothing is owed) derives fn-dkt-walk-route-visits:
+; consp and cdr are cons-cell steps the contracts charge 0, so the derived
+; cost of this walk is 0 and the bound 0 is attained.
+
+(defun fn-dkt-walk (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (fn-dkt-walk (cdr xs)) xs))
+
+(def-cost fn-dkt-walk)
+
+(defthm fn-dkt-walk-of-true-list
+  (implies (true-listp xs) (equal (fn-dkt-walk xs) nil)))
+
+(defteeth fn-dkt-walk-of-true-list
+  :claim (((tl (true-listp xs))) (equal (fn-dkt-walk xs) nil))
+  :subject fn-dkt-walk
+  :witness ((xs '(1 2)))
+  :breaks ((tl ((xs 5))))
+  :mutations (:not-applicable "the removal witness is this test's tooth")
+  :visits ((steps (fn-dkt-walk-route-visits xs) 0
+                  :attains ((xs '(1 2))) :derived-by fn-dkt-walk
+                  :hints (("Goal" :in-theory (enable fn-dkt-walk-route-visits
+                                                     fn-dkt-walk-visits))))))
+
+(assert-event
+ (equal (fn-dk-get :visits (cdr (assoc-eq 'fn-dkt-walk-of-true-list
+                                          (table-alist 'fn-teeth (w state)))))
+        '((steps (fn-dkt-walk-route-visits xs) 0
+                 :attains :rests-on nil :derived-by fn-dkt-walk))))
+
+(defconst *fn-dkt-walk-bound*
+  '((steps (fn-dkt-walk-route-visits xs) 0 :attains ((xs '(1 2)))
+           :derived-by fn-dkt-walk)))
+
+; derived by its subject's row, V calling the route twin: no problem
+(assert-event
+ (null (fn-dt-derivation-problem 'k :visits *fn-dkt-walk-bound* 'fn-dkt-walk (w state))))
+; no :derived-by: underived debt, not a refusal
+(assert-event
+ (null (fn-dt-derivation-problem 'k :visits '((steps (len xs) (len xs) :attains ((xs nil))))
+                                 'fn-dkt-walk (w state))))
+; the record is another function's row
+(assert-event
+ (equal (fn-dt-derivation-problem 'k :visits *fn-dkt-walk-bound* 'fn-dkt-add (w state))
+        '(:underived-record k steps fn-dkt-walk :not-subject fn-dkt-add)))
+; the subject has no def-cost row
+(assert-event
+ (equal (fn-dt-derivation-problem 'k :visits
+                                  '((steps (len xs) 9 :attains ((xs nil)) :derived-by fn-dkt-add))
+                                  'fn-dkt-add (w state))
+        '(:underived-record k steps fn-dkt-add :no-row)))
+; an allocation bound against a row that derives no cons twin
+(assert-event
+ (equal (fn-dt-derivation-problem 'k :allocation *fn-dkt-walk-bound* 'fn-dkt-walk (w state))
+        '(:underived-record k steps fn-dkt-walk :no-twin :cons-route-twin)))
+; V a term beside the derivation, not the derived cost
+(assert-event
+ (equal (fn-dt-derivation-problem 'k :visits
+                                  '((steps (+ 1 (len xs)) (+ 1 (len xs)) :attains ((xs nil))
+                                           :derived-by fn-dkt-walk))
+                                  'fn-dkt-walk (w state))
+        '(:underived-record k steps fn-dkt-walk :not-called fn-dkt-walk-route-visits)))
+
+(defthm fn-dkt-walk-of-true-list-again
+  (implies (true-listp xs) (equal (fn-dkt-walk xs) nil)))
+
+(must-fail-checked
+ (defteeth fn-dkt-walk-of-true-list-again
+   :claim (((tl (true-listp xs))) (equal (fn-dkt-walk xs) nil))
+   :subject fn-dkt-walk
+   :witness ((xs '(1 2)))
+   :breaks ((tl ((xs 5))))
+   :mutations (:not-applicable "x")
+   :visits ((steps (+ 1 (len xs)) (+ 1 (len xs)) :attains ((xs '(1 2)))
+                   :derived-by fn-dkt-walk)))
+ :unchecked "defteeth refuses by name (:underived-record :not-called): V does not call fn-dkt-walk-route-visits")

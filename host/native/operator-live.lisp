@@ -93,6 +93,16 @@
                              (fnn-core 'fn-native-operator-host-result-run-implicit-tls-port
                                        result))
                         (and tls-context t)))
+                     (remote-plan
+                       ;; The remote consumer's listener (D48 / PKT-673):
+                       ;; ACL2's plan of [remote_consumer], or NIL for none.
+                       (fnn-remote-run-hooks
+                        *fnn-operator-config-octets*
+                        (fnn-core 'fn-native-operator-host-result-run-listener-port result)
+                        (and tls-context
+                             (fnn-core 'fn-native-operator-host-result-run-implicit-tls-port
+                                       result))
+                        (and tls-context t)))
                      (*fnn-owner-startup-hooks*
                        (list (fnn-native-auth-startup-hook
                               auth-path auth-required auth-protected)))
@@ -103,13 +113,16 @@
                                       *fnn-owner-start-hooks*)
                                (and web-plan
                                     (list (lambda (service)
-                                            (fnn-web-start service web-plan tls-context))))))
+                                            (fnn-web-start service web-plan tls-context))))
+                               (and remote-plan
+                                    (list (lambda (service)
+                                            (fnn-remote-start service remote-plan tls-context))))))
                      (*fnn-owner-stop-hooks*
                        (list* #'fnn-feed-service-wake #'fnn-pull-service-wake
                               *fnn-owner-stop-hooks*))
                      (*fnn-owner-close-hooks*
                        (list* #'fnn-feed-service-close #'fnn-pull-service-close
-                              #'fnn-web-close-face
+                              #'fnn-web-close-face #'fnn-remote-close
                               *fnn-owner-close-hooks*))
                      (code
                        (fnn-control-owner-run-normalized

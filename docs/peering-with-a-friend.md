@@ -114,6 +114,12 @@ their peer name for you is your node name (`news.example.org`), as
    fn operator /var/lib/fn/fn.toml peer login friend me-node /var/lib/fn/friend.fnauth
    ```
 
+   If your friend's reader needs a different login from its feed, select
+   an existing FNAUTH1 file with `peer pull-login friend FILE false`.
+   This selection survives `peer set`, including disabling sending.
+   `peer pull-login friend - false` explicitly chooses anonymous pull.
+   Without a pull selection, the pull keeps using the feed's login.
+
 4. Start fetching from your friend every 20 seconds:
 
    ```sh

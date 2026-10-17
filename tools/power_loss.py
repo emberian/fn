@@ -98,9 +98,9 @@ def publication_phases():
                  "book": "books/store-init-log-publication.lisp",
                  "cuts": [c.name for c in native_cuts.INIT_PUB_CUTS],
                  "oracle": "ROOT absent (at most one ROOT.init-*, which the next "
-                           "init names as interrupted-init; init succeeds once it "
-                           "is removed) or ROOT the complete empty store (recover "
-                           "0, status transactions=0)"},
+                           "init removes before it publishes) or ROOT the complete "
+                           "empty store (recover 0, status transactions=0, "
+                           "keys/node-secret.key present)"},
         "import": {"program": "fn-bs-imp-program",
                    "book": "books/store-import-publication.lisp",
                    "cuts": [c.name for c in native_cuts.IMPORT_CUTS],
@@ -1032,10 +1032,12 @@ def stages_beside(root, kind):
 
 def check_init(ctx, violations):
     """A cut during `init` (fn-bs-init-log-program): nothing was
-    acknowledged.  The keystone: ROOT is absent or the complete empty store.
-    Absent: at most one ROOT.init-*, which the next `init` names
-    (interrupted-init) and after whose removal `init` succeeds; present: it
-    opens (`recover` 0, `status` transactions=0) and no staged directory
+    acknowledged.  The keystone (fn-bs-init-log-crash-retry-is-old-or-new,
+    PKT-894): ROOT is absent (the old state) or the complete empty store
+    (the new).  Absent: `recover` refuses (NO-STORE, or INTERRUPTED-INIT
+    naming the one ROOT.init-* left), and `init` itself succeeds, removing
+    that unpublished stage; present: it opens (`recover` 0, `status`
+    transactions=0), carries keys/node-secret.key, and no staged directory
     remains unless the rename's source removal did not land (then the next
     init refuses STORE-EXISTS, never a second store)."""
     image, cfg, root = ctx["image"], ctx["cfg"], ctx["store"]
@@ -1048,23 +1050,25 @@ def check_init(ctx, violations):
         rec["status"] = code2
         if code or code2 or "transactions=0" not in so2:
             violations.append("init-partial-store:recover-%d:status-%d" % (code, code2))
+        if not (root / "keys" / "node-secret.key").is_file():
+            violations.append("init-store-without-node-secret")
         return rec
     if len(stages) > 1:
         violations.append("init-stages-%d" % len(stages))
         return rec
+    code, so, se = native(image, "operator", cfg, "recover")
+    rec["recover"], rec["recover_out"] = code, (so + se).strip()[-300:]
+    if code != 1 or not ("NO-STORE" in so + se or "INTERRUPTED-INIT" in so + se):
+        violations.append("init-absent-not-old:recover-%d" % code)
     code, so, se = native(image, "operator", cfg, "init", *native_env.HARNESS_INIT_WORDS, "--profile", "scale", GROUP)
     rec["reinit"], rec["reinit_out"] = code, (so + se).strip()[-300:]
-    if stages:
-        want = "reason=interrupted-init stage=%s" % stages[0]
-        if code != 1 or want not in so + se:
-            violations.append("init-leftover-not-named:init-%d" % code)
-            return rec
-        shutil.rmtree(stages[0])
-        code, so, se = native(image, "operator", cfg, "init", *native_env.HARNESS_INIT_WORDS, "--profile", "scale", GROUP)
-        rec["init_after_removal"] = code
     if code:
         violations.append("init-stuck:init-%d" % code)
         return rec
+    if stages and ("init removed %s" % stages[0]) not in so + se:
+        violations.append("init-leftover-not-removed")
+    if stages_beside(root, "init"):
+        violations.append("init-stage-remains")
     code, so, se = native(image, "operator", cfg, "recover")
     rec["recover_after_init"] = code
     if code:

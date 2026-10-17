@@ -108,10 +108,25 @@
       (fnn-fault "application journal frame refused"))
     (cons (second answer) (third answer))))
 
+(defun fnn-app-read-profile (root domain)
+  "ACL2's reading of ROOT's `app-journal-profile' for a DOMAIN journal
+(fn-ajpf-read, books/app-journal): the default when the file is absent, the
+operator's (RECORDS OCTETS) when it is one valid profile frame; anything else
+is refused before a record is read."
+  (let* ((path (fnn-join root (fnn-core 'fn-aj-host-profile-file-name)))
+         (present (fnn-check-regular path))
+         (profile (fnn-core 'fn-aj-host-profile-read domain (and present t)
+                            (and present
+                                 (fnn-octet-list
+                                  (fnn-read-regular-bounded
+                                   path (fnn-core 'fn-aj-host-profile-read-bound)))))))
+    (unless profile
+      (fnn-refuse "ACL2 refused the application journal profile ~a" path))
+    profile))
+
 (defun fnn-app-read-records (journal names)
   (let ((records nil)
-        (frontier (fnn-core 'fn-aj-host-initial
-                            (fnn-app-journal-domain journal)))
+        (frontier (fnn-app-journal-frontier journal))
         (maximum (fnn-core 'fn-aj-host-max-record-length
                            (fnn-app-journal-domain journal))))
     (dolist (name names)
@@ -120,6 +135,9 @@
              (record (fnn-app-unframe journal raw))
              (next (fnn-core 'fn-aj-host-recover frontier name (length raw)
                              (first record))))
+        (when (eq next :beyond-profile)
+          (fnn-refuse "application journal ~a holds more than its profile admits (record ~a)"
+                      (fnn-app-journal-root journal) name))
         (when (eq next :fault)
           (fnn-fault "ACL2 rejected application journal namespace/frontier"))
         (setq frontier next)
@@ -176,8 +194,13 @@
                 (make-fnn-app-journal
                  :root absolute :records records :staging staging :store store
                  :domain domain :owner-mode (and owner-mode t)
-                 :frontier (fnn-core 'fn-aj-host-initial domain)
+                 :frontier nil
                  :lock-fd (fnn-app-journal-lock absolute domain store)))
+          ;; The profile is read under the journal lock, so `app-journal
+          ;; profile' (which holds it) never races the open.
+          (setf (fnn-app-journal-frontier journal)
+                (fnn-core 'fn-aj-host-initial domain
+                          (fnn-app-read-profile absolute domain)))
           (let* ((names (fnn-app-record-names journal))
                  (records-image (fnn-app-read-records journal names)))
             (fnn-app-install journal records-image)
@@ -695,6 +718,54 @@
        (fnn-out "receipt replay octets=~d hex=~a" (length adu) (fnn-hex adu))
        +fnn-exit-ok+))))
 
+;;; `app-journal profile STORE JOURNAL DOMAIN RECORDS OCTETS': set the
+;;; journal's profile, the records it admits over its life and the octets
+;;; they total (D27, lane caps; books/app-journal.lisp).  ACL2 takes the
+;;; recovered frontier (which carries the profile in force) and answers the
+;;; frame to publish, or refuses a write that leaves the relation or lowers a
+;;; field of a journal that holds a record (fn-ajpf-write-octets).  The
+;;; journal is opened (its lock held, its records replayed under the profile
+;;; in force) while the file is replaced; the next open runs under it.
+(defun fnn-app-domain-argument (text)
+  (cond ((string= text "workflow") :workflow)
+        ((string= text "receipt") :receipt)
+        ((string= text "carry") :carry)
+        (t (error 'fnn-usage-error
+                  :message "app-journal profile: DOMAIN is workflow, receipt or carry"))))
+
+(defun fnn-app-count-argument (text label)
+  ; A syntactic input bound before PARSE-INTEGER; ACL2 decides the range.
+  (unless (and (stringp text) (<= 1 (length text) 20)
+               (every #'digit-char-p text))
+    (error 'fnn-usage-error
+           :message (format nil "app-journal profile: invalid ~a" label)))
+  (parse-integer text))
+
+(defun fnn-command-app-journal-profile (store-root journal-root domain
+                                        records octets)
+  (fnn-app-call-with-journal
+   store-root journal-root domain t
+   (lambda (journal)
+     (let* ((root (fnn-app-journal-root journal))
+            (frame (fnn-core 'fn-aj-host-profile-write-octets
+                             (fnn-app-journal-frontier journal) records octets))
+            (final (fnn-join root (fnn-core 'fn-aj-host-profile-file-name)))
+            (stage (fnn-join (fnn-app-journal-staging journal)
+                             (format nil "profile.~d.~a.tmp" (sb-posix:getpid)
+                                     (fnn-random-hex 12)))))
+       (unless frame
+         (fnn-refuse "app-journal profile: ACL2 refused max-records=~a max-octets=~a"
+                     records octets))
+       (fnn-write-staged stage (fnn-octets frame))
+       (handler-case
+           (progn (fnn-replace stage final) (fnn-fsync-dir root))
+         (fnn-os-error (condition)
+           (fnn-indeterminate "app-journal profile replacement/barrier return is uncertain: ~a"
+                              condition)))
+       (fnn-out "app-journal profile domain=~(~a~) max-records=~d max-octets=~d"
+                domain records octets)
+       +fnn-exit-ok+))))
+
 ;;; The experimental ION/LTP subverbs (workflow-ion-*) belong to the
 ;;; developer image only (docs/operator-internals.md "Experimental offline
 ;;; ION/LTP submission"; PKT-590): a production image refuses them before
@@ -759,6 +830,12 @@
        (fnn-command-receipt-complete
         (first args) (second args) (third args) (fourth args) (fifth args)
         (sixth args) (seventh args)))
+      ((string= command "profile")
+       (need 5)
+       (fnn-command-app-journal-profile
+        (first args) (second args) (fnn-app-domain-argument (third args))
+        (fnn-app-count-argument (fourth args) "max records")
+        (fnn-app-count-argument (fifth args) "max octets")))
       ((string= command "receipt-replay")
        (need 3)
        (fnn-command-receipt-replay (first args) (second args) (third args)))

@@ -50,7 +50,8 @@ import time
 import unittest
 
 from tests.native_harness import (
-    EXIT_OK, ROOT, Acl2Session, Client, Node, environment, free_port, native_image, requires, run, scratch, start)
+    EXIT_OK, ROOT, Acl2Session, Client, Node, client_context, environment, free_port,
+    native_image, requires, run, scratch, start)
 from tests.test_native_peer_pull import RecordingProxy
 from tests.test_bp_contact_relay_native import ByteRelay
 from tests.native_image_provenance import assert_same_native_source
@@ -635,6 +636,136 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
             execution_bindings=json.loads(os.environ.get("FN_NATIVE_SOURCE_EXECUTIONS", "null")), hops=hops))
         self.stop(a)
         self.stop(b)
+
+    def test_remote_consumer_reads_a_store_it_is_not_local_to(self):
+        """D48 / PKT-673: agent B's consumer reads node A's Store REMOTELY.
+
+        B's consumer is `bob-inbox` on A, bound to A's account bob; it polls,
+        waits and acks over A's [remote_consumer] TLS listener as bob, never
+        through A's control socket, while B's replies go into B's own Store
+        (B's control socket) and reach A by B's feed.  The cursor B acks is
+        A's: it names A's Store history, which B's local cursor never does.
+        Operator controls and other accounts' consumers stay private."""
+        a, b = self.initialize("A"), self.initialize("B")
+        a.use_tls(alt_name=True)
+        remote_port = free_port()
+        a.write_config(extra='tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n'
+                       '[log]\npath = "{}"\n[remote_consumer]\nport = {}\n'
+                       'max_sessions = 2\n'.format(a.tls_port, a.cert, a.root / "key.pem",
+                                                   a.log, remote_port))
+        self.peer(a, b)
+        self.peer(b, a)
+        for node in (a, b):
+            self.start(node)
+            self.native("consumer", "bootstrap", node.control)
+        # bob: an account of A (invited, redeemed over TLS), reading fn.test.
+        invited = self.native("operator", a.config, "account", "invite", "--expires", "3600")
+        code = re.findall(rb"^[0-9a-f]{32}$", invited.stdout, re.M)[0].decode("ascii")
+        with Client(a.tls_port, timeout=60, implicit_tls=client_context(),
+                    greeting=None) as client:
+            self.assertTrue(client.command("XREDEEM {} bob".format(code))[:3] == b"381")
+            self.assertTrue(client.command("XREDEEM PASS pw-bob")[:3] == b"281")
+        self.native("operator", a.config, "account", "access", "bob", "--read", "fn.*",
+                    "--post", "fn.*")
+        bob_pw = self.root / "bob.secret"
+        bob_pw.write_bytes(b"pw-bob\n")
+        os.chmod(bob_pw, 0o600)
+        self.native("consumer", "register", a.control, "bob-inbox", "fn.test",
+                    self.root / "bob-inbox.fncu")
+        self.native("operator", a.config, "consumer", "bind", "bob-inbox", "--account", "bob")
+
+        agent_a = self.agent("agent-a", 0xA1, 1, a)
+        # agent-b: an author both nodes enrol; its consumer is A's bob-inbox,
+        # read remotely; its posts go to B.
+        keys, principal_hex = self.signer("agent-b", 0xB2)
+        self.principals["agent-b"] = (keys, principal_hex, 2)
+        for each in (a, b):
+            self.native("hybrid-enroll", each.control, 2, keys["principal"],
+                        keys["ed_public"], keys["ml_public"])
+        agent_b = self.root / "agent-b" / "consumer.json"
+        agent_b.write_text(json.dumps({
+            "image": str(IMAGE), "control": str(b.control),
+            "consumer": "bob-inbox", "group": "fn.test", "application_id": APP,
+            "from": "agent-b@example.invalid", "secret_file": str(bob_pw),
+            "remote": {"host": "127.0.0.1", "port": remote_port,
+                       "trust": str(a.cert), "login": "bob"},
+            "db": str(self.root / "agent-b" / "state.db"),
+            "work": str(self.root / "agent-b" / "work"), "keys": keys,
+            "principal_hex": principal_hex, "generation": "2",
+            "keyring": str(self.root / "agent-b" / "trusted.json"), "claims": []}),
+            encoding="utf-8")
+        for config in (agent_a, agent_b):
+            self.trust(config, ("agent-a", "agent-b"),
+                       (("r", "agent-a"), ("reply-", "agent-b")))
+
+        # B sleeps in a REMOTE wait on A before R exists.
+        sleeper = self.consumer(agent_b, "wake", "--wait", "120", background=True)
+        time.sleep(5)
+        self.assertIsNone(sleeper.poll(), "the remote wait returned with nothing committed")
+        self.assertEqual(self.status(a, "bob-inbox")[0], 0)
+        self.consumer(agent_a, "report", "r1", "dregg-receipt-0001")
+        stdout, stderr = sleeper.communicate(timeout=300)
+        self.log.append(["agent-b", ["wake", "--wait", "120"], None, sleeper.returncode,
+                         stderr.decode("utf-8", "replace")[-600:]])
+        self.assertEqual(sleeper.returncode, 0, (stdout + stderr).decode("utf-8", "replace"))
+        s = self.summary(agent_b)
+        self.assertEqual([(i["operation_id"], i["disposition"]) for i in s["inbox"]],
+                         [("r1", "applied")])
+        [q_out] = s["outbox"]
+        self.assertEqual(q_out["state"], "stored", q_out)
+        # B's ack landed on A, as bob-inbox's committed ack.
+        acked = self.status(a, "bob-inbox")[0]
+        self.assertGreater(acked, 0)
+
+        # The cursor names A's Store history: the same history A's own local
+        # position for bob-inbox names, and not B's.
+        def history(node, consumer):
+            out = self.root / ("position-%s-%s" % (node.name, consumer))
+            self.native("consumer", "position", node.control, consumer, out)
+            inspected = self.native("consumer-inspect", out).stdout.decode("ascii").split()
+            return dict(w.split("=", 1) for w in inspected[1:] if "=" in w)
+        remote_position = self.root / "remote-position.fncu"
+        self.native("consumer-remote", "position", "127.0.0.1", str(remote_port),
+                    str(a.cert), "bob", str(bob_pw), "bob-inbox", remote_position)
+        remote_fields = dict(w.split("=", 1) for w in self.native(
+            "consumer-inspect", remote_position).stdout.decode("ascii").split()[1:] if "=" in w)
+        a_fields = history(a, "bob-inbox")
+        self.native("consumer", "register", b.control, "probe-b", "fn.test",
+                    self.root / "probe-b.fncu")
+        b_fields = history(b, "probe-b")
+        self.assertEqual(remote_fields, a_fields)
+        self.assertNotEqual(remote_fields.get("history"), b_fields.get("history"))
+
+        # Q reaches A by B's feed; A's local consumer correlates it.
+        self.await_article(a, q_out["message_id"])
+        self.consumer(agent_a, "wake")
+        s = self.summary(agent_a)
+        self.assertIn(("reply-r1", "applied"),
+                      [(i["operation_id"], i["disposition"]) for i in s["inbox"]])
+
+        # Teeth, each over the remote listener: a wrong password, another
+        # consumer (the operator's agent-a, unbound), a plain socket.
+        wrong = self.root / "wrong.secret"
+        wrong.write_bytes(b"pw-alice\n")
+        os.chmod(wrong, 0o600)
+        for login, secret_file, consumer in (("bob", wrong, "bob-inbox"),
+                                             ("bob", bob_pw, "agent-a")):
+            refused = self.native("consumer-remote", "poll", "127.0.0.1", str(remote_port),
+                                  str(a.cert), login, str(secret_file), consumer,
+                                  self.root / "x.fncu", self.root / "x.fn-e", expected=None)
+            self.assertEqual(refused.returncode, 1, refused.stdout + refused.stderr)
+            self.assertIn(b"credential", refused.stdout)
+        self.assertEqual(self.status(a, "bob-inbox")[0], acked)
+        # Cleartext is never answered: the handshake fails and the socket closes.
+        with Client(remote_port, timeout=15, greeting=None) as plain:
+            plain.send(b"FNCR not over TLS\r\n")
+            try:
+                answered = plain.sock.recv(64)
+            except ConnectionResetError:
+                answered = b""
+            self.assertFalse(answered.startswith(b"FNCT"), answered)
+        self.witness("remote-consumer", {"acked_at_a": acked, "cursor_fields": remote_fields,
+                                         "b_history": b_fields.get("history")})
 
     def test_revoked_author_settles_by_observation_across_nodes(self):
         a, b, _ = self.two_nodes()

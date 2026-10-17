@@ -310,7 +310,6 @@ class ScriptedPeer:
         self.listener.close()
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class TricklingPeer(ScriptedPeer):
     """Hold an actual incomplete ARTICLE body, then release the exact suffix."""
     def __init__(self, mid, payload):
@@ -336,6 +335,7 @@ class TricklingPeer(ScriptedPeer):
         super().close()
 
 
+@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native launcher")
 class NativePeerPullTests(unittest.TestCase):
     def setUp(self):
         self.base = scratch(self, "fn-native-pull-")
@@ -781,6 +781,36 @@ class NativePeerPullTests(unittest.TestCase):
         self.assertGreater(proxy.passed, 0)
         for message_id in ids:
             self.assertEqual(counts[message_id], 1)
+
+    def test_pull_only_credential_survives_feed_edits_and_restart(self):
+        """SCN-1139: dedicated reader login wins over a wrong feed login,
+        survives peer set and restart, and works with outbound disabled."""
+        a, b, proxy = self.protected_pair(presented=("mallory", "wrong-feed-secret"))
+        reader = b.root / "reader.fnauth"
+        reader.write_bytes(b"FNAUTH1\nnodeB\nb-secret\n")
+        reader.chmod(0o600)
+        b.operator("peer", "pull-login", "A", str(reader), "false", expect=EXIT_OK)
+        first = "<pull-only-first@example.invalid>"
+        self.operator_post(a, first, "pull-only-first")
+        self.start(b)
+        self.await_article(b, first)
+        self.await_log(b, "cursor=advanced transport=tls", 1)
+        self.stop(b)
+        # First round retains the wrong outbound profile: successful pull
+        # therefore observes the independent reader policy.  The subsequent
+        # edit must preserve it even when it removes the outbound profile.
+        b.operator("peer", "set", "A", "--send", "-", expect=EXIT_OK)
+        second = "<pull-only-restart@example.invalid>"
+        self.operator_post(a, second, "pull-only-restart")
+        self.start(b)
+        self.await_article(b, second)
+        counts = {mid: self.count_article(b, mid) for mid in (first, second)}
+        self.stop(b)
+        self.stop(a)
+        self.assertEqual(counts, {first: 1, second: 1})
+        self.assertEqual(self.plaintext_private(proxy), [])
+        self.witness("pull-only-credential", {"counts": counts,
+                     "pull_lines": self.pull_lines(b), "fnpl": self.fnpl_files(b)}, [a, b])
 
     def test_wrong_principal_is_refused_by_the_serving_node(self):
         a, b, proxy = self.protected_pair(presented=("mallory", "not-b-secret"))

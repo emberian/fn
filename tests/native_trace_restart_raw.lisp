@@ -1,6 +1,8 @@
-;;; Reload in the actual warm developer owner after trace.lisp. No root worker
-;;; hooks are recompiled or overwritten; exercise the shared macro directly.
+;;; host/native/trace.lisp, loaded into a plain SBCL: the collector is
+;;; host-only code (no ACL2 definition), so no ACL2 world is needed.
+(defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+(load "host/native/trace.lisp")
 
 (defun fntr-run ()
   (let ((*fnn-trace-state* nil) (*fnn-trace-parent* nil)
@@ -28,3 +30,4 @@
       (assert (null (fnn-trace-row-parent (aref (fnn-trace-state-rows fresh) 2)))))
     (format t "NATIVE_TRACE_RESTART_PASS~%")
     :passed))
+(fntr-run)

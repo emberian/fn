@@ -1,20 +1,22 @@
 # Peering with fn.fg-goose.online
 
-The runbook for spwashi and pug (and anyone after them) to peer a news
-server with ember's public fn node, `fn.fg-goose.online`. It follows
+How to peer a news server with ember's public fn node,
+`fn.fg-goose.online` (fsn1; its coordinates are in
+[docs/nodes/fsn1.md](../../../docs/nodes/fsn1.md)). No outside peer is
+named yet. It follows
 [peering with a friend](../../../docs/peering-with-a-friend.md), which ran
 between two real machines on 2026-09-26. The one difference is that this
 node has a Let's Encrypt certificate: you verify it by its name against the
-Let's Encrypt roots, not by a copy of its certificate. Prepared by lane
-public-node on 2026-09-26. Nothing below has run against the public node
-yet, because it is installed at the release cut after wave 5. The steps
+Let's Encrypt roots, not by a copy of its certificate. Of section A, only
+the NAT case has run against the public node: hbox pulls from it since
+2026-09-28 (its push stalls, PKT-882; `docs/nodes/hbox.md`). The steps
 marked CHECK AT DEPLOY are ones the release docs do not yet show working.
 
 ## 0. What the public node is
 
 | | |
 | --- | --- |
-| name | `fn.fg-goose.online` (A record only: hbox has no global IPv6) |
+| name | `fn.fg-goose.online`, A record 88.99.126.35 (no AAAA) |
 | path identity | `fn.fg-goose.online` |
 | port 119 | NNTP; `STARTTLS` is advertised, and `AUTHINFO` answers `483` until TLS is up |
 | port 563 | NNTP over TLS from the first octet (`tls_port`) |
@@ -25,7 +27,7 @@ marked CHECK AT DEPLOY are ones the release docs do not yet show working.
 | silence | closed after 60 s with no first command, or after 600 s idle |
 | failed logins | 10 per address per minute, then `400 too many authentication failures` |
 | posting rate | 60 articles a minute per login; past that the connection waits and nothing is refused |
-| groups carried | whatever ember declares (the prepared default is `local.*`; see section 4) |
+| groups carried | local.general, local.test, fn.general, fn.test, fn.announce, fn.docs; the peered hierarchy is ember's choice (section 4) |
 
 There is no separate transit port. A peer connects to 119 or 563 like a
 reader and logs in as the login ember bound to its node's principal. The
@@ -57,15 +59,15 @@ you name, or the public node cannot push to you. If it is not, see
 "a node behind NAT" below.
 
 In the commands below, `$F` is `bin/fn` and `$C` is `fn.toml`. `ME` is ember
-on the public node, and `YOU` is spwashi or pug. `N=/home/hbox/fn-public` on the
-public node.
+on the public node, and `YOU` is the peer's operator; `friend` below is
+their peer name. `N=/var/lib/fn` on the public node.
 
 ### A1. The invitation (ember)
 
 ```sh
 # ME: the last two words are the public node's own address, signed into the invitation
-$F operator $C peer invite spwashi 'local.*' YOUR-HOST YOUR-PORT \
-    fn.fg-goose.online $N/keys $N/exchange/invitation-for-spwashi \
+$F operator $C peer invite friend 'local.*' YOUR-HOST YOUR-PORT \
+    fn.fg-goose.online $N/keys $N/exchange/invitation-for-friend \
     fn.fg-goose.online 119
 ```
 
@@ -82,7 +84,7 @@ when the home ISP changes it (gap packet d).
 
 ```sh
 # YOU
-$F operator $C peer accept invitation-for-spwashi $N/keys \
+$F operator $C peer accept invitation-for-friend $N/keys \
     YOUR-PATH-IDENTITY YOUR-HOST:YOUR-PORT acceptance-for-goose
 $F operator $C peer list      # fn.fg-goose.online ... inbound=local.* outbound=- auth=principal:<ember's node principal>
 ```
@@ -93,8 +95,8 @@ Send `acceptance-for-goose` back to ember.
 
 ```sh
 # ME
-$F operator $C peer confirm $N/exchange/acceptance-for-spwashi $N/exchange/invitation-for-spwashi
-$F operator $C peer list      # spwashi ... auth=principal:<your node principal>
+$F operator $C peer confirm $N/exchange/acceptance-for-friend $N/exchange/invitation-for-friend
+$F operator $C peer list      # friend ... auth=principal:<your node principal>
 ```
 
 ### A4. The protected feed both ways
@@ -104,18 +106,18 @@ principal, and gives the other side the password out of band.
 
 ```sh
 # ME: a login for your node, bound to your node's principal
-printf 'PW-FOR-SPWASHI\nPW-FOR-SPWASHI\n' | $F operator $C principal set-password spwashi-node \
+printf 'PW-FOR-FRIEND\nPW-FOR-FRIEND\n' | $F operator $C principal set-password friend-node \
     --principal YOUR-NODE-PRINCIPAL-HEX --posting
 # ME: how the public node logs in at yours
-umask 077; printf 'FNAUTH1\ngoose-node\nPW-FOR-GOOSE\n' > $N/exchange/spwashi.fnauth
-$F operator $C peer add spwashi YOUR-PATH-IDENTITY YOUR-HOST YOUR-PORT \
+umask 077; printf 'FNAUTH1\ngoose-node\nPW-FOR-GOOSE\n' > $N/exchange/friend.fnauth
+$F operator $C peer add friend YOUR-PATH-IDENTITY YOUR-HOST YOUR-PORT \
     'local.*' 'local.*' principal YOUR-NODE-PRINCIPAL-HEX \
-    $N/exchange/spwashi.fnauth false true starttls YOUR-CERT-NAME $N/exchange/spwashi-cert.pem
+    $N/exchange/friend.fnauth false true starttls YOUR-CERT-NAME $N/exchange/friend-cert.pem
 
 # YOU: the mirror image; your anchor for the public node is isrg-roots.pem, not a leaf
 printf 'PW-FOR-GOOSE\nPW-FOR-GOOSE\n' | $F operator $C principal set-password goose-node \
     --principal EMBER-NODE-PRINCIPAL-HEX --posting
-umask 077; printf 'FNAUTH1\nspwashi-node\nPW-FOR-SPWASHI\n' > exchange/goose.fnauth
+umask 077; printf 'FNAUTH1\nfriend-node\nPW-FOR-FRIEND\n' > exchange/goose.fnauth
 $F operator $C peer add fn.fg-goose.online fn.fg-goose.online fn.fg-goose.online 119 \
     'local.*' 'local.*' principal EMBER-NODE-PRINCIPAL-HEX \
     exchange/goose.fnauth false true starttls fn.fg-goose.online exchange/isrg-roots.pem
@@ -125,7 +127,7 @@ $F operator $C peer pull fn.fg-goose.online 20
 The words of `peer add` are: name, path identity, address, port, inbound
 wildmat, outbound wildmat, `principal HEX`, the credential profile, `false`
 (never send the credential in the clear), `true` (`MODE STREAM`), and
-`starttls NAME ANCHOR`. Your `YOUR-CERT-NAME` and `spwashi-cert.pem` are
+`starttls NAME ANCHOR`. Your `YOUR-CERT-NAME` and `friend-cert.pem` are
 the name and certificate your own node presents. If yours is self-signed,
 send ember the certificate. If it is a CA's, send the CA roots, as above.
 
@@ -175,7 +177,7 @@ Until that is decided, the public node dials in both directions:
 
   ```sh
   # ME
-  $F operator $C peer add spwashi YOUR-PATH-IDENTITY YOUR-INN-HOST 119 \
+  $F operator $C peer add friend YOUR-PATH-IDENTITY YOUR-INN-HOST 119 \
       'local.*' 'local.*' source-address YOUR-INN-ADDRESS true
   ```
 
@@ -192,7 +194,7 @@ Until that is decided, the public node dials in both directions:
   changes, run `ctlinnd reload incoming.conf 'goose moved'`.
 
 - **You to the public node, pull:** the public node pulls from your
-  `nnrpd` with `NEWNEWS`/`ARTICLE` (`peer pull spwashi 60` on a timer).
+  `nnrpd` with `NEWNEWS`/`ARTICLE` (`peer pull friend 60` on a timer).
   Your `readers.conf` must let the public node's address read `local.*`,
   and `inn.conf` must keep `allownewnews: true`. If `nnrpd` has TLS (port
   563, or `STARTTLS`), a TLS pull with a login is better than a clear one.
@@ -217,11 +219,11 @@ certificate file.
 
 ## 4. Feed policy (ember decides)
 
-The wildmat must name the hierarchy the public node's `init` created.
-deploy-fresh's fresh init creates `fn.agents` and `fn.test` by default, so
-that hierarchy is `fn.*`. The small-community mission creates
-`local.general` and `local.test`, so that hierarchy is `local.*`. The
-commands above write `local.*`: replace it with whichever the deploy used. Cancels travel with the groups they name (PRF-163), so
+The wildmat must name groups the public node carries. Its
+small-community mission created `local.general` and `local.test`, and
+`fn.general`, `fn.test`, `fn.announce` and `fn.docs` were added; hbox
+peers on `fn.*`. The commands above write `local.*`: replace it with the
+hierarchy ember picks. Cancels travel with the groups they name (PRF-163), so
 `local.*` also carries an author's signed cancel of a `local.*` article.
 A shared hierarchy with a more distinctive name (for example `goose.*`)
 needs `group create` on every node before the first article. Ember names

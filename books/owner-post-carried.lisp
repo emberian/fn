@@ -29,7 +29,9 @@
                  fn-owner-retain-carry-of-other-global-put
                  fn-owner-bound-of-install-ocfg fn-owner-ocfg-of-install-ocfg
                  fn-owner-retain-carry-of-install-ocfg
-                 fn-owner-retain-statep-implies-entry-guard fn-sbud-oc-store)
+                 fn-owner-retain-statep-implies-entry-guard fn-sbud-oc-store
+                 ; state-p1 across the install, for a writer's f-put-global after it
+                 state-p fn-owner-installed-state-p1)
   ; no :step here: fn-owner-step is host/owner-host.lisp's, absent from any
   ; book world; a writer through it says :step (fn-owner-step EVENT THM)
   :suffix retain-state)

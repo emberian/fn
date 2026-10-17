@@ -808,32 +808,45 @@ the transport outcome of the stage reached."
         (fnn-control-exchange path reasoned
                               (fnn-control-consumer-maximum operation)
                               (fnn-control-consumer-deadline operation second))
-      (let ((step (if frame
-                      (fnn-core 'fn-native-control-host-consumer-client-read
-                                operation (fnn-octet-list frame))
-                    '(:transport))))
-        (case (first step)
-          (:reply
-           (values (if (fnn-control-consumer-reply-okp operation (second step))
-                       (second step)
-                     (fnn-control-consumer-bare-reply
-                      operation (fnn-control-transport-outcome stage)))
-                   nil))
-          (:status
-           (let ((status (second step)))
-             (values (fnn-control-consumer-bare-reply
-                      operation
-                      (cond ((member status '(:refused :uncertain :fault)) status)
-                            ((eq status :busy) :refused)
-                            ;; An acceptance never comes as a reasoned reply.
-                            (t (fnn-control-transport-outcome stage))))
-                     (third step))))
-          (:resend
-           (values (fnn-control-consumer-plain path operation first second) nil))
-          (otherwise
-           (values (fnn-control-consumer-bare-reply
-                    operation (fnn-control-transport-outcome stage))
-                   nil)))))))
+      (fnn-control-consumer-answer
+       operation frame stage
+       (lambda () (fnn-control-consumer-plain path operation first second))))))
+
+(defun fnn-control-consumer-answer (operation frame stage &optional resend)
+  "ACL2's reading of a reasoned consumer exchange's reply FRAME (or NIL at
+transport STAGE) as (values REPLY WORD).  RESEND, when given, is the plain
+request an old owner asks for; the remote client (host/native/consumer-remote.lisp)
+gives none, so that answer is the transport outcome."
+  (let ((step (if frame
+                  (fnn-core 'fn-native-control-host-consumer-client-read
+                            operation (fnn-octet-list frame))
+                '(:transport))))
+    (case (first step)
+      (:reply
+       (values (if (fnn-control-consumer-reply-okp operation (second step))
+                   (second step)
+                 (fnn-control-consumer-bare-reply
+                  operation (fnn-control-transport-outcome stage)))
+               nil))
+      (:status
+       (let ((status (second step)))
+         (values (fnn-control-consumer-bare-reply
+                  operation
+                  (cond ((member status '(:refused :uncertain :fault)) status)
+                        ((eq status :busy) :refused)
+                        ;; An acceptance never comes as a reasoned reply.
+                        (t (fnn-control-transport-outcome stage))))
+                 (third step))))
+      (:resend
+       (if resend
+           (values (funcall resend) nil)
+         (values (fnn-control-consumer-bare-reply
+                  operation (fnn-control-transport-outcome stage))
+                 nil)))
+      (otherwise
+       (values (fnn-control-consumer-bare-reply
+                operation (fnn-control-transport-outcome stage))
+               nil)))))
 
 (defun fnn-control-submit (path-octets msgid-octets group-octets payload-path-octets)
   "Submit one exact bounded file; answer (values STATUS WORD), ACL2's status

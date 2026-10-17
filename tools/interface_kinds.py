@@ -21,7 +21,8 @@ THE CLASS: :program for `:mode :program' or a `(program)' default earlier
 in its file; :common-lisp-compliant when the
 guards are verified (`:verify-guards t', or a guard / type declaration /
 :stobjs / :guard-hints under the default eagerness, or eagerness 2 in the
-file, or a `(verify-guards NAME)' event -- for any function of NAME's
+file, or a `(verify-guards NAME)' or `(def-carried-writer NAME ...)' event
+(the generator verifies an :ideal writer's guards) -- for any function of NAME's
 mutual-recursion clique; eagerness 0 in the file verifies only those
 two); :ideal otherwise.
 
@@ -118,6 +119,11 @@ def read_source(files: list[tuple[str, str]]) -> Source:
                 out.definitions.setdefault(fn, Definition(
                     fn, "{}:{}".format(relative, line), form, eagerness[0], program[0], clique))
             elif name == "verify-guards" and len(form) > 1:
+                out.verified.add(_s(form[1]))
+            elif name == "def-carried-writer" and len(form) > 1:
+                # books/def-carried-writer.lisp issues (verify-guards FN) for
+                # an :ideal FN in its scoped theory, and refuses the row
+                # if that fails: the writer is :common-lisp-compliant after it.
                 out.verified.add(_s(form[1]))
             elif name == "verify-termination" and len(form) > 1:
                 out.terminated.add(_s(form[1]))

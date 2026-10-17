@@ -31,6 +31,8 @@ BOOK = """(defun fn-k-a (x n state)
   (declare (xargs :guard (natp x) :verify-guards nil))
   x)
 (defun fn-k-prog (x) (declare (xargs :mode :program)) x)
+(defun fn-k-writer (x) (declare (xargs :guard (natp x) :verify-guards nil)) x)
+(def-carried-writer fn-k-writer :profile fn-k-profile :via (fn-k-thm))
 (defmacro octets-p (x) `(fn-cbor-octet-listp ,x))
 (defun fn-k-macro (x) (declare (xargs :guard (octets-p x))) x)
 (defun fn-k-if (x y) (declare (xargs :guard (if (stringp y) (natp x) 'nil))) (list x y))
@@ -97,6 +99,8 @@ class KindsTests(unittest.TestCase):
         self.assertEqual(self.klass("fn-k-plain"), "ideal")
         self.assertEqual(self.klass("fn-k-off"), "common-lisp-compliant")  # verify-guards event
         self.assertEqual(self.klass("fn-k-later"), "ideal")
+        # books/def-carried-writer.lisp verifies an :ideal writer's guards
+        self.assertEqual(self.klass("fn-k-writer"), "common-lisp-compliant")
         self.assertEqual(self.klass("fn-k-prog"), "program")
         self.assertEqual(self.klass("fn-k-eager"), "common-lisp-compliant")
         self.assertEqual(self.klass("fn-k-lazy"), "ideal")  # eagerness 0

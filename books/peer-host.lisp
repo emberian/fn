@@ -19,7 +19,7 @@
 ;                            3 forbids a literal), TRUST (:pinned PATH) or
 ;                            (:system-roots).  host/native/feed-service.lisp
 ;                            `fnn-feed-enable-tls', host/native/pull-service
-;                            .lisp `fnn-pull-round'.
+;                            .lisp `fnn-pull-flight-effect'.
 ;   fn-peer-tls-select       the record `peer add' writes from the operator's
 ;                            words: `-' as the server name is the host's own
 ;                            DNS name; `-' as the anchor is the system's
@@ -118,7 +118,8 @@
 
 ; KEYSTONE SUBJECT.  host/native/io.lisp `fnn-peer-connect' (called by the
 ; feed dial, host/native/feed-service.lisp `fnn-feed-dial', and the pull
-; dial, host/native/pull-service.lisp `fnn-pull-round').
+; dial, host/native/pull-service.lisp `fnn-pull-flight-effect' through
+; `fnn-peer-connect-start').
 (defun fn-peer-dial-target (host)
   (declare (xargs :guard t))
   (let ((address (fn-native-config-ipv4-address host)))
@@ -174,7 +175,7 @@
   (or (equal trust :system-roots) (fn-phost-cstringp trust)))
 
 ; KEYSTONE SUBJECT.  host/native/feed-service.lisp `fnn-feed-enable-tls' and
-; host/native/pull-service.lisp `fnn-pull-round' (the (:tls NAME TRUST)
+; host/native/pull-service.lisp `fnn-pull-flight-effect' (the (:tls NAME TRUST)
 ; effect) call it before any SSL_CTX exists.
 (defun fn-peer-tls-verification (server-name trust)
   (declare (xargs :guard t))

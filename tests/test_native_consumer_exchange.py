@@ -574,6 +574,64 @@ class NativeConsumerExchangeTests(unittest.TestCase):
             path.write_text(json.dumps(payload, indent=1, sort_keys=True, default=str),
                             encoding="utf-8")
 
+    def test_sleeping_consumer_waits_for_the_report_then_acks(self):
+        """The local cursor end to end on the control socket: WAIT, poll, ACK.
+
+        B sleeps inside fn's `consumer wait` (no poll on a timer) until A's
+        report is committed; that wait answers the report, B commits its
+        transaction and acks, and its committed ack advances.  A wait over
+        nothing new answers the empty page only at its deadline."""
+        import time
+        self.start_node()
+        a = self.agent("agent-a", 0xA1, 1)
+        b = self.agent("agent-b", 0xB2, 2)
+        for label in ("agent-a", "agent-b"):
+            self.register(label)
+        for config in (a, b):
+            self.trust(config, ("agent-a", "agent-b"),
+                       (("r", "agent-a"), ("reply-", "agent-b")))
+        sleeper = self.consumer(b, "wake", "--wait", "300", background=True)
+        time.sleep(5)
+        # A poll would have answered the empty page at once and exited.
+        self.assertIsNone(sleeper.poll(), "wake --wait returned with nothing committed")
+        self.assertEqual(self.status("agent-b")[0], 0)
+        posted = time.monotonic()
+        self.consumer(a, "report", "r1", "wait-for-me")
+        stdout, stderr = sleeper.communicate(timeout=300)
+        woke = time.monotonic() - posted
+        self.log.append(("agent-b", ("wake", "--wait", "300"), None, sleeper.returncode,
+                         stderr.decode("utf-8", "replace")[-2000:]))
+        self.assertEqual(sleeper.returncode, 0, (stdout + stderr).decode("utf-8", "replace"))
+        self.assertLess(woke, 120, "the wait answered at its deadline, not at the commit")
+        b_db = json.loads(b.read_text())["db"]
+        with sqlite3.connect(b_db) as db:
+            self.assertEqual(db.execute(
+                "SELECT operation_id, disposition FROM inbox").fetchall(), [("r1", "applied")])
+        self.assertGreater(self.status("agent-b")[0], 0, "B's committed ack did not advance")
+        replies = [entry for entry in json.loads(stdout)["outbox"]]
+        self.assertEqual([entry["state"] for entry in replies], ["stored"])
+        # A sleeps for the reply the same way; it is already committed.
+        self.consumer(a, "wake", "--wait", "300")
+        a_db = json.loads(a.read_text())["db"]
+        with sqlite3.connect(a_db) as db:
+            kinds = db.execute("SELECT operation_id, disposition FROM inbox "
+                               "WHERE disposition='applied'").fetchall()
+        self.assertIn(replies[0]["operation_id"], [op for op, _ in kinds])
+        # Nothing further for B: its own reply is the last event it can
+        # read, after which a wait answers only at its deadline.
+        for _ in range(4):
+            with sqlite3.connect(b_db) as db:
+                before = db.execute("SELECT count(*) FROM inbox").fetchone()
+            began = time.monotonic()
+            self.consumer(b, "wake", "--wait", "3")
+            if time.monotonic() - began >= 3:
+                with sqlite3.connect(b_db) as db:
+                    self.assertEqual(db.execute("SELECT count(*) FROM inbox").fetchone(), before)
+                break
+        else:
+            self.fail("wake --wait 3 never slept to its deadline")
+        self.stop_owner(self.owner)
+
     def test_saved_submission_retries_after_restart_without_signing_keys(self):
         """An unanswered post retains its whole artifact across both owners.
 

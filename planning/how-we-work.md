@@ -36,11 +36,22 @@ and [the current view](current.md). Release scope is
    `tools/host_check.py --load` (errors, arity, macro order, undefined
    names), before any image build.
 3. **Certify incrementally.** `farm.py submit <box> --affected-by <book>` (or
-   the changed books and tests as plain roots): cached books install, the
-   rest certify. Never `--closure` for lane work. Wait with one background
+   the changed books and tests as plain roots; add `--lane` for a lane verdict,
+   which stops at the books' direct includers and their tests, never the image-world
+   umbrellas): cached books install, the
+   rest certify. Never `--closure` for lane work. On the laptop or persvati, certify
+   with `FN_CERT_ORIGIN_KIND=run` (or `certify_books.py --origin-kind run`) so every other
+   worktree's `proof_repl start --cached-only` may install your pairs; the
+   default `worktree` label makes them foreign-local wherever your tree still
+   exists. Wait with one background
    command and do other work. A run that says ALL FROM THE CACHE certified
    nothing of yours; a KILLED run (exit 143, earlyoom) has no verdict, it
-   did not fail.
+   did not fail. **Never count reds with `grep -l "FAILED\|ACL2 Error"`**: it
+   matches echoed source (`:FAILED`) and every certificate cascade, and said
+   297 where the run had 3 real reds. `python3 tools/certify_triage.py
+   RUN_DIR` (a run's `build/acl2/certify-*` directory, fetched or on the box)
+   prints real / cascade / must-fail / limit / killed / other with each real
+   red's first error and key checkpoint; `--tsv` writes the per-log table.
    **Claim an id before you write it**: `python3 tools/next_id.py claim
    PRF --lane NAME --note '...'` (any kind: D, PRF, SCN, PKT, a
    requirement prefix) takes the next number no branch, worktree, LANEDUMP

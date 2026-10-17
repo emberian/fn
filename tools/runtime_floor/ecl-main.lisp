@@ -1,0 +1,12 @@
+(in-package "CL-USER")
+(defun rf-main ()
+  (let ((mode (ext:getenv "RF_MODE")) (tr (ext:getenv "RF_TRACE")))
+    (format t "~&RS start rss-kib ~a~%" (acl2::rp-rss-kib))
+    (finish-output)
+    (when (equal mode "idle") (sleep 3) (format t "~&RS idle rss-kib ~a~%" (acl2::rp-rss-kib)))
+    (when tr
+      (acl2::rp-replay tr :report 3)
+      (si:gc t)
+      (format t "~&RS after-replay rss-kib ~a~%" (acl2::rp-rss-kib)))
+    (finish-output)
+    (ext:quit 0)))

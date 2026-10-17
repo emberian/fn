@@ -34,6 +34,7 @@ configuration:
 | `acl2` | `path`, `slots` | Parsed so a migration cannot silently discard it; a direct saved image cannot consume either. |
 | `log` | `path` | Optional bounded path; `run` admits it only when absolute. |
 | `control` | `path` | Optional bounded path, default `<store>/control.sock`. |
+| `remote_consumer` | `port`, `host`, `max_sessions` | The remote consumer's TLS listener (`books/consumer-remote-config.lisp`, read beside the owner's record like `[web]`). No `port`, no listener. The port must differ from the listener, TLS and web ports. `host` is one listener address (default loopback). `max_sessions` (default 4, at most 64) is the number of sessions funded at once. The listener serves only beside `[listener]`'s certificate and key; see [applications](applications.md). |
 
 Every path is bounded to 512 octets, ordinary text to 256, and an anchor name
 to 128. `fn-native-config-operator-availablep` is a separate ACL2 decision

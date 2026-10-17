@@ -2,6 +2,8 @@
 ;;; Arena access and owner/cold/I/O are recording seams, not runtime proofs.
 (load "tests/native_web_article_stream_raw.lisp")
 (in-package "ACL2")
+;; ACL2's primitive, which the real article-stream renderer calls.
+(unless (fboundp 'member-eq) (defun member-eq (x xs) (member x xs :test #'eq)))
 
 ;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
 (define-condition harness-stub-reached (serious-condition)
@@ -31,6 +33,8 @@
 (defun fn-arena-get (h at arena) (aref (nth h arena) at))
 (defun fn-article-payload (article) (second article))
 (defun fn-article-msgid (article) (first article))
+;; ACL2 primitive the shared article source now calls (books/article-stream.lisp).
+(defun member-eq (x l) (member x l :test (function eq)))
 (defun fn-nntp-article-bytes (article arena)
   (coerce (nth (fn-article-payload article) arena) 'list))
 (defparameter *article-source-root* (or (sb-ext:posix-getenv "FN_WEB_ARTICLE_SOURCE_ROOT") "."))

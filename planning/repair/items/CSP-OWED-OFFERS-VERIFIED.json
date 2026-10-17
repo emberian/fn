@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/peer-catchup-spool.lisp",
+ "id": "CSP-OWED-OFFERS-VERIFIED",
+ "notes": [],
+ "owner": "catchup",
+ "severity": "high",
+ "slice": "peer-services",
+ "source": "catchup",
+ "state": "open",
+ "title": "Catch-up spool controller owes the verified-offer keystone that replaced fn-cu-step-keeps-offers-verified (deleted with the in-memory round): fn-csp-step offers a record (IHAVE or body to the local node) only from a batch whose spooled records chain from the committed chain to the peer's claim. Needs a spool-content model threaded through the step (the spool octets since the batch began) and CSP-OWED-SPOOL-DIGEST. Witnessed, not proved: tests/acl2/peer-catchup-tests.lisp (the A1/A2 exchange).",
+ "updated": "2026-10-04T04:01:41Z"
+}

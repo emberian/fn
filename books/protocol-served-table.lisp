@@ -66,9 +66,10 @@
 ;              dispatcher's clause, one lemma per form (its view CONTRACT:
 ;              under the form's test and no earlier form's, the result equals
 ;              the reference on the pinned view), the row's case and the
-;              keystone.  A row without :forms is served by the hand arms
-;              (books/served-catalog-dispatch.lisp) under its row-level
-;              :view, until declared.
+;              keystone.  A row without :forms is answered by the generated
+;              dispatcher's last clause, the pinned reference
+;              (fn-nntp-archive-command-pinned), under its row-level :view,
+;              until declared.
 ;   :cost      what the command costs on each route, (:unrestricted TEXT
 ;              :restricted TEXT); required with :forms.  The restricted
 ;              route is the reference walk over the projected pin, so a -cat
@@ -762,6 +763,7 @@
   ("HDR"
    :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :none
    :view-rfc "NNT-042 (other reads); Message-ID completed fallback remains PRF-1238 debt; RFC 3977 8.5"
+   :quantum (:cursor fn-ovw-cursor-effectp)
    :forms (("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
@@ -814,12 +816,13 @@
                  (:instance fn-nntp-enrollment-hdr-response-cat-is-pinned)
                  (:instance fn-nntp-hdr-command-cat-is-archive (legacyp nil)))
             :open (fn-nntp-hdr-response)))
-   :cost (:unrestricted "catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt"
+   :cost (:unrestricted "a range is the header cursor (lane cold-line): one quantum of W numbers per scheduling step, at most fn-clq-payload-quantum when the field is read from payloads (books/over-window.lisp fn-ovw-step-payloads-fit); the current and Message-ID forms read one article"
           :restricted "reference pinned archive walk; whole response allocated")
    :teeth ("HDR Subject 1-3" "HDR Subject" "HDR Subject <b@x>" "HDR Xref 1-3"
            "HDR :FN-VERIFIED 1-3" "HDR :FN-CONTROL <b@x>" "HDR :FN-ENROLLMENT <b@x>" "HDR"))
   ("XHDR"
    :view :pinned :effect :none :view-rfc "NNT-042 (other reads); RFC 2980 2.6"
+   :quantum (:cursor fn-ovw-cursor-effectp)
    :forms (("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
@@ -839,15 +842,16 @@
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-hdr-command-cat-is-archive (legacyp t)))
             :open (fn-nntp-xhdr-response)))
-   :cost (:unrestricted "catalog number probes and overview metadata where available; cold field/payload and whole response working allocation remain GEN-CURSOR debt"
+   :cost (:unrestricted "a range is the header cursor (lane cold-line): one quantum of W numbers per scheduling step, at most fn-clq-payload-quantum when the field is read from payloads (books/over-window.lisp fn-ovw-step-payloads-fit); the current and Message-ID forms read one article"
           :restricted "reference pinned archive walk; whole response allocated")
    :teeth ("XHDR Subject 1-3" "XHDR Subject" "XHDR Subject <b@x>" "XHDR Xref 1-3" "XHDR"))
   ("XPAT"
    :view :pinned :effect :none :view-rfc "NNT-042 (other reads); RFC 2980 2.9"
+   :quantum (:cursor fn-ovw-cursor-effectp)
    :forms (("any" :test t :cat (fn-nntp-xpat-response-cat session args v fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-xpat-response-cat-is-archive))))
-   :cost (:unrestricted "the range's numbers from the number table and one catalog probe per article (fn-scat-range-numbers, fn-scat-available-article), the field from the overview column"
+   :cost (:unrestricted "a range is the header cursor (lane cold-line): one quantum of W numbers per scheduling step, at most fn-clq-payload-quantum when the field is read from payloads (books/over-window.lisp fn-ovw-step-payloads-fit)"
           :restricted "the reference walk over the projected pinned archive (fn-nntp-xpat-response)")
    :teeth ("XPAT Subject 1-3 *" "XPAT Subject 2 *b*" "XPAT Subject <b@x> *" "XPAT Subject 1-3" "XPAT"))
   ("LIST"
@@ -934,7 +938,7 @@
           :restricted "the reference whole pinned archive walk, including payload tombstone reads")
    :teeth ("NEWNEWS * 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000 GMT" "NEWNEWS fn.* 20261001 000000" "NEWNEWS"))
   ("DATE"
-   :view :none :effect :none :view-rfc "RFC 3977 7.1; no article view. DEFECT (c07): answers the clock observation pinned at accept (fn-nntp-env-observation; books/served.lisp fn-served-conn-observation), not the current reading; fixed separately")
+   :view :none :effect :none :view-rfc "RFC 3977 7.1; no article view. Answers the CURRENT clock reading, the served connection's injection field, not the reading pinned at accept (books/served-date-current.lisp fn-served-step-date-uses-current-reading)")
   ("POST"
    :view :none :effect :offer :view-rfc "RFC 3977 6.3.1 (no archive)")
   ("IHAVE"

@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/web-page-cursor.lisp",
+ "id": "WEB-OWED-WPC-REFINES-SEQ",
+ "notes": [],
+ "owner": "web",
+ "severity": "medium",
+ "slice": "services",
+ "source": "lane-web",
+ "state": "open",
+ "title": "fn-wpc-step / fn-wpc-window-drive driven to done emit exactly (fn-wr-seq segs (fn-octets-list fn-web-in)) for (fn-wr-segsp segs) and (fn-wr-segs-within segs (fn-octets-len fn-web-in)) (windowed: relative to BASE, :v-u/:v-list virtual segments included); today only the raw consumer byte comparisons (tests/native_web_*_raw.lisp) witness it",
+ "updated": "2026-10-04T03:47:33Z"
+}

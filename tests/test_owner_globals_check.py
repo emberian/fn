@@ -33,6 +33,36 @@ class OwnerGlobalsCheckTests(unittest.TestCase):
         self.assertEqual(ogc.judge(found, {"host/a.lisp": 2}), [])
 
 
+class RaiseNeedsAReasonTests(unittest.TestCase):
+    """--write-baseline refuses a raise (or a new file) without --reason and keeps one dated line with it."""
+
+    def run_write(self, argv, baseline):
+        import json, tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "host").mkdir()
+            (root / "host" / "a-host.lisp").write_text(
+                "(defun f (state) (f-put-global 'fn-owner-x 1 (f-put-global 'fn-owner-y 2 state)))\n")
+            path = root / "base.json"
+            path.write_text(json.dumps(baseline))
+            code = ogc.main(["--root", str(root), "--baseline", str(path), "--write-baseline"] + argv)
+            return code, json.loads(path.read_text())
+
+    def test_a_raise_without_a_reason_is_refused(self):
+        code, written = self.run_write([], {"host/a-host.lisp": 1})
+        self.assertEqual(code, 1)
+        self.assertEqual(written, {"host/a-host.lisp": 1})
+
+    def test_a_raise_with_a_reason_keeps_one_dated_line_and_the_check_ignores_it(self):
+        code, written = self.run_write(["--reason", "two arrived"], {"host/a-host.lisp": 1})
+        self.assertEqual(code, 0)
+        self.assertEqual(written["host/a-host.lisp"], 2)
+        self.assertEqual(len(written["_reasons"]), 1)
+        self.assertIn("two arrived", written["_reasons"][0])
+        self.assertIn("host/a-host.lisp 1->2", written["_reasons"][0])
+
+
 class ParkedFilesTests(unittest.TestCase):
     """A parked host file (planning/host-parked.json: no build loads it) is not
     the running owner's, so its globals are not counted; one that is not

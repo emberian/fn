@@ -135,14 +135,14 @@
                 (syntaxp (lexorder c d)))
            (equal (fn-scj-seqs-below c v) (fn-scj-seqs-below d v)))
   :hints (("Goal" :induct (fn-scj-identity-pair-ind c d)
-           :in-theory (enable fn-scj-row-identity))))
+           :in-theory (enable fn-scj-row-identity fn-scj-seqs-below))))
 
 (defthm fn-scj-same-identity-marks
   (implies (and (equal (fn-scj-catalog-identity c) (fn-scj-catalog-identity d))
                 (syntaxp (lexorder c d)))
            (equal (fn-scj-marks-below c v) (fn-scj-marks-below d v)))
   :hints (("Goal" :induct (fn-scj-identity-pair-ind c d)
-           :in-theory (enable fn-scj-row-identity))))
+           :in-theory (enable fn-scj-row-identity fn-scj-marks-below))))
 
 (local (defun fn-scj-nth-identity-ind (k c d)
   (if (and (not (zp k)) (consp c) (consp d))

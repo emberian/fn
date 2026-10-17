@@ -7,7 +7,8 @@
  "harness": "tests/test_lock_discipline_check.py",
  "id": "NIGHT-REALIZATION-SOURCE",
  "notes": [
-  "10-03 02:36 claimed: scope=['tools/lock_discipline_check.py', 'tests/test_lock_discipline_check.py', 'planning/host-realization.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed"
+  "10-03 02:36 claimed: scope=['tools/lock_discipline_check.py', 'tests/test_lock_discipline_check.py', 'planning/host-realization.json', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 626666d05, tools/lock_discipline_check.py); local test python3.12 -m unittest tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed PASS at HEAD; native pending: none (tooling)"
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -19,10 +20,10 @@
  ],
  "severity": "medium",
  "source": "host-model-convergence",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_lock_discipline_check.Realization.test_model_literal_cannot_be_replaced_by_old_json_seed",
  "title": "Realization coverage uses an obsolete JSON seed instead of the actual model literal",
- "updated": "2026-10-03T06:36:21Z",
+ "updated": "2026-10-04T06:28:43Z",
  "verify": {
   "base": "d5c7ba1550f467202f9963912ac69d6f758248c5",
   "base_observation": {

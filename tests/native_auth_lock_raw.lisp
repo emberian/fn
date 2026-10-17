@@ -75,6 +75,9 @@
 (defun fnn-native-auth-admin-execute-held (&rest args)
   (declare (ignore args))
   (when (eq *mode* :body-fault) (error "body-fault")) 0)
+;; The escape path of the macro below: the deployed helper and ACL2 decisions it calls.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (eval (source-definition (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp")
                          "defmacro" "fnn-unwind-cleanups"))
 (let ((source (or (sb-ext:posix-getenv "FN_AUTH_ADMIN_HOST_SOURCE") "host/native/auth-admin.lisp")))

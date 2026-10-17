@@ -75,6 +75,56 @@ class DeliveryRecovery(unittest.TestCase):
                 self.assertFalse(any(c[:2] == ("consumer", "ack") for c in self.calls))
                 self.assertEqual(self.client.summary()["unattributed"], 0)
 
+    def test_wait_sleeps_in_fn_for_the_first_page_only(self):
+        """`wake --wait S`: the first page is fn's `consumer wait ... --timeout
+        S` with the poll's files, under a client deadline past S; the pages
+        after it are ordinary polls."""
+        waits = []
+
+        def native(*words, **options):
+            if words[:2] == ("consumer", "wait"):
+                waits.append((words, options))
+                Path(words[-4]).write_bytes(b"old-cursor")
+                Path(words[-3]).write_bytes(b"")
+                return 0, b"", b""
+            return self.native(*words)
+        self.client.native = native
+        self.client.wake(max_pages=2, wait=7)
+        self.assertEqual(len(waits), 1)
+        words, options = waits[0]
+        self.assertEqual(words[2:4], ("unused", "worker"))
+        self.assertEqual(words[-2:], ("--timeout", 7))
+        self.assertGreater(options["timeout"], 7)
+        self.assertFalse(any(c[:2] == ("consumer", "poll") for c in self.calls))
+
+    def test_a_remote_consumer_reads_through_consumer_remote(self):
+        """D48: with `remote` configured, position, poll/wait and ack go to the
+        remote node's listener as the account (`fn consumer-remote`), never to
+        the local control socket."""
+        self.close_client()
+        data = json.loads(self.config.read_text())
+        data.update({"secret_file": "pw", "remote": {
+            "host": "127.0.0.1", "port": 1563, "trust": "ca.pem", "login": "bob"}})
+        self.config.write_text(json.dumps(data))
+        self.client = self.open_client()
+        calls = []
+
+        def native(*words, **options):
+            calls.append(words)
+            if words[:2] == ("consumer-remote", "position"):
+                Path(words[-1]).write_bytes(b"old-cursor")
+            elif words[:2] == ("consumer-remote", "wait"):
+                Path(words[-3]).write_bytes(b"old-cursor")
+                Path(words[-2]).write_bytes(b"")
+            return 0, b"", b""
+        self.client.native = native
+        self.client.wake(max_pages=1, wait=9)
+        head = ("127.0.0.1", "1563", "ca.pem", "bob", "pw")
+        self.assertEqual(calls[0][:7], ("consumer-remote", "position") + head)
+        self.assertEqual(calls[1][:8], ("consumer-remote", "wait") + head + ("worker",))
+        self.assertEqual(calls[1][-1], 9)
+        self.assertFalse(any(c[0] == "consumer" for c in calls))
+
     def test_restart_reuses_exact_delivery_without_polling_then_handles_withdrawal(self):
         with self.assertRaises(fn_consumer.Stop):
             self.client.wake(max_pages=1)

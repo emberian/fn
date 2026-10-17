@@ -2,7 +2,7 @@
 ; authority and delivery plan observations remain recording-only. Completion
 ; is deliberately REFUSED: structural parsing cannot fabricate acceptance.
 (load "tests/bp_segmented_wire_job_recording.lisp")
-(load "tests/tcpcl_source_continuation_host_refuter.lisp")
+(load "tests/tcpcl_source_continuation_host_refuter-mock.lisp")
 (in-package "ACL2")
 
 (let* ((conn (make-fnn-tcl-conn)) (*flushes* 0)

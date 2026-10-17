@@ -1,57 +1,35 @@
 From: fn <docs@fn.fg-goose.online>
 Newsgroups: fn.docs
 Subject: fn FAQ, part 5: when things go wrong
-Date: Mon, 28 Sep 2026 18:00:00 +0000
-Message-ID: <fn-faq-5-20260928@fn.fg-goose.online>
+Date: Sun, 04 Oct 2026 18:00:00 +0000
+Message-ID: <fn-faq-5-20261004@fn.fg-goose.online>
 Archive-name: fn-faq/part5
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-28
+Last-modified: 2026-10-04
 Summary: Uncertain answers, crashes, a full store, backups, releases.
 
 fn never stops without one line saying why.
 
-*Exit codes:* 0 accepted, 1 refused, 3 uncertain, 4 fault, 5 usage.
-health adds 19 to 27 (part 6).
-
-*Uncertain:* The disk gave no clear answer. Retrying under the same
-Message-ID is safe; a new one may copy. Stop the node; recover shows
-what the store holds. Repeats mean a failing disk.
+*Uncertain:* The disk gave no clear answer. Sending the same article
+again (same Message-ID) is safe; a new Message-ID may make a copy.
+Stop the node and look:
 
     fn operator CONFIG recover
 
-*It will not start:*
+*It will not start:* journalctl -u fn -n 20
 
-    journalctl -u fn -n 20
-
-*A lost answer:* With the node stopped, look the post up:
-
-    fn operator CONFIG store inspect '<a1@example.invalid>'
-
-*Withdrawals:* control log lists them. To take one down:
+*Taking an article down:*
 
     fn operator CONFIG article withdraw '<spam@example.net>' \
         --reason takedown
 
-*When the store is full:* Posts are refused with 441; peers are told
-to try later. Raise a limit in place, on a running node or offline:
+*Full:* Posts are refused until you raise a limit, live:
 
     fn operator CONFIG policy set max-transactions N
 
-(also max-history-octets and max-article-octets). It applies now when
-the running heap holds it, otherwise at the next start; no data moves.
+*Backups:* Stop, copy /var/lib/fn, start.
 
-*Backups:* Stop, copy the node folder, start. Exports omit keys.
-
-*New releases:* A fresh install; the node folder stays. A release
-opens only a store of its own format. If it refuses the store
-(open refused reason=store-format: not an fn store of this release:
-redeploy fresh), there is no migration: set the node up again with
-init. Export and import move a store between installs of the same
-format:
-
-    fn operator CONFIG store export /var/lib/fn-export
-    fn operator CONFIG store import /var/lib/fn-export
-
-Copy back store/keys and store/auth.toml too.
+*New releases:* A new release is a fresh install; there are no
+migrations.
 
 *Go deeper:* part 6, every health code and refusal.

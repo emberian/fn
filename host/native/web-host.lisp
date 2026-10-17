@@ -905,15 +905,21 @@ A failed physical return retains its fd and condition as face cleanup debt."
       (sb-thread:condition-broadcast (fnn-web-face-job-ready face))
       (fnn-web-close-wakes-locked face))))
 
-(def-actor fnn-web-spawn :thread-name "fn web face" :roster t)
-(def-actor fnn-web-spawn-semantic :thread-name "fn web semantic" :roster t)
+(def-actor fnn-web-spawn :kind :web :thread-name "fn web face" :roster t
+  :join fnn-owner-wait-workers :failure :service)
+(def-actor fnn-web-spawn-semantic :kind :web :thread-name "fn web semantic" :roster t
+  :join fnn-owner-wait-workers :failure :service)
 
 (defun fnn-web-start (service plan tls-context)
   (let* ((port (fnn-core 'fn-web-host-plan-port plan))
          (family (fnn-core 'fn-web-host-plan-family plan))
          (address (fnn-core 'fn-web-host-plan-address plan))
          (tls (fnn-core 'fn-web-host-plan-tls plan))
-         (config (fnn-core 'fn-web-host-plan-config plan))
+         ;; The From's domain when [web] names none: the node's own name, read
+         ;; from the owner's live configuration as the article limit is.
+         (node-name (fnn-owner-serialized service nil (lambda ()
+                     (first (fnn-call 'fn-web-host-identity *the-live-state*))) :reader))
+         (config (fnn-core 'fn-web-host-plan-config plan node-name))
          (capacity (fnn-core 'fn-web-host-connection-limit config))
          (limits (fnn-owner-serialized service nil (lambda ()
                    (fnn-core 'fn-web-host-limits

@@ -1,5 +1,5 @@
 #!/bin/sh
-# witness: raw
+# witness: needs-acl2
 set -eu
 cd "$(dirname "$0")/.."
 mkdir -p build/runtime-tests

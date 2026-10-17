@@ -5,8 +5,9 @@
 ; ROOT.init-XXXX or ROOT.import-XXXX, and publish it by renaming
 ; (books/store-init-publication.lisp, books/store-import-publication.lisp).
 ; A process death before the rename leaves the stage and no ROOT.  Init and
-; import name that stage when run again (fn-bs-init-pub-admission:
-; :interrupted-init).  Every other store action (`run', `recover',
+; import name that stage when run again (init discards it: PKT-894,
+; fn-bs-init-pub-admission's :discard-stage; import refuses
+; :interrupted-import).  Every other store action (`run', `recover',
 ; `status', ...) answered NO-STORE there, the refusal of a node that was
 ; never initialized, and its hint said to run init -- which then refused.
 ;
@@ -57,7 +58,7 @@ stage and what to run; otherwise fn-native-operator-result-hint's."
            (concatenate 'string
                         "no store at the configured [store] path: an init was interrupted before it published the store; its stage "
                         stage
-                        " remains. Remove it and run: fn operator CONFIG init GROUP..."))
+                        " remains; it holds nothing any command acknowledged. Run: fn operator CONFIG init GROUP... (init removes the stage)"))
           ((and (equal status :refused) (equal reason :interrupted-import)
                 (stringp stage))
            (concatenate 'string
@@ -89,8 +90,8 @@ stage and what to run; otherwise fn-native-operator-result-hint's."
 ; holding none of the store's entries, beside an init stage, is refused
 ; :interrupted-init with the stage as its one argument: never accepted (no
 ; action runs, no open is attempted), exit the refusal code 1, and its hint
-; names the stage -- never NO-STORE's "run init", which init itself refuses
-; while the stage remains.
+; names the stage and says to run init, which discards the stage and
+; proceeds (PKT-894).
 (defthm fn-nsst-absent-store-beside-an-init-stage-names-it
   (implies (and (fn-native-operator-result-needs-storep result)
                 (not (consp observed))
@@ -109,7 +110,7 @@ stage and what to run; otherwise fn-native-operator-result-hint's."
                          (concatenate 'string
                                       "no store at the configured [store] path: an init was interrupted before it published the store; its stage "
                                       init-stage
-                                      " remains. Remove it and run: fn operator CONFIG init GROUP...")))))
+                                      " remains; it holds nothing any command acknowledged. Run: fn operator CONFIG init GROUP... (init removes the stage)")))))
   :hints (("Goal" :in-theory '(fn-nsst-store-outcome fn-nsst-stage-refusal
                                 fn-nop-refused fn-nop-result fn-nsst-refused-fields
                                 fn-nsst-result-hint fn-ncfg-first car-cons))))

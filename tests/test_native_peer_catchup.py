@@ -12,6 +12,13 @@ itself (books/peer-catchup.lisp, host/native/pull-service.lisp).
   compared (numbers are each node's own; B numbers in A's log order).  B's
   log names a done round at position 1000 whose digest is the chain over
   A's 1,000 stored articles, recomputed here from A's ARTICLE replies.
+- test_catch_up_carries_a_line_longer_than_a_megabyte (the bounded spool
+  controller's red/green): A holds an article whose body is one 1.5 MiB
+  line.  The in-memory round refused any line over 1 MiB (line-too-long)
+  and so never imported it; the spool controller streams it in 512-octet
+  windows and B ends with it byte-identical apart from Path.
+- test_catch_up_without_flight_funding_refuses_by_name: with no
+  peer-flight-profile B's round fails peer-flight-unfunded and never dials.
 - test_kill_mid_catch_up_resumes: B is started with
   FN_CATCHUP_TEST_KILL=before-write:3 (developer image): it dies by SIGKILL
   after committing the third batch's records and before journaling that
@@ -58,6 +65,20 @@ PROFILE = ("--max-transactions", "16384", "--max-history-octets", str(64 << 20),
 # About 2 KiB of body per article, so the 256 KiB batch quantum makes
 # several batches of the 1,000.
 FILLER = ("catch-up filler line " * 4 + "\r\n") * 24
+# The long-line case: one body line past the old round's 1 MiB ceiling.
+LONG_LINE = 3 * (1 << 19)
+LONG_PROFILE = ("--max-transactions", "4096", "--max-history-octets", str(256 << 20),
+                "--max-record-octets", str(8 << 20), "--max-article-octets", str(4 << 20),
+                "--max-groups-per-article", "16", "--max-open-suffix", "128")
+# The independent peer flight authority (specs/resource-vector.md): FNP1 and
+# six big-endian u64 allowances -- heap, disk, flights, workers, spool per
+# flight, metered work.  The spool holds the largest batch (one long article).
+FLIGHT_POLICY = (8 << 20, 512 << 20, 2, 1, 64 << 20, 1 << 50)
+
+
+def fund_peer_flights(node, policy=FLIGHT_POLICY):
+    (node.store_path / "peer-flight-profile").write_bytes(
+        b"FNP1" + b"".join(v.to_bytes(8, "big") for v in policy))
 
 
 def sha256_of(path):
@@ -119,14 +140,14 @@ class NativePeerCatchupTests(unittest.TestCase):
 
     # ------------------------------------------------------------ nodes
 
-    def initialize(self, name, identity):
+    def initialize(self, name, identity, profile=PROFILE):
         node = Node(self, IMAGE, root=self.base / name, name=name)
         node.log = node.root / "fn.log"
         node.config.write_text(
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
                 node.store_path, node.port, node.control, node.log), encoding="ascii")
-        node.operator("init", *PROFILE, "fn.test", expect=EXIT_OK)
+        node.operator("init", *profile, "fn.test", expect=EXIT_OK)
         self.nodes.append(node)
         node.operator("policy", "set", "path-identity", identity, expect=EXIT_OK)
         return node
@@ -243,6 +264,7 @@ class NativePeerCatchupTests(unittest.TestCase):
     def test_catch_up_imports_every_article(self):
         a = self.populated_a()
         b = self.initialize("B", "b.catchup.example.invalid")
+        fund_peer_flights(b)
         self.catch_up_from(b, "A", "a.catchup.example.invalid", a.port)
         started = time.monotonic()
         self.start(b)
@@ -267,6 +289,7 @@ class NativePeerCatchupTests(unittest.TestCase):
     def test_kill_mid_catch_up_resumes(self):
         a = self.populated_a()
         b = self.initialize("B", "b.catchup.example.invalid")
+        fund_peer_flights(b)
         self.catch_up_from(b, "A", "a.catchup.example.invalid", a.port)
         self.start(b, extra_env={"FN_CATCHUP_TEST_KILL": "before-write:3"})
         code = b.process.wait(timeout=600)
@@ -296,6 +319,65 @@ class NativePeerCatchupTests(unittest.TestCase):
                                        "before_kill": killed_lines,
                                        "frames_at_the_cut": frames,
                                        "lines": self.log_lines(b)}, [a, b])
+
+    # ------------------------------------------------------------ the bound
+    # The bounded spool controller against the in-memory round it replaced.
+
+    def long_article(self):
+        lines = ["From: poster@example.invalid", "Newsgroups: fn.test",
+                 "Subject: one long line", "Date: Sun, 4 Oct 2026 08:00:00 +0000",
+                 "Message-ID: <catchup-long@example.invalid>"]
+        body = "before\r\n" + "x" * LONG_LINE + "\r\n.after a dot\r\n"
+        return ("\r\n".join(lines) + "\r\n\r\n" + body).encode("ascii")
+
+    def test_catch_up_carries_a_line_longer_than_a_megabyte(self):
+        a = self.initialize("A", "a.catchup.example.invalid", LONG_PROFILE)
+        self.start(a)
+        with Client(a.port, timeout=120) as client:
+            first, second = client.post(self.long_article())
+            self.assertTrue(first.startswith(b"340"), first)
+            self.assertTrue(second.startswith(b"240"), second)
+            for n in range(3):
+                first, second = client.post(article(n))
+                self.assertTrue(second.startswith(b"240"), second)
+        b = self.initialize("B", "b.catchup.example.invalid", LONG_PROFILE)
+        fund_peer_flights(b)
+        self.catch_up_from(b, "A", "a.catchup.example.invalid", a.port)
+        started = time.monotonic()
+        self.start(b)
+        line = self.await_log(b, r"catch-up peer=A round=(done|failed) ", timeout=900)
+        self.assertIn("round=done", line,
+                      "the long-line round must complete; lines: {}".format(self.log_lines(b)))
+        elapsed = time.monotonic() - started
+        a_articles, a_order = self.articles_of(a)
+        b_articles, b_order = self.articles_of(b)
+        self.assertEqual(b_order, a_order)
+        msgid = "<catchup-long@example.invalid>"
+        self.assertEqual(without_path_and_xref(b_articles[msgid]),
+                         without_path_and_xref(a_articles[msgid]))
+        digest = re.search(r"digest=([0-9a-f]{64})", line).group(1)
+        self.assertEqual(digest, self.expected_digest(a_articles, a_order))
+        self.stop(b)
+        self.stop(a)
+        self.witness("catch-up-long-line", {"line_octets": LONG_LINE, "done_line": line,
+                                            "seconds_to_done": round(elapsed, 2),
+                                            "lines": self.log_lines(b)}, [a, b])
+
+    def test_catch_up_without_flight_funding_refuses_by_name(self):
+        a = self.initialize("A", "a.catchup.example.invalid")
+        self.start(a)
+        with Client(a.port, timeout=60) as client:
+            first, second = client.post(article(0))
+            self.assertTrue(second.startswith(b"240"), second)
+        b = self.initialize("B", "b.catchup.example.invalid")
+        self.catch_up_from(b, "A", "a.catchup.example.invalid", a.port)
+        self.start(b)
+        line = self.await_log(b, r"catch-up peer=A round=(done|failed) ")
+        self.assertIn("reason=peer-flight-unfunded", line, line)
+        self.assertIn("at=preamble", line, line)
+        self.stop(b)
+        self.stop(a)
+        self.witness("catch-up-unfunded", {"line": line}, [a, b])
 
 
 def without_xref(octets):

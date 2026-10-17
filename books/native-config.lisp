@@ -13,11 +13,11 @@
 (include-book "profile-limits") ; its figures are rows there
 
 ; Work bounds, not data bounds (D27 classification, PRF-102).  fn.toml has a
-; fixed schema: twelve tables and forty keys, each admitted at most once
+; fixed schema: thirteen tables and forty-three keys, each admitted at most once
 ; (`fn-ncfg-pair-seenp', `fn-ncfg-table-seenp'), with no repeated table, so it
 ; names no collection the store holds -- groups, peers, credentials and
 ; policy live in the store and its profile.  These two bound the work of one
-; read of that fixed-size file (its values are at most 40 x 512 octets).  The
+; read of that fixed-size file (its values are at most 43 x 512 octets).  The
 ; store profile cannot bound it in any case: fn.toml is read before the store
 ; is opened, and names the store (`[store] path').
 (defconst *fn-ncfg-max-octets* 16384)
@@ -240,7 +240,8 @@
 (defun fn-ncfg-tablep (name)
   (declare (xargs :guard t))
   (member-equal name '("store" "listener" "auth" "posting" "anchor"
-                       "acl2" "log" "control" "alerts" "ops" "web" "resources")))
+                       "acl2" "log" "control" "alerts" "ops" "web" "resources"
+                       "remote_consumer")))
 
 (defun fn-ncfg-key-allowedp (table key)
   (declare (xargs :guard t))
@@ -262,6 +263,10 @@
         ((equal table "web")
          (member-equal key '("port" "host" "site" "domain" "proxied" "tls"
                              "idle_seconds" "max_sessions")))
+        ; The remote consumer's TLS listener (books/consumer-remote-config.lisp
+        ; reads this table; the owner's configuration record does not carry it).
+        ((equal table "remote_consumer")
+         (member-equal key '("port" "host" "max_sessions")))
         ((equal table "resources")
          (member-equal key '("cold_heap_octets" "cold_workers"
                             "cold_descriptors" "cold_read_ids" "cold_file_ids"

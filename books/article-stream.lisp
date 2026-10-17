@@ -21,6 +21,7 @@
         (list p 0 (fn-arena-payload-len p fn-arena) nil)
       (let ((bytes (fn-nntp-article-bytes article fn-arena)))
         (list nil 0 (len bytes) bytes)))))
+(fn-payload-kind fn-ast-source :handle "tests the payload as a natural below the arena count, reads its length there, and keeps the handle as the source's handle; the octets are read by fn-ast-source-byte")
 
 (defun fn-ast-source-byte (source fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))

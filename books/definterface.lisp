@@ -17,7 +17,7 @@
 ;                                   ; position order; default none
 ;     [:exempt ((FORMAL "why") ...)] ; byte-carrying formals the guard does
 ;                                   ; not kind, each with its reason
-;     [:keystones (THM | (THM :via CALLEE) ...)]
+;     [:keystones (THM | (THM :via CALLEE) | (THM :step-of FOLD [STEP]) ...)]
 ;     [:root :extract | :extract-extra] ; an extraction root, or one of the
 ;                                   ; extractor's EXTRA functions
 ;     [:direct "why"]               ; the raw host applies it directly, not
@@ -48,7 +48,18 @@
 ;   * each keystone THM is a theorem whose formula calls NAME, or, for
 ;     (THM :via CALLEE), calls CALLEE and CALLEE is in NAME's call closure
 ;     (a :program entry cannot appear in a theorem; its keystones are about
-;     the logic functions it runs);
+;     the logic functions it runs), or, for (THM :step-of FOLD [STEP]),
+;     calls FOLD and STEP (default NAME; else NAME or a function in NAME's
+;     call closure, for a :program entry) is in FOLD's call closure.
+;     :step-of is WEAKER than :via: the host calls NAME once per step and
+;     itself drives the iteration (a chunk loop, a cursor resumed per turn),
+;     so THM is about the iteration the host is meant to perform, and that
+;     the host's loop IS FOLD is not established by the world -- a theorem
+;     about another function counts only with a named theorem equating the
+;     two (AGENTS.md).  tools/interface_emit.py records each such row as
+;     "keystone via fold; host-loop correspondence owed", never as the
+;     entry's proof, and each carries a proof-owed item until the host
+;     drives the step through a generated loop whose equation is proved;
 ;   * :raw-with (D40, lane depth-debt-9): NAME is :common-lisp-compliant
 ;     (guard verification is the condition for faithful raw execution: the
 ;     raw definition is the logical function only where its guard holds);
@@ -147,8 +158,14 @@
       (and (true-listp x)
            (equal (len x) 3)
            (symbolp (car x))
-           (eq (cadr x) :via)
-           (symbolp (caddr x)))))
+           (member-eq (cadr x) '(:via :step-of))
+           (symbolp (caddr x)))
+      (and (true-listp x)
+           (equal (len x) 4)
+           (symbolp (car x))
+           (eq (cadr x) :step-of)
+           (symbolp (caddr x))
+           (symbolp (cadddr x)))))
 
 (defun fn-di-keystones-formp (x)
   (declare (xargs :mode :program))
@@ -346,10 +363,20 @@
            (msg "keystone ~x0 is not a theorem in this world" thm))
           ((not (member-eq target (all-fnnames formula)))
            (msg "keystone ~x0 does not call ~x1" thm target))
-          ((and (consp entry)
+          ((and (consp entry) (eq (cadr entry) :via)
                 (not (member-eq target (fn-di-callees (list name) nil 100000 w))))
            (msg "keystone ~x0's function ~x1 is not in ~x2's call closure"
                 thm target name))
+          ((and (consp entry) (eq (cadr entry) :step-of)
+                (let ((step (if (cdddr entry) (cadddr entry) name)))
+                  (not (member-eq step (fn-di-callees (list name) nil 100000 w)))))
+           (msg "keystone ~x0's step ~x1 is not ~x2 or in its call closure"
+                thm (cadddr entry) name))
+          ((and (consp entry) (eq (cadr entry) :step-of)
+                (let ((step (if (cdddr entry) (cadddr entry) name)))
+                  (not (member-eq step (fn-di-callees (list target) nil 100000 w)))))
+           (msg "keystone ~x0's fold ~x1 never runs the step ~x2"
+                thm target (if (cdddr entry) (cadddr entry) name)))
           (t nil))))
 
 (defun fn-di-keystones-problem (name entries w)
@@ -569,13 +596,27 @@
          (fn-di-defined-conjuncts (cdr conjuncts) w))
         (t (cons (car conjuncts) (fn-di-defined-conjuncts (cdr conjuncts) w)))))
 
-(defun fn-di-raw-with-list-problem (name thms heads w)
+(defun fn-di-written-conjuncts (conjuncts outs)
   (declare (xargs :mode :program))
-  ; a literal :raw-with list: the declaration lint (occurrence, not proof)
+  ; the CONJUNCTS over a stobj the entry returns (OUTS, its stobjs-out).  A
+  ; conjunct over a stobj the entry only reads is no transition of it: the
+  ; entry cannot break it, so there is nothing for a preservation theorem to
+  ; state about this entry (the writers' own preservation theorems and the
+  ; bridge carry it), and the preservation lint asks for none.
+  (cond ((atom conjuncts) nil)
+        ((intersection-eq (all-vars (car conjuncts)) outs)
+         (cons (car conjuncts) (fn-di-written-conjuncts (cdr conjuncts) outs)))
+        (t (fn-di-written-conjuncts (cdr conjuncts) outs))))
+
+(defun fn-di-raw-with-list-problem (name thms heads written-heads w)
+  (declare (xargs :mode :program))
+  ; a literal :raw-with list: the declaration lint (occurrence, not proof).
+  ; Every skipped head must be concluded by a named theorem; only the heads
+  ; over a stobj the entry returns (WRITTEN-HEADS) need its preservation.
   (let ((missing (fn-di-missing-theorem thms w))
         (unconcluded (fn-di-unconcluded-head heads thms w))
         (unpreserved (fn-di-unpreserved-head
-                      name heads thms (getpropc name 'guard *t* w) w))
+                      name written-heads thms (getpropc name 'guard *t* w) w))
         (unrelated (fn-di-unrelated-theorem
                     thms (fn-di-related-fnnames heads thms w) w)))
     (cond
@@ -648,7 +689,13 @@
                  (msg ":raw-with ~x0 on ~x1: guard conjunct ~x2 is neither the ~
                        carried invariant of ~x1's state nor a conjunct of a ~
                        generated bridge" form name c))))
-         (t (fn-di-raw-with-list-problem name form heads w)))))))
+         (t (fn-di-raw-with-list-problem
+             name form heads
+             (fn-di-invariant-heads
+              (fn-di-written-conjuncts
+               conjuncts (remove-eq nil (getpropc name 'stobjs-out nil w)))
+              w)
+             w)))))))
 
 (defun fn-di-raw-guarded-conjunctsp (conjuncts formals slots w)
   (declare (xargs :mode :program))

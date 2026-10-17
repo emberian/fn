@@ -7,7 +7,8 @@
  "harness": "tests/test_green_check.py",
  "id": "NIGHT-SCOPED-GREEN",
  "notes": [
-  "10-03 02:49 claimed: scope=['tools/green_check.py', 'tools/certs.py', 'tools/certified_claims.py', 'tools/evidence_manifests.py', 'tools/evidence_store.py', 'tests/test_green_check.py', 'tests/test_certs.py', 'tests/test_certified_claims.py', 'tests/test_evidence_store.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit"
+  "10-03 02:49 claimed: scope=['tools/green_check.py', 'tools/certs.py', 'tools/certified_claims.py', 'tools/evidence_manifests.py', 'tools/evidence_store.py', 'tests/test_green_check.py', 'tests/test_certs.py', 'tests/test_certified_claims.py', 'tests/test_evidence_store.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 1417f80a6, tools/green_check.py et al); local test python3.12 -m unittest tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit PASS at HEAD; native pending: none (tooling)"
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -25,10 +26,10 @@
  ],
  "severity": "medium",
  "source": "tools-speed-X17",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_green_check.ScopedAuditTests.test_cli_selects_affected_roots_before_audit",
  "title": "Changed-books check audits unrelated roots and rehashes all manifest source worlds",
- "updated": "2026-10-03T06:51:23Z",
+ "updated": "2026-10-04T06:28:43Z",
  "verify": {
   "base": "baa6a81290d7958c2d7895bbc87997b35bf2fb79",
   "base_observation": {

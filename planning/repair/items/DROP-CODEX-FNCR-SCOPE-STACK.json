@@ -1,0 +1,12 @@
+{
+ "category": "drift",
+ "file": "host/consumer-remote-host.lisp",
+ "id": "DROP-CODEX-FNCR-SCOPE-STACK",
+ "notes": [],
+ "owner": "apps",
+ "severity": "medium",
+ "source": "apps",
+ "state": "open",
+ "title": "The Codex FNCR scope/selection/decision stack (host/consumer-remote-host.lisp fn-owner-remote-scope-*, -selection-*, -decision-*, -query-policy-*, -event-buffer-step; host/consumer-remote-reader-host.lisp, consumer-remote-report-host.lisp; their books consumer-remote-scope/scan/semantic/visibility/reader-source/collection/completion/terminal) has no caller: the remote consumer is served by the account's bound consumer route (books/consumer-remote-bound.lisp, D48/PKT-673). Decide drop or park (harvest/parsimony); remote register/rebase (FNCE4, D46) would be new code with its producer.",
+ "updated": "2026-10-04T04:08:57Z"
+}

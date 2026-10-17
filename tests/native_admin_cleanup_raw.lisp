@@ -37,6 +37,9 @@
 (defun fnn-admin-clock-plan () :clock)
 (defun fnn-admin-reconfigure (&rest args) (declare (ignore args)) (values :record nil))
 (defun fnn-admin-publish-record (&rest args) (declare (ignore args)) (values 1 "record" :verified))
+;; The escape path of the macro below: the deployed helper and ACL2 decisions it calls.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
 (eval (source-definition (or (sb-ext:posix-getenv "FN_CLEANUP_HOST_SOURCE") "host/native/io.lisp")
                          "defmacro" "fnn-unwind-cleanups"))
 (dolist (name '(fnn-admin-query fnn-admin-execute))

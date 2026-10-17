@@ -10,7 +10,8 @@
  "line": "17",
  "locus": "store-books",
  "notes": [
-  "10-02 23:05 comment-only (cert unaffected by comments; not re-certified)"
+  "10-02 23:05 comment-only (cert unaffected by comments; not re-certified)",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (comment-only fix commit 6cbd9061b, books/store-budget.lisp; 10/10 added lines present); no test applicable; native pending: none"
  ],
  "owner": "sweep-store",
  "reviewer": "store-budget.lisp:14-18 justifies the fixed-at-init budget by citing io.lisp `fnn-transaction-files` as a readdir bound. Grepping host/ and books/ finds that name only in comments: store-budget.lisp:17 and store-profile-facts.lisp:12 and :29, which are stale as well. The function was removed along with the per-file format (format 9). This is a documentation and rationale defect only.",
@@ -18,7 +19,7 @@
  "severity": "low",
  "sha": "6cbd9061b",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "title": "Budget comment cites a host function and an enumeration that no longer exist",
- "updated": "2026-10-03T03:05:26Z"
+ "updated": "2026-10-04T06:28:44Z"
 }

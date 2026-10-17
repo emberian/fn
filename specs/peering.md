@@ -208,12 +208,27 @@ boundary's `peer-transit:NAME`, their charges and their count
 records, extended by the records committed since, and
 `fn-pcb-carried-usage-is-the-projection` says the carried value is the
 projection; there is no host counter. Across any committed history whose
-carried records for a boundary were admitted, their charge sum is at most
+carried records for a boundary were admitted under one unchanged budget,
+their charge sum is at most
 the charge budget and their count at most the count budget
 (`fn-pcb-carried-history-within-budget`); the constructor keeps a history
 admitted (`fn-pcb-carried-event-keeps-history-admitted`). Since a record's
 charge is one more than its payload's page count, the carried payload octets
 are then at most OCTETS.
+
+
+When the operator changes the budget, the fixed-budget history bound does
+not transfer to that new limit. `fn-pcb-scheduled-from` is the logical trace
+predicate pairing each committed record with its decision-time budget.
+`fn-pcb-carried-event-keeps-budget-schedule-admitted` says the actual
+host-called constructor extends that schedule at the current budget when
+its usage is the committed projection. A lowered budget below retained
+usage refuses further carriage; old usage and articles stay. Raising the
+budget can admit a previously refused article. This trace predicate is not
+executed on a served path. The actual owner must supply the budget current
+at each decision; the theorem does not prove that configuration provenance.
+The lower/refuse/raise/restart native observation is not yet on dev (it
+was authored beside this proof, codex/peering-remainder 5e2f8e957).
 
 A present carrier this node does not accept on NNTP transit is refused with
 one of four classes, a function of the received octets, the keyring
@@ -393,23 +408,54 @@ FROM past the end, a 501 a malformed request.
   authentication of the peer (an abstract hash proves nothing about the
   peer's honesty).
 
-**The requester** (books/peer-catchup.lisp, driven by
-host/native/pull-service.lisp on the pull worker):
+**The requester** (books/peer-catchup.lisp's session and cursor; the round
+is the bounded spool controller books/peer-catchup-spool.lisp, its framer
+and its BLAKE3 spool cursor, driven by host/native/pull-service.lisp on the
+pull worker):
 
-- A batch is received whole (lines at most 1 MiB each, `:line-too-long`
-  otherwise), its chain recomputed over what arrived and compared with the
-  peer's claim. A mismatch ends the round `:failed` with the refusal
-  `digest-mismatch`, sends nothing to the local node and journals nothing
-  (`fn-cu-on-end-refuses-a-digest-mismatch`). While a round offers a
-  batch, the batch chains from the committed chain to the claim
-  (`fn-cu-step-keeps-offers-verified`).
+- **Bounded round.** The controller retains one header window and one
+  pending window of at most 512 octets each, whatever the article
+  (`fn-csp-step-keeps-window`); a peer read is at most 512 octets and a
+  larger chunk fails the round `malformed`. A record header line longer
+  than 512 octets fails `malformed`; an article line has no length limit
+  (the 1 MiB `line-too-long` ceiling of the in-memory round is gone).
+- **The spool.** Each batch is streamed, record by record, into a private
+  spool file (`<store>/catch-up/`, opened O_EXCL and unlinked at once, so
+  no name outlives its descriptor) by the flight's own worker thread
+  (host/native/catchup-spool.lisp). The receive framer removes the leading
+  dot of a line and keeps CRLF exactly; a window consumes a prefix of what
+  arrived, returns exactly the rest and emits the per-octet framing of that
+  prefix (`fn-csp-framer-window-accounts-for-every-octet`). An emission is
+  spooled whole within the flight's spool allowance or the round fails
+  `spool-quota` with nothing written (`fn-csp-write-spools-whole-or-fails-by-name`):
+  never a prefix. A batch is spooled whole before any record is offered, so
+  the allowance must hold the largest batch: the request quantum, or one
+  article larger than it.
+- **Verification.** Each record's digest is computed over the spooled
+  octets in 64-octet reads by the ACL2 BLAKE3 cursor and chained; at the
+  batch's end the chain is compared with the peer's claim. A mismatch ends
+  the round `:failed` with the refusal `digest-mismatch`; nothing is sent
+  to the local node and nothing is journaled. Only a verified batch is
+  replayed from the spool and offered.
+- **Funding.** A catch-up round draws a lease from the independent peer
+  flight bank (`peer-flight-profile`, specs/resource-vector.md) before it
+  dials; without one (no profile, or every flight slot held) it fails
+  `peer-flight-unfunded` and never dials. Every controller step and spool
+  operation draws its metered work from the bank (a spent coordinate);
+  a refusal fails the round `peer-work-exhausted`. The lease settles only
+  after the worker thread is joined, the socket is shut and the local
+  transit connection is closed.
+- **Deadline.** A round past its ACL2 deadline (`fn-prd-round-deadline`,
+  600 s; S054/S067) is lost whatever it waits on
+  (`fn-prd-round-past-deadline-is-lost`): it fails `round-deadline` and
+  resumes from its journaled cursor at its next due time.
 - Each record of a verified batch is offered, oldest first, by IHAVE on
   the logical transit connection of that peer (`fn-owner-open-peer`, the
   pull's), so the node's own prepare and verdict decide it: its Path,
   duplicate suppression (K4), the peer's inbound groups and admission
   profile, and a cancel's authority (a peer's cancel is an offered article,
   not an authority, section 8). The body goes only after the local 335 to
-  that record's IHAVE (`fn-cu-step-installs-only-through-the-verdict`).
+  that record's IHAVE (the controller's verdict keystone is owed: `fn-csp-step` sends a body only after the local 335, witnessed in tests/acl2/peer-catchup-tests.lisp).
   235 counts `imported`, 435 `duplicate`, 437 `refused`; a 436 holds the
   round (`local-deferred`).
 - **The cursor** `(peer position chain)` is journaled in FNCU
@@ -433,9 +479,9 @@ whole view at a position, which `store digest` could publish) needs an
 ordinal index. Positions are stable while the view only grows: a change of
 the login's READ rule or a reclaimed group reshapes the view, and a
 catch-up resumed across it may skip or repeat entries (repeats are 435;
-skips are not detected). The requester's batch buffer and the served reply
-are octet lists, as the pull's ARTICLE is (D27's concrete representation
-is open here as there).
+skips are not detected). The served reply
+is an octet list, as the pull's ARTICLE is (D27's concrete representation
+is open there); the requester retains only its two 512-octet windows.
 
 **The snapshot hook (design only; waits for arena-store).** A peer with
 columnar snapshots (arena-store) can offer a snapshot of its view at a
@@ -2376,6 +2422,23 @@ octets (`fn-pset-login-file`), which the connection's reader
 (`fn-pset-login-file-reads-back`); the host writes FILE owner-only by a
 rename and applies `peer set NAME --login FILE`. `peer add` stays for a
 peer no invitation made.
+
+**Independent pull login (PKT-431, PRF-1317, SCN-1139).**
+`peer pull-login NAME FILE|- ALLOW-CLEAR` publishes the single-valued
+`pull-auth-profile` extension row; ALLOW-CLEAR must be `true` or `false`.
+FILE names an existing owner-only FNAUTH1 credential file, prepared with
+the same login-file format as `peer login`. This command selects that file;
+it does not create it or change the outbound feed's credential. `-` selects
+anonymous pull explicitly. With no pull row, the legacy outbound credential
+and its allow-clear policy still apply. A pull row, including an empty
+profile, takes precedence; its own allow-clear word controls the existing
+loopback-lab exception. Both NEWNEWS pull and catch-up use this selection.
+`peer set` preserves the extension, including when `--send -` removes the
+outbound credential. `peer add` replaces the complete record and drops it.
+This directional credential selection is fn policy; RFC 4643 §2.3 supplies
+the AUTHINFO exchange, RFC 4642 §2.2 the unchanged TLS preamble, and
+RFC 3977 §7.4 the NEWNEWS command. Source admission and authored native
+witnesses do not establish a matching-image observation or certification.
 
 NNT-030: A friend's node and this one become peers from one invitation each way of the exchange: the accept configures the inviter at the invitee from the invitation's signed address in one record before the enrolment, the confirm configures the invitee at the inviter, and a crash between record and enrolment is resumed without a second record
 

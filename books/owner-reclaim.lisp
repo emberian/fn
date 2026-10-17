@@ -44,7 +44,8 @@
 ; -----------------------------------------------------------------------------
 ; 1. The rows' octets and the row rewrite.
 
-;; The host's chunk (host/owner-host.lisp fn-owner-orc-chunk -> fn-orc-chunk)
+;; The host's chunks (host/owner-host.lisp fn-owner-orc-rewrite-chunk ->
+;; fn-orc-rewrite-rows, fn-owner-orc-fold-chunk -> fn-orc-fold)
 ;; runs the row rewrite in raw Lisp only when every function under it is
 ;; guard-verified; the encoders' and the reclaim pack's are verified here, as
 ;; books/store-budget.lisp verifies the store-events encoders it runs.
@@ -185,9 +186,10 @@
                                  (fn-record-decode-exact
                                   (fn-orc-row-octets row fn-arena))))))))))
 
-; KEYSTONE.  The subject is fn-orc-chunk's first element, called by
-; host/native/owner.lisp fnn-owner-reclaim-rewrite (through
-; host/owner-host.lisp fn-owner-orc-chunk).
+; KEYSTONE.  The subject is fn-orc-rewrite-rows, called by
+; host/native/owner.lisp fnn-owner-reclaim-walk (through
+; host/owner-host.lisp fn-owner-orc-rewrite-chunk) in the pass's rewriting
+; walks.
 (defthm fn-orc-rewrite-rows-is-the-offline-rewrite
   (equal (fn-orc-rows-octets (fn-orc-rewrite-rows rows ctx fn-arena) fn-arena)
          (fn-rclp-events (fn-orc-rows-octets rows fn-arena) ctx))

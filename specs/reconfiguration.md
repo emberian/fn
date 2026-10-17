@@ -1314,7 +1314,7 @@ The offline publisher calls the state-free
 `fn-store-cfg-native-admin-authorize` through `fnn-core`: this operation takes
 six explicit arguments and returns one authorization value. It neither accepts
 ACL2's global `state` nor returns an error/value/state tuple. The raw boundary
-regression `tests/native_admin_authorize_boundary.lisp` exercises the deployed
+regression `tests/native_admin_authorize_boundary_raw.lisp` exercises the deployed
 wrapper, its octet-list marshalling, and both accepted and refused observations.
 This catches an ABI mismatch found by the native two-node gate; it does not
 establish the logical authorization predicate or physical publication safety.

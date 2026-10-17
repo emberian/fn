@@ -203,3 +203,57 @@
 (assert-event
  (equal (fn-bpfj-next-candidate (bpfsj-pending) *bpnfs-live-observation* nil)
         nil))
+
+; S008, the coverage gate (fn-bpfj-family-coveredp): a family is a candidate
+; only once the payload octets its rows hold reach the total ADU length its
+; offset-zero row declares.  The short family holds only the offset-zero
+; fragment (5 payload octets of a declared 8): every other test of
+; fn-bpfj-candidate passes for it (the family has an offset-zero row, the row
+; is active, unique at its arrival, live and not tried), and still no
+; candidate is offered, so no sweep walks the declared canvas.  The whole
+; family adds the second fragment (10 payload octets; the two overlap) and is
+; offered at once, so the difference is the held octets and nothing else.
+(defconst *bpfsj-short-state*
+  (fn-bpnf-state (fn-bpnf-base *bpnff-state*) (list *bpnff-p0*)
+                 nil nil nil nil nil 3 0))
+(defconst *bpfsj-whole-state*
+  (fn-bpnf-state (fn-bpnf-base *bpnff-state*) (list *bpnff-p3* *bpnff-p0*)
+                 nil nil nil nil nil 3 0))
+(assert-event
+ (and (equal (fn-bpfj-rows-payload-octets
+              (fn-bpnf-active-set *bpfsj-short-state* *bpnff-p0*) 0)
+             5)
+      (equal (fn-bpfj-rows-payload-octets
+              (fn-bpnf-active-set *bpfsj-whole-state* *bpnff-p3*) 0)
+             10)
+      (equal (fn-bpp-total-adu-length
+              (fn-bpb-bundle-primary (fn-bpnf-held-bundle *bpnff-p0*)))
+             8)))
+(assert-event
+ (and (member-equal (fn-bpnf-fragment-family-key *bpnff-p0*)
+                    (fn-bpnf-zero-family-keys
+                     (fn-bpnf-held-list *bpfsj-short-state*)))
+      (fn-bpnf-active-fragmentp *bpnff-p0*)
+      (equal (fn-bpnf-arrival-count
+              (fn-bpn-nth 3 *bpnff-p0*)
+              (fn-bpnf-held-list *bpfsj-short-state*))
+             1)
+      (fn-bpnf-family-rows-livep
+       (fn-bpnf-active-set *bpfsj-short-state* *bpnff-p0*)
+       *bpnfs-live-observation*)))
+(assert-event
+ (and (not (fn-bpfj-family-coveredp *bpfsj-short-state* *bpnff-p0*))
+      (fn-bpfj-family-coveredp *bpfsj-whole-state* *bpnff-p0*)))
+(assert-event
+ (equal (fn-bpfj-next-candidate *bpfsj-short-state* *bpnfs-live-observation*
+                                nil)
+        nil))
+(assert-event
+ (equal (fn-bpfj-next-candidate *bpfsj-whole-state* *bpnfs-live-observation*
+                                nil)
+        (list :ready *bpfsj-arrival* *bpfsj-key*)))
+(must-fail-checked
+ (assert-event
+  (equal (car (fn-bpfj-next-candidate *bpfsj-short-state*
+                                      *bpnfs-live-observation* nil))
+         :ready)))

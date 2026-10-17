@@ -6,8 +6,11 @@
 ; witness asserts every labelled hypothesis and the conclusion; one removal
 ; per hypothesis affirms every retained hypothesis, the failure of the
 ; removed one and of the conclusion, or is recorded :deferred; a mutation is
-; a checked edit of the claim) and become (defteeth K ...) forms when that
-; generator lands; the owed rows are in the source book.
+; a checked edit of the claim).  Only fn-proto-archive-command-cat-is-pinned's
+; teeth stay hand-written here: its claim quantifies the stobjs fn-arena and
+; fn-cat, which a defteeth witness (an assert-event over let-bound values)
+; cannot bind; its owed row is in the source book.  The other two keystones'
+; teeth are defteeth forms in the source book.
 ;
 ; What is asserted:
 ;  (1) fn-proto-archive-command-cat-is-pinned on every declared row's :teeth
@@ -30,9 +33,11 @@
 ;  (3) a mutation (:conclusion): the sessions compared for the effects fails
 ;      on a line whose reply moves the current article.
 ;  (4) fn-proto-advance-eventp-is-served-advance-eventp and
-;      fn-proto-archive-keywordp-is-nntp-archive-keywordp witnessed on every
-;      served keyword, with a mutation: a table whose :view :select rows are
-;      GROUP alone differs from the machine on LISTGROUP.
+;      fn-proto-archive-keywordp-is-nntp-archive-keywordp agree on every
+;      served keyword (the sweep below).  Their teeth (positive witness and the
+;      GROUP-alone / retrieval-only mutations) are the (defteeth ...) forms
+;      beside the keystones in books/protocol-served.lisp, so every world
+;      that includes that book carries them.
 ;  (5) the fail-closed checks of the served table: the real one passes; a
 ;      served command with no served row, a served row no protocol row
 ;      names, a served row without :view, forms without :cost, a :pinned row whose
@@ -298,7 +303,10 @@
   :hints (("Goal" :in-theory (enable fn-scol-okp))))
 
 ;; DC02: each literal HDR/XHDR form is reached under the full dispatcher
-;; boundary.  The form condition is copied from the declaration at macro
+;; boundary.  A range (HDR/XHDR Subject 1-3) answers a header cursor, never the
+;; 225/221 reply (the table's :quantum, lane cold-line: the cursor's steps
+;; deliver the lines); the Message-ID and field-only-with-metadata forms answer
+;; the reply directly.  The form condition is copied from the declaration at macro
 ;; expansion, including the failure of every earlier test; no evaluator is
 ;; invoked by a served command.
 (defun pst-form-condition-named (name forms prior)
@@ -355,10 +363,12 @@
          (pst-agree-all *pst-env-x* *pst-header-lines* arch index *pst-a* *pst-c*)
          (pst-agree-all *pst-env-0* *pst-header-lines* arch index *pst-a* *pst-c*)
          (pst-reaches *pst-header-lines* arch index *pst-a* *pst-c*)
+         (pst-cursorp *pst-env-x* "HDR Subject 1-3" arch index *pst-a* *pst-c*)
+         (pst-cursorp *pst-env-x* "XHDR Subject 1-3" arch index *pst-a* *pst-c*)
          (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
-                                  "HDR Subject 1-3" arch index *pst-a* *pst-c*)) '(50 50 53))
+                                  "HDR Subject <b@x>" arch index *pst-a* *pst-c*)) '(50 50 53))
          (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
-                                  "XHDR Subject 1-3" arch index *pst-a* *pst-c*)) '(50 50 49))
+                                  "XHDR Subject <b@x>" arch index *pst-a* *pst-c*)) '(50 50 49))
          (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
                                   "HDR :FN-VERIFIED 1-3" arch index *pst-a* *pst-c*)) '(50 50 53))
          (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
@@ -366,7 +376,7 @@
          (equal (pst-result-code (pst-command-at-session *pst-session* *pst-env-x*
                                   "HDR" arch index *pst-a* *pst-c*)) '(53 48 49))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-scol-okp))))
+  :hints (("Goal" :in-theory (enable fn-scol-okp fn-ovw-cursor-effectp))))
 
 ;; The withdrawal preludes remain ahead of compatibility and retrieval.
 ;; A control pin retains the target while the catalog's view hides it;
@@ -643,14 +653,6 @@
        (not (fn-proto-advance-eventp (list :article (fn-nntp-string-octets "GROUP fn.test"))))
        (pst-archive-agree *fn-proto-served-names*)
        (equal (len *fn-proto-archive-names*) 16))
-  :rule-classes nil)
-
-;; Mutation: a table whose only :select row is GROUP disagrees with the
-;; machine on a LISTGROUP line.
-(defthm pst-mutant-select-rows
-  (let ((event (list :command (fn-nntp-string-octets "LISTGROUP fn.test"))))
-    (and (fn-served-advance-eventp event)
-         (not (fn-proto-keyword-in-listp (fn-nntp-string-octets "LISTGROUP") '("GROUP")))))
   :rule-classes nil)
 
 ;; (5) Fail closed: the served columns' checks, on edits of the real table.

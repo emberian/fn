@@ -10,12 +10,14 @@
  "failure-message": "pre-write envelope fault must retain its class",
  "file": "host/native/pull-service.lisp",
  "fix": "Narrow the handler to the region from fnn-owner-feed-phase :append through the fsync. Let failures before the write keep their own class.",
- "harness": "tests/test_native_pull_append.py,tests/native_pull_append_raw.lisp",
+ "harness": "tests/test_native_pull_append.py,tests/native_pull_append_raw-mock.lisp",
  "id": "S110",
  "line": "247",
  "locus": "peer-services",
  "notes": [
-  "10-03 04:21 claimed: scope=['host/native/pull-service.lisp', 'specs/peering.md', 'tests/native_pull_append_raw.lisp', 'tests/test_native_pull_append.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class"
+  "10-03 04:21 claimed: scope=['host/native/pull-service.lisp', 'specs/peering.md', 'tests/native_pull_append_raw-mock.lisp', 'tests/test_native_pull_append.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 715a8778f, host/native/pull-service.lisp); local test python3.12 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class PASS at HEAD; native pending: acceptance wrapper:class-plus-step (not run)",
+  "10-04 10:41 native green: tests.test_native_pull_append.PullAppendBoundaryTests 6/6 OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "pull-service.lisp:229-252: the (error (e) ...) arm wraps the non-octet-envelope fnn-fault (237-238) and everything before fnn-write-all, and turns all of them into fnn-indeterminate. fnn-pull-worker-guarded (552-554) then fences the node (exit 3) where a pre-write failure is a definite fault (exit 4). This misclassifies the outcome, but it is conservative, and it is reachable only through an ACL2 contract break or the developer cut selector.",
@@ -23,7 +25,7 @@
  "scope": [
   "host/native/pull-service.lisp",
   "specs/peering.md",
-  "tests/native_pull_append_raw.lisp",
+  "tests/native_pull_append_raw-mock.lisp",
   "tests/test_native_pull_append.py",
   "LANEDUMP.md",
   "planning/evidence-index.tsv"
@@ -31,10 +33,10 @@
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_native_pull_append.PullAppendBoundaryTests.test_prewrite_envelope_fault_retains_class",
  "title": "FNPL/FNCU append reports a pre-write envelope refusal or fault as indeterminate (exit 3)",
- "updated": "2026-10-03T08:29:46Z",
+ "updated": "2026-10-04T14:41:59Z",
  "verify": {
   "base": "e3b6eee46a5598889ad2813c6c9e2aa42ba0fdeb",
   "base_observation": {
@@ -69,7 +71,7 @@
    "host/native/pull-service.lisp",
    "planning/repair/items/S110.json",
    "specs/peering.md",
-   "tests/native_pull_append_raw.lisp",
+   "tests/native_pull_append_raw-mock.lisp",
    "tests/test_native_pull_append.py"
   ],
   "diff_lines": 243,
@@ -85,7 +87,7 @@
   },
   "green_at_head": true,
   "harness": {
-   "tests/native_pull_append_raw.lisp": "8263c848b361994a32a114349121a7c0f5658ab17ff31193d09be7e4b0c7b544",
+   "tests/native_pull_append_raw-mock.lisp": "8263c848b361994a32a114349121a7c0f5658ab17ff31193d09be7e4b0c7b544",
    "tests/test_native_pull_append.py": "bae91f0d92262ba7a5503a5a496889195837534667a4953796d0d576168c324e"
   },
   "head": "31c79cb07c8d37f521f7dde239315e24a38a1140",

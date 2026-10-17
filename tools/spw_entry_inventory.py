@@ -21,7 +21,7 @@ from ledger import Reader
 ROOT = Path(__file__).resolve().parents[1]
 SERVICE_ENTRIES = {
     "fnn-main", "fnn-dispatch", "fnn-owner-run", "fnn-web-start",
-    "fnn-ninep-start", "fnn-remote-receive-installed",
+    "fnn-remote-receive-installed",
 }
 
 

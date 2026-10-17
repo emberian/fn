@@ -138,16 +138,6 @@
       "load": 3.37,
       "cpus": 24
     },
-    "books/cbor-invariants": {
-      "seconds": 5.589,
-      "run": "certify-20260928T161301Z-1382021",
-      "host": "hbox",
-      "jobs": 2,
-      "verdict": "passed",
-      "load": 2.65,
-      "cpus": 24,
-      "steps": 3128722
-    },
     "books/config-owner-live-read": {
       "seconds": 5.975,
       "run": "certify-20260928T124849Z-2149901",

@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/web-post-stream.lisp",
+ "id": "WEB-OWED-POST-WINDOW-REFINES",
+ "notes": [],
+ "owner": "web",
+ "severity": "medium",
+ "slice": "services",
+ "source": "lane-web",
+ "state": "open",
+ "title": "fn-wps-window driven to done from fn-wps-header-cursor emits exactly the article fn-wss-write-post writes for the same form (head, RFC 2047 Subject, dot-stuffed CRLF body, terminator); fn-wpf-drive's decoded csrf/g/subject equal fn-wss-form's. Proved today: accepted only with the session CSRF/group/subject/body and to its own cid; every refusal is the existing gate's answer",
+ "updated": "2026-10-04T03:47:34Z"
+}

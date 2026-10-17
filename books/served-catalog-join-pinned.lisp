@@ -32,6 +32,10 @@
 (in-package "ACL2")
 
 (include-book "served-catalog-join-conns")
+; The loader folds through the availability classification
+; (fn-sca-load-held-available-from); its rows keep the raw fold's join
+; metadata (fn-scj-load-held-rows-keeps-raw-identity), which P1 reads.
+(local (include-book "served-catalog-load-identity"))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -385,11 +389,31 @@
                             (configs (fn-sn-config-history st))
                             (events (fn-sf-records (fn-sn-files st))))))))
 
+;; A catalog's sequences are part of its join identity.
+(local (defun fn-scj-seqs-identity-ind (c d)
+  (if (and (consp c) (consp d))
+      (fn-scj-seqs-identity-ind (cdr c) (cdr d))
+    (list c d))))
+
+(local (defthm fn-scj-seqs-of-same-identity
+  (implies (equal (fn-scj-catalog-identity c) (fn-scj-catalog-identity d))
+           (equal (fn-scj-seqs c) (fn-scj-seqs d)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-scj-seqs-identity-ind c d)
+           :in-theory (enable fn-scj-row-identity fn-scj-catalog-identity fn-scj-seqs)))))
+
 (defthm fn-scj-seqs-sortedp-of-load
   (implies (and (fn-scj-seqs-from rows 0) (fn-rows-composites-okp rows fn-arena))
            (fn-scj-seqs-sortedp (fn-sca-load-held-rows rows idx fn-arena fn-cat)))
-  :hints (("Goal" :in-theory (e/d (fn-sca-load-held-rows) (fn-sca-load-held-rows-from fn-scj-seqs-sortedp))
-           :use ((:instance fn-scj-seqs-sorted-of-load-from (c nil) (k 0))))))
+  :hints (("Goal" :in-theory (e/d (fn-scj-seqs-sortedp)
+                                  (fn-sca-load-held-rows fn-sca-load-held-rows-from fn-scj-seqs
+                                   fn-scj-catalog-identity fn-scj-load-held-rows-keeps-raw-identity
+                                   fn-scj-seqs-sorted-of-load-from))
+           :use ((:instance fn-scj-seqs-sorted-of-load-from (c nil) (k 0))
+                 (:instance fn-scj-load-held-rows-keeps-raw-identity)
+                 (:instance fn-scj-seqs-of-same-identity
+                            (c (fn-sca-load-held-rows rows idx fn-arena fn-cat))
+                            (d (fn-sca-load-held-rows-from rows idx nil)))))))
 
 ; P1 at every open: the catalog the host loads from a related store's rows
 ; (fn-sca-load-held-rows, as the full open and the recover install it) is

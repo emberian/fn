@@ -380,6 +380,24 @@ def check_debt(table: dict) -> list[str]:
     return []
 
 
+def forms_owed(table: dict) -> list[str]:
+    """Served archive rows still on hand arms: no :forms, so no generated cat dispatcher.
+
+    A row whose :dispatch is :pinned (a peer extension, XFNCATCHUP and
+    XFN-ZARTICLE) is served from the :pinned tail of fn-nntp-command-dispatch,
+    never from the generated archive cat dispatcher, so a :forms row for it
+    would state an equation about a dispatcher that never receives the
+    keyword: it owes nothing here (DC03).
+    """
+    return [r["name"] for r in table["rows"]
+            if r["arms"] and r["dispatch"] == "archive" and r["cost"] is None]
+
+
+def check_forms(table: dict) -> list[str]:
+    return ["row %s is an archive row with hand arms and declares no :forms" % n
+            for n in forms_owed(table)]
+
+
 def check_keyword_literals(table: dict) -> list[str]:
     names = {r["name"] for r in table["rows"]}
     failures = []
@@ -421,7 +439,8 @@ def main(argv=None) -> int:
         print(text(table, args.text[0], args.text[1]))
         return 0
     if args.check:
-        failures = check(table) + check_debt(table) + check_keyword_literals(table)
+        failures = (check(table) + check_debt(table) + check_forms(table)
+                    + check_keyword_literals(table))
         print("view-policy debt: %d decided-not-landed item(s)" % len(view_debt(table)))
         for f in failures:
             print("FAIL " + f)

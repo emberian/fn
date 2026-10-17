@@ -1,7 +1,8 @@
-# The public node's live policy rows (lane public-node, 2026-09-26): one
+# The exposure rows both deployed nodes run with (fsn1 from dregg-infra's
+# copy, edge/fn/exposure.policy; hbox from this file; docs/nodes/): one
 # `fn operator CONFIG policy set SLOT VALUE` per non-comment line, applied
-# by deploy-fresh after `init` and before the first `run` (each row is a
-# durable configuration record; a later `policy set` replaces it live).
+# after `init` and before the first `run` (each row is a durable
+# configuration record; a later `policy set` replaces it live).
 # PRF-161's limits by name (books/public-exposure.lisp); specs/nntp.md
 # "Public exposure" is the table. Absent rows take the public defaults on a
 # listener off loopback; every row is written anyway, so `health` and the

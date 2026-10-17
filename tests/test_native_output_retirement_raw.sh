@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: needs-acl2
 # Generic typed output protocol test. No fresh-service reachability/heap claim.
 set -eu
 probe_root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)

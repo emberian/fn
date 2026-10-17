@@ -57,3 +57,34 @@
        (not (equal (ssrt-run a *ssrt-b* nil) (ssrt-run a *ssrt-b* t)))
        (eq (car (ssrt-run a *ssrt-b* t)) :bad)
        (not (eq (car (ssrt-run a *ssrt-b* nil)) :bad))))))
+; fn-ssr-recovery-rows-are-the-raw-rows-without-snapshots (lane proofs2,
+; 2026-10-04).  Premise inhabitation: two articles from sequence 0 carry no
+; keyring snapshot, the statement worker accepts them from the host's seed,
+; and its rows and arena are the raw worker's.  Hypothesis necessity: the
+; enroll and rotate events above ARE keyring snapshots (fn-stxk-p), and over
+; that history the two workers' rows differ.
+(defun ssrt-raw-run (ws)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn-arena
+  (mv-let (out fn-arena)
+   (mv-let (acc fn-arena) (fn-srs-intern-step nil ws fn-arena)
+    (mv (list (fn-srs-rows acc) (ssrt-arena-list 0 fn-arena)) fn-arena))
+   out)))
+(defconst *ssrt-plain*
+ (list (fn-record-make 0 0 0 "<zero@example>" '(65 13 10) '("example")
+                       "o0" "s0" "e0" 1 841000000)
+       (fn-record-make 1 1 1 "<one@example>" '(66 13 10) '("example")
+                       "o1" "s1" "e1" 1 841000001)))
+(assert-event
+ (and (fn-ssr-no-snapshot-p *ssrt-plain*)
+      (not (eq (car (ssrt-run *ssrt-plain* nil nil)) :bad))
+      (equal (fn-ssr-rows (car (ssrt-run *ssrt-plain* nil nil)))
+             (car (ssrt-raw-run *ssrt-plain*)))
+      (equal (cadr (ssrt-run *ssrt-plain* nil nil)) (cadr (ssrt-raw-run *ssrt-plain*)))
+      (equal (cadr (ssrt-raw-run *ssrt-plain*)) '((65 13 10) (66 13 10)))))
+(assert-event
+ (let ((ws (append *ssrt-a* *ssrt-b*)))
+  (and (not (fn-ssr-no-snapshot-p ws))
+       (not (eq (car (ssrt-run *ssrt-a* *ssrt-b* nil)) :bad))
+       (not (equal (fn-ssr-rows (car (ssrt-run *ssrt-a* *ssrt-b* nil)))
+                   (car (ssrt-raw-run ws)))))))

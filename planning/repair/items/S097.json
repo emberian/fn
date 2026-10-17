@@ -10,13 +10,15 @@
  "failure-message": "accepted fragment prefix cannot become definitely failed",
  "file": "host/native/bp-service.lisp",
  "fix": "Add an explicit `(fnn-store-indeterminate (e) (error e))` arm before the fnn-store-error arm. Track \"any octet sent\" with its own flag set before the fragment loop, rather than reusing `socket`.",
- "harness": "tests/test_native_bp_send_boundary.py,tests/native_bp_send_boundary_raw.lisp",
+ "harness": "tests/test_native_bp_send_boundary.py,tests/native_bp_send_boundary_raw-mock.lisp",
  "id": "S097",
  "line": "610",
  "locus": "peer-services",
  "notes": [
-  "10-03 04:33 claimed: scope=['host/native/bp-service.lisp', 'specs/bp-node-machine.md', 'tests/native_bp_send_boundary_raw.lisp', 'tests/test_native_bp_send_boundary.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
-  "First exact-class witness archived planning/evidence/repair/S097-df5dcf6e6c3742818b3dac8a07824411.json sha256 e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973"
+  "10-03 04:33 claimed: scope=['host/native/bp-service.lisp', 'specs/bp-node-machine.md', 'tests/native_bp_send_boundary_raw-mock.lisp', 'tests/test_native_bp_send_boundary.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_indeterminate_keeps_exact_class",
+  "First exact-class witness archived planning/evidence/repair/S097-df5dcf6e6c3742818b3dac8a07824411.json sha256 e5995a66db0207837067beab12d98213bfa4a761390fde9c2ab17640d5743973",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 5113378d0, host/native/bp-service.lisp); local test python3.12 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix PASS at HEAD and whole tests.test_native_bp_send_boundary PASS; native pending: acceptance wrapper:closed-classification image scenario (not run)",
+  "10-04 10:41 native green: tests.test_native_bp_send_boundary 8/8 OK, hbox run2-d5b0b9100 (images /tank/fn/images/d5b0b9100, dev d5b0b9100)"
  ],
  "owner": "codex-sol-tools",
  "reviewer": "bp-service.lisp:610-615: fnn-store-fault is re-signalled, but fnn-store-indeterminate (a subtype of fnn-store-error, io.lisp:92) is caught by the transport branch and becomes :uncertain/:failed. The only realistic indeterminate source inside this session is finding 2's stray inbound staging (tcpcl.lisp:273), so (a) needs a misbehaving peer plus EIO, and it fences a file nothing reads. (b) is real: socket is set to nil at line 582 before the fragment loop. The inner handler (606-607) catches only os and socket errors, so a store-error in fragment session 2 or later reaches the outer handler. That handler sets :failed and skips fn-bpfs-fragment-outcome, the function that turns a later fragment's :failed into :uncertain (books/bp-fragment-send.lisp:1308-1310). The trigger for (b) is narrow, because params are unchanged across fragment sessions.",
@@ -24,7 +26,7 @@
  "scope": [
   "host/native/bp-service.lisp",
   "specs/bp-node-machine.md",
-  "tests/native_bp_send_boundary_raw.lisp",
+  "tests/native_bp_send_boundary_raw-mock.lisp",
   "tests/test_native_bp_send_boundary.py",
   "LANEDUMP.md",
   "planning/evidence-index.tsv"
@@ -32,10 +34,10 @@
  "severity": "low",
  "slice": "wrapper",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_native_bp_send_boundary.BpSendBoundaryTests.test_later_fragment_named_refusal_retains_uncertain_prefix",
  "title": "bp-service send path reports an indeterminate publication as transport :uncertain/:failed, and reports :failed after fragments were sent",
- "updated": "2026-10-03T08:40:07Z",
+ "updated": "2026-10-04T14:41:56Z",
  "verify": {
   "base": "c3585ba3a36cfd394e3b7f98f423af70b625bfdf",
   "base_observation": {
@@ -71,7 +73,7 @@
    "planning/evidence-index.tsv",
    "planning/repair/items/S097.json",
    "specs/bp-node-machine.md",
-   "tests/native_bp_send_boundary_raw.lisp",
+   "tests/native_bp_send_boundary_raw-mock.lisp",
    "tests/test_native_bp_send_boundary.py"
   ],
   "diff_lines": 232,
@@ -87,7 +89,7 @@
   },
   "green_at_head": true,
   "harness": {
-   "tests/native_bp_send_boundary_raw.lisp": "58a07a1cb618caf5038e570b069ada2b15c0773e790dd132504c66158fab41f4",
+   "tests/native_bp_send_boundary_raw-mock.lisp": "58a07a1cb618caf5038e570b069ada2b15c0773e790dd132504c66158fab41f4",
    "tests/test_native_bp_send_boundary.py": "fd8c592c79103ef0ac1dfab67591b793fdca6c495903bdb49fa424d2f852493e"
   },
   "head": "d7863d4a1beb8898417cff9dcae8f006d8878413",

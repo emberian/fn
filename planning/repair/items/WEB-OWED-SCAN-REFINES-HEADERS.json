@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/web-reply-stream.lisp",
+ "id": "WEB-OWED-SCAN-REFINES-HEADERS",
+ "notes": [],
+ "owner": "web",
+ "severity": "medium",
+ "slice": "services",
+ "source": "lane-web",
+ "state": "open",
+ "title": "fn-was-scan's :fields/:body/:own over a replayed ARTICLE reply equal fn-wss-headers' first-occurrence selection and body span of the same reply; fn-wov-scan rows equal the OVER rows fn-wss-k-group selects (at most *fn-wss-window*); fn-wls-scan :bs/:be bound the LIST ACTIVE body. Proved today: refused stays refused, 200 only from :done, :invalid exactly (web-reply-stream keystones)",
+ "updated": "2026-10-04T03:47:34Z"
+}

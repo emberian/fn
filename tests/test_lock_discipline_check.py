@@ -221,6 +221,51 @@ class R1State(unittest.TestCase):
         self.assertTrue(any(f.function.startswith("lambda@") and "fnn-live-arena" in f.key for f in found))
 
 
+class CallbackContexts(unittest.TestCase):
+    """contracts `callback_contexts': a stored callback declared to run in a
+    command's own extent gets that command's context, and nothing else does."""
+    SRC = """
+(defstruct fnn-cbx-grant turn)
+(defun fnn-cbx-loop (grant) (funcall (fnn-cbx-grant-turn grant)))
+(defun fnn-cbx-begin (grant) (setf (fnn-cbx-grant-turn grant) (lambda () (fnn-live-arena))))
+(defun fnn-command-cbx (grant) (fnn-cbx-begin grant) (fnn-cbx-loop grant))
+(defun fnn-cbx-spawn (grant) (sb-thread:make-thread (lambda () (fnn-cbx-loop grant)) :name "t"))
+"""
+    LAMBDA = "lambda@host/native/fixture.lisp:fnn-cbx-begin#lambda1"
+
+    def run_with(self, rows, src=SRC):
+        raw = dict(CONTRACTS.raw, callback_contexts=rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + src)
+            an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
+            return [f for f in checker.run({"R1"}) if f.rule == "R1"]
+
+    def test_undeclared_stored_callback_is_unresolved(self):
+        found = self.run_with({})
+        self.assertTrue(any(f.function == self.LAMBDA and f.category == "unresolved" for f in found))
+
+    def test_declared_callback_runs_in_its_command(self):
+        src = self.SRC.replace('(defun fnn-cbx-spawn (grant) (sb-thread:make-thread (lambda () (fnn-cbx-loop grant)) :name "t"))', "")
+        found = self.run_with({self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": "w"}}, src)
+        self.assertFalse(any(f.function == self.LAMBDA for f in found))
+
+    def test_a_renumbered_declaration_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.run_with({self.LAMBDA.replace("lambda1", "lambda2"): {"runs_in": "fnn-command-cbx", "why": "w"}})
+
+    def test_an_entry_a_thread_reaches_is_refused(self):
+        src = self.SRC + "(defun fnn-cbx-threaded (grant) (sb-thread:make-thread (lambda () (fnn-command-cbx grant)) :name \"u\"))\n"
+        with self.assertRaises(ValueError):
+            self.run_with({self.LAMBDA: {"runs_in": "fnn-command-cbx", "why": "w"}}, src)
+
+    def test_an_entry_that_does_not_create_the_callback_is_refused(self):
+        src = self.SRC + "(defun fnn-command-other (grant) (fnn-cbx-loop grant))\n"
+        with self.assertRaises(ValueError):
+            self.run_with({self.LAMBDA: {"runs_in": "fnn-command-other", "why": "w"}}, src)
+
+
 class R7Failure(unittest.TestCase):
     COMMITTER = """
 (defun fnn-pipeline (service) (fnn-core 'fn-otb-issue service))
@@ -262,13 +307,131 @@ class R4Threads(unittest.TestCase):
 
     def test_a_nil_registered_worker(self):
         src = """
-(defun fnn-owner-maybe-publish-quantum (service ok)
-  (sb-thread:with-mutex ((fnn-owner-service-roster service))
+(defun fnn-control-launch-client (state ok)
+  (sb-thread:with-mutex ((fnn-control-state-lock state))
     (let ((thread (and ok (sb-thread:make-thread (lambda () (handler-case 1 (serious-condition () 2))) :name "p"))))
-      (push thread (fnn-owner-service-workers service)))))
+      (push thread (fnn-control-state-workers state)))))
 """
         found = run(src, ["R4"])
         self.assertTrue(any(f.key.startswith("nil-registered") for f in found))
+
+    # Lanes ACTORS / GENERATORS-2: a def-actor is the thread's declaration.
+    # A starter call is walked as a make-thread of its thunk under the
+    # declared name; R4 holds the declared join site and every starter call
+    # to the declared failure policy, with no hand `threads' row.
+    ACTORS = """
+(defun fnn-owner-thread-escape (service condition label &optional jobp)
+  (declare (ignore service condition label jobp)) nil)
+(defun fnn-owner-actor-join (service worker) (declare (ignore service worker)) t)
+(defun fnn-x-join (service w) (fnn-owner-actor-join service w))
+(defun fnn-x-body (service) service)
+(def-actor fnn-x-spawn-svc :kind :maintenance :thread-name "fn x svc" :roster t
+  :join fnn-x-join :failure :service)
+(def-actor fnn-x-spawn-job :kind :publisher :thread-name "fn x job" :roster t
+  :join fnn-x-join :failure :job)
+(def-actor fnn-x-spawn-res :kind :syncer :thread-name "fn x res" :roster t
+  :join fnn-x-join :failure :result)
+"""
+
+    def test_a_def_actor_starter_is_a_thread_of_its_declaration(self):
+        an = analyzed(self.ACTORS + """
+(defun fnn-x-start (service)
+  (fnn-x-spawn-svc service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x"))))
+""")
+        self.assertEqual(an.tree.actors["fnn-x-spawn-svc"][2:],
+                         (":maintenance", "fn x svc", "t", "fnn-x-join", ":service"))
+        self.assertEqual([e.extra for e in an.infos["fnn-x-start"].events if e.kind == "thread"],
+                         ["fn x svc"])
+
+    def test_starters_that_keep_their_declared_policies(self):
+        found = run(self.ACTORS + """
+(defun fnn-x-start (service)
+  (fnn-x-spawn-svc service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x")))
+  (fnn-x-spawn-job service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x" t)))
+  (fnn-x-spawn-res service nil
+    (lambda () (handler-case (fnn-x-body service) (serious-condition (e) e)))))
+""", ["R4"])
+        self.assertEqual([f for f in found if "actor" in f.key], [])
+
+    def test_a_starter_against_its_declared_policy(self):
+        found = run(self.ACTORS + """
+(defun fnn-x-start (service)
+  (fnn-x-spawn-svc service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x" t)))
+  (fnn-x-spawn-job service nil (lambda () (fnn-x-body service)))
+  (fnn-x-spawn-res service nil (lambda () (fnn-x-body service))
+    (lambda (c) (fnn-owner-thread-escape service c "x"))))
+""", ["R4"])
+        self.assertEqual(sorted(f.key for f in found if "actor" in f.key),
+                         ["actor-failure:fnn-x-spawn-job", "actor-failure:fnn-x-spawn-res",
+                          "actor-failure:fnn-x-spawn-svc"])
+
+    def test_a_lock_declares_only_its_own_nonblocking_leaves(self):
+        # XWEB (the web face lock) names the wake pipe's write and close as its
+        # non-blocking leaves: they pass under it; any other blocking leaf, and
+        # the same leaves under another lock, are still R2 findings.
+        found = run("""
+(defun fnn-web-wake-x (face fd one)
+  (sb-thread:with-mutex ((fnn-web-face-lock face))
+    (sb-unix:unix-write fd one 0 1)
+    (sb-posix:close fd)))
+(defun fnn-web-slow-x (face fd)
+  (sb-thread:with-mutex ((fnn-web-face-lock face))
+    (sb-posix:fsync fd)))
+(defun fnn-owner-wake-x (service fd)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+    (sb-posix:close fd)))
+""", ["R2"])
+        self.assertEqual(sorted(keys(found, "R2")),
+                         [("fnn-owner-wake-x", "O:sb-posix:close"), ("fnn-web-slow-x", "XWEB:sb-posix:fsync")])
+
+    def test_a_declared_delegation_realizes_the_core_call_with_its_locks(self):
+        # A realization site that makes its ACL2 call through a declared helper
+        # holds the locks at the call plus the helper's own; an undeclared helper
+        # (or none) is "no longer calls".
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "fixture.lisp").write_text(PRELUDE + """
+(defun fnn-x-step (event)
+  (sb-thread:with-mutex (*fnn-arena-pins-lock*) (fnn-call 'fn-arpn-step nil event)))
+(defun fnn-x-pin () (fnn-x-step '(:pin)))
+(defun fnn-x-pin-owned (service)
+  (sb-thread:with-mutex ((fnn-owner-service-lock service)) (fnn-x-pin)))
+""")
+            _, _, checker = ldc.analyze_tree(root, CONTRACTS, ["host/native/fixture.lisp"], {})
+        via = {"fnn-x-pin-owned": ["fnn-x-pin"], "fnn-x-pin": ["fnn-x-step"]}
+        sites = ldc.realized_core_sites(checker, "fnn-x-pin-owned", "fn-arpn-step", via)
+        self.assertEqual([set(locks) for _, locks in sites], [{"O", "A"}])
+        self.assertEqual(ldc.realized_core_sites(checker, "fnn-x-pin-owned", "fn-arpn-step", {}), [])
+        self.assertEqual(ldc.realized_core_sites(
+            checker, "fnn-x-pin-owned", "fn-arpn-step", {"fnn-x-pin-owned": ["fnn-x-pin"]}), [])
+
+    def test_a_declared_thread_thunk_wrapper_is_the_threads_lambda(self):
+        # fnn-native-observed-thread-thunk returns its thunk or a lambda that
+        # funcalls it: the thread runs the lambda written inside the wrapper.
+        src = """
+(defun fnn-x-run (service) (sb-thread:with-mutex ((fnn-owner-service-lock service)) 1))
+(defun fnn-x-spawn (service)
+  (sb-thread:make-thread
+   (fnn-native-observed-thread-thunk (lambda () (fnn-x-run service)))
+   :name "fn x wrapped"))
+"""
+        an = analyzed(src)
+        self.assertEqual([e.extra for e in an.infos["fnn-x-spawn"].events if e.kind == "thread"],
+                         ["fn x wrapped"])
+        self.assertFalse([f for f in run(src, ["R4"]) if "computed function" in f.message])
+        # an undeclared computed maker stays unresolved
+        other = src.replace("fnn-native-observed-thread-thunk", "fnn-x-some-maker")
+        self.assertTrue([f for f in run(other, ["R4"]) if "computed function" in f.message])
+
+    def test_a_declared_join_site_that_does_not_join(self):
+        found = run(self.ACTORS.replace(":join fnn-x-join :failure :job", ":join fnn-x-body :failure :job"),
+                    ["R4"])
+        self.assertEqual([f.key for f in found if "actor" in f.key], ["actor-no-join:fnn-x-spawn-job"])
 
 
 class R5R6R8R10(unittest.TestCase):
@@ -293,11 +456,49 @@ class R5R6R8R10(unittest.TestCase):
         src = self.observed_mutex_template() + """
 (defun fnn-nested (service)
   (fnn-with-observed-mutex ((fnn-owner-service-lock service) :owner)
-    (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service)) 1)))
+    (sb-thread:with-mutex ((fnn-owner-service-undeclared-ledger-lock service)) 1)))
 """
         found = run(src, ["R5"])
-        self.assertIn("O->?(fnn-owner-service-syncer-ledger-lock)", [f.key for f in found])
+        self.assertIn("O->?(fnn-owner-service-undeclared-ledger-lock)", [f.key for f in found])
         self.assertFalse(any("?nil" in f.key for f in found))
+
+    def test_unwind_cleanups_cleanup_forms_are_walked(self):
+        # The actual macro source: its `,@(mapcar (lambda (cleanup) `(handler-case
+        # ,cleanup ...)) cleanups)' splice must expand per cleanup, so a lock
+        # edge inside a cleanup is seen and the macro is not opaque.
+        forms = ldc.read_forms((ROOT / "host/native/io.lisp").read_text())
+        macro = ldc.render(next(f for f, _ in forms if ldc.head(f) == "defmacro"
+                                and ldc.sym(f[1]) == "fnn-unwind-cleanups"), limit=100000)
+        src = macro + """
+(defun fnn-cleanup-inverted (service)
+  (fnn-unwind-cleanups ((fnn-close 1))
+    (fnn-close 2)
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (sb-thread:with-mutex ((fnn-owner-service-lock service)) 1))))
+"""
+        self.assertFalse([f for f in run(src, ["R1"]) if "hides" in f.message])
+        found = run(src, ["R5"])
+        self.assertTrue(any(f.key == "E->O" and "INVERTS" in f.message for f in found))
+
+    def test_conditional_unquote_template_is_expanded(self):
+        # The actual macro source: `,(if actor-p `(list ,label ID ,@args) `(list
+        # ,label ,@args))' is a computed unquote.  The expander follows it on the
+        # macro's own parameter: a literal T or NIL picks one arm, a computed
+        # argument keeps both; a lock edge inside ARGS is seen on every path and
+        # the macro is no longer an unresolved primitive-hider.
+        forms = ldc.read_forms((ROOT / "host/native/extent.lisp").read_text())
+        macro = ldc.render(next(f for f, _ in forms if ldc.head(f) == "defmacro"
+                                and ldc.sym(f[1]) == "fnn-extent-native-observe"), limit=100000)
+        for actor_p in ("t", "nil", "(fnn-actor-p)"):
+            src = macro + """
+(defun fnn-observe-inverted (service)
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-extent-native-observe :probe %s
+      (sb-thread:with-mutex ((fnn-owner-service-lock service)) 1))))
+""" % actor_p
+            self.assertFalse([f for f in run(src, ["R1"]) if "hides" in f.message], actor_p)
+            found = run(src, ["R5"])
+            self.assertTrue(any(f.key == "E->O" and "INVERTS" in f.message for f in found), actor_p)
 
     def test_actual_section_envelope_keeps_owner_callback_lock(self):
         wanted = {"fnn-section-envelope", "fnn-with-observed-owner",
@@ -311,10 +512,10 @@ class R5R6R8R10(unittest.TestCase):
 (defun fnn-budget (service)
   (fnn-owner-serialized service nil
     (lambda ()
-      (sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service)) 1))))
+      (sb-thread:with-mutex ((fnn-owner-service-undeclared-ledger-lock service)) 1))))
 """
         found = run(src, ["R5"])
-        self.assertIn("O->?(fnn-owner-service-syncer-ledger-lock)", [f.key for f in found])
+        self.assertIn("O->?(fnn-owner-service-undeclared-ledger-lock)", [f.key for f in found])
         self.assertFalse(any("?nil" in f.key for f in found))
 
     def test_observed_mutex_still_refuses_reverse_order(self):
@@ -387,8 +588,8 @@ class Realization(unittest.TestCase):
             return "(" + " ".join(Realization.literal(v) for v in value) + ")"
         return value if value.startswith(":") else json.dumps(value)
 
-    def realize(self, src, row, seed=None):
-        raw = dict(CONTRACTS.raw, realization=[seed or row])
+    def realize(self, src, row, seed=None, **extra):
+        raw = dict(CONTRACTS.raw, realization=[seed or row], **extra)
         contracts = ldc.Contracts(raw)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -411,6 +612,49 @@ class Realization(unittest.TestCase):
     def test_a_close_outside_the_extent_lock_fails(self):
         src = self.CLOSE.replace("(sb-thread:with-mutex (*fnn-extent-lock*)", "(progn")
         self.assertIn("realization-locks::close", self.realize(src, self.ROW))
+
+    STEP = """
+(defun fnn-x-step (event)
+  (sb-thread:with-mutex (*fnn-arena-pins-lock*) (fnn-call 'fn-arpn-step nil event)))
+(defun fnn-x-pin () (fnn-x-step '(:pin)))
+"""
+    PIN = {"label": ":pin", "layer": "C", "enabled": [], "sites": [
+        {"function": "fnn-x-pin", "file": "host/native/fixture.lisp", "primitive": None,
+         "core": "fn-arpn-step", "locks_held": ["A"], "requires_before": []}]}
+
+    def test_a_declared_delegate_realizes_the_site_s_core_call(self):
+        self.assertEqual(self.realize(self.STEP, self.PIN,
+                                      realization_via={"fnn-x-pin": ["fnn-x-step"]}), [])
+        self.assertIn("realization::pin", self.realize(self.STEP, self.PIN))
+        # the helper's own lock counts, and a lock it does not hold is still refused
+        needs_o = {**self.PIN, "sites": [dict(self.PIN["sites"][0], locks_held=["O", "A"])]}
+        self.assertIn("realization-locks::pin", self.realize(
+            self.STEP, needs_o, realization_via={"fnn-x-pin": ["fnn-x-step"]}))
+
+    ISSUED = """
+(defun fnn-x-issue (cid) (fnn-call 'fn-pio-direct-admit cid))
+(defun fnn-x-read (token fd octets) (fnn-extent-pread fd octets token))
+(defun fnn-x-job (token fd octets) (fnn-x-read token fd octets))
+(defun fnn-x-return (worker) worker)
+(defun fnn-x-loop (worker token fd octets) (fnn-x-job token fd octets) (fnn-x-return worker))
+"""
+    BEGIN = {"label": ":io-begin", "layer": "P", "assumption": "A-PRIM-PREAD", "enabled": [], "sites": [
+        {"function": "fnn-x-read", "file": "host/native/fixture.lisp", "primitive": "fnn-extent-pread",
+         "core": None, "locks_held": [], "requires_before": ["fn-pio-direct-admit"],
+         "capability": {"kind": "issued-row", "acquire": "fnn-x-issue", "release_site": "fnn-x-return"}}]}
+    BORROW = {"fnn-x-read": {"kind": "issued-row", "callers": ["fnn-x-job"], "activation": "fnn-x-loop",
+              "job": "fnn-x-job", "release": "fnn-x-return", "issue": "fnn-x-issue",
+              "issue_core": "fn-pio-direct-admit", "why": "fixture"}}
+
+    def test_a_typed_borrow_dominates_requires_before_across_functions(self):
+        borrows = dict(CONTRACTS.raw["borrows"], **self.BORROW)
+        self.assertEqual(self.realize(self.ISSUED, self.BEGIN, borrows=borrows), [])
+        # no declared borrow: the straight-line rule applies
+        self.assertIn("realization-before::io-begin", self.realize(self.ISSUED, self.BEGIN))
+        # a borrow whose protocol is broken (the release never follows the job) does not dominate
+        broken = self.ISSUED.replace("(fnn-x-return worker))\n", "nil)\n").replace(
+            "(fnn-x-job token fd octets) nil)", "(fnn-x-job token fd octets) nil)")
+        self.assertIn("realization-before::io-begin", self.realize(broken, self.BEGIN, borrows=borrows))
 
     def test_a_p_label_names_its_assumption(self):
         row = dict(self.ROW, layer="P")

@@ -8,6 +8,6 @@
  "slice": "carrier",
  "source": "post-guard-off",
  "state": "open",
- "title": "A-OWNER-INVARIANT-CARRIED owes: 1 state writer(s) defined in host/consumer-remote-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete. Prove (def-owner-writer / the carrier move) and move it to :transitions: fn-owner-remote-ingress",
- "updated": "2026-10-03T04:15:32Z"
+ "title": "A-OWNER-INVARIANT-CARRIED owes: state writer(s) defined in host/consumer-remote-host.lisp have no preservation theorem of fn-owner-retain-statep; each is listed in host/owner-served-carried.lisp :incomplete: fn-owner-consumer-remote-route, fn-owner-consumer-remote-read (program; both return STATE unchanged via VALUE). fn-owner-remote-ingress was replaced by them (apps 2026-10-04).",
+ "updated": "2026-10-04T04:08:56Z"
 }

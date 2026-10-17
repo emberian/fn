@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: needs-acl2
 # First actual-host discrimination; does not claim certification or tariff.
 set -eu
 probe_root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)

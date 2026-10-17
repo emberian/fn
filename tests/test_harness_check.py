@@ -710,10 +710,79 @@ class DuplicateDefunTests(unittest.TestCase):
                                    io="(defun fn-native-entry (st) st)"), [])
         self.assertIn("fn-native-entry", harness_check.DUPLICATE_ALLOWED)
 
+    # A defstruct's accessors are definitions (batch AU: `(defstruct (fnn-log
+    # ...) path fd unit ...)' defined fnn-log-unit), read as the form's
+    # elements: a struct with no blank line under it takes nothing after it
+    # (check-lane CL18, host/native/snapshot-producer.lisp).  Folded in from
+    # tools/host_defun_check.py (python-diet-4).
+    STRUCTS = """
+        (defstruct (fnn-job (:constructor %make-fnn-job))
+          service ; a comment, and that
+          (lock (sb-thread:make-mutex :name "job lock"))
+          "not a slot"
+          (phase :source))
+        (defun fnn-other (x) (and x that))
+        (defstruct (fnn-row (:conc-name fnn-r-)) a b)
+        (defstruct (fnn-bare (:conc-name nil)) bare-slot)
+        """
+
+    def test_defstruct_slots_are_the_forms_elements_only(self):
+        from tools import ledger
+        sites: dict = {}
+        for form, line in ledger.Reader(textwrap.dedent(self.STRUCTS)).top_level():
+            harness_check.raw_definition_sites(form, line, "host/native/a.lisp", sites)
+        self.assertEqual(sorted(sites), ["bare-slot", "fnn-job-lock", "fnn-job-phase",
+                                         "fnn-job-service", "fnn-other", "fnn-r-a", "fnn-r-b"])
+
+    def test_a_defun_colliding_with_an_accessor_is_caught(self):
+        found = self.scan(a=self.STRUCTS, b="(defun fnn-job-phase (j) j)")
+        self.assertEqual([(row["callee"], row["where"]) for row in found],
+                         [("fnn-job-phase", "host/native/b.lisp:1")])
+
     def test_the_tree_has_no_duplicate_definition(self):
         found, counts = harness_check.duplicate_defun_findings(ROOT)
         self.assertEqual(found, [])
         self.assertGreater(counts["definitions"], 1000)
+
+
+class ColdRosterTests(unittest.TestCase):
+    """entry-guards: every cold dispatch names an entry the funded roster has."""
+
+    def scan(self, source: str, roster):
+        from tools import ledger
+        forms = ledger.Reader(textwrap.dedent(source)).top_level()
+        return harness_check.cold_roster_scan({"host/native/x.lisp": forms}, set(roster))
+
+    # The break it exists for, in the shape it had at dev fe7ef2807
+    # (host/native/extent.lisp fnn-extent-executor-start): a startup slot
+    # check dispatched cold, off the roster, so every owner start faulted.
+    STARTUP_SLOT_CHECK = """
+        (defmacro fnn-core-cold-pool (name &rest arguments)
+          `(fnn-cold-call ,name ,@arguments (fnn-live-page-read-pool)))
+        (defun fnn-start (slot)
+          (list (fnn-core-cold-pool 'fn-owner-page-read-default-worker-ready slot)
+                (fnn-core-cold-single 'fn-ews-begin slot)
+                (fnn-cold-call 'fn-ews-tick slot)
+                (fnn-core-page-read-pool 'fn-owner-page-read-default-worker-ready slot)
+                '(fnn-core-cold-pool 'fn-quoted-data)))
+        """
+
+    def test_a_cold_subject_off_the_roster_is_a_finding(self):
+        findings, calls = self.scan(self.STARTUP_SLOT_CHECK, ["fn-ews-begin", "fn-ews-tick"])
+        self.assertEqual(calls, 3)
+        self.assertEqual([row["callee"] for row in findings],
+                         ["fn-owner-page-read-default-worker-ready"])
+        self.assertEqual(findings[0]["where"], "host/native/x.lisp:4")
+
+    def test_ordinary_dispatch_and_quoted_data_are_not_cold(self):
+        findings, _calls = self.scan(self.STARTUP_SLOT_CHECK, [
+            "fn-ews-begin", "fn-ews-tick", "fn-owner-page-read-default-worker-ready"])
+        self.assertEqual(findings, [])
+
+    def test_the_tree_roster_is_read(self):
+        roster = harness_check.cold_guard_roster(harness_check.ROOT)
+        self.assertIn("fn-ews-begin", roster)
+        self.assertNotIn("fn-owner-page-read-default-worker-ready", roster)
 
 
 class LoadedHostProvidesTests(unittest.TestCase):

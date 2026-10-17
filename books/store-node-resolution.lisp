@@ -36,8 +36,8 @@
     s))
 
 (verify-guards fn-sn-refuse-reservation
-  :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-sn-refuse-reservation-enabledp)
-                                  (fn-sf-statep fn-node-statep)))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory) '(fn-sn-statep)))))
 
 ; Only a proposal whose immutable publication has not been attempted has a
 ; known-absent resolution.  Exact sequence, txid, generation, and record data

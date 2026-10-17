@@ -7,7 +7,8 @@
  "harness": "tests/test_proof_repl.py",
  "id": "NIGHT-SOURCE-PREFIX",
  "notes": [
-  "10-03 02:59 claimed: scope=['tools/proof_repl.py', 'tests/test_proof_repl.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status"
+  "10-03 02:59 claimed: scope=['tools/proof_repl.py', 'tests/test_proof_repl.py', 'LANEDUMP.md', 'planning/evidence-index.tsv'] test=python3 -m unittest tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status",
+  "10-04 02:28 ledger-close 2026-10-04: source landed at origin/next 77d7e2af9 (fix commit 7567ef1ba, tools/proof_repl.py); local test python3.12 -m unittest tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status PASS at HEAD; native pending: none (tooling)"
  ],
  "owner": "codex-sol-tools",
  "scope": [
@@ -18,10 +19,10 @@
  ],
  "severity": "medium",
  "source": "tools-speed-X17",
- "state": "in-progress",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_proof_repl.SourcePrefixTests.test_live_encapsulated_dependency_prefix_survives_refusal_without_green_status",
  "title": "Dependency source refusal discards the successful encapsulated proof prefix",
- "updated": "2026-10-03T06:59:44Z",
+ "updated": "2026-10-04T06:28:43Z",
  "verify": {
   "base": "97a3c7d91cb8a62c408df033b602187e130c35fe",
   "base_observation": {

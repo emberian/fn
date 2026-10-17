@@ -1,0 +1,15 @@
+{
+ "category": "generator",
+ "detail": "Split from DC02 2026-10-04: the hand served dispatcher is deleted; this was DC02's other half. fn-nntp-archive-keywordp is opened by name in the hints of about twenty books (grep fn-nntp-archive-keywordp books), so redefining it from *fn-proto-archive-names* (protocol-served-table, which nntp.lisp may not include without recertifying the tree on every served-column edit) changes those proofs. Smallest next step: define the keyword list in protocol-table.lisp (the :dispatch column it already carries) as a defconst, define fn-nntp-archive-keywordp over it, certify --affected-by books/nntp with the hint-opening books as the check; fn-served-advance-eventp likewise from the :view :select rows.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/nntp.lisp",
+ "id": "DC02B",
+ "notes": [],
+ "owner": "ledger-open-b",
+ "severity": "low",
+ "source": "ledger-open-b",
+ "state": "open",
+ "title": "Derive fn-nntp-archive-keywordp (books/nntp.lisp) and fn-served-advance-eventp (books/served.lisp) from the protocol table's :dispatch :archive and :view :select constants; today each is hand-written and equated to its generated twin by fn-proto-archive-keywordp-is-nntp-archive-keywordp and fn-proto-advance-eventp-is-served-advance-eventp",
+ "updated": "2026-10-04T08:30:55Z"
+}

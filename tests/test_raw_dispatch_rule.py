@@ -19,8 +19,8 @@ BOOK = {"fn-open", "fn-step", "fn-pred", "create-fn-cat"}
 # The base dispatcher, as host/native/io.lisp defines it (its body is the
 # rule's allow-listed internal; here it only needs its lambda list).
 PRELUDE = """
-(defun fnn-call (name &rest args) (apply (fnn-dispatch-function name) args))
-(defun fnn-dispatch-function (name) name)
+(defun fnn-call (name &rest args) (fnn-raw-dispatch-apply name args))
+(defun fnn-raw-dispatch-apply (name args) (declare (ignore name args)) nil)
 (defun fnn-core (name &rest args) (first (apply #'fnn-call name args)))
 (defun fnn-fault (fmt &rest args) (error "~?" fmt args))
 """
@@ -34,10 +34,20 @@ def scan(source: str):
 def rules(source: str, context: str | None = None) -> list[str]:
     return sorted({s.rule for s in scan(source).sites
                    if context is None or s.context == context
-                   if s.context not in ("fnn-call", "fnn-dispatch-function")})
+                   if s.context not in ("fnn-call", "fnn-raw-dispatch-apply")})
 
 
 class Accepted(unittest.TestCase):
+    def test_cond_clause_is_not_a_call(self):
+        # (cond (read ...)) tests a variable named READ; MAKE is about calls
+        self.assertEqual(rules("(defun h (read x) (cond (read (fnn-core 'fn-step x)) (t nil)))"), [])
+
+    def test_case_keys_are_data(self):
+        self.assertEqual(rules("(defun h (k x) (case k ((read eval) (fnn-core 'fn-step x)) (t nil)))"), [])
+
+    def test_cond_body_is_still_code(self):
+        self.assertEqual(rules("(defun h (s) (cond (t (read-from-string s))))"), ["MAKE"])
+
     def test_quoted_dispatch(self):
         self.assertEqual(rules("(defun h (x) (fnn-core 'fn-step x))"), [])
 
@@ -80,7 +90,7 @@ class Accepted(unittest.TestCase):
   (mapcar #'g x))"""), [])
 
     def test_table_resolution(self):
-        self.assertEqual(rules("(defun h (x) (funcall (fnn-dispatch-function 'fn-step) x))"), [])
+        self.assertEqual(rules("(defun h (x) (funcall (fnn-raw-dispatch-callback 'fn-step) x))"), [])
 
     def test_keyword_intern(self):
         self.assertEqual(rules("(defun h (s) (intern s :keyword))"), [])

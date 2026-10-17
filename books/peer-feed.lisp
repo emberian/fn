@@ -847,6 +847,13 @@
                  (list (fn-feed-entry msgid :queued 0 (nfix tick))))
        (+ 1 (nfix (fn-feed-undelivered f))) (fn-feed-retry-dropped f))))
 
+; The backoff has elapsed at a monotonic reading.  The reading arrives as a
+; value, so that no call site does order arithmetic on a clock field itself
+; (tools/clock_unit_check.py).
+(defun fn-feed-backoff-elapsedp (f now)
+  (declare (xargs :guard t))
+  (<= (nfix (fn-feed-backoff-until f)) (nfix now)))
+
 ; Select: the head :queued entry, when the contact holds this observation, the
 ; connection is up, the backoff has elapsed and nothing is in flight.
 (defun fn-feed-selection (f obs)
@@ -855,8 +862,7 @@
            (fn-clock-observationp obs)
            (fn-sched-contact-holdsp (fn-feed-contact f) obs)
            (natp (fn-feed-conn f))
-           (<= (nfix (fn-feed-backoff-until f))
-               (nfix (fn-clock-monotonic obs)))
+           (fn-feed-backoff-elapsedp f (fn-clock-monotonic obs))
            (equal (fn-feed-inflight-count (fn-feed-queue f)) 0))
       (fn-feed-head-queued (fn-feed-queue f))
       nil))

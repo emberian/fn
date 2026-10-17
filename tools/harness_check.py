@@ -1227,6 +1227,35 @@ DUPLICATE_ALLOWED = {
 }
 
 
+def defstruct_accessors(form) -> list[str]:
+    """The slot accessors a raw `defstruct' defines.  They are definitions
+    like any `defun': batch AU's `(defstruct (fnn-log ...) path fd unit ...)'
+    defined fnn-log-unit, which a later `(defun fnn-log-unit ()' replaced.
+    `(:conc-name X)' sets the prefix (`(:conc-name nil)' or `(:conc-name)'
+    none); a docstring is not a slot."""
+    from tools.ledger import Sym
+
+    if len(form) < 2:
+        return []
+    spec = form[1]
+    name = spec[0] if isinstance(spec, list) and spec else spec
+    if not isinstance(name, Sym):
+        return []
+    prefix = str(name).lower() + "-"
+    for option in spec[1:] if isinstance(spec, list) else ():
+        if (isinstance(option, list) and option and isinstance(option[0], Sym)
+                and str(option[0]).lower() == ":conc-name"):
+            given = option[1] if len(option) > 1 else None
+            prefix = ("" if given is None or str(given).lower() == "nil"
+                      else str(given).lower())
+    accessors = []
+    for slot in form[2:]:
+        slot_name = slot[0] if isinstance(slot, list) and slot else slot
+        if isinstance(slot_name, Sym):
+            accessors.append(prefix + str(slot_name).lower())
+    return accessors
+
+
 def raw_definition_sites(form, line: int, relative: str, found: dict) -> None:
     """Every raw `defun'/`defmacro'/`defgeneric' in FORM, at any depth
     (a definition inside a `let' or `eval-when' replaces the name as well);
@@ -1239,6 +1268,10 @@ def raw_definition_sites(form, line: int, relative: str, found: dict) -> None:
     if head_ in DUPLICATE_DEFINERS and len(form) >= 2 and isinstance(form[1], str):
         found.setdefault(str(form[1]).lower(), []).append(
             "{}:{}".format(relative, line))
+    if head_ == "defstruct":
+        for accessor in defstruct_accessors(form):
+            found.setdefault(accessor, []).append("{}:{}".format(relative, line))
+        return
     for item in form[1:] if head_ in DUPLICATE_DEFINERS else form:
         raw_definition_sites(item, line, relative, found)
 
@@ -1532,6 +1565,69 @@ def entry_guard_kinds(root: Path) -> set[str]:
     return kinds
 
 
+# The cold dispatchers (host/native/io.lisp fnn-cold-call and its three
+# extent.lisp macros) run an entry against the funded cache that
+# fnn-cold-guard-cache-prepare fills from books/cold-guard-bootstrap.lisp's
+# *fn-cgb-roster*, and fault on any name off that roster.  A subject off it
+# is a fault on its first call; on 2026-10-04 two startup-only slot checks in
+# fnn-extent-executor-start stopped every owner start of image fe7ef2807,
+# while the raw harnesses that cover that code stub fnn-cold-call.
+COLD_DISPATCHERS = ("fnn-cold-call", "fnn-core-cold-values",
+                    "fnn-core-cold-single", "fnn-core-cold-pool")
+
+
+def cold_guard_roster(root: Path) -> set[str] | None:
+    """*fn-cgb-roster* of books/cold-guard-bootstrap.lisp; None when absent."""
+    source = root / "books" / "cold-guard-bootstrap.lisp"
+    if not source.is_file():
+        return None
+    from tools import ledger
+    for form, _line in ledger.Reader(source.read_text(encoding="utf-8")).top_level():
+        if (ledger.head(form) == "defconst" and len(form) >= 3
+                and str(form[1]).lower() == "*fn-cgb-roster*"):
+            value = form[2]
+            if ledger.head(value) == "quote":
+                value = value[1]
+            return {str(name).lower() for name in value} if isinstance(value, list) else None
+    return None
+
+
+def cold_dispatch_subjects(form, found: list, line: int) -> None:
+    """(subject, line) of each cold dispatch with a quoted literal subject."""
+    if not isinstance(form, list) or not form:
+        return
+    head_ = str(form[0]).lower() if isinstance(form[0], str) else None
+    if head_ == "quote":
+        return
+    if head_ in COLD_DISPATCHERS and len(form) > 1:
+        target = form[1]
+        if (isinstance(target, list) and len(target) == 2 and isinstance(target[0], str)
+                and str(target[0]).lower() == "quote" and isinstance(target[1], str)):
+            found.append((str(target[1]).lower(), line))
+    for item in form:
+        cold_dispatch_subjects(item, found, line)
+
+
+def cold_roster_scan(sources: dict[str, list], roster: set[str]) -> tuple[list[dict], int]:
+    """Findings: a cold dispatch in SOURCES whose subject ROSTER lacks."""
+    findings: list[dict] = []
+    calls = 0
+    for relative, forms in sorted(sources.items()):
+        for form, line in forms:
+            subjects: list = []
+            cold_dispatch_subjects(form, subjects, line)
+            for subject, at in subjects:
+                calls += 1
+                if subject not in roster:
+                    findings.append({
+                        "lint": "entry-guards", "where": "{}:{}".format(relative, at),
+                        "callee": subject,
+                        "problem": "cold dispatch of an entry that "
+                                   "books/cold-guard-bootstrap.lisp *fn-cgb-roster* "
+                                   "does not fund: fnn-cold-call faults on it"})
+    return findings, calls
+
+
 def _acl2_definition_forms(tree, raw: set[str]) -> dict[str, tuple[list, str]]:
     from tools import ledger
     found: dict[str, tuple[list, str]] = {}
@@ -1675,6 +1771,15 @@ def entry_guard_findings(root: Path) -> tuple[list[dict], dict]:
                              "callee": key[0],
                              "problem": "stale definterface :exempt ({}: {})".format(
                                  key[1], why)})
+    roster = cold_guard_roster(root)
+    if roster is None:
+        findings.append({"lint": "entry-guards", "where": "books/cold-guard-bootstrap.lisp",
+                         "problem": "*fn-cgb-roster* not found: cold dispatches "
+                                    "cannot be checked against the funded roster"})
+    else:
+        cold, counts["cold_calls"] = cold_roster_scan(
+            {relative: tree.hosts[relative].forms for relative in raw}, roster)
+        findings.extend(cold)
     for name, site in direct:
         if name in ENTRY_DIRECT_ALLOWED:
             counts["direct_calls_allowed"] += 1
@@ -1847,7 +1952,7 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
         # It extracts the closure of its *ROOTS* over the host's definitions
         # at load and refuses there, by name, a reached function it neither
         # extracts, stubs nor declares unreached (tests/native_owner_chunk_
-        # loop_raw.lisp).  The mention-based model below is not its
+        # loop_raw-mock.lisp).  The mention-based model below is not its
         # extraction: a derived stub for a function the closure extracts cut
         # the closure (batch AY: its *unreached* all went unreached).
         return None
@@ -1858,13 +1963,13 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
     mentioned = {m.lower() for source in sources.values()
                  for m in re.findall(r"\b(fnn-[A-Za-z0-9*+%-]+)", source)}
     # A fixture this harness loads may itself load a whole host file
-    # (tests/native_bp_session_bank_raw.lisp loads host/native/bp-session.lisp):
+    # (tests/native_bp_session_bank_raw-mock.lisp loads host/native/bp-session.lisp):
     # what that file defines is the real definition, provided, never stubbed
     # (a derived stub after the load redefined fnn-bp-session-observe to
     # signal and turned two harnesses red, facef3839).
     # `(load "host/x.lisp")', and the overridable default
     # `(load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))'
-    # (tests/native_web_reactor_raw.lisp, which seven web harnesses load).
+    # (tests/native_web_reactor_raw-mock.lisp, which seven web harnesses load).
     loaded_hosts = {target for source in sources.values()
                     for target in HOST_LOAD.findall(source)}
     provided = {name for name, (_formals, origin) in origins.items() if origin in loaded_hosts}

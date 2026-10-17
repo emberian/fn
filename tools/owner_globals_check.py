@@ -30,8 +30,15 @@ global (into the owner value or a wrapper's result) and lower the count.
     python3 tools/owner_globals_check.py                  # the lint (make check)
     python3 tools/owner_globals_check.py --list           # every name per file
     python3 tools/owner_globals_check.py --write-baseline # after a global is retired
+    python3 tools/owner_globals_check.py --write-baseline --reason "WHY" # a raise: one dated reason line
+
+A RAISE needs a reason.  `--reason' lets --write-baseline raise a count (or add
+a file) and appends one dated line to the baseline's "_reasons" list naming
+what moved; the baseline's other keys are file -> count.  A raise without a
+reason is refused.
 """
 import argparse
+import datetime
 import json
 from pathlib import Path
 import re
@@ -128,6 +135,8 @@ def main(argv=None):
     parser.add_argument("--list", action="store_true", help="print every name per file")
     parser.add_argument("--write-baseline", action="store_true",
                         help="write the counts as the baseline (refuses to raise any)")
+    parser.add_argument("--reason", default=None,
+                        help="with --write-baseline: why a count is raised (one dated line is kept)")
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--baseline", type=Path, default=None)
     args = parser.parse_args(argv)
@@ -139,17 +148,28 @@ def main(argv=None):
             for name in names:
                 print("  " + name)
         return 0
-    baseline = json.loads(baseline_path.read_text(encoding="utf-8")) if baseline_path.exists() else {}
+    stored = json.loads(baseline_path.read_text(encoding="utf-8")) if baseline_path.exists() else {}
+    reasons = list(stored.get("_reasons", []))
+    baseline = {k: v for k, v in stored.items() if not k.startswith("_")}
     if args.write_baseline:
-        raised = [(p, len(n), baseline[p]) for p, n in found.items() if p in baseline and len(n) > baseline[p]]
-        if raised:
+        raised = [(p, len(n), baseline.get(p)) for p, n in found.items()
+                  if p not in baseline or len(n) > baseline[p]]
+        if raised and not args.reason:
             for p, have, had in raised:
-                print("owner_globals_check: refusing to raise {} from {} to {}".format(p, had, have))
+                print("owner_globals_check: refusing to raise {} from {} to {} without --reason".format(
+                    p, had, have))
             return 1
+        if raised:
+            reasons.append("{}: {} ({})".format(
+                datetime.date.today().isoformat(), args.reason.strip(),
+                ", ".join("{} {}->{}".format(p, had or 0, have) for p, have, had in raised)))
         counts = {p: len(n) for p, n in found.items()}
+        if reasons:
+            counts["_reasons"] = reasons
         baseline_path.write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print("owner_globals_check: baseline written, {} file(s), {} global(s)".format(
-            len(counts), sum(counts.values())))
+            len([k for k in counts if not k.startswith("_")]),
+            sum(v for k, v in counts.items() if not k.startswith("_"))))
         return 0
     findings = judge(found, baseline)
     total = sum(len(n) for n in found.values())

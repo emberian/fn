@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/peer-catchup-spool.lisp",
+ "id": "CSP-OWED-VERDICT",
+ "notes": [],
+ "owner": "catchup",
+ "severity": "high",
+ "slice": "peer-services",
+ "source": "catchup",
+ "state": "open",
+ "title": "Catch-up spool controller owes the verdict keystone that replaced fn-cu-step-installs-only-through-the-verdict: every :local effect of fn-csp-step is the IHAVE of the record the round then offers, or a body window only after the local 335 to that IHAVE (then its terminator), and every :journal effect is the committed cursor of a batch with nothing left to offer. Witnessed by *cut-round* and *cut-round-435* in tests/acl2/peer-catchup-tests.lisp, not proved.",
+ "updated": "2026-10-04T04:01:41Z"
+}

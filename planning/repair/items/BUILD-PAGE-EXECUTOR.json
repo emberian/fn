@@ -3,11 +3,13 @@
  "file": "host/page-executor-host.lisp",
  "id": "BUILD-PAGE-EXECUTOR",
  "note": "Codex: ov1 source 4671ace0f passes image certification but normal/DTN host loading times out at acquire adapter equality. Scoped wrapper-only theory admits unchanged acquire/commit statements in 366/392 steps. Evidence planning/evidence/page-executor-2026-10-03/result.json and repl.log archived. Actual image-world host-prefix validation pending; no image/native verdict.",
- "notes": [],
+ "notes": [
+  "10-04 02:33 ledger-close 2026-10-04: left in-progress: host/page-executor-host.lisp at origin/next 77d7e2af9 still has the adapter equalities (fn-owner-page-executor-acquire/-commit-refines-pxe-by-definition, minimal-theory hints) but the cited evidence dir planning/evidence/page-executor-2026-10-03 is absent from the tree and no image-world host-prefix load verdict exists; smallest fix: file the result.json/repl.log via evidence_store and run the normal+DTN host load once on persvati, then land"
+ ],
  "owner": "coordinator",
  "severity": "high",
  "source": "overnight-ov1",
  "state": "in-progress",
  "title": "Image host loading times out proving page executor wrapper equalities",
- "updated": "2026-10-03T05:55:10Z"
+ "updated": "2026-10-04T06:33:11Z"
 }

@@ -43,6 +43,20 @@ its steps and this driver runs them:
   (`make check FORCE=1`) runs every step; the batch runner's one full pass
   at a pushed head uses it.
 
+- SCOPED.  `execute --changed-since REV` (make check-lane CHECK_CHANGED_SINCE=REV)
+  runs only the steps the diff from REV (committed, uncommitted and untracked
+  files) can reach: the steps whose last traced run (build/check-cache/scope/,
+  kept for passes AND failures: a NOT RUN or red step has inputs too) read,
+  stat'ed or listed a changed path, ran a git command the change can move, or
+  cannot be traced at all.  The rest print "skipped".  A docs-only diff runs
+  the docs checks, not host_check or reach_check.  A step never traced here
+  (a new tree, a new command) runs: scoping is only as good as the last
+  full run in this cache.
+- BASELINE.  `--write-baseline FILE` keeps the step table (the format of
+  build/coordinator/check-baseline-<sha>.txt); `--baseline FILE` reads one, and
+  the run prints "NEW reds vs baseline: ..." and exits nonzero only for a red
+  step the baseline did not have red.
+
 The summary is today's table in plan order; the verdict is the exit status.
 `run` and `summary` remain for a single step outside `execute`.  An
 interrupt (Ctrl-C) stops the whole check.
@@ -51,6 +65,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import fnmatch
 import hashlib
 import json
 import os
@@ -176,23 +191,291 @@ def read_results(directory: Path) -> list[dict]:
     return sorted(rows, key=lambda row: row.get("index", 0))
 
 
-def summary(directory: Path, footer: str = "") -> int:
-    rows = read_results(directory)
-    if not rows:
-        print(f"check: no step recorded under {directory}")
-        return 1
+def table_lines(rows: list[dict], footer: str = "") -> list[str]:
     width = max(len(row["step"]) for row in rows)
     failed = [row for row in rows if row["exit"] != 0]
-    print(f"\n== check: {len(rows)} steps, {len(failed)} failed{footer}")
+    lines = [f"== check: {len(rows)} steps, {len(failed)} failed{footer}"]
     for row in rows:
         verdict = "ok" if row["exit"] == 0 else f"exit {row['exit']}"
         line = f"  {row['step']:{width}}  {verdict:8} {row['seconds']:7.1f} s"
         if row["exit"] != 0 and row["finding"]:
             line += f"  {row['finding']}"
-        elif row.get("cached"):
-            line += f"  {row['cached']}"
-        print(line)
-    return 1 if failed else 0
+        elif row.get("cached") or row.get("skipped"):
+            line += f"  {row.get('cached') or row['skipped']}"
+        lines.append(line)
+    return lines
+
+
+def summary(directory: Path, footer: str = "", baseline: Path | None = None,
+            write_baseline: Path | None = None) -> int:
+    rows = read_results(directory)
+    if not rows:
+        print(f"check: no step recorded under {directory}")
+        return 1
+    lines = table_lines(rows, footer)
+    print("\n" + "\n".join(lines))
+    if write_baseline is not None:
+        write_baseline.parent.mkdir(parents=True, exist_ok=True)
+        write_baseline.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        print(f"check: step table written to {write_baseline}")
+    failed = [row for row in rows if row["exit"] != 0]
+    if baseline is None:
+        return 1 if failed else 0
+    return 1 if vs_baseline(rows, baseline) else 0
+
+
+# ----------------------------------------------------------------- baseline
+
+BASELINE_ROW = re.compile(r"^\s{2}(\S+)\s+(ok|exit -?\d+)\s+\d+(?:\.\d+)? s(?:\s{2}(.*))?$")
+
+
+def read_baseline(text: str) -> list[dict]:
+    """The rows of the LAST step table in `text`: a check-baseline file, or a
+    remote_check log that holds one (the runner's noise around it is skipped).
+    Step name, whether it was red, and its finding."""
+    rows: list[dict] = []
+    for line in text.splitlines():
+        if line.startswith("== check:"):
+            rows = []
+            continue
+        found = BASELINE_ROW.match(line)
+        if found and (rows or "== check:" in text):
+            rows.append({"step": found[1], "red": found[2] != "ok",
+                         "finding": (found[3] or "").strip()})
+    return rows
+
+
+def finding_shape(finding: str) -> str:
+    """A finding without its numbers: line numbers and counts drift, the step's
+    complaint does not."""
+    return re.sub(r"\d+", "#", finding)
+
+
+def new_reds(current: list[dict], baseline: list[dict]) -> list[dict]:
+    """The current red rows the baseline did not already have red.
+
+    Per step name, the baseline's red rows are claimed first by an identical
+    finding (digits aside), then, for a name that is one step in this run,
+    by any leftover red row: a step that was red and is red again on another
+    line is the same red.  A name planned several times (host_check) matches
+    by finding only, so a different instance going red is new."""
+    pool: dict[str, list[str]] = {}
+    for row in baseline:
+        if row["red"]:
+            pool.setdefault(row["step"], []).append(finding_shape(row["finding"]))
+    instances: dict[str, int] = {}
+    for row in current:
+        instances[row["step"]] = instances.get(row["step"], 0) + 1
+    fresh = []
+    leftovers = []
+    for row in current:
+        if row["exit"] == 0:
+            continue
+        shapes = pool.get(row["step"], [])
+        shape = finding_shape(row.get("finding", ""))
+        if shape in shapes:
+            shapes.remove(shape)
+        else:
+            leftovers.append(row)
+    for row in leftovers:
+        shapes = pool.get(row["step"], [])
+        if shapes and instances[row["step"]] == 1:
+            shapes.pop()
+        else:
+            fresh.append(row)
+    return fresh
+
+
+def vs_baseline(rows: list[dict], baseline: Path) -> bool:
+    """Print the verdict against `baseline`; True when a red is new."""
+    try:
+        known = read_baseline(baseline.read_text(encoding="utf-8", errors="replace"))
+    except OSError as error:
+        print(f"check: cannot read the baseline {baseline}: {error}")
+        return True
+    if not known:
+        print(f"check: no step table in the baseline {baseline}")
+        return True
+    ran = [row for row in rows if not row.get("skipped")]
+    fresh = new_reds(ran, known)
+    red = [row for row in ran if row["exit"] != 0]
+    seen = {row["step"] for row in ran if row["exit"] == 0}
+    fixed = sorted({row["step"] for row in known if row["red"]}
+                   & seen - {row["step"] for row in red})
+    print(f"== baseline {baseline}: {sum(1 for r in known if r['red'])} red in it, "
+          f"{len(red)} red now, {len(red) - len(fresh)} carried over, "
+          f"{len(fixed)} fixed" + (f" ({', '.join(fixed)})" if fixed else ""))
+    if fresh:
+        print(f"NEW reds vs baseline: {', '.join(row['step'] for row in fresh)}")
+        for row in fresh:
+            print(f"  {row['step']}  exit {row['exit']}  {row.get('finding', '')}")
+        return True
+    print("no new reds vs baseline")
+    return False
+
+
+# ------------------------------------------------------------ scoped inputs
+
+# Everything that decides what a trace records: a change here reaches every step.
+GLOBAL_PATHS = ("tools/check_steps.py", "tools/check_trace/")
+# What no untraceable child (ACL2, a shell, a Python child without the tracer)
+# reads: prose.  A step whose trace is blind to its children is reached by any
+# change but these; it is the one hand-kept list here, and it is short on
+# purpose (a diff of only these never runs host_check --load's ACL2).
+INERT_FOR_CHILDREN = ("docs/",)
+INERT_SUFFIXES = (".md",)
+# git reads whose output is a function of the tracked PATH SET only (a file
+# added or removed moves it; an edit does not).
+LS_FLAGS = frozenset({"-z", "--cached", "-c", "--exclude-standard", "--full-name",
+                      "--error-unmatch", "--", "-o", "--others"})
+# git reads whose output is none of the tree's business.
+GIT_STATIC = frozenset({"config", "var", "check-ignore", "symbolic-ref", "init"})
+
+
+def rel_path(path: str) -> str | None:
+    """`path` relative to the repository root, None when outside it."""
+    for form in (os.path.abspath(path), os.path.realpath(path)):
+        for root in (str(ROOT), os.path.realpath(ROOT)):
+            if form == root:
+                return "."
+            if form.startswith(root + os.sep):
+                return form[len(root) + 1:]
+    return None
+
+
+def scope_record(command: list[str], trace: dict) -> dict:
+    """What a diff must touch to reach this step: its repository inputs (never
+    the ones it wrote, never outside the repository), and `x` when the trace is
+    blind to something it ran."""
+    written = trace["w"]
+
+    def inside(paths) -> list[str]:
+        found = {rel_path(p) for p in paths if p not in written}
+        return sorted(p for p in found if p is not None)
+
+    return {"command": command, "x": trace["x"][0] if trace["x"] else "",
+            "r": inside(trace["r"] | trace["s"]), "l": inside(trace["l"]),
+            "g": [[cwd, argv] for cwd, argv in trace["g"]]}
+
+
+class Changes:
+    """What differs from a base: `paths` maps a repository-relative path to A,
+    D or M; `listed` is every directory whose listing that moves (the nearest
+    directory that exists on both sides of an added or removed path)."""
+
+    def __init__(self, paths: dict[str, str], old_dirs: set[str] | None = None):
+        self.paths = dict(paths)
+        self.listed: set[str] = set()
+        for path, status in self.paths.items():
+            if status not in ("A", "D"):
+                continue
+            where = os.path.dirname(path)
+            while where:
+                known = where in old_dirs if old_dirs is not None else os.path.isdir(ROOT / where)
+                if known and (status == "A" or os.path.isdir(ROOT / where)):
+                    break
+                where = os.path.dirname(where)
+            self.listed.add(where or ".")
+
+    def __bool__(self) -> bool:
+        return bool(self.paths)
+
+
+PINNED = re.compile(r"[0-9a-f]{7,40}|(?:origin|upstream)/\S+|refs/(?:remotes|tags)/\S+")
+REV_READS = frozenset({"show", "cat-file", "ls-tree", "rev-parse", "log", "diff", "rev-list",
+                       "describe", "blame"})
+
+
+def spec_match(path: str, specs: list[str]) -> bool:
+    return any(path == spec or path.startswith(spec + "/") or fnmatch.fnmatch(path, spec)
+               for spec in (s.rstrip("/") for s in specs))
+
+
+def git_reached(argv: list[str], changed: Changes) -> str:
+    """Why a change can move this git read's output, "" when it cannot.
+
+    Static: config and friends; merge-base (a fork point moves with history,
+    not with a file diff); anything about revisions that are all pinned (a
+    sha, origin/..., a tag), whatever the diff.  By path: ls-files by an added
+    or removed path; `REV:PATH`, and log, grep and blame with a pathspec, by a
+    changed path under it.  Everything else (rev-parse HEAD, status, diff,
+    log with no pathspec) by any change at all."""
+    if not changed:
+        return ""
+    dash = argv.index("--") if "--" in argv else None
+    specs = argv[dash + 1:] if dash is not None else []
+    head = argv[:dash] if dash is not None else argv
+    words = [w for w in head if not w.startswith("-")]
+    sub, positional = (words[0], words[1:]) if words else ("", [])
+    anything = f"git {' '.join(argv)[:50]}"
+    if sub in GIT_STATIC or sub == "merge-base" or (sub == "rev-parse" and not positional):
+        return ""
+    if sub == "ls-files" and all(a in LS_FLAGS or not a.startswith("-") for a in argv):
+        for path, status in changed.paths.items():
+            if status in ("A", "D") and (spec_match(path, specs + positional)
+                                         if specs or positional else True):
+                return f"git ls-files: {path} {status}"
+        return ""
+    if sub in REV_READS and positional:
+        for word in positional:
+            rev, _, path = word.partition(":")
+            if PINNED.fullmatch(re.split(r"[~^]", rev)[0]):
+                continue
+            hit = next((p for p in changed.paths if spec_match(p, [path])), "") if path else ""
+            if hit or not path:
+                return f"git {sub} {word[:40]}: {hit or 'any change'}"
+        return ""
+    if sub in ("log", "grep", "blame") and specs:
+        hit = next((p for p in changed.paths if spec_match(p, specs)), "")
+        return f"git {sub}: {hit} changed" if hit else ""
+    return anything
+
+
+def reached_by(record: dict | None, command: list[str], changed: Changes) -> str:
+    """Why the change can affect the step, "" when it cannot."""
+    if record is None or record.get("command") != command:
+        return "never traced here"
+    if record["x"]:
+        for path in changed.paths:
+            if not path.startswith(INERT_FOR_CHILDREN) and not path.endswith(INERT_SUFFIXES):
+                return f"untraceable ({record['x'][:50]}) and {path} changed"
+    for path in changed.paths:
+        if path.startswith(GLOBAL_PATHS):
+            return f"{path} changed"
+    inputs = set(record["r"])
+    for path in changed.paths:
+        if path in inputs:
+            return f"{path} changed"
+    for where in sorted(set(record["l"]) & changed.listed):
+        return f"{where}/ listing changed"
+    for cwd, argv in record["g"]:
+        if rel_path(cwd) is None:  # another repository: a fixture, a scratch clone
+            continue
+        why = git_reached(argv, changed)
+        if why:
+            return why
+    return ""
+
+
+def changed_paths(since: str) -> Changes:
+    """What differs from `since` in the working tree (committed since,
+    uncommitted, and untracked files), repository-relative."""
+    def git(*argv: str) -> str:
+        done = subprocess.run(["git", *argv], cwd=ROOT, stdin=subprocess.DEVNULL,
+                              capture_output=True, text=True)
+        if done.returncode:
+            raise SystemExit(f"check_steps: git {' '.join(argv)}: {done.stderr.strip()}")
+        return done.stdout
+
+    paths: dict[str, str] = {}
+    parts = git("diff", "--name-status", "--no-renames", "-z", since).split("\0")
+    for status, path in zip(parts[0::2], parts[1::2]):
+        paths[path] = status[:1] if status[:1] in ("A", "D") else "M"
+    for path in git("ls-files", "--others", "--exclude-standard", "-z").split("\0"):
+        if path:
+            paths[path] = "A"
+    old_dirs = {d for d in git("ls-tree", "-d", "-r", "--name-only", since).splitlines()}
+    return Changes(paths, old_dirs)
 
 
 # ---------------------------------------------------------------- input keys
@@ -420,7 +703,13 @@ def save_json(path: Path, value) -> None:
 # ------------------------------------------------------------------ execute
 
 class Executor:
-    def __init__(self, directory: Path, cache: Path, jobs: int, use_cache: bool):
+    def __init__(self, directory: Path, cache: Path, jobs: int, use_cache: bool,
+                 since: str = "", baseline: Path | None = None,
+                 write_baseline: Path | None = None, changed: Changes | None = None):
+        self.since = since
+        self.changed = changed if changed is not None else (changed_paths(since) if since else None)
+        self.baseline = baseline
+        self.write_baseline = write_baseline
         self.directory = directory
         self.cache = cache
         self.jobs = max(1, jobs)
@@ -446,6 +735,41 @@ class Executor:
         if not entry or entry.get("command") != step["command"]:
             return None
         return entry if inputs_unchanged(entry["inputs"], self.memo) else None
+
+    def scope_path(self, key: str) -> Path:
+        return self.cache / "scope" / f"{key}.json"
+
+    def scope_of(self, step: dict) -> dict | None:
+        """The step's last traced inputs: its scope record, else (a cache that
+        predates them) its last pass's cache entry."""
+        record = load_json(self.scope_path(step["key"]), None)
+        if record:
+            return record
+        entry = load_json(self.entry_path(step["key"]), None)
+        if not entry:
+            return None
+        inputs = entry["inputs"]
+        return {"command": entry["command"], "x": "", "r": sorted(
+            {*map(rel_path, [*inputs["r"], *inputs["s"]])} - {None}),
+            "l": sorted({*map(rel_path, inputs["l"])} - {None}),
+            "g": [[cwd, argv] for cwd, argv, _ in inputs["g"]]}
+
+    def scope(self, steps: list[dict]) -> list[dict]:
+        """The steps the change can reach; the others get a "skipped" row."""
+        assert self.changed is not None
+        kept = []
+        for step in steps:
+            why = reached_by(self.scope_of(step), step["command"], self.changed)
+            if why:
+                kept.append(step)
+                print(f"check_steps: {step['name']}: {why}", flush=True)
+                continue
+            note = (f"skipped (unaffected by the {len(self.changed.paths)} path(s) "
+                    f"changed since {self.since})")
+            self.record({"index": step["index"], "step": step["name"],
+                         "command": shlex.join(step["command"]), "exit": 0, "seconds": 0.0,
+                         "finding": "", "skipped": note})
+        return kept
 
     def emit(self, text: str) -> None:
         with self.lock:
@@ -509,6 +833,7 @@ class Executor:
             self.emit(header + output)
         trace = read_trace(trace_dir)
         shutil.rmtree(trace_dir, ignore_errors=True)
+        save_json(self.scope_path(step["key"]), scope_record(command, trace))
         with self.lock:
             self.traces[index] = trace
             self.durations[step["key"]] = seconds
@@ -582,6 +907,11 @@ class Executor:
 
     def execute(self, steps: list[dict]) -> int:
         started = time.monotonic()
+        total = len(steps)
+        if self.changed is not None:
+            steps = self.scope(steps)
+            print(f"check_steps: {len(self.changed.paths)} path(s) changed since {self.since}; "
+                  f"{len(steps)} of {total} steps can be affected", flush=True)
         writers = WRITERS | self.learned
         warm = [s for s in steps if s["warm"]]
         first = [s for s in steps if not s["warm"]
@@ -633,9 +963,11 @@ class Executor:
             print(f"check_steps: WARNING {hazard}; it runs first and alone from now on "
                   f"({self.cache / 'writers.json'}); name it in WRITERS in tools/check_steps.py")
         cached = sum(1 for row in read_results(self.directory) if row.get("cached"))
+        skipped = total - len(steps)
         footer = (f" (jobs {self.jobs}, wall {time.monotonic() - started:.1f} s, "
-                  f"{cached} cached{'' if self.use_cache else ', cache off'})")
-        return summary(self.directory, footer)
+                  f"{cached} cached{f', {skipped} skipped' if skipped else ''}"
+                  f"{'' if self.use_cache else ', cache off'})")
+        return summary(self.directory, footer, self.baseline, self.write_baseline)
 
 
 def plan_steps(directory: Path) -> list[dict]:
@@ -659,13 +991,16 @@ def default_jobs() -> int:
     return max(1, (os.cpu_count() or 2) // 2)
 
 
-def execute(directory: Path, jobs: int, use_cache: bool, cache: Path) -> int:
+def execute(directory: Path, jobs: int, use_cache: bool, cache: Path, since: str = "",
+            baseline: Path | None = None, write_baseline: Path | None = None,
+            changed: Changes | None = None) -> int:
     steps = plan_steps(directory)
     if not steps:
         print(f"check: no step planned under {directory}")
         return 1
     (directory / RESULTS).unlink(missing_ok=True)
-    return Executor(directory, cache, jobs, use_cache).execute(steps)
+    return Executor(directory, cache, jobs, use_cache, since, baseline, write_baseline,
+                    changed).execute(steps)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -691,6 +1026,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-cache", action="store_true",
                    help="run every step, whatever its inputs (make check FORCE=1)")
     p.add_argument("--cache", default=str(DEFAULT_CACHE), help="default build/check-cache")
+    p.add_argument("--changed-since", metavar="REV", default="",
+                   help="run only the steps a diff from REV can reach (their last traced "
+                        "inputs; a step never traced here runs)")
+    p.add_argument("--baseline", metavar="FILE", default="",
+                   help="a step table (check-baseline-<sha>.txt): print NEW reds vs it, "
+                        "exit nonzero only for those")
+    p.add_argument("--write-baseline", metavar="FILE", default="",
+                   help="also write this run's step table to FILE")
     args = parser.parse_args(argv)
     directory = Path(args.directory)
     if args.action == "begin":
@@ -700,7 +1043,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.action == "execute":
         try:
             return execute(directory, args.jobs or default_jobs(), not args.no_cache,
-                           Path(args.cache))
+                           Path(args.cache), args.changed_since,
+                           Path(args.baseline) if args.baseline else None,
+                           Path(args.write_baseline) if args.write_baseline else None)
         except KeyboardInterrupt:
             return 130
     command = args.command[1:] if args.command[:1] == ["--"] else args.command

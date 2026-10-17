@@ -864,13 +864,11 @@ class Campaign:
         rc, so2, se2 = self.fnv(ep, "init", *a.init_flags.split(), GROUP)
         rec["init_cut"]["reinit"] = [rc, (so2 + se2)[-300:]]
         if stages and not a.legacy_init:
-            want = "reason=interrupted-init stage=%s" % stages[0]
-            if rc != 1 or want not in so2 + se2:
-                violations.append("init-leftover-not-named:init-%d:%s" % (rc, (so2 + se2).strip()[-160:]))
+            # PKT-894: the retry removes the unpublished stage itself.
+            want = "init removed %s" % stages[0]
+            if rc != 0 or want not in so2 + se2:
+                violations.append("init-leftover-not-removed:init-%d:%s" % (rc, (so2 + se2).strip()[-160:]))
                 return
-            self.g("rm -rf %s" % stages[0])
-            rc, so2, se2 = self.fnv(ep, "init", *a.init_flags.split(), GROUP)
-            rec["init_cut"]["init_after_removal"] = [rc, (so2 + se2)[-300:]]
         if rc != 0:
             if a.legacy_init:
                 findings.append("init-cut-left-a-store-neither-open-nor-init:%s" % (so2 + se2)[-160:])

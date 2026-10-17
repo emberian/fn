@@ -88,6 +88,11 @@
     (assert (<= (length (first args)) 65536)))
   (apply (symbol-function entry) args))
 (defun fnn-write-report (octets) (setf *report* (coerce (mapcar #'code-char octets) 'string)))
+;; The command's descriptor cleanup is the shipped unwind macro.
+(with-open-file (in (or (second sb-ext:*posix-argv*) "host/native/io.lisp"))
+  (loop for form = (read in nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defmacro) (eq (second form) 'fnn-unwind-cleanups))
+          do (eval form) (return)))
 (source-functions (or (second sb-ext:*posix-argv*) "host/native/io.lisp") '(fnn-command-store-journal))
 
 (defun run-case (label text expected &key size (present t) (regular t) read-fault core-fault fstat-fault short-read)

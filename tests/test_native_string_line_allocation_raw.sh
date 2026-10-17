@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: needs-acl2
 # Raw allocation observation, deliberately separate from proof/certification.
 set -eu
 probe_root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
