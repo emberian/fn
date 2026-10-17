@@ -250,7 +250,7 @@ class TestBudgetRunner(unittest.TestCase):
                 from tools import dev_control, train
                 text = f"RC budgetcases.subtests 0\n" + test_budget.RESULT_PREFIX + json.dumps(record)
                 classified = dev_control.classify([record["module"]], train.parse_image_results(text),
-                    dev_control.result_details(text), [], "fixture", "/run")
+                    dev_control.result_details(text), "fixture", "/run")
                 self.assertEqual([entry["subject"] for entry in classified["not_run"]], [subject])
                 if count == 2:
                     self.assertIn("value=2", classified["not_run"][0]["reason"])

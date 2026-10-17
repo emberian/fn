@@ -417,11 +417,6 @@ def theorem_defined(root: Path, book: str, name: str) -> bool | None:
     return False
 
 
-def proof_ids(root: Path = ROOT) -> dict[str, dict]:
-    data = json.loads((root / "planning" / "proofs.json").read_text(encoding="utf-8"))
-    return {entry["id"]: entry for entry in data["proofs"]}
-
-
 def render_block(root: Path = ROOT) -> str:
     lines = [BEGIN, "",
              "Rows, with what each cites. `landing` names a lane whose books are",
@@ -488,9 +483,8 @@ class Standing:
     row: Row
     missing_theorems: list[str] = field(default_factory=list)
     pending: list[str] = field(default_factory=list)
-    missing_proofs: list[str] = field(default_factory=list)
     missing_records: list[str] = field(default_factory=list)
-    proofs: list[str] = field(default_factory=list)   # cited ids the registry holds
+    proofs: list[str] = field(default_factory=list)   # cited proof ids
     books: dict[str, dict] = field(default_factory=dict)   # green_check records
 
 
@@ -500,7 +494,6 @@ def record_exists(root: Path, rel: str) -> bool:
 
 
 def standings(root: Path = ROOT, certification: dict | None = None) -> list[Standing]:
-    proofs = proof_ids(root)
     out = []
     for row in ROWS:
         s = Standing(row)
@@ -510,11 +503,7 @@ def standings(root: Path = ROOT, certification: dict | None = None) -> list[Stan
                 continue
             what = f"{book}: {name}" + ("" if defined is False else " (book absent)")
             (s.pending if row.landing else s.missing_theorems).append(what)
-        for pid in row.proofs:
-            if pid in proofs:
-                s.proofs.append(pid)
-            else:
-                (s.pending if row.landing else s.missing_proofs).append(pid)
+        s.proofs.extend(row.proofs)
         for rel in row.records:
             if not record_exists(root, rel):
                 (s.pending if row.landing else s.missing_records).append(rel)
@@ -565,8 +554,6 @@ def check(root: Path = ROOT, strict: bool = False, certify: bool = True) -> int:
     for s in standings(root, cert):
         for what in s.missing_theorems:
             problems.append(f"{s.row.id}: theorem not in its book: {what}")
-        for pid in s.missing_proofs:
-            problems.append(f"{s.row.id}: proof id not in planning/proofs.json: {pid}")
         for rel in s.missing_records:
             problems.append(f"{s.row.id}: record missing: {rel}")
         for what in s.pending:
@@ -598,7 +585,7 @@ def table(root: Path = ROOT, as_json: bool = False) -> int:
         print(json.dumps([{
             "row": s.row.id, "title": s.row.title, "landing": s.row.landing,
             "proofs": s.proofs, "pending": s.pending,
-            "missing": s.missing_theorems + s.missing_proofs + s.missing_records,
+            "missing": s.missing_theorems + s.missing_records,
             "books": {b: {"verdict": r["verdict"], "note": r["note"]}
                       for b, r in s.books.items()},
         } for s in rows], indent=1))
@@ -611,7 +598,7 @@ def table(root: Path = ROOT, as_json: bool = False) -> int:
             print(f"      {book}: {record['verdict']}  {record['note']}")
         for what in s.pending:
             print(f"      PENDING ({s.row.landing}): {what}")
-        for what in s.missing_theorems + s.missing_proofs + s.missing_records:
+        for what in s.missing_theorems + s.missing_records:
             print(f"      MISSING: {what}")
     return 0
 

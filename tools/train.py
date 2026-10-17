@@ -61,22 +61,10 @@ certifies on the exact artifact before a push, regardless of tree size; the
 lane selection, direct includers only, missed the far consumers of trains 49
 and 58).
 
-Known reds.  `planning/known-reds.json` is dev's recorded baseline of reds,
-each row owned by an open repair item.  A train is *non-regressing* when every
-red it meets is a row there; it is *green* only when the file has no rows, and
-`push` and `status` say which.  A certify whose failed books are all `certify`
-rows goes on to its emits and records them; any other failed or killed book
-fails it.  The `baseline` gate refuses a row this train adds relative to
-origin/dev (rows shrink only), a row whose item is missing or closed, and a
-malformed file.  The one way in is an amendment record in
-`planning/known-reds-amendments.json` (append-only; the row, the dev sha where
-it was measured, the item, the owner, the coordinator ruling; ruled 2026-10-09
-13:05): the gate accepts exactly the added rows an amendment names, refuses a
-rewritten or dropped amendment record, and refuses an amendment that names no
-present row (unless the row was retired and its item is closed), so amendments
-cannot be stockpiled.  `push` and `status` print the amendment count beside
-the row count; later records may transfer ownership within an item or re-file
-to the same owner's open retirement item while preserving the measured dev SHA.
+Known reds.  The recorded baseline of reds (planning/known-reds.json and its
+amendments) left with the registers on cut/breaking (M1-d, 2026-10-17):
+every red a train meets is a red, and `push` and `status` say green or not
+by the gates alone.
 
 The image gate.  A train whose diff touches the heap probe, a launcher or
 host/native/ (IMAGE_RULES) must run the rule's native modules
@@ -154,31 +142,13 @@ GENERATED = (
 
 def _generated(path: str) -> bool:
     return any(fnmatch.fnmatchcase(path, g) for g in GENERATED)
-# planning/proofs.json is NOT here: ledger.py --write regenerates only its
-# event arrays, and lanes curate its rows (re-pointing a PRF row at a renamed
-# keystone), so a conflict there goes back to the lane like source does.
 # Tail-append files: keep both sides' lines.
 UNION = ("planning/decisions.md",)
-# planning/premise-baseline.json is shrink-only: an entry leaves only when its
-# premise stops being a finding (tools/premise_audit.py).  A conflict on it
-# takes the union of both sides' accepted entries, never one side; the
-# premise_baseline gate then refuses any entry dev had that HEAD dropped while
-# it is still a finding (the merge eb3317521 resolved 1,171 entries to 753,
-# 401 of them still findings, and nothing noticed: PREMISE-BASELINE-MERGE-LOSS).
-PREMISE_BASELINE = "planning/premise-baseline.json"
-# The premises a keystone assumes only of a term (`(R (nthcdr k rows))'), held
-# by premise_audit --strict to their own shrink-only baseline (D12,
-# lane/d-premise-args).  The same merge union and the same gate apply: an
-# entry dev had that HEAD dropped must no longer be a finding, read from
-# premise_audit --json --all (a term premise is not a finding without --all).
-PREMISE_TERM_BASELINE = "planning/premise-term-baseline.json"
-PREMISE_BASELINES = (PREMISE_BASELINE, PREMISE_TERM_BASELINE)
 
 # Files the regen step is allowed to commit (only those that exist/changed).
 REGEN_OUTPUTS = (
     "books/image-world*.lisp",
     "tools/extract/world*.lisp",
-    "planning/proofs.json",
     # harness_check --write-stubs rewrites only the marked derived-stub
     # blocks; the tree is clean before regen, so only those changes match
     "tests/*.lisp",
@@ -247,13 +217,10 @@ LOCAL_BOX_CHECKS = (
 # the test file of every tools/<x>.py the train changes, and every changed
 # tests/test_*.py except tests/test_native_* (they need a native image).  Each runs as `python -m unittest <file>` from the root
 # (test_train imports `tools.train`, so not as a bare script).
-UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
-              "tests/test_keystone_critical.py",
-              "tests/test_train.py", "tests/test_farm.py")
+UNIT_TESTS = ("tests/test_train.py", "tests/test_farm.py")
 
-GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "cost_obligations", "book_roots", "harness",
-         "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
+GATES = ("ancestor", "main_last", "host_load", "ascii", "book_roots", "harness",
+         "box_step", "lock_delta", "secrets", "unit", "image")
 
 # The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
 # against origin/dev touches a rule's paths runs the rule's native modules on
@@ -338,15 +305,6 @@ IMAGE_CASE_PASS = ("ok", "skip")
 # fixture paths itself (tools/native_box.sh FIXTURES, tools/native_env.py).
 IMAGE_RC_ALL_SKIPPED = 4
 
-# Dev's recorded reds with owners (COORDINATION section 5).  Each row is
-# {"kind", "subject", "item", "owner", "evidence"}; (kind, subject) is unique.
-KNOWN_REDS = "planning/known-reds.json"
-KNOWN_RED_KINDS = ("certify", "native", "check", "extraction")
-KNOWN_RED_FIELDS = ("kind", "subject", "item", "owner", "evidence")
-# Amendments admit a row added after the baseline entered (COORDINATION section 5).
-# Each record names its row by the same (kind, subject) key.
-KNOWN_RED_AMENDMENTS = "planning/known-reds-amendments.json"
-AMENDMENT_FIELDS = ("kind", "subject", "dev_sha", "item", "owner", "ruling")
 
 
 class TrainError(Exception):
@@ -434,102 +392,6 @@ class Train:
         git(self.root, "fetch", "--no-tags", "origin")
 
 
-# --------------------------------------------------------------------------- known reds
-
-def parse_known_reds(text: str) -> list[dict]:
-    """The rows of a known-reds file; TrainError when it is malformed."""
-    try:
-        data = json.loads(text)
-    except ValueError as error:
-        raise TrainError(f"{KNOWN_REDS} is not JSON: {error}") from error
-    rows = data.get("rows") if isinstance(data, dict) else None
-    if not isinstance(rows, list):
-        raise TrainError(f"{KNOWN_REDS} has no list 'rows'")
-    seen = set()
-    for row in rows:
-        if not isinstance(row, dict) or any(not isinstance(row.get(f), str) or not row.get(f)
-                                            for f in KNOWN_RED_FIELDS):
-            raise TrainError(f"{KNOWN_REDS}: a row lacks one of {', '.join(KNOWN_RED_FIELDS)}: {str(row)[:120]}")
-        if row["kind"] not in KNOWN_RED_KINDS:
-            raise TrainError(f"{KNOWN_REDS}: kind {row['kind']!r} is not one of {', '.join(KNOWN_RED_KINDS)}")
-        key = (row["kind"], row["subject"])
-        if key in seen:
-            raise TrainError(f"{KNOWN_REDS}: {key[0]} {key[1]} appears twice")
-        seen.add(key)
-    return rows
-
-
-def known_reds_at(t: "Train", rev: str) -> list[dict] | None:
-    """The rows at REV, or None when REV has no known-reds file."""
-    p = git(t.root, "show", f"{rev}:{KNOWN_REDS}", check=False)
-    return parse_known_reds(p.stdout) if p.returncode == 0 else None
-
-
-def parse_amendments(text: str) -> list[dict]:
-    """The records of an amendments file; TrainError when it is malformed."""
-    try:
-        data = json.loads(text)
-    except ValueError as error:
-        raise TrainError(f"{KNOWN_RED_AMENDMENTS} is not JSON: {error}") from error
-    records = data.get("amendments") if isinstance(data, dict) else None
-    if not isinstance(records, list):
-        raise TrainError(f"{KNOWN_RED_AMENDMENTS} has no list 'amendments'")
-    last: dict = {}
-    for rec in records:
-        if not isinstance(rec, dict) or any(not isinstance(rec.get(f), str) or not rec.get(f)
-                                            for f in AMENDMENT_FIELDS):
-            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: a record lacks one of "
-                             f"{', '.join(AMENDMENT_FIELDS)}: {str(rec)[:120]}")
-        key = (rec["kind"], rec["subject"])
-        prev = last.get(key)
-        if prev is not None:
-            # Later records either transfer ownership with the same item
-            # (coordinator 2026-10-09), or re-file to a different item with
-            # the same owner and item_from naming the previous item (2026-10-13).
-            # Both retain dev_sha; earlier records stay as written, and the
-            # latest record names the row's current owner and retirement item.
-            transfer = (rec.get("transfer_from") == prev["owner"]
-                        and rec["owner"] != prev["owner"] and rec["item"] == prev["item"])
-            refile = (rec.get("item_from") == prev["item"]
-                      and rec["item"] != prev["item"] and rec["owner"] == prev["owner"])
-            if not (rec["dev_sha"] == prev["dev_sha"] and (transfer or refile)):
-                raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice "
-                                 "(a later record must retain dev_sha and either transfer_from "
-                                 "the previous owner with the same item and a new owner, or "
-                                 "item_from the previous item with the same owner and a new item)")
-        elif "transfer_from" in rec or "item_from" in rec:
-            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]}: a transfer or re-file with no "
-                             "earlier record")
-        last[key] = rec
-    return records
-
-
-def refile_item_error(record: dict, item: dict | None) -> str | None:
-    """A live re-file's target must exist, be open, and belong to its owner."""
-    if item is None:
-        return f"re-file target repair item is missing: {record['item']}"
-    if item.get("state") in CLOSED_ITEM_STATES:
-        return f"re-file target repair item is closed: {record['item']}"
-    if item.get("owner") != record["owner"]:
-        return f"re-file target repair item owner differs from record: {record['item']}"
-    return None
-
-
-def amendments_at(t: "Train", rev: str) -> list[dict]:
-    """The amendment records at REV; none when REV has no amendments file."""
-    p = git(t.root, "show", f"{rev}:{KNOWN_RED_AMENDMENTS}", check=False)
-    return parse_amendments(p.stdout) if p.returncode == 0 else []
-
-
-def verdict_words(rows: list[dict] | None, amendments: list[dict] | None = None) -> str:
-    if rows is None:
-        return f"no known-red baseline ({KNOWN_REDS} missing): not green"
-    if not rows:
-        return "green: the known-red baseline is empty"
-    amended = {(a["kind"], a["subject"]) for a in amendments or []}
-    n_amended = sum(1 for r in rows if (r["kind"], r["subject"]) in amended)
-    return (f"non-regressing against {len(rows)} known reds, {n_amended} amended "
-            f"({KNOWN_REDS}, {KNOWN_RED_AMENDMENTS}); NOT green")
 
 
 def certify_failures(root: Path, certify_id: str | None) -> tuple[list[str], list[str]] | None:
@@ -576,89 +438,6 @@ def _union_resolve(t: Train, path: str) -> None:
     git(t.root, "add", "--", path)
 
 
-def _premise_union_resolve(t: Train, path: str) -> None:
-    """Both sides' accepted entries (ours' text where both have one): an
-    entry either side dropped is restored and the gate decides whether its
-    premise really resolved."""
-    sides = []
-    for n in (2, 3):
-        text = _stage(t.root, n, path)
-        try:
-            sides.append(json.loads(text) if text else {})
-        except ValueError as error:
-            raise TrainError(f"{path}: stage {n} does not parse ({error}); resolve by hand") from error
-    ours, theirs = sides
-    accepted = dict(theirs.get("accepted", {}))
-    accepted.update(ours.get("accepted", {}))
-    merged = dict(theirs, **ours)
-    merged["accepted"] = {k: accepted[k] for k in sorted(accepted)}
-    (t.root / path).write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n")
-    git(t.root, "add", "--", path)
-
-
-def _premise_baseline_gate(t: Train) -> tuple[int, dict]:
-    """(rc, record): for each premise baseline (bare and term), every entry
-    origin/dev's accepts that HEAD's does not is no longer a finding at HEAD
-    (premise_audit --json, and --json --all for the term file).  A term
-    entry that moved into HEAD's bare baseline is carried, not lost."""
-    def accepted_at(rev, path):
-        p = git(t.root, "show", f"{rev}:{path}", check=False)
-        return set(json.loads(p.stdout).get("accepted", {})) if p.returncode == 0 else None
-    rc, record = 0, {}
-    heads = {}
-    for path in PREMISE_BASELINES:
-        key = "term" if path == PREMISE_TERM_BASELINE else "bare"
-        label = "premise term baseline" if key == "term" else "premise baseline"
-        try:
-            dev = accepted_at(train_base(), path)
-            head = accepted_at("HEAD", path)
-        except ValueError as error:
-            say(f"{label}: does not parse: {error}")
-            rc, record[key] = 1, {"error": str(error)}
-            continue
-        heads[key] = head
-        if dev is None:
-            say(f"{label}: none on origin/dev")
-            record[key] = {"skipped": True}
-            continue
-        if head is None:
-            say(f"{label}: {path} is gone at HEAD")
-            rc, record[key] = 1, {"error": "missing"}
-            continue
-        dropped = sorted(dev - head)
-        if not dropped:
-            say(f"{label}: {len(head)} entries, none dropped")
-            record[key] = {"entries": len(head), "dropped": []}
-            continue
-        argv = [PY, "tools/premise_audit.py", "--json"] + (["--all"] if key == "term" else [])
-        p = subprocess.run(argv, cwd=t.root, capture_output=True, text=True)
-        t.logs.mkdir(parents=True, exist_ok=True)
-        (t.logs / f"gate-premise-audit-{key}.log").write_text(p.stderr)
-        try:
-            premises = json.loads(p.stdout) if p.returncode == 0 else None
-        except ValueError:
-            premises = None
-        if premises is None:
-            say(f"{label}: premise_audit {' '.join(argv[2:])} failed (rc {p.returncode}); "
-                f"{len(dropped)} dropped entries unverified")
-            rc, record[key] = 1, {"error": "premise_audit failed", "dropped": dropped}
-            continue
-        import premise_audit
-        carried = (heads.get("bare") or set()) if key == "term" else set()
-        lost = [r for r in dropped
-                if premises.get(r, {}).get("class") in premise_audit.FINDING_CLASSES
-                and r not in carried]
-        for r in lost:
-            say(f"  {label} LOST an entry that is still a finding ({premises[r]['class']}): {r}")
-        say(f"{label}: {len(head)} entries; dropped {len(dropped)}, "
-            f"{len(dropped) - len(lost)} resolved, {len(lost)} still findings")
-        if lost:
-            rc = 1
-        record[key] = {"entries": len(head), "dropped": dropped, "lost": lost}
-    bare = record.get("bare", {})
-    # the bare baseline's fields stay at the top level, where the record had them
-    return rc, dict(bare, term=record.get("term", {}))
-
 
 def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
     name = lane[5:] if lane.startswith("lane/") else lane
@@ -679,7 +458,7 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
         say(f"  lane {name}: merge failed without conflicts: {entry['files'][0]}")
         t.save(st)
         return False
-    bad = [f for f in conflicted if not _generated(f) and f not in UNION and f not in PREMISE_BASELINES]
+    bad = [f for f in conflicted if not _generated(f) and f not in UNION]
     if bad:
         git(t.root, "merge", "--abort", check=False)
         entry.update(status="conflict", files=bad)
@@ -693,9 +472,6 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
                 git(t.root, "add", "--", f)
             else:
                 git(t.root, "rm", "-q", "--", f)
-        elif f in PREMISE_BASELINES:
-            say(f"  conflict {f}: union of both sides' accepted entries")
-            _premise_union_resolve(t, f)
         else:
             say(f"  conflict {f}: union of both sides")
             _union_resolve(t, f)
@@ -753,17 +529,11 @@ def cmd_regen(t: Train, args) -> int:
         t.save(st)
         return rc
 
-    # ledger.py --write: proofs.json's event arrays (the views are not committed)
     for step, argv in (
-        # first: the books it writes are what the ledger and teeth read
+        # first: the books it writes are what the later steps read
         ("world", [PY3, "tools/extract/world.py"]),
-        ("ledger", [PY, "tools/ledger.py", "--write"]),
         # the raw harnesses' derived-stub blocks (31 had drifted by train 51)
         ("stubs", [PY, "tools/harness_check.py", "--write-stubs"]),
-        # the teeth obligation manifest of the merged tree, written to
-        # build/teeth-obligations.json (uncommitted); the keystone gate and
-        # certify's critical witnesses read it
-        ("teeth", [PY, "tools/keystone_emit.py", "--write-manifest"]),
         # docs/resource-contract.md's generated block: its counts read the
         # merged tree (train 89 shipped 27 of 30 A-* rows when it was not here)
         ("resource_contract", [PY, "tools/resource_contract.py", "--write"]),
@@ -775,7 +545,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = (f"Regenerate train {n}: image-world and extraction world files, proofs.json events, "
+    msg = (f"Regenerate train {n}: image-world and extraction world files, "
            "derived harness stubs, the resource contract's block")
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
@@ -1028,25 +798,18 @@ def cmd_certify(t: Train, args) -> int:
     rc = t.run(f"certify-wait-{args.box}", [PY, "tools/farm.py", "wait", args.box, run])
     t2 = time.monotonic()
     rec = json.loads((t.root / "build" / "farm" / f"{run}.json").read_text())
-    known_seen: list[str] = []
     if rc != 0:
         outcome = certify_failures(t.root, rec.get("certify_id"))
         if outcome is None:
             say(f"certify on {args.box} failed (rc {rc}) and no manifest came back; nothing recorded")
             return rc
         failed, killed = outcome
-        rows = known_reds_at(t, "HEAD") or []
-        known = {r["subject"] for r in rows if r["kind"] == "certify"}
-        new = [b for b in failed if b not in known]
-        if killed or new or not failed:
-            for b in new:
-                say(f"  NEW certify red (not in {KNOWN_REDS}): {b}")
-            for b in killed:
-                say(f"  KILLED (no verdict): {b}")
-            say(f"certify on {args.box} failed (rc {rc}); nothing recorded")
-            return rc
-        known_seen = failed
-        say(f"certify on {args.box}: {len(failed)} failed book(s), every one a known red: {', '.join(failed)}")
+        for b in failed:
+            say(f"  certify red: {b}")
+        for b in killed:
+            say(f"  KILLED (no verdict): {b}")
+        say(f"certify on {args.box} failed (rc {rc}); nothing recorded")
+        return rc
     tree = rec["remote_path"]
     env = subprocess.run([PY3, "tools/box_table.py", "env", args.box], cwd=t.root, capture_output=True, text=True)
     envs = env.stdout.strip() if env.returncode == 0 and env.stdout.strip() else "true"
@@ -1074,14 +837,12 @@ def cmd_certify(t: Train, args) -> int:
     wall = {"install": round(t1 - t0), "certify": round(t2 - t1), "emit": round(t3 - t2), "total": round(t3 - t0), "emit_steps": steps}
     box_artifacts.write_stamp(t.root, ran_at, args.box, ran_at)
     record = {"sha": ran_at, "ran_at": ran_at, "box": args.box, "run": run,
-              "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed,
-              "known_reds_seen": known_seen}
+              "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed}
     save_box_record(t, record)
     st = t.load()
     st["box_wall"] = wall
     st["box_run"] = run
     st["cache_seed"] = cache_seed
-    st["certify_known_reds_seen"] = known_seen
     t.save(st)
     say(f"certify recorded: {args.box} run {run} at {record['sha'][:9]}; wall install {wall['install']}s "
         f"certify {wall['certify']}s emit {wall['emit']}s "
@@ -1199,92 +960,6 @@ def _ascii_gate(t: Train) -> int:
         say("  | " + line)
     return 1 if hits else 0
 
-
-def _baseline_gate(t: Train) -> tuple[int, dict]:
-    """(rc, record) of the known-reds gate: the file parses at HEAD, every
-    row's repair item exists and is open, and no row is added relative to
-    origin/dev unless an amendment names it (the first file is the baseline
-    itself).  The amendments are append-only and each names a present row."""
-    try:
-        head_rows = known_reds_at(t, "HEAD")
-        dev_rows = known_reds_at(t, train_base())
-        head_amend = amendments_at(t, "HEAD")
-        dev_amend = amendments_at(t, train_base())
-    except TrainError as error:
-        say(f"baseline: {error}")
-        return 1, {"error": str(error)}
-    if head_rows is None:
-        say(f"baseline: {KNOWN_REDS} is missing at HEAD")
-        return 1, {"error": "missing"}
-    items = t.root / "planning" / "repair" / "items"
-
-    def item_data(name):
-        try:
-            data = json.loads((items / f"{name}.json").read_text())
-            return data if isinstance(data, dict) else None
-        except (OSError, ValueError):
-            return None
-
-    def item_state(name):
-        data = item_data(name)
-        return (data.get("state"), True) if data is not None else (None, False)
-
-    unowned, closed = [], []
-    for row in head_rows:
-        state, found = item_state(row["item"])
-        if not found:
-            unowned.append(f"{row['kind']} {row['subject']} ({row['item']})")
-        elif state in CLOSED_ITEM_STATES:
-            closed.append(f"{row['kind']} {row['subject']} ({row['item']} {state})")
-    keys = lambda rows: {(r["kind"], r["subject"]) for r in rows}
-    row_by_key = {(r["kind"], r["subject"]): r for r in head_rows}
-    amended = {(a["kind"], a["subject"]): a for a in head_amend}
-    added_all = sorted(keys(head_rows) - keys(dev_rows)) if dev_rows is not None else []
-    added = [k for k in added_all if k not in amended]
-    admitted = [k for k in added_all if k in amended]
-    gone = sorted(keys(dev_rows) - keys(head_rows)) if dev_rows is not None else []
-    # append-only: every record on origin/dev is at HEAD, unchanged and in order
-    rewritten = head_amend[:len(dev_amend)] != dev_amend
-    dangling, mismatched, invalid_refiles = [], [], []
-    for k, a in amended.items():
-        row = row_by_key.get(k)
-        if row is None:
-            state, found = item_state(a["item"])
-            if not (found and state in CLOSED_ITEM_STATES):
-                dangling.append(f"{k[0]} {k[1]}")
-        elif (row["item"], row["owner"]) != (a["item"], a["owner"]):
-            mismatched.append(f"{k[0]} {k[1]}")
-        if row is not None and "item_from" in a:
-            error = refile_item_error(a, item_data(a["item"]))
-            if error:
-                invalid_refiles.append(f"{k[0]} {k[1]}: {error}")
-    for k in added:
-        say(f"  known red ADDED by this train (rows shrink only): {k[0]} {k[1]}")
-    for k in admitted:
-        say(f"  known red added by amendment ({amended[k]['item']}, measured at {amended[k]['dev_sha']}): {k[0]} {k[1]}")
-    if rewritten:
-        say(f"  {KNOWN_RED_AMENDMENTS} is append-only: a record on origin/dev was edited or dropped")
-    for k in dangling:
-        say(f"  amendment names no known-red row (amendments cannot be stockpiled): {k}")
-    for k in mismatched:
-        say(f"  amendment disagrees with its row on item or owner: {k}")
-    for error in invalid_refiles:
-        say(f"  {error}")
-    for k in unowned:
-        say(f"  known red with no repair item: {k}")
-    for k in closed:
-        say(f"  known red whose item is closed (remove the row or reopen the item): {k}")
-    n_amended = sum(1 for k in amended if k in row_by_key)
-    say(f"baseline: {len(head_rows)} row(s), {n_amended} amended; added {len(added)}; "
-        f"added by amendment {len(admitted)}; gone {len(gone)}"
-        + ("; first baseline (none on origin/dev)" if dev_rows is None else ""))
-    rc = 1 if (added or unowned or closed or rewritten or dangling or mismatched or invalid_refiles) else 0
-    return rc, {"rows": len(head_rows), "amended": n_amended, "added": [list(k) for k in added],
-                "admitted": [list(k) for k in admitted], "gone": [list(k) for k in gone],
-                "amendments_rewritten": rewritten, "dangling_amendments": dangling,
-                "mismatched_amendments": mismatched,
-                "invalid_refiles": invalid_refiles,
-                "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
 
 
 # Closed subset of ledger.record's ACL2 leaf event vocabulary, plus
@@ -1470,11 +1145,9 @@ def parse_image_results(text: str) -> dict[str, dict]:
 
 
 def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
-                  rows: list[dict] | None,
                   changed_since: Callable[[str], list[str] | None] | None = None) -> tuple[int, dict]:
     """The image gate's decision.  Green when nothing is obliged, or when every
-    obliged module ran on the image of HEAD and each red case in it is a
-    `native` row of planning/known-reds.json.  A module that did not run (an
+    obliged module ran on the image of HEAD with no red case.  A module that did not run (an
     interrupted image gate) refuses the push until it has; so does a module
     that failed with no case recorded, and so does an obliged module that
     skipped, wholly or a case of it: a skip is not a verdict.  A record of
@@ -1500,10 +1173,9 @@ def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
                                 "verdict differ (first: %s)" % (source[:9], len(inputs), inputs[0]),
                        "need": sorted(need)}
         carried = {"carried_from": source}
-    known = {r["subject"] for r in rows or [] if r.get("kind") == "native"}
     results = record.get("modules", {})
     missing = sorted(m for m in need if m not in results)
-    unexplained, known_seen, skipped = [], [], []
+    unexplained, skipped = [], []
     for m in sorted(need):
         if m not in results:
             continue
@@ -1516,10 +1188,9 @@ def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
             unexplained.append(f"{m} (rc {rc}, no case recorded)")
         elif skips:
             skipped.extend(skips)
-        for c in reds:
-            (known_seen if c in known else unexplained).append(c)
+        unexplained.extend(reds)
     extra = {"need": sorted(need), "runs": sorted(record.get("runs") or {}), "missing": missing,
-             "unexplained": unexplained, "known_reds": known_seen, "skipped": skipped, **carried}
+             "unexplained": unexplained, "skipped": skipped, **carried}
     return (1 if missing or unexplained or skipped else 0), extra
 
 
@@ -1822,10 +1493,7 @@ def changed_paths(t: Train) -> list[str]:
 
 # Simple gates have one command; both drivers call the same functions below.
 GATE_COMMANDS = {
-    "ledger": [PY, "tools/ledger.py", "--check"],
-    "current_view": [PY, "tools/current_view.py", "--check"],
     "main_last": [PY, "tools/main_last_check.py"],
-    "keystone": [PY, "tools/keystone_emit.py", "--check"],
 }
 
 
@@ -1948,14 +1616,13 @@ def _image_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
         diff = git(t.root, "diff", "--no-renames", "--name-only", source, head, check=False)
         return diff.stdout.split() if diff.returncode == 0 else None
 
-    image_rc, image_record = image_verdict(need, st.get("image"), head, known_reds_at(t, "HEAD"),
-                                           changed_since)
+    image_rc, image_record = image_verdict(need, st.get("image"), head, changed_since)
     if need:
         say(f"image: obliged {len(need)} module(s) by " + ", ".join(sorted({f for v in need.values() for f in v})[:5]))
         for m in image_record.get("missing", []):
             say(f"  NOT RUN on HEAD's image: {m}")
         for c in image_record.get("unexplained", []):
-            say(f"  RED and not a known red: {c}")
+            say(f"  RED: {c}")
         for m in image_record.get("skipped", []):
             say(f"  ran with every test skipped (not covered): {m}")
         if "error" in image_record:
@@ -1973,16 +1640,12 @@ GATE_FUNCTIONS = {
     **{name: (lambda t, name=name: _command_gate(t, name)) for name in GATE_COMMANDS},
     "host_load": _host_load_gate,
     "ascii": lambda t: (_ascii_gate(t), {}),
-    "cost_obligations": lambda t: (_reported_check_gate(
-        t, "cost_obligations", ["tools/cost_obligations.py", "--check"]), {}),
     "book_roots": lambda t: (_reported_check_gate(
         t, "book_roots", ["tools/book_roots_check.py"]), {}),
     "harness": lambda t: (_reported_check_gate(
         t, "harness", ["tools/harness_check.py", "--quiet"]), {}),
     "box_step": _box_step_gate,
     "lock_delta": _lock_delta_gate,
-    "baseline": _baseline_gate,
-    "premise_baseline": _premise_baseline_gate,
     "secrets": _secrets_gate,
     "unit": _unit_gate,
     "image": _image_gate,
@@ -2111,12 +1774,6 @@ def lane_check_box_commands(t: Train, gates: dict | None = None,
         commands["box_" + name] = (("NONE", reason) if box_gate["rc"] == 0 else
                                   ("BOX", shlex.join(["timeout", "3600", "sh", "tools/remote_check.sh",
                                                      "hbox", "--no-dirty", "--install-certs", "--cmd", command])))
-    # Neither boxstep nor certify's emits records either of these checks.
-    # A box-step record therefore cannot discharge their obligations.
-    for name, command in (("reach", "python3 tools/reach_check.py --summary --strict"),
-                          ("keystone_cert", shlex.join(GATE_COMMANDS["keystone"]))):
-        commands[name] = ("BOX", shlex.join(["timeout", "3600", "sh", "tools/remote_check.sh",
-                                            "hbox", "--no-dirty", "--install-certs", "--cmd", command]))
     changed = changed_paths(t) if files is None else files
     modules = sorted(image_modules(changed, t.root))
     if image_gate["rc"] != 0 and modules:
@@ -2299,7 +1956,6 @@ def cmd_push(t: Train, args) -> int:
             raise TrainError(f"push to {target} failed: {p.stderr.strip()}")
     carried = ", ".join(f"{l['name']}@{l['sha'][:9]}" for l in st["lanes"] if l["status"] == "merged")
     say(f"dev {old[:9]}..{head[:9]} carried: {carried or '-'}")
-    say("verdict: " + verdict_words(known_reds_at(t, "HEAD"), amendments_at(t, "HEAD")))
     b = gates["box_step"]
     say("box step: " + (f"inherited from {b['inherits_from'][:9]} ({b['box']})" if "inherits_from" in b
                         else f"ran at HEAD on {b['ran_on']}"))
@@ -2308,7 +1964,7 @@ def cmd_push(t: Train, args) -> int:
     landed = rename_landed_readies(t, [l for l in st["lanes"] if l["status"] == "merged"])
     train_name = f"train {args.label}" if getattr(args, "label", None) else t.branch
     say(f"STATE: dev = {head[:9]} ({train_name}): carries {carried or '-'}; "
-        f"{verdict_words(known_reds_at(t, 'HEAD'), amendments_at(t, 'HEAD'))}; {shrink}"
+        f"{shrink}"
         + (f"; READY landed: {', '.join(landed)}" if landed else ""))
     return 0
 
@@ -2422,10 +2078,6 @@ def cmd_status(t: Train, args) -> int:
     if st.get("box_wall"):
         w = st["box_wall"]
         say(f"  certify {st.get('box_run')}: install {w['install']}s, certify {w['certify']}s, emit {w['emit']}s, total {w['total']}s")
-    try:
-        say("  verdict: " + verdict_words(known_reds_at(t, "HEAD"), amendments_at(t, "HEAD")))
-    except TrainError as error:
-        say(f"  verdict: {error}")
     fork = git(t.root, "merge-base", "HEAD", train_base(), check=False).stdout.strip()
     say("  " + (shrink_words(t, fork, head) if fork else "shrink: unavailable (no fork point with origin/dev)"))
     say("  " + census_words(st.get("census"), head))

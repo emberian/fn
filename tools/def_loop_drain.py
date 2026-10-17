@@ -1987,77 +1987,6 @@ def check_book(book: str, ref="origin/dev", tree_refs=None, write=False, skip=()
 
 
 # -----------------------------------------------------------------------------
-# planning/proof-events.json cites theorems by name.  A conversion deletes the
-# hand bridges (NAME-loop-is-rev-onto ...) those rows cite, and ledger.py
-# --write then fails "no such theorem".  The property now lives in the
-# def-loop library bridge for the shape; re-point each dangling citation there.
-
-EVENTS = "planning/proof-events.json"
-LOOPISH = re.compile(r"-loop-(?:is|of)-[a-z-]+$|-loop-natp$")
-
-
-def library_bridge(form: str) -> str | None:
-    """The books/def-loop.lisp theorem that carries a def-loop form's bridge."""
-    shape = re.search(r":shape\s+:(\w+)", form)
-    shape = shape.group(1) if shape else "map"
-    base = re.search(r"\s:base\s", form) is not None
-    if shape == "map":
-        if base:
-            return "fn-dl-map-base-loop-is-revappend"
-        if re.search(r":keep-order\s+:skip-first", form):
-            return "fn-dl-map-skip-loop-is-revappend"
-        if re.search(r":acc-fix\b", form):
-            return "fn-dl-map-fixed-loop-is-revappend"
-        return "fn-dl-map-loop-is-revappend"
-    if shape == "take":
-        return "fn-dl-take-base-loop-is-revappend" if base else "fn-dl-take-loop-is-revappend"
-    return {"sum": "fn-dl-sum-loop-is-plus", "concat": "fn-dl-concat-loop-is-revappend",
-            "into": "fn-dl-into-loop-is-append", "step": "fn-dl-step-loop-is-revappend",
-            "fold": "fn-dl-fold-loop-is-revappend", "thread": "fn-dl-thread-loop-is-revappend", "foldr": "fn-dl-foldr-loop-is-foldr"}.get(shape)
-
-
-def tree_defs():
-    """(set of defthm names, {def-loop name: form text}) over books/ and tests/acl2/."""
-    thms, forms = set(), {}
-    for pat in ("books/*.lisp", "tests/acl2/*.lisp"):
-        for p in ROOT.glob(pat):
-            t = p.read_text(errors="replace")
-            thms.update(re.findall(r"\(defthmd?\s+([^\s()]+)", t, re.I))
-            for m in re.finditer(r"\(def-loop\s+([^\s()]+)", t, re.I):
-                end = t.find("\n(", m.start())
-                forms[m.group(1).lower()] = t[m.start():end if end > 0 else len(t)]
-    return {x.lower() for x in thms}, forms
-
-
-def repoint_events(write: bool):
-    """Dangling theorem events in the curated map -> (renames, unresolved)."""
-    path = ROOT / EVENTS
-    if not path.exists():
-        return [], []
-    data = json.loads(path.read_text())
-    thms, forms = tree_defs()
-    renames, unresolved = [], []
-    for t in data.get("targets", []):
-        out, seen = [], set()
-        for ev in t.get("events", []):
-            name = ev.get("name", "")
-            if (ev.get("kind", "theorem") == "theorem" and name.lower() not in thms
-                    and LOOPISH.search(name)):
-                fn = LOOPISH.sub("", name).lower()
-                lib = library_bridge(forms[fn]) if fn in forms and fn != name.lower() else None
-                if lib is None or lib not in thms:
-                    unresolved.append((t["id"], name))
-                else:
-                    renames.append((t["id"], name, lib))
-                    ev = dict(ev, name=lib)
-            if ev["name"] in seen:
-                continue
-            seen.add(ev["name"])
-            out.append(ev)
-        t["events"] = out
-    if write and renames:
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-    return renames, unresolved
 
 
 def load_refs():
@@ -2089,8 +2018,6 @@ def main(argv=None):
     ap.add_argument("--out")
     ap.add_argument("--ref", default="origin/dev")
     ap.add_argument("--exclude-file", help="books/NAME.lisp per line: busy books, tagged excluded")
-    ap.add_argument("--ledger", action="store_true",
-                    help="only the proof-events.json citations (with --apply: re-point them)")
     ap.add_argument("--skip", action="append", default=[], help="a twin NAME to leave unconverted (repeatable)")
     ap.add_argument("--plan", action="store_true", help="list books with take-now twins")
     a = ap.parse_args(argv)
@@ -2126,21 +2053,13 @@ def main(argv=None):
         else:
             print(text)
         return 0
-    if not a.books and not a.ledger:
+    if not a.books:
         ap.error("name books, or --residual")
     rc = 0
     for b in a.books:
         b = b.removeprefix("books/").removesuffix(".lisp")
         rep, _ = check_book(b, a.ref, refs, write=a.apply, skip=set(a.skip))
         print_report(rep)
-    renames, unresolved = repoint_events(a.apply)
-    if a.apply or a.ledger or unresolved:
-        for ident, name, lib in renames:
-            print(f"  ledger {ident}: {name} -> {lib}" + ("" if a.apply else " (would re-point)"))
-    for ident, name in unresolved:
-        print(f"  DANGLING {EVENTS} {ident}: {name}: no theorem and no def-loop library bridge")
-    if unresolved or (a.ledger and renames and not a.apply):
-        rc = 1
     return rc
 
 

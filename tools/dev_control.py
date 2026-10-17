@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.12
-"""Full native control at dev: list modules, launch detached, and diff its reds."""
+"""Full native control at dev: list modules, launch detached, and read its reds."""
 from __future__ import annotations
 
 import argparse
@@ -170,10 +170,9 @@ def result_details(text: str) -> dict:
     return details
 
 
-def classify(expected: list[str], results: dict, details: dict, rows: list[dict],
+def classify(expected: list[str], results: dict, details: dict,
              box: str, directory: str) -> dict:
-    known = {row['subject'] for row in rows if row['kind'] == 'native'}
-    new, retire, not_run = [], [], []
+    new, not_run = [], []
     for module in sorted(set(expected) | set(results)):
         log = box + ':' + directory.rstrip('/') + '/logs/test-' + module + '.log'
         def entry(subject, **fields):
@@ -200,16 +199,12 @@ def classify(expected: list[str], results: dict, details: dict, rows: list[dict]
                 not_run.append(entry(case, reason=reasons.get(case, 'skipped (no reason recorded)')))
         reds = [case for case, status in cases.items() if status not in train.IMAGE_CASE_PASS]
         for case in sorted(reds):
-            if case not in known:
-                new.append(entry(case, status=cases[case]))
+            new.append(entry(case, status=cases[case]))
         # A failed module without a red case is still a red: includes build refusal,
         # node death before a case, and module-level errors absent from case records.
         if rc not in (0, train.IMAGE_RC_ALL_SKIPPED) and not reds:
             new.append(entry(module, rc=rc, reason='module failed without a red case'))
-        for case, status in sorted(cases.items()):
-            if case in known and status == 'ok':
-                retire.append(entry(case))
-    return {'new': new, 'retire': retire, 'not_run': not_run}
+    return {'new': new, 'not_run': not_run}
 
 
 def diff(root: Path, label: str) -> dict:
@@ -217,16 +212,13 @@ def diff(root: Path, label: str) -> dict:
         raise train.TrainError('invalid run label')
     record = read_record(train.image_record_path(SimpleNamespace(root=root), label))
     sha, images_from = run_identity(root, record)
-    rows = train.known_reds_at(SimpleNamespace(root=root), sha)
-    if rows is None:
-        raise train.TrainError(f'no known-red baseline at run SHA {sha}')
     script = 'test -d ' + shlex.quote(record['dir']) + ' && { ' + train.image_read_script(record['dir']) + '; }'
     result = subprocess.run(['timeout', '60', 'ssh', '-n', record['box'], script],
                             capture_output=True, text=True, timeout=65)
     if result.returncode:
         raise train.TrainError(f'reading {record["box"]}:{record["dir"]} failed (rc {result.returncode}): {result.stderr.strip()}')
     outcome = classify(modules(root, sha), train.parse_image_results(result.stdout),
-                       result_details(result.stdout), rows, record['box'], record['dir'])
+                       result_details(result.stdout), record['box'], record['dir'])
     report = dict(label=label, sha=sha, recorded_at=time.time(), box=record['box'],
                   directory=record['dir'], images_from=images_from, **outcome)
     destination = root / 'build/dev-control' / (label + '.json')
@@ -234,7 +226,7 @@ def diff(root: Path, label: str) -> dict:
     temporary = destination.with_suffix('.tmp')
     temporary.write_text(json.dumps(report, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
     temporary.replace(destination)
-    for title, key in [('NEW reds', 'new'), ('RETIRE candidates', 'retire'), ('NOT RUN', 'not_run')]:
+    for title, key in [('NEW reds', 'new'), ('NOT RUN', 'not_run')]:
         print(f'{title}: {len(report[key])}')
         for entry in report[key]:
             line = f'RED {entry["subject"]} {entry["log"]}' if key == 'new' else f'{entry["subject"]} {entry["log"]}'

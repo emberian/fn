@@ -67,7 +67,6 @@ BASELINE = ROOT / "tools" / "host_callers_baseline.json"
 HOST_PREFIXES = ("host/",)
 LISP_SUFFIXES = (".lisp", ".lsp")
 SCRIPT_SUFFIXES = (".py", ".sh", ".scm", ".c", ".h", ".mjs", ".in", ".service", ".toml")
-GENERATED = {"planning/current-view.json"}
 TOKEN = re.compile(r"[A-Za-z0-9*+<>=/!?%&$^~_.-]+")
 
 
@@ -84,7 +83,7 @@ def bare(name: str) -> str:
 
 def category(relative: str) -> str:
     """The kind of mention a file makes (lisp files get lisp/string first)."""
-    if relative in GENERATED or relative.startswith("planning/evidence/"):
+    if relative.startswith("planning/evidence/"):
         return "doc"
     if relative.endswith((".md", ".txt")):
         return "doc"

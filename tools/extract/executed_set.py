@@ -45,8 +45,7 @@ unit outside R references a unit in R (so every static caller of a removable
 unit, inlined or local calls included, is itself removable).  Roots, variables,
 globals, stobjs, declarations and unobserved names are never in R.  BOOKS_TSV
 attributes units to books for the family table; with TREE, the last column counts
-removable units whose book no claim names (claimed_books: a path in the claim
-registers or specs, or the book of a critical keystone).
+removable units whose book no claim names (claimed_books: a path in specs/*.md).
 """
 from __future__ import annotations
 
@@ -404,10 +403,6 @@ def family(uid, books):
     return "unattributed"
 
 
-CLAIM_REGISTERS = ("planning/proofs.json", "planning/critical-evidence.json",
-                   "planning/critical-owed.json", "planning/requirements.json")
-
-
 def book_key(book: str) -> str:
     """books/x/y.lisp, /abs/tree/books/x/y or (:FN . "books/x/y") -> books/x/y"""
     m = re.search(r'"([^"]+)"', book)
@@ -420,23 +415,12 @@ def book_key(book: str) -> str:
     return key[:-5] if key.endswith(".lisp") else key
 
 
-def claimed_books(tree: Path, thm_book) -> set:
-    """Books a claim names: by path in the claim registers and specs/*.md, or as the
-    book holding a critical keystone (planning/critical-base.json, critical-owed.json)."""
+def claimed_books(tree: Path) -> set:
+    """Books a claim names: by path in specs/*.md."""
     named = set()
-    texts = [tree / p for p in CLAIM_REGISTERS] + sorted((tree / "specs").glob("*.md"))
-    for t in texts:
+    for t in sorted((tree / "specs").glob("*.md")):
         if t.is_file():
             named.update(m for m in re.findall(r"((?:books|host)/[\w./-]+?)\.lisp", t.read_text()))
-    for reg in ("planning/critical-base.json", "planning/critical-owed.json"):
-        f = tree / reg
-        if not f.is_file():
-            continue
-        entries = json.loads(f.read_text()).get("entries", {})
-        for name in (entries if isinstance(entries, dict) else [e.get("name") for e in entries]):
-            b = thm_book.get("ACL2::" + str(name).upper())
-            if b:
-                named.add(book_key(b))
     return named
 
 
@@ -456,7 +440,7 @@ def census(args):
             if len(parts) >= 2:
                 kind = parts[2] if len(parts) > 2 else "fn"
                 (books if kind == "fn" else thm_book).setdefault(parts[0], parts[1])
-    claimed = claimed_books(Path(args.tree), thm_book) if args.tree else None
+    claimed = claimed_books(Path(args.tree)) if args.tree else None
     octets = {}
     if args.sizes:
         for l in Path(args.sizes).read_text().splitlines():

@@ -31,10 +31,6 @@ class DevControlTests(TrainBase):
         (self.work / 'tools/train.py').write_text(
             f'SERVED_NATIVES = ({self.RULE_ONLY!r},)\n'
             f'IMAGE_RULES = (("fixture", ("host/native/",), SERVED_NATIVES + ({self.A!r},)),)\n')
-        rows = [dict(kind='native', subject=self.A + '.T.test_retire', item='KR-X', owner='B', evidence='fixture'),
-                dict(kind='native', subject=self.B + '.T.test_known', item='KR-X', owner='B', evidence='fixture'),
-                dict(kind='native', subject=self.SKIP + '.T.test_skip', item='KR-X', owner='B', evidence='fixture')]
-        (self.work / train.KNOWN_REDS).write_text(json.dumps({'rows': rows}) + '\n')
         self.sha = self.commit(self.work, 'native control fixture')
         self.label = 'devctl-' + self.sha[:12]
         self.record_path = self.work / 'build/hbox-native' / (self.label + '.run')
@@ -160,14 +156,14 @@ class DevControlTests(TrainBase):
         results = train.parse_image_results(text)
         subject = module + '.ForeignFormatOpenTest.test_a_store_of_another_format_is_refused_by_name'
         self.assertEqual(results[module]['cases'], {subject: 'FAIL'})
-        rows = json.loads((test_budget.ROOT / train.KNOWN_REDS).read_text())['rows']
-        self.assertTrue(any(row['subject'] == subject for row in rows))
         verdict, detail = train.image_verdict({module: ['fixture']},
-            dict(source=self.sha, modules=results), self.sha, rows)
-        self.assertEqual((verdict, detail['known_reds']), (0, [subject]))
+            dict(source=self.sha, modules=results), self.sha)
+        self.assertEqual((verdict, detail['unexplained']), (1, [subject]))
         classified = dev_control.classify([module], results, dev_control.result_details(text),
-                                          rows, 'hbox', '/fixture')
-        self.assertEqual(classified, dict(new=[], retire=[], not_run=[]))
+                                          'hbox', '/fixture')
+        self.assertEqual(classified, dict(
+            new=[dict(subject=subject, module=module, log=f'hbox:/fixture/logs/test-{module}.log', status='FAIL')],
+            not_run=[]))
 
     def test_launch_refuses_load_at_or_above_24(self):
         for load in (24, 24.01, 50):
@@ -216,15 +212,14 @@ class DevControlTests(TrainBase):
         self.assertTrue(fetch[-1].startswith('+refs/heads/dev:refs/dev-control/'))
         self.assertEqual(sh(self.work, 'git', '-C', str(self.work), 'for-each-ref', 'refs/dev-control/').stdout, '')
 
-    def test_diff_classifies_new_retire_not_run_and_keeps_skip_reasons(self):
+    def test_diff_classifies_new_and_not_run_and_keeps_skip_reasons(self):
         self.record()
         rc, out, err = self.invoke('diff', self.label)
         self.assertEqual(rc, 1, err)
         report = self.report()
         self.assertEqual(report['sha'], self.sha)
         self.assertEqual({entry['subject'] for entry in report['new']},
-                         {self.A + '.T.test_new', self.FAILED})
-        self.assertEqual([entry['subject'] for entry in report['retire']], [self.A + '.T.test_retire'])
+                         {self.A + '.T.test_new', self.B + '.T.test_known', self.FAILED})
         not_run = {entry['subject']: entry for entry in report['not_run']}
         self.assertEqual(set(not_run), {self.MISSING, self.EMPTY, self.SKIP, self.FAILED,
                                        self.A + '.T.test_partial_skip'})
@@ -233,31 +228,14 @@ class DevControlTests(TrainBase):
         self.assertEqual(not_run[self.EMPTY]['reason'], 'no test executed')
         self.assertEqual(not_run[self.MISSING]['reason'], 'missing module result')
         self.assertIn(f'RED {self.FAILED} hbox:/box/native-run/logs/test-{self.FAILED}.log', out)
-        self.assertIn('RETIRE candidates: 1', out)
         self.assertIn('NOT RUN: 5', out)
-        self.assertNotIn('RED ' + self.B + '.T.test_known', out)
-
-    def test_diff_uses_baseline_and_module_list_at_run_sha(self):
-        self.record()
-        # Current working bytes try to hide the red; they are not the run baseline.
-        path = self.work / train.KNOWN_REDS
-        data = json.loads(path.read_text())
-        data['rows'].append(dict(data['rows'][0], subject=self.A + '.T.test_new'))
-        path.write_text(json.dumps(data))
-        (self.work / 'tests/test_native_after_run.py').write_text('# later\n')
-        self.commit(self.work, 'later baseline and test')
-        rc, _, err = self.invoke('diff', self.label)
-        self.assertEqual(rc, 1, err)
-        report = self.report()
-        self.assertEqual(report['sha'], self.sha)
-        self.assertIn(self.A + '.T.test_new', [entry['subject'] for entry in report['new']])
-        self.assertNotIn('tests.test_native_after_run', [entry['subject'] for entry in report['not_run']])
+        self.assertIn('RED ' + self.B + '.T.test_known', out)
 
     def test_diff_exit_zero_only_when_new_is_empty_even_with_not_run(self):
         self.record()
         self.text = self.text.replace(f'RC {self.FAILED} 16', f'RC {self.FAILED} 0')
-        self.text = self.text.replace('"FAIL"', '"ok"')
-        self.text = self.text.replace(f'RC {self.A} 1', f'RC {self.A} 0')
+        self.text = self.text.replace('"FAIL"', '"ok"').replace('"ERROR"', '"ok"')
+        self.text = self.text.replace(f'RC {self.A} 1', f'RC {self.A} 0').replace(f'RC {self.B} 1', f'RC {self.B} 0')
         rc, _, err = self.invoke('diff', self.label)
         self.assertEqual(rc, 0, err)
         self.assertEqual(self.report()['new'], [])
@@ -316,10 +294,10 @@ class DevControlTests(TrainBase):
         os.utime(old, (1, 1))
         with mock.patch.object(dev_control.time, 'time', return_value=self.report()['recorded_at'] + 7200):
             line = dev_control.status_line(self.work)
-        self.assertEqual(line, f'dev control: {self.sha} age 2.0 hours NEW 2')
+        self.assertEqual(line, f'dev control: {self.sha} age 2.0 hours NEW 3')
         status = self.train('status')
         self.assertEqual(status.returncode, 0, status.stderr)
         lines = [line for line in status.stdout.splitlines() if line.startswith('dev control:')]
         self.assertEqual(len(lines), 1)
         self.assertIn(self.sha, lines[0])
-        self.assertIn('NEW 2', lines[0])
+        self.assertIn('NEW 3', lines[0])
