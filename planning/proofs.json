@@ -17935,14 +17935,14 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/productive-transfer.lisp",
         "tests/acl2/productive-transfer-tests.lisp",
         "specs/productive-contract.md",
         "tests/test_native_peering.py"
       ],
-      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "progress_note": "2026-10-02 Codex: repaired hints for the current counted owner result and count-preserving feed update; original statements and executable definitions unchanged. books/productive-transfer and tests/acl2/productive-transfer-tests certified on hbox with 2 jobs in certify-20261002T202018Z-898247 (manifest indexed and archived). Complete literal positive/removal/mutant teeth pass. Current-source native execution was not run by this proof-only closeout; remote acceptance, inbound durable transfer and full READ/auth/wire composition remain separate obligations.",
       "events": [
         "fn-pct-tick-offers-the-queued-article"
       ]
@@ -17957,14 +17957,14 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/productive-transfer.lisp",
         "tests/acl2/productive-transfer-tests.lisp",
         "specs/productive-contract.md",
         "tests/test_native_peering.py"
       ],
-      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "progress_note": "2026-10-02 Codex: repaired hints for the current counted owner result and count-preserving feed update; original statements and executable definitions unchanged. books/productive-transfer and tests/acl2/productive-transfer-tests certified on hbox with 2 jobs in certify-20261002T202018Z-898247 (manifest indexed and archived). Complete literal positive/removal/mutant teeth pass. Current-source native execution was not run by this proof-only closeout; remote acceptance, inbound durable transfer and full READ/auth/wire composition remain separate obligations.",
       "events": [
         "fn-pct-tick-hands-nothing-otherwise"
       ]
@@ -17979,14 +17979,14 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/productive-transfer.lisp",
         "tests/acl2/productive-transfer-tests.lisp",
         "specs/productive-contract.md",
         "tests/test_native_peering.py"
       ],
-      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "progress_note": "2026-10-02 Codex: repaired hints for the current counted owner result and count-preserving feed update; original statements and executable definitions unchanged. books/productive-transfer and tests/acl2/productive-transfer-tests certified on hbox with 2 jobs in certify-20261002T202018Z-898247 (manifest indexed and archived). Complete literal positive/removal/mutant teeth pass. Current-source native execution was not run by this proof-only closeout; remote acceptance, inbound durable transfer and full READ/auth/wire composition remain separate obligations.",
       "events": [
         "fn-pct-requested-article-is-handed-to-the-local-transport"
       ]

@@ -1,121 +1,124 @@
-# Now — 2026-09-28
+# Now — 2026-10-02
 
-The one page a new agent reads first: where dev is, what is being worked on,
-and where the rest is. Written by lane records-steward from dev `940bc3104`
-at about 21:30 UTC. The page it replaces (2026-09-27, format 9) is in git
-history; the log before that is [archive/now-2026-09-26.md](archive/now-2026-09-26.md).
+The next phase starts from rewritten `origin/dev` **4aa332295**. Stage 0
+restored serving; the page representation and carried-invariant work remain
+the main implementation direction. The September 28 version of this page is
+historical (available in git), not the current roster or release verdict.
 
 ## Coordinates
 
-AGENTS.md keeps four coordinates apart; none implies another.
+- **Source.** The history rewrite landed on October 2. The tracked
+  [commit map](commit-map-20261002.txt) translates old source revisions;
+  old image names and archived evidence retain their original identities.
+  Create fresh worktrees under `build/lanes/` from rewritten `origin/dev`.
+  Do not fetch the pre-rewrite `hbox-archive` history into the working repo.
+- **Proof.** The previous coordinator's final root-failure inventory names
+  only `books/productive-transfer` (local record
+  `build/coordinator/bl-cert-roots-1ffe1dcd5.txt`). This is a historical
+  certification result, not a fresh whole-tree verdict. Current per-book
+  evidence is computed by `tools/green_check.py`; the
+  [current view](current.md) keeps capability certificates separate from
+  implementation, image qualification and deployment.
+- **Image.** The handoff reports an image set for pre-rewrite `77b7d258d`
+  at `hbox:/tank/fn/images/77b7d258d62f5d3d4a7838f8fabf61bfb518eeec`.
+  Its init, log, recovery, owner, crash-model, reader-client, auth, mux and
+  state-checkpoint modules passed. `over_pins` failed all four cases.
+  That image predates the final source changes; it is not qualification of
+  current dev or completion of the release checklist.
+- **Deployment.** The last recorded deployments remain the public
+  `fn.fg-goose.online` node and the LAN hbox node on `a3553e6b`, format 10.
+  Their records are in [current-view.json](current-view.json). They have
+  not been inspected or changed during this takeover.
 
-- **Source.** dev as above. [The current view](current.md) (generated) gives
-  each capability's host line, keystone and certificate at this revision.
-- **Proof.** Each capability's certificate is named in the current view;
-  merged lanes' manifests are under
-  [`evidence/manifests/`](evidence/manifests/), cited in each batch's
-  "cite round" commit.
-- **Qualified image.** None of the current store format. The newest
-  qualification record is [qual-69046a76](evidence/qual-69046a76-2026-09-26.md)
-  (2026-09-26, format 8). Qualification now runs once, in the prerelease
-  convergence checklist ([release-v6.6.0](release-v6.6.0.md) section 2b),
-  not per change (ember, 2026-09-28).
-- **Deployment.** Two live nodes, both on fn 6.6.0 built from dev
-  `a3553e6b4a23` (release `fn-6.6.0-linux-x86_64.tar.gz`, sha256
-  `401c6324...6bf0`), both with format-10 stores, peered (the fsn1 node
-  accepts node #2's inbound feed; node #2's push to fsn1 is PKT-882). Neither
-  image is qualified; each is a release build of that source.
-  - `fn.fg-goose.online`, the public node on the fsn1 anchor (88.99.126.35;
-    119 STARTTLS, 563 TLS, Let's Encrypt), logins by invitation.
-  - node #2, hbox `/tank/fn/node` (LAN only, self-signed).
-  Both were migrated to format 10 on 2026-09-28 by `store export`/`store
-  import` ([node-migrate](evidence/node-migrate-2026-09-28.md)). That was the
-  last migration: at the cut every node is redeployed fresh (below).
+Evidence bytes are archived by hash on hbox; the committed
+[evidence index](evidence-index.tsv) names them. Use `tools/evidence_store.py`
+to retrieve a logical `planning/evidence/...` path. Evidence files do not go
+back into git history. The laptop repository budget is 30 GB; never remove
+another session's files or caches to meet it.
 
-## The plan: complete, then cut
+## First closeout
 
-ember, 2026-09-28 20:21Z: "i don't want to defer any of the major work
-we've identified .... complete the work! get it all on dev. get everything
-gucci. *and then* we can cut 6.6.0. it isn't a race :)"
+Codex reproduced the outbound offer theorem's failure on the rewritten
+source. The implementation now returns `fn-own-feed-port-result-counted`
+and sends through `fn-feed-with-queue-preserving-counts`; the productive
+proof hints still opened the older constructors. Updating only those hints
+certifies all three original statements (PRF-1055, PRF-1056, PRF-1062), with
+no new hypotheses or executable changes. The book and its existing teeth
+passed on hbox with two jobs in `certify-20261002T202018Z-898247`; its
+manifest is indexed and archived as
+`planning/evidence/manifests/certify-20261002T202018Z-898247.json`. This
+closes the root named in the prior inventory, not a fresh whole-tree or
+native qualification. The affected-books strict green gate passes. The farm
+also reports 14 cached dependencies without an indexed manifest matching
+their current source and closure; those citation gaps remain open. Remote acceptance and inbound durable transfer remain
+separate obligations in the
+[productive contract](../specs/productive-contract.md).
 
-The list is `build/coordinator/COMPLETE-BEFORE-6.6.0.md` (coordinator-owned,
-not tracked; rows A to P, each with its lane). In short:
+## Work to finish
 
-- **A. Store representation**: records read from the committed page image;
-  exact prefix binding; adversarial swaps; async page faults; readers by
-  access pattern; root lifetime; the tree-codec split; `reclaim --dry-run`.
-- **B. Memory (F8)**: the admission gap; the per-record heap term from the
-  profile; the 100k reopen; credit admission (GPT-6's recommendation, the
-  only option that reaches 256 MiB accountable); chunked bodies.
-- **C. Proof speed**: chain-first scheduling with fewer jobs; targeted
-  fan-in cuts; one image umbrella; the depth debt; the registry merge and
-  the aggregate certification budget.
-- **D-H.** One config edit and the legacy deletions; the writable extracted
-  build and Chicken speed; the adopted F4 time bars; the native reds and
-  the Python host's retirement; paused-peer health and the node redeploy.
-- **I-P** (from the archaeology of 2026-09-28): NNTP, auth/TLS and
-  durability correctness bugs; F2's join discharge and the F1/F3 rulings;
-  the generators (definterface, one profile source, defevent); the Python
-  diet; real peers; online compaction and the operator surface; the records
-  (this page, [decisions](decisions.md), the backlog); ember's time-bound
-  items.
+These are implementation priorities, not a declaration of release scope.
+The architectural destination remains the
+[store representation design](design-store-representation-2026-10-01.md)
+and D41–D47 in the [decision register](decisions.md).
 
-Then, once: the prerelease convergence checklist
-([release-v6.6.0](release-v6.6.0.md) section 2b), a quiet candidate
-qualified, the format word renamed `fn-store-1`, the tag `v6.6.0`
-([D37](decisions.md): the release sequence), and every node redeployed fresh.
+1. **Reclaim and reader lifetime.** Correct GROUP's post-reclaim count and
+   put OVER on its intended cursor route; close the four `over_pins` cases.
+   Add arena forgetting with a handle-liveness argument so reclaimed
+   payloads release resources before restart. Old pinned readers, cold-read
+   workers and generation retirement must agree on when storage is free.
+2. **Stage 5: owner state and dispatch.** Move the owner's two ACL2 STATE
+   globals into a dedicated stobj, establish its invariant on recovery and
+   preserve it through every writer, then enable a real raw-dispatched
+   entry. The previous lane's tier-A conversions are unadmitted WIP, not a
+   completed prerequisite. The trap alone skips no validation and must not
+   impose per-call synchronization while there are zero raw entries.
+3. **Complete discovery and bounded readers.** Implement the accepted LIST
+   policy below; narrow the cursor-step guard, finish off-lock cold reads
+   and deadline refresh before NEWNEWS resumable wiring. Complete bounded
+   withdrawal-index refresh (PRF-1231), offer carry (PRF-1233), remaining
+   control walks, mux allocation and status tally costs.
+4. **Authority and persistence composition.** Complete the explicit
+   authority field and its producer before restoring D46's consumer event
+   grammar. BP transit currently reports `:ungoverned`. Finish the retire
+   deadline fix, recovery refinement (PRF-1223), and stranded/init work.
+5. **Simplify while completing.** Use the existing `def-loop`,
+   `def-representation` and `def-carried` machinery. Develop carried-index
+   declarations and witness generation against real consumers, with
+   visit/work bounds where cost is claimed. Fold the paged catalog onto the
+   shared representation machinery as it becomes the served default.
+6. **Finish the wider representation design.** Stage 5 is not the end:
+   stage 6's typed resource vector and per-operation charging, then stage
+   7's bounded index growth, checkpoint reserve and composed recovery
+   argument remain in the design. Reconcile their actual landed portions
+   before assigning work.
+7. **Harvest useful unlanded work.** The October 2 triage identifies
+   residual proof, peering, LTP and diagnostic work. Apply narrow current
+   slices, reconcile their consumers and certify them; branch ancestry or
+   an old READY report is not a completion claim.
 
-## Decided on 2026-09-28 (the register has the words)
+The detailed local handoff is
+`build/coordinator/HANDOFF-2026-10-02-to-astra.md`; the lane notes and
+`unlanded-triage-2026-10-02.md` beside it are historical starting points.
+No previous lane roster implies a currently running agent.
 
-- **No migrations** (D38 withdrawn): one store format, no legacy readers or
-  migration code; `store export`/`import` is backup and restore of this
-  format.
-- **Qualify once**: lanes implement and prove, certify their affected roots
-  and run the natives their change exercises; full native sets, the OpenBSD
-  guest, F1-F8, scale and 1M runs happen once at convergence.
-- **Scale by curve**: 1k to 100k, fitted and extrapolated; no 1M runs unless
-  the fit is ambiguous.
-- **F8 split and F4 bars adopted**; **no ACL2 patch** (stock w28 on both
-  boxes); **the source-tree reorganisation not adopted** (chain-first
-  scheduling, fan-in cuts and one image umbrella instead:
-  [architecture-recommendation](architecture-recommendation-2026-09-28.md)).
-- Each is recorded with ember's words and the still-open questions in
-  [decisions](decisions.md), "2026-09-28: decision packets recorded".
+## Decisions and convergence
 
-## What changed since the last page
+Ember accepted LIST option A as scoped in the October 2 consultation:
+LIST, LIST ACTIVE and LIST COUNTS use one coherent latest **completed durable**
+discovery view, restricted to the client, without advancing its article pin,
+selection or cursor. Implementation must deliberately amend NNT-042 and
+specify low-water behavior and the related discovery commands' view policies.
+Catalog top is not necessarily a completed durable view. The local decision
+record is `build/coordinator/decisions/list-view-2026-10-02.md`.
 
-- **Format 10**: BLAKE3 as fn's digest everywhere fn chooses (SHA-256 only
-  where an RFC forces it: Cancel-Lock), LZ4 extents, the page-backed arena
-  store (arena-store 1-6), served columns.
-- **Release machinery**: the cut script, `tools/fundamentals.py`, the
-  version sequence (6.6.0 first), the fail-closed extraction gate and a
-  read-only extracted build.
-- **Nodes**: the public node deployed 2026-09-27, node #2 on hbox, both
-  migrated to format 10 and peered; the site as newsgroup FAQ articles in
-  `fn.docs`.
-- **Proof tooling**: one ACL2 toolchain (w28) on both boxes with shared
-  certificates; the laptop is a REPL target (`tools/proof_repl.py --host
-  auto`); defprotocol; the defkeystone pilot.
+The exact meaning of “v6.6.0-ready” was explicitly reserved for a later
+conversation. That does not block engineering closeouts or supersede D39's
+instruction to complete the major work before cutting. The old
+`build/coordinator/COMPLETE-BEFORE-6.6.0.md` needs reconciliation against the
+current design and source before serving as the final release inventory.
 
-## Open, as of this page
-
-- The rows of COMPLETE-BEFORE-6.6.0.md; the fundamentals F1-F8 stay OPEN in
-  [release-v6.6.0](release-v6.6.0.md) until the convergence run shows them.
-- The backlog [backlog-2026-09-25](backlog-2026-09-25.md): every open line
-  carries a triage mark of 2026-09-28 (done, duplicate, a COMPLETE-BEFORE
-  row, won't with ember's decision, or a question for ember).
-
-## Lanes
-
-Lanes run on Claude Opus 5.5 in `build/lanes/<name>` on `lane/<name>`,
-under `build/coordinator/queue/LANE-PREAMBLE.txt` and closeout-common.txt;
-the batch runner merges to dev. The coordinator's log is
-`build/coordinator/WAVE-STATE.md` (newest on top, not tracked). How lanes
-work: [how we work](how-we-work.md).
-
-## Where to read next
-
-[The current view](current.md), [decisions](decisions.md),
-[requirements](requirements.json), [proofs](proofs.json),
-[the release checklist](release-v6.6.0.md), and the docs index
-[docs/README.md](../docs/README.md).
+Follow [how we work](how-we-work.md): certify affected roots with warm
+artifacts, keep book and native evidence distinct, integrate completed
+changes, and qualify one immutable candidate at convergence. The
+[release checklist](release-v6.6.0.md) remains a gate, not a statement that
+those checks have passed.

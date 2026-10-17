@@ -102,7 +102,8 @@
                        '(fn-own-feed-port-tick-peer fn-own-feed-port-peer
                          fn-feed-live-port-step fn-feed-live-next fn-feed-live-records
                          fn-feed-live-effects fn-feed-tick-step fn-feed-tick-records
-                         fn-feed-offer fn-own-feed-port-result fn-own-feed-port-status
+                         fn-feed-offer fn-own-feed-port-result fn-own-feed-port-result-counted
+                         fn-own-feed-port-status
                          fn-own-feed-port-table fn-own-feed-port-records fn-own-feed-port-effects
                          fn-feed-port-step-status fn-feed-port-step-feed
                          fn-feed-port-step-records fn-feed-port-step-effects
@@ -147,7 +148,8 @@
            :in-theory (e/d (fn-own-feed-port-tick-peer fn-own-feed-port-peer
                             fn-feed-live-port-step fn-feed-live-next fn-feed-live-records
                             fn-feed-live-effects fn-feed-tick-step fn-feed-tick-records
-                            fn-own-feed-port-result fn-own-feed-port-status
+                            fn-own-feed-port-result fn-own-feed-port-result-counted
+                            fn-own-feed-port-status
                             fn-own-feed-port-table fn-own-feed-port-records fn-own-feed-port-effects
                             fn-own-feed-entry-of-of-put-same fn-pct-feed-requires-entry)
                            (fn-feed-selection fn-feedp fn-feed-offer fn-feed-records-portp
@@ -191,13 +193,15 @@
                                  (fn-own-feed-entry-feed (fn-own-feed-entry-of peer tbl))))) )
            :in-theory (e/d
                        (fn-own-feed-port-observe-peer fn-own-feed-port-peer
-                        fn-own-feed-port-result fn-own-feed-port-status
+                        fn-own-feed-port-result fn-own-feed-port-result-counted
+                        fn-own-feed-port-status
                         fn-own-feed-port-table fn-own-feed-port-records fn-own-feed-port-effects
                         fn-feed-port-step-status fn-feed-port-step-feed
                         fn-feed-port-step-records fn-feed-port-step-effects
                         fn-feed-live-port-step fn-feed-live-next fn-feed-live-records
                         fn-feed-live-effects fn-feed-observe fn-feed-observe-records
-                        fn-feed-send fn-feed-with-queue fn-feed-state-of-of-set-state-same
+                        fn-feed-send fn-feed-with-queue-preserving-counts
+                        fn-feed-with-queue-counted fn-feed-state-of-of-set-state-same
                         fn-pct-feed-requires-entry)
                        (fn-own-feed-entry-of fn-own-feed-put fn-feedp fn-feed-state-of
                         fn-feed-state-attempt fn-feed-response-code fn-feed-response-msgid
