@@ -12,7 +12,6 @@
 ;    catalog (the invariant holds, the relation fails): same split.
 
 (in-package "ACL2")
-(include-book "../../books/peer-offer-catalog")
 (include-book "must-fail-checked")
 (include-book "peer-inbound-tests")
 

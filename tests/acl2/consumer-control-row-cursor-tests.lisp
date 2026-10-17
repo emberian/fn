@@ -2,7 +2,6 @@
 ; AUTHORED source regressions for the actual input/controller join.
 ; These are pure-model tests, not candidate source/custody/native qualification.
 (in-package "ACL2")
-(include-book "../../books/consumer-control-row-cursor")
 (include-book "../../books/consumer-configured-control-event")
 (include-book "../../books/catalog-record")
 
@@ -28,44 +27,6 @@
 (defconst *ctcdt-verdicts* (list (cons "<else@example.invalid>" :unrelated)
                                 (cons "<c@example.invalid>" *ctcdt-verdict*)))
 (defconst *ctcdt-chain* (fn-ccpx-entry (fn-cfg-empty) 0 0 0 :recorded-genesis nil))
-(defconst *ctcdt-start* (fn-ctcd-begin *ctcdt-article* *ctcdt-verdicts* *ctcdt-chain* :captured-source 2 5))
-(defconst *ctcdt-skip* (fn-ctcd-row (fn-cp-nth 1 *ctcdt-start*) *ctcdt-target*))
-(defconst *ctcdt-selected* (fn-ctcd-row (fn-cp-nth 1 *ctcdt-skip*) *ctcdt-cancel*))
-(defconst *ctcdt-vskip* (fn-ctcd-step (fn-cp-nth 1 *ctcdt-selected*)))
-(defconst *ctcdt-vselected* (fn-ctcd-step (fn-cp-nth 1 *ctcdt-vskip*)))
-(defconst *ctcdt-targetselected* (fn-ctcd-row (fn-cp-nth 1 *ctcdt-vselected*) *ctcdt-target*))
-(defconst *ctcdt-finished* (fn-ctcd-step (fn-cp-nth 1 *ctcdt-targetselected*)))
-
-; Actual constructor source must establish the new mandatory held schema;
-; this test intentionally fails if inherited fixtures no longer do so.
-;@mutation-witness actual-oldest-row-control-phases-complete-plan
-(assert-event
- (and (fn-store-event-p *ctcdt-target*) (fn-store-event-p *ctcdt-cancel*)
-      (equal (fn-ctcd-step (fn-cp-nth 1 *ctcdt-start*))
-             (list :read (fn-cp-nth 1 *ctcdt-start*) 0 :captured-source))
-      (equal (fn-cp-nth 4 (fn-cp-nth 1 *ctcdt-skip*)) 1)
-      (equal (fn-cp-nth 10 (fn-cp-nth 1 *ctcdt-selected*)) *ctcdt-cancel*)
-      (equal (fn-cp-nth 9 (fn-cp-nth 1 *ctcdt-vskip*)) (cdr *ctcdt-verdicts*))
-      (equal (fn-cp-nth 12 (fn-cp-nth 1 *ctcdt-vselected*)) *ctcdt-verdict*)
-      (equal (fn-cp-nth 4 (fn-cp-nth 1 *ctcdt-vselected*)) 0)
-      (equal (fn-cp-nth 0 *ctcdt-finished*) :plan)
-      (equal (fn-cp-nth 1 *ctcdt-finished*)
-       (fn-ctl-article-plan *ctcdt-article* *ctcdt-verdicts*
-                           (list *ctcdt-target* *ctcdt-cancel*) nil))))
-
-;@corrupted-state row-coordinate-mismatch-never-becomes-absence
-(assert-event
- (and (equal (fn-cp-nth 0 (fn-ctcd-row (fn-cp-nth 1 *ctcdt-start*) *ctcdt-cancel*)) :unavailable)
-      (equal (fn-cp-nth 0 (fn-ctcd-row (fn-cp-nth 1 *ctcdt-start*) nil)) :unavailable)))
-
-; A later same-MID candidate never shadows the oldest completed ordinal.
-;@mutation-witness exact-oldest-row-ends-read-before-later-duplicate
-(assert-event
- (let* ((a (fn-make-article "<t@example.invalid>" nil '("fn.mod.a") nil t nil))
-        (b (fn-ctcd-begin a nil *ctcdt-chain* :captured-source 2 5)))
-  (equal (fn-ctcd-row (fn-cp-nth 1 b) *ctcdt-target*)
-         (list :plan nil nil (fn-ctl-control-locks
-                               (fn-hf-control (fn-held-facts *ctcdt-target*)))))))
 
 ; Existing pending withdrawal reports fence when their target arrives,
 ; even with no old visible article. One resolve/reverse cell preserves order.

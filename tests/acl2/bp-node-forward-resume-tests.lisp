@@ -3,7 +3,6 @@
 ; fn-bpnp-step, from the durable FNBS rows of bp-node-forward-retry-tests.
 (in-package "ACL2")
 (include-book "bp-node-forward-retry-tests")
-(include-book "../../books/bp-node-forward-resume")
 (include-book "must-fail-checked")
 
 (defun bprs-row (effect)

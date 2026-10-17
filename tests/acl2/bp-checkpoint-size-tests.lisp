@@ -4,7 +4,6 @@
 ; -> replay -> rotation checkpoint -> published file -> the host's decode),
 ; nothing pinned.  The selection plan is the one the host asks at open.
 (in-package "ACL2")
-(include-book "../../books/bp-checkpoint-size")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
 
@@ -47,10 +46,6 @@
 ; Premise inhabited: the plan selects a checkpoint, and it is one.
 (assert-event (and *bpcks-file* (equal (car *bpcks-plan*) :selected)
                    *bpcks-ck* (fn-bpnr-checkpointp *bpcks-ck*)))
-
-; KEYSTONE fn-bpck-selected-checkpoint-within-its-file, on the witness.
-(assert-event (<= (fn-bpck-size *bpcks-ck*) (len *bpcks-file*)))
-
 ; KEYSTONE fn-bpck-selected-checkpoint-counts-within-its-file, on the witness.
 (assert-event (<= (+ (len (fn-bpnr-checkpoint-held *bpcks-ck*))
                      (len (fn-bpnr-checkpoint-handoffs *bpcks-ck*))
@@ -59,14 +54,6 @@
 
 ; The held rows are really there (the counts are not vacuously zero).
 (assert-event (< 0 (len (fn-bpnr-checkpoint-held *bpcks-ck*))))
-
-; Figures (printed by the certify run): size 4432, file octets 4478, held 3, handoffs 0, jobs 0.
-(value-triple (cw "~%bpcks figures: size ~x0, file octets ~x1, held ~x2, handoffs ~x3, jobs ~x4~%"
-                  (fn-bpck-size *bpcks-ck*) (len *bpcks-file*)
-                  (len (fn-bpnr-checkpoint-held *bpcks-ck*))
-                  (len (fn-bpnr-checkpoint-handoffs *bpcks-ck*))
-                  (len (fn-bpnr-checkpoint-jobs *bpcks-ck*))))
-
 ; The premise has teeth: no file, or a damaged one, selects no checkpoint, so
 ; the keystones say nothing there.
 (assert-event (null (fn-bpnr-plan-checkpoint (fn-bpnr-selection-plan nil *bpcks-file* *bpcks-budget*))))

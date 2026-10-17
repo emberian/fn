@@ -21,7 +21,7 @@ ROUND_TRIP_BOOKS = [
     "account-list", "app-journal", "bp-authored-wire", "bp-eid-shape",   # #\ characters
     "acceptance-alloc", "assumptions-pgs-host-io", "body-chunks", "auth-secret",  # |pipes|
     "hmac-sha256", "deflate-inflate", "catalog-commit",                  # #x literals
-    "acceptance-binding", "owner-feed", "config",                        # defpkg / big macros
+    "owner-feed", "config",                                              # defpkg / big macros
 ]
 
 

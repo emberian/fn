@@ -1,5 +1,4 @@
 (in-package "ACL2")
-(include-book "../../books/decoded-window-clear-trajectory")
 (include-book "../../books/decoded-worker-controller")
 
 (defun-nx pwy-clear-test-case (corrupt)

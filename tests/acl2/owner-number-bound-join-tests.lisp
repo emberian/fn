@@ -5,8 +5,6 @@
 ; book's prefix.
 (in-package "ACL2")
 (include-book "owner-number-bound-tests")
-(include-book "../../books/owner-number-bound-join")
-
 ; fn-onb-boundp is proof vocabulary (defun-nx); its executable body, proved
 ; equal to it, is what the witnesses evaluate.
 (defun onbjt-boundp (o)

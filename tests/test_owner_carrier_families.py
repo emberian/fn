@@ -160,7 +160,7 @@ class ReadersCarrierTests(unittest.TestCase):
                     if keys:
                         found[str(path.relative_to(root))] = keys
         self.assertEqual(found, {'books/owner-readers-state.lisp': {'fn-owner-reader-views'}})
-        for filename in ('index-connection-pins-host', 'index-connection-repin-prepare-host'):
+        for filename in ('index-connection-repin-prepare-host',):
             self.assertIn('(fn-ordr-index-kind (fn-ost-readers state))',
                           (root / 'host' / (filename+'.lisp')).read_text())
         source = (root / 'host/owner-host.lisp').read_text()

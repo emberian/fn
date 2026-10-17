@@ -1,5 +1,4 @@
 (in-package "ACL2")
-(include-book "../../books/statement-items-cursor-terminal")
 (include-book "../../books/statement-items-cursor-spans")
 ; Real terminal completion tolerates extra scheduling ticks.
 (assert-event

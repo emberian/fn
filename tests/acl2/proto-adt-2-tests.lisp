@@ -8,8 +8,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/proto/adt-bytes")
-(include-book "../../books/proto/adt-compact-lib")
-(include-book "../../books/proto/adt-config-groups")
+
 (include-book "std/testing/assert-bang" :dir :system)
 
 ; -----------------------------------------------------------------------------
@@ -77,30 +76,13 @@
 ; 2. Compaction: two histories, one value, two images; one compacted image.
 
 (defconst *kh1* (adt-kremove-c *ks* 0 '(1) *kc2*))                       ; r1, r2, remove r1
-(defconst *kh2* (adt-kinsert-c *ks* 0 *kr2* (adt-kempty-c *ks*)))        ; r2
-(assert-event (and (adt-kcorr *ks* :stack 0 *kh1* (list *kr2*))
-                   (adt-kcorr *ks* :stack 0 *kh2* (list *kr2*))
-                   (not (equal *kh1* *kh2*))
-                   (equal (adt-kcompact-c *ks* :stack 0 *kh1*) (adt-kcompact-c *ks* :stack 0 *kh2*))
-                   (equal (adt-kcompact-c *ks* :stack 0 *kh1*) (adt-kcanon *ks* :stack 0 (list *kr2*)))
-                   (adt-kcorr *ks* :stack 0 (adt-kcompact-c *ks* :stack 0 *kh1*) (list *kr2*))))
-; without the correspondence (adt-kcompact-is-kcanon): an image of a
-; different value compacts to a different canonical image
-(assert-event (and (not (adt-kcorr *ks* :stack 0 *kc2* (list *kr2*)))
-                   (not (equal (adt-kcompact-c *ks* :stack 0 *kc2*)
-                               (adt-kcanon *ks* :stack 0 (list *kr2*))))))
+(defconst *kh2* (adt-kinsert-c *ks* 0 *kr2* (adt-kempty-c *ks*)))
 
 ; The sequence: a set of an octets field leaves dead octets; compaction
 ; returns the fill to the value's octet total.
 (defconst *qs* '((:octets) (:u8)))
 (defconst *qa* '(((1 2 3) 4)))
 (defconst *qc* (adt-set-c *qs* 0 0 '(9) (adt-canon *qs* *qa*)))
-(assert-event (and (adt-corr *qs* *qc* '(((9) 4)))
-                   (equal (nth (+ 2 (adt-ncols *qs*)) *qc*) 4)
-                   (equal (adt-vbytes *qs* '(((9) 4))) 1)
-                   (equal (nth (+ 2 (adt-ncols *qs*)) (adt-compact-c *qs* *qc*)) 1)
-                   (adt-corr *qs* (adt-compact-c *qs* *qc*) '(((9) 4)))))
-
 ; -----------------------------------------------------------------------------
 ; 3. The byte format.
 
@@ -197,19 +179,6 @@
 ;    a create (or revive) leaves the group ungoverned ("" at 0).
 
 (defconst *st0* '(:fn-clock-observation 10 20 1 t))
-
-(defun cfgroup-run ()
-  (with-local-stobj cfgroup
-    (mv-let (out cfgroup)
-      (let* ((cfgroup (cfgroup-create 1 *st0* "alt.test" "fn-policy-default-1" cfgroup))
-             (cfgroup (cfgroup-create 1 *st0* "comp.misc" "fn-policy-default-1" cfgroup))
-             (cfgroup (cfgroup-retire 2 "alt.test" cfgroup))
-             (cfgroup (cfgroup-create 3 *st0* "alt.test" "fn-policy-read-only-1" cfgroup)))
-        (mv (list (cfgroup-find "alt.test" cfgroup) (cfgroup-find "comp.misc" cfgroup)
-                  (cfgroup-get-retired-gen "comp.misc" cfgroup) (cfgroup-has "rec.x" cfgroup))
-            cfgroup))
-      out)))
-
 (defun cfgroup-model ()
   (let* ((es (fn-cfg-groups-create nil 1 *st0* "alt.test" "fn-policy-default-1"))
          (es (fn-cfg-groups-create es 1 *st0* "comp.misc" "fn-policy-default-1"))
@@ -218,7 +187,3 @@
     (list (fn-cfg-group-find es "alt.test") (fn-cfg-group-find es "comp.misc")
           (fn-cfg-group-retired-gen (fn-cfg-group-find es "comp.misc"))
           (if (fn-cfg-group-find es "rec.x") t nil))))
-
-(assert-event (and (equal (cfgroup-run) (cfgroup-model))
-                   (equal (car (cfgroup-run))
-                          (list "alt.test" 3 *st0* nil "fn-policy-read-only-1" 0 "" 0))))

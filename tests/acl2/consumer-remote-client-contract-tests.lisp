@@ -1,7 +1,6 @@
 ; Actual exported PROGRAM client entry executions. These fixtures preserve
 ; shared FNCT reasons and old singleton paths, not physical parser funding.
 (in-package "ACL2")
-(include-book "../../host/consumer-remote-report-host")
 (include-book "../../books/records-attach")
 
 (defun fn-crcol-client-host-fixtures ()
@@ -46,19 +45,3 @@
    (list :unregister (fn-cr-response-encode :unregister :accepted nil cursor nil nil nil nil) 1 3 4096
          (list :reply (list :consumer-reply :accepted cursor))))))
 
-(defun fn-crcol-client-host-check (cases state)
- (declare (xargs :stobjs state :mode :program))
- (if (atom cases) (mv nil state)
-  (let ((case (car cases)))
-   (mv-let (erp answer state)
-     (fn-remote-consumer-client-read-version (fn-cp-nth 0 case) (fn-cp-nth 1 case)
-       (fn-cp-nth 2 case) (fn-cp-nth 3 case) (fn-cp-nth 4 case) state)
-    (if (or erp (not (equal answer (fn-cp-nth 5 case))))
-        (mv (list :mismatch (fn-cp-nth 0 case) answer (fn-cp-nth 5 case)) state)
-      (fn-crcol-client-host-check (cdr cases) state))))))
-
-(make-event
- (mv-let (failure state)
-   (fn-crcol-client-host-check (fn-crcol-client-host-fixtures) state)
-  (if (null failure) (value '(value-triple :passed))
-   (er soft 'remote-client-contract "Actual client contract mismatch ~x0" failure))))

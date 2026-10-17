@@ -1,5 +1,4 @@
 (in-package "ACL2")
-(include-book "../../books/consumer-account-config-domain")
 (include-book "consumer-account-config-preparation-tests") ; its fixtures are used by non-local events
 
 (defconst *bcpdt-bad-trie* (fn-cai-put-octets (make-list 65 :initial-element 97) :foreign nil))

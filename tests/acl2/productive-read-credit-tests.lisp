@@ -3,8 +3,6 @@
 ; reachability through the complete native credit admission machine.
 (in-package "ACL2")
 (include-book "productive-read-chain-tests")
-(include-book "../../books/productive-read-credit")
-
 (defthm
   pcrc-queued-post-denied-read-corrupted-credit-state-positive
   (let*

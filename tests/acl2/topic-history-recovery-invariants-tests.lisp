@@ -1,6 +1,5 @@
 ; Reached topic history across the actual Store crash/recover and open paths.
 (in-package "ACL2")
-(include-book "../../books/topic-history-recovery-invariants")
 (include-book "consumer-topic-store-tests")
 (include-book "must-fail-checked")
 
