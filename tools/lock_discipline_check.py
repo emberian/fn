@@ -6440,6 +6440,12 @@ def check_realization(checker: Checker) -> None:
     'enabled' names ACL2 functions that exist)."""
     known = getattr(checker.an.reach, "known", set())
     via = checker.c.raw.get("realization_via", {})
+    if not (checker.an.tree.root / "books/host-model.lisp").is_file():
+        # The realization source (books/host-model.lisp and its machine) left
+        # with the breaking cut (M1-b rest): no table, no R3 finding; the
+        # checker's other rules stay for M3's judgment.
+        checker.realization = None
+        return
     try:
         checker.realization = realization_table(checker.an.tree.root)
     except (OSError, ValueError, ledger.ReadError) as error:
