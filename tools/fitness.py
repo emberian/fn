@@ -889,7 +889,9 @@ def digest_check(node: Node, events: Events, label):
     (the owner's automatic checkpoint or `store compact') dropped the
     segments the checkpoint covers, a copy without its checkpoint is not a
     replay: the open must refuse it by name (reason=checkpoint-damaged,
-    books/store-log-segments.lisp) and `health' must say so; the digest is
+    books/store-log-segments.lisp) and the operator's report over the opened
+    store (`status --replay'; `health' on a stopped store opens nothing, row
+    S3) must say so; the digest is
     then compared with a second open of an identical copy."""
     first = node.fn("store", node.store, "digest")
     copy = node.dir / "digest-copy"
@@ -912,7 +914,7 @@ def digest_check(node: Node, events: Events, label):
     if compacted:
         cfg = node.dir / "digest-copy.toml"
         cfg.write_text('[store]\npath = "{}"\n'.format(copy), encoding="ascii")
-        h = node.fn("operator", cfg, "health")
+        h = node.fn("operator", cfg, "status", "--replay")
         health = [h.returncode, (h.stdout + h.stderr).decode("utf-8", "replace")[-600:]]
     journal = node.fn("store", node.store, "journal")
 
@@ -950,8 +952,8 @@ def digest_check(node: Node, events: Events, label):
         events.emit("finding", what="a compacted store without its checkpoint was not refused "
                     "by name", label=label, rc=second.returncode, err=err_b[-300:])
     if compacted and not health_names_it:
-        events.emit("finding", what="health does not name checkpoint-damaged on a compacted "
-                    "store without its checkpoint", label=label, health=health)
+        events.emit("finding", what="status --replay does not name checkpoint-damaged on a "
+                    "compacted store without its checkpoint", label=label, health=health)
     return row
 
 

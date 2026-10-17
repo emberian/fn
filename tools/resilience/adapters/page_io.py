@@ -12,7 +12,6 @@ import hashlib
 import json
 from pathlib import Path
 import re
-import subprocess
 import time
 import unittest
 
@@ -20,6 +19,7 @@ from tests.native_harness import Client
 from tests.test_native_expiry import (ExpiryMixin, DeveloperExpiryTests, GROUP,
                                      article, msgid)
 from tools.resilience import checker
+from tools.resilience.adapters import source_revision
 from tools.resilience.adapters.native_cuts import ACTORS, healing_bound, served_matches
 from tools.resilience.journal import Journal
 from tools.resilience.scenario import Scenario, Operation, Fault, check as validate
@@ -186,8 +186,7 @@ def run_scenario(scenario, image, work, fault_hook=True):
     (work / "scenario.json").write_text(json.dumps(scenario.to_json(), indent=2) + "\n")
     (work / "verdict.json").write_text(json.dumps(verdict.to_json(), indent=2) + "\n")
     (work / "manifest.json").write_text(json.dumps(dict(
-        source_revision=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
-                                                text=True).strip(),
+        source_revision=source_revision(ROOT),
         image=str(fixture.image), image_sha256=file_hash(fixture.image),
         observed_stderr_bytes=observed_stderr_bytes,
         inputs={p: file_hash(ROOT / p) for p in (

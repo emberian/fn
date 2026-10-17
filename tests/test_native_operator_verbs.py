@@ -664,9 +664,14 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(fields["max-article-octets"], 20000)
         self.assertEqual(fields["max-history-octets"], 1 << 40)
         self.assertEqual(fields["max-open-suffix"], 1000)
-        room = self.headroom()
-        self.assertEqual((room["transactions-used"], room["transactions-budget"]), (0, 1000))
-        self.assertEqual((room["bytes-used"], room["history-bound"]), (0, 1 << 40))
+        # `status' printed them (the stopped report's profile line, above).  A
+        # replay opens the store, and this store was made for another machine:
+        # the offline adapter sizes it at the profile's bound, so it is refused
+        # by name (test_a_stopped_status_holds_no_store_and_a_replay_names_the_
+        # totals_it_cannot_see has the words).
+        replay = self.operator("status", "--replay")
+        self.assertEqual(replay.returncode, EXIT_REFUSED, replay.stderr.decode())
+        self.assertIn(b"refused machine-cannot-hold-profile ", replay.stderr)
 
     def test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see(self):
         """K6 fn-mo-header-decide-holds-the-header (books/heap-command.lisp,

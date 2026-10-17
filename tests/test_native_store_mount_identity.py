@@ -105,7 +105,9 @@ class MountIdentityNativeTests(unittest.TestCase):
         self.expect(self.fn("store", store, "init", "fn.test"), EXIT_OK, "init")
         moved = self.other / "store"
         shutil.copytree(store, moved)
-        for words in (("recover",), ("status",)):
+        # Each path that opens the store refuses (a stopped store's plain
+        # `status' reads only the checkpoint header and opens nothing, row S3).
+        for words in (("recover",), ("status", "--replay")):
             text = self.expect(self.fn("store", moved, *words), EXIT_REFUSED,
                                "open on another filesystem")
             self.assertIn("store filesystem changed: expected ", text)

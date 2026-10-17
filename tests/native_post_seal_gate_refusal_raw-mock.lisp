@@ -89,6 +89,14 @@
 (defun fnn-owner-identity-reservation (&rest x) x)
 (defun fnn-owner-finish-submission (&rest x) x)
 
+;; fnn-owner-prepare-refusal-word names ACL2's article-record refusals by the
+;; book's own constant (books/store-node.lisp), read from the book unchanged.
+(defmacro defconst (name value) `(defparameter ,name ,value))
+(harness-load "books/store-node.lisp"
+  (lambda (f)
+    (and (consp f) (eq (car f) 'defconst)
+         (eq (cadr f) '*fn-sn-article-record-refusals*))))
+
 (harness-load (or (sb-posix:getenv "FN_RAW_OWNER_LISP") "host/native/owner.lisp")
   (lambda (f)
     (and (consp f) (member (car f) '(defun defmacro))

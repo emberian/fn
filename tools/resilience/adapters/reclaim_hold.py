@@ -10,12 +10,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import re
-import subprocess
 import time
 
 from tests.native_harness import Client, start
 from tests.test_native_expiry import GROUP, PAST, article, msgid
 from tools.resilience import checker
+from tools.resilience.adapters import source_revision
 from tools.resilience.checker import Verdict
 from tools.resilience.adapters.native_cuts import ACTORS, healing_bound, served_matches
 from tools.resilience.adapters.page_io import Fixture, file_hash, HarnessFailure
@@ -214,7 +214,7 @@ def run_scenario(scenario, image, work, fault_hook=True):
               "tests/campaign/native_operator_campaign.py", "host/native/owner.lisp",
               "books/response-plan-pins.lisp", "books/owner-reclaim-pass.lisp")
     (work / "manifest.json").write_text(json.dumps(dict(
-        source_revision=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        source_revision=source_revision(ROOT),
         image=str(fixture.image), image_sha256=file_hash(fixture.image) if fixture.image.is_file() else None,
         image_present=fixture.image.is_file(), cleanup_complete=not cleanup_errors,
         inputs={p: file_hash(ROOT / p) for p in inputs}, observed_stderr_bytes=observed_stderr_bytes,
