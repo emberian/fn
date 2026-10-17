@@ -25,40 +25,6 @@ import ledger  # noqa: E402
 # each names the failure, so the exception is a work item, not a hiding place.
 # The check prints every one on each run.
 KNOWN_RED = {
-    "tests/acl2/post-identity-captured-agent-join-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-classification-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-digest-block-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-groups-refinement-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-hash-choice-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-hash-domain-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-hash-entry-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-hash-refinement-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-holder-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-payload-refinement-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-refinement-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-source-completion-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-source-continuation-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-source-pair-context-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-source-parser-context-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-source-trace-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
-    "tests/acl2/post-identity-captured-tests":
-        "stage 0 (04ff9b99b) took the FNCE consumer-authority kinds out of the wire-event grammar and these out of the roots; a root again when post-identity-captured is rebased on fn-cpe-eventp",
     "tests/acl2/consumer-account-adoption-tests":
         "stage 0 (D46, 04ff9b99b) parked the account-adoption chain off the served start; a root again when that chain returns",
     "tests/acl2/consumer-account-auth-tests":

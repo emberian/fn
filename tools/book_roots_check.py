@@ -18,11 +18,9 @@ import ledger  # noqa: E402
 
 
 # The seat assigns exclusions, each with a reason naming its outstanding work.
-_P_DRAFTS = (
-    "P's unrooted drafts (coordinator ruling 10-11, Fungus seam 9): post-identity-captured stays off the roots until it is rebased on fn-cpe-eventp (its tests are KNOWN_RED in tools/test_roots_check.py)")
 _ORPHAN = (
     'outside every Makefile root at dev 402b65786 (first run of this check, 10-12); repair item BOOK-ROOTS-ORPHANS: its owner roots it with a certify of record or deletes it')
-P, O = _P_DRAFTS, _ORPHAN
+O = _ORPHAN
 EXCLUDED: dict[str, str] = {
     "books/acceptance-binding-held-gate.lisp": O,
     "books/account-adoption-turn-continuation.lisp": O,
@@ -34,24 +32,6 @@ EXCLUDED: dict[str, str] = {
     "books/index-backing-publication-row-carry.lisp": O,
     "books/index-backing-row-carry.lisp": O,
     "books/index-backing-served-producer-carry.lisp": O,
-    "books/post-identity-captured-agent-join.lisp": P,
-    "books/post-identity-captured-classification.lisp": P,
-    "books/post-identity-captured-digest-block.lisp": P,
-    "books/post-identity-captured-groups-refinement.lisp": P,
-    "books/post-identity-captured-hash-choice.lisp": P,
-    "books/post-identity-captured-hash-domain.lisp": P,
-    "books/post-identity-captured-hash-entry.lisp": P,
-    "books/post-identity-captured-hash-refinement.lisp": P,
-    "books/post-identity-captured-holder.lisp": P,
-    "books/post-identity-captured-payload-refinement.lisp": P,
-    "books/post-identity-captured-refinement.lisp": P,
-    "books/post-identity-captured-source-completion.lisp": P,
-    "books/post-identity-captured-source-context.lisp": P,
-    "books/post-identity-captured-source-continuation.lisp": P,
-    "books/post-identity-captured-source-pair-context.lisp": P,
-    "books/post-identity-captured-source-parser-context.lisp": P,
-    "books/post-identity-captured-source-trace.lisp": P,
-    "books/post-identity-captured.lisp": P,
 }
 
 
