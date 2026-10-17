@@ -53,8 +53,7 @@ class Resolve(unittest.TestCase):
 class RuntimeLookups(unittest.TestCase):
     def test_dependency_bytes_keep_the_original_hashes(self):
         import hashlib
-        from tools.bpsec_source_observation import DEPENDENCIES
-        from tools.bpsec_registered_source_observation import REVISION, OWNED_HASHES
+        from tools.bpsec_registered_source_observation import DEPENDENCIES, REVISION, OWNED_HASHES
         for rev, path, expected in DEPENDENCIES + [(REVISION, p, h) for p, h in OWNED_HASHES.items()]:
             with self.subTest(revision=rev, path=path):
                 data = subprocess.check_output(['git', '-C', str(commit_map.ROOT), 'show',

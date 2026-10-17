@@ -18,6 +18,26 @@ ERRORS: list[str] = []
 # Citations under these prefixes name reports that left the tree (D71): they
 # stay as text and are not resolved.
 HISTORICAL_PREFIXES = ("planning/evidence/", "docs/evidence/")
+# A citation of a source file that left the tree (cut/breaking, 2026-10-16):
+# `REV:PATH`, the last tree that carried it and its path there.  Git answers
+# it, not a list: the object must exist in this repository's history, and the
+# path must still be absent from the tree (a file that is back is cited
+# plainly).
+TREE_CITATION = re.compile(r"^([0-9a-f]{7,40}):((?:books|host|tests|tools)/[^\s:]+)$")
+
+
+@functools.lru_cache(maxsize=None)
+def tree_has(rev: str, path: str) -> bool:
+    return subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{rev}:{path}"],
+                          capture_output=True).returncode == 0
+
+
+def tree_citation_problem(context: str, rev: str, path: str) -> str | None:
+    if (ROOT / path).exists():
+        return f"{context}: {path} is in the tree again; cite it plainly, not as {rev}:{path}"
+    if not tree_has(rev, path):
+        return f"{context}: no tree {rev} of this repository carries {path}"
+    return None
 IGNORED = {".git", ".venv", ".cache", "build", "var", "__pycache__"}
 # The shared allocator pads to three digits; it does not stop at 999.
 REQUIREMENT_ID = r"[A-Z]{3}-\d{3,}"
@@ -68,8 +88,8 @@ def link(target: str, base: Path, context: str) -> None:
         fail(f"{context}: local link escapes repository: {target}")
         return
     rel = dest.relative_to(ROOT).as_posix()
-    if rel.startswith(HISTORICAL_PREFIXES) and not dest.exists():
-        return
+    if (rel.startswith(HISTORICAL_PREFIXES) or rel + "/" in HISTORICAL_PREFIXES) and not dest.exists():
+        return  # the directory itself is the same citation as a file under it
     if not dest.exists() and rel in retired_paths():
         return  # Disclosed centrally: removed on purpose, and where its role went.
     if not dest.exists():
@@ -114,7 +134,12 @@ def evidence(entry: dict, advanced: set[str]) -> None:
     if entry.get("status") in advanced and not paths:
         fail(f"{entry['id']}: status requires actual evidence references")
     for path in paths:
-        if not isinstance(path, str) or urlsplit(path).scheme or not path:
+        cited = TREE_CITATION.match(path) if isinstance(path, str) else None
+        if cited:
+            problem = tree_citation_problem(entry["id"], cited.group(1), cited.group(2))
+            if problem:
+                fail(problem)
+        elif not isinstance(path, str) or urlsplit(path).scheme or not path:
             fail(f"{entry['id']}: evidence must name a repository file")
         else:
             # A prose entry is a finding, never a crash: an OSError here is a

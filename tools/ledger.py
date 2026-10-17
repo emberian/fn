@@ -5219,6 +5219,10 @@ def apply_events(regenerated: dict[str, list[str]]) -> str:
 # repoint may keep them although the file is gone (tools/check_scaffold.py's
 # HISTORICAL_PREFIXES, the same rule).
 EVIDENCE_HISTORICAL = ("planning/evidence/", "docs/evidence/")
+# A source file that left the tree is cited as `REV:PATH`, the last tree that
+# carried it (tools/check_scaffold.py TREE_CITATION reads the same form):
+# the object must exist in this repository and the path must be absent now.
+TREE_CITATION = re.compile(r"^([0-9a-f]{7,40}):((?:books|host|tests|tools)/[^\s:]+)$")
 
 
 def evidence_digest(ident: str, evidence: object) -> str:
@@ -5286,6 +5290,13 @@ def repoint_problems(ident: str, paths: list[str], registry: dict,
         if (not path or path != path.strip() or "://" in path
                 or Path(path).is_absolute() or ".." in Path(path).parts):
             problems.append(f"{ident}: {path!r}: not a repository-relative path")
+        elif TREE_CITATION.match(path):
+            rev, rel = TREE_CITATION.match(path).groups()
+            if (root / rel).exists():
+                problems.append(f"{ident}: {rel} is in the tree; cite it plainly, not as {path}")
+            elif subprocess.run(["git", "-C", str(root), "cat-file", "-e", f"{rev}:{rel}"],
+                                capture_output=True).returncode != 0:
+                problems.append(f"{ident}: {path}: no tree of this repository carries it")
         elif not path.startswith(EVIDENCE_HISTORICAL) and not (root / path).is_file():
             problems.append(f"{ident}: {path}: not a file in this tree")
     return problems

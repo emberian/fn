@@ -7479,8 +7479,8 @@
         "books/bpsec-input-plan.lisp",
         "tests/acl2/bpsec-input-plan-tests.lisp",
         "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
-        "tests/native_bpsec_source_observation.lisp",
-        "tools/bpsec_source_observation.py",
+        "49b470a99:tests/native_bpsec_source_observation.lisp",
+        "49b470a99:tools/bpsec_source_observation.py",
         "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json",
         "books/bpsec-input-fragment.lisp",
         "tests/acl2/bpsec-input-fragment-tests.lisp",
@@ -7611,7 +7611,7 @@
         "books/consumer-remote-withdrawal-buffer.lisp",
         "tests/acl2/consumer-remote-withdrawal-buffer-tests.lisp",
         "books/consumer-remote-reader-source.lisp",
-        "host/consumer-remote-reader-host.lisp",
+        "49b470a99:host/consumer-remote-reader-host.lisp",
         "tests/acl2/consumer-remote-reader-source-tests.lisp",
         "planning/evidence/consumer-remote-reader-source-2026-09-30.json",
         "books/consumer-remote-visible-buffer.lisp",
@@ -7622,7 +7622,7 @@
         "books/consumer-remote-collection-client.lisp",
         "books/consumer-remote-collection-state.lisp",
         "books/consumer-remote-report-profile.lisp",
-        "host/consumer-remote-report-host.lisp",
+        "49b470a99:host/consumer-remote-report-host.lisp",
         "tests/acl2/consumer-remote-collection-tests.lisp",
         "tests/acl2/consumer-remote-report-profile-tests.lisp",
         "tests/acl2/consumer-remote-collection-state-tests.lisp",
@@ -7662,16 +7662,16 @@
         "tests/acl2/ninep-fields-tests.lisp",
         "tests/acl2/ninep-version-tests.lisp",
         "tests/acl2/ninep-group-directory-source-tests.lisp",
-        "tests/acl2/ninep-protocol-host-tests.lisp",
+        "49b470a99:tests/acl2/ninep-protocol-host-tests.lisp",
         "tests/acl2/ninep-session-tests.lisp",
         "tests/acl2/ninep-qids-tests.lisp",
         "tests/acl2/ninep-mount-tests.lisp",
-        "tests/acl2/ninep-transport-tests.lisp",
+        "49b470a99:tests/acl2/ninep-transport-tests.lisp",
         "planning/evidence/ninep-transport-2026-10-01/README.md",
         "tests/acl2/ninep-mounted-directory-tests.lisp",
         "tests/acl2/ninep-group-buckets-tests.lisp",
         "tests/acl2/ninep-stat-stream-tests.lisp",
-        "tests/acl2/ninep-stat-stream-host-tests.lisp",
+        "49b470a99:tests/acl2/ninep-stat-stream-host-tests.lisp",
         "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
       ],
       "scope_note": "Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted. Session/qid components are normal-certified at014307/021401; actual mount lifecycle fixture source-pass only. External client/listener scenario still NOT RUN. Normal045613 certifies the stat/host/internal wire fixtures only; actual registered source+DATA6 mount fixtures remain proper-local source evidence. Request custody successor guard timeout preserved separately. Full native external-client scenario NOT RUN. Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted. Session/qid components are normal-certified at014307/021401; actual mount lifecycle fixture source-pass only. External client/listener scenario still NOT RUN. Normal045613 certifies the stat/host/internal wire fixtures only; actual registered source+DATA6 mount fixtures remain proper-local source evidence. Request custody successor guard timeout preserved separately. Full native external-client scenario NOT RUN."
@@ -7704,13 +7704,13 @@
         "books/bpsec-primitive-plan.lisp",
         "tests/acl2/bpsec-primitive-plan-tests.lisp",
         "planning/evidence/bpsec-primitive-plan-source-2026-09-30/manifest.json",
-        "tests/native_bpsec_core_observation.lisp",
+        "49b470a99:tests/native_bpsec_core_observation.lisp",
         "planning/evidence/bpsec-core-observation-2026-09-30/manifest.json",
         "books/bpsec-input-plan.lisp",
         "tests/acl2/bpsec-input-plan-tests.lisp",
         "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
-        "tests/native_bpsec_source_observation.lisp",
-        "tools/bpsec_source_observation.py",
+        "49b470a99:tests/native_bpsec_source_observation.lisp",
+        "49b470a99:tools/bpsec_source_observation.py",
         "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json",
         "books/bpsec-input-fragment.lisp",
         "tests/acl2/bpsec-input-fragment-tests.lisp",
@@ -7892,7 +7892,7 @@
       "id": "SCN-1077",
       "title": "Real receiver BPSec primitive vectors retain exact descriptor and bounded temporary output",
       "milestone": "M4",
-      "status": "specified",
+      "status": "deferred",
       "requirements": [
         "HST-004",
         "REP-018"
@@ -7910,8 +7910,8 @@
         "First-pass GCM stores no whole plaintext and exposes no plaintext. Production second-pass release stays unavailable until the same immutable ciphertext pin/current key/source grant exists."
       ],
       "evidence": [
-        "host/native/bpsec-crypto.lisp",
-        "tests/native_bpsec_crypto.lisp",
+        "49b470a99:host/native/bpsec-crypto.lisp",
+        "49b470a99:tests/native_bpsec_crypto.lisp",
         "tests/fixtures/bpsec/nist-gcm-decrypt.json",
         "planning/evidence/bpsec-crypto-2026-09-30/manifest.json",
         "tests/fixtures/bpsec/nist-gcm-decrypt.lisp",
@@ -7919,13 +7919,13 @@
         "books/bpsec-primitive-plan.lisp",
         "tests/acl2/bpsec-primitive-plan-tests.lisp",
         "planning/evidence/bpsec-primitive-plan-source-2026-09-30/manifest.json",
-        "tests/native_bpsec_core_observation.lisp",
+        "49b470a99:tests/native_bpsec_core_observation.lisp",
         "planning/evidence/bpsec-core-observation-2026-09-30/manifest.json",
         "books/bpsec-input-plan.lisp",
         "tests/acl2/bpsec-input-plan-tests.lisp",
         "planning/evidence/bpsec-input-plan-source-2026-09-30/manifest.json",
-        "tests/native_bpsec_source_observation.lisp",
-        "tools/bpsec_source_observation.py",
+        "49b470a99:tests/native_bpsec_source_observation.lisp",
+        "49b470a99:tools/bpsec_source_observation.py",
         "planning/evidence/bpsec-source-observation-2026-10-01/manifest.json",
         "books/bpsec-input-fragment.lisp",
         "tests/acl2/bpsec-input-fragment-tests.lisp",
@@ -7935,7 +7935,8 @@
         "tools/bpsec_registered_source_observation.py",
         "planning/evidence/bpsec-registered-source-observation-2026-10-01/manifest.json"
       ],
-      "execution_scope": "Actual SBCL/OpenSSL primitive component only at the recorded source/library hashes. Test descriptors are explicitly unissued; no native image, installer, source/key/policy grant, replay authorization, persistence or application acceptance. RFC9173 short keys/A.3 IPPT and A.4 reused nonce are frozen diagnostics, not normative profile admission."
+      "execution_scope": "Actual SBCL/OpenSSL primitive component only at the recorded source/library hashes. Test descriptors are explicitly unissued; no native image, installer, source/key/policy grant, replay authorization, persistence or application acceptance. RFC9173 short keys/A.3 IPPT and A.4 reused nonce are frozen diagnostics, not normative profile admission.",
+      "retirement_note": "2026-10-16 cut/breaking (M1-a): host/native/bpsec-crypto.lisp and the three native BPSec observation tests left the tree; the books and NIST fixtures stay. Deferred until a host carries BPSec primitives again; the evidence cites the last tree that had them (49b470a99)."
     },
     {
       "id": "SCN-1078",
@@ -7967,7 +7968,7 @@
       "id": "SCN-1079",
       "title": "Image construction inventory includes its own storage and rejects changed layouts",
       "milestone": "M1",
-      "status": "specified",
+      "status": "deferred",
       "requirements": [
         "HST-002"
       ],
@@ -7984,12 +7985,13 @@
       ],
       "evidence": [
         "books/runtime-construction-inventory.lisp",
-        "host/native/runtime-construction-inventory.lisp",
+        "49b470a99:host/native/runtime-construction-inventory.lisp",
         "tests/acl2/runtime-construction-inventory-tests.lisp",
-        "tests/native/runtime-construction-inventory.lisp",
+        "49b470a99:tests/native/runtime-construction-inventory.lisp",
         "planning/evidence/runtime-construction-inventory-2026-10-01/coordinate.json"
       ],
-      "execution_scope": "Actual literal core bodies and native primitive execution on synthetic finite constructor objects; full actual joined image construction remains owed."
+      "execution_scope": "Actual literal core bodies and native primitive execution on synthetic finite constructor objects; full actual joined image construction remains owed.",
+      "retirement_note": "2026-10-16 cut/breaking (M1-a): host/native/runtime-construction-inventory.lisp and tests/native/runtime-construction-inventory.lisp left the tree; the book and its ACL2 tests stay. Deferred until a host carries the inventory again; the evidence cites the last tree that had them (49b470a99)."
     },
     {
       "id": "SCN-1080",

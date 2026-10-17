@@ -91,7 +91,7 @@ sys.path.insert(0, str(ROOT))
 
 from tools import interfaces_relocate, ledger  # noqa: E402
 
-SOURCES = ("host/interfaces.lisp", "host/account-adoption-interfaces.lisp")
+SOURCES = ("host/interfaces.lisp",)
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
 RAW_DECLARATIONS = ROOT / "host" / "interfaces-raw.lisp"
 STEP_OF_STATUS = "keystone via fold; host-loop correspondence owed"
