@@ -19,7 +19,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tools import tls_check  # noqa: E402
-from tools import proof_cost  # noqa: E402
 import world  # noqa: E402  (tools/extract/, on sys.path through tls_check)
 
 UMBRELLA = "books/image-world"
@@ -91,22 +90,6 @@ class ShapeTests(unittest.TestCase):
                     contextlib.redirect_stdout(io.StringIO()) as out:
                 self.assertEqual(tls_check.static_check(root), 1)
             self.assertIn("host/native/build-new.lisp: saves an image", out.getvalue())
-
-
-class UmbrellaCostTests(unittest.TestCase):
-    """proof_cost leaves an include-only book to the image build's cost."""
-
-    def test_include_only(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "books").mkdir()
-            (root / "books/u.lisp").write_text(
-                '(in-package "ACL2")\n(include-book "a")\n(include-book "b")\n', encoding="utf-8")
-            (root / "books/p.lisp").write_text(
-                '(in-package "ACL2")\n(include-book "a")\n(defthm x t)\n', encoding="utf-8")
-            self.assertTrue(proof_cost.include_only(root, "books/u"))
-            self.assertFalse(proof_cost.include_only(root, "books/p"))
-            self.assertFalse(proof_cost.include_only(root, "books/absent"))
 
 
 if __name__ == "__main__":

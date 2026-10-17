@@ -18,14 +18,23 @@ import uuid
 
 if __package__:
     from . import box_table, native_env, train
-    from .known_reds import commit_sha
 else:
     import box_table
     import native_env
     import train
-    from known_reds import commit_sha
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def commit_sha(root: Path, sha: str) -> str:
+    """SHA resolved to a commit of this repository; TrainError otherwise."""
+    if not re.fullmatch(r'[0-9a-fA-F]{4,40}', sha):
+        raise train.TrainError(f'not a commit SHA: {sha}')
+    result = train.git(root, 'rev-parse', '--verify', sha, check=False)
+    resolved = result.stdout.strip()
+    if result.returncode or train.git(root, 'cat-file', '-t', resolved, check=False).stdout.strip() != 'commit':
+        raise train.TrainError(f'not a commit in this repo: {sha}')
+    return resolved
 RESULT_PREFIX = 'FN_TEST_BUDGET_RESULT '
 
 

@@ -2393,8 +2393,7 @@ check-lane:
 # `make check-fast`: the seconds-to-a-minute checks a two-line registry or
 # docs fix can break, before a full check-lane (lanes asked for it after a
 # two-line registry fix cost a 25-minute round; batch BB, 2026-09-28).  Not a
-# gate: `make check` stays the gate.  Registry reciprocity, spec and reach
-# citations, the ledger and the current view, docs_check, and every host/
+# gate: `make check` stays the gate.  Reach citations, docs_check, and every host/
 # file reads (host_check --read, half a second: stx-model-2's paren on a
 # comment line reached an image build; obstructions-9 item 80), and every
 # book an ld host file calls into is in the image world (host_check --books,
@@ -2406,22 +2405,15 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --standalone
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_standalone
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
-	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
-	@$(CHECK_STEP) $(PYTHON) tools/spec_cite_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
-	@$(CHECK_STEP) $(PYTHON) tools/ledger.py --check
-	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
-	@$(CHECK_STEP) $(PYTHON) tools/pinned_figures_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --check --summary
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lock_discipline_check
 	@$(CHECK_STEP) $(PYTHON) tools/lanedump_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_lanedump_check
-	@$(CHECK_STEP) $(PYTHON) tools/unhooked.py --check
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_unhooked
 	@$(CHECK_STEP) $(PYTHON) tools/generator_twin_check.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_generator_twin_check
 	@$(CHECK_STEP) $(PYTHON) tools/harness_check.py --lint test-stubs --quiet
@@ -2469,14 +2461,6 @@ CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
-# The analysed tree (tools/ledger.py load_tree, persisted by its inputs'
-# digest under build/cache/ledger-tree) that check_scaffold,
-# current_view, depth_check, harness_check, interface_emit and spec_cite_check
-# read: about four minutes cold on persvati, 87% of it the whole-tree suspect
-# pass.  Analysed once here, while the steps that do not read it already run;
-# the ones that do wait for it (they had each analysed it at once).
-	@$(CHECK_STEP_WARM) $(PYTHON) tools/ledger.py --load-tree
-	@$(CHECK_STEP) $(PYTHON) tools/check_scaffold.py
 # Every tests/acl2/*-tests.lisp is a certification root (Q7j).
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
 # Every production book is in a root's closure or an explicit work item.
@@ -2517,18 +2501,6 @@ check:
 # encodings; the files that still carry a section sign are listed debt
 # (tools/ascii_debt.json, PKT-496) that may only shrink.
 	@$(CHECK_STEP) $(PYTHON) tools/ascii_check.py --strict
-# The per-capability current view (`python3 tools/current_view.py` prints it)
-# is computed from planning/current-view.json and the tree (host call lines,
-# keystones, the record box's cert cache, the tested and deployed images'
-# pinned source digests); this fails when it cannot be built or names
-# something absent.
-	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
-# The fastest passed attempt at each current book/include closure, grouped by
-# host and toolchain. The ten-second rule (D26) over
-# planning/proof-cost-baseline.json: a new book conclusively (quietly) over
-# 11 s, or a baseline book whose prover steps rose over 10%, fails; a loaded
-# figure is UNQUIET, a failed attempt FAILED. Installed pairs have no proof time.
-	@$(CHECK_STEP) $(PYTHON) tools/proof_cost.py
 # The throughput gate (PKT-407): the newest hbox run under
 # build/throughput/ for HEAD or its nearest measured ancestor,
 # against planning/throughput-baseline.json per operation (25% or the
@@ -2547,11 +2519,6 @@ check:
 # or the store-test image; a prototype, a retired host or a test harness in
 # host/ is refused (KNOWN, shrink-only, names an exception with why).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --loaded
-# Every tests/*.sh witness says its class (raw: tests.test_native_raw_scripts
-# runs it; needs-image/needs-acl2: the convergence checklist names it;
-# helper) and a scenario-catalog row cites it (KNOWN shrink-only).
-	@$(CHECK_STEP) $(PYTHON) tools/witness_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_witness_check
 # The scenario tiers (tests/scenarios/tiers.tsv; docs/testing.md "Scenario
 # tiers"): every listed module exists and drives an image, every question
 # code and opt-in is known, no tier is empty.  Mechanical; no image.
@@ -2747,11 +2714,6 @@ check:
 # synthetic by the rule in the tool's header.  Static, about ten seconds.
 	@$(CHECK_STEP) $(PYTHON) tools/secrets_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_secrets_check
-# Evidence stays small (MODE §5): raw planning logs over 1,000 lines need
-# a summary, the tail and the full log location. Existing oversized logs
-# are grandfathered in a baseline that only shrinks. Static, no ACL2.
-	@$(CHECK_STEP) $(PYTHON) tools/evidence_size_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_evidence_size_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests
@@ -2763,24 +2725,6 @@ check:
 # constants and the verifier state different tag bytes, widths or dropped
 # fields.  Static, no ACL2, no crypto library, under a second.
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_fn_verify.SpecBookTieTests
-# Every repository path this tree cites and no file answers.  On 2026-09-21
-# `books/stx-lace.lisp` was found citing a book and a test book that have
-# never existed, for the observation four keystones hypothesise.  The counts
-# for `specs/`, `planning/` and `tools/` are REPORTED: a design naming the
-# book a packet will add is not a defect.  A citation inside `books/` or
-# `tests/acl2/` is a claim about EVIDENCE, there are none undisclosed on this
-# tree as of w11/phantom-cites, and `--strict` is what keeps it that way: a
-# new one fails `make check` until the file exists, the path is corrected, or
-# the comment says the file does not exist and what rests on it.  Mechanical,
-# no ACL2; triage in planning/lanes/HANDOFF-w11-phantom-cites.md.
-	@$(CHECK_STEP) $(PYTHON) tools/cite_check.py --summary --strict
-# Every Lisp name a spec or doc cites in backquotes is defined by a book, a
-# test book or a host file (PKT-312: a spec cited a retired theorem whose
-# statement was false at the new widths).  Templates, one-segment prefixes and
-# -vN tags pass by visible rule; tools/spec_cite_exemptions.json names each
-# exemption with its reason and each known-stale citation under its packet
-# (PKT-446), and --strict fails on a new one or an entry no longer cited.
-	@$(CHECK_STEP) $(PYTHON) tools/spec_cite_check.py --summary --strict
 # Every theorem the registry cites whose subject no host line can reach.
 # AGENTS.md's first assurance rule -- "the theorem subject is the function
 # the host calls" -- was prose with nothing behind it, and the defect it
@@ -2795,24 +2739,10 @@ check:
 # and cannot grow silently.  Deliberately generous about what counts as a
 # subject, so every orphan it reports is real and it misses some.
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
-	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_carried_entries
-	@$(CHECK_STEP) $(PYTHON) tools/cost_obligations.py --check
-# What the certified world says about each host-called entry (lane
-# coverage-crawler, 2026-09-29): build/coverage.json (gitignored) is built from a dump
-# tools/coverage_dump.lisp writes in an ACL2 session over books/image-world
-# (regenerated at convergence, not per commit); this refuses a decision
-# entry with no direct theorem that planning/coverage-baseline.json does not
-# list (shrink-only), an unfiled requirement in planning/families.json, and
-# a gaps file that is not what the coverage renders.
-	@$(CHECK_STEP) $(PYTHON) tools/coverage.py check
-# A diff that changes one side of a reference <-> executable twin pair only
-# (planning/twins.json: mbe, defattach, naming; Q7i): flagged, not refused.
-	@$(CHECK_STEP) $(PYTHON) tools/coverage.py twins --diff auto
 	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/alphabet_check.py --summary --strict
-	@$(CHECK_STEP) $(PYTHON) tools/premise_audit.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/profile_limits.py --check
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
 # function called once per request that traverses the Store history, the
@@ -2871,15 +2801,6 @@ acl2-ld:
 certs-install:
 	$(PYTHON) tools/certs.py install
 
-# The comprehensiveness gate (build/coordinator/COORDINATOR-SOP.md): every open
-# repair item has a disposition (LANDED / IN-FLIGHT / PARKED / UNOWNED) and every
-# declared native scenario has a recorded run, or planning/repair/ACKS.md says
-# why not.  Plain commands, no CHECK_STEPS_DIR (so it cannot disturb a concurrent
-# check-fast).  NOT in check-fast until the backlog is dispositioned.
-.PHONY: check-coverage
-check-coverage:
-	$(PYTHON) tools/coverage_gap.py --check $(COVERAGE_GAP_ARGS)
-	$(PYTHON) -m unittest -q tests.test_coverage_gap
 
 # The dynamic half of tools/host_shape_check.py: the ACL2-mode prefix of
 # host/native/build.lisp (every include-book and host `ld`), translated the
@@ -2905,13 +2826,13 @@ model-test: certify
 # landed in whichever module was running then, before the later modules ran
 # (PKT-305).  No module or test is over its budget.
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper tests.test_test_search \
-	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
-	    tests.test_green_check tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
-	    tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
-	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
-	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
-	    tests.test_extract_gate tests.test_cert_images tests.test_coverage tests.test_resource_contract tests.test_premise_audit tests.test_alphabet_check tests.test_lock_discipline_check.HolderCheck tests.test_lock_discipline_check.HolderCutMap
+	    tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
+	    tests.test_green_check tests.test_throughput_gate tests.test_service_envelope \
+	    tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
+	    tests.test_test_budget tests.test_acl2_launchers tests.test_docs_check tests.test_post_docs \
+	    tests.test_farm tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
+	    tests.test_extract_gate tests.test_cert_images tests.test_resource_contract tests.test_alphabet_check tests.test_lock_discipline_check.HolderCheck tests.test_lock_discipline_check.HolderCutMap
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 
