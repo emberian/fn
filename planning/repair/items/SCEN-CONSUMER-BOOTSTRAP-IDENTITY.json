@@ -1,12 +1,17 @@
 {
  "category": "implementation",
+ "disposition": "PARKED",
  "file": "host/native/consumer-local.lisp",
  "id": "SCEN-CONSUMER-BOOTSTRAP-IDENTITY",
- "notes": [],
+ "notes": [
+  "10-06 11:54 PARKED. source fix 0f480d107 is on dev; native green-after still owed. Un-park when the next image batch runs tests.test_native_consumer_exchange, tests.test_native_agent_wait, and tests.test_native_consumer_exchange_two_nodes, one module at a time."
+ ],
  "owner": "unowned",
+ "reason": "source fix 0f480d107 is on dev; native green-after still owed",
  "severity": "high",
  "source": "scenarios",
- "state": "open",
+ "state": "deferred",
  "title": "consumer bootstrap/registration refused on the d5b0b9100 images ('consumer refused identity', exit 1): agent_wait 2/2 (smoke-d5b0b9100), consumer_exchange 8/11 and consumer_exchange_two_nodes 3/3 (run2-d5b0b9100). The consumer cursor has no green native run on any current image; consumer_e2 and consumer_inspect have never executed.",
- "updated": "2026-10-04T15:13:41Z"
+ "un-park": "the next image batch runs tests.test_native_consumer_exchange, tests.test_native_agent_wait, and tests.test_native_consumer_exchange_two_nodes, one module at a time",
+ "updated": "2026-10-06T15:54:39Z"
 }

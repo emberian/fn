@@ -808,7 +808,7 @@ S109 follow-through source0c7dc0ea8: preserve the first serious condition
 when descriptor close also fails, so cleanup OS error cannot turn a core
 fault into credential refusal. Sixth actual-source schedule injects core
 fault plus closeEIO after actual close; intended assertion red/base and
-green/head archived S109-d92aa72565cd4483815b2da7f70f3da5.json, sha256
+green/head archived S109-[REDACTED-INVITATION-TOKEN].json, sha256
 ef3372181f2fa6ddd54226c89d6142a6d79bb83afedabbf1c28beed5f6a32135.
 Fixture worker fault injection uses explicit hand leaf definitions rather
 than symbol-function replacement, so static inventory does not invent worker
@@ -5181,3 +5181,46 @@ LANDED 525cd7d51 (ancestor of origin/dev). init calls fnn-heap-init-decision-not
 PARKED. Plain status still exits 0 with the not-running line: fnn-operator-status-once prints it, then fnn-command-stopped-status reads the checkpoint header and never calls fn-lgl-open. That is assert_foreign_lineage's red. The open does refuse (fnn-log-lineage-genesis before any record; store checkpoint publishes only after that open). Row S3 says plain status does not replay. Un-parks: a store-lineage lane with an image, choosing either to run fn-lgl-open before the not-running lines (this item; row S3 changes) or to point the test at status --replay. This shift does not retarget the test. Repair state stays open.
 
 Stopped. Not started: the docs truth pass, the master-list tail.
+
+# consumer-boot (SCEN-CONSUMER-BOOTSTRAP-IDENTITY) — 2026-10-06
+
+Worktree build/lanes/consumer-boot, branch lane/consumer-boot @ 70869e0ab
+(from origin/dev 93c692e38; not merged forward — the three commits on
+origin/dev touch owner-host's fn-owner-reclaim-live-p and two other repair
+rows, not this seam).
+
+## Salvage verified
+
+`python3 -m unittest tests.test_consumer_raw_mocks` from this worktree:
+2 tests, OK, 0.110s (log /tmp/consumer-boot-raw-mocks.log). The file is 53
+lines. Both boundaries the poll-CLI mock prints are the real host
+functions: the mock evals fnn-consumer-local-exchange, fnn-command-consumer-local
+and fnn-consumer-say from host/native/consumer-local.lisp. A `bootstrap`
+command is one request; a register crosses a bootstrap only after acceptance.
+The assertion was not weakened. No failure message to rewrite: the run passed,
+so unittest's "False is not true : " prefix never appeared.
+
+## Classification
+
+(a) The d5b0b9100 line `consumer refused identity` (exit 1) is not a current
+source bug. fn-col-bootstrap refuses :identity when a consumer history already
+exists (books/consumer-owner-local.lisp). f5f340d04 made fn-ncr-cli-after
+answer from the step alone, so an accepted `consumer bootstrap` command sent
+a second bootstrap and that refusal became the command's. Fixed in ancestor
+0f480d107 (fn-ncr-cli-after takes COMMAND and STEP; only a register sends
+more). books/consumer-reason.lisp states that. The host passes
+(operation operation ...) then (operation :bootstrap ...).
+
+(b) Harness gap, closed by 70869e0ab and confirmed by the unittest above.
+Before that commit the mock stubbed the exchange, so the guard did not
+exercise the retry the zmq-2 move put in fnn-consumer-local-exchange.
+
+(c) Not run: native green-after on an image that contains 0f480d107.
+No local image. Not started on hbox (the integrator is certifying there).
+
+Repair row PARKED (state deferred; disposition PARKED). Reason: source fix
+0f480d107 is on dev; native green-after still owed. Un-park when the next
+image batch runs tests.test_native_consumer_exchange,
+tests.test_native_agent_wait, and
+tests.test_native_consumer_exchange_two_nodes, one module at a time.
+The d5b0b9100 overlay was not a claim (lanedumps/consumers.md).

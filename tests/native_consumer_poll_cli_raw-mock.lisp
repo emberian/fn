@@ -14,9 +14,6 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
-(defun fnn-consumer-local-exchange (control operation input argument)
-  (declare (ignorable control operation input argument))
-  (harness-stub-reached 'fnn-consumer-local-exchange "host/native/consumer-local.lisp"))
 (defun fnn-octet-list (octets)
   (declare (ignorable octets))
   (harness-stub-reached 'fnn-octet-list "host/native/io.lisp"))
@@ -80,7 +77,8 @@
     (loop for form = (read stream nil :eof)
           until (eq form :eof)
           when (and (consp form) (eq (car form) 'defun)
-                    (member (cadr form) '(fnn-command-consumer-local
+                    (member (cadr form) '(fnn-consumer-local-exchange
+                                          fnn-command-consumer-local
                                           fnn-consumer-say)))
             do (eval form)
                (when (eq (cadr form) 'fnn-command-consumer-local)
