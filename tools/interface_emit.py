@@ -21,7 +21,7 @@ the same forms with the ledger's non-evaluating reader and GENERATES:
   (tools/depth_check.py reads it), in declaration order;
 * the subsystem each entry is filed under (SUBSYSTEMS below: a name prefix,
   else the dispatching host file), a column of the registry.
-  planning/interfaces-gaps.md is tools/coverage.py's: what the certified
+  build/interfaces-gaps.md is tools/coverage.py's: what the certified
   world says about each entry (its direct theorems, the ones about its
   callers or callees, and nothing), from a dump of the world, not a name match;
 
@@ -100,7 +100,7 @@ KEYS = {":class", ":kinds", ":exempt", ":keystones", ":root", ":direct", ":deleg
         ":raw-with", ":raw-guarded", ":operation"}
 
 # The subsystems a declaration is filed under (host/interfaces.lisp's
-# sections; planning/interfaces-gaps.md).  A name prefix decides first, then
+# sections; build/interfaces-gaps.md).  A name prefix decides first, then
 # the first dispatching host file the table names, else nntp/served (the
 # extraction roots: the served program's driver calls them).
 SUBSYSTEMS = ("store", "owner", "nntp/served", "peer/feed", "bp", "web",

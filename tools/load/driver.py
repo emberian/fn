@@ -52,8 +52,8 @@ from tools.load import workloads as wl              # noqa: E402
 
 NOFILE = [None]            # soft RLIMIT_NOFILE the run raised itself to (recorded in each cell box dict)
 BOX_BASE = os.environ.get("FN_LOAD_BOX_BASE", "/tank/fn/scratch/load-harness")
-# One-off hook files live in the evidence dir (not tools/load): O2's FN_TRACE spans replace them.
-HOOKS = ROOT / "planning" / "evidence" / "load" / "hooks"
+# One-off hook files (O2's FN_TRACE spans replace them); they ship to the box with tools/.
+HOOKS = ROOT / "tools" / "load" / "hooks"
 HOOK = HOOKS / "w13-idle-gc.lisp"
 CENSUS_HOOK = HOOKS / "w15-census.lisp"
 ROOTS_HOOK = HOOKS / "m34-roots.lisp"   # what holds the large arrays a census finds live (memory landing 3+4)
@@ -1739,8 +1739,6 @@ def ssh(host, script, timeout=120):
 
 # Shared payload for single-cell and per-image queues. No image or run evidence.
 SHIP_FILES = (
-    ("planning/evidence/load/hooks/", "planning/evidence/load/hooks/"),
-    ("planning/evidence/load/2026-10-07-w7/w7hook.lisp", "planning/evidence/load/2026-10-07-w7/"),
     ("packaging/fn", "packaging/"), ("host/native/io.lisp", "host/native/"),
     ("tools/", "tools/"), ("tests/__init__.py", "tests/"),
     ("tests/native_harness.py", "tests/"), ("books/outcome-class.lisp", "books/"),
@@ -1816,11 +1814,12 @@ def cmd_fetch(args):
     if not st.startswith("done") and not args.force:
         print("not done; nothing fetched")
         return 2
-    dest = ROOT / "planning" / "evidence" / "load" / ("%s-%s" % (time.strftime("%Y-%m-%d"), args.label))
+    # build/evidence/ is gitignored: evidence never enters git (the archive is on hbox).
+    dest = ROOT / "build" / "evidence" / "load" / ("%s-%s" % (time.strftime("%Y-%m-%d"), args.label))
     dest.mkdir(parents=True, exist_ok=True)
     # Raw output (result.json, cells.jsonl, logs, censuses) stays on the box; only report.md
-    # (and anon-by-type.md when present) enters the tree, with the box path written into it.
-    # --raw also copies the raw files next to the report (gitignored; never commit them).
+    # (and anon-by-type.md when present) is fetched, with the box path written into it.
+    # --raw also copies the raw files next to the report.
     raw = Path(tempfile.mkdtemp(prefix="fn-load-fetch-"))
     fetch_run(host, args.label, raw)
     resf = raw / "result.json"

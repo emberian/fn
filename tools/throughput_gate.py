@@ -51,7 +51,7 @@ is taken on tmpfs (/dev/shm), in one unit, on a box checked quiet.
     run     (laptop) ship this script and the client (tools/msgid_measure.py,
             tools/rep_measure.py, tests/native_harness.py) to hbox, start the
             box half in `systemd-run --user -p MemoryMax=24G`, wait, fetch the
-            JSON into planning/throughput/REV12-LABEL.json.
+            JSON into build/throughput/REV12-LABEL.json.
     check   (make check) the newest committed run whose revision is HEAD or
             its nearest measured ancestor, against planning/throughput-
             baseline.json: a metric over max(base * 1.25, base + floor)
@@ -90,7 +90,7 @@ sys.path.insert(0, str(ROOT))
 from tools import ratchet  # noqa: E402
 BASELINE = ROOT / "planning" / "throughput-baseline.json"
 CAUSES = ROOT / "planning" / "throughput-causes.json"
-RUNS = ROOT / "planning" / "throughput"
+RUNS = ROOT / "build" / "throughput"   # run JSON, gitignored; the recorded runs are archived on hbox
 TOLERANCE = 0.25
 QUIET_WINDOW = 10.0
 QUIET_CPU = 0.05
@@ -694,7 +694,7 @@ def check(a):
         return 0
     found = newest_run(head)
     if found is None:
-        print("throughput_gate: NOT MEASURED: no run under planning/throughput/ "
+        print("throughput_gate: NOT MEASURED: no run under build/throughput/ "
               "is HEAD or its ancestor")
         return 0
     (negative, _, _), path, doc = found

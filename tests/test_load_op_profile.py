@@ -286,7 +286,7 @@ class HookRuntimeTests(unittest.TestCase):
             text = self.lisp('''
 (in-package "ACL2")
 (defun fnn-exit (&rest args) (throw 'forwarded args))
-(load "planning/evidence/load/hooks/exit-prof.lisp")
+(load "tools/load/hooks/exit-prof.lisp")
 (format t "FORWARDED ~s~%" (catch 'forwarded (fnn-exit 7 :abort t)))
 ''', directory, FN_LOAD_EXITPROF=str(directory / "missing-parent" / "report"))
             self.assertIn("FORWARDED (7 :ABORT T)", text)
@@ -305,7 +305,7 @@ class HookRuntimeTests(unittest.TestCase):
    (setf *setup* (make-array (* 32 1024 1024) :element-type '(unsigned-byte 8) :initial-element 1))
    (apply fn args)))
 (defun fnn-exit (&rest args) (throw 'forwarded args))
-(load "planning/evidence/load/hooks/exit-prof.lisp")
+(load "tools/load/hooks/exit-prof.lisp")
 (setf *operation* (make-array (* 1024 1024) :element-type '(unsigned-byte 8) :initial-element 1))
 (catch 'forwarded (fnn-exit 0))
 ''', directory, FN_LOAD_EXITPROF=str(directory / "report"), FN_LOAD_EXITPROF_STOP=str(directory / "stop"))
@@ -319,7 +319,7 @@ class HookRuntimeTests(unittest.TestCase):
             directory = Path(temp)
             text = self.lisp('''
 (in-package "ACL2")
-(load "planning/evidence/load/hooks/profile-support.lisp")
+(load "tools/load/hooks/profile-support.lisp")
 (let ((name (fn-load-trigger-name (sb-ext:posix-getenv "FN_TEST_TRIGGER"))))
  (dotimes (i 5) (fn-load-trigger-present-p name) (sleep 0.02))
  (let ((before (sb-ext:get-bytes-consed)))
@@ -352,7 +352,7 @@ class HookRuntimeTests(unittest.TestCase):
                                   :element-type '(unsigned-byte 8) :initial-element 1))
      (sb-ext:gc :full t))
    (funcall fn)))
-(load "planning/evidence/load/hooks/op-consed.lisp")
+(load "tools/load/hooks/op-consed.lisp")
 (sb-thread:join-thread *controller*)
 (assert *tick-work*)
 ''', directory, FN_LOAD_CONSED_DIR=str(directory))
@@ -407,7 +407,7 @@ class HookRuntimeTests(unittest.TestCase):
  (lambda (fn) (declare (ignore fn)) (push :reset *events*)))
 (sb-int:encapsulate 'sb-sprof:map-traces 'empty-test-samples
  (lambda (fn &rest args) (declare (ignore fn args))))
-(load "planning/evidence/load/hooks/w6-prof.lisp")
+(load "tools/load/hooks/w6-prof.lisp")
 (sb-thread:join-thread *controller*)
 (format t "EVENTS ~s~%" (reverse *events*))
 ''', directory, **env)
@@ -438,7 +438,7 @@ class HookRuntimeTests(unittest.TestCase):
             self.lisp('''
 (in-package "ACL2")
 (require :sb-sprof)
-(load "planning/evidence/load/hooks/profile-support.lisp")
+(load "tools/load/hooks/profile-support.lisp")
 (defun frame-witness () 42)
 (defvar *infos*
   (list "foreign function call_into_lisp_"
@@ -493,7 +493,7 @@ class HookRuntimeTests(unittest.TestCase):
             directory = Path(temp)
             self.lisp('''
 (in-package "ACL2")
-(load "planning/evidence/load/hooks/profile-support.lisp")
+(load "tools/load/hooks/profile-support.lisp")
 (require :sb-sprof)
 (sb-sprof:start-profiling :mode :alloc :threads :all :max-samples 10000)
 (let ((thread (sb-thread:make-thread

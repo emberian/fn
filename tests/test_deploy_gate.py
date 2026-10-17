@@ -261,7 +261,7 @@ class RepoRootTests(unittest.TestCase):
     def test_the_default_and_a_relative_evidence_path_both_land_in_that_tree(self):
         self.assertEqual(
             deploy_gate.evidence_path(None, self.lane, "twonode-abc-2026-09-20.md"),
-            self.lane / "planning" / "evidence" / "twonode-abc-2026-09-20.md")
+            self.lane / "build" / "evidence" / "twonode-abc-2026-09-20.md")
         self.assertEqual(
             deploy_gate.evidence_path("planning/evidence/x.md", self.lane, "d.md"),
             self.lane / "planning" / "evidence" / "x.md")

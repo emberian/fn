@@ -10,7 +10,7 @@ sound.  It changes no books; every finding is a defect packet, and the fixes
 are continuation lanes.
 
     tools/hostile_campaign.py --image build/fn-host-developer \\
-        --evidence planning/evidence/hostile-input-2026-09-26 \\
+        --evidence build/evidence/hostile-input-2026-09-26 \\
         --report build/hostile-report.json
 
 It launches its own scratch owner (and, with --bp-image, a bp-node) under

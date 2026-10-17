@@ -5,7 +5,7 @@
         (laptop) ships tools/fundamentals/ to hbox, runs its rows.sh on TREE
         (a tools/hbox_native.sh tree with the four images,
         --images developer,production,dtn,dtn-developer) under nohup, waits,
-        fetches the outputs into planning/evidence/fundamentals-DATE-REV12/out,
+        fetches the outputs into build/evidence/fundamentals-DATE-REV12/out,
         then judges them (below).  Hours: the F4 mixed hour runs beside the
         other rows; F7's module runs twice (dtn, dtn-developer).
     fundamentals.py judge --out DIR --revision REV [--write]
@@ -754,7 +754,7 @@ def run(a) -> int:
     if not re.fullmatch(r"[A-Za-z0-9._-]+", label):
         raise SystemExit("fundamentals: bad --label")
     box = f"/tank/fn/scratch/fundamentals/{label}"
-    evdir = ROOT / "planning" / "evidence" / f"fundamentals-{day}-{rev[:12]}"
+    evdir = ROOT / "build" / "evidence" / f"fundamentals-{day}-{rev[:12]}"   # gitignored: evidence never enters git
     q = shlex.quote
     env = " ".join(f"{k}={q(str(v))}" for k, v in (("ROW_CORES", a.row_cores), ("F4_CORES", a.f4_cores), ("F4_SECONDS", a.f4_seconds),
                                                    ("F2_BEFORE", a.f2_before or ""), ("EDGE_SSH", a.edge_ssh or "")))

@@ -2967,7 +2967,7 @@ check:
 # figure is UNQUIET, a failed attempt FAILED. Installed pairs have no proof time.
 	@$(CHECK_STEP) $(PYTHON) tools/proof_cost.py
 # The throughput gate (PKT-407): the newest hbox run under
-# planning/throughput/ for HEAD or its nearest measured ancestor,
+# build/throughput/ for HEAD or its nearest measured ancestor,
 # against planning/throughput-baseline.json per operation (25% or the
 # metric's floor); a regression fails unless planning/throughput-causes.json
 # names the run's revision with a reason.  No run: NOT MEASURED, passes.
@@ -3237,7 +3237,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_carried_entries
 	@$(CHECK_STEP) $(PYTHON) tools/cost_obligations.py --check
 # What the certified world says about each host-called entry (lane
-# coverage-crawler, 2026-09-29): planning/coverage.json is built from a dump
+# coverage-crawler, 2026-09-29): build/coverage.json (gitignored) is built from a dump
 # tools/coverage_dump.lisp writes in an ACL2 session over books/image-world
 # (regenerated at convergence, not per commit); this refuses a decision
 # entry with no direct theorem that planning/coverage-baseline.json does not

@@ -356,7 +356,7 @@ g_throughput() {
   if [ "$DRY" = yes ]; then would "$PY" tools/throughput_gate.py "$@"; would "$PY" tools/throughput_gate.py check; return 10; fi
   "$PY" tools/throughput_gate.py "$@" || { echo "the throughput run failed (a box never quiet refuses: exit 3)"; return 1; }
   "$PY" tools/throughput_gate.py check || { echo "the throughput gate regressed against planning/throughput-baseline.json"; return 1; }
-  echo "throughput gate quiet and within the baseline (planning/throughput/$SHORT-cut-$VERSION*.json)"
+  echo "throughput gate quiet and within the baseline (build/throughput/$SHORT-cut-$VERSION*.json)"
 }
 
 g_hostile() {

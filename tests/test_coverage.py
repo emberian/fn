@@ -197,7 +197,7 @@ class DelegationTests(unittest.TestCase):
         self.assertEqual(rows["fn-wrap-serve"]["delegated_cited"], ["fn-serve-answers"])
         self.assertEqual(rows["fn-serve"]["keystone_cited"], ["fn-serve-answers"])
         coverage.write_baseline(cov, root / "planning" / "coverage-baseline.json")
-        (root / "planning" / "interfaces-gaps.md").write_text(coverage.render_gaps(cov))
+        (root / "build" / "interfaces-gaps.md").write_text(coverage.render_gaps(cov))
         problems, _notes = coverage.check(cov, root)
         self.assertEqual(sum("fn-wrap-scan" in p for p in problems), 1, problems)
         self.assertEqual(sum("fn-wrap-branch" in p for p in problems), 1, problems)
@@ -309,21 +309,21 @@ class CoverTests(unittest.TestCase):
         cov["rule"]["vocabulary_unmatched"] = []   # the synthetic world names few words
         # make fn-serve uncovered: drop its direct theorem
         cov["entries"][0]["direct"] = []
-        (self.root / "planning" / "interfaces-gaps.md").write_text(coverage.render_gaps(cov))
+        (self.root / "build" / "interfaces-gaps.md").write_text(coverage.render_gaps(cov))
         problems, _notes = coverage.check(cov, root=self.root)
         self.assertTrue(any("fn-serve has no direct theorem" in p for p in problems))
         coverage.write_baseline(cov, self.root / "planning" / "coverage-baseline.json")
         problems, _notes = coverage.check(cov, root=self.root)
         self.assertEqual(problems, [])
         # a stale gaps file is refused; a declared entry beyond the coverage is a note
-        (self.root / "planning" / "interfaces-gaps.md").write_text("old")
+        (self.root / "build" / "interfaces-gaps.md").write_text("old")
         problems, _notes = coverage.check(cov, root=self.root)
         self.assertTrue(any("interfaces-gaps.md" in p for p in problems))
         doc = json.loads((self.root / "build" / "box" / "interfaces.json").read_text())
         doc["entries"].append({"name": "fn-new", "subsystem": "web", "class": "program",
                                "keystones": [], "dispatched_from": []})
         (self.root / "build" / "box" / "interfaces.json").write_text(json.dumps(doc))
-        (self.root / "planning" / "interfaces-gaps.md").write_text(coverage.render_gaps(cov))
+        (self.root / "build" / "interfaces-gaps.md").write_text(coverage.render_gaps(cov))
         problems, notes = coverage.check(cov, root=self.root)
         self.assertEqual(problems, [])
         self.assertTrue(any("fn-new" in n for n in notes))

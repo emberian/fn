@@ -19,7 +19,7 @@ decided figures are recorded in every cell.
 Readers are processes (no shared GIL) and read replies with large recv()s up
 to the dot terminator.  Each cell: fresh store, load (one POST connection),
 WARM seconds of the same traffic, then SECONDS measured.  Extent counters and
-lock sums come from tools/../planning/evidence/load/2026-10-07-w7/w7hook.lisp,
+lock sums come from tools/load/hooks/w7hook.lisp,
 loaded into the image with --eval before acl2::sbcl-restart (W7_MODE).
 
 preads_per_article: delta of *fnn-extent-stats* misses (physical preads) over
@@ -43,7 +43,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-HOOK = ROOT / "planning/evidence/load/2026-10-07-w7/w7hook.lisp"
+HOOK = ROOT / "tools/load/hooks/w7hook.lisp"
 N_ARTICLES = int(os.environ.get("W7_ARTICLES", 2000))     # 2000 = W7; 20000 = W7b
 CELL_NAME = "W7" if N_ARTICLES == 2000 else "W7b"
 SMALL = 8 * 1024         # 90%
