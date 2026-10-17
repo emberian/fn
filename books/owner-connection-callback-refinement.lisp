@@ -23,7 +23,7 @@
    (equal (fn-owner-reader-views (fn-owner-install-ocfg oc state))
           (fn-owner-reader-views state))
    :hints (("Goal" :in-theory
-            (enable fn-owner-reader-views fn-owner-install-ocfg)))))
+            (e/d (fn-owner-reader-views fn-owner-install-ocfg) (put-global))))))
 
 (local
  (defthm fn-ocb-auth-of-install

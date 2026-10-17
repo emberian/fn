@@ -11,7 +11,8 @@
 (defun fn-owner-canonical-reset (state)
   (declare (xargs :stobjs state :guard t))
   (let* ((epoch (fn-owner-canonical-epoch state))
-         (state (f-put-global 'fn-owner-canonical-state nil state))
+         (state (fn-ost-install-authority
+ (fn-oauth-put :canonical nil (fn-ost-authority state)) state))
          (state (f-put-global 'fn-owner-canonical-pending nil state)))
     ; An invalid prior epoch stays unavailable; it is never silently reused.
     (f-put-global 'fn-owner-canonical-epoch
@@ -38,9 +39,9 @@
                 (fn-scs-fixed-carriesp 6 fields)
                 (fn-scs-fixed-carriesp 7 cpfields) (fn-omk-tokenp source)))
       (mv :refused state)
-    (let* ((state (f-put-global 'fn-owner-canonical-state
-                               (list :ready epoch count ctx fields cp7 cpfields
-                                     pool rows source) state))
+    (let* ((state (fn-ost-install-authority
+ (fn-oauth-put :canonical (list :ready epoch count ctx fields cp7 cpfields
+                                     pool rows source) (fn-ost-authority state)) state))
            (state (f-put-global 'fn-owner-canonical-pending nil state)))
       (mv :installed state))))
 
@@ -61,7 +62,8 @@
 
 (defthm fn-owner-canonical-reset-clears-ready-by-definition
  (not (fn-owner-canonical-state (fn-owner-canonical-reset state)))
- :hints (("Goal" :in-theory (enable fn-owner-canonical-state fn-owner-canonical-reset))))
+ :hints (("Goal" :in-theory (e/d (fn-owner-canonical-state fn-owner-canonical-reset)
+                  (put-global fn-oauth-get fn-oauth-put)))))
 (defthm fn-owner-canonical-install-stores-inputs-by-definition
  (implies (equal (mv-nth 0 (fn-owner-canonical-install
                            epoch count ctx fields cp7 cpfields pool rows source state))
@@ -70,7 +72,8 @@
           (mv-nth 1 (fn-owner-canonical-install
                      epoch count ctx fields cp7 cpfields pool rows source state)))
          (list :ready epoch count ctx fields cp7 cpfields pool rows source)))
- :hints (("Goal" :in-theory (enable fn-owner-canonical-state fn-owner-canonical-install))))
+ :hints (("Goal" :in-theory (e/d (fn-owner-canonical-state fn-owner-canonical-install)
+                  (put-global fn-oauth-get fn-oauth-put)))))
 
 (defthm fn-owner-canonical-reset-epoch-by-definition
  (equal (fn-owner-canonical-epoch (fn-owner-canonical-reset state))
@@ -92,6 +95,33 @@
   (equal (assoc-equal key (nth 2 (fn-owner-canonical-reset state)))
          (assoc-equal key (nth 2 state))))
  :hints (("Goal" :in-theory (enable fn-owner-canonical-reset))))
+
+(defthm fn-owner-canonical-reset-authority-effect
+  (equal (fn-ost-authority (fn-owner-canonical-reset state))
+         (fn-oauth-put :canonical nil (fn-ost-authority state)))
+  :hints (("Goal" :in-theory (e/d (fn-owner-canonical-reset)
+                                  (put-global fn-oauth-get fn-oauth-put)))))
+
+; Both canonical writers frame the other authority observations exactly.
+(defthm fn-owner-canonical-reset-frames-account-fields
+  (and (equal (fn-oauth-get :carries (fn-ost-authority (fn-owner-canonical-reset state)))
+              (fn-oauth-get :carries (fn-ost-authority state)))
+       (equal (fn-oauth-get :root (fn-ost-authority (fn-owner-canonical-reset state)))
+              (fn-oauth-get :root (fn-ost-authority state))))
+  :hints (("Goal" :in-theory (e/d (fn-owner-canonical-reset)
+                                  (put-global fn-oauth-get fn-oauth-put)))))
+
+(defthm fn-owner-canonical-install-frames-account-fields
+  (let ((next (mv-nth 1 (fn-owner-canonical-install
+                         epoch count ctx fields cp7 cpfields pool rows source state))))
+    (and (equal (fn-oauth-get :carries (fn-ost-authority next))
+                (fn-oauth-get :carries (fn-ost-authority state)))
+         (equal (fn-oauth-get :root (fn-ost-authority next))
+                (fn-oauth-get :root (fn-ost-authority state)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-owner-canonical-install)
+                (put-global fn-oauth-get fn-oauth-put fn-omk-widthp fn-scs-fixed-carriesp
+                 fn-omk-tokenp fn-omk-at)))))
 
 (in-theory (disable fn-owner-canonical-epoch fn-owner-canonical-state
                     fn-owner-canonical-reset fn-owner-canonical-install

@@ -17,7 +17,7 @@
     (equal (fn-ost-catalog-root (fn-orc-writer-leave state)) (fn-ost-catalog-root state))
     (equal (fn-ost-catalog-root (fn-owner-put-credits r state)) (fn-ost-catalog-root state)))
    :hints (("Goal" :in-theory
-            (e/d (fn-owner-authority-proposal-clear fn-owner-canonical-reset
+            (e/d (fn-ost-install-authority fn-owner-authority-proposal-clear fn-owner-canonical-reset
                   fn-owner-install-open-ocfg fn-owner-install-ocfg fn-owner-retain-carry-put
                   fn-ost-install-publication fn-orc-writer-enter fn-orc-writer-leave fn-owner-put-credits)
                  (fn-ost-catalog-root put-global))))))
@@ -62,7 +62,7 @@
     (equal (fn-ost-publication (fn-orc-writer-leave state)) (fn-ost-publication state))
     (equal (fn-ost-publication (fn-owner-put-credits r state)) (fn-ost-publication state)))
    :hints (("Goal" :in-theory
-            (e/d (fn-owner-authority-proposal-clear fn-owner-canonical-reset
+            (e/d (fn-ost-install-authority fn-owner-authority-proposal-clear fn-owner-canonical-reset
                   fn-owner-install-open-ocfg fn-owner-install-ocfg fn-owner-retain-carry-put
                   fn-ost-install-publication fn-orc-writer-enter fn-orc-writer-leave fn-owner-put-credits)
                  (fn-ost-publication put-global))))))

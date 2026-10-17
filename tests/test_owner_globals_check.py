@@ -16,6 +16,19 @@ class OwnerGlobalsCheckTests(unittest.TestCase):
         self.assertEqual(ogc.globals_of(text),
                          ["fn-owner-feed-command", "fn-owner-log-line", "fn-owner-output"])
 
+    def test_wrapper_quoted_symbols_in_any_argument(self):
+        text = """(fn-owner-payload-view-global 'fn-owner-sco-inflight state)
+          (FN-OWNER-PAYLOAD-VIEW-GLOBAL (QUOTE FN-OWNER-SCO-INFLIGHT) state)
+          (custom-global state 'fn-owner-root)
+          (custom-global state (quote fn-owner-later))
+          (fnn-owner-core 'fn-owner-function)
+          (custom-global '(fn-owner-list))
+          (custom-global #'fn-owner-function)
+          ; (custom-global 'fn-owner-comment)
+          (f "(custom-global 'fn-owner-string)")"""
+        self.assertEqual(ogc.globals_of(text),
+                         ['fn-owner-later', 'fn-owner-root', 'fn-owner-sco-inflight'])
+
     def test_function_names_comments_and_strings_are_not_globals(self):
         text = ("(fnn-owner-core 'fn-owner-open-peer peer)\n"
                 "(fnn-owner-action 'fn-owner-outcome cid word)\n"
@@ -63,11 +76,12 @@ class RaiseNeedsAReasonTests(unittest.TestCase):
             return code, json.loads(path.read_text())
 
     def test_targeted_shrink_keeps_existing_red(self):
-        code, written = self.run_write(["--lower-to", "host/a-host.lisp=0"],
+        code, written = self.run_write(["--lower-to", "host/a-host.lisp=0", "--reason", "OWNER-CARRIER-GLOBALS: moved"],
                                        {"host/a-host.lisp": 1, "host/other.lisp": 3})
         self.assertEqual(code, 0)
         self.assertEqual(written["host/a-host.lisp"], 0)
         self.assertEqual(written["host/other.lisp"], 3)
+        self.assertIn("OWNER-CARRIER-GLOBALS", written["_reasons"][0])
         code, written = self.run_write(["--lower-to", "host/a-host.lisp=2"],
                                        {"host/a-host.lisp": 1})
         self.assertEqual(code, 1)
@@ -153,6 +167,22 @@ class ParkedFilesTests(unittest.TestCase):
     """A parked host file (planning/host-parked.json: no build loads it) is not
     the running owner's, so its globals are not counted; one that is not
     parked is (2026-10-03, check-lane green)."""
+
+    def test_included_parked_wrapper_is_counted_transitively(self):
+        import json, tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'host').mkdir(); (root / 'planning').mkdir()
+            (root / 'host/live.lisp').write_text('(include-book "middle")')
+            (root / 'host/middle.lisp').write_text('(include-book "payload-view-host")')
+            (root / 'host/payload-view-host.lisp').write_text(
+                "(fn-owner-payload-view-global 'fn-owner-sco-inflight state)")
+            (root / 'planning/host-parked.json').write_text(json.dumps({'parked': {
+                'host/middle.lisp': 'old ld inventory',
+                'host/payload-view-host.lisp': 'LIVE, NOT PARKED'}}))
+            self.assertEqual(ogc.scan(root), {
+                'host/payload-view-host.lisp': ['fn-owner-sco-inflight']})
 
     def test_parked_is_skipped_and_the_rest_counted(self):
         import json, tempfile

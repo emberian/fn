@@ -1,6 +1,7 @@
 ; Exact shared state definitions extracted from current owner-host/recovery.
 ; No owner validity is recomputed here and no supplied readiness flag exists.
 (in-package "ACL2")
+(include-book "owner-readers-state")
 (include-book "owner-config-state")
 (include-book "owner-state-accessors")
 (include-book "state-globals")
@@ -26,9 +27,7 @@
 
 (defun fn-owner-reader-views (state)
   (declare (xargs :stobjs state :guard t))
-  (if (boundp-global 'fn-owner-reader-views state)
-      (f-get-global 'fn-owner-reader-views state)
-    nil))
+  (fn-ordr-get :views (fn-ost-readers state)))
 
 (defun fn-owner-auth (state)
   (declare (xargs :stobjs state :guard t))
