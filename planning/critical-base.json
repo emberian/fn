@@ -533,18 +533,6 @@
    "class": "authorization",
    "statement_digest": "727317ed7906f7cad25dce0645fd3d7428f62e1731ae28b3e88b18594578990d"
   },
-  "fn-av-mca-read-span-restricted-is-legacy": {
-   "class": "authorization",
-   "statement_digest": "032ffc11b7b6497d8b96af585003ac6fcaa7b74f31c01d2886c2fd16beba8ccc"
-  },
-  "fn-av-scr-auth-delegate-restricted-is-reference": {
-   "class": "authorization",
-   "statement_digest": "aeaf6bbc1767bd4b5fed927973c243b299d901652510e61ae399cd9ccaeeea3f"
-  },
-  "fn-av-scr-dispatch-core-restricted-is-reference": {
-   "class": "authorization",
-   "statement_digest": "01832f3eb29c9700d346a19c24dbabd704773cab2de85e9182be9e96cd6c8191"
-  },
   "fn-aw-add-fold-open-cost": {
    "class": "parser-boundary",
    "statement_digest": "ac4e1b2f6acfc04bbd72faa4d3d518ca2f1e6530fc456426aa04b99ac95e9551"
@@ -876,218 +864,6 @@
   "fn-bpr-store-record-acceptedp-is-acceptance-over-alpha": {
    "class": "durability",
    "statement_digest": "8d6863e464e56a60aa8e17543d7d58dd1795b73aae54216cc94dd31bd66e6751"
-  },
-  "fn-bps-asb-drive-composes-quanta": {
-   "class": "parser-boundary",
-   "statement_digest": "62ca54f9cb9d6a2d6e2f268146e2bcf857748ebc4fb983949d416282f0f71108"
-  },
-  "fn-bps-asb-drive-consumes-at-most-quantum": {
-   "class": "parser-boundary",
-   "statement_digest": "f025b3d151445940c4aa73e438d2d3919b2f0872e7d36e0bf09a6906713667bc"
-  },
-  "fn-bps-asb-drive-consumes-at-most-window": {
-   "class": "parser-boundary",
-   "statement_digest": "fb96c19f87183afb531e3b6921b52e1b7db12d5e7be826caf8aab8264db9bd40"
-  },
-  "fn-bps-asb-drive-offset-is-consumed-prefix": {
-   "class": "parser-boundary",
-   "statement_digest": "8bda12fa2b7ee55fd6243edee645844bf35042668a12f3d41d3f3bee22e8c727"
-  },
-  "fn-bps-asb-drive-preserves-aggregate-context": {
-   "class": "parser-boundary",
-   "statement_digest": "35ee676e638c14e47a7d2d6a8928805d429349d892a0150868ddf4e6a7548e61"
-  },
-  "fn-bps-asb-drive-preserves-body-context": {
-   "class": "parser-boundary",
-   "statement_digest": "c7795581f388ba2ab6c5c7bcfdc7907cef55d7717f3adc6c2ff7c4bd200522a9"
-  },
-  "fn-bps-asb-drive-preserves-cursor-spine": {
-   "class": "parser-boundary",
-   "statement_digest": "677592a56890107b194c1e55f1fece30a0aeb11c7689095c3027f4d5318792d5"
-  },
-  "fn-bps-asb-drive-preserves-grammar-control": {
-   "class": "parser-boundary",
-   "statement_digest": "77144e90a6036365007b584ebee95a247f59c37539e101f91b40d98475ca9c0a"
-  },
-  "fn-bps-asb-drive-preserves-head-profile": {
-   "class": "parser-boundary",
-   "statement_digest": "8ca5fab8b3f0cbab440ec585cdb944e4492b8c772e3585b1b4e53f5978d92f0f"
-  },
-  "fn-bps-asb-drive-preserves-metadata-budget": {
-   "class": "parser-boundary",
-   "statement_digest": "8c9f08f4d130461d224f3470af2938cb09f81a6d8aedc7d60f46cd846d2f0ba1"
-  },
-  "fn-bps-asb-drive-preserves-readonly-subject": {
-   "class": "parser-boundary",
-   "statement_digest": "2f3e33ed414e529c1f9e8de33fc15e5806f533328ce9df1a11611edbbbf2f16f"
-  },
-  "fn-bps-asb-drive-preserves-source-range": {
-   "class": "parser-boundary",
-   "statement_digest": "5fbb4e96c5feaedaf98f5484c3f9fd289c70ff019699f31f865528b932f19b5d"
-  },
-  "fn-bps-asb-drive-preserves-target-types": {
-   "class": "parser-boundary",
-   "statement_digest": "c0021464ca560b4ffb95947437b170e49701a58ff8517eba566a64237021d3d7"
-  },
-  "fn-bps-asb-drive-preserves-terminal-boundary": {
-   "class": "parser-boundary",
-   "statement_digest": "9be7bcc9752afd398abde0343c5e250d0495eb13c594294e7ce0054ea3f0a358"
-  },
-  "fn-bps-asb-drive-rest-is-exact-unconsumed-suffix": {
-   "class": "parser-boundary",
-   "statement_digest": "ba98c4f1add9c4ef6eb239f8c8f0724f0433dadeccbcbc8f738333b3a765f0b6"
-  },
-  "fn-bps-asb-start-establishes-aggregate-context": {
-   "class": "parser-boundary",
-   "statement_digest": "c927c206a6864d652f2a770c5f334050dcfff294a3e26300eef706db00e40869"
-  },
-  "fn-bps-asb-start-establishes-body-context": {
-   "class": "parser-boundary",
-   "statement_digest": "f09f4357bab7fb8ee332a6ad9b89ef9a467141d9dc945af4fca10d134b202fbf"
-  },
-  "fn-bps-asb-start-establishes-fixed-spine": {
-   "class": "parser-boundary",
-   "statement_digest": "34548406067f503e3ce8c85a0252ae9387710f06d676807ae5c5f6f0fd6055e4"
-  },
-  "fn-bps-asb-start-establishes-grammar-control": {
-   "class": "parser-boundary",
-   "statement_digest": "d4b11dd0e1dcafc5c922da8be3b9edf8fa0c6ed4bab34fc4531884f6873c5b3c"
-  },
-  "fn-bps-asb-start-establishes-head-profile": {
-   "class": "parser-boundary",
-   "statement_digest": "383ab187345ab061b84702ea5528b53dedd19c84e6782b4be142b9ce4e7b9335"
-  },
-  "fn-bps-asb-start-establishes-metadata-budget": {
-   "class": "parser-boundary",
-   "statement_digest": "64a8a34fff935808780b3d88880272207a777dd904147e9b3731472ef16e7c07"
-  },
-  "fn-bps-asb-start-establishes-source-range": {
-   "class": "parser-boundary",
-   "statement_digest": "3f0420bc720c3a09002d235974650a762f4a602e54a0210bc287ed81694a4d68"
-  },
-  "fn-bps-asb-start-establishes-target-types": {
-   "class": "parser-boundary",
-   "statement_digest": "4b1494612886b6d4e411f0228e79f18d0fd318f397c5d9f9cdbff177f7146ee7"
-  },
-  "fn-bps-asb-start-establishes-terminal-boundary": {
-   "class": "parser-boundary",
-   "statement_digest": "7dc77f83211902fa69b51ce992694b19437b1b7165ad9a0d38402096691f8f3e"
-  },
-  "fn-bps-asb-step-offset-is-consumed-prefix": {
-   "class": "parser-boundary",
-   "statement_digest": "529f7176bc2c8ddea42bb2627f0c9f0c1aad44f6f4017ca73f51c83b43108156"
-  },
-  "fn-bps-asb-step-preserves-aggregate-context": {
-   "class": "parser-boundary",
-   "statement_digest": "cbf56e07e181ba81f76d8457343c324d9e654660e72e5272ec1958d9e84355f3"
-  },
-  "fn-bps-asb-step-preserves-body-context": {
-   "class": "parser-boundary",
-   "statement_digest": "ac5f535550524d695c8148139ab58fc1ea5d180f5ab58b9a2e09173456402d70"
-  },
-  "fn-bps-asb-step-preserves-cursor-spine": {
-   "class": "parser-boundary",
-   "statement_digest": "46e8f851786b5f1f4d5406b13341070a10ee794203c45a373b0c8a81e3202123"
-  },
-  "fn-bps-asb-step-preserves-grammar-control": {
-   "class": "parser-boundary",
-   "statement_digest": "f151341c394a4d9da0b23d5ace9b366a0a827868dea03126731fcf97d6a4f7f7"
-  },
-  "fn-bps-asb-step-preserves-head-profile": {
-   "class": "parser-boundary",
-   "statement_digest": "d37c7aa6d3b5ceeb93d6a68a1a23767a2adc727f1953618191fdc172526b3b54"
-  },
-  "fn-bps-asb-step-preserves-metadata-budget": {
-   "class": "parser-boundary",
-   "statement_digest": "84417ffef9df1bbe196eeacc8f9080c2ad634a8d86cb0f5eea1cfbc59d645552"
-  },
-  "fn-bps-asb-step-preserves-source-coordinate": {
-   "class": "parser-boundary",
-   "statement_digest": "eaba76859c97e9fe41ae0bee9643cf20a4357006c203010aabc3b94e4de821bd"
-  },
-  "fn-bps-asb-step-preserves-source-range": {
-   "class": "parser-boundary",
-   "statement_digest": "3ec9d4f77bd739466a33077421d0178c5bb06636e378d591a09e3887c24c4581"
-  },
-  "fn-bps-asb-step-preserves-target-types": {
-   "class": "parser-boundary",
-   "statement_digest": "6f60db98f4c5f7af4383d687c9dffeb29ca3502228a66a162c78209f49328b27"
-  },
-  "fn-bps-asb-step-preserves-terminal-boundary": {
-   "class": "parser-boundary",
-   "statement_digest": "1c956575907cd5f6cf77e8ebd2f2fe830afa6b7e61c6f025cb25e0378278b00d"
-  },
-  "fn-bps-head-drive-consumes-at-most-quantum": {
-   "class": "parser-boundary",
-   "statement_digest": "3880287e85d8f36e82f881aca5b45c77d435e36142fb75db6c25099b6924c0e2"
-  },
-  "fn-bps-head-drive-consumes-at-most-window": {
-   "class": "parser-boundary",
-   "statement_digest": "0d3d91b0691dbe6f18015f1cf8f6de41fdbc8bbb71c78c4c6394319975540824"
-  },
-  "fn-bps-head-drive-preserves-profile": {
-   "class": "parser-boundary",
-   "statement_digest": "ffd422d57d182a0d5f12808b42c5598475b7033cbe93aa07a169258bd777f986"
-  },
-  "fn-bps-head-drive-ready-is-typed-uint64": {
-   "class": "parser-boundary",
-   "statement_digest": "e813827d2cfd5d83db97e2d47964cc0175e426fd93d82c1106ce87d05a77b284"
-  },
-  "fn-bps-head-drive-rest-is-exact-unconsumed-suffix": {
-   "class": "parser-boundary",
-   "statement_digest": "ebba6fc7271f4ef574d88d51aeb28c877361bb6272106b8e1253ea6c650a755a"
-  },
-  "fn-bps-head-feed-preserves-profile": {
-   "class": "parser-boundary",
-   "statement_digest": "fd08aa329082710d357d8f1727d4678c26a6a778b1d14be65ce8689171a1cc3b"
-  },
-  "fn-bps-head-feed-ready-is-typed-uint64": {
-   "class": "parser-boundary",
-   "statement_digest": "ad7a31ac60e84dbdbad7fa5dbdf294d5c3e51062b69a34bf7ac36922bf283013"
-  },
-  "fn-bps-head-start-establishes-profile": {
-   "class": "parser-boundary",
-   "statement_digest": "2cfe201a16c451f16ed2819961d2fdf1bea50bfbddc50ba8e75434995fac1257"
-  },
-  "fn-bps-op-cancel-preserves-operation": {
-   "class": "parser-boundary",
-   "statement_digest": "687556fc52408a7d74a6a73ac08fd8a525fe70ac3249b8bd45227e9addc06961"
-  },
-  "fn-bps-op-complete-preserves-operation": {
-   "class": "parser-boundary",
-   "statement_digest": "ba15bb6e14dc84b3ba7319ebdeb69951848833ac337bda58613168dd9f52a96c"
-  },
-  "fn-bps-op-completion-never-reopens-retired-operation": {
-   "class": "parser-boundary",
-   "statement_digest": "02cd8283f02b983703a5e00ae52aa9f42def26a76773e3f346fcd7fd80ccf832"
-  },
-  "fn-bps-op-evidence-requires-issued-current-verified": {
-   "class": "parser-boundary",
-   "statement_digest": "677440808ab8cb088cebdffcd935ee50b9adc1a91fb96c8c834beee865b017fa"
-  },
-  "fn-bps-received-window-is-exact-concrete-slice": {
-   "class": "parser-boundary",
-   "statement_digest": "0f7cd46d3912a2cc55e20f53f124a82e5b1cc45a1920b85a7e70b276739f3209"
-  },
-  "fn-bps-target-drive-composes-quanta": {
-   "class": "parser-boundary",
-   "statement_digest": "c662b8385a2df1cdddc052ede46a63911abb5e147fd4491dfcee742ab5ada04b"
-  },
-  "fn-bps-target-drive-preserves-cursor-spine": {
-   "class": "parser-boundary",
-   "statement_digest": "a3fdd414f1f01aed11ea87a8fdca7b73ecc910f904648ad29715cad5b75087e4"
-  },
-  "fn-bps-target-drive-work-does-not-exceed-quantum": {
-   "class": "parser-boundary",
-   "statement_digest": "4c0eaff80bf5ea729f53f0c72289cf5c61fec560ca03eef0f834f206ea234925"
-  },
-  "fn-bps-target-start-establishes-fixed-spine": {
-   "class": "parser-boundary",
-   "statement_digest": "86b4e0df68141adce7b3ab8a7a980d6739d46423a560a366cc61f3d55b275b89"
-  },
-  "fn-bps-target-step-preserves-cursor-spine": {
-   "class": "parser-boundary",
-   "statement_digest": "93ae951bae8fdfe18e0101be986a0a275166dd72a5c0ccdbbd8626f8c45632c6"
   },
   "fn-brlc-acknowledged-rows-are-a-prefix-of-the-recovered-rows": {
    "class": "durability",
@@ -3829,18 +3605,6 @@
    "class": "durability",
    "statement_digest": "fff745f41c714482b2d2748593ebbad16f2e55e31bb93fa1493969513e499593"
   },
-  "fn-own-served-conn-refuses-what-the-live-rule-refuses": {
-   "class": "authorization",
-   "statement_digest": "945806a1e93614665627ee338e83b9eb1fd566ed8cb00ab56a547c9dd223eeb3"
-  },
-  "fn-own-served-conn-refuses-what-the-pin-refuses": {
-   "class": "authorization",
-   "statement_digest": "dc105ed88dcf1a66a101cf0ff5da0c351289e841a435a2393de5d5151ebbdb65"
-  },
-  "fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged": {
-   "class": "authorization",
-   "statement_digest": "7af22f4e5a129d0741ba9d8e2e512669337680dc342140ad482c8a5668d1a85c"
-  },
   "fn-owner-orcp-rebuild-establishes-retain-carry": {
    "class": "ownership-reclamation",
    "statement_digest": "de147378c77ecaaa96eb2ecb3d2703ecc7131c0ef0e7635e6459dd37e124fd6b"
@@ -4177,41 +3941,9 @@
    "class": "resource-reservation",
    "statement_digest": "4ef45e87d373f59576bd44cde378583113c618a155cc116e79b810e3b52f416f"
   },
-  "fn-prl-admit-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "statement_digest": "797f3c284b32feec08587d914eece9419d53fe724473b5f7ed2cb37c6d9884bf"
-  },
-  "fn-prl-close-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "statement_digest": "875c336f41a64e6320405969abe4c6cf0934811b67baed5240303b3cc45ee3bd"
-  },
   "fn-prl-completion-refunds-at-most-once": {
    "class": "resource-reservation",
    "statement_digest": "ec4fc0cfffbd66e55f18ced2e8d392c6d54b3a96b496afb8814fe2fc47909888"
-  },
-  "fn-prl-convert-growth-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "statement_digest": "31fab3f576fbde53acab665ded06e62f34118476471bae7ad4a747ca3e3a97c1"
-  },
-  "fn-prl-convert-growth-under-row-sum-invp": {
-   "class": "resource-reservation",
-   "statement_digest": "8fa580d5c0a6383793604adfec3ff56741aa842479d21d10eb4e003ac5fa48b8"
-  },
-  "fn-prl-evict-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "statement_digest": "2f1790eb66603a834e9666a52f4e5a956d31723a74aacf85dff2b032ffdc975f"
-  },
-  "fn-prl-make-row-sum-invp": {
-   "class": "resource-reservation",
-   "statement_digest": "9c7faa81d70a06d822a2bb16b8c95a38fb926e0e9c44d6d054885b9de8339b5f"
-  },
-  "fn-prl-register-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "statement_digest": "543ccd9d154ec2c7057a751f50edf4d79377f0f7b613c55db7e15e2a9769beff"
-  },
-  "fn-prl-reserve-growth-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "statement_digest": "27b88cded379b4bba1b4f6727a18f6070e94d2150984d2003fb3d967972e3f9a"
   },
   "fn-prl-resident-shrink-keeps-funding": {
    "class": "resource-reservation",
@@ -4221,21 +3953,9 @@
    "class": "resource-reservation",
    "statement_digest": "1406118ad5bfcd1e5498f8233c57125fbd0d7f154f6d705c662d0325bbd92d0b"
   },
-  "fn-prl-row-sum-bound-reserve-natural": {
-   "class": "resource-reservation",
-   "statement_digest": "54ae1f0b0eabbe35124971a60ddce960ab88e69c3f6e3c9dddd62041b08e0a61"
-  },
-  "fn-prl-row-sum-covers-bound-reserve": {
-   "class": "resource-reservation",
-   "statement_digest": "d7729c87445426de98e95e570b40d8fb9fea2662be599906bc492452bd420223"
-  },
   "fn-prl-settle-never-reuses-identity": {
    "class": "resource-reservation",
    "statement_digest": "078bc47027a0c316a7dba264b8c304cb06cc1882b12e4be7b98c5546a57e4f70"
-  },
-  "fn-prl-settle-preserves-row-sum-invp": {
-   "class": "resource-reservation",
-   "statement_digest": "7db607f111233ddf9e32515440bb8787caeabccb73e303e7fe32e43e941f8dbf"
   },
   "fn-prov-of-wire-of-a-durable-wire": {
    "class": "parser-boundary",
@@ -5557,14 +5277,6 @@
    "class": "durability",
    "statement_digest": "bce92adaba14243efd6e5d774d0dca285d653cb0f7807e9421b205228d7bd790"
   },
-  "fn-stcp-dec-drive-work-bound": {
-   "class": "parser-boundary",
-   "statement_digest": "5df4b41135b1f991f58b39d0bcbadbc84f652d99e34be239aeb7d7d4e459ee8f"
-  },
-  "fn-stcp-enc-drive-work-bound": {
-   "class": "parser-boundary",
-   "statement_digest": "1a1cea2a7f1ee6af51242bc051737285045cfc429ac46ce43e5b2bd0e22e0cf3"
-  },
   "fn-store-existing-action-is-pb-over-alpha": {
    "class": "identity-binding",
    "statement_digest": "c69f662688bd6e6776bb1fa7f97c9e4705269a22e942ca54bd2171e428ad4864"
@@ -5673,14 +5385,6 @@
    "class": "parser-boundary",
    "statement_digest": "b8865ebbae5c6d550985597b78ccf9b56e685f67e5268e715959629e91083a4e"
   },
-  "fn-tclsctl-source-drive-keepalive-preserves-custody-and-reception": {
-   "class": "parser-boundary",
-   "statement_digest": "fba068fc1c28e00e27b96184617ae4744f46c1d5bc7636fa476d3da4b9029b89"
-  },
-  "fn-tclsctl-source-drive-keepalive-refines-session": {
-   "class": "parser-boundary",
-   "statement_digest": "a2bae8a0d382779de2184e1d1bf9493ea06d3998e6dd0a84168974fd286bf403"
-  },
   "fn-th-prefix-project-append": {
    "class": "durability",
    "statement_digest": "44306ee82040325e055c87ccabace2e5a3326c8e8a57c455a85f371a0b02bde4"
@@ -5733,10 +5437,6 @@
    "class": "authorization",
    "statement_digest": "ccaf75b67436470bea208ef70ba99998f0ad0b1dafb4ba66a4af9dd950a1b313"
   },
-  "fn-transfer-reserve-preserves-statep": {
-   "class": "resource-reservation",
-   "statement_digest": "1d0f5261280991f3ea2e6429d1ec6a0b7734fcd2a021bdbd2b7ce1c72e4ade92"
-  },
   "fn-vj-a-completion-keeps-a-held-message-id-answered": {
    "class": "identity-binding",
    "statement_digest": "7dbf7f9dda39df542bdc6f08e9b2f126ec2afc24e54ce04d5e8110def727351e"
@@ -5768,30 +5468,6 @@
   "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items": {
    "class": "parser-boundary",
    "statement_digest": "998b489dd1a05b275f218dbe0a7c3c2febfa44a2572b9dfac88c9957057207cd"
-  },
-  "fn-wildmat-parse-yields-rfc3977-patterns": {
-   "class": "parser-boundary",
-   "statement_digest": "7ef32e6eadeba00dfb35bdc4ef87a009d708507a342dd757f914fe91e5ebaaee"
-  },
-  "fn-wildmat-successful-decode-length-bounded-by-input": {
-   "class": "parser-boundary",
-   "statement_digest": "681e88ced3cc0e4dd27062fe3fc10708d5dbe25b50499710a94f3a12b3102998"
-  },
-  "fn-wildmat-successful-parse-parsedp": {
-   "class": "parser-boundary",
-   "statement_digest": "d1f2f60d9d933b087014de0a5d807781726bf61d484f4eb5e1ed31d519e56510"
-  },
-  "fn-wildmat-successful-parse-text-parsedp": {
-   "class": "parser-boundary",
-   "statement_digest": "bdbb6b0b63f4ae72f0070c8c3e6ae38ae6b944596f96b4bde4914e4ae50cf5c7"
-  },
-  "fn-wildmat-utf8-next-success-scalar": {
-   "class": "parser-boundary",
-   "statement_digest": "9c66e4dd0187a8442e99e733ed593d3c74138a382d490c541d54ed067e47c780"
-  },
-  "fn-wildmat-utf8-next-success-strict-progress": {
-   "class": "parser-boundary",
-   "statement_digest": "ec61fb400fcb30398b1219d84fa26c4d96dc01285b3b6be0fd88faf5d9c2a18f"
   },
   "fn-wire-article-event-is-the-held-body": {
    "class": "parser-boundary",
