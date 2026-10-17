@@ -19,7 +19,7 @@ constructor, and roots every trace theorem at the host's process entry
 
 ## Why the isolated-slot journal is not the adapter model
 
-`books/journal.lisp` is useful evidence for ordering and fail-closed scanning, but
+The former `books/journal.lisp` (deleted by the breaking cut) was useful evidence for ordering and fail-closed scanning, but
 it is not a faithful abstraction of `tools/run_store.py`:
 
 - the journal stages separate object slots, barriers them, then stages and

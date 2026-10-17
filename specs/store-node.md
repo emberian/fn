@@ -54,9 +54,7 @@ selected groups, `fn-sn-action-over` looks up the article in the list. It return
 the ID is missing. The standalone Store and configured owner host prepare
 and query wrappers call `fn-store-existing-action` after converting bounded
 octets and group codes. The function does not infer a durable acceptance or allocate a
-local article number. `books/store-node-existing-invariants.lisp` states the
-three exact outcomes; `tests/acl2/store-node-existing-tests.lisp` exercises
-them after a reachable commit and flips payload, groups and binding.
+local article number.
 
 ## Actual completion and acknowledgement
 

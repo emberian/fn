@@ -129,8 +129,9 @@ The actual native replay has the same count meaning: on success,
 `fn-cvcg-accepted-publication-count-fits-profile` then states that an
 accepted `fn-cvec-native-admin-authorize` names exactly one plus the
 existing count and that this next count fits the operator profile's
-`max-config-generations`. These source theorems live in
-`books/store-config-generation.lisp` (PRF-1097, PKT-183). The host caller is
+`max-config-generations`. These source theorems lived in
+the store-config-generation book (PRF-1097, PKT-183), deleted by the breaking
+cut. The host caller is
 `fn-store-cfg-native-admin-authorize` in `host/store-node-host.lisp`;
 publication still uses its existing lock, candidate-open and namespace
 observations. This is fn's configuration contiguity guarantee. The witnesses
@@ -285,7 +286,7 @@ their call sites:
 | `*fn-store-max-text*` | `host/store-host.lisp` | deleted 2026-09-27 (lane host-decisions): the three fields it bounded are node-generated (identity renderings, the provenance wire), so their bound is the record codec's metadata domain, `*fn-record-max-metadata*`, checked by `fn-pfld-textp` (`books/post-fields.lisp`, KEYSTONE `fn-pfld-textp-is-exactly-the-record-metadata-domain`); not a served configuration limit and not a profile field |
 | `*fn-store-max-payload*` | `host/store-host.lisp` | deleted 2026-09-24: the persisted profile's payload field, `fn-sbud-payload-bound` (`books/store-budget-naming.lisp`), ceiling `*fn-record-max-payload*`; `fn-sbud-post-boundary` takes the profile as an argument. The payload bound is a profile field, fixed at init, not a served configuration limit |
 | `*fn-bpi-host-destination*` | `host/bp-ingress-host.lisp` | `(fn-cfg-policy v :bp-destination)` |
-| `*fn-bpi-host-group-map*` | `host/bp-ingress-host.lisp` | not yet deleted: the hand-synchronised octet/name pairs are still a host constant. What landed is the check, not the derivation: `fn-bpi-policy-appliesp-carried` (`books/bp-ingress-carried.lisp`) refuses a policy whose map values (`fn-bpi-map-values`) are not the store's live group list (`fn-sn-groups`), so a stale map refuses every ADU rather than misfiling one. Deriving the map from the group table is open |
+| `*fn-bpi-host-group-map*` | `host/bp-ingress-host.lisp` | not yet deleted: the hand-synchronised octet/name pairs are still a host constant. What landed is the check, not the derivation: `fn-bpi-policy-appliesp-carried` (its book left with the breaking cut) refuses a policy whose map values (`fn-bpi-map-values`) are not the store's live group list (`fn-sn-groups`), so a stale map refuses every ADU rather than misfiling one. Deriving the map from the group table is open |
 | `*fn-bpi-host-policy-id*`, `*fn-bpi-host-terms-id*`, `*fn-bpi-host-issuer-eid*` | `host/bp-ingress-host.lisp` | `(fn-cfg-policy v :acceptance)`, `:terms`, `:issuer-eid` |
 | `*fn-reader-groups*`, `*fn-reader-archive*`, `*fn-reader-id*`, `*fn-reader-payload*` | `host/reader-host.lisp` | a test fixture: move to `tests/acl2/reader-fixture.lisp` built over an explicit configuration record. The seed archive is not a deployment default |
 | `*fn-sim-groups*` | `tests/acl2/simulator.lisp` | the scenario's own configuration record |

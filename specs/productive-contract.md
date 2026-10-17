@@ -6,9 +6,8 @@ Status: specified and proved for the served POST (PRF-1001, PRF-1002);
 the served read and the peer transfer are stated (section 5) and open. From
 GPT-6's second review, `warranty-quality-proof-engineering.md` section 1
 ("make the warranty reject useless-but-safe implementations") and section
-9; row W6 of the pre-6.6.0 list. Books: `books/productive-contract.lisp`
-(`fn-pcx-`), `books/productive-observer.lisp`; teeth
-`tests/acl2/productive-contract-tests.lisp`; scenario SCN-207.
+9; row W6 of the pre-6.6.0 list. Its books (productive-contract, `fn-pcx-`,
+productive-observer) and teeth left with the breaking cut; scenario SCN-207.
 
 ## 1. Why a safety theorem is not enough
 
@@ -111,7 +110,8 @@ owner's `(:store E)` steps are the Store's with every other field kept
 (`fn-pcx-own-run-store`); the finish word is `:durable`
 (`fn-pcx-post-finish-word`).
 
-**Teeth.** `tests/acl2/productive-contract-tests.lisp`: the reachable
+**Teeth** (its tests book, productive-contract-tests, left with the breaking
+cut): the reachable
 witness is owner-tests' plain served POST (`*own-taken*`, connection 4,
 "Hello, news."), the record its own octets intern at sequence 2, the
 arena holding the journal's prior; the complete antecedent and the
@@ -202,7 +202,8 @@ scripted peer withholds 239. It does not stand in for an actual remote durable
 acceptance or application-processing claim. Those remote obligations, and the
 inbound durable transit paragraph above, remain independent and open.
 
-Teeth in `tests/acl2/productive-transfer-tests.lisp` assert each literal
+Teeth (in the productive-transfer tests book, deleted by the breaking cut)
+asserted each literal
 antecedent and complete conclusion, remove each hypothesis while checking all
 retained hypotheses, and distinguish a mutant offer record from the required
 sent record. A redundant bound-entry premise was removed only after proving

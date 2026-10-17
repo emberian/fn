@@ -49,9 +49,7 @@ failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold
 it` (PRF-905, PKT-506; `fn-inj-decide-line-length-is-a-long-header-line`).  A
 The peer path (IHAVE, TAKETHIS) names the same bound: `fn-peer-decide-transfer`
 refuses it `:line-length`, `437`/`439` with "a header line is longer than 998
-octets (RFC 5322 section 2.1.1); fold it"
-(`fn-peer-decide-transfer-line-length-is-a-long-header-line`,
-books/peer-refused-offers.lisp; row I5).  A
+octets (RFC 5322 section 2.1.1); fold it" (row I5).  A
 References or Subject of any length folded within the line bound is admitted,
 up to the profile's header limits.  Parsing never interns a header name or
 invokes the Lisp reader.

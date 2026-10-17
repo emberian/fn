@@ -40,7 +40,8 @@ the right *conclusion*. It is stated as the *hypothesis*. Specifically:
    crash-fidelity revision made the constructor a corollary of the predicate,
    which is correct, but the predicate itself is where the platform is trusted.
 2. **There are no torn writes.** The only torn write in the tree is the
-   `:torn` slot tag of `books/journal.lisp`, which store-refinement.md
+   `:torn` slot tag of the former `books/journal.lisp` (deleted by the breaking
+   cut), which store-refinement.md
    already retires as "not the adapter model". FLR-001 says "unsynced writes
    may be absent, torn, or reordered"; no adapter theorem quantifies over any
    of those.
@@ -2003,7 +2004,7 @@ future assumption would need, so that no theorem here is read as claiming it:
 | `fn-snt-admissible-crash-image-is-recoverable`, `fn-sf-admissible-image-facts` | **Lemmas**, unchanged | |
 | `fn-sn-open-observed-success-has-live-history-relation` (D6) | **Unchanged keystone**; the scan's output is its input | The process root stays `fn-sn-open-observed` |
 | `fn-assume-durability-image`, `fn-assume-write-isolation-observe` (assumptions.lisp:753, 790) | **Retired** as strawmen | No theorem instantiates them (their own header says so); their content is §1.7 theorems plus A-CRASH-IMAGE |
-| `books/journal.lisp` `fn-journal-crash`, `:torn` slots, reversal | **Retired** as the campaign's reference; kept as history | What it got right and v2 keeps: torn is first-class; no append-prefix assumption; durability is per fence not per write; the scanner sees physical content only, no durability bits; a torn acknowledged commit is a fault. What it lacked: bytes, directories, the fence/entry distinction, a connection to any host program |
+| `books/journal.lisp` `fn-journal-crash`, `:torn` slots, reversal | **Retired** as the campaign's reference; the book left with the breaking cut | What it got right and v2 keeps: torn is first-class; no append-prefix assumption; durability is per fence not per write; the scanner sees physical content only, no durability bits; a torn acknowledged commit is a fault. What it lacked: bytes, directories, the fence/entry distinction, a connection to any host program |
 | `fn-journal-recover-torn-anchored-commit-fault` and the anchor | **Kept as the freshness shape** for a later anchor packet | v2 has no anchor; the gap is unchanged |
 | `fn-frame-decode-*`, `fn-frame-open-of-seal`, `fn-frame-protected-prefix-of-encode` | **Lemmas** for K11a-c | |
 | `fn-frame-digest` encapsulate (A-CRYPTO) | **Unchanged**; A-CRYPTO-TRAILER is a second encapsulate beside it, not a twin | It says nothing about digests; it bounds nature's tears |

@@ -61,8 +61,8 @@ fence: `fn-bpiw-replay-fence` completes a matching unfenced pending
 elsewhere. Without it a recovery outcome was a no-op mid-history, which live
 semantics counts as refusal: the history gate refused every recovery outcome
 and a journal holding one could not be reopened (M4 finding 4, 2026-09-24).
-`fn-bpiw-reopen-after-live-recovery-is-the-live-image-restarted`
-(`books/bp-ion-workflow-replay.lisp`) says that if a journal opens and the
+`fn-bpiw-reopen-after-live-recovery-is-the-live-image-restarted` (its book,
+bp-ion-workflow-replay, left with the breaking cut) said that if a journal opens and the
 opened image accepts a recovery outcome live, the journal with that outcome
 appended replays, its installed image is the live image after one restart, and
 its ION state is the live one. It covers one recovery outcome right after an

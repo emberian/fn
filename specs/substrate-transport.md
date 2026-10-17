@@ -434,7 +434,7 @@ equates `:admitted` with `fn-pol-admitp` over the retained rows' lace minus the
 poster's fork, under the carried index invariant; the node-lace form reaches it
 through `fn-stx-lace-of-node-is-the-rows-lace` (PRF-995), whose correspondence
 hypothesis is carried on the served path: `fn-snc-correspondp`
-(books/store-node-correspondence.lisp) is established at the initial store and
+(its book, store-node-correspondence, left with the breaking cut) is established at the initial store and
 preserved by every transition of the store node (PRF-1027, PRF-1034).
 The group's authority is the explicit `fn-cfg-group-authority` field of the
 live group entry in the connection-pinned configuration, distinct from its
@@ -642,10 +642,11 @@ restatement is a corollary of it and the bridge lemma; a corollary is labelled
 as one and is not offered as the proof event.
 
 **Certification status of the rows below, 2026-09-20.** S1-1 and the S2-1
-grounding theorem are certified in `books/stx-invariants.lisp` (persvati,
+grounding theorem were certified in the stx-invariants book (left with the
+breaking cut; persvati,
 ACL2 8.7, `run-20260920T174338Z-6891`,
 `build/acl2/certify-20260920T174341Z-1287238`), with their witnesses and
-teeth in `tests/acl2/stx-tests.lisp` (`run-20260920T174716Z-9575`,
+teeth in its tests book, also gone (`run-20260920T174716Z-9575`,
 `build/acl2/certify-20260920T174721Z-1322621`). S2-1's companion
 (the transit path's verdict is `fn-stx-verdict`) is **not proved**: it names
 `fn-peer-transfer`, which needs K1's transit path, so PRF-020 is
@@ -672,7 +673,7 @@ constrains those to `true-listp` only.
 ```
 
 Corrected by packet S1 against the book that proves it
-(`books/stx-invariants.lisp`), in two places where the first drafting was
+(the stx-invariants book, since deleted by the breaking cut), in two places where the first drafting was
 wrong. **The canonical form is payload free.** The earlier spelling re-encoded
 through `fn-stx-reattach` with a free `payload` variable, and `fn-stx-reattach`
 is `nil` unless the header's `ref` binds exactly that payload, so the theorem
@@ -1018,8 +1019,8 @@ the changed books (the red-umbrella rule).
 are this design's names; no ref of this repository has ever held either, and
 the substrate cluster landed as `books/stx-carrier.lisp`,
 `books/stx-verify.lisp`, `books/stx-authority.lisp`, `books/stx-epochs.lisp`,
-`books/stx-lace.lisp`, `books/stx-policy.lisp`, `books/stx-index.lisp` and
-`books/stx-invariants.lisp`.  Section 2.1 already records the S3 half of that:
+`books/stx-lace.lisp`, `books/stx-policy.lisp` and `books/stx-index.lisp`
+(and `books/stx-invariants.lisp`, since deleted by the breaking cut).  Section 2.1 already records the S3 half of that:
 `fn-stx-lace` is in `books/stx-lace.lisp`.  Which landed book answers which
 packet row is a question for the substrate cluster, not a rename this lane
 could make (w11/phantom-cites, 2026-09-21).

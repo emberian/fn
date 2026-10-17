@@ -35,7 +35,7 @@ Nothing here is a proof; a proposed theorem is not a theorem proved by ACL2.
 
 The state is chosen so that every existing subsystem machine is a field
 accessor, not a reconstruction. The relay state already composes the three
-durable machines: `fn-relay-statep` (`books/relay.lisp:95`) requires
+durable machines: `fn-relay-statep` (its book, relay, left with the breaking cut) requires
 `(fn-bp-binding-statep (fn-relay-sender rs))`,
 `(equal (fn-bp-state-node (fn-relay-sender rs)) (fn-sn-node (fn-relay-store rs)))`,
 a receiver `fn-bpr-statep`, a terms table and undertakings. F_node adds what
@@ -101,7 +101,7 @@ whole-state revalidation on a served path"):
 (defun fn-ideal-statep (s)
   (and (true-listp s) (equal (len s) 5)
        (fn-ideal-configp (fn-ideal-config s))
-       (fn-relay-invp (fn-ideal-relay s))                       ; books/relay.lisp:307
+       (fn-relay-invp (fn-ideal-relay s))
        (fn-snt-relation (fn-ideal-store s))                     ; books/store-node-traces.lisp:111
        (equal (fn-sn-groups (fn-ideal-store s)) (fn-ideal-config-groups (fn-ideal-config s)))
        (equal (fn-sn-capacity (fn-ideal-store s)) (fn-ideal-config-capacity (fn-ideal-config s)))
@@ -608,13 +608,13 @@ Its proof for the `:octets` case is the served path's own pair,
 (`books/served.lisp`), both proved over the function the host calls; for
 `:store`, `fn-snt-step-preserves-relation` (`books/store-node-traces.lisp:406`)
 and the resolution-trace sibling; for the sender, `fn-bp-step-preserves-state`
-(`books/bp-workflow-invariants.lisp:668`) and `fn-relay-sender-step-preserves-invp`
-(`books/relay-invariants.lisp:486`); for `:bundle`,
-`fn-relay-accept-preserves-invp` (`:539`) and the receiver family.
+(`books/bp-workflow-invariants.lisp:668`); for `:bundle`, the receiver
+family (the relay invariants' books left with the breaking cut).
 
 ### 3.2 Work per step is bounded by configuration and input length
 
-Following `books/article-work-budget.lisp`: an instrumented twin that returns the
+The pattern (its reference book, article-work-budget, left with the breaking
+cut): an instrumented twin that returns the
 same value and a natural, proved equal to the step, and a closed-form bound.
 
 ```lisp
@@ -803,7 +803,7 @@ not catch: `fn-fenced-prepare-is-no-op`, `fn-duplicate-accepted-prepare-is-no-op
 `fn-exchange-invalid-batch-refuses-atomically`,
 `fn-exchange-unknown-schema-batch-refuses-atomically`,
 `fn-exchange-unauthorized-batch-refuses-atomically`
-(`books/exchange-invariants.lisp:149-165`; "atomically" names a property the
+(the exchange-invariants book left with the breaking cut; "atomically" names a property the
 definition cannot violate); `fn-clock-no-wall-and-no-age-is-uncertain`,
 `fn-clock-zero-creation-time-without-age-is-uncertain`
 (`books/clock-invariants.lisp:42,48`); `fn-node-malformed-step-is-no-op`
@@ -916,9 +916,7 @@ violates A-HOST; keep them, since F_node must be total on those inputs
 | Sender | `fn-bp-step-preserves-state` (`books/bp-workflow-invariants.lisp:668`); `fn-bp-trace-preserves-node` (`:787`); `fn-bp-step-submit-requires-matching-durable-attempt-completion` (`:911`); `fn-bp-transport-trace-preserves-receipt` (`books/bp-workflow-transport-invariants.lisp:205`); `fn-bp-observe-transport-never-moves-status-backward` (`:325`) |
 | Release | `fn-bprl-release-removes-the-forward-pin`, `-preserves-independent-pin`, `-preserves-archive-pin` (`books/bp-release-invariants.lisp:457,537,561`); `fn-bprl-authorized-receipt-evidence-matches-required` (`:372`); `fn-bprl-undertake-pins-the-forwarding-obligation` (`:831`) |
 | Receiver | `fn-bprv-replayed-receipt-is-grounded` (`books/bp-receiver-retention-invariants.lisp:359`); `fn-bprv-evolving-output-is-history-grounded` (`books/bp-receiver-evolving-history-invariants.lisp:559`); `fn-bprv-evolving-output-is-node-grounded-when-idle` (`books/bp-receiver-evolving-node-invariants.lisp:611`); `fn-bpr-live-state-is-replay-of-journal`, `fn-bpr-live-receipt-regenerated-after-restart`, `fn-bprv-evolving-invariant-survives-observed-reopen` (`books/bp-receiver-evolving-store-invariants.lisp:548,620,421`) |
-| Relay | `fn-relay-forwarding-receipt-has-durable-onward-obligation`, `fn-relay-crash-recover-never-yields-a-promise-alone` (`books/relay-crash-invariants.lisp:103,156`); `fn-relay-accept-preserves-invp`, `fn-relay-sender-step-preserves-invp` (`books/relay-invariants.lisp:539,486`) |
 | Time and identity | `fn-clock-expired-requires-every-admissible-clock-to-agree`, `fn-clock-expired-and-live-cannot-both-be-sound` (`books/clock-invariants.lisp:61,97`); `fn-bpp-decode-of-encode`, `fn-bpp-encode-is-injective` (`books/bp-primary-invariants.lisp:217,288`) |
-| Facts | `fn-exchange-merge-idempotent`, `fn-exchange-merge-commutative-member` (`books/exchange.lisp:256,265`); `fn-exchange-admitted-ingest-retains-conflicting-evidence` (`books/exchange-invariants.lisp:131`) |
 | Assumptions | the seven encapsulates in `books/assumptions.lisp:58-275`; `fn-frame-digest` (`books/frame.lisp:68`) |
 
 ### 5.2 Missing, in proof order

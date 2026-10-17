@@ -245,10 +245,9 @@ unset. Its record is [the four-node lab](../tests/evidence/2026-09-20-four-node-
 A relay there is receiver-then-sender through two separate host paths: the
 receiver accepts and archives, and an onward sender work is then enqueued for
 the same committed article. That is the manually reenqueued archival relay of
-[the relay undertaking](relay.md); the host emits no relay receipt *kind*, so
-`books/relay.lisp`'s `:forwarding` undertaking and its proposed FNWF
-`(:relay-undertaking upstream onward)` record remain a proposal and no accepted
-forwarding responsibility is demonstrated.
+the relay undertaking (its spec and book left with the breaking cut); the
+host emits no relay receipt *kind*, and no accepted forwarding responsibility
+is demonstrated.
 
 ## Parallel ownership and evidence
 

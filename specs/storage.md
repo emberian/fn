@@ -4,8 +4,7 @@ Status: specialized storage direction agreed. The actual immutable-file Store,
 record/replay codecs and live file/node composition are implemented with scoped
 proof and fault evidence; see the [refinement contract](store-refinement.md).
 Final segment/checkpoint layouts, complete byte/host correspondence and platform
-qualification remain open under D06–D09/D14. The separate isolated-slot
-`books/journal.lisp` experiment is not the running adapter model.
+qualification remain open under D06–D09/D14.
 
 ## Authority and layout
 
@@ -856,12 +855,6 @@ remains a separate representation obligation (the bounded-history queue).
   witness at batch sizes 1, 3 and 1000 is in
   tests/acl2/store-checkpoint-tables-tests.lisp.
 
-The additive source API in `books/store-checkpoint-size-reader.lisp`
-returns the existing tables-load result together with size information and
-summary-region provenance from the same decode. `fn-sckas-finish` in
-`books/store-checkpoint-arena-size-load.lisp` calls that reader once and keeps
-its first result consistent with the existing arena finish. These are source
-components for the cold recovery join; they are not activated host entries.
 The retained region describes decode provenance, not a physical reread lease.
 The whole-run annotation allocation, outer-load provenance, borrowed-buffer
 lifetime, funded materialization and owner installation remain open. Exact
@@ -1389,8 +1382,8 @@ filter refused operations out to obtain equality. Once one side accepts work
 that the other refuses, their later logical histories can differ; the common
 admission condition cannot simply be forgotten at the next operation.
 
-The post-reservation refusal iteration is now an explicit reference component
-in `books/refusal-headroom.lisp` (PRF-1110, SCN-1019). It composes the actual
+The post-reservation refusal iteration was an explicit reference component
+(PRF-1110, SCN-1019; its book, refusal-headroom, left with the breaking cut). It composes the actual
 reserve and semantic-refusal subjects. From a typed idle Store whose node may
 advance to the allocator successor, `n` such attempts leave the frontier at
 `min(UINT32_MAX, frontier + n)`, keep all records, groups and capacity, and

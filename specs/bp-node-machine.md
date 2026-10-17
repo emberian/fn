@@ -54,7 +54,6 @@ carry a pointer here and are not edited further; bp-design's packet table
 | `fn-bpn-lifecycle-invariantp` and PRF-046's three keystones | `books/bp-node-machine-authorization.lisp` | green |
 | FNBS kinds 2 to 4, the namespace plan | `books/bp-node-machine-codec.lisp` | green |
 | FNBS kind 1, the frontier `(:bpn-sequence n)`, `fn-bpn-sequence-reserve` | `books/bp-node-records.lisp` | green |
-| PRF-045's non-reuse and persistence-cut models | `books/bp-sequence-fidelity.lisp`, `books/bp-sequence-persistence.lisp` | green |
 | the receive-evidence namespace | `books/bp-receive-evidence.lisp` | green |
 | reference fragmentation/reassembly; cursor cutter and bounded position scanner proved equal on all inputs; whole-parent restoration, fragment/reassemble inverse, consumed-fragment agreement and indexed second-cut offset composition | `books/bp-fragment.lisp`, `books/bp-fragment-invariants.lisp`, `books/bp-fragment-fast.lisp` | scoped C1 certificate in `planning/evidence/bp-fragment-c1-subset-2026-09-23.md`; principal/coherence active-set partition and machine-level N10 remain open |
 | the receiver, the FNRJ journal, the join the host calls (`fn-bpaj-dispatch`) | `books/bp-receipt*.lisp`, `books/bp-native-app.lisp`, `-fast` | receipt books green; `bp-native-app`, `-fast`, `bp-receiver-evolving-*` red |
@@ -2052,9 +2051,7 @@ deploys (D34).
 - KEYSTONES: `fn-bpaj-ref-request-resolves-exactly` and `-to-the-bytes`;
   `fn-bpaj-transit-context-binds-the-live-request` (every read of a context
   the host published for request octets R binds exactly the receiver context
-  R defines, whose reference is R's); and
-  `fn-bpaj-transit-intent-pins-its-request-and-projection`
-  (books/bp-request-reference.lisp).
+  R defines, whose reference is R's).
 - D34: the local `:request-intent` and `:request-context-v2` kinds, their
   builders, the direct Store lookup and the host's legacy plan are deleted;
   every request the composed node plans is a transit request. Only the
@@ -3193,8 +3190,8 @@ every node-profile field; kind 5 and kind 18 carry the image in a
 131,072) and a lifecycle record's payload width is 2^24 + 3,072. The bounds
 a node applies are its profile's (below). The ADU's fields are record
 items: byte-identical to the generic CBOR entry at or below 65,535 octets,
-a u32 head above. `fn-bpn-limits-compose-at-the-codec-widths`
-(`books/bp-limits.lisp`) states how the widths nest: an ADU of the ADU width
+a u32 head above. The widths nest (the composition theorem's book, bp-limits, left with the
+breaking cut): an ADU of the ADU width
 is one bundle's payload data, the held image width is the decoder's input
 width and a lifecycle record carries it with 3,072 octets of fields, every
 width is the profile ceiling 2^24, and the sender's job image is unchanged.
@@ -4395,10 +4392,7 @@ projections.
 ### Slice C: fragment transformations and their executable correspondence
 
 **C1: lemmas and the fast refinement. Opus. any free lane, local closure (about 8 books). 3 to 4 lane-days.**
-- Edits: `books/bp-fragment.lisp` (the length bound), new
-  `books/bp-limits.lisp` (the limit composition, in the same batch as the
-  raise; since 9ebf5f0e `fn-bpn-limits-compose-at-the-codec-widths`, how the
-  codec widths nest at 2^24), `books/bp-fragment-invariants.lisp` (the two commented lemmas),
+- Edits: `books/bp-fragment.lisp` (the length bound), `books/bp-fragment-invariants.lisp` (the two commented lemmas),
   new `books/bp-fragment-fast.lisp`, `tests/acl2/bp-fragment-tests.lisp`.
 - Theorems: T4's first five (inverse, the two fast equalities, whole-parent
   restoration, re-fragmentation), the plan-child image bound (§7.3; not
