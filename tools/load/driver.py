@@ -1566,7 +1566,8 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
             cr["admitted"] = {"admitted": ctr.admitted, "refused": ctr.refused}
             write()
         if args.cores:
-            cr["box"]["busy_cores_end"] = busy_cores(sorted(os.sched_getaffinity(0)))
+            # The pinned cores while our own owner still runs its tail (reported).
+            cr["box"]["busy_cores_tail"] = busy_cores(sorted(os.sched_getaffinity(0)))
         cr["status"] = "complete" if not run.errors else "complete-with-errors"
     except Exception as e:      # noqa: BLE001 - the cell's own failure is a result
         cr["status"] = "error"
@@ -1597,6 +1598,13 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
                 run.peers.close(keep=args.keep)
         with contextlib.suppress(Exception):
             cr["exit_code"] = node.stop()
+        if args.cores:
+            # The quiet rule's end reading (ruling 17: no other tenant on the
+            # cell's cores) is taken after our owner exits.  Sampled before
+            # it, the reading is the cell's own tail: W1/small's 8-connection
+            # owner left 4.02-4.59 busy cores on a box whose start reading was
+            # 0.14-0.22 (persvati, 10-17), so the row could never be judged.
+            cr["box"]["busy_cores_end"] = busy_cores(sorted(os.sched_getaffinity(0)))
         cr["refusals"] = dict(ctr.refusals)
         cr["admitted"] = {"admitted": ctr.admitted, "refused": ctr.refused}
         cr["seconds"] = round(time.monotonic() - t_cell, 1)
