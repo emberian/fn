@@ -1,0 +1,7 @@
+def-loop: wildmat (1 twins)
+
+Hand NAME-loop defuns, their loop-is-* bridges and the hand verify-guards
+replaced by def-loop forms emitting the same NAME with the same logic body.
+REPL-checked book and test book on persvati.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
