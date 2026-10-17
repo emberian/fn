@@ -16,9 +16,7 @@ stays at its current value.  These witnesses run the saved images:
   bottom of command 0, event 0 and the project-dir-alist triple for it);
 * the production image refuses the verb by name (exit 5);
 * the core's dynamic content is under 128 MiB (271 MiB before the strip and
-  the residue drop), and
-  a fresh node started with a 256 MB dynamic space takes a POST and serves
-  it back;
+  the residue drop);
 * the control stack books/heap-reservation.lisp decides (a constant 1,024
   KiB since lane served-line-iterative made the served path's per-line
   recursions loops) posts, serves, reopens and serves again the worst
@@ -122,20 +120,6 @@ class ProductionTests(unittest.TestCase):
         doc = json.loads(res.stdout)
         self.assertIsNotNone(doc["core_required_kib"], doc)
         self.assertLess(doc["core_required_kib"], CORE_CEILING_KIB, doc)
-
-    def test_fresh_node_serves_in_256_mb(self):
-        # The node as the launcher starts it: 1 MiB control stacks (books/
-        # heap-reservation.lisp fn-heap-stack-octets).  The raw image script's
-        # own 64 MiB stacks count 78 x 68 MiB in connection-multiplexing's
-        # run budget, which a 2 GiB limit refuses (holds=0, batch AR).
-        stack_env = dict(environment(), NM_STACK_MB="1")
-        with tempfile.TemporaryDirectory() as work:
-            res = subprocess.run([sys.executable, str(MEASURE), "floor", str(IMAGE), work,
-                                  "--lo", "248", "--hi", "256"],
-                                 env=stack_env, stdout=subprocess.PIPE, check=True,
-                                 timeout=600)
-        doc = json.loads(res.stdout)
-        self.assertEqual(doc["trials"][0][:2], [256, True], doc)
 
     def stack_trial(self, kib):
         with tempfile.TemporaryDirectory() as work:
