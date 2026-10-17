@@ -478,3 +478,4 @@
 (include-book "../../books/store-log-durable")
 (include-book "../../books/def-cost")
 (include-book "../../books/string-line-cursor-cost")
+(include-book "../../books/raw-dispatch-verdict")

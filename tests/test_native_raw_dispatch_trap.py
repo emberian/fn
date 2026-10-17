@@ -40,34 +40,50 @@ import proof_repl
 SHIPPED = {"fnn-store-error", "fnn-store-fault", "fnn-entry-guard-fault", "fnn-fault",
            "fnn-counterpart", "fnn-call", "fnn-fixed-raw-callback"}
 
-# The ACL2 world functions fnn-install-raw-dispatch reads, stubbed: the
-# fn-interfaces table is *test-interfaces*, formals come from *test-formals*,
-# a :raw-guarded entry's target from *test-targets*, and every declaration is
-# accepted.  fnn-entry-guard refuses the one name FN-REFUSED.
+# The ACL2 world fnn-install-raw-dispatch reads, stubbed: the fn-interfaces
+# table is *test-interfaces*, the verdicts table *test-verdicts*, formals come
+# from *test-formals*, and a row's digest is (NAME KVS).  The admission is
+# the book's own (books/raw-dispatch-verdict.lisp fn-rdv-admit and what it
+# calls, read from the book: VERDICT_FORMS) over a minimal ACL2 shim.
+# fnn-entry-guard refuses the one name FN-REFUSED.
 PRELUDE = r"""
 (defpackage "ACL2" (:use "COMMON-LISP"))
 (defpackage "ACL2_*1*_ACL2" (:use))
 (in-package "ACL2")
+(declaim (declaration xargs))
 (defvar *the-live-state* nil)
 (defvar *test-interfaces* nil)
-(defvar *test-targets* nil)
+(defvar *test-verdicts* nil)
 (defvar *test-formals* nil)
 (defun w (state) state)
-(defun table-alist (name wrld) (declare (ignore name wrld)) *test-interfaces*)
+(defun table-alist (name wrld)
+  (declare (ignore wrld))
+  (if (eq name 'fn-raw-dispatch-verdicts) *test-verdicts* *test-interfaces*))
 (defun assoc-keyword (key l) (member key l))
-(defun fn-di-raw-guarded-problem (&rest r) (declare (ignore r)) nil)
-(defun fn-di-raw-with-problem (&rest r) (declare (ignore r)) nil)
-(defun fn-di-raw-creatorp (name entry wrld)
-  (declare (ignore entry wrld)) (assoc name *test-targets*))
-(defun fn-di-raw-guarded-target (name entry wrld)
-  (declare (ignore entry wrld)) (values nil (cdr (assoc name *test-targets*))))
+(defun true-list-fix (x) (loop for tail = x then (cdr tail) while (consp tail) collect (car tail)))
+(defmacro mv (&rest r) `(values ,@r))
+(defmacro msg (str &rest args)
+  `(cons ,str (pairlis (subseq '(#\0 #\1 #\2 #\3) 0 ,(length args)) (list ,@args))))
+(defun fn-rdv-row-digest (name kvs wrld) (declare (ignore wrld)) (list name kvs))
 (defun symbol-class (name wrld) (declare (ignore name wrld)) :common-lisp-compliant)
 (defun getpropc (name key default wrld)
   (declare (ignore wrld))
   (if (eq key 'formals)
       (let ((hit (assoc name *test-formals*))) (if hit (cdr hit) default))
     default))
+(defun test-judge (interfaces &optional refused creators)
+  ;; every raw row judged clean (but REFUSED), over its own digest
+  (loop for (name . kvs) in interfaces
+        collect (list name (list name kvs)
+                      (and (member name refused) (cons "test refusal ~x0" (list (cons #\0 name))))
+                      (if (member name refused) nil name)
+                      (and (member name creators) t))))
+%VERDICT%
 """
+
+VERDICT_FORMS = ("fn-rdv-raw-declared-p", "fn-rdv-lookup", "fn-rdv-verdict-digest",
+                 "fn-rdv-verdict-problem", "fn-rdv-verdict-target",
+                 "fn-rdv-verdict-creatorp", "fn-rdv-admit")
 
 DRIVER = r"""
 %PRELUDE%
@@ -107,11 +123,11 @@ DRIVER = r"""
 ;; Installation, from the (stubbed) fn-interfaces table.
 (setq *test-formals* '((fn-sub x y) (create-fn-thing)
                        (fn-wide a b c d e f g h i j k l m n o p q) (fn-refused x)))
-(setq *test-targets* '((create-fn-thing . create-fn-thing)))
 (setq *test-interfaces* '((fn-sub :raw-with (fn-sub-carries))
                           (create-fn-thing :raw-guarded (0 nil (fn-thing)))
                           (fn-wide :raw-with (fn-wide-carries))
                           (fn-refused :raw-with (fn-refused-carries))))
+(setq *test-verdicts* (test-judge *test-interfaces* nil '(create-fn-thing)))
 (check (= (fnn-install-raw-dispatch :report nil) 4))
 (check (= (fnn-install-raw-dispatch :report nil) 4))                ; idempotent before the seal
 (check (equal (fnn-raw-dispatch-names) '(create-fn-thing fn-refused fn-sub fn-wide)))
@@ -271,6 +287,7 @@ DRIVER_UNSEALED = r"""
 (compile 'fn-sub)
 (setq *test-formals* '((fn-sub x y)))
 (setq *test-interfaces* '((fn-sub :raw-with (fn-sub-carries))))
+(setq *test-verdicts* (test-judge *test-interfaces*))
 (check (= (fnn-install-raw-dispatch :report nil) 1))
 (defun fn-sub (x y) (+ x y))
 (check (handler-case (progn (fnn-install-raw-dispatch :report nil) nil)
@@ -284,6 +301,71 @@ DRIVER_UNSEALED = r"""
            (fnn-raw-dispatch-trap (c) (search "developer-only" (princ-to-string c))))))
 (format t "PASS raw-dispatch unsealed: ~d checks~%" *checks*)
 """
+
+
+# D40 verdicts (books/raw-dispatch-verdict.lisp): the install dispatches a
+# row raw only on a clean verdict judged over that row.  A row judged
+# refused, a row changed since its verdict, and a row with no verdict each
+# stop the installation by name; none is dispatched, and its function keeps
+# its own binding (no trap).  A clean verdict for a row that is not
+# declared raw dispatches nothing.
+DRIVER_VERDICTS = r"""
+%PRELUDE%
+(load "%RAWTRAP%")
+%SHIPPED%
+(defun fnn-entry-guard (name args) (declare (ignore name args)) nil)
+(defvar *checks* 0)
+(defmacro check (form) `(progn (assert ,form () "failed: ~s" ',form) (incf *checks*)))
+(defun fn-sub (x y) (- x y))
+(defun fn-bad (x) x)
+(compile 'fn-sub) (compile 'fn-bad)
+(defvar *bad-binding* (symbol-function 'fn-bad))
+(setq *test-formals* '((fn-sub x y) (fn-bad x)))
+(defun refusal (thunk)
+  (handler-case (progn (funcall thunk) nil)
+    (error (c) (princ-to-string c))))
+(defun install () (fnn-install-raw-dispatch :report nil))
+(setq *test-interfaces* '((fn-sub :raw-with (fn-sub-carries)) (fn-bad :raw-with (fn-bad-carries))))
+;; judged refused at export: never dispatched raw, the build stops by name
+(setq *test-verdicts* (test-judge *test-interfaces* '(fn-bad)))
+(let ((text (refusal #'install)))
+  (check (search "fn-bad" text))
+  (check (search "was judged refused" text))
+  (check (search "test refusal FN-BAD" text)))
+(check (null (fnn-raw-dispatch-target 'fn-bad)))
+(check (eq (symbol-function 'fn-bad) *bad-binding*))
+;; a row changed since it was judged
+(setq *test-verdicts* (test-judge '((fn-sub :raw-with (fn-sub-carries))
+                                    (fn-bad :raw-with (fn-other-carries)))))
+(let ((text (refusal #'install)))
+  (check (search "fn-bad" text))
+  (check (search "is not the row its verdict judged" text)))
+(check (null (fnn-raw-dispatch-target 'fn-bad)))
+;; a row with no verdict (declared after the verdicts were judged)
+(setq *test-verdicts* (test-judge '((fn-sub :raw-with (fn-sub-carries)))))
+(let ((text (refusal #'install)))
+  (check (search "fn-bad" text))
+  (check (search "no raw-dispatch verdict" text)))
+(check (eq (symbol-function 'fn-bad) *bad-binding*))
+;; a clean verdict over a row not declared raw dispatches nothing
+(setq *test-interfaces* '((fn-sub :raw-with (fn-sub-carries)) (fn-bad :class :common-lisp-compliant)))
+(setq *test-verdicts* (test-judge '((fn-sub :raw-with (fn-sub-carries))
+                                    (fn-bad :class :common-lisp-compliant))))
+(check (= (install) 1))
+(check (equal (fnn-raw-dispatch-names) '(fn-sub)))
+(check (eq (symbol-function 'fn-bad) *bad-binding*))
+(format t "PASS raw-dispatch verdicts: ~d checks~%" *checks*)
+"""
+
+
+def verdict_forms():
+    selected = {}
+    for form in proof_repl.forms((ROOT / "books/raw-dispatch-verdict.lisp").read_text()):
+        name = proof_repl.head_and_name(form)[1]
+        if name in VERDICT_FORMS:
+            selected[name] = form
+    assert set(selected) == set(VERDICT_FORMS), set(VERDICT_FORMS) - set(selected)
+    return "\n\n".join(selected[name] for name in VERDICT_FORMS)
 
 
 def shipped_forms(names):
@@ -309,7 +391,7 @@ def run_sbcl(text, name):
 def driver(template):
     selected = shipped_forms(SHIPPED)
     assert set(selected) == SHIPPED, SHIPPED - set(selected)
-    return (template.replace("%PRELUDE%", PRELUDE)
+    return (template.replace("%PRELUDE%", PRELUDE.replace("%VERDICT%", verdict_forms()))
             .replace("%RAWTRAP%", str(ROOT / "host/native/raw-trap.lisp"))
             .replace("%SHIPPED%", "\n\n".join(selected.values())))
 
@@ -326,6 +408,12 @@ class RawDispatchTrapTests(unittest.TestCase):
         run = run_sbcl(driver(DRIVER_UNSEALED), "unsealed.lisp")
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertIn("PASS raw-dispatch unsealed", run.stdout)
+
+    @unittest.skipUnless(shutil.which("sbcl"), "SBCL required")
+    def test_only_a_clean_judged_row_is_dispatched_raw(self):
+        run = run_sbcl(driver(DRIVER_VERDICTS), "verdicts.lisp")
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertIn("PASS raw-dispatch verdicts", run.stdout)
 
     def test_traps_install_before_every_other_raw_host_file(self):
         """r63-F2: each build script loads raw-trap.lisp and installs the

@@ -299,6 +299,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
+	books/raw-dispatch-verdict \
+	tests/acl2/raw-dispatch-verdict-tests \
 	tests/acl2/defevent-tests \
 	tests/acl2/def-carried-tests \
 	books/def-holder \
