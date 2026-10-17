@@ -2771,6 +2771,61 @@
                 (list :fsync-dir root (fn-lgrc-out outs 7))
                 (list :fsync-dir parent (fn-lgrc-out outs 8)))))
 
+; The open's ops ARE the hosted programs (CONVERGE-2 row 2, PRF-273).  The
+; keystones below reason about fn-lgrc-open-ops; the host runs, and the cut
+; campaign checks (tests/campaign/native_cuts.py), the step programs
+; fn-lgrc-program and fn-lg-open-program.  fn-lgrc-instantiate reads a step
+; program over a store: each symbolic operand bound by the open's
+; environment (fn-lgrc-open-env: the staging directory and name, journal/
+; and the segment, the staged file's inode, the validated prefix's copy, the
+; root and its parent), a `:fence' a directory fence, each `:cut' dropped
+; (a cut writes nothing), and the environment's outcomes taken in order.
+; The equality is the correspondence the comment above fn-lgrc-attempt-ops
+; used to state in prose; a reordered or dropped step is a different op list
+; (tests/acl2/store-log-recover-copy-tests.lisp).
+(defun fn-lgrc-bind (x env)
+  (declare (xargs :guard t))
+  (let ((p (and (alistp env) (assoc-equal x env)))) (if p (cdr p) x)))
+
+(defun fn-lgrc-bind-list (xs env)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (cons (fn-lgrc-bind (car xs) env) (fn-lgrc-bind-list (cdr xs) env))
+    nil))
+
+(defun fn-lgrc-instantiate (program env outs n)
+  (declare (xargs :guard (natp n) :verify-guards nil))
+  (cond ((atom program) nil)
+        ((and (consp (car program)) (eq (car (car program)) :cut))
+         (fn-lgrc-instantiate (cdr program) env outs n))
+        (t (cons (append (list (if (and (consp (car program)) (eq (car (car program)) :fence))
+                                   :fsync-dir
+                                 (and (consp (car program)) (car (car program)))))
+                         (fn-lgrc-bind-list (and (consp (car program)) (cdr (car program))) env)
+                         (list (fn-lgrc-out outs n)))
+                 (fn-lgrc-instantiate (cdr program) env outs (+ 1 (nfix n)))))))
+
+(defun fn-lgrc-open-env (s j k stg stage root parent genesis max floor)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((bs (fn-bsc-bs s))
+         (o (fn-bsc-content s (fn-bsc-lookup s j k)))
+         (f (fn-lgk-frontier (fn-lgt-recover o genesis (fn-bs-unit bs) max floor))))
+    (list (cons :staging stg) (cons :stage-recover stage)
+          (cons :journal j) (cons :segment k)
+          (cons :staged (fn-bs-next-ino bs))
+          (cons :validated-prefix (fn-lgrc-copy-octets o f))
+          (cons :root root) (cons :parent parent))))
+
+(defthm fn-lgrc-open-ops-is-the-hosted-programs
+  (equal (fn-lgrc-open-ops s j k stg stage root parent genesis max floor outs)
+         (fn-lgrc-instantiate (append (fn-lgrc-program) (fn-lg-open-program))
+                              (fn-lgrc-open-env s j k stg stage root parent genesis max floor)
+                              outs 0))
+  :hints (("Goal" :in-theory (e/d (fn-lgrc-open-ops fn-lgrc-attempt-ops)
+                                  (fn-lgrc-out fn-bsc-bs fn-bsc-content fn-bsc-lookup
+                                   fn-lgk-frontier fn-lgt-recover fn-bs-unit fn-bs-next-ino
+                                   fn-lgrc-copy-octets)))))
+
 (defun fn-lgrc-dir-fences-p (ops)
   (declare (xargs :guard t))
   (if (consp ops)
