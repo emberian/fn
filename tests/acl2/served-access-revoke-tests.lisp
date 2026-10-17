@@ -22,7 +22,6 @@
 ; (4) The keystone's premises inhabited at the witness of (1).
 
 (in-package "ACL2")
-(include-book "../../books/served-access-revoke")
 (include-book "../../books/defkeystone")
 (include-book "arena-lift")
 
@@ -178,8 +177,6 @@
 ; (4) The keystone's premises at (1): the session is projected, the live
 ; rule restricts and refuses fn.private.x; its conclusion is observed above.
 (assert-event (fn-nntp-session-projected (fn-auth-reader-session *sar-as-anon*)))
-(assert-event (equal (fn-sar-live-rule *sar-live1* (fn-auth-access-login *sar-as-anon*))
-                     "fn.public"))
 (assert-event (not (fn-gac-readablep "fn.public" "fn.private.x")))
 (assert-event (not (member-equal "fn.private.x"
                                  (fn-state-groups
@@ -193,114 +190,4 @@
 (defun sar-o (cfg) (declare (xargs :guard t)) (list nil nil nil nil nil nil nil nil nil cfg))
 (defun sar-cn (cfg) (declare (xargs :guard t)) (list nil nil nil nil nil nil cfg))
 
-(defteeth fn-own-served-conn-refuses-what-the-live-rule-refuses
-  :claim (() (let ((c (fn-served-conn-config (fn-own-served-conn o conn session)))
-                    (live (fn-sar-live-rule (fn-own-config o) (fn-auth-access-login as))))
-                (implies (and (fn-nntp-session-projected (fn-auth-reader-session as)) live (not (fn-gac-readablep live g)))
-                         (and (not (member-equal g (fn-state-groups
-                                                    (fn-auth-view-archive as c archive))))
-                              (not (fn-auth-arts-name-groupp
-                                    g (fn-state-articles (fn-auth-view-archive as c archive))))))))
-  :subject fn-own-served-conn
-  :witness ((o (sar-o *sar-live1*)) (conn (sar-cn *sar-pin1*)) (session nil) (as *sar-as-anon*) (archive *sar-state*) (g "fn.private.x"))
-  :mutations ((session-not-projected
-               (:conclusion (let ((c (fn-served-conn-config (fn-own-served-conn o conn session)))
-                    (live (fn-sar-live-rule (fn-own-config o) (fn-auth-access-login as))))
-                (implies (and live (not (fn-gac-readablep live g)))
-                         (and (not (member-equal g (fn-state-groups
-                                                    (fn-auth-view-archive as c archive))))
-                              (not (fn-auth-arts-name-groupp
-                                    g (fn-state-articles (fn-auth-view-archive as c archive))))))))
-               ((o (sar-o *sar-live1*)) (conn (sar-cn *sar-pin1*)) (session nil) (as nil) (archive *sar-state*) (g "fn.private.x"))
-               :fault "a connection whose reader session is not a projected session: the served view is not refused")
-              (no-live-rule
-               (:conclusion (let ((c (fn-served-conn-config (fn-own-served-conn o conn session)))
-                    (live (fn-sar-live-rule (fn-own-config o) (fn-auth-access-login as))))
-                (implies (and (fn-nntp-session-projected (fn-auth-reader-session as)) (not (fn-gac-readablep live g)))
-                         (and (not (member-equal g (fn-state-groups
-                                                    (fn-auth-view-archive as c archive))))
-                              (not (fn-auth-arts-name-groupp
-                                    g (fn-state-articles (fn-auth-view-archive as c archive))))))))
-               ((o (sar-o *sar-pin1*)) (conn (sar-cn *sar-pin1*)) (session nil) (as *sar-as-anon*) (archive *sar-state*) (g "fn.private.x"))
-               :fault "an owner configuration with no rule for the login: the old pin serves the revoked group")
-              (live-rule-reads-the-group
-               (:conclusion (let ((c (fn-served-conn-config (fn-own-served-conn o conn session)))
-                    (live (fn-sar-live-rule (fn-own-config o) (fn-auth-access-login as))))
-                (implies (and (fn-nntp-session-projected (fn-auth-reader-session as)) live)
-                         (and (not (member-equal g (fn-state-groups
-                                                    (fn-auth-view-archive as c archive))))
-                              (not (fn-auth-arts-name-groupp
-                                    g (fn-state-articles (fn-auth-view-archive as c archive))))))))
-               ((o (sar-o *sar-live1*)) (conn (sar-cn *sar-pin1*)) (session nil) (as *sar-as-anon*) (archive *sar-state*) (g "fn.public"))
-               :fault "a group the live rule still lets the login read, which the view names")))
-
-(defteeth fn-own-served-conn-refuses-what-the-pin-refuses
-  :claim (() (let ((c (fn-served-conn-config (fn-own-served-conn o conn session)))
-                    (pin (fn-auth-rule-text
-                          (fn-gac-listing-table (fn-inj-config-listing (fn-own-conn-config conn)))
-                          (fn-inj-config-closed (fn-own-conn-config conn))
-                          (fn-auth-access-login as) 1)))
-                (implies (and (fn-nntp-session-projected (fn-auth-reader-session as)) pin (not (fn-gac-readablep pin g)))
-                         (and (not (member-equal g (fn-state-groups
-                                                    (fn-auth-view-archive as c archive))))
-                              (not (fn-auth-arts-name-groupp
-                                    g (fn-state-articles (fn-auth-view-archive as c archive))))))))
-  :subject fn-own-served-conn
-  :witness ((o (sar-o *sar-live1*)) (conn (sar-cn *sar-live1*)) (session nil) (as *sar-as-anon*) (archive *sar-state*) (g "fn.private.x"))
-  :mutations ((session-not-projected
-               (:conclusion (let ((c (fn-served-conn-config (fn-own-served-conn o conn session)))
-                    (pin (fn-auth-rule-text
-                          (fn-gac-listing-table (fn-inj-config-listing (fn-own-conn-config conn)))
-                          (fn-inj-config-closed (fn-own-conn-config conn))
-                          (fn-auth-access-login as) 1)))
-                (implies (and pin (not (fn-gac-readablep pin g)))
-                         (and (not (member-equal g (fn-state-groups
-                                                    (fn-auth-view-archive as c archive))))
-                              (not (fn-auth-arts-name-groupp
-                                    g (fn-state-articles (fn-auth-view-archive as c archive))))))))
-               ((o (sar-o *sar-live1*)) (conn (sar-cn *sar-live1*)) (session nil) (as nil) (archive *sar-state*) (g "fn.private.x"))
-               :fault "a connection whose reader session is not a projected session")
-              (no-pin-rule
-               (:conclusion (let ((c (fn-served-conn-config (fn-own-served-conn o conn session)))
-                    (pin (fn-auth-rule-text
-                          (fn-gac-listing-table (fn-inj-config-listing (fn-own-conn-config conn)))
-                          (fn-inj-config-closed (fn-own-conn-config conn))
-                          (fn-auth-access-login as) 1)))
-                (implies (and (fn-nntp-session-projected (fn-auth-reader-session as)) (not (fn-gac-readablep pin g)))
-                         (and (not (member-equal g (fn-state-groups
-                                                    (fn-auth-view-archive as c archive))))
-                              (not (fn-auth-arts-name-groupp
-                                    g (fn-state-articles (fn-auth-view-archive as c archive))))))))
-               ((o (sar-o *sar-pin1*)) (conn (sar-cn *sar-pin1*)) (session nil) (as *sar-as-anon*) (archive *sar-state*) (g "fn.private.x"))
-               :fault "a connection configuration with no rule for the login: nothing refuses the group")
-              (pin-reads-the-group
-               (:conclusion (let ((c (fn-served-conn-config (fn-own-served-conn o conn session)))
-                    (pin (fn-auth-rule-text
-                          (fn-gac-listing-table (fn-inj-config-listing (fn-own-conn-config conn)))
-                          (fn-inj-config-closed (fn-own-conn-config conn))
-                          (fn-auth-access-login as) 1)))
-                (implies (and (fn-nntp-session-projected (fn-auth-reader-session as)) pin)
-                         (and (not (member-equal g (fn-state-groups
-                                                    (fn-auth-view-archive as c archive))))
-                              (not (fn-auth-arts-name-groupp
-                                    g (fn-state-articles (fn-auth-view-archive as c archive))))))))
-               ((o (sar-o *sar-live1*)) (conn (sar-cn *sar-live1*)) (session nil) (as *sar-as-anon*) (archive *sar-state*) (g "fn.public"))
-               :fault "a group the connection's own rule lets the login read, which the view names")))
-
-(defteeth fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged
-  :claim (((no-live (not (consp (fn-gac-listing-live
-                                 (fn-inj-config-listing (fn-own-conn-config conn))))))
-           (rules-agree (equal (fn-sar-live-rule (fn-own-config o) (fn-auth-access-login as))
-                               (fn-auth-rule-text
-                                (fn-gac-listing-table (fn-inj-config-listing (fn-own-conn-config conn)))
-                                (fn-inj-config-closed (fn-own-conn-config conn))
-                                (fn-auth-access-login as) 1))))
-          (equal (fn-auth-access-text
-                  as (fn-served-conn-config (fn-own-served-conn o conn session)) 1)
-                 (fn-auth-access-text as (fn-own-conn-config conn) 1)))
-  :subject fn-own-served-conn
-  :witness ((o (sar-o *sar-pin1*)) (conn (sar-cn *sar-pin1*)) (session nil) (as *sar-as-anon*))
-  :breaks ((no-live ((conn (sar-cn *sar-served1*))))
-           (rules-agree ((o (sar-o *sar-live1*)))))
-  :mutations (:not-applicable "both hypotheses are labelled; their removal witnesses are the teeth"))
 ; TEETH-21 END

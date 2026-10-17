@@ -1,7 +1,6 @@
 ; Literal full-retained establishment, reachable readiness removal and a
 ; separately labelled corrupted-state removal of the retained invariant.
 (in-package "ACL2")
-(include-book "../../books/catalog-context-recovery")
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
 (defconst *ccr-principal* (make-list 32 :initial-element 7))

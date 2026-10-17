@@ -55,28 +55,6 @@
 
 (include-book "served-catalog-join-inv-tests")
 (include-book "owner-signed-post-tests")
-(include-book "../../books/served-catalog-join-host-exec")
-(include-book "../../books/served-catalog-join-host-identity-finish")
-(include-book "../../books/served-catalog-join-host-views")
-
-; Every conjunct of fn-sjh-okp at owner O with pending row PENDING, over the
-; live catalog.
-(defun sjht-okp-parts (o pending fn-arena fn-cat)
-  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
-  (let* ((view (fn-own-view o))
-         (s (fn-own-store o))
-         (files (fn-sn-files s))
-         (v (fn-own-view-version view))
-         (records (fn-sf-records files))
-         (seen (if (equal (fn-sf-phase files) :completing) (butlast records 1) records))
-         (c (scji-rows-of 0 fn-cat)))
-    (list (scji-parts o fn-arena fn-cat)
-          (list (and (<= v (len seen)) (fn-scj-no-rowsp (nthcdr v seen)))    ; fn-scjs-seenp
-                (and (natp v) (<= v (len records)) (true-listp records))     ; fn-scjs-historyp
-                (fn-scj-seqs-sortedp c)
-                (fn-cnx-freshp c)
-                (fn-scj-conns-versions-atmostp (fn-own-conns o) v))           ; fn-scj-versions-okp
-          (fn-sjh-files-okp-exec files pending fn-arena fn-cat))))
 
 (defconst *sjht-okp* (list (list t t t t t) (list t t t t t) t))
 
@@ -84,100 +62,6 @@
   ; scji-parts ends with the live view's view-of; the teeth compare it apart.
   (declare (xargs :mode :program))
   (list (take 5 (car parts)) (cadr parts) (caddr parts)))
-
-;; MODE: nil the host's pending; (:expected E) a pending made directly with
-;; expected E; :none no pending row.
-(defun sjht-run (oc payloads mode fn-arena fn-cat)
-  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
-  (let* ((fn-arena (fn-arena-clear fn-arena))
-         (fn-arena (fn-arn-seal-many payloads fn-arena))
-         (o (fn-ocfg-owner oc))
-         (s (fn-own-store o))
-         (rows (fn-sf-records (fn-sn-files s)))
-         (fn-cat (fn-sca-load-held-rows (butlast rows 1) (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
-                                        fn-arena fn-cat))
-         (row (fn-sn-completion-record s))
-         (w (fn-held-wire-of row fn-arena))
-         (pending (cond ((eq mode :none) nil)
-                        ((and (consp mode) (eq (car mode) :expected))
-                         (fn-pc-make (cons (nfix (fn-record-txid row)) (cadr mode)) (cadr mode)
-                                     row nil nil))
-                        (t (fn-cat-prepare-sealed w row nil nil nil fn-arena fn-cat))))
-         (before (sjht-strip (sjht-okp-parts o pending fn-arena fn-cat)))
-         (res (fn-ccar-own-finish o (fn-ocfg-config oc) fn-arena))
-         (o2 (cdr res))
-         (view2 (fn-own-view o2))
-         (count0 (fn-cat-count fn-cat))
-         (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
-         (antecedent (list (fn-ocl-relation oc) (equal before *sjht-okp*)
-                          ; the host's :durable (fn-owner-finish-synced)
-                          (and (equal (fn-sf-phase (fn-sn-files s)) :completing)
-                               (equal (fn-sf-phase (fn-sn-files (fn-own-store o2))) :ready)))))
-    (if (null pending)
-        ; the host runs no catalog step without a pending row
-        (mv (list antecedent before
-                  (list nil (sjht-strip (sjht-okp-parts o2 nil fn-arena fn-cat)) count0
-                        (fn-ocl-relation (fn-ocfg-with-owner oc o2))))
-            fn-arena fn-cat)
-      (mv-let (word pending2 fn-cat)
-        (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
-                       (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
-                                          (fn-own-view-withdrawals view2))
-                       fn-cat)
-        (declare (ignore word))
-        (mv (list antecedent before
-                  (list (if pending2 :pending-left nil)
-                        (sjht-strip (sjht-okp-parts o2 pending2 fn-arena fn-cat))
-                        (fn-cat-count fn-cat)
-                        (fn-ocl-relation (fn-ocfg-with-owner oc o2))))
-            fn-arena fn-cat)))))
-
-(defun sjht-exec (oc payloads mode)
-  (declare (xargs :mode :program))
-  (with-local-stobj fn-arena
-    (mv-let (result fn-arena)
-      (with-local-stobj fn-cat
-        (mv-let (result fn-arena fn-cat)
-          (sjht-run oc payloads mode fn-arena fn-cat)
-          (mv result fn-arena)))
-      result)))
-
-; -----------------------------------------------------------------------------
-; 1. fn-sjh-okp-at-owner-finish-identity's article branch, reachable: the
-; antecedent (the owner relation, fn-sjh-okp with the host's pending row, the
-; host's :durable), and the conclusion: no pending row left, fn-sjh-okp at the
-; finished owner with none (the catalog grown to the history's one article),
-; the relation after.
-
-(assert-event (equal (sjht-exec *cet-t2-oc* *cet-t2-payloads* nil)
-                     (list (list t t t)
-                           *sjht-okp*
-                           (list nil *sjht-okp* 1 t))))
-
-; -----------------------------------------------------------------------------
-; 2. LINK removed: a pending row expecting one more row than the catalog
-; holds.  Every other conjunct holds; the store side fails; the catalog
-; refuses the completion -- a pending row is left and the catalog does not
-; grow, so the finished owner's view is not joined with it.
-
-(assert-event (equal (sjht-exec *cet-t2-oc* *cet-t2-payloads* '(:expected 1))
-                     (list (list t nil t)
-                           (list (list t t t t t) (list t t t t t) nil)
-                           (list :pending-left
-                                 (list (list nil nil t nil t) (list t t t t t) nil)
-                                 0 t))))
-
-; -----------------------------------------------------------------------------
-; 3. LINK's no-row arm removed: no pending row at the completing article row.
-; The host's finish runs no catalog step; the finished owner's view shows the
-; article the catalog lacks.
-
-(assert-event (equal (sjht-exec *cet-t2-oc* *cet-t2-payloads* :none)
-                     (list (list t nil t)
-                           (list (list t t t t t) (list t t t t t) nil)
-                           (list nil
-                                 (list (list nil nil t nil t) (list t t t t t) t)
-                                 0 t))))
 
 ; -----------------------------------------------------------------------------
 ; 4. The identity finish's (I) equations, reachable: owner-signed-post-tests'

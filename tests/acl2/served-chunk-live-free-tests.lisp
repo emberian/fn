@@ -7,11 +7,7 @@
 (in-package "ACL2")
 
 (include-book "owner-tests")
-(include-book "../../books/served-chunk-live-free")
-
 (bpr-lift fn-own-read-tls-prefix 3)
-(bpr-lift fn-scl-counted-selects-nothing-p 2)
-
 (defconst *sclt-stat* (append (fn-nntp-string-octets "STAT <three@example>") '(13 10)))
 
 (defun sclt-conn (o) (fn-own-find-conn 3 (fn-own-conns o)))

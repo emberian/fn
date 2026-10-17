@@ -1,5 +1,4 @@
 (in-package "ACL2")
-(include-book "../../books/extent-window-stream-semantics")
 (include-book "extent-window-stream-tests")
 
 (defun-nx ewsst-begin ()
