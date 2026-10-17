@@ -441,17 +441,6 @@ under "Not bounded".
 - Not bounded: the per-octet representation cost of what is retained (a
   cons per octet) is **M5**'s credit, not this row's.
 
-**W2** -- a transit article is bounded before its verdict.
-- Bounded: the body an IHAVE/TAKETHIS retains is at most the profile's body
-  limit; the connection is refused 437/439 and closed past it (fuzz F2,
-  PKT-846).
-- Mechanism: `fn-served-run` under `fn-tb-limit`. Host subject: the served
-  transit step.
-- Evidence: THEOREM (PRF-313). The book says it does not bound the
-  per-octet representation cost.
-- Exceeded: 437/439 and close.
-- Not bounded: as **W1**.
-
 **W3** -- a POST past the article bound is refused exactly there.
 - Bounded: a POST whose payload exceeds A is refused with `:payload-bound`
   and nothing else in the boundary refusal set; the served bound is the
@@ -1006,7 +995,6 @@ not on this tree yet; its citations are checked once they land.
 | M10 | none (measured or open) | none | none |  |
 | M11 | `books/owner-obligation-state`: `fn-owner-install-keeps-the-obligation-view`, `fn-owner-open-keeps-the-obligation-view`; `books/heap-figure`: `fn-heap-small-run-base-of-an-empty-store` | PRF-198 | none |  |
 | W1 | `books/wire`: `fn-wire-feed-byte-retained-input-is-bounded` | PRF-218 | none |  |
-| W2 | `books/transit-bound`: `fn-tb-served-run-retains-at-most-the-body-limit` | PRF-313 | none |  |
 | W3 | `books/store-budget-naming`: `fn-sbud-post-boundary-refuses-exactly-past-the-profile-bound`; `books/owner-served-bound`: `fn-osb-install-serves-the-profile-bound` | PRF-110, PRF-095 | none |  |
 | W4 | `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded`, `fn-served-step-counted-carries-at-most-one-submission`, `fn-served-drain-run-is-boundary-independent` | PRF-213 | none |  |
 | W5 | `books/payload-deflate`: `fn-pzd-decode-ok`, `fn-pzd-decode-bufs-is-decode` | PRF-257 | none |  |

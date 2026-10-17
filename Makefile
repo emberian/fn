@@ -44,20 +44,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/statement-items-cursor-terminal-tests \
 	books/history-source-capture-refinement \
 	tests/acl2/history-source-capture-refinement-tests \
-	books/substrate-commit-profile-codec \
-	books/substrate-commit-profile-refinement \
-	tests/acl2/substrate-commit-profile-codec-tests \
-	tests/acl2/substrate-commit-profile-refinement-tests \
-	books/substrate-commit-profile-bounds \
-	tests/acl2/substrate-commit-profile-bounds-tests \
-	books/substrate-commit-profile-resume \
-	books/substrate-profile-entry \
-	books/substrate-profile-selection \
-	books/substrate-profile-row \
-	books/substrate-completed-source \
-	tests/acl2/substrate-profile-entry-tests \
-	tests/acl2/substrate-profile-selection-tests \
-	tests/acl2/substrate-commit-profile-resume-tests \
 	books/history-semantic-writer \
 	tests/acl2/history-semantic-writer-tests \
 	tests/acl2/admission-semantic-exclusion-tests \
@@ -80,9 +66,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-remote-withdrawal-buffer-tests \
 	tests/acl2/history-paged-adopt-tests \
 	tests/acl2/history-paged-canonical-tests \
-	tests/acl2/ninep-fields-tests \
-	tests/acl2/ninep-header-tests \
-	tests/acl2/ninep-version-tests \
 	tests/acl2/operation-diagnostics-tests \
 	tests/acl2/payload-view-lease-tests \
 	tests/acl2/productive-read-chain-tests \
@@ -96,19 +79,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/tcpcl-received-count-tests \
 	tests/acl2/tcpcl-frame-cursor-tests \
 	tests/acl2/tcpcl-segment-source-cursor-tests \
-	books/ninep-dispatch \
-	books/ninep-mount \
-	books/ninep-mounted-directory \
-	books/ninep-qids \
-	books/ninep-session \
-	books/ninep-stat-stream \
-	books/ninep-transport \
-	tests/acl2/ninep-group-buckets-tests \
-	tests/acl2/ninep-mount-tests \
-	tests/acl2/ninep-mounted-directory-tests \
-	tests/acl2/ninep-qids-tests \
-	tests/acl2/ninep-session-tests \
-	tests/acl2/ninep-stat-stream-tests \
 	books/extent-window-compressed-input \
 	books/extent-window-compressed-output \
 	books/extent-window-source-words \
@@ -928,7 +898,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/record-width-producers-tests \
 	books/post-record-width-owner \
 	tests/acl2/post-record-width-owner-tests \
-	books/transit-same-decision \
 	tests/acl2/transit-same-decision-tests \
 	books/held-message-id-answer \
 	tests/acl2/held-message-id-answer-tests \
@@ -967,8 +936,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-primary \
 	books/bp-primary-invariants \
 	tests/acl2/bp-primary-tests \
-	books/bpsec \
-	tests/acl2/bpsec-asb-tests \
 	books/bp-status-report \
 	books/bp-status-report-invariants \
 	tests/acl2/bp-status-report-tests \
@@ -1136,7 +1103,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-forward-image \
 	tests/acl2/bp-forward-image-tests \
 	tests/acl2/bp-session-turn-tests \
-	tests/acl2/tcpcl-source-control-refinement-tests \
 	tests/acl2/tcpcl-source-control-tests \
 	tests/acl2/tcpcl-received-source-refinement-tests \
 	books/tcpcl-retained-turn \
@@ -1368,17 +1334,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/exchange \
 	tests/acl2/exchange-tests \
 	books/exchange-invariants \
-	books/transfer \
-	books/transfer-reservation \
-	books/transfer-invariants \
-	books/transfer-assembly-invariants \
-	books/transfer-work \
-	books/transfer-public-work \
-	books/transfer-public-bound \
-	tests/acl2/transfer-tests \
-	books/transfer-journal \
-	books/transfer-journal-invariants \
-	tests/acl2/transfer-journal-tests \
 	books/container \
 	books/container-invariants \
 	tests/acl2/container-tests \
@@ -1802,7 +1757,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-feed-tests \
 	tests/acl2/owner-feed-live-carried-tests \
 	books/owner \
-	books/transit-header-limits \
 	tests/acl2/transit-header-limits-tests \
 	tests/acl2/owner-feed-form-tests \
 	books/owner-invariants \
@@ -1816,7 +1770,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-log \
 	books/owner-results \
 	books/owner-served-bound \
-	books/transit-bound \
 	tests/acl2/wire-bounds-tests \
 	books/owner-log-reopen \
 	books/owner-bound-commit \
@@ -2451,41 +2404,16 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/connection-receiver-source-tests \
     tests/acl2/reader-response-disposition-tests \
     tests/acl2/receiver-parser-stage-tests \
-    books/bpsec-operation \
-    books/bpsec-provider-model \
-    books/bpsec-target \
-    books/bpsec-target-cursor \
     books/connection-read-quantum \
     books/post-identity-source-cursor-source-body \
     books/post-identity-source-cursor-source-complete \
     books/public-exposure-selectors \
-    tests/acl2/bpsec-operation-tests \
-    tests/acl2/bpsec-primitive-plan-tests \
-    tests/acl2/bpsec-input-plan-tests \
-    tests/acl2/bpsec-input-fragment-tests \
-    tests/acl2/bpsec-asb-quanta-tests \
-    tests/acl2/bpsec-asb-spine-tests \
-    tests/acl2/bpsec-target-spine-tests \
-    tests/acl2/bpsec-asb-control-tests \
-    tests/acl2/bpsec-asb-position-tests \
-    tests/acl2/bpsec-head-invariant-tests \
-    tests/acl2/bpsec-asb-metadata-tests \
-    tests/acl2/bpsec-asb-body-tests \
-    tests/acl2/bpsec-asb-aggregate-tests \
-    tests/acl2/bpsec-asb-terminal-tests \
-    tests/acl2/bpsec-asb-target-types-tests \
-    tests/acl2/bpsec-asb-window-differential-tests \
-    tests/acl2/bpsec-received-window-tests \
-    books/bpsec-received-window \
-    tests/acl2/bpsec-target-cursor-tests \
-    tests/acl2/bpsec-target-tests \
     tests/acl2/post-identity-source-cursor-source-complete-tests \
     books/allocation-epoch \
     books/allocation-epoch-collection-request \
     books/allocation-epoch-domain \
     books/allocation-epoch-observation \
     books/allocation-epoch-pool \
-    books/ninep-group-directory-source \
     tests/acl2/allocation-dual-ceiling-tests \
     books/runtime-bootstrap-completion \
     tests/acl2/account-adoption-turn-return-tests \
@@ -2514,7 +2442,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/runtime-bootstrap-source \
     tests/acl2/runtime-bootstrap-completion-tests \
     tests/acl2/runtime-bootstrap-source-tests \
-    tests/acl2/ninep-group-directory-source-tests \
     books/consumer-account-availability \
     books/consumer-account-state \
     books/index-connection-repin \
@@ -2568,10 +2495,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/catalog-prepare \
     books/store-intern-row \
     books/stx-commit-codec \
-    books/substrate-committed-transcript \
-    books/substrate-committed-row \
-    tests/acl2/substrate-committed-transcript-tests \
-    tests/acl2/substrate-committed-row-tests \
     tests/acl2/substrate-commit-codec-gap-tests \
     books/owner-retain-carried \
     books/owner-retain-livep \
