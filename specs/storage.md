@@ -666,7 +666,6 @@ opening the seed's empty node. The negative composed trace in
 `tests/acl2/store-identity-traces-tests.lisp` exercises this separation;
 fresh certification and native corrupt-history startup evidence remain open.
 
-
 ### Checkpointing: the Store checkpoint that open reads (P3, 2026-09-25)
 
 STO-011: Open reads the newest verified exact-state checkpoint and replays at
@@ -1381,34 +1380,6 @@ again; from the install on the open reads the rewritten history and a rerun
 reclaims nothing more (`fn-rclp-events-idempotent`,
 `fn-rclp-a-reclaimed-event-stays-reclaimed`).
 
-What the rewritten history MEANS is decided in books/history-knowledge.lisp
-(W8; PRF-997 to PRF-1000). A Message-ID's knowledge state over the event
-history and the node's stage is one of five: not accepted, accepted and
-retained, accepted and reclaimed, outcome unresolved (staged, not in the
-readable history: a lost acknowledgement or an indeterminate completion),
-history unavailable; the rewrite turns only "accepted and retained" into
-"accepted and reclaimed" and changes no other answer
-(`fn-hkn-reclamation-never-forgets-an-acceptance`): the current absence of
-a payload never collapses to "not accepted". An acceptance records its
-commitment: the replay step that accepts an article record binds the
-record's Message-ID to its content subject and obligation id and holds the
-pin with the record's own release evidence and charge
-(`fn-hkn-acceptance-records-subject-principal-and-undertaking`), none of
-which is a function of the open's groups or capacity
-(`fn-hkn-replay-binds-the-recorded-evidence-not-the-policy`). Reclamation
-is the logical release first (`fn-hkn-release`: the payload at the
-tombstone, the pin's charge at the history unit) and the rewrite implements
-it; over the released node a retry or a conflicting retry is refused as
-before, a receipt discharges the same obligation or none, every known
-obligation id stays known, and the one observable change is exactly the
-freed content charge: a request the ledger refused for capacity alone may
-be admitted after, and only such a request
-(`fn-hkn-release-enables-only-what-the-freed-charge-affords`). A refused
-node transition is the identity per entry; the full-store POST's footprint
-is one transaction id (`fn-rfx-refused-post-consumes-one-txid`), and that
-path never spends a recovery barrier
-(`fn-hkn-refusal-keeps-the-recovery-barriers`).
-
 The corrected W8 relation is `alpha(s) = (L(s), R(s))`: physical maintenance
 preserves promised logical obligations while an explicit abstract maintenance
 transition changes resources. Operations admitted on both sides preserve their
@@ -1417,19 +1388,6 @@ refused event and explains that difference through resource state. It must not
 filter refused operations out to obtain equality. Once one side accepts work
 that the other refuses, their later logical histories can differ; the common
 admission condition cannot simply be forgotten at the next operation.
-
-The source component `books/history-resource-refinement.lisp` (PRF-1101,
-SCN-1013) makes that separation for the retention ledger: `L` contains active
-obligation identity, subject, kind, evidence and permanent release history;
-`R` contains capacity, reserved amount and each pin's charge. Its maintenance
-square covers `fn-hkn-release-retention`; its operation lemmas cover actual
-`fn-retain-admit` and `fn-retain-release`. These ledger units are not a physical
-memory/disk/descriptor/slot accounting vector. The component's projection is
-not the full node abstraction: selected subject profiles, authority/version,
-conflict evidence, numbering, snapshot carry and physical ownership must be
-framed by the complete host-called owner/reclamation bridge. That bridge,
-revocation, refused-request identity headroom and the bounded continuation
-checker remain open. The component is not a served whole-state traversal.
 
 The post-reservation refusal iteration is now an explicit reference component
 in `books/refusal-headroom.lisp` (PRF-1110, SCN-1019). It composes the actual
@@ -1705,7 +1663,6 @@ then fails before the selection; the store reopens and the rerun converges
 torn. `status` prints `maintenance-reserve octets=R transactions=N debt=D
 held|short`.
 
-
 The P12 cold-pool increment (PRF-1065, SCN-1002) separates resident octets,
 disk octets, registered descriptor credits, executing worker slots and
 spent process-local read identities. A named refused cold issue emits one
@@ -1797,7 +1754,6 @@ bound or a maintenance reserve. The current operator rejects explicit
 resources as an unsupported profile until native pool initialization and
 the concrete funding consumer are integrated; this positive policy arm is
 currently unreachable in composition.
-
 
 ### Compaction of any length (P5; STO-012)
 
@@ -2056,7 +2012,6 @@ unreachable in composition pending actual authenticated window execution,
 its allocator demand and persistent worker dispatch. Return is a physical
 observation, never proof that the bytes passed digest or decoder checks.
 
-
 PRF-1128 / SCN-1035 stage the persistent physical window worker with the
 complete immutable typed token, including payload position and length. Its
 existing four-field core slot binds the exact token and slot; actual worker
@@ -2068,7 +2023,6 @@ from ACL2. The final release clears its retained result before refund. The
 native trajectory correspondence, complete selected-runtime demand, served
 seven-field descriptor/admission join, productive reclamation/rescue and default
 activation remain open. These are source components, not qualified execution.
-
 
 The staged PRF-1128 payload-coordinate seam passes the arena's original
 payload-relative index unchanged. `fn-pwr-byte-at` checks the six original
@@ -2084,7 +2038,6 @@ current physical placement acquisition under owner-to-extent locks, staged
 buffer ownership and inner cleanup before logical release. Those joins,
 cancellation publication rights and full allocator/native evidence remain open.
 
-
 The dormant PRF-1128 lifetime seam revokes cancelled jobs without fabricating
 physical return. Credits and file ownership survive cancellation until actual
 worker return and exact cancelled settlement; scalar publication is denied.
@@ -2095,7 +2048,6 @@ The dedicated 21-name guard cache has a sourced permanent baseline, but startup
 installation, selected-runtime adequacy, captured-row authorization and native
 execution remain separate obligations. Compressed getters refuse before eager
 decoding. The default realizer does not enable this staged mode.
-
 
 ### Private history relocation continuation (SCN-1101)
 
