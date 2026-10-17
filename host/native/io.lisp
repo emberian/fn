@@ -9844,7 +9844,13 @@ segment' (tests/test_native_topic_local.py)."
         (unless (and (consp plan) (member (first plan) '(:scan :refused)))
           (fnn-fault "ACL2 returned a malformed log open plan"))
         (fnn-log-open-plan-check store plan log-position)
-        (let ((genesis (if log-position (second log-position) chain))
+        ;; The open's lineage decision (fnn-recover-log; lane store-lineage,
+        ;; PRF-979): the F row's (K G) against segment K's head, the scan of
+        ;; K starting from the head's predecessor, never G taken as K's chain.
+        (let ((genesis (if log-position
+                           (fnn-log-lineage-genesis store (first log-position)
+                                                    (second log-position) chain)
+                         chain))
               (base (if (eq status :ok) (fnn-nat s) 0)))
           (loop for (k . more) on (second plan) do
             (let* ((path (fnn-segment-path-at store k))
