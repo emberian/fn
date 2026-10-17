@@ -5222,7 +5222,7 @@ EVIDENCE_HISTORICAL = ("planning/evidence/", "docs/evidence/")
 # A source file that left the tree is cited as `REV:PATH`, the last tree that
 # carried it (tools/check_scaffold.py TREE_CITATION reads the same form):
 # the object must exist in this repository and the path must be absent now.
-TREE_CITATION = re.compile(r"^([0-9a-f]{7,40}):((?:books|host|tests|tools)/[^\s:]+)$")
+TREE_CITATION = re.compile(r"^([0-9a-f]{7,40}):((?:books|host|tests|tools|specs)/[^\s:]+)$")
 
 
 def evidence_digest(ident: str, evidence: object) -> str:

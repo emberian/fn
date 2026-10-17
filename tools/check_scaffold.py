@@ -23,7 +23,7 @@ HISTORICAL_PREFIXES = ("planning/evidence/", "docs/evidence/")
 # it, not a list: the object must exist in this repository's history, and the
 # path must still be absent from the tree (a file that is back is cited
 # plainly).
-TREE_CITATION = re.compile(r"^([0-9a-f]{7,40}):((?:books|host|tests|tools)/[^\s:]+)$")
+TREE_CITATION = re.compile(r"^([0-9a-f]{7,40}):((?:books|host|tests|tools|specs)/[^\s:]+)$")
 
 
 @functools.lru_cache(maxsize=None)
