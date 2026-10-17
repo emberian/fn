@@ -3237,7 +3237,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_carried_entries
 	@$(CHECK_STEP) $(PYTHON) tools/cost_obligations.py --check
 # What the certified world says about each host-called entry (lane
-# coverage-crawler, 2026-09-29): planning/coverage.json is built from a dump
+# coverage-crawler, 2026-09-29): build/coverage.json (gitignored) is built from a dump
 # tools/coverage_dump.lisp writes in an ACL2 session over books/image-world
 # (regenerated at convergence, not per commit); this refuses a decision
 # entry with no direct theorem that planning/coverage-baseline.json does not
