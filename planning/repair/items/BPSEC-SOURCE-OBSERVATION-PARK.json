@@ -18,12 +18,13 @@
  "fix": "S068's owner decides with S068: if the TCPCL source continuation lands as the production path, the family is certified as Makefile roots with the recording tests under a runner; if the source continuation is removed, the nine files are retired as one unit (the hash pins survive deletion of the tip files). Never split the unit.",
  "id": "BPSEC-SOURCE-OBSERVATION-PARK",
  "notes": [
-  "2026-10-09 Builder B: parked under the inventory rule on the coordinator's ruling (option a): host-parked.json holds host files only and is shrink-only."
+  "2026-10-09 Builder B: parked under the inventory rule on the coordinator's ruling (option a): host-parked.json holds host files only and is shrink-only.",
+  "10-16 20:24 closed by cut/m1a (M1-a tombstone sweep, 2026-10-16): its subject file is deleted on cut/breaking"
  ],
  "owner": "bp-transport",
  "severity": "low",
  "source": "RETIRE-VERDICTS-20261009 A1",
- "state": "open",
+ "state": "closed",
  "title": "bpsec source-observation family (4 books, 5 recording tests) parked as one unit with S068",
- "updated": "2026-10-09T18:30:00Z"
+ "updated": "2026-10-17T00:24:07Z"
 }

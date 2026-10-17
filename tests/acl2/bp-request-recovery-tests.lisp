@@ -5,7 +5,6 @@
 ; native-request lane) opens fenced.
 (in-package "ACL2")
 (include-book "bp-request-plan-tests")
-(include-book "../../books/bp-request-recovery")
 (include-book "must-fail-checked")
 
 (defconst *bprv-history*

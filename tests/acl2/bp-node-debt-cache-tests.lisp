@@ -2,7 +2,6 @@
 ; an exact failed-match tooth for its one premise.  The larger outer cache
 ; invariant and kind-5/18/8/9 tests follow the serving wrapper checkpoint.
 (in-package "ACL2")
-(include-book "../../books/bp-node-debt-cache-invariants")
 (include-book "../../books/codec-attach")
 (include-book "bp-node-debt-tests")
 (include-book "must-fail-checked")

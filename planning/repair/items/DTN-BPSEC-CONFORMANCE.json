@@ -1,16 +1,17 @@
 {
  "category": "conformance",
+ "detail": "RFC 9171 s8 places bundle security in BPSec (RFC 9172; default security contexts RFC 9173: BIB-HMAC-SHA2, BCB-AES-GCM). Present: receiver-side primitive I/O in host/native/bpsec-crypto.lisp (HMAC and the authentication-only AES-GCM first pass, inside HST-004's trust boundary; it does not admit bundles or install the decryption second pass) and the ASB parsing books (books/bpsec-asb-*.lisp). Absent: a conformance statement of what fn accepts, verifies, refuses and forwards per block type and context; the ACL2 decision wiring from ASB parse to primitive to admission; the BCB decryption pass; the source and verifier roles (fn only receives); interop fixtures against an independent BPSec implementation. Gate when started: a conformance matrix (RFC 9172 s5-s9 rows, RFC 9173 contexts 1-2) with each row's keystone or native test. Not started.",
+ "file": "host/native/bpsec-crypto.lisp",
  "id": "DTN-BPSEC-CONFORMANCE",
+ "line": "1",
+ "notes": [
+  "2026-10-08 (N, filing for the coordinator): deferred, not started; un-parks when the coordinator staffs the DTN thread (DTN depth is one of ember's open mandate threads).",
+  "10-16 20:24 closed by cut/m1a (M1-a tombstone sweep, 2026-10-16): its subject file is deleted on cut/breaking"
+ ],
  "owner": "unowned",
  "severity": "medium",
- "state": "deferred",
  "source": "GPT6 review via coordinator 2026-10-08",
- "file": "host/native/bpsec-crypto.lisp",
- "line": "1",
+ "state": "closed",
  "title": "BPSec support (RFC 9171 s8, RFC 9172/9173) as a conformance item under the DTN thread",
- "detail": "RFC 9171 s8 places bundle security in BPSec (RFC 9172; default security contexts RFC 9173: BIB-HMAC-SHA2, BCB-AES-GCM). Present: receiver-side primitive I/O in host/native/bpsec-crypto.lisp (HMAC and the authentication-only AES-GCM first pass, inside HST-004's trust boundary; it does not admit bundles or install the decryption second pass) and the ASB parsing books (books/bpsec-asb-*.lisp). Absent: a conformance statement of what fn accepts, verifies, refuses and forwards per block type and context; the ACL2 decision wiring from ASB parse to primitive to admission; the BCB decryption pass; the source and verifier roles (fn only receives); interop fixtures against an independent BPSec implementation. Gate when started: a conformance matrix (RFC 9172 s5-s9 rows, RFC 9173 contexts 1-2) with each row's keystone or native test. Not started.",
- "notes": [
-  "2026-10-08 (N, filing for the coordinator): deferred, not started; un-parks when the coordinator staffs the DTN thread (DTN depth is one of ember's open mandate threads)."
- ],
- "updated": "2026-10-08T11:40:00Z"
+ "updated": "2026-10-17T00:24:07Z"
 }

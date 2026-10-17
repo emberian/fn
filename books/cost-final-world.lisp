@@ -11,8 +11,6 @@
 (include-book "store-log-open-scan-cost")
 (include-book "string-line-cursor-cost")
 (include-book "def-cost-lambda-tests")
-(include-book "served-catalog-group-low-cost")
-(include-book "newnews-stream-cost")
 (include-book "page-read-issue-source-cost")
 (include-book "allocation-turn-source-cost")
 (include-book "../host/cost-host")
