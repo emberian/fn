@@ -1,6 +1,5 @@
 {
   "accepted": {
-    "fn-ab-p": "established off the host path; assumed of a term; no one has said which host entry establishes it",
     "fn-anchor-wire-result-okp": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-article-wspp": "established off the host path; assumed of a term; no one has said which host entry establishes it",
     "fn-ast-scan-validp": "never concluded; assumed of a term; no one has said which host entry establishes it",
@@ -14,7 +13,6 @@
     "fn-bpn-effect-kind-memberp": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-bpnf-family-jobs-agreep": "established off the host path; assumed of a term; no one has said which host entry establishes it",
     "fn-bpnf-receive-wire-readyp": "never concluded; assumed of a term; no one has said which host entry establishes it",
-    "fn-bpnr-plan-checkpoint": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-bpp-result-okp": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-bs-inop": "established off the host path; assumed of a term; no one has said which host entry establishes it",
     "fn-bs-scan-okp": "established off the host path; assumed of a term; no one has said which host entry establishes it",
@@ -47,7 +45,6 @@
     "fn-hp-x-reloc-key-hyps": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-hpe-invariantp": "established off the host path; assumed of a term; no one has said which host entry establishes it",
     "fn-hrecs-faithful": "established off the host path; assumed of a term; no one has said which host entry establishes it",
-    "fn-hsrcb-demandp": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-inj-groups-admissiblep": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-ks-acted-p": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-lg-platform-tears-p": "never concluded; assumed of a term; no one has said which host entry establishes it",
@@ -61,7 +58,6 @@
     "fn-nh-feed-deferredp": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-nntp-hdr-fieldp": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-nntp-range-okp": "never concluded; assumed of a term; no one has said which host entry establishes it",
-    "fn-nntp-response-okp-of-bytes": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-nov-okp": "established off the host path; assumed of a term; no one has said which host entry establishes it",
     "fn-nsp-block-framedp": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-ocp-open-next": "never concluded; assumed of a term; no one has said which host entry establishes it",
@@ -75,7 +71,6 @@
     "fn-own-conn-group-index": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-path-names-p": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-pck-sccb-listp": "established off the host path; assumed of a term; no one has said which host entry establishes it",
-    "fn-pic-spanp": "established off the host path; assumed of a term; no one has said which host entry establishes it",
     "fn-pinv-hex-fieldp": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-pinv-names-keysp": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "fn-post-result-submission": "never concluded; assumed of a term; no one has said which host entry establishes it",
@@ -111,8 +106,7 @@
     "fn-zdn-digest-of-dict": "never concluded; assumed of a term; no one has said which host entry establishes it",
     "pcko-wellp": "established off the host path; assumed of a term; no one has said which host entry establishes it",
     "pgs-x-commit-hyps-basic": "never concluded; assumed of a term; no one has said which host entry establishes it",
-    "pgs-x-square-hyps": "never concluded; assumed of a term; no one has said which host entry establishes it",
-    "rsp-field-wfp": "established off the host path; assumed of a term; no one has said which host entry establishes it"
+    "pgs-x-square-hyps": "never concluded; assumed of a term; no one has said which host entry establishes it"
   },
   "note": "Predicates assumed only of a term (`(R (nthcdr k rows))'), not of a bare variable, by a theorem whose subject a host line reaches, that no hosted theorem establishes.  tools/premise_audit.py --strict fails on one NOT listed here and on a listed one that is no longer a finding; the list only shrinks (--lower-stale).  Remove an entry by establishing R of what the host passes, never by editing this file."
 }

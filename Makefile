@@ -211,31 +211,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-connection-callback-tests \
 	tests/acl2/owner-connection-callback-additional-tests \
 	tests/acl2/owner-connection-callback-captured-tests \
-	books/post-identity-source-cursor \
-	books/post-identity-source-cursor-block \
-	books/post-identity-source-cursor-info \
-	books/post-identity-source-cursor-invariants \
-	books/post-identity-source-cursor-msgid \
-	books/post-identity-source-cursor-refinement \
-	books/post-identity-source-cursor-source-after-path \
-	books/post-identity-source-cursor-source-after-stamp \
-	books/post-identity-source-cursor-source-context \
-	books/post-identity-source-cursor-source-date \
-	books/post-identity-source-cursor-source-info \
-	books/post-identity-source-cursor-source-metadata \
-	books/post-identity-source-cursor-source-path \
-	books/post-identity-source-cursor-source-stamp \
-	tests/acl2/post-identity-source-cursor-block-tests \
-	tests/acl2/post-identity-source-cursor-info-tests \
-	tests/acl2/post-identity-source-cursor-list-shape-tests \
-	tests/acl2/post-identity-source-cursor-msgid-tests \
-	tests/acl2/post-identity-source-cursor-source-after-path-tests \
-	tests/acl2/post-identity-source-cursor-source-after-stamp-tests \
-	tests/acl2/post-identity-source-cursor-source-date-tests \
-	tests/acl2/post-identity-source-cursor-source-info-tests \
-	tests/acl2/post-identity-source-cursor-source-path-tests \
-	tests/acl2/post-identity-source-cursor-source-stamp-tests \
-	tests/acl2/post-identity-source-cursor-tests \
 	books/index-writer-operation-demand \
 	tests/acl2/index-writer-operation-demand-tests \
 	books/defkeystone \
@@ -926,8 +901,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/snoc-list-tests \
 	books/record-width-producers \
 	tests/acl2/record-width-producers-tests \
-	books/post-record-width-owner \
-	tests/acl2/post-record-width-owner-tests \
 	books/transit-same-decision \
 	tests/acl2/transit-same-decision-tests \
 	books/held-message-id-answer \
@@ -2456,8 +2429,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/bpsec-target \
     books/bpsec-target-cursor \
     books/connection-read-quantum \
-    books/post-identity-source-cursor-source-body \
-    books/post-identity-source-cursor-source-complete \
     books/public-exposure-selectors \
     tests/acl2/bpsec-operation-tests \
     tests/acl2/bpsec-primitive-plan-tests \
@@ -2479,7 +2450,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/bpsec-received-window \
     tests/acl2/bpsec-target-cursor-tests \
     tests/acl2/bpsec-target-tests \
-    tests/acl2/post-identity-source-cursor-source-complete-tests \
     books/allocation-epoch \
     books/allocation-epoch-collection-request \
     books/allocation-epoch-domain \
