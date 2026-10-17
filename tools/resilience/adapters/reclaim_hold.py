@@ -26,14 +26,17 @@ ROOT = Path(__file__).resolve().parents[3]
 PATTERN = re.compile(
     rb"RECLAIM held at=(captured)|OVER quantum-held cid=([0-9]+)|"
     rb"RECLAIM deferred reason=(readers)|OVER response-settled cid=([0-9]+) status=(released)|"
-    rb"RECLAIM installed records=([0-9]+) reclaimed=([0-9]+) dropped=([0-9]+)")
+    rb"RECLAIM installed records=([0-9]+) reclaimed=([0-9]+) dropped=([0-9]+)|"
+    rb"OVER response-acquired cid=([0-9]+)")
 
 
 def events(stderr):
     rows = []
     for match in PATTERN.finditer(stderr):
-        captured, held, deferred, settled, released, records, reclaimed, dropped = match.groups()
-        if captured:
+        captured, held, deferred, settled, released, records, reclaimed, dropped, acquired = match.groups()
+        if acquired:
+            rows.append(dict(phase="acquired", cid=int(acquired)))
+        elif captured:
             rows.append(dict(phase="captured"))
         elif held:
             rows.append(dict(phase="held", cid=int(held)))

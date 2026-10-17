@@ -221,6 +221,7 @@ def check_reclaim_hold(scenario, journal, budget, healing, overran):
         return harness_failure(scenario, journal, "independent-response-identity-unobserved")
     cid = held[0]["cid"]
     captured = acquired = deferred = settled = installed = False
+    live = set()  # connections whose response pin is acquired and not yet released
 
     def violation(row, rule):
         return Verdict("violation", scenario.id, journal.digest(), surviving=0,
@@ -229,6 +230,13 @@ def check_reclaim_hold(scenario, journal, budget, healing, overran):
 
     for row in rows:
         phase = row.get("phase")
+        if phase == "acquired":
+            live.add(row.get("cid"))
+        elif phase == "settled" and row.get("cid") not in live:
+            # A release with no live acquisition on that connection: a pin
+            # released twice (host/native/owner.lisp fnn-owner-response-pin-step
+            # reports each acquisition and release).
+            return violation(row, "named-response-settles-once-after-deferral")
         if phase == "captured":
             captured = True
         elif phase == "held":
@@ -239,8 +247,15 @@ def check_reclaim_hold(scenario, journal, budget, healing, overran):
             if not acquired or settled or row.get("reason") != "readers":
                 return violation(row, "live-response-excludes-swap")
             deferred = True
-        elif phase == "settled" and row.get("cid") == cid:
-            if not deferred or settled or row.get("status") != "released":
+        elif phase == "settled":
+            live.discard(row.get("cid"))
+            # Every released response pin is reported, so the named response's
+            # settlement is the first one on its connection after the hold: an
+            # earlier one was a previous reply (the GROUP line), a later one a
+            # later reply.  Each was acquired once and released once (above).
+            if row.get("cid") != cid or not acquired or settled:
+                continue
+            if not deferred or row.get("status") != "released":
                 return violation(row, "named-response-settles-once-after-deferral")
             settled = True
         elif phase == "installed":

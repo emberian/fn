@@ -26,8 +26,8 @@ def fixture():
     j.client("response-drain", operation="release", cid=7, status="224 Overview information", numbers=[1, 2, 3, 4, 5])
     j.client("reclaim", operation="reclaim-heal", installed=True, returncode=0)
     j.client("read", operation="read-retained", result="match", expired_status="430 article reclaimed")
-    for row in [dict(phase="captured"), dict(phase="held", cid=7),
-                dict(phase="settled", cid=8, status="released"),
+    for row in [dict(phase="captured"), dict(phase="acquired", cid=7), dict(phase="held", cid=7),
+                dict(phase="acquired", cid=8), dict(phase="settled", cid=8, status="released"),
                 dict(phase="deferred", reason="readers"),
                 dict(phase="settled", cid=7, status="released"),
                 dict(phase="captured"), dict(phase="installed", records=5, reclaimed=2, dropped=1)]:
@@ -116,16 +116,41 @@ class ReclaimHoldObserverTests(unittest.TestCase):
         for mutation in ("hold-first", "install-held", "wrong-cid", "duplicate-release"):
             s, j = fixture()
             rows = [r for r in j.of_kind("environment") if r.get("event") == "response-reclaim"]
+            # rows: captured, acquired 7, held 7, acquired 8, settled 8,
+            # deferred, settled 7, captured, installed
             if mutation == "hold-first":
                 rows[0].update(phase="held", cid=7)
-                rows[1].update(phase="captured")
+                rows[2].update(phase="captured")
             elif mutation == "install-held":
-                rows[3].update(phase="installed", reclaimed=2)
+                rows[5].update(phase="installed", reclaimed=2)
             elif mutation == "wrong-cid":
-                rows[4]["cid"] = 99
+                rows[6]["cid"] = 99
             else:
-                rows[5].update(phase="settled", cid=7, status="released")
+                rows[7].update(phase="settled", cid=7, status="released")
             self.assertEqual(checker.check(s, j).kind, "violation", mutation)
+
+    def test_every_released_reply_of_the_connection_is_reported_and_paired(self):
+        # The host's own sequence (hbox, cut/reds fe8d81e69): the GROUP reply
+        # settles before the hold, the reader's ARTICLE settles twice, and the
+        # held OVER connection settles twice after the deferral.
+        def run(rows):
+            s, j = fixture()
+            j.records = [r for r in j.records if r.get("event") != "response-reclaim"]
+            for row in rows:
+                j.environment("response-reclaim", **row)
+            return checker.check(s, j)
+        real = [dict(phase="captured"),
+                dict(phase="acquired", cid=7), dict(phase="settled", cid=7, status="released"),
+                dict(phase="acquired", cid=7), dict(phase="held", cid=7),
+                dict(phase="acquired", cid=8), dict(phase="settled", cid=8, status="released"),
+                dict(phase="acquired", cid=8), dict(phase="settled", cid=8, status="released"),
+                dict(phase="deferred", reason="readers"),
+                dict(phase="settled", cid=7, status="released"),
+                dict(phase="acquired", cid=7), dict(phase="settled", cid=7, status="released"),
+                dict(phase="captured"), dict(phase="installed", records=5, reclaimed=2, dropped=1)]
+        self.assertTrue(run(real).green, run(real).to_json())
+        unpaired = [r for i, r in enumerate(real) if i != 11]  # the last reply's acquisition
+        self.assertEqual(run(unpaired).kind, "violation")
 
     def test_missing_productivity_incomplete_drain_and_uncertain_request_never_pass(self):
         for mutation in ("no-bytes", "short-drain", "uncertain", "empty-reclaim", "no-terminal"):
