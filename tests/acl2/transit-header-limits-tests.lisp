@@ -1,10 +1,12 @@
-; Teeth for books/transit-header-limits (PRF-230, PKT-660): per keystone a
-; reachable witness with the whole antecedent and conclusion, each limit
-; refused by its own name, and a must-fail per hypothesis over a concrete
-; counterexample.  Fixtures: tests/acl2/peer-inbound-tests (*pt-cfg*, whose
-; peer innA feeds fn.*, and *pt-node0*).
+; Witnesses for the owner's header limits on transit and control deliveries
+; (books/owner: fn-peer-decide-transfer-under, fn-own-bp-transit-submit-result,
+; fn-own-control-decision; books/article-header-limits): a reachable witness
+; per bound, each limit refused by its own name, and a must-fail per hypothesis
+; over a concrete counterexample.  Fixtures: tests/acl2/peer-inbound-tests
+; (*pt-cfg*, whose peer innA feeds fn.*, and *pt-node0*).
 (in-package "ACL2")
-(include-book "../../books/transit-header-limits")
+(include-book "../../books/owner")
+(include-book "../../books/article-header-limits")
 (include-book "../../books/codec-attach")
 (include-book "peer-inbound-tests")
 (include-book "must-fail-checked")
@@ -52,26 +54,6 @@
                                                     *pt-loop* nil "ob" "s" '(0 0 0))
                      (fn-peer-decision :refuse :loop)))
 (assert-event (not (fn-article-limit-reasonp :loop)))
-(must-fail-checked
- (defthm thlt-without-want-or-defer
-   (let* ((u (fn-peer-decide-transfer-under node cfg peer msgid octets clock id
-                                            subject limits))
-          (p (fn-article-parse-under (fn-peer-relayed-octets cfg peer octets)
-                                     limits)))
-     (implies (not (fn-article-result-okp p))
-              (fn-article-limit-reasonp (fn-peer-decision-reason u))))
-   :hints (("Goal"
-            :use ((:instance fn-peer-transfer-want-or-defer-parses-the-stored-article)
-                  (:instance fn-article-census-refusal-is-the-parse
-                             (octets (fn-peer-relayed-octets cfg peer octets))))
-            :in-theory (union-theories
-                        '(fn-peer-decide-transfer-under
-                          fn-peer-header-limit-refusal
-                          fn-peer-decision-kind-of-fn-peer-decision
-                          fn-peer-decision-reason-of-fn-peer-decision
-                          fn-article-census-refusal-is-a-limit-reason
-                          member-equal)
-                        (theory 'minimal-theory))))))
 
 ; -----------------------------------------------------------------------------
 ; fn-peer-decide-transfer-under-wants-only-what-transfer-wants
@@ -81,18 +63,6 @@
 (assert-event (not (equal (thlt-under '(5 6 200))
                           (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop*
                                                    *pt-noloop* nil "ob" "s"))))
-(must-fail-checked
- (defthm thlt-without-want
-   (equal (fn-peer-decide-transfer-under node cfg peer msgid octets clock id
-                                         subject limits)
-          (fn-peer-decide-transfer node cfg peer msgid octets clock id subject))
-   :hints (("Goal"
-            :use ((:instance fn-peer-decide-transfer-under-admits-exactly-the-limits))
-            :in-theory (union-theories
-                        '(fn-peer-decide-transfer-under
-                          fn-peer-decision-kind-of-fn-peer-decision
-                          member-equal)
-                        (theory 'minimal-theory))))))
 
 ; -----------------------------------------------------------------------------
 ; The owner's BP transit and control deliveries.  The owner's limits are its
@@ -165,9 +135,6 @@
 (defun thlt-ctl (limits octets)
   (fn-own-control-decision (thlt-config limits) *pt-id1* (list (pt-o "fn.letters"))
                            octets))
-(assert-event (fn-thl-control-gatep (thlt-config '(6 6 1000)) *pt-id1*
-                                    (list (pt-o "fn.letters")) *pt-a1*))
-(assert-event (equal (fn-article-header-census *pt-a1*) '(6 6 186)))
 (assert-event (fn-inj-injectedp (thlt-ctl '(6 6 186) *pt-a1*)))
 (assert-event (equal (fn-inj-decision-reason (thlt-ctl '(5 6 186) *pt-a1*)) :header-fields-limit))
 (assert-event (equal (fn-inj-decision-reason (thlt-ctl '(6 5 186) *pt-a1*)) :header-lines-limit))
@@ -227,9 +194,3 @@
    :hints (("Goal" :in-theory (disable fn-article-parse fn-article-parse-under
                                        fn-own-config-header-limits)))))
 ; Without the failed parse under the limits: injected.
-(must-fail-checked
- (defthm thlt-ctl-refuse-without-past-the-limits
-   (implies (and (fn-thl-control-gatep cfg msgid groups octets)
-                 (fn-article-result-okp (fn-article-parse octets)))
-            (not (fn-inj-injectedp (fn-own-control-decision cfg msgid groups octets))))
-   :hints (("Goal" :in-theory (disable fn-own-control-decision fn-article-parse)))))

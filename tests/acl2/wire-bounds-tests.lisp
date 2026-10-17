@@ -1,13 +1,13 @@
 ; Teeth for lane wire-bounds (fuzz-nntp F1 and F2, 2026-09-27):
 ;   books/served.lisp         fn-served-step-stops-at-quit (F1)
-;   books/transit-bound.lisp  fn-tb-served-run-retains-at-most-the-body-limit,
-;                             fn-tb-open-peer-body-limit-is-the-profile-bound (F2)
+;   books/owner-served-bound  the served run's body limit and the open peer's
+;                             profile bound (F2)
 ; Each keystone: a reachable positive witness asserting its antecedent and
 ; conclusion, and one hypothesis-removal witness per hypothesis (the
 ; retained hypotheses hold, the omitted one fails, the conclusion fails).
 
 (in-package "ACL2")
-(include-book "../../books/transit-bound")
+(include-book "../../books/owner-served-bound")
 (include-book "../../books/codec-attach")
 (include-book "arena-lift")
 
@@ -124,9 +124,6 @@
 (assert-event (< 0 (fn-wire-state-body-size *wb-w1*)))
 (assert-event (<= (fn-wire-state-body-size *wb-w1*)
                   (fn-wire-state-body-limit (fn-served-conn-wire *wb-conn*))))
-(assert-event (<= (fn-wire-held-octets *wb-w1*)
-                  (+ (fn-wire-state-body-limit (fn-served-conn-wire *wb-conn*))
-                     (fn-tb-wire-ceiling (fn-served-conn-wire *wb-conn*)))))
 
 (defconst *wb-body-line* (append (wb-o "body line") '(13 10)))
 (defconst *wb-endless*

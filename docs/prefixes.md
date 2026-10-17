@@ -102,8 +102,6 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-midx-` | `msgid-index` | Persistent Message-ID trie and canonical lookup correspondence |
 | `fn-journal-` | `journal` | Historical isolated-slot journal experiment; not the adapter model |
 | `fn-exchange-` | `exchange`, `exchange-invariants` | Bounded atomic fact-set admission and merge |
-| `fn-transfer-` | `transfer`, `transfer-invariants`, `transfer-assembly-invariants`, `transfer-work`, `transfer-public-work`, `transfer-public-bound` | Fragment reservation, assembly, missing ranges, costed shadows and bounds |
-| `fn-tj-` | `transfer-journal`, `transfer-journal-invariants` | Durable fragment journal around `fn-transfer-reserve`/`fn-transfer-add-chunk`: records with the kernel's outcome, replay as the fold of the transitions, the FNTJ frame family, typed faults, the `:unverified` candidate export |
 | `fn-ct-` | `container`, `container-invariants` | Portable object container: articles with exact octets, content id and dependency ids, opaque unknowns; identity/dependency/size validation before allocation; publication through `fn-node-prepare`/`fn-node-complete`; OBJ-004 conflict evidence |
 | `fn-wg-` | `wire-grammar`, `tests/acl2/wire-grammar-tests` | The exported wire grammars (Mini M5): one grammar language as data, one total guard-verified interpreter (`fn-wg-encode`, `fn-wg-decode`), and its two round trips for every well-formed grammar (`fn-wg-decode-of-encode`, `fn-wg-encode-of-decode`: canonicity) |
 | `fn-wf-` | `wire-family-fncu` (and the other `wire-family-*` books), their `tests/acl2/*-tests` | One exported wire-grammar family each: its grammar constant over `fn-wg-`, and the agreement of the host-called codec with the interpreter (`fn-wf-fncu-encode-agrees`, `fn-wf-fncu-decode-agrees`), so the generic round trips are the family's |
@@ -423,29 +421,17 @@ anything a book does not already decide.
   affected-peer invalidation (`peer-adoption-receipt-rows`,
   `peer-adoption-invalidation`, `peer-invite-retry`); peer-specific source scope.
 
-| `fn-stce-` | `substrate-committed-transcript`, `substrate-committed-row` | Resumable signed membership evidence, retaining same commit-ID conflicts before authority merge; actual committed-row/configuration adapter. |
-| `fn-stcet-` | `tests/acl2/substrate-committed-transcript-tests` | Literal committed transcript witnesses under the explicitly toy crypto realization. |
 
-| `fn-stcp-` | substrate-commit-profile-codec,substrate-commit-profile-refinement,substrate-commit-profile-bounds,substrate-commit-profile-resume | Explicit profile v2 source component; actual caller/runtime authority remains open. |
 
-| `stcpt-` | tests/acl2/substrate-commit-profile-codec-tests | Explicit profile v2 source component; actual caller/runtime authority remains open. |
 
-| `stcprt-` | tests/acl2/substrate-commit-profile-refinement-tests | Explicit profile v2 source component; actual caller/runtime authority remains open. |
 
-| `stcpbt-` | tests/acl2/substrate-commit-profile-bounds-tests | Explicit profile v2 source component; actual caller/runtime authority remains open. |
 
-| `stcpat-` | substrate-commit-profile-resume-tests | Accumulator cursor/count component fixtures; no native stack/cost claim. |
 
-| `fn-stpe-` | substrate-profile-entry | Selected-profile signed-carrier decoding, no authority grant. |
-| `fn-stpr-` | substrate-profile-selection,substrate-profile-row | Actual retained-row projection and quantum selection. |
-| `fn-stpet-` | tests/acl2/substrate-profile-entry-tests | Literal carrier/provenance/refusal fixtures. |
 
-| `fn-stprt-` | tests/acl2/substrate-profile-selection-tests | Literal pinned-source selector composition. |
 
-| `fn-stps-` | substrate-completed-source | Readonly actual completed-row and original prepare-source projection; no allocator grant. |
 | `fn-pcr-` | `productive-read`, `productive-read-chain`, `productive-read-message-id`, `tests/acl2/productive-read-*-tests` | Discovery composition of the host-called funded READ with actual pinned ARTICLE dispatch and wire effects; numbered reads update the cursor, Message-ID reads preserve it. Source admission and partial teeth only; qualification and remaining variants stay open (W6b). |
 | `fn-prwo-`, `prwot-` | `post-record-width-owner`, `tests/acl2/post-record-width-owner-tests` | PRF-123's record-width composition over the owner's two host calls (PKT-250): boundary `fn-pak-post-admission`, then the catalog prepare of the interned article record |
-| `fn-tsd-`, `tsdt-` | `transit-same-decision`, `tests/acl2/transit-same-decision-tests` | K6 (PKT-202): one transit decision for the NNTP and BP carriers, the owner's drain decision `fn-tsd-drain-decision` and where the carriers differ |
+| `tsdt-` | `tests/acl2/transit-same-decision-tests` | The configured owner's two transit carriers (NNTP and BP) through `fn-ocfg-step`: each carrier's run, its in-flight record, the open connection's pin and the authority verdict of a BP submission |
 | `fn-hma-`, `hmat-` | `held-message-id-answer`, `tests/acl2/held-message-id-answer-tests` | Q3d (i) PKT-239: a held Message-ID's existing-action answer is unchanged by a Store completion, from the carried Message-ID uniqueness |
 | `fn-crb-`, `crbt-` | `consumer-replay-bound`, `tests/acl2/consumer-replay-bound-tests` | Q3d (iii) PKT-370: the open's consumer replay keeps the table within the opened profile's field 9 when every replayed register was admitted |
 | `fn-arc-`, `arct-` | `account-redeem-count`, `tests/acl2/account-redeem-count-tests` | Q3d (iv) PKT-399: the redemption's admission bound counts the credential table itself (mark-1 accounts plus auth.toml) |
