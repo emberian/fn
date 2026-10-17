@@ -14,7 +14,7 @@ def form(book, name):
 class PostDelegatesEnvTests(unittest.TestCase):
     def test_the_delegating_theorems_use_the_command_env(self):
         for book, name in (
-                ("served-head-bridge.lisp", "fn-shd-post-delegates-a-read-without-offer-by-definition")):
+                ("served-head-bridge.lisp", "fn-shd-post-delegates-a-read-without-offer-by-definition"),):
             self.assertTrue("fn-post-command-env" in form(book, name),
                             name + " must be stated over fn-post-command-env")
 

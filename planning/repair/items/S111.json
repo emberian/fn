@@ -14,7 +14,8 @@
  "locus": "store-books",
  "notes": [
   "10-04 15:53 claimed: scope=['host/native/snapshot-producer.lisp', 'tests/test_snapshot_producer_parked.py'] test=python3 -m unittest tests.test_snapshot_producer_parked",
-  "10-04 15:54 READY 00d2ae89b"
+  "10-04 15:54 READY 00d2ae89b",
+  "10-16 20:24 closed by cut/m1a (M1-a tombstone sweep, 2026-10-16): its subject file is deleted on cut/breaking"
  ],
  "owner": "sweep-peer",
  "reviewer": "snapshot-producer.lisp is referenced only by the comment at snapshot-startup.lisp:1 ('Production startup assembly WIP'). host/native/build.lisp does not load it (grep finds no other reference in host/tools/tests/books). fnn-snapshot-source-begin, fnn-hsr-source-begin, fnn-hsr-cold-step, fnn-hpi-offer and fnn-hpi-action have no defun under host/ or books/. The refuse-io at 129 is caught by the generic error arm at 437-439, which sets :uncertain. This is dead code with a misleading 'actual capture' header and has no runtime effect.",
@@ -25,10 +26,10 @@
  ],
  "severity": "low",
  "source": "sweep-2026-10-03",
- "state": "in-progress",
+ "state": "closed",
  "test": "python3 -m unittest tests.test_snapshot_producer_parked",
  "title": "snapshot-producer.lisp is unloaded WIP that calls five undefined functions, but its header describes it as the actual capture",
- "updated": "2026-10-04T19:54:29Z",
+ "updated": "2026-10-17T00:24:07Z",
  "verify": {
   "base": "0274bbe04dbe172d69bd718a653117cd53443480",
   "base_observation": {
