@@ -42,8 +42,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/statement-items-cursor-public-tests \
 	tests/acl2/statement-items-cursor-spans-tests \
 	tests/acl2/statement-items-cursor-terminal-tests \
-	books/history-source-capture-refinement \
-	tests/acl2/history-source-capture-refinement-tests \
 	books/history-semantic-writer \
 	tests/acl2/history-semantic-writer-tests \
 	tests/acl2/admission-semantic-exclusion-tests \
@@ -136,15 +134,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/receiver-turn-controller \
 	books/history-semantic-writer-state \
 	tests/acl2/history-semantic-writer-state-tests \
-	books/history-event-directory \
-	books/history-event-directory-refinement \
-	books/history-event-backing \
-	tests/acl2/history-event-directory-tests \
-	tests/acl2/history-event-backing-tests \
 	books/history-capture-custody \
 	books/history-capture-state \
 	tests/acl2/history-capture-custody-tests \
-	books/history-source-capture \
 	tests/acl2/receiver-output-custody-tests \
 	books/consumer-account-input \
 	books/consumer-account-adoption-driver \
@@ -724,10 +716,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
 	tests/acl2/reclaim-article-subject-tests \
-	books/history-knowledge \
-	books/history-resource-refinement \
-	tests/acl2/history-resource-refinement-tests \
-	tests/acl2/history-knowledge-tests \
 	books/store-reclaim-stream \
 	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
@@ -2157,22 +2145,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-control-post-reason-tests \
 	tests/acl2/owner-export-request-tests \
 	books/owner-snapshot-request \
-	books/history-scalar-cursor \
-	tests/acl2/history-scalar-cursor-tests \
-	books/history-record-cursor \
-	tests/acl2/history-record-cursor-tests \
-	books/history-decoded-record-cursor \
-	tests/acl2/history-decoded-record-cursor-tests \
-	books/history-decode-nodes \
-	books/history-symbol-normalize \
-	tests/acl2/history-symbol-normalize-tests \
-	books/history-decode-cursor \
-	books/history-decode-stream \
-	books/history-decode-refinement \
-	tests/acl2/history-decode-refinement-tests \
-	books/history-decode-shape \
-	tests/acl2/history-decode-shape-tests \
-	tests/acl2/history-decode-cursor-tests \
 	books/pagestore-digest-cursor \
 	books/pagestore-digest-cursor-refinement \
 	books/pagestore-digest-byte-cursor \
@@ -2185,23 +2157,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/pagestore-digest-cursor-refinement-tests \
 	tests/acl2/pagestore-digest-byte-cursor-tests \
 	tests/acl2/pagestore-digest-cursor-union-tests \
-	tests/acl2/history-reader-digest-union-tests \
-	books/history-page-reader \
-	books/history-page-reader-verdict \
-	tests/acl2/history-page-reader-tests \
-	tests/acl2/history-page-reader-verdict-tests \
-	tests/acl2/history-page-cursor-tests \
-	tests/acl2/history-page-layout-tests \
-	tests/acl2/history-page-buffer-tests \
-	tests/acl2/history-page-buffers-tests \
-	tests/acl2/history-pool-emitter-tests \
-	tests/acl2/history-image-columns-tests \
-	tests/acl2/history-pool-columns-tests \
 	tests/acl2/store-tree-size-tests \
-	tests/acl2/history-image-census-tests \
-	tests/acl2/history-image-header-tests \
-	tests/acl2/history-page-metadata-tests \
-	tests/acl2/history-page-io-tests \
 	tests/acl2/owner-snapshot-request-tests \
 	books/owner-snapshot-recovery \
 	tests/acl2/owner-snapshot-recovery-tests \
@@ -2342,8 +2298,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-pages-view \
 	tests/acl2/history-pages-step-tests \
 	tests/acl2/history-pages-import-tests \
-	books/history-pages-owner \
-	tests/acl2/history-pages-owner-tests \
 	books/history-records \
 	tests/acl2/history-records-tests \
 	books/history-records-disk \
