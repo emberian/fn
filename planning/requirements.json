@@ -4769,7 +4769,7 @@
         "planning/evidence/records-freeze-2026-09-26.md",
         "books/payload-arena.lisp",
         "books/payload-arena-bytes.lisp",
-        "books/payload-arena-attach.lisp",
+        "150e2d6f4:books/payload-arena-attach.lisp",
         "books/records-freeze.lisp",
         "planning/evidence/manifests/certify-20260927T030010Z-2442389.json"
       ],

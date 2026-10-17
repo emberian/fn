@@ -4830,7 +4830,7 @@
       ],
       "expected": "fn-paa-smoke prints (3 2 L L T (1 2 3) 5) with L the article's length and the assert-event holds; rft-exec's list of checks is all t with the wire rows (w0 w2); the two foundations' runs are equal.",
       "evidence": [
-        "books/payload-arena-attach.lisp",
+        "150e2d6f4:books/payload-arena-attach.lisp",
         "tests/acl2/records-freeze-tests.lisp",
         "tests/acl2/payload-arena-tests.lisp"
       ],

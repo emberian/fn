@@ -8876,13 +8876,14 @@
         "planning/evidence/records-freeze-2026-09-26.md",
         "books/payload-arena.lisp",
         "books/payload-arena-bytes.lisp",
-        "books/payload-arena-attach.lisp",
+        "150e2d6f4:books/payload-arena-attach.lisp",
         "books/records-freeze.lisp",
         "tests/acl2/records-freeze-tests.lisp",
         "tests/acl2/payload-arena-tests.lisp",
         "planning/evidence/manifests/certify-20260927T030010Z-2442389.json",
         "planning/evidence/ledger-expansion-review-2026-09-30/README.md"
       ],
+      "evidence_digest": "9c756b4f05db7a01",
       "progress_note": "Lane records-freeze (Fable, 2026-09-26/27, PKT-293): every event admitted in the persvati REPL sessions rfz/rfz2 before the farm; farm run 3 run-20260927T025909Z-155a (persvati, ACL2 8.7 w25/acl2-literal, 2 jobs, 300 s) certified the final bytes: 24 passed, 0 failed, 188 from the cache; the one book over 10 s in that run (books/catalog-refresh, 10.8 s, catalog-boundary-owner's, merged from dev) is not this target's. Run 2 run-20260927T025131Z-f707 (27 passed; the retired prototype's red) and run 1 run-20260927T003422Z-ff7b (the generic's missing local append lemma, repaired) precede it. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them. 2026-09-30 coordinator assurance correction: the demand-driven ledger normalizer exposes fn-rfz-resolve-after-reclaim as a direct branch equation. It is no longer cited as a keystone. The original payload-identity and reclamation lifetime obligations remain; the branch equation alone does not establish the actual retained-reader/reclamation composition. Existing arena and replay keystones retain their stated scopes. The source owner separately owns the helper rename and matching source admission.",
       "pending_subject": "The arena and fn-cat-load are reached by no host line yet (catalog-slice-5's step 8 moves fn-owner-recover* to fn-cat-load and the served reads to the handle; acceptance-payload-arena moves the acceptance state's payload field with the record's, PKT-635). fn-stx-index-of-store IS host-reached (fn-sn-recover, host/store-node-host.lisp fn-store-sn-recover): the keystone's right-hand side is the function the host calls today; its left-hand side is what the joined owner will call.",
       "events": [
@@ -8904,8 +8905,7 @@
         "fn-arena-seal-buffer{correspondence}",
         "fn-arena-seal-range{correspondence}",
         "fn-arena-seal-range-is-seal-list"
-      ],
-      "evidence_digest": "154b761405465908"
+      ]
     },
     {
       "id": "PRF-217",
@@ -10196,14 +10196,14 @@
       "evidence": [
         "books/payload-arena-paged.lisp",
         "tests/acl2/payload-arena-paged-tests.lisp",
-        "books/payload-arena-attach.lisp",
+        "150e2d6f4:books/payload-arena-attach.lisp",
         "planning/evidence/arena-offheap-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T122543Z-3171271.json",
         "planning/evidence/manifests/certify-20260927T125739Z-3340064.json",
         "planning/evidence/manifests/certify-20260928T002033Z-3553464.json"
       ],
-      "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them. Recertified after records-shape's octet-conversion loops (PRF-345, lane thread-stacks): persvati certify-20260928T002033Z-3553464 certifies books/payload-arena-paged and its tests at the lane's digest.",
-      "evidence_digest": "8520ebe9c2a71016"
+      "evidence_digest": "bcd72525b7b7d8fe",
+      "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic. A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them. Recertified after records-shape's octet-conversion loops (PRF-345, lane thread-stacks): persvati certify-20260928T002033Z-3553464 certifies books/payload-arena-paged and its tests at the lane's digest."
     },
     {
       "id": "PRF-285",
