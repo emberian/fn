@@ -326,32 +326,11 @@ this carry adds no new assumption and does not replace that boundary.
 
 ## History page write continuation (PRF-1086)
 
-`books/history-page-cursor.lisp` provides a library continuation over the current
-history image commit plan. Begin retains source list references; a tick emits
-one `(physical-address selector word-base)` descriptor or advances between data,
-table, directory and terminal phases. Its runtime guard inspects at most ten
-outer cells and three scalar counters, never a retained source suffix. The
-residual theorem equates emitted prefix plus remaining descriptors with
-`fn-his-plan-writes`; capture and lease identities remain unchanged. The caller
-must retain the source image and resource lease until consumption completes.
-SCN-1007 supplies nonempty phase and corrupted-state/mutation witnesses.
-
 This component has no host caller yet and does not bound existing whole-history
 build/flush, commit allocation/digests, or the native by-address hash. Those are
 replaced by the selected census plus disk-backed bounded-buffer design in
 [the preparation contract](../planning/history-page-cursor-contract.md), whose
 full representation, effect and funded-publication proofs remain open.
-
-The next private-writer component, `books/history-page-layout.lisp` (PRF-1092),
-computes scalar physical layout after the census supplies data-page count N.
-The existing fresh allocator reserves the directory first at address 1, then
-allocates data and table pages contiguously. The executable constructor returns
-N, table count T, directory span M, data base `1+M`, table base `1+M+N` and high
-water `1+M+N+T`; a single-address operation computes one member. Both refine
-`pgs-alloc` without constructing its list of singles. It uses the concrete
-constant-work table-count function and current-format u64/u32 checks. This
-removes whole-run allocation planning from the proposed private writer; it
-neither allocates backing pages nor proves platform file-offset representation.
 
 ## Running and stopped snapshot producer
 
@@ -380,29 +359,6 @@ its resources, replace whole history build/flush, or establish full retained
 projection and byte-effect refinement. The unmerged producer prototype's
 other proof roots are not imported by these leaf components.
 
-`books/history-page-buffer.lisp` (PRF-1093) supplies the concrete scratch page:
-a fixed 2048-u64 array, a bounded written-prefix counter, and capture/lease
-references. Begin resets only the counter and identities. Put writes one word;
-the accessor refuses unwritten offsets even when an old physical word remains
-there. The prefix refinement equates each successful put with one logical word
-append; full-page refusal leaves the state unchanged. This is one format page,
-not a data-capacity limit. Buffer allocation needs its actual runtime charge,
-and reuse must wait for completion/join of every I/O owner. The proof-only
-prefix collector is excluded from the host path; serialization and complete
-image effect composition remain open.
-
-`books/history-image-census.lisp` and `books/history-image-header.lisp`
-(PRF-1096) connect scalar census to current-format header emission. A completed
-row contributes its exact resumable-codec byte count and its own pad8 bytes;
-a stale ordinal or u64 field overflow leaves census totals unchanged. The
-four scalar regions each occupy `8*count` used bytes. Two scalar capacity
-cursors suffice for those columns and the payload region; a tick doubles once,
-with no recursive capacity calculation. Their results produce the canonical
-five starts and page count. `fn-hch-tick` writes one word of the existing
-FNADTSN2 header into the fixed scratch and returns done only after that page is
-full. The named effect theorem connects the concrete prefix to `fn-hp-hdr2`;
-no header-sized list or zero vector is constructed by execution.
-
 These are component boundaries: the exact codec count is supplied by a
 separate resumable encoder, and capture/lease identities remain in its parent
 cursor and the scratch. Captured based histories require the new bounded
@@ -413,40 +369,7 @@ table/directory emission, offset-domain checks, resource admission and complete
 publication refinement remain open. This source increment carries no served
 keystone or certification claim.
 
-`books/history-page-metadata.lisp` (PRF-1104) emits the existing six-word
-address/transaction/digest entry into the same scratch. `fn-hpm-tick` carries
-ordinal, component and remaining run words; each stored word advances once.
-Page-full, done and address/ordinal refusal preserve cursor and scratch. The
-ordinal/component survives scratch consumption/reset, since a directory entry
-may straddle physical pages. Named entry, run-position and concrete effect
-refinements use `pgs-entry-words` and `pgs-encode-run`; a table is the single-page
-case, with its341entries and two final zeros. Digest source attribution remains
-an explicit premise: the spool reader must return the exact captured/staged
-digest at that ordinal. The emitter retains only one256-bit digest and scalar
-state. It preserves concrete scratch representation and epoch/lease identity.
-Complete spool admission, authenticated reads, final root binding and served
-composition remain open; no host caller or certification claim is added.
-
-The scalar layout component also exposes `fn-hpi-region`/`fn-hpi-page` in
-`books/history-page-io.lisp`: positional whole-file requests use the unchanged
-FNSI base plus the physical page offset. Accepted ranges fit the image region
-and admitted runtime/profile extent, and different pages do not overlap. The
-extent is an admission input, not a hard-coded storage ceiling. This is the
-ACL2 addressing seam for eliminating the native by-address hash. Registered
-reader extents already include the FNSI base; their relative requests must not
-add it again. The physical/controller layer still owns matching request tokens,
-short/ambiguous I/O verdicts and cancellation/pin lifetime.
-
 ### Bounded borrowed history decoding (planned, PRF-1102 / SCN-1014)
-
-The captured history source is decoded incrementally using the unchanged tree
-codec. `books/history-decode-stream.lisp` consumes one verified byte per active
-step and retains source epoch and lease; raw string, symbol and octet payloads
-remain borrowed spans in `books/history-decode-nodes.lisp`. Its non-executable
-abstraction denotes the existing logical row. Numeric decoding refines the
-current little-endian reader, including accepted nonminimal spellings. The
-canonical encoder must classify pair-shaped octet lists incrementally and
-canonicalize empty octet spans to NIL rather than copy old instruction bytes.
 
 The full requirement remains open: captured-root directory/table/data
 validation, exact row semantic inverse, padding and MKEY validation, carried
@@ -454,7 +377,6 @@ source-token binding, funded node/stack allocation, guard-verified host
 composition and matching native evidence. Neither a source parser nor a
 fixed page buffer alone establishes that boundary. See
 [the concrete contract](../planning/history-decode-contract.md).
-
 
 ## S7 private image digest continuation (PRF-1087; planned boundary)
 
@@ -492,28 +414,6 @@ and semantic invariants, strict progress, concrete allocation demand and actual 
 remain open. Ground BLAKE3 agreement establishes neither standard conformance
 nor real cryptographic assumptions. Full S7/P12/D33 completion is unchanged.
 
-The reusable byte extension `pgs-dcb-begin(sel, base, byte-total, capture, lease,
-pgs-digest-state)` handles exact byte lengths including empty and partial blocks.
-Its caller retains the captured byte-total unchanged. `pgs-dcb-step(byte-total,
-block, pgs-digest-state)` delegates to the page core except the final rightmost chunk,
-which records the exact byte count. The caller feeds sixteen u32 words with
-zero padding beyond `pgs-dcb-read-demand`, bounded by64 bytes, and consumes
-source only when that demand is nonzero. `pgs-dcb-next-byte-offset` is the
-requested byte coordinate. `pgs-dcb-result-octets` exposes the32 digest octets
-with one separately funded bounded ROOT compression. Exact partial-tail
-refinement and a conditional terminal correspondence to concrete `fn-blake3`
-are source-admitted. This does not equate the constrained `fn-frame-digest`
-with its realizer; streamed protected extents still need the existing joint
-attachment/refinement pattern at their actual consumer boundary.
-The planned bounded source-row decoder also normalizes symbol package aliases
-accepted by the current postfix codec. `books/history-symbol-normalize.lisp`
-scans the actual fixed ACL2 import table one candidate or borrowed source byte
-per scheduling step. It preserves arbitrary name spans, canonicalizes imported
-COMMON-LISP names and NIL, and requires the authenticated provider's matching
-source-byte and capture/pass lifetime premise. Its cursor and semantic proofs
-are component source evidence under PRF-1102; full row decoding, metadata checks,
-resource funding and host composition remain open.
-
 The page-core representation domain is now source-admitted: scalar ordering,
 CV shape, split power budget and active-frame child-span bounds establish at
 begin, survive every actual step and exclude invalid status. At most2^64 u64
@@ -528,37 +428,6 @@ at byte begin, and survives each actual byte step. The restored right-child
 position therefore remains within B even for partial final bytes. Complete
 actual guards and never-invalid status follow without executing this proof-only
 predicate on a served tick. Semantic trajectory/progress and funding remain open.
-
-
-After capacity computation, `fn-hcl-admit` also checks that the entire canonical
-image, `16384*(1+4*column-cap+pool-cap)`, fits the current u64 image-byte domain.
-Valid individual region lengths do not imply this after power-of-two rounding.
-This final check precedes emission and is separate from physical layout and
-runtime/profile file-extent admission. The same component emits one of the four
-scalar-column words via `fn-hcl-put`; its effect is exactly the corresponding
-`fn-hp-cells-of` entry, with per-row pad8 and overflow refusal preserved.
-
-
-`books/history-pool-columns.lisp` extends PRF-1096 with an actual twelve-cell
-pool-to-column dispatcher. `fn-hpcx-begin(count, pool, token, capture, lease)`
-retains the admitted census scalars and independent capture/resource references.
-The source token keeps the existing natural epoch, two-cell capture ticket/count,
-pass and ordinal API, extracted verbatim to `snapshot-source-token.lisp`.
-`fn-hpcx-offer(cursor, ordinal, source, token, key)` accepts only the expected
-ordinal in need-row phase with matching scalar source identity and u64 producer
-MKEY. It does not authenticate a source, rescan a row or hash a Message-ID.
-
-`fn-hpcx-tick` returns a verdict, bounded summary, next cursor and five buffers.
-A pool tick calls actual `fn-hpe-tick`. Its prepared exact length is captured
-once; a scalar `fn-hcc-row` check rejects unrepresentable padded offsets/counts,
-census excess or a final pool total different from census before any column
-writes. Columns 0..3 call existing `fn-hcl-cell` and `fn-hpq-put`, storing key,
-length, previous pool offset and padded length separately. One tick stores at
-most one cell. Full pages yield unchanged and keep the pending column across
-an outer reset. The row ordinal and cumulative offset advance only after
-column3 stores. Pending and terminal offers are stale, preventing double count.
-The outer producer remains responsible for canonical `fn-hcl-admit` after
-capacity rounding, authenticated source/MKEY attribution and funded ownership.
 
 Named conditional boundaries connect actual prepared length to the current
 codec count and each stored column prefix to `fn-hp-cells-of`. The dispatcher
