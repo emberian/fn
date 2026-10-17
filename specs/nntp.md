@@ -416,21 +416,6 @@ environment always carries; a blind environment answers as before.
   XPAT are unchanged (XPAT Xref still matches the stored header, which has
   none: a deferral).
 
-The HEAD composition is also stated over the host-called `fn-served-step`
-(PRF-1114, `fn-shd-command-wire-head-is-served-retrieval`). A concrete
-command-wire connection receiving a complete HEAD line produces exactly
-`fn-rcompat-retrieval`'s `:head` effects and reader session, preserving its
-pinned view, archive and Message-ID index. The literal hypotheses require
-valid bounded command framing; a valid authorized authentication session
-outside TLS/SASL negotiation; the reader role outside POST collection; an
-open projected reader; matching HEAD tokenization; an Xref server and pinned
-index; and no number/Message-ID withdrawal override. Both local-number and
-Message-ID requests have reachable complete witnesses. Each retained
-condition has a separate removal counterexample. This is a source-level
-composition of the existing RFC 3977 §6.2.2 HEAD behavior and fn's Xref
-policy, with no additional served-path validation. ARTICLE's productive
-read composition and the XPAT-on-Xref deferral are separate obligations.
-
 ## Sessions and framing
 
 NNT-002: maintain a per-connection selected group and current article number.
@@ -684,7 +669,7 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | NEWGROUPS / other | the connection's pinned view | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
 | NEWNEWS | the connection's pinned view | none | the latest completed durable view; pin unmoved (PRF-1237) | cursor fn-nnw-meta-effectp | one retained group/member entry or wildcard matcher microstep or indexed output phase per quantum and at most W emitted bytes; fixed reference-only initialization; matcher/comparison and composed heap tariff, physical resource custody, legacy cold metadata fallback and completed-view capture remain GEN-CURSOR debt / the reference whole pinned archive walk, including payload tombstone reads | NNT-042 by silence today (the pinned article root retained across one-candidate quanta); decided c07 C: one completed discovery snapshot captured at the first quantum and held across quanta; RFC 3977 7.4 |
 | NEWNEWS / any | the connection's pinned view | none |  |  | generated: (fn-nntp-newnews-response-stream session archive env args fn-arena fn-cat) |  |
-| DATE | none (no archive) | none |  |  |  | RFC 3977 7.1; no article view. Answers the CURRENT clock reading, the served connection's injection field, not the reading pinned at accept (books/served-date-current.lisp fn-served-step-date-uses-current-reading) |
+| DATE | none (no archive) | none |  |  |  | RFC 3977 7.1; no article view. Answers the CURRENT clock reading, the served connection's injection field, not the reading pinned at accept |
 | POST | none (no archive) | offer |  |  |  | RFC 3977 6.3.1 (no archive) |
 | IHAVE | the live Message-ID index (peer offers) | none |  |  |  | a reader connection: 502; a peer connection decides the offer on the LIVE Message-ID index (books/served-catalog-chain.lisp fn-scr-history-hasp); RFC 3977 6.3.2 |
 | CHECK | the live Message-ID index (peer offers) | none |  |  |  | as IHAVE; RFC 4644 2.3 |
@@ -2188,13 +2173,9 @@ measurement remain open; no complete long-row scheduling claim is made.
 NOV `:bytes` and `:lines` metadata render their complete decimal natural
 values in `fn-nov-line`, including values above ten digits (RFC 3977
 §8.3.2 and D27). The initial NNTP status-line number renderer keeps its
-separate width rule. `fn-npw-column-pieces` captures five cached strings
-and resumable numeric references with a fixed number of pieces; under
-cached field shape and natural metadata its complete abstraction equals
-the existing cached-row renderer, including arbitrary-width counts.
+separate width rule.
 `nov-metadata-tests` checks exact wide and ordinary rows and semantic block
-framing; `nov-column-pieces-tests` checks continuation and literal premise
-removals. `tests.test_native_nov_metadata` distinguishes a real saved-image
+framing. `tests.test_native_nov_metadata` distinguishes a real saved-image
 scalar renderer fixture from a socket fixture over an actual retained
 article. Its matching-image result remains a separate qualification step.
 
@@ -2220,15 +2201,6 @@ progress are proved. These logical residuals never execute in a quantum.
 The owning response must retain the origin generation pin until all span
 bytes drain or it cancels. This component is not yet wired into the served
 cursor and does not establish legacy parser refinement or runtime costs.
-
-The direct-row component `fn-nrf-facts` reads the already-selected catalog
-row once and returns its decided facts only for an arena handle. It does
-not search the Message-ID history. Under the maintained column relation F,
-those facts equal the facts of that row's payload. Its cached pieces denote
-the exact article NOV row when the cache is valid and the article retains
-the selected row's payload identity. Visibility and group membership remain
-the selecting cursor's responsibility; cache existence alone grants neither.
-This accessor is not yet called by the served cursor.
 
 The mixed row-piece component `fn-npw-tick` composes cached strings,
 pinned spans, owned separators, numerical setup and character draining

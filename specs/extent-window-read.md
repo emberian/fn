@@ -130,10 +130,7 @@ integration and matching images/natives remain open.
 
 ### Real compressed-input carry
 
-`fn-ewz-scanned-input` derives `min(C, nfix(EOFF+POS-POFF))` from the
-original captured compressed payload coordinates. The proof-only carried
-`fn-ewz-input-invariantp` states real TIN=scanned during scan, and
-TIN+(END-IP)=scanned while a codec quantum retains input. Drain/decoded
+Drain/decoded
 states preserve TIN<=scanned; trailing compressed bytes may be hashed after
 a final block without being decoded. All states retain natural IP/END with
 0<=IP<=END<=64. A drain also carries the actual ended codec status, so a
@@ -155,8 +152,6 @@ full trajectory, total progress and allocation/profile funding remain open.
 
 ### Active decoded-output carry
 
-`fn-ewz-output-invariantp` carries original C/N admission and actual
-TOUT<=min(N,storedAllowance(C)) in scan, codec, drain and decoded modes.
 Inactive refusal modes may retain a private overflow sentinel. Actual
 BEGIN establishes the carry without hypotheses. Actual CODEC-TICK also
 establishes it without a pre-call carry or pool-shape hypothesis: its
@@ -171,16 +166,6 @@ hypotheses to remove. This is numerical output carry, not whole-decoder
 fidelity, total scheduling completeness or a runtime allocation claim.
 
 ### Actual captured-source authentication trajectory
-
-The proof-only `extent-window-stream-semantics` boundary connects the
-concrete word assembly in actual `fn-ews-read` to the canonical block
-required by the digest trajectory. The captured immutable source is an
-octet-list proof parameter, not an allocated execution buffer. An honest
-read completion supplies exactly `fn-shr-win(POS,demand,source)`; fixed
-concrete `fn-b3x-words` then equals the first sixteen words of the digest's
-truncating logical span. This handles short final blocks and distinguishes
-TAKE padding from source truncation. No host-provided digest or word-list
-assumption replaces that byte boundary.
 
 Actual BEGIN establishes the imported semantic/domain/counter invariant
 under natural depth<=63, source octets of length ELEN and

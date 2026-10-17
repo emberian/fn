@@ -104,9 +104,7 @@ before ordinary preparation can resume. Known prepublication absence also has th
 described below; uncertain publication still requires recovery.
 
 The catalog's public keyring and generation have a conditional recovery frame.
-`fn-osr-ready-crash-recovery-keeps-catalog-context` in
-`books/catalog-context-recovery.lisp` assumes the full `fn-osr-retainedp` and
-`:ready`. Every model `fn-sn-crash` choice then retains a coherent identity
+Every model `fn-sn-crash` choice then retains a coherent identity
 history, and actual `fn-sn-recover` preserves the original keyring and
 generation. The coherence premise is derived from the retained invariant;
 recovered equality is the conclusion. A published identity snapshot before

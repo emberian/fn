@@ -69,8 +69,7 @@ the wider set and `fn-wildmat-parse` recovers §4.1 with a precheck
 (`fn-wildmat-rfc3977-codepointsp`) on the decoded code points, so it accepts
 and refuses exactly the octet lists it accepted and refused before the second
 profile existed, with the same `:error` reason.
-`fn-wildmat-parse-yields-rfc3977-patterns` is the §4.1 result shape it still
-produces.  The matcher's literal test reads the wider set — that is what makes
+The matcher's literal test reads the wider set — that is what makes
 a matched SP a match at all — and
 `fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items` states that on
 every §4.1 item it computes what it computed before, with the previous body

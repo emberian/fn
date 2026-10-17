@@ -435,17 +435,7 @@ connection keeps serving what the live configuration refuses it. Mechanism:
 configuration's access beside it (`fn-gac-config-with-live`), and
 `fn-auth-access-text` decides every command by the pinned rule AND the live
 rule of the login the session has at that command (`(:and PINNED LIVE)` in
-`fn-gac-readablep`). Consequences, each a theorem in
-`books/served-access-revoke.lisp`:
-
-- what the live rule refuses, no command of any connection is served from
-  (`fn-own-served-conn-refuses-what-the-live-rule-refuses`), including after
-  a GROUP re-pin and after an AUTHINFO pipelined into the same socket read;
-- what the pin refuses stays refused: a widening never reaches an open
-  connection (`fn-own-served-conn-refuses-what-the-pin-refuses`); a re-grant
-  after a revocation restores at most the pinned access;
-- a reconfiguration that leaves the session's rule unchanged changes nothing
-  it is served (`fn-own-served-conn-rule-is-the-pin-when-access-is-unchanged`).
+`fn-gac-readablep`).
 
 Nothing is written back into the pin: POST rules, the group table, the
 listing and every other field stay the pinned generation's, per the rule
