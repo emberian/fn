@@ -1,0 +1,196 @@
+{
+  "description": "Rows that left planning/proofs.json, each with its reason, written only by `tools/ledger.py --retire` (superseded: by another row; deferred: until a named landing, restored by `--restore`).  `ledger.py --check` refuses a row the fork point had that the tree lacks with no row here.",
+  "rows": [
+    {
+      "id": "PRF-1177",
+      "why": "deferred",
+      "to": "none: the 9P view left by ember's decision (host-parked F07 and the park bin); OWED.md row HST-043",
+      "owner": "cut lead (M1-c, task 4, 2026-10-17)",
+      "ruling": "ember via the cut lead, 2026-10-17: HST-043's authoritative definition left with specs/views-9p.md (park, last tree 64c84e0d3); the requirement and its proof targets go with it",
+      "item": null,
+      "row": {
+        "id": "PRF-1177",
+        "title": "Actual bounded9P codec and retained fid source lifecycle",
+        "statement": "The host-called concrete-buffer codec matches literal base9P2000 wire framing, never allocates from an unchecked peer size, and retains a genuinely issued immutable source through fid and outstanding read lifetimes. Flush revokes reply publication while physical ownership persists until actual completion.",
+        "milestone": "M6",
+        "requirements": [
+          "HST-043"
+        ],
+        "depends_on": [],
+        "assumptions": [],
+        "evidence": [
+          "64c84e0d3:books/ninep-header.lisp",
+          "64c84e0d3:tests/acl2/ninep-header-tests.lisp",
+          "64c84e0d3:specs/views-9p.md",
+          "49b470a99:host/ninep-protocol-host.lisp",
+          "49b470a99:tests/acl2/ninep-protocol-host-tests.lisp",
+          "planning/evidence/ninep-header-2026-09-30/README.md",
+          "64c84e0d3:books/ninep-fields.lisp",
+          "64c84e0d3:tests/acl2/ninep-fields-tests.lisp",
+          "planning/evidence/manifests/certify-20260930T213247Z-2592943.json",
+          "planning/evidence/manifests/certify-20260930T213317Z-2600819.json",
+          "64c84e0d3:books/ninep-version.lisp",
+          "64c84e0d3:tests/acl2/ninep-version-tests.lisp",
+          "planning/evidence/manifests/certify-20260930T214200Z-2737234.json",
+          "64c84e0d3:books/ninep-group-directory-source.lisp",
+          "64c84e0d3:tests/acl2/ninep-group-directory-source-tests.lisp",
+          "planning/evidence/manifests/certify-20260930T215516Z-3461367.json",
+          "planning/evidence/manifests/certify-20260930T215611Z-3476093.json",
+          "64c84e0d3:books/ninep-session.lisp",
+          "64c84e0d3:books/ninep-qids.lisp",
+          "64c84e0d3:books/ninep-dispatch.lisp",
+          "64c84e0d3:books/ninep-mount.lisp",
+          "49b470a99:host/ninep-mount-host.lisp",
+          "64c84e0d3:tests/acl2/ninep-session-tests.lisp",
+          "64c84e0d3:tests/acl2/ninep-qids-tests.lisp",
+          "64c84e0d3:tests/acl2/ninep-mount-tests.lisp",
+          "planning/evidence/ninep-session-lifetime-2026-10-01/README.md",
+          "planning/evidence/manifests/certify-20261001T014307Z-94237.json",
+          "planning/evidence/manifests/certify-20261001T021401Z-510698.json",
+          "49b470a99:host/ninep-session-host.lisp",
+          "49b470a99:tests/acl2/ninep-session-host-tests.lisp",
+          "planning/evidence/manifests/certify-20261001T022549Z-665008.json",
+          "planning/evidence/manifests/certify-20261001T022835Z-698698.json"
+        ],
+        "evidence_digest": "3d9497b43623c65f",
+        "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Refusal successor supplies guarded core Rerror byte emission and actual host equality/STATE frame, fixed reply at most26 bytes, literal replies/refusals and verdict-removal tooth. Normal224511 certifies codec/host components but overall fixture root initially failed rewrite-rule installation; repaired host fixture224555 and current refusal fixture224638 pass. Runtime allocation and installed mount issuer remain open. Normal014307 certifies concrete session/fid/request and once-only return plus complete Flush/tag-reuse/stale-slot/refusal witnesses. Normal021401 certifies mount-scoped bounded bit-path qid registry and seven complete literal witnesses. Three inherited dependencies remain matching but uncited. Actual SAMEPRS mount reserve/pin/quiesce/drop/refund guards and complete internal fixtures pass in narrow real modern helper world; this is source-only, not a normal mount-root certificate. Full mounted group/query source producers, stat/reply streaming, native listener and whole-operation runtime family remain open. Normal022549 passed exact dispatcher but rejected initial host raw-with declarations (guard-T skips no carry). Repaired ordinary host boundary/complete disconnect fixture normal022835 passed; no cosmetic carry or hot export was invented. Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Refusal successor supplies guarded core Rerror byte emission and actual host equality/STATE frame, fixed reply at most26 bytes, literal replies/refusals and verdict-removal tooth. Normal224511 certifies codec/host components but overall fixture root initially failed rewrite-rule installation; repaired host fixture224555 and current refusal fixture224638 pass. Runtime allocation and installed mount issuer remain open. Normal014307 certifies concrete session/fid/request and once-only return plus complete Flush/tag-reuse/stale-slot/refusal witnesses. Normal021401 certifies mount-scoped bounded bit-path qid registry and seven complete literal witnesses. Three inherited dependencies remain matching but uncited. Actual SAMEPRS mount reserve/pin/quiesce/drop/refund guards and complete internal fixtures pass in narrow real modern helper world; this is source-only, not a normal mount-root certificate. Full mounted group/query source producers, stat/reply streaming, native listener and whole-operation runtime family remain open. Normal022549 passed exact dispatcher but rejected initial host raw-with declarations (guard-T skips no carry). Repaired ordinary host boundary/complete disconnect fixture normal022835 passed; no cosmetic carry or hot export was invented. Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open. Refusal successor supplies guarded core Rerror byte emission and actual host equality/STATE frame, fixed reply at most26 bytes, literal replies/refusals and verdict-removal tooth. Normal224511 certifies codec/host components but overall fixture root initially failed rewrite-rule installation; repaired host fixture224555 and current refusal fixture224638 pass. Runtime allocation and installed mount issuer remain open. Normal014307 certifies concrete session/fid/request and once-only return plus complete Flush/tag-reuse/stale-slot/refusal witnesses. Normal021401 certifies mount-scoped bounded bit-path qid registry and seven complete literal witnesses. Three inherited dependencies remain matching but uncited. Actual SAMEPRS mount reserve/pin/quiesce/drop/refund guards and complete internal fixtures pass in narrow real modern helper world; this is source-only, not a normal mount-root certificate. Full mounted group/query source producers, stat/reply streaming, native listener and whole-operation runtime family remain open. Normal022549 passed exact dispatcher but rejected initial host raw-with declarations (guard-T skips no carry). Repaired ordinary host boundary/complete disconnect fixture normal022835 passed; no cosmetic carry or hot export was invented."
+      },
+      "events": null
+    },
+    {
+      "id": "PRF-1196",
+      "why": "deferred",
+      "to": "none: the 9P view left by ember's decision (host-parked F07 and the park bin); OWED.md row HST-043",
+      "owner": "cut lead (M1-c, task 4, 2026-10-17)",
+      "ruling": "ember via the cut lead, 2026-10-17: HST-043's authoritative definition left with specs/views-9p.md (park, last tree 64c84e0d3); the requirement and its proof targets go with it",
+      "item": null,
+      "row": {
+        "id": "PRF-1196",
+        "title": "Concrete 9P cancellation and once-only retained request return",
+        "statement": "The actual concrete session transition suppresses cancelled reply publication, preserves source and borrowing authority through Flush, and consumes an exact retained request receipt once. Reused tags and reused physical slots remain distinct. The mounted source is released only after bounded quiescence and actual generation return.",
+        "milestone": "M6",
+        "requirements": [
+          "HST-043"
+        ],
+        "depends_on": [
+          "PRF-1177"
+        ],
+        "assumptions": [],
+        "evidence": [
+          "64c84e0d3:books/ninep-session.lisp",
+          "64c84e0d3:books/ninep-mount.lisp",
+          "64c84e0d3:tests/acl2/ninep-session-tests.lisp",
+          "64c84e0d3:tests/acl2/ninep-mount-tests.lisp",
+          "planning/evidence/manifests/certify-20261001T014307Z-94237.json",
+          "planning/evidence/ninep-session-lifetime-2026-10-01/README.md"
+        ],
+        "evidence_digest": "162c6547a2d3fe72",
+        "progress_note": "Concrete session component normal-certified; actual mount internal guards/source fixtures passed. Complete host-called provider/returned-physical-borrow refinement and native source/allowance integration remain planned. Synthetic internal fixtures do not activate a listener or issue a genuine runtime family."
+      },
+      "events": null
+    },
+    {
+      "id": "PRF-1202",
+      "why": "deferred",
+      "to": "none: the 9P view left by ember's decision (host-parked F07 and the park bin); OWED.md row HST-043",
+      "owner": "cut lead (M1-c, task 4, 2026-10-17)",
+      "ruling": "ember via the cut lead, 2026-10-17: HST-043's authoritative definition left with specs/views-9p.md (park, last tree 64c84e0d3); the requirement and its proof targets go with it",
+      "item": null,
+      "row": {
+        "id": "PRF-1202",
+        "title": "Actual owned 9P connection transport retains custody through bounded input and reply return",
+        "statement": "The actual fn-ninep-transport-step reads its concrete owned cursor, decodes only observed header/body bytes, bounds each receive by its internally provisioned input quantum, and preserves mounted source custody. Version reset drains actual retained requests/fids and refuses a held mount before the definite generation return. The actual reply-return subject clears the concrete buffer only in current reply phase; duplicate return is complete unchanged refusal. The complete host correspondence includes all stobjs and unchanged STATE. This is a codec/control component, not mounted article authority, native funding or a listener claim.",
+        "milestone": "M6",
+        "requirements": [
+          "HST-043"
+        ],
+        "depends_on": [
+          "PRF-1177",
+          "PRF-1196"
+        ],
+        "assumptions": [],
+        "evidence": [
+          "64c84e0d3:books/ninep-transport.lisp",
+          "49b470a99:host/ninep-transport-host.lisp",
+          "49b470a99:host/native/ninep.lisp",
+          "49b470a99:tests/acl2/ninep-transport-tests.lisp",
+          "planning/evidence/manifests/certify-20261001T035212Z-1623183.json",
+          "planning/evidence/manifests/certify-20261001T040010Z-1712242.json",
+          "planning/evidence/ninep-transport-2026-10-01/README.md"
+        ],
+        "evidence_digest": "7afb2dcfd5ba9782",
+        "progress_note": "Book and actual host guards/source boundary normal035212 PASS; six complete internal literal wire/custody tests normal040010 PASS. Three inherited cached dependency pairs have uncited manifests. Full boundary target remains planned pending issued provider, complete runtime family, native caller/constructor closure and external client acceptance. Failed hints, overstrong corrupt-state frame conjecture and initial duplicated LET binding remain archived; no source result authorizes socket/session construction."
+      },
+      "events": null
+    },
+    {
+      "id": "PRF-1206",
+      "why": "deferred",
+      "to": "none: the 9P view left by ember's decision (host-parked F07 and the park bin); OWED.md row HST-043",
+      "owner": "cut lead (M1-c, task 4, 2026-10-17)",
+      "ruling": "ember via the cut lead, 2026-10-17: HST-043's authoritative definition left with specs/views-9p.md (park, last tree 64c84e0d3); the requirement and its proof targets go with it",
+      "item": null,
+      "row": {
+        "id": "PRF-1206",
+        "title": "Actual registered mount source and bounded immutable group directory",
+        "statement": "The actual mounted source reader returns the held registered generation publication only with its real pin and token association. New CURRENT publications do not replace the captured source. Directory enumeration borrows actual visibility buckets and advances one bucket or compares one name byte per action. SAMEPRS mount reservation and definitive return retain counter intent across actual session writes; unfinished MODE refuses admission and uncertain pin/return cannot refund. Complete host outputs include unchanged STATE. This is source/custody composition, not a qualified served mount.",
+        "milestone": "M6",
+        "requirements": [
+          "HST-043"
+        ],
+        "depends_on": [
+          "PRF-1196",
+          "PRF-1202"
+        ],
+        "assumptions": [],
+        "evidence": [
+          "64c84e0d3:books/ninep-group-buckets.lisp",
+          "64c84e0d3:books/ninep-mounted-directory.lisp",
+          "64c84e0d3:books/ninep-mount.lisp",
+          "49b470a99:host/ninep-mounted-directory-host.lisp",
+          "64c84e0d3:tests/acl2/ninep-group-buckets-tests.lisp",
+          "64c84e0d3:tests/acl2/ninep-mounted-directory-tests.lisp",
+          "64c84e0d3:tests/acl2/ninep-mount-tests.lisp",
+          "planning/evidence/manifests/certify-20261001T040750Z-1796641.json",
+          "planning/evidence/manifests/certify-20261001T041127Z-1836181.json",
+          "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
+        ],
+        "evidence_digest": "7e77aae2b871d44a",
+        "progress_note": "Normal040750 group component and normal041127 complete tests PASS. Actual mount/source/host definitions and guarded DATA6 split callers plus literal source/pin/counter fixtures pass only the protected exact proper-local source world n9mdir; no normal mount-root or modern closure certificate. Current Pub19 visibility carries actual visible buckets; configured empty-group completeness is not established. Full selected MIQ/QPG adoption, directory/stat production, common runtime phase units and native acceptance remain open."
+      },
+      "events": null
+    },
+    {
+      "id": "PRF-1207",
+      "why": "deferred",
+      "to": "none: the 9P view left by ember's decision (host-parked F07 and the park bin); OWED.md row HST-043",
+      "owner": "cut lead (M1-c, task 4, 2026-10-17)",
+      "ruling": "ember via the cut lead, 2026-10-17: HST-043's authoritative definition left with specs/views-9p.md (park, last tree 64c84e0d3); the requirement and its proof targets go with it",
+      "item": null,
+      "row": {
+        "id": "PRF-1207",
+        "title": "Bounded concrete stat and integral directory reply emission",
+        "statement": "The actual stat reply emitter appends at most one concrete octet per scheduling action, keeps nested stat sizes and complete-entry directory counts, and refuses unrepresentable codec/msize/count input without truncating names. Reply-ready requires the whole retained stat body and exact concrete output length, with a complete host/STATE boundary. Source/QID authority, per-action funding and actual mounted provider composition remain separate.",
+        "milestone": "M6",
+        "requirements": [
+          "HST-043"
+        ],
+        "depends_on": [
+          "PRF-1206"
+        ],
+        "assumptions": [],
+        "evidence": [
+          "64c84e0d3:books/ninep-stat-stream.lisp",
+          "49b470a99:host/ninep-stat-stream-host.lisp",
+          "64c84e0d3:tests/acl2/ninep-stat-stream-tests.lisp",
+          "49b470a99:tests/acl2/ninep-stat-stream-host-tests.lisp",
+          "planning/evidence/manifests/certify-20261001T045613Z-3059059.json",
+          "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
+        ],
+        "evidence_digest": "550e8f52471cfc61",
+        "progress_note": "Normal045613 certifies actual guarded stat emitter, ordinary complete host/STATE boundary, four full-wire/refusal/corrupt fixtures and two host fixtures. Three inherited cache citation gaps remain. Source/QID authority, full mounted provider/request composition and per-action constructor/caller/fault/runtime units remain open. Complete external-client SCN1064 remains NOT RUN."
+      },
+      "events": null
+    }
+  ]
+}

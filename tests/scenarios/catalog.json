@@ -7641,9 +7641,7 @@
       "title": "Read-only9P committed capture with bounded messages and retained sources",
       "milestone": "M6",
       "status": "deferred",
-      "requirements": [
-        "HST-043"
-      ],
+      "requirements": [],
       "steps": [
         "Negotiate base9P2000 on scratchloopback with tinymsize; attach a genuinely issued committed capture, walk groups/localnumber and by-id paths, page directory stat entries and read exact source ranges.",
         "Commit a new article while old fids hold the original capture; old mount stays fixed until remount. Refuse unsupported writes/auth/extensions appropriately and degrade only unservable article framing.",
@@ -7676,7 +7674,7 @@
         "planning/evidence/ninep-mounted-directory-2026-10-01/README.md"
       ],
       "scope_note": "Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted. Session/qid components are normal-certified at014307/021401; actual mount lifecycle fixture source-pass only. External client/listener scenario still NOT RUN. Normal045613 certifies the stat/host/internal wire fixtures only; actual registered source+DATA6 mount fixtures remain proper-local source evidence. Request custody successor guard timeout preserved separately. Full native external-client scenario NOT RUN. Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification. Core fixed Rerror and actual host refusal fixture pass source certification; native client refusal remains unexecuted. Session/qid components are normal-certified at014307/021401; actual mount lifecycle fixture source-pass only. External client/listener scenario still NOT RUN. Normal045613 certifies the stat/host/internal wire fixtures only; actual registered source+DATA6 mount fixtures remain proper-local source evidence. Request custody successor guard timeout preserved separately. Full native external-client scenario NOT RUN.",
-      "retirement_note": "2026-10-17 cut/breaking (M1-a, park): every file this row stood on left the tree; deferred until the subject returns; the evidence cites the last tree that had each file."
+      "retirement_note": "2026-10-17 cut/breaking (M1-a, park): every file this row stood on left the tree; deferred until the subject returns; the evidence cites the last tree that had each file. 2026-10-17: its requirement HST-043 left with 9P by ember's decision (OWED.md row c8e5055fa); the row keeps its id and deferred state."
     },
     {
       "id": "SCN-1068",
