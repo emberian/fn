@@ -976,30 +976,10 @@ block-type-specific data is an Abstract Security Block: security targets (an
 array of block numbers), security context ID, security context flags,
 security source (an EID), optional context parameters, and per-target
 security results. RFC 9173 fixes the two default contexts, BIB-HMAC-SHA2
-(context 1) and BCB-AES-GCM (context 2). Packet 8 adds `books/bpsec.lisp`
-(`fn-bps-*`): the ASB grammar, bounded, both directions, canonical; the
-target rules (a BCB targeting the payload also protects any BIB over it;
-block 0 may be a BIB target and then the primary CRC type may be 0, which
-today fn treats as unprotected by policy, bp-primary.md); and the
-verification function as a **constrained** function under an `encapsulate`,
-`(fn-bps-verify context params key-ref target-octets result) -> :verified |
-:failed | :unsupported`, whose real implementation is the host's trusted
-cryptographic primitive (HST-004, A-CRYPTO). Nothing in the certified books
+(context 1) and BCB-AES-GCM (context 2). Nothing in the certified books
 establishes the security of a real HMAC. The existing logical HMAC-SHA256
-book is distinct from the selected RFC 9173 primitive realization. Packet 8
-now has additive ASB source in `books/bpsec-model.lisp`,
-`books/bpsec-head.lisp` and `books/bpsec-asb.lisp` (REP-017, PRF-1178).
+book is distinct from the selected RFC 9173 primitive realization.
 This does not add a security gate to the served BP admission path.
-
-SCN-1077 now records an actual receiver primitive component in
-`host/native/bpsec-crypto.lisp`, using the same pinned OpenSSL pair as TLS
-inside HST-004. Streaming HMAC-SHA256/384/512 returns actual bytes and width;
-ACL2 must perform the expected-result comparison. AES-GCM128/256 first-pass
-updates immediately cleanse each temporary plaintext window; final tag
-verification reports authentication or bad tag and exposes no plaintext.
-There is no whole-object plaintext RAM accumulation. Cancel, fault and
-nonlocal escape cleanse the bounded current window and free its context;
-this is no physical charge refund or persistence observation.
 
 The component tests compare literal RFC 4231 sections4.2/4.7, RFC9173
 AppendixA and selected NIST CAVP decrypt inputs, outputs and negative results
@@ -1029,19 +1009,6 @@ uncertainty remain distinct; only descriptor-bound verified operations may
 satisfy an actual admission requirement. This requirement remains specified
 until the complete cursor/provider/graph/security boundary is established.
 
-**ASB cursor contract (source in progress).** RFC 9172 §3.6's ASB is an
-unwrapped CBOR sequence. `fn-bps-asb-start` pins kind, immutable backing ID,
-absolute start offset, exact declared block-data length and an operator
-profile. `fn-bps-asb-step` consumes a contiguous `:bps-window` under a work
-quantum, returning the exact consumed prefix and remaining window. A unit
-consumes one octet or processes one metadata cell; target duplicate checks
-and order restoration resume across quanta. Completed byte/text values
-remain spans, including the source EID text. `fn-bps-asb-span-alpha` is the
-logical abstraction through a unique immutable backing map. Equal ID and
-offset do not establish correct bytes: the window provider must establish
-the exact backing-slice relation and pin its lifetime. The actual BP caller
-has no such installed provider yet.
-
 The profile names total bytes, targets, parameters, results per target,
 value bytes and aggregate metadata units. Counts and lengths are checked
 before their corresponding metadata/value handling. Codec representability
@@ -1062,44 +1029,6 @@ never verified. Explicit empty parameters are refused in this supported
 profile. Literal codec scenarios are SCN-1065/1066. Structural parsing is
 distinct from target-graph validity and cryptographic verification.
 
-`books/bpsec-asb-quanta.lisp` proves that splitting the actual ASB drive's
-work quantum over one fixed input preserves its complete cursor, total
-consumed-byte count and final suffix. Internal metadata steps and body-octet
-steps remain in the same order; terminal need-input/refusal states compose too.
-The theorem is unconditional on cursor shape and has literal nonempty two-target
-BIB/body and malformed-state witnesses. It is a scheduling property, separate
-from grammar invariant preservation and equivalence across changing immutable
-windows. No physical provider or native caller is established by this event.
-
-`books/bpsec-asb-spine.lisp` establishes and preserves the exact ordered
-34-field cursor spine through the actual start, drive and step functions.
-The ghost predicate inspects keys only and is never called on the served
-step. It supplies the carried fixed-record basis for bounded metadata access;
-it is separate from all mutable-field types, grammar progression, span bounds
-and physical provider facts. Literal tests carry the complete spine antecedent
-and conclusion through every exercised one-byte/quantum-one transition,
-refused starts and wrong windows. A corrupted missing-key cursor affirmatively
-fails both the omitted invariant and resulting conclusion. No whole-state
-revalidation is added to the implementation.
-
-`books/bpsec-asb-control.lisp` supplies the first mutable-field invariant:
-the actual ASB start/drive/step keep the grammar-control field within the
-declared twenty-stage set. This ghost predicate is never served revalidation.
-Tests carry its complete premise/conclusion across every exercised one-byte,
-quantum-one transition, then corrupt only the stage field and affirmatively
-check failure of both the omitted premise and drive/step conclusion. Other
-mutable fields, grammar semantics and window/provider refinement remain open.
-
-`books/bpsec-asb-position.lisp` proves the actual drive/step retain their
-readonly source subject (kind, backing ID, start, declared length and limits)
-and advance a natural cursor offset by exactly the consumed byte prefix.
-Internal metadata transitions do not move the offset. Literal witnesses use
-absolute start 100 and verify the full equation through each one-byte,
-quantum-one transition, plus missing input, zero quantum and wrong backing ID.
-Omitting the readonly-key or natural-offset premise has explicit counterexamples;
-absent offset is a separately labelled corrupted-state case. Equal IDs and
-offsets remain insufficient for provider byte equality or pinned lifetime.
-
 The same position book establishes natural start/declared-length/offset
 with `start <= offset <= start + declared-length` and preserves the entire
 range through the actual drive and step. Its ghost predicate is never served
@@ -1108,143 +1037,6 @@ each omitted natural start coordinate, and an offset-only below-start corruption
 This range property is separate from grammar validity, emitted span semantics
 and physical provider provenance.
 
-`books/bpsec-head-invariant.lisp` carries the stronger active-head profile:
-argument/ready phases have a supported major, argument phases have a known
-width and positive remaining count, and ready phases have zero remaining
-count. Actual feed/drive preserve it, including refused or unsupported outcomes;
-READY then yields exactly a supported-major/uint64 pair. The shape-only
-head recognizer alone is insufficient: a corrupted unsupported major in
-argument phase is an explicit omission witness retaining READY.
-`books/bpsec-asb-head-invariant.lisp` establishes and preserves this nested
-field through the actual ASB start/drive/step. Ghost predicates never enter
-the served body. This is a typed field basis for further span/grammar proof,
-not complete ASB refinement or an immutable provider/crypto claim.
-
-`books/bpsec-asb-metadata.lisp` establishes and preserves natural tracked
-metadata charge within the carried operator cap through the actual start,
-drive and step. Exact literal caps 8/7/0 distinguish parsed from refused;
-an insufficient cap retains its prior bounded charge. A representable 2^40
-operator cap is preserved, without a private replacement ceiling. The ghost
-predicate is never served. This is a tracked-charge invariant, separate from
-physical allocation, live work accounting and complete grammar/span proof.
-
-`books/bpsec-asb-body.lisp` composes representable source extent, scalar
-source range, nested typed head and the current retained body descriptor.
-The descriptor is nil or a typed byte/text span with the same backing ID,
-within the declared source interval. Actual start/drive/step establish or
-preserve this entire context; typed-ready head facts justify new descriptor
-lengths. Literal BIB and BCB witnesses check every one-byte/quantum-one
-transition, nonzero offsets, text source and IV, plus each omitted start
-profile hypothesis and an out-of-source body mutation. Ghost predicates
-never enter the served body. This covers the current body field; accumulated
-parameter/result-list spans, complete grammar and every-window reference
-refinement remain open. Same ID/geometry does not establish physical bytes
-or pinned lifetime.
-
-`books/bpsec-asb-aggregate.lisp` carries the saved metadata span boundary:
-source, pending value, pair ID, target/parameter/pair/result lists and the
-scheduled scan/reversal lists retain only spans inside the same declared
-source coordinate. It composes with the current body, typed head and scalar
-range through the actual start, drive and step. Literal BIB/BCB witnesses
-check this entire antecedent/conclusion at each exercised transition,
-including wrapped-key parameters and ordered multi-target results; each
-saved-field mutation retains the body context and breaks the composite
-invariant and zero-quantum output conclusion. These ghost tree/list predicates
-never run on the served path. This is an extent invariant, not full metadata
-grammar, actual provider byte equality/pinned lifetime, every-window alpha
-refinement or cryptographic verification.
-
-`books/bpsec-asb-terminal.lisp` establishes and preserves the terminal
-boundary: a carried `:parsed` cursor has stage `:done` and its offset equals
-the declared source end exactly. The actual start, drive and step preserve
-this implication, with reachable parsed witnesses for a literal unwrapped
-ASB sequence, short-window resume, declared truncation and trailing-data
-refusal. Mutating only a parsed stage or offset retains the other terminal
-conjunct and breaks the invariant and both zero-quantum output conclusions.
-It is structural completion; metadata grammar, every-window alpha, provider
-lifetime and cryptographic verification still require their own boundaries.
-
-`books/bpsec-asb-target-types.lisp` carries uint64 target numbers and pending
-candidate typing through actual start, drive and step. During target duplicate
-scanning and target reversal the scratch lists are typed too. The compound
-premise includes the nested typed CBOR head and exact fixed34 cursor spine:
-a missing pending slot cannot be inserted by the update-only cursor setter.
-The explicit corrupted-state omission retains the weaker target/head predicates
-but one real target octet breaks target typing. Reachable literal one-byte
-windows preserve the full compound, including ordered targets0 and uint64
-maximum; duplicate and nonuint targets refuse with preserved context. These
-are ghost typing predicates, never served whole-state validation. Remaining
-metadata grammar/count/uniqueness and every-window alpha, actual immutable
-provider lifetime and security verification remain open.
-
-`tests/acl2/bpsec-asb-window-differential-tests.lisp` exercises every two-window
-cut of frozen literal BIB/BCB success, refusal and unsupported inputs at work
-quanta1,7,64 with physical test windows bounded by64. Each invocation checks
-consumed-prefix, exact unconsumed window suffix and offset advance; terminal
-results include full decoded values, refusal offsets and complete unsupported
-raw retention, compared with independent literal expectations and the logical
-reference. A changed body octet under the same ID/offset parses structurally:
-alpha against the claimed old backing masks it, while alpha against actual
-input exposes it. This explicitly retains the missing genuine provider-slice
-relation; it is neither primitive verification nor a quantified every-window
-refinement theorem. The actual registered held/block source and pinned lifetime
-must establish that relation before the served parser supplies authority.
-
-`books/bpsec-received-window.lisp` names the actual internal concrete reader
-`fn-bprx-segment-window`: under the exact array representation, frozen matching
-nonce/ordinal and valid offset/count range, its successful bytes equal the
-corresponding slice of the concrete segment, have exactly count<=64 octets and
-form a valid parser window. The whole segment abstraction is ghost only; the
-served reader reads bounded array cells. Its fixed256 allocation unit is not
-a bundle/profile ceiling. An explicitly unfunded local-stobj fixture writes a
-literal BCB, freezes, reads actual array windows and feeds only source-window
-bytes to the actual ASB stepper, obtaining the complete literal ASB. Every
-named hypothesis has an affirmative omission witness; malformed representation
-and guard-input cases are ground logical proofs, separate from permitted
-concrete executions. Stale/unpublished/range remain pre-I/O refusals, never
-manufactured successful empty windows. The real registered original-held/block
-source issuer, multi-segment backing directory, pinned lifetime and installed
-native/crypto admission remain open; a local alias supplies no such authority.
-
-The logical target-graph reference in `books/bpsec-target.lisp` binds each
-ASB as `(block-number . ASB)`, checks actual block existence/type, unique
-service/target pairs, forbidden security targets and payload BCB flags. Every
-actual security block must be covered by one binding or exactly the opaque
-BIB set derived from parsed BCB targets. Missing security coverage returns
-unsupported before pending plaintext. A BIB hidden by a BCB is never parsed
-as an ASB; it returns `:pending-plaintext` after the remaining checks. The
-complete graph must be recomputed over the authenticated transformed view
-after decryption, while retaining the original ciphertext wire.
-
-`fn-bps-parsed-bindings-matchp` is the mandatory logical exact-data premise
-for a statement about the actual bundle: each binding equals decoding its
-actual block data. Number/type equality alone does not establish that fact.
-The stale-ASB witness retains those coordinates while changing actual target
-bytes and demonstrates the missing relation. The logical checker is not
-installed as a served list scan or whole-data re-decoder. Its operational
-candidate in `books/bpsec-target-cursor.lisp` uses `fn-bps-target-start` and
-`fn-bps-target-step`: one scheduling unit performs one metadata transition,
-one block-number lookup comparison or one set probe. Aggregate metadata is
-preflighted before constructing bound-number and service-target lists; the
-first excess refuses the operator limit. The initial structural input
-relation is a carried guard, not repeated validation inside the unit step.
-Component theorems bound work by the quantum and show that split quanta
-preserve the complete cursor and exact work. Whole graph equivalence and
-state preservation remain PRF-1179 work, with no actual host installation.
-
-`books/bpsec-target-spine.lisp` establishes and preserves the actual target
-cursor's exact ordered 22-field record through start, drive and step. It uses
-the ghost spine predicate, never a served whole-bundle or whole-state check.
-Literal valid, pending-plaintext, incomplete-coverage and refused opaque-set
-cases carry the full representation antecedent/conclusion through every
-exercised quantum-one transition; dropping a real key defeats both. Complete
-mutable-field/reference graph invariants and the actual provider remain open.
-
-`books/bpsec-provider-model.lisp` names the logical unique-backing relation
-and `fn-bps-window-backing-matchp`. A same-ID/same-offset byte substitution
-fails this relation. The predicate specifies the required provider premise;
-it does not establish a physical provider or authorize a supplied window.
-
 REP-018: Receiver-only BPSec completion compares fixed immutable-reference
 metadata against the exact issued operation and current authority snapshot.
 Only a valid verified completion for that operation may emit descriptor-bound
@@ -1252,17 +1044,6 @@ evidence. Revocation, cancellation, duplication and uncertainty never reopen a
 retired token or imply application acceptance. This remains specified until the
 actual immutable registry, canonical plan, primitive provenance and serialized
 current-policy lease are established at the BP caller.
-
-`books/bpsec-operation.lisp` implements the frozen receiver completion layout
-from architectural contract 6b42c2a93 §5.1. `fn-bps-op-complete` always returns
-`(:bps-completed disposition reason next-state evidence)`; malformed and foreign
-completions preserve the rightful state, exact cancelled/stale completions settle
-without evidence, and duplicate completions are ignored. The closed primitive
-status/detail pairs keep unavailable/fault observations uncertain. Verified BIB
-has nil output; verified BCB has an immutable plaintext reference. These are
-bounded record-shape checks, not authentic primitive observations. The literal
-operation descriptor is twelve cells including its tag, following the frozen
-field order; no padding or extra wire field is introduced.
 
 References are `(:bps-ref slot incarnation)` with uint64 fields, in distinct
 token/held/policy/key/input namespaces. A named injective immutable registry
@@ -1276,19 +1057,6 @@ policy lease. No full ASB, bundle, key, plan or plaintext is traversed by the
 completion decision. PRF-1185 and SCN-1068 cover matching and logical retirement,
 not crypto, physical worker return, charge refund, pin release or native policy
 admission. A retry after uncertainty requires a fresh nonreused token.
-
-`books/bpsec-primitive-plan.lisp` selects context1 HMAC-SHA256/384/512 and
-context2 AES-GCM128/256 from the validated operation descriptor. The held-key
-extent must be the actual registry key extent: RFC9173 §3.5 requires full
-32/48/64-byte HMAC keys; §4.4 selects 16/32-byte AES keys. No native supplied
-width establishes key authority. `fn-bps-primitive-answer` requires exact retained
-descriptor association and complete fixed-width observed/expected HMAC octets;
-every tag byte participates in the bounded difference accumulator. This source
-traversal is not a compiler/CPU constant-time claim. GCM first-pass authentication
-returns pending plaintext, without a verified BCB completion or invented output
-reference. Bad tag, unsupported suite and unavailable/fault observations remain
-separate. Actual primitive provenance, canonical input/expected-span binding,
-immutable replay/current-key grant and installed acceptance caller remain open.
 
 The frozen source observation diagnostic now composes the actual retained
 segment/framing bodies, bounded ASB `STEP`, literal/span input commands and
@@ -1307,29 +1075,6 @@ recording shims. Private stored root/count observations supply framing only in
 this diagnostic. Genuine family/pool commit, token-selected extent/framing begin,
 guards/refinement, native installer and current key/plan authority remain open.
 GCM success still yields no plaintext or verified completion (SCN-1077).
-
-`fn-bps-input-fragment` selects one bounded piece of a retained command,
-including exact literal/source coordinates, count and proposed next offset.
-Zero quantum yields; no cursor advance, ticket, current grant or completion is
-issued. A fixed27-octet literal grammar check never scans source data. Count is
-at most the supplied quantum64; actual scheduler charging must cover selection
-and I/O overhead. The source diagnostic now uses these ACL2-selected counts at
-real primitive calls and advances its local offset only after update returns.
-Actual pending action identity, immutable source lookup, current authority and
-physical custody/cleanup remain caller obligations (REP-018).
-
-
-`fn-bps-input-plan` consumes fixed primary/canonical source-event metadata and
-emits `(:planned (:bps-input-plan descriptor transcript-commands ciphertext-span
-tag-span))`. Literals contain only deterministic CBOR headers; source bytes stay
-exact `(:bps-span source-ref offset length)` commands. RFC9173 §3.7 supplies the
-BIB field order: scope, optional primary, optional target header, optional BIB
-header, and canonical target. A primary target appears once directly, without a
-byte-string wrapper. Extension flags retain assigned bits1/2/4/16; all others
-are cleared per RFC9172 §4. BCB AAD uses the actual BCB header (the §4.7.2 “BIB”
-wording conflicts with AppendixA.4); ciphertext omits its byte-string head.
-Ciphertext-tail tags split the last16 data octets only after exact metadata
-binding; separate tags preserve the descriptor's expected span.
 
 Total cryptographic domains are preflighted from metadata, without reading body
 bytes: SP800-38D §§5.2.1.1/5.2.2 permits at most2^36−32 ciphertext octets and
@@ -1410,7 +1155,6 @@ Packet 4's `books/tcpcl.lisp` was repaired to the four books that did land.
 | 5 | Native host | host | `host/tcpcl-host.lisp`, `host/bp-node-host.lisp`, `host/native/tcpcl.lisp`; `tools/fn_native.py` grows `serve-tcpcl` and `connect-tcpcl`; lab I1 | I1 evidence record; fn–fn exchange with the receipt returning over TCPCL; SIGKILL at every message boundary recovers per T2/T6; **deletes** `tools/bpa_dtn7.py`, `tools/bpa_payload_extract.rs`, `tests/bp-dtn7/build_payload_extractor.sh`, `lab_bpa.py`, `bp_fn_ingress_driver.py`, `fn_sender_lab.py`, `run_fn_exchange_lab.py`, `run_fn_ingress_lab.sh`, `run_two_node.sh`, the FNBI inbox code in `workflow_journal.py`, and `tests/test_bp_receive*.py` (replaced by native-host tests) |
 | 6 | Workflow and scheduler alignment | core (sender-proofs) + scheduler | `fn-bp-transport-statusp` becomes `:intent :bundle-created :attempted :forwarded :delivered :expired :deleted :lost :no-contact :restart :unknown` (rank preserved; the three BPA-era statuses removed); `fn-sched-open-event`/`close-event` drive CL sessions; `fn-bpi-context-bundle-id` becomes an `fn-bpp-bundle-id` | `bp-workflow*`, `bp-workflow-transport-invariants`, `scheduler*`, `bp-ingress*` re-certify; `fn-bp-observe-transport-never-moves-status-backward` unchanged in statement |
 | 7 | Interop labs | lab | I2 (dtn7-rs peer), I3 (ION peer), I4 (relay), I5 (hbox–persvati); reactive fragmentation on `No Resources` | one evidence record per lab with the feature matrix; no row claimed without its trace |
-| 8 | BPSec slot | core + host | `books/bpsec`, the `encapsulate`d verification function, policy table; host HMAC-SHA2 under A-CRYPTO (not started, §4) | the §4 delivery-under-policy theorem and the transit theorem; RFC 9173 Appendix A test vectors |
 | 9 | LTP | core + lab (w3-ltp-ion) | `books/ltp`, `host/native/ltp.lisp` (UDP), lab against ION | red-part completeness theorem; evidence record |
 
 ### 5.1 Which books survive

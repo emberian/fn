@@ -550,10 +550,7 @@ CAPABILITIES, XREDEEM) were answered after the 205 (fuzz-nntp F1).
 A transit article (IHAVE after 335, TAKETHIS) meets the same octet bound as a
 POST: the transit connection's body limit is the smaller of the operator's
 profile bound A and the peer record's `inbound-max-octets`
-(`fn-own-peer-body-limit`, books/owner.lisp), the served run retains at most
-that limit of an article before its verdict
-(`fn-tb-served-run-retains-at-most-the-body-limit`, books/transit-bound.lisp,
-PRF-313), and the cut article is refused by name, 437 (IHAVE) or 439 with the
+(`fn-own-peer-body-limit`, books/owner.lisp), and the cut article is refused by name, 437 (IHAVE) or 439 with the
 Message-ID (TAKETHIS, RFC 4644 section 2.5.2), and the connection closed.
 Before it a peer streaming an endless TAKETHIS body grew the owner to 3.94 GiB
 (fuzz-nntp F2): `peer add` writes the record codec's 4 GiB ceiling as

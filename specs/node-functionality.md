@@ -614,8 +614,7 @@ and the resolution-trace sibling; for the sender, `fn-bp-step-preserves-state`
 
 ### 3.2 Work per step is bounded by configuration and input length
 
-Following `books/article-work-budget.lisp` and
-`books/transfer-public-bound.lisp`: an instrumented twin that returns the
+Following `books/article-work-budget.lisp`: an instrumented twin that returns the
 same value and a natural, proved equal to the step, and a closed-form bound.
 
 ```lisp
