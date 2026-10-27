@@ -112,7 +112,7 @@ class NativeFriendsFeedTests(unittest.TestCase):
             if is_friend and FRIEND_FN:
                 self.assertEqual(version.returncode, EXIT_OK, text(version))
             if version.returncode == EXIT_OK:
-                printed = re.fullmatch(r"fn ([0-9]+(?:\.[0-9]+)+) \(([0-9a-f]{12})\)\n",
+                printed = re.fullmatch(r"fn ([0-9]+(?:\.[0-9]+)+(?:-pre)?) \(([0-9a-f]{12})\)\n",
                                        version.stdout.decode())
                 self.assertIsNotNone(printed, version.stdout)
                 release_sequence.position(printed.group(1))

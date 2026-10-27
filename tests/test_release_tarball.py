@@ -5,7 +5,7 @@ tools/runpath_check.py's GLIBC_FLOOR (the release runs on Debian 12).
 
 Needs a release built by packaging/release-tarball.sh on this platform:
 
-    FN_RELEASE_TARBALL=/abs/out/fn-6.6.0-linux-x86_64.tar.gz \\
+    FN_RELEASE_TARBALL=/abs/out/fn-5.1.1-linux-x86_64.tar.gz \\
         python3 -m unittest -v tests.test_release_tarball
 
 (OUT_DIR/SHA256SUMS beside it).  The install refuses a node whose store
@@ -138,7 +138,7 @@ class ReleaseTarballTests(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         # `fn VERSION (REV12)': VERSION's release version, built into the
         # image, an entry of D37's release sequence.
-        printed = re.fullmatch(r"fn ([0-9.]+) \(([0-9a-f]{12})\)\n", out.stdout)
+        printed = re.fullmatch(r"fn ([0-9]+(?:\.[0-9]+)+(?:-pre)?) \(([0-9a-f]{12})\)\n", out.stdout)
         self.assertIsNotNone(printed, out.stdout)
         version, short = printed.groups()
         release_sequence.position(version)

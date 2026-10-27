@@ -9,7 +9,7 @@
 The source is dev's first-parent history from BASE to REV.  BASE defaults to
 the previous release's tag: the newest v* tag that comes before VERSION in
 the release sequence (D37, tools/release_sequence.py; by sequence position,
-never by number).  With no such tag (the first release, 6.6.0) it is the
+never by number).  With no such tag (the first release, 5.1.1) it is the
 commit that added the Fable mandate,
 planning/handoff-2026-09-25-fable-mandate.md.  Every lane merge on it is
 one line: the lane's name and the first clause of its merge message.  A merge that a later first-parent commit
