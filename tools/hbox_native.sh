@@ -984,7 +984,40 @@ BOX
         else
             cat <<BOX
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
-step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
+ACQUIRED_DEFAULT=0
+BOX
+        if [ $DTN -eq 0 ]; then
+            cat <<BOX
+# A successful acquisition of this exact source closure and toolchain is a
+# hint only: acquire still re-enumerates, installs and ACL2-loads the cache
+# set. Without that content-keyed hint, keep the incremental path rather than
+# paying for a full acquisition known to miss newly generated world books.
+source_identity=\$(python3 tools/proof_artifacts.py identity --profile default) || finish 13
+cached_receipt=
+for receipt in $BASE/*/native-*/logs/acquire.log; do
+    [ -f "\$receipt" ] || continue
+    if grep -F "source=\$source_identity toolchain=\$toolchain " "\$receipt" >/dev/null 2>&1; then
+        cached_receipt=\$receipt
+        break
+    fi
+done
+if [ -n "\$cached_receipt" ]; then
+    echo "== acquire-cached \$(date -u +%H:%M:%SZ) (hint \$cached_receipt)"
+    python3 tools/proof_artifacts.py acquire --profile default --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/acquire.log 2>&1 8>&-
+    cached_rc=\$?
+    echo "   acquire-cached exit \$cached_rc (\$L/acquire.log)"
+    if [ \$cached_rc -eq 0 ]; then
+        ACQUIRED_DEFAULT=1
+    else
+        mv \$L/acquire.log \$L/acquire-cached-refused.log
+    fi
+fi
+BOX
+        fi
+        cat <<BOX
+if [ \$ACQUIRED_DEFAULT -eq 0 ]; then
+    step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
+fi
 # Prints "== certify plan: N books to certify of M in the roots' closure";
 # refuses with status 16 without --allow-certify before either certify step.
 certify_plan() {
@@ -992,8 +1025,12 @@ certify_plan() {
     rc=\$?
     [ \$rc -eq 0 ] || finish \$rc
 }
-certify_plan incremental
-step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+if [ \$ACQUIRED_DEFAULT -eq 0 ]; then
+    step certify-plan certify_plan incremental
+    step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+else
+    echo "== cached closure acquired: install, certify plan and certify skipped"
+fi
 # The wire grammar is a box artifact (tools/box_artifacts.py: build/box/,
 # never committed), absent from a shipped tree: made here from the certified
 # books/wire-export (test_native_store_identity reads it).  A revision before
@@ -1025,7 +1062,7 @@ acquire_step() {
         finish \$rc
     fi
 }
-acquire_step acquire default
+if [ \$ACQUIRED_DEFAULT -eq 0 ]; then acquire_step acquire default; fi
 BOX
         fi
         cat <<BOX

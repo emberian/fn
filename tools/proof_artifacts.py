@@ -305,7 +305,7 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("roots", "acquire", "validate"))
+    parser.add_argument("action", choices=("roots", "identity", "acquire", "validate"))
     parser.add_argument("--profile", required=True, choices=sorted(PROFILES),
                         help="the actual native image declaration to cover")
     parser.add_argument("--root", default=str(ROOT))
@@ -320,6 +320,9 @@ def main(argv: list[str] | None = None) -> int:
     roots = profile_roots(root, arguments.profile)
     if arguments.action == "roots":
         print("\n".join(roots))
+        return 0
+    if arguments.action == "identity":
+        print(certs.source_set_identity(certs.required_closure(root, roots)))
         return 0
     acl2 = Path(arguments.acl2).expanduser().resolve()
     if not acl2.is_file():
