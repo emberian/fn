@@ -39,10 +39,6 @@
 (defun fn-anchor-host-wellformedp (fields)
   (if (fn-anchor-p (fn-anchor-host-fields fields)) 1 0))
 
-; The octets the server signed, rebuilt by ACL2 for the host to verify.
-(defun fn-anchor-host-signed-octets (radius midpoint root)
-  (fn-anchor-signed-from-root radius midpoint root))
-
 ; The delegation octets the pinned long-term key signed, for the host to check.
 (defun fn-anchor-host-delegation-octets (fields)
   (let ((a (fn-anchor-host-fields fields)))

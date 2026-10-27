@@ -80,8 +80,7 @@
 ; Message-ID grammar, the composed POST verdicts) are ACL2's:
 ; books/post-fields.lisp (fn-pfld-).  This file defines none of them.
 
-(defun fn-store-octets->string (xs)
-  (fn-record-octets-string xs))
+(include-book "../books/entries-store-host")
 
 ; The final transaction namespace is an ACL2 value.  The native host consumes
 ; the string wrapper; the Python bridge consumes octets so no Lisp string
@@ -90,8 +89,6 @@
 ; names is the staged record's own (`fn-sbud-pending-sequence'): the name
 ; written is the name the scan expects next
 ; (`fn-sbud-pending-name-is-the-scans-next-name').
-(defun fn-store-txn-name (sequence)
-  (fn-sbud-txn-name sequence))
 
 (defun fn-store-txn-name-octets (sequence)
   (fn-record-string-octets (fn-store-txn-name sequence)))
@@ -138,9 +135,6 @@
 ; domain; the arena is dropped with the answer, so nothing is retained.
 ; The with-local-stobj is books/store-intern.lisp fn-intern-events-local,
 ; guard-verified, so no :program caller carries invariant-risk through it.
-(defun fn-store-intern-records-local (records)
-  (declare (xargs :mode :program))
-  (fn-intern-events-local records))
 
 ; A journal record's sequence, read off the WIRE event its octets decode to
 ; (fn-rcon-wire-event-sequence-is-wire-event-sequence, books/records-concrete):
@@ -148,10 +142,6 @@
 ; books/store-recover-stream.lisp fn-srs-record-sequence, whose check the
 ; streaming open makes inside its one decode (fn-srs-checked-decode,
 ; KEYSTONE fn-srs-checked-decode-is-the-per-file-check).
-(defun fn-store-record-sequence (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-srs-record-sequence octets))
 
 (definterface fn-store-record-sequence
   :class ::program
@@ -198,9 +188,6 @@
   (if (fn-frame-result-okp frame)
       (list :ok (fn-frame-result-kind frame) (fn-frame-result-payload frame))
     frame))
-
-(defun fn-store-frame-store-protected (record)
-  (fn-frame-store-protected record))
 
 ; Native application journals hold the logical record values used by
 ; bp-workflow-records and bp-receipt-records: text fields are ACL2 strings.
@@ -290,9 +277,6 @@
    (fn-store-frame-receipt-decode octets digest)
    *fn-frame-receipt-specs*))
 
-(defun fn-store-frame-inbound-prefix (bid identity bundle-length)
-  (fn-frame-inbound-prefix bid identity bundle-length))
-
 (defun fn-store-frame-inbound-open (head total-length trailer digest)
   (let ((frame (fn-frame-inbound-open head total-length trailer digest)))
     (if (fn-frame-result-okp frame)
@@ -353,16 +337,10 @@
 ; table, CBOR frontier encoding, integrity trailer and decoder are all in
 ; books/byte-store-frame.lisp; this host file only gives the bridge stable
 ; entry-point names.
-(defun fn-store-metadata-config-frame (profile)
-  (fn-bs-config-frame-for-profile profile))
 
 (definterface fn-store-metadata-config-frame
   :class ::ideal
   :delegates fn-bs-config-frame-for-profile)
-
-(defun fn-store-metadata-config-decode (octets)
-  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
-  (fn-bs-config-decode octets))
 
 (definterface fn-store-metadata-config-decode
   :class ::ideal
@@ -373,17 +351,11 @@
 ;; books/store-profile-open.lisp): (:opened VALUES), (:refused :store-format)
 ;; for a profile frame of another format word (D34), or (:rejected) for a
 ;; frame that is no saved profile.  The refusal's line is ACL2's.
-(defun fn-store-metadata-config-open (octets)
-  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
-  (fn-spo-config-open octets))
 
 (definterface fn-store-metadata-config-open
   :class ::ideal
   :kinds ((octets fn-cbor-octet-listp))
   :delegates fn-spo-config-open)
-
-(defun fn-store-metadata-config-refusal-text (verdict)
-  (fn-spo-refusal-text verdict))
 
 (definterface fn-store-metadata-config-refusal-text
   :class ::ideal
@@ -398,13 +370,8 @@
   (let ((preset (fn-nop-profile-preset-word (fn-record-octets-string octets))))
     (if preset (fn-bs-config-frame-for-profile preset) nil)))
 
-(defun fn-store-metadata-initial-config-frame ()
-  (fn-bs-initial-config-octets))
-
 ;; The commit route of an opened store (lane commit-onto-log): T for a
 ;; profile, whose commits go through the record log.
-(defun fn-store-profile-logp (values)
-  (fn-bs-profile-logp values))
 
 (definterface fn-store-profile-logp
   :class ::ideal
@@ -454,15 +421,12 @@
   :class ::program)
 
 ;; The record log's layout (books/store-log-route.lisp).
-(defun fn-store-log-segment-name () (fn-olr-segment-name))
 
 (definterface fn-store-log-segment-name
   :class ::ideal)
-(defun fn-store-log-unit () (fn-olr-unit))
 
 (definterface fn-store-log-unit
   :class ::ideal)
-(defun fn-store-log-initial-extent () (fn-olr-initial-extent))
 
 (definterface fn-store-log-initial-extent
   :class ::ideal)
@@ -485,22 +449,12 @@
 
 ;; The store profile (D27, format 8): every value the host reads from it is
 ;; one of these accessors over the decoded values, never a list position.
-(defun fn-store-profile-admittedp (values)
-  (fn-bs-profile-admittedp values))
 
 (definterface fn-store-profile-admittedp
   :class ::ideal
   :delegates fn-bs-profile-admittedp)
 
-(defun fn-store-profile-init-verdict (request)
-  (fn-bs-profile-init-verdict request))
-
-(defun fn-store-profile-max-article-octets (values)
-  (fn-bs-profile-max-article-octets values))
-
 ;; R, the segment size of the state checkpoint (P3).
-(defun fn-store-profile-max-record-octets (values)
-  (fn-bs-profile-max-record-octets values))
 
 (definterface fn-store-profile-max-record-octets
   :class ::ideal
@@ -512,14 +466,6 @@
 ;; fn-native-auth-load, fn-native-auth-admin-set-password, and for the
 ;; consumer count fn-cp-register-within through fn-col-register, called from
 ;; host/owner-host.lisp fn-owner-consumer-local-register).
-(defun fn-store-profile-max-consumers (values)
-  (fn-bs-profile-max-consumers values))
-
-(defun fn-store-profile-max-credentials (values)
-  (fn-bs-profile-max-credentials values))
-
-(defun fn-store-profile-report (values)
-  (fn-bs-profile-report values))
 
 (definterface fn-store-profile-report
   :class ::ideal
@@ -549,17 +495,8 @@
   :class ::ideal
   :kinds ((octets fn-cbor-octet-listp)))
 
-(defun fn-store-metadata-frontier-next (n)
-  (fn-bs-frontier-next n))
-
 (definterface fn-store-metadata-frontier-next
   :class ::ideal)
-
-;; The replay bound every open checks per record: H plus T records' encoding
-;; overhead (books/store-replay-bound.lisp; every history the profile admits
-;; is within it, `fn-srb-admitted-history-is-within-the-bound').
-(defun fn-store-profile-replay-within-bound (profile aggregate)
-  (fn-srb-replay-within-boundp profile aggregate))
 
 ;; fn-store-charge, fn-store-publication-admissibility and
 ;; fn-store-profile-read-bound live in books/store-host-boundary.lisp
@@ -601,29 +538,17 @@
 ;; revision); every open reads it through ACL2's open, which refuses by name;
 ;; the verdict is kept for the owner's install (the history salt) and for
 ;; `store digest'.  The host passes octets and verdicts through unread.
-(defun fn-store-genesis-file-name ()
-  (fn-gen-file-name))
 
 (definterface fn-store-genesis-file-name
   :class ::ideal)
-
-(defun fn-store-genesis-octets (node salt created revision profile)
-  (fn-gen-octets-for node salt created revision profile))
 
 (definterface fn-store-genesis-octets
   :class ::ideal
   :delegates fn-gen-octets-for)
 
-(defun fn-store-genesis-open (octets profile)
-  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
-  (fn-gen-open octets profile))
-
 (definterface fn-store-genesis-open
   :class ::ideal
   :kinds ((octets fn-cbor-octet-listp)))
-
-(defun fn-store-genesis-refusal-text (verdict)
-  (fn-gen-refusal-text verdict))
 
 (definterface fn-store-genesis-refusal-text
   :class ::ideal

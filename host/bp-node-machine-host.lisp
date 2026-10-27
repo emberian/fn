@@ -34,20 +34,13 @@
 (definterface fn-bpn-host-lifecycle-record-unframe
   :class ::ideal)
 
-(defun fn-bpn-host-lifecycle-frame-limit ()
-  (fn-bpn-lifecycle-frame-limit))
+(include-book "../books/entries-bp-node-machine-host")
 
 (definterface fn-bpn-host-lifecycle-frame-limit
   :class ::ideal)
 
-(defun fn-bpn-host-lifecycle-record-name (token)
-  (fn-bpn-lifecycle-record-name token))
-
 (definterface fn-bpn-host-lifecycle-record-name
   :class ::ideal)
-
-(defun fn-bpn-host-lifecycle-recovery (names records start)
-  (fn-bpn-lifecycle-recovery-from names records start))
 
 (definterface fn-bpn-host-lifecycle-recovery
   :class ::ideal)
@@ -58,24 +51,13 @@
 (definterface fn-bpn-host-lifecycle-recovery-ready-p
   :class ::ideal)
 
-(defun fn-bpn-host-lifecycle-recovery-records (answer)
-  (fn-bpn-lifecycle-recovery-records answer))
-
 (definterface fn-bpn-host-lifecycle-recovery-records
   :class ::ideal)
-
-(defun fn-bpn-host-lifecycle-recovery-stages (answer)
-  (fn-bpn-lifecycle-recovery-stages answer))
 
 (definterface fn-bpn-host-lifecycle-recovery-stages
   :class ::ideal)
 
 ; fn-bpn-host-lifecycle-recovery-agrees-p: books/bp-node-host-machine (guard-verified, with its keystone).
-
-(defun fn-bpn-host-lifecycle-publication-authorize
-  (st token record lock-owned final-absent)
-  (fn-bpn-lifecycle-publication-authorize
-   st token record lock-owned final-absent))
 
 (definterface fn-bpn-host-lifecycle-publication-authorize
   ; an exact alias; the callee's keystone is PRF-985
@@ -89,20 +71,11 @@
 (definterface fn-bpn-host-lifecycle-publication-operationp
   :class ::ideal)
 
-(defun fn-bpn-host-lifecycle-publication-operation-token (operation)
-  (fn-bpn-lifecycle-publication-operation-token operation))
-
 (definterface fn-bpn-host-lifecycle-publication-operation-token
   :class ::ideal)
 
-(defun fn-bpn-host-lifecycle-publication-operation-record (operation)
-  (fn-bpn-lifecycle-publication-operation-record operation))
-
 (definterface fn-bpn-host-lifecycle-publication-operation-record
   :class ::ideal)
-
-(defun fn-bpn-host-lifecycle-publication-operation-publication (operation)
-  (fn-bpn-lifecycle-publication-operation-publication operation))
 
 (definterface fn-bpn-host-lifecycle-publication-operation-publication
   :class ::ideal)

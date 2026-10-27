@@ -89,11 +89,6 @@
             (fn-cfg-encode record)
           :bad)))))
 
-(defun fn-cfg-host-initial-octets (name-octets-list)
-  ; The zero stamp (no wall claim): tools/frame_bridge.py's initializer.
-  (declare (xargs :mode :program))
-  (fn-cfg-host-initial-octets-stamped name-octets-list *fn-cfg-default-stamp*))
-
 (defun fn-cfg-host-initial-octets-at (name-octets-list monotonic wall has-wall)
   ; PKT-665 (PRF-243): the native `init' stamps its record with the host's
   ; clock (MONOTONIC and WALL, milliseconds, PRF-378; HAS-WALL whether the

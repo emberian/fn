@@ -447,9 +447,6 @@ matched measurement's reference arm)."
                (equal (fnn-developer-selector "FN_NATIVE_DIGEST_TEST_OFF") "1"))
     (fnn-digest-initialize)))
 
-(defun fnn-digest-status ()
-  (list *fnn-digest-state* *fnn-digest-version*))
-
 ;;; ---------------------------------------------------------------------------
 ;;; The per-image differential (developer image only): `fn-host digest-check
 ;;; run COUNT SEED' hashes COUNT inputs natively and by ACL2's `fn-b3x-hash'

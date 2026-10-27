@@ -508,9 +508,7 @@
 ; fn-owner-chunk-span and books/served-plan.lisp, HST-023).
 
 
-(defun fn-owner-install-effects (effects state)
-  (declare (xargs :stobjs state :guard t :verify-guards t))
-  (fn-owner-callback-install-effects effects state))
+(include-book "../books/entries-owner-host")
 
 
 ;; The process root (P3 owner open, books/owner-checkpoint-open.lisp).  Both
@@ -1256,9 +1254,6 @@
   :class ::program)
 
 ; The pass is done with CTX: its fast alists are freed (fn-rclp-ctx-free).
-(defun fn-owner-orc-ctx-free (ctx)
-  (declare (xargs :guard t))
-  (fn-rclp-ctx-free ctx))
 
 ; host/native/owner.lisp dispatches it once the pass is done with its
 ; context (lane reclaim-retention).
@@ -1271,9 +1266,6 @@
 ; passes 2 and 3 rewrite (the chunk handed to books/reclaim-chunked-walk.lisp
 ; and books/reclaim-chunked-seal.lisp's steps, no fold): the rewrite reads
 ; CTX and the arena only, never the fold, so each pass's chunk is the same.
-(defun fn-owner-orc-fold-chunk (rows ctx acc fn-arena)
-  (declare (xargs :stobjs fn-arena :mode :program))
-  (fn-orc-fold rows ctx acc fn-arena))
 
 ; host/native/owner.lisp dispatches them (lane online-reclaim; split into
 ; the fold and the rewrite by lane reclaim, PRF-1315).
@@ -1287,17 +1279,9 @@
 (definterface fn-owner-orc-rewrite-chunk
   :class ::program)
 
-(defun fn-owner-orc-init ()
-  (declare (xargs :guard t))
-  (fn-rcls-init))
-
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-init
   :class :common-lisp-compliant)
-
-(defun fn-owner-orc-classes (ctx fn-arena)
-  (declare (xargs :stobjs fn-arena :mode :program))
-  (fn-xpy-ctx-classes ctx fn-arena))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-classes
@@ -3534,12 +3518,6 @@
 (definterface fn-owner-peer-for-socket-address
   :class ::program)
 
-(defun fn-owner-open-peer (peer-octets state)
-  (declare (xargs :stobjs state :verify-guards t
-                  :guard (and (boundp-global 'fn-owner state)
-                              (fn-cbor-octet-listp peer-octets))))
-  (fn-owner-callback-open-peer peer-octets state))
-
 (definterface fn-owner-open-peer
   :class :common-lisp-compliant
   :kinds ((peer-octets fn-cbor-octet-listp)))
@@ -4800,30 +4778,6 @@
 (definterface fn-owner-reader-views-capture
   :class ::program)
 
-; A reader entry at the reader view: while a capture is held the entry runs
-; on the owner with the reader view in place of the working view
-; (fn-ocfg-at-reader-view; fn-ocl-relation-of-a-view-captured-before-appends:
-; a related owner, whose reads are the served machine's over at most the
-; records the Store held at the capture), and the working view is put back
-; after it (fn-ocfg-with-view).  Only the view is exchanged: the connections,
-; the queue a POST joins and every other field are the entry's.
-(defun fn-owner-at-reader-view (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-callback-at-reader-view state))
-
-(defun fn-owner-at-working-view (working state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-callback-at-working-view working state))
-
-(defun fn-owner-open-at (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-callback-open-at state))
-
-(defun fn-owner-open (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
-                  :verify-guards t))
-  (fn-owner-callback-open state))
-
 (definterface fn-owner-open
   :class :common-lisp-compliant)
 
@@ -5556,11 +5510,6 @@
      (fn-owner-rx-line-end start fn-rx-provider state)
    (mv nil :receiver-unavailable state)))
 
-(defun fn-owner-close (id fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (boundp-global 'fn-owner state)
-                  :verify-guards t))
-  (fn-owner-callback-close id fn-arena state))
-
 (definterface fn-owner-close
   :class :common-lisp-compliant)
 
@@ -5578,10 +5527,6 @@
 ; when there was not; the owner has forgotten `id' either way.  The host
 ; reports the two differently because a fault naming no connection is a host
 ; defect and not a served event.
-(defun fn-owner-fault (id state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)
-                  :verify-guards t))
-  (fn-owner-callback-fault id state))
 
 (definterface fn-owner-fault
   :class :common-lisp-compliant)
@@ -5733,10 +5678,6 @@
 (definterface fn-owner-feed-auth-policy
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp)))
-
-(defun fn-owner-feed-profile-decode (octets)
-  (declare (xargs :guard (fn-cbor-octet-listp octets)))
-  (fn-fap-decode octets))
 
 (definterface fn-owner-feed-profile-decode
   :class :common-lisp-compliant

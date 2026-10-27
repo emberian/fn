@@ -19,9 +19,7 @@
 (include-book "../books/owner-config-state")
 (include-book "../books/definterface")
 
-(defun fn-web-host-plan (config-octets listener-port tls-port certp)
-  (declare (xargs :mode :program :guard (fn-cbor-octet-listp config-octets)))
-  (fn-web-config-plan config-octets listener-port tls-port certp))
+(include-book "../books/entries-web-host")
 
 (definterface fn-web-host-plan
   :class ::program
@@ -42,25 +40,17 @@
 (definterface fn-web-host-plan-refusal
   :class ::program)
 
-(defun fn-web-host-plan-port (plan) (declare (xargs :mode :program)) (fn-web-plan-port plan))
-
 (definterface fn-web-host-plan-port
   :class ::program)
-(defun fn-web-host-plan-family (plan) (declare (xargs :mode :program)) (fn-web-plan-family plan))
 
 (definterface fn-web-host-plan-family
   :class ::program)
-(defun fn-web-host-plan-address (plan) (declare (xargs :mode :program)) (fn-web-plan-address plan))
 
 (definterface fn-web-host-plan-address
   :class ::program)
-(defun fn-web-host-plan-tls (plan) (declare (xargs :mode :program)) (fn-web-plan-tls plan))
 
 (definterface fn-web-host-plan-tls
   :class ::program)
-(defun fn-web-host-plan-config (plan identity)
-  (declare (xargs :mode :program))
-  (fn-web-plan-config plan identity))
 
 (definterface fn-web-host-plan-config
   :class ::program)
@@ -79,10 +69,6 @@
 (definterface fn-web-host-identity
   :class :common-lisp-compliant)
 
-(defun fn-web-host-limits (article-limit)
-  (declare (xargs :mode :program))
-  (fn-web-plan-limits article-limit))
-
 (definterface fn-web-host-limits
   :class ::program)
 
@@ -96,16 +82,8 @@
 (definterface fn-web-host-reset
   :class ::program)
 
-(defun fn-web-host-frame (from limits fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
-  (fn-web-head-frame from limits fn-web-in))
-
 (definterface fn-web-host-frame
   :class ::program)
-
-(defun fn-web-host-parse (end limits fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
-  (fn-web-parse-head end limits fn-web-in))
 
 (definterface fn-web-host-parse
   :class ::program)
@@ -204,9 +182,6 @@
 ; Scheduling ceilings are the configured supported profile and a work window,
 ; never a truncation of a stored article. The HTTP actor consumes these exact
 ; core decisions before allocating/reading or slicing a continuation.
-(defun fn-web-host-connection-limit (config)
-  (declare (xargs :guard t))
-  (fn-wss-cfg-max config))
 
 ; HTTP reactor uses these actual ACL2 scheduling and lease projections.
 (definterface fn-web-host-connection-limit :class :common-lisp-compliant)
@@ -254,22 +229,12 @@
 
 ; Count and emit use the same immutable segment cursor outside the owner
 ; section. IN remains the exact retained NNTP reply through the HTTP body.
-(defun fn-web-host-page-cursor (segs)
-  (declare (xargs :guard t))
-  (fn-wpc-cursor segs))
 
 (definterface fn-web-host-page-cursor :class :common-lisp-compliant)
 
 ;; Constant-time guard: t.  fn-wpc-step is total (its reads are tested, books/web-page-cursor.lisp fn-wpc-get), so no recognizer over the segments is evaluated per window.
-(defun fn-web-host-page-step (cursor count emitp fn-web-in)
-  (declare (xargs :stobjs fn-web-in :guard t))
-  (fn-wpc-step cursor count emitp fn-web-in))
 
 (definterface fn-web-host-page-step :class :common-lisp-compliant)
-
-(defun fn-web-host-private-reply-p (flow event)
-  (declare (xargs :guard t))
-  (fn-web-private-reply-p flow event))
 
 (definterface fn-web-host-private-reply-p :class :common-lisp-compliant)
 
@@ -292,9 +257,6 @@
 (defun fn-web-host-article-scan (scan fn-web-in)
   (declare (xargs :mode :program :stobjs fn-web-in))
   (fn-was-scan 0 (fn-octets-len fn-web-in) scan fn-web-in))
-(defun fn-web-host-article-page (config flow scan)
-  (declare (xargs :mode :program))
-  (fn-was-page config flow scan))
 ;; Constant-time guard: two naturals (the window step is total, books/web-article-stream.lisp fn-wpc-window-next).
 (defun fn-web-host-window-page-step (cursor base count emitp fn-web-in)
   (declare (xargs :stobjs fn-web-in :guard (and (natp base) (natp count))))
@@ -317,23 +279,14 @@
 
 (definterface fn-web-host-replay-forward-p :class :common-lisp-compliant)
 
-(defun fn-web-host-stream-p (flow) (declare (xargs :guard t)) (fn-wrs-p flow))
-
 (definterface fn-web-host-stream-p :class :common-lisp-compliant)
-(defun fn-web-host-stream-start (flow) (declare (xargs :guard t)) (fn-wrs-start flow))
 
 (definterface fn-web-host-stream-start :class :common-lisp-compliant)
 
 ; The scan is one fn-web-host-stream-start made and fn-web-host-stream-scan
 ; returned (fn-wrs-statep).
-(defun fn-web-host-stream-scan (scan fn-web-in)
-  (declare (xargs :stobjs fn-web-in :guard (fn-wrs-statep scan)))
-  (fn-wrs-scan scan fn-web-in))
 
 (definterface fn-web-host-stream-scan :class :common-lisp-compliant)
-(defun fn-web-host-stream-page (config flow scan)
-  (declare (xargs :guard (fn-wrs-statep scan)))
-  (fn-wrs-page config flow scan))
 
 (definterface fn-web-host-stream-page :class :common-lisp-compliant)
 

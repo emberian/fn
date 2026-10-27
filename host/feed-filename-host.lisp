@@ -31,19 +31,13 @@
 
 (definterface fn-feed-filename-host-max-v1-chunks
   :class ::program)
-(defun fn-feed-filename-host-observation-limit () (declare (xargs :mode :program))
-  (fn-feed-filename-observation-limit))
+(include-book "../books/entries-feed-filename-host")
 
 (definterface fn-feed-filename-host-observation-limit
   :class ::program)
-(defun fn-feed-filename-host-observation-remaining (remaining observed)
-  (declare (xargs :mode :program))
-  (fn-feed-filename-observation-remaining remaining observed))
 
 (definterface fn-feed-filename-host-observation-remaining
   :class ::program)
-(defun fn-feed-filename-host-decode (components) (declare (xargs :mode :program))
-  (fn-feed-filename-from-components components))
 
 (definterface fn-feed-filename-host-decode
   :class ::program)

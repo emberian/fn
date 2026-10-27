@@ -23,56 +23,24 @@
 (include-book "../books/native-control-kinds")
 (include-book "../books/definterface")
 
-(defun fn-native-control-host-reply-seconds (request-octets)
-  (declare (xargs :mode :program :guard (natp request-octets)))
-  (fn-nco-reply-seconds request-octets))
+(include-book "../books/entries-native-control-host")
 
 (definterface fn-native-control-host-reply-seconds :class :program :kinds ((request-octets natp)))
 
-(defun fn-native-control-host-withdraw-result (cause)
-  (declare (xargs :mode :program :guard t))
-  (fn-mwo-after-authorization cause))
-
 (definterface fn-native-control-host-withdraw-result :class :program)
-
-(defun fn-native-control-host-topic-request-encode (operation sequence quota)
-  (declare (xargs :mode :program))
-  (fn-thlc-request-encode operation sequence quota))
 
 (definterface fn-native-control-host-topic-request-encode
   :class ::program)
 
-(defun fn-native-control-host-topic-request-decode (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-thlc-request-decode octets))
-
-(defun fn-native-control-host-topic-reply-encode (status)
-  (declare (xargs :mode :program))
-  (fn-thlc-reply-encode status))
-
 (definterface fn-native-control-host-topic-reply-encode
   :class ::program)
-
-(defun fn-native-control-host-topic-reply-decode (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-thlc-reply-decode octets))
 
 (definterface fn-native-control-host-topic-reply-decode
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
-(defun fn-native-control-host-topic-status-exit-code (status)
-  (declare (xargs :mode :program))
-  (fn-thlc-status-exit-code status))
-
 (definterface fn-native-control-host-topic-status-exit-code
   :class ::program)
-
-(defun fn-native-control-host-topic-cli-plan (command argv)
-  (declare (xargs :mode :program))
-  (fn-thlc-cli-plan command argv))
 
 (definterface fn-native-control-host-topic-cli-plan
   :class ::program)
@@ -89,9 +57,6 @@
 ; The owner's read bound for one control connection under the carried
 ; profile's article bound A and group bound G (`fn-nctrl-read-bound-for';
 ; `fn-native-control-request-within-read-bound').
-(defun fn-native-control-host-read-bound (a g)
-  (declare (xargs :mode :program))
-  (fn-nctrl-read-bound-for a g))
 
 (definterface fn-native-control-host-read-bound
   :class ::program)
@@ -118,16 +83,9 @@
 
 ; The control word for a refused operator submission, from the owner's
 ; injection decision reason (`fn-native-control-refusal-status').
-(defun fn-native-control-host-refusal-status (reason)
-  (declare (xargs :mode :program))
-  (fn-native-control-refusal-status reason))
 
 (definterface fn-native-control-host-refusal-status
   :class ::program)
-
-(defun fn-native-control-host-max-active-clients ()
-  (declare (xargs :mode :program))
-  (fn-native-control-max-active-clients))
 
 (definterface fn-native-control-host-max-active-clients
   :class ::program)
@@ -137,112 +95,48 @@
 ;; the stop flag and the live worker count the host observes
 ;; (books/native-control-launch.lisp, KEYSTONE
 ;; fn-ncla-launch-exactly-below-the-ceiling).
-(defun fn-native-control-host-launch-disposition (stoppingp active)
-  (declare (xargs :mode :program))
-  (fn-ncla-launch-disposition stoppingp active))
 
 (definterface fn-native-control-host-launch-disposition
   :class ::program)
 
 ;; PKT-344: the offline control verb's path, decided from the socket node and
 ;; the writer lock (fn-native-control-liveness-decides), and its note line.
-(defun fn-native-control-host-liveness (socket-node lock)
-  (declare (xargs :mode :program))
-  (fn-native-control-liveness socket-node lock))
 
 (definterface fn-native-control-host-liveness
   :class ::program)
-
-(defun fn-native-control-host-liveness-note (decision)
-  (declare (xargs :mode :program))
-  (fn-native-control-liveness-note decision))
 
 (definterface fn-native-control-host-liveness-note
   :class ::program)
 
 ;; The socket node a closing run may unlink (fn-native-control-socket-removal-decides).
-(defun fn-native-control-host-socket-removal (installed-dev installed-ino
-                                                            observed-dev observed-ino)
-  (declare (xargs :mode :program))
-  (fn-native-control-socket-removal installed-dev installed-ino
-                                    observed-dev observed-ino))
 
 (definterface fn-native-control-host-socket-removal
   :class ::program)
 
-(defun fn-native-control-host-lease-path (control-path)
-  (declare (xargs :mode :program))
-  (fn-native-control-lease-path control-path))
-
 (definterface fn-native-control-host-lease-path
   :class ::program)
 
-(defun fn-native-control-host-request-encode (msgid groups article)
-  (declare (xargs :mode :program))
-  (fn-native-control-request-encode msgid groups article))
-
-(defun fn-native-control-host-request-decode (octets)
-  (declare (xargs :mode :program))
-  (fn-native-control-request-decode octets))
-
 ;; PKT-657, PKT-575: the moderation request, FNCT kind 21
 ;; (books/native-control-reason.lisp).
-(defun fn-native-control-host-moderation-encode (op login id reason)
-  (declare (xargs :mode :program))
-  (fn-native-control-moderation-encode op login id reason))
 
 (definterface fn-native-control-host-moderation-encode
   :class ::program)
 
-(defun fn-native-control-host-moderation-decode (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-native-control-moderation-decode octets))
-
-(defun fn-native-control-host-admin-encode (argv)
-  (declare (xargs :mode :program))
-  (fn-native-control-admin-encode argv))
-
 (definterface fn-native-control-host-admin-encode
   :class ::program)
 
-(defun fn-native-control-host-admin-decode (octets)
-  (declare (xargs :mode :program))
-  (fn-native-control-admin-decode octets))
-
-(defun fn-native-control-host-reply-encode (status)
-  (declare (xargs :mode :program))
-  (fn-native-control-reply-encode status))
-
 (definterface fn-native-control-host-reply-encode
   :class ::program)
-
-(defun fn-native-control-host-reply-decode (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-native-control-reply-decode octets))
 
 (definterface fn-native-control-host-reply-decode
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
-(defun fn-native-control-host-status-class (status)
-  (declare (xargs :mode :program))
-  (fn-native-control-status-class status))
-
 (definterface fn-native-control-host-status-class
   :class ::program)
 
-(defun fn-native-control-host-status-exit-code (status)
-  (declare (xargs :mode :program))
-  (fn-native-control-status-exit-code status))
-
 (definterface fn-native-control-host-status-exit-code
   :class ::program)
-
-(defun fn-native-control-host-transport-outcome (stage)
-  (declare (xargs :mode :program))
-  (fn-native-control-transport-outcome stage))
 
 (definterface fn-native-control-host-transport-outcome
   :class ::program)
@@ -250,33 +144,12 @@
 ;; PRF-252: the wait kinds (codes 9, 10) wrap the consumer codec; every
 ;; other kind is fn-ncl-request-encode / -decode's, unchanged
 ;; (books/consumer-wait-codec.lisp).
-(defun fn-native-control-host-consumer-request-encode (kind first second)
-  (declare (xargs :mode :program))
-  (fn-cwait-request-encode kind first second))
 
 (definterface fn-native-control-host-consumer-request-encode
   :class ::program)
 
-(defun fn-native-control-host-consumer-request-decode (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-cwait-request-decode octets))
-
-(defun fn-native-control-host-consumer-reply-encode (status cursor)
-  (declare (xargs :mode :program))
-  (fn-ncl-reply-encode status cursor))
-
 (definterface fn-native-control-host-consumer-reply-encode
   :class ::program)
-
-(defun fn-native-control-host-consumer-reply-decode (octets)
-  (declare (xargs :mode :program))
-  (fn-ncl-reply-decode octets))
-
-(defun fn-native-control-host-consumer-poll-reply-encode
-    (status cursor report)
-  (declare (xargs :mode :program))
-  (fn-ncl-poll-reply-encode status cursor report))
 
 (definterface fn-native-control-host-consumer-poll-reply-encode
   :class ::program)
@@ -285,21 +158,8 @@
   (declare (xargs :mode :program))
   (+ *fn-frame-overhead-octets* *fn-ncl-poll-max-payload*))
 
-(defun fn-native-control-host-consumer-poll-reply-decode (octets)
-  (declare (xargs :mode :program))
-  (fn-ncl-poll-reply-decode octets))
-
-(defun fn-native-control-host-consumer-status-reply-encode
-    (status ack frontier gap)
-  (declare (xargs :mode :program))
-  (fn-ncl-status-reply-encode status ack frontier gap))
-
 (definterface fn-native-control-host-consumer-status-reply-encode
   :class ::program)
-
-(defun fn-native-control-host-consumer-status-reply-decode (octets)
-  (declare (xargs :mode :program))
-  (fn-ncl-status-reply-decode octets))
 
 (defun fn-native-control-host-consumer-status-max-frame ()
   (declare (xargs :mode :program))
@@ -314,34 +174,15 @@
   :class ::program)
 
 ;; PRF-234: the password a bound consumer's secret file holds.
-(defun fn-native-control-host-consumer-secret-of-file (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-ncl-secret-of-file octets))
 
 (definterface fn-native-control-host-consumer-secret-of-file
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
 ;; PKT-453 (a): the refusal reason on the wire (books/native-control-reason).
-(defun fn-native-control-host-reasoned-request-encode (msgid groups article)
-  (declare (xargs :mode :program))
-  (fn-native-control-reasoned-request-encode msgid groups article))
-
-(defun fn-native-control-host-reasoned-request-decode (octets)
-  (declare (xargs :mode :program))
-  (fn-native-control-reasoned-request-decode octets))
-
-(defun fn-native-control-host-reasoned-admin-encode (argv)
-  (declare (xargs :mode :program))
-  (fn-native-control-reasoned-admin-encode argv))
 
 (definterface fn-native-control-host-reasoned-admin-encode
   :class ::program)
-
-(defun fn-native-control-host-reasoned-admin-decode (octets)
-  (declare (xargs :mode :program))
-  (fn-native-control-reasoned-admin-decode octets))
 
 (defun fn-native-control-host-reasoned-framep (octets)
   ;; PKT-709: a reasoned consumer request (kind 22) is answered, however its
@@ -350,10 +191,6 @@
                   :guard (fn-cbor-octet-listp octets)))
   (or (fn-native-control-reasoned-framep octets)
       (fn-ncr-framep octets)))
-
-(defun fn-native-control-host-reasoned-reply-encode (status reason)
-  (declare (xargs :mode :program))
-  (fn-native-control-reasoned-reply-encode status reason))
 
 (defun fn-native-control-host-reasoned-client-step (octets)
   ; What the client does with the reply to a reasoned request: (:status
@@ -365,9 +202,6 @@
 
 ;; Row S1 (books/native-control-line.lisp, kind 23): a reasoned reply that
 ;; carries the owner's printed line; a nil LINE seals the reasoned reply.
-(defun fn-native-control-host-lined-reply-encode (status reason line)
-  (declare (xargs :mode :program))
-  (fn-native-control-lined-reply-encode status reason line))
 
 ; host/native/control.lisp dispatches it (lane d27-representation-3).
 (definterface fn-native-control-host-lined-reply-encode
@@ -414,17 +248,9 @@
 ;; PKT-709, PKT-710 (books/consumer-reason.lisp): the reasoned consumer
 ;; request (FNCT kind 22), the client's read of the owner's answer, the
 ;; register retry, the report summary and the JSON lines.
-(defun fn-native-control-host-consumer-reasoned-request-encode (kind first second)
-  (declare (xargs :mode :program))
-  (fn-ncr-request-encode kind first second))
 
 (definterface fn-native-control-host-consumer-reasoned-request-encode
   :class ::program)
-
-(defun fn-native-control-host-consumer-reasoned-request-decode (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-ncr-request-decode octets))
 
 (defun fn-native-control-host-consumer-client-read (operation octets)
   ;; (:status STATUS WORD), (:reply REPLY), (:resend) or (:transport).
@@ -436,32 +262,15 @@
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
-(defun fn-native-control-host-consumer-cli-after (command step status word)
-  (declare (xargs :mode :program))
-  (fn-ncr-cli-after command step status word))
-
 (definterface fn-native-control-host-consumer-cli-after
   :class ::program)
-
-(defun fn-native-control-host-consumer-report-summary (octets)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-ncr-report-summary octets))
 
 (definterface fn-native-control-host-consumer-report-summary
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
 
-(defun fn-native-control-host-consumer-json-line (operation status word counts summary)
-  (declare (xargs :mode :program))
-  (fn-ncr-json-line operation status word counts summary))
-
 (definterface fn-native-control-host-consumer-json-line
   :class ::program)
-
-(defun fn-native-control-host-consumer-article-json (summary)
-  (declare (xargs :mode :program))
-  (fn-ncr-article-json summary))
 
 (definterface fn-native-control-host-consumer-article-json
   :class ::program)
