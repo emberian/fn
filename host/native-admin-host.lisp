@@ -19,35 +19,26 @@
 (include-book "owner-host")
 (include-book "store-node-host")
 
-(defun fn-native-admin-host-plan (argv) (fn-native-admin-plan argv))
+(include-book "../books/entries-native-admin-host")
 
 (definterface fn-native-admin-host-plan
   :class ::ideal)
-(defun fn-native-admin-host-status (result) (fn-native-admin-result-status result))
 
 (definterface fn-native-admin-host-status
   :class ::ideal)
-(defun fn-native-admin-host-reason (result) (fn-native-admin-result-reason result))
 
 (definterface fn-native-admin-host-reason
   :class ::ideal)
-(defun fn-native-admin-host-queryp (result) (fn-native-admin-result-queryp result))
 
 (definterface fn-native-admin-host-queryp
   :class ::ideal)
-(defun fn-native-admin-host-owner-requestp (result)
-  (fn-native-admin-result-owner-requestp result))
 
 (definterface fn-native-admin-host-owner-requestp
   :class ::ideal)
-(defun fn-native-admin-host-reclaim-mode (result)
-  (fn-native-admin-result-reclaim-mode result))
 
 ; host/native/admin.lisp dispatches it (lane online-reclaim).
 (definterface fn-native-admin-host-reclaim-mode
   :class :ideal)
-(defun fn-native-admin-host-report-kind (result)
-  (fn-native-admin-result-report-kind result))
 
 (definterface fn-native-admin-host-report-kind
   :class ::ideal)
@@ -212,48 +203,30 @@
 
 (definterface fn-native-admin-host-apply
   :class ::program)
-(defun fn-native-admin-host-config-name (generation)
-  (fn-native-admin-config-name generation))
 
 (definterface fn-native-admin-host-config-name
   :class ::ideal)
-(defun fn-native-admin-host-clock-observation (monotonic wall has-wall)
-  (fn-native-admin-clock-observation monotonic wall has-wall))
 
 (definterface fn-native-admin-host-clock-observation
   :class ::ideal)
-(defun fn-native-admin-host-clock-status (result)
-  (fn-native-admin-clock-status result))
 
 (definterface fn-native-admin-host-clock-status
   :class ::ideal)
-(defun fn-native-admin-host-clock-stamp (result)
-  (fn-native-admin-clock-stamp result))
 
 (definterface fn-native-admin-host-clock-stamp
   :class ::ideal)
-(defun fn-native-admin-host-publication-status (result)
-  (fn-native-admin-publication-status result))
 
 (definterface fn-native-admin-host-publication-status
   :class ::ideal)
-(defun fn-native-admin-host-publication-reason (result)
-  (fn-native-admin-publication-reason result))
 
 (definterface fn-native-admin-host-publication-reason
   :class ::ideal)
-(defun fn-native-admin-host-publication-generation (result)
-  (fn-native-admin-publication-generation result))
 
 (definterface fn-native-admin-host-publication-generation
   :class ::ideal)
-(defun fn-native-admin-host-publication-name (result)
-  (fn-native-admin-publication-name result))
 
 (definterface fn-native-admin-host-publication-name
   :class ::ideal)
-(defun fn-native-admin-host-publication-jpub (result)
-  (fn-native-admin-publication-jpub result))
 
 (definterface fn-native-admin-host-publication-jpub
   :class ::ideal)
@@ -272,13 +245,9 @@
 
 (definterface fn-acct-host-salt-octets
   :class ::ideal)
-(defun fn-acct-host-code-text (entropy) (fn-acct-code-text entropy))
 
 (definterface fn-acct-host-code-text
   :class ::ideal)
-(defun fn-acct-host-code-digest-text (code-octets)
-  (declare (xargs :guard (fn-cbor-octet-listp code-octets) :verify-guards nil))
-  (fn-acct-code-digest-text code-octets))
 
 (definterface fn-acct-host-code-digest-text
   :class ::ideal

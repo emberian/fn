@@ -25,6 +25,13 @@ the same forms with the ledger's non-evaluating reader and GENERATES:
   world says about each entry (its direct theorems, the ones about its
   callers or callees, and nothing), from a dump of the world, not a name match;
 
+* the host's entry wrappers (tools/interface_entries.py): one certified book per host
+  file, books/entries-<stem>.lisp, from the rows of tools/entry_wrappers.json -- the
+  one-call aliases of book functions the interface rows declare, no longer written
+  twice -- and its root books/entries; --check also refuses a host file that keeps a
+  one-call wrapper the call closure shows is an alias or unwired
+  (tools/host_wrappers.py);
+
 and hands tools/harness_check.py its exempt formals (`entry_kind_exempt')
 and its direct applications (`entry_direct_allowed'), which were hand lists
 there.
@@ -76,7 +83,7 @@ the source cannot decide, are ACL2's to confirm, at image build
 
     python3 tools/interface_emit.py            # report
     python3 tools/interface_emit.py --check    # exit 1 on any finding (make check)
-    python3 tools/interface_emit.py --write    # regenerate the two files
+    python3 tools/interface_emit.py --write    # regenerate the generated files
 """
 from __future__ import annotations
 
@@ -89,7 +96,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools import interfaces_relocate, ledger  # noqa: E402
+from tools import host_wrappers, interface_entries, interfaces_relocate, ledger  # noqa: E402
 
 SOURCES = ("host/interfaces.lisp",)
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
@@ -1045,7 +1052,13 @@ def main(argv=None) -> int:
     if args.write:
         ROOTS_SH.write_text(render_roots(decls))
         RAW_DECLARATIONS.write_text(render_raw_declarations(decls, carried_rows(), dtn_host_files()))
+        interface_entries.write()
     problems = findings(decls, reading)
+    # the entry wrappers are generated from tools/entry_wrappers.json, and no host file
+    # keeps a one-call wrapper the call closure shows is an alias or unwired
+    problems += interface_entries.findings()
+    if args.check:
+        problems += host_wrappers.findings()
     # the raw host reaches a book function only through the dispatcher
     # (tools/raw_dispatch_rule.py: r28-F1, by construction)
     from tools import raw_dispatch_rule

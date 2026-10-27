@@ -19,8 +19,6 @@
 (defconstant +fnn-pinv-token-octets+ 16)
 (defconstant +fnn-pinv-max-token-octets+ 64)
 
-(defun fnn-pinv-path (directory name) (fnn-join directory name))
-
 (defun fnn-pinv-read-document (path)
   (fnn-octet-list
    (fnn-read-regular-bounded path (fnn-core 'fn-hsig-host-max-received-octets))))
@@ -28,19 +26,19 @@
 (defun fnn-pinv-public-keys (directory)
   "The key set (Ed25519 and ML-DSA-65 public keys) a key directory holds."
   (list (cons :ed25519 (fnn-hsig-command-read-exact
-                        (fnn-pinv-path directory "ed-public.bin") 32
+                        (fnn-join directory "ed-public.bin") 32
                         "Ed25519 public key"))
         (cons :ml-dsa-65 (coerce (fnn-hsig-ml-dsa-65-public-key
-                                  (fnn-pinv-path directory "ml-public.pem"))
+                                  (fnn-join directory "ml-public.pem"))
                                  'list))))
 
 (defun fnn-pinv-token (directory)
   (fnn-octet-list (fnn-read-regular-bounded
-                   (fnn-pinv-path directory "token.bin")
+                   (fnn-join directory "token.bin")
                    +fnn-pinv-max-token-octets+)))
 
 (defun fnn-pinv-principal (directory)
-  (fnn-hsig-command-read-exact (fnn-pinv-path directory "principal.bin") 32
+  (fnn-hsig-command-read-exact (fnn-join directory "principal.bin") 32
                                "principal"))
 
 ;;; A document this verb writes is a new file, never a replacement: its
@@ -86,11 +84,11 @@ renders the carrier, and the result is checked like any received carrier."
     (unless (and preimage (consp preimage))
       (fnn-refuse "the document is outside the hybrid signing profile"))
     (let* ((ed-secret (fnn-hsig-command-read-exact
-                       (fnn-pinv-path directory "ed-secret.bin") 64
+                       (fnn-join directory "ed-secret.bin") 64
                        "Ed25519 secret key"))
            (ed-signature (fnn-hsig-ed25519-sign (fnn-octets ed-secret) preimage))
            (ml-signature (fnn-hsig-ml-dsa-65-sign
-                          (fnn-pinv-path directory "ml-private.pem") preimage))
+                          (fnn-join directory "ml-private.pem") preimage))
            (signatures (list (cons :ed25519 (fnn-octet-list ed-signature))
                              (cons :ml-dsa-65 (fnn-octet-list ml-signature))))
            (rendered (fnn-core 'fn-hsig-host-render-carrier
@@ -308,13 +306,11 @@ the enrolment follows it, in the quantum that decides the record
 (defun fnn-pinv-status-code (status)
   (fnn-core 'fn-native-control-host-status-exit-code status))
 
-(defun fnn-pinv-text (word) (fnn-ascii-octet-list word))
-
 (defun fnn-pinv-genesis (directory)
   "Write principal.bin: ACL2's genesis identity of the directory's two public
 keys and its token (a fresh CSPRNG token when token.bin is absent)."
-  (let ((token-path (fnn-pinv-path directory "token.bin"))
-        (principal-path (fnn-pinv-path directory "principal.bin")))
+  (let ((token-path (fnn-join directory "token.bin"))
+        (principal-path (fnn-join directory "principal.bin")))
     (unless (probe-file token-path)
       (fnn-pinv-write-new token-path
                           (fnn-octet-list
@@ -395,7 +391,7 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
         (ml (fnn-pinv-ml-dsa-65-keypair)))
     (fnn-mkdir directory #o700)
     (flet ((put (name octets)
-             (fnn-write-staged (fnn-pinv-path directory name) octets)))
+             (fnn-write-staged (fnn-join directory name) octets)))
       (put "ed-public.bin" (car ed))
       (put "ed-secret.bin" (cdr ed))
       (put "ml-private.pem" (car ml))
@@ -415,10 +411,10 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
            (source (fnn-core 'fn-pinv-host-invitation-source
                              (fnn-owner-wall-milliseconds) nonce principal
                              (fnn-pinv-token directory) keys
-                             (fnn-pinv-text name) (fnn-pinv-text path)
-                             (fnn-pinv-text groups) (fnn-pinv-text host)
-                             (fnn-pinv-text port) (fnn-pinv-text inviter-host)
-                             (fnn-pinv-text inviter-port))))
+                             (fnn-ascii-octet-list name) (fnn-ascii-octet-list path)
+                             (fnn-ascii-octet-list groups) (fnn-ascii-octet-list host)
+                             (fnn-ascii-octet-list port) (fnn-ascii-octet-list inviter-host)
+                             (fnn-ascii-octet-list inviter-port))))
       (unless (and (fnn-octet-list-p source) (consp source))
         (fnn-refuse "ACL2 refused the invitation's words"))
       (let ((signed (fnn-pinv-sign directory source principal keys)))
@@ -461,8 +457,8 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
                                       (fnn-pinv-principal directory)
                                       (fnn-pinv-token directory)
                                       (fnn-pinv-public-keys directory)
-                                      (fnn-pinv-text path)
-                                      (fnn-pinv-text reachable)))))
+                                      (fnn-ascii-octet-list path)
+                                      (fnn-ascii-octet-list reachable)))))
           (unless (and (fnn-octet-list-p source) (consp source))
             (fnn-refuse "ACL2 refused the acceptance's words"))
           (let ((signed (fnn-pinv-sign directory source

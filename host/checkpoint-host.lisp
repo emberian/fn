@@ -39,44 +39,22 @@
 (definterface fn-store-checkpoint-clone-fence-name
   :class ::program)
 
-(defun fn-store-checkpoint-clone-fence-read-bound ()
-  (declare (xargs :mode :program))
-  (fn-cpa-clone-fence-read-bound))
+(include-book "../books/entries-checkpoint-host")
 
 (definterface fn-store-checkpoint-clone-fence-read-bound
   :class ::program)
 
-(defun fn-store-checkpoint-clone-max-depth ()
-  (declare (xargs :mode :program))
-  (fn-cpa-clone-max-depth))
-
 (definterface fn-store-checkpoint-clone-max-depth
   :class ::program)
-
-(defun fn-store-checkpoint-clone-max-entries ()
-  (declare (xargs :mode :program))
-  (fn-cpa-clone-max-entries))
 
 (definterface fn-store-checkpoint-clone-max-entries
   :class ::program)
 
-(defun fn-store-checkpoint-clone-max-bytes ()
-  (declare (xargs :mode :program))
-  (fn-cpa-clone-max-bytes))
-
 (definterface fn-store-checkpoint-clone-max-bytes
   :class ::program)
 
-(defun fn-store-checkpoint-clone-path-bound ()
-  (declare (xargs :mode :program))
-  (fn-cpa-clone-path-bound))
-
 (definterface fn-store-checkpoint-clone-path-bound
   :class ::program)
-
-(defun fn-store-checkpoint-clone-input-pathp (path)
-  (declare (xargs :mode :program))
-  (fn-cpa-clone-input-pathp path))
 
 (definterface fn-store-checkpoint-clone-input-pathp
   :class ::program)
@@ -128,17 +106,8 @@
 (definterface fn-store-reclaim-ctx-classes
   :class ::program)
 
-(defun fn-store-reclaim-init ()
-  (declare (xargs :mode :program))
-  (fn-rcls-init))
-
 (definterface fn-store-reclaim-init
   :class ::program)
-
-(defun fn-store-reclaim-step (acc octets ctx)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-rcls-step acc octets ctx))
 
 (definterface fn-store-reclaim-step
   :class ::program
@@ -147,10 +116,6 @@
 ;; The streamed reclaim over the record log (books/store-log-reclaim.lisp
 ;; fn-lgr-decide-stream, over compact-arena's fold fn-rcls-*): one record's
 ;; rewrite, and the decision over the fold.
-(defun fn-store-log-reclaim-event (octets ctx)
-  (declare (xargs :mode :program
-                  :guard (fn-cbor-octet-listp octets)))
-  (fn-rclp-event octets ctx))
 
 (definterface fn-store-log-reclaim-event
   :class ::program

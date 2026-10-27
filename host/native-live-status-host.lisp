@@ -218,16 +218,10 @@
                   :guard (fn-cbor-octet-listp octets)))
   (equal (car (fn-nlp-request-decode octets)) :page))
 
-(defun fn-native-live-pages-host-pagedp (kind)
-  (declare (xargs :mode :program))
-  (fn-nlp-pagedp kind))
+(include-book "../books/entries-native-live-status-host")
 
 (definterface fn-native-live-pages-host-pagedp
   :class ::program)
-
-(defun fn-native-live-pages-host-request-encode (kind version page)
-  (declare (xargs :mode :program))
-  (fn-nlp-request-encode kind version page))
 
 (definterface fn-native-live-pages-host-request-encode
   :class ::program)
@@ -262,10 +256,6 @@
                   :guard (fn-cbor-octet-listp octets)))
   (equal (car (fn-cev-any-request-decode octets)) :live-status))
 
-(defun fn-native-live-status-host-request-encode (kind offset)
-  (declare (xargs :mode :program))
-  (fn-cev-any-request-encode kind offset))
-
 (definterface fn-native-live-status-host-request-encode
   :class ::program)
 
@@ -280,19 +270,12 @@
 (definterface fn-native-live-status-host-client-step-chunks
   :class ::program)
 
-(defun fn-native-live-status-host-route (socket-present outcome)
-  (declare (xargs :mode :program))
-  (fn-nls-route socket-present outcome))
-
 (definterface fn-native-live-status-host-route
   :class ::program)
 
 ; Row S3d: the exit the client reads back from the `store inspect --group'
 ; report it printed (books/owner-inspect-group.lisp fn-oig-report-exit): 0 for
 ; the members and their lines, 1 for the refusal by name.
-(defun fn-native-live-status-host-inspect-group-exit (octets)
-  (declare (xargs :mode :program))
-  (fn-oig-report-exit octets))
 
 (definterface fn-native-live-status-host-inspect-group-exit
   :class ::program
@@ -344,51 +327,23 @@
   (fn-nh-not-running-report profile (f-get-global 'fn-store-sn state)
                             (f-get-global 'fn-store-cfg state) min last))
 
-(defun fn-native-health-host-not-running-lines (last)
-  (declare (xargs :mode :program))
-  (fn-nh-not-running-lines last))
-
 (definterface fn-native-health-host-not-running-lines
   :class ::program)
-
-(defun fn-native-health-host-log-tail-octets ()
-  (declare (xargs :mode :program))
-  (fn-nh-log-tail-octets))
 
 (definterface fn-native-health-host-log-tail-octets
   :class ::program)
 
-(defun fn-native-health-host-last-run (tail)
-  (declare (xargs :mode :program))
-  (fn-nh-last-run tail))
-
 (definterface fn-native-health-host-last-run
   :class ::program)
-
-(defun fn-native-health-host-run-started-line ()
-  (declare (xargs :mode :program))
-  (fn-nh-run-started-line))
 
 (definterface fn-native-health-host-run-started-line
   :class ::program)
 
-(defun fn-native-health-host-run-opened-line (ms)
-  (declare (xargs :mode :program))
-  (fn-nh-run-opened-line ms))
-
 (definterface fn-native-health-host-run-opened-line
   :class ::program)
 
-(defun fn-native-health-host-run-stopped-line (code reason)
-  (declare (xargs :mode :program))
-  (fn-nh-run-stopped-line code reason))
-
 (definterface fn-native-health-host-run-stopped-line
   :class ::program)
-
-(defun fn-native-health-host-exit (octets)
-  (declare (xargs :mode :program))
-  (fn-nh-report-exit octets))
 
 (definterface fn-native-health-host-exit
   :class :program

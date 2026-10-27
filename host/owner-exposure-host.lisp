@@ -12,9 +12,7 @@
 (include-book "../books/owner-connection-callbacks")
 (include-book "../books/public-exposure-reply")
 
-(defun fn-owner-exposure-limits (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-owner-callback-exposure-limits state))
+(include-book "../books/entries-owner-exposure-host")
 
 ;; After a served step (fn-owner-chunk-span-at in host/owner-host.lisp):
 ;; `fn-owner-exposure-close' holds the 400 the host appends before it closes,

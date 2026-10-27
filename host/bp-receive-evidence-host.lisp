@@ -4,7 +4,7 @@
 (include-book "../books/bp-evidence-host-names")
 (include-book "../books/definterface")
 
-(defun fn-bpn-host-evidence-max-entries () (fn-bpn-evidence-max-entries))
+(include-book "../books/entries-bp-receive-evidence-host")
 
 (definterface fn-bpn-host-evidence-max-entries
   :class ::ideal)
@@ -12,8 +12,6 @@
 
 (definterface fn-bpn-host-evidence-directory-name
   :class ::ideal)
-(defun fn-bpn-host-evidence-recover (entries)
-  (fn-bpn-evidence-recover entries))
 
 (definterface fn-bpn-host-evidence-recover
   :class ::ideal)
@@ -52,28 +50,18 @@
   ; PRF-1007 (fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity)
   :class ::ideal
   :delegates fn-bpn-evidence-operationp)
-(defun fn-bpn-host-evidence-operation-wire-name (operation)
-  (fn-bpn-evidence-operation-wire-name operation))
 
 (definterface fn-bpn-host-evidence-operation-wire-name
   :class ::ideal)
-(defun fn-bpn-host-evidence-operation-result-name (operation)
-  (fn-bpn-evidence-operation-result-name operation))
 
 (definterface fn-bpn-host-evidence-operation-result-name
   :class ::ideal)
-(defun fn-bpn-host-evidence-operation-wire-publication (operation)
-  (fn-bpn-evidence-operation-wire-publication operation))
 
 (definterface fn-bpn-host-evidence-operation-wire-publication
   :class ::ideal)
-(defun fn-bpn-host-evidence-operation-result-publication (operation)
-  (fn-bpn-evidence-operation-result-publication operation))
 
 (definterface fn-bpn-host-evidence-operation-result-publication
   :class ::ideal)
-(defun fn-bpn-host-evidence-operation-successor (operation)
-  (fn-bpn-evidence-operation-successor operation))
 
 (definterface fn-bpn-host-evidence-operation-successor
   :class ::ideal)

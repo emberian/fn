@@ -32,8 +32,7 @@
 ; Directory names and lstat kinds in; a complete recovery plan out.  The raw
 ; host validates the whole plan before unlinking anything, then performs only
 ; the :remove actions selected here.
-(defun fn-tcl-host-spool-recovery-plan (entries)
-  (fn-tcl-spool-recovery-plan entries))
+(include-book "../books/entries-tcpcl-host")
 
 (definterface fn-tcl-host-spool-recovery-plan
   :class ::ideal)
@@ -50,9 +49,6 @@
 
 (definterface fn-tcl-host-params
   :class ::ideal)
-
-(defun fn-tcl-host-paramsp (p)
-  (fn-tcl-paramsp p))
 
 (definterface fn-tcl-host-paramsp
   :class ::ideal)
@@ -151,18 +147,12 @@
 ; -----------------------------------------------------------------------------
 ; Reading a result out.  The host asks; it does not compute.
 
-(defun fn-tcl-host-encode (m)
-  (fn-tcl-encode m))
-
 (definterface fn-tcl-host-encode
   ; an exact alias; the callee's keystones are PRF-1006 (the per-kind
   ; fn-tcl-decode-message-of-encode-* round trips and
   ; fn-tcl-accepted-message-is-canonical)
   :class ::ideal
   :delegates fn-tcl-encode)
-
-(defun fn-tcl-host-phase (s)
-  (fn-tcl-session-phase s))
 
 (definterface fn-tcl-host-phase
   :class ::ideal)
@@ -268,8 +258,6 @@
 
 ; Concrete framing defers the existing codec until a complete frame or its
 ; extension prefix. These observations select no alternate protocol policy.
-(defun fn-tcl-host-segment-mru (s)
- (declare (xargs :guard t)) (fn-tcl-segment-mru s))
 (verify-guards fn-tcl-host-segment-mru)
 
 (definterface fn-tcl-host-segment-mru :class :common-lisp-compliant)

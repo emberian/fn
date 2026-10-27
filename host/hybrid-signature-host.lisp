@@ -10,9 +10,7 @@
 (include-book "../books/definterface")
 (include-book "../books/store-node")
 
-(defun fn-hsig-host-received-carrier-plan (received)
-  (declare (xargs :mode :program))
-  (fn-hc-received-plan received))
+(include-book "../books/entries-hybrid-signature-host")
 
 (definterface fn-hsig-host-received-carrier-plan
   :class ::program)
@@ -70,10 +68,6 @@
 (definterface fn-hsig-host-max-received-octets
   :class ::program)
 
-(defun fn-hsig-host-authored-source-id (source)
-  (declare (xargs :mode :program))
-  (fn-hsig-authored-source-id source))
-
 (definterface fn-hsig-host-authored-source-id
   :class ::program)
 
@@ -86,20 +80,8 @@
 (definterface fn-hsig-host-authorize
   :class ::program)
 
-(defun fn-hl-host-enroll-event
-    (sequence txid generation keyring-generation principal keys snapshots)
-  (declare (xargs :mode :program))
-  (fn-hl-enroll-event sequence txid generation keyring-generation
-                      principal keys snapshots))
-
 (definterface fn-hl-host-enroll-event
   :class ::program)
-
-(defun fn-hl-host-revoke-event
-    (sequence txid generation keyring-generation principal snapshots)
-  (declare (xargs :mode :program))
-  (fn-hl-revoke-event sequence txid generation keyring-generation
-                      principal snapshots))
 
 (definterface fn-hl-host-revoke-event
   :class ::program)
@@ -119,10 +101,6 @@
 
 (definterface fn-hsig-host-keyring-snapshot-octets
   :class ::program)
-
-(defun fn-hsig-host-authored-source-fields (source)
-  (declare (xargs :mode :program))
-  (fn-hsig-authored-source-fields source))
 
 (definterface fn-hsig-host-authored-source-fields
   :class ::program)

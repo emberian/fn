@@ -36,8 +36,7 @@
 ; complete scheme-specific part, "//node/demux", which is what remains after
 ; the four octets of "dtn:".
 
-(defun fn-bpn-host-eid (uri)
-  (fn-bpaj-raw-announced-eid uri))
+(include-book "../books/entries-bp-node-host")
 
 (definterface fn-bpn-host-eid
   :class ::ideal)
@@ -124,9 +123,6 @@
 ; fn-bpn-host-sequence-reservation-frame are books/bp-node-host-sequence.lisp's
 ; (guard-verified, with the keystone PRF-983).
 
-(defun fn-bpn-host-sequence-frame-limit ()
-  (fn-bpn-sequence-frame-limit))
-
 (definterface fn-bpn-host-sequence-frame-limit
   :class ::ideal)
 
@@ -138,11 +134,6 @@
 ; fn-bpn-host-authored-wire-name is books/bp-node-host-sequence.lisp's
 ; (guard-verified, with the keystone PRF-984).
 
-(defun fn-bpn-host-authored-wire-authorize
-  (config peer adu reservation obs lock-owned final-absent)
-  (fn-bpn-authored-wire-authorize
-   config peer adu reservation obs lock-owned final-absent))
-
 (definterface fn-bpn-host-authored-wire-authorize
   :class ::ideal
   :delegates fn-bpn-authored-wire-authorize)
@@ -152,9 +143,6 @@
 
 (definterface fn-bpn-host-authored-wire-operationp
   :class ::ideal)
-
-(defun fn-bpn-host-authored-wire-operation-label (operation)
-  (fn-bpn-authored-wire-operation-label operation))
 
 (definterface fn-bpn-host-authored-wire-operation-label
   :class ::ideal)
@@ -166,14 +154,8 @@
 (definterface fn-bpn-host-authored-wire-operation-name
   :class ::ideal)
 
-(defun fn-bpn-host-authored-wire-operation-wire (operation)
-  (fn-bpn-authored-wire-operation-wire operation))
-
 (definterface fn-bpn-host-authored-wire-operation-wire
   :class ::ideal)
-
-(defun fn-bpn-host-authored-wire-operation-publication (operation)
-  (fn-bpn-authored-wire-operation-publication operation))
 
 (definterface fn-bpn-host-authored-wire-operation-publication
   :class ::ideal)

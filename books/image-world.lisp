@@ -7,7 +7,7 @@
 ; and then turns the compiler off, so each compiled file of the image loads
 ; once: a top-level include-book reloads its whole closure, and every load
 ; of a constrained stub takes a TLS index SBCL never frees (world.py).
-; It is the thin end of a chain of 3 links (world.py CHAIN): the slices
-; of the include lines are books/image-world-part-1 .. -part-3, in this order.
+; It is the thin end of a chain of 4 links (world.py CHAIN): the slices
+; of the include lines are books/image-world-part-1 .. -part-4, in this order.
 (in-package "ACL2")
-(include-book "image-world-part-3")
+(include-book "image-world-part-4")
