@@ -121,7 +121,8 @@
 # --image-acl2 PATH (the ACL2 wrapper the IMAGES are built with; certification
 # keeps the toolchain's.  Default /tank/fn/toolchains/w28/acl2-literal-4g-tls64k,
 # the w28 launcher at --tls-limit 65536; use the toolchain's own path for 16384),
-# --jobs N (modules run N at a time against the one image set, default 1:
+# --jobs N|auto (modules run N at a time against the one image set, default 1;
+# auto takes at most 3 and keeps the sum of their MemoryMax limits within 88G:
 # each is its own process, its own MemoryMax scope and its own ports; a
 # group of 20 modules at 4 jobs on hbox takes about a quarter of the serial
 # time), --certify-jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
@@ -526,7 +527,7 @@ while [ $# -gt 0 ]; do
         --mem) MEM=$2; shift 2 ;;
         --allow-certify) ALLOW_CERTIFY=--allow-certify; shift ;;
         --jobs)
-            case $2 in ''|*[!0-9]*|0) echo "hbox_native: --jobs takes a positive integer" >&2; exit 2 ;; esac
+            case $2 in auto) ;; ''|*[!0-9]*|0) echo "hbox_native: --jobs takes auto or a positive integer" >&2; exit 2 ;; esac
             MODULE_JOBS=$2; shift 2 ;;
         --certify-jobs) JOBS=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
@@ -666,6 +667,9 @@ if [ -n "$MEM" ]; then
     PLAN=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-plan --memory-override "$MEM") || exit 2
 else
     PLAN=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-plan) || exit 2
+fi
+if [ "$MODULE_JOBS" = auto ]; then
+    MODULE_JOBS=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-jobs) || exit 2
 fi
 if [ "$REV" = . ]; then
     # The image's declared source: HEAD, marked +dirty for uncommitted edits.
