@@ -31,7 +31,7 @@ or on persvati; the closure certify is the integrator's, once per batch.
 
 A pass shows: each event holds in ACL2's logic, executed by ACL2's evaluator,
 over the definitions at these bytes.  It does not show that the host calls
-those definitions (`reach_check`), that the image's compiled code behaves the
+those definitions, that the image's compiled code behaves the
 same, or anything about I/O.  A test book about a function no host path calls
 is deleted, not kept as coverage.
 
@@ -237,8 +237,8 @@ through the farm).  Neither is a gate; `FORCE=1` and a READY stay live runs.
 from `<rev>` (committed, uncommitted and untracked files) can reach: the steps
 whose last traced run, passing or failing, read, stat'ed or listed a changed
 path, ran a git command the change can move, or could not be traced (ACL2, a
-shell child).  The rest print `skipped`, with the store's last verdict beside it when that was red (`last verdict exit 1: ...`; the row's own exit stays 0); a docs-only diff skips host_check,
-reach_check and green_check.  A step this tree has never run is not skipped, so
+shell child).  The rest print `skipped`, with the store's last verdict beside it when that was red (`last verdict exit 1: ...`; the row's own exit stays 0); a docs-only diff skips host_check
+and green_check.  A step this tree has never run is not skipped, so
 the first run in a fresh worktree is a full one.  `CHECK_BASELINE=<table>`
 (`--baseline`) reads a step table such as
 `build/coordinator/check-baseline-<sha>.txt` (or a remote_check log holding

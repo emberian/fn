@@ -268,7 +268,7 @@ class MergeGateTests(Fixture):
 
     def test_a_changed_book_no_root_reaches_is_unaudited_and_not_green(self):
         report = self.tree()
-        answer = green_check.gate(report, ["tests/acl2/orphan-tests"], {}, unhooked_books={})
+        answer = green_check.gate(report, ["tests/acl2/orphan-tests"], {})
         self.assertEqual(answer["rows"][0]["verdict"], "unaudited")
         self.assertEqual(answer["not_green"], ["tests/acl2/orphan-tests"])
 

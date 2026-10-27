@@ -20,9 +20,6 @@ STEPS = (
     ("protocol_emit", [sys.executable, "tools/protocol_emit.py", "--wire", "--check"]),
     ("host_check", [sys.executable, "tools/host_check.py"]),
     ("system_books", [sys.executable, "tools/system_books.py", "check"]),
-    # its needs --world events are NOT RUN without the generating books'
-    # current certificates, which it reads from the box's cache
-    ("reach_check", [sys.executable, "tools/reach_check.py", "--summary", "--strict"]),
 )
 
 

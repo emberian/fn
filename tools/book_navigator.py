@@ -90,7 +90,7 @@ def build(root=ROOT):
     known=set(lisp)
     catalog=load_json(root,'docs/books/catalog.json',{})
     warnings=[]; root_records=[]; edges={}; nonlocal_edges={}; analyses={}
-    inputs=set(lisp)|{'Makefile','docs/prefixes.md','docs/books/catalog.json','planning/proofs.json','planning/proof-events.json'}
+    inputs=set(lisp)|{'Makefile','docs/prefixes.md','docs/books/catalog.json'}
     def add_root(book,category,source,line=0,reason=''):
         if book in known:
             root_records.append(dict(book=book,category=category,source=source,line=line,reason=reason))
@@ -184,22 +184,6 @@ def build(root=ROOT):
         # Proof references retain non-executable/local support. Make roots are
         # separately shown; listing a book for certification is not usage.
         proof_ids=collections.defaultdict(set)
-        event_map=collections.defaultdict(set)
-        for p,a in analyses.items():
-            for theorem in a.theorems: event_map[theorem.name].add(p)
-        curated=load_json(root,'planning/proof-events.json',{'targets':[]})
-        for target in curated.get('targets',[]):
-            for event in target.get('events',[]):
-                if not isinstance(event,dict): continue
-                name=event.get('name','')
-                for p in event_map.get(name,()):
-                    if p in canonical:
-                        proof_ids[p].add(target['id']);add_root(p,'proof','planning/proof-events.json',reason=target['id']+': '+name)
-                if name and name not in event_map: warnings.append(dict(source='planning/proof-events.json',kind='unresolved-proof-event',target=name,proof=target['id']))
-        for target in load_json(root,'planning/proofs.json',{'proofs':[]}).get('proofs',[]):
-            for p in target.get('evidence',[]):
-                if p in canonical:
-                    proof_ids[p].add(target['id']);add_root(p,'proof','planning/proofs.json',reason=target['id']+' evidence')
         # Literal book paths in tracked scripts, scenarios and generated root
         # lists. Lexical references are wider than execution and are labeled.
         path_pattern=re.compile(r'(?<![\w/-])(books/[A-Za-z0-9_./-]+?)(?:\.lisp|\.cert|(?=[\s\x27"\\)]))')

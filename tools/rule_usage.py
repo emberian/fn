@@ -31,8 +31,7 @@ book B is
               source names it (an `in-theory`, a `:use` in a `local` proof the
               log did not reach, a `deftheory`): making it local would break
               that source, so it is not a candidate;
-  registered  when planning/proof-events.json, planning/proofs.json, host/,
-              tools/ or tests/*.py name it (the registries key on names);
+  registered  when host/, tools/ or tests/*.py name it;
   unused      otherwise: no dependent's proof applied it and nothing outside
               the book names it.  A candidate to make `local` or to move to a
               leaf book; certification is the check, because a rule can be
@@ -250,9 +249,7 @@ class Map:
         """Names the registries, host code, tools and Python tests mention."""
         if self._external is None:
             names: set[str] = set()
-            paths = [self.root / "planning" / "proof-events.json",
-                     self.root / "planning" / "proofs.json"]
-            paths += sorted((self.root / "host").rglob("*.lisp"))
+            paths = sorted((self.root / "host").rglob("*.lisp"))
             paths += sorted((self.root / "tools").glob("*.py"))
             paths += sorted((self.root / "tests").glob("*.py"))
             for path in paths:

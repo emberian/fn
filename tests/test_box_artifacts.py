@@ -1,8 +1,6 @@
-"""The box step's artifacts and the teeth manifest are read from build/, and a
-committed copy that reappears is refused by name (coordinator ruling
-2026-10-09 19:50 on the registers DECISION): tools/box_artifacts.py for
-specs/wire-grammar.json, tools/keystone_emit.py
-for planning/teeth-obligations.json."""
+"""The box step's artifacts are read from build/, and a committed copy that
+reappears is refused by name (coordinator ruling 2026-10-09 19:50 on the
+registers DECISION): tools/box_artifacts.py for specs/wire-grammar.json."""
 from __future__ import annotations
 
 import contextlib
@@ -20,7 +18,6 @@ from tests.scratch_git import run as scratch_git
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import box_artifacts  # noqa: E402
-import keystone_emit  # noqa: E402
 
 
 def git(root: Path, *args: str) -> str:
@@ -156,33 +153,6 @@ class ScratchGitSigning(unittest.TestCase):
                 probe = scratch_git(["git", "-C", str(repo), "config", "--get",
                                      "fixture.orphan"], capture_output=True)
                 self.assertEqual(probe.returncode, 1)
-
-
-
-class TeethManifest(unittest.TestCase):
-    def test_manifest_lives_under_build(self):
-        self.assertEqual(keystone_emit.MANIFEST, ROOT / "build" / "teeth-obligations.json")
-        self.assertEqual(keystone_emit.COMMITTED, ROOT / "planning" / "teeth-obligations.json")
-
-    def test_committed_manifest_is_a_finding(self):
-        base = {"entries": []}
-        self.assertEqual(keystone_emit.manifest_findings({}, base, "", None), [])
-        found = keystone_emit.manifest_findings({}, base, "", {"entries": []})
-        self.assertEqual(len(found), 1)
-        self.assertIn("planning/teeth-obligations.json is committed again", found[0])
-
-    def test_base_record_may_carry_its_entries(self):
-        entries = [{"name": "fn-k", "class": "generated"}]
-        with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp) / "teeth-base.json"
-            base.write_text(json.dumps({"revision": "0" * 40, "entries": entries}))
-            saved = keystone_emit.BASE
-            keystone_emit.BASE = base
-            try:
-                manifest, revision = keystone_emit.base_manifest()
-            finally:
-                keystone_emit.BASE = saved
-        self.assertEqual((manifest, revision), ({"entries": entries}, "0" * 40))
 
 
 if __name__ == "__main__":

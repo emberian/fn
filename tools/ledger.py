@@ -1,48 +1,22 @@
 #!/usr/bin/env python3
-"""Generate fn's assurance ledger from the books, and check the proof registry.
+"""The Lisp reader and tree analyser the tools share: books, test books, host files.
 
-Counts in fn are generated, never typed.  This tool reads ``books/*.lisp``,
-``tests/acl2/*.lisp`` and the ``ld``ed host files with the s-expression reader
-in this file.  It is not the
-Lisp reader: nothing is interned, evaluated, or macro-expanded, so reading a
-book cannot run a book.  The books are our own source, but the rule that
-parsing never invokes the reader holds for them too.
+Nothing is interned, evaluated or macro-expanded: reading a book cannot run a
+book.  ``Reader`` and ``read_forms`` read s-expressions; ``head``,
+``keyword_plist`` and ``conjuncts`` take them apart; ``generated_expansion``
+mirrors the generators (def-loop, defrecord, defprotocol, defteeth, ...);
+``analyze_book`` and ``analyze_host`` give a ``Book`` or ``HostFile`` per
+file; ``makefile_roots`` and ``root_closure`` read the Makefile's
+certification roots; ``load_tree`` is the whole analysed ``Tree``, persisted
+under build/cache/ledger-tree by its inputs' digest (``FN_LEDGER_FORMS_CACHE``
+names the per-text forms cache a box shares between worktrees).
 
-What it reports per book: every ``defthm``, ``defun``, ``verify-guards``,
-``must-fail``, ``assert-event`` and ``include-book``; the guard status of every
-function; the theorems whose *shape* disqualifies them as registry evidence;
-and, for the host files, every name they use that nothing they load defines.
-
-What it checks (``--check``): that every theorem cited by
-``planning/proof-events.json`` exists, is not SUSPECT, and lives in a book
-inside the Makefile root closure; that ``planning/proofs.json`` ``events``
-match the curated map; and that the ledger builds.  ``build/ledger/ledger.json``
-and ``ledger.md`` are views of the tree: written by ``--write``, printed by
-``--stdout``, never committed.  Every row's ``evidence`` list carries an
-``evidence_digest`` stamp written by ``--repoint`` (the one writer of
-evidence lists); ``--check`` refuses a list whose stamp is missing or stale,
-that is, a list edited by hand.
-
-Usage:
-    python3 tools/ledger.py            # report the ledger on stdout
-    python3 tools/ledger.py --write    # regenerate proofs.json events; write build/ledger/*
-    python3 tools/ledger.py --stdout   # print the ledger markdown
-    python3 tools/ledger.py --check    # fail on drift; used by `make check`
-    python3 tools/ledger.py --repoint PRF-N --evidence PATH...   # write a row's evidence list
-    python3 tools/ledger.py --retire PRF-N --why superseded|deferred --to PRF-M|LANDING \\
-        --owner WHO --ruling TEXT [--item ID]     # a row leaves, with its reason
-    python3 tools/ledger.py --restore PRF-N       # a deferred row comes back
-
-A row of ``planning/proofs.json`` leaves only through ``--retire``, which moves
-it and its ``proof-events.json`` target into ``planning/proof-retirements.json``
-with why (superseded by another row, or deferred until a named landing), who
-owns it and who ruled it.  ``--check`` refuses a row the fork point (merge base
-with origin/dev) had that the tree lacks with no retirement row, and a
-retirement row whose id is a row again.
+The proof registry this file once generated and checked (planning/proofs.json,
+proof-events.json, proof-retirements.json; the --check, --write, --repoint,
+--retire and --restore commands) left with the registers on cut/breaking
+(M1-d, 2026-10-17).  OWED.md is the ledger.
 """
-
 from __future__ import annotations
-
 import argparse
 import hashlib
 import json
@@ -54,7 +28,6 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-
 # One module under both names.  `from tools import ledger' (interface_emit,
 # harness_check, check_scaffold, ...) and `import ledger' (green_check,
 # depth_check, ...) made two module objects, so a tree cache entry pickled by
@@ -70,28 +43,7 @@ if __name__ == "tools.ledger":
     else:
         sys.modules["ledger"] = sys.modules[__name__]
     __name__ = "ledger"  # noqa: A001 -- the classes below pickle as ledger.X
-
-
 ROOT = Path(__file__).resolve().parents[1]
-# Generated views: a pure function of the tree, so never committed.  `--write`
-# puts them under build/ (gitignored); `--stdout` prints the markdown.
-LEDGER_JSON = ROOT / "build/ledger/ledger.json"
-LEDGER_MD = ROOT / "build/ledger/ledger.md"
-PROOF_EVENTS = ROOT / "planning/proof-events.json"
-PROOFS = ROOT / "planning/proofs.json"
-# A proofs.json row that leaves: one row per retirement {id, why, to, owner,
-# ruling, item, row, events}, written only by --retire (and removed by
-# --restore).  --check refuses a row the fork point had that this tree lacks
-# with no retirement row: a register row never leaves by a bare drop.
-PROOF_RETIREMENTS = ROOT / "planning/proof-retirements.json"
-RETIRE_REASONS = ("superseded", "deferred")
-
-
-# --------------------------------------------------------------------------
-# s-expression reader
-# --------------------------------------------------------------------------
-
-
 class Sym(str):
     """A symbol.  A Lisp string literal reads as a plain ``str``; this is not."""
 
@@ -101,10 +53,7 @@ class Sym(str):
         return f"Sym({str.__repr__(self)})"
 
 
-DOT = Sym(".")
 DELIMITERS = set("()'\"`,; \t\n\r\f")
-
-
 class ReadError(ValueError):
     """The source is not readable as s-expressions."""
 
@@ -267,14 +216,6 @@ class Reader:
         return number(text) if is_number(text) else Sym(text.lower())
 
 
-# The Common Lisp reader's whitespace[2] characters that end a `;` comment's
-# line or separate tokens.  Exactly these: a character this scanner calls
-# whitespace must be whitespace to ACL2 too, or two sources ACL2 reads
-# differently would scan alike.  (Unicode's wider `isspace` is not safe:
-# a no-break space is a constituent to ACL2.)
-_BLANK = " \t\n\r\f"
-# Terminating macro characters: each ends a token and is a token by itself.
-_TERMINATING = "()'`,"
 # A delimiter run: whitespace, or a `;` comment through its newline.
 _CANONICAL_GAP = re.compile(r"(?:[ \t\n\r\f]+|;[^\n]*(?:\n|\Z))+")
 # One token: a terminating macro character, a string, or a run of
@@ -290,8 +231,6 @@ _BLOCK_MARK = re.compile(r"#\||\|#")
 _CANONICAL_FAST = re.compile(
     r"""("(?:[^"\\]+|\\.)*"|\|(?:[^|\\]+|\\.)*\||\\.)|(?:[ \t\n\r\f]+|;[^\n]*(?:\n|\Z))+""",
     re.DOTALL)
-
-
 def _canonical_piece(match: re.Match) -> str:
     return match.group(1) or " "
 
@@ -352,8 +291,6 @@ def _canonical_slow(source: str) -> str:
 
 
 NUMBER = re.compile(r"[+-]?(?:\d+/\d+|\d*\.\d+(?:[eE][+-]?\d+)?|\d+\.?(?:[eE][+-]?\d+)?)\Z")
-
-
 def is_number(text: str) -> bool:
     return bool(NUMBER.match(text))
 
@@ -385,8 +322,6 @@ def number(text: str) -> object:
 _FORMS_CACHE_MIN = 2048
 _FORMS_MEMO: dict[bytes, list[tuple[object, int]]] = {}
 _FORMS_FORMAT: "str | None" = None
-
-
 def _forms_format() -> str:
     global _FORMS_FORMAT
     if _FORMS_FORMAT is None:
@@ -458,11 +393,6 @@ def _forms_cache_write(directory: Path, name: str, data: bytes) -> None:
 def read_forms(source: str) -> list:
     """Every top-level form of ``source``."""
     return [form for form, _line in Reader(source).top_level()]
-
-
-# --------------------------------------------------------------------------
-# shape helpers
-# --------------------------------------------------------------------------
 
 
 def head(form: object) -> str | None:
@@ -614,13 +544,6 @@ def same_exact(left: object, right: object, _memo: dict | None = None) -> bool:
 
 
 REFLEXIVE = {"equal", "iff", "=", "subsetp", "subsetp-equal", "fn-subsetp"}
-
-
-# --------------------------------------------------------------------------
-# book model
-# --------------------------------------------------------------------------
-
-
 @dataclass
 class Function:
     name: str
@@ -718,8 +641,6 @@ SUPPRESSING = {"must-fail", "must-fail!", "must-fail-checked", "must-succeed", "
                "must-fail-with-error", "must-fail-with-soft-error",
                "must-fail-with-hard-error", "must-not-prove", "must-prove",
                "thm"}
-
-
 def declared(rest: list) -> tuple[bool, str | None]:
     """``(:guard ...)`` presence and the ``:verify-guards`` setting of a defun."""
     has_guard = False
@@ -767,8 +688,6 @@ def program_mode(rest: list) -> bool:
 #     ; teeth: prover-refusal REASON
 # and the ledger and tools/teeth_check.py count such must-fails apart.
 PROVER_REFUSAL = re.compile(r"^\s*;+\s*teeth:\s*prover-refusal\b\s*(.*)$")
-
-
 def prover_refusal_labels(lines: list[str], line: int) -> str | None:
     """The REASON of a `; teeth: prover-refusal REASON' comment in the block
     of comment lines directly above LINE (1-based), or None."""
@@ -804,20 +723,6 @@ def analyze_book(path: Path, relative: str) -> Book:
         if function.name in verified:
             function.verified_by_event = True
     return book
-
-
-# --------------------------------------------------------------------------
-# fn-defrecord
-# --------------------------------------------------------------------------
-#
-# `books/defrecord.lisp` owns the record pattern; this reads its output, the
-# way `Reader` reads ACL2's syntax.  Without it a migrated book loses forty
-# names from `definitions` (the host-names lint then calls every one of them
-# undefined), its recognizers vanish from `disabled_rules` (the
-# include-hygiene lint then warns about every includer), and its guard and
-# theorem counts fall.  Keep the two in step: the macro is proved by
-# `tests/acl2/defrecord-tests.lisp`, and this side is pinned by
-# `tests/test_ledger.py`.
 
 
 def selector_term(index: int, car_fn: str, cdr_fn: str, var: str) -> object:
@@ -1207,18 +1112,6 @@ def defrecord_export_expansion(form: list) -> list:
             [Sym("in-theory"), [Sym("disable"), Sym(theory)]]]
 
 
-# --------------------------------------------------------------------------
-# defkeystone
-# --------------------------------------------------------------------------
-#
-# `(defkeystone NAME TERM . OPTIONS)` (books/defkeystone.lisp) generates a
-# keystone's teeth.  This is its expansion as the ledger sees it, form for
-# form the same as the Lisp `fn-dk-expand`: tests/acl2/defkeystone-tests.lisp
-# pins the Lisp side to one literal expansion and tests/test_ledger.py pins
-# this side to the same literal.  A form the Lisp macro would refuse
-# (`fn-dk-refusal`) expands to nothing here: certification is the authority
-# on the refusal, and a guess at a refused form's events would be a lie.
-
 DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":witness-unguarded", ":instances", ":stobjs", ":stobj-checks", ":breaks",
                  ":mutations", ":corrupt", ":visits", ":allocation", ":must-fail",
                  ":hints"}
@@ -1226,8 +1119,6 @@ DEFKEYSTONE_KEYS = DEFTEETH_KEYS | {":id", ":restates", ":hyps", ":rule-classes"
                                     ":otf-flg"}
 BOUND_SUFFIX = {":visits": "-visits-", ":allocation": "-allocation-"}
 EXEMPTIONS = {":not-applicable", ":deferred"}
-
-
 def _dk_bindingsp(x: object) -> bool:
     if not isinstance(x, list):
         return False
@@ -1763,36 +1654,6 @@ def defkeystone_expansion(form: list) -> list:
     return [[Sym("progn")] + events]
 
 
-def defkeystone_make_event(form: list) -> list | None:
-    """The literal `fn-dk-expand` emits for a defkeystone form: the defthm,
-    the restates check and the ``(make-event (fn-dt-expand 'NAME 'defkeystone
-    'SPEC state))`` that binds the teeth to the world.  For the pinned-literal
-    test; `defkeystone_expansion` is what the tools read."""
-    parts = defkeystone_parts(form)
-    if parts is None:
-        return None
-    expansion = defkeystone_expansion(form)[0]
-    head_events = expansion[1:2 + (parts["restates"] is not None)]
-    spec: list = []
-    for key, value in defkeystone_spec(form).items():
-        spec += [Sym(key), value]
-    return [Sym("progn")] + head_events + [
-        [Sym("make-event"), [Sym("fn-dt-expand"), _dk_quote(parts["name"]),
-                             _dk_quote(Sym("defkeystone")), _dk_quote(spec), Sym("state")]]]
-
-
-
-# --------------------------------------------------------------------------
-# def-carried-view, def-carried-reader, def-keyset-check
-# --------------------------------------------------------------------------
-#
-# books/def-carried-view.lisp and books/def-keyset-check.lisp own these
-# generators; the ledger reads their output the way `def_loop_expansion`
-# reads def-loop's: the definitions (names, formals, a faithful body) and
-# every exported theorem's statement, proof hints and table rows omitted.
-# A form the Lisp macro refuses on its shape expands to nothing.
-
-
 def _gen_sym(*parts: object) -> Sym:
     return Sym("".join(str(part) for part in parts))
 
@@ -1836,10 +1697,6 @@ def _gen_defun(name: Sym, formals: list, body: object, guard: object = Sym("t"),
     if stobjs is not None:
         xargs += [Sym(":stobjs"), stobjs]
     return [Sym("defun"), name, formals, [Sym("declare"), xargs], body]
-
-
-def _gen_implies(hyps: list, concl: object) -> object:
-    return _dk_implies(hyps, concl)
 
 
 def def_carried_view_parts(form: list) -> dict | None:
@@ -2152,7 +2009,6 @@ def def_keyset_check_expansion(form: list) -> list:
     return events
 
 
-
 def def_cursor_batch_expansion(form: list) -> list:
     """Mirror exported events of books/def-cursor-batch, without evaluating Lisp.
 
@@ -2346,8 +2202,6 @@ GENERATOR_EXPANSIONS = {
     "def-carried-reader": def_carried_reader_expansion,
     "def-keyset-check": def_keyset_check_expansion,
 }
-
-
 def generated_expansion(form: object) -> list | None:
     """Shared, non-evaluating generator dispatch; None means not mirrored.
 
@@ -2524,11 +2378,6 @@ def record(book: Book, form: object, line: int, *, local: bool,
             and isinstance(form[1], Sym):
         book.definitions.add(str(form[1]))
         return
-
-
-# --------------------------------------------------------------------------
-# suspect detection
-# --------------------------------------------------------------------------
 
 
 def hint_clauses(hints: object) -> list[dict[str, object]]:
@@ -3111,8 +2960,6 @@ def negated_form(hypothesis: object) -> object | None:
 # exhausted budget is emitted as unresolved assurance analysis.
 NORMALIZATION_LIMIT = 100_000
 NORMALIZATION_WORK = 1_000_000
-
-
 class AnalysisIncomplete(RuntimeError):
     pass
 
@@ -3317,8 +3164,6 @@ def strip_declares(body: list) -> object:
 
 
 EQUALITY_SPELLINGS = ("eq", "eql", "=")
-
-
 def normalise_eq(form: object) -> object:
     """Equality spellings, preserving sharing in normalized observer terms."""
     form = normalise_null(form)
@@ -3452,8 +3297,6 @@ def ground_after(conjunct: object, fixed: list) -> bool:
 GROUND_FUNCTIONS = {"not", "equal", "member-equal", "member", "and", "or",
                     "consp", "atom", "natp", "integerp", "stringp", "symbolp",
                     "keywordp", "<", "<=", ">", ">=", "cons", "list", "car", "cdr"}
-
-
 def ground(form: object, _memo: dict | None = None) -> bool:
     if isinstance(form, Sym):
         return literal(form)
@@ -3481,46 +3324,7 @@ def replace_form(form: object, target: object, value: object,
     return result
 
 
-def size(form: object, _memo: dict | None = None) -> int:
-    """Virtual tree size, computed over its physical DAG only once."""
-    if not isinstance(form, list):
-        return 1
-    memo = {} if _memo is None else _memo
-    if id(form) not in memo:
-        memo[id(form)] = 1 + sum(size(item, memo) for item in form)
-    return memo[id(form)]
-
-
 CXR = re.compile(r"c([ad]{1,4})r\Z")
-
-
-def project(term: list) -> object:
-    """One step of car/cdr/nth over a constructor, or TERM unchanged."""
-    name = head(term)
-    match = CXR.match(name or "")
-    if match and len(term) == 2 and len(match.group(1)) > 1:
-        inner: object = term[1]
-        for letter in reversed(match.group(1)):
-            inner = [Sym("car" if letter == "a" else "cdr"), inner]
-        return inner
-    if name in ("car", "cdr") and len(term) == 2:
-        arg = term[1]
-        if head(arg) == "cons" and len(arg) == 3:
-            return arg[1] if name == "car" else arg[2]
-        if head(arg) == "list":
-            if len(arg) == 1:
-                return Sym("nil")
-            if name == "car":
-                return arg[1]
-            return [Sym("list")] + arg[2:] if len(arg) > 2 else Sym("nil")
-    if name == "nth" and len(term) == 3 and isinstance(term[1], int) \
-            and head(term[2]) == "list":
-        items = term[2][1:]
-        index = max(0, term[1])
-        return items[index] if index < len(items) else Sym("nil")
-    return term
-
-
 def if_branches(form: object, found: list | None = None,
                 _seen: set[int] | None = None) -> list:
     """Every ``(if TEST THEN ELSE)`` as a triple."""
@@ -3535,43 +3339,6 @@ def if_branches(form: object, found: list | None = None,
         for item in form:
             if_branches(item, found, _seen)
     return found
-
-
-# --------------------------------------------------------------------------
-# export and teeth lints
-# --------------------------------------------------------------------------
-#
-# Six WARN lints, all counted in the generated ledger.  None is a claim
-# that a theorem is wrong: the first four name the ways this tree has
-# repeatedly made later proofs expensive, the fourth (below, over the host
-# files) names the way it has repeatedly made bridges fail to start, and the
-# fifth counts the records still written out by hand.
-#
-# * Export hygiene.  A book's micro discipline (`planning/deputies/BRIEF.md`)
-#   is that accessor equalities and `len` backchaining rules stay inside the
-#   book that needs them: `:rule-classes nil`, `local`, `defthmd`, or a
-#   closing `in-theory (disable ...)`.  One such rule left enabled rewrites
-#   every downstream goal out of accessor vocabulary.
-# * Enabled projection.  The same hazard seen from the other side: an
-#   accessor whose own definition rune ships enabled, while other books state
-#   theorems over it.  One `enable` downstream and those theorems stop
-#   matching, with no error and no failing book.
-# * Teeth form.  A `must-fail` whose body is a bare `thm` over free variables
-#   shows only that ACL2 did not prove a general claim, which a typo also
-#   achieves.  Teeth are concrete: a specific violating value.
-# * Include hygiene.  A non-local ``include-book`` of a book that ends with no
-#   withdrawal re-exports every enabled rule of that book into the includer and
-#   into everything above it.  `books/bp-ingress.lisp` took a non-local include
-#   of `article-properties` for one guard hint and turned a six-minute proof
-#   into an 1800 s timeout: 1.92M backchain frames, none of them useful.
-
-# One-argument applications of these are recognizers or arithmetic, not the
-# accessor-shaped rewrites the export lint is about.
-NON_ACCESSOR = {
-    "not", "len", "consp", "atom", "null", "endp", "zp", "true-listp",
-    "natp", "posp", "integerp", "rationalp", "acl2-numberp", "stringp",
-    "symbolp", "characterp", "booleanp", "quote", "if", "implies",
-}
 
 
 def rule_name(item: object) -> str | None:
@@ -3662,354 +3429,12 @@ def collect_disabled(form: object, out: set[str],
         collect_disabled(item, out, theories)
 
 
-def one_argument_application(form: object) -> bool:
-    return (isinstance(form, list) and len(form) == 2
-            and isinstance(form[0], Sym)
-            and str(form[0]) not in NON_ACCESSOR
-            and not str(form[0]).startswith(":"))
-
-
-def exported(theorem: Theorem, book: Book) -> bool:
-    """Is this theorem an enabled rule outside its book?"""
-    if theorem.local or theorem.disabled:
-        return False
-    if theorem.name in book.disabled_rules:
-        return False
-    classes = keyword_plist(theorem.rest).get(":rule-classes", "absent")
-    if isinstance(classes, Sym) and str(classes) == "nil":
-        return False
-    return not (isinstance(classes, list) and not classes)
-
-
-def export_hygiene(tree: "Tree") -> list[dict]:
-    """Enabled rules whose shape rewrites goals out of accessor vocabulary."""
-    findings: list[dict] = []
-    for book in sorted(tree.books.values(), key=lambda b: b.path):
-        for theorem in book.theorems:
-            if not exported(theorem, book):
-                continue
-            hypotheses, conclusion = split_implication(theorem.statement)
-            reason = None
-            if (head(conclusion) == "equal" and len(conclusion) == 3
-                    and one_argument_application(conclusion[1])
-                    and one_argument_application(conclusion[2])
-                    and str(conclusion[1][0]) != str(conclusion[2][0])
-                    and (str(conclusion[1][0]) in tree.functions
-                         or str(conclusion[2][0]) in tree.functions)):
-                # Two *different* one-argument heads: the rule rewrites one
-                # vocabulary into another, which is what pulls downstream
-                # goals out of accessor form.  The same head on both sides is
-                # a preservation or congruence lemma, which is the shape the
-                # discipline asks for, so it is not a finding.
-                reason = ("accessor-equality: an enabled equality between two "
-                          "different one-argument applications")
-            elif any("len" in calls(hypothesis) for hypothesis in hypotheses):
-                if head(conclusion) == "consp":
-                    reason = ("len-backchaining: an enabled consp conclusion "
-                              "backchained to a len hypothesis")
-                elif (head(conclusion) == "equal" and len(conclusion) == 3
-                      and any(head(side) == "len" for side in conclusion[1:])):
-                    reason = ("len-backchaining: an enabled len equality "
-                              "backchained to a len hypothesis")
-            if reason:
-                findings.append({"theorem": theorem.name, "book": book.path,
-                                 "line": theorem.line, "reason": reason})
-    return findings
-
-
-# `logic_body` reaches through `mbe`; these are what is left when an
-# accessor is nothing but a walk into a structure.  A body built from only
-# these and the function's single formal computes nothing: its whole content
-# is WHERE the value is, which is exactly what a caller's lemma is stated
-# about and exactly what an unfold destroys.
-SELECTORS = {
-    "car", "cdr", "caar", "cadr", "cdar", "cddr", "caaar", "caadr", "cadar",
-    "caddr", "cdaar", "cdadr", "cddar", "cdddr", "cadddr", "cddddr",
-    "nth", "first", "second", "third", "fourth", "fifth", "sixth", "seventh",
-    "eighth", "ninth", "tenth", "rest", "assoc", "assoc-equal", "assoc-eq",
-    "mbe", "the",
-}
-
-
-def selector_chain(form: object, variable: str) -> bool:
-    """Is `form` a walk into `variable` through selectors and nothing else?"""
-    if isinstance(form, Sym):
-        return str(form) == variable
-    if isinstance(form, (int, float, str)):
-        return True
-    if isinstance(form, list):
-        if head(form) == "quote":
-            return True
-        if head(form) in SELECTORS:
-            return all(selector_chain(item, variable) for item in form[1:])
-    return False
-
-
-def projection_shaped(function: Function) -> bool:
-    """One formal, and a body that only selects out of it."""
-    if (function.local or function.program
-            or not isinstance(function.formals, list)
-            or len(function.formals) != 1
-            or not isinstance(function.formals[0], Sym)):
-        return False
-    return selector_chain(logic_body(function), str(function.formals[0]))
-
-
-def enabled_projection(tree: "Tree") -> list[dict]:
-    """Accessors a book exports ENABLED that other books state theorems over.
-
-    The hazard is silent and one `enable` away.  A projection whose
-    `(:definition)` rune is enabled can be unfolded, and the moment anything
-    downstream unfolds it every lemma stated over the accessor stops
-    matching: the goal is in selector vocabulary and the rules are in
-    accessor vocabulary.  Nothing errors and no book fails; the proofs that
-    used to close start splitting, and the cost lands on whoever is next.
-    This tree has paid that bill three times in one day through the
-    equivalent hazard for whole-state recognizers.
-
-    The criterion is deliberately narrow, so that a finding is a defect and
-    not a style note.  All three must hold: the function is a PROJECTION --
-    one formal, a body that is only a walk into it, so unfolding replaces a
-    name with a `cadr` chain and buys nothing; its own book leaves the name
-    out of its closing withdrawal, so the definition rune ships enabled; and
-    a theorem in ANOTHER book is stated over it, so there is something for
-    the unfold to break.  A projection nothing else mentions costs nobody
-    anything, and one its book withdraws is already safe.
-
-    The repair is one name in the book's existing `deftheory`; this lint
-    does not make it, and a book is not wrong to export an accessor it means
-    to be unfolded -- it is wrong to do so while other books reason over it.
-    """
-    stated_in: dict[str, set[str]] = {}
-    for book in tree.books.values():
-        for theorem in book.theorems:
-            for name in calls(theorem.statement):
-                stated_in.setdefault(name, set()).add(book.path)
-    findings: list[dict] = []
-    for book in sorted(tree.books.values(), key=lambda b: b.path):
-        for function in book.functions:
-            if not projection_shaped(function):
-                continue
-            if function.name in book.disabled_rules:
-                continue
-            elsewhere = sorted(stated_in.get(function.name, set()) - {book.path})
-            if not elsewhere:
-                continue
-            findings.append({
-                "function": function.name, "book": book.path,
-                "line": function.line, "stated_in": elsewhere,
-                "reason": ("enabled-projection: the definition rune ships "
-                           "enabled and {} state{} theorems over it, so one "
-                           "downstream unfold stops those theorems matching"
-                           .format(
-                               "{} books".format(len(elsewhere))
-                               if len(elsewhere) != 1 else "1 book",
-                               "" if len(elsewhere) != 1 else "s")),
-            })
-    return findings
-
-
-def statement_of(body: object) -> object:
-    """The claim inside a ``thm``/``defthm``, without its keyword options.
-
-    Scanning the options too would let a ``:rule-classes nil`` supply the
-    constant that makes a general claim look like a witness.
-    """
-    index = 1 if head(body) == "thm" else 2
-    return body[index] if isinstance(body, list) and len(body) > index else None
-
-
-def _template(form: object) -> object:
-    """A macro body's backquoted template with its unquoted parts dropped:
-    what every expansion contains whatever the arguments."""
-    if isinstance(form, list):
-        if head(form) in ("unquote", "unquote-splicing"):
-            return None
-        return [_template(item) for item in form]
-    return form
-
-
-def macro_witness(body: list, macros: dict, depth: int = 0) -> bool:
-    """Does every expansion of a macro with BODY name a constant?  Its
-    backquoted templates are read (the unquoted arguments are the caller's);
-    a body without a template is read whole less its keywords and lambda
-    keywords, which are the macro's plumbing, not a value."""
-    templates: list = []
-
-    def collect(form: object) -> None:
-        if isinstance(form, list):
-            if head(form) == "quasiquote" and len(form) > 1:
-                templates.append(_template(form[1]))
-                return
-            for item in form:
-                collect(item)
-    for item in body:
-        collect(item)
-    if templates:
-        return any(concrete_witness(t, macros, depth + 1) for t in templates)
-
-    def plain(form: object) -> object:
-        if isinstance(form, list):
-            if head(form) == "declare":
-                return None
-            return [plain(item) for item in form]
-        if isinstance(form, Sym) and str(form).startswith((":", "&")):
-            return None
-        if isinstance(form, str) and not isinstance(form, Sym):
-            return None  # a documentation string
-        return form
-    return any(concrete_witness(plain(item), macros, depth + 1) for item in body[-1:])
-
-
-def concrete_witness(form: object, macros: "dict | None" = None, depth: int = 0) -> bool:
-    """Does this form mention a constant: a literal, a keyword, a defconst?
-    A call of one of MACROS (name -> body) mentions what its expansion does
-    (PKT-364: a witness whose constant sits inside a macro read as bare)."""
-    if form is None:
-        return False
-    if isinstance(form, Sym):
-        text = str(form)
-        if text.startswith(":"):
-            return True  # a keyword: a specific value in this tree's vocabulary
-        return len(text) > 2 and text.startswith("*") and text.endswith("*")
-    if isinstance(form, (int, float)):
-        return True
-    if isinstance(form, str):  # a string literal; Sym was handled above
-        return True
-    if isinstance(form, list):
-        if head(form) == "quote":
-            return True
-        if (macros and depth < 8 and form and isinstance(form[0], Sym)
-                and str(form[0]) in macros
-                and macro_witness(macros[str(form[0])], macros, depth)):
-            return True
-        return any(concrete_witness(item, macros, depth) for item in form)
-    return False
-
-
-def teeth_form(tree: "Tree") -> list[dict]:
-    """``must-fail`` bodies that are general claims rather than witnesses."""
-    findings: list[dict] = []
-    macros: dict = {}
-    for book in tree.books.values():
-        for name, body in book.macro_bodies.items():
-            macros.setdefault(name, body)
-    for book in sorted(tree.books.values(), key=lambda b: b.path):
-        for line, arguments in book.must_fail_forms:
-            body = next((item for item in arguments
-                         if not (isinstance(item, Sym) and str(item).startswith(":"))),
-                        None)
-            if head(body) not in ("thm", "defthm", "defthmd"):
-                continue
-            if concrete_witness(statement_of(body), macros):
-                continue
-            if (head(body) != "thm" and len(body) > 1
-                    and str(body[1]) in book.paired_must_fails):
-                continue  # a defkeystone tooth: its counterexample is evaluated
-            name = str(body[1]) if (head(body) != "thm" and len(body) > 1
-                                    and isinstance(body[1], Sym)) else "thm"
-            findings.append({
-                "check": name, "book": book.path, "line": line,
-                "reason": ("bare-general-claim: the must-fail body has no "
-                           "constant, so it refutes nothing in particular"),
-            })
-    return findings
-
-
-def has_export_theory(book: Book) -> bool:
-    """Does this book withdraw anything on its way out?
-
-    The same computation the export-hygiene lint exempts a theorem by: the
-    rules a non-local top-level ``in-theory`` turns off, with ``deftheory``
-    names expanded.  A book that withdraws nothing exports its whole enabled
-    world, so what it costs an includer is not bounded by its interface.
-    """
-    return bool(book.disabled_rules)
-
-
-def exports_no_rule(book: Book) -> bool:
-    """Has this book no rule to export, whatever its theory events say?
-
-    A macro book (`books/defrecord.lisp`, `books/deftransition.lisp`) defines
-    macros and `:program`-mode plumbing.  `:program` mode has no definitional
-    axiom, so the book adds nothing to any theory and including it cannot
-    cost an includer a rule.  Withdrawing nothing is then the honest export
-    event, not a missing one.
-    """
-    return (bool(book.functions)
-            and all(function.program for function in book.functions)
-            and not book.theorems
-            and not book.encapsulates
-            # An include-only shim re-exports what it includes, whatever it
-            # does or does not define itself.
-            and not book.includes
-            and not book.system_includes)
-
-
 def included_path(book: Book, reference: str) -> str:
     """The repository path a book's ``include-book`` string names."""
     return resolve((Path(book.path).parent / reference).with_suffix(".lisp").as_posix())
 
 
-def include_hygiene(tree: "Tree") -> list[dict]:
-    """Non-local includes of local books that withdraw nothing on exit."""
-    findings: list[dict] = []
-    for book in sorted(tree.books.values(), key=lambda b: b.path):
-        for line, reference in book.nonlocal_includes:
-            target = tree.books.get(included_path(book, reference))
-            # A book this tree does not read (a system book, or a path that
-            # does not resolve) has no export theory to judge.
-            if target is None or target.read_error is not None:
-                continue
-            if has_export_theory(target) or exports_no_rule(target):
-                continue
-            findings.append({
-                "book": book.path, "line": line, "include": reference,
-                "included": target.path,
-                "reason": ("re-export: the included book ends with no theory "
-                           "withdrawal, so every rule it leaves enabled is "
-                           "enabled here and above"),
-            })
-    return findings
-
-
-# --------------------------------------------------------------------------
-# host-names lint
-# --------------------------------------------------------------------------
-#
-# The fourth lint, and the only one that reads files no certification ever
-# touches.  ACL2 wrapper files are `ld`ed by bridges at start-up; native build
-# scripts also `load` raw Common Lisp adapters inside their explicit raw-mode
-# region.  An undefined name in either surface is found when that start-up
-# load fails: `host/checkpoint-host.lisp` kept naming `*fn-store-groups*` after
-# the compiled group table deleted it, and every `Acl2Store` constructor died
-# with a Translate error until a later lane noticed.  This lint reads the host
-# files the way the book lints read books and reports a name that is defined
-# nowhere the host file can see.
-#
-# What a host file can see: its own definitions, the definitions of every
-# host file it `ld`s, the definitions of every book reachable through its
-# `include-book` forms (transitively, the same include graph the other lints
-# use), and `tools/acl2-builtins.txt`.
-#
-# A native build script has one narrower surface: a `(load "...")` reached
-# after `(set-raw-mode t)` inside an explicit `progn!` runs in the host Common
-# Lisp, under the build's raw-Lisp trust boundary.  Those load targets also
-# see the deliberately separate, audited `tools/raw-common-lisp-builtins.txt`.
-# The trust tag permits raw execution; it does not make every host file, or
-# every misspelled raw symbol, visible.  In particular, a normal ACL2 wrapper
-# cannot inherit this vocabulary merely because it sits beside a raw adapter.
-#
-# Deliberately conservative, because this is a WARN over unparsed code:
-# a `local` book definition counts as visible, `loop` bodies and
-# package-qualified symbols (`sb-posix:close`) are not read at all, and an
-# unresolvable `include-book` silences nothing but contributes nothing.
-# Under-reporting here is a missed crash; over-reporting would make the lint
-# noise that a lane learns to skip.
-
 BUILTINS = ROOT / "tools/acl2-builtins.txt"
-RAW_COMMON_LISP_BUILTINS = ROOT / "tools/raw-common-lisp-builtins.txt"
-
 # Heads that define a name in the file being read.  The name is `form[1]`,
 # or the head of `form[1]` when that is a list (`(defstruct (name opts) ...)`).
 HOST_DEFINITION_HEADS = {
@@ -4018,7 +3443,6 @@ HOST_DEFINITION_HEADS = {
     "defconst", "defconstant", "defparameter", "defvar", "defglobal",
     "defstruct", "define-condition", "deftype", "defsetf", "defgeneric",
 }
-
 # Heads whose subforms are syntax, data, or another language.  `loop` is
 # SBCL's iteration macro in `host/native/io.lisp`: its keywords read as
 # symbols in function position, and reading them would report `collect`.
@@ -4026,26 +3450,11 @@ HOST_OPAQUE_HEADS = {
     "quote", "declare", "declaim", "in-package", "defpackage", "defttag",
     "deftype", "defstruct", "define-condition", "defsetf", "loop", "loop-finish",
 }
-
 # Heads the reader itself produces, or that hold a form in every position.
 HOST_TRANSPARENT_HEADS = {"quasiquote", "unquote", "unquote-splicing",
                           "function", "vector", "progn", "progn!", "local",
                           "with-output", "eval-when", "value-triple"}
-
 DEFCONST_NAME = re.compile(r"^\*.+\*$")
-
-
-def macro_names(tree: "Tree") -> set[str]:
-    """Every `defmacro` name the tree defines, in books and in host files.
-
-    A macro's arguments are syntax, not forms: `(fnn-posix (path) ...)` binds
-    `path`, and reading its first argument as a call reports `path`.  The lint
-    judges the macro name and stops there.
-    """
-    names = {name for host in tree.hosts.values() for name in host.macros}
-    return names | {name for book in tree.books.values() for name in book.macros}
-
-
 def host_definition_name(form: list) -> str | None:
     if len(form) < 2:
         return None
@@ -4282,15 +3691,6 @@ def host_references(host: HostFile, form: object, line: int,
         host_references(host, item, line, macros)
 
 
-def collect_references(host: HostFile, macros: set[str]) -> None:
-    """The second pass: every name used, once the macro names are known."""
-    host.references = []
-    for form, line in host.forms:
-        if head(form) in ("include-book", "ld", "load"):
-            continue
-        host_references(host, form, line, macros)
-
-
 def host_paths(root: Path | None = None) -> list[tuple[Path, str]]:
     """Every `.lisp` outside `books/` and `tests/acl2/` that the tree loads.
 
@@ -4315,19 +3715,12 @@ def host_paths(root: Path | None = None) -> list[tuple[Path, str]]:
 
 
 LD_REFERENCE = re.compile(r'\((?:ld|load)\s+"([^"]+\.lisp)"')
-
-
 def load_hosts() -> dict[str, HostFile]:
     return {relative: analyze_host(path, relative) for path, relative in host_paths()}
 
 
 def acl2_builtins() -> set[str]:
     return builtin_names(BUILTINS)
-
-
-def raw_common_lisp_builtins() -> set[str]:
-    """The small Common Lisp vocabulary the explicit raw-load surface uses."""
-    return builtin_names(RAW_COMMON_LISP_BUILTINS)
 
 
 def builtin_names(path: Path) -> set[str]:
@@ -4392,226 +3785,7 @@ def raw_host_paths(tree: "Tree") -> set[str]:
     return paths
 
 
-def host_visible(host: HostFile, tree: "Tree") -> set[str]:
-    """Every name this host file can reach, transitively."""
-    visible: set[str] = set()
-    seen: set[str] = set()
-    pending = [host.path]
-    while pending:
-        relative = pending.pop()
-        if relative in seen:
-            continue
-        seen.add(relative)
-        current = tree.hosts.get(relative)
-        if current is None:
-            continue
-        visible |= current.defines
-        base = Path(relative).parent
-        for reference in current.includes:
-            for candidate in (resolve((base / reference).with_suffix(".lisp").as_posix()),
-                              resolve(f"{reference}.lisp")):
-                if candidate in tree.books:
-                    visible |= book_closure_definitions(tree, candidate)
-                    break
-        for reference in current.lds:
-            for candidate in (resolve((base / reference).as_posix()), resolve(reference)):
-                if candidate in tree.hosts:
-                    pending.append(candidate)
-                    break
-    return visible
-
-
-def book_closure_definitions(tree: "Tree", relative: str) -> set[str]:
-    """Every definition of a book and of the books it includes."""
-    names: set[str] = set()
-    seen: set[str] = set()
-    pending = [relative]
-    while pending:
-        current = pending.pop()
-        if current in seen:
-            continue
-        seen.add(current)
-        book = tree.books.get(current)
-        if book is None:
-            continue
-        names |= book.definitions
-        base = Path(current).parent
-        for reference in book.includes:
-            pending.append(resolve((base / reference).with_suffix(".lisp").as_posix()))
-    return names
-
-
-def host_names(tree: "Tree") -> list[dict]:
-    """Names a host file uses that nothing it loads defines."""
-    builtins = acl2_builtins()
-    raw_builtins = raw_common_lisp_builtins()
-    raw_hosts = raw_host_paths(tree)
-    macros = macro_names(tree)
-    elsewhere: dict[str, str] = {}
-    for book in sorted(tree.books.values(), key=lambda b: b.path):
-        for name in book.definitions:
-            elsewhere.setdefault(name, book.path)
-    for other in sorted(tree.hosts.values(), key=lambda h: h.path):
-        for name in other.defines:
-            elsewhere.setdefault(name, other.path)
-    findings: list[dict] = []
-    for host in sorted(tree.hosts.values(), key=lambda h: h.path):
-        if host.read_error is not None:
-            findings.append({"host": host.path, "line": 1, "name": host.path,
-                             "reason": f"unreadable: {host.read_error}"})
-            continue
-        collect_references(host, macros)
-        visible = host_visible(host, tree) | builtins
-        raw = host.path in raw_hosts
-        if raw:
-            visible |= raw_builtins
-        reported: set[str] = set()
-        for name, line in host.references:
-            key = name.lower()
-            if key in visible or key in reported:
-                continue
-            reported.add(key)
-            source = elsewhere.get(key)
-            vocabularies = "tools/acl2-builtins.txt"
-            runtime = "the ACL2 bridge"
-            if raw:
-                vocabularies += " or tools/raw-common-lisp-builtins.txt"
-                runtime = "the raw Common Lisp load"
-            reason = ("undefined: nothing in this tree defines it and it is "
-                      f"not in {vocabularies}, so {runtime} of this file "
-                      "fails at start-up")
-            if source is not None:
-                reason = (f"defined in {source}, which this file neither "
-                          "includes nor `ld`s: it resolves only because "
-                          "something else loaded that file into the same "
-                          "session first")
-            findings.append({"host": host.path, "line": line, "name": name,
-                             "source": source, "reason": reason})
-    return findings
-
-
-# --------------------------------------------------------------------------
-# hand-written record lint
-# --------------------------------------------------------------------------
-#
-# The fifth lint, and the only one about a migration rather than a defect.
-# `books/defrecord.lisp` generates the pattern of docs/proof-style.md section
-# 1; a book that still writes it out has eleven events per three-field record
-# to keep in step by hand, and the tree has repeatedly lost one of the three
-# forward-chaining shape facts that way and paid for it in a rule fan.  WARN,
-# never an error: a hand-written record is correct, it is just not generated,
-# and the count is how the migration stays visible.
-
-SELECTOR_PRIMITIVES = {"car", "cdr", "fn-ag-car", "fn-ag-cdr"}
-
-
-def selector_over(form: object, variable: str) -> bool:
-    """Is this a total positional selector applied to `variable`?
-
-    Two shapes are in the tree: the `car`/`cdr` chain `books/acceptance.lisp`
-    writes under an `mbe`, and the `(fn-bp-nth 3 x)` call `books/scheduler.lisp`
-    and the bp books write.  Both are one field of a raw-list record.
-    """
-    if isinstance(form, Sym):
-        return str(form) == variable
-    if not isinstance(form, list) or not form or not isinstance(form[0], Sym):
-        return False
-    name = str(form[0])
-    if name in SELECTOR_PRIMITIVES and len(form) == 2:
-        return selector_over(form[1], variable)
-    if name.endswith("-nth") and len(form) == 3 and isinstance(form[1], int):
-        return selector_over(form[2], variable)
-    return False
-
-
-def accessor_body(body: object, variable: str) -> bool:
-    """The body of a one-field accessor, with an `mbe` wrapper stripped."""
-    if head(body) == "mbe":
-        logic = keyword_plist(body[1:]).get(":logic")
-        return logic is not None and selector_over(logic, variable)
-    return selector_over(body, variable)
-
-
-def hand_written_record(tree: "Tree") -> list[dict]:
-    """Books whose records are written out instead of generated.
-
-    One finding per book, at its first shape predicate: the pattern is a book
-    property, and reporting it per record would repeat the same accessor
-    count once per record in the book.
-    """
-    findings: list[dict] = []
-    for book in sorted(tree.books.values(), key=lambda b: b.path):
-        written = [f for f in book.functions if not f.generated
-                   and len(f.formals) == 1 and isinstance(f.formals[0], Sym)]
-        accessors: dict[str, int] = {}
-        shapes: dict[str, list[Function]] = {}
-        for function in written:
-            variable = str(function.formals[0])
-            if accessor_body(function.body, variable):
-                accessors[variable] = accessors.get(variable, 0) + 1
-            elif function.name.endswith("-shapep"):
-                shapes.setdefault(variable, []).append(function)
-        for variable, found in sorted(shapes.items()):
-            count = accessors.get(variable, 0)
-            if count < 3:
-                continue
-            names = ", ".join(sorted(f.name for f in found))
-            findings.append({
-                "book": book.path, "line": min(f.line for f in found),
-                "shape": sorted(f.name for f in found)[0], "shapes": len(found),
-                "accessors": count, "variable": variable,
-                "reason": (f"hand-written record: {len(found)} shape "
-                           f"predicate(s) ({names}) and {count} one-argument "
-                           f"selector accessors over `{variable}` are written "
-                           "out; books/defrecord.lisp generates this pattern "
-                           "with fn-defrecord"),
-            })
-    return findings
-
-
-def lint_findings(tree: "Tree") -> dict[str, list[dict]]:
-    return {"export_hygiene": export_hygiene(tree),
-            "enabled_projection": enabled_projection(tree),
-            "teeth_form": teeth_form(tree),
-            "include_hygiene": include_hygiene(tree),
-            "host_names": host_names(tree),
-            "hand_written_record": hand_written_record(tree)}
-
-
-def lint_warnings(tree: "Tree | None" = None) -> list[str]:
-    """One line per finding, for `--check` and `make check`."""
-    findings = lint_findings(tree if tree is not None else load_tree())
-    lines = []
-    for entry in findings["export_hygiene"]:
-        lines.append(f"export hygiene: {entry['book']}:{entry['line']}: "
-                     f"{entry['theorem']}: {entry['reason']}")
-    for entry in findings["enabled_projection"]:
-        lines.append(f"enabled projection: {entry['book']}:{entry['line']}: "
-                     f"{entry['function']}: {entry['reason']} "
-                     f"({', '.join(entry['stated_in'][:4])})")
-    for entry in findings["teeth_form"]:
-        lines.append(f"teeth form: {entry['book']}:{entry['line']}: "
-                     f"{entry['check']}: {entry['reason']}")
-    for entry in findings["include_hygiene"]:
-        lines.append(f"include hygiene: {entry['book']}:{entry['line']}: "
-                     f"{entry['included']}: {entry['reason']}")
-    for entry in findings["host_names"]:
-        lines.append(f"host names: {entry['host']}:{entry['line']}: "
-                     f"{entry['name']}: {entry['reason']}")
-    for entry in findings["hand_written_record"]:
-        lines.append(f"hand-written record: {entry['book']}:{entry['line']}: "
-                     f"{entry['shape']}: {entry['reason']}")
-    return lines
-
-
-# --------------------------------------------------------------------------
-# tree, roots and closure
-# --------------------------------------------------------------------------
-
-
 HOST_DIRS = ("host", "host/native")
-
-
 def book_paths(root: Path | None = None) -> list[tuple[Path, str]]:
     root = ROOT if root is None else root
     found = []
@@ -4664,7 +3838,6 @@ def resolve(relative: str) -> str:
 
 
 _TREE_CACHE: "tuple[str, Tree] | None" = None
-
 # The analysed tree, shared across processes: `make check` runs six checkers
 # that each analysed the same bytes (~5.5 s apiece).  An entry is named by
 # the digest of everything the analysis is a function of -- the analyser's
@@ -4676,8 +3849,6 @@ _TREE_CACHE: "tuple[str, Tree] | None" = None
 TREE_CACHE_DIR = Path(__file__).resolve().parents[1] / "build" / "cache" / "ledger-tree"
 TREE_CACHE_ENTRIES = 4
 _TREE_CACHE_FORMAT = b"fn-ledger-tree-cache-4"
-
-
 def _tree_cache_dir(root: Path | None = None) -> "Path | None":
     """Where analysed trees persist, or None when this call must not persist.
 
@@ -4823,14 +3994,7 @@ def load_tree(*, lazy: bool = False, root: Path | None = None) -> Tree:
     return tree
 
 
-# --------------------------------------------------------------------------
-# the generated ledger
-# --------------------------------------------------------------------------
-
-
 GUARD_STATES = ("verified", "declared-off", "default-guarded", "default-unguarded")
-
-
 def book_row(book: Book, tree: Tree) -> dict:
     return book_row_with(book, tree, tree.suspects)
 
@@ -4861,620 +4025,6 @@ def book_row_with(book: Book, tree: Tree, known: dict) -> dict:
     }
 
 
-def build_ledger(tree: Tree) -> dict:
-    rows = [book_row(book, tree) for book in
-            sorted(tree.books.values(), key=lambda b: b.path)]
-    totals = {
-        "books": len(rows),
-        "books_in_root_closure": sum(1 for row in rows if row["in_root_closure"]),
-        "roots": len(tree.roots),
-        "theorems": sum(row["theorems"] for row in rows),
-        "functions": sum(row["functions"] for row in rows),
-        "assert_events": sum(row["assert_events"] for row in rows),
-        "must_fails": sum(row["must_fails"] for row in rows),
-        "prover_refusals": sum(row["prover_refusals"] for row in rows),
-        "encapsulates": sum(row["encapsulates"] for row in rows),
-        "guards": {state: sum(row["guards"][state] for row in rows)
-                   for state in GUARD_STATES},
-        "suspect_theorems": len(tree.suspects),
-    }
-    lints = lint_findings(tree)
-    totals["export_hygiene_warnings"] = len(lints["export_hygiene"])
-    totals["enabled_projection_warnings"] = len(lints["enabled_projection"])
-    totals["teeth_form_warnings"] = len(lints["teeth_form"])
-    totals["include_hygiene_warnings"] = len(lints["include_hygiene"])
-    totals["host_names_warnings"] = len(lints["host_names"])
-    totals["hand_written_record_warnings"] = len(lints["hand_written_record"])
-    suspects = [{"theorem": name,
-                 "book": tree.theorems[name].book,
-                 "line": tree.theorems[name].line,
-                 "reasons": reasons}
-                for name, reasons in sorted(tree.suspects.items())]
-    return {
-        "schema_version": 2,
-        "description": ("Generated by tools/ledger.py from books/*.lisp and "
-                        "tests/acl2/*.lisp.  Do not edit; run "
-                        "`python3 tools/ledger.py --write`."),
-        "roots": list(tree.roots),
-        "totals": totals,
-        "books": rows,
-        "suspects": suspects,
-        "lints": lints,
-    }
-
-
-def ledger_markdown(ledger: dict) -> str:
-    totals = ledger["totals"]
-    guards = totals["guards"]
-    lines = [
-        "# Generated assurance ledger",
-        "",
-        "Generated by `tools/ledger.py` from `books/*.lisp` and",
-        "`tests/acl2/*.lisp`. Not committed: `python3 tools/ledger.py --write`",
-        "writes it under `build/ledger/`. Counts describe artifacts, not coverage; see",
-        "[the proof strategy](../../docs/proofs.md) for what a count does not mean.",
-        "",
-        "## Totals",
-        "",
-        "| Quantity | Count |",
-        "| --- | --- |",
-        f"| Books read | {totals['books']} |",
-        f"| Certification roots in the Makefile | {totals['roots']} |",
-        f"| Books inside the root closure | {totals['books_in_root_closure']} |",
-        f"| `defthm` and `defthmd` events | {totals['theorems']} |",
-        f"| `defun` events | {totals['functions']} |",
-        f"| Functions with verified guards | {guards['verified']} |",
-        f"| Functions declared `:verify-guards nil` and never verified | {guards['declared-off']} |",
-        f"| Functions left at the default with an explicit guard | {guards['default-guarded']} |",
-        f"| Functions left at the default with no guard | {guards['default-unguarded']} |",
-        f"| `assert-event` checks | {totals['assert_events']} |",
-        f"| `must-fail` checks | {totals['must_fails']} |",
-        f"| of which labelled prover-refusal (proof search refused, no counter-witness) | "
-        f"{totals['prover_refusals']} |",
-        f"| `encapsulate` events | {totals['encapsulates']} |",
-        f"| Theorems flagged SUSPECT by shape | {totals['suspect_theorems']} |",
-        f"| Export-hygiene warnings | {totals['export_hygiene_warnings']} |",
-        f"| Enabled-projection warnings | "
-        f"{totals['enabled_projection_warnings']} |",
-        f"| Teeth-form warnings | {totals['teeth_form_warnings']} |",
-        f"| Include-hygiene warnings | {totals['include_hygiene_warnings']} |",
-        f"| Host-names warnings | {totals['host_names_warnings']} |",
-        f"| Hand-written-record warnings | "
-        f"{totals['hand_written_record_warnings']} |",
-        "",
-        "## Lints",
-        "",
-        "Six WARN lints, counted above and listed in full under `lints` in",
-        "[`ledger.json`](ledger.json). *Export hygiene* counts theorems a book",
-        "leaves enabled whose shape rewrites downstream goals out of accessor",
-        "vocabulary: an equality between two one-argument applications, or a",
-        "`consp`/`len` conclusion backchained to a `len` hypothesis. A theorem",
-        "that is `local`, `defthmd`, `:rule-classes nil`, or disabled by a",
-        "closing `in-theory` -- directly, or through a `deftheory` name the",
-        "book defines and then withdraws -- is not counted.",
-        "*Enabled projection* counts accessors a book ships with the",
-        "definition rune ENABLED while a theorem in another book is stated",
-        "over them: one formal, a body that is only a walk into it, absent",
-        "from the book's closing withdrawal, and mentioned in another book's",
-        "theorem statement. Nothing is wrong until something downstream",
-        "unfolds one, and then every lemma over that accessor silently stops",
-        "matching -- the same shape as a whole-state recognizer left enabled",
-        "in a vocabulary, which cost this tree an 8844-subgoal split, a run",
-        "killed at the timeout and a two-million-step induction in one day",
-        "(2026-09-20). The repair is one name in the book's existing",
-        "`deftheory`; the lint does not make it. *Teeth form*",
-        "counts `must-fail`",
-        "checks whose body is a bare `thm`/`defthm` mentioning no constant, so",
-        "nothing in particular is refuted. *Include hygiene* counts non-local",
-        "`include-book` forms whose target is a local book that ends with no",
-        "theory withdrawal: such an include enables every rule of that book in",
-        "the includer and in everything above it. `books/bp-ingress.lisp` took",
-        "one for a single guard hint and turned a six-minute proof into an",
-        "1800 s timeout. *Host names* counts symbols used in ACL2 `ld` wrappers",
-        "and native raw-load adapters -- files no certification reads -- that",
-        "nothing those files include, `ld`, or inherit from",
-        "`tools/acl2-builtins.txt` defines. A module named by an explicit",
-        "`(load ...)` after `(set-raw-mode t)` sees the separate, reviewed",
-        "`tools/raw-common-lisp-builtins.txt` vocabulary. That raw mode is",
-        "inside the native build's trust boundary; the tag does not grant raw",
-        "visibility to ACL2 wrappers or silence an unknown raw name: the shape",
-        "of the `*fn-store-groups*` reference that survived the group table and broke",
-        "every `Acl2Store` start-up. *Hand-written record* counts books",
-        "whose records are written out event by event instead of generated",
-        "by `fn-defrecord` (`books/defrecord.lisp`): a shape predicate and",
-        "three or more one-argument selector accessors over the same",
-        "variable. Writing the pattern by hand is correct and is how the",
-        "tree lost one of the three forward-chaining shape facts four times",
-        "in one cycle, each time for a rule fan; the count is how the",
-        "migration stays visible. No lint judges truth;",
-        "`python3 tools/ledger.py --check --strict` turns all five into errors.",
-        "",
-        "## Per book",
-        "",
-        "Guard columns: verified / declared off / default with a guard / default",
-        "with no guard. A book outside the root closure is certified by nothing",
-        "that `make certify` requests.",
-        "",
-        "| Book | Root | Theorems | Functions | Guards | `assert-event` | `must-fail` | Suspect |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- |",
-    ]
-    for row in ledger["books"]:
-        if row["read_error"]:
-            lines.append(f"| `{row['book']}` | unreadable | | | | | | {row['read_error']} |")
-            continue
-        root = "root" if row["is_root"] else ("closure" if row["in_root_closure"] else "-")
-        guard = "/".join(str(row["guards"][state]) for state in GUARD_STATES)
-        lines.append(
-            f"| `{row['book']}` | {root} | {row['theorems']} | {row['functions']} "
-            f"| {guard} | {row['assert_events']} | {row['must_fails']} "
-            f"| {len(row['suspects'])} |")
-    lines += [
-        "",
-        "## Theorems flagged SUSPECT by shape",
-        "",
-        "A flag is a claim about the *shape* of a statement, not about its truth.",
-        "Every theorem below is proved; none may be cited as a registry event in",
-        "`planning/proof-events.json`. The detector's limits are documented in",
-        "[the proof strategy](../docs/proofs.md#the-generated-ledger).",
-        "",
-        "| Theorem | Book | Line | Why |",
-        "| --- | --- | --- | --- |",
-    ]
-    for entry in ledger["suspects"]:
-        why = "; ".join(entry["reasons"]).replace("|", "\\|")
-        lines.append(f"| `{entry['theorem']}` | `{entry['book']}` | {entry['line']} | {why} |")
-    lines.append("")
-    return "\n".join(lines)
-
-
-# --------------------------------------------------------------------------
-# registry validation
-# --------------------------------------------------------------------------
-
-
-def load_proof_events() -> dict:
-    return json.loads(PROOF_EVENTS.read_text(encoding="utf-8"))
-
-
-def validate_events(tree: Tree, curated: dict) -> tuple[list[str], dict[str, list[str]]]:
-    """Check the curated map and return (problems, regenerated events arrays)."""
-    problems: list[str] = []
-    if curated.get("schema_version") != 1:
-        problems.append("planning/proof-events.json: unsupported schema_version")
-    registry = json.loads(PROOFS.read_text(encoding="utf-8"))
-    known = {entry["id"] for entry in registry["proofs"]}
-    regenerated: dict[str, list[str]] = {}
-    seen: set[str] = set()
-    for target in curated.get("targets", []):
-        ident = target.get("id", "")
-        if ident not in known:
-            problems.append(f"planning/proof-events.json: unknown proof target {ident!r}")
-            continue
-        if ident in seen:
-            problems.append(f"{ident}: listed more than once")
-        seen.add(ident)
-        names: list[str] = []
-        for event in target.get("events", []):
-            name = event.get("name", "")
-            kind = event.get("kind", "theorem")
-            if name in names:
-                problems.append(f"{ident}: repeated event {name!r}")
-            names.append(name)
-            if kind == "theorem":
-                problems.extend(check_theorem_event(tree, ident, name))
-            elif kind == "guarded-function":
-                problems.extend(check_function_event(tree, ident, name))
-            else:
-                problems.append(f"{ident}: event {name!r} has unknown kind {kind!r}")
-        regenerated[ident] = names
-    for ident in sorted(known - seen):
-        entry = next(e for e in registry["proofs"] if e["id"] == ident)
-        if entry.get("events"):
-            problems.append(f"{ident}: proofs.json lists events but "
-                            f"proof-events.json does not cover the target")
-        regenerated[ident] = []
-    return problems, regenerated
-
-
-def check_theorem_event(tree: Tree, ident: str, name: str) -> list[str]:
-    theorem = tree.theorems.get(name)
-    if theorem is None:
-        return [f"{ident}: no such theorem in books/ or tests/acl2/: {name}"]
-    problems = []
-    if theorem.book not in tree.closure:
-        problems.append(f"{ident}: {name} lives in {theorem.book}, which no "
-                        f"Makefile certification root reaches")
-    if name in tree.suspects:
-        problems.append(f"{ident}: {name} is SUSPECT ("
-                        + "; ".join(tree.suspects[name]) + "); " + suspect_advice(name))
-    return problems
-
-
-UNCITED_SUFFIXES = ("-by-definition", "-unfolds")
-
-
-def suspect_advice(name: str) -> str:
-    """What to do with a cited SUSPECT event (AGENTS.md, "Cite keystones"):
-    reclaim-equivalence renamed its lemma `-by-definition`, kept citing it,
-    and lost a round to this refusal (obstructions-6 item 52)."""
-    if name.endswith(UNCITED_SUFFIXES):
-        return ("a `-unfolds` / `-by-definition` lemma is never cited as an event: "
-                "drop it from planning/proof-events.json and cite the keystone it serves")
-    return ("cite the keystone instead; if this lemma is a restatement, name it "
-            "`-unfolds` or `-by-definition` AND do not cite it as an event")
-
-
-def check_function_event(tree: Tree, ident: str, name: str) -> list[str]:
-    function = tree.functions.get(name)
-    if function is None and name in tree.constrained:
-        # A constrained function (a codec seam's public name): ACL2 treats it
-        # as guard-verified against its signature's guard, and it has no body
-        # to be anything else.  It must still be reachable from a root.
-        book = tree.constrained[name]
-        if book not in tree.closure:
-            return [f"{ident}: {name} lives in {book}, which no Makefile "
-                    f"certification root reaches"]
-        return []
-    if function is None:
-        return [f"{ident}: no such function in books/: {name}"]
-    problems = []
-    if function.book not in tree.closure:
-        problems.append(f"{ident}: {name} lives in {function.book}, which no "
-                        f"Makefile certification root reaches")
-    if function.guard_status != "verified":
-        problems.append(f"{ident}: {name} is cited as a guarded function but its "
-                        f"guard status is {function.guard_status}")
-    return problems
-
-
-PROOF_STATUSES = ("certified", "uncertified-at-current-digest", "planned")
-
-
-def event_books(tree: Tree, curated: dict) -> dict[str, set[str]]:
-    """Each target's event books (without ``.lisp``), from the curated map."""
-    found: dict[str, set[str]] = {}
-    for target in curated.get("targets", []):
-        books: set[str] = set()
-        for event in target.get("events", []):
-            name = event.get("name", "")
-            if event.get("kind", "theorem") == "theorem":
-                definition = tree.theorems.get(name)
-                book = definition.book if definition is not None else None
-            else:
-                definition = tree.functions.get(name)
-                book = (definition.book if definition is not None
-                        else tree.constrained.get(name))
-            if book is not None:
-                books.add(book.removesuffix(".lisp"))
-        found[target.get("id", "")] = books
-    return found
-
-
-def derived_status(entry: dict, names: list[str], books: set[str],
-                   state: dict, root: Path = ROOT) -> str:
-    """A proof target's status, computed on demand and never stored.
-
-    ``planned`` when the target cites no event; ``certified`` when every
-    event's defining book is green (tools/green_check.py
-    ``green_at_these_bytes``: the record box's cert cache holds an entry at
-    the book's current closure key made on the record toolchain -- the one
-    meaning of "certified", row R2); otherwise
-    ``uncertified-at-current-digest``.  The row's ``evidence`` citations are
-    provenance, not the rule.  The status speaks for the cited events only;
-    the target's statement may say more than they prove.  STATE caches
-    green_check's report under ``"__green__"`` so a caller judging many rows
-    asks the cache once.
-    """
-    if not names:
-        return "planned"
-    if not books:
-        return "uncertified-at-current-digest"
-    here = str(Path(__file__).resolve().parent)
-    if here not in sys.path:
-        sys.path.insert(0, here)
-    import green_check  # imported late, it imports this module
-    report = state.get("__green__") or {}
-    records = report.get("books_by_verdict", {})
-    if any(book not in records for book in books):
-        report = green_check.audit(root, roots=sorted(set(books) | set(records)))
-        state["__green__"] = report
-        records = report.get("books_by_verdict", {})
-    if all(green_check.green_at_these_bytes(records.get(book)) for book in books):
-        return "certified"
-    return "uncertified-at-current-digest"
-
-
-def apply_events(regenerated: dict[str, list[str]]) -> str:
-    """``proofs.json`` with regenerated ``events``; the rest untouched.
-
-    A stored ``status`` is dropped: it is computed on demand
-    (``derived_status``), so the registry changes only when its content does.
-    """
-    registry = json.loads(PROOFS.read_text(encoding="utf-8"))
-    for entry in registry["proofs"]:
-        names = regenerated.get(entry["id"], [])
-        # proofs.json's events are GENERATED from planning/proof-events.json:
-        # an event added to proofs.json by hand is dropped here.  Say so, so
-        # the edit is moved to proof-events.json instead of lost (lanes kept
-        # tripping on it, 2026-09-27).
-        dropped = [name for name in entry.get("events", []) if name not in names]
-        if dropped:
-            print(f"WARN: {entry['id']}: proofs.json events not in "
-                  f"planning/proof-events.json are dropped (edit proof-events.json; "
-                  f"proofs.json's events are generated): {', '.join(n.get('name', str(n)) if isinstance(n, dict) else str(n) for n in dropped)}",
-                  file=sys.stderr)
-        if names:
-            entry["events"] = names
-        else:
-            entry.pop("events", None)
-        entry.pop("status", None)
-    return json.dumps(registry, indent=2, ensure_ascii=False) + "\n"
-
-
-# --------------------------------------------------------------------------
-# evidence lists: written by this tool, never by hand
-# --------------------------------------------------------------------------
-
-# Citations under these prefixes name reports that left the tree (D71); a
-# repoint may keep them although the file is gone (tools/check_scaffold.py's
-# HISTORICAL_PREFIXES, the same rule).
-EVIDENCE_HISTORICAL = ("planning/evidence/", "docs/evidence/")
-# A source file that left the tree is cited as `REV:PATH`, the last tree that
-# carried it (tools/check_scaffold.py TREE_CITATION reads the same form):
-# the object must exist in this repository and the path must be absent now.
-TREE_CITATION = re.compile(r"^([0-9a-f]{7,40}):((?:books|host|tests|tools|specs)/[^\s:]+)$")
-
-
-def evidence_digest(ident: str, evidence: object) -> str:
-    """The provenance stamp of row IDENT's evidence list: the first 16 hex
-    digits of the SHA-256 of the canonical JSON of (id, evidence).  The id is
-    inside the hash, so a stamp copied onto another row does not match."""
-    text = json.dumps({"id": ident, "evidence": evidence}, sort_keys=True,
-                      separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
-
-
-def evidence_problems(registry: dict) -> list[str]:
-    """A row whose evidence list this tool did not write: no
-    ``evidence_digest``, or one that does not match the list."""
-    problems: list[str] = []
-    for entry in registry.get("proofs", []):
-        ident = entry.get("id", "?")
-        stamp = entry.get("evidence_digest")
-        if stamp is None:
-            reason = "has no evidence_digest"
-        elif stamp != evidence_digest(ident, entry.get("evidence")):
-            reason = "does not match its evidence_digest (edited by hand)"
-        else:
-            continue
-        problems.append(f"planning/proofs.json: {ident}: the evidence list {reason}; "
-                        f"evidence lists are written by `python3 tools/ledger.py "
-                        f"--repoint {ident} --evidence PATH...`")
-    return problems
-
-
-def stamped_evidence(entry: dict, evidence: object) -> dict:
-    """ENTRY with EVIDENCE and its stamp, the stamp placed after ``evidence``."""
-    stamp = evidence_digest(entry["id"], evidence)
-    out: dict = {}
-    for key, value in entry.items():
-        if key == "evidence_digest":
-            continue
-        out[key] = evidence if key == "evidence" else value
-        if key == "evidence":
-            out["evidence_digest"] = stamp
-    if "evidence" not in out:
-        out["evidence"] = evidence
-        out["evidence_digest"] = stamp
-    return out
-
-
-def _write_registry(registry: dict) -> None:
-    PROOFS.write_text(json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
-                      encoding="utf-8")
-
-
-def repoint_problems(ident: str, paths: list[str], registry: dict,
-                     root: Path) -> list[str]:
-    """Why PATHS cannot be row IDENT's evidence list (empty when they can)."""
-    problems: list[str] = []
-    if not any(entry.get("id") == ident for entry in registry.get("proofs", [])):
-        problems.append(f"{ident}: not a row of planning/proofs.json")
-    if not paths:
-        problems.append(f"{ident}: an evidence list names at least one file")
-    seen: set[str] = set()
-    for path in paths:
-        if path in seen:
-            problems.append(f"{ident}: {path}: named twice")
-        seen.add(path)
-        if (not path or path != path.strip() or "://" in path
-                or Path(path).is_absolute() or ".." in Path(path).parts):
-            problems.append(f"{ident}: {path!r}: not a repository-relative path")
-        elif TREE_CITATION.match(path):
-            rev, rel = TREE_CITATION.match(path).groups()
-            if (root / rel).exists():
-                problems.append(f"{ident}: {rel} is in the tree; cite it plainly, not as {path}")
-            elif subprocess.run(["git", "-C", str(root), "cat-file", "-e", f"{rev}:{rel}"],
-                                capture_output=True).returncode != 0:
-                problems.append(f"{ident}: {path}: no tree of this repository carries it")
-        elif not path.startswith(EVIDENCE_HISTORICAL) and not (root / path).is_file():
-            problems.append(f"{ident}: {path}: not a file in this tree")
-    return problems
-
-
-def repoint(ident: str, paths: list[str], root: Path = ROOT) -> list[str]:
-    """Write PATHS as row IDENT's evidence list, stamped; nothing is written
-    when any path is refused."""
-    registry = json.loads(PROOFS.read_text(encoding="utf-8"))
-    problems = repoint_problems(ident, paths, registry, root)
-    if problems:
-        return problems
-    registry["proofs"] = [stamped_evidence(entry, list(paths)) if entry.get("id") == ident
-                          else entry for entry in registry["proofs"]]
-    _write_registry(registry)
-    return []
-
-
-def seal_evidence() -> list[str]:
-    """Stamp every row's evidence list as it stands: run ONCE, when the stamp
-    entered (the lists before it were curated by hand; from here on they are
-    written by --repoint).  Refuses when any row already carries a stamp, so it
-    cannot launder a later hand edit."""
-    registry = json.loads(PROOFS.read_text(encoding="utf-8"))
-    stamped = [entry.get("id", "?") for entry in registry.get("proofs", [])
-               if "evidence_digest" in entry]
-    if stamped:
-        return [f"--seal-evidence runs once; {len(stamped)} row(s) already carry an "
-                f"evidence_digest (first {stamped[0]}); use --repoint"]
-    registry["proofs"] = [stamped_evidence(entry, entry.get("evidence", []))
-                          for entry in registry["proofs"]]
-    _write_registry(registry)
-    return []
-
-
-# --------------------------------------------------------------------------
-# row retirement: a proofs.json row leaves only with its reason
-# --------------------------------------------------------------------------
-
-_PRF_ID = re.compile(r"^PRF-\d+$")
-
-
-def _dump(path: Path, data: dict) -> None:
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-
-def load_retirements(path: Path | None = None) -> dict[str, dict]:
-    """planning/proof-retirements.json's rows by retired id ({} when absent)."""
-    path = path or PROOF_RETIREMENTS
-    if not path.is_file():
-        return {}
-    return {row["id"]: row for row in json.loads(path.read_text(encoding="utf-8"))["rows"]}
-
-
-def retirement_row_problems(row: dict, current_ids: set[str]) -> list[str]:
-    """Why ROW is not a valid retirement (empty when it is)."""
-    ident = row.get("id", "?")
-    problems = []
-    why = row.get("why")
-    if why not in RETIRE_REASONS:
-        problems.append(f"{ident}: retirement why {why!r} is not one of {', '.join(RETIRE_REASONS)}")
-    for key in ("owner", "ruling", "to"):
-        if not str(row.get(key) or "").strip():
-            problems.append(f"{ident}: retirement row names no {key}")
-    to = str(row.get("to") or "")
-    if why == "superseded" and to and (not _PRF_ID.match(to) or to == ident or to not in current_ids):
-        problems.append(f"{ident}: superseded by {to!r}, which is not another row of planning/proofs.json")
-    if why == "deferred" and _PRF_ID.match(to):
-        problems.append(f"{ident}: deferred names a row ({to}), not the landing it waits for")
-    if not isinstance(row.get("row"), dict) or row["row"].get("id") != ident:
-        problems.append(f"{ident}: retirement row does not carry the retired proofs.json row")
-    return problems
-
-
-def retire(ident: str, why: str, to: str, owner: str, ruling: str, item: str | None = None,
-           proofs: Path | None = None, events: Path | None = None,
-           retirements: Path | None = None) -> list[str]:
-    """Move row IDENT (and its proof-events target) out of the register into
-    planning/proof-retirements.json with its reason; nothing is written when
-    any part is refused."""
-    proofs, events = proofs or PROOFS, events or PROOF_EVENTS
-    retirements = retirements or PROOF_RETIREMENTS
-    registry = json.loads(proofs.read_text(encoding="utf-8"))
-    curated = json.loads(events.read_text(encoding="utf-8"))
-    current_ids = {entry.get("id") for entry in registry.get("proofs", [])}
-    if ident not in current_ids:
-        return [f"{ident}: not a row of planning/proofs.json"]
-    existing = load_retirements(retirements)
-    if ident in existing:
-        return [f"{ident}: already has a retirement row"]
-    entry = next(e for e in registry["proofs"] if e.get("id") == ident)
-    target = next((t for t in curated.get("targets", []) if t.get("id") == ident), None)
-    row = {"id": ident, "why": why, "to": to, "owner": owner, "ruling": ruling,
-           "item": item, "row": entry, "events": target}
-    problems = retirement_row_problems(row, current_ids - {ident})
-    if problems:
-        return problems
-    registry["proofs"] = [e for e in registry["proofs"] if e.get("id") != ident]
-    curated["targets"] = [t for t in curated.get("targets", []) if t.get("id") != ident]
-    rows = sorted(list(existing.values()) + [row], key=lambda r: r["id"])
-    _dump(proofs, registry)
-    _dump(events, curated)
-    _dump(retirements, {"description": (
-        "Rows that left planning/proofs.json, each with its reason, written only by "
-        "`tools/ledger.py --retire` (superseded: by another row; deferred: until a named "
-        "landing, restored by `--restore`).  `ledger.py --check` refuses a row the fork "
-        "point had that the tree lacks with no row here."), "rows": rows})
-    return []
-
-
-def restore(ident: str, proofs: Path | None = None, events: Path | None = None,
-            retirements: Path | None = None) -> list[str]:
-    """Put a retired row (and its events target) back and drop its retirement row."""
-    proofs, events = proofs or PROOFS, events or PROOF_EVENTS
-    retirements = retirements or PROOF_RETIREMENTS
-    existing = load_retirements(retirements)
-    if ident not in existing:
-        return [f"{ident}: no retirement row to restore"]
-    registry = json.loads(proofs.read_text(encoding="utf-8"))
-    curated = json.loads(events.read_text(encoding="utf-8"))
-    if any(e.get("id") == ident for e in registry.get("proofs", [])):
-        return [f"{ident}: already a row of planning/proofs.json"]
-    row = existing.pop(ident)
-    registry["proofs"].append(row["row"])
-    if row.get("events"):
-        curated["targets"].append(row["events"])
-    data = json.loads(retirements.read_text(encoding="utf-8"))
-    data["rows"] = sorted(existing.values(), key=lambda r: r["id"])
-    _dump(proofs, registry)
-    _dump(events, curated)
-    _dump(retirements, data)
-    return []
-
-
-def fork_point_ids(root: Path = ROOT, base: str | None = None) -> set[str] | None:
-    """The proofs.json ids at the merge base of HEAD and BASE (default
-    $FN_LEDGER_BASE, else origin/dev); None when that cannot be read (not a
-    git tree, no such ref).  The merge base, not BASE itself: a lane behind
-    dev has not removed the rows dev added since."""
-    base = base or os.environ.get("FN_LEDGER_BASE", "origin/dev")
-    fork = subprocess.run(["git", "-C", str(root), "merge-base", "HEAD", base],
-                          capture_output=True, text=True)
-    if fork.returncode != 0:
-        return None
-    shown = subprocess.run(["git", "-C", str(root), "show",
-                            f"{fork.stdout.strip()}:planning/proofs.json"],
-                           capture_output=True, text=True)
-    if shown.returncode != 0:
-        return None
-    return {entry.get("id") for entry in json.loads(shown.stdout).get("proofs", [])}
-
-
-def retirement_problems(base_ids: set[str], current_ids: set[str],
-                        retirements: dict[str, dict]) -> list[str]:
-    """A row the fork point had and this tree lacks needs a valid retirement
-    row; a retirement row of a row present again is stale."""
-    problems = []
-    for ident in sorted(base_ids - current_ids):
-        row = retirements.get(ident)
-        if row is None:
-            problems.append(f"{ident}: a row of planning/proofs.json at the fork point is gone "
-                            f"with no retirement row: a row leaves only through "
-                            f"`ledger.py --retire {ident} --why superseded|deferred --to ... "
-                            f"--owner ... --ruling ...`")
-    for ident, row in sorted(retirements.items()):
-        if ident in current_ids:
-            problems.append(f"{ident}: has a retirement row but is a row of planning/proofs.json "
-                            f"again: `ledger.py --restore {ident}` (or delete the row)")
-            continue
-        problems.extend(retirement_row_problems(row, current_ids))
-    return problems
-
-
-# --------------------------------------------------------------------------
-# entry points
-# --------------------------------------------------------------------------
-
-
 def analysis_problems(tree: Tree) -> list[str]:
     """Incomplete detector runs cannot establish a clean ledger."""
     return [f"{tree.theorems[name].book}: {name}: {reason}"
@@ -5482,257 +4032,8 @@ def analysis_problems(tree: Tree) -> list[str]:
             if reason.startswith("analysis-incomplete:")]
 
 
-def check_problems(tree: "Tree | None" = None) -> list[str]:
-    """Everything `make check` must fail on.
-
-    The caller may pass a tree it already loaded; reading 180 books twice to
-    produce the same answer is waste, not independence.
-    """
-    problems: list[str] = []
-    tree = load_tree() if tree is None else tree
-    problems.extend(analysis_problems(tree))
-    for book in tree.books.values():
-        if book.read_error:
-            problems.append(f"{book.path}: unreadable: {book.read_error}")
-    if not PROOF_EVENTS.is_file():
-        return problems + ["planning/proof-events.json: missing"]
-    curated = load_proof_events()
-    event_problems, regenerated = validate_events(tree, curated)
-    problems.extend(event_problems)
-
-    ledger = build_ledger(tree)
-    # The ledger views are computed, not compared: building them is the check.
-    ledger_markdown(ledger)
-    expected = apply_events(regenerated)
-    relative = PROOFS.relative_to(ROOT).as_posix()
-    if not PROOFS.is_file():
-        problems.append(f"{relative}: missing; run `python3 tools/ledger.py --write`")
-    elif PROOFS.read_text(encoding="utf-8") != expected:
-        problems.append(f"{relative}: stale; run `python3 tools/ledger.py --write`")
-    if PROOFS.is_file():
-        registry = json.loads(PROOFS.read_text(encoding="utf-8"))
-        problems.extend(evidence_problems(registry))
-        current_ids = {entry.get("id") for entry in registry.get("proofs", [])}
-        base_ids = fork_point_ids()
-        if base_ids is None:
-            print("WARN: proof retirements: no fork point readable (not a git tree, or no "
-                  "origin/dev / $FN_LEDGER_BASE); the bare-drop check did not run",
-                  file=sys.stderr)
-            base_ids = current_ids
-        problems.extend(retirement_problems(base_ids, current_ids, load_retirements()))
-    return problems
-
-
-def write_all() -> list[str]:
-    tree = load_tree()
-    incomplete = analysis_problems(tree)
-    if incomplete:
-        return incomplete  # preserve generated evidence until analysis completes
-    curated = load_proof_events()
-    problems, regenerated = validate_events(tree, curated)
-    ledger = build_ledger(tree)
-    LEDGER_JSON.parent.mkdir(parents=True, exist_ok=True)
-    LEDGER_JSON.write_text(json.dumps(ledger, indent=2, ensure_ascii=False) + "\n",
-                           encoding="utf-8")
-    LEDGER_MD.write_text(ledger_markdown(ledger), encoding="utf-8")
-    PROOFS.write_text(apply_events(regenerated), encoding="utf-8")
-    return problems
-
-
-def report(tree: Tree) -> None:
-    ledger = build_ledger(tree)
-    totals = ledger["totals"]
-    print(f"{totals['books']} books, {totals['theorems']} theorems, "
-          f"{totals['functions']} functions, {totals['roots']} certification roots.")
-    print("guards: " + ", ".join(f"{state}={totals['guards'][state]}"
-                                 for state in GUARD_STATES))
-    print(f"{totals['assert_events']} assert-event, {totals['must_fails']} must-fail "
-          f"({totals['prover_refusals']} labelled prover-refusal), "
-          f"{totals['encapsulates']} encapsulate.")
-    print(f"{totals['suspect_theorems']} theorems flagged SUSPECT by shape.")
-    for entry in ledger["suspects"]:
-        print(f"  {entry['theorem']} ({entry['book']}:{entry['line']})")
-        for reason in entry["reasons"]:
-            print(f"      {reason}")
-
-
-def book_report(paths: list[str]) -> int:
-    """`--book': each named book's ledger row and its theorems' suspect
-    reasons, as JSON (stable for a before/after diff)."""
-    tree = load_tree(lazy=True)
-    out = []
-    missing = []
-    incomplete = []
-    for given in paths:
-        path = Path(given)
-        relative = (path.resolve().relative_to(ROOT).as_posix() if path.is_absolute()
-                    else resolve(given))
-        book = tree.books.get(relative)
-        if book is None:
-            missing.append(given)
-            continue
-        suspects = tree.suspects_of(book.theorems)
-        row = book_row_with(book, tree, suspects)
-        row["suspect_reasons"] = {name: suspects[name] for name in sorted(suspects)}
-        for name, reasons in suspects.items():
-            incomplete.extend(f"{relative}: {name}: {reason}" for reason in reasons
-                              if reason.startswith("analysis-incomplete:"))
-        out.append(row)
-    print(json.dumps(out, indent=1, sort_keys=True))
-    for given in missing:
-        print(f"ledger --book: {given}: not a book this tree reads "
-              "(books/*.lisp, tests/acl2/*.lisp)", file=sys.stderr)
-    for problem in incomplete:
-        print(f"ledger --book: {problem}", file=sys.stderr)
-    return 2 if missing else 1 if incomplete else 0
-
-
-def main(argv: list[str] | None = None) -> int:
-    try:
-        return _main(argv)
-    except AnalysisIncomplete as error:
-        print(f"ERROR: analysis-incomplete: {error}", file=sys.stderr)
-        return 1
-
-
-def _main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--write", action="store_true",
-                        help="regenerate proofs.json events and write build/ledger/ledger.{json,md}")
-    parser.add_argument("--stdout", action="store_true",
-                        help="print the ledger markdown and stop")
-    parser.add_argument("--check", action="store_true",
-                        help="fail on an unknown or SUSPECT cited theorem, or stale output")
-    parser.add_argument("--strict", action="store_true",
-                        help="with --check, fail on any lint warning: export "
-                             "hygiene, teeth form, include hygiene or host names")
-    parser.add_argument("--book", action="append", default=[], metavar="PATH",
-                        help="report only these books (repeatable): their row and the "
-                             "suspect reasons of their own theorems, without the "
-                             "whole-tree suspect pass (a before/after diff of one book)")
-    parser.add_argument("--load-tree", action="store_true",
-                        help="analyse the tree into build/cache/ledger-tree and stop: "
-                             "make check's first step, so the checkers that read the "
-                             "tree load it instead of each analysing it at once")
-    parser.add_argument("--repoint", metavar="PRF-ID",
-                        help="write the evidence list of this proofs.json row (with "
-                             "--evidence) and its evidence_digest stamp; the only "
-                             "writer of evidence lists, which --check verifies")
-    parser.add_argument("--evidence", nargs="+", default=None, metavar="PATH",
-                        help="with --repoint: the row's whole evidence list, in order; "
-                             "each a file in this tree (planning/evidence/ and "
-                             "docs/evidence/ citations may name reports that left it)")
-    parser.add_argument("--retire", metavar="PRF-ID",
-                        help="move this proofs.json row and its proof-events target to "
-                             "planning/proof-retirements.json; needs --why, --to, --owner, --ruling")
-    parser.add_argument("--why", choices=RETIRE_REASONS,
-                        help="with --retire: superseded (by --to, another row) or deferred "
-                             "(until --to, the landing that restores it)")
-    parser.add_argument("--to", metavar="PRF-ID|LANDING",
-                        help="with --retire: the superseding row, or the landing it waits for")
-    parser.add_argument("--owner", help="with --retire: who restores or answers for it")
-    parser.add_argument("--ruling", help="with --retire: who ruled it, and when")
-    parser.add_argument("--item", help="with --retire: a repair item id (optional)")
-    parser.add_argument("--restore", metavar="PRF-ID",
-                        help="put a retired row back (the landing it waited for is here)")
-    parser.add_argument("--seal-evidence", action="store_true",
-                        help="stamp every row's evidence list as it stands; runs once, "
-                             "refused when any row carries a stamp")
-    arguments = parser.parse_args(argv)
-    if arguments.evidence is not None and not arguments.repoint:
-        parser.error("--evidence needs --repoint")
-    if arguments.repoint:
-        if arguments.evidence is None:
-            parser.error("--repoint needs --evidence PATH...")
-        problems = repoint(arguments.repoint, arguments.evidence)
-        for problem in problems:
-            print(f"ERROR: {problem}", file=sys.stderr)
-        if not problems:
-            print(f"{arguments.repoint}: evidence list written "
-                  f"({len(arguments.evidence)} file(s)), stamped")
-        return 1 if problems else 0
-    if arguments.retire:
-        missing = [flag for flag, value in (("--why", arguments.why), ("--to", arguments.to),
-                                            ("--owner", arguments.owner), ("--ruling", arguments.ruling))
-                   if not (value or "").strip()]
-        if missing:
-            parser.error(f"--retire needs {', '.join(missing)}: a row never leaves by a bare drop")
-        problems = retire(arguments.retire, arguments.why, arguments.to, arguments.owner,
-                          arguments.ruling, arguments.item)
-        for problem in problems:
-            print(f"ERROR: {problem}", file=sys.stderr)
-        if not problems:
-            print(f"{arguments.retire}: retired ({arguments.why}, {arguments.to}); "
-                  f"run `python3 tools/ledger.py --write`")
-        return 1 if problems else 0
-    if arguments.restore:
-        problems = restore(arguments.restore)
-        for problem in problems:
-            print(f"ERROR: {problem}", file=sys.stderr)
-        if not problems:
-            print(f"{arguments.restore}: restored; run `python3 tools/ledger.py --write`")
-        return 1 if problems else 0
-    if arguments.seal_evidence:
-        problems = seal_evidence()
-        for problem in problems:
-            print(f"ERROR: {problem}", file=sys.stderr)
-        return 1 if problems else 0
-    if arguments.load_tree:
-        started = time.monotonic()
-        tree = load_tree()
-        print(f"ledger --load-tree: {len(tree.books)} books, "
-              f"{time.monotonic() - started:.1f} s")
-        problems = analysis_problems(tree)
-        for problem in problems:
-            print(f"ERROR: {problem}", file=sys.stderr)
-        return 1 if problems else 0
-    if arguments.stdout:
-        tree = load_tree()
-        sys.stdout.write(ledger_markdown(build_ledger(tree)))
-        return 1 if analysis_problems(tree) else 0
-    if arguments.book:
-        return book_report(arguments.book)
-    if arguments.check:
-        tree = load_tree()
-        problems = check_problems(tree)
-        warnings = lint_warnings(tree)
-        for problem in problems:
-            print(f"ERROR: {problem}", file=sys.stderr)
-        for warning in warnings:
-            print(f"WARN: {warning}", file=sys.stderr)
-        if problems or (warnings and arguments.strict):
-            return 1
-        print(f"Ledger OK: cited events and registry are "
-              f"current and the ledger builds; {len(warnings)} lint warnings.")
-        return 0
-    if arguments.write:
-        problems = write_all()
-        for problem in problems:
-            print(f"ERROR: {problem}", file=sys.stderr)
-        if any("analysis-incomplete:" in problem for problem in problems):
-            print("Ledger generation refused: incomplete detector analysis.", file=sys.stderr)
-        else:
-            print(f"Wrote {LEDGER_JSON.relative_to(ROOT)}, {LEDGER_MD.relative_to(ROOT)} "
-                  f"and the {PROOFS.relative_to(ROOT)} event arrays.")
-        return 1 if problems else 0
-    tree = load_tree()
-    report(tree)
-    return 1 if analysis_problems(tree) else 0
-
-
 # What _tree_cache_dir compares against: the functions as this file defines them.
 _GENUINE_ANALYSIS = (book_paths, host_paths, makefile_roots, analyze_book, analyze_host, Tree)
-
-
 # The module the pickled tree's classes belong to.  A script run delegates
 # to the imported module below, so this is always "ledger".
 _PICKLE_MODULE = "ledger"
-
-
-if __name__ == "__main__":
-    # Run as the module `ledger', not `__main__': the tree cache pickles
-    # classes by module name, and one name is what lets a script run and an
-    # importer share an entry.
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import ledger as _ledger
-    sys.exit(_ledger.main())

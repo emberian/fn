@@ -1,7 +1,7 @@
 #!/bin/sh
 # Run `make check-lane` (or another target) for this worktree on a build box.
 #
-#   tools/remote_check.sh BOX [--target T | --cmd 'COMMAND' | --regen]
+#   tools/remote_check.sh BOX [--target T | --cmd 'COMMAND']
 #                             [--fetch PATH]... [--no-dirty] [--no-install-certs]
 #                             [--tree BOXPATH] [--log BOXPATH] [--ship PATH]...
 #                             [--changed-since REV] [--baseline PATH] [--write-baseline PATH]
@@ -43,7 +43,7 @@
 #      (the roots' include closure only), plus `install-umbrellas` when a root
 #      is an image-world umbrella (per-book pairs from different origins did
 #      not compose under include-book books/image-world; obstructions-7
-#      item 64).  With --cmd or --regen and no --install-roots NOTHING is
+#      item 64).  With --cmd and no --install-roots NOTHING is
 #      installed: a command that loads books installs its own closure
 #      (certify_books --incremental, proof_repl); train 25's box step spent
 #      17.5 of its 22 minutes in a whole-tree install its command did not need
@@ -61,9 +61,7 @@
 #      Then
 #      then runs `make T` there (T = check-lane by default; `--cmd
 #      'COMMAND'` runs that shell command in the tree instead, e.g. one test
-#      module; `--regen` runs tools/ledger.py --write and
-#      tools/hot_path_check.py --refresh-stale and fetches the two committed
-#      files they write) with the box's own
+#      module) with the box's own
 #      FN_ACL2 and FN_CERT_CACHE (tools/farm.py HOSTS), under swarm-build on
 #      hbox, logging to --log BOXPATH (a path ON THE BOX; default
 #      <base>/LANE-check.log; the copy here is build/remote-check/BOX-T.log);
@@ -129,7 +127,6 @@ ROOTS=
 TREE=
 LOG=
 CMD=
-REGEN=0
 SINCE=
 BASELINE=
 BASELINE_OUT=
@@ -156,7 +153,6 @@ while [ $# -gt 0 ]; do
         --install-certs) INSTALL=1; shift ;;
         --no-install-certs) INSTALL=0; shift ;;
         --cmd) [ $# -ge 2 ] || usage; CMD=$2; TARGET=cmd; shift 2 ;;
-        --regen) REGEN=1; TARGET=regen; shift ;;
         --tree) [ $# -ge 2 ] || usage; TREE=$2; shift 2 ;;
         --log) [ $# -ge 2 ] || usage; LOG=$2; shift 2 ;;
         -h|--help) usage ;;
@@ -164,13 +160,6 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-if [ -n "$CMD" ] && [ $REGEN = 1 ]; then echo "remote_check: --cmd and --regen are exclusive" >&2; usage; fi
-if [ $REGEN = 1 ]; then
-    # hot_path_check --refresh-stale drops listed finds that no longer occur
-    # (item 76: dev's own STALE entries kept `make check` red at every head).
-    CMD='python3 tools/ledger.py --write && python3 tools/hot_path_check.py --refresh-stale'
-    FETCH="$FETCH planning/proofs.json planning/hot-path-findings.json"
-fi
 sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 # What gets installed first: roots (closure-scoped), the whole tree, or nothing.
 if [ $INSTALL = 0 ]; then MODE=none
@@ -191,7 +180,7 @@ if [ -n "$STEPPED" ]; then
 fi
 if [ -n "$CMD" ]; then RUN="sh -c $(sq "$CMD")"; else RUN="make $TARGET"; fi
 if [ -n "$SINCE$BASELINE$BASELINE_OUT" ]; then
-    [ -z "$CMD" ] || { echo "remote_check: --changed-since, --baseline and --write-baseline are for a make target, not --cmd/--regen" >&2; exit 2; }
+    [ -z "$CMD" ] || { echo "remote_check: --changed-since, --baseline and --write-baseline are for a make target, not --cmd" >&2; exit 2; }
     [ -z "$SINCE" ] || RUN="$RUN CHECK_CHANGED_SINCE=$SINCE"
     [ -z "$BASELINE" ] || RUN="$RUN CHECK_BASELINE=$BASELINE"
     [ -z "$BASELINE_OUT" ] || RUN="$RUN CHECK_BASELINE_OUT=$BASELINE_OUT"

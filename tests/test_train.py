@@ -52,27 +52,18 @@ if name == "world" and os.environ.get("STUB_WORLD"):
         f.write("new part\\n")
     if os.path.exists("books/image-world-part-1.lisp"):
         os.remove("books/image-world-part-1.lisp")
-if name == "premise_audit" and mode == "json":
-    every = "--all" in args and "STUB_PREMISES_ALL" in os.environ
-    print(os.environ["STUB_PREMISES_ALL"] if every else os.environ.get("STUB_PREMISES", "{}"))
 if mode == "write" and name == "resource_contract" and os.environ.get("STUB_CONTRACT"):
     os.makedirs("docs", exist_ok=True)
     with open("docs/resource-contract.md", "a") as f:
         f.write("block\\n")
-if mode == "write" and name == "ledger":
-    with open("planning/proofs.json", "a") as f:
-        f.write("regen\\n")
 sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 '''
-STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
-         "tools/cost_obligations.py", "tools/book_roots_check.py",
+STUBS = ["tools/ledger.py", "tools/host_check.py", "tools/book_roots_check.py",
          "tools/lock_discipline_check.py",
-         "tools/secrets_check.py", "planning/repair/repair.py",
+         "tools/secrets_check.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
-         "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
-         "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py",
-         "tests/test_keystone_critical.py", "tools/harness_check.py", "tools/premise_audit.py",
-         "tools/resource_contract.py"]
+         "tests/test_train.py", "tests/test_farm.py", "tests/test_book_roots_check.py",
+         "tools/harness_check.py", "tools/resource_contract.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in build/box/wire-grammar.json; do
@@ -256,11 +247,6 @@ class TrainBase(unittest.TestCase):
               '    sys.modules[spec.name] = module\n'
               '    spec.loader.exec_module(module)\n'
               '    globals().update({k: v for k, v in vars(module).items() if not k.startswith("__")})\n')
-        # The gate imports the finding classes after querying this tool.
-        # Importing its CLI stub must not terminate the scratch train process.
-        (self.seed / "tools/premise_audit.py").write_text(
-            'FINDING_CLASSES = ("never concluded", "preserved only", "established off the host path")\n'
-            'if __name__ == "__main__":\n' + textwrap.indent(STUB, "    "))
         (self.seed / "tools/remote_check.sh").write_text(REMOTE_STUB)
         (self.seed / "tools/train.py").write_bytes(SCRIPT.read_bytes())
         (self.seed / "tools/box_artifacts.py").write_bytes((REPO / "tools/box_artifacts.py").read_bytes())
@@ -270,7 +256,6 @@ class TrainBase(unittest.TestCase):
         (self.seed / "src.txt").write_text("a\nb\nc\n")
         (self.seed / "tools/extract/world.lisp").write_text("base\n")
         (self.seed / "planning/decisions.md").write_text("d0\n")
-        (self.seed / "planning/known-reds.json").write_text('{"rows": []}\n')
         self.commit(self.seed, "init")
         sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
         self.work = self.tmp / "work"
@@ -385,23 +370,6 @@ class NewFixtureTests(unittest.TestCase):
     def scratch(self, name):
         return self.work / "build/lanes" / ("lane-check-" + name)
 
-    def test_ledger_red_only_in_the_merge_fails_and_copies_the_log(self):
-        ledger = STUB.replace('sys.exit(int(os.environ.get(',
-            'if name == "ledger" and mode == "check" and os.path.exists("lane-event") and os.path.exists("dev-event"):\n'
-            '    print("merged ledger is red"); sys.exit(1)\n'
-            'sys.exit(int(os.environ.get(')
-        self.advance_dev({"tools/ledger.py": ledger})
-        sha = self.lane("red", {"lane-event": "lane\n"})
-        self.advance_dev({"dev-event": "dev\n"})
-        p = self.check_lane("red", sha)
-        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
-        self.assertIn("lane-check ledger: FAIL", p.stdout)
-        self.assertIn("lane-check verdict: FAIL", p.stdout)
-        log = self.work / "build/lane-check" / f"red-{sha[:9]}.log"
-        self.assertIn("merged ledger is red", log.read_text())
-        self.assertIn(str(log), p.stdout)
-        self.assertEqual(log.read_bytes(), (self.scratch("red") / "build/lane-check" / log.name).read_bytes())
-
     def test_regen_red_fails_before_local_gates(self):
         sha = self.lane("regen-red", {"tools/x.py": "x\n"})
         p = self.check_lane("regen-red", sha, extra_env={"STUB_RC_ledger_write": "1"})
@@ -424,23 +392,6 @@ class NewFixtureTests(unittest.TestCase):
         log = self.work / "build/lane-check" / f"dirty-regen-{sha[:9]}.log"
         self.assertIn("gates must run at a committed HEAD", log.read_text())
 
-    def test_dropped_bare_and_term_findings_fail(self):
-        for path in train.PREMISE_BASELINES:
-            (self.seed / path).write_text(json.dumps({"accepted": {"still": "why"}}))
-        self.commit(self.seed, "premise baselines")
-        sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
-        sha = self.lane("premises", {path: '{"accepted": {}}' for path in train.PREMISE_BASELINES})
-        p = self.check_lane("premises", sha, extra_env={
-            "STUB_PREMISES": '{"still": {"class": "preserved only"}}',
-            "STUB_PREMISES_ALL": '{"still": {"class": "preserved only"}}'})
-        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
-        self.assertIn("lane-check premise_baseline: FAIL", p.stdout)
-        self.assertIn("lane-check verdict: FAIL", p.stdout)
-        log = self.work / "build/lane-check" / f"premises-{sha[:9]}.log"
-        self.assertIn("premise baseline LOST", log.read_text())
-        self.assertIn("premise term baseline LOST", log.read_text())
-        self.assertIn("premise_audit --json --all", self.stub_log())
-
     def test_clean_path_runs_train_gates_and_preserves_dirty_lane_sources(self):
         sha = self.lane("clean", {"tools/x.py": "x\n"})
         sh(self.work, "git", "fetch", "-q", "origin")
@@ -451,13 +402,11 @@ class NewFixtureTests(unittest.TestCase):
         train.save_box_record(scratch, {"sha": self.head(), "ran_at": self.head(), "box": "persvati"})
         p = self.train("lane-check", str(self.seed))
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn("lane-check verdict: PASS (3 box gates owed)", p.stdout)
+        self.assertIn("lane-check verdict: PASS (1 box gates owed)", p.stdout)
         for name in train.GATES:
             self.assertIn(f"lane-check {name}: PASS {sys.executable} tools/train.py gate --local", p.stdout)
         for name in ("certify", "box_host_world", "image"):
             self.assertIn(f"lane-check {name}: NONE (", p.stdout)
-        for name in ("reach", "keystone_cert"):
-            self.assertIn(f"lane-check {name}: BOX ", p.stdout)
         self.assertIn(f"dev={dev}", p.stdout)
         self.assertIn("lane-check certify: NONE (box step inherits:", p.stdout)
         self.assertIn("lane-check extraction: BOX", p.stdout)
@@ -469,15 +418,8 @@ class NewFixtureTests(unittest.TestCase):
         self.assertEqual(sh(self.seed, "git", "rev-parse", "HEAD").stdout.strip(), sha)
         log = self.seed / "build/lane-check" / f"clean-{sha[:9]}.log"
         self.assertTrue(log.is_file())
-        self.assertIn("ledger --write", self.stub_log())
-        self.assertIn("ledger --check", self.stub_log())
-        self.assertIn("keystone_emit --write-manifest", self.stub_log())
-        self.assertIn("keystone_emit --check", self.stub_log())
-        self.assertIn("current_view --check", self.stub_log())
         scratch = self.scratch("clean")
         self.assertEqual(sh(scratch, "git", "branch", "--show-current").stdout.strip(), "integrate/lane-check-clean")
-        self.assertIn("regen", (scratch / "planning/proofs.json").read_text())
-        self.assertFalse((self.seed / "planning/proofs.json").exists())
 
     def test_reuse_resets_to_new_dev_and_clean_removes_only_scratch(self):
         sha = self.lane("reuse", {"lane-event": "lane\n"})
@@ -489,10 +431,9 @@ class NewFixtureTests(unittest.TestCase):
         self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), old_dev)
         p = self.check_lane("reuse", sha)
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn(f"lane-check verdict: PASS (3 box gates owed) dev={dev}", p.stdout)
+        self.assertIn(f"lane-check verdict: PASS (1 box gates owed) dev={dev}", p.stdout)
         self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), old_dev)
         self.assertTrue((self.scratch("reuse") / "dev-event").is_file())
-        self.assertEqual((self.scratch("reuse") / "planning/proofs.json").read_text().count("regen"), 1)
         p = self.check_lane("reuse", sha, "--clean")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertFalse(self.scratch("reuse").exists())
@@ -550,7 +491,7 @@ class NewFixtureTests(unittest.TestCase):
         self.assertEqual(train.image_modules(["host/owner-host.lisp"]), {})
         self.assertIn("lane-check image: NONE (no native module obliged)", p.stdout)
         self.assertIn("lane-check extraction: BOX", p.stdout)
-        self.assertIn("lane-check verdict: PASS (3 box gates owed)", p.stdout)
+        self.assertIn("lane-check verdict: PASS (1 box gates owed)", p.stdout)
 
     def test_local_box_check_failure_blocks_inheritance_and_verdict(self):
         sha = self.lane("local-red", {"tools/x.py": "x\n"})
@@ -562,15 +503,9 @@ class NewFixtureTests(unittest.TestCase):
         self.assertIn("lane-check verdict: FAIL", p.stdout)
 
     def test_box_certify_uses_the_train_affected_books_and_added_roots(self):
-        manifest_stub = STUB.replace('sys.exit(int(os.environ.get(',
-            'if name == "keystone_emit" and mode == "write-manifest":\n'
-            '    os.makedirs("build", exist_ok=True)\n'
-            '    with open("build/teeth-obligations.json", "w") as f: json.dump({"entries": []}, f)\n'
-            'sys.exit(int(os.environ.get(')
         (self.seed / "books").mkdir(exist_ok=True)
         sha = self.lane("books", {"books/a.lisp": "(in-package \"ACL2\")\n",
-                                  "Makefile": "ACL2_BOOKS = books/new-root\n",
-                                  "tools/keystone_emit.py": manifest_stub})
+                                  "Makefile": "ACL2_BOOKS = books/new-root\n"})
         p = self.check_lane("books", sha)
         self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
         line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check certify: BOX"))
@@ -585,16 +520,10 @@ class NewFixtureTests(unittest.TestCase):
 
     def test_box_certify_for_a_changed_test_matches_the_train_command(self):
         (self.seed / "tests/acl2").mkdir(parents=True, exist_ok=True)
-        manifest_stub = STUB.replace('sys.exit(int(os.environ.get(',
-            'if name == "keystone_emit" and mode == "write-manifest":\n'
-            '    os.makedirs("build", exist_ok=True)\n'
-            '    with open("build/teeth-obligations.json", "w") as f: json.dump({"entries": []}, f)\n'
-            'sys.exit(int(os.environ.get(')
         self.advance_dev({
             "Makefile": "ACL2_BOOKS = tests/acl2/base-tests tests/acl2/consumer-tests\n",
             "tests/acl2/base-tests.lisp": '(in-package "ACL2")\n',
             "tests/acl2/consumer-tests.lisp": '(include-book "base-tests")\n',
-            "tools/keystone_emit.py": manifest_stub,
         })
         sh(self.work, "git", "fetch", "-q", "origin")
         sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
@@ -636,29 +565,6 @@ class NewFixtureTests(unittest.TestCase):
         self.assertNotIn("--affected-by", line)
         self.assertNotIn("lane-check certify: NONE", p.stdout)
 
-    def test_f3_pinned_base_survives_a_shared_origin_dev_move_during_regen(self):
-        baseline = json.dumps({"accepted": {"still": "why"}})
-        self.advance_dev({"planning/premise-baseline.json": baseline})
-        pinned = self.origin_rev("dev")
-        moved = self.lane("moving-dev", {"planning/premise-baseline.json": '{"accepted": {}}'})
-        mover = STUB.replace('sys.exit(int(os.environ.get(',
-            'if name == "resource_contract" and mode == "write":\n'
-            '    import subprocess\n'
-            '    subprocess.run(["git", "-C", os.getcwd(), "update-ref", "refs/remotes/origin/dev", os.environ["MOVE_DEV"]], check=True)\n'
-            'sys.exit(int(os.environ.get(')
-        sha = self.lane("pinned", {"planning/premise-baseline.json": '{"accepted": {}}',
-                                    "tools/resource_contract.py": mover})
-        p = self.check_lane("pinned", sha, extra_env={"MOVE_DEV": moved,
-            "STUB_PREMISES": '{"still": {"class": "preserved only"}}'})
-        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
-        self.assertIn("lane-check premise_baseline: FAIL", p.stdout)
-        self.assertIn(f"dev={pinned}", p.stdout)
-        self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), moved)
-        report = json.loads((self.scratch("pinned") / "build/lane-check/gates.json").read_text())
-        self.assertEqual(report["dev"], pinned)
-        self.assertEqual({r["dev"] for r in report["gates"].values()}, {pinned})
-        self.assertEqual(report["gates"]["premise_baseline"]["lost"], ["still"])
-
     def test_f5_merged_tree_owns_regeneration_and_new_gate_policy(self):
         sha = self.lane("older-policy", {"tools/x.py": "x\n"})
         policy = (self.seed / "tools/train.py").read_text()
@@ -681,23 +587,21 @@ class NewFixtureTests(unittest.TestCase):
     def test_cmd_gate_preserves_names_order_output_and_return_codes(self):
         # Literal order from 9fe40c34a plus the cost, book-roots and harness gates after ascii,
         # independent of this implementation.
-        baseline_gates = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-                          "cost_obligations", "book_roots", "harness", "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
+        baseline_gates = ("ancestor", "main_last", "host_load", "ascii", "book_roots", "harness",
+                          "box_step", "lock_delta", "secrets", "unit", "image")
         self.assertEqual(train.GATES, baseline_gates)
         for rc in (0, 7):
-            p = self.train("gate", extra_env={"STUB_RC_ledger_check": str(rc)})
+            p = self.train("gate", extra_env={"STUB_RC_main_last_check_": str(rc)})
             st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
-            expected = {name: rc if name == "ledger" else 0 for name in baseline_gates}
+            expected = {name: rc if name == "main_last" else 0 for name in baseline_gates}
             self.assertEqual({name: entry["rc"] for name, entry in st["gates"].items()}, expected)
             self.assertEqual(p.returncode, 1 if rc else 0, p.stdout + p.stderr)
             summary = "gates at " + self.head()[:9] + ": " + ", ".join(f"{n}={v}" for n, v in expected.items())
             self.assertIn(summary + "\n", p.stdout)
             self.assertEqual(self.stub_log(), [
-                "ledger --check", "current_view --check", "main_last_check ", "keystone_emit --check",
-                "cost_obligations --check", "book_roots_check ", "harness_check --quiet",
+                "main_last_check ", "book_roots_check ", "harness_check --quiet",
                 "lock_discipline_check --json",
-                "lock_discipline_check --json", "test_ledger ", "test_keystone_emit ",
-                "test_keystone_critical ", "test_train ", "test_farm "])
+                "lock_discipline_check --json", "test_train ", "test_farm "])
             self.log.unlink()
 
     def test_review1_private_fetch_preserves_other_trains_tracking_refs(self):
@@ -719,51 +623,6 @@ class NewFixtureTests(unittest.TestCase):
         self.assertEqual(fetch_head.read_bytes() if fetch_head.exists() else None, fetch_before)
         self.assertEqual(sh(self.work, "git", "for-each-ref", "refs/lane-check/").stdout, "")
 
-    def test_review2_ledger_drop_uses_pinned_base_after_shared_ref_moves(self):
-        # Exercise the ledger's actual fork/retirement decisions without its
-        # unrelated book analysis. Expectations remain the explicit lost R.
-        source = (REPO / "tools/ledger.py").read_text()
-        functions = "\n\n".join(ast.get_source_segment(source, node)
-                                 for node in ast.parse(source).body
-                                 if isinstance(node, ast.FunctionDef)
-                                 and node.name in ("fork_point_ids", "retirement_problems"))
-        ledger = ('import json, os, subprocess, sys\nfrom pathlib import Path\nROOT = Path.cwd()\n'
-                  + functions + '\nif "--check" in sys.argv:\n'
-                  '    current = {r["id"] for r in json.loads(Path("planning/proofs.json").read_text())["proofs"]}\n'
-                  '    problems = retirement_problems(fork_point_ids(), current, {})\n'
-                  '    print("\\n".join(problems))\n'
-                  '    sys.exit(bool(problems))\n')
-        self.advance_dev({"planning/proofs.json": '{"proofs": [{"id": "R"}]}',
-                          "planning/proof-events.json": '{"targets": [{"id": "R"}]}'})
-        pinned = self.origin_rev("dev")
-        mover = STUB.replace('sys.exit(int(os.environ.get(',
-            'if name == "resource_contract" and mode == "write":\n'
-            '    import subprocess\n'
-            '    subprocess.run(["git", "-C", os.getcwd(), "update-ref", "refs/remotes/origin/dev", os.environ["MOVE_DEV"]], check=True)\n'
-            'sys.exit(int(os.environ.get(')
-        host = STUB.replace('sys.exit(int(os.environ.get(',
-            'if name == "host_check" and os.environ.get("FN_HOST_CHECK_BASE") != os.environ["PINNED"]:\n'
-            '    sys.exit("host base was not pinned")\n'
-            'sys.exit(int(os.environ.get(')
-        sha = self.lane("ledger-base", {"planning/proofs.json": '{"proofs": []}',
-            "planning/proof-events.json": '{"targets": []}', "tools/ledger.py": ledger,
-            "tools/resource_contract.py": mover, "tools/host_check.py": host})
-        p = self.check_lane("ledger-base", sha, extra_env={"MOVE_DEV": sha, "PINNED": pinned})
-        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
-        self.assertIn("lane-check ledger: FAIL", p.stdout)
-        self.assertIn("lane-check box_step: PASS", p.stdout)
-        log = self.work / "build/lane-check" / f"ledger-base-{sha[:9]}.log"
-        self.assertIn("R: a row of planning/proofs.json at the fork point is gone", log.read_text())
-        scratch = self.scratch("ledger-base")
-        env = dict(self.env, MOVE_DEV=sha, PINNED=pinned)
-        live = sh(scratch, sys.executable, "tools/ledger.py", "--check", env=env)
-        self.assertEqual(live.returncode, 0)
-        pinned_check = sh(scratch, sys.executable, "tools/ledger.py", "--check",
-                          env=dict(env, FN_LEDGER_BASE=pinned), check=False)
-        self.assertEqual(pinned_check.returncode, 1)
-        report = json.loads((scratch / "build/lane-check/gates.json").read_text())
-        self.assertEqual(report["gates"]["ledger"]["dev"], pinned)
-
     def test_review2_host_check_base_override_preserves_default_and_explicit_base(self):
         from tools import host_check
         base = self.head()
@@ -780,11 +639,11 @@ class NewFixtureTests(unittest.TestCase):
 
     def test_review3_ordinary_gate_keeps_image_paths_when_unit_moves_dev(self):
         mover = STUB.replace('sys.exit(int(os.environ.get(',
-            'if name == "test_ledger":\n'
+            'if name == "test_mover":\n'
             '    import subprocess\n'
             '    subprocess.run(["git", "-C", os.getcwd(), "update-ref", "refs/remotes/origin/dev", os.environ["MOVE_DEV"]], check=True)\n'
             'sys.exit(int(os.environ.get(')
-        (self.work / "tests/test_ledger.py").write_text(mover)
+        (self.work / "tests/test_mover.py").write_text(mover)
         (self.work / "packaging").mkdir()
         (self.work / "packaging/launcher-decide.sh").write_text("# launcher\n")
         head = self.commit(self.work, "launcher changes")
@@ -815,27 +674,6 @@ class NewFixtureTests(unittest.TestCase):
         self.assertIn("books/unselected", line)
         self.assertNotIn("--affected-by", line)
         self.assertNotIn("lane-check certify: NONE", p.stdout)
-
-    def test_review5_box_record_cannot_cover_unrun_reach_check(self):
-        sha = self.lane("reach-owed", {"tools/reach_check.py": "raise SystemExit(7)\n"})
-        p = self.check_lane("reach-owed", sha)
-        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn("lane-check box_step: PASS", p.stdout)
-        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check reach: BOX"))
-        self.assertIn("tools/reach_check.py --summary --strict", line)
-        self.assertIn("--install-certs", line)
-        self.assertNotIn("lane-check reach: NONE", p.stdout)
-
-    def test_review5_box_record_cannot_cover_certificate_keystone_check(self):
-        sha = self.lane("keystone-owed", {"tools/x.py": "lane\n"})
-        p = self.check_lane("keystone-owed", sha, extra_env={"STUB_RC_keystone_emit_check": "7"})
-        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
-        self.assertIn("lane-check box_step: PASS", p.stdout)
-        self.assertIn("lane-check keystone: FAIL", p.stdout)
-        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check keystone_cert: BOX"))
-        self.assertIn("tools/keystone_emit.py --check", line)
-        self.assertIn("--install-certs", line)
-        self.assertNotIn("lane-check keystone_cert: NONE", p.stdout)
 
 
 class MergeTests(TrainBase):
@@ -872,19 +710,6 @@ class MergeTests(TrainBase):
                 self.assertIn(f"source conflict in {path}", p.stdout)
                 self.assertFalse((self.work / ".git" / "MERGE_HEAD").exists())
 
-    def test_regen_commits_no_teeth_manifest(self):
-        stub = self.work / "tools/keystone_emit.py"
-        stub.write_text(STUB.replace("import json, os, sys", "import json, os, sys\nfrom pathlib import Path\n"
-                                     "Path('build').mkdir(exist_ok=True)\n"
-                                     "Path('build/teeth-obligations.json').write_text('{}')", 1))
-        self.commit(self.work, "manifest-writing stub")
-        r = self.train("regen")
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("keystone_emit --write-manifest", self.stub_log())
-        self.assertTrue((self.work / "build/teeth-obligations.json").is_file())
-        self.assertEqual(sh(self.work, "git", "ls-files", "build", "planning/teeth-obligations.json").stdout, "")
-        self.assertEqual(sh(self.work, "git", "status", "--porcelain").stdout.strip(), "")
-
     def test_world_part_conflict_takes_train_side(self):
         (self.seed / "books").mkdir(exist_ok=True)
         sha = self.lane("w", {"books/image-world-part-2.lisp": "lane part\n"})
@@ -907,18 +732,6 @@ class MergeTests(TrainBase):
         tracked = sh(self.work, "git", "ls-files", "books").stdout.split()
         self.assertIn("books/image-world-part-9.lisp", tracked)
         self.assertNotIn("books/image-world-part-1.lisp", tracked)
-
-    def test_curated_proofs_conflict_goes_back_to_the_lane(self):
-        # proofs.json rows are lane-curated: a conflict is not resolved to ours.
-        sha = self.lane("p", {"planning/proofs.json": "lane repoint\n"})
-        self.advance_dev({"planning/proofs.json": "dev row\n"})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
-        p = self.train("merge", f"p@{sha}")
-        self.assertNotEqual(p.returncode, 0)
-        self.assertIn("planning/proofs.json", p.stdout)
-        self.assertEqual((self.work / "planning/proofs.json").read_text(), "dev row\n")
-        self.assertFalse((self.work / ".git" / "MERGE_HEAD").exists())
 
     def test_source_conflict_aborts_lane_and_next_lane_merges(self):
         bad = self.lane("bad", {"src.txt": "a\nlane-bad\nc\n"})
@@ -952,8 +765,7 @@ class RegenTests(TrainBase):
         p = self.train("regen")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
-        self.assertEqual(log, ["world ", "ledger --write", "harness_check --write-stubs",
-                               "keystone_emit --write-manifest", "resource_contract --write"])
+        self.assertEqual(log, ["world ", "harness_check --write-stubs", "resource_contract --write"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
 
@@ -1079,7 +891,7 @@ class PushTests(TrainBase):
         # a gate record of the earlier dev, at the same HEAD
         path = self.work / "build/train/integrate__t1.json"
         st = json.loads(path.read_text())
-        st["gates"]["ledger"]["dev"] = "0" * 40
+        st["gates"]["main_last"]["dev"] = "0" * 40
         path.write_text(json.dumps(st))
         p = self.train("push")
         self.assertNotEqual(p.returncode, 0, p.stdout)
@@ -1243,7 +1055,7 @@ class PushTests(TrainBase):
         # train 36: `gate; push` pushed two test_ledger reds; the suites are gates now
         self.ready()
         before = self.origin_rev("dev")
-        g = self.train("gate", extra_env={"STUB_RC_test_ledger_": "1"})
+        g = self.train("gate", extra_env={"STUB_RC_test_farm_": "1"})
         self.assertNotEqual(g.returncode, 0, g.stdout)
         self.assertIn("unit=1", g.stdout)
         p = self.train("push")
@@ -1255,14 +1067,14 @@ class PushTests(TrainBase):
         self.ready()
         self.train("gate")
         log = self.stub_log()
-        for name in ("test_ledger", "test_keystone_emit", "test_keystone_critical", "test_train", "test_farm"):
+        for name in ("test_train", "test_farm"):
             self.assertIn(name + " ", log)
-        self.assertNotIn("test_current_view ", log)
-        (self.work / "tools/current_view.py").write_text(STUB + "# changed\n")
+        self.assertNotIn("test_book_roots_check ", log)
+        (self.work / "tools/book_roots_check.py").write_text(STUB + "# changed\n")
         self.commit(self.work, "tool change")
         self.log.unlink()
         self.train("gate")
-        self.assertIn("test_current_view ", self.stub_log())
+        self.assertIn("test_book_roots_check ", self.stub_log())
 
     def test_native_suites_are_left_to_the_native_gate(self):
         root = Path(tempfile.mkdtemp(prefix="train-unit-"))
@@ -1292,17 +1104,6 @@ class PushTests(TrainBase):
         g = self.train("gate")
         self.assertNotEqual(g.returncode, 0, g.stdout)
         self.assertIn("unit: tests/test_farm.py is missing", g.stdout)
-
-    def test_push_refused_when_the_teeth_gate_fails(self):
-        self.ready()
-        before = self.origin_rev("dev")
-        g = self.train("gate", extra_env={"STUB_RC_keystone_emit_check": "1"})
-        self.assertNotEqual(g.returncode, 0, g.stdout)
-        self.assertIn("keystone=1", g.stdout)
-        p = self.train("push")
-        self.assertNotEqual(p.returncode, 0, p.stdout)
-        self.assertIn("gate keystone failed", p.stdout + p.stderr)
-        self.assertEqual(self.origin_rev("dev"), before)
 
     def test_push_refused_when_ascii_failed(self):
         self.ready()
@@ -1446,8 +1247,6 @@ class CertifyTests(TrainBase):
         sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
         sh(self.work, "git", "fetch", "-q", "origin")
         sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
-        # the regen step's manifest (keystone_emit --write-manifest), uncommitted
-        (self.work / "build/teeth-obligations.json").write_text('{"entries": []}\n')
         ssh = self.tmp / "ssh-stub"
         ssh.write_text(SSH_STUB)
         ssh.chmod(0o755)
@@ -1559,41 +1358,17 @@ class CertifyTests(TrainBase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual([line for line in self.stub_log() if line.startswith("farm ")], [])
 
-    def known(self, *subjects, kind="certify", state="open"):
-        """Commit known-red rows for SUBJECTS, owned by item KR-X in STATE, on dev."""
-        rows = [{"kind": kind, "subject": b, "item": "KR-X", "owner": "builder-B",
-                 "evidence": "measured"} for b in subjects]
-        self.advance_dev({"planning/known-reds.json": json.dumps({"rows": rows}),
-                          "planning/repair/items/KR-X.json": json.dumps({"id": "KR-X", "state": state})})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "merge", "-q", "--no-edit", "origin/dev")
-
-    def test_a_certify_whose_failures_are_all_known_reds_goes_on_and_records_them(self):
-        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
-        self.known("host/far-a", "books/far-b")
-        self.books_train()
-        c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_wait": "1",
-                                                     "STUB_FAILED_BOOKS": "host/far-a,books/far-b"})
-        self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
-        self.assertIn("every one a known red", c.stdout)
-        self.assertEqual(self.box()["known_reds_seen"], ["books/far-b", "host/far-a"])
-        self.assertEqual(len([l for l in self.stub_log() if l.startswith("ssh ")]), 1)
-
-    def test_a_certify_failure_outside_the_known_reds_records_nothing(self):
-        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
-        self.known("host/far-a")
+    def test_a_certify_failure_records_nothing(self):
         self.books_train()
         before = self.box()
         c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_wait": "1",
                                                      "STUB_FAILED_BOOKS": "host/far-a,books/b"})
         self.assertNotEqual(c.returncode, 0)
-        self.assertIn("NEW certify red (not in planning/known-reds.json): books/b", c.stdout)
+        self.assertIn("certify red: books/b", c.stdout)
         self.assertEqual(self.box(), before)
         self.assertEqual([l for l in self.stub_log() if l.startswith("ssh ")], [])
 
-    def test_a_killed_known_red_book_has_no_verdict_and_records_nothing(self):
-        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
-        self.known("host/far-a")
+    def test_a_killed_book_has_no_verdict_and_records_nothing(self):
         self.books_train()
         before = self.box()
         c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_wait": "1",
@@ -1601,14 +1376,6 @@ class CertifyTests(TrainBase):
         self.assertNotEqual(c.returncode, 0)
         self.assertIn("KILLED (no verdict): host/far-a", c.stdout)
         self.assertEqual(self.box(), before)
-
-    def test_a_certify_row_of_another_kind_does_not_excuse_a_book(self):
-        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
-        self.known("host/far-a", kind="native")
-        self.books_train()
-        c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_wait": "1",
-                                                     "STUB_FAILED_BOOKS": "host/far-a"})
-        self.assertNotEqual(c.returncode, 0)
 
     def test_certify_always_adds_critical_witnesses_of_transitively_affected_books(self):
         (self.seed / "books").mkdir(exist_ok=True)
@@ -1760,478 +1527,6 @@ class CertifyTests(TrainBase):
         (self.work / "NOTES.txt").write_text("x\n")
         self.assertNotEqual(self.train("certify", "hbox").returncode, 0)
         self.assertEqual([l for l in self.stub_log() if l.startswith("farm")], [])
-
-
-
-class BaselineGateTests(TrainBase):
-    """The known-red baseline: rows shrink only, each owned by an open item."""
-
-    def setUp(self):
-        super().setUp()
-        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
-
-    def rows(self, *subjects, item="KR-X"):
-        return json.dumps({"rows": [{"kind": "native", "subject": s, "item": item, "owner": "builder-B",
-                                     "evidence": "gate log"} for s in subjects]}) + "\n"
-
-    def on_dev(self, text, state="open"):
-        self.advance_dev({"planning/known-reds.json": text,
-                          "planning/repair/items/KR-X.json": json.dumps({"id": "KR-X", "state": state})})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
-
-    def gate_with(self, text=None, item_state=None):
-        if text is not None:
-            (self.work / "planning/known-reds.json").write_text(text)
-        if item_state is not None:
-            (self.work / "planning/repair/items/KR-X.json").write_text(
-                json.dumps({"id": "KR-X", "state": item_state}))
-        if text is not None or item_state is not None:
-            self.commit(self.work, "head baseline")
-        g = self.train("gate")
-        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
-        return g, st["gates"]["baseline"]
-
-    def test_unchanged_owned_rows_pass_and_status_says_not_green(self):
-        self.on_dev(self.rows("t.a", "t.b"))
-        g, rec = self.gate_with()
-        self.assertEqual(rec["rc"], 0, g.stdout)
-        self.assertEqual(rec["rows"], 2)
-        s = self.train("status")
-        self.assertIn("non-regressing against 2 known reds, 0 amended", s.stdout)
-        self.assertIn("NOT green", s.stdout)
-
-    def test_a_removed_row_passes(self):
-        self.on_dev(self.rows("t.a", "t.b"))
-        g, rec = self.gate_with(self.rows("t.a"))
-        self.assertEqual(rec["rc"], 0, g.stdout)
-        self.assertEqual(rec["gone"], [["native", "t.b"]])
-
-    def test_a_row_added_relative_to_dev_fails(self):
-        self.on_dev(self.rows("t.a"))
-        g, rec = self.gate_with(self.rows("t.a", "t.new"))
-        self.assertEqual(rec["rc"], 1)
-        self.assertEqual(rec["added"], [["native", "t.new"]])
-        self.assertIn("rows shrink only", g.stdout)
-
-    def test_the_first_baseline_is_established_when_dev_has_none(self):
-        sh(self.seed, "git", "fetch", "-q", "origin")
-        sh(self.seed, "git", "checkout", "-q", "-B", "devtip", "origin/dev")
-        sh(self.seed, "git", "rm", "-q", "planning/known-reds.json")
-        self.commit(self.seed, "no baseline")
-        sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
-        (self.work / "planning/repair/items").mkdir(parents=True, exist_ok=True)
-        g, rec = self.gate_with(self.rows("t.a"), item_state="open")
-        self.assertEqual(rec["rc"], 0, g.stdout)
-        self.assertTrue(rec["established"])
-
-    def test_a_missing_baseline_at_head_fails(self):
-        sh(self.work, "git", "rm", "-q", "planning/known-reds.json")
-        self.commit(self.work, "drop baseline")
-        g, rec = self.gate_with()
-        self.assertEqual(rec["rc"], 1)
-
-    def test_a_row_whose_item_is_missing_fails(self):
-        self.on_dev(self.rows("t.a"))
-        g, rec = self.gate_with(self.rows("t.a", item="KR-X") .replace("KR-X", "KR-NONE"))
-        self.assertEqual(rec["rc"], 1)
-        self.assertEqual(len(rec["unowned"]), 1)
-
-    def test_a_row_whose_item_is_closed_fails(self):
-        self.on_dev(self.rows("t.a"))
-        g, rec = self.gate_with(item_state="landed")
-        self.assertEqual(rec["rc"], 1)
-        self.assertEqual(len(rec["closed_items"]), 1)
-
-    def test_a_malformed_file_fails(self):
-        self.on_dev(self.rows("t.a"))
-        for text in ('{"rows": [{"kind": "native"}]}\n', '{"rows": {}}\n', "not json\n",
-                     self.rows("t.a").replace('"native"', '"vibes"'),
-                     json.dumps({"rows": json.loads(self.rows("t.a"))["rows"] * 2})):
-            g, rec = self.gate_with(text)
-            self.assertEqual(rec["rc"], 1, text)
-
-    def test_push_refused_when_the_baseline_gate_fails(self):
-        self.on_dev(self.rows("t.a"))
-        before = self.origin_rev("dev")
-        self.gate_with(self.rows("t.a", "t.new"))
-        p = self.train("push")
-        self.assertNotEqual(p.returncode, 0)
-        self.assertIn("gate baseline failed", p.stdout)
-        self.assertEqual(self.origin_rev("dev"), before)
-
-    def amendment(self, subject, item="KR-X", owner="builder-B"):
-        return {"kind": "native", "subject": subject, "dev_sha": "abc123def", "item": item,
-                "owner": owner, "ruling": "coordinator: test"}
-
-    def amendments(self, *records):
-        return json.dumps({"note": "append-only", "amendments": list(records)}) + "\n"
-
-    def gate_amended(self, rows, amend):
-        (self.work / "planning/known-reds-amendments.json").write_text(amend)
-        return self.gate_with(rows)
-
-    def test_an_unamended_addition_is_refused_with_the_usual_message(self):
-        self.on_dev(self.rows("t.a"))
-        g, rec = self.gate_amended(self.rows("t.a", "t.new"), self.amendments())
-        self.assertEqual(rec["rc"], 1)
-        self.assertEqual(rec["added"], [["native", "t.new"]])
-        self.assertIn("known red ADDED by this train (rows shrink only): native t.new", g.stdout)
-
-    def test_an_amended_addition_is_accepted_and_counted(self):
-        self.on_dev(self.rows("t.a"))
-        g, rec = self.gate_amended(self.rows("t.a", "t.new"), self.amendments(self.amendment("t.new")))
-        self.assertEqual(rec["rc"], 0, g.stdout)
-        self.assertEqual(rec["admitted"], [["native", "t.new"]])
-        self.assertEqual((rec["rows"], rec["amended"]), (2, 1))
-
-    def test_an_amendment_covers_only_the_row_it_names(self):
-        self.on_dev(self.rows("t.a"))
-        g, rec = self.gate_amended(self.rows("t.a", "t.new", "t.other"),
-                                   self.amendments(self.amendment("t.new")))
-        self.assertEqual(rec["rc"], 1)
-        self.assertEqual(rec["added"], [["native", "t.other"]])
-
-    def test_a_dangling_amendment_fails(self):
-        self.on_dev(self.rows("t.a"))
-        g, rec = self.gate_amended(self.rows("t.a"), self.amendments(self.amendment("t.stock")))
-        self.assertEqual(rec["rc"], 1)
-        self.assertEqual(rec["dangling_amendments"], ["native t.stock"])
-        self.assertIn("amendments cannot be stockpiled", g.stdout)
-
-    def test_an_amendment_of_a_retired_row_with_a_closed_item_is_history(self):
-        self.on_dev(self.rows("t.a", "t.new"))
-        (self.work / "planning/known-reds-amendments.json").write_text(
-            self.amendments(self.amendment("t.new")))
-        g, rec = self.gate_with(self.rows("t.a"))
-        self.assertEqual(rec["rc"], 1, "item still open: the amendment dangles")
-        g, rec = self.gate_with(self.rows("t.a"), item_state="landed")
-        self.assertEqual(rec["dangling_amendments"], [])
-
-    def test_a_rewritten_or_dropped_amendment_fails(self):
-        self.on_dev(self.rows("t.a", "t.new"))
-        self.advance_dev({"planning/known-reds-amendments.json": self.amendments(self.amendment("t.new"))})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
-        g, rec = self.gate_amended(self.rows("t.a", "t.new"),
-                                   self.amendments(self.amendment("t.new", owner="builder-B") | {"ruling": "edited"}))
-        self.assertTrue(rec["amendments_rewritten"])
-        self.assertEqual(rec["rc"], 1)
-        g, rec = self.gate_amended(self.rows("t.a", "t.new"), self.amendments())
-        self.assertTrue(rec["amendments_rewritten"])
-        self.assertEqual(rec["rc"], 1)
-
-    def test_an_amendment_disagreeing_with_its_row_fails(self):
-        self.on_dev(self.rows("t.a"))
-        g, rec = self.gate_amended(self.rows("t.a", "t.new"),
-                                   self.amendments(self.amendment("t.new", owner="someone-else")))
-        self.assertEqual(rec["mismatched_amendments"], ["native t.new"])
-        self.assertEqual(rec["rc"], 1)
-
-    def test_an_owner_transfer_appends_a_record_and_the_row_takes_the_new_owner(self):
-        # coordinator 2026-10-09: the measured owner's record stays as written,
-        # a later record names the owner it takes over from
-        self.on_dev(self.rows("t.a", "t.new"))
-        first = self.amendment("t.new")
-        self.advance_dev({"planning/known-reds-amendments.json": self.amendments(first)})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
-        moved = json.loads(self.rows("t.a", "t.new"))
-        moved["rows"][1]["owner"] = "builder-M"
-        transfer = dict(first, owner="builder-M", transfer_from=first["owner"], ruling="moved")
-        g, rec = self.gate_amended(json.dumps(moved) + "\n", self.amendments(first, transfer))
-        self.assertEqual(rec["rc"], 0, g.stdout)
-        self.assertEqual((rec["rows"], rec["amended"], rec["mismatched_amendments"]), (2, 1, []))
-        # without the transfer record the moved row disagrees with its amendment
-        g, rec = self.gate_amended(json.dumps(moved) + "\n", self.amendments(first))
-        self.assertEqual(rec["mismatched_amendments"], ["native t.new"])
-
-    def test_a_second_record_that_is_not_a_proper_transfer_is_malformed(self):
-        first = self.amendment("t.a")
-        bad = [dict(first, owner="builder-M"),                                   # no transfer_from
-               dict(first, owner="builder-M", transfer_from="someone-else"),     # wrong previous owner
-               dict(first, transfer_from=first["owner"]),                        # same owner
-               dict(first, owner="builder-M", transfer_from=first["owner"], item="OTHER"),
-               dict(first, owner="builder-M", transfer_from=first["owner"], dev_sha="0000000")]
-        for second in bad:
-            with self.assertRaises(train.TrainError, msg=str(second)):
-                train.parse_amendments(self.amendments(first, second))
-        with self.assertRaises(train.TrainError):
-            train.parse_amendments(self.amendments(dict(first, transfer_from="x")))
-        ok = dict(first, owner="builder-M", transfer_from=first["owner"])
-        self.assertEqual(len(train.parse_amendments(self.amendments(first, ok))), 2)
-
-    def test_parser_accepts_refile_with_same_owner_and_measured_sha(self):
-        first = self.amendment("t.a")
-        second = dict(first, item="KR-TARGET", item_from="KR-X", ruling="re-file ruling")
-        self.assertEqual(train.parse_amendments(self.amendments(first, second)), [first, second])
-
-    def test_parser_refuses_invalid_refiles_and_transfer_changing_item(self):
-        first = self.amendment("t.a")
-        refile = dict(first, item="KR-TARGET", item_from="KR-X")
-        bad = [dict(refile, owner="builder-M"), dict(refile, item_from="WRONG"),
-               dict(refile, dev_sha="0000000"), dict(refile, item="KR-X"),
-               dict(first, transfer_from="builder-B", owner="builder-M", item="KR-TARGET")]
-        for second in bad:
-            with self.subTest(record=second), self.assertRaises(train.TrainError):
-                train.parse_amendments(self.amendments(first, second))
-        with self.assertRaises(train.TrainError):
-            train.parse_amendments(self.amendments(refile))
-
-    def test_refile_gate_refuses_closed_missing_or_differently_owned_target(self):
-        self.on_dev(self.rows("t.a"))
-        first = self.amendment("t.new")
-        refile = dict(first, item="KR-TARGET", item_from="KR-X")
-        target = self.work / "planning/repair/items/KR-TARGET.json"
-        rows = json.loads(self.rows("t.a", "t.new"))
-        rows["rows"][1]["item"] = "KR-TARGET"
-        for item, message in [(None, "missing"),
-                              ({"state": "closed", "owner": "builder-B"}, "closed"),
-                              ({"state": "open", "owner": "builder-M"}, "owner")]:
-            with self.subTest(item=item):
-                if item is not None:
-                    target.write_text(json.dumps(item))
-                g, rec = self.gate_amended(json.dumps(rows), self.amendments(first, refile))
-                self.assertEqual(rec["rc"], 1, g.stdout)
-                self.assertEqual(len(rec["invalid_refiles"]), 1)
-                self.assertIn(message, rec["invalid_refiles"][0])
-        target.write_text('{"state": "open", "owner": "builder-B"}\n')
-        g, rec = self.gate_amended(json.dumps(rows), self.amendments(first, refile))
-        self.assertEqual(rec["rc"], 0, g.stdout)
-
-    def test_refile_gate_accepts_closed_umbrella_as_history(self):
-        self.on_dev(self.rows("t.new"))
-        first = self.amendment("t.new")
-        refile = dict(first, item="KR-TARGET", item_from="KR-X")
-        (self.work / "planning/repair/items/KR-TARGET.json").write_text(
-            '{"state": "open", "owner": "builder-B"}\n')
-        (self.work / "planning/repair/items/KR-X.json").write_text('{"state": "closed"}\n')
-        g, rec = self.gate_amended(self.rows("t.new", item="KR-TARGET"), self.amendments(first, refile))
-        self.assertEqual(rec["rc"], 0, g.stdout)
-        self.assertFalse(rec["dangling_amendments"])
-        self.assertFalse(rec["invalid_refiles"])
-
-    def test_a_malformed_amendments_file_fails(self):
-        self.on_dev(self.rows("t.a"))
-        for text in ("not json\n", '{"amendments": {}}\n', '{"amendments": [{"kind": "native"}]}\n',
-                     self.amendments(self.amendment("t.a"), self.amendment("t.a"))):
-            g, rec = self.gate_amended(self.rows("t.a"), text)
-            self.assertEqual(rec["rc"], 1, text)
-
-    def test_status_shows_the_row_count_and_the_amendment_count(self):
-        self.on_dev(self.rows("t.a"))
-        self.gate_amended(self.rows("t.a", "t.new"), self.amendments(self.amendment("t.new")))
-        s = self.train("status")
-        self.assertIn("non-regressing against 2 known reds, 1 amended", s.stdout)
-        self.assertIn("NOT green", s.stdout)
-
-    def test_status_says_green_only_when_there_are_no_rows(self):
-        self.on_dev(self.rows())
-        self.gate_with()
-        s = self.train("status")
-        self.assertIn("green: the known-red baseline is empty", s.stdout)
-        self.assertNotIn("NOT green", s.stdout)
-
-    def test_the_verdict_words_push_prints_carry_the_amendment_count(self):
-        self.assertEqual(train.verdict_words(json.loads(self.rows("t.a", "t.b"))["rows"],
-                                             [self.amendment("t.b")]),
-                         "non-regressing against 2 known reds, 1 amended "
-                         "(planning/known-reds.json, planning/known-reds-amendments.json); NOT green")
-
-
-class PremiseBaselineTests(TrainBase):
-    """planning/premise-baseline.json is shrink-only across merges
-    (PREMISE-BASELINE-MERGE-LOSS: a merge resolved 1,171 entries to 753)."""
-
-    def baseline(self, *names):
-        return json.dumps({"note": "n", "accepted": {n: "why " + n for n in names}},
-                          indent=2, sort_keys=True) + "\n"
-
-    def on_dev(self, *names):
-        self.advance_dev({"planning/premise-baseline.json": self.baseline(*names)})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
-
-    def gate(self, premises):
-        g = self.train("gate", extra_env={"STUB_PREMISES": json.dumps(premises)})
-        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
-        return g, st["gates"]["premise_baseline"]
-
-    def test_a_conflict_takes_the_union_of_both_sides_entries(self):
-        self.on_dev("a", "b", "c")
-        sha = self.lane("p", {"planning/premise-baseline.json": self.baseline("a", "c", "d")})
-        self.advance_dev({"planning/premise-baseline.json": self.baseline("a", "b", "e")})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
-        m = self.train("merge", f"p@{sha}")
-        if m.returncode:
-            sys.stderr.write(m.stdout + m.stderr)
-        self.assertEqual(m.returncode, 0, "the conflict on the premise baseline did not resolve")
-        merged = json.loads((self.work / "planning/premise-baseline.json").read_text())
-        self.assertEqual(sorted(merged["accepted"]), ["a", "b", "c", "d", "e"])
-
-    def test_a_dropped_entry_still_a_finding_refuses_and_a_resolved_one_passes(self):
-        self.on_dev("a", "b", "c")
-        sha = self.lane("p", {"planning/premise-baseline.json": self.baseline("a"),
-                              "tools/x.py": "x\n"})
-        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
-        lost, record = self.gate({"a": {"class": "never concluded"},
-                                  "b": {"class": "preserved only"},
-                                  "c": {"class": "established by a hosted entry"}})
-        self.assertNotEqual(lost.returncode, 0)
-        self.assertEqual((record["rc"], record["dropped"], record["lost"]), (1, ["b", "c"], ["b"]))
-        self.assertIn("LOST an entry that is still a finding (preserved only): b", lost.stdout)
-        resolved, record = self.gate({"a": {"class": "never concluded"},
-                                      "b": {"class": "established by a hosted entry"}})
-        self.assertEqual(record["rc"], 0, resolved.stdout)
-        self.assertEqual(record["lost"], [])
-
-    def test_no_drop_runs_no_audit(self):
-        self.on_dev("a")
-        sha = self.lane("p", {"tools/x.py": "x\n"})
-        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
-        _, record = self.gate({})
-        self.assertEqual((record["rc"], record["dropped"]), (0, []))
-        self.assertNotIn("premise_audit --json", self.stub_log())
-
-
-class PremiseTermBaselineTests(TrainBase):
-    """planning/premise-term-baseline.json (premises assumed only of a term,
-    D12's lane/d-premise-args) gets the same union and the same shrink-only
-    gate, judged against premise_audit --json --all."""
-
-    TERM = "planning/premise-term-baseline.json"
-    baseline = PremiseBaselineTests.baseline
-    on_dev = PremiseBaselineTests.on_dev
-
-    def on_dev_terms(self, bare, terms):
-        self.advance_dev({"planning/premise-baseline.json": self.baseline(*bare),
-                          self.TERM: self.baseline(*terms)})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
-
-    def gate_terms(self, bare_premises, all_premises):
-        g = self.train("gate", extra_env={"STUB_PREMISES": json.dumps(bare_premises),
-                                          "STUB_PREMISES_ALL": json.dumps(all_premises)})
-        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
-        return g, st["gates"]["premise_baseline"]
-
-    def test_a_term_conflict_takes_the_union(self):
-        self.on_dev_terms(["a"], ["t1", "t2"])
-        sha = self.lane("p", {self.TERM: self.baseline("t1", "t3")})
-        self.advance_dev({self.TERM: self.baseline("t2", "t4")})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
-        m = self.train("merge", f"p@{sha}")
-        self.assertEqual(m.returncode, 0, m.stdout + m.stderr)
-        merged = json.loads((self.work / self.TERM).read_text())
-        self.assertEqual(sorted(merged["accepted"]), ["t1", "t2", "t3", "t4"])
-
-    def test_a_dropped_term_still_a_finding_refuses(self):
-        self.on_dev_terms(["a"], ["t1", "t2", "t3"])
-        sha = self.lane("p", {self.TERM: self.baseline("t1"), "tools/x.py": "x\n"})
-        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
-        # the bare audit says nothing of t2: only --all sees a term premise
-        lost, record = self.gate_terms({}, {"t2": {"class": "never concluded"},
-                                            "t3": {"class": "established by a hosted entry"}})
-        self.assertNotEqual(lost.returncode, 0)
-        self.assertEqual(record["rc"], 1)
-        self.assertEqual((record["term"]["dropped"], record["term"]["lost"]), (["t2", "t3"], ["t2"]))
-        self.assertIn("premise term baseline LOST an entry that is still a finding "
-                      "(never concluded): t2", lost.stdout)
-        self.assertIn("premise_audit --json --all", self.stub_log())
-
-    def test_a_term_entry_moved_to_the_bare_baseline_is_carried(self):
-        self.on_dev_terms(["a"], ["t1", "t2"])
-        sha = self.lane("p", {"planning/premise-baseline.json": self.baseline("a", "t2"),
-                              self.TERM: self.baseline("t1")})
-        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
-        g, record = self.gate_terms({}, {"t2": {"class": "never concluded"}})
-        self.assertEqual(record["rc"], 0, g.stdout)
-        self.assertEqual(record["term"]["lost"], [])
-
-    def test_the_term_file_gone_at_head_refuses(self):
-        self.on_dev_terms(["a"], ["t1"])
-        sha = self.lane("p", {self.TERM: None})
-        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
-        g, record = self.gate_terms({}, {})
-        self.assertEqual(record["rc"], 1, g.stdout)
-        self.assertIn("premise-term-baseline.json is gone at HEAD", g.stdout)
-
-    def test_no_term_file_on_dev_is_skipped(self):
-        self.on_dev("a")
-        sha = self.lane("p", {self.TERM: self.baseline("t1")})
-        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
-        g, record = self.gate_terms({}, {})
-        self.assertEqual((record["rc"], record["term"]), (0, {"skipped": True}), g.stdout)
-
-
-class CostObligationsGateTests(TrainBase):
-    """Exercise the actual cost ratchet, with only the interface registry stubbed."""
-    def setUp(self):
-        super().setUp()
-        from tools import cost_obligations, interface_emit
-
-        (self.seed / "books").mkdir()
-        script = f'''import sys
-from pathlib import Path
-from unittest import mock
-sys.path.insert(0, {str(REPO)!r})
-from tools import cost_obligations, interface_emit
-import json
-assert sys.argv[1:] == ["--check"]
-root = Path.cwd()
-with mock.patch.object(interface_emit, "registry", lambda root: json.loads(
-        (root / "planning/dispatched.json").read_text())):
-    findings = cost_obligations.check(root)
-for finding in findings:
-    print(finding)
-print("cost_obligations: {{}} finding(s)".format(len(findings)))
-sys.exit(1 if findings else 0)
-'''
-        with mock.patch.object(interface_emit, "registry", return_value={"entries": []}):
-            # Build the protected base with no dispatched entry. HEAD will
-            # contain the new entry, so falling back to HEAD would miss it.
-            generator = '(defconst *fn-cost-contracts* \'((car 0 "one cell read")))\n'
-            (self.seed / "books/def-cost.lisp").write_text(generator)
-            obligations = cost_obligations.render(cost_obligations.build(self.seed))
-            contracts = cost_obligations.render(cost_obligations.build_contracts(self.seed))
-        self.advance_dev({"tools/cost_obligations.py": script,
-                          "books/def-cost.lisp": generator,
-                          "planning/dispatched.json": '{"entries": []}\n',
-                          "planning/cost-obligations.json": obligations,
-                          "planning/cost-contracts.json": contracts})
-        sh(self.work, "git", "pull", "-q", "--ff-only")
-        head = self.head()
-        (self.work / "build/train/box-step.json").write_text(
-            json.dumps({"sha": head, "ran_at": head, "box": "persvati"}))
-
-    def test_a_dispatched_entry_without_def_cost_fails_and_is_named(self):
-        from tools import cost_obligations, interface_emit
-        entries = {"entries": [{"name": "fn-new-dispatched", "class": "common-lisp-compliant",
-                                 "dispatched_from": ["host/native/io.lisp"]}]}
-        (self.work / "planning/dispatched.json").write_text(json.dumps(entries))
-        with mock.patch.object(interface_emit, "registry", return_value=entries):
-            (self.work / "planning/cost-obligations.json").write_text(
-                cost_obligations.render(cost_obligations.build(self.work)))
-        self.commit(self.work, "new dispatched entry without cost")
-        g = self.train("gate")
-        self.assertNotEqual(g.returncode, 0, g.stdout + g.stderr)
-        self.assertIn("fn-new-dispatched: a new guard-verified dispatched entry with no def-cost", g.stdout)
-        record = json.loads((self.work / "build/train/integrate__t1.json").read_text())
-        self.assertEqual(record["gates"]["cost_obligations"]["rc"], 1)
-
-    def test_a_clean_tree_passes(self):
-        g = self.train("gate")
-        self.assertEqual(g.returncode, 0, g.stdout + g.stderr)
-        self.assertIn("cost_obligations: 0 finding(s)", g.stdout)
-        record = json.loads((self.work / "build/train/integrate__t1.json").read_text())
-        self.assertEqual(record["gates"]["cost_obligations"]["rc"], 0)
-
-    def test_gates_lists_cost_obligations(self):
-        self.assertIn("cost_obligations", train.GATES)
 
 
 class BookRootsGateTests(TrainBase):
@@ -2616,7 +1911,7 @@ class ImageModuleTests(unittest.TestCase):
 
     def test_image_input_classification_keeps_devs_default(self):
         paths = ["tools/train.py", "unlisted-source", "VERSION", "tests/acl2/a.lisp",
-                 "planning/proofs.json", "docs/a.md", "tests/test_train.py"]
+                 "planning/now.md", "docs/a.md", "tests/test_train.py"]
         self.assertEqual(train.image_inputs_changed(paths), paths[:4])
 
     def test_parse_reads_rc_and_cases_and_keeps_a_caseless_crash(self):
@@ -2634,86 +1929,73 @@ class ImageModuleTests(unittest.TestCase):
                                "tests.test_native_served_cost": {"rc": 137, "cases": {}}})
 
     def test_nothing_obliged_is_green_without_a_run(self):
-        self.assertEqual(train.image_verdict({}, None, self.HEAD, []), (0, {"skipped": True}))
+        self.assertEqual(train.image_verdict({}, None, self.HEAD), (0, {"skipped": True}))
 
     def test_obliged_without_a_run_or_with_another_commits_run_refuses(self):
         need = train.image_modules(["packaging/fn"])
-        self.assertEqual(train.image_verdict(need, None, self.HEAD, [])[0], 1)
-        rc, rec = train.image_verdict(need, self.ran(need, source="b" * 40), self.HEAD, [])
+        self.assertEqual(train.image_verdict(need, None, self.HEAD)[0], 1)
+        rc, rec = train.image_verdict(need, self.ran(need, source="b" * 40), self.HEAD)
         self.assertEqual(rc, 1)
         self.assertIn("not HEAD", rec["error"])
 
     def test_another_commits_record_stands_only_across_planning_and_docs(self):
         need = train.image_modules(["packaging/fn"])
         other = self.ran(need, source="b" * 40)
-        rc, rec = train.image_verdict(need, other, self.HEAD, [],
-                                      lambda s: ["docs/resource-contract.md", "planning/proofs.json"])
+        rc, rec = train.image_verdict(need, other, self.HEAD,
+                                      lambda s: ["docs/resource-contract.md", "planning/now.md"])
         self.assertEqual(rc, 0, rec)
         self.assertEqual(rec["carried_from"], "b" * 40)
         for path in ("tests/test_native_owner.py", "tools/extract/probes.py", "host/native/io.lisp",
                      "books/heap.lisp", "Makefile"):
-            rc, rec = train.image_verdict(need, other, self.HEAD, [], lambda s: ["docs/x.md", path])
+            rc, rec = train.image_verdict(need, other, self.HEAD, lambda s: ["docs/x.md", path])
             self.assertEqual(rc, 1, path)
             self.assertIn(path, rec["error"])
         # a source that is no commit here never stands for HEAD
-        rc, rec = train.image_verdict(need, other, self.HEAD, [], lambda s: None)
+        rc, rec = train.image_verdict(need, other, self.HEAD, lambda s: None)
         self.assertEqual(rc, 1)
         self.assertIn("not HEAD", rec["error"])
         # a carried record is still read case by case
         other["modules"]["tests.test_native_owner"] = {"rc": 1, "cases": {"o.T.a": "FAIL"}}
-        rc, rec = train.image_verdict(need, other, self.HEAD, [], lambda s: ["docs/x.md"])
+        rc, rec = train.image_verdict(need, other, self.HEAD, lambda s: ["docs/x.md"])
         self.assertEqual(rc, 1)
         self.assertEqual(rec["unexplained"], ["o.T.a"])
 
     def test_every_obliged_module_green_at_head_passes(self):
         need = train.image_modules(["packaging/fn"])
-        self.assertEqual(train.image_verdict(need, self.ran(need), self.HEAD, [])[0], 0)
+        self.assertEqual(train.image_verdict(need, self.ran(need), self.HEAD)[0], 0)
 
     def test_an_interrupted_image_gate_refuses_naming_the_missing_modules(self):
         need = train.image_modules(["packaging/fn"])
         partial = self.ran([m for m in need if m != "tests.test_native_served_line_stack"])
-        rc, rec = train.image_verdict(need, partial, self.HEAD, [])
+        rc, rec = train.image_verdict(need, partial, self.HEAD)
         self.assertEqual(rc, 1)
         self.assertEqual(rec["missing"], ["tests.test_native_served_line_stack"])
-
-    def test_a_red_case_passes_only_as_a_native_known_red(self):
-        need = train.image_modules(["packaging/fn"])
-        run = self.ran(need)
-        red = "tests.test_native_operator_verbs.C.test_status"
-        run["modules"]["tests.test_native_operator_verbs"] = {"rc": 1, "cases": {red: "FAIL", "x.ok": "ok"}}
-        rc, rec = train.image_verdict(need, run, self.HEAD, [])
-        self.assertEqual((rc, rec["unexplained"]), (1, [red]))
-        row = {"kind": "native", "subject": red, "item": "I", "owner": "o", "evidence": "e"}
-        rc, rec = train.image_verdict(need, run, self.HEAD, [row])
-        self.assertEqual((rc, rec["known_reds"]), (0, [red]))
-        # a row of another kind with the same subject does not excuse it
-        self.assertEqual(train.image_verdict(need, run, self.HEAD, [dict(row, kind="check")])[0], 1)
 
     def test_an_obliged_module_whose_every_test_skipped_refuses_and_is_named(self):
         need = train.image_modules(["packaging/fn"])
         run = self.ran(need)
         run["modules"]["tests.test_native_over_window"] = {"rc": 4, "cases": {}}
-        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        rc, rec = train.image_verdict(need, run, self.HEAD)
         self.assertEqual((rc, rec["skipped"]), (1, ["tests.test_native_over_window"]))
 
     def test_a_skipped_case_of_an_obliged_module_refuses(self):
         need = train.image_modules(["packaging/fn"])
         run = self.ran(need)
         run["modules"]["tests.test_native_owner"] = {"rc": 0, "cases": {"o.T.a": "ok", "o.T.b": "skip"}}
-        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        rc, rec = train.image_verdict(need, run, self.HEAD)
         self.assertEqual((rc, rec["skipped"]), (1, ["o.T.b"]))
 
     def test_a_skip_in_a_module_nothing_obliges_is_not_read(self):
         need = train.image_modules(["packaging/fn"])
         run = self.ran(need)
         run["modules"]["tests.test_native_mux"] = {"rc": 4, "cases": {}}
-        self.assertEqual(train.image_verdict(need, run, self.HEAD, [])[0], 0)
+        self.assertEqual(train.image_verdict(need, run, self.HEAD)[0], 0)
 
     def test_a_failed_module_with_no_case_recorded_refuses(self):
         need = train.image_modules(["packaging/fn"])
         run = self.ran(need)
         run["modules"]["tests.test_native_owner"] = {"rc": 137, "cases": {}}
-        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        rc, rec = train.image_verdict(need, run, self.HEAD)
         self.assertEqual(rc, 1)
         self.assertEqual(rec["unexplained"], ["tests.test_native_owner (rc 137, no case recorded)"])
 

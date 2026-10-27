@@ -268,33 +268,6 @@ class RemoteCheckTests(unittest.TestCase):
             refused = self.run_check("--ship", bad, "--cmd", "true")
             self.assertEqual(refused.returncode, 2, bad)
 
-    def test_a_cmd_installs_nothing_by_default_and_regen_fetches_the_generated_files(self):
-        (self.lane / "tools").mkdir()
-        (self.lane / "tools/certs.py").write_text("print('  installed 3')\n")
-        (self.lane / "tools/ledger.py").write_text(
-            "import pathlib\nfor n in ('proofs.json',):\n"
-            "    pathlib.Path('planning', n).write_text('regen ' + n)\n")
-        (self.lane / "tools/hot_path_check.py").write_text(
-            "import pathlib, sys\nassert sys.argv[1:] == ['--refresh-stale']\n"
-            "pathlib.Path('planning/hot-path-findings.json').write_text('refreshed')\n")
-        (self.lane / "planning").mkdir()
-        for name in ("proofs.json", "hot-path-findings.json"):
-            (self.lane / "planning" / name).write_text("old\n")
-        git(self.lane, "add", ".")
-        git(self.lane, "commit", "-q", "-m", "tools")
-        done = self.run_check("--regen")
-        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        log = (self.lane / "build/remote-check/hbox-regen.log").read_text()
-        self.assertNotIn("certs install", log)
-        self.assertIn("== phase command ", log)
-        self.assertEqual((self.lane / "planning/proofs.json").read_text(), "regen proofs.json")
-        self.assertEqual((self.lane / "planning/hot-path-findings.json").read_text(), "refreshed")
-        skipped = self.run_check("--no-install-certs", "--cmd", "true")
-        self.assertNotIn("certs install", (self.lane / "build/remote-check/hbox-cmd.log")
-                         .read_text())
-        self.assertEqual(skipped.returncode, 0)
-        self.assertEqual(self.run_check("--regen", "--cmd", "true").returncode, 2)
-
     def test_install_roots_scope_the_install_and_phases_and_steps_are_logged(self):
         (self.lane / "tools").mkdir()
         (self.lane / "tools/certs.py").write_text(

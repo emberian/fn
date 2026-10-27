@@ -59,25 +59,3 @@ class RuntimeLookups(unittest.TestCase):
                 data = subprocess.check_output(['git', '-C', str(commit_map.ROOT), 'show',
                                                 commit_map.resolve(rev) + ':' + path])
                 self.assertEqual(hashlib.sha256(data).hexdigest(), expected)
-
-    def test_pin_image_translates_only_lookup_and_keeps_source_identity(self):
-        import hashlib
-        import json
-        from unittest import mock
-        from tools import current_view
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            sidecar = root / current_view.SIDECAR
-            sidecar.parent.mkdir(parents=True)
-            sidecar.write_text(json.dumps({'images': {'old-image': {
-                'source': 'original-identity'}},
-                'capabilities': [{'host': {'file': 'host/example.lisp'}}]}))
-            def git_run(command, **kwargs):
-                self.assertEqual(command[-1], 'new-object:host/example.lisp')
-                return subprocess.CompletedProcess(command, 0, stdout=b'exact source')
-            with mock.patch.object(current_view.commit_map, 'resolve', return_value='new-object') as resolve, mock.patch('subprocess.run', side_effect=git_run):
-                self.assertEqual(current_view.pin_image('old-image', root), 0)
-                resolve.assert_called_once_with('original-identity', root)
-            image = json.loads(sidecar.read_text())['images']['old-image']
-            self.assertEqual(image['source'], 'original-identity')
-            self.assertEqual(image['host_sha256'], {'host/example.lisp': hashlib.sha256(b'exact source').hexdigest()})

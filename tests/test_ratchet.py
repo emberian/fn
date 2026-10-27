@@ -12,9 +12,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests.scratch_git import run as scratch_git
 
-from tools import (clock_unit_check, cost_obligations, evidence_size_check, list_codec_check,
-                   loop_call_check, owner_globals_check, proof_cost, ratchet, reach_check,
-                   premise_audit, scenario_suite, throughput_gate)
+from tools import clock_unit_check, list_codec_check, loop_call_check, owner_globals_check, ratchet, scenario_suite, throughput_gate
 
 DASH = "—"
 
@@ -188,107 +186,6 @@ class OwnerGlobals(Base):
                 return owner_globals_check.main(["--write-baseline", "--root", str(self.dir),
                                                  "--baseline", str(path)])
         self.triad(write, read, "owner_globals_check", "f.lisp")
-
-
-class CostObligations(Base):
-    def test_triad(self):
-        path = self.dir / "cost-baseline.json"
-        path.write_text(json.dumps({"undeclared": ["a"]}))
-        read = lambda: {n: 1 for n in json.loads(path.read_text())["undeclared"]}
-
-        def write(n):
-            names = ["a", "b"] if n > 3 else ["a"] if n == 3 else []
-            doc = {"entries": [{"name": x, "claim": "none", "class": "common-lisp-compliant"}
-                               for x in names]}
-            with mock.patch.object(cost_obligations, "BASELINE", path), \
-                    mock.patch.object(cost_obligations, "build", return_value=doc), \
-                    mock.patch.object(cost_obligations, "load_baseline", return_value={"a"}):
-                return cost_obligations.main(["--baseline"])
-        # rows here are presence only: adding "b" is the raise, dropping "a" the shrink
-        self.assertEqual(self.quiet(write, 5), 1)
-        self.assertEqual(json.loads(path.read_text())["undeclared"], ["a"])
-        self.assertEqual(self.quiet(write, 2), 0)
-        self.assertEqual(json.loads(path.read_text())["undeclared"], [])
-        path.write_text(json.dumps({"undeclared": ["a"]}))
-        self.ack("cost_obligations", "b")
-        self.assertEqual(self.quiet(write, 5), 0)
-        self.assertEqual(json.loads(path.read_text())["undeclared"], ["a", "b"])
-
-
-class ReachCheck(Base):
-    class F:
-        def __init__(self, k):
-            self.k = k
-
-        def key(self):
-            return self.k
-
-    def test_triad(self):
-        path = self.dir / "reach.json"
-        path.write_text(json.dumps({"accepted": {"a": "SPEC x"}}))
-        with mock.patch.object(reach_check, "BASELINE", path):
-            self.assertTrue(self.quiet(reach_check.baseline_raise_refused, [self.F("a"), self.F("b")]))
-            self.assertFalse(self.quiet(reach_check.baseline_raise_refused, []))
-            self.assertFalse(self.quiet(reach_check.baseline_raise_refused, [self.F("a")]))
-            self.ack("reach_check", "b")
-            self.assertFalse(self.quiet(reach_check.baseline_raise_refused, [self.F("a"), self.F("b")]))
-
-
-class ProofCost(Base):
-    def test_triad(self):
-        base = {"books/a": {"steps": 100, "seconds": 11.0}}
-        self.assertTrue(self.quiet(proof_cost.allowance_refused, base, {"books/a": {"steps": 150}}))
-        self.assertTrue(self.quiet(proof_cost.allowance_refused, base,
-                                   {"books/a": {"steps": 100}, "books/new": {"steps": 5}}))
-        self.assertFalse(self.quiet(proof_cost.allowance_refused, base, {"books/a": {"steps": 50}}))
-        self.ack("proof_cost", "books/a")
-        self.assertFalse(self.quiet(proof_cost.allowance_refused, base, {"books/a": {"steps": 150}}))
-
-
-class EvidenceSize(Base):
-    def test_triad(self):
-        root = self.dir / "repo"
-        (root / "tools").mkdir(parents=True)
-        base = root / evidence_size_check.BASELINE
-        base.write_text(evidence_size_check.BASELINE_HEADER + "old.log\n")
-        sizes = {"old.log": 2000, "new.log": 2000}
-        for n in sizes:
-            (root / n).write_text("x")
-
-        def write(over):
-            files = [root / n for n in sizes if n in over]
-            with mock.patch.object(evidence_size_check, "tracked_files", return_value=files), \
-                    mock.patch.object(evidence_size_check, "line_count",
-                                      side_effect=lambda p: sizes[p.name]):
-                return evidence_size_check.write_baseline(root)
-        rows = lambda: set(evidence_size_check.read_baseline(root))
-        write({"old.log", "new.log"})
-        self.assertEqual(rows(), {"old.log"}, "a new oversized file is not added")
-        write(set())
-        self.assertEqual(rows(), set(), "a shrink passes")
-        base.write_text(evidence_size_check.BASELINE_HEADER + "old.log\n")
-        self.ack("evidence_size_check", "new.log")
-        write({"old.log", "new.log"})
-        self.assertEqual(rows(), {"old.log", "new.log"}, "an ACKed row is added")
-
-
-class PremiseAudit(Base):
-    def test_triad(self):
-        path = self.dir / "premise-baseline.json"
-        path.write_text(json.dumps({"accepted": {"a": "why", "b": "why"}}))
-        read = lambda: set(json.loads(path.read_text())["accepted"])
-
-        def write(names):
-            findings = {n: {"class": "never concluded"} for n in names}
-            with mock.patch.object(premise_audit, "BASELINE", path):
-                return premise_audit.write_baseline(findings)
-        self.assertEqual(self.quiet(write, ["a", "b", "c"]), 1, "a new row must be refused")
-        self.assertEqual(read(), {"a", "b"}, "a refused write leaves the baseline alone")
-        self.assertEqual(self.quiet(write, ["a"]), 0, "a shrink passes")
-        self.assertEqual(read(), {"a"})
-        self.ack("premise_audit", "c")
-        self.assertEqual(self.quiet(write, ["a", "c"]), 0, "an ACKed row is added")
-        self.assertEqual(read(), {"a", "c"})
 
 
 class ThroughputGate(Base):

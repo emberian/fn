@@ -69,7 +69,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import acl2_toolchain  # noqa: E402
 import cert_images  # noqa: E402
 import certs  # noqa: E402
-import unhooked  # noqa: E402
 import ledger  # noqa: E402
 
 ORDER = {"uncertified": 0, "unknown": 0, "absent": 1, "green": 2}
@@ -457,8 +456,7 @@ def changed_scope(root: Path, changed: list[str], roots: list[str]) -> tuple[lis
 
 
 
-def gate(report: dict, changed: list[str], deps: dict[str, list[str]],
-         unhooked_books: dict[str, str] | None = None) -> dict:
+def gate(report: dict, changed: list[str], deps: dict[str, list[str]]) -> dict:
     """The merge gate's answer: each changed book and dependent with its verdict.
 
     Finding F4 of planning/review-2026-09-22-proof-engineering.md: on
@@ -467,17 +465,13 @@ def gate(report: dict, changed: list[str], deps: dict[str, list[str]],
     merges when that book and everything that includes it are green at the
     bytes the merge will carry, or it waits.  A book not in the audit's
     closure (a test book no root names) is reported as `unaudited`, which is
-    not green, unless planning/unhooked.json lists it: then it is
-    `unhooked (Dnn)`, the decision's, and is not counted as not green.
+    not green.
     """
     verdicts = report["books_by_verdict"]
-    listed = unhooked.load(ROOT) if unhooked_books is None else unhooked_books
 
     def verdict(book: str) -> str:
         entry = verdicts.get(book)
         if entry is None:
-            if book in listed:
-                return f"unhooked ({listed[book]})"
             return "unaudited"
         return standing(entry)
 
@@ -485,8 +479,7 @@ def gate(report: dict, changed: list[str], deps: dict[str, list[str]],
             for book in changed]
     rows += [{"book": book, "role": "dependent", "verdict": verdict(book), "via": via}
              for book, via in sorted(deps.items())]
-    not_green = [row["book"] for row in rows
-                 if row["verdict"] != "green" and not row["verdict"].startswith("unhooked (")]
+    not_green = [row["book"] for row in rows if row["verdict"] != "green"]
     return {"schema": "fn-green-gate-v1", "changed": changed,
             "dependents": len(deps), "rows": rows, "not_green": not_green}
 

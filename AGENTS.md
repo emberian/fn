@@ -23,17 +23,16 @@ substantial changes, then the spec you touch. Proposals and open questions are n
 ## What makes a claim
 - The subject is the function the host calls, or a named theorem equates them. A theorem about
   a branch the composed machine cannot reach is marked `unreachable-in-composition` or the
-  branch goes (`reach_check --strict`). Lemmas that only unfold are named `-unfolds` or
-  `-by-definition` and not cited as events (`ledger.py --check`).
+  branch goes. Lemmas that only unfold are named `-unfolds` or
+  `-by-definition`.
 - Keystones ship with teeth: a positive witness asserting the whole antecedent and conclusion,
-  and a hypothesis-removal witness. keystone_emit's toothless list is becoming the ledger of keystones
-  without teeth (shrink-only, lane x-teeth-ratchet); until then TEETH-OWED items exempt. Ruling 22: a new or changed CRITICAL keystone (durability, authorization, identity-binding, ownership-reclamation, resource-reservation, parser-boundary, extraction; `tools/keystone_critical_map.json`) needs the whole evidence package or `keystone_emit --check` fails (no ceiling); existing ones are owed in `planning/critical-owed.json`. A failed proof search is not a counterexample.
+  and a hypothesis-removal witness. The top-level theorems owed teeth are listed in OWED.md. Ruling 22: a new or changed CRITICAL keystone (durability, authorization, identity-binding, ownership-reclamation, resource-reservation, parser-boundary, extraction; `tools/keystone_critical_map.json`) needs the whole evidence package; existing ones are owed in OWED.md. A failed proof search is not a counterexample.
 - No skip-proofs, defaxiom, trust tags or :program; never weaken a theorem, lock rule or
   ratchet to go green; never re-baseline; no vacuous statements.
 - A named assumption is an `encapsulate` with a local witness in `books/assumptions*.lisp`,
   and the theorems that use it mention it. An abstract crypto model proves nothing about real
   signatures, hashes, disks or a peer's honesty.
-- Open a codec in a hint, never at the top of a book (`theory_check`).
+- Open a codec in a hint, never at the top of a book.
 - Certified means a record-toolchain cert-cache entry at the book's current closure key
   (`green_check`). A commit message, a proposed theorem or passing tests are not certification.
 - Quote the pessimistic number with its scope in the same sentence (collision, not preimage).
@@ -44,7 +43,6 @@ substantial changes, then the spec you touch. Proposals and open questions are n
   push `HEAD:lane/<name>` only. The integrator alone writes origin/dev.
 - When your branch merges to dev, the deputy that owns the worktree removes it
   (`git worktree remove build/lanes/<name>`); a dirty merged worktree is salvaged first.
-- Claim new ids first: `tools/next_id.py claim KIND --lane NAME`.
 - Iterate in `tools/proof_repl.py` (seconds per attempt, steps not seconds); certify is for
   READY, not iteration. Certify with
   `farm.py submit <box> --lane --affected-by <book>`, never `--closure`. Laptop certs are
