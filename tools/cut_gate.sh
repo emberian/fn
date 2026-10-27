@@ -95,7 +95,7 @@ log "gate $LABEL at $SHA: $(printf %s "$MODULES" | wc -l | tr -d ' ') modules (G
 printf '%s\n' "$MODULES" > "$OUT/modules.txt"
 
 # 1. image + natives on hbox
-set -- --box hbox --allow-certify --images production,developer,dtn,dtn-developer --label "$LABEL" --allow-skips --env FN_INN_SRC=/tank/fn/inn/2.7.4
+set -- --box hbox --allow-certify --images production,developer,dtn,dtn-developer,reference,developer-stripped --label "$LABEL" --allow-skips --env FN_INN_SRC=/tank/fn/inn/2.7.4
 [ -z "$REUSE" ] || set -- "$@" --reuse-image "$REUSE"
 log "hbox_native $* $REV ..."
 sh tools/hbox_native.sh "$@" "$SHA" $MODULES > "$OUT/hbox_native.launch.log" 2>&1 || { log "RED: hbox_native refused to launch (see $OUT/hbox_native.launch.log)"; exit 1; }
