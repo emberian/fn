@@ -1373,6 +1373,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-columns-command-availability \
 	books/catalog-columns-command-refinement \
 	books/catalog-columns-withdraw-row \
+	books/catalog-columns-load \
+	tests/acl2/catalog-lbc-diff-tests \
 	books/catalog-columns-withdraw-row-frames \
 	books/catalog-columns-withdraw-row-escape \
 	books/catalog-columns-withdraw-row-bit-properties \
