@@ -1802,6 +1802,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-open-barriers-tests \
 	books/store-log-recover-copy \
 	tests/acl2/store-log-recover-copy-tests \
+	books/store-log-recover-copy-theorems \
 	books/store-log-rotate-spare \
 	books/owner-publication-lifecycle \
 	tests/acl2/owner-publication-lifecycle-tests \
