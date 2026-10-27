@@ -17,6 +17,7 @@ reads the exporter (host/native/tls.lisp fnn-tls-exporter).
 Run: FN_NATIVE_HOST=<launcher> python3 -m unittest -v tests.test_native_sasl
 """
 
+from tests.native_harness import observe_node_greeting
 import queue
 import re
 import shutil
@@ -235,7 +236,8 @@ class OpensslSession:
                 raise unittest.SkipTest("SCRAM-SHA-256-PLUS: openssl s_client cannot export "
                                         "keying material here: " + line.decode("ascii", "replace"))
         case.assertEqual(len(session.exporter), 32, b"".join(seen))
-        session.status(deadline)  # the greeting
+        greeting = session.status(deadline)
+        observe_node_greeting(port, greeting)
         return session
 
     def next_line(self, deadline):

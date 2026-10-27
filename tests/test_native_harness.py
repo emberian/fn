@@ -318,6 +318,222 @@ exit "${FN_TEST_IMAGE_EXIT:-0}"
 """
 
 
+class NodeLivenessTests(unittest.TestCase):
+    """A response is evidence even after exit; startup silence is never evidence."""
+
+    def setUp(self):
+        from unittest import mock
+        for registry in (native_harness._NODE_GREETINGS, native_harness._NODE_DEAD):
+            patch = mock.patch.dict(registry, {}, clear=True)
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def owner(self, *, stdout=b"", stderr=b"", status=None):
+        from unittest import mock
+        process = mock.Mock(spec=native_harness.NativeProcess, pid=42, returncode=status)
+        process.stdout = mock.Mock()
+        process.stderr = mock.Mock()
+        process.stdout.since.return_value = stdout
+        process.stderr.since.return_value = stderr
+        process.poll.return_value = status
+        return process
+
+    def test_the_real_reader_accepts_a_buffered_greeting_after_the_owner_drains_and_exits(self):
+        from unittest import mock
+        process = self.owner()
+        native_harness.require_node_greeting(process, 1234)
+        process.poll.return_value = process.returncode = 0
+        # This receipt must suffice even without a terminal operator result.
+        process.stderr.since.return_value = b"stopping: drained after 0 ms unanswered=0\n"
+        connection = mock.Mock()
+        connection.recv.return_value = b"200 ready\r\n"
+        with mock.patch.object(native_harness.socket, "create_connection", return_value=connection) as connect:
+            client = native_harness.Client(1234)
+            self.assertEqual(client.greeting, b"200 ready\r\n")
+            client.close(quit=False)
+        connect.assert_called_once()
+        self.assertEqual(native_harness.node_start_failures(self.id()), [])
+        self.assertEqual(native_harness._NODE_GREETINGS[self.id()][0]["evidence"], "NNTP greeting")
+
+    def test_the_real_reader_rejects_an_owner_that_dies_without_a_greeting(self):
+        from unittest import mock
+        process = self.owner()
+        native_harness.require_node_greeting(process, 1234)
+        process.poll.return_value = process.returncode = 1
+        process.stderr.since.return_value = b"Heap exhausted, game over.\n"
+        connection = mock.Mock()
+        connection.recv.return_value = b""
+        with mock.patch.object(native_harness.socket, "create_connection", return_value=connection):
+            with self.assertRaisesRegex(native_harness.NodeDead, "never greeted"):
+                native_harness.Client(1234)
+        self.assertTrue(native_harness.node_start_failures(self.id()))
+        self.assertIsNone(native_harness._NODE_GREETINGS[self.id()][0]["evidence"])
+
+    def test_control_and_http_replies_survive_exit_before_the_reader_records_them(self):
+        for protocol in ("control", "http"):
+            with self.subTest(protocol=protocol):
+                process = self.owner()
+                native_harness.require_node_greeting(process, None, control="fixture.sock", web_port=4321)
+                process.poll.return_value = process.returncode = 0
+                if protocol == "control":
+                    native_harness.observe_control_reply("fixture.sock", b"actual control reply", process=process)
+                else:
+                    native_harness.observe_http_reply(4321, b"HTTP/1.1 200 OK\r\n")
+                self.assertEqual(native_harness.node_start_failures(self.id()), [])
+
+    def test_terminal_outcomes_need_the_exact_result_line_and_matching_exit_class(self):
+        outcomes = ((0, b"accepted operator run\n", True),
+                    (3, b"uncertain operator run\n", True),
+                    (1, b"refused operator run connections-exceed-memory\n", True),
+                    (5, b"usage operator run bad arguments\n", True),
+                    (1, b"Heap exhausted, game over.\n", False),
+                    (1, b"accepted operator run\n", False),
+                    (0, b"stopping: drained after 0 ms unanswered=0\n", False),
+                    (0, b"", False))
+        for status, stderr, valid in outcomes:
+            with self.subTest(status=status, stderr=stderr):
+                native_harness._NODE_GREETINGS.clear()
+                process = self.owner(stdout=b"LISTENING 1234\n")
+                native_harness.require_node_greeting(process, 1234)
+                process.poll.return_value = process.returncode = status
+                process.stderr.since.return_value = stderr
+                self.assertEqual(bool(native_harness.node_start_failures(self.id())), not valid)
+                process.finish.assert_called_once()
+
+    def test_ready_none_is_asynchronous_and_an_unanswered_start_still_owes_liveness(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        process = self.owner()
+        with tempfile.TemporaryDirectory() as directory:
+            node = native_harness.Node(self, "fake image", root=Path(directory), listener=False,
+                                       control=False, image_heap="non-network fixture")
+            with mock.patch.object(native_harness, "start", return_value=process):
+                self.assertIs(node.start(ready=None), process)
+            node.processes.clear()  # No OS process was started.
+        process.announcement.assert_not_called()
+        process.stdout.wait_for.assert_not_called()
+        self.assertTrue(native_harness.node_start_failures(self.id()))
+        process.poll.return_value = process.returncode = 0
+        process.stderr.since.return_value = b"accepted operator run\n"
+        self.assertEqual(native_harness.node_start_failures(self.id()), [])
+
+    def test_a_planned_death_before_readiness_requires_its_actual_cut_marker(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        marker = b"pull: developer kill at before-write of append 1"
+        for status, stdout, stderr, valid in ((-9, b"", marker + b"\n", True),
+                                              (-9, marker + b"\n", b"", True),
+                                              (-9, b"", b"", False),
+                                              (-9, b"", b"DECODED-WINDOW storage-ready\nOWNER-OPEN open=full-replay\n", False),
+                                              (-15, b"", marker + b"\n", False),
+                                              (-9, b"", marker + b" not reached\n", False)):
+            with self.subTest(status=status, stdout=stdout, stderr=stderr), tempfile.TemporaryDirectory() as directory:
+                native_harness._NODE_GREETINGS.clear()
+                native_harness._NODE_DEAD.clear()
+                process = self.owner(status=status, stdout=stdout, stderr=stderr)
+                process.announcement.side_effect = AssertionError("no LISTENING before exit")
+                node = native_harness.Node(self, "fake image", root=Path(directory), listener=False,
+                                           control=False, image_heap="non-network fixture")
+                try:
+                    with mock.patch.object(native_harness, "start", return_value=process):
+                        if valid:
+                            self.assertIs(node.start(death_cut=(-9, marker)), process)
+                        else:
+                            with self.assertRaises(native_harness.NodeDead):
+                                node.start(death_cut=(-9, marker))
+                    self.assertEqual(bool(native_harness.node_start_failures(self.id())), not valid)
+                finally:
+                    node.processes.clear()
+
+    def test_a_restart_after_a_named_cut_needs_its_own_greeting_and_has_no_cut_allowance(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        marker = b"pull: developer kill at before-write of append 1"
+        for restart_alive in (False, True):
+            with self.subTest(restart_alive=restart_alive), tempfile.TemporaryDirectory() as directory:
+                native_harness._NODE_GREETINGS.clear()
+                native_harness._NODE_DEAD.clear()
+                cut = self.owner(status=-9, stderr=marker + b"\n")
+                cut.announcement.side_effect = AssertionError("cut preceded LISTENING")
+                restart = self.owner(status=None if restart_alive else -9,
+                                     stderr=b"" if restart_alive else marker + b"\n")
+                if restart_alive:
+                    restart.announcement.return_value = b"LISTENING 1234\n"
+                else:
+                    restart.announcement.side_effect = AssertionError("restart died before LISTENING")
+                node = native_harness.Node(self, "fake image", root=Path(directory), listener=False,
+                                           control=False, image_heap="non-network fixture")
+                node.config.write_text('[listener]\nport = 1234\n')
+                try:
+                    with mock.patch.object(native_harness, "start", side_effect=(cut, restart)):
+                        self.assertIs(node.start(death_cut=(-9, marker)), cut)
+                        if restart_alive:
+                            self.assertIs(node.start(), restart)
+                            self.assertEqual(len(native_harness.node_start_failures(self.id())), 1)
+                            native_harness.observe_node_greeting(1234, b"200 restarted\r\n", process=restart)
+                            self.assertEqual(native_harness.node_start_failures(self.id()), [])
+                        else:
+                            # Even repeating the old marker on the new process
+                            # cannot turn an unarmed restart into a planned cut.
+                            with self.assertRaises(native_harness.NodeDead):
+                                node.start()
+                            self.assertTrue(native_harness.node_start_failures(self.id()))
+                finally:
+                    node.processes.clear()
+
+    def test_peer_pull_restart_does_not_inherit_the_selector_or_death_contract(self):
+        from pathlib import Path
+        from unittest import mock
+        from tests import test_native_peer_pull as pull
+        case = pull.NativePeerPullTests("test_cursor_publication_cuts")
+        case.env = {"FN_PULL_TEST_KILL": "before-write:1"}
+        node = mock.Mock()
+        with mock.patch.object(pull, "DEVELOPER", Path("fake developer image")), \
+             mock.patch.object(pull.os, "access", return_value=True):
+            case.start(node)
+            del case.env["FN_PULL_TEST_KILL"]
+            case.start(node)
+        cut, restart = node.start.call_args_list
+        self.assertEqual(cut.kwargs["env"]["FN_PULL_TEST_KILL"], "before-write:1")
+        self.assertEqual(cut.kwargs["death_cut"],
+                         (-9, b"pull: developer kill at before-write of append 1"))
+        self.assertNotIn("FN_PULL_TEST_KILL", restart.kwargs["env"])
+        self.assertNotIn("death_cut", restart.kwargs)
+        self.assertIsNone(restart.kwargs["image"])
+
+    def test_the_announced_control_path_is_used_without_recomputing_its_config_default(self):
+        from pathlib import Path
+        from unittest import mock
+        process = self.owner(stdout=b"CONTROL /mission/store/control.sock\nLISTENING 1234\n")
+        native_harness.require_node_greeting(process, 1234, control=None, config="mission.toml")
+        with mock.patch.object(Path, "is_socket", return_value=True):
+            native_harness.observe_operator_reply(process, "/mission/store/control.sock",
+                                                 ("status",), 0, b"articles=0\n", b"")
+        self.assertEqual(native_harness.node_start_failures(self.id()), [])
+        self.assertEqual(native_harness._NODE_GREETINGS[self.id()][0]["control"], "/mission/store/control.sock")
+
+    def test_a_replacement_reply_does_not_credit_an_unanswered_dead_predecessor(self):
+        for protocol in ("nntp", "control", "http"):
+            with self.subTest(protocol=protocol):
+                native_harness._NODE_GREETINGS.clear()
+                old, replacement = self.owner(), self.owner()
+                native_harness.require_node_greeting(old, 1234, control="fixture.sock", web_port=4321)
+                old.poll.return_value = old.returncode = 1
+                native_harness.require_node_greeting(replacement, 1234, control="fixture.sock", web_port=4321)
+                if protocol == "nntp":
+                    native_harness.observe_node_greeting(1234, b"200 replacement\r\n")
+                elif protocol == "control":
+                    native_harness.observe_control_reply("fixture.sock", b"actual replacement reply")
+                else:
+                    native_harness.observe_http_reply(4321, b"HTTP/1.1 200 OK\r\n")
+                self.assertEqual(len(native_harness.node_start_failures(self.id())), 1)
+                self.assertIsNone(native_harness._NODE_GREETINGS[self.id()][0]["evidence"])
+                self.assertIsNotNone(native_harness._NODE_GREETINGS[self.id()][1]["evidence"])
+
+
 class InstalledLaunchTests(unittest.TestCase):
     """Node.launch (the decided-launch ruling, 2026-10-04): an owner starts
     through packaging/fn in its installed layout, at the heap probe's

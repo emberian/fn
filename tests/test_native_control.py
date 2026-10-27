@@ -65,7 +65,10 @@ def control_exchange(path, frame):
         while True:
             chunk = client.recv(65536)
             if not chunk:
-                return b"".join(chunks)
+                from tests.native_harness import observe_control_reply
+                reply = b"".join(chunks)
+                observe_control_reply(path, reply)
+                return reply
             chunks.append(chunk)
 
 
@@ -191,9 +194,9 @@ class NativeControlTests(unittest.TestCase):
         self.assertIsNotNone(prefix, stored[:160])
         self.assertEqual(stored[prefix.end():], payload)
 
-    def start_owner(self, extra_env=None, image=None):
+    def start_owner(self, extra_env=None, image=None, **lifecycle):
         """The owner, ready; its CONTROL line came before its LISTENING line."""
-        process = self.node.start(image=image, env=extra_env)
+        process = self.node.start(image=image, env=extra_env, **lifecycle)
         head = process.stdout.since(0)
         self.assertGreaterEqual(head.find(b"CONTROL "), 0, head)
         self.assertLess(head.find(b"CONTROL "), head.find(b"LISTENING "), head)
@@ -231,7 +234,7 @@ class NativeControlTests(unittest.TestCase):
         # PKT-344: an owner killed without cleanup leaves its socket node; the
         # lock is free, so ACL2 decides :stale (fn-native-control-liveness):
         # the offline verb removes the node and answers, never refused.
-        owner = self.start_owner()
+        owner = self.start_owner(intent="restart-only")
         owner.kill()
         owner.wait(timeout=30)
         owner.finish()
@@ -298,7 +301,7 @@ class NativeControlTests(unittest.TestCase):
         self.node.stop()
         self.assertEqual(down("sigterm"), b"last-stop exit=00")
         # Killed: its start is the last run line.
-        owner = self.start_owner()
+        owner = self.start_owner(intent="restart-only")
         owner.kill()
         owner.wait(timeout=30)
         owner.finish()
@@ -420,7 +423,8 @@ class NativeControlTests(unittest.TestCase):
             raise unittest.SkipTest(
                 DEVELOPER_REASON.format("FN_NATIVE_CONTROL_TEST_STOP"))
         owner = self.start_owner({"FN_NATIVE_CONTROL_TEST_STOP": "after-submit"},
-                                 image=DEVELOPER)
+                                 image=DEVELOPER,
+                                 death_cut=(-signal.SIGKILL, b"CONTROL-SUBMITTED"))
         message_id = "<native-control-lost@example.invalid>"
         payload = self.article(message_id)
         payload_path = self.root / "lost.eml"
@@ -656,7 +660,10 @@ class NativeControlTests(unittest.TestCase):
             self.assertTrue(readable, "per-chunk reads reset the frame deadline")
             self.assertGreaterEqual(elapsed, 8)
             self.assertLess(elapsed, 12)
-            self.assertNotEqual(client.recv(4096), b"")
+            reply = client.recv(4096)
+            from tests.native_harness import observe_control_reply
+            observe_control_reply(self.control, reply)
+            self.assertNotEqual(reply, b"")
         finally:
             client.close()
         self.stop_owner()

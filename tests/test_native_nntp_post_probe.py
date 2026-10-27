@@ -129,6 +129,107 @@ class JudgeTeethTests(unittest.TestCase):
         self.assertTrue(probe.judge_control(dict(refused, inspect_candidate={"rc": 0})))
 
 
+class DeadNodeStartTests(unittest.TestCase):
+    def test_cut_uses_its_own_greeting_before_sending_post(self):
+        import io
+        from tests.campaign.native_operator_campaign import Node
+        from tests import native_harness as harness
+        for greeting, alive in ((b"200 ready\r\n", True), (b"201 ready\r\n", True),
+                                (b"", True), (b"400 closing\r\n", True),
+                                (b"200 ready\r\n", False)):
+            with self.subTest(greeting=greeting, alive=alive):
+                process = mock.Mock(pid=123)
+                process.poll.return_value = None
+                node = object.__new__(Node)
+                node.port, node.owners = 2345, [{"proc": process}]
+                harness.require_node_greeting(process, node.port)
+                process.poll.return_value = None if alive else 3
+                conn = mock.MagicMock()
+                conn.__enter__.return_value = conn
+                conn.makefile.return_value = io.BytesIO(greeting + b"340 send\r\n")
+                try:
+                    with mock.patch.object(probe.socket, "create_connection", return_value=conn) as connect:
+                        if alive and greeting[:3] in (b"200", b"201"):
+                            result = probe.nntp_post(node, b"payload")
+                            self.assertEqual(result["reply"], "")  # A cut after greeting can owe no reply.
+                            self.assertEqual(harness.node_start_failures(self.id()), [])
+                            conn.sendall.assert_any_call(b"POST\r\n")
+                        else:
+                            with self.assertRaisesRegex(harness.NodeDead, "node dead"):
+                                probe.nntp_post(node, b"payload")
+                            conn.sendall.assert_not_called()
+                        connect.assert_called_once_with(("127.0.0.1", node.port), timeout=120)
+                finally:
+                    harness._NODE_GREETINGS.pop(self.id(), None)
+                    harness._NODE_DEAD.pop(self.id(), None)
+
+    def test_post_checks_liveness_after_greeting_credit_in_both_full_and_half_send_paths(self):
+        import io
+        from tests.campaign.native_operator_campaign import Node
+        from tests import native_harness as harness
+        for half in (False, True):
+            for exits_after_greeting in (False, True):
+                with self.subTest(half=half, exits_after_greeting=exits_after_greeting):
+                    process = mock.Mock(pid=123)
+                    process.poll.return_value = None
+                    node = object.__new__(Node)
+                    node.port = 2345
+                    owner = {"proc": process, "ready": True}
+                    node.owners = [owner]
+                    node.start_owner = mock.Mock(return_value=owner)
+                    node.stop_owner = mock.Mock(return_value={"rc": 0})
+                    node.reap = mock.Mock()
+                    harness.require_node_greeting(process, node.port)
+
+                    def observe(greeting):
+                        Node.observe_greeting(node, greeting)
+                        if exits_after_greeting:
+                            process.poll.return_value = 0
+
+                    node.observe_greeting = observe
+                    conn = mock.MagicMock()
+                    conn.__enter__.return_value = conn
+                    conn.makefile.return_value = io.BytesIO(b"200 ready\r\n340 send\r\n")
+                    try:
+                        with mock.patch.object(probe, "Node", return_value=node), \
+                             mock.patch.object(probe, "seed"), \
+                             mock.patch.object(probe, "settle") as settle, \
+                             mock.patch.object(probe.socket, "create_connection", return_value=conn) as connect:
+                            if exits_after_greeting:
+                                with self.assertRaisesRegex(harness.NodeDead, "exited before POST"):
+                                    probe.plain(Path("image"), Path("work"), Path("prior"),
+                                                b"payload", "fixture", half=half)
+                                conn.sendall.assert_not_called()
+                                node.stop_owner.assert_not_called()
+                                settle.assert_not_called()
+                            else:
+                                result = probe.plain(Path("image"), Path("work"), Path("prior"),
+                                                     b"payload", "fixture", half=half)
+                                self.assertTrue(result["owner_alive_after_post"])
+                                conn.sendall.assert_any_call(b"POST\r\n")
+                                settle.assert_called_once()
+                            connect.assert_called_once()
+                        # Crediting the received greeting and refusing a new
+                        # POST after exit are separate facts about this owner.
+                        self.assertEqual(harness._NODE_GREETINGS[self.id()][0]["evidence"], "NNTP greeting")
+                        node.reap.assert_called_once_with()
+                    finally:
+                        harness._NODE_GREETINGS.pop(self.id(), None)
+                        harness._NODE_DEAD.pop(self.id(), None)
+
+    def test_dead_start_never_becomes_a_cut_or_recovery_row(self):
+        from tests.native_harness import NodeDead
+        node = mock.Mock()
+        node.start_owner.side_effect = NodeDead("node dead: exited at start")
+        with mock.patch.object(probe, "Node", return_value=node), \
+             mock.patch.object(probe, "seed"), mock.patch.object(probe, "settle") as settle:
+            with self.assertRaisesRegex(NodeDead, "node dead"):
+                probe.faulted(Path("image"), Path("work"), Path("prior"), b"payload",
+                              probe.served_cuts()[0], "kill")
+        settle.assert_not_called()
+        node.reap.assert_called_once_with()
+
+
 DEV = Path(os.environ.get("FN_NATIVE_CRASH_HOST", ""))
 
 

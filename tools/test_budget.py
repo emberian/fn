@@ -104,11 +104,32 @@ class _TimedResult(unittest.TextTestResult):
         self._started: dict[str, float] = {}
         self._failed: set[str] = set()
         self._case_indices: dict[str, int] = {}
+        self.node_dead: list[list[str]] = []
 
     @staticmethod
     def _parent(test):
         # unittest._SubTest is a TestCase, but its id includes parameters.
         return getattr(test, "test_case", test)
+
+    def _node_dead(self, test):
+        harness = sys.modules.get("tests.native_harness") or sys.modules.get("native_harness")
+        if harness is None:
+            return []
+        return harness.node_start_failures(test.id()) + harness.node_start_failures(None)
+
+    def _reject_dead_node(self, test):
+        reasons = self._node_dead(test)
+        if not reasons:
+            return False
+        error = AssertionError("; ".join(reasons))
+        self.addFailure(test, (AssertionError, error, None))
+        return True
+
+    def _record_node_dead(self, test, err):
+        if err[0].__name__ == "NodeDead":
+            entry = [test.id(), str(err[1])]
+            if entry not in self.node_dead:
+                self.node_dead.append(entry)
 
     def _case(self, test, outcome: str) -> None:
         test = self._parent(test)
@@ -132,14 +153,17 @@ class _TimedResult(unittest.TextTestResult):
             self._case(test, "FAIL" if issubclass(err[0], test.failureException) else "ERROR")
 
     def addSuccess(self, test):
+        if self._reject_dead_node(test): return
         super().addSuccess(test)
         self._case(test, "ok")
 
     def addSkip(self, test, reason):
+        if self._reject_dead_node(test): return
         super().addSkip(test, reason)
         self._case(test, "skip")
 
     def addExpectedFailure(self, test, err):
+        if self._reject_dead_node(test): return
         super().addExpectedFailure(test, err)
         self._case(test, "xfail")
 
@@ -152,17 +176,29 @@ class _TimedResult(unittest.TextTestResult):
         super().startTest(test)
 
     def addFailure(self, test, err):
+        self._record_node_dead(test, err)
         super().addFailure(test, err)
         self._failed.add(test.id())
         self._case(test, "FAIL")
 
     def addError(self, test, err):
+        self._record_node_dead(test, err)
         super().addError(test, err)
         if isinstance(test, unittest.TestCase):
             self._failed.add(test.id())
         self._case(test, "ERROR")
 
     def stopTest(self, test):
+        for reason in self._node_dead(test):
+            entry = [test.id(), reason]
+            if entry not in self.node_dead:
+                self.node_dead.append(entry)
+        harness = sys.modules.get("tests.native_harness") or sys.modules.get("native_harness")
+        if harness is not None:
+            failures = getattr(harness, "_NODE_DEAD", {})
+            failures.pop(test.id(), None)
+            failures.pop(None, None)
+            getattr(harness, "_NODE_GREETINGS", {}).pop(test.id(), None)
         started = self._started.pop(test.id(), None)
         if started is not None:
             self.timings.append((test.id(), round(time.monotonic() - started, 3)))
@@ -252,6 +288,7 @@ def run_one(module: str, order: str = "default", cases: list[str] | None = None)
                   for test, reason in result.skipped],
         "timings": result.timings,
         "cases": result.cases,
+        "node_dead": result.node_dead,
         "only_cases": sorted(cases) if cases else None,
     }
     print(RESULT_PREFIX + json.dumps(record), flush=True)
@@ -366,17 +403,19 @@ def verdict_fields(record: dict) -> dict:
     over = record.get("over_budget", False)
     # Zero tests collected is not "every test skipped": nothing was there to
     # run (a module that defines none, or a loader that found none) -- red.
-    record["all_skipped"] = (not over and record.get("returncode") == 0
+    record["all_skipped"] = (not record.get("node_dead") and not over and record.get("returncode") == 0
                              and "tests" in record and record.get("executed", 1) == 0
                              and record.get("skipped", 0) > 0)
-    record["passed"] = (not over and record.get("returncode") == 0
+    record["passed"] = (not record.get("node_dead") and not over and record.get("returncode") == 0
                         and "tests" in record and not record["all_skipped"]
                         and (record.get("tests", 0) > 0 or record.get("skipped", 0) > 0))
     return record
 
 
 def summarize(record: dict, slowest: int) -> str:
-    if record["over_budget"] and record.get("slow_tests") and record["seconds"] < record["budget"]:
+    if record.get("node_dead"):
+        verdict = "FAILED (node dead)"
+    elif record["over_budget"] and record.get("slow_tests") and record["seconds"] < record["budget"]:
         slow = ", ".join(f"{name.rsplit('.', 1)[-1]} {seconds:.1f} s"
                          for name, seconds in record["slow_tests"])
         verdict = (f"OVER BUDGET (a test over {TEST_BUDGET_SECONDS:g} s: {slow}"
@@ -427,7 +466,9 @@ def verdict_of_log(path: Path) -> int:
         return 1
     record["seconds"] = sum(seconds for _, seconds in record.get("timings", []))
     verdict_fields(record)
-    if record["all_skipped"]:
+    if record.get("node_dead"):
+        verdict = "FAILED (node dead)"
+    elif record["all_skipped"]:
         verdict = f"SKIPPED ({record['skipped']} of {record['skipped']}; no test executed)"
     elif record["passed"]:
         verdict = f"OK ({record['executed']} ran, {record['skipped']} skipped)"

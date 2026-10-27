@@ -96,6 +96,30 @@ class RecordedGroupCleanupTests(unittest.TestCase):
 
 
 class HboxNativeDryRunTests(unittest.TestCase):
+    def test_node_dead_result_is_failed_in_module_line_and_status(self):
+        import json
+        import re
+        import tempfile
+        answer = dry("HEAD", "tests.test_native_owner")
+        tstep = re.search(r"^tstep\(\) \{.*?^\}\n", answer.stdout, re.M | re.S).group(0)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "tools").mkdir(); (root / "logs").mkdir(); (root / "rc").mkdir()
+            record = {"module": "fixture", "tests": 1, "failures": 0, "errors": 0, "executed": 0,
+                      "skipped": 1, "skips": [], "timings": [], "node_dead": [["row", "node dead: never greeted"]]}
+            tool = root / "tools/test_budget.py"
+            tool.write_text("import os,sys\nif sys.argv[1] == '--verdict':\n"
+                " os.execv(sys.executable, [sys.executable, REAL, *sys.argv[1:]])\n"
+                "print(RESULT); sys.exit(4)\n".replace("REAL", repr(str(ROOT / "tools/test_budget.py")))
+                .replace("RESULT", repr("FN_TEST_BUDGET_RESULT " + json.dumps(record))))
+            run = root / "module.sh"
+            run.write_text(tstep + '\ntstep test-fixture python3 tools/test_budget.py --one fixture\n')
+            done = subprocess.run(["sh", str(run)], cwd=root, capture_output=True, text=True, timeout=10,
+                env={**os.environ, "S": str(root), "L": str(root / "logs"), "FN_NATIVE_SCOPE_UNIT": "fixture", "FN_NATIVE_MEMORY": "24G"})
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertIn("exit 1", done.stdout)
+            self.assertIn("FAILED (node dead)", done.stdout)
+            self.assertEqual((root / "rc/test-fixture").read_text(), "1\n")
+
     def test_dead_run_profiling_image_is_an_optional_default(self):
         answer = dry("--box", "hbox", "--images", "developer,prof", "HEAD",
                      "tests.test_native_dead_run", env={"FN_DEAD_RUN_PROF_HOST": ""})
@@ -836,9 +860,11 @@ class IdentityTests(unittest.TestCase):
         import shutil
         text = SCRIPT.read_text()
         head = text[:text.index("\nHERE=") + 1] + text[text.index("\nHERE=") + 1:].split("\n", 1)[0]
-        tree = ROOT / "build" / "hbox-native-copy-test"
-        (tree / "tools").mkdir(parents=True, exist_ok=True)
-        self.addCleanup(shutil.rmtree, tree, True)
+        import tempfile
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        tree = Path(temp.name).resolve() / "hbox-native-copy-test"
+        (tree / "tools").mkdir(parents=True)
         (tree / "tools" / "hbox_native.sh").write_text(
             head + '\necho "COPY=$FN_HBOX_NATIVE_COPY"\necho "RUNNING=$0"\necho "HERE=$HERE"\n')
         shutil.copy(ROOT / "tools" / "wait_for.sh", tree / "tools" / "wait_for.sh")

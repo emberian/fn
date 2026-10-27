@@ -1229,6 +1229,7 @@ tstep() {
     verdict=$(python3 tools/test_budget.py --verdict $L/$name.log)
     vrc=$?
     [ $rc -ne 0 ] || rc=$vrc
+    case $verdict in *"FAILED (node dead)"*) rc=1 ;; esac
     echo "   $name exit $rc $(date -u +%H:%M:%SZ): $verdict ($L/$name.log)"
     if [ -d $L/stderr/$name ]; then
         echo "   $name: stderr of each failed test's processes in $L/stderr/$name ($(ls $L/stderr/$name | wc -l) files)"

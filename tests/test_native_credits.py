@@ -29,6 +29,7 @@ own body and queue, never what the committer or its fdatasync still owns
 
     tools/hbox_native.sh --images developer,production . tests.test_native_credits
 """
+from tests.native_harness import current_test_id, observe_node_greeting
 import socket
 import threading
 import time
@@ -56,6 +57,7 @@ class Reader(threading.Thread):
     def __init__(self, port, stop):
         super().__init__(daemon=True)
         self.port, self.stop, self.bad, self.rounds = port, stop, [], 0
+        self.test_id = current_test_id()
 
     def ask(self, stream, line):
         stream.write(line + b"\r\n")
@@ -73,7 +75,8 @@ class Reader(threading.Thread):
         try:
             conn = socket.create_connection(("127.0.0.1", self.port), timeout=120)
             stream = conn.makefile("rwb")
-            stream.readline()
+            greeting = stream.readline()
+            observe_node_greeting(self.port, greeting, test_id=self.test_id)
             while not self.stop.is_set():
                 for line in (b"GROUP fn.test", b"LISTGROUP fn.test", b"STAT 1", b"HEAD 1"):
                     status = self.ask(stream, line)
