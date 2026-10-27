@@ -284,9 +284,7 @@ overwrites a newer matching local pair, and keeps two same-byte books apart.
 `tests/test_farm.py` reads the exact commands `tools/farm.py` would issue --
 the mirror that excludes `build/`, the detached runner, a bounded wait that
 sleeps rather than spins, the fetch of evidence and pairs -- without running
-ssh. `tests/test_ledger.py` covers the reader, the suspect detector, the export
-lints, the `fn-defrecord` expansion the reader must perform to see a migrated
-book, and the hand-written-record lint.
+ssh.
 `tests/test_proof_profile.py` pins `tools/proof_profile.py`'s parser against
 two real ACL2 8.7 logs in `tests/vectors/` -- one form that closed and one
 that did not -- plus the driver it builds and its choice of the less loaded
@@ -364,13 +362,9 @@ statically. With `FN_ACL2` unset the tool prints that it did not run and exits
 (`python3 tools/certs.py install`), because an `include-book` inside a host
 file reads a certificate `ld` will not produce.
 
-`tools/cite_check.py` checks repository paths cited in tracked files and
-deliberately does not read `build/`.
-
-Three static checks run beside it, none of them needing ACL2.
+Two static checks run beside it, neither needing ACL2.
 `tools/native_program_check.py` is the crash model's cut correspondence;
-`tools/teeth_check.py --summary` is the teeth audit's static half, which
-reports and never fails; and `tools/session_depth.py` checks that every
+and `tools/session_depth.py` checks that every
 session reaches the level its callee wants. That last one exists because the
 served command chain is four session records deep and all three base
 accessors read `car`, so a call that stops one level short is answered with a
