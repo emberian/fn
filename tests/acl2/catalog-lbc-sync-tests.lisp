@@ -24,7 +24,7 @@
     (let* ((s (fn-lbcs-next s)) (cnt (fn-cat-count fn-cat)) (op (mod (floor s 256) 20)))
       (cond
        ((= op 19)
-        (let ((fn-cat (fn-cat-clear fn-cat)))
+        (mv-let (fn-cat fn-lbc) (fn-cat-clear-and-columns fn-cat fn-lbc)
           (fn-lbcs-steps (- n 1) s fn-arena fn-cat fn-lbc)))
        ((>= op 16)
         (let ((fn-lbc (fn-lbc-sync fn-arena fn-cat fn-lbc)))
@@ -94,14 +94,15 @@
   (declare (xargs :mode :program))
   (with-local-stobj fn-arena
     (mv-let (r fn-arena)
-      (with-local-stobj fn-cat
-        (mv-let (r fn-cat)
-          (with-local-stobj fn-lbc
-            (mv-let (r fn-cat fn-lbc)
-              (fn-lbcs-one seed n bad fn-arena fn-cat fn-lbc)
-              (mv r fn-cat)))
-          (mv r fn-cat)))
-      (mv r fn-arena))))
+      (let ((r (with-local-stobj fn-cat
+                 (mv-let (r fn-cat)
+                   (with-local-stobj fn-lbc
+                     (mv-let (r fn-cat fn-lbc)
+                       (fn-lbcs-one seed n bad fn-arena fn-cat fn-lbc)
+                       (mv r fn-cat)))
+                   r))))
+        (mv r fn-arena))
+      r)))
 (defun fn-lbcs-all (seeds n bad)
   (declare (xargs :mode :program))
   (if (zp seeds) nil
