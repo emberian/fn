@@ -189,8 +189,13 @@ def thin_defuns(rel: str, text: str) -> list[Thin]:
 
 
 def tracked_files(root: Path) -> list[str]:
-    out = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True, text=True,
-                         check=True).stdout.split("\n")
+    try:
+        out = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True, text=True,
+                             check=True).stdout.split("\n")
+    except subprocess.CalledProcessError:
+        # an exported tree (the gate's image tree) carries no .git: its files are the tracked set
+        out = [str(p.relative_to(root)) for p in sorted(root.rglob("*"))
+               if p.is_file() and not str(p.relative_to(root)).startswith(("build/", ".git/"))]
     seen = [f for f in out if f and (root / f).is_file()]
     # files the worktree holds that git does not yet (a generated book)
     return seen
