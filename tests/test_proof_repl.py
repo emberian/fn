@@ -36,6 +36,321 @@ import proof_repl  # noqa: E402
 from tests.test_certs import manifest_for, worktree, TEST_COMPATIBILITY  # noqa: E402
 
 
+class SessionLockTests(unittest.TestCase):
+    """Real non-blocking flocks, fabricated records, no processes or signals."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(dir="/tmp")
+        self.addCleanup(temporary.cleanup)
+        self.sessions = pathlib.Path(temporary.name)
+        self.name = "dead-session"
+        self.pid = 999999999
+        self.starter = self.pid - 1
+        self.args = SimpleNamespace(name=self.name, book="books/irrelevant")
+        self.directory = self.sessions / self.name
+        self.directory.mkdir()
+        self.enterContext(mock.patch.object(proof_repl, "SESSIONS", self.sessions))
+        self.enterContext(mock.patch.object(proof_repl, "_command_of", return_value=""))
+        self.kill = self.enterContext(mock.patch.object(proof_repl.os, "kill"))
+        self.ask = self.enterContext(mock.patch.object(proof_repl, "ask"))
+        self.launch = self.enterContext(mock.patch.object(proof_repl.subprocess, "Popen"))
+        self.lock = proof_repl.session_lock_path(self.name)
+        self.lock.parent.mkdir()
+        self.lock.write_text(json.dumps({"pid": self.pid, "starter": self.starter,
+                                         "role": "serve", "since": time.time()}))
+
+    def hold_lock(self):
+        fd = proof_repl.open_session_lock(self.name)
+        self.assertIsNotNone(fd)
+        # Close by hand in tests that simulate the holder releasing its fd.
+        return fd
+
+    def write_state(self):
+        (self.directory / "state.json").write_text(json.dumps({
+            "name": self.name, "book": "books/x", "pid": self.pid,
+            "loaded": [], "sends": 0, "stopped_at": None, "error": None}))
+
+    def check_stale_cleanup(self, socket_file=False):
+        self.write_state()
+        staged = self.directory / f".state-{self.pid}.tmp"
+        staged.write_text("stale")
+        marker = self.directory / "probe.json"
+        marker.write_text("{}")
+        log = self.directory / "log"
+        log.write_text("keep diagnostics")
+        if socket_file:
+            (self.directory / "sock").touch()
+        other = self.sessions / "other-session"
+        other.mkdir()
+        (other / "state.json").write_text("untouched state")
+        (other / "sock").write_text("untouched socket")
+        other_lock = self.lock.parent / other.name
+        other_lock.write_text("untouched record")
+        inode = self.lock.stat().st_ino
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(proof_repl.stop(self.args), 0)
+        self.assertEqual(out.getvalue().splitlines(), [
+            f"proof-repl: stale record of dead pid {self.pid} cleared"])
+        self.assertEqual(proof_repl.lock_holder(self.name), {})
+        self.assertEqual(self.lock.stat().st_ino, inode)
+        for path in (self.directory / "sock", self.directory / "state.json", staged, marker):
+            self.assertFalse(path.exists())
+        self.assertEqual(log.read_text(), "keep diagnostics")
+        self.assertEqual((other / "state.json").read_text(), "untouched state")
+        self.assertEqual((other / "sock").read_text(), "untouched socket")
+        self.assertEqual(other_lock.read_text(), "untouched record")
+        self.kill.assert_not_called()
+        self.ask.assert_not_called()
+        self.launch.assert_not_called()
+
+    def test_free_lock_with_dead_record_is_cleared_without_socket(self):
+        self.check_stale_cleanup()
+
+    def test_free_lock_with_dead_record_and_stale_socket_is_cleared(self):
+        self.check_stale_cleanup(socket_file=True)
+
+    def test_held_lock_with_dead_record_refuses_without_signalling(self):
+        fd = self.hold_lock()
+        try:
+            for socket_file in (False, True):
+                with self.subTest(socket_file=socket_file):
+                    if socket_file:
+                        (self.directory / "sock").touch()
+                    with contextlib.redirect_stdout(io.StringIO()) as out:
+                        self.assertEqual(proof_repl.stop(self.args), 1)
+                    self.assertIn("held by an unknown holder", out.getvalue())
+                    self.assertIn(f"recorded pid {self.pid} is not a holder", out.getvalue())
+                    self.assertEqual(proof_repl.lock_holder(self.name)["pid"], self.pid)
+                    self.kill.assert_not_called()
+                    self.ask.assert_not_called()
+        finally:
+            os.close(fd)
+
+    def test_live_holder_keeps_sigterm_path_for_recorded_pids(self):
+        fd = self.hold_lock()
+
+        def terminate(pid, sig):
+            nonlocal fd
+            if pid == self.starter:
+                os.close(fd)
+                fd = None
+
+        self.kill.side_effect = terminate
+        try:
+            with mock.patch.object(proof_repl, "_is_holder",
+                                   side_effect=lambda pid, name: pid in (self.pid, self.starter)), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(proof_repl.stop(self.args), 0)
+            self.assertEqual(self.kill.call_args_list, [
+                mock.call(self.pid, signal.SIGTERM), mock.call(self.starter, signal.SIGTERM)])
+            self.assertIn("held the lock with no socket", out.getvalue())
+            self.ask.assert_not_called()
+        finally:
+            if fd is not None:
+                os.close(fd)
+
+    def test_start_acquires_lock_after_stale_cleanup(self):
+        self.check_stale_cleanup(socket_file=True)
+
+        def acquire(*args):
+            self.assertIsNone(proof_repl.open_session_lock(self.name))
+            self.assertEqual(proof_repl.lock_holder(self.name)["role"], "start")
+            return False, "test stops before launching serve", []
+
+        with mock.patch.object(proof_repl, "install_closure", side_effect=acquire) as install, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(proof_repl.start(self.args), 1)
+        install.assert_called_once()
+        self.launch.assert_not_called()
+        fd = self.hold_lock()
+        os.close(fd)
+
+    def test_holder_words_ignores_a_dead_record_when_flock_is_free(self):
+        self.assertEqual(proof_repl.holder_words(self.name), "free")
+        self.assertEqual(proof_repl.lock_holder(self.name)["pid"], self.pid)
+
+    def test_status_does_not_call_a_free_lock_with_stale_socket_live(self):
+        self.write_state()
+        (self.directory / "sock").touch()
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(proof_repl.status(self.args), 0)
+        self.assertIn("not live", out.getvalue())
+        self.assertNotIn("held by", out.getvalue())
+        self.assertTrue((self.directory / "state.json").exists())
+
+    def test_status_reports_unknown_holder_for_held_lock_and_dead_record(self):
+        self.write_state()
+        (self.directory / "sock").touch()
+        fd = self.hold_lock()
+        try:
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(proof_repl.status(self.args), 0)
+            self.assertIn("not live", out.getvalue())
+            self.assertIn(f"recorded pid {self.pid} is not a holder", out.getvalue())
+        finally:
+            os.close(fd)
+
+    def test_start_refuses_held_lock_without_naming_dead_pid_as_holder(self):
+        fd = self.hold_lock()
+        try:
+            with mock.patch.object(proof_repl, "install_closure") as install, \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(proof_repl.start(self.args), 2)
+            self.assertIn(f"recorded pid {self.pid} is not a holder", out.getvalue())
+            self.assertNotIn(f"held by pid {self.pid}", out.getvalue())
+            install.assert_not_called()
+            self.launch.assert_not_called()
+        finally:
+            os.close(fd)
+
+    def test_free_lock_does_not_clear_record_when_starter_is_still_a_holder(self):
+        with mock.patch.object(proof_repl, "_is_holder",
+                               side_effect=lambda pid, name: pid == self.starter), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(proof_repl.stop(self.args), 1)
+        self.assertEqual(proof_repl.lock_holder(self.name)["pid"], self.pid)
+        self.kill.assert_not_called()
+
+    def test_live_socket_holder_keeps_socket_stop_path(self):
+        fd = self.hold_lock()
+        (self.directory / "sock").touch()
+
+        def answer(*args, **kwargs):
+            nonlocal fd
+            os.close(fd)
+            fd = None
+            return {"stopped": True}
+
+        self.ask.side_effect = answer
+        try:
+            with mock.patch.object(proof_repl, "_command_of",
+                                   return_value=f"python tools/proof_repl.py serve {self.name}"), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(proof_repl.stop(self.args), 0)
+            self.ask.assert_called_once_with(self.name, {"op": "stop"}, timeout=30)
+            self.kill.assert_not_called()
+            self.assertIn(f"stopped {self.name}", out.getvalue())
+        finally:
+            if fd is not None:
+                os.close(fd)
+
+    def test_dead_primary_pid_with_live_starter_signals_only_starter(self):
+        for operation in (proof_repl.stop, proof_repl.stop_holder):
+            with self.subTest(operation=operation.__name__):
+                fd = self.hold_lock()
+
+                def terminate(pid, sig):
+                    nonlocal fd
+                    self.assertEqual(pid, self.starter)
+                    os.close(fd)
+                    fd = None
+
+                self.kill.reset_mock()
+                self.kill.side_effect = terminate
+                try:
+                    with mock.patch.object(proof_repl, "_is_holder",
+                                           side_effect=lambda pid, name: pid == self.starter), \
+                            contextlib.redirect_stdout(io.StringIO()) as out:
+                        argument = self.args if operation is proof_repl.stop else self.name
+                        self.assertEqual(operation(argument), 0)
+                    self.kill.assert_called_once_with(self.starter, signal.SIGTERM)
+                    self.assertIn("held the lock with no socket", out.getvalue())
+                    self.ask.assert_not_called()
+                finally:
+                    if fd is not None:
+                        os.close(fd)
+
+    def test_start_refusal_names_live_starter_when_recorded_pid_is_dead(self):
+        fd = self.hold_lock()
+        try:
+            with mock.patch.object(proof_repl, "_is_holder",
+                                   side_effect=lambda pid, name: pid == self.starter), \
+                    mock.patch.object(proof_repl, "install_closure") as install, \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(proof_repl.start(self.args), 2)
+            self.assertIn("starting or live", out.getvalue())
+            self.assertIn(f"held by starter pid {self.starter}", out.getvalue())
+            self.assertNotIn("unknown holder", out.getvalue())
+            install.assert_not_called()
+            self.kill.assert_not_called()
+        finally:
+            os.close(fd)
+
+    def test_stop_holder_directly_clears_free_stale_record(self):
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(proof_repl.stop_holder(self.name), 0)
+        self.assertIn(f"stale record of dead pid {self.pid} cleared", out.getvalue())
+        self.assertEqual(proof_repl.lock_holder(self.name), {})
+        self.kill.assert_not_called()
+
+    def test_stop_holder_directly_refuses_held_lock_with_dead_record(self):
+        fd = self.hold_lock()
+        try:
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(proof_repl.stop_holder(self.name), 1)
+            self.assertIn(f"recorded pid {self.pid} is not a holder", out.getvalue())
+            self.kill.assert_not_called()
+        finally:
+            os.close(fd)
+
+    def test_cleanup_unlinks_derived_socket_and_keeps_parent_and_other_files(self):
+        sessions = self.sessions / ("long-root-" + "x" * 110) / "sessions"
+        self.directory = sessions / self.name
+        self.directory.mkdir(parents=True)
+        short_root = self.sessions / "shortened-sockets"
+
+        # Exercise sock_file's real length/hash logic, redirecting its /tmp
+        # root into the fixture. No real /tmp/fn-repl-* path is touched.
+        def redirect(path):
+            return short_root if path == "/tmp" else pathlib.Path(path)
+
+        with mock.patch.object(proof_repl, "SESSIONS", sessions), \
+                mock.patch.object(proof_repl, "Path", side_effect=redirect):
+            lock = proof_repl.session_lock_path(self.name)
+            lock.parent.mkdir()
+            lock.write_text(self.lock.read_text())
+            self.write_state()
+            self.assertGreater(len(os.fsencode(self.directory / "sock")),
+                               proof_repl.SOCKET_PATH_LIMIT)
+            sock = proof_repl.sock_file(self.directory)
+            digest = proof_repl.hashlib.sha256(os.fsencode(self.directory)).hexdigest()[:16]
+            self.assertEqual(sock, short_root / f"fn-repl-{digest}" / "sock")
+            sock.parent.mkdir(parents=True)
+            sock.touch()
+            sibling = sock.parent / "keep-file"
+            sibling.write_text("untouched")
+            other = proof_repl.sock_file(sessions / "other-session")
+            other.parent.mkdir()
+            other.write_text("other session's socket")
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(proof_repl.stop(self.args), 0)
+            self.assertIn(f"stale record of dead pid {self.pid} cleared", out.getvalue())
+            self.assertFalse(sock.exists())
+            self.assertTrue(sock.parent.is_dir())
+            self.assertEqual(sibling.read_text(), "untouched")
+            self.assertEqual(other.read_text(), "other session's socket")
+            self.assertFalse((self.directory / "state.json").exists())
+            self.assertEqual(proof_repl.lock_holder(self.name), {})
+            with mock.patch.object(proof_repl, "install_closure",
+                                   return_value=(False, "stop before serve", [])) as install, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.start(self.args), 1)
+            install.assert_called_once()
+            self.kill.assert_not_called()
+            self.ask.assert_not_called()
+            self.launch.assert_not_called()
+
+    def test_unrelated_command_is_not_signalled_even_when_flock_is_held(self):
+        fd = self.hold_lock()
+        try:
+            with mock.patch.object(proof_repl, "_command_of", return_value="python unrelated.py"), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(proof_repl.stop(self.args), 1)
+            self.kill.assert_not_called()
+        finally:
+            os.close(fd)
+
+
 class AggregateLoadBudgetTests(unittest.TestCase):
     def test_source_ld_uses_load_budget_and_preserves_explicit_zero(self):
         acl2 = mock.Mock()

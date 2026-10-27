@@ -36,6 +36,7 @@ production,reference,developer,developer-stripped) and FN_TEST_OPENSSL
 (ML-DSA-65 keys).  FN_DIFF_OUT, when set, receives the per-case outcome
 table as JSON.
 """
+from tests.native_harness import observe_node_greeting
 import hashlib
 import json
 import os
@@ -367,7 +368,9 @@ class Session:
     def __init__(self, port):
         self.conn = socket.create_connection(("127.0.0.1", port), timeout=120)
         self.stream = self.conn.makefile("rwb")
-        self.log = bytearray(self.stream.readline())
+        greeting = self.stream.readline()
+        observe_node_greeting(port, greeting)
+        self.log = bytearray(greeting)
 
     def send(self, raw):
         self.stream.write(raw)

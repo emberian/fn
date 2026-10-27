@@ -37,6 +37,7 @@ name, outside a limit of at most 2 GiB.
   warns by name with both figures), and the default mission
   (inits and runs, under 2 GiB too; refused by name under a 500 MB budget).
 """
+from tests.native_harness import observe_node_greeting
 import base64
 import hashlib
 import os
@@ -224,7 +225,9 @@ class Harness:
                 return found
             try:  # the owner publishes between accepts
                 with socket.create_connection(("127.0.0.1", port), timeout=5) as conn:
-                    conn.makefile("rb").readline()
+                    greeting = conn.makefile("rb").readline()
+                    if greeting[:3] in (b"200", b"201"):
+                        observe_node_greeting(port, greeting)
             except OSError:
                 pass
             time.sleep(1)

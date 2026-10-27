@@ -47,6 +47,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 from tests.campaign import native_cuts  # noqa: E402
+from tests.native_harness import (require_node_greeting, observe_node_greeting,
+                                  observe_operator_reply, node_dead)  # noqa: E402
 
 GROUP = "fn.letters"
 PRIOR_ID = "<prior@campaign.invalid>"
@@ -206,7 +208,26 @@ class Node:
                 "seconds": round(time.monotonic() - started, 2), "_out": out}
 
     def operator(self, *words, extra=None, timeout=300):
-        return self.run(["operator", str(self.config), *words], extra, timeout)
+        owner = self.owners[-1]["proc"] if self.owners else None
+        if owner is not None and owner.poll() is not None:
+            owner = None
+        result = self.run(["operator", str(self.config), *words], extra, timeout)
+        observe_operator_reply(owner, self.control, words, result["rc"], result["_out"], result["stderr"].encode())
+        return result
+
+    def observe_greeting(self, greeting):
+        if not self.owners:
+            node_dead("no owner was started for this connection")
+        observe_node_greeting(self.port, greeting, process=self.owners[-1]["proc"])
+
+    def require_live_owner(self):
+        """A buffered greeting credits the start; POST still needs a live owner."""
+        if not self.owners:
+            node_dead("no owner was started before POST")
+        owner = self.owners[-1]["proc"]
+        status = owner.poll()
+        if status is not None:
+            node_dead(f"pid {owner.pid} exited before POST (exit {status})")
 
     def post(self, msgid, payload: Path, extra=None, timeout=300):
         return self.operator("post", "--message-id", msgid, "--payload",
@@ -220,7 +241,7 @@ class Node:
     def inspect(self, msgid):
         return self.run(["store", str(self.store), "inspect", msgid])
 
-    def start_owner(self, extra=None) -> dict:
+    def start_owner(self, extra=None, *, timeout=240) -> dict:
         log = open(self.dir / "owner-{}.err".format(len(self.owners)), "wb")
         proc = subprocess.Popen([str(self.image), "--fn", "operator",
                                  str(self.config), "run"], env=self.env(extra),
@@ -229,9 +250,9 @@ class Node:
         owner = {"pid": proc.pid, "env": dict(extra or {}), "proc": proc,
                  "log": log, "ready": False, "lines": []}
         self.owners.append(owner)
-        deadline = time.monotonic() + 240
+        deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if not select.select([proc.stdout], [], [], 5)[0]:
+            if not select.select([proc.stdout], [], [], min(5, max(0, deadline - time.monotonic())))[0]:
                 if proc.poll() is not None:
                     break
                 continue
@@ -242,6 +263,9 @@ class Node:
             if line.startswith(b"LISTENING "):
                 owner["ready"] = True
                 break
+        if not owner["ready"]:
+            node_dead(f"pid {proc.pid} never announced its listener (exit {proc.poll()})")
+        require_node_greeting(proc, self.port, control=self.control, config=self.config)
         return owner
 
     def stop_owner(self, owner, sig=signal.SIGTERM) -> dict:
@@ -273,11 +297,14 @@ class Node:
                 owner["proc"].wait(timeout=30)
             if not owner["proc"].stdout.closed:
                 owner["proc"].stdout.close()
+            if not owner["log"].closed:
+                owner["log"].close()
 
     def nntp_article(self, msgid) -> dict:
         with socket.create_connection(("127.0.0.1", self.port), timeout=60) as conn:
             stream = conn.makefile("rb")
             greeting = stream.readline()
+            self.observe_greeting(greeting)
             conn.sendall("ARTICLE {}\r\n".format(msgid).encode("ascii"))
             status = stream.readline()
             lines = []

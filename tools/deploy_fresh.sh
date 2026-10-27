@@ -29,7 +29,8 @@
 #     or top fn (D35's release product, whose libexec/fn/source-revision must
 #     be the expected revision); `bin/fn --version` must print it too
 #     (`fn VERSION (REV12)` from a versioned release, VERSION an entry of
-#     D37's release sequence; `fn REV` before VERSION).
+#     the release sequence (5.1.1 first), or ENTRY-pre before its cut;
+#     `fn REV` before VERSION).
 #  4. the store (its record TARGET/DEPLOY-STORE is written once the whole
 #     step held; a store without it is an interrupted run's and is refused):
 #     `--store fresh` (default) inits TARGET/store and enrols the

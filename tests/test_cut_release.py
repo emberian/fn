@@ -68,17 +68,22 @@ class CutReleaseDryRunTests(unittest.TestCase):
 
     def test_gate_01_follows_the_release_sequence(self):
         # D37 (planning/release-sequence.json), never a numeric comparison.
-        cases = [("6.6.0", [], "GREEN"),
+        cases = [("5.1.1", [], "GREEN"),
+                 ("5.1.1-pre", [], "RED"),
+                 ("5.2.2", [], "RED"),
                  ("6.7.0", [], "RED"),
-                 ("6.7.0", ["v6.6.0", "v6.6.1", "v6.6.2", "v6.6.3", "v6.6.4"], "RED"),
-                 ("6.7.0", ["v6.6.5"], "GREEN"),
-                 ("6.6.6.6", ["v6.6.5", "v6.7.0", "v6.7.3"], "RED"),
-                 ("6.6.6", ["v6.6.5", "v6.7.0", "v6.7.3"], "GREEN"),
-                 ("6.6.6.6", ["v6.6.5", "v6.7.0", "v6.7.3", "v6.6.6"], "GREEN"),
-                 # The prehistory tags (DEVHIST.md) are not releases: 6.6.0 is still first.
-                 ("6.6.0", PREHISTORY, "GREEN"),
-                 ("6.6.1", PREHISTORY, "RED"),
-                 ("6.6.1", PREHISTORY + ["v6.6.0"], "GREEN"),
+                 ("6.7.0", ["v5.1.1", "v5.2.2", "v5.3.3", "v5.4.4"], "RED"),
+                 ("6.7.0", ["v5.5.5"], "GREEN"),
+                 ("6.6.6.6", ["v5.5.5", "v6.7.0", "v6.7.3"], "RED"),
+                 ("6.6.6", ["v5.5.5", "v6.7.0", "v6.7.3"], "RED"),
+                 ("6.6.0", ["v6.7.3"], "GREEN"),
+                 ("6.6.1", ["v6.6.0"], "GREEN"),
+                 ("6.6.6", ["v6.6.5"], "GREEN"),
+                 ("6.6.6.6", ["v5.5.5", "v6.7.0", "v6.7.3", "v6.6.6"], "GREEN"),
+                 # The prehistory tags (DEVHIST.md) are not releases: 5.1.1 is still first.
+                 ("5.1.1", PREHISTORY, "GREEN"),
+                 ("5.2.2", PREHISTORY, "RED"),
+                 ("5.2.2", PREHISTORY + ["v5.1.1"], "GREEN"),
                  ("5.0.0", PREHISTORY[:4], "RED")]
         for version, tags, want in cases:
             word, line = self.gate01(version, tags)

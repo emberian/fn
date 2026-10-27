@@ -20,6 +20,7 @@ each image (developer and production):
 """
 from __future__ import annotations
 
+from tests.native_harness import observe_node_greeting
 from pathlib import Path
 import re
 import resource
@@ -114,7 +115,10 @@ class MuxCase:
 
     def open_one(self):
         sock = socket.create_connection(("127.0.0.1", self.port), timeout=30)
-        return sock, first_line(sock)
+        greeting = first_line(sock)
+        if greeting[:3] in (b"200", b"201"):
+            observe_node_greeting(self.port, greeting)
+        return sock, greeting
 
     def test_a_capacity_the_machine_cannot_hold_is_refused_at_start(self):
         self.policy(4000000)

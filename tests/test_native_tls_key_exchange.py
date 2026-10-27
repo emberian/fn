@@ -27,6 +27,7 @@ Needs the OpenSSL 3.5.8 toolchain (FN_TEST_OPENSSL_PREFIX, default
 from __future__ import annotations
 
 import ctypes.util
+from tests.native_harness import observe_node_greeting, observe_tool_greeting
 import os
 import re
 import socket
@@ -121,8 +122,9 @@ class NativeTlsKeyExchangeTests(unittest.TestCase):
         result = subprocess.run(
             [str(CLIENT), "s_client", "-starttls", "nntp", "-groups", groups,
              "-connect", "127.0.0.1:{}".format(self.port), "-servername", "localhost",
-             "-brief", "-ign_eof"],
+             "-brief", "-ign_eof", "-debug"],
             input=commands, env=client_environment(), capture_output=True, timeout=60)
+        observe_tool_greeting(self.port, result.stdout + result.stderr)
         return (result.stdout + result.stderr).decode("utf-8", "replace")
 
     def wait_for_log(self, pattern: str, timeout: float = 15) -> str:
@@ -251,6 +253,7 @@ class NativeTlsKeyExchangeTests(unittest.TestCase):
             self.assertTrue(line.endswith(": " + str(missing)), line)
             with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
                 greeting = sock.makefile("rb").readline()
+                observe_node_greeting(self.port, greeting)
             self.assertTrue(greeting.startswith(b"20"), greeting)
             self.assertIsNone(process.poll())
         finally:

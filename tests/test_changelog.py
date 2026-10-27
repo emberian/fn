@@ -47,19 +47,19 @@ class PreviousReleaseTests(unittest.TestCase):
     the numerically largest tag."""
 
     def test_the_first_release_has_none(self):
-        self.assertIsNone(changelog.previous_release("6.6.0", []))
-        self.assertIsNone(changelog.previous_release("6.6.0", ["v6.6.0", "other"]))
+        self.assertIsNone(changelog.previous_release("5.1.1", []))
+        self.assertIsNone(changelog.previous_release("5.1.1", ["v5.1.1", "other"]))
 
     def test_sequence_order_not_numeric(self):
-        self.assertEqual(changelog.previous_release("6.7.0", ["v6.6.4", "v6.6.5"]), "v6.6.5")
-        self.assertEqual(changelog.previous_release("6.6.6", ["v6.6.5", "v6.7.9", "v6.7.10"]),
-                         "v6.7.10")
+        self.assertEqual(changelog.previous_release("6.7.0", ["v5.4.4", "v5.5.5"]), "v5.5.5")
+        self.assertEqual(changelog.previous_release("6.6.6", ["v5.5.5", "v6.7.9", "v6.7.10", "v6.6.5"]),
+                         "v6.6.5")
         self.assertEqual(changelog.previous_release("6.6.6.6", ["v6.7.3", "v6.6.6", "v6.6.6.6"]),
                          "v6.6.6")
 
     def test_tags_after_version_and_strays_are_ignored(self):
-        self.assertEqual(changelog.previous_release("6.6.2", ["v6.6.1", "v6.6.3", "v1.2.3"]),
-                         "v6.6.1")
+        self.assertEqual(changelog.previous_release("5.3.3", ["v5.2.2", "v5.4.4", "v1.2.3"]),
+                         "v5.2.2")
 
 
 if __name__ == "__main__":

@@ -43,6 +43,7 @@ Run: FN_NATIVE_HOST=<launcher> [FN_INN_SRC=/tank/fn/inn/2.7.4] \
      python3 -m unittest -v tests.test_native_peer_pull
 """
 
+from tests.native_harness import current_test_id, observe_node_greeting
 import calendar
 import hashlib
 import json
@@ -107,6 +108,7 @@ class RecordingProxy:
     """
 
     def __init__(self, target_port):
+        self.test_id = current_test_id()
         self.target_port = target_port
         self.listener = socket.socket()
         self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -140,11 +142,19 @@ class RecordingProxy:
             return
 
         def downstream():
+            greeting = b""
             try:
                 while True:
                     data = server.recv(65536)
                     if not data:
                         break
+                    if greeting is not None:
+                        greeting += data
+                        if len(greeting) >= 3 and greeting[:3] not in (b"200", b"201"):
+                            greeting = None  # Encrypted TLS is not a readable NNTP response.
+                        elif b"\r\n" in greeting:
+                            observe_node_greeting(self.target_port, greeting.split(b"\r\n", 1)[0] + b"\r\n", test_id=self.test_id)
+                            greeting = None
                     client.sendall(data)
             except OSError:
                 pass
@@ -388,11 +398,15 @@ class NativePeerPullTests(unittest.TestCase):
 
     def start(self, node):
         image = None
+        lifecycle = {}
         if "FN_PULL_TEST_KILL" in self.env:
             if DEVELOPER is None or not os.access(DEVELOPER, os.X_OK):
                 self.skipTest("set FN_NATIVE_DEVELOPER_HOST: the FN_PULL_TEST_KILL cuts")
             image = DEVELOPER
-        node.start(image=image, env=dict(self.env))
+            cut, append = self.env["FN_PULL_TEST_KILL"].split(":")
+            lifecycle["death_cut"] = (-signal.SIGKILL,
+                "pull: developer kill at {} of append {}".format(cut, append).encode("ascii"))
+        node.start(image=image, env=dict(self.env), **lifecycle)
 
     def stop(self, node):
         node.stop(expect=None)

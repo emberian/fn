@@ -72,6 +72,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
+from tests.native_harness import observe_node_greeting  # noqa: E402
 from tests.campaign.native_operator_campaign import (  # noqa: E402
     GROUP, Node, injected_from, public, sha)
 from tests.native_log_observation import committed_history  # noqa: E402
@@ -108,6 +109,7 @@ class Wire:
     """A line reader over a raw socket; b"" is end of stream."""
 
     def __init__(self, port: int, timeout=30.0):
+        self.port, self.first_line = port, True
         self.sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.buf, self.eof, self.error = b"", False, None
@@ -118,7 +120,7 @@ class Wire:
             left = deadline - time.perf_counter()
             if left <= 0:
                 self.error = self.error or "timeout"
-                return None
+                return self.observe_first(None)
             if not select.select([self.sock], [], [], left)[0]:
                 continue
             try:
@@ -130,8 +132,14 @@ class Wire:
             self.buf += data
         if b"\r\n" in self.buf:
             line, self.buf = self.buf.split(b"\r\n", 1)
-            return line + b"\r\n"
+            return self.observe_first(line + b"\r\n")
         line, self.buf = self.buf, b""
+        return self.observe_first(line)
+
+    def observe_first(self, line):
+        if self.first_line:
+            self.first_line = False
+            observe_node_greeting(self.port, line or b"")
         return line
 
     def send(self, data: bytes) -> str | None:
@@ -155,6 +163,7 @@ def client(port: int, payload: bytes, stop_after: int | None, hold: bool) -> int
     try:
         wire = Wire(port)
         rec["greeting"] = text(wire.readline(30))
+        print("GREETING " + (rec["greeting"] or "").encode("latin-1").hex(), flush=True)
         rec["post_send_error"] = wire.send(b"POST\r\n")
         post_reply = wire.readline(30)
         rec["post_reply"] = text(post_reply)
@@ -193,8 +202,18 @@ def spawn_client(port: int, payload_path: Path, stop_after=None, hold=False):
         argv += ["--stop-after", str(stop_after)]
     if hold:
         argv.append("--hold")
-    return subprocess.Popen(argv, cwd=ROOT, stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(argv, cwd=ROOT, stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+    try:
+        # This client already read its greeting; acknowledge it in the
+        # parent's registry before the caller can choose a death cut.
+        line = wait_line(process, b"GREETING ")
+        greeting = bytes.fromhex(line[9:].decode().strip()) if line else b""
+        observe_node_greeting(port, greeting)
+    except BaseException:
+        process.communicate(timeout=90)
+        raise
+    return process
 
 
 def wait_line(proc, prefix: bytes, timeout=60.0):

@@ -23,6 +23,7 @@ Linux).  Run on hbox:
 """
 from __future__ import annotations
 
+from tests.native_harness import observe_node_greeting
 import os
 from pathlib import Path
 import re
@@ -111,7 +112,10 @@ class PublicLimitsCase:
     def open_from(self, source):
         sock = socket.create_connection(("127.0.0.1", self.port), timeout=30,
                                         source_address=(source, 0))
-        return sock, first_line(sock)
+        greeting = first_line(sock)
+        if greeting[:3] in (b"200", b"201"):
+            observe_node_greeting(self.port, greeting)
+        return sock, greeting
 
     def admit(self, source, count):
         for _ in range(count):

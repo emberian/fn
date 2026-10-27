@@ -1,19 +1,19 @@
 {
-  "decision": "D37",
-  "decided": "ember, 2026-09-27 ~22:10 UTC",
-  "note": "Release order is this sequence, never a numeric comparison of versions. tools/release_sequence.py reads this file; segments are walked in order and a version's position is (segment index, index within the segment).",
+  "decision": "ember, EMBER.md 2026-10-14 ~15:20 EDT (the 6.x series); supersedes D37's 6.6.0-first order and D67's 6.6.1-pre",
+  "decided": "ember, 2026-10-14 ~12:30 EDT (the line 5.1.1 .. 5.5.5, 6.7) and ~15:20 EDT (the 6.6 series is the landing sequence, after 6.7.x)",
+  "note": "ember's 2026-10-14 rulings (EMBER.md ~12:30 and ~15:20 EDT) supersede D37's 6.6.0-first order and D67's 6.6.1-pre version line. Keep developing; no release is being cut. Release order is this sequence, never a numeric comparison of versions. tools/release_sequence.py reads this file; segments are walked in order and a version's position is (segment index, index within the segment).",
   "segments": [
     {
       "name": "prehistory",
       "kind": "list",
       "prehistory": true,
       "versions": ["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0"],
-      "rule": "retrospective annotated tags on milestones of the development history (DEVHIST.md, 2026-09-28), not releases: they sort before 6.6.0, are never cut, and gate 01 and the changelog ignore them"
+      "rule": "retrospective annotated tags on milestones of the development history (DEVHIST.md, 2026-09-28), not releases: they sort before the first release, are never cut, and gate 01 and the changelog ignore them"
     },
     {
-      "name": "the 6.6 series",
+      "name": "the 5.x series",
       "kind": "list",
-      "versions": ["6.6.0", "6.6.1", "6.6.2", "6.6.3", "6.6.4", "6.6.5"]
+      "versions": ["5.1.1", "5.2.2", "5.3.3", "5.4.4", "5.5.5"]
     },
     {
       "name": "the 6.7.x series",
@@ -21,7 +21,13 @@
       "prefix": "6.7.",
       "start": 0,
       "open_ended": true,
-      "rule": "6.7.N is followed by 6.7.N+1, or by the first entry of the next segment (the final release); the series has at least one release, 6.7.0"
+      "rule": "6.7.N is followed by 6.7.N+1, or by the first entry of the next segment (6.6.0, the landing sequence); the series has at least one release, 6.7.0 (ember's \"6.7\")"
+    },
+    {
+      "name": "the 6.6 series (the landing sequence)",
+      "kind": "list",
+      "versions": ["6.6.0", "6.6.1", "6.6.2", "6.6.3", "6.6.4", "6.6.5"],
+      "rule": "the landing sequence: it comes chronologically AFTER the 6.7.x series and before 6.6.6 (ember, EMBER.md 2026-10-14 ~15:20 EDT)"
     },
     {
       "name": "the final release and after",

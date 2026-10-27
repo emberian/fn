@@ -78,6 +78,9 @@ class OperatorPostAboveTheOldBlobTests(JoinFixture):
             path.unlink()
             self.node.stop()
         self.assertEqual(posted.returncode, EXIT_REFUSED, posted.stderr.decode())
+        # SBCL heap exhaustion also exits 1. It is no protocol refusal.
+        self.assertIn(b"refused operator post", posted.stderr)
+        self.assertNotIn(b"Heap exhausted", posted.stderr)
         self.assertEqual(self.headroom()["transactions-used"], 0)
 
 

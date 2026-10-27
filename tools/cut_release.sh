@@ -31,7 +31,7 @@
 #   01    version: VERSION is the next entry of the       local
 #         release sequence after the newest v* tag (by
 #         sequence position, never by number; the first
-#         entry, 6.6.0, when there is none), its tag free
+#         entry, 5.1.1, when there is none), its tag free
 #         or at REV (tools/release_sequence.py cut-check)
 #   02    tree: HEAD is REV, no tracked change            local
 #   03    fundamentals: every row of the checklist's      local

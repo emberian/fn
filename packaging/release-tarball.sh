@@ -8,7 +8,7 @@
 # on (the image is built here, and the installer executes it).  REV is the
 # full 40-digit commit.  OUT_DIR (absolute) receives
 #   fn-VERSION-PLATFORM.tar.gz one top directory fn/ (below); VERSION is the
-#                              release version (D37's sequence: 6.6.0 first),
+#                              release version (release sequence: 5.1.1 first),
 #                              read from the file
 #                              VERSION at the root of REV's tree (the one
 #                              place it is written; the image build reads
@@ -227,7 +227,7 @@ if [ -z "$frozen" ]; then
     $wrap sh tools/build_native_host.sh
   # What ships (coordinator ruling 2026-10-05, D60 redeploy): the ACL2
   # production image above, the artifact every gate tier runs on and the kind
-  # the 6.6.0 nodes run.  The extracted bare-SBCL core (E1) ships only with
+  # the existing development nodes run.  The extracted bare-SBCL core (E1) ships only with
   # FN_RELEASE_SERVED=extracted, once it is qualified (decisions.md item 8).
   served=${FN_RELEASE_SERVED:-image}
   case $served in

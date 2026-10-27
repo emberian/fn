@@ -1164,13 +1164,23 @@ def _is_holder(pid, name: str) -> bool:
 
 
 def holder_words(name: str) -> str:
+    # The record survives process death; only flock decides whether it is held.
+    fd = open_session_lock(name)
+    if fd is not None:
+        os.close(fd)
+        return "free"
     holder = lock_holder(name)
     if not holder.get("pid"):
-        return "the holder left no record (an older tool)"
+        return "held by an unknown holder (no record)"
+    if not _is_holder(holder["pid"], name):
+        if _is_holder(holder.get("starter"), name):
+            return (f"held by starter pid {holder['starter']} (still running; "
+                    f"recorded pid {holder['pid']} is not a holder now)")
+        return (f"held by an unknown holder (recorded pid {holder['pid']} is not "
+                "a holder: not a proof_repl process now)")
     age = _duration(time.time() - float(holder.get("since") or time.time()))
-    alive = _is_holder(holder["pid"], name)
     return (f"held by pid {holder['pid']} ({holder.get('role')}, {age} ago, "
-            f"{'still running' if alive else 'not a proof_repl process now'})")
+            "still running)")
 
 
 def default_lane(root: Path | None = None) -> str | None:
@@ -1976,7 +1986,11 @@ def _start(args) -> int:
     directory = session_dir(args.name)
     lock_fd = open_session_lock(args.name, "start")
     if lock_fd is None:
-        print(f"proof-repl: session {args.name!r} is starting or live; stop it first "
+        holder = lock_holder(args.name)
+        verdict = ("starting or live" if any(_is_holder(one, args.name)
+                                            for one in (holder.get("pid"), holder.get("starter")))
+                   else "name lock unavailable")
+        print(f"proof-repl: session {args.name!r} {verdict}; stop it first "
               f"({holder_words(args.name)}; `proof_repl.py stop {args.name}` ends a stuck "
               "start as well as a live session)")
         return 2
@@ -2168,15 +2182,24 @@ def checkpoints(args) -> int:
 
 
 def status(args) -> int:
+    fd = open_session_lock(args.name)
+    locked = fd is None
+    if fd is not None:
+        os.close(fd)
     state_path = session_dir(args.name) / "state.json"
     if not state_path.exists():
         print(f"proof-repl: no session {args.name!r}")
+        if locked:
+            print(f"  lock: {holder_words(args.name)}")
         return 1
     state = json.loads(state_path.read_text())
-    live = (sock_file(session_dir(args.name))).exists()
+    live = (locked and _is_holder(lock_holder(args.name).get("pid"), args.name)
+            and (sock_file(session_dir(args.name))).exists())
     print(f"proof-repl {state['name']}: {state['book']}, "
           f"{'live' if live else 'not live'}, {len(state['loaded'])} forms loaded, "
           f"{state['sends']} sends")
+    if locked:
+        print(f"  lock: {holder_words(args.name)}")
     for book, count in (state.get("ld_loaded") or {}).items():
         print(f"  from source (not certified): {book}, "
               + ("in one encapsulate (its local events stay local)" if count == "encapsulated"
@@ -3169,13 +3192,35 @@ def probe(args) -> int:
     return 1 if refused else 0
 
 
+def _stop_free_session(name: str, fd: int) -> int:
+    """Clear dead-session metadata while owning its free flock; keep the inode."""
+    holder = lock_holder(name)
+    pid = holder.get("pid")
+    if pid and not any(_is_holder(one, name)
+                       for one in (pid, holder.get("starter"))):
+        directory = session_dir(name)
+        # The shortened path is derived solely from this session directory.
+        # Remove only the endpoint, leaving its parent and every other file.
+        sock_file(directory).unlink(missing_ok=True)
+        for path in (directory / "state.json", directory / "probe.json"):
+            path.unlink(missing_ok=True)
+        for path in directory.glob(".state-*.tmp"):
+            path.unlink(missing_ok=True)
+        os.ftruncate(fd, 0)
+        print(f"proof-repl: stale record of dead pid {pid} cleared")
+        return 0
+    print(f"proof-repl: no live session {name!r}")
+    return 1
+
+
 def stop_holder(name: str) -> int:
     """No socket: end a `start` (or server) still holding NAME's lock, by the PID it recorded."""
     fd = open_session_lock(name)
     if fd is not None:
-        os.close(fd)
-        print(f"proof-repl: no live session {name!r}")
-        return 1
+        try:
+            return _stop_free_session(name, fd)
+        finally:
+            os.close(fd)
     holder = lock_holder(name)
     pid = holder.get("pid")
     pids = [one for one in (pid, holder.get("starter")) if _is_holder(one, name)]
@@ -3184,8 +3229,9 @@ def stop_holder(name: str) -> int:
               f"{holder_words(name)}; nothing of this tool's to stop")
         return 1
     for one in pids:
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.kill(one, signal.SIGTERM)
+        if _is_holder(one, name):
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.kill(one, signal.SIGTERM)
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
         fd = open_session_lock(name)
@@ -3200,6 +3246,20 @@ def stop_holder(name: str) -> int:
 
 
 def stop(args) -> int:
+    # Check before the socket: a leftover endpoint must not bypass stale-record
+    # cleanup or make an unknown lock holder receive a stop request.
+    fd = open_session_lock(args.name)
+    if fd is not None:
+        try:
+            return _stop_free_session(args.name, fd)
+        finally:
+            os.close(fd)
+    holder = lock_holder(args.name)
+    if not any(_is_holder(one, args.name)
+               for one in (holder.get("pid"), holder.get("starter"))):
+        print(f"proof-repl: session {args.name!r} lock is {holder_words(args.name)}; "
+              "nothing of this tool's to stop")
+        return 1
     if not (sock_file(session_dir(args.name))).exists():
         return stop_holder(args.name)
     try:
