@@ -299,7 +299,7 @@
     ["fn-native-operator-host-result-keys-control-path-octets", "(result)", ["(declare (xargs :mode :program))"], "fn-native-operator-result-keys-control-path-octets"]
   ],
   "host/store-host.lisp": [
-    ["fn-store-octets->string", "(xs)", [], "fn-record-octets-string"],
+    ["fn-store-octets->string", "(xs)", ["(declare (xargs :guard t))"], "fn-record-octets-string"],
     ["fn-store-txn-name", "(sequence)", [], "fn-sbud-txn-name"],
     ["fn-store-intern-records-local", "(records)", ["(declare (xargs :mode :program))"], "fn-intern-events-local"],
     ["fn-store-record-sequence", "(octets)", ["(declare (xargs :mode :program\n                  :guard (fn-cbor-octet-listp octets)))"], "fn-srs-record-sequence"],

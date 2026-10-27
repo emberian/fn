@@ -24,6 +24,7 @@
 (include-book "store-recover-stream")
 
 (defun fn-store-octets->string (xs)
+  (declare (xargs :guard t))
   (fn-record-octets-string xs))
 
 (defun fn-store-txn-name (sequence)
