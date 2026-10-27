@@ -30,7 +30,8 @@ the same forms with the ledger's non-evaluating reader and GENERATES:
   one-call aliases of book functions the interface rows declare, no longer written
   twice -- and its root books/entries; --check also refuses a host file that keeps a
   one-call wrapper the call closure shows is an alias or unwired
-  (tools/host_wrappers.py);
+  (tools/host_wrappers.py), or a certified host book still ends in theorems that only
+  restate its definitions (tools/host_theorems.py);
 
 and hands tools/harness_check.py its exempt formals (`entry_kind_exempt')
 and its direct applications (`entry_direct_allowed'), which were hand lists
@@ -96,7 +97,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools import host_wrappers, interface_entries, interfaces_relocate, ledger  # noqa: E402
+from tools import host_theorems, host_wrappers, interface_entries, interfaces_relocate, ledger  # noqa: E402
 
 SOURCES = ("host/interfaces.lisp",)
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
@@ -1059,6 +1060,7 @@ def main(argv=None) -> int:
     problems += interface_entries.findings()
     if args.check:
         problems += host_wrappers.findings()
+        problems += host_theorems.findings()
     # the raw host reaches a book function only through the dispatcher
     # (tools/raw_dispatch_rule.py: r28-F1, by construction)
     from tools import raw_dispatch_rule

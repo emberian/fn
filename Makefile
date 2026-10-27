@@ -2113,7 +2113,10 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/runtime-contract-host-send-tests \
     books/runtime-contract-host-lease \
     tests/acl2/runtime-contract-host-lease-tests \
-    books/entries
+    books/entries \
+    books/page-executor-host-theorems \
+    books/page-file-lease-host-theorems \
+    books/page-window-lease-host-theorems
 
 .PHONY: wire-grammar wire-grammar-check host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The extraction differential (A-EXTRACT, specs/failures.md; lane extract-2):
