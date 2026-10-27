@@ -2,7 +2,8 @@
 # tools/cut_gate.sh -- the classical gate of the breaking cut (cut/breaking).
 #
 #   tools/cut_gate.sh [--families F,G,...] [--reuse-image NAME/native-LABEL]
-#                     [--no-gauntlet] [--time-box persvati|hbox] [--time-cells KEYS]
+#                     [--no-gauntlet] [--time-rows] [--time-box persvati|hbox]
+#                     [--time-cells KEYS]
 #                     [--time-baseline LABEL] [--time-reps N] [--label L] REV
 #
 # Certify is not a gate on this branch; this is.  In order:
@@ -16,7 +17,8 @@
 #      PRE-EXISTING list below (control run #4 at 49b470a99, the branch base).
 #   2. the judged gauntlet rows: F2S, F4, F6 (fault corpus) and W13 (the
 #      memory guardrail cell) on hbox against the production image of step 1;
-#      the time rows on --time-box.  persvati (default) is the site of record:
+#      the time rows on --time-box when --time-rows explicitly asks for them
+#      (milestones; default off for waves). persvati is the site of record:
 #      the production image built on hbox is copied there (launcher's core path
 #      rewritten, core sha256 checked equal to hbox's; both boxes run
 #      /tank/fn/sbcl 2.6.8), then tools.load.sweep runs --time-cells (default
@@ -40,7 +42,7 @@
 # detached jobs leave PID files; nothing here kills anything.
 set -eu
 cd "$(dirname "$0")/.."
-FAMILIES=; REUSE=; GAUNTLET=1; TIMEBOX=persvati; LABEL=
+FAMILIES=; REUSE=; GAUNTLET=1; TIMES=0; TIMEBOX=persvati; LABEL=
 TCELLS=tcmd-1k,tcmd-10k,tcmd-25k,tcmd-50k,w1-default,w1-small; TBASE=; TREPS=3
 # Time rows FAILING at the branch base 49b470a99 (persvati, 3 reps, M30 10-17),
 # "key:ROW" (tcmd:CMD for a derived exponent).  Carried: reported, not NEW.
@@ -52,6 +54,7 @@ while [ $# -gt 1 ]; do
         --families) FAMILIES=$2; shift 2 ;;
         --reuse-image) REUSE=$2; shift 2 ;;
         --no-gauntlet) GAUNTLET=0; shift ;;
+        --time-rows) TIMES=1; shift ;;
         --time-box) TIMEBOX=$2; shift 2 ;;
         --time-cells) TCELLS=$2; shift 2 ;;
         --time-baseline) TBASE=$2; shift 2 ;;
@@ -95,7 +98,7 @@ log "gate $LABEL at $SHA: $(printf %s "$MODULES" | wc -l | tr -d ' ') modules (G
 printf '%s\n' "$MODULES" > "$OUT/modules.txt"
 
 # 1. image + natives on hbox
-set -- --box hbox --allow-certify --images production,developer,dtn,dtn-developer,reference,developer-stripped --label "$LABEL" --allow-skips --env FN_INN_SRC=/tank/fn/inn/2.7.4
+set -- --box hbox --allow-certify --images production,developer,dtn,dtn-developer,reference,developer-stripped --jobs auto --label "$LABEL" --allow-skips --env FN_INN_SRC=/tank/fn/inn/2.7.4
 [ -z "$REUSE" ] || set -- "$@" --reuse-image "$REUSE"
 log "hbox_native $* $REV ..."
 sh tools/hbox_native.sh "$@" "$SHA" $MODULES > "$OUT/hbox_native.launch.log" 2>&1 || { log "RED: hbox_native refused to launch (see $OUT/hbox_native.launch.log)"; exit 1; }
@@ -130,8 +133,9 @@ if [ "$GAUNTLET" = 1 ] && [ "$IMAGE_OK" = 1 ]; then
     if ! ssh hbox "test -f /tank/fn/scratch/load-harness/runs/$GL/status"; then log "RED: gauntlet did not start (no status file; see $OUT/gauntlet.launch.log)"; GVIOL="launch"; fi
     until [ -n "$GVIOL" ] || ssh hbox "grep -q -v running /tank/fn/scratch/load-harness/runs/$GL/status" 2>/dev/null; do sleep 60; done
     rsync -a --exclude samples.json "hbox:/tank/fn/scratch/load-harness/runs/$GL/" "$OUT/gauntlet/" > /dev/null 2>&1 || true
-    TL=$LABEL-t; TB=$TIMEBOX; TERR=
-    if [ "$TIMEBOX" = persvati ]; then
+    TL=$LABEL-t; TB=off; TERR=
+    if [ "$TIMES" = 1 ] && [ "$TIMEBOX" = persvati ]; then
+        TB=persvati
         PD=/tank/fn/scratch/load-harness/images/$LABEL
         log "time rows on persvati ($TCELLS, judged): copying $RUNDIR/tree/build -> persvati:$PD"
         if ssh persvati sh -s -- "$RUNDIR/tree/build" "$PD" > "$OUT/time.copy.log" 2>&1 <<'COPY'
@@ -176,7 +180,8 @@ COPY
             python3 -m tools.load.sweep table "$@" > "$OUT/time-table.md" 2> "$OUT/time-table.err" || log "RED: sweep table failed (see $OUT/time-table.err)"
             log "time table: $OUT/time-table.md"
         fi
-    else
+    elif [ "$TIMES" = 1 ]; then
+        TB=hbox
         log "time rows on hbox: T-CMD@10k,W1 (REPORTED, not judged: hbox time figures are never judged)"
         python3 -m tools.load.driver box --box hbox --image "$IMG" --cell T-CMD@10k,W1 --label "$TL" --rev "$SHA" > "$OUT/time.launch.log" 2>&1 || true
         sleep 90
@@ -184,6 +189,8 @@ COPY
             until ssh hbox "grep -q -v running /tank/fn/scratch/load-harness/runs/$TL/status" 2>/dev/null; do sleep 60; done
             rsync -a --exclude samples.json "hbox:/tank/fn/scratch/load-harness/runs/$TL/" "$OUT/time/" > /dev/null 2>&1 || true
         else log "RED: time rows did not start on hbox (no status file; see $OUT/time.launch.log)"; TERR="$TERR time-launch"; fi
+    else
+        log "time rows off (pass --time-rows at milestones)"
     fi
     GVIOL="$GVIOL$TERR"
     # verdicts and the guardrail, read from the result files

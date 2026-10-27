@@ -121,7 +121,8 @@
 # --image-acl2 PATH (the ACL2 wrapper the IMAGES are built with; certification
 # keeps the toolchain's.  Default /tank/fn/toolchains/w28/acl2-literal-4g-tls64k,
 # the w28 launcher at --tls-limit 65536; use the toolchain's own path for 16384),
-# --jobs N (modules run N at a time against the one image set, default 1:
+# --jobs N|auto (modules run N at a time against the one image set, default 1;
+# auto takes at most 3 and keeps the sum of their MemoryMax limits within 88G:
 # each is its own process, its own MemoryMax scope and its own ports; a
 # group of 20 modules at 4 jobs on hbox takes about a quarter of the serial
 # time), --certify-jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
@@ -526,7 +527,7 @@ while [ $# -gt 0 ]; do
         --mem) MEM=$2; shift 2 ;;
         --allow-certify) ALLOW_CERTIFY=--allow-certify; shift ;;
         --jobs)
-            case $2 in ''|*[!0-9]*|0) echo "hbox_native: --jobs takes a positive integer" >&2; exit 2 ;; esac
+            case $2 in auto) ;; ''|*[!0-9]*|0) echo "hbox_native: --jobs takes auto or a positive integer" >&2; exit 2 ;; esac
             MODULE_JOBS=$2; shift 2 ;;
         --certify-jobs) JOBS=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
@@ -666,6 +667,9 @@ if [ -n "$MEM" ]; then
     PLAN=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-plan --memory-override "$MEM") || exit 2
 else
     PLAN=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-plan) || exit 2
+fi
+if [ "$MODULE_JOBS" = auto ]; then
+    MODULE_JOBS=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-jobs) || exit 2
 fi
 if [ "$REV" = . ]; then
     # The image's declared source: HEAD, marked +dirty for uncommitted edits.
@@ -980,7 +984,40 @@ BOX
         else
             cat <<BOX
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
-step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
+ACQUIRED_DEFAULT=0
+BOX
+        if [ $DTN -eq 0 ]; then
+            cat <<BOX
+# A successful acquisition of this exact source closure and toolchain is a
+# hint only: acquire still re-enumerates, installs and ACL2-loads the cache
+# set. Without that content-keyed hint, keep the incremental path rather than
+# paying for a full acquisition known to miss newly generated world books.
+source_identity=\$(python3 tools/proof_artifacts.py identity --profile default) || finish 13
+cached_receipt=
+for receipt in $BASE/*/native-*/logs/acquire.log; do
+    [ -f "\$receipt" ] || continue
+    if grep -F "source=\$source_identity toolchain=\$toolchain " "\$receipt" >/dev/null 2>&1; then
+        cached_receipt=\$receipt
+        break
+    fi
+done
+if [ -n "\$cached_receipt" ]; then
+    echo "== acquire-cached \$(date -u +%H:%M:%SZ) (hint \$cached_receipt)"
+    python3 tools/proof_artifacts.py acquire --profile default --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}" > \$L/acquire.log 2>&1 8>&-
+    cached_rc=\$?
+    echo "   acquire-cached exit \$cached_rc (\$L/acquire.log)"
+    if [ \$cached_rc -eq 0 ]; then
+        ACQUIRED_DEFAULT=1
+    else
+        mv \$L/acquire.log \$L/acquire-cached-refused.log
+    fi
+fi
+BOX
+        fi
+        cat <<BOX
+if [ \$ACQUIRED_DEFAULT -eq 0 ]; then
+    step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
+fi
 # Prints "== certify plan: N books to certify of M in the roots' closure";
 # refuses with status 16 without --allow-certify before either certify step.
 certify_plan() {
@@ -988,8 +1025,12 @@ certify_plan() {
     rc=\$?
     [ \$rc -eq 0 ] || finish \$rc
 }
-certify_plan incremental
-step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+if [ \$ACQUIRED_DEFAULT -eq 0 ]; then
+    step certify-plan certify_plan incremental
+    step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+else
+    echo "== cached closure acquired: install, certify plan and certify skipped"
+fi
 # The wire grammar is a box artifact (tools/box_artifacts.py: build/box/,
 # never committed), absent from a shipped tree: made here from the certified
 # books/wire-export (test_native_store_identity reads it).  A revision before
@@ -1021,7 +1062,7 @@ acquire_step() {
         finish \$rc
     fi
 }
-acquire_step acquire default
+if [ \$ACQUIRED_DEFAULT -eq 0 ]; then acquire_step acquire default; fi
 BOX
         fi
         cat <<BOX

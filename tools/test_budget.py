@@ -80,6 +80,12 @@ def native_memory(module: str, root: Path = ROOT) -> str:
     return value
 
 
+def memory_jobs(lines, budget="88G", maximum=3):
+    """A module concurrency bound whose worst-case MemoryMax sum fits BUDGET."""
+    sizes = [memory_bytes(line.split()[1]) for line in lines if line.strip()]
+    return max(1, min(maximum, memory_bytes(budget) // max(sizes, default=1)))
+
+
 def memory_plan(lines, override=None, root: Path = ROOT):
     """Add MemoryMax and bigmem membership to native_env's module plan."""
     if override is not None:
@@ -465,10 +471,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--one", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--memory-plan", action="store_true",
                         help="add native module memory sizes to a stdin environment plan")
+    parser.add_argument("--memory-jobs", action="store_true",
+                        help="print a concurrency bound for a --memory-plan on stdin: "
+                             "at most 3 jobs and 88G of summed MemoryMax")
     parser.add_argument("--memory-override", default=None,
                         help="explicit MemoryMax override for --memory-plan")
     parser.add_argument("--cases", default="", help=argparse.SUPPRESS)
     arguments = parser.parse_args(argv)
+    if arguments.memory_jobs:
+        try:
+            print(memory_jobs(sys.stdin))
+        except (OSError, ValueError, IndexError) as error:
+            parser.error(str(error))
+        return 0
     if arguments.memory_plan:
         try:
             memory_plan(sys.stdin, arguments.memory_override)
