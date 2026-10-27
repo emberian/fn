@@ -388,8 +388,7 @@ stopped-store open; a run observes no liveness."
 (defun fnn-heap-command-profile-base (argv)
   "The command's store profile (or NIL), the client connections its run
 admits (0 when it is not a run) and ACL2's native action for an operator
-command (NIL otherwise: a developer `store ROOT' verb gets the serve
-figure), and the store's observed history octets for an offline verb ACL2
+command or developer store verb (NIL for an unrecognized developer verb), and the store's observed history octets for an offline verb ACL2
 sizes by them (NIL otherwise), and its normalized explicit cold-resource
 policy and output-allocation policy (each NIL when absent), and the
 normalized store root for the pre-open DEFAULT backing reservation."
@@ -425,10 +424,24 @@ normalized store root for the pre-open DEFAULT backing reservation."
                         (fnn-heap-history-observation root profile))
                    nil nil root)))
         ((and (string= (or (first argv) "") "store") (third argv))
-         (let ((profile (fnn-heap-store-profile (second argv))))
-           (values profile 0 nil
-                   (and profile (fnn-heap-history-observation (fnn-absolute (second argv))
-                                                              profile)))))
+         (let* ((root (fnn-absolute (second argv)))
+                (profile (fnn-heap-store-profile root))
+                ;; Reuse ACL2's command grammar and action projection. The
+                ;; developer syntax moves ROOT before the command; it does
+                ;; not change what status/replay or the offline verbs hold.
+                (direct (fnn-core 'fn-nop-parse-command (cddr argv) nil nil))
+                (plan (if (eq (fnn-core 'fn-native-operator-host-result-status direct) :accepted)
+                          direct
+                        (fnn-core 'fn-nop-parse-store (cddr argv) nil)))
+                ;; Developer-only verbs absent from that grammar keep the
+                ;; conservative unknown-action figure, never :none's budget.
+                (action (and (eq (fnn-core 'fn-native-operator-host-result-status plan) :accepted)
+                             (fnn-core 'fn-native-operator-host-result-native-action plan))))
+           (values profile 0 action
+                   (and profile (fnn-core 'fn-heap-operation-observes-p action)
+                        (fnn-heap-history-observation root profile))
+                   nil nil root nil nil (third argv)
+                   (fnn-core 'fn-omr-status-replayp plan))))
         (t (values nil 0 nil nil)))))
 
 (defun fnn-heap-command-profile (argv)

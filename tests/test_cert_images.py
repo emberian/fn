@@ -155,26 +155,37 @@ class PlanTests(unittest.TestCase):
 class TreeTests(unittest.TestCase):
     """The committed image set on this tree: the batch BB defect, pinned."""
 
-    def test_the_umbrellas_never_start_from_an_image_that_defines_fn_arena(self):
+    def test_no_umbrella_attaches_fn_arena_on_top_of_an_image_that_defines_it(self):
+        # Batch BB: an umbrella made the fn-arena attachment itself, after an
+        # image had defined the stobj (an attachment must precede its stobj).
+        # Now books/payload-arena attaches it where it defines it, so an image
+        # holding that book carries the attachment (the composed-owner-3 rule
+        # in cert_images.applicable): every fn-arena attachment of the
+        # umbrella's world is made inside the image it starts from.
         root = Path(__file__).resolve().parents[1]
         graph = cert_images.Graph(root)
         images = cert_images.load_config(root)
         for umbrella in ("books/image-world", "books/image-world-dtn",
                          "books/image-world-store-test"):
             self.assertIn("fn-arena", graph.attached(umbrella), umbrella)
-            for image in cert_images.applicable(umbrella, images, graph):
-                self.assertNotIn("fn-arena", graph.defines(
-                    cert_images.image_closure(image, graph)), (umbrella, image["name"]))
             chosen = cert_images.image_for(umbrella, images, graph)
-            self.assertNotIn(chosen and chosen["name"], ("owner", "served-catalog-owner",
-                                                         "nntp-auth", "nntp"))
-        # A book above the owner that attaches nothing still starts from one.
+            self.assertIsNotNone(chosen, umbrella)
+            closure = cert_images.image_closure(chosen, graph)
+            attachers = {book for book in graph.closure(umbrella)
+                         if "fn-arena" in graph.attaches[book]}
+            self.assertTrue(attachers, umbrella)
+            if "fn-arena" in graph.defines(closure):
+                self.assertLessEqual(attachers, closure, (umbrella, chosen["name"]))
+        # A book above the owner that attaches nothing of its own still starts
+        # from one, and makes no attachment over a stobj that image defines.
         for book in ("books/owner-invariants-relation", "books/owner-cold-line"):
             if (root / f"{book}.lisp").is_file():
-                self.assertFalse(graph.attached(book) & graph.defines(
-                    cert_images.image_closure(cert_images.image_for(book, images, graph),
-                                              graph)), book)
-                self.assertIsNotNone(cert_images.image_for(book, images, graph), book)
+                chosen = cert_images.image_for(book, images, graph)
+                self.assertIsNotNone(chosen, book)
+                closure = cert_images.image_closure(chosen, graph)
+                outside = frozenset().union(*(graph.attaches[name]
+                                              for name in graph.closure(book) - closure))
+                self.assertFalse(outside & graph.defines(closure), book)
 
 
 if __name__ == "__main__":

@@ -46,6 +46,7 @@ import socket
 import subprocess
 import tempfile
 import unittest
+import sys
 from pathlib import Path
 
 from tests.native_harness import EXIT, free_port, native_image, start, stop_and_diagnostics
@@ -57,6 +58,7 @@ DEVELOPER = str(native_image("FN_NATIVE_DEVELOPER_HOST"))
 DEVELOPER_STRIPPED = str(native_image("FN_NATIVE_DEVELOPER_STRIPPED_HOST"))
 OPENSSL = os.environ.get("FN_TEST_OPENSSL", "openssl")
 CHECK = ROOT / "tools" / "runtime_image" / "world-deps-check.lisp"
+INIT_DECISION = ROOT / "tests" / "native_image_init_decision.lisp"
 REPORT = {}
 
 
@@ -78,32 +80,48 @@ def tree(root):
 
 class Image:
     """One saved image, started the way its own script starts it, optionally
-    with the world-deps check loaded first."""
+    with the world-deps check and test observers loaded first."""
 
-    def __init__(self, path, checked, work):
+    def __init__(self, path, checked, work, loads=()):
         self.path, self.checked, self.work = path, checked, Path(work)
-        text = Path(path).read_text()
-        line = next(l for l in text.splitlines() if l.startswith("exec "))
-        words = shlex.split(line.replace("${SBCL_USER_ARGS}", ""))[1:]
-        self.runtime = words[:words.index("--end-runtime-options") + 1]
-        home = re.search(r"SBCL_HOME='([^']*)'", text)
-        self.home = home.group(1) if home else None
         self.deps = path + ".world-deps"
         self.out = self.work / ("world-reads-" + Path(path).name)
+        self.launcher = Path(path).resolve()
+        if checked or loads:
+            # Keep the image's WHOLE launcher, including its production heap
+            # probe. Insert checks/observers only before ACL2 restarts.
+            # The probe recursively invokes this same launcher and core.
+            text = self.launcher.read_text()
+            lines = text.splitlines(keepends=True)
+            execs = [n for n, line in enumerate(lines) if line.startswith("exec ")]
+            if len(execs) != 1 or " --eval " not in lines[execs[0]]:
+                raise ValueError("image launcher has no unique restart exec: " + path)
+            n = execs[0]
+            original = lines[n]
+            load_paths = ([CHECK] if checked else []) + list(loads)
+            command_exec = original.replace(
+                " --eval ",
+                "".join(" --load " + shlex.quote(str(p)) for p in load_paths) + " --eval ", 1)
+            # A deliberate world mutation/trap belongs to the command, after
+            # its ordinary heap probe. Arming it in the probe would replace
+            # the check's exit 72 with the launcher's missing-figure fault.
+            lines[n] = ('case "${1:-}:${2:-}" in\n'
+                        '  --fn:heap) ' + original.rstrip() + ' ;;\n'
+                        '  *) ' + command_exec.rstrip() + ' ;;\n'
+                        'esac\n')
+            self.work.mkdir(parents=True, exist_ok=True)
+            suffix = "-world-check" if checked else "-observed"
+            self.launcher = self.work / (Path(path).name + suffix)
+            self.launcher.write_text("".join(lines))
+            self.launcher.chmod(0o755)
+            Path(str(self.launcher) + ".core").symlink_to(Path(path + ".core").resolve())
 
     def argv(self, args):
-        top = ["--no-userinit"]
-        if self.checked:
-            top += ["--load", str(CHECK)]
-        top += ["--eval", "(acl2::sbcl-restart)", "--disable-debugger",
-                "--end-toplevel-options", "--fn"]
-        return self.runtime + top + [str(a) for a in args]
+        return [str(self.launcher), "--fn"] + [str(a) for a in args]
 
     def env(self, **extra):
         env = {k: v for k, v in os.environ.items()
                if not k.startswith(("FN_NATIVE_", "FN_WORLD_DEPS", "SBCL_"))}
-        if self.home:
-            env["SBCL_HOME"] = self.home
         if self.checked:
             env["FN_WORLD_DEPS"] = self.deps
             env["FN_WORLD_DEPS_OUT"] = str(self.out)
@@ -149,6 +167,32 @@ def normalize(data, *roots):
     return text
 
 
+def checked_init_status(status, decision):
+    """Check whole status rows against this init's ACL2 decision, then
+    normalize ONLY the two capacity fields chosen from core-dependent rungs.
+    All other status bytes still participate in the twin comparison.
+    """
+    prefixes = (b"profile ", b"limit max-transactions ",
+                b"limit max-history-octets ", b"limit max-article-octets ")
+    expected = decision.splitlines(keepends=True)
+    lines = status.splitlines(keepends=True)
+    if len(expected) != len(prefixes):
+        raise AssertionError("init decision must report the whole profile and all three limits")
+    for prefix, wanted in zip(prefixes, expected):
+        actual = [line for line in lines if line.startswith(prefix)]
+        if not wanted.startswith(prefix) or not wanted.endswith(b"\n") or actual != [wanted]:
+            raise AssertionError(f"status row differs from init decision: {actual!r} != {[wanted]!r}")
+    result = []
+    for line in lines:
+        if line.startswith(prefixes[0]):
+            line = re.sub(rb"(?<= )max-(transactions|history-octets)=[0-9]+(?= |\n)",
+                          rb"max-\1=<init-decision>", line)
+        elif line.startswith(prefixes[1:3]):
+            line = re.sub(rb"(?<= )requested=[0-9]+(?= )", b"requested=<init-decision>", line)
+        result.append(line)
+    return b"".join(result)
+
+
 def config(path, store, port, extra=""):
     path.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n{}'
                     .format(store, port, extra), encoding="ascii")
@@ -160,6 +204,163 @@ def article(n, octets=None, groups="local.test"):
     return ("From: author@example.invalid\r\nDate: Sat, 26 Sep 2026 12:00:00 +0000\r\n"
             "Newsgroups: {}\r\nSubject: differential {}\r\n"
             "Message-ID: <diff-{}@example.invalid>\r\n\r\n{}".format(groups, n, n, body))
+
+
+class ImageLauncherSourceTests(unittest.TestCase):
+    def test_both_twins_run_the_launcher_decision_and_checked_load_precedes_restart(self):
+        from tools.extract.core_launcher import launcher
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            runtime = work / "runtime"
+            runtime.write_text("#!" + sys.executable + "\n" +
+                               "import json, os, sys\n" +
+                               "args = sys.argv[1:]\n" +
+                               "if args[args.index('--fn') + 1] == 'heap':\n" +
+                               "    assert '--load' not in args, 'check armed in heap probe'\n" +
+                               "    print('heap=417 MB profile=control machine=1024 MB stack=512 KB threads=1')\n" +
+                               "elif os.environ.get('FN_WORLD_DEPS_USE') and '--load' in args: sys.exit(72)\n" +
+                               "else: print(json.dumps(args))\n")
+            runtime.chmod(0o755)
+            image = work / "fn-host"
+            Path(str(image) + ".core").write_bytes(b"control")
+            image.write_text(launcher(str(runtime), str(work), str(image) + ".core", "13", "512KB"))
+            image.chmod(0o755)
+            for checked, loads in ((False, ()), (True, ()),
+                                   (False, (INIT_DECISION,)), (True, (INIT_DECISION,))):
+                with self.subTest(checked=checked, loads=loads):
+                    run_work = work / f"run-{checked}-{bool(loads)}"
+                    run_work.mkdir()
+                    twin = Image(str(image), checked, run_work, loads)
+                    result = twin.run(["store", "ROOT", "status"])
+                    self.assertEqual(result.returncode, 0, result.stderr.decode())
+                    args = json.loads(result.stdout)
+                    heaps = [args[n + 1] for n, word in enumerate(args) if word == "--dynamic-space-size"]
+                    self.assertEqual(heaps, ["13", "417"])
+                    self.assertEqual(args[-4:], ["--fn", "store", "ROOT", "status"])
+                    loaded = [args[n + 1] for n, word in enumerate(args) if word == "--load"]
+                    self.assertEqual(loaded, ([str(CHECK)] if checked else []) + list(map(str, loads)))
+                    if loaded:
+                        self.assertLess(args.index("--load"), args.index("--eval"))
+                    if checked:
+                        trapped = twin.run(["--version"], FN_WORLD_DEPS_USE="ens")
+                        self.assertEqual(trapped.returncode, 72, trapped.stderr.decode())
+
+    def test_checked_launcher_creates_a_not_yet_created_work_directory(self):
+        from tools.extract.core_launcher import launcher
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            image = base / "fn-host"
+            runtime = base / "runtime"
+            runtime.write_text("#!/bin/sh\nprintf 'control startup\\n'\n")
+            runtime.chmod(0o755)
+            Path(str(image) + ".core").write_bytes(b"control")
+            image.write_text(launcher(str(runtime), str(base), str(image) + ".core", "13", "512KB"))
+            image.chmod(0o755)
+            work = base / "not-created" / "mutation-run"
+            self.assertFalse(work.exists())
+            twin = Image(str(image), True, work)
+            self.assertTrue(work.is_dir())
+            self.assertTrue(twin.launcher.is_file())
+            self.assertEqual(Path(str(twin.launcher) + ".core").resolve(),
+                             Path(str(image) + ".core"))
+            # Heap itself needs no decision probe; this checks execution from
+            # the new directory without constructing a second fake decision.
+            result = twin.run(["heap"])
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertEqual(result.stdout, b"control startup\n")
+
+
+class InitDecisionSourceTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("sbcl"), "SBCL required for the observer source control")
+    def test_observer_captures_the_actual_decision_and_preserves_both_values(self):
+        driver = r'''
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(defvar *decision* (list :init :chosen-request))
+(defvar *note* (list :original-note))
+(defvar *accepted* nil)
+(defun fnn-heap-init-decision-noted (request budget sizing)
+  (assert (equal (list request budget sizing) '(:input-request 4000 nil)))
+  (values *decision* *note*))
+(defun fnn-core (name &rest args)
+  (case name
+    (fn-heap-init-decision-request
+     (assert (eq (first args) *decision*))
+     (when *accepted* :chosen-request))
+    (fn-bs-profile-resolve
+     (assert (equal args '(:chosen-request nil))) :resolved-profile)
+    (fn-store-profile-report
+     (assert (equal args '(:resolved-profile))) '(("format" . 10) ("max-transactions" . 65536)))
+    (fn-lim-values-lines
+     (assert (equal args '(:resolved-profile nil))) '("limit actual decision"))
+    (otherwise (error "unexpected dispatch ~s" name))))
+; The real observer is image-only. Verify its guard refuses this stub world,
+; then evaluate the observer body against explicit dispatcher seams.
+(with-open-file (in (second sb-ext:*posix-argv*))
+  (assert (equal (read in) '(in-package "ACL2")))
+  (let ((guard (read in)))
+    (assert (equal guard '(cl:unless (cl:fboundp 'acl2::fnn-save-world-flavor)
+                           (cl:error "fn: this probe runs only inside a built fn-host image"))))
+    (assert (handler-case (progn (eval guard) nil) (error () t))))
+  (loop for form = (read in nil :eof) until (eq form :eof) do (eval form)))
+(flet ((invoke ()
+         (multiple-value-bind (decision note)
+             (fnn-heap-init-decision-noted :input-request 4000 nil)
+           (assert (eq decision *decision*)) (assert (eq note *note*)))))
+  (invoke)
+  (assert (not (probe-file "init-decision.status")))
+  (setq *accepted* t)
+  (invoke)
+  (with-open-file (in "init-decision.status")
+    (assert (equal (read-line in) "profile format=10 max-transactions=65536"))
+    (assert (equal (read-line in) "limit actual decision"))
+    (assert (eq (read-line in nil :eof) :eof))))
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "observer-control.lisp"
+            script.write_text(driver)
+            result = subprocess.run([shutil.which("sbcl"), "--script", str(script), str(INIT_DECISION)],
+                                    cwd=directory, capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def decision(self, transactions, history):
+        return (f"profile format=10 max-transactions={transactions} max-history-octets={history} "
+                "max-record-octets=196608 max-article-octets=32768\n"
+                f"limit max-transactions requested={transactions} funded=none ceiling=4294967295\n"
+                f"limit max-history-octets requested={history} funded=none ceiling=1099511627776\n"
+                "limit max-article-octets requested=32768 funded=none ceiling=67108864\n").encode()
+
+    def test_different_rungs_require_each_images_whole_decision_rows(self):
+        full = self.decision(65536, 33554432)
+        stripped = self.decision(131072, 67108864)
+        self.assertNotEqual(full, stripped)
+        self.assertEqual(checked_init_status(full, full), checked_init_status(stripped, stripped))
+        with self.assertRaises(AssertionError):
+            checked_init_status(stripped, full)
+
+    def test_wrong_missing_duplicate_or_extended_status_rows_are_rejected(self):
+        decision = self.decision(65536, 33554432)
+        lines = decision.splitlines(keepends=True)
+        for line in lines:
+            for mutation in (decision.replace(line, b""), decision + line,
+                             decision.replace(line, line.rstrip(b"\n") + b" unexpected=1\n"),
+                             decision.replace(line, line.replace(b"32768", b"32769")
+                                              .replace(b"65536", b"65537")
+                                              .replace(b"33554432", b"33554433"))):
+                with self.subTest(line=line, mutation=mutation), self.assertRaises(AssertionError):
+                    checked_init_status(mutation, decision)
+        for missing in (b"", b"".join(lines[:-1])):
+            with self.subTest(missing=missing), self.assertRaises(AssertionError):
+                checked_init_status(decision, missing)
+
+    def test_other_status_bytes_and_profile_fields_still_compare_exactly(self):
+        decision = self.decision(65536, 33554432)
+        expected = checked_init_status(b"stopped checkpoint=0\n" + decision, decision)
+        for other in (b"stopped checkpoint=1\n", b"max-connections=32\n"):
+            self.assertNotEqual(expected, checked_init_status(other + decision, decision))
+        changed = decision.replace(b"max-record-octets=196608", b"max-record-octets=196609")
+        self.assertNotEqual(checked_init_status(decision, decision),
+                            checked_init_status(changed, changed))
 
 
 class Session:
@@ -358,19 +559,40 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
                      durable="file list equal")
 
     def test_init_budget_refusal_and_init(self):
+        decisions = {}
+
         def act(image, cfg, store, port):
+            # Observe the ACTUAL decision returned to init, after its own
+            # core/dynamic/machine observation. Never recompute it in Python
+            # or infer it from the persisted profile we are checking.
+            observed = Image(image.path, image.checked, Path(str(store) + "-decision"),
+                             loads=(INIT_DECISION,))
+            # Keep these runs in the existing aggregate world/prover checks.
+            observed.out = image.out
             fresh = Path(str(store) + "-fresh")
             fcfg = config(Path(str(store) + "-fresh.toml"), fresh, free_port())
-            refused = image.run(["operator", fcfg, "init", "--budget", "1000",
-                                 "--profile", "scale", "local.test"])
-            made = image.run(["operator", fcfg, "init", "--budget", "4000", "local.test"])
+            refused = observed.run(["operator", fcfg, "init", "--budget", "1000",
+                                    "--profile", "scale", "local.test"])
+            self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stderr.decode())
+            self.assertFalse(fresh.exists(), "refused init must not create a store")
+            made = observed.run(["operator", fcfg, "init", "--budget", "4000", "local.test"])
+            self.assertEqual(made.returncode, EXIT.OK, made.stderr.decode())
             status = self.status(image, fcfg)
+            self.assertEqual(status[0], EXIT.OK, status[2].decode())
+            decision = (observed.work / "init-decision.status").read_bytes()
+            checked_status = checked_init_status(status[1], decision)
+            decisions["stripped" if image.checked else "full"] = {
+                "decision": decision.decode("ascii"), "status": status[1].decode("ascii"),
+                "whole-profile-and-limit-rows-equal": True}
             files = sorted(tree(fresh))
             shutil.rmtree(fresh, True)
             return [refused.returncode, refused.stdout, refused.stderr,
-                    made.returncode, made.stdout, made.stderr, status[0], status[1], files]
+                    made.returncode, made.stdout, made.stderr,
+                    status[0], checked_status, status[2], files]
         self.compare("init", self.pair("init", act),
-                     durable="the fresh stores' file lists and status equal (init draws node secrets)")
+                     durable="fresh file lists equal; status capacities equal each image's init decision "
+                             "and all other status bytes equal (init draws node secrets)")
+        REPORT["init"]["per-image"] = decisions
 
     def test_corrupt_checkpoint(self):
         def act(image, cfg, store, port):

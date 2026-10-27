@@ -9830,6 +9830,12 @@ segment' (tests/test_native_topic_local.py)."
                        (fnn-genesis-open store profile)))
          (unit (fnn-store-log-unit))
          (max (fnn-store-log-max store)))
+    ;; Stage 0: the page pool's unfunded context before the checkpoint load
+    ;; registers its image's extent, as every offline reader enters it
+    ;; (fnn-open-live-store; host/native/extent.lisp fnn-extent-pool-open-context).
+    ;; Without it a compacted store's checkpoint is refused
+    ;; READ-RESOURCES-UNAVAILABLE (OFFLINE-SCAN-STORE-READ-RESOURCES).
+    (fnn-extent-pool-open-context)
     (multiple-value-bind (status s) (fnn-state-checkpoint-load store)
       (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
              (log-position (first position))
@@ -9838,7 +9844,13 @@ segment' (tests/test_native_topic_local.py)."
         (unless (and (consp plan) (member (first plan) '(:scan :refused)))
           (fnn-fault "ACL2 returned a malformed log open plan"))
         (fnn-log-open-plan-check store plan log-position)
-        (let ((genesis (if log-position (second log-position) chain))
+        ;; The open's lineage decision (fnn-recover-log; lane store-lineage,
+        ;; PRF-979): the F row's (K G) against segment K's head, the scan of
+        ;; K starting from the head's predecessor, never G taken as K's chain.
+        (let ((genesis (if log-position
+                           (fnn-log-lineage-genesis store (first log-position)
+                                                    (second log-position) chain)
+                         chain))
               (base (if (eq status :ok) (fnn-nat s) 0)))
           (loop for (k . more) on (second plan) do
             (let* ((path (fnn-segment-path-at store k))

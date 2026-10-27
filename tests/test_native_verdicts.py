@@ -26,7 +26,13 @@ class KeyTests(unittest.TestCase):
             self.assertIn(fixed, inputs["files"])
         self.assertIn("FN_NATIVE_HOST", inputs["env"])
         self.assertIn("FN_NATIVE_DEVELOPER_HOST", inputs["env"])  # always keyed, read or not
-        self.assertEqual(inputs["env"]["FN_NATIVE_HOST"], {"absent": "build/fn-host"})
+        # Native archives include this launcher; source-only checkouts do not.
+        if (ROOT / "build/fn-host").is_file():
+            self.assertEqual(inputs["env"]["FN_NATIVE_HOST"],
+                             native_verdicts.image_inputs("build/fn-host"))
+            self.assertIn("FN_NATIVE_LAUNCHER_SHA256", inputs["env"]["FN_NATIVE_HOST"])
+        else:
+            self.assertEqual(inputs["env"]["FN_NATIVE_HOST"], {"absent": "build/fn-host"})
         self.assertEqual(inputs["python"][0], sys.executable)
 
     def test_an_image_is_keyed_by_its_launcher_core_runtime_and_overlay_record(self):

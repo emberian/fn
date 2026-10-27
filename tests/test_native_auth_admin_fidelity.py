@@ -53,6 +53,10 @@ def raw_prefix() -> str:
 (defttag :fn-native-auth-admin-fidelity)
 (progn!
  (set-raw-mode t)
+ ; D40: the dispatcher's table and traps load first, as every build script
+ ; does, sealed over the empty table (fnn-call applies fnn-raw-dispatch-apply).
+ (load \"host/native/raw-trap.lisp\")
+ (fnn-raw-trap-seal)
  (load \"host/native/io.lisp\")
  ; FN_NATIVE_AUTH_ADMIN_FAULT is a developer-image selector: it reads as NIL
  ; under the production profile (host/native/io.lisp fnn-developer-selector).

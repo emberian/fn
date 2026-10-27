@@ -330,7 +330,10 @@ class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
             sequence = int(auto.search(published[-1]).group(1))
         finally:
             node.stop(expect=None, grace=300)
-        status = node.operator("status", timeout=600, expect=EXIT.OK)
+        # `status' on a stopped store is the header-only report; the open line
+        # (which checkpoint the reopen reads) is `status --replay''s, the path
+        # that opens the store.
+        status = node.operator("status", "--replay", timeout=600, expect=EXIT.OK)
         opened = [l for l in status.stdout.decode("ascii").splitlines() if l.startswith("open=")]
         self.assertEqual(opened, ["open=checkpoint:%d suffix=0" % sequence], status.stdout)
         # Reopened from it: the durable publication is the one served before the stop.

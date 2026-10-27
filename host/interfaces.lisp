@@ -3626,6 +3626,12 @@
 (definterface fn-nop-parse-store
   :class :common-lisp-compliant)
 
+; The developer heap projection (host/native/heap.lisp, `store ROOT VERB')
+; uses the operator's command grammar for its action.
+(definterface fn-nop-parse-command
+  :class :common-lisp-compliant
+  :kinds ())
+
 (definterface fn-osn-bless-open-needed
   :class :common-lisp-compliant)
 

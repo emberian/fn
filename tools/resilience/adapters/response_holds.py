@@ -11,6 +11,7 @@ import time
 
 from tools import acl2_slots, run_simulator
 from tools.resilience import checker, contract
+from tools.resilience.adapters import source_revision
 from tools.resilience.journal import Journal
 from tools.resilience.scenario import Scenario, Operation, Fault, check as validate
 
@@ -136,7 +137,7 @@ def execute(scenario, out, timeout=120):
               "tools/resilience/adapters/response_holds.py", "tools/resilience/contract.py",
               "tools/resilience/checker.py", "tools/resilience/scenario.py", "tools/run_simulator.py"]
     (out / "manifest.json").write_text(json.dumps(dict(status=verdict.kind, exit_code=status,
-        source_revision=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        source_revision=source_revision(ROOT),
         elapsed=elapsed, scope="ACL2 response-owner/arena model; not native I/O or certification",
         inputs={p: run_simulator.digest(ROOT / p) for p in inputs},
         launcher=str(launcher), launcher_sha256=run_simulator.digest(launcher) if launcher else None,

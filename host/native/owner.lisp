@@ -812,9 +812,11 @@ The same lock protects both this call and every other arena pin event."
                   (or *fnn-arena-pins* (fnn-core 'fn-arpn-initial)) event)
       (setf (fnn-owner-service-response-pins service) owners
             *fnn-arena-pins* pins)
-      (when (and (eq status :released)
+      (when (and (member status '(:acquired :released))
                  (fnn-developer-selector "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM"))
-        (fnn-err "OVER response-settled cid=~d status=released" (second event)))
+        (if (eq status :acquired)
+            (fnn-err "OVER response-acquired cid=~d" (second event))
+          (fnn-err "OVER response-settled cid=~d status=released" (second event))))
       status)))
 
 (defvar *fnn-response-capture* nil)

@@ -1,33 +1,40 @@
 """Isolated native measurement test using the actual owner macro and callback."""
+import os
 import shutil
 import subprocess
+import tempfile
+import unittest
 from pathlib import Path
 
-import pytest
+from tests.native_harness import runtime_sbcl
 from tools.proof_repl import forms, head_and_name
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_commit_complete_allocation_overlaps_commit(tmp_path):
-    sbcl = shutil.which("sbcl")
-    if not sbcl:
-        pytest.skip("SBCL is required for the native measurement macro")
-    wanted = {
-        "*fnn-owner-measure*", "*fnn-owner-measure-label*",
-        "*fnn-owner-measure-table*",
-        "fnn-owner-measure-now", "fnn-owner-measure-note", "fnn-owner-measured",
-        "fnn-owner-finish-submission",
-    }
-    selected = []
-    for form in forms((ROOT / "host/native/owner.lisp").read_text()):
-        _head, name = head_and_name(form)
-        if name in wanted:
-            selected.append(form)
-            wanted.remove(name)
-    assert not wanted, wanted
-    script = tmp_path / "measure.lisp"
-    script.write_text("""
+class OwnerMeasureTests(unittest.TestCase):
+    def test_commit_complete_allocation_overlaps_commit(self):
+        found = runtime_sbcl(os.environ.get("FN_NATIVE_HOST", str(ROOT / "build/fn-host")))
+        if not found:
+            self.skipTest("SBCL is required for the native measurement macro")
+        sbcl, env = found
+        tmp_path = Path(tempfile.mkdtemp(prefix="fn-owner-measure-"))
+        self.addCleanup(shutil.rmtree, tmp_path, True)
+        wanted = {
+            "*fnn-owner-measure*", "*fnn-owner-measure-label*",
+            "*fnn-owner-measure-table*",
+            "fnn-owner-measure-now", "fnn-owner-measure-note", "fnn-owner-measured",
+            "fnn-owner-finish-submission",
+        }
+        selected = []
+        for form in forms((ROOT / "host/native/owner.lisp").read_text()):
+            _head, name = head_and_name(form)
+            if name in wanted:
+                selected.append(form)
+                wanted.remove(name)
+        self.assertFalse(wanted, wanted)
+        script = tmp_path / "measure.lisp"
+        script.write_text("""
 (defvar *fnn-trace-state* nil)
 (defvar *fnn-trace-operation* nil)
 (defvar *fnn-trace-connection-generation* nil)
@@ -53,9 +60,13 @@ def test_commit_complete_allocation_overlaps_commit(tmp_path):
   (assert (eq *fnn-owner-measure-label* :commit))
   (format t "commit=~s complete=~s~%" commit complete)))
 """)
-    result = subprocess.run(
-        [sbcl, "--noinform", "--no-userinit", "--no-sysinit", "--script", str(script)],
-        capture_output=True, text=True, timeout=30,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "complete=" in result.stdout
+        result = subprocess.run(
+            [sbcl, "--noinform", "--no-userinit", "--no-sysinit", "--script", str(script)],
+            capture_output=True, text=True, timeout=30, env=env,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("complete=", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

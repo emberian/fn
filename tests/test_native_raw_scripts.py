@@ -98,7 +98,19 @@ class RawHarnessTests(unittest.TestCase):
         result = subprocess.run(command, capture_output=True, text=True, cwd=ROOT,
                                 env=dict(env, FN_SBCL=sbcl), stdin=subprocess.DEVNULL,
                                 timeout=600)
-        tail = f"{result.stdout[-2000:]}\n{result.stderr[-2000:]}"
+        # SBCL names the condition and its message before the backtrace
+        # ("Unhandled SIMPLE-ERROR in thread ...:" then the message); keep
+        # that block, which a long backtrace pushes out of the tail.
+        lines = result.stderr.splitlines()
+        start = next((i for i, line in enumerate(lines)
+                      if line.startswith(("Unhandled ", "debugger invoked"))), None)
+        named = []
+        if start is not None:
+            for line in lines[start:start + 8]:
+                if line.startswith("Backtrace"):
+                    break
+                named.append(line)
+        tail = "\n".join([result.stdout[-2000:], *named, result.stderr[-2000:]])
         self.assertEqual(result.returncode, 0,
                          f"{harness.name} exited {result.returncode}:\n{tail}")
         lines = result.stdout.strip().splitlines()

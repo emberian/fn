@@ -113,12 +113,15 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
         self.assertEqual(target_lines[2],
                          "withdrawn-by" + lines[1][len("withdrawal"):] + " effect=author")
         # The operator's status family ends with the store's heap line
-        # (PKT-016, host/native/operator.lisp fnn-operator-execute-status);
-        # the evidence is every line before it.
-        # (the heap figure follows the store's size on disk, so it may move
-        # between the live and the offline report).
+        # (PKT-016) and the output-accounting mode line (books/output-
+        # admission-line.lisp fn-oadl-accounting-line; host/native/operator.lisp
+        # fnn-operator-print-next-run-heap); the evidence is every line before
+        # them.  (The heap figure follows the store's size on disk, so it may
+        # move between the live and the offline report.)
         def words(text):
-            return [line for line in text.splitlines() if not line.startswith("heap=")]
+            return [line for line in text.splitlines()
+                    if not line.startswith(("heap=", "output accounting: "))]
+        self.assertEqual(live_absent.splitlines()[-1], "output accounting: off (no [resources])")
         self.assertEqual(words(live_absent),
                          ["evidence message-id=<absent@example.invalid> stored=no"])
         # Offline (recovery's decision over the replayed Store): the same words.

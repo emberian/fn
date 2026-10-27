@@ -72,7 +72,14 @@ log() { printf '%s %s\n' "$(date '+%H:%M:%S')" "$*" | tee -a "$OUT/gate.log"; }
 # carried red, reported but not NEW; a red absent from it is NEW and fails
 # the gate.  Shrink this list as the cut deletes or fixes its subjects; never
 # grow it without a `G4 UP:`-style first line in the commit that does.
-PREEXISTING="auth_admin_fidelity bounds_join control_evidence decoded_custody expiry fitness foreign_format_open image_differential image_floor mux operator_verbs operator_verdicts owner_measure public_limits raw_scripts resilience_cuts status_live_posts store_lineage store_mount_identity topic_local verdicts"
+# cut/reds (B27, 10-17) fixed or deleted the subjects of fifteen; the six left
+# are carried for a reason each: bounds_join (POST heap under the mutex: M2 c),
+# decoded_custody (the decoded family, M1-b), mux and public_limits (the OVER
+# window priced as octet lists per holder: OVER's pool lease), resilience_cuts
+# (its issued page-io case models PAGE-IO tokens; the served read is a window
+# job: M2 a), status_live_posts (status realizes every article's extent for the
+# tombstone probe: M2 a).
+PREEXISTING="bounds_join decoded_custody mux public_limits resilience_cuts status_live_posts"
 
 # G5: every native module whose name says peering, feed, pull, catch-up, BP,
 # DTN or transit (GOALS.md G5's selection, applied to the tree at REV).
