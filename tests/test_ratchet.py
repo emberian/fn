@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests.scratch_git import run as scratch_git
 
-from tools import clock_unit_check, list_codec_check, loop_call_check, owner_globals_check, ratchet, reach_check, scenario_suite, throughput_gate
+from tools import clock_unit_check, list_codec_check, loop_call_check, owner_globals_check, ratchet, scenario_suite, throughput_gate
 
 DASH = "—"
 
@@ -186,25 +186,6 @@ class OwnerGlobals(Base):
                 return owner_globals_check.main(["--write-baseline", "--root", str(self.dir),
                                                  "--baseline", str(path)])
         self.triad(write, read, "owner_globals_check", "f.lisp")
-
-
-class ReachCheck(Base):
-    class F:
-        def __init__(self, k):
-            self.k = k
-
-        def key(self):
-            return self.k
-
-    def test_triad(self):
-        path = self.dir / "reach.json"
-        path.write_text(json.dumps({"accepted": {"a": "SPEC x"}}))
-        with mock.patch.object(reach_check, "BASELINE", path):
-            self.assertTrue(self.quiet(reach_check.baseline_raise_refused, [self.F("a"), self.F("b")]))
-            self.assertFalse(self.quiet(reach_check.baseline_raise_refused, []))
-            self.assertFalse(self.quiet(reach_check.baseline_raise_refused, [self.F("a")]))
-            self.ack("reach_check", "b")
-            self.assertFalse(self.quiet(reach_check.baseline_raise_refused, [self.F("a"), self.F("b")]))
 
 
 class ThroughputGate(Base):

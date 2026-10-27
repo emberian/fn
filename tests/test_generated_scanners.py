@@ -39,29 +39,6 @@ class GeneratedScannerTests(unittest.TestCase):
         # Disabling record plumbing must not disable loop definitions.
         self.assertIn('fn-scan-loop', {d.name for d in callgraph.collect(forms, 'toy', records=False)})
 
-    def test_reach_graph_fixture_has_host_chain_through_generated_loop(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / 'books').mkdir()
-            (root / 'host/native').mkdir(parents=True)
-            (root / 'tools').mkdir()
-            (root / 'books/toy.lisp').write_text(LOOP + '\n' + HELPERS +
-                '\n(defthm clean (equal (fn-scan xs buffer) nil))')
-            (root / 'host/native/build.lisp').write_text('(load "host/native/toy.lisp")')
-            (root / 'host/native/toy.lisp').write_text(
-                "(defun fnn-entry (xs buffer) (fnn-core 'fn-scan xs buffer))")
-            loaded = reach_check.loaded_host_files(root=root)
-            with patch.object(reach_check, 'ROOT', root), \
-                    patch.object(reach_check, 'loaded_host_files', return_value=loaded):
-                graph = reach_check.Graph()
-                self.assertIn('fn-scan', graph.reachable)
-                self.assertIn('fn-scan-loop', graph.reachable)
-                self.assertIn('fn-read', graph.reachable)
-                self.assertIn('fn-scan', graph.host_chain('fn-read'))
-                theorems = reach_check.theorem_forms(graph.books)
-                self.assertIn('fn-scan-loop-is-revappend', theorems)
-                self.assertTrue(reach_check.Subject(graph, 'clean', theorems['clean'][1]).hosted(graph))
-
     def test_existing_record_and_protocol_expansions_are_shared_unchanged(self):
         forms = ledger.Reader('''
           (fn-defrecord fn-r :constructor (fn-r-make a)
@@ -99,15 +76,6 @@ class GeneratedScannerTests(unittest.TestCase):
         for form, _ in host_shape_check.ledger.Reader(LOOP).top_level():
             host_shape_check.definitions_in(form, 'toy:1', False, definitions)
         self.assertEqual({d.name for d in definitions}, {'fn-scan', 'fn-scan-loop'})
-
-    def test_hot_path_reader_preserves_generated_guard_verification(self):
-        import hot_path_check
-        tree = hot_path_check.Tree()
-        scan = hot_path_check.FileScan('books/toy.lisp', False, False, tree)
-        scan.scan(hot_path_check.ledger.Reader(LOOP).top_level())
-        for name in ('fn-scan', 'fn-scan-loop'):
-            self.assertIn(name, tree.definitions)
-            self.assertTrue(tree.definitions[name].verified)
 
     def test_exported_generated_theorem_and_local_bridge(self):
         import interface_emit

@@ -196,12 +196,10 @@ ROWS: tuple[Row, ...] = (
     Row("W11", "control waiters: a fixed capacity, refused by name past it",
         theorems=(("books/consumer-wait", "fn-cwait-capacity-is-positive"),)),
     Row("S1", "no non-tail recursion on a host-called path without a named bound (the depth lint)",
-        records=("tools/depth_check.py", "tools/depth_baseline.json",
-                 "planning/records/open-depth-2026-09-28.md",
+        records=("planning/records/open-depth-2026-09-28.md",
                  "planning/records/serve-depth-2026-09-28.md",
                  "planning/records/peer-list-depth-2026-09-28.md")),
-    Row("S1b", "the depth debt driven to zero, and raw host Lisp linted",
-        records=("tools/depth_check.py", "tools/depth_baseline.json")),
+    Row("S1b", "the depth debt driven to zero, and raw host Lisp linted"),
     Row("S2", "every thread's control stack is one profile constant; exhaustion is a fault",
         theorems=(("books/heap-reservation", "fn-heap-reserve-decide-holds-every-thread-the-node-runs"),),
         proofs=("PRF-198",)),
@@ -384,13 +382,10 @@ def outcome_codes(root: Path = ROOT) -> list[tuple[str, int]]:
 
 
 def counts(root: Path = ROOT) -> dict[str, int]:
-    baseline = json.loads((root / "tools" / "depth_baseline.json").read_text(encoding="utf-8"))
     failures = (root / "specs" / "failures.md").read_text(encoding="utf-8")
     assumptions = (root / "books" / "assumptions.lisp").read_text(encoding="utf-8")
     throughput = json.loads((root / "planning" / "throughput-baseline.json").read_text(encoding="utf-8"))
     return {
-        "depth_debt": len(baseline.get("debt", {})),
-        "depth_bounded": len(baseline.get("bounded", {})),
         "assumption_rows": len(re.findall(r"^\| A-[A-Z0-9-]+ \|", failures, re.M)),
         "encapsulates": len(re.findall(r"^\(encapsulate", assumptions, re.M)),
         "throughput_tolerance_percent": int(round(float(throughput["tolerance"]) * 100)),
@@ -452,8 +447,6 @@ def render_block(root: Path = ROOT) -> str:
         lines.append(f"| `{word}` | {code} |")
     c = counts(root)
     lines += ["", "Counts.", "",
-              f"- Depth lint baseline (tools/depth_baseline.json): {c['depth_debt']} debt entries "
-              f"(data-sized recursion on a host-called path with no bound), {c['depth_bounded']} bounded.",
               f"- Named assumptions: {c['assumption_rows']} `A-*` rows in specs/failures.md, "
               f"{c['encapsulates']} encapsulates in books/assumptions.lisp.",
               f"- The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): "

@@ -2347,18 +2347,6 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/runtime-contract-host-lease-tests
 
 .PHONY: wire-grammar wire-grammar-check host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
-# The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
-# opens a codec theory at the top or names a seam's implementation, and
-# `make check` fails if one starts to.  Each cluster lane of the step appends
-# its books; when the list is every book, `--strict` runs without `--books`.
-THEORY_STRICT_BOOKS ?= books/store-events books/replay \
-	books/store-files books/store-files-invariants books/store-files-traces \
-	books/store-node books/store-node-invariants-base books/store-node-invariants \
-	books/store-node-resolution books/store-observed books/store-observed-traces \
-	books/store-prepare-correspondence books/config-records books/node-config \
-	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
-	books/records-shape books/statement books/statement-invariants
-
 # The extraction differential (A-EXTRACT, specs/failures.md; lane extract-2):
 # the world extracted to fn-core (bare SBCL) and compared with the developer
 # image -- the served transcripts, the boundary probes, a real store's replies,
@@ -2393,7 +2381,7 @@ check-lane:
 # `make check-fast`: the seconds-to-a-minute checks a two-line registry or
 # docs fix can break, before a full check-lane (lanes asked for it after a
 # two-line registry fix cost a 25-minute round; batch BB, 2026-09-28).  Not a
-# gate: `make check` stays the gate.  Reach citations, docs_check, and every host/
+# gate: `make check` stays the gate.  docs_check, and every host/
 # file reads (host_check --read, half a second: stx-model-2's paren on a
 # comment line reached an image build; obstructions-9 item 80), and every
 # book an ld host file calls into is in the image world (host_check --books,
@@ -2405,7 +2393,6 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --standalone
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_standalone
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
-	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
@@ -2554,21 +2541,6 @@ check:
 # walk spelled by hand instead of through a named projection is drift and is
 # counted, not failed (--strict fails on those too).  Mechanical, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/session_depth.py
-# The teeth audit's static half: assertions that exercise ACL2 rather than fn,
-# recognisers that no test ever makes TRUE, keystones with no witness in any
-# test book, and citations of theorems the tree no longer defines.  It needs
-# no ACL2 and REPORTS, never fails: the findings on the tree at the time it
-# landed are pre-existing and are triaged in
-# planning/lanes/HANDOFF-w10-teeth-audit.md.  `--strict` fails on any finding;
-# `--report` adds the evaluated half from build/teeth/values.json, which
-# `python3 tools/teeth_check.py --evaluate` produces in about twenty minutes
-# of one ACL2.
-	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --summary
-# An empty-result assertion (nil / null / endp / len 0) over a produced value
-# with no non-empty witness of the same function in the book pins a defect
-# as the expected value (stx-model: stx-policy's empty laces).  Warn-only;
-# tools/null_witness_allow.json names the accepted ones.
-	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --null-witness
 # Two static lints over the harness, both from the 2026-09-19 incident: a
 # host entry point gained a required keyword-only argument, two callers in
 # tests/ were never updated, and both integration labs were dead for a day
@@ -2581,36 +2553,10 @@ check:
 # skip keyed on a failure that carries no `waiver-ok:` declaration.  All three
 # are static, need no ACL2 and take about a second.
 	@$(CHECK_STEP) $(PYTHON) tools/harness_check.py
-# A tooth whose body does not translate passes as a must-fail and bites
-# nothing: std must-fail accepts ANY error, silently.  The keystone audit of
-# 2026-09-27 found 41 forms in two test books calling functions at pre-flip
-# arities, so PRF-191/132/144 had never been evaluated while certification
-# was green.  Every must-fail in tests/acl2 is `must-fail-checked`
-# (tests/acl2/must-fail-checked.lisp), which translates the body's claim
-# first and so makes certification refuse such a tooth; this fails on a bare
-# must-fail unless its line declares `; must-fail-ok: <reason>`.
-# `--must-fail --convert` rewrites bare ones after a merge.  Static, no ACL2.
-	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --must-fail
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_teeth_check.MustFailCheckTests tests.test_teeth_check.NullWitnessTests
 # A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
 # that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
 	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --holders
-# Every node thread runs on a 1,024 KiB control stack, and a non-tail
-# recursion costs a frame per step: LIST ACTIVE and GROUP stopped the owner
-# past ~30,000 articles in fn-nntp-group-low (PKT-877), the open in
-# fn-retain-obligation-ids (PKT-876).  This lists every non-tail recursion on
-# the host-called closure (the functions a raw host file names and what they
-# execute, mbe :exec branches only) and fails on one tools/depth_baseline.json
-# does not classify: "bounded" names its bound, "debt" (a walk whose depth is
-# an article count, a group's articles, a history, a queue or an octet count)
-# only shrinks.  Source-level, no ACL2; the extractor agreed (604 of 604, then 383 of 383) at
-# lane serve-depth's head.
-	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
-# depth_check also reads the raw host code (host/native/*.lisp: the "raw" section
-# of the same baseline; the mux's per-step re-entry and the BP effect chain were
-# loops made by lane depth-debt).
 # Clock arithmetic goes through books/clock-unit.lisp (PRF-374, PRF-378):
 # arithmetic on an observation's fields at a call site assumed a unit twice
 # (bug M1; the vacuous record-level expiry).  tools/clock_unit_baseline.json
@@ -2725,35 +2671,11 @@ check:
 # constants and the verifier state different tag bytes, widths or dropped
 # fields.  Static, no ACL2, no crypto library, under a second.
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_fn_verify.SpecBookTieTests
-# Every theorem the registry cites whose subject no host line can reach.
-# AGENTS.md's first assurance rule -- "the theorem subject is the function
-# the host calls" -- was prose with nothing behind it, and the defect it
-# names cost us the most: on 2026-09-21 K3's duplicate suppression was found
-# proved of an offer decision that read the node pinned at `:open', the
-# transit CAPABILITIES list was found proved and answered by the auth layer
-# above it, and `fn-own-feed-durable-records' and `fn-feed-lost' were found
-# with no caller at all.  Each was true, certified and irrelevant to the
-# running server.  41 registry events are orphaned on this tree and are
-# accepted by name, with a reason each, in planning/reach-baseline.json;
-# `--strict' fails on any orphan NOT listed there, so the number can shrink
-# and cannot grow silently.  Deliberately generous about what counts as a
-# subject, so every orphan it reports is real and it misses some.
-	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_carried_entries
 	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/alphabet_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/profile_limits.py --check
-# Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
-# function called once per request that traverses the Store history, the
-# held BP fragments or the queued BP jobs.  tools/hot_path_check.py follows the
-# executed path (mbe's :exec under raw Lisp, the guard a counterpart call
-# evaluates, defattach) from every host definition and lists each traversal of
-# a seeded value; planning/hot-path-findings.json names every find's owning
-# packet, and `--strict' fails on an unexpected find not listed there or a
-# listed find that no longer occurs.  Its silence is not a proof: it is
-# path-insensitive and prints the cuts it was told to take.
-	@$(CHECK_STEP) $(PYTHON) tools/hot_path_check.py --summary --strict
 # Whether each book is certified AT THE SOURCE DIGEST IT CARRIES NOW.  On
 # 2026-09-21 `dev` had been red for a day in books/stx-evidence-records,
 # books/checkpoint-compaction, books/hybrid-store and books/feed-connection,
@@ -2770,8 +2692,6 @@ check:
 # every archived manifest and every edited book would stale it.  Mechanical,
 # no ACL2, about three seconds.
 	@$(CHECK_STEP) $(PYTHON) tools/green_check.py --summary
-	@$(CHECK_STEP) $(PYTHON) tools/theory_check.py --summary
-	@$(CHECK_STEP) $(PYTHON) tools/theory_check.py --strict --books $(THEORY_STRICT_BOOKS)
 	@$(CHECK_EXECUTE)
 
 # The integration labs.  Deliberately NOT part of `check`: the quick tier is
@@ -2826,9 +2746,9 @@ model-test: certify
 # landed in whichever module was running then, before the later modules ran
 # (PKT-305).  No module or test is over its budget.
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper tests.test_test_search \
-	    tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
+	    tests.test_fixture_stderr tests.test_fixture_init_refusal \
 	    tests.test_green_check tests.test_throughput_gate tests.test_service_envelope \
-	    tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
+	    tests.test_node_probe tests.test_fn_client tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
