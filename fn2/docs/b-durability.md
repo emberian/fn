@@ -588,3 +588,82 @@ consistency soundness remain owed. The latter names `fn2-a-integrity-evidence` f
 equal hashes of unequal opening encodings from both trees and every actual verifier
 node input. It is not a concrete hash-security claim. Persistent frontier/proof paging
 and recovery composition remain later work.
+
+## 10. Commit batch
+
+B3 is not yet a composed machine. The R4 declaration seam admits a new kind,
+its scalar columns, dispatch and core accessors, but not the existing persistent
+B2/B4 workspaces needed by its continuations. `fn2-format-seal-frame` and
+`fn2-format-seal-batch` require `fn2-fc`, `fn2-b3` and `fn2-fields` alongside
+the pool; `fn2-alloc-reserve` requires `fn2-extents`. None is a child of
+`fn2-core`. Recreating them with `with-local-stobj` at each yield would discard
+hashing/allocation state and allocate on the served path. Implementing copies
+inside the commit columns would duplicate the existing B2/B4 implementations.
+
+**B-MACHINE-SEAM, prerequisite.** A must expose persistent auxiliary-table
+registration, initialization and reference copy/comparison before B can compose
+these APIs through `(id budget fn2-core)`. Core child registration alone is
+insufficient: `reference-state.lisp` enumerates the fixed tables and machine
+kinds separately when generating congruent copy/difference functions. The
+observation router must dispatch the B observer's `(mv wake fn2-core)` after
+kind/generation validation and before A's generic pending decrement; its
+current single-value `cond` arm and `ignore reason` declaration do not match
+that interface. No A seam has been changed by B3.
+
+The intended transition conditions remain those of ROUND2 §E.2:
+
+| Phase | Completion required before leaving |
+|---|---|
+| collect | Ready members and their reserved resources captured; unfinished uploads excluded |
+| seal | Immutable membership, dependency manifest, B2 seal and complete successor root prepared within resumable budgets |
+| dependencies | Every expected dependency write completed with its exact issued length |
+| log-write | Every batch frame write completed with its exact issued length |
+| fence | Successful covering barrier, or preflush completion followed by successful final FUA sealing write |
+| durable | Exact dependency-set durability evidence retained |
+| install / publish | Prepared root handle installed and published in bounded transitions, without passing an unresolved predecessor |
+| notify | Incremental outcomes; one client's success does not wait for other replies |
+| draining | Notification and borrow obligations transferred or discharged |
+| uncertain | Recovery alone resolves the row; a late generic success does not leave this state |
+
+Two slots prepare successive roots `RA = Apply(R0,A)` and `RB = Apply(RA,B)`.
+The follower cannot decide against `R0`. A fence-in-flight flag must remain
+set through timeout until the outstanding fence completion is harvested;
+checking only whether the partner's phase equals `fence` would incorrectly
+allow a second fence after the partner enters `uncertain`. Uncertainty fences
+new mutation across the storage domain. The simulator control must count
+actual outstanding fences and reject a count above one, independent of the
+adapter's fence-slot backpressure.
+
+Baseline mode completes dependency and log writes before submitting Fence.
+A separate Fence followed by the final FUA write can expose the preflush/FUA
+sequence using A's existing actions; FUA alone persists only its own bytes.
+Death between these stages remains a crash cut. Neither mode is implemented
+by B3 yet. Scheduling is also unconnected: protected service 0 would require
+matching semantics in the independent reference service runner; principal-0
+scheduling is the currently authorized fallback that already shares machine
+dispatch on both sides. The choice will be recorded when the machine is wired.
+
+### HISTORY translation boundary
+
+The independent checker API is `fn2-history-translate(events)` returning
+`(mv code log-trace)`, and `fn2-check-history(events, profile, classification,
+recovered-history)` calling B1's exact `fn2-lm-recovery-allowedp` interface.
+Its input contract requires test/checker data projected from real issue, harvest,
+publication, reply, fault and crash boundaries; it is not executable machine state.
+Baseline event records name the batch's exact dependency/log manifest, each
+issued op token and length, terminal results, fence issue/result, timeout,
+publication, acknowledgement, refusal and crash. Successful exact write-set
+completion yields `:batch-writes-complete`; actual successful fence completion
+yields `:fence-ok`; acknowledgement yields `:acknowledge`. Physical recovery
+evidence has a separate allowlist and cannot inject a synthetic fence or ack.
+Member/refusal records are opaque identities compared by exact equality; the
+producer must use stable operation identities, not arbitrary request bodies.
+This translator does not establish semantic request binding or IDENTITY.
+It currently requires globally distinct write identities rather than shared
+dependencies, and uses B1's deferred guard-verification convention.
+
+The simulator projection and recovery stand-in are outstanding. The stand-in
+must read the simulator's durable image through B2d frame/seal checkers and
+validate the required dependency prefix. A supplied expected history or a
+machine's completed counter cannot substitute for that readback. Checker unit
+fixtures alone establish neither scenario 13/14 nor HISTORY on simulator runs.
