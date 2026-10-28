@@ -16,7 +16,7 @@ that is not recorded here is a defect.
 | events, actions, outstanding table, outbox | `fn2/books/vocab.lisp` | ACL2 book, guard-verified |
 | scheduler, executor loop, echo/null/scribe machines | `fn2/books/executor.lisp` (+ `fn2/books/machines-a.lisp`) | ACL2 book, guard-verified |
 | simulator: SimNetwork, SimStorage, SimClock, PRNG, faults, recovery stub | `fn2/sim/*.lisp` | ACL2 books, guard-verified |
-| checkers: TRACE, WORK, OWN, ACCOUNT (+ framework for the other seven) | `fn2/sim/check*.lisp` | ACL2 books |
+| checkers: OWN (independent), TRACE and WORK (see the caveat in §6); ACCOUNT owed in A6; framework names all eleven | `fn2/sim/check*.lisp` | ACL2 books |
 | Linux adapter (and the darwin development backend) | `fn2/host/*.lisp` | raw SBCL, loaded by a session script behind one trust tag |
 | acceptance | `fn2/tests/sim-layer-a.lisp` (simulator driver), `fn2/tests/native-echo*.{lsp,py}` | ACL2 driver; native test |
 
@@ -164,8 +164,13 @@ drawn from the seed (swarm testing); death at any action boundary and during the
 magic, its own address, a sequence number and a checksum; the stub classifies each sector as
 never-written, valid, torn/corrupt or misdirected and the file as `intact / torn tail / damaged /
 unknown` by ROUND2 §E.4's rules restricted to that format. Layer B replaces it.
-Checkers implemented in A: TRACE, WORK, OWN, ACCOUNT; the framework names all eleven and the
-other seven report `not-yet` until their layers.
+Checkers implemented at bed9edc28: 3 of 11. OWN is an independent monitor. TRACE checks the
+executor's own trace records against a list model of the calendar and FIFO rules (not yet against
+an independent reference transition system: repair R3). WORK sums the machines' self-declared
+per-run counts (not yet recomputed from the outbox: repair R5). ACCOUNT is not implemented
+(`fn2-check` returns `:not-yet`); it is owed in A6 before layer D. The other seven report
+`:not-yet` until their layers. (Corrected 2026-10-28 after the Fable review, REVIEW-20261028.md
+finding 2: an earlier revision of this paragraph claimed ACCOUNT was implemented.)
 
 **A3 scribe format.** The probe is append-only, with one record per 4,096-byte
 sector. Fields are little-endian u32: magic `0x324e4653` at byte 0, version `1`
