@@ -35,7 +35,7 @@
 
 
 (local (in-theory (disable fn2-pool-rows fn2-pool-read fn2-pool-write fn2-b3-roomp fn-b3-word fn2-fields-rows fn2-fc-phase fn2-fc-pos fn2-fc-zero fn2-fc-pad fn2-fc-pad-end fn2-fc-geom fn2-fc-rows)))
-(local (in-theory (disable fn2-fields-value fn2-fields-hi fn2-fields-ref-off fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-len fn2-fields-status fn2-fields-cursor fn2-fields-pos fn2-fields-acc fn2-fields-high fn2-fields-size fn2-fields-ref fn2-fields-phase fn2-fields-next fn2-b3-rows)))
+(local (in-theory (disable fn2-fields-value fn2-fields-ref-off fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-len fn2-fields-status fn2-fields-cursor fn2-fields-pos fn2-fields-acc fn2-fields-high fn2-fields-size fn2-fields-ref fn2-fields-phase fn2-fields-next fn2-b3-rows)))
 (local (defthm fn2-fc-layout-save-rows
  (equal (fn2-fields-rows (fn2-layout-save i pos v hi size ref phase next fn2-fields)) (fn2-fields-rows fn2-fields))
  :hints (("Goal" :in-theory (enable fn2-layout-save)))))
