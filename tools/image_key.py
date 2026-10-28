@@ -69,6 +69,7 @@ SPECS = {
     "dtn-developer": ("developer", "host/native/build-dtn.lisp", "full"),
 }
 BUILD_FILES = (
+    "VERSION", "acl2-projects",
     "tools/build_native_host.sh", "tools/build_mldsa65.sh", "tools/build_deflate.sh",
     "tools/build_blake3.sh", "tools/acl2_projects.py", "packaging/fn",
     "packaging/launcher-decide.sh",
@@ -76,6 +77,11 @@ BUILD_FILES = (
 TREE_DIRECTORIES = ("host", "third_party")
 ENVIRONMENT = ("FN_TLS_LIMIT", "FN_TLS_BUDGET_PERCENT", "FN_NATIVE_DEFAULT_HEAP_MB")
 INCLUDE = re.compile(r'^\s*\(include-book "([^"]+)"([^)]*)\)', re.M)
+SYSTEM_INCLUDE = re.compile(r'\(include-book\s+"([^"]+)"[^()]*?:dir\s+:system')
+# Where the installation the images are saved under keeps what the build reads
+# beyond the files the fingerprint hashes (set by `toolchain_part`).
+_INSTALL: dict[str, Path] = {}
+_INSTALLED: set[Path] = set()  # launcher chain, saved core, runtime: hashed by the fingerprint
 
 
 def followed_files(root: Path, build: str) -> list[Path]:
@@ -148,14 +154,58 @@ def toolchain_part(acl2: Path | None, image_acl2: Path | None) -> list[tuple[str
                   file=sys.stderr)
             raise SystemExit(2)
         out.append((label, found.identity))
+        _INSTALLED.update(Path(str(one["path"])).resolve()
+                          for one in [*found.provenance["launchers"], found.provenance["core"],
+                                      found.provenance["runtime"]])
+        if label == "image-acl2" or "books" not in _INSTALL:
+            core = Path(str(found.provenance["core"]["path"]))
+            _INSTALL["books"] = core.parent / "books"
+            home = ((found.compatibility or {}).get("launcher_environment") or [{}])
+            for assignments in home:
+                if "SBCL_HOME" in assignments:
+                    _INSTALL["sbcl_home"] = Path(assignments["SBCL_HOME"])
     return out
+
+
+def tool_version(*argv: str) -> str:
+    try:
+        return subprocess.run(list(argv), capture_output=True, text=True,
+                              check=False).stdout.splitlines()[0]
+    except (OSError, IndexError):
+        return f"no {argv[0]}"
+
+
+def installation_parts(root: Path, names: list[str]) -> list[tuple[str, str]]:
+    """What the build reads from the ACL2 and SBCL installations beyond the
+    launcher chain, core and runtime the fingerprint hashes: the ACL2 system
+    books the world includes (`:dir :system`; a book's certificate commits to
+    the books it includes) and SBCL's contribs."""
+    parts: list[tuple[str, str]] = []
+    wanted: list[str] = []
+    for name in names:
+        for target in SYSTEM_INCLUDE.findall((root / f"{name}.lisp").read_text(encoding="utf-8")):
+            if target not in wanted:
+                wanted.append(target)
+    books = _INSTALL.get("books")
+    for target in sorted(wanted):
+        for suffix in (".lisp", ".cert"):
+            path = books / f"{target}{suffix}" if books else None
+            parts.append((f"system-book {target}{suffix}",
+                          certs.content_hash(path) if path and path.is_file() else "<missing>"))
+    home = _INSTALL.get("sbcl_home")
+    if home is not None and (home / "contrib").is_dir():
+        for path in sorted((home / "contrib").glob("*")):
+            if path.is_file():
+                parts.append((f"sbcl-contrib {path.name}", certs.content_hash(path)))
+    return parts
 
 
 def shared_inputs(root: Path, acl2: Path | None, image_acl2: Path | None
                   ) -> list[tuple[str, str]]:
     """The inputs every image shares (computed once per run)."""
     parts = [("version", KEY_VERSION), ("machine", platform.machine()),
-             ("cc", compiler_version())]
+             ("cc", compiler_version()), ("ld", tool_version("ld", "--version")),
+             ("libc", tool_version("ldd", "--version"))]
     parts += toolchain_part(acl2, image_acl2)
     parts += [(f"env {name}", os.environ.get(name, "")) for name in ENVIRONMENT]
     parts += [(f"openssl {path.name}", certs.content_hash(path))
@@ -179,11 +229,41 @@ def image_inputs(root: Path, image: str, shared: list[tuple[str, str]]
     files += [path for path in worlds if path.is_file() and path not in files]
     umbrellas = sorted((root / "books").glob("image-world*.lisp"))
     parts = [("image", image), ("profile", profile), ("build", build), ("world", flavour)]
-    parts += [(f"book {name}", certs.closure(root, name)[name])
-              for name in book_names(root, files + umbrellas)]
+    names = book_names(root, files + umbrellas)
+    parts += [(f"book {name}", certs.closure(root, name)[name]) for name in names]
+    parts += installation_parts(root, names)
     parts += [(f"world {path.relative_to(root).as_posix()}", certs.content_hash(path))
               for path in worlds if path.is_file()]
     return shared + parts
+
+
+def covered_files(root: Path, image: str) -> set[Path]:
+    """Every file under ROOT whose bytes the key of IMAGE stands for: the
+    inputs it hashes, and the certificate, port and compiled file of each
+    book it hashes the source of (functions of that source and the toolchain)."""
+    import world
+    _, build, _ = SPECS[image]
+    variant = "dtn" if build.endswith("-dtn.lisp") else "default"
+    worlds = [root / rel for rel in world.world_paths(variant)]
+    files = followed_files(root, build)
+    files += [path for path in worlds if path.is_file() and path not in files]
+    covered = {root / name for name in BUILD_FILES} | set(tree_files(root)) | set(files)
+    covered |= {path for path in worlds if path.is_file()}
+    covered |= _INSTALLED | set(openssl_libraries())
+    with certs.closure_scope():
+        names = book_names(root, files + sorted((root / "books").glob("image-world*.lisp")))
+        for name in names:
+            for suffix in (".lisp", ".cert", ".port", ".fasl"):
+                covered.add(root / f"{name}{suffix}")
+        books = _INSTALL.get("books")
+        for name in names:
+            for target in SYSTEM_INCLUDE.findall((root / f"{name}.lisp").read_text(encoding="utf-8")):
+                if books:
+                    covered |= {books / f"{target}.lisp", books / f"{target}.cert"}
+    home = _INSTALL.get("sbcl_home")
+    if home is not None and (home / "contrib").is_dir():
+        covered |= {path for path in (home / "contrib").glob("*") if path.is_file()}
+    return {path.resolve() for path in covered}
 
 
 def digest(parts: list[tuple[str, str]]) -> str:

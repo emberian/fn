@@ -144,6 +144,35 @@ attaches (`:load` a raw file, `:acl2-file` events), `native_overlay.py stop
 re-run what already ran (startup, threads holding closures); for a verdict,
 build the overlay again and restart.
 
+## Content-keyed images: a gate whose image inputs did not change builds nothing
+
+`tools/hbox_native.sh --keyed-images` (the cut gate passes it) keys each image by its inputs
+(`tools/image_key.py`): the host files its session script loads and everything under `host/`
+and `third_party/`, the source bytes of every book in its world's include closure, the build
+scripts and the launcher's rewrite inputs, the toolchain (launcher chain, saved core and
+runtime, the ACL2 system books the world includes, SBCL's contribs, OpenSSL, `cc`, `ld`, libc,
+the machine type) and the environment the build reads.  The set of images a run needs is one
+key, stored as `/tank/fn/images/keyed/<set key>/` in `tools/image_set.py`'s published layout.
+After the static gates the run computes the keys; when the store holds the set (and the box's
+wire store holds the wire grammar for the wire book's closure) it links the set in and skips
+resolve, install, certify, acquire, validate, host-ld and the image saves; a miss runs the full
+path and publishes the set it built.  A change under `tools/`, `tests/` or `docs/` is not an
+input, so a tools-only head reuses the stored images, and the box's verdict store, which keys a
+module by the images' core digests, then replays every module whose own inputs did not change.
+
+Saved SBCL cores are **not byte-reproducible**: two builds of identical inputs (the
+`cut-resolve-4424705ec` and `-3bbfc4dca` runs, whose host, books and toolchain are identical)
+differ in 35,941,902 of 236,163,736 bytes of `fn-host-dtn.core`, and in their sha256 for every
+image.  The key's completeness is therefore judged by what a build reads, not by comparing
+cores: `tools/image_key_control.py` classifies every file a build opened (`strace -f -e
+trace=openat,open,execve` over `tools/build_native_host.sh`) as covered by the key, written by
+the build, a system book below an included system book, the toolchain, or the operating system,
+and fails on anything under the tree the key does not cover.  The control found four gaps in the
+first key (the tree's `VERSION` and `acl2-projects`, the ACL2 system books, SBCL's contribs) and
+reads clean once they were keyed; the production and dtn builds of `3bbfc4dca` opened 4,540 and
+4,282 files, 0 uncovered.  What the key leaves to the machine is `/usr`, `/lib` and `/etc` below
+the compiler, linker and libc versions it records.
+
 ## Scenarios
 
 A catalog row (`SCN-NNN`) is a specification -- steps, expected outcomes,
