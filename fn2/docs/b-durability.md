@@ -181,3 +181,71 @@ The four B1 keystones are recorded by `defthm-owed`, with evaluated positive and
 witnesses in the unit books. They remain unproved; certification establishes admission and execution
 of the tests, not a completed durability/refinement proof. Their statements and scope are in
 `OWED.md` under Layer B.
+
+## 5. Layouts
+
+B2a declares layouts as constant lists of `(name kind)`, interpreted by
+`books/layout.lisp`; no declaration macro is added. Enum codes are zero-based
+positions in their declared keyword list. Namespace names are part of the
+layout descriptor, not extra wire tags; bytes require their enclosing schema
+for interpretation. `allocation` is the allocation-counter component; B2c
+pairs it with a separately typed `writer-epoch` field.
+
+| Kind | Bytes | Decoded fields row | Format failures |
+|---|---|---|---|
+| `:u8`, `:u16`, `:u32` | 1, 2, 4 little-endian bytes | `value` | `:truncated`; encode `:value` |
+| `:u64` | 8 little-endian bytes | low u32 `value`, upper u32 `hi` | `:truncated`; encode `:value` |
+| `:varint`, `:u60` | shortest unsigned base-128, low groups first | u60 `value` | `:noncanonical`, `:wide`, `:truncated` |
+| `(:id NS)` | same canonical varint | u60 `value`; namespace retained in layout | same as varint |
+| `:bool` | 0 or 1 | `value` | `:unknown-tag`, `:truncated` |
+| `(:enum NAME (kws))` | one declared code byte | numeric `value` | `:unknown-tag`, `:truncated` |
+| `(:octets MAX)` | canonical length then exact octets | source handle `ref-slot/ref-gen/ref-off/ref-len` | `:length`, `:noncanonical`, `:truncated` |
+| `:digest` | algorithm tag 1 (BLAKE3-256), then 32 bytes | `value=1`, reference to 32 bytes | `:unknown-tag`, `:length`, `:truncated` |
+| `(:zero N)` | N zero bytes | zero value, no payload | `:nonzero-padding`, `:truncated` |
+
+Identity namespaces: `history incarnation writer-epoch commit event article
+group-number checkpoint allocation`. A canonical integer exceeding u60 is
+scanned through its terminal group and returns `:wide`, retaining its source
+bytes. It is not truncated or treated as an unknown field. Its eventual
+extension consumer belongs to later storage work. `fn2-layout-max-size` is the
+maximum **inline u60 encoding** size, not a bound on extensible persistent
+integers. `fn2-layout-fixed-offsets` returns `(name kind-code offset kind)` per
+field: the first variable-width field retains its known starting offset;
+subsequent offsets are nil.
+
+`fn2-fields-init(n, fields)` allocates the profile's field-position rows.
+Columns are `value:u60`, `hi:u32`, `ref-slot:u32`, `ref-gen:u60`, `ref-off:u32`,
+`ref-len:u32`, `status:u8`. Successful fields have status zero; refusal status
+is the function's keyword. The extra scalars hold field index, byte position,
+partial accumulator, high half/wide flag, payload size/reference, phase and
+next offset. `fn2-layout-start(fields)` resets only that continuation.
+
+APIs (the final arguments are stobjs):
+
+- `fn2-layout-encode(layout, slot, gen, off, okind, oslot, ogen, fields, pool)`
+  returns `(mv code end pool)`.
+- `fn2-layout-decode(layout, slot, gen, off, end, okind, oslot, ogen, fields, pool)`
+  returns `(mv code next fields)`.
+- `fn2-layout-encode-step` inserts `budget` before `fields, pool` and returns
+  `(mv code next fields pool)`; `fn2-layout-decode-step` inserts `budget` there
+  and returns `(mv code next fields)`. Budgets are 1..4096. `:more` retains the
+  continuation. Keep the layout, source handles and previously read bytes
+  unchanged until completion; input `end` may grow as fragments arrive in
+  the same readable pool range. A final incomplete range returns `:truncated`.
+- `fn2-layout-copy(src-slot, src-gen, src-off, dst-slot, dst-gen, dst-off, len,
+  okind, oslot, ogen, pool)` returns `(mv code pool)`. Layer A is adding measured
+  range primitives (copy, compare, scan over a handle's range); this shim is
+  replaced by them when they merge.
+- Logic/test only: `fn2-layout-octets(layout, values)` and
+  `fn2-layout-parse(layout, octets)` → `(mv code values rest)`.
+
+One-shot calls admit layouts whose inline maximum is at most 4096, otherwise
+`:budget`. A wide integer needing more than 4096 bytes returns `:more`
+even from the one-shot decoder; continue with `decode-step` to classify its
+terminal group. Decode consumes a prefix and returns its end; canonicality concerns
+that consumed prefix. Bounds/stale/state/owner failures retain inputs. Encoding
+validates all values, sources and destination before writing, and refuses
+source/destination overlap as `:overlap`. Decode retains old row values in
+scalar stack bindings and restores them on a late refusal; one byte is read
+per transition. Successful zero-copy references retain exact source octets,
+including Message-ID octets; integrity verification remains B2b/B2c work.
