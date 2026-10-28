@@ -348,6 +348,43 @@ def kind_is_stated(origin_kind: str | None) -> bool:
     return origin_kind is not None or os.environ.get("FN_CERT_ORIGIN_KIND") in ORIGIN_KINDS
 
 
+# Phase timers.  A gate's install, acquire and acquire-dtn each spend minutes
+# in closure construction, cache enumeration, pair-fact lookups and the copy of
+# the selected entries, and the run log could not say which (the 2026-10-27
+# gate-latency analysis had to infer it from a cProfile).  `phase` accumulates
+# wall seconds and a count per name for this process; `phase_report` prints one
+# stderr line (the step's log) and starts the next window.
+_PHASES: dict[str, list[float]] = {}
+
+
+@contextmanager
+def phase(name: str):
+    began = time.monotonic()
+    try:
+        yield
+    finally:
+        phase_add(name, time.monotonic() - began)
+
+
+def phase_add(name: str, seconds: float = 0.0, count: int = 1) -> None:
+    entry = _PHASES.setdefault(name, [0.0, 0])
+    entry[0] += seconds
+    entry[1] += count
+
+
+def phase_report(label: str) -> None:
+    """Print and clear the accumulated phase timers as one line."""
+    if not _PHASES:
+        return
+    parts = []
+    for name in sorted(_PHASES):
+        seconds, count = _PHASES[name]
+        parts.append(f"{name}={seconds:.1f}s/{count}" if seconds
+                     else f"{name}={count}")
+    print(f"resolve-timing {label}: " + " ".join(parts), file=sys.stderr, flush=True)
+    _PHASES.clear()
+
+
 # content_hash's memo: one digest per file identity in this process.  The key
 # is (device, inode, size, mtime_ns, ctime_ns): a rewrite or a rename into
 # place changes the inode or ctime, so a hit is the same bytes.  It exists
@@ -702,15 +739,18 @@ def book_entries(root: Path, cache: Path, name: str,
     An entry made in a world the rule no longer allows is never found."""
     found: list[tuple[Path, dict]] = []
     try:
-        worlds = cert_images.worlds(root.resolve(), name)
+        with phase("worlds"):
+            worlds = cert_images.worlds(root.resolve(), name)
     except cert_images.UnreadableSource as error:
         # One book the graph cannot read (a parked book over an include a
         # decision deleted) is this book's unreadable finding, never an
         # abort of the whole install (FILL-CERTS-INSTALL-DELETED-BOOK).
         raise UnreadableBook(str(error)) from None
     for world in worlds:
-        key, _ = closure_key(root, name, world)
-        found.extend(cached_entries(cache, key, metadata_filter))
+        with phase("closure-key"):
+            key, _ = closure_key(root, name, world)
+        with phase("book-entries"):
+            found.extend(cached_entries(cache, key, metadata_filter))
     return found
 
 
@@ -1056,7 +1096,7 @@ def memoized_pair_checker(cache: Path, checker=None):
 
     def check(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path,
               root: Path) -> dict[tuple[int, int], tuple[bool, bool]]:
-        with pair_session_lock(cache):
+        with phase("pair-check"), pair_session_lock(cache):
             return locked_check(paths, pairs, acl2, root)
 
     def locked_check(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path,
@@ -1102,11 +1142,14 @@ def memoized_pair_checker(cache: Path, checker=None):
                     ask.append((p, c))
         check.hits = len(found)
         check.probed = len(ask)
+        phase_add("pair-hits", 0.0, len(found))
+        phase_add("pair-probed", 0.0, len(ask))
         if not ask:
             if connection is not None:
                 connection.close()
             return found
-        fresh = checker(paths, ask, acl2, root)
+        with phase("pair-probe"):
+            fresh = checker(paths, ask, acl2, root)
         found.update(fresh)
         written = [(p, c) for p, c in ask if (p, c) in fresh
                    and digests[p] is not None and digests[c] is not None]
@@ -1412,8 +1455,10 @@ def required_closure(root: Path, roots: Iterable[str],
     """
     selected = tuple(roots)
     required: dict[str, str] = {}
+    began = time.monotonic()
     for name in selected:
         required.update(closure(root, name))
+    phase_add("required-closure", time.monotonic() - began)
     if dependencies_only:
         for name in selected:
             required.pop(name, None)
@@ -1505,17 +1550,19 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
         pins = resident_parents(root, cache, required, toolchain_identity)
         for candidate in candidates:
             if candidate.complete:
-                candidate.entries, candidate.displaced = choose_among_resident(
-                    root, {name: [entry] for name, entry in candidate.entries.items()},
-                    acl2, pair_checker, pins)
+                with phase("select"):
+                    candidate.entries, candidate.displaced = choose_among_resident(
+                        root, {name: [entry] for name, entry in candidate.entries.items()},
+                        acl2, pair_checker, pins)
     for toolchain_id, (toolchain, by_book) in pooled.items():
         ordered = {name: sorted(entries, key=lambda entry: (
             str(entry[1].get("published_at", "")), str(entry[0])), reverse=True)
                    for name, entries in by_book.items()}
         displaced: tuple[str, ...] = ()
         if acl2 is not None:
-            chosen, displaced = choose_among_resident(
-                root, ordered, acl2, pair_checker, pins)
+            with phase("select"):
+                chosen, displaced = choose_among_resident(
+                    root, ordered, acl2, pair_checker, pins)
         else:
             chosen = {name: newest(entries) for name, entries in by_book.items()}
         origins = {str(meta.get("origin_root", "")) for _, meta in chosen.values()}
@@ -1667,13 +1714,15 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         for name in chosen.required:
             source = root / f"{name}.lisp"
             directory, meta = chosen.entries[name]
-            moved = install_entry(directory, meta, source.with_suffix(".cert"),
-                                  source.with_suffix(".port"), report)
+            with phase("install-entry"):
+                moved = install_entry(directory, meta, source.with_suffix(".cert"),
+                                      source.with_suffix(".port"), report)
             if moved:
                 report.installed += 1
             else:
                 report.kept += 1
         report.removed_foreign += remove_installed(root, chosen.displaced)
+        phase_report("install-set")
     except EntryChanged:
         if _attempt >= ENTRY_ATTEMPTS - 1:
             raise
@@ -2182,9 +2231,10 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
                          "certificate-alist compatibility")
     if pair_checker is None:
         pair_checker = memoized_pair_checker(cache)
-    selected, displaced = choose_among_resident(
-        root, options, acl2, pair_checker,
-        resident_parents(root, cache, required, toolchain_identity), prefer=roots)
+    with phase("select"):
+        selected, displaced = choose_among_resident(
+            root, options, acl2, pair_checker,
+            resident_parents(root, cache, required, toolchain_identity), prefer=roots)
     report.removed_foreign += remove_installed(root, displaced)
     for name in sorted(required):
         source = root / f"{name}.lisp"
@@ -2201,7 +2251,8 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
             continue
         directory, meta = chosen
         try:
-            moved = install_entry(directory, meta, cert, port, report)
+            with phase("install-entry"):
+                moved = install_entry(directory, meta, cert, port, report)
         except EntryChanged:
             if _attempt >= ENTRY_ATTEMPTS - 1:
                 raise
@@ -2220,6 +2271,7 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
                                     if name in report.installed_from)
     if run_scoped:
         _write_install_record(root, key, report)
+    phase_report("install-partial")
     return report
 
 

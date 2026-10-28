@@ -258,7 +258,9 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
             False, profile, roots,
             reason="unqualified ACL2 launcher/core/runtime: " + fingerprint.reason)
     toolchain = fingerprint.identity
-    candidates = certs.artifact_sets(root, cache, roots, toolchain, acl2=acl2)
+    with certs.phase("artifact-sets"):
+        candidates = certs.artifact_sets(root, cache, roots, toolchain, acl2=acl2)
+    certs.phase_report(f"acquire-{profile} artifact-sets")
     rejected: list[str] = []
     attempts: list[str] = []
     tried: dict[str, str] = {}
@@ -274,7 +276,9 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
                 + (f" (+{len(report.uncached) - MISSING_SHOWN})"
                    if len(report.uncached) > MISSING_SHOWN else ""))
             continue
-        loaded = validate(root, load_acl2 or acl2, roots, timeout=timeout, run=run)
+        with certs.phase("acl2-validate"):
+            loaded = validate(root, load_acl2 or acl2, roots, timeout=timeout, run=run)
+        certs.phase_report(f"acquire-{profile} install+validate")
         attempts.append("{} {}: {}".format(
             report.artifact_set[:16], report.artifact_origin,
             "loaded" if loaded.ok else loaded.reason))
