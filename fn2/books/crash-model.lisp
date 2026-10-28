@@ -5,6 +5,7 @@
 ; observe it. A delayed operation is simply still in flight.
 (in-package "ACL2")
 (include-book "owed")
+(include-book "tuple")
 (include-book "assumptions-integrity")
 
 ; Total, cheap, guard-verified list vocabulary, shared by all record readers.
@@ -37,15 +38,6 @@
            (fn2-cm-imagep (cdr image) unit))
     (null image)))
 
-; One small record generator rather than hand-maintained accessor families.
-(defun fn2-cm-readers (names index)
-  (declare (xargs :mode :logic :guard (and (symbol-listp names) (natp index))))
-  (if (endp names) nil
-    (cons `(defun ,(car names) (x) (declare (xargs :guard t))
-             (fn2-cm-at ,index x))
-          (fn2-cm-readers (cdr names) (+ 1 index)))))
-(defmacro fn2-cm-defreaders (&rest names)
-  `(progn ,@(fn2-cm-readers names 0)))
 (fn2-cm-defreaders fn2-cm-profile-kind fn2-cm-persistence-fence
   fn2-cm-integrity-evidence fn2-cm-independent-frontier fn2-cm-radius
   fn2-cm-corruption-budget)
