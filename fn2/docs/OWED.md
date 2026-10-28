@@ -86,6 +86,31 @@ teeth do not prove a device, simulator, commit machine, or recovery implementati
 These statements register obligations, not theorems. Runtime guard verification and vector,
 differential and allocation checks do not discharge either equivalence proof.
 
+## Layer B — B2d format integrity and sealing (unproved)
+
+| Name | Book | Statement | Evaluated teeth | Proof owner |
+|---|---|---|---|---|
+| `fn2-format-frame-binds-location` | `books/format-check.lisp` | The actual pool-backed frame checker accepts at most one physical-location/extent-allocation-epoch/counter identity, under conditional model-hash-to-content `fn2-a-integrity-evidence`. | `format-check-unit`: complete accepted-frame antecedent, changed-location refusal, and same-location counterexample after removing identity distinctness; independent BLAKE3 covered-subject control. | Layer B checker/hasher/layout refinement and binding proof. |
+| `fn2-format-page-binds-parent` | `books/format-check.lisp` | An accepted page cannot be accepted under a changed checked Ref tuple: physical unit, allocation counter/epoch, kind, encoded length, or hash words. Storage-domain/device binding is outside the page encoding. | `format-check-unit`: complete accepted-page premise and changed-kind refusal; same-parent counterexample after removing distinctness. Driver also checks length/hash/location/allocation changes. | Layer B checker/layout/hash refinement; caller device binding. |
+| `fn2-format-seal-commits` | `books/format-check.lisp` | Two actually accepted canonical sealed batches with the same stored seal hash have equal covered contents, under conditional model-hash-to-content `fn2-a-integrity-evidence`. | `format-check-unit`: full positive premise/conclusion under a local soundness-proved equality witness; two distinct accepted batches have distinct hashes/content and falsify the conclusion after removing equal stored hash. | Layer B checker/model-hash bridge and covered-content theorem; separate external dependency validation. |
+
+The integrity attachment is local to the unit book and proves A's existing constraint;
+it provides executable witness values, not evidence about real devices or hashes.
+The seal's covered subject contains commitments/references to external records and
+dependencies. Their validation and availability are separate composition obligations.
+
+## Layer B — B2e Merkle event log (unproved)
+
+| Name | Book | Statement | Evaluated teeth | Proof owner |
+|---|---|---|---|---|
+| `fn2-mk-root-is-mth` | `books/merkle.lisp` | Actual initialized append/root on canonical leaf hashes equals the RFC 6962 recursive MTH with BLAKE3-256. | `merkle-unit`: complete leaf-encoding hypothesis/result for three records; replacing an appended digest with zero words violates that hypothesis and the same result. Oracle roots cover sizes 0,1,2,3,7,8. | Layer B frontier/carry/fold refinement. |
+| `fn2-mk-consistency-sound` | `books/merkle.lisp` | Acceptance by the actual consistency verifier implies old leaves are a prefix of new leaves, under finite `fn2-a-integrity-evidence` for colliding unequal hash-input openings from both trees and every actual verifier node input. | `merkle-unit`: full positive antecedent and prefix result; remove only verifier acceptance and a different old leaf has integrity premise true but prefix conclusion false. The one-node positive proof checks that its processed node appears in the trace. | Layer B consistency-algorithm/content-opening soundness. |
+
+These remain obligations, not theorems. Guard verification and evaluated witnesses do
+not establish application folding, freshness, persistence or real hash security.
+Inclusion verification requires an authenticated `(size, root)` pair; the driver keeps
+the concrete three-leaf/size-four alias rather than claiming universal size binding.
+
 ## Layer B — B4a allocator (unproved)
 
 | Name | Book | Statement | Evaluated teeth | Proof owner |
