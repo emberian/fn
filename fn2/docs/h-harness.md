@@ -112,3 +112,56 @@ Real fn1 verification remains the seat's hbox task. The laptop dry control check
 only that web/auth produce the identical 23 image-absent skips and reasons through
 the shim and directly. Full acceptance output, residual cases and the safety
 incident are recorded in `build/REPORT.md`.
+
+# H4
+
+`fn2/tests/surface/` partitions the 120 inventoried obligations across nine
+families, with one shared target gate, hook factory and isolated native runner.
+The manifest preserves §1 row links, §2.2 forms (including explicit dashes),
+simulator schedules, fixture paths, performance rows and §2.5 cadence. Counts
+include rewrite-row obligations; no native is duplicated between families.
+
+The default fn2 target skips every selected test with the fixed prefix
+`layer D/E not yet serving`, followed by the relevant `node.Fn2Backend`
+requirement. fn1 runs the carried examples and a Hypothesis NNTP state machine
+against H2's model; the latter's current scope is empty-group reader/cursor
+sequences and reconnects. Wider seeded wire comparison uses H2b solely through
+`python3 -m fn2.tests.model.differential` and its public CLI. Other models, full
+fixture replay, D2 grammar generation, convergence and load drivers remain named
+hooks/skips, never passing placeholders. Consumer/durable history hooks consume
+H3b observations and retain unmapped reasons.
+
+Laptops select E/S/F/H at 200 model examples; hbox adds performance rows and uses
+5,000 examples. Each uses 50 steps. Fuzz drivers share one serial wall budget
+(600 seconds / 3,600 seconds); H5 still owes CPU allocation inside the 30
+CPU-minute envelope. `surface.json` and one Markdown table per family publish
+selection, outcomes, skips and assertion calls beside the profile. Performance
+values appear under `published, not a gate` and are never threshold assertions.
+Missing drivers and fn2's lack of service produce skips; failures/errors alone
+make the exit nonzero. The parent and child drivers own exclusive PID files.
+
+`run_natives --env-plan IMAGES` invokes `native_env.py plan --allow-skips` once
+for the selected modules. Its selection-sized planning timeout is separate from
+the per-module native timeout. The parser uses `shlex`, expands only `$T`,
+`$FN_TEST_OPENSSL_BIN` and `$FN_FIXTURES_DIR`, and never evaluates shell code.
+Each child gets its own plan assignments; other modules' managed image/fixed
+assignments are removed. Parent manual opt-ins remain available. Absent tool
+substitutions expand to empty, so real pre-node tool failures stay visible.
+
+For fn1, `--identity IMAGE --source SHA` reads native_env's exports and requires
+all four identity values. For fn2, planning also supplies all four automatically:
+all are `fn2-host-absent` while FN2_HOST is absent. A present single fn2 executable
+supplies its SHA-256 for launcher/core/runtime identities (there is no SBCL core
+or runtime); source uses the explicitly supplied SHA or that executable digest.
+This is stub provisioning, not an assertion of fn1 image equivalence. Image
+assignments point to FN2_HOST, defaulting to `fn2/host/fn`. Native modules that
+check a real core, permissions, identity equality, installed packaging, OpenSSL
+or fixtures before constructing Node still fail/skip at those checks. No script
+or cryptographic tool is intercepted. The existing raw-SBCL guard is unchanged.
+
+H4's laptop evidence is in `build/REPORT-H4.md`. This session's sandbox denies
+loopback binds, so the complete harness command and native sweep cannot qualify
+the socket paths here. The new provisioning controls and fn2 empty surface run
+are executable without that privilege; fn1 service verification remains the
+seat's hbox work. No image was built, no SBCL was started, and H4 does not change
+H2b's files or Git's index.

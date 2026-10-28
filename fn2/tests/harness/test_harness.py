@@ -345,5 +345,100 @@ class Cases(unittest.TestCase):
                 os.kill(result['pid'], 0)
 
 
+class ProvisionTests(unittest.TestCase):
+    def args(self, **changes):
+        return argparse.Namespace(**(dict(backend='fn2', env_plan='developer,production',
+                                         identity=None, source=None) | changes))
+
+    def output(self, stdout, code=0, stderr=''):
+        import subprocess
+        return subprocess.CompletedProcess([], code, stdout, stderr)
+
+    def test_plan_is_once_isolated_and_expands_without_shell(self):
+        plan = ('tests.test_native_auth FN_NATIVE_HOST=$T/build/fn-host FN_OPENSSL=$FN_TEST_OPENSSL_BIN\n'
+                'tests.test_native_control FN_NATIVE_DEVELOPER_HOST=${T}/build/fn-host-developer '
+                'FN_OPEN_DEPTH_FIXTURES=$FN_FIXTURES_DIR FN_RUN_CONSUMER_EXCHANGE=1\n')
+        parent = dict(PATH='/bin', FN2_HOST='/absent/fn2', FN_TEST_OPENSSL_BIN='/tools/a b/openssl',
+                      FN_FIXTURES_DIR='/fixture/$(never-run)', FN_NATIVE_HOST='leaked')
+        original = parent.copy()
+        with patch.object(run_natives.subprocess, 'run', return_value=self.output(plan)) as run:
+            result = run_natives.provision(['auth', 'control'], self.args(), parent)
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.args[0][-2:], ['tests.test_native_auth', 'tests.test_native_control'])
+        self.assertEqual(parent, original)
+        self.assertEqual(result['auth']['FN_NATIVE_HOST'], '/absent/fn2')
+        self.assertEqual(result['auth']['FN_OPENSSL'], '/tools/a b/openssl')
+        self.assertNotIn('FN_RUN_CONSUMER_EXCHANGE', result['auth'])
+        self.assertNotIn('FN_NATIVE_HOST', result['control'])
+        self.assertEqual(result['control']['FN_OPEN_DEPTH_FIXTURES'], '/fixture/$(never-run)')
+        self.assertEqual(result['control']['FN_RUN_CONSUMER_EXCHANGE'], '1')
+        from tools.native_env import IDENTITY
+        self.assertTrue(all(result['auth'][k] == 'fn2-host-absent' for k in IDENTITY))
+
+    def test_fn1_real_paths_and_identity_exports(self):
+        from tools.native_env import IDENTITY
+        exports = ''.join(f'export {k}=value{i}\n' for i, k in enumerate(IDENTITY))
+        with patch.object(run_natives.subprocess, 'run', side_effect=[
+                self.output('tests.test_native_auth FN_NATIVE_HOST=$T/build/fn-host\n'),
+                self.output(exports)]) as run:
+            env = run_natives.provision(['auth'], self.args(backend='fn1', identity='/image', source='sha'), {})['auth']
+        self.assertEqual(env['FN_NATIVE_HOST'], str(node.ROOT / 'build/fn-host'))
+        self.assertEqual({k: env[k] for k in IDENTITY}, {k: f'value{i}' for i,k in enumerate(IDENTITY)})
+        self.assertIn('--export', run.call_args.args[0])
+        self.assertEqual(run.call_count, 2)
+
+    def test_fn2_present_executable_identity(self):
+        import hashlib
+        from tools.native_env import IDENTITY
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'fn'; path.write_bytes(b'fn2 fixture; never executed')
+            with patch.object(run_natives.subprocess, 'run') as run:
+                env = run_natives.provision(['auth'], self.args(env_plan=None, identity='ignored', source='source'),
+                                           {'FN2_HOST': str(path)})['auth']
+            run.assert_not_called()
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            self.assertEqual([env[k] for k in IDENTITY if k.endswith('SHA256')], [digest] * 3)
+            self.assertEqual(env['FN_NATIVE_IMAGE_SOURCE_SHA'], 'source')
+
+    def test_no_options_preserves_old_environment(self):
+        with patch.object(run_natives.subprocess, 'run') as run:
+            result = run_natives.provision(['auth'], self.args(env_plan=None), {'FN_NATIVE_HOST': 'old'})
+        run.assert_not_called()
+        self.assertEqual(result['auth'], dict(FN_NATIVE_HOST='old', FN2_NODE_BACKEND='fn2'))
+
+    def test_invalid_plan_and_incomplete_identity_are_rejected(self):
+        for plan in ('', 'tests.test_native_other X=1',
+                     'tests.test_native_auth X=$UNKNOWN',
+                     'tests.test_native_auth BAD',
+                     'tests.test_native_auth\ntests.test_native_auth'):
+            with self.subTest(plan=plan), patch.object(run_natives.subprocess, 'run',
+                    return_value=self.output(plan)), self.assertRaises(ValueError):
+                run_natives.provision(['auth'], self.args(), {})
+        with patch.object(run_natives.subprocess, 'run', return_value=self.output('export FN_NATIVE_CORE_SHA256=x')):
+            with self.assertRaisesRegex(ValueError, 'all four'):
+                run_natives.provision(['auth'], self.args(backend='fn1', env_plan=None, identity='x', source='y'), {})
+
+    def test_plan_failure_does_not_spawn_child(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(run_natives.subprocess, 'run',
+                return_value=self.output('', 2, 'missing image')), patch.object(run_natives, 'child') as child:
+            with self.assertRaisesRegex(ValueError, 'plan exit 2'):
+                run_natives.main(['--modules', 'auth', '--backend', 'fn2', '--env-plan', 'production', '--out', tmp])
+            child.assert_not_called()
+
+    def test_real_plan_reaches_stub_past_opt_in_and_identity(self):
+        args = self.args(env_plan='developer,production,dtn,dtn-developer,reference,developer-stripped')
+        envs = run_natives.provision(['consumer_exchange', 'peering'], args, {})
+        self.assertEqual(envs['consumer_exchange']['FN_RUN_CONSUMER_EXCHANGE'], '1')
+        self.assertEqual(envs['peering']['FN_NATIVE_IMAGE_SOURCE_SHA'], 'fn2-host-absent')
+        with patch.dict(os.environ, envs['consumer_exchange'], clear=True), \
+                patch.object(node.fn1, 'free_port', return_value=119):
+            try:
+                result = run_natives.run_one('consumer_exchange', 'fn2', True)
+            finally:
+                shim.install('fn1')
+        self.assertGreater(sum(t.get('classification') == 'named-node-dead' for t in result['tests']), 0)
+        self.assertFalse(any('set FN_RUN_CONSUMER_EXCHANGE' in t['skip_reason'] for t in result['tests']))
+
+
 if __name__ == '__main__':
     unittest.main()

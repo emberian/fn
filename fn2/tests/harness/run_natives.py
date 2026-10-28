@@ -9,6 +9,8 @@ import inspect
 import json
 import os
 from pathlib import Path
+import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -212,6 +214,84 @@ def write_json(path, data):
     temporary.replace(path)
 
 
+def provision(names, args, parent=None):
+    """One native_env plan for the selection; no shell evaluation or shared mutation.
+
+    Only the three documented box substitutions expand. An unset tool/fixture
+    variable expands to empty, leaving its pre-node prerequisite observable.
+    fn2 is a single executable: its bytes supply all three image digests.
+    """
+    from tools import native_env
+    parent = dict(os.environ if parent is None else parent)
+    images, identity = getattr(args, 'env_plan', None), getattr(args, 'identity', None)
+    source = getattr(args, 'source', None)
+    environments = {name: dict(parent, FN2_NODE_BACKEND=args.backend) for name in names}
+    if not (images or identity or source):
+        return environments
+    host = parent.get('FN2_HOST', str(ROOT / 'fn2/host/fn'))
+    variables = dict(T=str(ROOT), FN_TEST_OPENSSL_BIN=parent.get('FN_TEST_OPENSSL_BIN', ''),
+                     FN_FIXTURES_DIR=parent.get('FN_FIXTURES_DIR', ''))
+
+    def invoke(*words):
+        answer = subprocess.run([sys.executable, str(ROOT / 'tools/native_env.py'), *words],
+                                cwd=ROOT, env=parent, capture_output=True, text=True,
+                                timeout=max(60, 5 * len(names)))
+        if answer.stderr:
+            print(answer.stderr, end='', file=sys.stderr)
+        if answer.returncode:
+            raise ValueError(f'native_env {words[0]} exit {answer.returncode}: {answer.stderr.strip()}')
+        return answer.stdout
+
+    def assignment(word):
+        key, separator, value = word.partition('=')
+        if not separator or not re.fullmatch(r'[A-Z][A-Z0-9_]*', key):
+            raise ValueError('invalid native_env assignment: ' + word)
+        def expand(match):
+            name = match[1] or match[2]
+            if name not in variables:
+                raise ValueError('unknown native_env substitution: ' + name)
+            return variables[name]
+        return key, re.sub(r'\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)',
+                           expand, value)
+
+    if images and names:
+        modules = {module_name(name): name for name in names}
+        plan = invoke('plan', '--allow-skips', '--images', images, *modules)
+        seen = set()
+        for line in plan.splitlines():
+            module, *words = shlex.split(line)
+            if module not in modules or module in seen:
+                raise ValueError('unexpected/duplicate native_env module: ' + module)
+            seen.add(module)
+            env = environments[modules[module]]
+            for key in native_env.IMAGES.keys() | native_env.FIXED.keys():
+                env.pop(key, None)
+            for word in words:
+                key, value = assignment(word)
+                env[key] = host if args.backend == 'fn2' and key in native_env.IMAGES else value
+        if seen != modules.keys():
+            raise ValueError('native_env omitted selected modules')
+    values = {}
+    if args.backend == 'fn2':
+        path = Path(host)
+        digest = native_env.sha256_file(path) if path.is_file() else 'fn2-host-absent'
+        values = dict.fromkeys(native_env.IDENTITY, digest)
+        if path.is_file() and source:
+            values['FN_NATIVE_IMAGE_SOURCE_SHA'] = source
+    elif identity:
+        for line in invoke('identity', '--image', identity, '--source', source, '--export').splitlines():
+            words = shlex.split(line)
+            if len(words) != 2 or words[0] != 'export':
+                raise ValueError('invalid native_env identity output')
+            key, value = assignment(words[1])
+            values[key] = value
+        if values.keys() != native_env.IDENTITY.keys():
+            raise ValueError('native_env identity must provide all four identity variables')
+    for env in environments.values():
+        env.update(values)
+    return environments
+
+
 def child(name, args):
     out = Path(args.out)
     target = out / (name + '.json')
@@ -219,7 +299,7 @@ def child(name, args):
                '--backend', args.backend, '--out', str(out)]
     if args.retired_skip:
         command.append('--retired-skip')
-    env = dict(os.environ, FN2_NODE_BACKEND=args.backend)
+    env = getattr(args, 'module_envs', {}).get(name, dict(os.environ, FN2_NODE_BACKEND=args.backend))
     pidfile = out / (name + '.pid')
     started = time.monotonic()
     with pidfile.open('x') as pid_output, (out / (name + '.log')).open('wb') as log:
@@ -314,9 +394,14 @@ def main(argv=None):
     parser.add_argument('--out', default='build/natives')
     parser.add_argument('--pid-file')
     parser.add_argument('--retired-skip', action='store_true')
+    parser.add_argument('--env-plan', metavar='IMAGES')
+    parser.add_argument('--identity', metavar='IMAGE')
+    parser.add_argument('--source', metavar='SHA')
     args = parser.parse_args(argv)
     if args.jobs < 1 or args.timeout <= 0:
         parser.error('jobs and timeout must be positive')
+    if bool(args.identity) != bool(args.source):
+        parser.error('--identity and --source must be supplied together')
     out = Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     args.out = str(out)
@@ -327,6 +412,9 @@ def main(argv=None):
             output.write(str(os.getpid()) + '\n')
     try:
         if args.one:
+            environment = provision([args.one], args)[args.one]
+            os.environ.clear()
+            os.environ.update(environment)
             if args.backend == 'fn2':
                 sys.addaudithook(forbid_raw_sbcl)
             result = run_one(args.one, args.backend, args.retired_skip)
@@ -342,6 +430,7 @@ def main(argv=None):
                 parser.error('unknown inventory verdict')
             names = [n for n in names if known[n]['module_verdict'] == args.verdict]
         names = list(dict.fromkeys(names))
+        args.module_envs = provision(names, args)
         with ThreadPoolExecutor(max_workers=args.jobs) as pool:
             results = list(pool.map(lambda name: child(name, args), names))
         summary = summarize(results)
