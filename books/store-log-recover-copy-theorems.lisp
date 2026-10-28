@@ -4,6 +4,12 @@
 (in-package "ACL2")
 (include-book "store-log-recover-copy")
 
+(local
+ (defthm fn-lgrc-all-invp-member
+   (implies (and (fn-lgrc-all-invp states j k a) (member-equal x states))
+            (fn-lgrc-invp x j k a))
+   :hints (("Goal" :in-theory (disable fn-lgrc-invp)))))
+
 ; KEYSTONE (discoverable).  At every state of the open, in every image a
 ; power loss can leave, journal/N durably names an inode, and the open's own
 ; listing still sees N.
