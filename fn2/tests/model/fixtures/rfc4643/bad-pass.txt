@@ -1,0 +1,5 @@
+# RFC 4643 §2.3.3; verbatim transcript excerpt, rfc4643.txt lines 483-486
+[C] AUTHINFO USER barney
+[S] 381 Enter passphrase
+[C] AUTHINFO PASS flintstone
+[S] 481 Authentication failed

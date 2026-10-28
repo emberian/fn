@@ -1,0 +1,3 @@
+# RFC 4643 §2.3.3; verbatim transcript excerpt, rfc4643.txt lines 478-479
+[C] AUTHINFO USER fred@stonecanyon.example.com
+[S] 483 Encryption or stronger authentication required

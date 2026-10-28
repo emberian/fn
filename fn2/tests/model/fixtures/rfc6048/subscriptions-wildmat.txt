@@ -1,0 +1,6 @@
+# RFC 6048 §2.6.3; verbatim transcript excerpt, rfc6048.txt lines 867-871
+[C] LIST SUBSCRIPTIONS local.*
+[S] 215 List of recommended newsgroups follows
+[S] local.welcome
+[S] local.test
+[S] .

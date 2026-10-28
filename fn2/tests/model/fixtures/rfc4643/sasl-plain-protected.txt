@@ -1,0 +1,3 @@
+# RFC 4643 §2.4.3; verbatim transcript excerpt, rfc4643.txt lines 850-851
+[C] AUTHINFO SASL PLAIN
+[S] 483 Encryption or stronger authentication required

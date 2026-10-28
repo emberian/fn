@@ -1,0 +1,4 @@
+# RFC 3977 §7.3.3; verbatim transcript excerpt, rfc3977.txt lines 3562-3565
+[C] NEWGROUPS 19990624 000000 GMT
+[S] 231 list of new newsgroups follows
+[S] .
