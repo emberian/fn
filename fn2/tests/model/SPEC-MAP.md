@@ -14,7 +14,7 @@ name and citation, so a HEAD failure is reported as HEAD, not ARTICLE.
 
 | Rule / function | Source | Constraint checked / state effect |
 |---|---|---|
-| `command_line`, `_dispatch`, `_error` | RFC 3977 §§3.1, 3.2.1, 9.2; specs/nntp.md:512-519 | CRLF; one command; 512 octets including CRLF; 497 argument octets; case-insensitive keyword; SP/TAB separation; 501 for invalid syntax. |
+| `command_line`, `_dispatch`, `_error` | RFC 3977 §§3.1, 3.2.1, 9.2; specs/nntp.md:512-519 | CRLF; one command; 512 octets including CRLF; 497 argument octets; case-insensitive keyword; SP/TAB separation; 501 for invalid syntax; observed close alternatives only for malformed framing/UTF-8 (H2d below). |
 | `lines`, `stuff`, `unstuff`, `encode_block`, `decode_block` | RFC 3977 §3.1.1; specs/nntp.md:512-519 | Exact CRLF, no bare CR/LF/NUL; stuff each initial dot; exactly one terminal dot line; no trailing octets. Raw stuff/unstuff are invertible even on arbitrary binary; block functions validate the narrower wire domain. |
 | `Expect.check/update`, `_queue` | RFC 3977 §3.5; specs/nntp.md:2453-2478 | Check is observational; update validates before committing and is idempotent; queued expectations resolve and update in wire order; body predicates receive decoded bytes only after checking wire framing. |
 | unknown keyword | specs/nntp.md:51-93; RFC 3977 §3.2.1 | 500; no state effect. Known private extensions have their explicit rules (A1). |
@@ -141,6 +141,28 @@ name and citation, so a HEAD failure is reported as HEAD, not ARTICLE.
   cannot distinguish permitted closure, body draining, and a lost reply. A
   one-command minimized candidate is not an observed empty reply: ddmin kept
   the rule only, and the stored reply belongs to the original transcript.
+  H2d's complete evidence resolves **130** run-2 rows as model defects: the
+  preceding structurally malformed command received 501, then a clean EOF was
+  observed while awaiting the next command. `Expect.close_after_reply` and
+  `close_without_reply` expose the allowed alternatives for invalid framing,
+  over-512-octet lines and illegal UTF-8. Overlength specifically requires 501
+  (RFC 3977 §3.2.1, `rfc3977.txt:547-551`), so only reply-then-EOF is
+  accepted for it; `check/update(..., eof=True)` commits
+  closure only when the driver supplies an actual clean EOF observation. An
+  ordinary semantic 501 (bad argument count/range) does not grant this permission.
+  A malformed article block may be drained to its terminator and rejected without
+  closing; the 14 `closed` rows were an incorrect mandatory-close model effect.
+  Neither timeout nor TLS reset is evidence of a permitted clean server close.
+
+  **A14 timing remainder:** 15 run-2 rows are malformed TAKETHIS lines with
+  `reply_timeout=True`, not server EOF; final EOF follows driver shutdown.
+  RFC 4644 §2.5.2 (`rfc4644.txt:375-387`) sends the article immediately and
+  specs/nntp.md:2421-2422 says TAKETHIS has no command formal. The driver waits
+  for 501 because the model rejects the malformed argument before entering body
+  mode. These sources do not fix immediate-501 versus drain-before-reject timing
+  for invalid TAKETHIS syntax. Retain these as evidence-open ambiguity; a future
+  paired probe must send a bounded dot-terminated body immediately and record the
+  original wire before shutdown. No timeout is turned into a model match.
 - **A15 — permission versus malformed argument precedence.**
   specs/nntp.md:78-80 specifies reader 502 for the three transit verbs; RFC 3977
   §3.2.1 (`rfc3977.txt:547-555,579-603`) specifies syntax and authorization
@@ -149,6 +171,18 @@ name and citation, so a HEAD failure is reported as HEAD, not ARTICLE.
   TAKETHIS lines with invalid UTF-8 and malformed arguments, 502 cannot be
   called a determinate server violation merely because the model checks UTF-8
   first. Layer D must select and document the order.
+
+- **A16 — multiple invalid article fields and refusal precedence.** The three
+  run-2 POST rows have both an empty Path and an unnamed `: empty name` header.
+  specs/nntp.md:905-909,930-935 explicitly requires malformed Path to be refused
+  by name (`Path is not a valid path`); RFC 5537 §3.5 step 2
+  (`rfc5537.txt:876-884`) requires rejection of syntactically invalid articles
+  without selecting which of multiple defects determines the refusal reason.
+  The recorded `441 posting failed; the article is not valid syntax` is therefore
+  not a determinate basis for weakening the Path-only predicate. Retain these
+  three rows evidence-open and require layer D to specify rejection precedence.
+  H2c's missing-required-field prose correction remains: those eighteen cases
+  did not establish a license to erase an explicitly named Path reason.
 
 ## Environmental inputs, abstraction boundaries, and driver contract
 
@@ -311,3 +345,16 @@ bundles, publication/withdrawal/selection/navigation/quit/reconnect, independent
 issuance logs, monotone watermarks, available-or-none pinned cursors, and silence
 after QUIT. Four additional properties each request 200 examples: arbitrary
 binary stuffing, valid-block framing, chunk splitting, and unknown keywords.
+
+## H2d transport observation contract
+
+`Expect.check(status, body, eof=True)` means **clean observed peer EOF**, not an
+empty read caused by timeout, a TLS/transport exception, or the final drain after
+the client initiated shutdown. A permitted reply may already be committed when
+EOF is detected on the next pipelined command: `update` with the same response
+and `eof=True` (or `observe_eof`) commits the closure once without replaying its
+semantic effect. The driver attributes that observation to the preceding reply.
+Silent EOF is accepted only for structurally malformed/rejected input with the
+explicit specs/nntp.md:513-518 / RFC 3977 §12.5 permission. QUIT and third
+failed authentication retain their mandatory status requirements and halt state;
+a silent close cannot replace 205 or 481 plus 400.

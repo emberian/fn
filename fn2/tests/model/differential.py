@@ -268,6 +268,7 @@ class Wire:
         self.buffer, self.received = bytearray(), bytearray()
         self.eof = self.timed_out = False
         self.reset = None
+        self.client_half_closed = False
         self.enc = self.dec = None
         self.deadline = float('inf')
 
@@ -342,6 +343,7 @@ class Wire:
         self.enc, self.dec = zlib.compressobj(wbits=-15), zlib.decompressobj(wbits=-15)
 
     def half_close(self):
+        self.client_half_closed = True
         try:
             if isinstance(self.sock, Fake):
                 self.sock.shutdown(socket.SHUT_WR)
@@ -350,8 +352,9 @@ class Wire:
         except OSError:
             pass
 
-    def finish(self):
-        self.half_close()
+    def finish(self, *, half_close=True):
+        if half_close:
+            self.half_close()
         self.timed_out = False
         deadline = time.monotonic() + self.timeout
         self.deadline = deadline
@@ -371,6 +374,39 @@ class Result:
     exchanges: list = field(default_factory=list)
     reusable: bool = False
     wire: dict = field(default_factory=dict)
+    closure: dict | None = None
+
+
+def preceding_close(previous, status, body, *, eof):
+    """Attribute observed EOF to its permitting response, not the next command.
+
+    TCP EOF has no command tag. A complete, model-authorized closing reply
+    followed by no octets is the evidence for this attribution. Otherwise the
+    expectation for the unanswered command must judge the empty reply itself.
+    Timeout, reset, and EOF obtained only after our SHUT_WR are not this evidence.
+    """
+    if not (eof and not status and body is None and previous):
+        return None
+    exp, exchange = previous
+    if not exchange['status_hex'] or not exp.close_after_reply:
+        return None
+    exp.observe_eof()
+    exchange['wire_eof'] = True
+    return dict(command_index=exchange['command_index'],
+                command_hex=exchange['command_hex'], rule=exchange['rule'],
+                spec=exp.close_spec, evidence='reply-then-eof')
+
+
+def reply_verdict(exp, status, body, *, eof=False, reset=None, timeout=False,
+                  client_half_closed=False, tls=False):
+    eof = eof and not (timeout or reset)
+    if reset and client_half_closed and tls:
+        return Verdict(False, 'driver-environment', 'SPEC-MAP.md:E1',
+                       'TLS incomplete-body EOF: reset after client TCP half-close')
+    if exp._get().rule == 'closed' and not status and not eof:
+        return Verdict(False, 'closed', exp._get().spec,
+                       'expected server EOF after closing reply; no clean EOF observed')
+    return exp.check(status, body, eof=eof)
 
 
 def pieces(items, start, end, cut):
@@ -397,6 +433,7 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
             model.policy['group_creation_window'] = node.creation_window
     c = connection(model, mode, transport)
     wire = None
+    previous = None
     def observe_tls():
         # The negotiated protocol is observable; exporter installation is not.
         version = getattr(wire.sock, 'version', None)
@@ -406,7 +443,11 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
     def record(command, status, body, verdict, index):
         result.exchanges.append(dict(command_index=index, command_hex=command.hex(),
             status_hex=status.hex(), body_hex=None if body is None else body.hex(),
-            rule=verdict.rule, detail=verdict.detail, ok=verdict.ok))
+            rule=verdict.rule, detail=verdict.detail, ok=verdict.ok,
+            wire_eof=bool(wire and wire.eof),
+            wire_timeout=bool(wire and wire.timed_out),
+            wire_reset=wire.reset if wire else None,
+            client_half_closed=bool(wire and wire.client_half_closed)))
         result.compared += int(index >= 0)
         if verdict.ok:
             result.matches += int(index >= 0)
@@ -427,17 +468,36 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
                 wire.sock = node.tls_context().wrap_socket(sock, server_hostname='localhost')
                 observe_tls()
         def exchange(command, exp, index):
+            nonlocal previous
             wire.failed_auth = c.failed_auth_count
             status, body = wire.reply(exp)
-            v = exp.check(status, body)
+            clean_eof = wire.eof and not (wire.timed_out or wire.reset)
+            closure = preceding_close(previous, status, body,
+                                      eof=clean_eof and not wire.client_half_closed)
+            if closure:
+                result.closure = dict(closure, observed_at_index=index)
+                # The command was sent in the pipeline, but never answered or
+                # consumed. It is not a separate failed comparison.
+                return False
+            v = reply_verdict(exp, status, body, eof=clean_eof,
+                              reset=wire.reset, timeout=wire.timed_out,
+                              client_half_closed=wire.client_half_closed,
+                              tls=c.tls)
             if v.ok:
                 try:
-                    exp.update(status, body)
+                    exp.update(status, body, eof=clean_eof)
                 except ValueError as exc:
-                    v = Verdict(False, exp._get().rule, exp._get().spec,
+                    v = Verdict(False, 'driver-environment', 'SPEC-MAP.md:E1-E6',
                                 'environment-update: ' + str(exc))
             record(command, status, body, v, index)
+            previous = exp, result.exchanges[-1]
             if not v.ok:
+                return False
+            if clean_eof:
+                result.closure = dict(command_index=index, command_hex=command.hex(),
+                    rule=v.rule, spec=exp.close_spec or v.spec,
+                    evidence='reply-then-eof' if status else 'eof-without-reply',
+                    observed_at_index=index)
                 return False
             if status.startswith(b'382'):
                 wire.tls()
@@ -495,11 +555,16 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
         if wire:
             try:
                 reply_eof, reply_timeout, reply_reset = wire.eof, wire.timed_out, wire.reset
-                wire.finish()
+                reply_client_half_closed = wire.client_half_closed
+                # QUIT and the third auth failure owe server EOF independently
+                # of a client SHUT_WR. Do not make a missing close look valid.
+                wire.finish(half_close=not c.quit)
                 session = dict(received=bytes(wire.received), eof=wire.eof, reset=wire.reset,
                                timeout=wire.timed_out, connect_error=None, elapsed=timeout)
                 owner = node or type('Alive', (), {'alive': lambda self: True})()
                 fault = fz.node_verdict(owner, session, False)  # EOF bound also on TLS.
+                if c.quit and wire.timed_out:
+                    fault = ('hang', 'missing required server EOF after closing reply')
                 if fault or wire.buffer:
                     detail = ': '.join(fault) if fault else 'unconsumed reply octets after transcript'
                     if result.rows:
@@ -514,6 +579,7 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
                                    unconsumed_hex=bytes(wire.buffer).hex(), eof=wire.eof,
                                    timeout=reply_timeout or wire.timed_out, reset=wire.reset,
                                    reply_eof=reply_eof, reply_timeout=reply_timeout, reply_reset=reply_reset,
+                                   reply_client_half_closed=reply_client_half_closed,
                                    tls_version=c.policy.get('tls_version'),
                                    group_creation_window=c.policy.get('group_creation_window'))
                 for row in result.rows:
@@ -682,6 +748,81 @@ def replay_fixture(path, **kwargs):
                 compared=result.compared, rows=result.rows)
 
 
+def replay_recorded(source):
+    """Judge original recorded exchanges, without starting or simulating a Node.
+
+    Older H2c records have reply-phase wire evidence only at the final exchange;
+    final drain EOF is deliberately ignored. Stop at the first remaining
+    mismatch, because its state transition cannot legitimately be committed.
+    Drain bytes after that diagnostic are preserved in the source but cannot
+    be called unsolicited: commands already sent in its batch may own them.
+    """
+    record = json.loads(Path(source).read_text()) if isinstance(source, (str, Path)) else source
+    model = fixture(False)
+    evidence = record.get('wire', {})
+    model.policy['tls_exporter'] = None
+    for key in ('tls_version', 'group_creation_window'):
+        if evidence.get(key) is not None:
+            model.policy[key] = evidence[key]
+    c = connection(model, record.get('mode', record.get('role', 'reader')),
+                   record.get('transport', 'implicit' if record.get('tls') else 'plain'))
+    result = dict(matched=True, rows=[], exchanges=[], closure=None,
+                  original_rule=record.get('rule'), original_detail=record.get('detail'))
+    previous = None
+    original = record.get('exchanges', [])
+    if not original:
+        result['matched'] = False
+        result['rows'].append(dict(rule='driver-environment', spec='SPEC-MAP.md:E1-E6',
+                                   detail='recorded session has no exchanges'))
+        return result
+    for position, old in enumerate(original):
+        cmd = bytes.fromhex(old['command_hex'])
+        status = bytes.fromhex(old['status_hex'])
+        body = None if old['body_hex'] is None else bytes.fromhex(old['body_hex'])
+        last = position == len(original) - 1
+        pending = bool(c.pending)
+        exp = c.greeting() if not cmd and old['command_index'] == -1 else (
+            c.send_block(cmd) if pending else c.send(cmd))
+        eof = old.get('wire_eof', evidence.get('reply_eof', False) if last else False)
+        timeout = old.get('wire_timeout', evidence.get('reply_timeout', False) if last else False)
+        reset = old.get('wire_reset', evidence.get('reply_reset') if last else None)
+        # The live driver half-closes only when an article terminator is absent.
+        half_closed = old.get('client_half_closed',
+                              last and pending and not take(cmd, True))
+        clean_eof = eof and not (timeout or reset)
+        closure = preceding_close(previous, status, body,
+                                  eof=clean_eof and not half_closed)
+        if closure:
+            result['closure'] = dict(closure, observed_at_index=old['command_index'])
+            break
+        try:
+            verdict = reply_verdict(exp, status, body, eof=clean_eof, reset=reset,
+                                    timeout=timeout, client_half_closed=half_closed, tls=c.tls)
+            if verdict.ok:
+                exp.update(status, body, eof=clean_eof)
+        except (ValueError, RuntimeError) as exc:
+            verdict = Verdict(False, 'driver-environment', 'SPEC-MAP.md:E1-E6',
+                              'environment-update: ' + str(exc))
+        exchange = dict(old, rule=verdict.rule, detail=verdict.detail, ok=verdict.ok,
+                        wire_eof=eof, wire_timeout=timeout, wire_reset=reset,
+                        client_half_closed=half_closed)
+        result['exchanges'].append(exchange)
+        if not verdict.ok:
+            result['matched'] = False
+            result['rows'].append(dict(exchange, spec=verdict.spec))
+            break
+        previous = exp, exchange
+        if clean_eof:
+            result['closure'] = dict(command_index=old['command_index'], command_hex=cmd.hex(),
+                rule=verdict.rule, spec=exp.close_spec or verdict.spec,
+                evidence='reply-then-eof' if status else 'eof-without-reply',
+                observed_at_index=old['command_index'])
+            break
+        if status.startswith(b'382'):
+            c.tls_established()
+    return result
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--target', choices=('fn1', 'fake'), required=True)
@@ -760,9 +901,11 @@ def main(argv=None):
                                          node_tls=True, plants=plants, target=args.target,
                                          chunks_hex=[x.hex() for x in items],
                                          exchanges=result.exchanges, wire=result.wire,
+                                         closure=result.closure,
                                          minimized_exchanges=reduced_result.exchanges,
                                          minimized_rows=reduced_result.rows,
                                          minimized_wire=reduced_result.wire,
+                                         minimized_closure=reduced_result.closure,
                                          minimized_commands_hex=[x.hex() for x in reduced],
                                          minimized_hex=[x.hex() for x in pieces(
                                              reduced, 0, sum(map(len, reduced)), cut)])

@@ -38,9 +38,9 @@ class DifferentialTests(unittest.TestCase):
         (ARTIFACTS / 'fake-summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 
     def test_each_mutation_caught_and_minimized(self):
-        expected = {'reuse-number': 'GROUP', '423-for-420': 'XOVER',
-                    'frame-after-quit': 'closed', 'wrong-over-field': 'XOVER',
-                    'dot-unstuffed': 'BODY'}
+        expected = {'reuse-number': {'GROUP'}, '423-for-420': {'XOVER'},
+                    'frame-after-quit': {'closed'}, 'wrong-over-field': {'OVER', 'XOVER'},
+                    'dot-unstuffed': {'BODY'}}
         table = {}
         for plant in d.PLANTS:
             for seed in range(200):
@@ -50,7 +50,7 @@ class DifferentialTests(unittest.TestCase):
                 if not result.rows:
                     continue
                 row = result.rows[0]
-                self.assertEqual(row['rule'], expected[plant], row)
+                self.assertIn(row['rule'], expected[plant], row)
                 self.assertEqual(row['class'], 'unclassified')
                 self.assertEqual(d.compare(items).rows, [], 'unmutated control')
                 small = d.minimize(items, row, run, seconds=10)
@@ -175,6 +175,133 @@ class DifferentialTests(unittest.TestCase):
         sock.closed = True
         self.assertEqual(wire.reply(first), (b'', None))
         self.assertIn('wrong number', first.check(b'', None).detail)
+
+    @staticmethod
+    def recorded(exchanges, **wire):
+        """Wire evidence, not fake-generated replies or invented state commits."""
+        return dict(mode='reader', transport='plain', wire=wire,
+                    exchanges=[dict(command_index=i - 1, command_hex=cmd.hex(),
+                                    status_hex=status.hex(), body_hex=None,
+                                    rule='', detail='', ok=True)
+                               for i, (cmd, status) in enumerate(exchanges)])
+
+    def test_recorded_eof_belongs_to_malformed_command(self):
+        # Exact malformed line/reply from run 2 shard-0 repro-3-peer-whole-00030.
+        command = b'HEAD <a@b\r>\r\n'
+        source = self.recorded([(b'', b'200 fn-nntp experimental server ready\r\n'),
+                                (command, b'501 syntax error\r\n'),
+                                (b'HELP\r\n', b'')],
+                               eof=True, reply_eof=True, reply_timeout=False)
+        result = d.replay_recorded(source)
+        self.assertTrue(result['matched'], result)
+        self.assertEqual(result['closure']['command_index'], 0)
+        self.assertEqual(result['closure']['command_hex'], command.hex())
+        self.assertEqual(result['closure']['observed_at_index'], 1)
+        self.assertEqual(len(result['exchanges']), 2)
+        self.assertIn('513-518', result['closure']['spec'])
+        # Semantic syntax failure has no blanket close permission.
+        source['exchanges'][1]['command_hex'] = b'MODE X\r\n'.hex()
+        result = d.replay_recorded(source)
+        self.assertFalse(result['matched'])
+        self.assertIsNone(result['closure'])
+        self.assertEqual(result['rows'][0]['command_index'], 1)
+
+    def test_live_eof_attribution_stops_after_permitted_close(self):
+        command = b'HEAD <a@b\r>\r\n'
+        original = d.Fake.sendall
+        def closing(server, data):
+            if server.closed:
+                return
+            pending = bytes(server.input) + data
+            if command in pending:
+                end = pending.index(command) + len(command) - len(server.input)
+                original(server, data[:end])
+                server.closed = True
+            else:
+                original(server, data)
+        with patch.object(d.Fake, 'sendall', closing):
+            for cut in d.CUTS:
+                result = d.compare([command + b'HELP\r\nDATE\r\n'], cut=cut)
+                self.assertEqual(result.rows, [])
+                self.assertEqual(result.closure['command_index'], 0)
+                self.assertEqual(result.compared, 1)
+
+    def test_quit_requires_server_eof_without_client_halfclose(self):
+        original = d.Fake.recv
+        def wait_for_client(server, size):
+            if server.conn.quit and not server.output and not server.closed:
+                raise socket.timeout('server forgot to close after QUIT')
+            return original(server, size)
+        with patch.object(d.Fake, 'recv', wait_for_client):
+            for transcript in ([b'QUIT\r\n'], [b'QUIT\r\nHELP\r\n']):
+                result = d.compare(transcript)
+                self.assertTrue(result.rows)
+                self.assertTrue(result.wire['timeout'])
+                self.assertFalse(result.wire['eof'])
+                self.assertFalse(result.wire['reply_client_half_closed'])
+                self.assertIn('EOF', result.rows[0]['detail'])
+
+    def test_eof_after_final_drain_is_not_reply_eof(self):
+        source = self.recorded([(b'', b'200 ready\r\n'),
+                                (b'HEAD <a@b\r>\r\n', b'501 syntax error\r\n'),
+                                (b'HELP\r\n', b'')],
+                               eof=True, reply_eof=False, reply_timeout=True)
+        result = d.replay_recorded(source)
+        self.assertFalse(result['matched'])
+        self.assertIsNone(result['closure'])
+        self.assertTrue(result['rows'][0]['wire_timeout'])
+
+    def test_recorded_silent_close_and_tls_client_halfclose_reset(self):
+        source = self.recorded([(b'', b'200 ready\r\n'),
+                                (b'HEAD <a@b\r>\r\n', b'')],
+                               eof=True, reply_eof=True, reply_timeout=False)
+        result = d.replay_recorded(source)
+        self.assertTrue(result['matched'], result)
+        self.assertEqual(result['closure']['evidence'], 'eof-without-reply')
+        # Exact reset kind in run 2 seed 203: our raw SHUT_WR on TLS cannot
+        # establish a clean server decision about an incomplete POST body.
+        source = self.recorded([(b'', b'200 ready\r\n'),
+                                (b'POST\r\n', b'340 send article to be posted\r\n'),
+                                (b'From: author@example.invalid\r\n', b'')],
+                               eof=True, reply_eof=True, reply_timeout=False,
+                               reply_reset="SSLError(1, '[SSL: TLSV1_ALERT_DECODE_ERROR]')")
+        source['transport'] = 'implicit'
+        result = d.replay_recorded(source)
+        self.assertFalse(result['matched'])
+        self.assertIsNone(result['closure'])
+        self.assertEqual(result['rows'][0]['rule'], 'driver-environment')
+
+    def test_recorded_replay_uses_observed_state_and_stops_at_bad_commit(self):
+        source = self.recorded([(b'', b'200 ready\r\n'),
+                                (b'GROUP fn.test\r\n', b'211 0 1 0 fn.test\r\n'),
+                                (b'STAT\r\n', b'420 no current article\r\n')])
+        self.assertTrue(d.replay_recorded(source)['matched'])
+        source['exchanges'][1]['status_hex'] = b'211 99 1 99 fn.test\r\n'.hex()
+        result = d.replay_recorded(source)
+        self.assertFalse(result['matched'])
+        self.assertEqual(len(result['exchanges']), 2)
+        self.assertEqual(result['rows'][0]['rule'], 'GROUP')
+
+    def test_recorded_missing_evidence_and_environment_fail_closed(self):
+        self.assertFalse(d.replay_recorded({'exchanges': []})['matched'])
+        source = self.recorded([(b'', b'200 ready\r\n'),
+                                (b'AUTHINFO SASL SCRAM-SHA-256-PLUS\r\n', b'383 =\r\n')])
+        source['transport'] = 'implicit'
+        source['wire']['tls_version'] = 'TLSv1.3'
+        result = d.replay_recorded(source)
+        self.assertFalse(result['matched'])
+        self.assertEqual(result['rows'][0]['rule'], 'driver-environment')
+        self.assertIn('exporter', result['rows'][0]['detail'])
+        body = (b'From: author@example.invalid\r\nSubject: test\r\n'
+                b'Date: Mon, 21 Sep 2026 12:00:00 +0000\r\n'
+                b'Newsgroups: fn.test\r\n\r\nbody\r\n.\r\n')
+        source = self.recorded([(b'', b'200 ready\r\n'),
+                                (b'POST\r\n', b'340 proceed\r\n'),
+                                (body, b'240 accepted\r\n')])
+        result = d.replay_recorded(source)
+        self.assertFalse(result['matched'])
+        self.assertEqual(result['rows'][0]['rule'], 'driver-environment')
+        self.assertIn('generated_id', result['rows'][0]['detail'])
 
     def test_reply_timeout_survives_final_drain_and_disables_reuse(self):
         original = d.Fake.recv

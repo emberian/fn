@@ -240,3 +240,124 @@ is determinate; actual body-bound refusal additionally requires 439 (530-534).
 | H2c-34 | 9 | syntax | wrong number of status lines (including closing 400) | `\tSTAT <a\t@b>\r\n` | `build/h2b-fn1/shard-3/repro-608-reader-whole-00054.json` | spec-ambiguity | A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899 | Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame. |
 | H2c-35 | 3 | POST | status arguments/text do not match the rule | `POST body (2152 bytes; empty From)` | `build/h2b-fn1/shard-3/repro-609-reader-whole-00063.json` | model-bug | specs/nntp.md:724-725,782-785,857-860; RFC 3977 §6.3.1 | Closed by allowing syntax as a reason for missing required fields; retain 441 and exact named duplicate/conflict rules. |
 | H2c-36 | 4 | syntax | wrong number of status lines (including closing 400) | `BODY -1\r\n` | `build/h2b-fn1/shard-3/repro-609-node-whole-00066.json` | spec-ambiguity | A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899 | Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame. |
+
+## H2d second fn1 run adjudication (2026-10-28)
+
+The four `build/h2c-fn1/shard-*` ledgers contain **322 original rows** from
+42 seeds, 370 sessions and 7,455 compared commands (7,133 matched). The table
+keeps every exact `(rule, detail, command_hex)` group: **48 groups**, with
+original and attributed command distinguished. Counts refer to original rows,
+not minimized outcomes or additional liveness annotations.
+
+| Class | Original rows | Disposition |
+|---|---:|---|
+| fn1-bug | 37 | 24 missing COMPRESS; 13 TAKETHIS replies omit the offered Message-ID. |
+| model-bug | 144 | 130 permissible close observations after malformed commands; 14 invented mandatory article-rejection closes. |
+| driver-bug | 3 | Unterminated POST over TLS: client raw half-close followed by TLS decode-error alert; reply evidence cannot establish a clean server close. |
+| spec-ambiguity | 138 | 114 A13 malformed keywords; 15 A14 malformed TAKETHIS drain timing; 6 A15 syntax/permission precedence; 3 A16 multiple article defects/refusal-reason precedence. |
+| **Total** | **322** | One primary class per original row. |
+
+**EOF attribution.** All 148 wrong-number rows contain zero status lines, never
+two concatenated statuses. Of these, 130 have `wire.reply_eof=True`,
+`reply_timeout=False`, `reply_reset=None`: the immediately preceding command
+received `501 syntax error`, then the next read discovered the close. That
+preceding command is the attribution, not the later unanswered command.
+There are 27 over-512-octet commands and 103 commands containing embedded
+CR/LF/NUL; specs/nntp.md:513-518 permits closing instead of draining.
+RFC 3977 §3.2.1 (`rfc3977.txt:547-551`) still requires 501 for overlength;
+the model accepts 501 then EOF there, **not** silent EOF. RFC 3977 §12.5
+(`rfc3977.txt:5866-5899`) permits silent close on illegal UTF-8, and structural
+unparseability permits the close alternative under NNT-003. Ordinary semantic
+argument errors gain no general close permission. No run-2 close is attributed
+to a third authentication failure.
+
+The other 18 empty replies are different evidence: 15 malformed TAKETHIS lines
+have `reply_timeout=True`, `reply_eof=False` and only reach final EOF **after
+client shutdown**; three unterminated POST bodies encounter a TLS
+`TLSV1_ALERT_DECODE_ERROR` after the driver's raw TLS half-close. None is counted
+as a permitted spontaneous server EOF. For all other rows, final `wire.eof`
+after the driver's drain likewise does not prove that the mismatch's command
+closed the connection. The table's “normal reply; final drain” explicitly
+preserves that limitation. The driver now records and compares closure once,
+without charging the later pipelined commands.
+
+**All 14 `closed` rows were model defects, not replies after QUIT.** Two follow
+TAKETHIS 439, three follow IHAVE 437, and nine follow POST 441; every prior body
+was dot-terminated but contained NUL. `_article_block` incorrectly inferred
+mandatory closure from every framing rejection. NNT-003 permits draining to a
+safe boundary and continuing, as these replies demonstrate. The independent
+QUIT prohibition at specs/nntp.md:521-528 remains unchanged; a real 205 followed
+by another framed reply still fails. The known `diff-quit-then-*` and
+`node-quit-then-*` corpus controls are separate from these fourteen observations.
+
+**Layer D must not reproduce these demonstrated fn1 bugs:** omit COMPRESS
+DEFLATE from reader/node capability lists while compression is inactive (24
+rows; specs/nntp.md:2486-2506), or emit a TAKETHIS response without the offered
+Message-ID (13 rows; specs/nntp.md:2428-2435; RFC 4644 §2.5.1). Every one of the
+13 replies is `436 the article was not received; closing`. The local 436 code
+is explicitly allowed for deferred/uncertain outcomes, so “436 instead of 439”
+alone is not the adjudicated bug; the missing ID is. Body-bound refusal still
+requires 439 under specs/nntp.md:530-534. The 14 closed rows add **no** fn1 QUIT
+bug. A13/A14/A15/A16 policy questions remain distinct from those requirements.
+
+| Group | Count | Rule | Original detail | Original command shape | Closure attribution / wire evidence | Example reproducer | Class | Exact source | Proposed action |
+|---|---:|---|---|---|---|---|---|---|---|
+| H2d-01 | 24 | unknown | code 501; permitted [500] | `Date: Mon, 31 Feb 2026 12:00:00 +0000\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-0/repro-0-reader-whole-00000.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-02 | 3 | syntax | wrong number of status lines (including closing 400) | `TAKETHIS <a@b@c\r\n` | current command: timeout, then client shutdown; no observed pre-shutdown EOF | `build/h2c-fn1/shard-0/repro-0-peer-whole-00006.json` | spec-ambiguity | A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387 | Keep open: bounded immediate-body probe must resolve malformed TAKETHIS rejection timing. |
+| H2d-03 | 9 | unknown | code 501; permitted [500] | `Date: garbage\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-0/repro-1-reader-whole-00009.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-04 | 9 | syntax | wrong number of status lines (including closing 400) | `XPAT Xref 1844674407370\t\r\n` | `AUTHINFO PASS pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp… (617 bytes)` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-2-reader-whole-00018.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-05 | 6 | syntax | wrong number of status lines (including closing 400) | `POST\t\r\n` | `HEAD <a@b\r>\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-3-node-whole-00027.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-06 | 3 | syntax | wrong number of status lines (including closing 400) | `From: \r\n` | `POST xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… (1027 bytes)` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-4-reader-whole-00033.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-07 | 6 | syntax | wrong number of status lines (including closing 400) | `list overview.fmt *\r\n` | `NEWNEWS fn.* 2026010 00000\n\rOVER \r\n` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-4-node-whole-00036.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-08 | 24 | CAPABILITIES | missing or duplicate capability | `CAPABILITIES\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-0/repro-5-reader-whole-00042.json` | fn1-bug | specs/nntp.md:2486-2506; RFC 8054 §2.1 | Layer D: advertise COMPRESS DEFLATE on reader/node too when inactive. |
+| H2d-09 | 3 | CAPABILITIES | wrong number of status lines (including closing 400) | `CAPABILITIES\r\n` | `NEXT\r\x00\nGROUP fn.nowhere\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-5-peer-whole-00048.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-10 | 9 | XOVER | wrong number of status lines (including closing 400) | `XOVER  1\r\n` | `ARTICLE <fz7.2.734559255@fuzz.invalid> \rCHECK <fz7.3.673767654@fuzz.invalid>\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-7-reader-whole-00060.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-11 | 6 | unknown | code 501; permitted [500] | `X-Fz-34: 34\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-0/repro-8-reader-whole-00069.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-12 | 2 | closed | expected no reply and no framing | `LAST\r\n` | TAKETHIS block → 439; no QUIT / no prior EOF | `build/h2c-fn1/shard-0/repro-8-peer-whole-00075.json` | model-bug | specs/nntp.md:513-518 | Closed: dot-terminated rejected article may drain and continue; retain QUIT silence requirement. |
+| H2d-13 | 9 | OVER | wrong number of status lines (including closing 400) | `OVER\r\n` | `GROUP junk\n\rCAPABILITIES AUTOUPDATE\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-1/repro-201-reader-whole-00009.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-14 | 3 | AUTHINFO | wrong number of status lines (including closing 400) | `AUTHINFO SASL SCRAM-SHA-256\r\n` | `help\rXFN-ZARTICLE <a@b.> 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-1/repro-202-peer-whole-00024.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-15 | 3 | POST | wrong number of status lines (including closing 400) | `Date: Mon, 31 Feb 2026 12:00:00 +0000\r\nFrom: author@example.invalid\r\nNew… (1316 bytes)` | current unterminated POST body: client half-close / TLS decode-error reset | `build/h2c-fn1/shard-1/repro-203-peer-whole-00033.json` | driver-bug | RFC 4642 §2.2; specs/nntp.md:513-518; A14 transport contract | Keep evidence-open: avoid raw TLS half-close; obtain a valid TLS EOF transcript. |
+| H2d-16 | 24 | unknown | code 501; permitted [500] | `Path: not-for-mail\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-1/repro-204-reader-whole-00036.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-17 | 3 | syntax | wrong number of status lines (including closing 400) | `TAKETHIS <a@b\r\n` | current command: timeout, then client shutdown; no observed pre-shutdown EOF | `build/h2c-fn1/shard-1/repro-204-peer-whole-00042.json` | spec-ambiguity | A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387 | Keep open: bounded immediate-body probe must resolve malformed TAKETHIS rejection timing. |
+| H2d-18 | 6 | IHAVE | wrong number of status lines (including closing 400) | `IHAVE <>\r\n` | `LAST xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… (513 bytes)` → 501 → clean EOF | `build/h2c-fn1/shard-1/repro-205-reader-whole-00045.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-19 | 3 | syntax | wrong number of status lines (including closing 400) | `IHAVE <>\r\n` | `LAST xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… (513 bytes)` → 501 → clean EOF | `build/h2c-fn1/shard-1/repro-205-peer-whole-00051.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-20 | 3 | POST | status arguments/text do not match the rule | `Message-ID: <fz206.1.650507537@fuzz.invalid>\r\nPath: \r\n: empty name\r\nFr… (5152 bytes)` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-1/repro-206-peer-whole-00060.json` | spec-ambiguity | A16; specs/nntp.md:905-909,930-935; rfc5537.txt:876-884 | Keep open: empty Path plus unnamed header; choose multi-defect precedence, preserve named Path-only refusal. |
+| H2d-21 | 9 | LIST | wrong number of status lines (including closing 400) | `LIST OVERVIEW.FMT\r\n` | `MO\nDE \r\n` → 501 → clean EOF | `build/h2c-fn1/shard-1/repro-207-reader-whole-00063.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-22 | 9 | unknown | wrong number of status lines (including closing 400) | `XFEATURE COMPRESS GZIP\r\n` | `XOVER 1-99999999999999999999\r\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-1/repro-208-reader-whole-00072.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-23 | 6 | unknown | code 501; permitted [500] | `X-Fz-0: 0\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-1/repro-209-reader-whole-00081.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-24 | 1 | TAKETHIS | code 436; permitted [439] | `X-Fz-0: 0\r\nPath: src.example.invalid!not-for-mail\r\nX-Long: vvvvvvvvvvvvv… (18260 bytes)` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-1/repro-209-peer-whole-00087.json` | fn1-bug | specs/nntp.md:530-534,2428-2435; rfc4644.txt:370-387 | Layer D: echo offered Message-ID on every reply, including local 436; 439 for explicit body bound. |
+| H2d-25 | 9 | CHECK | wrong number of status lines (including closing 400) | `CHECK <a>\r\n` | `XOVER 1-2-3\r\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-2/repro-400-reader-whole-00000.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-26 | 9 | unknown | wrong number of status lines (including closing 400) | `CAPABILITIESCAPABILITIES AUTOUPDATE\r\n` | `CHEC\rK a@b>\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-2/repro-401-reader-whole-00009.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-27 | 6 | unknown | code 501; permitted [500] | `Path: a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!… (409 bytes)` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-2/repro-402-reader-whole-00018.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-28 | 3 | TAKETHIS | code 436; permitted [439] | `Path: a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!… (13513 bytes)` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-2/repro-402-peer-whole-00024.json` | fn1-bug | specs/nntp.md:530-534,2428-2435; rfc4644.txt:370-387 | Layer D: echo offered Message-ID on every reply, including local 436; 439 for explicit body bound. |
+| H2d-29 | 12 | unknown | code 501; permitted [500] | `From: author@example.invalid\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-2/repro-403-reader-whole-00027.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-30 | 3 | syntax | wrong number of status lines (including closing 400) | `LISTGROUP fn.letters.sub 99999999999999999999\r\n` | `LISTGROUP fn.test -1\nBODY a\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-2/repro-403-peer-whole-00033.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-31 | 3 | syntax | wrong number of status lines (including closing 400) | `TAKETHIS <fz405.1.213088405@fuzz.invalid>Path: not-for-mail\r\n` | current command: timeout, then client shutdown; no observed pre-shutdown EOF | `build/h2c-fn1/shard-2/repro-405-peer-whole-00042.json` | spec-ambiguity | A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387 | Keep open: bounded immediate-body probe must resolve malformed TAKETHIS rejection timing. |
+| H2d-32 | 6 | unknown | code 501; permitted [500] | `Date: Mon, 21 Sep 2026 12:00:00 +0000\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-2/repro-406-reader-whole-00045.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-33 | 3 | TAKETHIS | code 436; permitted [439] | `Path: \r\nDate: Mon, 21 Sep 2026 12:00:00 +0000\r\nFrom: author@example.inva… (15029 bytes)` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-2/repro-406-peer-whole-00051.json` | fn1-bug | specs/nntp.md:530-534,2428-2435; rfc4644.txt:370-387 | Layer D: echo offered Message-ID on every reply, including local 436; 439 for explicit body bound. |
+| H2d-34 | 3 | syntax | wrong number of status lines (including closing 400) | `TAKETHIS <a@b>junk\r\n` | current command: timeout, then client shutdown; no observed pre-shutdown EOF | `build/h2c-fn1/shard-2/repro-408-peer-whole-00060.json` | spec-ambiguity | A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387 | Keep open: bounded immediate-body probe must resolve malformed TAKETHIS rejection timing. |
+| H2d-35 | 3 | TAKETHIS | code 436; permitted [439] | `Path: not-for-mail\r\nDate: Mon, 21 Sep 2026 12:00:00 +0000\r\nFrom: \xc3\xa… (6237 bytes)` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-2/repro-409-peer-whole-00069.json` | fn1-bug | specs/nntp.md:530-534,2428-2435; rfc4644.txt:370-387 | Layer D: echo offered Message-ID on every reply, including local 436; 439 for explicit body bound. |
+| H2d-36 | 9 | unknown | wrong number of status lines (including closing 400) | `From: author@example.invalid\r\n` | `LA\x00ST\r\x00\nPOS\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-2/repro-410-reader-whole-00072.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-37 | 6 | unknown | code 501; permitted [500] | `Message-ID: <fz601.2.117886944@fuzz.invalid>\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-3/repro-601-reader-whole-00000.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-38 | 3 | closed | expected no reply and no framing | `NEWNEWS ? 99991231 235959 gmt\t\r\n` | IHAVE block → 437; no QUIT / no prior EOF | `build/h2c-fn1/shard-3/repro-601-peer-whole-00006.json` | model-bug | specs/nntp.md:513-518 | Closed: dot-terminated rejected article may drain and continue; retain QUIT silence requirement. |
+| H2d-39 | 9 | closed | expected no reply and no framing | `GROUP fn.\xff  \rIHAVE <fz602.2.257017492@fuzz.invalid>\r\n` | POST block → 441; no QUIT / no prior EOF | `build/h2c-fn1/shard-3/repro-602-reader-whole-00009.json` | model-bug | specs/nntp.md:513-518 | Closed: dot-terminated rejected article may drain and continue; retain QUIT silence requirement. |
+| H2d-40 | 6 | syntax | code 502; permitted [501] | `TAKETHIS <f\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-3/repro-603-reader-whole-00018.json` | spec-ambiguity | A15; specs/nntp.md:78-80; rfc3977.txt:547-555,5866-5899 | Keep open: choose malformed-argument versus reader transit-permission precedence. |
+| H2d-41 | 3 | syntax | wrong number of status lines (including closing 400) | `TAKETHIS <f\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\r\n` | current command: timeout, then client shutdown; no observed pre-shutdown EOF | `build/h2c-fn1/shard-3/repro-603-peer-whole-00024.json` | spec-ambiguity | A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387 | Keep open: bounded immediate-body probe must resolve malformed TAKETHIS rejection timing. |
+| H2d-42 | 9 | unknown | code 501; permitted [500] | `POSTFrom: \xc3\xa9 <a@b>\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-3/repro-604-reader-whole-00027.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-43 | 6 | unknown | code 501; permitted [500] | `Path: src.example.invalid!not-for-mail\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-3/repro-605-reader-whole-00036.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
+| H2d-44 | 6 | syntax | wrong number of status lines (including closing 400) | `HEAD <fz605.1.154121121@fuzz.invalid>\nAUTHINFO PASS fuzz-password\r\n` | `LIST HEADERS R\nANGE\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-3/repro-605-node-whole-00039.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-45 | 3 | TAKETHIS | code 436; permitted [439] | `Path: a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!… (534 bytes)` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-3/repro-606-peer-whole-00051.json` | fn1-bug | specs/nntp.md:530-534,2428-2435; rfc4644.txt:370-387 | Layer D: echo offered Message-ID on every reply, including local 436; 439 for explicit body bound. |
+| H2d-46 | 9 | syntax | wrong number of status lines (including closing 400) | `\tSTAT <a\t@b>\r\n` | `\rNEXT\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-3/repro-608-reader-whole-00054.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-47 | 6 | syntax | wrong number of status lines (including closing 400) | `BODY -1\r\n` | `DATE xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… (519 bytes)` → 501 → clean EOF | `build/h2c-fn1/shard-3/repro-609-node-whole-00066.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+| H2d-48 | 4 | syntax | wrong number of status lines (including closing 400) | `POST xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… (513 bytes)` | `XPAT X-Fuzz 1-1 !fn.*\nCAPABILITIES\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-3/repro-611-reader-whole-00072.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
+
+**Recorded-byte replay after H2d:** all 322 original rows were replayed using
+original `exchanges` and reply-time wire evidence, not the minimized candidate's
+outcomes. **144 rows close** (130 permitted malformed-command closes, attributed
+to their preceding 501, plus 14 article-rejection continuations); both are model
+corrections, with driver attribution needed to expose the first. **178 remain
+open**: 37 demonstrated fn1 bugs, 138 specification ambiguities, and 3 driver TLS
+half-close evidence failures. Fixing the TLS driver's shutdown does not fabricate
+a missing historical POST response. The H2c table remains the adjudication of
+its original evidence; run-2 wire facts are not retroactively substituted into
+run 1.

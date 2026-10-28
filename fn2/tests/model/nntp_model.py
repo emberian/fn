@@ -36,13 +36,41 @@ class Expect:
     """A predicate plus a validated, idempotent commit, not a generated reply."""
 
     def __init__(self, codes=(), *, rule="", spec="", pattern=None, content=None,
-                 multiline=False, effect=None, tail=(), resolver=None):
+                 multiline=False, effect=None, tail=(), resolver=None,
+                 close_after_reply=False, close_without_reply=False,
+                 close_effect=None, close_spec=""):
         self.codes = frozenset(codes)
         self.rule, self.spec = rule, spec
         self.pattern, self.content = pattern, content
         self._multiline, self.effect, self.tail = multiline, effect, tail
         self._resolver, self._resolved, self._updated = resolver, None, False
         self._committed_response = None
+        self._close_after_reply, self._close_without_reply = close_after_reply, close_without_reply
+        self._close_effect, self._close_spec, self._eof_observed = close_effect, close_spec, False
+
+    @property
+    def close_after_reply(self):
+        return self._get()._close_after_reply
+
+    @property
+    def close_without_reply(self):
+        return self._get()._close_without_reply
+
+    @property
+    def close_spec(self):
+        return self._get()._close_spec
+
+    def observe_eof(self):
+        """Commit a permitted, observed transport close after a checked reply."""
+        obj = self._get()
+        if obj is not self:
+            return obj.observe_eof()
+        if not self._updated or not (self._close_after_reply if self._committed_response[0]
+                                     else self._close_without_reply):
+            raise ValueError("EOF is not permitted for this committed response")
+        if not self._eof_observed and self._close_effect:
+            self._close_effect()
+        self._eof_observed = True
 
     def _get(self):
         if self._resolver is not None:
@@ -62,14 +90,19 @@ class Expect:
 
     @classmethod
     def none(cls, rule="closed", spec="specs/nntp.md:521-528; RFC 3977 §5.4"):
-        return cls(rule=rule, spec=spec)
+        return cls(rule=rule, spec=spec, close_without_reply=rule == "closed", close_spec=spec)
 
-    def check(self, status_line: bytes, body: bytes | None) -> Verdict:
+    def check(self, status_line: bytes, body: bytes | None, *, eof=False) -> Verdict:
         obj = self._get()
         if obj is not self:
-            return obj.check(status_line, body)
+            return obj.check(status_line, body, eof=eof)
         def verdict(ok, detail):
             return Verdict(ok, self.rule, self.spec, detail)
+        if eof:
+            if not status_line and body is None and self._close_without_reply:
+                return Verdict(True, self.rule, self._close_spec, "match: permitted EOF")
+            if not self._close_after_reply:
+                return verdict(False, "connection closed where a reply or continued session was required")
         if not self.codes:
             return verdict(status_line == b"" and body is None,
                            "match" if status_line == b"" and body is None else
@@ -106,22 +139,26 @@ class Expect:
             return verdict(False, f"framing: {exc}")
         return verdict(True, "match")
 
-    def update(self, status_line: bytes, body: bytes | None) -> None:
+    def update(self, status_line: bytes, body: bytes | None, *, eof=False) -> None:
         obj = self._get()
         if obj is not self:
-            obj.update(status_line, body)
+            obj.update(status_line, body, eof=eof)
             return
-        result = self.check(status_line, body)
+        result = self.check(status_line, body, eof=eof)
         if not result.ok:
             raise ValueError(f"{result.rule} ({result.spec}): {result.detail}")
         if self._updated:
             if self._committed_response != (status_line, body):
                 raise ValueError("expectation already committed to a different response")
+            if eof:
+                self.observe_eof()
             return
         if self.effect:
             self.effect(int(status_line[:3]) if status_line else None, status_line, body)
         self._updated = True
         self._committed_response = (status_line, body)
+        if eof:
+            self.observe_eof()
 
 
 SPECS = {
@@ -394,6 +431,14 @@ class Conn:
     def _error(self, code=501):
         return self._reply("syntax", code)
 
+    def _malformed(self, *, overlong=False):
+        # Structural rejection may drain to a boundary or close. This is not
+        # permission to silently close on an ordinary argument/count error.
+        # RFC 3977 section 3.2.1 expressly requires 501 for overlength.
+        return self._reply("syntax", 501, close_after_reply=True, close_without_reply=not overlong,
+                           close_effect=lambda: setattr(self, "quit", True),
+                           close_spec="specs/nntp.md:513-518; RFC 3977 §§3.1,12.5")
+
     def _queue(self, action):
         ticket = self._issued_expectations
         self._issued_expectations += 1
@@ -413,7 +458,8 @@ class Conn:
     def greeting(self) -> Expect:
         if self.refused:
             return self._reply("capacity", 400, pattern=rb"400 " + re.escape(self.refused.encode()) + rb".*",
-                               effect=lambda *_: setattr(self, "quit", True))
+                               effect=lambda *_: setattr(self, "quit", True),
+                               close_after_reply=True, close_spec=SPECS["capacity"])
         return self._reply("greeting", 200 if self._posting() else 201)
 
     def send(self, line: bytes) -> Expect:
@@ -437,7 +483,7 @@ class Conn:
             if args and len(re.split(rb"[ \t]+", raw, maxsplit=1)[1]) > 497:
                 return self._error()
         except (ValueError, UnicodeError):
-            return self._error()
+            return self._malformed(overlong=len(line) > 512)
         if command not in KEYWORDS:
             return self._reply("unknown", 500)
         public = {"CAPABILITIES", "HELP", "QUIT", "MODE", "AUTHINFO", "STARTTLS", "COMPRESS", "XREDEEM",
@@ -452,7 +498,8 @@ class Conn:
             return self._error()
 
     def _cmd_quit(self, args):
-        return self._error() if args else self._reply("QUIT", 205, effect=lambda *_: setattr(self, "quit", True))
+        return self._error() if args else self._reply("QUIT", 205, effect=lambda *_: setattr(self, "quit", True),
+                                                     close_after_reply=True, close_spec=SPECS["QUIT"])
 
     def _cmd_help(self, args):
         if args:
@@ -1014,7 +1061,14 @@ class Conn:
         except framing.FramingError:
             code = 439 if rule == "TAKETHIS" else 437 if transit else 441
             pattern = b"439 " + re.escape(offered.encode()) + rb"(?: .*)?" if rule == "TAKETHIS" else None
-            return self._reply(rule, code, pattern=pattern, effect=lambda *_: self._finish_body(close=True))
+            # A rejected but terminated block can be drained without closing.
+            # EOF is a transport observation, never implied by a 4xx reply.
+            terminated = block == b".\r\n" or block.endswith(b"\r\n.\r\n")
+            return self._reply(rule, code, pattern=pattern,
+                               effect=lambda *_: self._finish_body(close=not terminated),
+                               close_after_reply=True, close_without_reply=True,
+                               close_effect=lambda: self._finish_body(close=True),
+                               close_spec="specs/nntp.md:513-518; RFC 3977 §3.1.1")
         fields = headers(data)
         ident = fields.get("message-id", b"").decode("ascii", "replace").strip()
         groups = fields.get("newsgroups", b"").decode("ascii", "replace").replace(" ", "").split(",")
@@ -1099,7 +1153,9 @@ class Conn:
             self._finish_body(close=transit and len(data) > limit)
             outcome = "accepted" if code == success else "uncertain" if b"uncertain" in status.lower() else "refused"
             self.model.post_outcomes.append((rule, ident or offered, outcome, status))
-        return self._reply(rule, codes, pattern=pattern, effect=effect)
+        return self._reply(rule, codes, pattern=pattern, effect=effect,
+                           close_after_reply=transit and len(data) > limit,
+                           close_spec="specs/nntp.md:530-534")
 
     def _finish_body(self, close=False):
         self.pending = None
@@ -1118,7 +1174,8 @@ class Conn:
             if not cancelled:
                 self.failed_auth_count += 1
                 self.quit = closing
-        return self._reply("AUTHINFO", 481, tail=(400,) if closing else (), effect=effect)
+        return self._reply("AUTHINFO", 481, tail=(400,) if closing else (), effect=effect,
+                           close_after_reply=closing, close_spec="specs/nntp.md:1661-1696; RFC 4643 §6")
 
     def _cmd_authinfo(self, args):
         if self.authenticated_as or self.compressed:
@@ -1199,12 +1256,14 @@ class Conn:
                 self._authenticate(name)
             else:
                 failure.update(status, body)
+                result._close_after_reply = failure.close_after_reply
+                result._close_spec = failure.close_spec
         result = self._reply("AUTHINFO", {383, accepted, 481}, effect=effect)
         base_check = result.check
-        def check(status, body):
+        def check(status, body, *, eof=False):
             if status.startswith(b"481"):
-                return failure.check(status, body)
-            v = base_check(status, body)
+                return failure.check(status, body, eof=eof)
+            v = base_check(status, body, eof=eof)
             if v.ok and status.startswith((b"383", b"283")):
                 try:
                     self._base64(status[4:-2].decode())
@@ -1293,5 +1352,5 @@ class Conn:
             pattern=rb"229 (?:" + b"|".join(d.encode() for d in args[1:]) + rb") [0-9]+ [0-9]+(?: .*)?",
             content=lambda data: "encoded line exceeds 128 octets" if any(len(r) > 128 for r in framing.lines(data)) else None)
         result = self._reply("XFN-ZARTICLE", {220, 229}, multiline=True)
-        result.check = lambda status, body: (compressed if status.startswith(b"229") else plain).check(status, body)
+        result.check = lambda status, body, eof=False: (compressed if status.startswith(b"229") else plain).check(status, body, eof=eof)
         return result

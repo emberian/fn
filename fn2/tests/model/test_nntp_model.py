@@ -541,6 +541,129 @@ class H2cRecordedReplyTests(unittest.TestCase):
         send(c, "LIST ACTIVE.TIMES", "215 information follows", b"fn.test 10 unattributed\r\n")
 
 
+class H2dRecordedReplyTests(unittest.TestCase):
+    def test_required_close_statuses_accept_eof_but_not_silence(self):
+        c = connect(model())
+        e = c.send(b"QUIT\r\n")
+        self.assertFalse(e.check(b"", None, eof=True).ok)
+        e.update(b"205 closing\r\n", None, eof=True)
+        after = c.send(b"AUTHINFO USER after-quit\r\n")
+        self.assertFalse(after.check(b"381 password\r\n", None, eof=True).ok)
+        after.update(b"", None, eof=True)
+        c = connect(model())
+        c.refused = "too many connections"
+        e = c.greeting()
+        self.assertFalse(e.check(b"", None, eof=True).ok)
+        e.update(b"400 too many connections\r\n", None, eof=True)
+        for sasl in (False, True):
+            c = connect(model(accounts={"a": "good"}), tls=True)
+            for i in range(3):
+                if sasl:
+                    command = b"AUTHINFO SASL PLAIN " + base64.b64encode(b"\0a\0wrong") + b"\r\n"
+                else:
+                    send(c, "AUTHINFO USER a", "381 password")
+                    command = b"AUTHINFO PASS wrong\r\n"
+                e = c.send(command)
+                status = b"481 failed\r\n" + (b"400 closing\r\n" if i == 2 else b"")
+                self.assertFalse(e.check(b"", None, eof=True).ok)
+                e.update(status, None, eof=i == 2)
+            self.assertTrue(c.quit)
+
+    def test_recorded_malformed_command_reply_then_eof(self):
+        # H2d shard-1/repro-207-reader-whole-00063: 501 belongs to MO\nDE,
+        # not the subsequent LIST whose read discovers EOF.
+        c = connect(model())
+        e = c.send(b"MO\nDE \r\n")
+        self.assertTrue(e.close_after_reply)
+        self.assertIn("513-518", e.close_spec)
+        accept(e, b"501 syntax error\r\n")
+        self.assertFalse(c.quit)
+        e.update(b"501 syntax error\r\n", None, eof=True)
+        e.update(b"501 syntax error\r\n", None, eof=True)
+        self.assertTrue(c.quit)
+        accept(c.send(b"LIST OVERVIEW.FMT\r\n"), b"")
+
+    def test_transit_bound_requires_refusal_before_eof(self):
+        c = connect(model(peer=True, inbound_max_octets=100))
+        send(c, "TAKETHIS <one@example.test>", b"")
+        e = c.send_block(encode_block(article()))
+        self.assertTrue(e.close_after_reply)
+        self.assertFalse(e.check(b"", None, eof=True).ok)
+        self.assertFalse(e.check(b"439 rejected\r\n", None, eof=True).ok)
+        e.update(b"439 <one@example.test> rejected\r\n", None, eof=True)
+        self.assertTrue(c.quit)
+
+    def test_malformed_eof_is_optional_and_requires_observed_eof(self):
+        for command in (b"HEAD <a@b\r>\r\n", b"GROUP fn.\xff\r\n"):
+            with self.subTest(command=command):
+                c = connect(model())
+                e = c.send(command)
+                self.assertFalse(e.check(b"", None).ok)
+                self.assertTrue(e.check(b"", None, eof=True).ok)
+                e.update(b"", None, eof=True)
+                self.assertTrue(c.quit)
+                c = connect(model())
+                accept(c.send(command), b"501 syntax error\r\n")
+                self.assertFalse(c.quit)
+                send(c, "LAST", "412 no newsgroup selected")
+
+    def test_unterminated_body_refusal_does_not_invent_safe_boundary(self):
+        c = connect(model())
+        send(c, "POST", "340 send article")
+        accept(c.send_block(b"Subject: partial\r\n"), b"441 article was not received\r\n")
+        self.assertTrue(c.quit)
+
+    def test_overlength_requires_501_even_when_closing(self):
+        c = connect(model())
+        e = c.send(b"LAST " + b"x" * 506 + b"\r\n")
+        self.assertTrue(e.close_after_reply)
+        self.assertFalse(e.close_without_reply)
+        self.assertFalse(e.check(b"", None, eof=True).ok)
+        self.assertTrue(e.check(b"501 syntax error\r\n", None, eof=True).ok)
+        e.update(b"501 syntax error\r\n", None, eof=True)
+        self.assertTrue(c.quit)
+
+    def test_ordinary_errors_do_not_license_silent_close(self):
+        for command in (b"BODY -1\r\n", b"XYZZY\r\n", b"TAKETHIS <a@b\r\n"):
+            e = connect(model(peer=True)).send(command)
+            self.assertFalse(e.close_without_reply)
+            self.assertFalse(e.check(b"", None, eof=True).ok)
+        e = connect(model(peer=True)).send(b"TAKETHIS <valid@example.test>\r\n")
+        self.assertTrue(e.check(b"", None).ok)
+        self.assertFalse(e.check(b"", None, eof=True).ok)
+
+    def test_rejected_dot_terminated_body_can_continue(self):
+        # Reduced NUL-body witnesses for all fourteen H2d closed rows; literal
+        # responses match seed8 TAKETHIS, seed601 IHAVE, seed602 POST.
+        for command, preliminary, refusal in (
+                ("TAKETHIS <fz8.1.860518676@fuzz.invalid>", b"",
+                 b"439 <fz8.1.860518676@fuzz.invalid>\r\n"),
+                ("IHAVE <fz601.2.117886944@fuzz.invalid>", b"335 send article\r\n",
+                 b"437 transfer rejected; not a valid article\r\n"),
+                ("POST", b"340 send article\r\n",
+                 b"441 posting failed; the article is not valid syntax\r\n")):
+            with self.subTest(command=command):
+                c = connect(model(peer=True))
+                send(c, command, preliminary)
+                e = c.send_block(b"Subject: \r\n\r\nx.\r\n\x00\r\n.\r\n")
+                accept(e, refusal)
+                self.assertIsNone(c.pending)
+                self.assertFalse(c.quit)
+                send(c, "LAST", "412 no newsgroup selected")
+
+    def test_invalid_post_path_keeps_named_reason(self):
+        # H2d shard-1/repro-206-peer-whole-00060 has ALSO ': empty name'.
+        # A16 leaves compound-defect precedence open; specs905-909,930-935
+        # do determine the Path-only named refusal. Do not weaken it.
+        for extra in (b"Path: \r\n", b"Path: \r\n: empty name\r\n"):
+            c = connect(model())
+            send(c, "POST", "340 send article")
+            e = c.send_block(encode_block(article(extra=extra)))
+            self.assertFalse(e.check(b"240 article received OK\r\n", None).ok)
+            self.assertFalse(e.check(b"441 posting failed; the article is not valid syntax\r\n", None).ok)
+            accept(e, b"441 Path is not a valid path\r\n")
+
+
 class PostingTransitTests(unittest.TestCase):
     def test_each_238_counts_even_for_repeated_message_id(self):
         c = connect(model(peer=True, max_inflight=2))
