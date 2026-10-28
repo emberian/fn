@@ -18,6 +18,8 @@ recorded here is a defect.
 | layout codec (layouts as data, one generic codec) | `fn2/books/layout.lisp` | B2a |
 | incremental BLAKE3 over the pool | `fn2/books/blake3.lisp` | B2b |
 | the on-disk format as layouts | `fn2/books/format.lisp` | B2c |
+| format integrity readers and sealing | `fn2/books/format-check.lisp` | B2d |
+| semantic Merkle event frontier and proof verification | `fn2/books/merkle.lisp` | B2e |
 | commit-batch machine (declared through layer A's `defmachine`) | `fn2/books/commit.lisp` | B3 |
 | allocator with typed edges | `fn2/books/alloc.lisp` | B4 |
 | recovery | `fn2/books/recovery.lisp` | B5 |
@@ -254,10 +256,86 @@ including Message-ID octets; physical integrity checking and sealing belong to B
 
 ## 6. Format
 
-The layouts in `books/format.lisp` describe field encoding only. They do not check magic/version
-values, hashes, semantic folding, query completeness, availability, freshness, authority, or the
-predecessor-cut restriction (STORAGE-DESIGN §4.4). B2d owns integrity checking and sealing. Byte
-equality is preserved; identity decisions are not implemented here.
+The layouts in `books/format.lisp` describe field encoding only. The readers in
+`books/format-check.lisp` check framing, expected physical identities and integrity hashes.
+Neither establishes semantic folding, query completeness, availability, freshness, authority,
+or the predecessor-cut restriction (STORAGE-DESIGN §4.4).
+
+### Integrity readers and sealing
+
+`fn2-fc-init(n, fc)` allocates the profile's checker slots. Each row has six continuation
+columns and 32 packed u60 words. Initialize at least as many BLAKE3 rows with
+`fn2-b3-table-init`, and initialize the required `fn2-fields` capacity once.
+
+The six step exports are `fn2-format-check-frame`, `fn2-format-check-page`,
+`fn2-format-check-anchor`, `fn2-format-check-seal`, `fn2-format-seal-frame` and
+`fn2-format-seal-batch`. Their shared signature is
+`(row slot gen off len base okind oslot ogen budget fc b3 fields pool)`;
+they return `(mv code fc b3 fields pool)`. Each has a `-once` form without `budget`,
+driving the same machine to completion at budget 4096. All twelve exports are guard-verified.
+
+A step consumes at most `budget` byte transitions, with budgets 1..4096. Decoding,
+domain/context input, hashing, padding/geometry checks and digest writes are bounded.
+`:more` retains the continuation; terminal statuses reset it. `fn2-fc-reset` abandons it.
+The same-numbered BLAKE3 row belongs exclusively to the active checker. Fields rows 0..95
+are scratch; decoder state and needed values are saved per checker slot, permitting
+interleaving. Each active checker has a distinct immutable expected-context range at
+`base >= 96`. Keep arguments, expected values and leased input bytes fixed across `:more`;
+a sealer exclusively owns its output range.
+
+| Context offset from base | Expected value |
+|---|---|
+| 0 | Absolute physical frame/page unit, or anchor slot |
+| 1 | Allocation counter |
+| 2, 3 | History, incarnation |
+| 4, 5 | Writer epoch, commit number |
+| 6, 7 | Parent page kind, encoded length |
+| 8..15 | Parent expected digest: eight little-endian u32 words |
+| 16..23 | Anchor geometry digest: eight little-endian u32 words |
+| 24 | Frame extent-allocation writer epoch |
+
+Unused entries still occupy the 25-row context. Oversized digest words refuse `:value`.
+Frame hashing is `BLAKE3("fn2/journal-frame/v1" || LE64(physical-frame-unit) ||
+LE64(extent-writer-epoch) || LE64(allocation-counter) || exact-frame-with-hash-zeroed)`.
+Frames are 4096 bytes. Only the final 32 hash bytes are zeroed; the algorithm tag stays
+covered. Header history, incarnation, batch writer epoch, commit and extent-allocation
+pair must match; padding must be zero. Moving the frame changes its covered context and
+refuses `:bad-hash`. No image is copied to zero a hash field: B2b's scalar byte kernel
+receives the preceding bytes, a constant zero run, and subsequent bytes.
+
+Page hashing is `BLAKE3("fn2/physical-page/v1" || exact-encoded-page)`. The checker matches
+physical unit, allocation epoch/counter, kind, length and parent hash, plus expected
+history/incarnation; it checks header/payload bounds and zero padding. **Storage-domain
+binding belongs to the caller's device binding**: B2c's page header has no storage-domain
+field, and the page keystone makes no claim about it.
+
+Anchor and sealed-batch domains are `fn2/anchor/v1` and `fn2/sealed-batch/v1`, with their
+own final 32 hash bytes zero while hashing. The anchor checker validates slot, geometry,
+history/incarnation and canonical framing. The seal covers the entire canonical
+`sealed-batch` encoding, including record-stream commitment, dependency references and
+root-recipe fields. External referenced bytes require separate commitment checks;
+a passing seal alone establishes neither complete-batch availability nor durability.
+
+Success is `:ok`. Refusals include `:bad-magic`, `:bad-hash`, `:wrong-history`,
+`:wrong-incarnation`, `:wrong-epoch`, `:wrong-commit`, `:wrong-allocation`,
+`:wrong-location`, `:wrong-kind`, `:wrong-length`, `:wrong-slot`, `:wrong-geometry`,
+`:nonzero-padding`, `:version`, `:length`, `:value`, `:bounds`, `:state` and `:exhausted`.
+Layout/pool refusals, including `:truncated`, `:noncanonical`, `:wide`, `:unknown-tag`
+and handle/owner errors, pass through unchanged.
+
+The three binding keystones in `OWED.md` remain unproved. Unit tests evaluate whole
+premises and hypothesis-removal witnesses through actual pool operations. Their local
+test-only attachment proves the constraint of A's equality witness; it supplies concrete
+test values, not evidence about real devices or hash security.
+
+The mutation corpus changes every byte position by XOR 1 in 50 4096-byte frames,
+50 128-byte pages, 20 anchors and 20 seals: 224480 refusals and zero accepted mutants.
+It does not enumerate all 255 substitutions per position. A separate 65536-byte page
+checks budgets 1, 7 and 4096 and corruption beyond the first 4096 bytes and at the last byte.
+The parent acceptance measured zero allocation over 10000 seal/check pairs and 3.955
+checked MiB/s; that throughput's elapsed time includes both sealing and checking.
+
+### Layout vocabulary
 
 Magic bytes: bootstrap `46 32 47 44` (F2GD), structured pages `46 32 50 47` (F2PG), journal
 frames `46 32 4a 52` (F2JR); version/schema-version 1. Initial sector/page geometry is
@@ -454,3 +532,59 @@ Measured in this arm64 ACL2/SBCL executable: 6.774 MiB/s incremental versus
 iterations allocated 0 bytes; this exercises chunk completion and parent ROOT.
 All 105 official digests, 2000 random-length/random-split differential cases,
 and 306 true range checks passed, with the tested corruptions rejected.
+
+## 9. Event log
+
+`books/merkle.lisp` implements the RFC 6962 append-only binary-tree shape with
+BLAKE3-256 as the declared fn2 hash profile. Leaves are `H(0x00 || canonical semantic
+record bytes)`; internal nodes are `H(0x01 || left || right)`; the empty root is
+`H(empty)`. There is no additional leaf domain string. This retains the standard
+prefix rules while selecting BLAKE3 explicitly; SHA-256 interoperability is later work.
+Physical pool location is not hashed into a leaf. Callers supply canonical semantic
+encodings; this primitive does not validate their semantic schema.
+
+`fn2-mk-table-init(n, log)` allocates a profile-sized `defcolumns` table. Each row
+carries u60 size, proof continuation columns and 520 u32 words: 60 frontier roots and
+proof workspace. `fn2-mk-init(row, log)` resets the frontier and proof continuation.
+`fn2-mk-append(row, d0..d7, log)` returns `(mv code log)` and performs one full node hash
+per binary carry, at most 60. `fn2-mk-root(row, log)` returns eight digest words, folding
+occupied levels small to large with each larger subtree on the left. Append refuses
+`:exhausted` at the resident u60 limit rather than wrapping. The 65-byte node hash uses
+B2b's scalar compression twice with CHUNK_START and CHUNK_END|ROOT; it is a complete
+BLAKE3 hash, not BLAKE3's internal parent-CV operation.
+
+`fn2-mk-leaf-start(b3row, b3)` initializes the hasher and feeds the leaf prefix (the caller owns the pairing of hasher row and log row; seat review removed a reuse of the BLAKE3 row's verify-target column for it).
+`fn2-mk-leaf(slot, gen, off, len, okind, oslot, ogen, b3row, b3, pool)` returns
+`(mv code b3)`, consuming at most 4096 record bytes per call. Repeat identical arguments
+and unchanged input bytes on `:more`; after `:ok`, `fn2-b3-finalize(b3row, b3)` returns
+the leaf's eight words. The active leaf owns that BLAKE3 row.
+
+Proof verification follows [RFC 9162 §§2.1.3.2 and 2.1.4.2](https://www.rfc-editor.org/rfc/rfc9162.html#section-2.1.3.2).
+The APIs are `fn2-mk-verify-inclusion(row, index, size, d0..d7, base, count, r0..r7,
+log, fields)` and `fn2-mk-verify-consistency(row, old, new, base, count, o0..o7,
+n0..n7, log, fields)`, returning `(mv code log)`. Proof nodes occupy eight consecutive
+`fields.value` rows each, from `base`. One call consumes at most one sibling and two
+node hashes. Fixed arguments are checked on resume; proof fields stay immutable.
+`:more` retains continuation, and `fn2-mk-proof-reset(row, log)` cancels it without
+changing the frontier. `:state` preserves the active continuation; ordinary completion
+and proof refusal clear it. Refusals include `:index`, `:size`, `:proof-length`,
+`:proof-word`, `:root-mismatch` and `:state`; leaf input also passes pool refusals through.
+Empty-old consistency extends the RFC algorithm and requires the canonical empty root;
+same-size consistency requires equal roots and no proof nodes.
+
+Authenticate `(size, root)` together. An RFC inclusion path does not bind every possible
+change of size: the three-leaf index-0 proof also verifies as size 4 under the same root
+because its final sibling is opaque. Tests retain that counterexample and separately
+check size changes that must alter the path.
+
+The driver compares 2000 random prefix sizes up to 5000 leaves against an independent
+list oracle, checks 40000 inclusion proofs and 2000 consistency proofs and their tested
+corruptions, and exercises 40-node continuations. All passed; 100000 appends allocated
+zero bytes after initialization. All public runtime exports are guard-verified.
+
+Merkle authentication establishes neither correct application folding, authorization,
+freshness, availability nor query completeness. Runtime-to-MTH and content-level
+consistency soundness remain owed. The latter names `fn2-a-integrity-evidence` for
+equal hashes of unequal opening encodings from both trees and every actual verifier
+node input. It is not a concrete hash-security claim. Persistent frontier/proof paging
+and recovery composition remain later work.
