@@ -234,6 +234,25 @@ per-run counts (not yet recomputed from the outbox: repair R5). ACCOUNT is not i
 `:not-yet` until their layers. (Corrected 2026-10-28 after the Fable review, REVIEW-20261028.md
 finding 2: an earlier revision of this paragraph claimed ACCOUNT was implemented.)
 
+**Storage stamps and fence slots (S1).** `stamp` identifies the cached
+completed-write version; `snapshot-stamp` freezes it at fence submission.
+`durable-stamp` records the last version established by an honest fence or
+completed FUA, not the provenance of arbitrary media bytes. A live tear changes
+media bytes without advancing that stamp, so an honest fence still persists its
+covered write. Dirty means `stamp > durable-stamp`; a reopened stale cache never
+authorizes a crash landing over a newer durable version, even beside dirty bytes
+in the same 512-byte unit. FUA persists only its own request.
+
+`:fence-slots` defaults to 1 per simulated storage domain; both tiny and concrete
+profiles specify 1, independently of `O`. Operation tokens map to occupied slots;
+a second capture with no free slot returns `:exhausted` without changing the
+first snapshot. The adapter retains the unacknowledged outbox action for retry.
+Completion (honest, lying or failed) and cancellation release the slot; death and init
+invalidate all slots. Each slot stores one full byte image and one u60 stamp
+per byte: 147,456 bytes for tiny's four sectors, 589,824 for concrete's sixteen
+sectors on SBCL (u60 arrays use 8 bytes per element), excluding array headers and
+8 bytes of owner metadata per slot. `:sim-sectors` scales this cost linearly.
+
 **A3 scribe format.** The probe is append-only, with one record per 4,096-byte
 sector. Fields are little-endian u32: magic `0x324e4653` at byte 0, version `1`
 at byte 4, the sector's zero-based address at byte 8, sequence `address + 1`

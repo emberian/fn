@@ -369,9 +369,10 @@
   (and (fn2-profilep profile) (unsigned-byte-p 32 (fn2-profile-c profile))
        (unsigned-byte-p 60 (* 4096 (fn2-profile-c profile)))
        (posp (fn2-sim-sectors profile)) (< (fn2-sim-sectors profile) 1048576)
-       (< (* 4096 (fn2-sim-sectors profile) (fn2-profile-o profile)) #x1000000000000000)))
+       (< (* 4096 (fn2-sim-sectors profile) (fn2-profile-fence-slots profile)) #x1000000000000000)))
 
-(local (in-theory (disable fn2-profile-o fn2-profile-c fn2-profile-get)))
+(local (in-theory (disable fn2-profile-o fn2-profile-c fn2-profile-fence-slots fn2-profile-get)))
+(fn2-word-facts fn2-sim-profile-fence-slots (fn2-profile-fence-slots profile) fn2-profile-fence-slots-bounds (fn2-profilep profile))
 (fn2-word-facts fn2-sim-profile-o (fn2-profile-o profile) fn2-profile-o-bounds (fn2-profilep profile))
 
 (defun fn2-sim-init (seed profile-name revision profile fn2-sim)
@@ -381,7 +382,7 @@
                 (fn2-sim-storage (fn2-sim-disk fn2-sim)))
       (fn2-sim-network fn2-sim-storage)
       (let* ((fn2-sim-network (fn2-network-init (fn2-profile-c profile) 4096 fn2-sim-network))
-             (fn2-sim-storage (fn2-storage-init (fn2-sim-sectors profile) (fn2-profile-o profile) fn2-sim-storage)))
+             (fn2-sim-storage (fn2-storage-init (fn2-sim-sectors profile) (fn2-profile-fence-slots profile) fn2-sim-storage)))
         (mv-let (code nonce fn2-sim-network) (fn2-network-accept 0 fn2-sim-network)
           (declare (ignore code nonce))
           (let ((fn2-sim-network (fn2-sim-client-seed 256 0 fn2-sim-network)))

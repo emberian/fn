@@ -35,6 +35,12 @@
 (fn2-def-profile-reader fn2-profile-trace :trace)
 (fn2-def-profile-reader fn2-profile-calendar-length :calendar-length)
 
+; Initial storage domain: one fence in flight unless explicitly configured.
+(defun fn2-profile-fence-slots (profile)
+  (declare (xargs :guard t))
+  (if (and (alistp profile) (assoc-equal :fence-slots profile))
+      (fn2-profile-get :fence-slots profile) 1))
+
 (defun fn2-profile-positive-u32p (x)
   (declare (xargs :guard t))
   (and (posp x) (unsigned-byte-p 32 x)))
@@ -77,6 +83,7 @@
     '(:c :p :u :t :x :w :o :qa :h :k :aturn
       :run-bytes :run-steps :run-descriptors
       :ncancel :jread :jwrite :accept-credits :calendar-length) profile)
+   (fn2-profile-positive-u32p (fn2-profile-fence-slots profile))
    ; Principal references use u16; the other table references use u32.
    (<= (fn2-profile-p profile) 65536)
    (consp (fn2-profile-pool-classes profile))
@@ -97,6 +104,12 @@
   (implies (fn2-profilep profile)
            (and (posp (fn2-profile-o profile))
                 (unsigned-byte-p 32 (fn2-profile-o profile))))
+  :rule-classes (:rewrite :forward-chaining))
+
+(defthm fn2-profile-fence-slots-bounds
+  (implies (fn2-profilep profile)
+           (and (posp (fn2-profile-fence-slots profile))
+                (unsigned-byte-p 32 (fn2-profile-fence-slots profile))))
   :rule-classes (:rewrite :forward-chaining))
 
 (defthm fn2-profile-qa-bounds
@@ -120,7 +133,7 @@
 ; Total: 592 slots and 7,340,032 bytes (7 MiB).
 (defconst *fn2-profile-concrete*
   '((:c . 256) (:p . 64) (:u . 128) (:t . 128) (:x . 256) (:w . 256)
-    (:o . 1024) (:qa . 1024) (:h . 128) (:k . 64) (:aturn . 256)
+    (:fence-slots . 1) (:o . 1024) (:qa . 1024) (:h . 128) (:k . 64) (:aturn . 256)
     (:run-bytes . 4096) (:run-steps . 32) (:run-descriptors . 4)
     (:ncancel . 32) (:jread . 64) (:jwrite . 16) (:accept-credits . 8)
     (:pool-classes . ((512 . 4096) (80 . 65536)))
@@ -131,7 +144,7 @@
 ; The run quanta remain the declared per-run caps; resident capacities shrink.
 (defconst *fn2-profile-tiny*
   '((:c . 4) (:p . 4) (:u . 2) (:t . 2) (:x . 4) (:w . 4)
-    (:o . 8) (:qa . 4) (:h . 4) (:k . 8) (:aturn . 8)
+    (:fence-slots . 1) (:o . 8) (:qa . 4) (:h . 4) (:k . 8) (:aturn . 8)
     (:run-bytes . 4096) (:run-steps . 32) (:run-descriptors . 4)
     (:ncancel . 2) (:jread . 2) (:jwrite . 2) (:accept-credits . 2)
     (:pool-classes . ((8 . 64) (4 . 256)))
@@ -151,6 +164,10 @@
               (fn2-profile-pool-classes *fn2-profile-concrete*)) 7340032)
       (equal (- (fn2-profile-generation-limit *fn2-profile-tiny-near-limit*)
                 (fn2-profile-generation-start *fn2-profile-tiny-near-limit*)) 3)
+      (equal (fn2-profile-fence-slots nil) 1)
+      (equal (fn2-profile-fence-slots *fn2-profile-tiny*) 1)
+      (equal (fn2-profile-fence-slots *fn2-profile-concrete*) 1)
+      (not (fn2-profilep (put-assoc-equal :fence-slots 0 *fn2-profile-tiny*)))
       (not (fn2-profilep nil))
       (not (fn2-profilep (put-assoc-equal :qa 0 *fn2-profile-tiny*)))
       (not (fn2-profilep
@@ -167,7 +184,7 @@
  (fn2-profile-exports-compliant-p
   '(fn2-profile-get fn2-profilep fn2-profile-c fn2-profile-p fn2-profile-u
     fn2-profile-t fn2-profile-x fn2-profile-w fn2-profile-o fn2-profile-qa
-    fn2-profile-h fn2-profile-k fn2-profile-aturn fn2-profile-run-bytes
+    fn2-profile-fence-slots fn2-profile-h fn2-profile-k fn2-profile-aturn fn2-profile-run-bytes
     fn2-profile-run-steps fn2-profile-run-descriptors fn2-profile-ncancel
     fn2-profile-jread fn2-profile-jwrite fn2-profile-accept-credits
     fn2-profile-pool-classes fn2-profile-generation-start
