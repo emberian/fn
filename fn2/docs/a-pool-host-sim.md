@@ -118,6 +118,42 @@ unknown` by ROUND2 §E.4's rules restricted to that format. Layer B replaces it.
 Checkers implemented in A: TRACE, WORK, OWN, ACCOUNT; the framework names all eleven and the
 other seven report `not-yet` until their layers.
 
+**A3 scribe format.** The probe is append-only, with one record per 4,096-byte
+sector. Fields are little-endian u32: magic `0x324e4653` at byte 0, version `1`
+at byte 4, the sector's zero-based address at byte 8, sequence `address + 1`
+at byte 12, and checksum at byte 16. Bytes 20–4095 are payload. The checksum
+is FNV-1a-32 over all 4,096 bytes with bytes 16–19 treated as zero. An all-zero
+sector is never-written. The address and sequence encodings reserve sequence
+zero; this probe format is replaced by layer B, not a persistent namespace
+limit for fn2. `A-INTEGRITY-EVIDENCE` restricts use of this checksum to evidence
+against the simulator's accidental faults; it makes no cryptographic claim.
+Recovery receives an explicit acknowledged contiguous sequence frontier;
+sector validity alone does not establish acknowledgement.
+`fn2-recover-start` / `fn2-recover-step` retain only scalar scan progress;
+each step reads one sector and writes no storage. A death discards that
+progress and starts again. `fn2-recover-stub` uses the same step to scan the
+whole supplied byte image.
+
+**A3 fault-profile encoding.** The simulator reserves 26 u8 probability
+cells, one per fault class. An enabled class draws a threshold in `1..64`
+at run initialization; a later choice selects a class and compares a
+`0..255` draw with that threshold. A successful choice spends one unit of
+the run's fault budget. `:broad` enables every class, `:none` disables them,
+and `:crash-only` enables fragmentation, short sends, delay, tears, fail-slow,
+process death and release ordering. IDs `0..25`, in order, are fragment,
+short-send, delay, reset, half-open, nonreading, read-io, bitrot, misread,
+miswrite, lying-flush, tear, no-space, dead, fail-slow, crash,
+monotonic-jump, realtime-back, duplicate, stale, forged, overcount,
+malformed, flush-io, short-write and release-order; `26` means no fault.
+Fault-choice counters count selections, which may be inapplicable to the
+selected operation; they are not physical-effect coverage claims.
+The 64-entry observation ring uses event tags `256` for clock observations
+`257` for fault choices, and `258` for bytes drained by simulated clients;
+operation results retain A2's event codes. Client-byte records put the connection
+index/nonce in the op/gen fields, byte in count, and monotonic time in aux0. Each
+record folds all ten scalar fields into the rolling u32 digest, splitting
+u60 fields into two u32 halves before multiplication.
+
 ## 7. Platform backends (ember's ruling: nothing refused)
 Linux: epoll readiness, one preallocated data file `O_DIRECT`, barrier `fdatasync`, ops executed by
 the executor thread at submission and their completions posted at the next harvest (one thread; the

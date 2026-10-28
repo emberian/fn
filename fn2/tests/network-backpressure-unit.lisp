@@ -1,0 +1,106 @@
+; Run: sh fn2/tools/certify.sh tests/network-backpressure-unit.lisp
+(in-package "ACL2")
+(include-book "../sim/network")
+(include-book "std/util/bstar" :dir :system)
+
+; A two-byte window is enough to distinguish a nonreading peer from a slow
+; but draining peer. Rejected sends must not replace an accepted byte. The
+; same connection crosses the ring boundary and resumes after the fault.
+(local
+ (defun fn2-network-backpressure-run (fn2-sim-network)
+   (declare (xargs :stobjs fn2-sim-network :guard t))
+   (b* ((fn2-sim-network (fn2-network-init 1 2 fn2-sim-network))
+        ((mv code nonce fn2-sim-network) (fn2-network-accept 0 fn2-sim-network))
+        ((unless (and (eq code :ok) (equal nonce 1))) (mv :accept fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-send-byte 0 nonce 11 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :first-byte fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-send-byte 0 nonce 22 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :second-byte fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-send-byte 0 nonce 33 fn2-sim-network))
+        ((unless (eq code :would-block)) (mv :full-window fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-client-read 0 nonce fn2-sim-network))
+        ((unless (and (eq code :ok) (equal byte 11))) (mv :normal-drain fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-send-byte 0 nonce 33 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :send-resumes fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-faults 0 nonce 0 1 0 0 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :set-nonreading fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-client-read 0 nonce fn2-sim-network))
+        (- byte)
+        ((unless (eq code :would-block)) (mv :nonreading-drain fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-send-byte 0 nonce 44 fn2-sim-network))
+        ((unless (eq code :would-block)) (mv :nonreading-backpressure fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-faults 0 nonce 0 0 0 0 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :resume-reading fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-client-read 0 nonce fn2-sim-network))
+        ((unless (and (eq code :ok) (equal byte 22))) (mv :retained-second-byte fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-client-read 0 nonce fn2-sim-network))
+        ((unless (and (eq code :ok) (equal byte 33))) (mv :retained-wrapped-byte fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-client-read 0 nonce fn2-sim-network))
+        (- byte)
+        ((unless (eq code :would-block)) (mv :no-rejected-byte fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-send-byte 0 nonce 44 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :send-after-fault fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-client-read 0 nonce fn2-sim-network))
+        ((unless (and (eq code :ok) (equal byte 44))) (mv :final-byte fn2-sim-network)))
+     (mv :pass fn2-sim-network))))
+
+(local
+ (defun fn2-network-backpressure-test ()
+   (declare (xargs :guard t))
+   (with-local-stobj fn2-sim-network
+     (mv-let (answer fn2-sim-network)
+       (fn2-network-backpressure-run fn2-sim-network)
+       answer))))
+(local
+ (assert-event
+  (and (eq (symbol-class 'fn2-network-backpressure-run (w state)) :common-lisp-compliant)
+       (eq (symbol-class 'fn2-network-backpressure-test (w state)) :common-lisp-compliant))))
+(local (assert-event (eq (fn2-network-backpressure-test) :pass)))
+
+; A half-open peer disappears without FIN. Buffered input may be consumed,
+; then receive remains pending. Attempted client input during the blackhole
+; is refused, and clearing the fault resumes the same capability without EOF.
+(local
+ (defun fn2-network-half-open-run (fn2-sim-network)
+   (declare (xargs :stobjs fn2-sim-network :guard t))
+   (b* ((fn2-sim-network (fn2-network-init 1 2 fn2-sim-network))
+        ((mv code nonce fn2-sim-network) (fn2-network-accept 0 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :accept fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-client-byte 0 nonce 11 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :queued-before-fault fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-faults 0 nonce 1 0 0 0 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :set-half-open fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-receive-byte 0 nonce fn2-sim-network))
+        ((unless (and (eq code :ok) (equal byte 11))) (mv :drain-prefix fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-receive-byte 0 nonce fn2-sim-network))
+        (- byte)
+        ((unless (eq code :would-block)) (mv :synthetic-eof fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-client-byte 0 nonce 22 fn2-sim-network))
+        ((unless (eq code :would-block)) (mv :blackhole-input fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-receive-byte 0 nonce fn2-sim-network))
+        (- byte)
+        ((unless (eq code :would-block)) (mv :blackhole-progress fn2-sim-network))
+        ((unless (eq (fn2-network-cap-code 0 nonce fn2-sim-network) :ok))
+         (mv :capability-closed fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-faults 0 nonce 0 0 0 0 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :clear-half-open fn2-sim-network))
+        ((mv code fn2-sim-network) (fn2-network-client-byte 0 nonce 22 fn2-sim-network))
+        ((unless (eq code :ok)) (mv :input-resumes fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-receive-byte 0 nonce fn2-sim-network))
+        ((unless (and (eq code :ok) (equal byte 22))) (mv :receive-resumes fn2-sim-network))
+        ((mv code byte fn2-sim-network) (fn2-network-receive-byte 0 nonce fn2-sim-network))
+        (- byte)
+        ((unless (eq code :would-block)) (mv :phantom-input fn2-sim-network)))
+     (mv :pass fn2-sim-network))))
+(local
+ (defun fn2-network-half-open-test ()
+   (declare (xargs :guard t))
+   (with-local-stobj fn2-sim-network
+     (mv-let (answer fn2-sim-network)
+       (fn2-network-half-open-run fn2-sim-network)
+       answer))))
+(local
+ (assert-event
+  (and (eq (symbol-class 'fn2-network-half-open-run (w state)) :common-lisp-compliant)
+       (eq (symbol-class 'fn2-network-half-open-test (w state)) :common-lisp-compliant))))
+(local (assert-event (eq (fn2-network-half-open-test) :pass)))

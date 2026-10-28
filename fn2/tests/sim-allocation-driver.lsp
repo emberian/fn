@@ -1,0 +1,7 @@
+(in-package "ACL2")
+(set-prover-step-limit 300000)
+(set-cbd "fn2/tests/")
+(ld "sim-allocation.lisp" :ld-error-action :continue)
+(set-guard-checking nil)
+(assert-event (fn2-sim-allocation-audit))
+(good-bye)

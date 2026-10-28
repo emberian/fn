@@ -336,17 +336,21 @@
 (fn2-ops-shape-lemmas fn2-op-recycle (slot) 1)
 (in-theory (disable fn2-op-recycle))
 
+ ; A reservation has never escaped to the adapter. Undoing it restores its
+; original generation and canonical free row; retirement belongs to finish.
 (defun fn2-op-unreserve (slot gen fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
   (let ((code (fn2-op-phase-code slot gen *fn2-op-phase-reserved* fn2-ops))
-        (reserved (fn2-ops-reserved-credits fn2-ops)))
+        (reserved (fn2-ops-reserved-credits fn2-ops))
+        (free (fn2-ops-free-count fn2-ops)))
     (cond ((not (eq code :ok)) (mv code fn2-ops))
-          ((zp reserved) (mv :state fn2-ops))
-          (t (mv-let (code fn2-ops) (fn2-op-recycle slot fn2-ops)
-               (if (or (eq code :ok) (eq code :retired))
-                   (let ((fn2-ops (update-fn2-ops-reserved-credits (- reserved 1) fn2-ops)))
-                     (mv code fn2-ops))
-                 (mv code fn2-ops)))))))
+          ((or (zp reserved) (= free 4294967295)) (mv :state fn2-ops))
+          (t (let* ((next (fn2-ops-free-head fn2-ops))
+                    (fn2-ops (fn2-ops-clear-row slot (fn2-ops-gen slot fn2-ops) next fn2-ops))
+                    (fn2-ops (update-fn2-ops-free-head slot fn2-ops))
+                    (fn2-ops (update-fn2-ops-free-count (+ 1 free) fn2-ops))
+                    (fn2-ops (update-fn2-ops-reserved-credits (- reserved 1) fn2-ops)))
+               (mv :ok fn2-ops))))))
 (fn2-ops-shape-lemmas fn2-op-unreserve (slot gen) 1)
 (in-theory (disable fn2-op-unreserve))
 

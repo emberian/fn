@@ -1,0 +1,5 @@
+(in-package "ACL2")
+(set-prover-step-limit 300000)
+(set-cbd "fn2/tests/")
+(ld "core-allocation.lisp" :ld-error-action :continue)
+(good-bye)
