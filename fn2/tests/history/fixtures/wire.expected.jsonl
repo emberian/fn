@@ -1,0 +1,12 @@
+{"f": "recover", "index": 0, "process": "native:hand:0", "time": 100, "type": "invoke", "value": {"node": "default"}}
+{"f": "recover", "index": 1, "process": "native:hand:0", "time": 110, "type": "ok", "value": {"node": "default", "posture": "ready"}}
+{"f": "post", "index": 2, "process": "native:hand:2", "time": 120, "type": "invoke", "value": {"node": "default", "observed_only": true}}
+{"f": "post", "index": 3, "process": "native:hand:2", "time": 170, "type": "ok", "value": {"code": 240, "node": "default", "observed_only": true, "reason": "article received OK"}}
+{"f": "read", "index": 4, "process": "native:hand:8", "time": 180, "type": "invoke", "value": {"message_id": "<x>", "node": "default"}}
+{"f": "read", "index": 5, "process": "native:hand:8", "time": 250, "type": "ok", "value": {"code": 220, "digest": "5efa6581358551beaf23c5e14930f08605b6ab2a0140c75c12cb3e191293b2cd", "message_id": "<x>", "node": "default"}}
+{"f": "crash", "index": 6, "process": "native:hand:16", "time": 260, "type": "invoke", "value": {"cut": "unknown", "node": "default"}}
+{"f": "crash", "index": 7, "process": "native:hand:16", "time": 270, "type": "ok", "value": {"cut": "unknown", "node": "default"}}
+{"f": "recover", "index": 8, "process": "native:hand:18", "time": 280, "type": "invoke", "value": {"node": "default"}}
+{"f": "recover", "index": 9, "process": "native:hand:18", "time": 290, "type": "ok", "value": {"node": "default", "posture": "ready"}}
+{"f": "read", "index": 10, "process": "native:hand:20", "time": 300, "type": "invoke", "value": {"message_id": "<x>", "node": "default"}}
+{"f": "read", "index": 11, "process": "native:hand:20", "time": 330, "type": "ok", "value": {"code": 430, "message_id": "<x>", "node": "default"}}

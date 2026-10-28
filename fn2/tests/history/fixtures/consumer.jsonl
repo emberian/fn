@@ -1,0 +1,8 @@
+{"kind": "invoke", "phase": "invoke", "t": 10, "test": "hand", "words": ["consumer", "register", "/control", "worker", "fn.test", "/initial.fncu"]}
+{"exit_class": "OK", "exit_code": 0, "kind": "invoke", "phase": "ok", "stdout": "consumer accepted\n", "t": 20, "test": "hand", "words": ["consumer", "register", "/control", "worker", "fn.test", "/initial.fncu"]}
+{"kind": "invoke", "phase": "invoke", "t": 30, "test": "hand", "words": ["consumer", "--json", "poll", "/control", "ghost", "/g.fncu", "/g.report"]}
+{"exit_class": "REFUSED", "exit_code": 1, "kind": "invoke", "phase": "fail", "stdout": "{\"command\":\"poll\",\"outcome\":\"refused\",\"reason\":\"unknown-consumer\"}\n", "t": 40, "test": "hand", "words": ["consumer", "--json", "poll", "/control", "ghost", "/g.fncu", "/g.report"]}
+{"kind": "invoke", "phase": "invoke", "t": 50, "test": "hand", "words": ["consumer", "bound-ack", "/control", "/saved.fncu", "/secret"]}
+{"exception": "lost reply", "kind": "invoke", "phase": "info", "stdout": "consumer uncertain\n", "t": 60, "test": "hand", "words": ["consumer", "bound-ack", "/control", "/saved.fncu", "/secret"]}
+{"kind": "store", "phase": "invoke", "t": 70, "test": "hand", "words": ["inspect", "<x>"]}
+{"kind": "store", "phase": "ok", "stdout": "unmapped", "t": 80, "test": "hand", "words": ["inspect", "<x>"]}
