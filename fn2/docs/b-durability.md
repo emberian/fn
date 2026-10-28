@@ -249,3 +249,61 @@ source/destination overlap as `:overlap`. Decode retains old row values in
 scalar stack bindings and restores them on a late refusal; one byte is read
 per transition. Successful zero-copy references retain exact source octets,
 including Message-ID octets; integrity verification remains B2b/B2c work.
+
+## 6. BLAKE3
+
+`books/blake3.lisp` is the incremental executable reference. `defcolumns` owns
+profile-sized hasher rows; each row has scalar continuation columns and 464
+u32 words: CV[8], key[8], buffered block[16], frontier[54][8]. The block's 64
+bytes are packed little-endian. Only table initialization resizes storage.
+The served path shares the scalar compression of `books/blake3-spec.lisp` (the quarry's
+`books/blake3.lisp` lifted whole with its two helpers made local, so fn2 has no quarry
+dependency); the spec's list functions are the keystones' and tests' reference only.
+
+- `fn2-b3-table-init(n, b3)` allocates; `fn2-b3-init(row, mode, k0..k7, b3)`
+  resets a row. Modes are 0 (hash), 16 (keyed), 32 (derive context), 64
+  (derive material). Hash/context use the IV; keyed/material use eight key
+  words. Derivation hashes the context in mode 32, then uses its eight output
+  words as the mode-64 key.
+- `fn2-b3-update(row, slot, gen, off, len, okind, oslot, ogen, b3, pool)`
+  returns `(mv code consumed b3)`, consuming at most 4096 bytes; `:more`
+  means the caller yields and resumes at the returned prefix length. A pool
+  refusal retains the successfully consumed prefix. `fn2-b3-read` is the
+  single checked byte-access shim for A's future range primitive.
+- `fn2-b3-update-const(row, string, off, len, b3)` has the same result for
+  constant byte strings, with `len <= 4096`. Physical pages feed
+  `"fn2/physical-page/v1"` then their exact encoded bytes, including identity
+  context and padding; B2c owns that encoding.
+- `fn2-b3-finalize(row, b3)` returns eight u32 multiple values without changing
+  the row; later updates remain valid. `fn2-b3-start-subtree(row, counter, b3)`
+  sets an empty initialized row's absolute chunk counter, aligned to 64 chunks.
+  Feed the block and call `fn2-b3-subtree-cv(row, b3)` for eight non-root words.
+- `fn2-b3-parent-cv(l0..l7, r0..r7, k0..k7, flags)` and `fn2-b3-parent-root`
+  with the same arguments return eight words using PARENT or PARENT|ROOT.
+- `fn2-b3-verify-range(row, base, source-len, block, block-len, d0..d7, b3,
+  fields)` returns `(mv code b3)`. Hash the candidate at absolute counter
+  `64*block` first. Each source block's eight CV words occupy consecutive
+  `fields.value` rows from `base`; fields capacity is a profile resource.
+  Verification starts the continuation, then consumes one CV per call until
+  `:ok` or refusal. Keep arguments and fields unchanged across `:more`.
+
+Range verification checks the candidate's actual byte count, absolute counter,
+position, partial last chunk and expected ROOT digest. A source of at most
+65536 bytes uses whole-source finalization, including empty input. Source
+length must come from the authenticated descriptor: a sibling CV alone cannot
+reveal its byte length. Truncating the candidate or the declared length of its
+final block refuses. The verifier uses hash mode; generic hash/parent APIs
+also support keyed and derive modes. Both equivalence keystones remain owed.
+
+Cost (seat review): the verifier folds every block CV of the source, so one block's check
+costs the block's own hashing plus `ceil(len/65536)-1` parent compressions, and the source's
+CVs occupy `8*nblocks` fields rows. A logarithmic sibling path (the subtree CVs along the
+block's path in the left-balanced tree) is the later improvement; the manifest's per-block CVs
+are sufficient material for either.
+
+Measured in this arm64 ACL2/SBCL executable: 6.774 MiB/s incremental versus
+6.821 MiB/s for quarry `fn-blake3`, each hashing the same 300000-byte input
+20 times (CPU time). After warmup, 100000 init/update(1025 bytes)/finalize
+iterations allocated 0 bytes; this exercises chunk completion and parent ROOT.
+All 105 official digests, 2000 random-length/random-split differential cases,
+and 306 true range checks passed, with the tested corruptions rejected.
