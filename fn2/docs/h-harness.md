@@ -206,3 +206,13 @@ The exact laptop sweep, counts, remaining non-adapter prerequisites and first
 failure line for every `other` test are recorded in `build/REPORT-H4b.md`.
 A placeholder is not a production-profile image or a published-source manifest;
 those semantic checks remain observable. The raw-SBCL guard is unchanged.
+
+## H1c
+
+The shim now forwards attribute writes and deletes to fn1 when their current
+values are identical. This supersedes H1b's statement that fn1 is never patched:
+patching shared `start` now reaches `Fn1Backend.start` and restores on exit.
+Backend replacements (`Node`, `Client`, and fn2 launch/image helpers) stay local.
+For private names supplied through `__getattr__`, the shim remembers the original
+fn1 value so the matching patch-exit delete restores it and removes the local
+shadow. Nested patches restore each level; newly introduced names stay local.

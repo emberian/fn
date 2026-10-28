@@ -50,6 +50,44 @@ class HarnessTests(unittest.TestCase):
         self.assertTrue(tomllib.loads(n.config.read_text())['auth']['protected_only'])
         self.assertIs(n.socket, n)
 
+    def test_module_patches_follow_only_shared_exports(self):
+        for backend in ('fn1', 'fn2'):
+            shim.install(backend)
+            for name in ('start', 'Node', 'Client', '_NODE_DEAD', '_line_containing'):
+                with self.subTest(backend=backend, name=name):
+                    original, local = getattr(node.fn1, name), name in vars(shim)
+                    shared = getattr(shim, name) is original
+                    with patch.object(shim, name) as outer:
+                        self.assertIs(getattr(node.fn1, name), outer if shared else original)
+                        with patch.object(shim, name) as inner:
+                            self.assertIs(getattr(node.fn1, name), inner if shared else original)
+                        self.assertIs(getattr(shim, name), outer)
+                        self.assertIs(getattr(node.fn1, name), outer if shared else original)
+                    self.assertIs(getattr(node.fn1, name), original)
+                    self.assertEqual(name in vars(shim), local)
+        with patch.object(shim, 'h1c_new_name', create=True):
+            self.assertNotIn('h1c_new_name', vars(node.fn1))
+        self.assertNotIn('h1c_new_name', vars(shim))
+
+    def test_patched_start_preserves_fn1_lifecycle_scenarios(self):
+        from tests import test_native_harness as controls
+        shim.install('fn1')
+        names = (
+            'test_a_planned_death_before_readiness_requires_its_actual_cut_marker',
+            'test_a_restart_after_a_named_cut_needs_its_own_greeting_and_has_no_cut_allowance',
+            'test_ready_none_is_asynchronous_and_an_unanswered_start_still_owes_liveness',
+        )
+        # The original controls already supply fake processes, including negative cases.
+        for harness in (node.fn1, shim):
+            with patch.object(controls, 'native_harness', harness), patch.dict(
+                    os.environ, {'FN2_OBSERVE_DIR': ''}):
+                for name in names:
+                    with self.subTest(harness=harness.__name__, scenario=name):
+                        result = unittest.TestResult()
+                        controls.NodeLivenessTests(name).run(result)
+                        self.assertEqual(result.testsRun, 1)
+                        self.assertEqual(result.errors + result.failures + result.skipped, [])
+
     def test_stub_execution_entries_are_named(self):
         n = node.Fn2Backend(self, 'absent')
         for operation, args in [('start', ()), ('try_start', ()), ('invoke', ('status',)),

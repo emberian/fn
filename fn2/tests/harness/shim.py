@@ -2,6 +2,7 @@
 import importlib as _importlib
 import os as _os
 import sys as _sys
+from types import ModuleType as _ModuleType
 from . import node as _node
 
 _fn1 = _node.load_fn1()
@@ -48,6 +49,33 @@ def __getattr__(name):
     # Some carried modules explicitly import private parser/drain helpers.
     # Preserve those imports without copying the original module metadata.
     return getattr(_fn1, name)
+
+
+class _Shim(_ModuleType):
+    """Keep writes to shared exports visible to fn1's module globals."""
+    def __setattr__(self, name, value):
+        if name in vars(_fn1) and getattr(self, name) is vars(_fn1)[name]:
+            if name not in vars(self):
+                self._forwarded_originals[name] = vars(_fn1)[name]
+            setattr(_fn1, name, value)
+        super().__setattr__(name, value)
+
+    def __delattr__(self, name):
+        shared = name in vars(_fn1) and getattr(self, name) is vars(_fn1)[name]
+        if shared:
+            if name in self._forwarded_originals:
+                # mock.patch deletes an originally nonlocal attribute on exit.
+                setattr(_fn1, name, self._forwarded_originals.pop(name))
+            else:
+                delattr(_fn1, name)
+        else:
+            self._forwarded_originals.pop(name, None)
+        if name in vars(self) or not shared:
+            super().__delattr__(name)
+
+
+_forwarded_originals = {}
+_sys.modules[__name__].__class__ = _Shim
 
 
 def _host():
