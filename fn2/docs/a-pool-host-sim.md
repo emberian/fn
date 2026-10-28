@@ -97,7 +97,8 @@ as two fixnum halves or a checked byte encoding, never as a resident bignum.
   is a new action.
 
 ## 5. Executor (contract item 5)
-`fn2-turn` calls `fn2-reference-turn`, a bounded loop over `fn2-transition`;
+`fn2-turn` calls `fn2-concrete-turn` / `fn2-concrete-loop`, the bounded
+dispatcher over `fn2-transition` and the intrusive scheduler;
 there is no fusion. A turn stops at the first exhausted `H`, `K`, or `Aturn`
 budget, or when nothing eligible remains. Results are `(mv status nobs nvisits
 nactions fn2-core)`; `fn2-core-idle-deadline` supplies the accompanying sleep
@@ -146,15 +147,44 @@ its virtual-time advance by that deadline. Layer A's machines do not yet use
 a general timer heap. Trace and ServicePosture action payloads remain out of
 scope.
 
-Tracing uses a fixed-width ring sized to four times `(H+K)`, overwrites the
-oldest entry and counts loss. Records include selection, work, additional wake,
-and up to four ordered operation references copied from the outbox. TRACE
-reconstructs its own list FIFOs and literal calendar, with observation-owner
-and actual-output evidence; WORK sums transition certificates independently.
-The work model counts byte work and structural units, plus fixed calendar
-and return overhead; measured CPU is a separate acceptance result. The owed
-refinement relation `fn2-representation-relation` is currently equality of
-the complete concrete and reference cores, including the action ring.
+`books/reference.lisp` supplies the separate reference transition system.
+Its ordinary lists hold the literal ROUND2 §C calendar, cursor, one FIFO per
+principal and four service flags. `fn2-ref-transition` consumes one posted
+result, clock mailbox or sticky signal, in that order; otherwise it visits
+one calendar entry and runs its selected continuation or service. Empty
+visits advance the cursor. Wakes returned by observation/run semantics append
+at the tail, followed by the running machine's requeue; repeated wakes retain
+position. It never reads the concrete scheduler's links or trace records.
+`fn2-ref-turn` independently accumulates work and stops at H/K/Aturn or no
+eligible work. Machine observation, bounded runs, grants and clock/ArmWake
+semantics are shared; selection, ordering, bookkeeping and budgets are not.
+
+`fn2-ref-core` is congruent to `fn2-core`, including its nested children.
+`reference-state.lisp` derives copy/comparison access from the column registry.
+TRACE steps two persistent congruent cores at every turn. The reference
+cursor, FIFOs, machine state, pool ownership/fills and control state advance
+only through reference transitions. At the adapter boundary, the two sides
+receive the same posted operation state (including submission acknowledgments,
+clock and signals) and physically written input-loan bytes. Initialization and
+process-death reset establish a fresh copy; no completed turn is copied back
+into the reference. Four service flags start at zero; layer A only clears them.
+A mismatch fails the scenario at that turn and prints the first differing
+projection field.
+
+`fn2-representation-relation(concrete, reference-core, reference-lists)`
+compares ordered outbox entries and every operation field (including kind,
+OpRef, owner, range, phase and reservations), every machine field, every pool
+metadata field (including state/fill), readable bytes and input prefixes named
+by pending successful/short completions, and control state including work
+counters. It also compares concrete FIFO contents, links, tails, calendar
+entries/position and service flags with the reference lists. Uninitialized/stale
+bytes beyond those semantic prefixes, diagnostic trace records and the unused
+reference intrusive scheduler are excluded. The refinement keystone is owed,
+not proved; evaluated teeth compare real turns and swap one reference FIFO.
+
+The fixed-width trace ring remains WORK evidence: it counts declared byte and
+structural work and records selection. WORK sums those declarations; measured
+CPU is separate. TRACE no longer treats these records as its scheduling oracle.
 
 ## 6. Simulator and checkers (contract item 4)
 Seeded PRNG (splitmix64-style over fixnum halves); profile, seed, observation order, fault choices
@@ -164,9 +194,8 @@ drawn from the seed (swarm testing); death at any action boundary and during the
 magic, its own address, a sequence number and a checksum; the stub classifies each sector as
 never-written, valid, torn/corrupt or misdirected and the file as `intact / torn tail / damaged /
 unknown` by ROUND2 §E.4's rules restricted to that format. Layer B replaces it.
-Checkers implemented at bed9edc28: 3 of 11. OWN is an independent monitor. TRACE checks the
-executor's own trace records against a list model of the calendar and FIFO rules (not yet against
-an independent reference transition system: repair R3). WORK sums the machines' self-declared
+Checkers implemented at bed9edc28: 3 of 11. OWN is an independent monitor. TRACE compares each concrete turn against the independent
+list-scheduled reference transition system (repair R3). WORK sums the machines' self-declared
 per-run counts (not yet recomputed from the outbox: repair R5). ACCOUNT is not implemented
 (`fn2-check` returns `:not-yet`); it is owed in A6 before layer D. The other seven report
 `:not-yet` until their layers. (Corrected 2026-10-28 after the Fable review, REVIEW-20261028.md
@@ -222,7 +251,7 @@ refused.
 functions with real arities), records it in the world table `fn2-owed`, proves nothing, and has a
 row in `fn2/docs/OWED.md` with its teeth. Layer A owes: pool generation/staleness, byte-fill,
 no-reuse-while-borrowed, conservation; outstanding-table result reservation; turn bounds (WORK);
-the refinement obligation of EXECUTION-MODEL §4 over `fn2-turn` and `fn2-reference-turn`.
+the refinement obligation of EXECUTION-MODEL §4 over `fn2-turn` and `fn2-ref-turn`.
 
 ## 9. Departures and open items
 - `u60` in-memory generations instead of `u64` (§2).

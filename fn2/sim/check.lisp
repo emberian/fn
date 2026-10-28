@@ -81,17 +81,12 @@
     fn2-own-observe-core-write)
   (w state)))
 
-; Registration with the history/counter evidence required by TRACE and WORK.
-; The legacy OWN entry point remains convenient for pool-only scenarios.
+ ; TRACE needs a pre-turn reference copy: call fn2-check-trace-turn.
+; A post-hoc trace record is insufficient evidence for a differential.
 (defun fn2-check-evidence (name records lost profile nobs nvisits nactions
                                 cursor queues actual-actions fn2-core fn2-own)
-  (declare (xargs :stobjs (fn2-core fn2-own) :verify-guards nil))
-  (cond ((eq name :trace)
-         (mv-let (answer next-cursor next-queues)
-           (fn2-check-trace records lost (fn2-profile-p profile)
-                            cursor queues actual-actions)
-           (declare (ignore next-cursor next-queues))
-           answer))
-        ((eq name :work)
-         (fn2-check-work records lost nobs nvisits nactions profile))
-        (t (fn2-check name fn2-core fn2-own))))
+  (declare (xargs :stobjs (fn2-core fn2-own) :verify-guards nil)
+           (ignore cursor queues actual-actions))
+  (if (eq name :work)
+      (fn2-check-work records lost nobs nvisits nactions profile)
+    (fn2-check name fn2-core fn2-own)))

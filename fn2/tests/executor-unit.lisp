@@ -1,7 +1,7 @@
 ; Executor controls and whole-state refinement witnesses. All allocations in
 ; this book are test-only snapshots, never part of fn2-turn.
 (in-package "ACL2")
-(include-book "../books/executor")
+(include-book "reference-unit")
 
 ; Snapshot the declaration, not a hand-maintained subset of its readers.
 ; Array lists retain physical index order and include unused capacity. The
@@ -183,43 +183,12 @@
              (equal (list s1 o1 v1 a1) '(:stop 1 0 0))
              (equal (list s2 o2 v2 a2) '(:stop 0 0 0))) fn2-core)))
 
-; Each side starts from an independent initialized core. Retain every byte,
-; queue slot and control scalar before and after. The current named relation
-; is EQUAL; copying the exact logical layout evaluates that whole relation.
-(defun fn2-executor-test-reference-side (profile referencep stop-p fn2-core)
-  (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
-       (fn2-core (if stop-p (fn2-exec-set-stop 1 fn2-core) fn2-core))
-       (before (fn2-executor-test-snapshot fn2-core))
-       (hyps (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)))
-       ((mv status nobs nvisits nactions fn2-core)
-        (if referencep (fn2-reference-turn fn2-core) (fn2-turn fn2-core)))
-       (bounds (and (fn2-core-wfp fn2-core)
-                    (<= nobs (fn2-profile-h profile))
-                    (<= nvisits (fn2-profile-k profile))
-                    (<= nactions (fn2-profile-aturn profile))
-                    (<= (+ nvisits (fn2-exec-turn-bytes fn2-core)
-                           (fn2-exec-turn-steps fn2-core) 1)
-                        (+ (* (fn2-profile-h profile) 24)
-                           (* (fn2-profile-k profile) (+ 1 4096 32)) 1)))))
-    (mv (list hyps before status nobs nvisits nactions bounds
-              (fn2-executor-test-snapshot fn2-core)) fn2-core)))
-(defun fn2-executor-test-reference-one (profile referencep stop-p)
+(defun fn2-executor-test-initial-snapshot ()
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
-    (mv-let (result fn2-core)
-      (fn2-executor-test-reference-side profile referencep stop-p fn2-core)
-      result)))
-(defun fn2-executor-test-refinement-run (profile remove-relation-p fn2-core)
-  (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (b* ((concrete (fn2-executor-test-reference-one profile nil nil))
-       (reference (fn2-executor-test-reference-one profile t remove-relation-p))
-       (relation (equal (nth 1 concrete) (nth 1 reference)))
-       (conclusion (equal (cddr concrete) (cddr reference))))
-    (mv (and (nth 0 concrete) (nth 0 reference)
-             (nth 6 concrete) (nth 6 reference)
-             (equal relation (not remove-relation-p))
-             (equal conclusion (not remove-relation-p))) fn2-core)))
+    (mv-let (copy fn2-core)
+      (let ((fn2-core (fn2-init-executor *fn2-profile-tiny* :echo nil fn2-core)))
+        (mv (fn2-executor-test-snapshot fn2-core) fn2-core)) copy)))
 
 (defun fn2-executor-unit-tests ()
   (declare (xargs :verify-guards nil))
@@ -235,9 +204,9 @@
            ((mv h-empty fn2-core) (fn2-executor-test-h-run nil fn2-core))
            ((mv h-runnable fn2-core) (fn2-executor-test-h-run t fn2-core))
            ((mv positive fn2-core)
-            (fn2-executor-test-refinement-run *fn2-profile-tiny* nil fn2-core))
+            (mv (fn2-ref-test nil) fn2-core))
            ((mv removal fn2-core)
-            (fn2-executor-test-refinement-run *fn2-profile-tiny* t fn2-core)))
+            (mv (fn2-ref-test t) fn2-core)))
         (mv (list (and initial zero) harvest (and h-empty h-runnable) k a positive removal)
             fn2-core)) result)))
 (assert-event (equal (fn2-executor-unit-tests) '(t t t t t t t)))
@@ -247,7 +216,7 @@
 ; rectangular shape still holds, but the H cell is not an unsigned integer.
 ; Its actual logical turn immediately returns nobs=0, violating 0 <= -1.
 (defconst *fn2-executor-test-bad-h*
-  (let ((copy (nth 1 (fn2-executor-test-reference-one *fn2-profile-tiny* nil nil))))
+  (let ((copy (fn2-executor-test-initial-snapshot)))
     (update-nth *fn2-core-control*
       (update-nth *fn2-control-h$ai* '(-1) (nth *fn2-core-control* copy)) copy)))
 (defun fn2-executor-test-control-logic-names (columns)
@@ -268,7 +237,7 @@
 (make-event
  (let* ((schema (cdr (assoc-eq 'fn2-control (table-alist 'fn2-columns (w state)))))
         (columns (cadr (member-eq :columns schema)))
-        (names (append '(fn2-turn fn2-reference-turn fn2-reference-loop
+        (names (append '(fn2-turn fn2-concrete-turn fn2-concrete-loop
                          fn2-exec-h fn2-exec-k fn2-exec-aturn
                          fn2-exec-set-turn-bytes fn2-exec-set-turn-steps
                          fn2-corep fn2-core-wfp
