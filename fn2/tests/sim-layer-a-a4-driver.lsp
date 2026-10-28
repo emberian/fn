@@ -1,23 +1,25 @@
 (in-package "ACL2")
-; Session-only launcher: identify the checkout before loading the scenario.
 :q
-(let ((process (sb-ext:run-program "python3" '("fn2/tests/scenario-revision.py")
-                 :search t :output "build/scenario-revision.lsp"
-                 :if-output-exists :supersede :error *error-output*)))
-  (unless (eql (sb-ext:process-exit-code process) 0) (sb-ext:exit :code 1)))
-(lp)
-(set-prover-step-limit 300000)
-(set-cbd "fn2/tests/")
-(ld "sim-layer-a.lisp" :ld-error-action :error)
-(ld "sim-fault-controls.lisp" :ld-error-action :error)
-(ld "sim-replay-controls.lisp" :ld-error-action :error)
-(set-guard-checking nil)
-; Session-only meter wraps the exact runtime function after leaving ACL2.
-; It preserves all five values and restores the raw definition on exit.
-:q
-(load "turn-meter.lsp")
 (handler-case
     (progn
+      ; Generate this run's revision before any scenario is loaded.
+      (let ((process (sb-ext:run-program "python3" '("fn2/tests/scenario-revision.py")
+                       :search t :output "build/scenario-revision.lsp"
+                       :if-output-exists :supersede :error *error-output*)))
+        (assert (eql (sb-ext:process-exit-code process) 0)))
+      ; LD needs LP's loading context; ACL2 errors are returned as values.
+      (multiple-value-bind (erp value state)
+          (let ((*features* (adjoin :acl2-loop-only *features*)))
+            (with-suppression
+              (ld '((set-prover-step-limit 300000)
+                    (set-cbd "fn2/tests/")
+                    (ld "sim-layer-a.lisp" :ld-error-action :error)
+                    (ld "sim-fault-controls.lisp" :ld-error-action :error)
+                    (ld "sim-replay-controls.lisp" :ld-error-action :error)
+                    (set-guard-checking nil)) :ld-error-action :error)))
+        (declare (ignore state))
+        (assert (and (not erp) (eq value :eof))))
+      (load "fn2/tests/turn-meter.lsp")
       (assert (fn2-client-oracle-control))
       (dolist (case '(:process-death :reset :half-open-deadline :nonreading-deadline
                       :client-disconnect :unattributed :at-bound :over-bound))
