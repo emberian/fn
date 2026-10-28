@@ -967,6 +967,27 @@ def _pair_rows(connection, lines: bytes, provers: dict[str, int]) -> list[tuple]
     return rows
 
 
+def _pair_lookup(connection, prover_id: int,
+                 wanted: list[tuple[bytes, bytes]]) -> dict[tuple[bytes, bytes], tuple]:
+    """The index's (required, equal) for each distinct (parent, child) digest
+    pair of WANTED under one prover: a temporary table of the pairs joined to
+    ``facts`` on its primary key (one scan of the pairs, one key search each)."""
+    distinct = list(dict.fromkeys(wanted))
+    if not distinct:
+        return {}
+    connection.execute("CREATE TEMP TABLE IF NOT EXISTS wanted (parent BLOB, child BLOB)")
+    try:
+        connection.execute("DELETE FROM wanted")
+        connection.executemany("INSERT INTO wanted VALUES (?, ?)", distinct)
+        return {(parent, child): (required, equal) for parent, child, required, equal
+                in connection.execute(
+                    "SELECT w.parent, w.child, f.required, f.equal FROM wanted w"
+                    " JOIN facts f ON f.prover = ? AND f.parent = w.parent"
+                    " AND f.child = w.child", (prover_id,))}
+    finally:
+        connection.execute("DELETE FROM wanted")
+
+
 def _pair_import(connection, log: Path) -> None:
     """Index the log's complete lines past the recorded offset."""
     try:
@@ -1129,13 +1150,19 @@ def memoized_pair_checker(cache: Path, checker=None):
             try:
                 _pair_import(connection, store)
                 prover_id = _pair_prover(connection, prover)
+                # One join against the pairs' distinct digest pairs, not one
+                # SELECT per candidate pair (tens of thousands of round trips
+                # through the Python sqlite layer at an install's selection).
+                with phase("pair-lookup"):
+                    facts = _pair_lookup(connection, prover_id, [
+                        (bytes.fromhex(digests[p]), bytes.fromhex(digests[c]))
+                        for p, c in pairs
+                        if digests[p] is not None and digests[c] is not None])
                 for p, c in pairs:
                     row = None
                     if digests[p] is not None and digests[c] is not None:
-                        row = connection.execute(
-                            "SELECT required, equal FROM facts WHERE prover = ? AND parent = ?"
-                            " AND child = ?", (prover_id, bytes.fromhex(digests[p]),
-                                               bytes.fromhex(digests[c]))).fetchone()
+                        row = facts.get((bytes.fromhex(digests[p]),
+                                         bytes.fromhex(digests[c])))
                     if row is None:
                         ask.append((p, c))
                     else:

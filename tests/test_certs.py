@@ -13,6 +13,7 @@ import hashlib
 import importlib.util
 from concurrent.futures import ThreadPoolExecutor
 import json
+import sqlite3
 import os
 from pathlib import Path
 import shutil
@@ -1935,6 +1936,19 @@ class PruneTests(unittest.TestCase):
 
 
 
+def _counting(connection_class, cache, path=None):
+    import sqlite3 as _sqlite3
+    connection = _sqlite3.connect(str(path or Path(cache) / certs.PAIR_DB), timeout=900,
+                                  isolation_level=None, factory=connection_class)
+    connection.executescript(
+        "CREATE TABLE IF NOT EXISTS provers (id INTEGER PRIMARY KEY, path TEXT UNIQUE);"
+        "CREATE TABLE IF NOT EXISTS facts (prover INTEGER, parent BLOB, child BLOB,"
+        " required INTEGER, equal INTEGER, PRIMARY KEY (prover, parent, child))"
+        " WITHOUT ROWID;"
+        "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);")
+    return connection
+
+
 class PairFactMemoTests(unittest.TestCase):
     """The certificate-alist probe's verdicts are kept in the cache, keyed by
     the two certificates' bytes (obstructions-7 item 58: every hbox_native
@@ -1979,6 +1993,44 @@ class PairFactMemoTests(unittest.TestCase):
             fourth = certs.memoized_pair_checker(cache, fake)
             fourth(certs_, [(2, 1)], other, base)
             self.assertEqual(fourth.probed, 1)
+
+    def test_a_many_pair_lookup_is_one_batched_query_with_the_same_answers(self):
+        # More pairs than SQLite's host-parameter limit, duplicates by content,
+        # and a mix of known and unknown verdicts: the batched lookup answers
+        # as the per-pair SELECT did, and issues no SELECT per pair.
+        def fake(paths, pairs, acl2, root):
+            return {pair: (pair[0] % 2 == 0, pair[1] % 3 == 0) for pair in pairs}
+
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            cache = base / "cache"
+            cache.mkdir()
+            paths = []
+            for index in range(1500):
+                path = base / f"c{index}.cert"
+                path.write_text(f"book {index}")
+                paths.append(path)
+            acl2 = base / "acl2"
+            acl2.write_text("")
+            known = [(i, i + 1) for i in range(0, 1400)]
+            certs.memoized_pair_checker(cache, fake)(paths, known, acl2, base)
+            asked = known + [(i, i + 2) for i in range(0, 1400, 2)]
+            check = certs.memoized_pair_checker(cache, fake)
+            real = sqlite3.Connection
+            selects = []
+
+            class Counting(real):
+                def execute(self, sql, *args):
+                    if sql.lstrip().upper().startswith("SELECT"):
+                        selects.append(sql)
+                    return super().execute(sql, *args)
+
+            with mock.patch.object(certs, "_pair_index", lambda c, path=None: _counting(
+                    Counting, c, path)):
+                answer = check(paths, asked, acl2, base)
+            self.assertEqual(answer, fake(paths, asked, acl2, base))
+            self.assertEqual((check.hits, check.probed), (1400, 700))
+            self.assertLess(len(selects), 20, selects[:3])
 
     def test_the_index_takes_lines_an_older_writer_appended(self):
         # An older certs.py appends verdicts to the log only; the index
