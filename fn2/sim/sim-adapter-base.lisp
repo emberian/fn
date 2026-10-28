@@ -4,6 +4,15 @@
 (include-book "sim-state")
 (include-book "sim-transfer")
 
+; Peek is read-only: frame proofs need its result, not its queue branches.
+; Keep composition on the child boundary, independent of included theories.
+(local
+ (defthm fn2-sim-update-ops-wfp
+   (implies (and (fn2-core-wfp core) (fn2-ops-wfp ops))
+            (fn2-core-wfp (update-fn2-core-ops ops core)))
+   :hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+(local (in-theory (disable fn2-storage-fence-admission fn2-outbox-peek)))
+
 (defthm fn2-sim-cap-u60-type
   (implies (natp x) (unsigned-byte-p 60 (min #xfffffffffffffff x))))
 (defthm fn2-sim-cap-u32-type
@@ -91,7 +100,8 @@
        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
                      (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
                      (fn2-ownp fn2-own) (fn2-own-wfp fn2-own))
-                (fn2-core-wfp (mv-nth ,corepos (,name ,@args fn2-core fn2-sim fn2-own)))))
+                (fn2-core-wfp (mv-nth ,corepos (,name ,@args fn2-core fn2-sim fn2-own))))
+       :hints (("Goal" :in-theory (enable fn2-core-wfp))))
      (defthm ,(fn2-columns-sym name "-SIM-TYPE")
        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
                      (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
@@ -182,6 +192,14 @@
                     (< slot (fn2-ops-rows fn2-ops)) (= (fn2-sim-active slot fn2-sim) 0)))
           (mv nil fn2-ops fn2-sim fn2-own)
         (b* ((kind (fn2-ops-kind slot fn2-ops))
+             ; Refusal is a continuation: retain the outbox head until a
+             ; fence slot is free; do not register, ack or post an I/O error.
+             (admission
+              (if (equal kind *fn2-action-fence*)
+                  (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
+                    (code) (fn2-storage-fence-admission slot fn2-sim-storage) code)
+                :ok))
+             ((unless (eq admission :ok)) (mv nil fn2-ops fn2-sim fn2-own))
              (fn2-own (fn2-own-observe-issue-parts slot fn2-pool fn2-ops fn2-own))
              (fn2-sim (fn2-sim-register slot gen fn2-ops fn2-sim))
              ((mv ack fn2-ops) (fn2-outbox-ack 1 fn2-ops))
@@ -345,7 +363,18 @@
                (= (fn2-sim-gen target fn2-sim) gen)
                (= (fn2-sim-active target fn2-sim) 1)
                (not (= (fn2-sim-kind target fn2-sim) *fn2-action-close*)))
-          (let ((fn2-sim (fn2-sim-set-cancelled target 1 fn2-sim))) (mv t fn2-sim))
+          (let* ((fencep (= (fn2-sim-kind target fn2-sim) *fn2-action-fence*))
+                 (fn2-sim (fn2-sim-set-cancelled target 1 fn2-sim))
+                 ; The cancelled target skips physical completion. Discard
+                 ; its snapshot now; its terminal lifecycle remains owed.
+                 (fn2-sim
+                  (if fencep
+                      (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
+                        (code fn2-sim-storage)
+                        (fn2-storage-fence-complete target t nil fn2-sim-storage)
+                        (let ((ignored code)) (declare (ignore ignored)) fn2-sim))
+                    fn2-sim)))
+            (mv t fn2-sim))
         (mv nil fn2-sim)))))
 (fn2-sim-shape fn2-sim-cancel-target (slot fn2-sim) 1)
 (fn2-sim-rows-frame fn2-sim-cancel-target (slot fn2-sim) 1)

@@ -40,7 +40,7 @@ A3 left ArmWake payload and wake scheduling to A4. A4 now supplies the named dea
 
 | Name | Book | Statement | Evidence | Owner |
 |---|---|---|---|---|
-| `fn2-turn-refinement` | `books/executor.lisp` | The host-called turn and scheduler-selected finite reference loop have the same status, counts, complete post-core and ordered outbox, preserve core shape, and fit the modeled byte/structural work bound and descriptor budget. `fn2-representation-relation` is identity projection for this unfused implementation. | `tests/executor-unit.lisp` compares complete registry-generated state snapshots and evaluates the complete conclusion; removal of the initial identity relation is a concrete negative witness. Certification/execution results are reported in `build/REPORT.md`. | Layer-A refinement proof. |
+| `fn2-turn-refinement` | `books/reference.lisp` | Given both core recognizers/shape invariants and `fn2-representation-relation(C, reference-core, reference-lists)`, the concrete and independently scheduled reference turns return equal status/observation/visit/descriptor counts, preserve both shapes and R, and satisfy the descriptor and modeled-work bounds. R projects ordered descriptors and all op fields, machine fields, pool metadata and live bytes, control fields, and concrete queues/calendar/services against reference lists. | `tests/reference-unit.lisp` evaluates the complete antecedent and conclusion after actual turns on two congruent cores. Swapping only the reference queue's two remaining machines falsifies R and the next-turn conclusion. Echo and scribe run the turn differential at every boundary. | Layer-A refinement proof. |
 | `fn2-turn-bounds` | `books/executor.lisp` | `nobs <= H`, `nvisits <= K`, `nactions <= Aturn` for the actual host-called function. | Budget-boundary fixtures plus independently summed WORK records over simulator turns. `fn2-executor-test-bounds-hypothesis-removal` evaluates the actual logical turn on a complete snapshot with `H=-1`: removing `fn2-corep` leaves shape true, returns zero observations, and falsifies `nobs <= H`. | Layer-A work-bound proof. |
 | `fn2-sched-starvation` | `books/sched.lisp` | A valid, continuously eligible principal appears in at most `L` calls of the actual calendar visit function. Scheduling opportunity only; no adapter-completion or wall-time bound. | `tests/sched-unit.lisp`: all 64 principals at all 80 starting cursors; tiny geometry, FIFO/repeated wakes, and a removed calendar-entry counterexample. | Layer-A scheduler proof. |
 
@@ -49,8 +49,8 @@ simulator's earliest-request wait behavior. The general indexed timer service
 for future machine kinds is not supplied by this layer-A wake mailbox.
 Trace and ServicePosture descriptor payloads remain out of scope.
 
-The registered A4 refinement statement covers identity representation, the
-finite scheduled loop, shape preservation, output equality and modeled work.
+The restated R3 refinement covers the explicit projection, independent list
+scheduling, both core shapes, output equality and modeled work.
 It is not the whole EXECUTION-MODEL §4 assurance package: semantic `Inv`
 preservation (ownership, conservation, dependencies and scheduler links),
 `BoundaryCompatible` environment contracts, initialization, and crash

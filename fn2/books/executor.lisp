@@ -1,5 +1,4 @@
-; One semantic executor. The concrete loop deliberately uses the reference
-; transition order; no fusion or operation-kind sorting is performed.
+; Concrete dispatcher over the intrusive scheduler. No fusion.
 (in-package "ACL2")
 (include-book "executor-wake")
 (include-book "machines-a-run")
@@ -115,7 +114,7 @@
 (in-theory (disable fn2-turn-status fn2-exec-eligible-p
                     fn2-exec-observation-p fn2-exec-runnable-p))
 
-(defun fn2-reference-loop (fuel h k a nobs nvisits nactions fn2-core)
+(defun fn2-concrete-loop (fuel h k a nobs nvisits nactions fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix fuel)
                   :guard (and (fn2-core-wfp fn2-core) (natp fuel)
                               (natp h) (natp k) (natp a) (natp nobs)
@@ -130,22 +129,22 @@
     (b* (((mv obs visits actions bytes steps fn2-core)
           (fn2-transition (< nobs h) (- a nactions) fn2-core))
          (fn2-core (fn2-exec-account-work bytes steps fn2-core)))
-      (fn2-reference-loop (- fuel 1) h k a (+ nobs (nfix obs))
+      (fn2-concrete-loop (- fuel 1) h k a (+ nobs (nfix obs))
                            (+ nvisits (nfix visits)) (+ nactions (nfix actions)) fn2-core)))))
-(fn2-core-shape-lemmas fn2-reference-loop (fuel h k a nobs nvisits nactions) 4)
+(fn2-core-shape-lemmas fn2-concrete-loop (fuel h k a nobs nvisits nactions) 4)
 
-(defun fn2-reference-turn (fn2-core)
+(defun fn2-concrete-turn (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (let* ((h (fn2-exec-h fn2-core)) (k (fn2-exec-k fn2-core))
          (a (fn2-exec-aturn fn2-core))
          (fn2-core (fn2-exec-set-turn-bytes 0 fn2-core))
          (fn2-core (fn2-exec-set-turn-steps 0 fn2-core)))
-    (fn2-reference-loop (+ h k) h k a 0 0 0 fn2-core)))
-(fn2-core-shape-lemmas fn2-reference-turn () 4)
+    (fn2-concrete-loop (+ h k) h k a 0 0 0 fn2-core)))
+(fn2-core-shape-lemmas fn2-concrete-turn () 4)
 
 (defun fn2-turn (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (fn2-reference-turn fn2-core))
+  (fn2-concrete-turn fn2-core))
 (fn2-core-shape-lemmas fn2-turn () 4)
 
 (defun fn2-exec-start-listeners (left id fn2-core)
@@ -165,30 +164,6 @@
        ((mv wake fn2-core) (fn2-machine-take-wake fn2-core)))
     (fn2-exec-wake wake fn2-core)))
 
-; The reference state currently IS the concrete state, including its queues,
-; bytes and output ring. This identity projection is named so a later
-; abstraction/fusion must replace the relation, not change the obligation.
-(defun-nx fn2-representation-relation (concrete reference)
-  (equal concrete reference))
-(defun-nx fn2-turn-cost (nvisits bytes steps)
-  (+ (nfix nvisits) (nfix bytes) (nfix steps) 1))
-(defun-nx fn2-turn-cost-limit (h k)
-  (+ (* (nfix h) 24) (* (nfix k) (+ 1 4096 32)) 1))
-(defthm-owed fn2-turn-refinement (concrete reference)
-  (implies (and (fn2-corep concrete) (fn2-core-wfp concrete)
-                (fn2-representation-relation concrete reference))
-    (mv-let (status nobs nvisits nactions after) (fn2-turn concrete)
-      (mv-let (rstatus robs rvisits ractions rafter) (fn2-reference-turn reference)
-        (and (equal status rstatus) (equal nobs robs)
-             (equal nvisits rvisits) (equal nactions ractions)
-             (fn2-representation-relation after rafter)
-             (fn2-core-wfp after)
-             (<= (fn2-turn-cost nvisits (fn2-exec-turn-bytes after)
-                                 (fn2-exec-turn-steps after))
-                 (fn2-turn-cost-limit (fn2-exec-h concrete) (fn2-exec-k concrete)))
-             (<= nactions (fn2-exec-aturn concrete))))))
-  :teeth "Executor tests compare complete core states, action order and counts from a shared initial state; counterexample removes the identity relation."
-  :doc "Owed identity-representation refinement of the host-called bounded loop to the scheduler-selected finite reference sequence. Modeled cost units cover observation bookkeeping and one visit plus a bounded run; no CPU theorem is claimed.")
 (defthm-owed fn2-turn-bounds (core)
   (implies (and (fn2-corep core) (fn2-core-wfp core))
     (mv-let (status nobs nvisits nactions after) (fn2-turn core)
@@ -200,6 +175,6 @@
 
 (assert-event
  (fn2-profile-exports-compliant-p
-  '(fn2-transition fn2-reference-loop fn2-reference-turn fn2-turn fn2-init-executor
+  '(fn2-transition fn2-concrete-loop fn2-concrete-turn fn2-turn fn2-init-executor
     fn2-core-idle-deadline fn2-exec-harvest fn2-exec-mailbox fn2-exec-principal
     fn2-exec-service fn2-exec-account-work) (w state)))

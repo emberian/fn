@@ -9,13 +9,21 @@
 (include-book "trace")
 (include-book "exec-state")
 
-(defstobj fn2-core
-  (fn2-core-pool :type fn2-pool)
-  (fn2-core-ops :type fn2-ops)
-  (fn2-core-sched :type fn2-sched)
-  (fn2-core-machines :type fn2-machines)
-  (fn2-core-trace :type fn2-trace)
-  (fn2-core-control :type fn2-control))
+(defun fn2-core-machine-children (names)
+  (if (atom names) nil
+    (cons (list (fn2-columns-sym (car names) "-TABLE") (car names))
+          (fn2-core-machine-children (cdr names)))))
+(make-event
+ (value `(defconst *fn2-core-children*
+           ',(append '((fn2-core-pool fn2-pool) (fn2-core-ops fn2-ops)
+                        (fn2-core-sched fn2-sched) (fn2-core-machines fn2-machines)
+                        (fn2-core-trace fn2-trace) (fn2-core-control fn2-control))
+                     (fn2-core-machine-children (fn2-machine-names (w state)))))))
+(defun fn2-core-child-fields (children)
+  (if (atom children) nil
+    (cons (list (caar children) :type (cadar children))
+          (fn2-core-child-fields (cdr children)))))
+(make-event (value `(defstobj fn2-core ,@(fn2-core-child-fields *fn2-core-children*))))
 
 ; Generate the rectangular read-over-write matrix once: adding a child does
 ; not require hand-maintaining every old child's frame facts.
@@ -52,29 +60,30 @@
           (defthm fn2-core-pool-of-update-fn2-core-ops
             (equal (fn2-core-pool (update-fn2-core-ops p c))
                    (fn2-core-pool c))))))
-(fn2-core-children-facts
- (fn2-core-pool fn2-pool) (fn2-core-ops fn2-ops)
- (fn2-core-sched fn2-sched) (fn2-core-machines fn2-machines)
- (fn2-core-trace fn2-trace) (fn2-core-control fn2-control))
-(in-theory (disable fn2-corep fn2-core-pool fn2-core-ops fn2-core-sched
-                    fn2-core-machines fn2-core-trace fn2-core-control
-                    update-fn2-core-pool update-fn2-core-ops update-fn2-core-sched
-                    update-fn2-core-machines update-fn2-core-trace update-fn2-core-control))
+(make-event (value (cons 'fn2-core-children-facts *fn2-core-children*)))
+(defun fn2-core-child-writers (children)
+  (if (atom children) nil
+    (cons (fn2-columns-pre "UPDATE-" (caar children))
+          (fn2-core-child-writers (cdr children)))))
+(defun fn2-core-child-bindings (children)
+  (if (atom children) nil
+    (cons `(,(cadar children) (,(caar children) fn2-core))
+          (fn2-core-child-bindings (cdr children)))))
+(defun fn2-core-child-wfps (children)
+  (if (atom children) nil
+    (cons `(,(fn2-columns-sym (cadar children) "-WFP") ,(cadar children))
+          (fn2-core-child-wfps (cdr children)))))
+(make-event
+ (value `(in-theory (disable fn2-corep ,@(strip-cars *fn2-core-children*)
+                  ,@(fn2-core-child-writers *fn2-core-children*)))))
 
-(defun fn2-core-wfp (fn2-core)
-  (declare (xargs :stobjs fn2-core))
-  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
-              (fn2-ops (fn2-core-ops fn2-core))
-              (fn2-sched (fn2-core-sched fn2-core))
-              (fn2-machines (fn2-core-machines fn2-core))
-              (fn2-trace (fn2-core-trace fn2-core))
-              (fn2-control (fn2-core-control fn2-core)))
-    (answer)
-    (and (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
-         (fn2-sched-wfp fn2-sched) (fn2-machines-wfp fn2-machines)
-         (fn2-trace-wfp fn2-trace) (fn2-control-wfp fn2-control)
-         (equal (fn2-control-rows fn2-control) 1))
-    answer))
+(make-event
+ (value `(defun fn2-core-wfp (fn2-core)
+           (declare (xargs :stobjs fn2-core))
+           (stobj-let ,(fn2-core-child-bindings *fn2-core-children*)
+             (answer)
+             (and ,@(fn2-core-child-wfps *fn2-core-children*)
+                  (equal (fn2-control-rows fn2-control) 1)) answer))))
 
 ; The pool has at most sixteen size classes; general profile validity alone
 ; does not impose that representation constraint.
@@ -94,16 +103,20 @@
                     fn2-pool-write fn2-pool-reset fn2-pool-read fn2-pool-rows
                     fn2-op-cell fn2-op-range fn2-op-phase))
 
-(defun fn2-core-init (profile fn2-core)
+(defun fn2-core-machine-inits (names world base)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (cons `(,(car names) (,(fn2-columns-sym (car names) "-PREPARE")
+                           (nfix ,(fn2-machine-property (car names) :capacity world))
+                           ,base
+                           (fn2-profile-generation-start profile) ,(car names)))
+          (fn2-core-machine-inits (cdr names) world `(+ ,base (nfix ,(fn2-machine-property (car names) :capacity world)))))))
+(make-event
+ (value `(defun fn2-core-init (profile fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
-                  :guard-hints (("Goal" :in-theory (enable fn2-profilep)))))
-  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
-              (fn2-ops (fn2-core-ops fn2-core))
-              (fn2-sched (fn2-core-sched fn2-core))
-              (fn2-machines (fn2-core-machines fn2-core))
-              (fn2-trace (fn2-core-trace fn2-core))
-              (fn2-control (fn2-core-control fn2-core)))
-    (fn2-pool fn2-ops fn2-sched fn2-machines fn2-trace fn2-control)
+                  :guard-hints (("Goal" :in-theory (enable fn2-machines-profilep fn2-profilep)))))
+  (stobj-let ,(fn2-core-child-bindings *fn2-core-children*)
+    ,(strip-cars (strip-cdrs *fn2-core-children*))
     (let* ((fn2-pool (fn2-pool-init
                      (fn2-profile-pool-classes profile)
                      (fn2-profile-generation-start profile)
@@ -115,14 +128,17 @@
                        (* 4 (+ (fn2-profile-h profile) (fn2-profile-k profile)))
                        (fn2-profile-trace profile) fn2-trace))
            (fn2-control (fn2-control-init profile fn2-control)))
-      (mv fn2-pool fn2-ops fn2-sched fn2-machines fn2-trace fn2-control))
-    fn2-core))
+      (let* ,(fn2-core-machine-inits (fn2-machine-names (w state)) (w state) 0)
+        (mv ,@(strip-cars (strip-cdrs *fn2-core-children*)))))
+    fn2-core))))
 (defthm fn2-core-init-type
   (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
-           (fn2-corep (fn2-core-init profile fn2-core))))
+           (fn2-corep (fn2-core-init profile fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-machines-profilep))))
 (defthm fn2-core-init-wfp
   (implies (fn2-core-profilep profile)
-           (fn2-core-wfp (fn2-core-init profile fn2-core))))
+           (fn2-core-wfp (fn2-core-init profile fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-machines-profilep))))
 (in-theory (disable fn2-core-init fn2-core-profilep))
 (assert-event
  (and (fn2-core-profilep *fn2-profile-concrete*)

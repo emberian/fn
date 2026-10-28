@@ -2,11 +2,11 @@
 ; expose total, scalar APIs; no nested child remains borrowed during I/O.
 (in-package "ACL2")
 (include-book "core")
-(defthm fn2-machine-core-child-shapes
-  (implies (fn2-core-wfp fn2-core)
-           (and (fn2-pool-wfp (fn2-core-pool fn2-core))
-                (fn2-ops-wfp (fn2-core-ops fn2-core))
-                (fn2-machines-wfp (fn2-core-machines fn2-core)))))
+
+(make-event
+ (value `(defthm fn2-machine-core-child-shapes
+           (implies (fn2-core-wfp fn2-core)
+                    (and ,@(fn2-machine-child-shapes *fn2-core-children*))))))
 (in-theory (disable fn2-machines-rows
                     fn2-core-wfp
                     fn2-ops-free-count fn2-ops-reserved-credits fn2-ops-queued
@@ -14,17 +14,17 @@
                     fn2-pool-class-counts-length fn2-pool-class-countsi
                     fn2-pool-cap fn2-pool-out-count))
 
+(make-event (value `(in-theory (disable ,@(fn2-machine-row-readers (fn2-machine-names (w state)))))))
+
 (defun fn2-machine-idp (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
     (yes) (and (natp id) (< id (fn2-machines-rows fn2-machines))) yes))
 (in-theory (disable fn2-machine-idp))
 
-(defmacro fn2-machine-access (field width)
+(defmacro fn2-machine-index-access (field width)
   (let* ((reader (fn2-columns-col-name 'fn2-machines field))
-         (writer (fn2-columns-col-name 'fn2-machines (fn2-columns-pre "SET-" field)))
-         (get (fn2-columns-col-name 'fn2-machine field))
-         (put (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "SET-" field))))
+         (get (fn2-columns-col-name 'fn2-machine field)))
     `(progn
        (in-theory (disable ,reader))
        (defun ,get (id fn2-core)
@@ -42,100 +42,20 @@
          (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                   (< (,get id fn2-core) ,(expt 2 width)))
          :rule-classes :linear)
-       (defun ,put (id value fn2-core)
-         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
-           (fn2-machines)
-           (if (and (natp id) (< id (fn2-machines-rows fn2-machines))
-                     (unsigned-byte-p ,width value))
-               (,writer id value fn2-machines) fn2-machines)
-           fn2-core))
-       (defthm ,(fn2-columns-sym put "-TYPE")
-         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                  (fn2-corep (,put id value fn2-core))))
-       (defthm ,(fn2-columns-sym put "-WFP")
-         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                  (fn2-core-wfp (,put id value fn2-core)))
-         :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-       (in-theory (disable ,get ,put)))))
+       (in-theory (disable ,get)))))
 
-(fn2-machine-access phase 8)
-(fn2-machine-access generation 60)
-(fn2-machine-access principal-slot 16)
-(fn2-machine-access account-ref 32)
-(fn2-machine-access ready-prev 32)
-(fn2-machine-access ready-next 32)
-(fn2-machine-access wait-reason 8)
-(fn2-machine-access deadline 60)
-(fn2-machine-access kind 8)
-(fn2-machine-access cap-index 32)
-(fn2-machine-access cap-nonce 32)
-(fn2-machine-access pool-slot 32)
-(fn2-machine-access pool-gen 60)
-(fn2-machine-access off 32)
-(fn2-machine-access length 32)
-(fn2-machine-access pending 32)
-(fn2-machine-access borrows 32)
-(fn2-machine-access next-free 32)
-(fn2-machine-access sequence 32)
-(fn2-machine-access cursor 32)
-(fn2-machine-access checksum 32)
-(fn2-machine-access completed 32)
-(fn2-machine-access verified 32)
-(fn2-machine-access stopped 1)
-(fn2-machine-access event 8)
-(fn2-machine-access outcome 8)
-(fn2-machine-access count 32)
-(fn2-machine-access aux0 32)
-(fn2-machine-access aux1 32)
-(fn2-machine-access event-ready 1)
+(fn2-machine-index-access kind 8)
+(fn2-machine-index-access slot 32)
 
-(defmacro fn2-machine-core-read (field id core)
-  `(,(fn2-columns-col-name 'fn2-machine field) ,id ,core))
-(defun fn2-machine-core-put-bindings (id fields)
-  (if (atom fields) nil
-    (cons `(fn2-core
-            (,(fn2-columns-col-name 'fn2-machine
-                (fn2-columns-pre "SET-" (caar fields)))
-             ,id ,(cadar fields) fn2-core))
-          (fn2-machine-core-put-bindings id (cdr fields)))))
-(defmacro fn2-machine-core-put (id &rest fields)
-  `(let* ,(fn2-machine-core-put-bindings id fields) fn2-core))
+(make-event
+ (value (cons 'progn (fn2-machine-all-field-events (fn2-machine-names (w state))
+                       (fn2-machine-names (w state)) (w state) nil))))
 
-(defmacro fn2-machine-scalar-access (field width)
-  (let* ((reader (fn2-columns-col-name 'fn2-machines field))
-         (writer (fn2-columns-pre "UPDATE-" reader))
-         (get (fn2-columns-col-name 'fn2-machine field))
-         (put (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "SET-" field))))
-    `(progn
-       (in-theory (disable ,reader))
-       (defun ,get (fn2-core)
-         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
-           (answer) (,reader fn2-machines) answer))
-       (defthm ,(fn2-columns-sym get "-NATP")
-         (implies (fn2-corep fn2-core) (natp (,get fn2-core)))
-         :rule-classes :type-prescription)
-       (defthm ,(fn2-columns-sym get "-BOUND")
-         (implies (fn2-corep fn2-core) (< (,get fn2-core) ,(expt 2 width)))
-         :rule-classes :linear)
-       (defun ,put (value fn2-core)
-         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
-           (fn2-machines)
-           (if (unsigned-byte-p ,width value) (,writer value fn2-machines) fn2-machines)
-           fn2-core))
-       (defthm ,(fn2-columns-sym put "-TYPE")
-         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                  (fn2-corep (,put value fn2-core))))
-       (defthm ,(fn2-columns-sym put "-WFP")
-         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                  (fn2-core-wfp (,put value fn2-core)))
-         :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-       (in-theory (disable ,get ,put)))))
 (fn2-machine-scalar-access accept-count 32)
 (fn2-machine-scalar-access connection-count 32)
 (fn2-machine-scalar-access free-head 32)
+(fn2-machine-scalar-access null-free-head 32)
+(fn2-machine-scalar-access active-count 32)
 (fn2-machine-scalar-access gen-limit 60)
 (fn2-machine-scalar-access echo-mode 1)
 (fn2-machine-scalar-access wake-id 32)
@@ -158,7 +78,7 @@
   (if (or (not (fn2-machine-idp id fn2-core))
           (equal (fn2-machine-wait-reason id fn2-core) 2)) fn2-core
     (let* ((tail (fn2-machine-wait-tail fn2-core))
-           (fn2-core (fn2-machine-core-put id
+           (fn2-core (fn2-machine-put id
                        (wait-reason 2) (ready-prev tail) (ready-next 4294967295)))
            (fn2-core (if (equal tail 4294967295)
                          (fn2-machine-set-wait-head id fn2-core)
@@ -180,7 +100,7 @@
              (fn2-core (if (equal next 4294967295)
                            (fn2-machine-set-wait-tail 4294967295 fn2-core)
                          (fn2-machine-set-ready-prev next 4294967295 fn2-core)))
-             (fn2-core (fn2-machine-core-put id
+             (fn2-core (fn2-machine-put id
                          (wait-reason 0) (ready-prev 4294967295)
                          (ready-next 4294967295))))
         (mv id fn2-core)))))
@@ -192,7 +112,7 @@
 (defun fn2-machine-park-pool (id class fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (not (fn2-machine-idp id fn2-core)) fn2-core
-    (let ((fn2-core (fn2-machine-core-put id (wait-reason 3) (cursor class))))
+    (let ((fn2-core (fn2-machine-put id (wait-reason 3) (cursor class))))
       (fn2-machine-set-pool-wait-id id fn2-core))))
 (fn2-machine-core-shape fn2-machine-park-pool (id class))
 
@@ -275,3 +195,33 @@
     fn2-machine-waiting-p fn2-machine-op-credit-p fn2-machine-pool-credit-p
     fn2-machine-grant-ready-p fn2-machine-grant-one
     fn2-machine-pool-capacity fn2-machine-pool-borrows fn2-machine-take-wake) (w state)))
+
+; Layer A's four declarations share this quantum. The charge call is inside
+; every return from a continuation; guard verification checks the caps there.
+(make-event
+ (value `(defun fn2-machine-charge (kind bytes steps descriptors)
+           (declare (xargs :guard
+                      (case kind ,@(fn2-machine-charge-guards (fn2-machine-names (w state)) (w state) 0)
+                        (otherwise (and (natp bytes) (natp steps) (natp descriptors))))))
+           (case kind ,@(fn2-machine-charge-arms (fn2-machine-names (w state)) 0)
+             (otherwise (mv bytes steps descriptors))))))
+
+(defun fn2-machine-idle (id fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (fn2-machine-result 0 1 0 nil fn2-core))
+(fn2-core-shape-lemmas fn2-machine-idle (id) 4)
+(defun fn2-machine-yield (id fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (fn2-machine-result 0 1 0 t fn2-core))
+(fn2-core-shape-lemmas fn2-machine-yield (id) 4)
+(defun fn2-machine-refuse-phase (id fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  ; Named invalid-phase refusal; retained stopped evidence, never an idle arm.
+  (let ((fn2-core (fn2-machine-set-stopped id 1 fn2-core)))
+    (fn2-machine-result 0 1 0 nil fn2-core)))
+(fn2-core-shape-lemmas fn2-machine-refuse-phase (id) 4)
+(defun fn2-machine-scribe-id (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-sched (fn2-core-sched fn2-core)))
+    (id) (fn2-sched-scribe-index fn2-sched) id))
+(in-theory (disable fn2-machine-scribe-id))

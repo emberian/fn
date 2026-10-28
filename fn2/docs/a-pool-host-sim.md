@@ -16,7 +16,7 @@ that is not recorded here is a defect.
 | events, actions, outstanding table, outbox | `fn2/books/vocab.lisp` | ACL2 book, guard-verified |
 | scheduler, executor loop, echo/null/scribe machines | `fn2/books/executor.lisp` (+ `fn2/books/machines-a.lisp`) | ACL2 book, guard-verified |
 | simulator: SimNetwork, SimStorage, SimClock, PRNG, faults, recovery stub | `fn2/sim/*.lisp` | ACL2 books, guard-verified |
-| checkers: TRACE, WORK, OWN, ACCOUNT (+ framework for the other seven) | `fn2/sim/check*.lisp` | ACL2 books |
+| checkers: OWN (independent), TRACE and WORK (see the caveat in §6); ACCOUNT owed in A6; framework names all eleven | `fn2/sim/check*.lisp` | ACL2 books |
 | Linux adapter (and the darwin development backend) | `fn2/host/*.lisp` | raw SBCL, loaded by a session script behind one trust tag |
 | acceptance | `fn2/tests/sim-layer-a.lisp` (simulator driver), `fn2/tests/native-echo*.{lsp,py}` | ACL2 driver; native test |
 
@@ -96,8 +96,39 @@ as two fixnum halves or a checked byte encoding, never as a resident bignum.
 - **Single-shot** accept, receive, read, send (ROUND2 D.1); a short send is terminal; the remainder
   is a new action.
 
+**Decision A-STORAGE-ABI (R4).** The core observes an I/O effect only at its
+completion, when the result is harvested. The simulator's completion-time,
+reorderable semantics is the contract: in-flight operations can complete in
+any order, and a read issued while a write to the same sectors is in flight
+may observe either value. A completed read is an observation in its own right;
+it does not establish that the overlapping write has completed or is durable.
+Only the completed fence's specified coverage establishes ordering and
+persistence (§E.3: complete dependencies, then the covering barrier).
+
+**The native adapter must obey this sentence:** an adapter may execute an
+operation physically at any time between acknowledgement and posting its
+result, but it must not make an effect observable to the core through any
+other path before that result is harvested, and the core must not rely on any
+ordering of in-flight operations other than what a completed fence establishes.
+Physical input fills remain under the exclusive loan until harvest; neither
+posting a result nor seeing bytes in the pool authorizes a core read. Physical
+write completion alone authorizes neither publication nor durable acceptance.
+
+**A5 re-do item.** The parked `fn2/a5-native-wip` adapter executes storage
+operations inline during `fn2-native-take`, after `fn2-host-outbox-ack`, and
+queues their results for later posting by `fn2-native-post-completions`.
+That is a legal schedule, including its stronger physical ordering. It needs
+no asynchronous storage rewrite to satisfy this decision. Preserve the
+acknowledge/execute/post/harvest boundary, update its machine accessors to the
+R4 declarations, and retain death cuts around each boundary. Confirm that no
+native status/read path exposes an unharvested input or treats inline write
+success as a durable core outcome. Future workers/io_uring may reorder freely
+under this same contract; their fence implementation must establish §E.3
+coverage without assuming take order.
+
 ## 5. Executor (contract item 5)
-`fn2-turn` calls `fn2-reference-turn`, a bounded loop over `fn2-transition`;
+`fn2-turn` calls `fn2-concrete-turn` / `fn2-concrete-loop`, the bounded
+dispatcher over `fn2-transition` and the intrusive scheduler;
 there is no fusion. A turn stops at the first exhausted `H`, `K`, or `Aturn`
 budget, or when nothing eligible remains. Results are `(mv status nobs nvisits
 nactions fn2-core)`; `fn2-core-idle-deadline` supplies the accompanying sleep
@@ -110,10 +141,13 @@ and its cursor. The concrete calendar is exactly four groups of sixteen
 principals followed by commit, timer/grant, wake and maintenance (80 entries);
 tiny has four principals then those services (eight entries). Tail insertion
 is idempotent. All A4 connections use anonymous principal zero. Listener rows
-occupy `[0, accept-credits)`, connections the following `C` indices, and scribe
-one final index. A4 implements the declared per-run caps 4,096 bytes, 32
-structural steps and four descriptors; its machine initializer currently
-requires those exact execution-quanta profile values. Resident capacities
+occupy `[0, accept-credits)`, followed by `C` echo rows, `C` null rows, and
+one scribe row. These disjoint global ID ranges and their inverse are generated
+from the `defmachine` declarations; echo and null share a `C`-connection
+admission count. Each kind has its own nested table. A4 implements the declared per-run caps 4,096 bytes, 32
+structural steps and four descriptors. Every continuation returns through a
+guard-checked charge against those declared simultaneous caps. The machine
+initializer requires those execution-quanta profile values. Resident capacities
 remain profile parameters.
 
 The core owns the pool, outstanding operations, scheduler, machine columns,
@@ -146,15 +180,44 @@ its virtual-time advance by that deadline. Layer A's machines do not yet use
 a general timer heap. Trace and ServicePosture action payloads remain out of
 scope.
 
-Tracing uses a fixed-width ring sized to four times `(H+K)`, overwrites the
-oldest entry and counts loss. Records include selection, work, additional wake,
-and up to four ordered operation references copied from the outbox. TRACE
-reconstructs its own list FIFOs and literal calendar, with observation-owner
-and actual-output evidence; WORK sums transition certificates independently.
-The work model counts byte work and structural units, plus fixed calendar
-and return overhead; measured CPU is a separate acceptance result. The owed
-refinement relation `fn2-representation-relation` is currently equality of
-the complete concrete and reference cores, including the action ring.
+`books/reference.lisp` supplies the separate reference transition system.
+Its ordinary lists hold the literal ROUND2 §C calendar, cursor, one FIFO per
+principal and four service flags. `fn2-ref-transition` consumes one posted
+result, clock mailbox or sticky signal, in that order; otherwise it visits
+one calendar entry and runs its selected continuation or service. Empty
+visits advance the cursor. Wakes returned by observation/run semantics append
+at the tail, followed by the running machine's requeue; repeated wakes retain
+position. It never reads the concrete scheduler's links or trace records.
+`fn2-ref-turn` independently accumulates work and stops at H/K/Aturn or no
+eligible work. Machine observation, bounded runs, grants and clock/ArmWake
+semantics are shared; selection, ordering, bookkeeping and budgets are not.
+
+`fn2-ref-core` is congruent to `fn2-core`, including its nested children.
+`reference-state.lisp` derives copy/comparison access from the column registry.
+TRACE steps two persistent congruent cores at every turn. The reference
+cursor, FIFOs, machine state, pool ownership/fills and control state advance
+only through reference transitions. At the adapter boundary, the two sides
+receive the same posted operation state (including submission acknowledgments,
+clock and signals) and physically written input-loan bytes. Initialization and
+process-death reset establish a fresh copy; no completed turn is copied back
+into the reference. Four service flags start at zero; layer A only clears them.
+A mismatch fails the scenario at that turn and prints the first differing
+projection field.
+
+`fn2-representation-relation(concrete, reference-core, reference-lists)`
+compares ordered outbox entries and every operation field (including kind,
+OpRef, owner, range, phase and reservations), every machine field, every pool
+metadata field (including state/fill), readable bytes and input prefixes named
+by pending successful/short completions, and control state including work
+counters. It also compares concrete FIFO contents, links, tails, calendar
+entries/position and service flags with the reference lists. Uninitialized/stale
+bytes beyond those semantic prefixes, diagnostic trace records and the unused
+reference intrusive scheduler are excluded. The refinement keystone is owed,
+not proved; evaluated teeth compare real turns and swap one reference FIFO.
+
+The fixed-width trace ring remains WORK evidence: it counts declared byte and
+structural work and records selection. WORK sums those declarations; measured
+CPU is separate. TRACE no longer treats these records as its scheduling oracle.
 
 ## 6. Simulator and checkers (contract item 4)
 Seeded PRNG (splitmix64-style over fixnum halves); profile, seed, observation order, fault choices
@@ -164,8 +227,31 @@ drawn from the seed (swarm testing); death at any action boundary and during the
 magic, its own address, a sequence number and a checksum; the stub classifies each sector as
 never-written, valid, torn/corrupt or misdirected and the file as `intact / torn tail / damaged /
 unknown` by ROUND2 §E.4's rules restricted to that format. Layer B replaces it.
-Checkers implemented in A: TRACE, WORK, OWN, ACCOUNT; the framework names all eleven and the
-other seven report `not-yet` until their layers.
+Checkers implemented at bed9edc28: 3 of 11. OWN is an independent monitor. TRACE compares each concrete turn against the independent
+list-scheduled reference transition system (repair R3). WORK sums the machines' self-declared
+per-run counts (not yet recomputed from the outbox: repair R5). ACCOUNT is not implemented
+(`fn2-check` returns `:not-yet`); it is owed in A6 before layer D. The other seven report
+`:not-yet` until their layers. (Corrected 2026-10-28 after the Fable review, REVIEW-20261028.md
+finding 2: an earlier revision of this paragraph claimed ACCOUNT was implemented.)
+
+**Storage stamps and fence slots (S1).** `stamp` identifies the cached
+completed-write version; `snapshot-stamp` freezes it at fence submission.
+`durable-stamp` records the last version established by an honest fence or
+completed FUA, not the provenance of arbitrary media bytes. A live tear changes
+media bytes without advancing that stamp, so an honest fence still persists its
+covered write. Dirty means `stamp > durable-stamp`; a reopened stale cache never
+authorizes a crash landing over a newer durable version, even beside dirty bytes
+in the same 512-byte unit. FUA persists only its own request.
+
+`:fence-slots` defaults to 1 per simulated storage domain; both tiny and concrete
+profiles specify 1, independently of `O`. Operation tokens map to occupied slots;
+a second capture with no free slot returns `:exhausted` without changing the
+first snapshot. The adapter retains the unacknowledged outbox action for retry.
+Completion (honest, lying or failed) and cancellation release the slot; death and init
+invalidate all slots. Each slot stores one full byte image and one u60 stamp
+per byte: 147,456 bytes for tiny's four sectors, 589,824 for concrete's sixteen
+sectors on SBCL (u60 arrays use 8 bytes per element), excluding array headers and
+8 bytes of owner metadata per slot. `:sim-sectors` scales this cost linearly.
 
 **A3 scribe format.** The probe is append-only, with one record per 4,096-byte
 sector. Fields are little-endian u32: magic `0x324e4653` at byte 0, version `1`
@@ -217,7 +303,7 @@ refused.
 functions with real arities), records it in the world table `fn2-owed`, proves nothing, and has a
 row in `fn2/docs/OWED.md` with its teeth. Layer A owes: pool generation/staleness, byte-fill,
 no-reuse-while-borrowed, conservation; outstanding-table result reservation; turn bounds (WORK);
-the refinement obligation of EXECUTION-MODEL §4 over `fn2-turn` and `fn2-reference-turn`.
+the refinement obligation of EXECUTION-MODEL §4 over `fn2-turn` and `fn2-ref-turn`.
 
 ## 9. Departures and open items
 - `u60` in-memory generations instead of `u64` (§2).
