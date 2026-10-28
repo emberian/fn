@@ -1,0 +1,36 @@
+# fn2 execution model: round 1 position (the coordinator, 2026-10-28)
+
+This is the opening position for a consultation with Codex (Astra). The question: what execution model should fn2 have, so that it performs well, verifies well, and serves the project for years. Ember's framing, verbatim: "Regarding pure step/state/event/effects: is **this** why we're fundamentally bottlenecked on the performance of our software? are you familiar with 'tigerstyle' from tigerbeetle etc? there are definitely better ways to be doing this"; "we need an extremely methodical approach ... from the bottom up"; "semantics-first and not worry as much about the proofs until we've actually gotten the implementation into a state where we WANT assurance from it"; "this is the persistent event log between systems"; "the best possible in-memory/hybrid persistent representation ... foundational orthogonal persistence"; "clients cant crash us regardless of what they send"; "a full up-front resource accounting of all resources expended by the system on behalf of its users"; "a laggy disk that needs maintenance is a real fact of life"; "BP is product"; "the web reader inside the node". And a finding: "one owner / one step / one lock" was the previous coordinator's design, never ember's words.
+
+## What fn is today (evidence in the sibling documents)
+- `step(state, event) -> (state', effects)` in ACL2, with one mutation owner under a service mutex in the host, a connection mux, and about 1,900 host-to-book entry points. The host decides lock order, cache hits, cold waits, the connection cap (620 host functions branch on policy no book decides).
+- A POST changes representation 18 times between socket and log, 16 under the owner mutex; 227 syscalls; 3 ms CPU. ARTICLE p99 at 16 readers is 131 ms against a 5 µs design floor. The owner, the store node and the view are 15-, 14- and 9-element cons tuples. (REPRESENTATION-HISTORY-20261028.md, ENVELOPE-AND-HOST.md)
+- The books model I/O well: a crash model (inodes, pending ops, per-inode fsync, torn writes, fsyncgate) and a runtime contract (actions and completions by slot/incarnation/op, a buffer pool with workspace/leased/handed ownership, explicit hands, cancellation, rejection of forged completions). What they miss: corruption at rest, read failure, misdirected I/O, lost writes after fsync :ok, reordering under O_DIRECT, a block-device level (papers README, 22 rows).
+- Only SHA-256 and HMAC are in ACL2; TLS, Ed25519 and ML-DSA are C via FFI, and ember has ruled that right.
+
+## Constraints the model must satisfy
+C1. Deterministic: given the same inputs in the same order, the same state. Deterministic simulation (VOPR-style) is the primary test; the natives are the classical gate.
+C2. Bounded: every queue, buffer, batch and per-step work has a hard bound set at start; no allocation after init on the served path; a client cannot exhaust anything another client needs (isolation; "bounded, metered, backflow-safe").
+C3. Batched: one flush per commit batch; completions consumed in bulk; machines stepped in batches by kind; one syscall per loop iteration where the backend allows.
+C4. One representation for bytes from socket to log: a handle into one byte pool; the octet list exists only in the logic.
+C5. The semantics is a pure function of a trace, so that `specs/node-functionality.md`'s refinement is statable later without redesign; but proofs are not a gate now.
+C6. The host is small (3-4K lines Linux; a block-device-shaped primitive set of about 21), and the same core runs on robigalia (seL4, no kernel FS) with a different host.
+C7. Full resource accounting per principal, as state the core holds, not host counters.
+C8. Resumable long work: rendering a 16 MiB article or scanning a group is state, not a long call.
+
+## Three candidate models
+**A. Keep the pure step, fix the realization.** One core step function over a stobj state, one executor thread, actions/completions as today's runtime contract already says, but: state in stobjs (no tuples), bytes in one pool, batching and group commit modelled as machines, bounded work per step with continuation state. Verifies well (it is the existing refinement shape). Risk: the step-per-event granularity and the "one step is the quantum" fallacy; every completion re-enters the step; the effect list is consed.
+
+**B. TigerStyle state machine with explicit batching.** The core exposes `prepare(batch)`/`commit(batch)` over a fixed set of operation kinds (like TigerBeetle's state machine with its `prefetch`, `commit`); the executor is a single-threaded event loop over io_uring-shaped queues; connections are machines whose only outputs are byte ranges to send and requests to the core; the core never sees a socket. Verifies well if the batch is the step: `step(state, batch) -> (state', outputs)`. Risk: NNTP is interactive per connection (one command at a time, replies stream), so "batch" is a batch of commands from many connections, and per-connection state lives beside the core.
+
+**C. Pipeline of machines with typed queues (Seastar/thread-per-core).** Parse, decide, store, render as stages with bounded queues between them; one thread per core, data partitioned by group or connection. Fastest ceiling; worst for verification (concurrency in the model) and for "clients can't crash us" (cross-core isolation). Probably wrong for a node whose expensive thing is one flush per batch (the envelope shows CPU is the ceiling only at ~67k POSTs/s).
+
+## The coordinator's opening proposal
+B, with A's verification shape: the semantics is `step(state, batch-of-events) -> (state', batch-of-outputs)` where events are already-parsed, already-validated commands (parsing and validation are per-connection machines outside the core, over the byte pool, with their own bounds); the core's state is a stobj world (fixed arrays: article index, group table, principals, cursors, in-flight batch); outputs are typed records naming byte ranges and completions wanted; one executor loop, one thread, io_uring with an epoll fallback; group commit is a core machine; resumable work is core state. Verification later proves properties of `step` over traces of batches, which is the same refinement shape as today with the batch as the step. The pure-step idea was never the bottleneck; the per-event granularity, the host-side policy, and the representations were.
+
+## What I want from Codex (Astra)
+1. Attack the proposal: where does it fail C1-C8? Where does NNTP's interactivity (streaming replies, TAKETHIS windows, XOVER ranges, a 16 MiB BODY) break "the batch is the step"?
+2. Specify the core/host boundary precisely: the event kinds entering the core, the output kinds leaving it, who owns the byte pool, where TLS sits, where the consumer wait/wake lives, where per-principal accounting lives.
+3. State what is proved about `step` first when assurance comes (the five server-robustness theorems: no crash, bounded work, isolation, durable acceptance, exact identity) and whether the model makes each one a statement about `step` alone.
+4. Give the best counter-model if you have one, with the same constraints, and say which you'd build.
+Answer in a document, with arguments, not a vote. Cite the sibling documents by path when you rely on them.
