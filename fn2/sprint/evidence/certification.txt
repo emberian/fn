@@ -1,0 +1,66 @@
+build/fn2-certify-dlxn0P
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/columns.cert (1.521s) at 28-Oct-2026 16:24:31.005
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/owed.cert (0.198s) at 28-Oct-2026 16:24:31.245
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/pool.cert (13.476s) at 28-Oct-2026 16:24:44.767
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/profile.cert (0.259s) at 28-Oct-2026 16:24:45.070
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/vocab.cert (239.636s) at 28-Oct-2026 16:28:44.754
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/machines.cert (0.314s) at 28-Oct-2026 16:28:45.115
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/machines-a.cert (65.009s) at 28-Oct-2026 16:29:50.171
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/sched.cert (21.975s) at 28-Oct-2026 16:30:12.203
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/trace.cert (10.763s) at 28-Oct-2026 16:30:23.012
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/exec-state.cert (3.514s) at 28-Oct-2026 16:30:26.573
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/core.cert (13.863s) at 28-Oct-2026 16:30:40.484
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/machines-a-access.cert (13.316s) at 28-Oct-2026 16:30:53.846
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/executor-access.cert (11.459s) at 28-Oct-2026 16:31:05.350
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/executor-wake.cert (1.215s) at 28-Oct-2026 16:31:06.623
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/machines-a-scribe.cert (1.514s) at 28-Oct-2026 16:31:08.180
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/machines-a-run.cert (6.016s) at 28-Oct-2026 16:31:14.240
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/executor.cert (7.251s) at 28-Oct-2026 16:31:21.550
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/reference-state.cert (18.111s) at 28-Oct-2026 16:31:39.744
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/reference.cert (2.177s) at 28-Oct-2026 16:31:41.970
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/check-own.cert (23.391s) at 28-Oct-2026 16:32:05.407
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/check-trace.cert (2.043s) at 28-Oct-2026 16:32:07.567
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/check-work.cert (0.196s) at 28-Oct-2026 16:32:07.807
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/check.cert (1.848s) at 28-Oct-2026 16:32:09.697
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/network.cert (3.876s) at 28-Oct-2026 16:32:13.616
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/prng.cert (0.966s) at 28-Oct-2026 16:32:14.628
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/storage.cert (2.033s) at 28-Oct-2026 16:32:16.711
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/sim-state-data.cert (215.171s) at 28-Oct-2026 16:35:51.939
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/sim-state.cert (18.868s) at 28-Oct-2026 16:36:10.858
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/sim-transfer.cert (8.728s) at 28-Oct-2026 16:36:19.632
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/sim-adapter-base.cert (504.390s) at 28-Oct-2026 16:44:44.074
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/sim.cert (675.812s) at 28-Oct-2026 16:55:59.935
+
+build/fn2-certify-T571M1
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sim/echo.cert (286.982s) at 28-Oct-2026 17:00:48.508
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/c/runs.cert (7.777s) at 28-Oct-2026 17:00:56.347
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/d/parser.cert (1.832s) at 28-Oct-2026 17:00:58.224
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/d/machine.cert (401.929s) at 28-Oct-2026 17:07:40.204
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/d/connection.cert (1.888s) at 28-Oct-2026 17:07:42.150
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/d/owed.cert (1.688s) at 28-Oct-2026 17:07:43.880
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/tests/d-exchange.cert (3.796s) at 28-Oct-2026 17:07:47.727
+
+build/fn2-certify-pgLxJt
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/assumptions-integrity.cert (0.188s) at 28-Oct-2026 17:07:49.036
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/blake3-spec.cert (3.597s) at 28-Oct-2026 17:07:52.679
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/layout.cert (23.897s) at 28-Oct-2026 17:08:16.621
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/blake3.cert (6.777s) at 28-Oct-2026 17:08:23.450
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/format.cert (0.409s) at 28-Oct-2026 17:08:23.904
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/books/format-check.cert (9.625s) at 28-Oct-2026 17:08:33.578
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/c/seal.cert (3.846s) at 28-Oct-2026 17:08:37.476
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/c/page-lookup.cert (0.598s) at 28-Oct-2026 17:08:38.119
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/tests/c-examples.cert (0.880s) at 28-Oct-2026 17:08:39.046
+
+build/sprint-root-cert.log
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/tests/integration.cert (4.563s) at 28-Oct-2026 17:09:19.735
+
+build/sprint-d-final-cert.log
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/d/parser.cert (1.838s) at 28-Oct-2026 17:12:43.737
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/d/connection.cert (2.152s) at 28-Oct-2026 17:12:45.936
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/d/owed.cert (2.128s) at 28-Oct-2026 17:12:48.110
+
+build/sprint-d-final-cert-2.log
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/tests/d-exchange.cert (4.285s) at 28-Oct-2026 17:13:36.760
+
+build/sprint-root-final-cert-2.log
+Built /Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/tests/integration.cert (3.812s) at 28-Oct-2026 17:15:10.358

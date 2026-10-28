@@ -1,0 +1,58 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 28, 2026  14:11:32.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:FN .
+      "/Users/ember/dev/fn/build/lanes/fn2/sprint-cd/")
+ (:SYSTEM .
+          "/Users/ember/tools/acl2-fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !> "ACL2"
+ACL2 !> 5000000
+ACL2 !> "/Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/tests/"
+ACL2 !>
+Summary
+Form:  ( INCLUDE-BOOK "c-examples" ...)
+Rules: NIL
+Time:  0.44 seconds (prove: 0.00, print: 0.00, other: 0.44)
+ "/Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/tests/c-examples.lisp"
+ACL2 !>
+Masking guard violations but still checking guards except for self-
+recursive calls.  To avoid guard checking entirely, :SET-GUARD-CHECKING
+:NONE.  See :DOC set-guard-checking.
+
+ACL2 >
+Exiting the ACL2 read-eval-print loop.  To re-enter, execute (LP).
+* C EXAMPLES (:SEAL :SEALED-VOLATILE :SEAL-CALLS 45 :DIGEST
+            (2393611324 3288274306 106488177 59901363 2559951232 2394012881
+             2145352107 767565418)
+            :CHECK :OK :CHECK-CALLS 19 :IMMUTABLE :STATE :CORRUPTION :BAD-HASH
+            :LOOKUP
+            (:PRESENT :FOUND 1 :ABSENT :ABSENT :YIELD :YIELD 1 :RESUME :FOUND 1
+             :SAME-TAG T :DIFFERENT-OCTETS :DIFFERENT)
+            :PAGE-LOOKUP
+            (:PRESENT :FOUND 1 :TAG 42 :ABSENT :ABSENT :YIELD :YIELD 1 :RESUME
+             :FOUND 1 :OTHER-ID :FOUND 0 :SAME-TAG T)
+            :SOURCE-RECLAIMED T :CURSOR
+            (:FIRST (:YIELD 0 2 900 54) :RESUME (:DONE 2 1 1000000 27)
+             :BYTE-YIELD (:YIELD 0 1 2 27))
+            :SUMMARY-CUTS T :SUMMARY-MUTANT T :MALFORMED :MALFORMED-ENTRY
+            :BAD-PHASE :STATE)
+C SEAL / EXACT-IDENTITY / SPARSE-CURSOR / SUMMARY PASS
+SPRINT-EXAMPLE-PASS c-examples-driver

@@ -1,0 +1,42 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 28, 2026  14:11:32.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:FN .
+      "/Users/ember/dev/fn/build/lanes/fn2/sprint-cd/")
+ (:SYSTEM .
+          "/Users/ember/tools/acl2-fn/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !> "ACL2"
+ACL2 !> (PROOF-TREE PROVE EVENT SUMMARY WARNING OBSERVATION)
+ACL2 !> 5000000
+ACL2 !> "/Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/tests/"
+ACL2 !> "/Users/ember/dev/fn/build/lanes/fn2/sprint-cd/fn2/sprint/tests/integration.lisp"
+ACL2 !>
+Masking guard violations but still checking guards except for self-
+recursive calls.  To avoid guard checking entirely, :SET-GUARD-CHECKING
+:NONE.  See :DOC set-guard-checking.
+
+ACL2 > :PASSED
+ACL2 >SPRINT ADMISSION 
+(:FULL-C-NO-WRITE T :T1-SHAPE-POSITIVE T :T1-INVARIANT-REMOVAL T)
+NIL
+ACL2 >SPRINT-EXAMPLE-PASS integration-driver
+NIL
+ACL2 >
