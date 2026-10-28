@@ -165,3 +165,44 @@ the socket paths here. The new provisioning controls and fn2 empty surface run
 are executable without that privilege; fn1 service verification remains the
 seat's hbox work. No image was built, no SBCL was started, and H4 does not change
 H2b's files or Git's index.
+
+
+## H4b
+
+The fn2 sweep now provisions `build/fn2-host-placeholder/fn` whenever `FN2_HOST`
+(default `fn2/host/fn`) does not exist. Creation is idempotent, including file
+mtimes and executable permissions. Every child receives the resolved `FN2_HOST`
+and all native image aliases, including reference/profiling aliases. Functional
+opt-ins and the slow peer-row functional witness are enabled; measurement flags
+remain explicit opt-ins. An unset OpenSSL tool path resolves through PATH.
+
+The POSIX shell launcher delegates to an inert shell runtime, prints
+`fn2 layer D not yet serving: fn <argv>` on stderr and exits `EXIT.REFUSED` (1),
+fn1's known-refusal class from `tools/outcome_codes.py`. There is no separate
+service-unavailable exit class; `NOT_CONNECTED` describes a transport attempt.
+Core, world-deps, library and runtime-home files carry placeholder headers;
+`image.sha256` records their actual bytes. The launcher's `--core` / inert
+`--eval placeholder` fields let packaging readers inspect it; no Lisp executes.
+`native_env.image_identity()` computes launcher/core/runtime hashes, with the
+same actual launcher/core hashes exported under developer identity names.
+The source label is `fn2-host-placeholder`, not a certification or source commit.
+A supplied real host is preserved. Node, run, start and start_filed retain their
+named NodeDead stub behavior; direct execution gets the shell refusal instead.
+
+`named-placeholder` records a refusal found in full exception text, PIPE stderr,
+or inherited stderr captured for that test/fixture. Original outcomes and first
+exception lines are retained. Capturing never changes a subprocess result and
+resets evidence between tests and fixtures. Successful assertions remain `ok`.
+The explicit `intended-skips.json` table matches literal reason prefixes only for
+its listed modules: measurement opt-ins (R measurements are published, not gated),
+Linux prerequisites, external fixtures, and the live public-node opt-in.
+Linux entries apply only off Linux. The checkpoint reasons mention an image,
+but their decorators also require Linux; the image and functional opt-in are
+provided, leaving only that platform predicate. Unlisted skips remain `other`.
+Inventory retirement is reported separately from these categories.
+
+This supersedes H4's absent-host digest sentinels and empty OpenSSL substitution.
+The exact laptop sweep, counts, remaining non-adapter prerequisites and first
+failure line for every `other` test are recorded in `build/REPORT-H4b.md`.
+A placeholder is not a production-profile image or a published-source manifest;
+those semantic checks remain observable. The raw-SBCL guard is unchanged.

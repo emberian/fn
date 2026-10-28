@@ -2,7 +2,7 @@
 import argparse
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import functools
 import importlib
 import inspect
@@ -12,13 +12,101 @@ from pathlib import Path
 import re
 import shlex
 import signal
+import shutil
 import subprocess
 import sys
 import time
+import tempfile
+from unittest.mock import patch
 import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
 PREFIX = 'node dead: fn2 layer D not yet serving'
+PLACEHOLDER_PREFIX = 'fn2 layer D not yet serving: fn'
+
+
+def placeholder(directory=None):
+    """Packaging inputs, explicitly inert; never an SBCL image."""
+    from tools.outcome_codes import EXIT
+    from tools.native_env import sha256_file
+    directory = Path(directory or ROOT / 'build/fn2-host-placeholder').resolve()
+    host = directory / 'fn'
+    runtime = directory / 'runtime/refuse'
+    files = {
+        'fn': ('#!/bin/sh\n# fn2 placeholder launcher; no service or image\n'
+               f"export SBCL_HOME='{directory / 'runtime/home'}'\n"
+               f'exec "{runtime}" --core "{host}.core" --eval placeholder -- "$@"\n'),
+        'runtime/refuse': ('#!/bin/sh\n# fn2 placeholder runtime; never SBCL\n'
+                          'while [ "$#" -gt 0 ] && [ "$1" != -- ]; do shift; done\n'
+                          '[ "$#" -eq 0 ] || shift\n'
+                          f'printf \'%s\\n\' "{PLACEHOLDER_PREFIX} $*" >&2\n'
+                          f'exit {int(EXIT.REFUSED)}\n'),
+    }
+    for name in ('fn.core', 'fn.world-deps', 'runtime/home/README',
+                 'lib/libfn-mldsa65.dylib', 'lib/libfn-deflate.dylib', 'lib/libfn-blake3.dylib'):
+        files[name] = f'# fn2 placeholder {name}; layer D not yet serving\n'
+    for name, contents in files.items():
+        path = directory / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists() or path.read_text() != contents:
+            path.write_text(contents)
+        if name in ('fn', 'runtime/refuse') and path.stat().st_mode & 0o777 != 0o755:
+            path.chmod(0o755)
+    checksums = '# fn2 placeholder checksums; no image qualification\n' + ''.join(
+        f'{sha256_file(directory / name)}  {name}\n' for name in files)
+    manifest = directory / 'image.sha256'
+    if not manifest.exists() or manifest.read_text() != checksums:
+        manifest.write_text(checksums)
+    return host
+
+
+@functools.lru_cache(maxsize=1)
+def intended_skips():
+    return json.loads(Path(__file__).with_name('intended-skips.json').read_text())
+
+
+def intended_category(module, reason):
+    return next((entry['category'] for entry in intended_skips()
+                 if module in entry['modules'] and reason.startswith(entry['reason_prefix'])
+                 and (entry['category'] != 'linux-only' or not sys.platform.startswith('linux'))), None)
+
+
+def placeholder_line(value):
+    if isinstance(value, bytes):
+        value = value.decode('utf-8', 'replace')
+    text = str(value or '')
+    index = text.find(PLACEHOLDER_PREFIX + ' ')
+    return text[index:].splitlines()[0] if index >= 0 else ''
+
+
+@contextmanager
+def capture_refusals(result):
+    """Observe PIPE and inherited stderr without changing subprocess outcomes."""
+    original_run = subprocess.run
+    def run(*args, **kwargs):
+        try:
+            answer = original_run(*args, **kwargs)
+        except subprocess.CalledProcessError as error:
+            result.refusal = placeholder_line(error.stderr) or result.refusal
+            raise
+        result.refusal = placeholder_line(answer.stderr) or result.refusal
+        return answer
+    with tempfile.TemporaryFile() as captured:
+        saved = os.dup(2)
+        try:
+            sys.stderr.flush()
+            os.dup2(captured.fileno(), 2)
+            result.stderr_capture = captured
+            with patch.object(subprocess, 'run', run):
+                yield
+        finally:
+            sys.stderr.flush()
+            os.dup2(saved, 2)
+            captured.seek(0)
+            for chunk in iter(lambda: captured.read(65536), b''):
+                os.write(saved, chunk)
+            os.close(saved)
+            result.stderr_capture = None
 
 
 def inventory():
@@ -76,15 +164,30 @@ class Result(unittest.TestResult):
         self.active = None
         self.started = 0
         self.before = 0
+        self.refusal = ''
+        self.stderr_capture = None
+        self.stderr_offset = 0
+
+    def reset_capture(self):
+        self.refusal = ''
+        if self.stderr_capture:
+            self.stderr_offset = os.lseek(self.stderr_capture.fileno(), 0, os.SEEK_END)
 
     def startTest(self, test):
         super().startTest(test)
         self.active = test.id()
+        self.reset_capture()
         self.started, self.before = time.monotonic(), self.assertions
         os.environ['FN2_TEST_ID'] = test.id()
 
     def record(self, test, outcome, **fields):
         active = self.active == test.id()
+        if self.stderr_capture:
+            size = os.lseek(self.stderr_capture.fileno(), 0, os.SEEK_END) - self.stderr_offset
+            captured = os.pread(self.stderr_capture.fileno(), size, self.stderr_offset)
+            self.refusal = placeholder_line(captured) or self.refusal
+        if self.refusal:
+            fields['placeholder_reason'] = self.refusal
         entry = row(test.id(), outcome, duration=time.monotonic() - self.started if active else 0,
                     assertions=self.assertions - self.before if active else 0, **fields)
         # A test can fail in a subtest and again during cleanup. Keep all
@@ -96,6 +199,8 @@ class Result(unittest.TestResult):
                 prior.update(outcome=outcome, exception=fields.get('exception', ''))
         else:
             self.records.append(entry)
+        if not active:
+            self.reset_capture()
 
     def stopTest(self, test):
         for entry in self.records:
@@ -104,6 +209,7 @@ class Result(unittest.TestResult):
                              assertions=self.assertions - self.before)
         super().stopTest(test)
         self.active = None
+        self.reset_capture()
         os.environ.pop('FN2_TEST_ID', None)
 
     def addSuccess(self, test):
@@ -112,11 +218,11 @@ class Result(unittest.TestResult):
 
     def addFailure(self, test, err):
         super().addFailure(test, err)
-        self.record(test, 'fail', exception=first_line(err))
+        self.record(test, 'fail', exception=first_line(err), exception_text=str(err[1]))
 
     def addError(self, test, err):
         super().addError(test, err)
-        self.record(test, 'error', exception=first_line(err))
+        self.record(test, 'error', exception=first_line(err), exception_text=str(err[1]))
 
     def addSkip(self, test, reason):
         super().addSkip(test, reason)
@@ -134,7 +240,7 @@ class Result(unittest.TestResult):
         super().addSubTest(test, subtest, err)
         if err is not None:
             outcome = 'fail' if issubclass(err[0], test.failureException) else 'error'
-            self.record(test, outcome, exception=first_line(err), subtest=str(subtest))
+            self.record(test, outcome, exception=first_line(err), exception_text=str(err[1]), subtest=str(subtest))
 
 
 def module_name(name):
@@ -142,10 +248,15 @@ def module_name(name):
 
 
 def run_one(name, backend, retired_skip=False):
+    result = Result()
+    with capture_refusals(result) if backend == 'fn2' else nullcontext():
+        return _run_one(name, backend, retired_skip, result)
+
+
+def _run_one(name, backend, retired_skip, result):
     from . import shim
     shim.install(backend)
     module = module_name(name)
-    result = Result()
     try:
         loaded = importlib.import_module(module)
         suite = unittest.defaultTestLoader.loadTestsFromModule(loaded)
@@ -181,7 +292,8 @@ def run_one(name, backend, retired_skip=False):
         if fixture:
             result.records.append(row(test.id(), fixture['outcome'],
                 exception=fixture['exception'], reason=fixture['skip_reason'],
-                fixture=fixture['test']))
+                fixture=fixture['test'], placeholder_reason=fixture.get('placeholder_reason', ''),
+                exception_text=fixture.get('exception_text', '')))
         else:
             result.records.append(row(test.id(), 'error', exception='test did not execute'))
     # Setup events remain separate evidence; their assertions are counted once,
@@ -196,8 +308,18 @@ def run_one(name, backend, retired_skip=False):
 def finish(name, backend, records, collected, assertions, fixtures=()):
     for entry in records:
         if backend == 'fn2' and entry['outcome'] != 'ok':
-            entry['classification'] = ('named-node-dead' if entry['exception'].startswith(PREFIX)
-                                       else 'other')
+            category = intended_category(name, entry['skip_reason']) if entry['outcome'] == 'skip' else None
+            refusal = (entry.get('placeholder_reason') or
+                       placeholder_line(entry.get('exception_text', entry['exception'])))
+            entry['classification'] = ('retired' if entry['skip_reason'].startswith('retired (inventory):') else
+                'intended-skip' if category else
+                'other' if entry['outcome'] == 'skip' else
+                'named-node-dead' if entry['exception'].startswith(PREFIX) else
+                'named-placeholder' if refusal else 'other')
+            if category:
+                entry.update(intended_skip=True, skip_category=category)
+            if refusal:
+                entry['placeholder_reason'] = refusal
     outcomes = {r['outcome'] for r in records}
     status = ('any error' if 'error' in outcomes else 'any fail' if
               outcomes & {'fail', 'unexpected-success'} else 'all ok')
@@ -217,19 +339,22 @@ def write_json(path, data):
 def provision(names, args, parent=None):
     """One native_env plan for the selection; no shell evaluation or shared mutation.
 
-    Only the three documented box substitutions expand. An unset tool/fixture
-    variable expands to empty, leaving its pre-node prerequisite observable.
-    fn2 is a single executable: its bytes supply all three image digests.
+    Only the three documented box substitutions expand. An unset
+    fixture variable expands to empty; OpenSSL defaults to the executable on PATH.
+    fn2 placeholder identities come from native_env and the actual sibling bytes.
     """
     from tools import native_env
     parent = dict(os.environ if parent is None else parent)
     images, identity = getattr(args, 'env_plan', None), getattr(args, 'identity', None)
     source = getattr(args, 'source', None)
     environments = {name: dict(parent, FN2_NODE_BACKEND=args.backend) for name in names}
-    if not (images or identity or source):
+    if args.backend == 'fn1' and not (images or identity or source):
         return environments
     host = parent.get('FN2_HOST', str(ROOT / 'fn2/host/fn'))
-    variables = dict(T=str(ROOT), FN_TEST_OPENSSL_BIN=parent.get('FN_TEST_OPENSSL_BIN', ''),
+    if args.backend == 'fn2' and not Path(host).exists():
+        host = str(placeholder())
+    variables = dict(T=str(ROOT), FN_TEST_OPENSSL_BIN=parent.get('FN_TEST_OPENSSL_BIN') or
+                     shutil.which('openssl', path=parent.get('PATH')) or '',
                      FN_FIXTURES_DIR=parent.get('FN_FIXTURES_DIR', ''))
 
     def invoke(*words):
@@ -274,10 +399,18 @@ def provision(names, args, parent=None):
     values = {}
     if args.backend == 'fn2':
         path = Path(host)
-        digest = native_env.sha256_file(path) if path.is_file() else 'fn2-host-absent'
-        values = dict.fromkeys(native_env.IDENTITY, digest)
-        if path.is_file() and source:
-            values['FN_NATIVE_IMAGE_SOURCE_SHA'] = source
+        values = native_env.image_identity(path, source or (
+            'fn2-host-placeholder' if path.parent == ROOT / 'build/fn2-host-placeholder'
+            else native_env.sha256_file(path)))
+        values.update({key: values[key.replace('DEVELOPER_', '')]
+                       for key in native_env.DEVELOPER_IDENTITY
+                       if key.replace('DEVELOPER_', '') in values})
+        for env in environments.values():
+            env['FN2_HOST'] = host
+            for key in (*native_env.IMAGES, 'FN_SPAN_REFERENCE_HOST', 'FN_DEAD_RUN_PROF_HOST'):
+                env[key] = host
+            for key in (*native_env.DAILY_FUNCTIONAL_OPT_INS, 'FN_RUN_RELOCATION_E2E', 'FN_RUN_SLOW'):
+                env[key] = '1'
     elif identity:
         for line in invoke('identity', '--image', identity, '--source', source, '--export').splitlines():
             words = shlex.split(line)
@@ -288,6 +421,9 @@ def provision(names, args, parent=None):
         if values.keys() != native_env.IDENTITY.keys():
             raise ValueError('native_env identity must provide all four identity variables')
     for env in environments.values():
+        if args.backend == 'fn2':
+            for key in native_env.IDENTITY.keys() | native_env.DEVELOPER_IDENTITY.keys():
+                env.pop(key, None)
         env.update(values)
     return environments
 
@@ -342,7 +478,9 @@ def summarize(results):
     summary = dict(modules=dict(Counter(m['status'] for m in results)),
                    tests=dict(Counter(r['outcome'] for r in tests)),
                    executed_assertions=sum(m['assertions'] for m in results),
-                   intended_skips=sum(r['intended_skip'] for r in tests),
+                   intended_skips=sum('skip_category' in r for r in tests),
+                   retired=sum(r['skip_reason'].startswith('retired (inventory):') for r in tests),
+                   intended_by_category=dict(Counter(r['skip_category'] for r in tests if 'skip_category' in r)),
                    skips=dict(Counter(r['skip_reason'] for r in tests if r['outcome'] == 'skip')),
                    classifications=dict(Counter(r['classification'] for r in tests
                                                 if 'classification' in r)),
@@ -356,14 +494,15 @@ def summarize(results):
     for key in ('ok', 'fail', 'error', 'skip', 'expected-failure', 'unexpected-success'):
         print(f"{key} | {summary['tests'].get(key, 0)}")
     print(f"Executed assertions | {summary['executed_assertions']}")
-    print(f"Intended retired skips | {summary['intended_skips']}")
+    print(f"Inventory retired skips | {summary['retired']}")
+    print(f"Intended skips by category | {summary['intended_by_category']}")
     print('Skips by reason | count')
     for reason, count in sorted(summary['skips'].items()):
         print(f'{reason} | {count}')
     print('fn2 non-ok classification (includes intended skips) | count')
     for classification, count in sorted(summary['classifications'].items()):
         print(f'{classification} | {count}')
-    print('Other outcomes (excluding intended retired skips) | test | first exception / skip reason')
+    print('Other outcomes (excluding intended skips) | test | first exception / skip reason')
     for r in summary['other']:
         print(f"{r['module']} | {r['test']} | {r['exception'] or r['skip_reason']}")
     return summary
