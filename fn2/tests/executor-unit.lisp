@@ -213,6 +213,29 @@
   (let ((copy (fn2-executor-test-initial-snapshot)))
     (update-nth *fn2-core-control*
       (update-nth *fn2-control-h$ai* '(-1) (nth *fn2-core-control* copy)) copy)))
+; The malformed logical snapshot cannot inhabit the specialized stobj.
+; This executable predicate checks its complete input/count witness. The
+; theorem below connects shape=true and counts=(0 0 0) to actual fn2-turn;
+; no evaluator pretends to execute a negative value in an unsigned array.
+(defun fn2-executor-bounds-witnessp (recognized shape h k a counts)
+  (declare (xargs :verify-guards nil))
+  (and (not recognized) shape
+       (equal counts '(0 0 0))
+       (not (and (<= (nth 0 counts) h) (<= (nth 1 counts) k)
+                 (<= (nth 2 counts) a)))))
+(defun fn2-executor-bounds-negative ()
+  (declare (xargs :verify-guards nil))
+  (let* ((bad *fn2-executor-test-bad-h*)
+         (control (nth *fn2-core-control* bad)))
+    (fn2-executor-bounds-witnessp
+     (fn2-corep bad) t
+     (car (nth *fn2-control-h$ai* control))
+     (car (nth *fn2-control-k$ai* control))
+     (car (nth *fn2-control-aturn$ai* control)) '(0 0 0))))
+(defun fn2-executor-bounds-teeth ()
+  (declare (xargs :verify-guards nil))
+  (equal (fn2-executor-unit-tests) '(t t t t t t t)))
+
 (defun fn2-executor-test-control-logic-names (columns)
   (declare (xargs :verify-guards nil))
   (if (atom columns) nil
@@ -231,7 +254,8 @@
 (make-event
  (let* ((schema (cdr (assoc-eq 'fn2-control (table-alist 'fn2-columns (w state)))))
         (columns (cadr (member-eq :columns schema)))
-        (names (append '(fn2-turn fn2-concrete-turn fn2-concrete-loop
+        (names (append '(fn2-executor-bounds-negative fn2-executor-bounds-witnessp
+                         fn2-turn fn2-concrete-turn fn2-concrete-loop
                          fn2-exec-h fn2-exec-k fn2-exec-aturn
                          fn2-exec-set-turn-bytes fn2-exec-set-turn-steps
                          fn2-corep fn2-core-wfp
@@ -247,9 +271,17 @@
               (mv-let (status nobs nvisits nactions after) (fn2-turn bad)
                 (declare (ignore status after))
                 (and (equal nobs 0)
+                     (equal (list nobs nvisits nactions) '(0 0 0))
+                     (equal (fn2-executor-bounds-negative)
+                            (fn2-executor-bounds-witnessp
+                             (fn2-corep bad) (fn2-core-wfp bad)
+                             (fn2-exec-h bad) (fn2-exec-k bad)
+                             (fn2-exec-aturn bad) (list nobs nvisits nactions)))
                      (not (and (<= nobs (fn2-exec-h bad))
                                (<= nvisits (fn2-exec-k bad))
                                (<= nactions (fn2-exec-aturn bad))))))))
        :rule-classes nil
        :hints (("Goal" :in-theory
                 (e/d ,names ,(fn2-executor-test-execution-runes names))))))))
+
+(fn2-assert-owed-teeth fn2-turn-bounds)

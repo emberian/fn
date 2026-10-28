@@ -936,3 +936,22 @@
 (assert-event (eq (symbol-class 'fn2-pool-free-count (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-pool-nslots (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-pool-capacity-bytes (w state)) :common-lisp-compliant))
+
+; Registry teeth run the existing full positive and negative fixtures.
+(defun fn2-pool-stale-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-pool-test-stale) (fn2-pool-test-stale-teeth t) (fn2-pool-test-stale-teeth nil)))
+(defun fn2-pool-byte-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-pool-test-byte-teeth :complete-in 2 t) (fn2-pool-test-byte-teeth :complete-in 4 nil) (fn2-pool-test-byte-teeth :adapter-write 1 t) (fn2-pool-test-byte-teeth :adapter-write 2 nil)))
+(defun fn2-pool-borrow-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-pool-test-borrow-teeth t :release) (fn2-pool-test-borrow-teeth t :reserve) (fn2-pool-test-borrow-teeth nil :release)))
+(defun fn2-pool-conservation-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-pool-test-conservation-teeth t) (fn2-pool-test-conservation-teeth nil)))
+(defun fn2-pool-generation-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-pool-test-generation-teeth 5 6 t) (fn2-pool-test-generation-teeth 5 5 t) (fn2-pool-test-generation-teeth 6 5 nil)))
+
+(fn2-assert-owed-teeth fn2-pool-stale fn2-pool-byte-fill fn2-pool-no-reuse fn2-pool-conservation fn2-pool-generation)

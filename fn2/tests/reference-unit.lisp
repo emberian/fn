@@ -76,3 +76,10 @@
           (mv answer fn2-core))) answer)))
 (assert-event (fn2-ref-kind-controls))
 (value-triple (cw "REFERENCE UNIT: positive turn, swapped-FIFO negative, every-kind mutation negative PASS~%"))
+
+; Registry teeth run the existing full positive and negative fixtures.
+(defun fn2-reference-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-ref-test nil) (fn2-ref-test t) (fn2-ref-kind-controls)))
+
+(fn2-assert-owed-teeth fn2-turn-refinement)

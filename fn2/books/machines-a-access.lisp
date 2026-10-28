@@ -7,6 +7,17 @@
  (value `(defthm fn2-machine-core-child-shapes
            (implies (fn2-core-wfp fn2-core)
                     (and ,@(fn2-machine-child-shapes *fn2-core-children*))))))
+; Batched own-row writes reattach one well-shaped child. This boundary fact
+; keeps every callback guard from reopening the parent representation.
+(defun fn2-machine-core-update-shapes (names)
+  (if (atom names) nil
+    (let* ((name (car names)) (writer (fn2-columns-pre "UPDATE-" (fn2-columns-sym name "-TABLE"))))
+      (cons `(defthm ,(fn2-columns-sym writer "-WFP")
+               (implies (and (fn2-core-wfp fn2-core) (,(fn2-columns-sym name "-WFP") child))
+                        (fn2-core-wfp (,writer child fn2-core)))
+               :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+            (fn2-machine-core-update-shapes (cdr names))))))
+(make-event (value (cons 'progn (fn2-machine-core-update-shapes (fn2-machine-names (w state))))))
 (in-theory (disable fn2-machines-rows
                     fn2-core-wfp
                     fn2-ops-free-count fn2-ops-reserved-credits fn2-ops-queued
@@ -46,14 +57,16 @@
 
 (fn2-machine-index-access kind 8)
 (fn2-machine-index-access slot 32)
-
 (fn2-machine-scalar-access accept-count 32)
 (fn2-machine-scalar-access connection-count 32)
 (fn2-machine-scalar-access free-head 32)
 (fn2-machine-scalar-access refusals 60)
 (fn2-machine-scalar-access active-count 32)
+; A release changes the child before adjusting this directory counter.
+; Expose NATP to rewriting through the composed preservation facts.
+(defthm fn2-machine-active-count-natp-rewrite
+  (implies (fn2-corep fn2-core) (natp (fn2-machine-active-count fn2-core))))
 (fn2-machine-scalar-access gen-limit 60)
-(fn2-machine-scalar-access echo-mode 1)
 (fn2-machine-scalar-access wake-id 32)
 (fn2-machine-scalar-access pool-wait-id 32)
 (fn2-machine-scalar-access wait-head 32)
@@ -74,6 +87,9 @@
 (make-event
  (value (cons 'progn (fn2-machine-all-field-events (fn2-machine-names (w state))
                        (fn2-machine-names (w state)) (w state) nil))))
+
+(make-event
+ (value (cons 'progn (fn2-machine-all-snapshots (fn2-machine-names (w state)) (w state)))))
 
 (defmacro fn2-machine-core-shape (name args)
   `(progn
@@ -264,3 +280,48 @@
   (stobj-let ((fn2-sched (fn2-core-sched fn2-core)))
     (id) (fn2-sched-scribe-index fn2-sched) id))
 (in-theory (disable fn2-machine-scribe-id))
+
+(defun fn2-echo-free-fields (id fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let ((slot (if (fn2-machine-idp id fn2-core) (fn2-machine-slot id fn2-core) 4294967295)))
+    (stobj-let ((fn2-echo (fn2-echo-table fn2-core))) (gen next)
+      (if (< slot (fn2-echo-rows fn2-echo))
+          (mv (fn2-echo-generation slot fn2-echo) (fn2-echo-next-free slot fn2-echo))
+        (mv 0 4294967295)) (mv gen next))))
+(in-theory (disable fn2-echo-free-fields))
+
+; Initialization policy belongs to listeners and is copied to each admitted
+; connection. No echo/discard policy lives in the shared directory.
+(defun fn2-listener-mode-rows (left mode fn2-listener)
+  (declare (xargs :stobjs fn2-listener :measure (nfix left)
+                  :guard (and (fn2-listener-wfp fn2-listener) (natp left)
+                              (<= left (fn2-listener-rows fn2-listener)) (unsigned-byte-p 1 mode))))
+  (if (zp left) fn2-listener
+    (let ((fn2-listener (fn2-listener-set-mode (- left 1) mode fn2-listener)))
+      (fn2-listener-mode-rows (- left 1) mode fn2-listener))))
+(defthm fn2-listener-mode-rows-type
+  (implies (and (fn2-listenerp fn2-listener) (fn2-listener-wfp fn2-listener)
+                (natp left) (<= left (fn2-listener-rows fn2-listener)) (unsigned-byte-p 1 mode))
+           (fn2-listenerp (fn2-listener-mode-rows left mode fn2-listener))))
+(defthm fn2-listener-mode-rows-wfp
+  (implies (and (fn2-listener-wfp fn2-listener) (natp left)
+                (<= left (fn2-listener-rows fn2-listener)) (unsigned-byte-p 1 mode))
+           (fn2-listener-wfp (fn2-listener-mode-rows left mode fn2-listener))))
+(in-theory (disable fn2-listener-mode-rows))
+(defun fn2-listener-set-mode-all (mode fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (unsigned-byte-p 1 mode))))
+  (if (not (unsigned-byte-p 1 mode)) (fn2-machine-refuse-write fn2-core)
+    (stobj-let ((fn2-listener (fn2-listener-table fn2-core))) (fn2-listener)
+      (fn2-listener-mode-rows (fn2-listener-rows fn2-listener) mode fn2-listener) fn2-core)))
+(defthm fn2-listener-set-mode-all-type
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (fn2-corep (fn2-listener-set-mode-all mode fn2-core)))
+  :hints (("Goal" :use ((:instance fn2-listener-mode-rows-type
+                         (fn2-listener (fn2-listener-table fn2-core))
+                         (left (fn2-listener-rows (fn2-listener-table fn2-core)))))
+                  :in-theory (enable fn2-core-wfp))))
+(defthm fn2-listener-set-mode-all-wfp
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (fn2-core-wfp (fn2-listener-set-mode-all mode fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-listener-set-mode-all))

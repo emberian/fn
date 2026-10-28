@@ -397,7 +397,7 @@
        (declare (ignore slot gen))
        (implies (and (fn2-core-refusal-hyps core) (not (eq code :ok)))
                 (fn2-core-refusal-resultp code core after)))
-     :teeth "core-unit: every helper refuses malformed input unchanged; receive rollback after fresh/recycled reservation and generation-limit rollback; removed refusal premise succeeds and changes state."
+     :teeth (fn2-core-unit)
      :doc "A refused issue preserves the entire logical core, including generations and free-row contents; free rows are canonical as produced by init and finish."))
 (fn2-core-owe-refusal fn2-issue-receive (cap-index cap-nonce slot gen len okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-send (cap-index cap-nonce slot gen off len may-release okind oslot ogen principal))
@@ -472,5 +472,5 @@
             (fn2-pool-logical-octets (fn2-pool-fill slot after)
                                     (fn2-pool-base slot after) after)
             written)))))
-  :teeth "core-unit: the evidence interpreter writes the two-byte loan using actual adapter-write calls; the full initialized/count/posted antecedent and exact exposed-prefix conclusion hold. Removing posted completion makes antecedent and conclusion false."
+  :teeth (fn2-core-unit)
   :doc "At the composed harvest boundary, an input completion exposes exactly the initialized loan prefix. Initialization is an explicit successful trace of the real adapter-write export; ready-ops supplies the independently posted observation state. This trace premise is the environmental fidelity obligation, not an inference from bytes that happen to be in memory.")

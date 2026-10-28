@@ -104,3 +104,5 @@
   (with-local-stobj fn2-sched
     (mv-let (result fn2-sched) (fn2-sched-test-starvation-negative-run fn2-sched) result)))
 (assert-event (fn2-sched-test-starvation-negative))
+
+(fn2-assert-owed-teeth fn2-sched-starvation)

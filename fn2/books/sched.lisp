@@ -272,7 +272,7 @@
   (implies (fn2-sched-starvation-hyps principal fn2-sched)
            (mv-nth 0 (fn2-sched-visits-principal
                       (fn2-sched-calendar-length fn2-sched) principal fn2-sched)))
-  :teeth "sched-unit visits every concrete principal from every cursor; removing principal 0's calendar entry falsifies the complete hypothesis and conclusion."
+  :teeth (fn2-sched-test-starvation fn2-sched-test-starvation-negative)
   :doc "Actual scheduler visit sequence grants a continuously eligible principal an opportunity within calendar length L visits. This is an opportunity bound, not dependency progress or machine completion.")
 
 (assert-event (fn2-profile-exports-compliant-p

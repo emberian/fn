@@ -658,7 +658,7 @@
 (defthm-owed fn2-pool-stale (op a p)
   (implies (fn2-pool-stale-hyps op a p)
            (fn2-pool-stale-conclusion op a p))
-  :teeth "pool-unit: stale positive invokes all eleven handle exports after release; fresh write falsifies both stale hypothesis and stale conclusion."
+  :teeth (fn2-pool-stale-teeth)
   :doc "Every handle-taking export refuses a mismatched generation before other decisions and preserves the identical logical pool.")
 
 (defun fn2-pool-byte-fill-hyps (op a fn2-pool)
@@ -697,7 +697,7 @@
 (defthm-owed fn2-pool-byte-fill (op a p)
   (implies (fn2-pool-byte-fill-hyps op a p)
            (fn2-pool-byte-fill-conclusion op a p))
-  :teeth "pool-unit: complete 2 of 3 after a two-byte prefix; out-of-loan adapter writes rejected; complete 4 of 3 and an in-loan write falsify the respective hypotheses and conclusions."
+  :teeth (fn2-pool-byte-teeth)
   :doc "Completion exposes exactly the reported loan prefix after the existing readable prefix; an adapter write outside its loan cannot succeed.")
 
 (defun fn2-pool-no-reuse-hyps (slot op a fn2-pool)
@@ -719,7 +719,7 @@
 (defthm-owed fn2-pool-no-reuse (slot op a p)
   (implies (fn2-pool-no-reuse-hyps slot op a p)
            (fn2-pool-no-reuse-conclusion slot op a p))
-  :teeth "pool-unit: release/write/reserve with positive borrow count preserve borrowed slot identity and bytes; release of an unborrowed workspace falsifies both hypothesis and conclusion."
+  :teeth (fn2-pool-borrow-teeth)
   :doc "Across every pool operation, a borrowed slot cannot become free or retired, change generation, or have any backing byte changed.")
 
 (defun fn2-pool-conservation-hyps (op a fn2-pool)
@@ -732,7 +732,7 @@
 (defthm-owed fn2-pool-conservation (op a p)
   (implies (fn2-pool-conservation-hyps op a p)
            (fn2-pool-conservation-conclusion op a p))
-  :teeth "pool-unit: every operation on a concrete valid pool preserves the semantic invariant; a workspace incorrectly counted free violates both invariant hypothesis and post-read conclusion."
+  :teeth (fn2-pool-conservation-teeth)
   :doc "Preserve exactly one of six slot states, disjoint carved extents, loan/borrow consistency, exact acyclic class free lists/counts, and retired count.")
 
 (defun fn2-pool-generation-hyps (slot op a fn2-pool)
@@ -760,5 +760,5 @@
 (defthm-owed fn2-pool-generation (slot op a p)
   (implies (fn2-pool-generation-hyps slot op a p)
            (fn2-pool-generation-conclusion slot op a p))
-  :teeth "pool-unit: release below limit increments, release at limit retires without wrap, reserve cannot revive retired; malformed gen above limit falsifies both invariant hypothesis and exact retirement conclusion."
+  :teeth (fn2-pool-generation-teeth)
   :doc "Every operation preserves monotone generations and retirement; successful release increments, and terminal retirement occurs exactly at the configured limit.")

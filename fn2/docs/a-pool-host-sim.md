@@ -154,7 +154,8 @@ tiny has four principals then those services (eight entries). Tail insertion
 is idempotent. All A4 connections use anonymous principal zero. Listener rows
 occupy `[0, accept-credits)`, followed by `C` connection rows and one scribe row.
 The `fn2-echo` connection declaration has a per-row mode bit for echo or discard;
-both modes share one free list and one admission count. These disjoint global ID
+both modes share one free list and one admission count. A listener supplies the mode
+to each admitted connection; the shared directory has no echo-mode flag. These disjoint global ID
 ranges and their inverse are generated from the `defmachine` declarations.
 Each kind has its own nested table. A4 implements the declared per-run caps 4,096 bytes, 32
 structural steps and four descriptors. Every continuation returns through a
@@ -162,9 +163,18 @@ guard-checked charge against those declared simultaneous caps. The machine
 initializer requires those execution-quanta profile values. Resident capacities
 remain profile parameters.
 
-`defmachine` owns both phase dispatch and `:observes` event routing. Each kind's
-handler receives `(id event outcome reason count aux0 aux1 fn2-core)` and returns
-`(mv wake fn2-core)`. The router validates the row's kind, generation and non-free
+`defmachine` owns both phase dispatch and `:observes` event routing. Declarations
+name functions, never pasted code forms. The fixed run convention is
+`(id budget ROW-fields... fn2-core)`; observation handlers receive
+`(id event outcome reason count aux0 aux1 ROW-fields... fn2-core)` and return
+`(mv wake fn2-core)`. `ROW-fields...` are scalar values in declared column order,
+recorded in the machine world table's `:calling-convention`. The generated entry
+binds its own table once and reads its own accessors; it releases the child before
+calling code that may update the parent core. Per-kind writes bind that child once
+for the whole field batch. Initial values are constants or named functions of
+`(slot base n gen)`. Each `:obligations` entry is explicitly `:owed`, references a
+registered `defthm-owed`, or names a registered obligation generator; unknown hooks
+are refused at expansion. The router validates the row's kind, generation and non-free
 state before invoking the handler, then performs generic pending accounting.
 Handlers see every completion before the pending decrement and own any event-cell
 store; a handler may accumulate several completions before its machine runs.
@@ -324,7 +334,11 @@ refused.
 ## 8. Owed keystones
 `(defthm-owed NAME (VARS) FORMULA :teeth ...)` translates the statement (so it names real
 functions with real arities), records it in the world table `fn2-owed`, proves nothing, and has a
-row in `fn2/docs/OWED.md` with its teeth. Layer A owes: pool generation/staleness, byte-fill,
+row in `fn2/docs/OWED.md` with its teeth. Teeth name zero-argument evaluating
+functions; the corresponding unit books assert that each exists and returns exactly
+`t`. `fn2/tools/certify.sh --export-owed` regenerates `OWED.md` from the admitted
+world table after those units certify; edit registrations, never the generated file.
+Layer A owes: pool generation/staleness, byte-fill,
 no-reuse-while-borrowed, conservation; outstanding-table result reservation; turn bounds (WORK);
 the refinement obligation of EXECUTION-MODEL §4 over `fn2-turn` and `fn2-ref-turn`.
 

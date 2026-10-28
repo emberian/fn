@@ -1336,3 +1336,19 @@
 (assert-event (equal (fn2-vocab-test-wake) t))
 (assert-event (eq (symbol-class 'fn2-op-set-wake (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-wake (w state)) :common-lisp-compliant))
+
+; Registry teeth run the existing full positive and negative fixtures.
+(defun fn2-vocab-conservation-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-vocab-test-conservation-teeth t) (fn2-vocab-test-conservation-teeth nil)))
+(defun fn2-vocab-stray-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-vocab-test-stray-teeth t) (fn2-vocab-test-stray-teeth nil)))
+(defun fn2-vocab-order-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-vocab-test-order-teeth t) (fn2-vocab-test-order-teeth nil)))
+(defun fn2-vocab-reservation-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-vocab-test-reservation-teeth t) (fn2-vocab-test-reservation-teeth nil)))
+
+(fn2-assert-owed-teeth fn2-ops-credit-conservation fn2-ops-stale-or-duplicate-post fn2-ops-outbox-order fn2-ops-result-reservation)

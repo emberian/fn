@@ -15,46 +15,51 @@
 
 ; Handlers own their storage policy; generic routing never overwrites a
 ; machine event cell before its handler has consumed the completion.
-(defun fn2-listener-observe-accept (id outcome aux0 aux1 fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+(defmachine-callback fn2-listener-observe-accept fn2-listener (id event outcome reason count aux0 aux1) 1
   (let ((fn2-core
          (if (equal outcome *fn2-outcome-done*)
              (fn2-listener-put-core id (cap-index aux0) (cap-nonce aux1) (event-ready 1))
            (fn2-listener-put-core id (event-ready 0)))))
     (mv id fn2-core)))
-(fn2-core-shape-lemmas fn2-listener-observe-accept (id outcome aux0 aux1) 1)
-(defun fn2-echo-observe-receive (id outcome count fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+
+(defmachine-callback fn2-echo-observe-receive fn2-echo (id event outcome reason count aux0 aux1) 1
   (let ((fn2-core
          (if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
                   (unsigned-byte-p 32 count) (< 0 count))
              (fn2-echo-put-core id (length count) (off 0) (phase *fn2-echo-state-reply*))
            (fn2-echo-put-core id (phase *fn2-echo-state-closing*)))))
     (mv id fn2-core)))
-(fn2-core-shape-lemmas fn2-echo-observe-receive (id outcome count) 1)
-(defun fn2-echo-observe-send (id outcome count fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let* ((off (fn2-machine-off id fn2-core)) (len (fn2-machine-length id fn2-core))
-         (fn2-core (fn2-machine-write-borrows id
-                     (fn2-machine-pool-borrows (fn2-machine-pool-slot id fn2-core) fn2-core) fn2-core))
+
+(defmachine-callback fn2-echo-observe-send fn2-echo (id event outcome reason count aux0 aux1) 1
+  (let* ((off row-off) (len row-length)
+         (fn2-core (fn2-echo-put-core id (borrows (fn2-machine-pool-borrows row-pool-slot fn2-core))))
          (fn2-core
           (if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
                    (natp count) (<= (+ off count) len))
-              (fn2-machine-write-off id (+ off count) fn2-core)
+              (fn2-echo-put-core id (off (+ off count)))
             (fn2-echo-put-core id (phase *fn2-echo-state-closing*)))))
     (mv id fn2-core)))
-(fn2-core-shape-lemmas fn2-echo-observe-send (id outcome count) 1)
-(defun fn2-scribe-observe (id event outcome count aux0 aux1 fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+
+(defmachine-callback fn2-scribe-observe fn2-scribe (id event outcome reason count aux0 aux1) 1
   (let ((fn2-core (fn2-scribe-put-core id (event event) (outcome outcome) (count count)
                    (aux0 aux0) (aux1 aux1) (event-ready 1))))
     (mv id fn2-core)))
-(fn2-core-shape-lemmas fn2-scribe-observe (id event outcome count aux0 aux1) 1)
+
 (defun fn2-machine-refuse-observation (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (let ((fn2-core (fn2-machine-refuse-write fn2-core)))
     (mv 4294967295 fn2-core)))
 (fn2-core-shape-lemmas fn2-machine-refuse-observation () 1)
+
+(defmachine-callback fn2-listener-observe-close fn2-listener (id event outcome reason count aux0 aux1) 1
+  (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-accepting*) (event-ready 0))))
+    (mv id fn2-core)))
+(defmachine-callback fn2-echo-observe-close fn2-echo (id event outcome reason count aux0 aux1) 1
+  (let ((fn2-core (fn2-echo-put-core id (phase *fn2-echo-state-draining*)))) (mv id fn2-core)))
+(defmachine-callback fn2-echo-observe-release fn2-echo (id event outcome reason count aux0 aux1) 1
+  (let ((fn2-core (fn2-echo-put-core id
+                    (borrows (fn2-machine-pool-borrows row-pool-slot fn2-core)))))
+    (mv id fn2-core)))
 
 (make-event
  (value (cons 'progn (fn2-machine-observe-events 'fn2-machine-observe (fn2-machine-names (w state)) (w state)))))
@@ -73,11 +78,10 @@
         (fn2-machine-result 0 8 0 nil fn2-core)))))
 (fn2-core-shape-lemmas fn2-machine-issue-result (id code bytes) 4)
 
-(defun fn2-listener-admit (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let* ((target (fn2-machine-free-head fn2-core))
-         (gen (fn2-machine-generation target fn2-core))
-         (kind *fn2-echo-kind*))
+(defmachine-callback fn2-listener-admit fn2-listener (id budget) 4
+  (b* ((target (fn2-machine-free-head fn2-core))
+       ((mv gen next) (fn2-echo-free-fields target fn2-core))
+       (kind *fn2-echo-kind*))
     (if (or (equal target 4294967295)
             (>= (fn2-machine-active-count fn2-core) (fn2-machine-connection-count fn2-core)))
         (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
@@ -87,9 +91,8 @@
         (if (not (eq code :ok))
             (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
               (fn2-machine-result 0 6 0 t fn2-core))
-          (let* ((next (fn2-machine-next-free target fn2-core))
-                 (index (fn2-machine-cap-index id fn2-core))
-                 (nonce (fn2-machine-cap-nonce id fn2-core))
+          (let* ((index row-cap-index)
+                 (nonce row-cap-nonce)
                  (fn2-core (fn2-machine-set-free-head next fn2-core))
                  (fn2-core (fn2-machine-set-active-count
                              (+ 1 (fn2-machine-active-count fn2-core)) fn2-core))
@@ -97,39 +100,37 @@
                              (phase *fn2-echo-state-command*) (cap-index index) (cap-nonce nonce)
                              (pool-slot slot) (pool-gen poolgen) (off 0) (length 0)
                              (pending 0) (borrows 0) (wait-reason 0)
-                             (mode (fn2-machine-echo-mode fn2-core))))
-                 (fn2-core (fn2-machine-put id (event-ready 0)))
+                             (mode row-mode)))
+                 (fn2-core (fn2-listener-put-core id (event-ready 0)))
                  (fn2-core (fn2-machine-set-wake-id target fn2-core)))
             (fn2-machine-result 0 24 0 t fn2-core)))))))
-(fn2-core-shape-lemmas fn2-listener-admit (id) 4)
 
-(defun fn2-listener-step (id accepting budget fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (cond ((not (equal (fn2-machine-pending id fn2-core) 0))
+
+(defmachine-callback fn2-listener-step fn2-listener (id budget) 4
+  (cond ((not (equal row-pending 0))
          (fn2-machine-result 0 1 0 nil fn2-core))
-        ((and accepting (equal (fn2-machine-event-ready id fn2-core) 1))
-         (fn2-listener-admit id fn2-core))
+        ((and (equal row-phase *fn2-listener-state-accepting*) (equal row-event-ready 1))
+         (fn2-listener-admit id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pending row-stopped row-event-ready row-mode fn2-core))
         ((not (and (natp budget) (< 0 budget))) (fn2-machine-result 0 1 0 t fn2-core))
         (t
          (mv-let (code op opgen fn2-core)
-           (if accepting
-               (fn2-issue-accept 0 0 *fn2-listener-kind* id (fn2-machine-generation id fn2-core) 0 fn2-core)
-             (fn2-issue-close (fn2-machine-cap-index id fn2-core)
-               (fn2-machine-cap-nonce id fn2-core) *fn2-listener-kind* id
-               (fn2-machine-generation id fn2-core) 0 fn2-core))
+           (if (equal row-phase *fn2-listener-state-accepting*)
+               (fn2-issue-accept 0 0 *fn2-listener-kind* id row-generation 0 fn2-core)
+             (fn2-issue-close row-cap-index
+               row-cap-nonce *fn2-listener-kind* id
+               row-generation 0 fn2-core))
            (declare (ignore op opgen))
            (fn2-machine-issue-result id code 0 fn2-core)))))
-(fn2-core-shape-lemmas fn2-listener-step (id accepting budget) 4)
 
-(defun fn2-connection-release (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let* ((kind (fn2-machine-kind id fn2-core))
-         (gen (fn2-machine-generation id fn2-core)))
+
+(defmachine-callback fn2-connection-release fn2-echo (id budget) 4
+  (let* ((kind *fn2-echo-kind*)
+         (gen row-generation))
     (mv-let (code fn2-core)
-      (fn2-core-release (fn2-machine-pool-slot id fn2-core)
-        (fn2-machine-pool-gen id fn2-core) kind id gen fn2-core)
+      (fn2-core-release row-pool-slot
+        row-pool-gen kind id gen fn2-core)
       (if (not (or (eq code :ok) (eq code :retired)))
-          (let ((fn2-core (fn2-machine-write-stopped id 1 fn2-core)))
+          (let ((fn2-core (fn2-echo-put-core id (stopped 1))))
             (fn2-machine-result 0 4 0 nil fn2-core))
         (let* ((next (fn2-machine-free-head fn2-core))
                (retire (>= gen (fn2-machine-gen-limit fn2-core)))
@@ -143,84 +144,78 @@
                (fn2-core (fn2-machine-set-active-count
                            (fn2-machine-dec (fn2-machine-active-count fn2-core)) fn2-core)))
           (fn2-machine-result 0 20 0 nil fn2-core))))))
-(fn2-core-shape-lemmas fn2-connection-release (id) 4)
 
-(defun fn2-connection-reset (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+
+(defmachine-callback fn2-connection-reset fn2-echo (id budget) 4
   (mv-let (code fn2-core)
-    (fn2-core-reset (fn2-machine-pool-slot id fn2-core)
-      (fn2-machine-pool-gen id fn2-core) (fn2-machine-kind id fn2-core) id
-      (fn2-machine-generation id fn2-core) fn2-core)
+    (fn2-core-reset row-pool-slot
+      row-pool-gen *fn2-echo-kind* id
+      row-generation fn2-core)
     (let ((fn2-core (fn2-echo-put-core id
                       (phase (if (eq code :ok) *fn2-echo-state-command* *fn2-echo-state-closing*)) (off 0) (length 0))))
       (fn2-machine-result 0 8 0 t fn2-core))))
-(fn2-core-shape-lemmas fn2-connection-reset (id) 4)
 
-(defun fn2-connection-issue (id phase fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let* ((kind (fn2-machine-kind id fn2-core))
-         (gen (fn2-machine-generation id fn2-core))
-         (principal (fn2-machine-principal-slot id fn2-core))
-         (index (fn2-machine-cap-index id fn2-core))
-         (nonce (fn2-machine-cap-nonce id fn2-core))
-         (slot (fn2-machine-pool-slot id fn2-core))
-         (poolgen (fn2-machine-pool-gen id fn2-core)))
+
+(defmachine-callback fn2-connection-issue fn2-echo (id budget) 4
+  (let* ((kind *fn2-echo-kind*)
+         (gen row-generation)
+         (principal row-principal-slot)
+         (index row-cap-index)
+         (nonce row-cap-nonce)
+         (slot row-pool-slot)
+         (poolgen row-pool-gen))
     (mv-let (code op opgen fn2-core)
-      (cond ((equal phase *fn2-echo-state-command*)
+      (cond ((equal row-phase *fn2-echo-state-command*)
              (fn2-issue-receive index nonce slot poolgen
                (min 4096 (fn2-machine-pool-capacity slot fn2-core))
                kind id gen principal fn2-core))
-            ((equal phase *fn2-echo-state-reply*)
-             (let ((off (fn2-machine-off id fn2-core))
-                   (len (fn2-machine-length id fn2-core)))
+            ((equal row-phase *fn2-echo-state-reply*)
+             (let ((off row-off)
+                   (len row-length))
                (fn2-issue-send index nonce slot poolgen off (min 4096 (nfix (- len off))) 1
                  kind id gen principal fn2-core)))
             (t (fn2-issue-close index nonce kind id gen principal fn2-core)))
       (declare (ignore op opgen))
-      (let ((fn2-core (if (and (eq code :ok) (equal phase *fn2-echo-state-reply*))
-                          (fn2-machine-write-borrows id 1 fn2-core) fn2-core)))
+      (let ((fn2-core (if (and (eq code :ok) (equal row-phase *fn2-echo-state-reply*))
+                          (fn2-echo-put-core id (borrows 1)) fn2-core)))
         (fn2-machine-issue-result id code
-          (cond ((equal phase *fn2-echo-state-command*)
+          (cond ((equal row-phase *fn2-echo-state-command*)
                  (min 4096 (fn2-machine-pool-capacity slot fn2-core)))
-                ((equal phase *fn2-echo-state-reply*)
-                 (min 4096 (nfix (- (fn2-machine-length id fn2-core)
-                                   (fn2-machine-off id fn2-core))))) (t 0)) fn2-core)))))
-(fn2-core-shape-lemmas fn2-connection-issue (id phase) 4)
+                ((equal row-phase *fn2-echo-state-reply*)
+                 (min 4096 (nfix (- row-length
+                                   row-off)))) (t 0)) fn2-core)))))
 
-(defun fn2-connection-submit (id phase budget fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (cond ((not (equal (fn2-machine-pending id fn2-core) 0))
+
+(defmachine-callback fn2-connection-submit fn2-echo (id budget) 4
+  (cond ((not (equal row-pending 0))
          (fn2-machine-result 0 1 0 nil fn2-core))
         ((not (and (natp budget) (< 0 budget))) (fn2-machine-result 0 2 0 t fn2-core))
-        (t (fn2-connection-issue id phase fn2-core))))
-(fn2-core-shape-lemmas fn2-connection-submit (id phase budget) 4)
-(defun fn2-connection-reply (id budget fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (cond ((not (equal (fn2-machine-pending id fn2-core) 0))
-         (fn2-machine-result 0 1 0 nil fn2-core))
-        ((not (equal (fn2-machine-borrows id fn2-core) 0))
-         (fn2-machine-result 0 2 0 nil fn2-core))
-        ((or (equal (fn2-machine-mode id fn2-core) 0)
-             (>= (fn2-machine-off id fn2-core) (fn2-machine-length id fn2-core)))
-         (fn2-connection-reset id fn2-core))
-        (t (fn2-connection-submit id *fn2-echo-state-reply* budget fn2-core))))
-(fn2-core-shape-lemmas fn2-connection-reply (id budget) 4)
-(defun fn2-connection-drain (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (cond ((not (equal (fn2-machine-pending id fn2-core) 0))
-         (fn2-machine-result 0 1 0 nil fn2-core))
-        ((equal (fn2-machine-borrows id fn2-core) 0) (fn2-connection-release id fn2-core))
-        (t (fn2-machine-result 0 2 0 nil fn2-core))))
-(fn2-core-shape-lemmas fn2-connection-drain (id) 4)
+        (t (fn2-connection-issue id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pool-slot row-pool-gen row-off row-length row-pending row-borrows row-next-free row-stopped row-mode fn2-core))))
 
-(defun fn2-listener-run (id budget fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (fn2-listener-dispatch (fn2-machine-phase id fn2-core)))
-(fn2-core-shape-lemmas fn2-listener-run (id budget) 4)
-(defun fn2-echo-run (id budget fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (fn2-echo-dispatch (fn2-machine-phase id fn2-core)))
-(fn2-core-shape-lemmas fn2-echo-run (id budget) 4)
+(defmachine-callback fn2-connection-reply fn2-echo (id budget) 4
+  (cond ((not (equal row-pending 0))
+         (fn2-machine-result 0 1 0 nil fn2-core))
+        ((not (equal row-borrows 0))
+         (fn2-machine-result 0 2 0 nil fn2-core))
+        ((or (equal row-mode 0)
+             (>= row-off row-length))
+         (fn2-connection-reset id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pool-slot row-pool-gen row-off row-length row-pending row-borrows row-next-free row-stopped row-mode fn2-core))
+        (t (fn2-connection-submit id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pool-slot row-pool-gen row-off row-length row-pending row-borrows row-next-free row-stopped row-mode fn2-core))))
+
+(defmachine-callback fn2-connection-drain fn2-echo (id budget) 4
+  (cond ((not (equal row-pending 0))
+         (fn2-machine-result 0 1 0 nil fn2-core))
+        ((equal row-borrows 0) (fn2-connection-release id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pool-slot row-pool-gen row-off row-length row-pending row-borrows row-next-free row-stopped row-mode fn2-core))
+        (t (fn2-machine-result 0 2 0 nil fn2-core))))
+
+
+(defmachine-callback fn2-connection-idle fn2-echo (id budget) 4
+  (fn2-machine-idle id fn2-core))
+
+(defmachine-run fn2-listener)
+
+(defmachine-run fn2-echo)
+
 (make-event
  (value `(defun fn2-machine-run (id budget fn2-core)
            (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

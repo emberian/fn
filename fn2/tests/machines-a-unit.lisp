@@ -106,7 +106,7 @@
 (defun fn2-machine-test-null (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
-       (fn2-core (fn2-machine-set-echo-mode 0 fn2-core))
+       (fn2-core (fn2-listener-set-mode-all 0 fn2-core))
        ((mv & & actions & fn2-core) (fn2-machine-run 0 4 fn2-core))
        ((unless (equal actions 1)) (mv :null-accept fn2-core))
        (fn2-core (fn2-machine-test-post 1 0 0 1 *fn2-event-accept-result* 0 4 fn2-core))
@@ -246,13 +246,13 @@
 (must-fail
  (defun fn2-control-unrouted-event (fn2-core)
    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-   (fn2-listener-observe-dispatch *fn2-event-send-result*))
+   (fn2-machine-observe-fn2-listener 0 *fn2-event-send-result* 0 0 0 0 0 fn2-core))
  :with-output-off nil :check-expansion t)
 
 (must-fail
  (defmachine fn2-control-empty-observer
    :states (:ready) :budget (:bytes 1 :steps 1 :descriptors 1)
-   :continuations ((:ready (fn2-machine-idle id fn2-core)))
+   :continuations ((:ready fn2-machine-idle))
    :observes ((:accept-result nil)))
  :expected :hard :with-output-off nil :check-expansion t)
 
@@ -292,21 +292,20 @@
 ; Two issued writes complete before any machine run. The test declaration
 ; chooses accumulation instead of scribe's one-cell policy; routing is the
 ; same generator, and completions pass through the real FIFO and harvest.
-(defun fn2-machine-test-accumulate (id reason count fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+(defmachine-callback fn2-machine-test-accumulate fn2-scribe (id event outcome reason count aux0 aux1) 1
   (let ((fn2-core (fn2-scribe-put-core id
-          (completed (min 4294967295 (+ 1 (fn2-machine-completed id fn2-core))))
-          (verified (min 4294967295 (+ (nfix count) (fn2-machine-verified id fn2-core))))
-          (checksum (min 4294967295 (+ (nfix reason) (* 16 (fn2-machine-checksum id fn2-core)))))
-          (cursor (min 4294967295 (+ (fn2-machine-pending id fn2-core)
-                                    (* 10 (fn2-machine-cursor id fn2-core))))))))
+          (completed (min 4294967295 (+ 1 row-completed)))
+          (verified (min 4294967295 (+ (nfix count) row-verified)))
+          (checksum (min 4294967295 (+ (nfix reason) (* 16 row-checksum))))
+          (cursor (min 4294967295 (+ row-pending
+                                    (* 10 row-cursor)))))))
     (mv id fn2-core)))
-(fn2-core-shape-lemmas fn2-machine-test-accumulate (id reason count) 1)
+
 
 (encapsulate ()
  (local (table fn2-machine-kinds 'fn2-scribe
           (list* :observes
-                 (cons '(:write-result (fn2-machine-test-accumulate id reason count fn2-core))
+                 (cons '(:write-result fn2-machine-test-accumulate)
                        (cdr (fn2-machine-property 'fn2-scribe :observes world)))
                  (cdr (assoc-eq 'fn2-scribe (table-alist 'fn2-machine-kinds world))))))
  (make-event
@@ -359,3 +358,55 @@
     (mv-let (answer fn2-core) (fn2-machine-test-two-completions fn2-core) answer)))
 (assert-event (equal (fn2-machine-two-completions-control) :ok))
 (value-triple (cw "R5a OBSERVE: two harvested writes counted before run; reason order, pre-decrement pending 2/1, no cell overwrite PASS~%"))
+
+
+(must-fail
+ (defmachine fn2-control-code-continuation :states (:ready)
+   :budget (:bytes 1 :steps 1 :descriptors 1)
+   :continuations ((:ready (fn2-machine-idle id fn2-core))))
+ :expected :hard :with-output-off nil :check-expansion t)
+(must-fail
+ (defmachine fn2-control-code-initial :states (:ready)
+   :budget (:bytes 1 :steps 1 :descriptors 1) :continuations ((:ready fn2-machine-idle))
+   :initial ((generation (+ slot base))))
+ :expected :hard :with-output-off nil :check-expansion t)
+(must-fail
+ (defmachine fn2-control-unregistered-obligation :states (:ready)
+   :budget (:bytes 1 :steps 1 :descriptors 1) :continuations ((:ready fn2-machine-idle))
+   :obligations ((initialization (:generator fn2-no-such-generator)) (preservation :owed)
+                 (frame :owed) (output-correspondence :owed) (budget-progress :owed)
+                 (flat-representation :owed) (flat-transition :owed)))
+ :with-output-off nil :check-expansion t)
+(assert-event
+ (and (equal (fn2-machine-property 'fn2-scribe :obligations (w state)) *fn2-machine-obligations*)
+      (equal (getpropc 'fn2-listener-run 'formals nil (w state)) '(id budget fn2-core))
+      (equal (fn2-machine-property 'fn2-listener :continuations (w state))
+             '((:accepting fn2-listener-step) (:closing fn2-listener-step)))))
+(value-triple (cw "R5a DECLARATION: named callbacks and initializers; explicit owed entries; code/unregistered obligation refusals PASS~%"))
+
+(must-fail
+ (defun fn2-control-wrong-kind-run (id fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core)
+                     (fn2-machine-idp id fn2-core)
+                     (equal (fn2-machine-kind id fn2-core) *fn2-listener-kind*))))
+   (fn2-echo-run id 4 fn2-core))
+ :with-output-off nil :check-expansion t)
+(defun fn2-machine-call-count (fn term)
+  (declare (xargs :verify-guards nil))
+  (if (atom term) 0
+    (+ (if (eq (car term) fn) 1 0)
+       (fn2-machine-call-count fn (car term)) (fn2-machine-call-count fn (cdr term)))))
+(assert-event
+ (let ((run (getpropc 'fn2-echo-run 'unnormalized-body nil (w state)))
+       (snapshot (getpropc 'fn2-echo-snapshot 'unnormalized-body nil (w state))))
+   (and (= (fn2-machine-call-count 'fn2-echo-snapshot run) 1)
+        (= (fn2-machine-call-count 'fn2-echo-length snapshot) 1)
+        (= (fn2-machine-call-count 'fn2-echo-generation snapshot) 1)
+        (= (fn2-machine-call-count 'fn2-machine-length run) 0))))
+(value-triple (cw "R5a OWN-TABLE: one snapshot at run entry, own accessors, wrong-kind guard refusal PASS~%"))
+
+; A new kind may own ID or SLOT columns: values must not shadow the
+; batch writer's directory ID/SLOT temporaries.
+(assert-event
+ (equal (fn2-machine-write-values '((id caller-id) (slot caller-slot)))
+        '((fn2-write-value-id caller-id) (fn2-write-value-slot caller-slot))))

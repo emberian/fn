@@ -206,3 +206,5 @@
   (with-local-stobj fn2-core
     (mv-let (answer fn2-core) (fn2-core-unit-run fn2-core) answer)))
 (assert-event (equal (fn2-core-unit) t))
+
+(fn2-assert-owed-teeth fn2-issue-receive-refusal fn2-issue-send-refusal fn2-issue-read-refusal fn2-issue-write-refusal fn2-issue-fence-refusal fn2-issue-accept-refusal fn2-issue-close-refusal fn2-issue-cancel-refusal fn2-issue-entropy-refusal fn2-core-harvest-byte-fill)

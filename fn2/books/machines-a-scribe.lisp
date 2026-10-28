@@ -89,25 +89,22 @@
            (fn2-core-wfp (fn2-scribe-start fn2-core))))
 (in-theory (disable fn2-scribe-start))
 
-(defun fn2-scribe-stop (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+(defmachine-callback fn2-scribe-stop fn2-scribe (id budget) 4
   (let ((fn2-core (fn2-scribe-put-core id
                     (phase *fn2-scribe-state-stopped*) (stopped 1) (event-ready 0))))
     (fn2-machine-result 0 4 0 nil fn2-core)))
-(fn2-core-shape-lemmas fn2-scribe-stop (id) 4)
 
-(defun fn2-scribe-park (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+
+(defmachine-callback fn2-scribe-park fn2-scribe (id budget) 4
   (let ((fn2-core (fn2-machine-park id fn2-core)))
     (fn2-machine-result 0 8 0 nil fn2-core)))
-(fn2-core-shape-lemmas fn2-scribe-park (id) 4)
 
-(defun fn2-scribe-refused (code id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+
+(defmachine-callback fn2-scribe-refused fn2-scribe (code id budget) 4
   (if (eq code :exhausted)
-      (fn2-scribe-park id fn2-core)
-    (fn2-scribe-stop id fn2-core)))
-(fn2-core-shape-lemmas fn2-scribe-refused (code id) 4)
+      (fn2-scribe-park id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
+    (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)))
+
 
 (defun fn2-scribe-window-class (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -115,9 +112,8 @@
     (class) (fn2-pool-class-for 4096 fn2-pool) class))
 (in-theory (disable fn2-scribe-window-class))
 
-(defun fn2-scribe-reserve (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let ((owner-gen (fn2-machine-generation id fn2-core))
+(defmachine-callback fn2-scribe-reserve fn2-scribe (id budget) 4
+  (let ((owner-gen row-generation)
         (class (fn2-scribe-window-class fn2-core)))
     (if (null class)
         (let ((fn2-core (fn2-scribe-put-core id (phase *fn2-scribe-state-stopped*) (stopped 1))))
@@ -129,31 +125,30 @@
                 (let ((fn2-core (fn2-machine-park-pool id class fn2-core)))
                   (fn2-machine-result 0 24 0 nil fn2-core))
               (mv-let (bytes steps descriptors runnable fn2-core)
-                (fn2-scribe-stop id fn2-core)
+                (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
                 (declare (ignore bytes steps descriptors))
                 (fn2-machine-result 0 24 0 runnable fn2-core)))
           (let ((fn2-core (fn2-scribe-put-core id
                             (pool-slot slot) (pool-gen gen) (cursor 0)
                             (checksum 2166136261) (phase *fn2-scribe-state-fill*))))
             (fn2-machine-result 0 24 0 t fn2-core)))))))
-(fn2-core-shape-lemmas fn2-scribe-reserve (id) 4)
 
-(defun fn2-scribe-fill-run (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+
+(defmachine-callback fn2-scribe-fill-run fn2-scribe (id budget) 4
   (mv-let (code cursor hash fn2-core)
-    (fn2-scribe-fill 16 (fn2-machine-cursor id fn2-core)
-      (fn2-machine-sequence id fn2-core)
-      (fn2-machine-checksum id fn2-core)
-      (fn2-machine-pool-slot id fn2-core)
-      (fn2-machine-pool-gen id fn2-core) id
-      (fn2-machine-generation id fn2-core) fn2-core)
+    (fn2-scribe-fill 16 row-cursor
+      row-sequence
+      row-checksum
+      row-pool-slot
+      row-pool-gen id
+      row-generation fn2-core)
     (let ((fn2-core (fn2-scribe-put-core id
                       (cursor cursor) (checksum hash)
                       (phase (if (eq code :ok) (if (equal cursor 4096) *fn2-scribe-state-patch* *fn2-scribe-state-fill*) *fn2-scribe-state-stopped*))
                       (stopped (if (eq code :ok) 0 1)))))
       ; Conservative byte work includes an attempted access on refusal.
       (fn2-machine-result 16 24 0 (eq code :ok) fn2-core))))
-(fn2-core-shape-lemmas fn2-scribe-fill-run (id) 4)
+
 
 (defun fn2-scribe-patch-loop (left cursor hash slot gen id owner-gen fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix left)
@@ -168,90 +163,87 @@
 (fn2-core-shape-lemmas fn2-scribe-patch-loop
   (left cursor hash slot gen id owner-gen) 1)
 
-(defun fn2-scribe-patch (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+(defmachine-callback fn2-scribe-patch fn2-scribe (id budget) 4
   (mv-let (code fn2-core)
-    (fn2-scribe-patch-loop 4 0 (fn2-machine-checksum id fn2-core)
-      (fn2-machine-pool-slot id fn2-core)
-      (fn2-machine-pool-gen id fn2-core) id
-      (fn2-machine-generation id fn2-core) fn2-core)
+    (fn2-scribe-patch-loop 4 0 row-checksum
+      row-pool-slot
+      row-pool-gen id
+      row-generation fn2-core)
     (let ((fn2-core (fn2-scribe-put-core id
                       (phase (if (eq code :ok) *fn2-scribe-state-write* *fn2-scribe-state-stopped*))
                       (stopped (if (eq code :ok) 0 1)))))
       (fn2-machine-result 4 12 0 (eq code :ok) fn2-core))))
-(fn2-core-shape-lemmas fn2-scribe-patch (id) 4)
 
-(defun fn2-scribe-write (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv-let (code opslot opgen fn2-core)
-    (fn2-issue-write (* 4096 (nfix (- (fn2-machine-sequence id fn2-core) 1)))
-      (fn2-machine-pool-slot id fn2-core)
-      (fn2-machine-pool-gen id fn2-core) 0 4096 0 *fn2-scribe-kind* id
-      (fn2-machine-generation id fn2-core)
-      (fn2-machine-principal-slot id fn2-core) fn2-core)
+
+(defmachine-callback fn2-scribe-write fn2-scribe (id budget) 4
+  (if (not (and (natp budget) (< 0 budget))) (fn2-machine-yield id fn2-core)
+    (mv-let (code opslot opgen fn2-core)
+    (fn2-issue-write (* 4096 (nfix (- row-sequence 1)))
+      row-pool-slot
+      row-pool-gen 0 4096 0 *fn2-scribe-kind* id
+      row-generation
+      row-principal-slot fn2-core)
     (declare (ignore opslot opgen))
-    (if (not (eq code :ok)) (fn2-scribe-refused code id fn2-core)
+    (if (not (eq code :ok)) (fn2-scribe-refused code id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
       (let ((fn2-core (fn2-scribe-put-core id
                         (phase *fn2-scribe-state-write-result*) (pending 1) (event-ready 0))))
-        (fn2-machine-result 4096 12 1 nil fn2-core)))))
-(fn2-core-shape-lemmas fn2-scribe-write (id) 4)
+        (fn2-machine-result 4096 12 1 nil fn2-core))))))
 
-(defun fn2-scribe-fence (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv-let (code opslot opgen fn2-core)
-    (fn2-issue-fence *fn2-scribe-kind* id (fn2-machine-generation id fn2-core)
-      (fn2-machine-principal-slot id fn2-core) fn2-core)
+
+(defmachine-callback fn2-scribe-fence fn2-scribe (id budget) 4
+  (if (not (and (natp budget) (< 0 budget))) (fn2-machine-yield id fn2-core)
+    (mv-let (code opslot opgen fn2-core)
+    (fn2-issue-fence *fn2-scribe-kind* id row-generation
+      row-principal-slot fn2-core)
     (declare (ignore opslot opgen))
-    (if (not (eq code :ok)) (fn2-scribe-refused code id fn2-core)
+    (if (not (eq code :ok)) (fn2-scribe-refused code id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
       (let ((fn2-core (fn2-scribe-put-core id
                         (phase *fn2-scribe-state-fence-result*) (pending 1) (event-ready 0))))
-        (fn2-machine-result 0 12 1 nil fn2-core)))))
-(fn2-core-shape-lemmas fn2-scribe-fence (id) 4)
+        (fn2-machine-result 0 12 1 nil fn2-core))))))
 
-(defun fn2-scribe-reset (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+
+(defmachine-callback fn2-scribe-reset fn2-scribe (id budget) 4
   (mv-let (code fn2-core)
-    (fn2-core-reset (fn2-machine-pool-slot id fn2-core)
-      (fn2-machine-pool-gen id fn2-core) *fn2-scribe-kind* id
-      (fn2-machine-generation id fn2-core) fn2-core)
+    (fn2-core-reset row-pool-slot
+      row-pool-gen *fn2-scribe-kind* id
+      row-generation fn2-core)
     (let ((fn2-core (fn2-scribe-put-core id
                       (cursor 0) (phase (if (eq code :ok) *fn2-scribe-state-read* *fn2-scribe-state-stopped*))
                       (stopped (if (eq code :ok) 0 1)))))
       (fn2-machine-result 0 8 0 (eq code :ok) fn2-core))))
-(fn2-core-shape-lemmas fn2-scribe-reset (id) 4)
 
-(defun fn2-scribe-read (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let ((cursor (fn2-machine-cursor id fn2-core)))
-    (if (>= cursor 4096) (fn2-scribe-stop id fn2-core)
+
+(defmachine-callback fn2-scribe-read fn2-scribe (id budget) 4
+  (if (not (and (natp budget) (< 0 budget))) (fn2-machine-yield id fn2-core)
+    (let ((cursor row-cursor))
+    (if (>= cursor 4096) (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
       (mv-let (code opslot opgen fn2-core)
         (fn2-issue-read
-          (+ (* 4096 (nfix (- (fn2-machine-sequence id fn2-core) 1))) cursor)
-          (fn2-machine-pool-slot id fn2-core)
-          (fn2-machine-pool-gen id fn2-core) (- 4096 cursor) *fn2-scribe-kind* id
-          (fn2-machine-generation id fn2-core)
-          (fn2-machine-principal-slot id fn2-core) fn2-core)
+          (+ (* 4096 (nfix (- row-sequence 1))) cursor)
+          row-pool-slot
+          row-pool-gen (- 4096 cursor) *fn2-scribe-kind* id
+          row-generation
+          row-principal-slot fn2-core)
         (declare (ignore opslot opgen))
-        (if (not (eq code :ok)) (fn2-scribe-refused code id fn2-core)
+        (if (not (eq code :ok)) (fn2-scribe-refused code id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
           (let ((fn2-core (fn2-scribe-put-core id
                             (phase *fn2-scribe-state-read-result*) (pending 1) (event-ready 0))))
-            (fn2-machine-result (- 4096 cursor) 12 1 nil fn2-core)))))))
-(fn2-core-shape-lemmas fn2-scribe-read (id) 4)
+            (fn2-machine-result (- 4096 cursor) 12 1 nil fn2-core))))))))
 
-(defun fn2-scribe-result (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let* ((phase (fn2-machine-phase id fn2-core))
-         (event (fn2-machine-event id fn2-core))
-         (count (fn2-machine-count id fn2-core))
-         (cursor (fn2-machine-cursor id fn2-core))
-         (seq (fn2-machine-sequence id fn2-core)))
+
+(defmachine-callback fn2-scribe-result fn2-scribe (id budget) 4
+  (let* ((phase row-phase)
+         (event row-event)
+         (count row-count)
+         (cursor row-cursor)
+         (seq row-sequence))
     (cond
-      ((equal (fn2-machine-event-ready id fn2-core) 0)
+      ((equal row-event-ready 0)
        (fn2-machine-result 0 2 0 nil fn2-core))
-      ((not (or (equal (fn2-machine-outcome id fn2-core) *fn2-outcome-done*)
+      ((not (or (equal row-outcome *fn2-outcome-done*)
                  (and (equal phase *fn2-scribe-state-read-result*)
-                      (equal (fn2-machine-outcome id fn2-core) *fn2-outcome-short*))))
-       (fn2-scribe-stop id fn2-core))
+                      (equal row-outcome *fn2-outcome-short*))))
+       (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core))
       ((and (equal phase *fn2-scribe-state-write-result*) (equal event *fn2-event-write-result*) (equal count 4096))
        (let ((fn2-core (fn2-scribe-put-core id (phase *fn2-scribe-state-fence*) (event-ready 0))))
          (fn2-machine-result 0 6 0 t fn2-core)))
@@ -266,43 +258,42 @@
                          (cursor (if (equal (+ cursor count) 4096) 0 (+ cursor count)))
                          (event-ready 0))))
          (fn2-machine-result 0 8 0 t fn2-core)))
-      (t (fn2-scribe-stop id fn2-core)))))
-(fn2-core-shape-lemmas fn2-scribe-result (id) 4)
+      (t (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)))))
 
-(defun fn2-scribe-verify-run (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+
+(defmachine-callback fn2-scribe-verify-run fn2-scribe (id budget) 4
   (mv-let (ok cursor)
-    (fn2-scribe-verify 16 (fn2-machine-cursor id fn2-core)
-      (fn2-machine-sequence id fn2-core)
-      (fn2-machine-checksum id fn2-core)
-      (fn2-machine-pool-slot id fn2-core)
-      (fn2-machine-pool-gen id fn2-core) id
-      (fn2-machine-generation id fn2-core) fn2-core)
+    (fn2-scribe-verify 16 row-cursor
+      row-sequence
+      row-checksum
+      row-pool-slot
+      row-pool-gen id
+      row-generation fn2-core)
     (let ((fn2-core (fn2-scribe-put-core id
                       (cursor cursor) (phase (if ok (if (equal cursor 4096) *fn2-scribe-state-next* *fn2-scribe-state-verify*) *fn2-scribe-state-stopped*))
                       (stopped (if ok 0 1)))))
       (fn2-machine-result 16 24 0 ok fn2-core))))
-(fn2-core-shape-lemmas fn2-scribe-verify-run (id) 4)
 
-(defun fn2-scribe-next (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let ((seq (fn2-machine-sequence id fn2-core)))
-    (if (>= seq 4294967295) (fn2-scribe-stop id fn2-core)
+
+(defmachine-callback fn2-scribe-next fn2-scribe (id budget) 4
+  (let ((seq row-sequence))
+    (if (>= seq 4294967295) (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
       (mv-let (code fn2-core)
-        (fn2-core-reset (fn2-machine-pool-slot id fn2-core)
-          (fn2-machine-pool-gen id fn2-core) *fn2-scribe-kind* id
-          (fn2-machine-generation id fn2-core) fn2-core)
+        (fn2-core-reset row-pool-slot
+          row-pool-gen *fn2-scribe-kind* id
+          row-generation fn2-core)
         (let ((fn2-core (fn2-scribe-put-core id
                           (verified seq) (sequence (+ 1 seq)) (cursor 0)
                           (checksum 2166136261) (phase (if (eq code :ok) *fn2-scribe-state-fill* *fn2-scribe-state-stopped*))
                           (stopped (if (eq code :ok) 0 1)))))
           (fn2-machine-result 0 12 0 (eq code :ok) fn2-core))))))
-(fn2-core-shape-lemmas fn2-scribe-next (id) 4)
 
-(defun fn2-scribe-run (id budget fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (fn2-scribe-dispatch (fn2-machine-phase id fn2-core)))
-(fn2-core-shape-lemmas fn2-scribe-run (id budget) 4)
+
+(defmachine-callback fn2-scribe-idle fn2-scribe (id budget) 4
+  (fn2-machine-idle id fn2-core))
+
+(defmachine-run fn2-scribe)
+
 
 (assert-event
  (fn2-profile-exports-compliant-p

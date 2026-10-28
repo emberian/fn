@@ -234,5 +234,5 @@
              (<= actions (fn2-exec-aturn concrete))
              (<= (+ visits (fn2-exec-turn-bytes after) (fn2-exec-turn-steps after) 1)
                  (+ (* (fn2-exec-h concrete) 24) (* (fn2-exec-k concrete) 4129) 1))))))
-  :teeth "reference-unit evaluates the complete antecedent and conclusion after actual turns; swapping only reference FIFO order falsifies R and the next-turn conclusion."
+  :teeth (fn2-reference-teeth)
   :doc "Owed refinement to independent list selection, observation ordering and budget accounting; shared bounded machine semantics, no fusion.")

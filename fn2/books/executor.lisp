@@ -158,7 +158,7 @@
 (defun fn2-init-executor (profile mode scribe-p fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)))
   (b* ((fn2-core (fn2-core-init profile fn2-core))
-       (fn2-core (fn2-machine-set-echo-mode (if (eq mode :null) 0 1) fn2-core))
+       (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-exec-start-listeners (fn2-machine-accept-count fn2-core) 0 fn2-core))
        (fn2-core (if scribe-p (fn2-scribe-start fn2-core) fn2-core))
        ((mv wake fn2-core) (fn2-machine-take-wake fn2-core)))
@@ -170,7 +170,7 @@
       (declare (ignore status after))
       (and (<= nobs (fn2-exec-h core)) (<= nvisits (fn2-exec-k core))
            (<= nactions (fn2-exec-aturn core)))))
-  :teeth "WORK independently sums transition certificates for acceptance turns; executor unit witnesses exercise each budget boundary."
+  :teeth (fn2-executor-bounds-teeth fn2-executor-bounds-negative)
   :doc "Owed simultaneous observation, calendar-visit and descriptor bounds over fn2-turn.")
 
 (assert-event

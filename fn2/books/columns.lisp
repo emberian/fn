@@ -42,6 +42,17 @@
                (natp i) (fn2-columns-slotp i v))
           (fn2-columns-recordp schema (update-nth i v xs))))
 
+; Column lengths have one index-parametric update proof, just like types.
+(defun fn2-columns-shapep (n rows xs)
+  (if (zp n) t
+    (and (fn2-columns-shapep (- n 1) rows xs)
+         (equal (len (nth (- n 1) xs)) rows))))
+(defthm fn2-columns-shapep-update
+  (implies (and (fn2-columns-shapep n rows xs) (natp i)
+                (or (<= (nfix n) i) (equal (len v) rows)))
+           (fn2-columns-shapep n rows (update-nth i v xs))))
+(in-theory (disable fn2-columns-shapep))
+
 ; Keep field replacement symbolic for the generic record theorem.
 (in-theory (disable update-nth))
 
@@ -294,8 +305,8 @@
                       (implies (,p ,name) (< (nth ,index ,name) ,limit))
                       :rule-classes :linear
                       :hints (("Goal" :in-theory (enable ,p ,fp))))) nil)))
-      ,@(if arrayp
-            `((,(if localp 'local 'progn) (defthm ,(fn2-columns-sym f "-RAW-NTH-NATP")
+      ,@(if (and arrayp (not localp))
+            `((progn (defthm ,(fn2-columns-sym f "-RAW-NTH-NATP")
                 (implies (and (,p ,name) (natp i)
                               (< i ,(if (cadr (member-eq :resizable field))
                                         `(len (nth ,index ,name))
@@ -303,7 +314,7 @@
                          (natp (nth i (nth ,index ,name))))
                 :rule-classes :type-prescription))
               ,@(if limit
-                    `((,(if localp 'local 'progn) (defthm ,(fn2-columns-sym f "-RAW-NTH-BOUND")
+                    `((progn (defthm ,(fn2-columns-sym f "-RAW-NTH-BOUND")
                         (implies (and (,p ,name) (natp i)
                                       (< i ,(if (cadr (member-eq :resizable field))
                                                 `(len (nth ,index ,name))
@@ -363,7 +374,7 @@
     (cons
      `(defthm ,(fn2-columns-sym (fn2-columns-col-name name (caar cols)) "-LENGTH-WHEN-WFP")
         (implies (,(fn2-columns-sym name "-WFP") ,name)
-                 (equal (len (nth ,index ,name))
+                 (equal (len ,(fn2-columns-field-term index name))
                         (,(fn2-columns-sym name "-ROWS") ,name)))
         :hints (("Goal" :in-theory (enable ,(fn2-columns-sym name "-WFP")))))
      (fn2-columns-wfp-length-facts name (cdr cols) (+ 1 (nfix index))))))
@@ -375,6 +386,39 @@
                        (fn2-columns-sym (fn2-columns-col-name name (caar cols)) "$A"))
                   n ,name))
           (fn2-columns-resize-bindings name (cdr cols)))))
+
+(defun fn2-columns-shape-expansions (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil
+    (cons `(:free (rows xs) (fn2-columns-shapep ,n rows xs))
+          (fn2-columns-shape-expansions (- n 1)))))
+
+(defun fn2-columns-length-names (name cols)
+  (declare (xargs :verify-guards nil))
+  (if (atom cols) nil
+    (cons (fn2-columns-sym (fn2-columns-col-name name (caar cols)) "$A-LENGTH")
+          (fn2-columns-length-names name (cdr cols)))))
+
+(defun fn2-columns-shape-events (name cols bound)
+  (declare (xargs :verify-guards nil))
+  (let ((count (len cols)) (wfp (fn2-columns-sym name "-WFP"))
+        (rows (fn2-columns-sym name "-ROWS"))
+        (bridge (fn2-columns-sym name "-WFP-AS-SHAPE")))
+    `((local (defthm ,bridge
+        (equal (,wfp ,name)
+               (and (natp (,rows ,name)) (< (,rows ,name) ,bound)
+                    (fn2-columns-shapep ,count (,rows ,name) ,name)))
+        :hints (("Goal" :in-theory (union-theories
+                          '(,wfp ,rows fn2-columns-shapep zp ,@(fn2-columns-length-names name cols))
+                          (theory 'minimal-theory))
+                        :expand ,(fn2-columns-shape-expansions count)))))
+      (defthm ,(fn2-columns-sym name "-UPDATE-FIELD-WFP")
+        (implies (and (,wfp ,name) (natp i) (not (equal i ,count))
+                      (or (<= ,count i) (equal (len v) (,rows ,name))))
+                 (,wfp (update-nth i v ,name)))
+        :hints (("Goal" :in-theory (disable ,wfp))))
+      (local (in-theory (disable ,bridge)))
+      (in-theory (disable ,wfp)))))
 
 (defun fn2-columns-wfp-write-facts (name fields column-fields)
   (declare (xargs :guard t :verify-guards nil))
@@ -393,7 +437,7 @@
              (implies (and (,wfp ,name)
                            ,@(if arrayp `((natp i) (< i (,length ,name))) nil))
                       (,wfp ,call))
-             :hints (("Goal" :in-theory (enable ,wfp))))
+             :hints (("Goal" :in-theory (enable ,write))))
            (defthm ,(fn2-columns-sym write "-ROWS")
              (equal (,(fn2-columns-sym name "-ROWS") ,call)
                     (,(fn2-columns-sym name "-ROWS") ,name)))))
@@ -403,7 +447,7 @@
            `((defthm ,(fn2-columns-sym (fn2-columns-pre "RESIZE-" f) "-PRESERVES-WFP")
                (implies (,wfp ,name)
                         (,wfp (,(fn2-columns-pre "RESIZE-" f) n ,name)))
-               :hints (("Goal" :in-theory (enable ,wfp))))) nil)
+               :hints (("Goal" :in-theory (enable ,(fn2-columns-pre "RESIZE-" f)))))) nil)
        (fn2-columns-wfp-write-facts name (cdr fields) column-fields))))))
 
 (defun fn2-columns-accessor-events (name cols index rows-index)
@@ -422,21 +466,25 @@
       (append
        `((defun ,read (i ,name)
            (declare (xargs :stobjs ,name :guard ,guard
-                           :guard-hints (("Goal" :in-theory (enable ,wfp)))))
+                           :guard-hints (("Goal" :in-theory (disable ,wfp)))))
            (,raw i ,name))
          (defun ,write (i v ,name)
            (declare (xargs :stobjs ,name
                            :guard (and ,guard (unsigned-byte-p ,width v))
-                           :guard-hints (("Goal" :in-theory (enable ,wfp)))))
+                           :guard-hints (("Goal" :in-theory (disable ,wfp)))))
            (,raw-write i v ,name))
          (defthm ,(fn2-columns-sym read "-NATP")
            (implies (and (,p ,name) ,guard) (natp (,read i ,name)))
            :rule-classes :type-prescription
-           :hints (("Goal" :in-theory (enable ,wfp))))
+           :hints (("Goal" :in-theory (disable ,wfp)
+                          :use ((:instance ,(fn2-columns-sym read "$AP-NTH-NATP")
+                                           (xs ,(fn2-columns-field-term index name)))))))
          (defthm ,(fn2-columns-sym read "-BOUND")
            (implies (and (,p ,name) ,guard) (< (,read i ,name) ,(expt 2 width)))
            :rule-classes :linear
-           :hints (("Goal" :in-theory (enable ,wfp))))
+           :hints (("Goal" :in-theory (disable ,wfp)
+                          :use ((:instance ,(fn2-columns-sym read "$AP-NTH-BOUND")
+                                           (xs ,(fn2-columns-field-term index name)))))))
          ; Guards simplify accessors to NTH before type inference.  These
          ; matching rules need no rewriting to relieve their hypotheses.
          (defthm ,(fn2-columns-sym read "-RAW-NTH-NATP")
@@ -444,20 +492,26 @@
                          (< i (nth ,rows-index ,name)))
                     (natp (nth i ,(fn2-columns-field-term index name))))
            :rule-classes :type-prescription
-           :hints (("Goal" :in-theory (enable ,wfp ,p))))
+           :hints (("Goal" :in-theory (disable ,wfp ,p)
+                          :use ((:instance ,(fn2-columns-sym read "$AP-NTH-NATP")
+                                           (xs ,(fn2-columns-field-term index name)))))))
          (defthm ,(fn2-columns-sym read "-RAW-NTH-BOUND")
            (implies (and (,p ,name) (,wfp ,name) (natp i)
                          (< i (nth ,rows-index ,name)))
                     (< (nth i ,(fn2-columns-field-term index name)) ,(expt 2 width)))
            :rule-classes :linear
-           :hints (("Goal" :in-theory (enable ,wfp ,p))))
+           :hints (("Goal" :in-theory (disable ,wfp ,p)
+                          :use ((:instance ,(fn2-columns-sym read "$AP-NTH-BOUND")
+                                           (xs ,(fn2-columns-field-term index name)))))))
          (defthm ,(fn2-columns-sym write "-PRESERVES-WFP")
            (implies ,guard (,wfp (,write i v ,name)))
-           :hints (("Goal" :in-theory (enable ,wfp))))
+           :hints (("Goal" :in-theory (disable ,wfp)
+                          :use ((:instance ,(fn2-columns-sym raw-write "-PRESERVES-WFP"))))))
          (defthm ,(fn2-columns-sym write "-PRESERVES-TYPE")
            (implies (and (,p ,name) ,guard (unsigned-byte-p ,width v))
                     (,p (,write i v ,name)))
-           :hints (("Goal" :in-theory (enable ,wfp))))
+           :hints (("Goal" :in-theory (disable ,wfp)
+                          :use ((:instance ,(fn2-columns-sym raw-write "-PRESERVES-TYPE"))))))
          (defthm ,(fn2-columns-sym write "-NTH")
            (equal (nth k (,write i v ,name)) (nth k (,raw-write i v ,name))))
          (defthm ,(fn2-columns-sym write "-ROWS")
@@ -490,7 +544,10 @@
          (fields (append (fn2-columns-fields name cols)
                          `((,rows :type (integer 0 ,(- bound 1)) :initially 0))
                          (fn2-columns-extra-specs extras))))
-    `(progn
+    `(encapsulate ()
+       ; Plain numeric columns need only this DSL's proof theory. Raw extras
+       ; retain incoming rules for their external nested-stobj constructors.
+       ,@(if extras nil '((local (in-theory (theory 'fn2-columns-proof-theory)))))
        ,@(fn2-columns-enum-events cols)
        (defstobj ,name ,@fields :inline t)
        ,@(fn2-columns-all-array-facts fields)
@@ -512,6 +569,7 @@
        ,@(fn2-columns-wfp-length-facts name cols 0)
        (defthm ,(fn2-columns-sym create "-WFP") (,wfp (,create))
          :hints (("Goal" :in-theory (enable ,create))))
+       ,@(fn2-columns-shape-events name cols bound)
        (defun ,init (n ,name)
          (declare (xargs :stobjs ,name :guard (and (natp n) (< n ,bound))))
          (let* (,@(fn2-columns-resize-bindings name cols)
@@ -520,7 +578,8 @@
        (defthm ,(fn2-columns-sym init "-PRESERVES-TYPE")
          (implies (and (,p ,name) (natp n) (< n ,bound)) (,p (,init n ,name))))
        (defthm ,(fn2-columns-sym init "-WFP")
-         (implies (and (natp n) (< n ,bound)) (,wfp (,init n ,name))))
+         (implies (and (natp n) (< n ,bound)) (,wfp (,init n ,name)))
+         :hints (("Goal" :in-theory (enable ,wfp))))
        (defthm ,(fn2-columns-sym init "-NTH")
          (equal (nth k (,init n ,name))
                 (nth k (let* (,@(fn2-columns-resize-bindings name cols)
@@ -635,6 +694,11 @@
            (equal (nth 2 (mv-nth 1 (,inc i ,name))) (nth 2 ,name)))
          (assert-event (eq (symbol-class ',compare (w state)) :common-lisp-compliant))
          (assert-event (eq (symbol-class ',inc (w state)) :common-lisp-compliant))))))
+
+; Freeze the generating book's theory, independent of the includer's world.
+(make-event
+ (let ((world (w state)))
+   (value `(deftheory fn2-columns-proof-theory ',(current-theory :here)))))
 
 ; A small local instance exercises all kinds, enums and extra raw fields.
 ; No example storage or exported names are imposed on includers.
