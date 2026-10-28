@@ -405,7 +405,14 @@ def phase_report(label: str) -> None:
 # the variable nothing is persisted (the laptop, the unit tests).
 _CONTENT_HASHES: dict[tuple, str] = {}
 CONTENT_HASH_FILE_ENV = "FN_CONTENT_HASH_FILE"
-_PERSISTED: dict = {"loaded": False, "new": {}}
+_PERSISTED: dict = {"loaded": False, "new": {}, "used": set()}
+# The memo may live in the certificate cache itself (tools/hbox_native.sh), so
+# every gate run on the box shares it: a hit is stat-identical to a file this
+# or an earlier run already read (the key's inode, size, mtime and ctime change
+# with any rewrite), so no stale bytes are trusted.  Entries for files that no
+# longer exist are never looked up again; past this many, a flush keeps only
+# what the flushing process used or computed.
+PERSISTED_HASHES_MAX = 400_000
 
 
 def _hash_file() -> Path | None:
@@ -454,6 +461,10 @@ def flush_persisted_hashes() -> None:
             except (OSError, ValueError):
                 merged = {}
             merged.update({_key_text(k): v for k, v in new.items()})
+            if len(merged) > PERSISTED_HASHES_MAX:
+                keep = {_key_text(k) for k in _PERSISTED["used"]} | {
+                    _key_text(k) for k in new}
+                merged = {k: v for k, v in merged.items() if k in keep}
             temporary = where.with_name(where.name + f".{os.getpid()}.tmp")
             temporary.write_text(json.dumps(merged, sort_keys=True), encoding="utf-8")
             os.replace(temporary, where)
@@ -473,6 +484,7 @@ def content_hash(path: Path) -> str:
         _load_persisted_hashes()
     known = _CONTENT_HASHES.get(key)
     if known is not None:
+        _PERSISTED["used"].add(key)
         return known
     hasher = hashlib.sha256()
     with Path(path).open("rb") as source:
@@ -482,6 +494,7 @@ def content_hash(path: Path) -> str:
     after = os.stat(path)
     if (after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns) == key[1:]:
         _CONTENT_HASHES[key] = digest  # unchanged while it was read
+        _PERSISTED["used"].add(key)
         if _hash_file() is not None:
             _PERSISTED["new"][key] = digest
     return digest

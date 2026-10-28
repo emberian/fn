@@ -2347,6 +2347,20 @@ class PersistedContentHashTests(unittest.TestCase):
                 self.assertEqual(certs.content_hash(path),
                                  hashlib.sha256(b"two").hexdigest())
 
+    def test_past_the_bound_a_flush_keeps_only_what_the_process_used(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = Path(directory) / "hashes.json"
+            path = Path(directory) / "f"
+            path.write_bytes(b"one")
+            gone = {f"1:{n}:1:1:1": "0" * 64 for n in range(5)}
+            store.write_text(json.dumps(gone), encoding="utf-8")
+            with mock.patch.dict(os.environ, {"FN_CONTENT_HASH_FILE": str(store)}), \
+                    mock.patch.object(certs, "PERSISTED_HASHES_MAX", 3):
+                digest = certs.content_hash(path)
+                certs.flush_persisted_hashes()
+            kept = json.loads(store.read_text(encoding="utf-8"))
+            self.assertEqual(list(kept.values()), [digest])
+
     def test_without_the_variable_nothing_is_written(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "f"
