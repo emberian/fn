@@ -143,6 +143,13 @@
 # certify and no build: link the images an earlier run built, RUN =
 # NAME/native-LABEL or a /tank/fn/scratch path, from RUN/tree/build; their
 # identity source is the one RUN's log names; `tools/image_set.py link-run`),
+# --keyed-images (the content-keyed image store, tools/image_key.py: after the
+# static gates the run computes each image's key from its inputs -- host and raw
+# files, the book sources of the world, build scripts, foreign-library sources,
+# toolchain -- and, when the box's store /tank/fn/images/keyed holds a set for
+# exactly those keys, links it and skips resolve, install, certify, acquire,
+# validate, host-ld and the saves; a miss runs the full path and publishes the
+# images it builds under the set's key),
 # --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --all (run every module even when the box's verdict store holds a verdict
 # for exactly its inputs: without it, a module whose stored verdict -- keyed by
@@ -203,6 +210,7 @@ IMAGE_SET=
 REUSE=
 OVERLAY=
 FROM_TRAIN=
+KEYED=
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
 # Shared by launch identity capture and stop, streamed from this private copy.
 native_process_script() {
@@ -557,6 +565,7 @@ while [ $# -gt 0 ]; do
             BUILD=0; shift 2 ;;
         --overlay) OVERLAY=1; shift ;;
         --from-train) FROM_TRAIN=1; shift ;;
+        --keyed-images) KEYED=1; shift ;;
         --detach) DETACH=1; shift ;;
         --wait) DETACH=0; shift ;;
         --dry-run) DRY=1; shift ;;
@@ -643,6 +652,12 @@ if [ -n "$FROM_TRAIN" ]; then
         echo "hbox_native: --from-train starts an image build from the train's certified tree of the commit REV; it takes a commit and no --image-set, --reuse-image, --overlay or --no-build" >&2; exit 2
     fi
 fi
+if [ -n "$KEYED" ]; then
+    if [ "$REV" = . ] || [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ] || [ -n "$OVERLAY" ] || [ -n "$FROM_TRAIN" ] || [ $BUILD -ne 1 ]; then
+        echo "hbox_native: --keyed-images keys the images of a commit REV this run would build; it takes no --image-set, --reuse-image, --overlay, --from-train or --no-build, and REV is a commit" >&2; exit 2
+    fi
+    case ",$IMAGES," in *,prof,*) echo "hbox_native: --keyed-images does not key the prof image" >&2; exit 2 ;; esac
+fi
 if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     for image in $(echo "$IMAGES" | tr ',' ' '); do
         case $image in production|developer|dtn|dtn-developer) ;;
@@ -702,6 +717,10 @@ if [ -n "$OVERLAY" ]; then
 fi
 # The images' own source is the set's commit, whatever tree runs the tests.
 [ -z "$IMAGE_SET" ] || SOURCE_ID=$IMAGE_SET
+# A keyed run's images are either a stored set's (built at an older commit) or
+# this run's own: the box writes build/KEYED_SOURCE once it knows which.
+REAL_SOURCE_ID=$SOURCE_ID
+[ -z "$KEYED" ] || SOURCE_ID='$(cat build/KEYED_SOURCE)'
 # The box and its row (item 67).  auto takes hbox for --image-set and
 # --reuse-image (the published sets and the earlier runs live there) and for
 # a dry run (no ssh); otherwise the lower load per core now.
@@ -978,6 +997,40 @@ step host-books static_gate host-books tools/host_check.py --books
 step attach-order static_gate attach-order tools/host_check.py --attach-order
 step one-world static_gate one-world tools/one_world_check.py
 BOX
+        if [ -n "$KEYED" ]; then
+            KEYSTORE=${IMAGES_BASE:-/tank/fn/images}/keyed
+            cat <<BOX
+# Content-keyed images (tools/image_key.py): a stored set whose keys are this
+# tree's links in and skips everything that builds an image.
+KEYED=0
+mkdir -p build
+echo "$REAL_SOURCE_ID" > build/KEYED_SOURCE
+echo "== image-key \$(date -u +%H:%M:%SZ)"
+python3 tools/image_key.py reuse --no-link --store $KEYSTORE --tree \$T --acl2 "\$ACL2" --image-acl2 "${IMAGE_ACL2:-\$ACL2}" --images $IMAGES --record \$S/image-keys.json > \$L/image-key.log 2>&1 8>&-
+key_rc=\$?
+sed 's/^/   | /' \$L/image-key.log
+if [ \$key_rc -eq 0 ]; then
+    # The wire grammar is a function of the wire book's sources (the box's
+    # wire store, tools/protocol_emit.py): a tree with no certificate makes it
+    # only from that store, and a store without it is a miss.
+    if [ -f tools/box_artifacts.py ] && ! python3 tools/protocol_emit.py --wire --write > \$L/box-wire.log 2>&1 8>&-; then
+        echo "   image-key: the wire grammar is not in the box's store; the full path runs"
+        tail -n 3 \$L/box-wire.log | sed 's/^/   | /'
+    elif python3 tools/image_key.py reuse --store $KEYSTORE --tree \$T --acl2 "\$ACL2" --image-acl2 "${IMAGE_ACL2:-\$ACL2}" --images $IMAGES >> \$L/image-key.log 2>&1 8>&-; then
+        KEYED=1
+        echo "   image-key: HIT, the stored images are linked; resolve, install, certify, acquire and the image saves are skipped"
+    else
+        echo "   image-key: the stored set was refused; the full path runs"
+        tail -n 3 \$L/image-key.log | sed 's/^/   | /'
+        # A refused link may have placed some: only a build's own files may stay.
+        python3 tools/image_key.py unlink --store $KEYSTORE --tree \$T
+    fi
+else
+    echo "   image-key: miss (exit \$key_rc); the full path runs and publishes the set"
+fi
+if [ \$KEYED -eq 0 ]; then
+BOX
+        fi
         if [ -n "$REUSE_TREE" ]; then
             # The train's certified tree stands in for the install, the
             # incremental certify, box-wire (the train's protocol_emit
@@ -1138,6 +1191,15 @@ BOX
         if [ -n "$PUBLISH" ]; then
             cat <<BOX
 step publish python3 tools/image_set.py publish \$T $SOURCE_ID --base ${IMAGES_BASE:-/tank/fn/images}
+BOX
+        fi
+        if [ -n "$KEYED" ]; then
+            # The set key was recorded before the build; a published set stays
+            # as built (an existing one is left alone, a refusal is only said).
+            cat <<BOX
+echo "== publish-keyed \$(date -u +%H:%M:%SZ)"
+python3 tools/image_key.py publish --store $KEYSTORE --tree \$T --record \$S/image-keys.json --source $REAL_SOURCE_ID 8>&- || echo "   publish-keyed: not published (exit \$?)"
+fi
 BOX
         fi
     fi

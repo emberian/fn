@@ -75,6 +75,8 @@ IMAGES = {
     "developer": "fn-host-developer",
     "dtn": "fn-host-dtn",
     "dtn-developer": "fn-host-dtn-developer",
+    "reference": "fn-host-reference",
+    "developer-stripped": "fn-host-developer-stripped",
 }
 SHA = re.compile(r"[0-9a-f]{40}")
 CORE = re.compile(r'--core "([^"]+)"')
@@ -232,11 +234,14 @@ def stamp(tree: Path) -> int:
     return 0
 
 
-def publish(tree: Path, sha: str, base: Path = BASE) -> int:
+def publish(tree: Path, sha: str, base: Path = BASE, name: str | None = None) -> int:
+    """Publish TREE/build's images as BASE/SHA, or, when NAME is given, as
+    BASE/NAME (a content-keyed set, tools/image_key.py: SHA is still the
+    commit the images were built from)."""
     if not SHA.fullmatch(sha):
         print(f"image_set: {sha!r} is not a full commit sha", file=sys.stderr)
         return 2
-    target = base / sha
+    target = base / (name or sha)
     if target.exists():
         print(f"image_set: {target} exists; a set is published once", file=sys.stderr)
         return 1
@@ -265,7 +270,7 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
               "tools/hbox_native.sh REV, or a clean checkout at it: "
               "tools/build_native_host.sh writes FILE.source)", file=sys.stderr)
         return 1
-    partial = base / f"{sha}.partial"
+    partial = base / f"{name or sha}.partial"
     shutil.rmtree(partial, ignore_errors=True)
     partial.mkdir(parents=True)
     images = {}
@@ -278,7 +283,7 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
             shutil.rmtree(partial)
             return 1
         launcher = partial / file
-        launcher.write_text(CORE.sub(lambda _: f'--core "{base / sha / core.name}"', text))
+        launcher.write_text(CORE.sub(lambda _: f'--core "{target / core.name}"', text))
         launcher.chmod(0o755)
         deps = build / f"{file}.world-deps"
         if deps.is_file():
@@ -294,8 +299,11 @@ def publish(tree: Path, sha: str, base: Path = BASE) -> int:
     return 0
 
 
-def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE) -> int:
-    directory = base / sha
+def link(sha: str, tree: Path, wanted: list[str], base: Path = BASE,
+         name: str | None = None) -> int:
+    """Link the named images of BASE/SHA, or of the content-keyed set
+    BASE/NAME, whose images were built from commit SHA, into TREE/build."""
+    directory = base / (name or sha)
     try:
         manifest = json.loads((directory / "MANIFEST.json").read_text())
     except (OSError, ValueError) as error:

@@ -959,6 +959,29 @@ class FromTrainDryRunTests(unittest.TestCase):
         self.assertNotIn("== reuse:", out)
         self.assertNotIn("from-train", answer.stderr)
 
+    def test_keyed_images_wrap_everything_that_builds_an_image(self):
+        answer = self.run_dry("--keyed-images")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        lines = answer.stdout.splitlines()
+        text = answer.stdout
+        opened = lines.index("if [ $KEYED -eq 0 ]; then")
+        closed = max(i for i, line in enumerate(lines) if line == "fi" and i > opened
+                     and "publish-keyed" in "\n".join(lines[opened:i]))
+        inside = "\n".join(lines[opened:closed])
+        for fragment in ("step resolve ", "step install ", "step certify ", "step image-production ",
+                         "step stamp-images", "acquire_step acquire-dtn dtn", "image_key.py publish"):
+            self.assertIn(fragment, inside)
+            self.assertLess(text.index("image_key.py reuse --no-link"), text.index(fragment))
+        # Outside the condition: the static gates, the wire grammar's store hit, the modules.
+        self.assertNotIn("step world-check ", inside)
+        self.assertIn("image_key.py reuse --no-link", text)
+        self.assertIn("cat build/KEYED_SOURCE", text)
+
+    def test_keyed_images_refuse_the_other_ways_to_name_images(self):
+        for other in ("--no-build", "--reuse-image", "--overlay"):
+            answer = self.run_dry("--keyed-images", other, *(("x",) if other == "--reuse-image" else ()))
+            self.assertNotEqual(answer.returncode, 0, other)
+
     def test_a_refused_plan_says_why_and_falls_back(self):
         import shutil
         shutil.rmtree(self.repo / "build", ignore_errors=True)

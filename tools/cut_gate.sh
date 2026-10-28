@@ -99,7 +99,11 @@ printf '%s\n' "$MODULES" > "$OUT/modules.txt"
 
 # 1. image + natives on hbox
 set -- --box hbox --allow-certify --images production,developer,dtn,dtn-developer,reference,developer-stripped --jobs auto --label "$LABEL" --allow-skips --env FN_INN_SRC=/tank/fn/inn/2.7.4
+# Content-keyed images (tools/image_key.py): when every image's inputs match a
+# stored set the run links it and skips resolve, install, certify, acquire and
+# the saves; a miss builds as before and stores the set.
 [ -z "$REUSE" ] || set -- "$@" --reuse-image "$REUSE"
+[ -n "$REUSE" ] || set -- "$@" --keyed-images
 log "hbox_native $* $REV ..."
 sh tools/hbox_native.sh "$@" "$SHA" $MODULES > "$OUT/hbox_native.launch.log" 2>&1 || { log "RED: hbox_native refused to launch (see $OUT/hbox_native.launch.log)"; exit 1; }
 sh tools/hbox_native.sh attach "$LABEL" > "$OUT/hbox_native.attach.log" 2>&1 || true
