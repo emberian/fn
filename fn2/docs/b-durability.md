@@ -196,7 +196,7 @@ pairs it with a separately typed `writer-epoch` field.
 | Kind | Bytes | Decoded fields row | Format failures |
 |---|---|---|---|
 | `:u8`, `:u16`, `:u32` | 1, 2, 4 little-endian bytes | `value` | `:truncated`; encode `:value` |
-| `:u64` | 8 little-endian bytes | low u32 `value`, upper u32 `hi` | `:truncated`; encode `:value` |
+| `:u64` | 8 little-endian bytes, bits 60..63 zero (A-WORD-U60: an on-disk encoding of a u60) | u60 `value` | `:wide`, `:truncated`; encode `:value` |
 | `:varint`, `:u60` | shortest unsigned base-128, low groups first | u60 `value` | `:noncanonical`, `:wide`, `:truncated` |
 | `(:id NS)` | same canonical varint | u60 `value`; namespace retained in layout | same as varint |
 | `:bool` | 0 or 1 | `value` | `:unknown-tag`, `:truncated` |
@@ -218,10 +218,10 @@ field: the first variable-width field retains its known starting offset;
 subsequent offsets are nil.
 
 `fn2-fields-init(n, fields)` allocates the profile's field-position rows.
-Columns are `value:u60`, `hi:u32`, `ref-slot:u32`, `ref-gen:u60`, `ref-off:u32`,
+Columns are `value:u60`, `ref-slot:u32`, `ref-gen:u60`, `ref-off:u32`,
 `ref-len:u32`, `status:u8`. Successful fields have status zero; refusal status
 is the function's keyword. The extra scalars hold field index, byte position,
-partial accumulator, high half/wide flag, payload size/reference, phase and
+partial accumulator, sticky wide-varint flag, payload size/reference, phase and
 next offset. `fn2-layout-start(fields)` resets only that continuation.
 
 APIs (the final arguments are stobjs):
