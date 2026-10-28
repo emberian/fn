@@ -85,3 +85,14 @@ teeth do not prove a device, simulator, commit machine, or recovery implementati
 
 These statements register obligations, not theorems. Runtime guard verification and vector,
 differential and allocation checks do not discharge either equivalence proof.
+
+## Layer B — B4a allocator (unproved)
+
+| Name | Book | Statement | Evaluated teeth | Proof owner |
+|---|---|---|---|---|
+| `fn2-alloc-release-safe` | `books/alloc.lisp` | Actual release success from invp implies prestate releasablep (all counts zero, RETIRE-PENDING, retirement <= cut) and poststate FREE. | alloc-unit: evaluated complete success antecedent/conclusion; nine reachable edge removals plus checkpoint removal from a copied predicate authorize a release independently rejected by RECLAIM. Reservation-only retired branch unreachable-in-composition; cancellation/state tests cover reservation ownership. | Layer B allocator release proof; B4b/B5/B6 persistence and recovery composition. |
+| `fn2-alloc-ids-never-repeat` | `books/alloc.lisp` | All listed lifetime/epoch/edge/checkpoint transitions preserve a monotonic epoch/counter watermark; reserve issues that watermark, advances it strictly and is fresh against live IDs. Init is construction, not a restart transition; relocation changes only edges. | alloc-unit: actual reserve/cancel/reissue and full shared progress predicate; two rows, one live ID and one free row, counter rewind falsifies invp and the same progress predicate by duplicate issue. RECLAIM retains issued IDs across cancellation/crash and rejects repeated IDs/stale writes. | Layer B epoch/allocation issuance induction; B4b recovery composition. |
+
+Guard verification and evaluated witnesses do not prove these obligations. The release
+transition relies on its composing machine to establish persistence of RELEASE_ALLOCATION;
+relocation relies on durable replacement evidence. Neither is a real-disk durability claim.
