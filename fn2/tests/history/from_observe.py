@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+from email.parser import BytesHeaderParser
 
 from .history import Record, pair, write_jsonl
 
@@ -52,8 +53,8 @@ def _body_digest(block):
 def adapt(records):
     """No execution, file-path dereferences, or reconstruction of missing facts.
 
-    Optional files={path: hex} and history_value={} are explicit future observer
-    enrichments. Existing H1b emits neither. All incompleteness is counted.
+    files_before/files_after are immutable captures; legacy files and explicit
+    history_value enrichments remain accepted. All incompleteness is counted.
     """
     raw = list(records)
     missing, used, calls, pending = {}, set(), [], defaultdict(deque)
@@ -75,6 +76,8 @@ def adapt(records):
         signature = (r.get('test'), r.get('process'), r.get('kind'),
                      tuple(r.get('words', [])), r.get('command_hex'),
                      r.get('pid') if r.get('kind') == 'node.stop' else None)
+        if 'call' in r:
+            signature = ('call', r['call'])
         if r.get('phase') == 'invoke':
             if pending[signature]:
                 miss(i, 'ambiguous overlapping calls without unique call ID')
@@ -108,7 +111,20 @@ def adapt(records):
         used.update((start, end))
         claimed.add(start)
 
-    state = {}  # Only explicitly observed or definitely acknowledged positions.
+    state, exits, cuts = {}, set(), {}
+
+    def stream(r):
+        return (r.get('test'), r.get('node'), r.get('conn', r.get('process')))
+
+    def transport(start, end):
+        # Only positively correlated new-format nested transport is redundant.
+        for s, e in calls:
+            if (start <= s <= e <= end and 'conn' in raw[s]
+                    and stream(raw[s]) == stream(raw[start])
+                    and raw[s]['kind'] in {'client.send', 'client.line', 'client.block'}):
+                used.update((s, e))
+                claimed.add(s)
+
     for start, end in calls:
         if start in claimed:
             continue
@@ -117,18 +133,32 @@ def adapt(records):
         extra = a.get('history_value', {}) | b.get('history_value', {})
         node = a.get('node', b.get('node', 'default'))
         value = {'node': node} | extra
+        if kind == 'node.signal':
+            used.update((start, end))  # signal request alone does not establish death
+            continue
         if kind in {'node.start', 'node.try_start', 'node.start_store_owner'}:
+            cuts[node] = a.get('death_cut')
+            if 'env_selectors' in a:
+                value['env_selectors'] = a['env_selectors']
             if b['phase'] == 'ok' and b.get('exit_class') in {None, 'OK'}:
                 value['posture'] = 'ready'
                 emit(start, end, 'recover', value)
-                if a.get('env', {}).get('FN_NATIVE_CONTROL_FAULT'):
-                    miss(start, 'fault armed; no crash observed until stop')
             else:
                 emit(start, end, 'recover', value | {'posture': 'uncertain'}, 'info')
             continue
-        if kind == 'node.stop':
+        if kind in {'node.stop', 'node.exit'}:
+            identity = (node, b.get('pid'), b.get('exit_code'))
+            if 'call' in a and (identity in exits or b.get('exit_class') == 'OK'):
+                used.update((start, end))
+                continue
             if b.get('exit_class') not in {None, 'OK'}:
-                emit(start, end, 'crash', value | {'cut': extra.get('cut', 'unknown')})
+                cut = b.get('death_cut', cuts.get(node))
+                # A selector arms a fault; only matching exit + marker proves its cut.
+                reached = (isinstance(cut, list) and len(cut) == 2 and
+                           b.get('exit_code') == cut[0] and
+                           cut[1] in b.get('stdout', '') + b.get('stderr', ''))
+                emit(start, end, 'crash', value | {'cut': extra.get('cut', cut[1] if reached else 'unknown')})
+                exits.add(identity)
             else:
                 miss(start, 'clean stop is not a crash cut')
                 miss(end, 'clean stop is not a crash cut')
@@ -160,7 +190,9 @@ def adapt(records):
             if b['phase'] == 'info':
                 phase = 'info'
             value['reason'] = parsed.get('reason', match[2] if match and outcome != 'accepted' else None)
-            files = a.get('files', {}) | b.get('files', {})
+            files = b.get('files_after', a.get('files', {}) | b.get('files', {}))
+            if f == 'ack':
+                files = a.get('files_before', files)
             path = None
             if f == 'ack' and params:
                 path = params[0]
@@ -171,6 +203,8 @@ def adapt(records):
                 path = params[n] if len(params) > n else None
             if path in files:
                 try:
+                    if not isinstance(files[path], str):
+                        raise ValueError('snapshot has hash/length only')
                     value.update(cursor(files[path]))
                 except (ValueError, UnicodeError) as error:
                     miss(end, f'captured cursor: {error}')
@@ -187,7 +221,8 @@ def adapt(records):
                 report = parsed.get('report')
                 report_index = 3 if verb.startswith('bound-') else 2
                 report_path = params[report_index] if len(params) > report_index else None
-                report_bytes = bytes.fromhex(files[report_path]) if report_path in files else None
+                report_bytes = (bytes.fromhex(files[report_path]) if
+                                isinstance(files.get(report_path), str) else None)
                 mid = parsed.get('message_id')
                 if report_bytes is not None:
                     if not report_bytes:
@@ -200,6 +235,8 @@ def adapt(records):
                     value.setdefault('events', [[value['position'], mid]])
                 if report:
                     value['report'] = report
+                if type(parsed.get('more')) is bool:
+                    value['more'] = parsed['more']
                 # Native single-item output lacks the pinned frontier/more bit.
                 if f == 'wait' and '--timeout' in params:
                     value['deadline'] = a['t'] + int(params[params.index('--timeout') + 1]) * 10**9
@@ -219,6 +256,13 @@ def adapt(records):
                 state.pop(state_key, None)
             emit(start, end, f, value, phase)
             continue
+        if kind in {'client.connect', 'client.close', 'client.starttls'} and 'conn' in a:
+            used.update((start, end))
+            transport(start, end)
+            if kind == 'client.starttls':
+                used.update(i for s, e in calls if start < s < e < end
+                            and stream(raw[s]) == stream(a) for i in (s, e))
+            continue
         if kind != 'client.command':
             continue
         command = bytes.fromhex(a.get('command_hex', '')).decode('ascii', 'replace').split()
@@ -227,9 +271,8 @@ def adapt(records):
         verb = command[0].upper()
         reply = bytes.fromhex(b.get('reply_hex', '')).decode('ascii', 'replace')
         code = int(reply[:3]) if reply[:3].isdigit() else None
-        stream = (a.get('test'), a.get('process'))
         following = [(s, e) for s, e in calls if s > end and
-                     (raw[s].get('test'), raw[s].get('process')) == stream]
+                     stream(raw[s]) == stream(a)]
         stop = next((s for s, e in following if raw[s]['kind'] == 'client.command'), len(raw))
         if verb == 'POST':
             final_end = end
@@ -254,11 +297,25 @@ def adapt(records):
             elif 'different article with this Message-ID' in reason:
                 reason = 'conflict'
             value.update(code=code, reason=reason)
+            sends = [raw[s] for s, e in following if e <= final_end and raw[s]['kind'] == 'client.send']
+            if sends and not any('sent_sha256' in r for r in sends):
+                wire = b''.join(bytes.fromhex(r.get('sent_hex', '')) for r in sends)
+                if wire.endswith(b'\r\n.\r\n'):
+                    article = b'\r\n'.join(line[1:] if line.startswith(b'..') else line
+                                            for line in wire[:-3].split(b'\r\n'))
+                    headers = BytesHeaderParser().parsebytes(article)
+                    mid = headers.get('Message-ID')
+                    if mid:
+                        try:
+                            value.update(message_id=mid.strip(), digest=_body_digest(article))
+                        except ValueError:
+                            pass
             if not {'message_id', 'digest'} <= value.keys():
                 value['observed_only'] = True
                 miss(end, 'POST send/body/Message-ID not observed')
             emit(start, final_end, 'post', value, phase)
             used.add(end)
+            transport(start, final_end)
         elif verb in {'ARTICLE', 'HEAD', 'STAT'} and len(command) == 2 and command[1].startswith('<'):
             value.update(message_id=command[1], code=code)
             final_end = end
@@ -283,6 +340,13 @@ def adapt(records):
                 miss(end, 'read presence only; no payload digest')
             emit(start, final_end, 'read', value, read_phase)
             used.add(end)
+            transport(start, final_end)
+    for start, end in calls:
+        if raw[start].get('kind') in {'client.post', 'client.multiline'} and 'conn' in raw[start]:
+            children = [(s, e) for s, e in calls if start < s < e < end
+                        and stream(raw[s]) == stream(raw[start])]
+            if children and all(s in used and e in used for s, e in children):
+                used.update((start, end))
     for i in range(len(raw)):
         if i not in used:
             miss(i, 'unmapped record or nested transport detail')

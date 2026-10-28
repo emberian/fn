@@ -10,6 +10,25 @@ globals().update({name: value for name, value in vars(_fn1).items() if not name.
 
 class Client(_fn1.Client):
     """fn1's exact constructor and protocol, with optional exchange records."""
+    @_node.functools.wraps(_fn1.Client.__init__)
+    def __init__(self, port, **options):
+        if not _os.environ.get('FN2_OBSERVE_DIR'):
+            super().__init__(port, **options)
+            return
+        self._observation = dict(conn=_node.unique_id(),
+            **_node._ports.get(port, dict(node=f'port:{port}', control=None)))
+        self._connect(port, **options)
+
+    _connect = _node.observed('client.connect')(_fn1.Client.__init__)
+    send = _node.observed('client.send', lambda self, octets: _node.sent(octets))(_fn1.Client.send)
+    post = _node.observed('client.post', result=lambda reply: dict(
+        replies_hex=[r.hex() if r is not None else None for r in reply]))(_fn1.Client.post)
+    multiline = _node.observed('client.multiline', result=lambda reply: dict(
+        replies_hex=[r.hex() for r in reply]))(_fn1.Client.multiline)
+    starttls = _node.observed('client.starttls', result=lambda reply: dict(
+        reply_hex=reply.hex()))(_fn1.Client.starttls)
+    close = _node.observed('client.close')(_fn1.Client.close)
+
     @_node.observed('client.command', lambda self, text: dict(
         command_hex=(text.encode('utf-8') if isinstance(text, str) else text).hex()),
         lambda reply: dict(reply_hex=reply.hex()))

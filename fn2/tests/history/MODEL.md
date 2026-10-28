@@ -193,30 +193,32 @@ fault choices, persistence assumptions, retention and quiescence bounds.
 
 ## Native adapter and evidence gaps
 
-`from_observe.adapt(records)` returns records plus every unmapped source record
-(index, kind:first-word, reason), counted by kind:first-word. It never opens
-live cursor/report paths: a path now is not its bytes at the operation time.
-Native JSON/text replies give outcomes but normally no epoch or position.
-Captured v1 cursor IDs use Latin-1 strings as a reversible octet spelling;
-ASCII consumer names retain their CLI spelling. Optional `files: {path: hex}`
-contains immutable cursor/report snapshots; it is also absent from H1b.
-Such operations are retained with `observed_only: true` and a coverage entry;
-consumer checks exclude them rather than inventing epochs or progress.
-Optional `history_value` on each source observation supplies the missing model
-values from a future observer; it is explicit enrichment, not present H1b data.
+H3b records paired PID/counter `call` IDs, Node scratch-root `node` and `control`, and per-Client
+`conn` IDs (unknown nodes use `port:N`). Correlated nested transport is consumed as evidence of its
+operation; legacy signature pairing and `files` remain supported. Ambiguous legacy overlaps remain
+unmapped. `adapt` returns history plus per-source-index unmapped reasons/counts; it never opens live
+paths.
 
-Nested client.line observations inside command/block are transport details and
-are counted as unmapped duplicates. Source records have neither connection IDs
-nor unique call IDs. Sequential nesting is recognized; overlapping indistinguishable
-calls cannot safely be paired and are reported. An explicit `process`/`node`
-may be supplied by a future observer. POST body sends are not hooked, so a 340
-then 240 without enrichment is an observed-only post with missing identity/digest.
-client.block is received data, never the sent POST body. ARTICLE block bytes
-supply a body digest; HEAD/STAT only supply presence. Start env fault selectors
-are absent from current H1b; if present in a future log they name an armed cut,
-not proof a crash happened. A non-OK node.stop is the crash observation; the
-next successful start is recover. Clean restarts also emit recover. Unknown
-cuts stay explicitly unknown. Raw uncorrelated line/send traffic, subprocesses
-bypassing Node.invoke, unread file outputs and unlogged direct kills cannot be
-reconstructed. The seat must close these gaps before native logs can qualify
-all nine checks.
+`send` captures full `sent_hex` through 1 MiB; above that it records the first 64 KiB, `sent_sha256`
+and `sent_len`. Complete POST sends supply Message-ID and the definition-10 body digest after CRLF
+dot-unstuffing and terminator removal. A truncated send's wire checksum is NOT a body digest.
+Received ARTICLE blocks supply body digests; HEAD/STAT supply presence only. POST refusals before
+sending an article still lack its identity. Incomplete exchanges remain info.
+
+Node invoke/operator/store capture existing file arguments immediately before and after calls: hex
+through 64 KiB, otherwise `{sha256, length}`. The adapter uses `files_after` for output
+cursors/reports and `files_before` for ack targets. Cursor IDs use reversible Latin-1; empty/FNWD1
+reports and JSON report identities are decoded. Native CLI still lacks `more`, and text article
+reports lack a projected identity. Those pages remain observed-only with missing-evidence counts.
+`history_value` remains explicit supplementary evidence: the synthetic complete `captured.jsonl`
+supplies `more` this way; it is not a captured native run.
+
+Starts retain `env_selectors`; selectors arm faults, never prove reached cuts. Node stop and
+returned NativeProcess signal/finish records retain exit class, signal and declared death cut. Only
+matching exit status AND captured marker name a reached cut; otherwise it is unknown. Repeated exit
+observations are coalesced, clean stops are lifecycle bookkeeping, and successful starts recover.
+Raw process kills without a subsequent observed finish/stop, raw send/line protocols, CLI calls
+through standalone `run`/Popen, and fn_agent/fn_consumer subprocesses still bypass semantic
+adaptation. Selected visibility, pinned frontier and fresh authorized read premises still require
+workload evidence; connection IDs alone prove none of these. Simulator emission remains owed to A-E.
+Zero anomalies or unmapped records alone cannot qualify all nine checks.

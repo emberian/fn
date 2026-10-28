@@ -204,7 +204,7 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(kinds(b.history), [])
 
     def test_adapter_golden_and_all_unmapped_counts(self):
-        expected_counts = {'consumer': {'invoke:consumer': 6, 'store:inspect': 2},
+        expected_counts = {'consumer': {},
                            'wire': {'client.line:': 8, 'client.command:POST': 1}, 'captured': {}}
         for name, counts in expected_counts.items():
             with self.subTest(fixture=name):
@@ -215,6 +215,51 @@ class HistoryTests(unittest.TestCase):
                 self.assertEqual(len(actual.unmapped), sum(counts.values()))
                 self.assertTrue(all(item['reason'] for item in actual.unmapped))
                 self.assertEqual(kinds(actual.history), [])
+
+    def test_captured_session_crash_and_planted_loss(self):
+        source = [json.loads(line) for line in (FIXTURES / 'captured.jsonl').read_text().splitlines()]
+        result = adapt(source)
+        self.assertEqual(result.unmapped, [])
+        self.assertEqual([o.f for o in pair(result.history)],
+                         ['recover', 'register', 'post', 'wait', 'poll', 'ack', 'crash',
+                          'recover', 'position', 'read'])
+        self.assertEqual(kinds(result.history), [])
+        without_more = [r | {'history_value': {}} for r in source]
+        self.assertEqual(adapt(without_more).counts, {'invoke:consumer': 2})
+        self.assertEqual(next(o.value['cut'] for o in pair(result.history) if o.f == 'crash'), 'CUT')
+        # The read command's negative answer has no multiline body.
+        source = [r for r in source if r['kind'] != 'client.block']
+        for r in source:
+            if r.get('reply_hex', '').startswith(b'220'.hex()):
+                r['reply_hex'] = b'430 no article\r\n'.hex()
+            if r['kind'] == 'client.multiline' and r['phase'] == 'ok':
+                r['replies_hex'] = [b'430 no article\r\n'.hex(), '']
+        loss = adapt(source)
+        self.assertEqual(loss.unmapped, [])
+        self.assertEqual(consumer.check(loss.history), [])
+        self.assertEqual([a.kind for a in durable.check(loss.history)], ['D1'])
+
+    def test_call_ids_separate_overlapping_connections_and_truncated_send(self):
+        source = []
+        def record(conn, call, kind, phase, **fields):
+            source.append(dict(t=len(source), test='overlap', node='N', conn=conn,
+                               call=call, kind='client.' + kind, phase=phase, **fields))
+        for conn in ('a', 'b'):
+            record(conn, conn, 'command', 'invoke', command_hex=b'POST'.hex())
+        for conn in ('b', 'a'):
+            record(conn, conn, 'command', 'ok', command_hex=b'POST'.hex(), reply_hex=b'340 send\r\n'.hex())
+            for phase in ('invoke', 'ok'):
+                record(conn, conn+'s', 'send', phase,
+                       sent_hex=f'Message-ID: <{conn}>\r\n\r\n..body\r\n.\r\n'.encode().hex())
+            record(conn, conn+'r', 'line', 'invoke')
+            record(conn, conn+'r', 'line', 'ok', reply_hex=b'240 accepted\r\n'.hex())
+        result = adapt(source)
+        self.assertEqual(result.unmapped, [])
+        self.assertEqual({o.value['message_id'] for o in pair(result.history)}, {'<a>', '<b>'})
+        for r in source:
+            if r['kind'] == 'client.send':
+                r.update(sent_sha256='hash-of-wire', sent_len=2000000)
+        self.assertTrue(all(o.value['observed_only'] for o in pair(adapt(source).history)))
 
     def test_adapter_uncertain_441_not_fail(self):
         source = [dict(t=1, test='x', kind='client.command', phase='invoke', command_hex=b'POST'.hex(),

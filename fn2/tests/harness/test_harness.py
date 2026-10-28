@@ -95,6 +95,12 @@ class HarnessTests(unittest.TestCase):
                 self.wfile.write(b'200 hello\r\n')
                 self.server.command = self.rfile.readline()
                 self.wfile.write(b'200 hello\r\n')
+                self.server.post = self.rfile.readline()
+                self.wfile.write(b'340 send\r\n')
+                self.server.article = b''
+                while (line := self.rfile.readline()) != b'.\r\n':
+                    self.server.article += line
+                self.wfile.write(b'240 accepted\r\n')
         with tempfile.TemporaryDirectory() as directory, socketserver.TCPServer(
                 ('127.0.0.1', 0), Handler) as server:
             thread = threading.Thread(target=server.handle_request)
@@ -104,16 +110,24 @@ class HarnessTests(unittest.TestCase):
                     client = shim.Client(server.server_address[1])
                     try:
                         self.assertEqual(client.command(b'DATE'), b'200 hello\r\n')
+                        self.assertEqual(client.post(b'Message-ID: <x>\r\n\r\n.body\r\n'),
+                                         (b'340 send\r\n', b'240 accepted\r\n'))
                     finally:
                         client.close(quit=False)
                 records = [json.loads(line) for line in
                            (Path(directory) / 'wire.control.jsonl').read_text().splitlines()]
                 commands = [r for r in records if r['kind'] == 'client.command']
-                self.assertEqual([r['phase'] for r in commands], ['invoke', 'ok'])
+                self.assertEqual([r['phase'] for r in commands], ['invoke', 'ok'] * 2)
                 self.assertEqual(commands[0]['command_hex'], b'DATE'.hex())
                 self.assertEqual(commands[1]['reply_hex'], b'200 hello\r\n'.hex())
                 self.assertTrue(all(r['test'] == 'wire.control' and isinstance(r['t'], int)
                                     for r in records))
+                self.assertEqual(len({r['conn'] for r in records}), 1)
+                self.assertEqual({r['node'] for r in records}, {f'port:{server.server_address[1]}'})
+                for call in {r['call'] for r in records}:
+                    self.assertEqual([r['phase'] for r in records if r['call'] == call], ['invoke', 'ok'])
+                self.assertIn((server.article + b'.\r\n').hex(),
+                              [r.get('sent_hex') for r in records])
             finally:
                 thread.join(timeout=5)
             self.assertFalse(thread.is_alive())
@@ -129,7 +143,8 @@ class HarnessTests(unittest.TestCase):
             n = node.Fn1Backend(self, 'absent')
             n.process = process
             with patch.object(node.fn1.Node, 'start', return_value=process):
-                self.assertIs(n.start(), process)
+                self.assertIs(n.start(env={'FN_NATIVE_CONTROL_FAULT': 'cut'},
+                                     death_cut=(-9, b'CUT')), process)
             with patch.object(node.fn1.Node, 'stop', return_value=0):
                 self.assertEqual(n.stop(), 0)
             records = [json.loads(line) for line in
@@ -139,6 +154,85 @@ class HarnessTests(unittest.TestCase):
             self.assertEqual(records[1]['argv'], ['fn', '--fn', 'run'])
             self.assertEqual(records[1]['exit_class'], 'OK')
             self.assertEqual(records[1]['stdout'], 'LISTENING 119\n')
+            self.assertEqual(records[0]['env_selectors'], {'FN_NATIVE_CONTROL_FAULT': 'cut'})
+            self.assertEqual(records[0]['death_cut'], [-9, 'CUT'])
+            self.assertTrue(all(r['node'] == str(n.root) and r['control'] == str(n.control)
+                                for r in records))
+            with patch.object(shim.Client, '_connect'):
+                self.assertEqual(n.session()._observation['node'], str(n.root))
+                self.assertEqual(shim.Client(n.port)._observation['node'], str(n.root))
+
+    def test_direct_process_kill_and_finish(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+                os.environ, FN2_OBSERVE_DIR=directory, FN2_TEST_ID='death'):
+            n = node.Fn1Backend(self, 'absent')
+            p = node.fn1.NativeProcess.__new__(node.fn1.NativeProcess)
+            p.pid, p.process = 123, SimpleNamespace(args=['fn'], poll=lambda: -9)
+            p.stdout, p.stderr = (SimpleNamespace(since=lambda _: b'CUT\n'),
+                                  SimpleNamespace(since=lambda _: b''))
+            p.signal, p.finish = Mock(), Mock()
+            signal, finish = p.signal, p.finish
+            with patch.object(node.fn1.Node, 'start', return_value=p):
+                self.assertIs(n.start(death_cut=(-9, b'CUT')), p)
+            p.kill()
+            p.finish()
+            signal.assert_called_once_with(9)
+            finish.assert_called_once_with()
+            records = [json.loads(line) for line in (Path(directory) / 'death.jsonl').read_text().splitlines()]
+            self.assertEqual(records[-1]['signal'], 9)
+            self.assertEqual(records[-1]['exit_code'], -9)
+            self.assertEqual(records[-1]['death_cut'], [-9, 'CUT'])
+
+    def test_snapshots_and_capture_limits(self):
+        import hashlib
+        import subprocess
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+                os.environ, FN2_OBSERVE_DIR=directory, FN2_TEST_ID='snapshots'):
+            n = node.Fn1Backend(self, 'absent')
+            path, large = Path(directory) / 'cursor.fncu', Path(directory) / 'large'
+            path.write_bytes(b'before')
+            large.write_bytes(b'x' * 65537)
+            def invoke(*words, **kw):
+                path.write_bytes(b'after')
+                return subprocess.CompletedProcess([], 0, b'consumer accepted', b'')
+            with patch.object(node.fn1.Node, 'invoke', side_effect=invoke):
+                n.invoke('consumer', 'position', str(path), str(large))
+            records = [json.loads(line) for line in (Path(directory) / 'snapshots.jsonl').read_text().splitlines()]
+            self.assertEqual(records[0]['files_before'][str(path)], b'before'.hex())
+            self.assertEqual(records[1]['files_after'][str(path)], b'after'.hex())
+            self.assertEqual(records[1]['files_after'][str(large)],
+                             dict(length=65537, sha256=hashlib.sha256(b'x' * 65537).hexdigest()))
+        for size in (1 << 20, (1 << 20) + 1):
+            captured = node.sent(b'x' * size)
+            self.assertEqual(len(bytes.fromhex(captured['sent_hex'])), size if size == 1 << 20 else 65536)
+            if size > 1 << 20:
+                self.assertEqual(captured['sent_len'], size)
+                self.assertEqual(captured['sent_sha256'], hashlib.sha256(b'x' * size).hexdigest())
+
+    def test_disabled_observer_has_no_reads(self):
+        class Untouchable:
+            def __getattribute__(self, name):
+                raise AssertionError('extra attribute read: ' + name)
+        with patch.dict(os.environ, {}, clear=True), patch.object(Path, 'open', side_effect=AssertionError), \
+                patch.object(node, 'node_fields', side_effect=AssertionError), \
+                patch.object(node, 'sent', side_effect=AssertionError), \
+                patch.object(node, 'snapshots', side_effect=AssertionError), \
+                patch.object(node, 'emit', side_effect=AssertionError):
+            for name, args in [('send', (b'x',)), ('post', (b'x',)), ('multiline', (b'DATE',)),
+                               ('starttls', ()), ('close', ()), ('command', (b'DATE',))]:
+                wrapped = node.observed('client.' + name, lambda *a: a[0].missing)(lambda *a: 42)
+                self.assertEqual(wrapped(Untouchable(), *args), 42)
+            n = node.Fn1Backend.__new__(node.Fn1Backend)
+            with patch.object(node.fn1.Node, 'start', return_value=42):
+                self.assertEqual(n.start(), 42)
+            client = shim.Client.__new__(shim.Client)
+            with patch.object(node.fn1.Client, '__init__', return_value=None):
+                client.__init__(123)
+            self.assertEqual(vars(client), {})
+            client.sock = type('Socket', (), {'sendall': lambda *args: None})()
+            client.send(b'unchanged')  # real alias, with no observation attributes
 
     def test_observe_invocations_and_unknown_outcomes(self):
         import subprocess

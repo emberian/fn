@@ -1,12 +1,15 @@
 """The one Node adapter. See the generated layer-D requirements below."""
 import functools
+import hashlib
 import importlib.util
+import itertools
 import json
 import os
 from pathlib import Path
 import re
 import sys
 import time
+import threading
 from typing import Protocol
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -88,6 +91,52 @@ class NodeInterface(Protocol):
         ...
 
 
+_ids = itertools.count()
+_emit_lock = threading.Lock()
+_ports = {}
+
+
+def unique_id():
+    return f'{os.getpid()}:{next(_ids)}'
+
+
+def node_fields(node):
+    fields = dict(node=str(node.root), control=str(node.control) if node.control else None)
+    for port in (node.port, node.tls_port):
+        if port is not None:
+            _ports[port] = fields
+    return fields
+
+
+def snapshots(words):
+    files = {}
+    for word in words:
+        try:
+            path = Path(word)
+            if not path.is_file():
+                continue
+            with path.open('rb') as stream:
+                data = stream.read(65537)
+                if len(data) <= 65536:
+                    files[word] = data.hex()
+                else:
+                    digest, size = hashlib.sha256(data), len(data)
+                    for chunk in iter(lambda: stream.read(65536), b''):
+                        digest.update(chunk)
+                        size += len(chunk)
+                    files[word] = dict(sha256=digest.hexdigest(), length=size)
+        except (OSError, ValueError):
+            continue
+    return files
+
+
+def sent(octets):
+    if len(octets) <= 1 << 20:
+        return dict(sent_hex=octets.hex())
+    return dict(sent_hex=octets[:65536].hex(), sent_len=len(octets),
+                sent_sha256=hashlib.sha256(octets).hexdigest())
+
+
 def emit(kind, phase, **fields):
     directory = os.environ.get('FN2_OBSERVE_DIR')
     if not directory:
@@ -95,7 +144,7 @@ def emit(kind, phase, **fields):
     test = os.environ.get('FN2_TEST_ID') or fn1.current_test_id() or 'fixture'
     path = Path(directory) / (re.sub(r'[^A-Za-z0-9_.-]', '_', test) + '.jsonl')
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open('a', encoding='utf-8') as output:
+    with _emit_lock, path.open('a', encoding='utf-8') as output:
         output.write(json.dumps(dict(t=time.monotonic_ns(), test=test, kind=kind,
                                      phase=phase, **fields)) + '\n')
 
@@ -107,14 +156,26 @@ def observed(kind, fields=lambda *a, **k: {}, result=lambda value: {}):
         def wrapped(*args, **kwargs):
             if not os.environ.get('FN2_OBSERVE_DIR'):
                 return call(*args, **kwargs)
-            before = fields(*args, **kwargs)
+            before = dict(call=unique_id()) | fields(*args, **kwargs)
+            if args and isinstance(args[0], fn1.Node):
+                before.update(node_fields(args[0]))
+            elif kind.startswith('client.'):
+                before.update(args[0]._observation)
+            words = before.get('words') if kind in {'invoke', 'operator', 'store'} else None
+            if words is not None:
+                before['files_before'] = snapshots(words)
             emit(kind, 'invoke', **before)
             try:
                 value = call(*args, **kwargs)
             except BaseException as error:
+                if kind in {'node.start', 'node.try_start', 'node.start_store_owner'}:
+                    args[0]._watch_process(args[0].process, kwargs)
+                if words is not None:
+                    before['files_after'] = snapshots(words)
                 emit(kind, 'info', **before, exception=str(error))
                 raise
-            after = result(value)
+            after = {'files_after': snapshots(words)} if words is not None else {}
+            after.update(result(value))
             emit(kind, 'fail' if after.get('exit_code', 0) not in (0, None) else 'ok',
                  **(before | after))
             return value
@@ -133,14 +194,43 @@ def completed(result):
 def process_fields(process):
     if process is None:
         return dict(pid=None, argv=[], exit_class=None)
-    return dict(pid=process.pid, argv=list(map(str, process.process.args)),
-                exit_class=fn1.outcome_name(process.poll()) if process.poll() is not None else None,
+    status = process.poll()
+    return dict(pid=process.pid, argv=list(map(str, process.process.args)), exit_code=status,
+                exit_class=fn1.outcome_name(status) if status is not None else None,
                 stdout=process.stdout.since(0).decode('utf-8', 'replace'),
                 stderr=process.stderr.since(0).decode('utf-8', 'replace'))
 
 
 class Fn1Backend(fn1.Node):
     """The real fn1 Node, with optional observation and structural aliases."""
+    @functools.wraps(fn1.Node.__init__)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if os.environ.get('FN2_OBSERVE_DIR'):
+            node_fields(self)
+
+    def _start_fields(self, options):
+        env = self.environment(options.get('env'))
+        cut = options.get('death_cut')
+        return dict(env_selectors={k: v for k, v in env.items() if k.startswith('FN_NATIVE_')
+                    and any(s in k for s in ('FAULT', 'CUT', 'DEATH', 'TEST'))},
+                    **({'death_cut': [cut[0], cut[1].decode('ascii')]} if cut else {}))
+
+    def _watch_process(self, process, options):
+        if not isinstance(process, fn1.NativeProcess) or getattr(process, '_fn2_watched', False):
+            return
+        process._fn2_watched = True
+        context = node_fields(self) | self._start_fields(options)
+        original_signal = process.signal
+        def signal(number):
+            if os.environ.get('FN2_OBSERVE_DIR'):
+                context['signal'] = int(number)
+            return original_signal(number)
+        process.signal = observed('node.signal', lambda number: context | dict(signal=int(number))
+                                  | process_fields(process), lambda _: process_fields(process))(signal)
+        process.finish = observed('node.exit', lambda: context | process_fields(process),
+                                 lambda _: context | process_fields(process))(process.finish)
+
     @property
     def socket(self):
         return self
@@ -156,45 +246,45 @@ class Fn1Backend(fn1.Node):
     def session(self, **options):
         # fn1.Node.session closes over its original module's Client.
         from .shim import Client
+        if os.environ.get('FN2_OBSERVE_DIR'):
+            node_fields(self)
         return Client(self.port, **options)
 
     @observed('node.start', lambda self, **kw: dict(
         pid=None, argv=list(map(str, self.argv(kw.get('image'),
                          ('operator', self.config, *kw.get('verb', ('run',)))))),
-        exit_class=None), process_fields)
+        exit_class=None) | self._start_fields(kw), process_fields)
     def start(self, **options):
-        return super().start(**options)
+        process = super().start(**options)
+        if os.environ.get('FN2_OBSERVE_DIR'):
+            self._watch_process(process, options)
+        return process
 
     @observed('node.try_start', lambda self, **kw: dict(
         argv=list(map(str, self.argv(kw.get('image'), ('operator', self.config, 'run')))),
-        pid=None, exit_class=None), lambda answer: process_fields(answer[0]))
+        pid=None, exit_class=None) | self._start_fields(kw), lambda answer: process_fields(answer[0]))
     def try_start(self, **options):
-        return super().try_start(**options)
+        answer = super().try_start(**options)
+        if os.environ.get('FN2_OBSERVE_DIR'):
+            self._watch_process(answer[0], options)
+        return answer
 
     @observed('node.start_store_owner', lambda self, **kw: dict(
         argv=list(map(str, self.argv(kw.get('image'), ('owner', 'run', self.store_path)))),
         pid=None, exit_class=None), lambda answer: process_fields(answer[0]))
     def start_store_owner(self, **options):
-        return super().start_store_owner(**options)
+        answer = super().start_store_owner(**options)
+        if os.environ.get('FN2_OBSERVE_DIR'):
+            self._watch_process(answer[0], options)
+            _ports[answer[1]] = node_fields(self)
+        return answer
 
-    @observed('node.stop', lambda self, *a, **kw: process_fields(kw.get('process') or self.process),
-              lambda status: dict(exit_code=status, exit_class=fn1.outcome_name(status)))
+    @observed('node.stop', lambda self, *a, **kw: dict(requested_signal=15) | process_fields(
+        (a[1] if len(a) > 1 else kw.get('process')) or self.process),
+              lambda status: dict(exit_code=status, exit_class=fn1.outcome_name(status),
+                                  signal=-status if status is not None and status < 0 else None))
     def stop(self, *args, **options):
         return super().stop(*args, **options)
-
-    def stop_all(self):
-        if not os.environ.get('FN2_OBSERVE_DIR'):
-            return super().stop_all()
-        for process in self.processes:
-            emit('node.stop', 'invoke', **process_fields(process))
-        try:
-            super().stop_all()
-        except BaseException as error:
-            emit('node.stop', 'info', exception=str(error))
-            raise
-        for process in self.processes:
-            emit('node.stop', 'ok' if process.returncode == 0 else 'fail',
-                 **process_fields(process))
 
     @observed('invoke', lambda self, *words, **kw: dict(words=list(map(str, words))), completed)
     def invoke(self, *words, **options):
@@ -210,6 +300,8 @@ class Fn1Backend(fn1.Node):
 
 
 def unavailable(operation, requirement, **fields):
+    if os.environ.get('FN2_OBSERVE_DIR'):
+        fields['call'] = unique_id()
     emit(operation, 'invoke', requirement=requirement, **fields)
     try:
         fn1.node_dead(f'fn2 layer D not yet serving: {operation} needs {requirement}')
