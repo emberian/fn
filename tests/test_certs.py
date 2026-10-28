@@ -2028,9 +2028,52 @@ class PairFactMemoTests(unittest.TestCase):
             with mock.patch.object(certs, "_pair_index", lambda c, path=None: _counting(
                     Counting, c, path)):
                 answer = check(paths, asked, acl2, base)
-            self.assertEqual(answer, fake(paths, asked, acl2, base))
+            expected = fake(paths, asked, acl2, base)
+            self.assertEqual(set(answer), set(expected))
+            for pair, verdict in answer.items():
+                # A parent already known free of conflict against these very
+                # certificates is answered as agreeing; every other pair is
+                # answered as the prober said.
+                if verdict != expected[pair]:
+                    self.assertEqual(verdict, (True, True), pair)
+                    self.assertNotIn(expected[pair], ((True, False), (False, False)))
             self.assertEqual((check.hits, check.probed), (1400, 700))
             self.assertLess(len(selects), 20, selects[:3])
+
+    def test_a_parent_found_clean_is_not_looked_up_again_and_a_changed_child_is(self):
+        calls = []
+
+        def fake(paths, pairs, acl2, root):
+            calls.append(list(pairs))
+            return {pair: (True, True) for pair in pairs}
+
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            cache = base / "cache"
+            cache.mkdir()
+            paths = []
+            for index in range(3):
+                path = base / f"c{index}.cert"
+                path.write_text(f"book {index}")
+                paths.append(path)
+            acl2 = base / "acl2"
+            acl2.write_text("")
+            pairs = [(0, 1), (0, 2), (1, 2)]
+            certs.memoized_pair_checker(cache, fake)(paths, pairs, acl2, base)
+            looked = []
+            real = certs._pair_lookup
+            with mock.patch.object(certs, "_pair_lookup",
+                                   lambda c, prover, wanted: looked.append(wanted) or real(
+                                       c, prover, wanted)):
+                again = certs.memoized_pair_checker(cache, fake)
+                self.assertEqual(again(paths, pairs, acl2, base),
+                                 {pair: (True, True) for pair in pairs})
+                self.assertEqual(looked, [[]])
+                paths[2].write_text("book 2, recertified")
+                changed = certs.memoized_pair_checker(cache, fake)
+                changed(paths, pairs, acl2, base)
+            self.assertEqual(len(calls), 2)  # the first run, and the changed child's pairs
+            self.assertEqual(sorted(calls[1]), [(0, 2), (1, 2)])  # (0, 1) is a known fact
 
     def test_the_index_takes_lines_an_older_writer_appended(self):
         # An older certs.py appends verdicts to the log only; the index
@@ -2456,6 +2499,24 @@ class ResolutionPlanTests(unittest.TestCase):
                     self.assertEqual(len(checked), 1)
                     self.assertEqual(len(certs.cached_entries(cache, key)), 1)
                     self.assertEqual(len(checked), 1)
+
+    def test_a_later_process_does_not_parse_an_unchanged_source(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            source = worktree(str(base / "source"))
+            book = source / "books" / "base.lisp"
+            with mock.patch.dict(os.environ, {
+                    "FN_RESOLUTION_PLAN": str(base / "plan.json")}):
+                first = certs.book_facts(book)
+                certs.flush_resolution_plan()
+                self.fresh_process()
+                certs._FACTS.clear()
+                with mock.patch.object(certs.ledger, "Reader",
+                                       side_effect=AssertionError("parsed again")):
+                    self.assertEqual(certs.book_facts(book), first)
+                book.write_text(book.read_text() + "\n; edited\n")
+                certs._FACTS.clear()
+                self.assertEqual(certs.book_facts(book)[0], certs.content_hash(book))
 
     def test_without_the_variable_every_lookup_reads_the_entry(self):
         with tempfile.TemporaryDirectory() as temp:

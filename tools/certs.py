@@ -553,6 +553,13 @@ def book_facts(source: Path) -> tuple[str, list[str]]:
     stat = source.stat()
     key = (str(source), stat.st_mtime_ns, stat.st_size)
     remembered = _FACTS.get(key)
+    identity = [stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns,
+                stat.st_ctime_ns]
+    planned = _plan_facts() if remembered is None else None
+    if planned is not None:
+        record = planned.get(str(source))
+        if isinstance(record, dict) and record.get("stat") == identity:
+            remembered = _FACTS[key] = (record["digest"], list(record["references"]))
     if remembered is None:
         try:
             forms = ledger.Reader(source.read_text(encoding="utf-8")).top_level()
@@ -567,6 +574,10 @@ def book_facts(source: Path) -> tuple[str, list[str]]:
                       and ":dir" not in ledger.keyword_plist(form[2:])]
         remembered = (content_hash(source), references)
         _FACTS[key] = remembered
+        if planned is not None:
+            planned[str(source)] = {"stat": identity, "digest": remembered[0],
+                                    "references": references}
+            _PLAN["dirty"].add(FACTS_RECORD)
     return remembered
 
 
@@ -940,8 +951,41 @@ def _pair_index(cache: Path, path: Path | None = None):
         "CREATE TABLE IF NOT EXISTS facts (prover INTEGER, parent BLOB, child BLOB,"
         " required INTEGER, equal INTEGER, PRIMARY KEY (prover, parent, child))"
         " WITHOUT ROWID;"
-        "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);")
+        "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);"
+        "CREATE TABLE IF NOT EXISTS clean (key BLOB PRIMARY KEY) WITHOUT ROWID;")
     return connection
+
+
+def _clean_group_keys(prover_id: int, digests: list, pairs: list[tuple[int, int]]
+                      ) -> dict[int, bytes]:
+    """For each parent of PAIRS whose certificate and children are all read,
+    the digest naming "this parent's certificate against exactly these
+    children's certificates under this prover".  Verdicts are immutable per
+    (prover, parent bytes, child bytes), so a group once found free of
+    conflict stays so for those very bytes."""
+    children: dict[int, set] = {}
+    for p, c in pairs:
+        children.setdefault(p, set()).add(c)
+    keys: dict[int, bytes] = {}
+    for p, cs in children.items():
+        if digests[p] is None or any(digests[c] is None for c in cs):
+            continue
+        hasher = hashlib.sha256(b"clean-group-1\0" + prover_id.to_bytes(8, "big")
+                                + bytes.fromhex(digests[p]))
+        for digest in sorted({digests[c] for c in cs}):
+            hasher.update(bytes.fromhex(digest))
+        keys[p] = hasher.digest()
+    return keys
+
+
+def _clean_known(connection, keys: Iterable[bytes]) -> set[bytes]:
+    wanted = list(dict.fromkeys(keys))
+    known: set[bytes] = set()
+    for start in range(0, len(wanted), 400):
+        chunk = wanted[start:start + 400]
+        known.update(row[0] for row in connection.execute(
+            "SELECT key FROM clean WHERE key IN (%s)" % ",".join("?" * len(chunk)), chunk))
+    return known
 
 
 def _pair_prover(connection, path: str) -> int:
@@ -972,7 +1016,9 @@ def _pair_lookup(connection, prover_id: int,
     """The index's (required, equal) for each distinct (parent, child) digest
     pair of WANTED under one prover: a temporary table of the pairs joined to
     ``facts`` on its primary key (one scan of the pairs, one key search each)."""
-    distinct = list(dict.fromkeys(wanted))
+    # In key order, so the primary-key searches walk the (multi-GB, on a
+    # spinning tank) index forward instead of at random.
+    distinct = sorted(set(wanted))
     if not distinct:
         return {}
     connection.execute("CREATE TEMP TABLE IF NOT EXISTS wanted (parent BLOB, child BLOB)")
@@ -1150,15 +1196,29 @@ def memoized_pair_checker(cache: Path, checker=None):
             try:
                 _pair_import(connection, store)
                 prover_id = _pair_prover(connection, prover)
+                # A parent found free of conflict against exactly these
+                # children's bytes (this run's or an earlier one's) needs no
+                # lookup of its pairs: an install of ~1,300 books asked
+                # 786,473 pairs (the transitive include edges) that were all
+                # known agreements, 138 s of cold index reads.
+                group_keys = _clean_group_keys(prover_id, digests, pairs)
+                with phase("pair-clean-lookup"):
+                    clean = _clean_known(connection, group_keys.values())
+                clean_parents = {p for p, key in group_keys.items() if key in clean}
+                for p, c in pairs:
+                    if p in clean_parents:
+                        found[(p, c)] = (True, True)
+                phase_add("pair-clean", 0.0, len(found))
+                pairs_open = [(p, c) for p, c in pairs if p not in clean_parents]
                 # One join against the pairs' distinct digest pairs, not one
                 # SELECT per candidate pair (tens of thousands of round trips
                 # through the Python sqlite layer at an install's selection).
                 with phase("pair-lookup"):
                     facts = _pair_lookup(connection, prover_id, [
                         (bytes.fromhex(digests[p]), bytes.fromhex(digests[c]))
-                        for p, c in pairs
+                        for p, c in pairs_open
                         if digests[p] is not None and digests[c] is not None])
-                for p, c in pairs:
+                for p, c in pairs_open:
                     row = None
                     if digests[p] is not None and digests[c] is not None:
                         row = facts.get((bytes.fromhex(digests[p]),
@@ -1171,7 +1231,9 @@ def memoized_pair_checker(cache: Path, checker=None):
                 connection.close()
                 connection = None
                 found, ask = {}, []
+                group_keys, clean_parents = {}, set()
         if connection is None:
+            group_keys, clean_parents = {}, set()
             # No index here (unwritable cache, a broken database): the log alone.
             known = _pair_log_scan(store, prover)
             for p, c in pairs:
@@ -1184,7 +1246,30 @@ def memoized_pair_checker(cache: Path, checker=None):
         check.probed = len(ask)
         phase_add("pair-hits", 0.0, len(found))
         phase_add("pair-probed", 0.0, len(ask))
+        def remember_clean() -> None:
+            """Record each parent group that now has every verdict and no conflict."""
+            if connection is None:
+                return
+            by_parent: dict[int, list] = {}
+            for p, c in pairs:
+                by_parent.setdefault(p, []).append((p, c))
+            fresh_keys = [group_keys[p] for p in group_keys if p not in clean_parents
+                          and all(pair in found and found[pair] not in (
+                              (True, False), (False, False)) for pair in by_parent[p])]
+            if fresh_keys:
+                with contextlib.suppress(sqlite3.Error):
+                    connection.execute("BEGIN IMMEDIATE")
+                    try:
+                        connection.executemany("INSERT OR IGNORE INTO clean VALUES (?)",
+                                               [(key,) for key in fresh_keys])
+                        connection.execute("COMMIT")
+                    except BaseException:
+                        with contextlib.suppress(sqlite3.Error):
+                            connection.execute("ROLLBACK")
+                        raise
+
         if not ask:
+            remember_clean()
             if connection is not None:
                 connection.close()
             return found
@@ -1222,6 +1307,7 @@ def memoized_pair_checker(cache: Path, checker=None):
                     with contextlib.suppress(sqlite3.Error):
                         connection.execute("ROLLBACK")
                     raise
+            remember_clean()
             connection.close()
         return found
         fresh = checker(paths, ask, acl2, root)
@@ -1389,6 +1475,19 @@ RESOLUTION_PLAN_ENV = "FN_RESOLUTION_PLAN"
 _PLAN: dict = {"loaded": False, "keys": {}, "dirty": set()}
 
 
+# The plan also keeps each book source's (content hash, local include
+# references) under the source file's stat identity: the parse that
+# `book_facts` does once per process per source (1,300 sources, three
+# processes a gate) is a stat in the next process.
+FACTS_RECORD = "book-facts"
+
+
+def _plan_facts() -> dict | None:
+    if _plan_file() is None:
+        return None
+    return _load_plan().setdefault(FACTS_RECORD, {})
+
+
 def _plan_file() -> Path | None:
     value = os.environ.get(RESOLUTION_PLAN_ENV)
     return Path(value) if value else None
@@ -1439,7 +1538,10 @@ def flush_resolution_plan() -> None:
             except (OSError, ValueError):
                 merged = {}
             for name in dirty:
-                merged[name] = _PLAN["keys"][name]
+                if name == FACTS_RECORD:
+                    merged.setdefault(name, {}).update(_PLAN["keys"][name])
+                else:
+                    merged[name] = _PLAN["keys"][name]
             temporary = where.with_name(where.name + f".{os.getpid()}.tmp")
             temporary.write_text(json.dumps(merged, sort_keys=True), encoding="utf-8")
             os.replace(temporary, where)
