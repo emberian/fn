@@ -17,7 +17,7 @@ recorded here is a defect.
 | log model (abstract history, acknowledgement, allowed recoveries) | `fn2/books/log-model.lisp` | B1 |
 | layout codec (layouts as data, one generic codec) | `fn2/books/layout.lisp` | B2a |
 | incremental BLAKE3 over the pool | `fn2/books/blake3.lisp` | B2b |
-| the on-disk format as layouts; Merkle event log | `fn2/books/format.lisp` | B2c |
+| the on-disk format as layouts | `fn2/books/format.lisp` | B2c |
 | commit-batch machine (declared through layer A's `defmachine`) | `fn2/books/commit.lisp` | B3 |
 | allocator with typed edges | `fn2/books/alloc.lisp` | B4 |
 | recovery | `fn2/books/recovery.lisp` | B5 |
@@ -204,7 +204,9 @@ pairs it with a separately typed `writer-epoch` field.
 | `(:zero N)` | N zero bytes | zero value, no payload | `:nonzero-padding`, `:truncated` |
 
 Identity namespaces: `history incarnation writer-epoch commit event article
-group-number checkpoint allocation`. A canonical integer exceeding u60 is
+group-number checkpoint allocation storage-domain physical-unit anchor-slot principal
+operation table object extent group obligation registration configuration schema key owner`.
+A canonical integer exceeding u60 is
 scanned through its terminal group and returns `:wide`, retaining its source
 bytes. It is not truncated or treated as an unknown field. Its eventual
 extension consumer belongs to later storage work. `fn2-layout-max-size` is the
@@ -248,9 +250,149 @@ validates all values, sources and destination before writing, and refuses
 source/destination overlap as `:overlap`. Decode retains old row values in
 scalar stack bindings and restores them on a late refusal; one byte is read
 per transition. Successful zero-copy references retain exact source octets,
-including Message-ID octets; integrity verification remains B2b/B2c work.
+including Message-ID octets; physical integrity checking and sealing belong to B2d.
 
-## 6. BLAKE3
+## 6. Format
+
+The layouts in `books/format.lisp` describe field encoding only. They do not check magic/version
+values, hashes, semantic folding, query completeness, availability, freshness, authority, or the
+predecessor-cut restriction (STORAGE-DESIGN §4.4). B2d owns integrity checking and sealing. Byte
+equality is preserved; identity decisions are not implemented here.
+
+Magic bytes: bootstrap `46 32 47 44` (F2GD), structured pages `46 32 50 47` (F2PG), journal
+frames `46 32 4a 52` (F2JR); version/schema-version 1. Initial sector/page geometry is
+4096/65536. Digest tag 1 is BLAKE3-256 followed by 32 bytes. Namespace names carry no wire
+bytes; all IDs and counts are canonical base-128 integers. Size maxima below describe the
+codec’s inline u60 domain, not an extensible-integer namespace ceiling.
+
+Page kinds, codes 0 through 14 in order: `:run-data :run-index :partitioned-filter :manifest
+:allocation-map :source-manifest :range-proof :checkpoint-descriptor :merkle-node :raw-source
+:key-list :recovery-arena :dependency-manifest :membership-list :obligation-list`.
+
+Record kinds, codes 0 through 15 in order: `:article-acceptance :cursor-advance
+:registration-change :configuration-change :withdrawal :obligation-create :obligation-release
+:keyed-mutation :allocation :relocation :run-replacement :retirement :release-allocation
+:checkpoint-installation :begin-writer-epoch :checkpoint-statement`.
+
+All enum codes are zero-based list positions. Frame codes: records=0, seal=1, continuation=2.
+Allocation states: FREE=0, RESERVED=1, ALLOCATED=2, RETIRE_PENDING=3. Unused allocation-map
+fields must be zero: FREE has zero owner-kind/owner/allocation identity/retirement commit;
+RESERVED and ALLOCATED have zero retirement commit; RETIRE_PENDING retains owner and allocation
+identity. Enforcement belongs to allocation validation, not the layout codec.
+
+Article acceptance, cursor advancement, registration/configuration changes, withdrawal, and
+obligation create/release concatenate record-header, operation-header, and body. Keyed-mutation
+concatenates record-header and body, which already contains principal/operation.
+Checkpoint-statement concatenates record-header and body without operation-header. Maintenance
+kinds (allocation through begin-writer-epoch) concatenate maintenance-header and body under
+journal commit framing; they do not consume an event number. Checkpoint statements describe an
+already determined predecessor cut, logged at k+1; neither descriptor nor statement includes the
+enclosing event root or seal. Operation outcomes are inline canonical codes (seat review: an isolated ack must not cost a
+Ref); charges, configurations, memberships, keys, manifests, arena and frontier sequences are
+external pages referenced by Ref. Source-manifest subtree CV is
+algorithm-tagged like other digests; its intended subtree spans 64 KiB.
+
+Ref fields are defined once and prefixed when embedded. Frame headers include physical extent
+identity as well as its allocation pair, binding the physical context required by §E.
+
+| Layout | Fields | Inline bytes min–max | Fields in wire order |
+|---|---:|---:|---|
+| ref | 7 | 39–79 | storage-domain, physical-unit, writer-epoch, allocation, page-kind, encoded-length, expected-hash |
+| bootstrap | 10 | 45–101 | magic, version, sector-size, page-size, anchor-0, anchor-1, anchor-2, anchor-3, storage-domain, geometry-hash |
+| anchor | 15 | 175–247 | slot, history, incarnation, checkpoint, checkpoint-batch, descriptor-storage-domain, descriptor-physical-unit, descriptor-writer-epoch, descriptor-allocation, descriptor-page-kind, descriptor-encoded-length, descriptor-expected-hash, previous-checkpoint, geometry, anchor-hash |
+| page-header | 10 | 13–69 | magic, version, page-kind, history, incarnation, physical-unit, writer-epoch, allocation, header-length, payload-length |
+| raw-source-context | 8 | 8–72 | storage-domain, history, incarnation, physical-unit, writer-epoch, allocation, actual-length, logical-source-offset |
+| frame-header | 12 | 15–95 | magic, frame-kind, history, incarnation, writer-epoch, commit, extent, extent-writer-epoch, extent-allocation, ordinal, fragment-offset, payload-length |
+| frame-trailer | 1 | 33–33 | frame-hash |
+| maintenance-header | 2 | 2–2 | record-kind, schema-version |
+| record-header | 3 | 3–11 | record-kind, schema-version, event |
+| operation-header | 2 | 2–18 | principal, operation |
+| article-acceptance | 55 | 311–874 | article, message-id, source-identity, source-length, source-storage-domain, source-physical-unit, source-writer-epoch, source-allocation, source-page-kind, source-encoded-length, source-expected-hash, projection-storage-domain, projection-physical-unit, projection-writer-epoch, projection-allocation, projection-page-kind, projection-encoded-length, projection-expected-hash, memberships-storage-domain, memberships-physical-unit, memberships-writer-epoch, memberships-allocation, memberships-page-kind, memberships-encoded-length, memberships-expected-hash, membership-count, acceptance-storage-domain, acceptance-physical-unit, acceptance-writer-epoch, acceptance-allocation, acceptance-page-kind, acceptance-encoded-length, acceptance-expected-hash, configuration-storage-domain, configuration-physical-unit, configuration-writer-epoch, configuration-allocation, configuration-page-kind, configuration-encoded-length, configuration-expected-hash, charges-storage-domain, charges-physical-unit, charges-writer-epoch, charges-allocation, charges-page-kind, charges-encoded-length, charges-expected-hash, created-obligations-storage-domain, created-obligations-physical-unit, created-obligations-writer-epoch, created-obligations-allocation, created-obligations-page-kind, created-obligations-encoded-length, created-obligations-expected-hash, outcome |
+| cursor-advance | 11 | 43–115 | registration, previous-event, next-event, selection-storage-domain, selection-physical-unit, selection-writer-epoch, selection-allocation, selection-page-kind, selection-encoded-length, selection-expected-hash, outcome |
+| registration-change | 10 | 42–106 | registration, previous-version, contract-storage-domain, contract-physical-unit, contract-writer-epoch, contract-allocation, contract-page-kind, contract-encoded-length, contract-expected-hash, outcome |
+| configuration-change | 10 | 42–106 | configuration, previous-generation, value-storage-domain, value-physical-unit, value-writer-epoch, value-allocation, value-page-kind, value-encoded-length, value-expected-hash, outcome |
+| withdrawal | 9 | 41–97 | article, authorization-storage-domain, authorization-physical-unit, authorization-writer-epoch, authorization-allocation, authorization-page-kind, authorization-encoded-length, authorization-expected-hash, outcome |
+| obligation-create | 17 | 81–185 | obligation, owner, article, terms-storage-domain, terms-physical-unit, terms-writer-epoch, terms-allocation, terms-page-kind, terms-encoded-length, terms-expected-hash, charges-storage-domain, charges-physical-unit, charges-writer-epoch, charges-allocation, charges-page-kind, charges-encoded-length, charges-expected-hash |
+| obligation-release | 8 | 40–88 | obligation, release-evidence-storage-domain, release-evidence-physical-unit, release-evidence-writer-epoch, release-evidence-allocation, release-evidence-page-kind, release-evidence-encoded-length, release-evidence-expected-hash |
+| keyed-mutation | 14 | 78–166 | table, object, principal, operation, binding, expected-prior-version, new-value-storage-domain, new-value-physical-unit, new-value-writer-epoch, new-value-allocation, new-value-page-kind, new-value-encoded-length, new-value-expected-hash, outcome |
+| allocation | 5 | 5–37 | extent, owner-kind, owner, writer-epoch, allocation |
+| relocation | 15 | 79–167 | object, old-storage-domain, old-physical-unit, old-writer-epoch, old-allocation, old-page-kind, old-encoded-length, old-expected-hash, new-storage-domain, new-physical-unit, new-writer-epoch, new-allocation, new-page-kind, new-encoded-length, new-expected-hash |
+| run-replacement | 15 | 79–167 | schema, old-runs-storage-domain, old-runs-physical-unit, old-runs-writer-epoch, old-runs-allocation, old-runs-page-kind, old-runs-encoded-length, old-runs-expected-hash, new-runs-storage-domain, new-runs-physical-unit, new-runs-writer-epoch, new-runs-allocation, new-runs-page-kind, new-runs-encoded-length, new-runs-expected-hash |
+| retirement | 4 | 4–36 | extent, writer-epoch, allocation, retirement-commit |
+| release-allocation | 12 | 44–124 | extent, writer-epoch, allocation, retirement-commit, promoted-checkpoint, release-evidence-storage-domain, release-evidence-physical-unit, release-evidence-writer-epoch, release-evidence-allocation, release-evidence-page-kind, release-evidence-encoded-length, release-evidence-expected-hash |
+| checkpoint-installation | 8 | 40–88 | checkpoint, descriptor-storage-domain, descriptor-physical-unit, descriptor-writer-epoch, descriptor-allocation, descriptor-page-kind, descriptor-encoded-length, descriptor-expected-hash |
+| begin-writer-epoch | 4 | 4–36 | history, incarnation, previous-writer-epoch, writer-epoch |
+| checkpoint-statement | 21 | 181–293 | history, incarnation, event-cut, event-root, fold-schema, summary-commitment, exact-identity-commitment, descriptor-storage-domain, descriptor-physical-unit, descriptor-writer-epoch, descriptor-allocation, descriptor-page-kind, descriptor-encoded-length, descriptor-expected-hash, authorized-keys-storage-domain, authorized-keys-physical-unit, authorized-keys-writer-epoch, authorized-keys-allocation, authorized-keys-page-kind, authorized-keys-encoded-length, authorized-keys-expected-hash |
+| root-recipe | 37 | 197–413 | checkpoint-base-storage-domain, checkpoint-base-physical-unit, checkpoint-base-writer-epoch, checkpoint-base-allocation, checkpoint-base-page-kind, checkpoint-base-encoded-length, checkpoint-base-expected-hash, suffix-first, suffix-last, physical-manifest-storage-domain, physical-manifest-physical-unit, physical-manifest-writer-epoch, physical-manifest-allocation, physical-manifest-page-kind, physical-manifest-encoded-length, physical-manifest-expected-hash, allocation-changes-storage-domain, allocation-changes-physical-unit, allocation-changes-writer-epoch, allocation-changes-allocation, allocation-changes-page-kind, allocation-changes-encoded-length, allocation-changes-expected-hash, event-frontier-storage-domain, event-frontier-physical-unit, event-frontier-writer-epoch, event-frontier-allocation, event-frontier-page-kind, event-frontier-encoded-length, event-frontier-expected-hash, configuration-generations-storage-domain, configuration-generations-physical-unit, configuration-generations-writer-epoch, configuration-generations-allocation, configuration-generations-page-kind, configuration-generations-encoded-length, configuration-generations-expected-hash |
+| sealed-batch | 73 | 489–897 | commit, previous-commit, previous-seal, input-root, event-first, event-last, record-stream, dependencies-storage-domain, dependencies-physical-unit, dependencies-writer-epoch, dependencies-allocation, dependencies-page-kind, dependencies-encoded-length, dependencies-expected-hash, allocation-retirement-storage-domain, allocation-retirement-physical-unit, allocation-retirement-writer-epoch, allocation-retirement-allocation, allocation-retirement-page-kind, allocation-retirement-encoded-length, allocation-retirement-expected-hash, metadata-edits-storage-domain, metadata-edits-physical-unit, metadata-edits-writer-epoch, metadata-edits-allocation, metadata-edits-page-kind, metadata-edits-encoded-length, metadata-edits-expected-hash, output-checkpoint-base-storage-domain, output-checkpoint-base-physical-unit, output-checkpoint-base-writer-epoch, output-checkpoint-base-allocation, output-checkpoint-base-page-kind, output-checkpoint-base-encoded-length, output-checkpoint-base-expected-hash, output-suffix-first, output-suffix-last, output-physical-manifest-storage-domain, output-physical-manifest-physical-unit, output-physical-manifest-writer-epoch, output-physical-manifest-allocation, output-physical-manifest-page-kind, output-physical-manifest-encoded-length, output-physical-manifest-expected-hash, output-allocation-changes-storage-domain, output-allocation-changes-physical-unit, output-allocation-changes-writer-epoch, output-allocation-changes-allocation, output-allocation-changes-page-kind, output-allocation-changes-encoded-length, output-allocation-changes-expected-hash, output-event-frontier-storage-domain, output-event-frontier-physical-unit, output-event-frontier-writer-epoch, output-event-frontier-allocation, output-event-frontier-page-kind, output-event-frontier-encoded-length, output-event-frontier-expected-hash, output-configuration-generations-storage-domain, output-configuration-generations-physical-unit, output-configuration-generations-writer-epoch, output-configuration-generations-allocation, output-configuration-generations-page-kind, output-configuration-generations-encoded-length, output-configuration-generations-expected-hash, event-frontier-storage-domain, event-frontier-physical-unit, event-frontier-writer-epoch, event-frontier-allocation, event-frontier-page-kind, event-frontier-encoded-length, event-frontier-expected-hash, final-seal |
+| dependency-entry | 9 | 73–121 | target-storage-domain, target-physical-unit, target-writer-epoch, target-allocation, target-page-kind, target-encoded-length, target-expected-hash, length, digest |
+| source-manifest-header | 3 | 35–51 | source-length, block-size, source-identity |
+| source-manifest-entry | 10 | 74–130 | logical-offset, length, block-storage-domain, block-physical-unit, block-writer-epoch, block-allocation, block-page-kind, block-encoded-length, block-expected-hash, subtree-cv |
+| allocation-map-entry | 7 | 7–47 | extent, state, owner-kind, owner, writer-epoch, allocation, retirement-commit |
+| checkpoint-descriptor | 38 | 198–422 | checkpoint, cut-commit, cut-event, metadata-manifest-storage-domain, metadata-manifest-physical-unit, metadata-manifest-writer-epoch, metadata-manifest-allocation, metadata-manifest-page-kind, metadata-manifest-encoded-length, metadata-manifest-expected-hash, allocation-state-storage-domain, allocation-state-physical-unit, allocation-state-writer-epoch, allocation-state-allocation, allocation-state-page-kind, allocation-state-encoded-length, allocation-state-expected-hash, event-proof-directory-storage-domain, event-proof-directory-physical-unit, event-proof-directory-writer-epoch, event-proof-directory-allocation, event-proof-directory-page-kind, event-proof-directory-encoded-length, event-proof-directory-expected-hash, event-frontier-storage-domain, event-frontier-physical-unit, event-frontier-writer-epoch, event-frontier-allocation, event-frontier-page-kind, event-frontier-encoded-length, event-frontier-expected-hash, recovery-arena-storage-domain, recovery-arena-physical-unit, recovery-arena-writer-epoch, recovery-arena-allocation, recovery-arena-page-kind, recovery-arena-encoded-length, recovery-arena-expected-hash |
+| recovery-arena-entry | 3 | 3–27 | extent-physical-unit, writer-epoch, allocation |
+| membership-entry | 3 | 3–27 | group, group-number, article |
+| key-entry | 1 | 1–9 | key |
+| configuration-generation-entry | 1 | 1–9 | configuration |
+
+Allocation owner-kind is an opaque u8 machine/object category; owner is a typed `owner` ID
+matching the allocator’s owner-kind/owner-id fields.
+
+## 7. Allocator
+
+`books/alloc.lisp` declares profile-sized extents with FREE/RESERVED/ALLOCATED/RETIRE-PENDING
+states (codes 0..3), opaque owner kind/id, writer-epoch/allocation-counter pair, retirement
+commit, free-list link, and ten u32 protection counts. Identity references deliberately are not
+payload-retention edges; identity-metadata storage is itself protected through its
+root/dependency edges. All resident identities/cuts are u60.
+
+Installed-root protects current placement; selectable-checkpoint protects any selectable
+checkpoint; recovery-base protects replay infrastructure; prepared-successor protects
+uninstalled successors; reservation protects in-progress ownership; obligation protects durable
+custody; promised-read protects a BODY/object lease; borrow protects an externally held physical
+range; outstanding-io protects a submitted operation until completion or backend exclusion;
+recovery-candidate quarantines unresolved recovery candidates. Relocation moves only
+installed-root and prepared-successor counts after durable replacement, preserving
+promised-read/obligation/borrow and all checkpoint/recovery/I/O/quarantine edges on old physical
+locations until explicitly discharged. It neither retires nor frees the old extent.
+
+Reserve requires the completed-epoch flag, consumes a fresh counter and creates its reservation
+edge; commit installs the owner and discharges that edge. Retire records a completed retirement
+commit. Release requires RETIRE-PENDING, zero counts, and retirement <= installed checkpoint
+cut; invoke the FREE transition only when RELEASE_ALLOCATION persistence is established by the
+composing machine. Cancellation may discharge its own reservation only after every other
+protection ends. Process death/epoch advance never silently removes old I/O edges; backend
+evidence is required before dropping them. FREE ownership/id/retirement fields are canonical
+zero.
+
+Named refusals are :epoch-not-begun, :epoch-order, :counter-exhausted, :no-space (separate
+pressure result), :bounds, :stale, :state, :edge-kind, :reservation-owned, :edge-overflow,
+:edge-underflow, :checkpoint-busy, :checkpoint-order, :checkpoint-blocked,
+:replacement-not-durable, :owner, or the first protecting edge keyword. Refusals do not mutate
+state. Counter exhaustion requests a new durable epoch; it never wraps.
+
+Maintained state totals and disjoint reason totals make pressure O(1): :ok when FREE or already
+release-ready space exists, :checkpoint-blocked when edge-free retired space awaits the
+checkpoint, :quarantine when unresolved candidates hold space, otherwise :all-live. With
+multiple reasons the priority is that order. :ok release-ready space still needs the release
+transaction before reserve succeeds. Checkpoint publication stages a cut, freezes mutations,
+examines one row per step, and publishes the cut with exact totals atomically; no call scans the
+table. Recovery/machine orchestration owns continuation after a crash.
+
+Seat review (AMBER, owed to the allocator machine in B6): publication freezes every allocator
+mutation (`:checkpoint-busy`) for one step per extent row, so a large table stalls reservations
+and edge updates for the whole walk, against scholar §3.4 item 6 (pressure must still admit
+progress-enabling transitions). Retirements are recorded in nondecreasing commit order, so a
+retirement FIFO keyed by commit lets a cut advance move exactly the newly covered extents from
+blocked to ready, with no freeze and no walk.
+
+`sim/check-reclaim.lisp` independently interprets allocation events and reports the first
+unsafe release, destructive write, or repeated allocation ID. Initial writes to a matching
+RESERVED allocation may carry reservation/outstanding-I/O edges; they are not reuse. Its
+list model is test/checker code. The two allocator obligations remain unproved in `OWED.md`;
+these functions do not establish persistence or the composing machine’s evidence.
+
+## 8. BLAKE3
 
 `books/blake3.lisp` is the incremental executable reference. `defcolumns` owns
 profile-sized hasher rows; each row has scalar continuation columns and 464
