@@ -106,46 +106,16 @@
                                      (mod (floor word 4) 256) fn2-sim-storage)))
         (fn2-diff-crash-units (- left 1) rng fn2-sim-storage)))))
 
-(defun fn2-diff-stale-unit (left address fn2-sim-storage)
-  (declare (xargs :stobjs fn2-sim-storage :verify-guards nil :measure (nfix left)))
-  (if (zp left) (mv t nil)
-    (mv-let (not-newer older) (fn2-diff-stale-unit (- left 1) (+ address 1) fn2-sim-storage)
-      (let ((v (fn2-sim-storage-stamp address fn2-sim-storage))
-            (d (fn2-sim-storage-durable-stamp address fn2-sim-storage)))
-        (mv (and not-newer (<= v d)) (or older (< v d)))))))
-
-(defun fn2-diff-stale-units (left fn2-sim-storage)
-  (declare (xargs :stobjs fn2-sim-storage :verify-guards nil :measure (nfix left)))
-  (if (zp left) nil
-    (mv-let (not-newer older) (fn2-diff-stale-unit 512 (* 512 (- left 1)) fn2-sim-storage)
-      (cons (and not-newer older) (fn2-diff-stale-units (- left 1) fn2-sim-storage)))))
-
-(defun fn2-diff-stale-gap-p (image durable vs ds stale flights cache unit)
-  (declare (xargs :verify-guards nil))
-  (if (atom image) (null durable)
-    (and (consp durable)
-         (or (fn2-cm-crash-units-allowedp (list (car image)) (list (car durable))
-               (list (car vs)) (list (car ds)) flights cache unit 512 0)
-             (car stale))
-         (fn2-diff-stale-gap-p (cdr image) (cdr durable) (cdr vs) (cdr ds)
-                               (cdr stale) flights cache (+ unit 1)))))
-
 (defun fn2-diff-crash (model flights profile rng stamp fn2-sim-storage)
   (declare (xargs :stobjs fn2-sim-storage :verify-guards nil))
   (b* (((mv rng stamp fn2-sim-storage)
         (fn2-diff-crash-flights (len flights) flights rng stamp fn2-sim-storage))
-       (stale (reverse (fn2-diff-stale-units
-                        (floor (fn2-sim-storage-rows fn2-sim-storage) 512) fn2-sim-storage)))
        ((mv rng fn2-sim-storage)
         (fn2-diff-crash-units (floor (fn2-sim-storage-rows fn2-sim-storage) 512)
                               rng fn2-sim-storage))
        (image (fn2-diff-image t fn2-sim-storage))
        (allowed (fn2-cm-crash-image-allowedp model image profile))
-       (gap (and (not allowed)
-                  (fn2-diff-stale-gap-p image (fn2-cm-durable model)
-                    (fn2-cm-vstamps model) (fn2-cm-dstamps model) stale
-                    (fn2-cm-inflight model) (fn2-cm-cache model) 0)))
-       (ok (cond (allowed t) (gap :known-stale-cache-gap) (t nil)))
+       (ok allowed)
        (model (fn2-cm-crash model image profile))
        (fn2-sim-storage (fn2-storage-crash-reset fn2-sim-storage)))
     (mv ok model rng stamp fn2-sim-storage)))
@@ -155,27 +125,6 @@
   (if (zp left) nil
     (if (assoc-equal (- left 1) fences) (fn2-diff-free-fence (- left 1) fences)
       (- left 1))))
-
-; Recognize only the concrete stamp-suppression defect: a byte required by
-; the submitted snapshot is absent, while the simulator's equal stamp makes
-; fence-complete skip it. A different mismatch is NOT a classified gap.
-(defun fn2-diff-gap-unit (expected observed address base fn2-sim-storage)
-  (declare (xargs :stobjs fn2-sim-storage :verify-guards nil))
-  (if (atom expected) (null observed)
-    (and (consp observed)
-         (or (equal (car expected) (car observed))
-             (and (equal (car expected) (fn2-storage-snapshoti (+ base address) fn2-sim-storage))
-                  (< 0 (fn2-sim-storage-durable-stamp address fn2-sim-storage))
-                  (equal (fn2-sim-storage-durable-stamp address fn2-sim-storage)
-                         (fn2-storage-snapshot-stampi (+ base address) fn2-sim-storage))))
-         (fn2-diff-gap-unit (cdr expected) (cdr observed) (+ address 1) base fn2-sim-storage))))
-
-(defun fn2-diff-gap-image (expected observed address base fn2-sim-storage)
-  (declare (xargs :stobjs fn2-sim-storage :verify-guards nil))
-  (if (atom expected) (null observed)
-    (and (consp observed)
-         (fn2-diff-gap-unit (car expected) (car observed) address base fn2-sim-storage)
-         (fn2-diff-gap-image (cdr expected) (cdr observed) (+ address 512) base fn2-sim-storage))))
 
 (defun fn2-diff-fence-diagnostic-unit (expected observed address base fn2-sim-storage)
   (declare (xargs :stobjs fn2-sim-storage :verify-guards nil))
@@ -260,11 +209,7 @@
                  (image (fn2-diff-image t fn2-sim-storage))
                  (allowed (fn2-cm-fence-allowedp model (cdr fence) outcome image profile))
                  (expected (fn2-cm-fence-image model (cdr fence)))
-                 (gap (and (not allowed) (eq code :ok)
-                            (or (nth 1 profile) (equal outcome '(:ok :persist)))
-                            (not (equal expected image))
-                            (fn2-diff-gap-image expected image 0 (* (car fence) nbytes) fn2-sim-storage)))
-                 (ok (cond (allowed t) (gap :known-live-tear-gap) (t nil)))
+                 (ok allowed)
                  (- (if ok nil
                       (cw "B1-FENCE-DETAIL [address expected observed snapshot pending durable-stamp snapshot-stamp]=~x0~%"
                           (fn2-diff-fence-diagnostic expected image 0 (* (car fence) nbytes) fn2-sim-storage))))
@@ -309,9 +254,7 @@
                                  (:instance fn2-diff-count-op (x left)))))))
   (if (zp left)
       (mv-let (ok ctx fn2-sim-storage) (fn2-diff-step 11 seed ctx profile fn2-sim-storage)
-        (prog2$ (cond ((eq ok :known-stale-cache-gap)
-                       (cw "B1-DIFF-KNOWN-GAP stale-cache-crash seed=~x0 final-crash~%" seed))
-                      (ok nil) (t (cw "B1-DIFF-FAIL seed=~x0 final-crash~%" seed)))
+        (prog2$ (if ok nil (cw "B1-DIFF-FAIL seed=~x0 final-crash~%" seed))
           (mv ok ctx fn2-sim-storage)))
     (b* (((mv word rng) (fn2-diff-random (nth 4 ctx)))
          (raw-choice (mod word 20))
@@ -319,11 +262,7 @@
          (choice (if (and (equal raw-choice 12) (< 3 left)) 3 raw-choice))
          (ctx (update-nth 4 rng ctx))
          ((mv ok ctx fn2-sim-storage) (fn2-diff-step choice word ctx profile fn2-sim-storage)))
-      (cond ((member-equal ok '(:known-live-tear-gap :known-stale-cache-gap))
-             (prog2$ (cw "B1-DIFF-KNOWN-GAP kind=~x0 seed=~x1 remaining=~x2 choice=~x3 word=~x4~%"
-                         ok seed left choice word)
-               (mv ok ctx fn2-sim-storage)))
-            (ok (fn2-diff-trace (- left 1) seed ctx profile fn2-sim-storage))
+      (cond (ok (fn2-diff-trace (- left 1) seed ctx profile fn2-sim-storage))
             (t (prog2$ (cw "B1-DIFF-FAIL seed=~x0 remaining=~x1 choice=~x2 word=~x3~%"
                            seed left choice word)
                  (mv nil ctx fn2-sim-storage)))))))
@@ -338,12 +277,12 @@
   (if (atom counts) t
     (and (< 0 (nfix (car counts))) (fn2-diff-all-positive (cdr counts)))))
 
-(defun fn2-diff-traces (left seed totals gaps fn2-sim-storage)
+(defun fn2-diff-traces (left seed totals fn2-sim-storage)
   (declare (xargs :stobjs fn2-sim-storage :verify-guards nil :measure (nfix left)
                   :hints (("Goal" :in-theory nil
                            :use ((:instance fn2-diff-countdown (x left))
                                  (:instance fn2-diff-count-op (x left)))))))
-  (if (zp left) (mv (fn2-diff-all-positive totals) totals gaps fn2-sim-storage)
+  (if (zp left) (mv (fn2-diff-all-positive totals) totals fn2-sim-storage)
     (b* ((nsectors (if (equal (mod seed 100) 0) 64 16))
          (profile (fn2-cm-profile (if (equal (mod seed 3) 0) :lying :broad)
                                   (not (equal (mod seed 3) 0)) t nil 0 64))
@@ -354,13 +293,8 @@
          ((mv ok ctx fn2-sim-storage)
           (fn2-diff-trace (+ 12 (mod seed 13)) seed ctx profile fn2-sim-storage))
          (totals (fn2-diff-add-counts totals (nth 5 ctx))))
-      (if (not ok) (mv nil totals gaps fn2-sim-storage)
-        (fn2-diff-traces (- left 1) (+ seed 1) totals
-                          (cond ((eq ok :known-live-tear-gap)
-                                 (update-nth 0 (+ 1 (nth 0 gaps)) gaps))
-                                ((eq ok :known-stale-cache-gap)
-                                 (update-nth 1 (+ 1 (nth 1 gaps)) gaps))
-                                (t gaps)) fn2-sim-storage)))))
+      (if (not ok) (mv nil totals fn2-sim-storage)
+        (fn2-diff-traces (- left 1) (+ seed 1) totals fn2-sim-storage)))))
 
 ; Deliberately alter observed results, with a positive control beside each.
 ; A plain FUA does NOT exclude an unrelated write from a later crash image:
@@ -566,25 +500,23 @@
 (defun fn2-diff-debug-seed (seed)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-sim-storage
-    (mv-let (ok totals gaps fn2-sim-storage)
-      (fn2-diff-traces 1 seed (fn2-diff-repeat 20 1) '(0 0) fn2-sim-storage)
+    (mv-let (ok totals fn2-sim-storage)
+      (fn2-diff-traces 1 seed (fn2-diff-repeat 20 1) fn2-sim-storage)
       (declare (ignore totals))
-      (prog2$ (cw "B1-REPLAY seed=~x0 unexpected-divergence-free=~x1 known-gap-counts=~x2~%" seed ok gaps) ok))))
+      (prog2$ (cw "B1-REPLAY seed=~x0 divergence-free=~x1~%" seed ok) ok))))
 
-; Success here means no unexplained divergence, plus all controls and event
-; selections exercised. It is NOT a simulator-refinement pass: a trace stops
-; immediately at either precisely classified simulator defect, reports its
-; seed, and the next trace starts from a fresh device. LIVE and STALE in the
-; summary count those rejected traces; only the other traces finish normally.
+; Success means every trace's every simulator result is allowed by the model
+; and every event selection was exercised. Any model/simulator disagreement
+; fails the run at its seed; there is no class of tolerated divergence.
 (defun fn2-diff-run ()
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-sim-storage
-    (mv-let (ok totals gaps fn2-sim-storage)
-      (fn2-diff-traces 10000 20261028 (fn2-diff-repeat 20 0) '(0 0) fn2-sim-storage)
+    (mv-let (ok totals fn2-sim-storage)
+      (fn2-diff-traces 10000 20261028 (fn2-diff-repeat 20 0) fn2-sim-storage)
       (prog2$ (cw "B1-DIFF-COVERAGE event-counts[0..19]=~x0~%" totals)
         (prog2$ (if ok
-                    (cw "B1-DIFF traces=10000 unexpected=0 live=~x0 stale=~x1 teeth=4/4~%" (nth 0 gaps) (nth 1 gaps))
-                  (cw "B1-DIFFERENTIAL ABORTED seed-range-start=20261028 known-gap-counts=~x0; see failing seed above~%" gaps))
+                    (cw "B1-DIFF traces=10000 divergences=0 teeth=4/4~%")
+                  (cw "B1-DIFFERENTIAL FAILED seed-range-start=20261028; see the failing seed above~%"))
           ok)))))
 
 ; The session driver invokes this admitted logic function through compiled
