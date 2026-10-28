@@ -64,10 +64,13 @@ def memory_bytes(value: str) -> int:
 
 # Measured peaks (MiB, the module's scope's memory.peak, which `run_one`
 # records in the module log as "peak_mib"; tools/native_peaks.py merges them
-# here).  A native module that declares no NATIVE_MEMORY runs under a cap of
-# eight times its measured peak, at least 4G, instead of the 24G default: the
-# default is a ceiling nobody measured (the 2026-10-28 peering run's largest
-# module peaked at 668 MiB), and it is what held `--jobs auto` at 88G // 24G = 3.
+# here).  They size the job bound, not the scope: a module's MemoryMax stays
+# its declared figure (24G by default) because the node reads its cgroup's
+# limit to decide its heap and connection budget -- a 4G scope made
+# test_native_control_across_peers' node answer "400 too many connections" and
+# test_native_peer_catchup be REFUSED (2026-10-28).  The bound counts 8x the
+# measured peak, at least 4G, in place of the 24G default, which is what held
+# `--jobs auto` at 88G // 24G = 3 although the largest module peaked at 668 MiB.
 PEAKS_FILE = "tests/native_peaks.json"
 PEAK_FACTOR = 8
 PEAK_FLOOR_BYTES = 4 * 1024 ** 3
@@ -91,11 +94,7 @@ def native_memory(module: str, root: Path = ROOT) -> str:
               and any(isinstance(target, ast.Name) and target.id == "NATIVE_MEMORY"
                       for target in node.targets)]
     if not values:
-        peak = measured_peaks(root).get(module)
-        if peak is None:
-            return "24G"
-        wanted = max(PEAK_FLOOR_BYTES, int(PEAK_FACTOR * peak * 1024 ** 2))
-        return f"{-(-wanted // 1024 ** 3)}G"
+        return "24G"
     if len(values) != 1 or not isinstance(values[0], ast.Constant) or not isinstance(values[0].value, str):
         raise ValueError(f"{module}: NATIVE_MEMORY must be one literal string")
     value = values[0].value
@@ -103,9 +102,22 @@ def native_memory(module: str, root: Path = ROOT) -> str:
     return value
 
 
-def memory_jobs(lines, budget="88G", maximum=8):
-    """A module concurrency bound whose worst-case MemoryMax sum fits BUDGET."""
-    sizes = [memory_bytes(line.split()[1]) for line in lines if line.strip()]
+def expected_bytes(module: str, cap: str, root: Path = ROOT) -> int:
+    """What a module is expected to use at most: PEAK_FACTOR times its
+    measured peak (at least PEAK_FLOOR_BYTES) when it has one and the cap is
+    the default, else its cap."""
+    peak = measured_peaks(root).get(module)
+    if peak is None or memory_bytes(cap) < PEAK_FLOOR_BYTES:
+        return memory_bytes(cap)
+    return min(memory_bytes(cap), max(PEAK_FLOOR_BYTES, int(PEAK_FACTOR * peak * 1024 ** 2)))
+
+
+def memory_jobs(lines, budget="88G", maximum=8, root: Path = ROOT):
+    """A module concurrency bound whose worst-case summed memory fits BUDGET:
+    each module counts as `expected_bytes` (its cap until it has a measured
+    peak)."""
+    sizes = [expected_bytes(line.split()[0], line.split()[1], root)
+             for line in lines if line.strip()]
     return max(1, min(maximum, memory_bytes(budget) // max(sizes, default=1)))
 
 
