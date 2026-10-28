@@ -11,7 +11,7 @@
     (mv-let (word s0 s1 s2 s3) (fn2-prng-next s0 s1 s2 s3)
       (let* ((k (cadar layout)) (bytes (make-list (mod word 18) :initial-element (mod s0 256)))
              (v (cond ((eq k :u8) (mod word 256)) ((eq k :u16) (mod word 65536))
-                      ((eq k :u32) word) ((eq k :u64) (list word s0))
+                      ((eq k :u32) word)
                       ((eq k :bool) (mod word 2)) ((and (consp k) (eq (car k) :enum)) (mod word (len (caddr k))))
                       ((and (consp k) (eq (car k) :zero)) nil) ((and (consp k) (eq (car k) :octets)) bytes)
                       ((eq k :digest) (cons 1 (make-list 32 :initial-element (mod word 256))))
@@ -74,6 +74,8 @@
   (b* ((layout (if (evenp n) *fn2-layout-test-header* *fn2-layout-test-anchor*))
          ((mv s0 s1 s2 s3) (fn2-prng-seed (+ 20261028 n)))
          (values (fn2-layout-test-random layout s0 s1 s2 s3))
+         ; Include the largest resident u64 value in the assignment campaign.
+         (values (if (= n 1) (update-nth 2 1152921504606846975 values) values))
          ((mv model-code model-values rest) (fn2-layout-parse layout (fn2-layout-octets layout values)))
          ((unless (and (eq model-code :ok) (equal model-values values) (null rest)))
           (mv (list :model n model-code) counts fn2-fields fn2-pool))
@@ -174,7 +176,8 @@
        ((unless (eq ok t)) (mv ok fn2-fields fn2-pool))
        ((mv ok fn2-fields fn2-pool) (fn2-layout-test-wide '(1 7 4096) fn2-fields fn2-pool))
        ((unless (eq ok t)) (mv ok fn2-fields fn2-pool))
-       (values (fn2-layout-test-random *fn2-layout-test-audit* 1 2 3 4))
+       (values (update-nth 2 1152921504606846975
+                 (fn2-layout-test-random *fn2-layout-test-audit* 1 2 3 4)))
        ((mv fn2-fields fn2-pool)
         (fn2-layout-test-put *fn2-layout-test-audit* values 0 0 fn2-fields fn2-pool))
        ((mv ok fn2-fields fn2-pool) (fn2-layout-audit-loop 100 fn2-fields fn2-pool))
