@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass, field
 import json
 import os
@@ -145,7 +145,7 @@ def fake_content(c, command, exp):
         # Only the fake renderer reads it; the driver uses check/update only.
         cells = dict(zip(exp.content.__code__.co_freevars,
                          (x.cell_contents for x in exp.content.__closure__ or ())))
-        return packed(cells['expected'])
+        return packed(sorted(cells['required']) if 'required' in cells else cells['expected'])
     return b''
 
 
@@ -243,6 +243,13 @@ class Fake:
         return result
 
     def shutdown(self, _):
+        if self.conn.pending and not self.closed:
+            status, body = fake_reply(self.conn, bytes(self.input),
+                                      self.conn.send_block(bytes(self.input)))
+            self.input.clear()
+            payload = status + (body or b'')
+            self.output.extend(self.enc.compress(payload) + self.enc.flush(zlib.Z_SYNC_FLUSH)
+                               if self.enc else payload)
         self.closed = True
 
     def close(self):
@@ -334,7 +341,7 @@ class Wire:
     def compress(self):
         self.enc, self.dec = zlib.compressobj(wbits=-15), zlib.decompressobj(wbits=-15)
 
-    def finish(self):
+    def half_close(self):
         try:
             if isinstance(self.sock, Fake):
                 self.sock.shutdown(socket.SHUT_WR)
@@ -342,6 +349,9 @@ class Wire:
                 socket.socket.shutdown(self.sock, socket.SHUT_WR)
         except OSError:
             pass
+
+    def finish(self):
+        self.half_close()
         self.timed_out = False
         deadline = time.monotonic() + self.timeout
         self.deadline = deadline
@@ -358,6 +368,9 @@ class Result:
     matches: int = 0
     rows: list = field(default_factory=list)
     commands: list = field(default_factory=list)
+    exchanges: list = field(default_factory=list)
+    reusable: bool = False
+    wire: dict = field(default_factory=dict)
 
 
 def pieces(items, start, end, cut):
@@ -377,9 +390,23 @@ def pieces(items, start, end, cut):
 def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
             plants=(), node=None, timeout=3):
     result = Result()
-    c = connection(fixture(node is None, node.config if node else None), mode, transport)
+    model = fixture(node is None, node.config if node else None)
+    if node:
+        model.policy['tls_exporter'] = None  # exporter installation is not observable here
+        if hasattr(node, 'creation_window'):
+            model.policy['group_creation_window'] = node.creation_window
+    c = connection(model, mode, transport)
     wire = None
+    def observe_tls():
+        # The negotiated protocol is observable; exporter installation is not.
+        version = getattr(wire.sock, 'version', None)
+        if version is not None:
+            c.policy['tls_version'] = c.model.policy['tls_version'] = version()
+
     def record(command, status, body, verdict, index):
+        result.exchanges.append(dict(command_index=index, command_hex=command.hex(),
+            status_hex=status.hex(), body_hex=None if body is None else body.hex(),
+            rule=verdict.rule, detail=verdict.detail, ok=verdict.ok))
         result.compared += int(index >= 0)
         if verdict.ok:
             result.matches += int(index >= 0)
@@ -398,6 +425,7 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             if transport == 'implicit':
                 wire.sock = node.tls_context().wrap_socket(sock, server_hostname='localhost')
+                observe_tls()
         def exchange(command, exp, index):
             wire.failed_auth = c.failed_auth_count
             status, body = wire.reply(exp)
@@ -414,6 +442,7 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
             if status.startswith(b'382'):
                 wire.tls()
                 c.tls_established()
+                observe_tls()
             if status.startswith(b'206'):
                 wire.compress()
             return True
@@ -442,6 +471,11 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
             if not batch:
                 wire.send(pieces(items, at, len(data), cut))
                 result.commands.append(data[at:])
+                if c.pending:
+                    # EOF is an article framing event, not unsolicited output.
+                    # Check the model's incomplete-body refusal before draining.
+                    wire.half_close()
+                    exchange(data[at:], c.send_block(data[at:]), index)
                 break
             wire.send(pieces(items, at, end, cut))
             for cmd, exp in batch:
@@ -450,12 +484,17 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
                     return result
                 index += 1
             at = end
+        else:
+            if c.pending:
+                wire.half_close()
+                exchange(b'', c.send_block(b''), index)
     except (OSError, ValueError, RuntimeError, zlib.error) as exc:
         record(b'', b'', None, Verdict(False, 'driver-environment',
                'SPEC-MAP.md:E1-E6', repr(exc)), len(result.commands))
     finally:
         if wire:
             try:
+                reply_eof, reply_timeout, reply_reset = wire.eof, wire.timed_out, wire.reset
                 wire.finish()
                 session = dict(received=bytes(wire.received), eof=wire.eof, reset=wire.reset,
                                timeout=wire.timed_out, connect_error=None, elapsed=timeout)
@@ -468,13 +507,26 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
                     else:
                         record(b'', bytes(wire.buffer), None, Verdict(False, 'liveness',
                                'RFC 3977 §§3.1,5.1,5.4; specs/nntp.md:521-528', detail), len(result.commands))
+                result.reusable = (wire.eof and not wire.reset and not (reply_timeout or wire.timed_out)
+                                   and not wire.buffer and read_only(items)
+                                   and not any(r['rule'] == 'driver-environment' for r in result.rows))
+                result.wire = dict(received_hex=bytes(wire.received).hex(),
+                                   unconsumed_hex=bytes(wire.buffer).hex(), eof=wire.eof,
+                                   timeout=reply_timeout or wire.timed_out, reset=wire.reset,
+                                   reply_eof=reply_eof, reply_timeout=reply_timeout, reply_reset=reply_reset,
+                                   tls_version=c.policy.get('tls_version'),
+                                   group_creation_window=c.policy.get('group_creation_window'))
+                for row in result.rows:
+                    row['wire_eof'] = wire.eof
+                    row['wire_timeout'] = reply_timeout or wire.timed_out
+                    row['wire_reset'] = wire.reset
             finally:
                 wire.sock.close()
     return result
 
 
 @contextmanager
-def owner(image, directory):
+def owner(image, directory, ports=None):
     """Reuse Node verbatim; journal every child PID before its caller can wait."""
     directory.mkdir(parents=True, exist_ok=True)
     popen = subprocess.Popen
@@ -484,8 +536,13 @@ def owner(image, directory):
         return child
     node = fz.Node.__new__(fz.Node)
     try:
-        with patch.object(fz.subprocess, 'Popen', recorded):
+        before = int(time.time())
+        with ExitStack() as setup:
+            setup.enter_context(patch.object(fz.subprocess, 'Popen', recorded))
+            if ports:
+                setup.enter_context(patch.object(fz, 'free_port', ports))
             node.__init__(image, directory)
+        node.creation_window = (before, int(time.time()))
         if not node.login_ok:
             raise RuntimeError('Node login setup failed: ' + node.login_detail)
         yield node
@@ -494,13 +551,117 @@ def owner(image, directory):
             node.stop()
 
 
+def read_only(items):
+    """Conservative reuse: exclude any possible ingestion/auth/reservation token.
+
+    Inspect the entire transcript, including unsent/uncompared pipelined suffixes.
+    A false positive costs a restart; no acceptance/refusal inference is needed.
+    Auth/redeem and CHECK are excluded for owner-level counters/reservations.
+    Every compare opens a new socket and constructs a fresh fixture/model/pin;
+    no session-local GROUP, TLS, compression or cursor state crosses candidates.
+    """
+    return re.search(rb'POST|IHAVE|TAKETHIS|AUTHINFO|XREDEEM|CHECK|XFN',
+                     b''.join(items).upper()) is None
+
+
+class Ports:
+    """Fresh ports per attempt, optionally confined to a shard's disjoint range.
+
+    A bind probe cannot reserve across Node's bind. SessionRunner retries that
+    residual EADDRINUSE race once, constructing a new scratch Node and ports.
+    """
+    def __init__(self, low=None, high=None):
+        self.low, self.high, self.next = low, high, low
+        self.seen = set()
+
+    def __call__(self):
+        for _ in range(100 if self.low is None else self.high - self.low + 1):
+            with socket.socket() as probe:
+                port = 0 if self.low is None else self.next
+                if self.low is not None:
+                    self.next = self.low if self.next == self.high else self.next + 1
+                try:
+                    probe.bind(('127.0.0.1', port))
+                except OSError:
+                    continue
+                port = probe.getsockname()[1]
+                if port not in self.seen:
+                    self.seen.add(port)
+                    return port
+        raise OSError('no unused port available in shard allocation')
+
+
+class SessionRunner:
+    """Own a Node for one (seed, mode), including its cuts and ddmin runs."""
+    def __init__(self, image, directory, plants=(), ports=None):
+        self.image, self.directory, self.plants = image, directory, plants
+        self.ports = ports or Ports()
+        self.serial = 0
+        self.stack, self.node = ExitStack(), None
+
+    def close(self):
+        self.node = None
+        self.stack.close()
+        self.stack = ExitStack()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+    def __call__(self, items, **kw):
+        if self.image is None:
+            return compare(items, plants=self.plants, **kw)
+        diagnostics, last_error = [], None
+        def environment(exc, attempt):
+            return dict(seed=kw.get('seed', 0), mode=kw.get('mode', 'reader'),
+                        cut=kw.get('cut', 'whole'), transport=kw.get('transport', 'plain'),
+                        command_index=-1, command_hex='', reply_hex='',
+                        rule='driver-environment', spec='SPEC-MAP.md:E1-E6',
+                        detail=f'setup attempt {attempt}: {exc!r}',
+                        retry_attempt=attempt, recovered=False, **{'class': 'driver-environment'})
+        if not read_only(items):
+            self.close()
+        try:
+            if self.node is None:
+                for attempt in range(2):
+                    self.serial += 1
+                    try:
+                        self.node = self.stack.enter_context(owner(
+                            self.image, self.directory / f'owner-{self.serial:06d}', self.ports))
+                        break
+                    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+                        last_error = exc
+                        diagnostics.append(environment(exc, attempt + 1))
+                        self.close()
+                        collision = (getattr(exc, 'errno', None) == 98 or
+                                     'EADDRINUSE' in str(exc) or
+                                     'address already in use' in str(exc).lower())
+                        if attempt or not collision:
+                            raise
+            result = compare(items, node=self.node, **kw)
+            for row in diagnostics:
+                row['recovered'] = True
+                row['detail'] += '; recovered by fresh-port retry'
+            result.rows.extend(diagnostics)
+            if not result.reusable:
+                self.close()
+            return result
+        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+            self.close()
+            if exc is not last_error:
+                diagnostics.append(environment(exc, 1))
+            return Result(rows=diagnostics)
+
+
 def minimize(items, failing, run, seconds=30):
     # Preserve body exchanges as single commands; never split an article into headers.
     initial = run(items)
     units = initial.commands or list(items)
     key = failing['rule']
-    predicate = lambda xs: any(r['rule'] == key and r['detail'].startswith('environment-update:') ==
-        failing['detail'].startswith('environment-update:') for r in run(xs).rows)
+    predicate = lambda xs: any(r['rule'] == key and r['detail'] == failing['detail']
+                               for r in run(xs).rows)
     if not predicate(units):
         units = list(items)
     return fz.ddmin(units, predicate, time.monotonic() + seconds)
@@ -534,6 +695,7 @@ def main(argv=None):
     p.add_argument('--plant', default='')
     p.add_argument('--seconds', type=float, default=float('inf'))
     p.add_argument('--minimize-seconds', type=float, default=30)
+    p.add_argument('--port-range', help='inclusive LOW..HIGH, disjoint for each shard')
     args = p.parse_args(argv)
     modes, cuts, plants = args.mode.split(','), args.cuts.split(','), tuple(filter(None, args.plant.split(',')))
     if set(modes) - {'reader', 'node', 'peer'} or set(cuts) - set(CUTS) or set(plants) - set(PLANTS):
@@ -546,6 +708,15 @@ def main(argv=None):
         p.error('--seeds must be inclusive A..B')
     if end < start or args.steps < 1 or args.seconds <= 0 or args.minimize_seconds < 0:
         p.error('require A <= B, steps >= 1, seconds > 0 and minimize-seconds >= 0')
+    ports = Ports()
+    if args.port_range:
+        try:
+            low, high = map(int, args.port_range.split('..'))
+            if not 1024 <= low < high <= 65535:
+                raise ValueError
+            ports = Ports(low, high)
+        except ValueError:
+            p.error('--port-range requires 1024 <= LOW < HIGH <= 65535')
     args.out.mkdir(parents=True, exist_ok=True)
     (args.pid_file or args.out / 'run.pid').write_text(str(os.getpid()) + '\n')
     image = args.image or Path(os.environ.get('FN_NATIVE_HOST', '/nonexistent/FN_NATIVE_HOST'))
@@ -554,14 +725,7 @@ def main(argv=None):
     stats = dict(seeds_run=0, sessions=0, commands_compared=0, matches=0,
                  mismatches={}, minimized_reproducers=0, target=args.target,
                  seed_range=args.seeds, modes=modes, cuts=cuts, steps=args.steps)
-    counts, deadline, serial = Counter(), time.monotonic() + args.seconds, 0
-    def run(items, **kw):
-        nonlocal serial
-        if args.target == 'fake':
-            return compare(items, plants=plants, **kw)
-        serial += 1
-        with owner(image, args.out / f'owner-{serial:06d}') as node:
-            return compare(items, node=node, **kw)
+    counts, deadline = Counter(), time.monotonic() + args.seconds
     def dump():
         stats['mismatches'] = dict(counts)
         (args.out / 'summary.json').write_text(json.dumps(stats, indent=2) + '\n')
@@ -576,30 +740,38 @@ def main(argv=None):
                     break
                 items = fz.Gen(seed, mode, fz.PRESENT_IDS).transcript(args.steps)
                 transport = ('plain', 'starttls', 'implicit')[seed % 3]
-                for cut in cuts:
-                    if time.monotonic() >= deadline:
-                        break
-                    kw = dict(seed=seed, mode=mode, cut=cut, transport=transport)
-                    result = run(items, **kw)
-                    stats['sessions'] += 1
-                    stats['commands_compared'] += result.compared
-                    stats['matches'] += result.matches
-                    for row in result.rows:
-                        counts[row['rule'] + '/' + row['class']] += 1
-                        reduced = minimize(items, row, lambda xs: run(xs, **kw), args.minimize_seconds)
-                        name = f"repro-{seed}-{mode}-{cut}-{stats['minimized_reproducers']:05d}.json"
-                        repro = dict(row, campaign='node', role=mode, tls=transport == 'implicit',
-                                     node_tls=True, plants=plants, target=args.target,
-                                     chunks_hex=[x.hex() for x in items],
-                                     minimized_commands_hex=[x.hex() for x in reduced],
-                                     minimized_hex=[x.hex() for x in pieces(
-                                         reduced, 0, sum(map(len, reduced)), cut)])
-                        (args.out / name).write_text(json.dumps(repro, indent=2) + '\n')
-                        row['reproducer'] = name
-                        with (args.out / 'differences.jsonl').open('a') as out:
-                            out.write(json.dumps(row) + '\n')
-                        stats['minimized_reproducers'] += 1
-                    dump()
+                with SessionRunner(image if args.target == 'fn1' else None,
+                                   args.out / f'seed-{seed}-{mode}', plants, ports) as run:
+                    for cut in cuts:
+                        if time.monotonic() >= deadline:
+                            break
+                        kw = dict(seed=seed, mode=mode, cut=cut, transport=transport)
+                        result = run(items, **kw)
+                        stats['sessions'] += 1
+                        stats['commands_compared'] += result.compared
+                        stats['matches'] += result.matches
+                        for row in result.rows:
+                            counts[row['rule'] + '/' + row['class']] += 1
+                            reduced = (list(items) if row['rule'] == 'driver-environment' else
+                                       minimize(items, row, lambda xs: run(xs, **kw), args.minimize_seconds))
+                            reduced_result = (result if row['rule'] == 'driver-environment' else run(reduced, **kw))
+                            name = f"repro-{seed}-{mode}-{cut}-{stats['minimized_reproducers']:05d}.json"
+                            repro = dict(row, campaign='node', role=mode, tls=transport == 'implicit',
+                                         node_tls=True, plants=plants, target=args.target,
+                                         chunks_hex=[x.hex() for x in items],
+                                         exchanges=result.exchanges, wire=result.wire,
+                                         minimized_exchanges=reduced_result.exchanges,
+                                         minimized_rows=reduced_result.rows,
+                                         minimized_wire=reduced_result.wire,
+                                         minimized_commands_hex=[x.hex() for x in reduced],
+                                         minimized_hex=[x.hex() for x in pieces(
+                                             reduced, 0, sum(map(len, reduced)), cut)])
+                            (args.out / name).write_text(json.dumps(repro, indent=2) + '\n')
+                            row['reproducer'] = name
+                            with (args.out / 'differences.jsonl').open('a') as out:
+                                out.write(json.dumps(row) + '\n')
+                            stats['minimized_reproducers'] += 1
+                        dump()
             print(json.dumps(stats), flush=True)
     except KeyboardInterrupt:
         stats['interrupted'] = True

@@ -462,6 +462,85 @@ class AuthenticationTests(unittest.TestCase):
         accept(e, "101 capabilities", encode_block(packed(rows)))
 
 
+class H2cRecordedReplyTests(unittest.TestCase):
+    def test_reader_stream_is_unimplemented_mode_variant(self):
+        # shard-1/repro-200-reader-whole-00000.json; specs/nntp.md:78-80,
+        # 2416-2418 and RFC 3977 section 3.2.1 (local lines 552-555).
+        c = connect(model())
+        e = c.send(b"MODE STREAM\r\n")
+        self.assertFalse(e.check(b"502 transit is not permitted\r\n", None).ok)
+        accept(e, b"501 syntax error\r\n")
+
+    def test_missing_required_post_field_accepts_syntax_reason(self):
+        # Recorded POST refusal in shard-0/repro-4-node-whole-00036.json and the
+        # eighteen POST rows: RFC free prose; spec860 requires these fields.
+        c = connect(model())
+        send(c, "POST", "340 send article")
+        e = c.send_block(b"From: \r\nNewsgroups: \r\nSubject: x\r\n\r\n.\r\n")
+        self.assertFalse(e.check(b"240 article received OK\r\n", None).ok)
+        accept(e, b"441 posting failed; the article is not valid syntax\r\n")
+        self.assertEqual(c.model.post_outcomes[-1][2], "refused")
+
+    def test_recorded_peer_capabilities_with_unknown_exporter(self):
+        # Exact reply bytes from shard-0/repro-5-peer-whole-00048.json.
+        reply = (b"VERSION 2\r\nREADER\r\nPOST\r\nOVER MSGID\r\nHDR\r\nXPAT\r\nNEWNEWS\r\n"
+                 b"LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT\r\n"
+                 b"IMPLEMENTATION fn-nntp-lab\r\nIHAVE\r\nSTREAMING\r\nAUTHINFO USER SASL\r\n"
+                 b"SASL SCRAM-SHA-256-PLUS SCRAM-SHA-256 PLAIN\r\nCOMPRESS DEFLATE\r\n"
+                 b"XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e\r\n.\r\n")
+        c = connect(model(peer=True, tls_exporter=None), tls=True)
+        e = c.send(b"CAPABILITIES\r\n")
+        self.assertFalse(e.check(b"101 capability list follows\r\n", reply.replace(b"COMPRESS DEFLATE\r\n", b"")).ok)
+        self.assertFalse(e.check(b"101 capability list follows\r\n", reply.replace(b"PLAIN", b"PLAIN DIGEST-MD5")).ok)
+        accept(e, b"101 capability list follows\r\n", reply)
+        c = connect(model(peer=True, tls_exporter=False), tls=True)
+        self.assertFalse(c.send(b"CAPABILITIES\r\n").check(b"101 capability list follows\r\n", reply).ok)
+        for policy in ({"tls_exporter": None, "tls_version": "TLSv1.2"},
+                       {"tls_exporter": None, "sasl_mechanisms": ["SCRAM-SHA-256", "PLAIN"]}):
+            c = connect(model(peer=True, **policy), tls=True)
+            self.assertFalse(c.send(b"CAPABILITIES\r\n").check(b"101 capability list follows\r\n", reply).ok)
+
+    def test_sasl_plus_uses_same_known_exporter_as_capabilities(self):
+        c = connect(model(tls_exporter=True, tls_version="TLSv1.3"), tls=True)
+        send(c, "AUTHINFO SASL SCRAM-SHA-256-PLUS", "383 =")
+        c = connect(model(tls_exporter=False, tls_version="TLSv1.3"), tls=True)
+        send(c, "AUTHINFO SASL SCRAM-SHA-256-PLUS", "503 not offered")
+        c = connect(model(tls_exporter=None, tls_version="TLSv1.3"), tls=True)
+        with self.assertRaisesRegex(RuntimeError, "observed exporter"):
+            c.send(b"AUTHINFO SASL SCRAM-SHA-256-PLUS\r\n").check(b"383 =\r\n", None)
+
+    def test_newgroups_creation_interval_required_optional_and_absent(self):
+        groups = {"test": {}, "exact": {"created_at": 946684799}}
+        policy = {"group_creation_window": (946684800, 946684810)}
+        for instant, required, allowed in (("19991231 235959", {b"test 0 1 y", b"exact 0 1 y"}, {b"test 0 1 y", b"exact 0 1 y"}),
+                                          ("20000101 000000", {b"test 0 1 y"}, {b"test 0 1 y"}),
+                                          ("20000101 000005", set(), {b"test 0 1 y"}),
+                                          ("20000101 000011", set(), set())):
+            c = connect(model(groups=groups, **policy))
+            e = c.send(("NEWGROUPS " + instant + " GMT\r\n").encode())
+            for candidate in (set(), {b"test 0 1 y"}, {b"exact 0 1 y"}, {b"test 0 1 y", b"exact 0 1 y"}):
+                self.assertEqual(e.check(b"231 list\r\n", encode_block(packed(sorted(candidate)))).ok,
+                                 required <= candidate <= allowed, (instant, candidate))
+            self.assertFalse(e.check(b"231 list\r\n", encode_block(b"test 0 1 y\r\ntest 0 1 y\r\n")).ok)
+
+    def test_active_times_uses_external_setup_window(self):
+        # Exact reply block from shard-3/repro-602-reader-whole-00009.json.
+        reply = b"fn.test 1793214256 unattributed\r\nfn.letters 1793214256 unattributed\r\n.\r\n"
+        c = connect(model(groups={"fn.test": {}, "fn.letters": {}},
+                          group_creation_window=(1793214250, 1793214260)))
+        e = c.send(b"LIST ACTIVE.TIMES\r\n")
+        for bad in (reply.replace(b"1793214256", b"1793214261"),
+                    reply.replace(b"fn.test", b"wrong"),
+                    reply.replace(b"unattributed", b"someone"),
+                    reply.replace(b"fn.letters", b"fn.test")):
+            self.assertFalse(e.check(b"215 information follows\r\n", bad).ok)
+        accept(e, b"215 information follows\r\n", reply)
+        c = connect(model(groups={"fn.test": {}, "fn.letters": {}}))
+        self.assertFalse(c.send(b"LIST ACTIVE.TIMES\r\n").check(b"215 information follows\r\n", reply).ok)
+        c = connect(model(groups={"fn.test": {"created_at": 10}}, group_creation_window=(20, 30)))
+        send(c, "LIST ACTIVE.TIMES", "215 information follows", b"fn.test 10 unattributed\r\n")
+
+
 class PostingTransitTests(unittest.TestCase):
     def test_each_238_counts_even_for_repeated_message_id(self):
         c = connect(model(peer=True, max_inflight=2))

@@ -1,4 +1,6 @@
 """No node/image required: wire controls, planted failures and corpus inventory."""
+from contextlib import contextmanager
+import errno
 import json
 import os
 from pathlib import Path
@@ -128,6 +130,187 @@ class DifferentialTests(unittest.TestCase):
         self.assertEqual(r.rows[0]['rule'], 'liveness')
         self.assertIn('EOF', r.rows[0]['detail'])
 
+    def test_fake_creation_window_predicate_renderer(self):
+        for cut in d.CUTS:
+            result = d.compare([b'NEWGROUPS 20260101 000000 GMT\r\n',
+                                b'NEWNEWS * 20260101 000000 GMT\r\nQUIT\r\n'], cut=cut)
+            self.assertEqual(result.rows, [])
+
+    def test_negotiated_tls_version_reaches_model_and_evidence(self):
+        original_connection = d.connection
+        for transport in ('implicit', 'starttls'):
+            for negotiated in ('TLSv1.2', 'TLSv1.3'):
+                observed = []
+                def connection(model, mode, transport):
+                    conn = original_connection(model, mode, transport)
+                    observed.append(conn)
+                    return conn
+                def socket_connection(*args, **kwargs):
+                    sock = d.Fake('reader', transport)
+                    sock.version = lambda: negotiated
+                    sock.settimeout = lambda *_: None
+                    sock.setsockopt = lambda *_: None
+                    return sock
+                context = type('TLS', (), {'wrap_socket': lambda _, sock, **kw: sock})()
+                node = type('Node', (), {'config': None, 'port': 1, 'tls_port': 2,
+                                         'tls_context': lambda _: context,
+                                         'alive': lambda _: True})()
+                with self.subTest(transport=transport, negotiated=negotiated), patch.object(d, 'connection', connection), patch.object(d.socket, 'create_connection', socket_connection):
+                    result = d.compare([b'QUIT\r\n'], node=node, transport=transport)
+                self.assertEqual(result.rows, [])
+                self.assertEqual(observed[0].policy['tls_version'], negotiated)
+                self.assertEqual(observed[0].model.policy['tls_version'], negotiated)
+                self.assertEqual(result.wire['tls_version'], negotiated)
+
+    def test_recorded_status_boundaries_and_empty_reply(self):
+        # H2b's wrong-number rows all contain zero octets. A following reply
+        # sharing a recv must remain for the next expectation, never concatenate.
+        sock = d.Fake('reader', 'plain')
+        sock.output = bytearray(b'501 command syntax error\r\n502 command unavailable\r\n')
+        wire = d.Wire(sock)
+        first = Expect([501], rule='syntax')
+        second = Expect([502], rule='MODE')
+        self.assertEqual(wire.reply(first), (b'501 command syntax error\r\n', None))
+        self.assertEqual(wire.reply(second), (b'502 command unavailable\r\n', None))
+        sock.closed = True
+        self.assertEqual(wire.reply(first), (b'', None))
+        self.assertIn('wrong number', first.check(b'', None).detail)
+
+    def test_reply_timeout_survives_final_drain_and_disables_reuse(self):
+        original = d.Fake.recv
+        calls = 0
+        def timeout(server, size):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise socket.timeout('delayed first reply')
+            return original(server, size)
+        with patch.object(d.Fake, 'recv', timeout):
+            result = d.compare([b'HELP\r\n'])
+        self.assertTrue(result.wire['reply_timeout'])
+        self.assertTrue(result.wire['timeout'])
+        self.assertTrue(result.wire['eof'])
+        self.assertFalse(result.reusable)
+        self.assertTrue(result.rows[0]['wire_timeout'])
+
+    def test_recorded_incomplete_post_eof_reply(self):
+        # Exact reply bytes from shard-2/repro-404-reader-whole-00036.json.
+        original = d.Fake.shutdown
+        def eof_refusal(server, how):
+            owed = bool(server.conn.pending)
+            original(server, how)
+            if owed:
+                server.output = bytearray(b'441 posting failed; the article was not received\r\n')
+        with patch.object(d.Fake, 'shutdown', eof_refusal):
+            result = d.compare([b'POST\r\n', b'IHAVE <reader@example.invalid>\r\n'],
+                               transport='plain')
+        self.assertEqual(result.rows, [])
+        self.assertEqual(result.exchanges[-1]['status_hex'],
+                         b'441 posting failed; the article was not received\r\n'.hex())
+        self.assertEqual(result.exchanges[-1]['rule'], 'POST')
+
+    def test_reuse_excludes_mutation_anywhere_and_refreshes_sessions(self):
+        for token in (b'POST', b'IHAVE', b'TAKETHIS', b'AUTHINFO', b'XREDEEM', b'CHECK', b'XFN'):
+            self.assertFalse(d.read_only([b'HELP\r\n', token.lower(), b' suffix\r\n']))
+        self.assertFalse(d.read_only([b'PO', b'ST\r\n']))
+        self.assertTrue(d.read_only([b'GROUP fn.test\r\nQUIT\r\n']))
+        opened, closed = [], []
+        @contextmanager
+        def owner(image, directory, ports):
+            node = object()
+            opened.append(node)
+            try:
+                yield node
+            finally:
+                closed.append(node)
+        seen = []
+        def compare(items, node, **kw):
+            seen.append(node)
+            return d.Result(reusable=d.read_only(items))
+        with tempfile.TemporaryDirectory() as tmp, patch.object(d, 'owner', owner), patch.object(d, 'compare', compare):
+            with d.SessionRunner('image', Path(tmp)) as run:
+                for cut in d.CUTS:
+                    run([b'HELP\r\n'], cut=cut)
+                self.assertEqual(len(opened), 1)
+                run([b'POST\r\n'])
+                run([b'HELP\r\n'])
+                self.assertEqual(len(opened), 3)
+                self.assertEqual(len(closed), 2)
+            self.assertEqual(opened, closed)
+        # Concrete compare creates a new model/connection even on one live Node.
+        node = type('Node', (), {'config': None, 'port': 1, 'alive': lambda _: True})()
+        models = []
+        original_connection = d.connection
+        def connection(model, mode, transport):
+            models.append(model)
+            return original_connection(model, mode, transport)
+        def socket_connection(*args, **kwargs):
+            sock = d.Fake('reader', 'plain')
+            sock.conn = original_connection(d.fixture(False), 'reader', 'plain')
+            sock.settimeout = lambda *_: None
+            sock.setsockopt = lambda *_: None
+            return sock
+        with patch.object(d, 'connection', connection), patch.object(d.socket, 'create_connection', socket_connection):
+            for _ in range(2):
+                self.assertEqual(d.compare([b'GROUP fn.test\r\nQUIT\r\n'], node=node).rows, [])
+        # fake socket creates its independent model as well as compare's model.
+        self.assertIsNot(models[0], models[2])
+
+    def test_setup_failures_continue_and_collision_retries_once(self):
+        for failure, attempts in ((ValueError('invalid setup config'), 1),
+                                  (RuntimeError('peer add: CONFIGURATION INVALID'), 1),
+                                  (RuntimeError('no LISTENING announcement'), 1),
+                                  (RuntimeError('listen: EADDRINUSE'), 2),
+                                  (OSError(errno.EADDRINUSE, 'address already in use'), 2)):
+            calls = []
+            @contextmanager
+            def owner(image, directory, ports):
+                calls.append(directory)
+                raise failure
+                yield
+            with tempfile.TemporaryDirectory() as tmp, patch.object(d, 'owner', owner):
+                with d.SessionRunner('image', Path(tmp)) as run:
+                    for _ in range(2):
+                        result = run([b'HELP\r\n'])
+                        self.assertEqual(result.rows[0]['rule'], 'driver-environment')
+                    self.assertEqual(len(calls), 2 * attempts)
+                    self.assertEqual(len(set(calls)), len(calls))
+
+    def test_collision_then_success_uses_fresh_ports(self):
+        calls = []
+        @contextmanager
+        def owner(image, directory, ports):
+            calls.append((ports(), ports()))
+            if len(calls) == 1:
+                raise RuntimeError('listen: EADDRINUSE')
+            yield object()
+        with tempfile.TemporaryDirectory() as tmp, patch.object(d, 'owner', owner), patch.object(d, 'compare', return_value=d.Result(reusable=True)):
+            with d.SessionRunner('image', Path(tmp)) as run:
+                result = run([b'HELP\r\n'])
+                self.assertEqual(len(result.rows), 1)
+                self.assertEqual(result.rows[0]['rule'], 'driver-environment')
+                self.assertTrue(result.rows[0]['recovered'])
+                self.assertIn('recovered by fresh-port retry', result.rows[0]['detail'])
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(len(set(sum((list(x) for x in calls), []))), 4)
+
+    def test_cli_environment_failure_records_each_session_without_minimizing(self):
+        @contextmanager
+        def owner(*args):
+            raise RuntimeError('peer add: CONFIGURATION INVALID')
+            yield
+        with tempfile.TemporaryDirectory() as tmp, patch.object(d, 'owner', owner), patch.object(d, 'minimize') as minimize:
+            image = Path(tmp) / 'image'
+            image.touch()
+            rc = d.main(['--target', 'fn1', '--image', str(image), '--seeds', '0..0',
+                         '--mode', 'reader', '--steps', '1', '--out', tmp])
+            self.assertEqual(rc, 1)
+            self.assertEqual(json.loads((Path(tmp) / 'summary.json').read_text())['sessions'], 3)
+            rows = [json.loads(x) for x in (Path(tmp) / 'differences.jsonl').read_text().splitlines()]
+            self.assertEqual(len(rows), 3)
+            self.assertTrue(all(r['rule'] == 'driver-environment' for r in rows))
+            minimize.assert_not_called()
+
     def test_cli_reproducer_compatible_hex_schema(self):
         with tempfile.TemporaryDirectory(prefix='h2b-cli-') as out:
             rc = d.main(['--target', 'fake', '--seeds', '4..4', '--steps', '20',
@@ -142,6 +325,11 @@ class DifferentialTests(unittest.TestCase):
             self.assertEqual(len(small), 1)
             self.assertEqual(d.compare(small, plants=('reuse-number',)).rows[0]['rule'], 'GROUP')
             self.assertLessEqual(len(bytes.fromhex(row['reply_hex'])), 1024)
+            self.assertTrue(row['exchanges'])
+            self.assertTrue(row['minimized_exchanges'])
+            self.assertEqual(row['minimized_rows'][0]['detail'], row['detail'])
+            self.assertIn('received_hex', row['wire'])
+            self.assertIn('reply_timeout', row['wire'])
             self.assertTrue((Path(out) / 'run.pid').is_file())
             self.assertEqual(json.loads((Path(out) / 'summary.json').read_text())['minimized_reproducers'], 1)
 

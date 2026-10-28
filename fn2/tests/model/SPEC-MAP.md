@@ -23,7 +23,7 @@ name and citation, so a HEAD failure is reported as HEAD, not ARTICLE.
 | CAPABILITIES | specs/nntp.md:3-24,1698-1736,2480-2507; RFC 3977 §5.2 | 101 block; VERSION first, required reader labels, no duplicates; optional keyword ignored; conditional POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS; no MODE-READER/XOVER/XHDR. Unknown extra extension labels allowed. |
 | HELP | specs/nntp.md:51-93; RFC 3977 §7.2 | 100; exact keyword set, accepting the old table or that table plus the two explicitly served private verbs (A1). |
 | MODE READER | specs/nntp.md:14-24; RFC 3977 §5.3 | 200/201 follows posting allowance, records `mode_reader_seen`, no mode-switching server inferred. |
-| MODE STREAM | specs/nntp.md:2412-2443; RFC 4644 §2.3 as cited there | 203 on peer, 502 on reader; IHAVE remains usable. |
+| MODE STREAM | specs/nntp.md:78-80,2416-2418; RFC 3977 §3.2.1; RFC 4644 §2.3 | 203 on peer; 501 on reader where STREAM is not an implemented MODE variant. The explicit 502 rule names IHAVE/CHECK/TAKETHIS only. |
 | QUIT | specs/nntp.md:521-528; RFC 3977 §5.4 | 205 commits closed; every later command/block, including AUTHINFO, expects zero octets and no body/terminator. |
 | DATE | specs/nntp.md:106-134,667; RFC 3977 §7.1 | Current supplied wall observation, 111 with 14 digits; no clock 503; unknown observation accepts either shape (E2). |
 | durable issuance / `add_article` | specs/nntp.md:426-448,491-505,701-707; RFC 3977 §6 | Explicit `(number, Message-ID)` entries; monotonically allocated watermark independent of list position; withdrawn/retired identities never release numbers; duplicate acceptance assigns nothing. |
@@ -122,7 +122,49 @@ name and citation, so a HEAD failure is reported as HEAD, not ARTICLE.
   encodings; specs/nntp.md:491-505 explicitly selects `0 wm+1 wm`. Only that
   encoding matches fn, even though some RFC examples use `0 0 0`.
 
+- **A13 — malformed keyword response.** RFC 3977 §9.8 (`rfc3977.txt:5422`)
+  requires `ALPHA 2*(ALPHA / DIGIT / "." / "-")`; `Date:`, `From:`, `Path:`
+  and `POSTFrom:` are not keywords. Section 3.2.1 (`rfc3977.txt:543-555`)
+  prescribes 500 for an unrecognized command and 501 for bad arguments to a
+  **recognized** command. specs/nntp.md:83-87 guarantees 500 only for a
+  **well-formed** unknown command. Neither selects a unique code for an invalid
+  keyword. The 80 observed 501s therefore do not justify changing the model to
+  require 501; the current unknown-500 predicate remains a diagnostic outside
+  its determinate domain. Layer D must choose this rejection policy explicitly.
+- **A14 — malformed input recovery and closure.** specs/nntp.md:513-518 permits
+  draining to a safe boundary **or closing**; RFC 3977 §12.5
+  (`rfc3977.txt:5866-5899`) explicitly permits closing on illegal UTF-8.
+  Neither specifies the complete reply/close sequence for every malformed
+  command prefix. H2a's single 501 with a reusable connection is therefore an
+  over-specific diagnostic for these inputs. H2b records an empty status both
+  on timeout and on EOF, and saves no prior replies. Its 94 zero-status rows
+  cannot distinguish permitted closure, body draining, and a lost reply. A
+  one-command minimized candidate is not an observed empty reply: ddmin kept
+  the rule only, and the stored reply belongs to the original transcript.
+- **A15 — permission versus malformed argument precedence.**
+  specs/nntp.md:78-80 specifies reader 502 for the three transit verbs; RFC 3977
+  §3.2.1 (`rfc3977.txt:547-555,579-603`) specifies syntax and authorization
+  responses without choosing their precedence. Section 12.5 additionally
+  permits replacement or rejection of malformed UTF-8. For the six reader/node
+  TAKETHIS lines with invalid UTF-8 and malformed arguments, 502 cannot be
+  called a determinate server violation merely because the model checks UTF-8
+  first. Layer D must select and document the order.
+
 ## Environmental inputs, abstraction boundaries, and driver contract
+
+H2c fixture observations: `group_creation_window=(lo, hi)` gives an inclusive
+POSIX-second interval observed around creation of all fixture groups. LIST
+ACTIVE.TIMES then requires every visible fixture group once, `unattributed`, and
+a timestamp within the interval; an explicit per-group `created_at` remains an
+exact constraint. NEWGROUPS requires a group when the entire creation interval
+is at/after its cutoff, omits it when the entire interval is earlier, and permits
+either inclusion or omission when the cutoff splits the interval; exact facts
+still dominate. Without a window, missing `created_at` still means no retained
+creation fact and the group is omitted. These interval checks are weaker than
+exact persisted-time conformance. The driver records the interval independently
+of reply bytes. Legacy H2b had no
+interval; replay may use the externally supplied run date as a clearly labeled
+coarse bound, never derive a bound from the reply under test.
 
 Constructor groups are `{name: flags}`. Flags: `entries` (optional explicit
 `(number, id)` pairs), `watermark`, `posting` (`y/n/m`), `read_only`, `moderated`,
@@ -173,6 +215,15 @@ are explicit inputs, not values obtained from an implementation by this code.
   SCRAM syntax identifies the login without checking its proof. A driver can set
   `Conn.sasl_identity` for other abstract exchanges. The context's offered list
   is supplied through `sasl_mechanisms` (default SCRAM-SHA-256 plus PLAIN on TLS).
+  `tls_exporter=True` adds required PLUS to that default; `False` excludes it;
+  explicit `None` means installation is unobserved and permits PLUS on TLS
+  without requiring it. `tls_version="TLSv1.2"` excludes PLUS; `"TLSv1.3"`
+  permits the exporter rule, while absent version is an explicit historical
+  observation limit. An explicit `sasl_mechanisms` list remains exact even with
+  an unknown exporter. This does not assert an installed exporter or test
+  channel binding. AUTHINFO SASL PLUS with an unknown exporter and no exact
+  offered list raises an environmental RuntimeError (supply that E5 input),
+  rather than claiming that either 503 or a challenge is mandatory.
 - **E6 — reply consumption.** RFC 3977 §3.5; specs/nntp.md:1661-1696,2453-2478:
   call `check(status, body)` then `update(status, body)` in order; queued sends
   are allowed, out-of-order resolution raises RuntimeError. Third auth failure

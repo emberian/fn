@@ -463,6 +463,21 @@ class Conn:
             return None if set(words) in (set(HELP.decode().split()), KEYWORDS) and len(words) == len(set(words)) else "HELP keyword set differs"
         return self._reply("HELP", 100, multiline=True, content=content)
 
+    def _sasl_offers(self):
+        """Required and observationally optional offers (spec1705-1709)."""
+        if "sasl_mechanisms" in self.policy:
+            return set(self.policy["sasl_mechanisms"]), set()
+        required = {"SCRAM-SHA-256"} | ({"PLAIN"} if self.tls else set())
+        optional = set()
+        plus_available = self.tls and self.policy.get("tls_version") in (None, "TLSv1.3")
+        if plus_available:
+            exporter = self.policy.get("tls_exporter", False)
+            if exporter is True:
+                required.add("SCRAM-SHA-256-PLUS")
+            elif exporter is None:
+                optional.add("SCRAM-SHA-256-PLUS")
+        return required, optional
+
     def _cmd_capabilities(self, args):
         if len(args) > 1 or (args and not re.fullmatch(r"[A-Za-z][A-Za-z0-9.-]{2,}", args[0])):
             return self._error()
@@ -493,10 +508,14 @@ class Conn:
             if not any(r.startswith(b"IMPLEMENTATION ") for r in rows):
                 return "missing IMPLEMENTATION"
             mechanisms = next((r.split()[1:] for r in rows if r.startswith(b"SASL ")), [])
-            if b"DIGEST-MD5" in mechanisms or (not self.tls and b"PLAIN" in mechanisms):
+            if (b"DIGEST-MD5" in mechanisms or (not self.tls and b"PLAIN" in mechanisms)
+                    or (b"SCRAM-SHA-256-PLUS" in mechanisms and
+                        (not self.tls or self.policy.get("tls_version") not in (None, "TLSv1.3")))):
                 return "SASL mechanism unavailable on this connection"
-            offered = set(m.encode() for m in self.policy.get("sasl_mechanisms", ["SCRAM-SHA-256"] + (["PLAIN"] if self.tls else [])))
-            if set(mechanisms) != offered:
+            required_mechs, optional_mechs = self._sasl_offers()
+            offered = {m.encode() for m in required_mechs}
+            optional = {m.encode() for m in optional_mechs}
+            if not offered <= set(mechanisms) <= offered | optional or len(mechanisms) != len(set(mechanisms)):
                 return "SASL mechanism list differs from configured connection context"
             if not (self.authenticated_as or self.compressed):
                 auth = next((r.split()[1:] for r in rows if r.startswith(b"AUTHINFO ")), [])
@@ -513,7 +532,7 @@ class Conn:
             return self._reply("MODE", 200 if self._posting() else 201,
                                effect=lambda *_: setattr(self, "mode_reader_seen", True))
         if args[0].upper() == "STREAM":
-            return self._reply("MODE", 203 if self.peer else 502,
+            return self._reply("MODE", 203 if self.peer else 501,
                                effect=lambda code, *_: setattr(self, "streaming", code == 203))
         return self._error()
 
@@ -828,9 +847,32 @@ class Conn:
                     found[parts[0]] = parts[1]
                 return None if found == {g.encode(): v for g, v in expected.items()} else "group descriptions differ"
         else:
-            rows = [f"{g} {self.view_flags[g]['created_at']} unattributed".encode()
-                    for g in names if self.view_flags[g].get("created_at") is not None]
-            content = row_set(rows)
+            window = self.policy.get("group_creation_window")
+            if window is not None:
+                # Fixture groups were created during this externally observed
+                # setup interval; the response never supplies its own oracle.
+                lo, hi = window
+                def content(data):
+                    found = set()
+                    for row in framing.lines(data):
+                        parts = row.split()
+                        if len(parts) != 3 or parts[2] != b"unattributed" or not parts[1].isdigit():
+                            return "invalid ACTIVE.TIMES row"
+                        name = parts[0].decode("ascii")
+                        if name not in names or name in found:
+                            return "ACTIVE.TIMES group differs from fixture"
+                        exact = self.view_flags[name].get("created_at")
+                        if exact is not None:
+                            if int(parts[1]) != exact:
+                                return "ACTIVE.TIMES creation time differs from retained fact"
+                        elif not lo <= int(parts[1]) <= hi:
+                            return "ACTIVE.TIMES creation time differs from fixture window"
+                        found.add(name)
+                    return None if found == set(names) else "ACTIVE.TIMES group set differs from fixture"
+            else:
+                rows = [f"{g} {self.view_flags[g]['created_at']} unattributed".encode()
+                        for g in names if self.view_flags[g].get("created_at") is not None]
+                content = row_set(rows)
         return self._reply("LIST", 215, multiline=True, content=content)
 
     def _instant(self, date, time):
@@ -873,8 +915,31 @@ class Conn:
             return self._reply(rule, 503)
         names = [g for g in self.view_groups if self._visible(g) and wildmat(pattern, g)]
         if not news:
-            rows = [self._active_row(g).encode() for g in names
-                    if self.view_flags[g].get("created_at") is not None and self.view_flags[g]["created_at"] >= instant]
+            if self.policy.get("group_creation_window") is None:
+                rows = [self._active_row(g).encode() for g in names
+                        if self.view_flags[g].get("created_at") is not None
+                        and self.view_flags[g]["created_at"] >= instant]
+                return self._reply(rule, 231, multiline=True, content=row_set(rows))
+            required, optional = set(), set()
+            window = self.policy.get("group_creation_window")
+            for g in names:
+                exact = self.view_flags[g].get("created_at")
+                row = self._active_row(g).encode()
+                if exact is not None:
+                    if exact >= instant:
+                        required.add(row)
+                elif window is not None:
+                    lo, hi = window
+                    if lo >= instant:
+                        required.add(row)
+                    elif hi >= instant:
+                        optional.add(row)
+            def content(data):
+                rows = framing.lines(data)
+                actual = set(rows)
+                return (None if len(rows) == len(actual) and required <= actual <= required | optional
+                        else "NEWGROUPS rows differ from creation facts")
+            return self._reply(rule, 231, multiline=True, content=content)
         else:
             ordered = list(self.view_articles)
             rows = []
@@ -958,9 +1023,9 @@ class Conn:
         if len(data) > limit:
             reason, definite = "too large|bound|limit|size", True
         elif not b"\r\n\r\n" in data or any(not fields.get(f) for f in ("from", "subject", "newsgroups")):
-            reason, definite = "malformed|missing|required", True
+            reason, definite = "malformed|missing|required|syntax", True
         elif transit and any(not fields.get(f) for f in ("message-id", "date", "path")):
-            reason, definite = "malformed|missing|required", True
+            reason, definite = "malformed|missing|required|syntax", True
         elif any(len(re.findall(rb"(?im)^" + f + rb":", data.partition(b"\r\n\r\n")[0])) > 1
                  for f in (b"from", b"subject", b"newsgroups", b"message-id", b"date", b"path")):
             reason, definite = "duplicat|malformed|field|Path", True
@@ -1095,7 +1160,9 @@ class Conn:
         mech = args[0].upper()
         if (self.policy.get("protected_only") or mech == "PLAIN") and not self.tls:
             return self._reply("AUTHINFO", 483)
-        offered = self.policy.get("sasl_mechanisms", ["SCRAM-SHA-256"] + (["PLAIN"] if self.tls else []))
+        offered, optional = self._sasl_offers()
+        if mech in optional:
+            raise RuntimeError("AUTHINFO SASL PLUS needs observed exporter or explicit sasl_mechanisms (E5)")
         if mech not in offered:
             return self._reply("AUTHINFO", 503)
         if len(args) == 2:
