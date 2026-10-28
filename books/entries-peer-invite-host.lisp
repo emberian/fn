@@ -98,3 +98,5 @@
 (defun fn-native-operator-host-result-keys-control-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-keys-control-path-octets result))
+
+; Comment only: this book is in every image's world, so editing it changes the image keys (the full path) and not the closure key.
