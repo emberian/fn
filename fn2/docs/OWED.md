@@ -75,3 +75,13 @@ teeth do not prove a device, simulator, commit machine, or recovery implementati
 |---|---|---|---|---|
 | `fn2-layout-roundtrip` | `books/layout.lisp` | From a semantic pool and accepted preflight, the actual runtime encoder/decoder preserve field values and produce exactly `fn2-layout-octets`. | `layout-unit`: initialized pool, u8=42 satisfies full preflight and shared result predicate; u8=256 removes admissibility and falsifies the result. | Layer B layout refinement. |
 | `fn2-layout-canonical` | `books/layout.lisp` | A prefix accepted by the actual runtime decoder is exactly the model encoding of its decoded values. | `layout-unit`: canonical varint42 satisfies full hypothesis/result; redundant `(170 0)` refuses and falsifies the shared canonical result. | Layer B layout canonicality. |
+
+## Layer B — B2b incremental BLAKE3 (unproved)
+
+| Name | Book | Statement | Evaluated teeth | Proof owner |
+|---|---|---|---|---|
+| `fn2-b3-incremental-is-blake3` | `books/blake3.lisp` | Every sequence of octet-list splits of at most 4096 bytes, with total length below 2^64, gives `fn-blake3` (books/blake3-spec.lisp, lifted from the quarry) through actual checked pool updates and finalize. The test/spec adapter reuses a 4096-byte pool window; the source need not reside in one slot. | `blake3-unit`: splits `((0) (1))` satisfy the full hypothesis/result. Removing the per-call budget with one 4097-zero split falsifies both; update consumes only 4096. | Layer B incremental state/compression refinement. |
+| `fn2-b3-subtree-composition` | `books/blake3.lisp` | For two or more aligned 64-KiB source blocks, all but the last full and the last nonempty, actual subtree CVs with absolute counters compose through the runtime parent stack and final ROOT processing to `fn-blake3` of the concatenation. Total length is below 2^64; each block uses bounded update splits. | `blake3-unit`: 65536 zero bytes followed by byte 1, counters `(0 64)`, satisfy the full hypothesis/result; `(0 0)` falsifies both. The differential driver also checks partial chunks and small sources through `verify-range`. | Layer B subtree/tree-split refinement. |
+
+These statements register obligations, not theorems. Runtime guard verification and vector,
+differential and allocation checks do not discharge either equivalence proof.
