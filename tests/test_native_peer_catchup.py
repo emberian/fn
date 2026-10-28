@@ -168,7 +168,12 @@ class NativePeerCatchupTests(unittest.TestCase):
             if DEVELOPER is None or not os.access(DEVELOPER, os.X_OK):
                 self.skipTest("set FN_NATIVE_DEVELOPER_HOST: the FN_CATCHUP_TEST_KILL cuts")
             image = DEVELOPER
-        node.start(image=image, env={**decided_launch(node, image), **(extra_env or {})})
+        lifecycle = {}
+        if extra_env and "FN_CATCHUP_TEST_KILL" in extra_env:
+            cut, append = extra_env["FN_CATCHUP_TEST_KILL"].split(":")
+            lifecycle["death_cut"] = (-signal.SIGKILL,
+                "catch-up: developer kill at {} of append {}".format(cut, append).encode("ascii"))
+        node.start(image=image, env={**decided_launch(node, image), **(extra_env or {})}, **lifecycle)
 
     def stop(self, node):
         node.stop(expect=None)

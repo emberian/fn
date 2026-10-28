@@ -223,7 +223,7 @@ class NativePeerInviteTests(unittest.TestCase):
         keys_a, pa = self.keys("a3", a)
         keys_b, pb = self.keys("b3", b)
         a.start()
-        b.start(env={"FN_PEER_TEST_STOP_AFTER_CONFIGURE": "1"})
+        b.start(env={"FN_PEER_TEST_STOP_AFTER_CONFIGURE": "1"}, intent="restart-only")
         inv = self.root / "inv-addressed"
         self.run_ok(a, "peer", "invite", "nodeB3", "fn.*", "127.0.0.1", str(b.port),
                     "a3.example", str(keys_a), str(inv), "127.0.0.1", str(a.port))
@@ -358,7 +358,7 @@ class NativePeerInviteTests(unittest.TestCase):
                     str(keys_a / "ml-public.pem"))
         b.stop()
         before = [line for line in b.key_history() if principal in line]
-        b.start(env={"FN_PEER_TEST_STOP_AFTER_CONFIGURE": "1"})
+        b.start(env={"FN_PEER_TEST_STOP_AFTER_CONFIGURE": "1"}, intent="restart-only")
         invitation = self.root / "inv-retry"
         acceptance = self.root / "acc-retry"
         self.run_ok(a, "peer", "invite", "retryB", "fn.*", "127.0.0.1",

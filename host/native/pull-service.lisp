@@ -233,8 +233,13 @@
                                :test #'string=))
           (fnn-fault "invalid ~a (expected CUT:N)" variable))
         (when (and (string= name cut) (= n count))
-          (fnn-err "~a: developer kill at ~a of append ~d"
-                   (if (eq kind :catch-up) "catch-up" "pull") cut n)
+          ;; Written here, not offered to the log queue: the SIGKILL below
+          ;; would take an undrained line with it, and the tests' death cut
+          ;; (tests/native_harness.py) names this line as its evidence.
+          (fnn-emit *fnn-stderr*
+                    (fnn-concat (format nil "~a: developer kill at ~a of append ~d"
+                                        (if (eq kind :catch-up) "catch-up" "pull") cut n)
+                                (string #\Newline)))
           (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
           (fnn-fault "test SIGKILL did not terminate the process"))))))
 
