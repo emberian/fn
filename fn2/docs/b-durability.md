@@ -367,7 +367,7 @@ zero.
 
 Named refusals are :epoch-not-begun, :epoch-order, :counter-exhausted, :no-space (separate
 pressure result), :bounds, :stale, :state, :edge-kind, :reservation-owned, :edge-overflow,
-:edge-underflow, :checkpoint-busy, :checkpoint-order, :checkpoint-blocked,
+:edge-underflow, :retirement-order, :budget, :checkpoint-order, :checkpoint-blocked,
 :replacement-not-durable, :owner, or the first protecting edge keyword. Refusals do not mutate
 state. Counter exhaustion requests a new durable epoch; it never wraps.
 
@@ -375,16 +375,21 @@ Maintained state totals and disjoint reason totals make pressure O(1): :ok when 
 release-ready space exists, :checkpoint-blocked when edge-free retired space awaits the
 checkpoint, :quarantine when unresolved candidates hold space, otherwise :all-live. With
 multiple reasons the priority is that order. :ok release-ready space still needs the release
-transaction before reserve succeeds. Checkpoint publication stages a cut, freezes mutations,
-examines one row per step, and publishes the cut with exact totals atomically; no call scans the
-table. Recovery/machine orchestration owns continuation after a crash.
+transaction before reserve succeeds.
 
-Seat review (AMBER, owed to the allocator machine in B6): publication freezes every allocator
-mutation (`:checkpoint-busy`) for one step per extent row, so a large table stalls reservations
-and edge updates for the whole walk, against scholar §3.4 item 6 (pressure must still admit
-progress-enabling transitions). Retirements are recorded in nondecreasing commit order, so a
-retirement FIFO keyed by commit lets a cut advance move exactly the newly covered extents from
-blocked to ready, with no freeze and no walk.
+Checkpoint publication (B4b, replacing B4a's freezing row walk) processes only the retirement
+FIFO's pending suffix, at most 32 extents per call. Retirements must have nondecreasing commit
+numbers; a lower commit is refused `:retirement-order`. `fn2-alloc-checkpoint-advance(cut,
+budget, table)` returns `:more` with its continuation in the table while covered retirements
+remain; reservations, retirement, release and edge updates interleave freely. Processed
+edge-free extents move from blocked to ready; protecting edges keep their reason. The published
+cut advances only once the pending head exceeds the requested cut or the suffix is empty, so
+release still requires retirement <= published cut and no protecting edge (ready accounting
+during a continuation is not release authorization). A doubly linked retirement list holds
+exactly the RETIRE_PENDING extents and unlinks a released row in O(1). Recovery/machine
+orchestration owns continuation after a crash. Measured: a 1,000,000-extent table with 500,000
+retirements publishes in 15,625 calls of budget 32 with 1,000 reserve/edge operations
+interleaved, none refused.
 
 `sim/check-reclaim.lisp` independently interprets allocation events and reports the first
 unsafe release, destructive write, or repeated allocation ID. Initial writes to a matching
