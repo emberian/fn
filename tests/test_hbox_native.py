@@ -665,7 +665,8 @@ echo REACHED
         answer = dry("--images", "developer,prof", "HEAD", "tests.test_native_owner")
         self.assertEqual(answer.returncode, 0, answer.stderr)
         lines = answer.stdout.splitlines()
-        certify = next(i for i, line in enumerate(lines) if line.startswith("step certify "))
+        certify = next(i for i, line in enumerate(lines)
+                       if line.strip().startswith("step certify "))
         validate = next(i for i, line in enumerate(lines) if line.startswith("step validate "))
         prof = [i for i, line in enumerate(lines) if line.startswith("step image-prof ")]
         self.assertEqual(len(prof), 1)
@@ -947,10 +948,14 @@ class FromTrainDryRunTests(unittest.TestCase):
         for line in ("T=$S/tree",
                      "ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
                      "  # the certify launcher (tools/farm.py HOSTS)",
-                     "acquire_step acquire default", "acquire_step acquire-dtn dtn"):
+                     "if [ $ACQUIRED_DEFAULT -eq 0 ]; then acquire_step acquire default; fi",
+                     "acquire_step acquire-dtn dtn"):
             self.assertIn(line, out.splitlines())
         for fragment in ("step install ", "step certify ", "step box-wire "):
             self.assertIn(fragment, out)
+        # One resolution plan, listed before the install that consumes it.
+        self.assertIn("export FN_RESOLUTION_PLAN=$T/build/.resolution-plan.json", out)
+        self.assertLess(out.index("step resolve "), out.index("step install "))
         self.assertNotIn("== reuse:", out)
         self.assertNotIn("from-train", answer.stderr)
 
