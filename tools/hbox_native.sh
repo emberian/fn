@@ -122,7 +122,9 @@
 # keeps the toolchain's.  Default /tank/fn/toolchains/w28/acl2-literal-4g-tls64k,
 # the w28 launcher at --tls-limit 65536; use the toolchain's own path for 16384),
 # --jobs N|auto (modules run N at a time against the one image set, default 1;
-# auto takes at most 3 and keeps the sum of their MemoryMax limits within 88G:
+# auto takes at most 8 and keeps the sum of their MemoryMax limits within 88G
+# (a module with no NATIVE_MEMORY runs under 8x its measured peak, tests/native_peaks.json,
+# at least 4G, else 24G):
 # each is its own process, its own MemoryMax scope and its own ports; a
 # group of 20 modules at 4 jobs on hbox takes about a quarter of the serial
 # time), --certify-jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that

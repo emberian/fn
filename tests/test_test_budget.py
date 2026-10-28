@@ -49,6 +49,25 @@ class NativeMemoryTests(unittest.TestCase):
                 test_budget.memory_plan(["tests.test_need FN_X=1"])
             self.assertEqual(out.getvalue().strip(), "tests.test_need 40G 1 FN_X=1")
 
+    def test_a_measured_peak_sets_the_cap_and_raises_the_job_bound(self):
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tests").mkdir()
+            for name in ("small", "large", "declared", "unmeasured"):
+                (root / f"tests/test_{name}.py").write_text(
+                    'NATIVE_MEMORY = "24G"\n' if name == "declared" else "pass\n")
+            (root / "tests/native_peaks.json").write_text(json.dumps({
+                "tests.test_small": 70.0, "tests.test_large": 668.0,
+                "tests.test_declared": 10.0}))
+            self.assertEqual(test_budget.native_memory("tests.test_small", root), "4G")
+            self.assertEqual(test_budget.native_memory("tests.test_large", root), "6G")
+            self.assertEqual(test_budget.native_memory("tests.test_declared", root), "24G")
+            self.assertEqual(test_budget.native_memory("tests.test_unmeasured", root), "24G")
+        lines = ["tests.test_small 4G 0 ", "tests.test_large 6G 0 "]
+        self.assertEqual(test_budget.memory_jobs(lines), 8)
+        self.assertEqual(test_budget.memory_jobs(lines + ["tests.test_unmeasured 24G 0 "]), 3)
+
     def test_module_inventory(self):
         expected = {"pack_chain": "48G", "bounds_join": "40G", "heap_from_profile": "2G",
                     "open_depth": "80G", "status_scale": "80G", "load": "16G",

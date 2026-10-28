@@ -62,6 +62,25 @@ def memory_bytes(value: str) -> int:
     return int(match[1]) * 1024 ** (" KMGT".index(match[2]) if match[2] else 0)
 
 
+# Measured peaks (MiB, the module's scope's memory.peak, which `run_one`
+# records in the module log as "peak_mib"; tools/native_peaks.py merges them
+# here).  A native module that declares no NATIVE_MEMORY runs under a cap of
+# eight times its measured peak, at least 4G, instead of the 24G default: the
+# default is a ceiling nobody measured (the 2026-10-28 peering run's largest
+# module peaked at 668 MiB), and it is what held `--jobs auto` at 88G // 24G = 3.
+PEAKS_FILE = "tests/native_peaks.json"
+PEAK_FACTOR = 8
+PEAK_FLOOR_BYTES = 4 * 1024 ** 3
+
+
+def measured_peaks(root: Path = ROOT) -> dict[str, float]:
+    try:
+        table = json.loads((root / PEAKS_FILE).read_text())
+    except (OSError, ValueError):
+        return {}
+    return {str(k): float(v) for k, v in table.items()} if isinstance(table, dict) else {}
+
+
 def native_memory(module: str, root: Path = ROOT) -> str:
     """Read one literal module declaration without importing native tests."""
     if not re.fullmatch(r"tests\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*", module):
@@ -72,7 +91,11 @@ def native_memory(module: str, root: Path = ROOT) -> str:
               and any(isinstance(target, ast.Name) and target.id == "NATIVE_MEMORY"
                       for target in node.targets)]
     if not values:
-        return "24G"
+        peak = measured_peaks(root).get(module)
+        if peak is None:
+            return "24G"
+        wanted = max(PEAK_FLOOR_BYTES, int(PEAK_FACTOR * peak * 1024 ** 2))
+        return f"{-(-wanted // 1024 ** 3)}G"
     if len(values) != 1 or not isinstance(values[0], ast.Constant) or not isinstance(values[0].value, str):
         raise ValueError(f"{module}: NATIVE_MEMORY must be one literal string")
     value = values[0].value
@@ -80,7 +103,7 @@ def native_memory(module: str, root: Path = ROOT) -> str:
     return value
 
 
-def memory_jobs(lines, budget="88G", maximum=3):
+def memory_jobs(lines, budget="88G", maximum=8):
     """A module concurrency bound whose worst-case MemoryMax sum fits BUDGET."""
     sizes = [memory_bytes(line.split()[1]) for line in lines if line.strip()]
     return max(1, min(maximum, memory_bytes(budget) // max(sizes, default=1)))
@@ -237,6 +260,18 @@ def _flatten(suite) -> list:
     return out
 
 
+def cgroup_peak_mib() -> float | None:
+    """The peak memory (MiB) of the cgroup this process is in -- under
+    tools/hbox_native.sh, the module's own systemd scope -- or None."""
+    try:
+        line = next(l for l in Path("/proc/self/cgroup").read_text().splitlines()
+                    if l.startswith("0::"))
+        peak = Path("/sys/fs/cgroup" + line[3:] + "/memory.peak").read_text()
+        return round(int(peak) / 1024 ** 2, 1)
+    except (OSError, StopIteration, ValueError):
+        return None
+
+
 def run_one(module: str, order: str = "default", cases: list[str] | None = None) -> int:
     """Child mode: run one module and print its timings as one JSON line.
 
@@ -297,6 +332,9 @@ def run_one(module: str, order: str = "default", cases: list[str] | None = None)
         "node_dead": result.node_dead,
         "only_cases": sorted(cases) if cases else None,
     }
+    peak = cgroup_peak_mib()
+    if peak is not None:
+        record["peak_mib"] = peak
     print(RESULT_PREFIX + json.dumps(record), flush=True)
     store_verdict(module, record, bool(cases))
     return 0 if result.wasSuccessful() else 1
@@ -514,7 +552,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="add native module memory sizes to a stdin environment plan")
     parser.add_argument("--memory-jobs", action="store_true",
                         help="print a concurrency bound for a --memory-plan on stdin: "
-                             "at most 3 jobs and 88G of summed MemoryMax")
+                             "at most 8 jobs and 88G of summed MemoryMax")
     parser.add_argument("--memory-override", default=None,
                         help="explicit MemoryMax override for --memory-plan")
     parser.add_argument("--cases", default="", help=argparse.SUPPRESS)
