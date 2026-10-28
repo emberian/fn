@@ -1,4 +1,11 @@
 (in-package "ACL2")
+; Session-only launcher: identify the checkout before loading the scenario.
+:q
+(let ((process (sb-ext:run-program "python3" '("fn2/tests/scenario-revision.py")
+                 :search t :output "build/scenario-revision.lsp"
+                 :if-output-exists :supersede :error *error-output*)))
+  (unless (eql (sb-ext:process-exit-code process) 0) (sb-ext:exit :code 1)))
+(lp)
 (set-prover-step-limit 300000)
 (set-cbd "fn2/tests/")
 (ld "sim-layer-a.lisp" :ld-error-action :error)
@@ -12,6 +19,16 @@
 (handler-case
     (progn
       (assert (fn2-client-oracle-control))
+      (dolist (case '(:process-death :reset :half-open-deadline :nonreading-deadline
+                      :client-disconnect :unattributed :at-bound :over-bound))
+        (assert (fn2-echo-evidence-control case)))
+      (format t "ECHO EVIDENCE CONTROLS: six drop causes and both turn-bound edges PASS~%")
+      ; Capacity premises for the C.3 service bound: no resource parking,
+      ; and at most three observations per turn in the liveness environment.
+      (assert (> (fn2-profile-h *fn2-echo-profile*) 3))
+      (assert (>= (min (fn2-profile-o *fn2-echo-profile*) (fn2-profile-qa *fn2-echo-profile*))
+                  (+ (* 2 (fn2-profile-c *fn2-echo-profile*))
+                     (fn2-profile-accept-credits *fn2-echo-profile*) 1)))
       (assert (eq (fn2-scenario-controls) :pass))
       (assert (eq (fn2-sim-fault-controls) :pass))
       (assert (eq (fn2-sim-recovery-controls) :pass))
@@ -29,10 +46,21 @@
             (fn2-meter-control)
             (let ((result (fn2-sim-run-echo 20261028 1000 *fn2-echo-profile*)))
               (assert (eq (car result) :pass))
+              (assert (= (length (nth 8 result)) 26))
+              (assert (every (lambda (entry) (>= (cdr entry) 1)) (nth 8 result)))
               (assert (= (second result) 1000))
-              (assert (= *fn2-meter-calls* (sixth result)))
+              (assert (= *fn2-meter-calls* (+ (sixth result) (sixth (nth 9 result)))))
               (assert (= (+ (third result) (fourth result)) 1000))
-              (assert (>= (third result) 500)))
+              (assert (= (second result) (+ (third result) (fourth result))))
+              (let ((causes (fn2-echo-histogram *fn2-echo-drop-causes* (nth 7 result)))
+                    (live (nth 9 result)))
+                (assert (zerop (cdr (assoc :unattributed causes))))
+                (assert (= (reduce #'+ causes :key #'cdr) (fourth result)))
+                (assert (eq (first live) :pass))
+                (assert (= (second live) (third live) 200))
+                (assert (zerop (fourth live)))
+                (assert (<= (fn2-echo-stat :max-age (nth 6 live))
+                            (fn2-echo-stat :max-bound (nth 6 live))))))
             (fn2-meter-report "ECHO TURN CPU profile=CONCRETE-TRACE adapter-faults=BROAD"))
         (fn2-meter-restore))
       (sb-ext:exit :code 0))

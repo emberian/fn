@@ -6,8 +6,9 @@
 (include-book "../sim/check")
 (include-book "std/util/bstar" :dir :system)
 
-; Updated from HEAD and the sorted runtime-book source manifest before acceptance.
-(defconst *fn2-scenario-revision* "HEAD=e0cd1f4ddd728c044cdb11d1242d1d854f475e90;fn2-runtime-sha256=3d4fa7b0772ea8e78670222263d747705a45c5e86b56c6b63c68f9b273e1c9b1")
+; The launcher writes HEAD and dirty runtime/test source hashes for this run.
+; No checked-in revision can silently label a later acceptance.
+(ld "../../build/scenario-revision.lsp" :ld-error-action :error)
 
 ; Termination depends only on the explicit fuel, not the threaded states.
 (defthm fn2-test-countdown

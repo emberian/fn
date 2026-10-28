@@ -6,6 +6,7 @@
 (include-book "../books/executor")
 (include-book "../sim/echo")
 (include-book "../sim/check")
+(ld "echo-evidence.lisp" :ld-error-action :error)
 
 (defconst *fn2-echo-profile*
   (put-assoc-equal :trace t *fn2-profile-concrete*))
@@ -22,16 +23,18 @@
 
 ; One independent record per capability: nonce, remaining input, expected
 ; remaining echo, bytes supplied, bytes checked, deliberate-drop offset,
-; terminal marker, age, and independently sampled client disconnect turn.
+; terminal marker, age, independently sampled client disconnect turn,
+; birth death-epoch and (only for liveness) the message-derived turn bound.
 ; The expected stream is never read from the core's pool.
-(defun fn2-echo-client-new (nonce word)
+(defun fn2-echo-client-new (nonce word live deaths profile)
   (declare (xargs :verify-guards nil))
   (let* ((len (+ 1 (mod (nfix word) 1024)))
          (message (fn2-echo-message len word))
          (drop (if (= (mod (floor (nfix word) 1024) 8) 0)
                    (+ 1 (mod (floor (nfix word) 8192) len)) 0)))
-    (list nonce message message 0 0 drop nil 0
-          (+ 8192 (mod (floor (nfix word) 65536) 8192)))))
+    (list nonce message message 0 0 (if live 0 drop) nil 0
+          (+ 8192 (mod (floor (nfix word) 65536) 8192))
+          deaths (if live (fn2-echo-live-bound len profile) 0))))
 (in-theory (disable fn2-echo-client-new))
 
 (defun fn2-echo-client-feed (left cap nonce bytes fn2-sim-network)
@@ -65,34 +68,38 @@
                  (mv status expected (+ 1 n) fn2-sim-network)))))))
 (in-theory (disable fn2-echo-client-read))
 
-(defun fn2-echo-client-step (cap record word fn2-sim-network)
+(defun fn2-echo-client-step (cap record word deaths live fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :verify-guards nil))
   (b* ((nonce (nth 0 record)) (todo (nth 1 record)) (expected (nth 2 record))
        (sent (nfix (nth 3 record))) (received (nfix (nth 4 record)))
-       (drop (nfix (nth 5 record)))
-       (age (+ 1 (nfix (nth 7 record))))
-       ((when (nth 6 record)) (mv :pass record 0 0 0 0 fn2-sim-network))
-       ((unless (eq (fn2-network-cap-code cap nonce fn2-sim-network) :ok))
-        (mv :pass (update-nth 6 :dropped record) 0 1 0 0 fn2-sim-network))
+       (drop (nfix (nth 5 record))) (age (+ 1 (nfix (nth 7 record))))
+       ((when (nth 6 record)) (mv :pass record 0 0 0 nil fn2-sim-network))
+       ((when (and live (< (nfix (nth 10 record)) age)))
+        (mv (list :fail :echo-turn-bound cap age (nth 10 record)) record 0 0 0 nil fn2-sim-network))
+       (code (fn2-network-cap-code cap nonce fn2-sim-network))
+       ((unless (eq code :ok))
+        (let ((cause (cond ((< (nfix (nth 9 record)) (nfix deaths)) :process-death)
+                           ((eq code :reset) :reset) (t :unattributed))))
+          (mv :pass (update-nth 6 cause record) 0 1 0 cause fn2-sim-network)))
        ((mv status expected nread fn2-sim-network)
         (fn2-echo-client-read 4096 cap nonce expected fn2-sim-network))
-       ((unless (eq status :pass)) (mv status record 0 0 0 0 fn2-sim-network))
+       ((unless (eq status :pass)) (mv status record 0 0 0 nil fn2-sim-network))
        ((mv todo nwrite fn2-sim-network)
-        (fn2-echo-client-feed (+ 1 (mod (nfix word) 127)) cap nonce todo fn2-sim-network))
+        (fn2-echo-client-feed (if live 4096 (+ 1 (mod (nfix word) 127))) cap nonce todo fn2-sim-network))
        (sent (+ sent nwrite)) (received (+ received nread))
        (complete (and (atom todo) (atom expected)))
-       ; This deadline is client input sampled at connect, independent of
-       ; whether the server subsequently makes progress or echoes bytes.
        (disconnect-turn (nfix (nth 8 record)))
        (offset-drop (and (< 0 drop) (<= drop sent)))
-       (scheduled (and (not offset-drop) (<= disconnect-turn age)))
-       (discard (or scheduled offset-drop))
+       (scheduled (and (not live) (not offset-drop) (<= disconnect-turn age)))
+       (cause (cond (complete nil) (offset-drop :client-disconnect)
+                    ((and scheduled (= (fn2-sim-network-half-open cap fn2-sim-network) 1)) :half-open-deadline)
+                    ((and scheduled (= (fn2-sim-network-nonreading cap fn2-sim-network) 1)) :nonreading-deadline)
+                    (scheduled :client-disconnect) (t nil)))
        (record (list nonce todo expected sent received drop
-                     (cond (complete :echoed) (discard :dropped) (t nil)) age disconnect-turn))
-       ((unless (or complete discard))
-        (mv :pass record 0 0 nread 0 fn2-sim-network))
+                     (if complete :echoed cause) age disconnect-turn (nth 9 record) (nth 10 record)))
+       ((unless (or complete cause)) (mv :pass record 0 0 nread nil fn2-sim-network))
        ((mv & fn2-sim-network) (fn2-network-close cap nonce fn2-sim-network)))
-    (mv :pass record (if complete 1 0) (if complete 0 1) nread (if (and (not complete) scheduled) 1 0) fn2-sim-network)))
+    (mv :pass record (if complete 1 0) (if complete 0 1) nread cause fn2-sim-network)))
 (in-theory (disable fn2-echo-client-step))
 
 (defun fn2-echo-clients-init (left fn2-sim-network)
@@ -106,35 +113,39 @@
 (in-theory (disable fn2-echo-clients-init))
 
 ; Records are descending capability index, matching this bounded traversal.
-(defun fn2-echo-clients-step (left clients word fn2-sim-network)
+(defun fn2-echo-clients-step (left clients word live deaths profile fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :verify-guards nil :measure (nfix left)
                   :hints (("Goal" :use ((:instance fn2-test-countdown (x left))
-                                        (:instance fn2-test-count-op (x left)))
-                           :in-theory nil))))
-  (if (zp left) (mv :pass nil 0 0 0 0 0 fn2-sim-network)
+                                        (:instance fn2-test-count-op (x left))) :in-theory nil))))
+  (if (zp left) (mv :pass nil 0 0 0 0 nil fn2-sim-network)
     (b* ((cap (- left 1)) (record (car clients))
          (nonce (fn2-sim-network-nonce cap fn2-sim-network))
          (fresh (not (equal nonce (nth 0 record))))
          (lost (if (and fresh (not (nth 6 record))) 1 0))
+         (lost-cause (and (= lost 1) (if (< (nfix (nth 9 record)) (nfix deaths)) :process-death :unattributed)))
          (word (fn2-prng-mix32 (fn2-u32 (+ (nfix word) cap 1))))
-         (record (if fresh (fn2-echo-client-new nonce word) record))
-         ((mv status record echoed dropped checked scheduled fn2-sim-network)
-          (fn2-echo-client-step cap record word fn2-sim-network))
-         ((unless (eq status :pass))
-          (mv status clients 0 0 0 0 0 fn2-sim-network))
-         ((mv status rest accepted e d c sd fn2-sim-network)
-          (fn2-echo-clients-step cap (cdr clients) word fn2-sim-network)))
+         (record (if fresh (fn2-echo-client-new nonce word live deaths profile) record))
+         ((mv status record echoed dropped checked cause fn2-sim-network)
+          (fn2-echo-client-step cap record word deaths live fn2-sim-network))
+         ((unless (eq status :pass)) (mv status clients 0 0 0 0 nil fn2-sim-network))
+         ((mv status rest accepted e d c stats fn2-sim-network)
+          (fn2-echo-clients-step cap (cdr clients) word live deaths profile fn2-sim-network))
+         (stats (fn2-echo-count lost-cause (fn2-echo-count cause stats)))
+         (stats (if (and live (= echoed 1))
+                    (fn2-echo-merge-stats (list (cons :max-age (nth 7 record))
+                                                (cons :max-bound (nth 10 record))) stats) stats)))
       (mv status (cons record rest) (+ accepted (if fresh 1 0))
-          (+ echoed e) (+ dropped d lost) (+ checked c) (+ scheduled sd) fn2-sim-network))))
+          (+ echoed e) (+ dropped d lost) (+ checked c) stats fn2-sim-network))))
 (in-theory (disable fn2-echo-clients-step))
 
-(defun fn2-echo-client-round (clients word fn2-sim)
+(defun fn2-echo-client-round (clients word live profile fn2-sim)
   (declare (xargs :stobjs fn2-sim :verify-guards nil))
-  (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim)))
-    (status clients accepted echoed dropped checked scheduled fn2-sim-network)
-    (fn2-echo-clients-step (fn2-sim-network-rows fn2-sim-network)
-                           clients word fn2-sim-network)
-    (mv status clients accepted echoed dropped checked scheduled fn2-sim)))
+  (let ((deaths (fn2-sim-deaths fn2-sim)))
+    (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim)))
+      (status clients accepted echoed dropped checked stats fn2-sim-network)
+      (fn2-echo-clients-step (fn2-sim-network-rows fn2-sim-network)
+                             clients word live deaths profile fn2-sim-network)
+      (mv status clients accepted echoed dropped checked stats fn2-sim))))
 (in-theory (disable fn2-echo-client-round))
 
 (defun fn2-echo-initial-ids (left index)
@@ -250,6 +261,59 @@
         (+ (nfix (nth 4 a)) (nfix (nth 4 b)))))
 (in-theory (disable fn2-echo-sum-certificate))
 
+; Scenario-only policy: refresh 128 fault events per accepted connection.
+; This leaves ample headroom between accepts without changing pool runs.
+(defconst *fn2-echo-fault-budget* 128)
+(defconst *fn2-echo-fault-names*
+  '(:fragment :short-send :delay :reset :half-open :nonreading
+    :read-io :bitrot :misread :miswrite :lying-flush :tear
+    :no-space :dead :fail-slow :crash :monotonic-jump :realtime-back
+    :duplicate :stale :forged :overcount :malformed :flush-io
+    :short-write :release-order))
+
+(defun fn2-echo-fault-counts (names index fn2-sim)
+  (declare (xargs :stobjs fn2-sim :verify-guards nil))
+  (if (atom names) nil
+    (cons (cons (car names) (fn2-sim-hitsi index fn2-sim))
+          (fn2-echo-fault-counts (cdr names) (+ 1 (nfix index)) fn2-sim))))
+(in-theory (disable fn2-echo-fault-counts))
+
+(defun fn2-echo-all-faults-enabled (left fn2-sim)
+  (declare (xargs :stobjs fn2-sim :verify-guards nil :measure (nfix left)
+                  :hints (("Goal" :use ((:instance fn2-test-countdown (x left))
+                                        (:instance fn2-test-count-op (x left))) :in-theory nil))))
+  (or (zp left)
+      (and (< 0 (fn2-sim-probabilitiesi (- left 1) fn2-sim))
+           (fn2-echo-all-faults-enabled (- left 1) fn2-sim))))
+(in-theory (disable fn2-echo-all-faults-enabled))
+
+(defun fn2-echo-hit-total (counts)
+  (declare (xargs :verify-guards nil))
+  (if (atom counts) 0
+    (+ (nfix (cdar counts)) (fn2-echo-hit-total (cdr counts)))))
+(in-theory (disable fn2-echo-hit-total))
+
+; Samples are cumulative hits at boundaries 0..turns, newest first.
+; Report exact rational rates rather than rounding away a sparse tail.
+(defun fn2-echo-density (samples turns)
+  (declare (xargs :verify-guards nil))
+  (let* ((samples (reverse samples))
+         (a (floor (nfix turns) 3)) (b (floor (* 2 (nfix turns)) 3))
+         (ha (nfix (nth a samples))) (hb (nfix (nth b samples)))
+         (total (nfix (nth (nfix turns) samples))))
+    (list (list :first :turns a :hits ha :per-1000 (/ (* 1000 ha) (max 1 a)))
+          (list :middle :turns (- b a) :hits (- hb ha)
+                :per-1000 (/ (* 1000 (- hb ha)) (max 1 (- b a))))
+          (list :last :turns (- (nfix turns) b) :hits (- total hb)
+                :per-1000 (/ (* 1000 (- total hb)) (max 1 (- (nfix turns) b)))))))
+(in-theory (disable fn2-echo-density))
+
+(defun fn2-echo-initial-queues (profile)
+  (declare (xargs :verify-guards nil))
+  (list (cons 0 (append (fn2-echo-initial-ids (fn2-profile-accept-credits profile) 0)
+                        (list (+ (fn2-profile-accept-credits profile) (fn2-profile-c profile)))))))
+(in-theory (disable fn2-echo-initial-queues))
+
 ; Force a small, identified prefix of real receive/send completions to
 ; choose fragmentation/short-send. Remaining choices use the seeded broad
 ; fault profile. This prevents a successful seed from omitting partial I/O.
@@ -285,13 +349,13 @@
                ((mv & fn2-sim) (fn2-sim-choose-fault fn2-sim))
                (fn2-sim (fn2-sim-record 0 0 0 260 0 0 word (fn2-sim-now fn2-sim) 0 15 fn2-sim))
                ((mv fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own))
-               (fn2-core (fn2-init-executor profile :echo nil fn2-core)))
+               (fn2-core (fn2-init-executor profile :echo t fn2-core)))
             (mv t fn2-core fn2-sim fn2-own))))
       (fn2-echo-take-prefix (- left 1) profile fn2-core fn2-sim fn2-own))))
 (in-theory (disable fn2-echo-take-prefix))
 
 (defun fn2-echo-rounds
-  (fuel target profile clients accepted echoed dropped checked turns cursor queues certificate scheduled
+  (fuel target live profile clients accepted echoed dropped checked turns cursor queues certificate stats samples
         fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)
                   :hints (("Goal" :use ((:instance fn2-test-countdown (x fuel))
@@ -300,13 +364,13 @@
   (cond
    ((or (zp fuel) (<= (nfix target) (+ (nfix echoed) (nfix dropped))))
     (mv (if (<= (nfix target) (+ (nfix echoed) (nfix dropped))) :pass '(:fail :echo-fuel))
-        accepted echoed dropped checked turns certificate scheduled fn2-core fn2-sim fn2-own))
+        accepted echoed dropped checked turns certificate stats samples clients cursor queues fn2-core fn2-sim fn2-own))
    (t
     (b* (((mv word fn2-sim) (fn2-sim-random fn2-sim))
          ((mv restart fn2-core fn2-sim fn2-own)
           (fn2-echo-take-prefix (mod word (+ 1 (fn2-profile-aturn profile))) profile fn2-core fn2-sim fn2-own))
          (cursor (if restart 0 cursor))
-         (queues (if restart (list (cons 0 (fn2-echo-initial-ids (fn2-profile-accept-credits profile) 0))) queues))
+         (queues (if restart (fn2-echo-initial-queues profile) queues))
          (before (fn2-echo-outbox-count fn2-core))
          (observed (fn2-echo-observed-wakes profile fn2-core))
          ((mv status nobs nvisits nactions fn2-core) (fn2-turn fn2-core))
@@ -314,41 +378,55 @@
           (fn2-echo-check-turn profile cursor queues before observed nobs nvisits nactions fn2-core fn2-own))
          (certificate (fn2-echo-sum-certificate certificate cert))
          ((unless (eq verdict :pass))
-          (mv verdict accepted echoed dropped checked turns certificate scheduled fn2-core fn2-sim fn2-own))
+          (mv verdict accepted echoed dropped checked turns certificate stats samples clients cursor queues fn2-core fn2-sim fn2-own))
          ((when (eq status :stop))
-          (mv '(:fail :echo-core-stopped) accepted echoed dropped checked turns certificate scheduled fn2-core fn2-sim fn2-own))
+          (mv '(:fail :echo-core-stopped) accepted echoed dropped checked turns certificate stats samples clients cursor queues fn2-core fn2-sim fn2-own))
          ((mv word fn2-sim) (fn2-sim-random fn2-sim))
          ((mv verdict clients a e d c sd fn2-sim)
-          (fn2-echo-client-round clients word fn2-sim))
+          (fn2-echo-client-round clients word live profile fn2-sim))
+         (fn2-sim (if (and (not live) (< 0 a))
+                      (update-fn2-sim-fault-budget *fn2-echo-fault-budget* fn2-sim) fn2-sim))
          (accepted (+ (nfix accepted) a)) (echoed (+ (nfix echoed) e))
-         (scheduled (+ (nfix scheduled) sd))
+         (stats (fn2-echo-merge-stats sd stats))
          (dropped (+ (nfix dropped) d)) (checked (+ (nfix checked) c))
          ((unless (eq verdict :pass))
-          (mv verdict accepted echoed dropped checked turns certificate scheduled fn2-core fn2-sim fn2-own))
+          (mv verdict accepted echoed dropped checked turns certificate stats samples clients cursor queues fn2-core fn2-sim fn2-own))
          ; Submit descriptors emitted by this turn before the host waits.
          ; In particular the newly emitted ArmWake must reach the adapter.
          ((mv restart fn2-core fn2-sim fn2-own)
-          (if (eq status :idle)
+          (if (or live (eq status :idle))
               (fn2-echo-take-prefix (fn2-echo-outbox-count fn2-core) profile fn2-core fn2-sim fn2-own)
             (mv nil fn2-core fn2-sim fn2-own)))
          (cursor (if restart 0 cursor))
-         (queues (if restart (list (cons 0 (fn2-echo-initial-ids (fn2-profile-accept-credits profile) 0))) queues))
+         (queues (if restart (fn2-echo-initial-queues profile) queues))
          ; Draining can free the credit needed to arm an earlier deadline.
          ; Reconsider eligibility before using the previous idle answer.
          (status (fn2-turn-status fn2-core))
          (deaths (fn2-sim-deaths fn2-sim))
-         (fn2-sim (if (eq status :idle) (fn2-echo-next-fault fn2-sim) fn2-sim))
-         ((mv & fn2-core fn2-sim fn2-own)
-          (if (eq status :idle)
-              (fn2-sim-echo-advance (< accepted (nfix target)) fn2-core fn2-sim fn2-own)
-            (mv nil fn2-core fn2-sim fn2-own)))
+         (fn2-sim (if (and (not live) (eq status :idle)) (fn2-echo-next-fault fn2-sim) fn2-sim))
+         ((mv advance-verdict stats fn2-core fn2-sim fn2-own)
+          (if live
+              (mv-let (verdict next fn2-core fn2-sim fn2-own)
+                (fn2-echo-live-advance (< accepted (nfix target)) (fn2-echo-stat :adapter-cursor stats)
+                                        fn2-core fn2-sim fn2-own)
+                (mv verdict (put-assoc-equal :adapter-cursor next stats) fn2-core fn2-sim fn2-own))
+            (mv-let (stats fn2-core fn2-sim fn2-own)
+              (if (eq status :idle)
+                  (fn2-echo-observed-advance (< accepted (nfix target)) stats fn2-core fn2-sim fn2-own)
+                (mv stats fn2-core fn2-sim fn2-own))
+              (mv :pass stats fn2-core fn2-sim fn2-own))))
+         ((unless (eq advance-verdict :pass))
+          (mv advance-verdict accepted echoed dropped checked turns certificate stats samples clients cursor queues
+              fn2-core fn2-sim fn2-own))
          (restart (< deaths (fn2-sim-deaths fn2-sim)))
-         (fn2-core (if restart (fn2-init-executor profile :echo nil fn2-core) fn2-core))
+         (fn2-core (if restart (fn2-init-executor profile :echo t fn2-core) fn2-core))
          (cursor (if restart 0 cursor))
          (queues (if restart
-                     (list (cons 0 (fn2-echo-initial-ids (fn2-profile-accept-credits profile) 0))) queues)))
-      (fn2-echo-rounds (- fuel 1) target profile clients accepted echoed dropped checked
-                       (+ 1 (nfix turns)) cursor queues certificate scheduled fn2-core fn2-sim fn2-own)))))
+                     (fn2-echo-initial-queues profile) queues)))
+      (fn2-echo-rounds (- fuel 1) target live profile clients accepted echoed dropped checked
+                       (+ 1 (nfix turns)) cursor queues certificate stats
+                       (cons (fn2-echo-hit-total (fn2-echo-fault-counts *fn2-echo-fault-names* 0 fn2-sim)) samples)
+                       fn2-core fn2-sim fn2-own)))))
 (in-theory (disable fn2-echo-rounds))
 
 (defun fn2-sim-run-echo-profile (seed connections profile fault-profile)
@@ -359,29 +437,47 @@
         (mv-let (answer fn2-core fn2-sim)
           (with-local-stobj fn2-own
             (mv-let (answer fn2-core fn2-sim fn2-own)
-              (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+              (b* ((fn2-core (fn2-init-executor profile :echo t fn2-core))
                    (fn2-sim (fn2-sim-init seed fault-profile *fn2-scenario-revision* profile fn2-sim))
+                   (enabled (or (not (eq fault-profile :broad)) (fn2-echo-all-faults-enabled 26 fn2-sim)))
                    (fn2-sim (fn2-sim-echo-network-reset fn2-sim))
                    (fn2-own (fn2-own-init profile fn2-own))
                    (clients (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim)))
                               (clients) (fn2-echo-clients-init (fn2-sim-network-rows fn2-sim-network)
                                                             fn2-sim-network) clients))
-                   (queues (list (cons 0 (fn2-echo-initial-ids (fn2-profile-accept-credits profile) 0))))
-                   ((mv verdict accepted echoed dropped checked turns certificate scheduled fn2-core fn2-sim fn2-own)
-                    (fn2-echo-rounds (* 1000 (+ 1 (nfix connections))) connections profile clients
-                                     0 0 0 0 0 0 queues nil 0 fn2-core fn2-sim fn2-own)))
+                   (queues (fn2-echo-initial-queues profile))
+                   ((mv verdict accepted echoed dropped checked turns certificate stats samples clients cursor queues fn2-core fn2-sim fn2-own)
+                    (fn2-echo-rounds (* 1000 (+ 1 (nfix connections))) connections nil profile clients
+                                     0 0 0 0 0 0 queues nil nil '(0) fn2-core fn2-sim fn2-own))
+                   (hits (fn2-echo-fault-counts *fn2-echo-fault-names* 0 fn2-sim))
+                   (verdict (if enabled verdict '(:fail :disabled-fault-class))))
                 (progn$
                  (if (eq verdict :pass) nil (fn2-echo-failure-trace fn2-core))
                  (if (eq verdict :pass) nil
                    (fn2-scenario-print-observations (min 64 (fn2-sim-observations fn2-sim)) fn2-sim))
-                 (cw "ECHO COVERAGE action-mask=~x0 fault-choice-mask=~x1 revision=~x2~%"
+                 (cw "ECHO COVERAGE action-mask=~x0 fault-choice-mask=~x1 revision=~x2 hits=~x3~%"
                      (fn2-scenario-action-mask 14 fn2-sim) (fn2-scenario-fault-mask 26 fn2-sim)
-                     *fn2-scenario-revision*)
+                     *fn2-scenario-revision* hits)
+                 (cw "ECHO DENSITY hits-per-1000-turns=~x0~%" (fn2-echo-density samples turns))
                  (cw "ECHO SCENARIO profile=CONCRETE-TRACE seed=~x0 accepted=~x1 echoed=~x2 dropped=~x3 checked-bytes=~x4 turns=~x5 deaths=~x6 WORK/TRACE/OWN=~x7 certificate=~x8 faults=~x9~%"
                      seed accepted echoed dropped checked turns (fn2-sim-deaths fn2-sim) verdict certificate fault-profile)
-                 (cw "ECHO DISCONNECTS scheduled-client-deadline=~x0~%" scheduled)
-                 (mv (list verdict accepted echoed dropped checked turns certificate scheduled)
-                     fn2-core fn2-sim fn2-own)))
+                 (cw "ECHO DROPS causes=~x0~%" (fn2-echo-histogram *fn2-echo-drop-causes* stats))
+                 (cw "ECHO STORAGE selected/physically-applied=~x0~%"
+                     (fn2-echo-storage-counts '(6 7 8 9 10 11 12 13 14 23 24) *fn2-echo-fault-names* stats fn2-sim))
+                 (b* ((safety (list verdict accepted echoed dropped checked turns certificate stats hits))
+                      (fn2-sim (update-fn2-sim-fault-budget 0 fn2-sim))
+                      (fn2-sim (fn2-sim-force-fault 26 fn2-sim))
+                      ((mv lv la le ld lc lt cert ls & & & & fn2-core fn2-sim fn2-own)
+                       (if (and (eq verdict :pass) (eq fault-profile :broad))
+                           (fn2-echo-rounds (* 201 (fn2-echo-live-bound 1024 profile)) 200 t profile clients
+                             0 0 0 0 0 cursor queues nil nil '(0) fn2-core fn2-sim fn2-own)
+                         (mv :not-run 0 0 0 0 0 nil nil nil clients cursor queues fn2-core fn2-sim fn2-own))))
+                   (progn$
+                    (cw "ECHO LIVENESS ENV terminal-and-release-latency-each<=O=~x0 turns; B(n)=2*S+2+ceil(n/Q)*(3*S+3*O+1); S=1+ceil(L*(C+accept-credits+1)/min(K,Aturn)); Q=min(4096,run-bytes,RX-capacity)~%" (fn2-profile-o profile))
+                    (cw "ECHO LIVENESS accepted=~x0 echoed=~x1 dropped=~x2 checked-bytes=~x3 turns=~x4 WORK/TRACE/OWN=~x5 adapter-latency-turns=~x6 bound-max=~x7 observed-max=~x8 certificate=~x9~%"
+                        la le ld lc lt lv (fn2-profile-o profile) (fn2-echo-stat :max-bound ls)
+                        (fn2-echo-stat :max-age ls) cert)
+                    (mv (append safety (list (list lv la le ld lc lt ls))) fn2-core fn2-sim fn2-own)))))
               (mv answer fn2-core fn2-sim)))
           (mv answer fn2-core)))
       answer)))
@@ -405,3 +501,38 @@
         ((mv bad & & fn2-sim-network) (fn2-echo-client-read 8 0 nonce '(10) fn2-sim-network)))
     (mv (equal bad '(:fail :echo-byte 0 1 10 11)) fn2-sim-network)) ok)))
 (in-theory (disable fn2-client-oracle-control))
+
+; Attribution must not bless an unexplained server close. Exercise real network
+; resets/stalls and both sides of the per-connection deadline boundary.
+(defun fn2-echo-evidence-control (case)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-sim-network
+    (mv-let (ok fn2-sim-network)
+      (b* ((fn2-sim-network (fn2-network-init 1 4096 fn2-sim-network))
+           ((mv & nonce fn2-sim-network) (fn2-network-accept 0 fn2-sim-network))
+           (live (member-eq case '(:at-bound :over-bound)))
+           (record (fn2-echo-client-new nonce (if (eq case :client-disconnect) 0 1024)
+                                        live 0 *fn2-echo-profile*))
+           (age (cond ((eq case :at-bound) (- (nth 10 record) 1))
+                      ((eq case :over-bound) (nth 10 record))
+                      ((member-eq case '(:half-open-deadline :nonreading-deadline)) (- (nth 8 record) 1))
+                      (t 0)))
+           (record (update-nth 7 age record))
+           ((mv & fn2-sim-network)
+            (fn2-network-faults 0 nonce (if (eq case :half-open-deadline) 1 0)
+              (if (eq case :nonreading-deadline) 1 0) (if (eq case :reset) 1 0) 0 fn2-sim-network))
+           ((mv & & fn2-sim-network)
+            (if (eq case :reset) (fn2-network-receive-byte 0 nonce fn2-sim-network)
+              (mv :ok 0 fn2-sim-network)))
+           ((mv & fn2-sim-network)
+            (cond ((member-eq case '(:process-death :unattributed)) (fn2-network-close 0 nonce fn2-sim-network))
+                  ((eq case :at-bound) (fn2-network-send-byte 0 nonce (car (nth 2 record)) fn2-sim-network))
+                  (t (mv :ok fn2-sim-network))))
+           ((mv verdict & echoed dropped & cause fn2-sim-network)
+            (fn2-echo-client-step 0 record 0 (if (eq case :process-death) 1 0) live fn2-sim-network)))
+        (mv (cond ((eq case :over-bound) (equal verdict (list :fail :echo-turn-bound 0 (+ 1 age) age)))
+                  ((eq case :at-bound) (and (eq verdict :pass) (= echoed 1) (= dropped 0) (not cause)))
+                  (t (and (eq verdict :pass) (= dropped 1) (= echoed 0) (eq cause case))))
+            fn2-sim-network))
+      ok)))
+(in-theory (disable fn2-echo-evidence-control))
