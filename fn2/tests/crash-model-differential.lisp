@@ -414,9 +414,10 @@
 
 (assert-event (fn2-diff-negative-teeth))
 
-; Fixed regression for fault11 at a live action boundary followed by flush.
-; This asserts the model REJECTS the simulator result; it is gap evidence,
-; never a passing refinement case and never grounds for weakening the oracle.
+; Regression for fault11 at a live action boundary followed by flush (B1's
+; live-tear defect, fixed by layer A's S1): the torn landing is allowed, the
+; fence then makes the fenced bytes (17) durable, never the tear (93), and
+; the model accepts the simulator's fence result and image.
 (defun fn2-diff-live-tear-regression-aux (fn2-sim-storage)
   (declare (xargs :stobjs fn2-sim-storage :verify-guards nil))
   (b* ((profile (fn2-cm-profile :broad t t nil 0 0))
@@ -437,9 +438,8 @@
        (image (fn2-diff-image t fn2-sim-storage))
        (expected (fn2-cm-fence-image model 2)))
     (mv (and (eq write-code :ok) (eq capture-code :ok) landing-ok (eq code :ok)
-             (equal (caar image) 93) (equal (caar expected) 17)
-             (not (fn2-cm-fence-allowedp model 2 code image profile))
-             (fn2-diff-gap-image expected image 0 0 fn2-sim-storage)) fn2-sim-storage)))
+             (equal (caar image) 17) (equal (caar expected) 17)
+             (fn2-cm-fence-allowedp model 2 code image profile)) fn2-sim-storage)))
 
 (defun fn2-diff-live-tear-regression ()
   (declare (xargs :verify-guards nil))
@@ -450,7 +450,9 @@
 
 ; A failed second fence permits reopen's old view. Completing the older
 ; submitted fence subsequently makes that snapshot durable. The stale cache
-; is not a newer volatile write and must not authorize a crash tear.
+; is not a newer volatile write and must not authorize a crash tear (B1's
+; stale-cache defect, fixed by layer A's S1: the crash keeps the durable 17
+; and the model accepts the image).
 (defun fn2-diff-stale-cache-regression-aux (fn2-sim-storage)
   (declare (xargs :stobjs fn2-sim-storage :verify-guards nil))
   (b* ((profile (fn2-cm-profile :broad t t nil 0 0))
@@ -475,13 +477,12 @@
        (image (fn2-diff-image t fn2-sim-storage))
        (fence-ok (fn2-cm-fence-allowedp model 2 c5 image profile))
        (model (fn2-cm-complete-fence model 2 c5 image profile))
-       ((mv not-newer older) (fn2-diff-stale-unit 512 0 fn2-sim-storage))
        (fn2-sim-storage (fn2-storage-crash-unit 0 2 0 fn2-sim-storage))
        (image (fn2-diff-image t fn2-sim-storage)))
     (mv (and (eq c1 :ok) (eq c2 :ok) (eq c3 :ok) (eq c4 :io) (eq c5 :ok)
-             failed-ok fence-ok not-newer older
-             (equal (caar (fn2-cm-durable model)) 17) (equal (caar image) 0)
-             (not (fn2-cm-crash-image-allowedp model image profile))) fn2-sim-storage)))
+             failed-ok fence-ok
+             (equal (caar (fn2-cm-durable model)) 17) (equal (caar image) 17)
+             (fn2-cm-crash-image-allowedp model image profile)) fn2-sim-storage)))
 
 (defun fn2-diff-stale-cache-regression ()
   (declare (xargs :verify-guards nil))
