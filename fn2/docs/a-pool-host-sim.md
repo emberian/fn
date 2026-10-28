@@ -138,3 +138,4 @@ the refinement obligation of EXECUTION-MODEL §4 over `fn2-turn` and `fn2-refere
 - `u60` in-memory generations instead of `u64` (§2).
 - A send carries one range in layer A (ROUND2 D.3 allows four); the descriptor reserves the field
   width for four.
+- A2 boundary details: the tiny calendar has 8 entries; row conservation includes retired rows; a release harvested before its terminal leaves the op submitted; ArmWake/Trace/ServicePosture finish at acknowledgment because they have no result event; clock bits 0/1 mean realtime-valid/negative and bits 2/3 record backward/malformed input, with a retained monotonic high-water and separate saturating rejected count.
