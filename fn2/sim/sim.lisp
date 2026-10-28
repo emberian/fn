@@ -69,6 +69,18 @@
  (implies (fn2-sim-ready fn2-sim)
           (fn2-sim-ready (update-fn2-sim-deaths value fn2-sim)))
  :hints (("Goal" :in-theory (enable fn2-sim-ready))))
+(defthm fn2-sim-ready-update-wake-pending
+ (implies (fn2-sim-ready fn2-sim)
+          (fn2-sim-ready (update-fn2-sim-wake-pending value fn2-sim)))
+ :hints (("Goal" :in-theory (enable fn2-sim-ready))))
+(defthm fn2-sim-ready-update-wake-deadline
+ (implies (fn2-sim-ready fn2-sim)
+          (fn2-sim-ready (update-fn2-sim-wake-deadline value fn2-sim)))
+ :hints (("Goal" :in-theory (enable fn2-sim-ready))))
+(defthm fn2-sim-ready-update-wake-observation-gen
+ (implies (fn2-sim-ready fn2-sim)
+          (fn2-sim-ready (update-fn2-sim-wake-observation-gen value fn2-sim)))
+ :hints (("Goal" :in-theory (enable fn2-sim-ready))))
 (defun fn2-sim-crash-state (fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)
                   :guard-hints (("Goal" :in-theory (enable fn2-sim-storage-rows)))))
@@ -84,6 +96,9 @@
                     (mv fn2-sim-storage fn2-sim-network))
                   fn2-sim))
        (fn2-sim (fn2-sim-clear-flights 0 fn2-sim))
+       (fn2-sim (update-fn2-sim-wake-pending 0 fn2-sim))
+       (fn2-sim (update-fn2-sim-wake-deadline 0 fn2-sim))
+       (fn2-sim (update-fn2-sim-wake-observation-gen 0 fn2-sim))
        (fn2-sim (update-fn2-sim-deaths (min #xffffffff (+ 1 deaths)) fn2-sim)))
     fn2-sim))
 (fn2-sim-shape fn2-sim-crash-state (fn2-sim) nil)
@@ -387,6 +402,20 @@
            (fn2-core-wfp (fn2-sim-post-clock mono real fn2-core))))
 (in-theory (disable fn2-sim-post-clock fn2-core-wfp))
 
+; Keep the generated typed reader intact for arithmetic in wake selection.
+; Opening it here hides its type behind the composed simulator updates.
+(in-theory (disable fn2-sim-due))
+(defun fn2-sim-wake-first-p (found slot fn2-sim)
+  (declare (xargs :stobjs fn2-sim
+                  :guard (and (fn2-sim-ready fn2-sim)
+                              (or (not found)
+                                  (and (natp slot) (< slot (fn2-sim-rows fn2-sim)))))
+                  :guard-hints (("Goal" :use ((:instance fn2-sim-due-natp (i slot)))))))
+  (and (= (fn2-sim-wake-pending fn2-sim) 1)
+       (or (not found) (<= (fn2-sim-wake-deadline fn2-sim)
+                           (fn2-sim-due slot fn2-sim)))))
+(in-theory (disable fn2-sim-wake-first-p))
+
 (defun fn2-sim-advance (fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
@@ -399,11 +428,19 @@
           (mv-let (fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own)
             (mv t fn2-core fn2-sim fn2-own))))
        ((mv found slot) (fn2-sim-next-flight fn2-sim))
-       (target (if found (fn2-sim-due slot fn2-sim) (fn2-sim-now fn2-sim)))
+       (wake-first (fn2-sim-wake-first-p found slot fn2-sim))
+       (target (if wake-first (fn2-sim-wake-deadline fn2-sim)
+                 (if found (fn2-sim-due slot fn2-sim) (fn2-sim-now fn2-sim))))
        (fn2-sim (fn2-sim-clock target fault fn2-sim))
        (mono (fn2-sim-now fn2-sim)) (real (fn2-sim-real fn2-sim))
        (fn2-sim (fn2-sim-record 0 0 0 256 0 0 mono real 1 fault fn2-sim))
        (fn2-core (fn2-sim-post-clock mono real fn2-core))
+       ((when wake-first)
+        (let* ((token (fn2-sim-wake-observation-gen fn2-sim))
+               (deadline (fn2-sim-wake-deadline fn2-sim))
+               (fn2-sim (update-fn2-sim-wake-pending 0 fn2-sim))
+               (fn2-sim (fn2-sim-record 0 token 0 259 0 0 deadline mono 0 fault fn2-sim)))
+          (mv t fn2-core fn2-sim fn2-own)))
        (fn2-sim (fn2-sim-environment slot fault word fn2-sim))
        (quantum (fn2-profile-run-bytes (fn2-sim-profile fn2-sim)))
        (fn2-sim (if found
@@ -433,5 +470,5 @@
     fn2-sim-inject fn2-sim-environment fn2-sim-crash-units fn2-sim-crash
     fn2-sim-crash-flight-one fn2-sim-crash-state fn2-sim-save-terminal
     fn2-sim-terminal-values fn2-sim-terminal-post fn2-sim-complete-result fn2-sim-delay-flight fn2-sim-post-clock
-    fn2-sim-result-outcome fn2-sim-result-reason fn2-sim-complete fn2-sim-advance)
+    fn2-sim-result-outcome fn2-sim-result-reason fn2-sim-complete fn2-sim-wake-first-p fn2-sim-advance)
   (w state)))

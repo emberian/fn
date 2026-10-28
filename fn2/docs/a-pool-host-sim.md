@@ -97,15 +97,64 @@ as two fixnum halves or a checked byte encoding, never as a resident bignum.
   is a new action.
 
 ## 5. Executor (contract item 5)
-`fn2-transition`, `fn2-reference-turn`, `fn2-turn` as ROUND2 §A.1; budgets `H = 128`,
-`K = 64`, `Aturn = 256` and per-run caps (4 KiB, 32 structural steps, 4 descriptors) as profile
-values; the 80-entry calendar of §C.2 over `P = 64` principal slots plus the four service classes;
-intrusive FIFO runnable lists per principal, one link per machine; wait outside only when nothing is
-eligible (§C.4). `fn2-turn` appends one fixed-width record per transition to a bounded trace ring
-when the profile's trace flag is on; the TRACE checker replays the calendar rule over its own list
-model of the run queues and checks every selection and the action order. Machines in layer A: the
-echo machine, the null connection machine, and **scribe**, a test-only storage probe (write a
-stamped sector, fence, read back) that exists until layer B's commit machine replaces it.
+`fn2-turn` calls `fn2-reference-turn`, a bounded loop over `fn2-transition`;
+there is no fusion. A turn stops at the first exhausted `H`, `K`, or `Aturn`
+budget, or when nothing eligible remains. Results are `(mv status nobs nvisits
+nactions fn2-core)`; `fn2-core-idle-deadline` supplies the accompanying sleep
+bound (`2^60-1` means no requested deadline). `:more` preserves runnable work,
+`:idle` permits adapter progress, and `:stop` records a sticky stop.
+
+`sched.lisp` stores one intrusive link per global machine index, principal
+FIFO heads/tails/counts/weight-one entries, four service flags, the calendar,
+and its cursor. The concrete calendar is exactly four groups of sixteen
+principals followed by commit, timer/grant, wake and maintenance (80 entries);
+tiny has four principals then those services (eight entries). Tail insertion
+is idempotent. All A4 connections use anonymous principal zero. Listener rows
+occupy `[0, accept-credits)`, connections the following `C` indices, and scribe
+one final index. A4 implements the declared per-run caps 4,096 bytes, 32
+structural steps and four descriptors; its machine initializer currently
+requires those exact execution-quanta profile values. Resident capacities
+remain profile parameters.
+
+The core owns the pool, outstanding operations, scheduler, machine columns,
+trace ring and one control row. Harvest captures the outstanding owner before
+finishing its operation row, returns input ownership, then changes machine
+state and wakes its continuation. Posted results retain FIFO order; the clock
+mailbox follows the posted FIFO, then sticky signals. One calendar visit
+selects one bounded continuation; new machines enter before the selected
+machine's own tail requeue. Resource waits are separate from runnable links;
+operation/output-credit waits have a FIFO, and the sole pool-waiting scribe
+has a reserved wait reference. Adapter-only waits do not keep `:more` asserted.
+
+Echo reserves its RX slot when accepting a connection, receives into that
+slot, and sends the received range itself. A short send issues the remaining
+range as a new operation. Terminal results and external borrow releases are
+tracked independently; reset, row reuse and slot release wait for both. Null
+connections discard the received range. Listener credits each retain at most
+one pending accept; an accepted capability that cannot obtain a connection
+row and RX slot is closed. Scribe encodes the A3 sector format incrementally,
+writes, waits for its fence, reads and verifies; failed write/fence outcomes
+stop the probe without retry. Its `completed` frontier advances only on the
+successful fence, and `verified` advances after complete readback.
+
+`fn2-request-wake` coalesces the earliest explicitly registered wake
+requirement. The timer/grant service emits `ArmWake` with dedicated u60
+deadline and observation-generation fields; each new clock view advances the
+token, with stop at exhaustion. The simulator keeps one replaceable request,
+retains the earliest deadline within a view, ignores stale views, and bounds
+its virtual-time advance by that deadline. Layer A's machines do not yet use
+a general timer heap. Trace and ServicePosture action payloads remain out of
+scope.
+
+Tracing uses a fixed-width ring sized to four times `(H+K)`, overwrites the
+oldest entry and counts loss. Records include selection, work, additional wake,
+and up to four ordered operation references copied from the outbox. TRACE
+reconstructs its own list FIFOs and literal calendar, with observation-owner
+and actual-output evidence; WORK sums transition certificates independently.
+The work model counts byte work and structural units, plus fixed calendar
+and return overhead; measured CPU is a separate acceptance result. The owed
+refinement relation `fn2-representation-relation` is currently equality of
+the complete concrete and reference cores, including the action ring.
 
 ## 6. Simulator and checkers (contract item 4)
 Seeded PRNG (splitmix64-style over fixnum halves); profile, seed, observation order, fault choices

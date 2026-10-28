@@ -151,11 +151,15 @@
                       (update-fn2-sim-action-countsi kind
                        (min #xffffffff (+ 1 (fn2-sim-action-countsi kind fn2-sim))) fn2-sim)
                     fn2-sim)))
-      (if (not (equal kind *fn2-action-fence*)) fn2-sim
-        (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
-          (code fn2-sim-storage)
-          (fn2-storage-fence-capture slot fn2-sim-storage)
-          (let ((ignored code)) (declare (ignore ignored)) fn2-sim))))))
+      (cond ((equal kind *fn2-action-arm-wake*)
+             (fn2-sim-arm-wake (fn2-ops-wake-deadline slot fn2-ops)
+                               (fn2-ops-wake-observation-gen slot fn2-ops) fn2-sim))
+            ((equal kind *fn2-action-fence*)
+             (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
+               (code fn2-sim-storage)
+               (fn2-storage-fence-capture slot fn2-sim-storage)
+               (let ((ignored code)) (declare (ignore ignored)) fn2-sim)))
+            (t fn2-sim)))))
 (defthm fn2-sim-register-type
   (implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops)
                 (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))

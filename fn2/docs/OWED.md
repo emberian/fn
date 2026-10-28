@@ -33,4 +33,26 @@ For `vocab.lisp`, `fn2-ops-semanticp` and the snapshot/predicate helpers are exe
 
 A3 refusal rollback uses `fn2-op-unreserve` only on unpublished reservations: it restores the same generation and canonical free row. `fn2-op-finish` still increments or retires submitted lifetimes. The byte-fill obligation explicitly assumes the adapter-write initialization trace; it does not infer initialization from whatever bytes already occupy storage. These ten A3 keystones are recorded and have evaluated teeth, but are not proved. The simulator has no refinement claim.
 
-A4 ABI integration: ROUND2 §D.2's `ArmWake` observation-generation/deadline, `Trace` payload and `ServicePosture` reason/scope have no named payload fields or setters in the A2 outstanding table. A3 acknowledges and finishes these no-result action rows, but does not invent a storage-offset encoding or implement deadline wake scheduling. A4's executor/timer work must add the payload representation and connect the simulated/native wait behavior; periodic simulator clock mailbox observations are not a proof of the earliest-deadline contract.
+A3 left ArmWake payload and wake scheduling to A4. A4 now supplies the named deadline and observation-generation fields and connects the simulated wait to the earliest active request. Periodic clock observations alone do not establish the deadline contract; the wake-specific tests exercise replacement and coalescing.
+
+
+## A4 executor obligations (unproved)
+
+| Name | Book | Statement | Evidence | Owner |
+|---|---|---|---|---|
+| `fn2-turn-refinement` | `books/executor.lisp` | The host-called turn and scheduler-selected finite reference loop have the same status, counts, complete post-core and ordered outbox, preserve core shape, and fit the modeled byte/structural work bound and descriptor budget. `fn2-representation-relation` is identity projection for this unfused implementation. | `tests/executor-unit.lisp` compares complete registry-generated state snapshots and evaluates the complete conclusion; removal of the initial identity relation is a concrete negative witness. Certification/execution results are reported in `build/REPORT.md`. | Layer-A refinement proof. |
+| `fn2-turn-bounds` | `books/executor.lisp` | `nobs <= H`, `nvisits <= K`, `nactions <= Aturn` for the actual host-called function. | Budget-boundary fixtures plus independently summed WORK records over simulator turns. `fn2-executor-test-bounds-hypothesis-removal` evaluates the actual logical turn on a complete snapshot with `H=-1`: removing `fn2-corep` leaves shape true, returns zero observations, and falsifies `nobs <= H`. | Layer-A work-bound proof. |
+| `fn2-sched-starvation` | `books/sched.lisp` | A valid, continuously eligible principal appears in at most `L` calls of the actual calendar visit function. Scheduling opportunity only; no adapter-completion or wall-time bound. | `tests/sched-unit.lisp`: all 64 principals at all 80 starting cursors; tiny geometry, FIFO/repeated wakes, and a removed calendar-entry counterexample. | Layer-A scheduler proof. |
+
+A4 supplies ArmWake's named deadline/observation-generation fields and the
+simulator's earliest-request wait behavior. The general indexed timer service
+for future machine kinds is not supplied by this layer-A wake mailbox.
+Trace and ServicePosture descriptor payloads remain out of scope.
+
+The registered A4 refinement statement covers identity representation, the
+finite scheduled loop, shape preservation, output equality and modeled work.
+It is not the whole EXECUTION-MODEL §4 assurance package: semantic `Inv`
+preservation (ownership, conservation, dependencies and scheduler links),
+`BoundaryCompatible` environment contracts, initialization, and crash
+composition remain owed. Shape is not a substitute for those invariants;
+the executable OWN/TRACE/WORK scenarios are evidence, not proofs of them.

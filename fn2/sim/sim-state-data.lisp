@@ -48,7 +48,10 @@
    (fn2-sim-ring-count :type (array (unsigned-byte 60) (64)) :initially 0)
    (fn2-sim-ring-aux0 :type (array (unsigned-byte 60) (64)) :initially 0)
    (fn2-sim-ring-aux1 :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-fault :type (array (unsigned-byte 60) (64)) :initially 0)))
+   (fn2-sim-ring-fault :type (array (unsigned-byte 60) (64)) :initially 0)
+   (fn2-sim-wake-pending :type (unsigned-byte 1) :initially 0)
+   (fn2-sim-wake-deadline :type (unsigned-byte 60) :initially 0)
+   (fn2-sim-wake-observation-gen :type (unsigned-byte 60) :initially 0)))
 
 (defthm fn2-sim-net-type
   (implies (fn2-simp fn2-sim) (fn2-sim-networkp (fn2-sim-net fn2-sim)))

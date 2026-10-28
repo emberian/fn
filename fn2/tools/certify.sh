@@ -4,7 +4,9 @@
 set -eu
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "$here/../.." && pwd)
-: "${ACL2:=$HOME/tools/acl2-fn/acl2-literal-4g-tls64k}"
+# Use the same slot pool and project map as source iteration. A direct
+# binary misses :FN when a dependency was certified through tools/acl2.
+: "${ACL2:=$root/tools/acl2}"
 : "${ACL2_SYSTEM_BOOKS:=$HOME/tools/acl2-fn/acl2-8.7/books}"
 ACL2_BOOK_HASH_ALISTP=NIL
 export ACL2 ACL2_SYSTEM_BOOKS ACL2_BOOK_HASH_ALISTP

@@ -1,8 +1,10 @@
-; Eleven independent semantic checker names. Only OWN is implemented in A3;
-; :not-yet is deliberately not a passing result.
+; Eleven independent semantic checker names. A4 implements TRACE/WORK/OWN.
+; Missing evidence and unimplemented checks are never passing results.
 (in-package "ACL2")
 (include-book "../books/core")
 (include-book "check-own")
+(include-book "check-trace")
+(include-book "check-work")
 
 (defconst *fn2-checker-names*
   '(:trace :work :own :account :fair :history :identity :wire :consumer :recovery :reclaim))
@@ -62,6 +64,7 @@
 (defun fn2-check (name fn2-core fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-own) :verify-guards nil))
   (cond ((eq name :own) (fn2-check-own fn2-core fn2-own))
+        ((member-eq name '(:trace :work)) '(:fail :checker-evidence-required))
         ((fn2-checker-namep name) :not-yet)
         (t '(:fail :unknown-checker))))
 
@@ -77,3 +80,18 @@
     fn2-own-observe-output fn2-own-record-input-byte fn2-own-observe-read
     fn2-own-observe-core-write)
   (w state)))
+
+; Registration with the history/counter evidence required by TRACE and WORK.
+; The legacy OWN entry point remains convenient for pool-only scenarios.
+(defun fn2-check-evidence (name records lost profile nobs nvisits nactions
+                                cursor queues actual-actions fn2-core fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-own) :verify-guards nil))
+  (cond ((eq name :trace)
+         (mv-let (answer next-cursor next-queues)
+           (fn2-check-trace records lost (fn2-profile-p profile)
+                            cursor queues actual-actions)
+           (declare (ignore next-cursor next-queues))
+           answer))
+        ((eq name :work)
+         (fn2-check-work records lost nobs nvisits nactions profile))
+        (t (fn2-check name fn2-core fn2-own))))

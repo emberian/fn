@@ -187,6 +187,30 @@
     fn2-sim))
 (fn2-sim-shape fn2-sim-clock (target fault fn2-sim) nil)
 
+ ; One replaceable ArmWake request survives recycling its descriptor row.
+; New clock views may replace an obsolete deadline; repeated requests from
+; the same view retain the earliest deadline. Older views cannot postpone it.
+(defun fn2-sim-arm-wake (deadline observation-gen fn2-sim)
+  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
+  (if (not (and (unsigned-byte-p 60 deadline)
+                (unsigned-byte-p 60 observation-gen))) fn2-sim
+    (let ((old-gen (fn2-sim-wake-observation-gen fn2-sim)))
+      (if (< observation-gen old-gen) fn2-sim
+        (let* ((deadline (if (and (= (fn2-sim-wake-pending fn2-sim) 1)
+                                  (= observation-gen old-gen))
+                             (min deadline (fn2-sim-wake-deadline fn2-sim))
+                           deadline))
+               (fn2-sim (update-fn2-sim-wake-pending 1 fn2-sim))
+               (fn2-sim (update-fn2-sim-wake-deadline deadline fn2-sim))
+               (fn2-sim (update-fn2-sim-wake-observation-gen observation-gen fn2-sim)))
+          fn2-sim)))))
+(fn2-sim-shape fn2-sim-arm-wake (deadline observation-gen fn2-sim) nil)
+(fn2-sim-child-frame fn2-sim-arm-wake (deadline observation-gen fn2-sim))
+(defthm fn2-sim-arm-wake-rows
+  (equal (fn2-sim-rows (fn2-sim-arm-wake deadline observation-gen fn2-sim))
+         (fn2-sim-rows fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-arm-wake fn2-sim-rows))))
+
 ; O resident rows: a bounded scan. Equal due times keep the rotated first
 ; choice; the adapter passes a seed-derived start for random tie ordering.
 (defun fn2-sim-earliest (left index best found fn2-sim)
@@ -372,6 +396,9 @@
                (fn2-sim (update-fn2-sim-s1 s1 fn2-sim))
                (fn2-sim (update-fn2-sim-s2 s2 fn2-sim))
                (fn2-sim (update-fn2-sim-s3 s3 fn2-sim))
+               (fn2-sim (update-fn2-sim-wake-pending 0 fn2-sim))
+               (fn2-sim (update-fn2-sim-wake-deadline 0 fn2-sim))
+               (fn2-sim (update-fn2-sim-wake-observation-gen 0 fn2-sim))
                (fn2-sim (update-fn2-sim-now 0 fn2-sim))
                (fn2-sim (update-fn2-sim-real 0 fn2-sim))
                (fn2-sim (update-fn2-sim-deaths 0 fn2-sim))
@@ -428,3 +455,24 @@
                      fn2-sim))))))
        ok))))
 (local (assert-event (fn2-sim-state-fixture)))
+
+(local
+ (defun fn2-sim-wake-fixture ()
+   (declare (xargs :guard t))
+   (with-local-stobj fn2-sim
+     (mv-let (ok fn2-sim)
+       (let* ((fn2-sim (fn2-sim-init 73 :none "wake-fixture" *fn2-profile-tiny* fn2-sim))
+              (fn2-sim (fn2-sim-arm-wake 100 4 fn2-sim))
+              (fn2-sim (fn2-sim-arm-wake 200 4 fn2-sim))
+              (same-view (equal (fn2-sim-wake-deadline fn2-sim) 100))
+              (fn2-sim (fn2-sim-arm-wake 20 4 fn2-sim))
+              (earlier (equal (fn2-sim-wake-deadline fn2-sim) 20))
+              (fn2-sim (fn2-sim-arm-wake 300 5 fn2-sim))
+              (replacement (equal (fn2-sim-wake-deadline fn2-sim) 300))
+              (fn2-sim (fn2-sim-arm-wake 500 3 fn2-sim)))
+         (mv (and same-view earlier replacement
+                  (equal (fn2-sim-wake-pending fn2-sim) 1)
+                  (equal (fn2-sim-wake-observation-gen fn2-sim) 5)
+                  (equal (fn2-sim-wake-deadline fn2-sim) 300)) fn2-sim))
+       ok))))
+(local (assert-event (fn2-sim-wake-fixture)))

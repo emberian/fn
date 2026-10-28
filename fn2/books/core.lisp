@@ -1,47 +1,92 @@
-; Layer-A core: bounded transitions over two children. A4 adds children here.
+; Layer-A core: bounded transitions over six fixed-capacity children.
 (in-package "ACL2")
 (include-book "pool")
 (include-book "vocab")
 (include-book "std/util/bstar" :dir :system)
 
+(include-book "sched")
+(include-book "machines-a")
+(include-book "trace")
+(include-book "exec-state")
+
 (defstobj fn2-core
   (fn2-core-pool :type fn2-pool)
-  (fn2-core-ops :type fn2-ops))
+  (fn2-core-ops :type fn2-ops)
+  (fn2-core-sched :type fn2-sched)
+  (fn2-core-machines :type fn2-machines)
+  (fn2-core-trace :type fn2-trace)
+  (fn2-core-control :type fn2-control))
 
-(defthm fn2-core-pool-type
-  (implies (fn2-corep fn2-core) (fn2-poolp (fn2-core-pool fn2-core))))
-(defthm fn2-core-ops-type
-  (implies (fn2-corep fn2-core) (fn2-opsp (fn2-core-ops fn2-core))))
-(defthm fn2-core-update-pool-type
-  (implies (and (fn2-corep fn2-core) (fn2-poolp p))
-           (fn2-corep (update-fn2-core-pool p fn2-core))))
-(defthm fn2-core-update-ops-type
-  (implies (and (fn2-corep fn2-core) (fn2-opsp p))
-           (fn2-corep (update-fn2-core-ops p fn2-core))))
-(defthm fn2-core-pool-of-update-pool
-  (equal (fn2-core-pool (update-fn2-core-pool p c)) p))
-(defthm fn2-core-ops-of-update-pool
-  (equal (fn2-core-ops (update-fn2-core-pool p c)) (fn2-core-ops c)))
-(defthm fn2-core-pool-of-update-ops
-  (equal (fn2-core-pool (update-fn2-core-ops p c)) (fn2-core-pool c)))
-(defthm fn2-core-ops-of-update-ops
-  (equal (fn2-core-ops (update-fn2-core-ops p c)) p))
-(in-theory (disable fn2-corep fn2-core-pool fn2-core-ops
-                    update-fn2-core-pool update-fn2-core-ops))
-
+; Generate the rectangular read-over-write matrix once: adding a child does
+; not require hand-maintaining every old child's frame facts.
+(defun fn2-core-child-read-facts (reader children)
+  (if (endp children) nil
+    (let* ((writer (caar children))
+           (update (fn2-columns-pre "UPDATE-" writer)))
+      (cons `(defthm ,(fn2-columns-sym reader
+                       (concatenate 'string "-OF-" (symbol-name update)))
+               (equal (,reader (,update p c))
+                      ,(if (eq reader writer) 'p `(,reader c))))
+            (fn2-core-child-read-facts reader (cdr children))))))
+(defun fn2-core-child-facts (children all)
+  (if (endp children) nil
+    (let* ((field (caar children)) (type (cadar children))
+           (pred (fn2-columns-sym type "P"))
+           (update (fn2-columns-pre "UPDATE-" field)))
+      (append
+       `((defthm ,(fn2-columns-sym field "-TYPE")
+           (implies (fn2-corep fn2-core) (,pred (,field fn2-core))))
+         (defthm ,(fn2-columns-sym update "-TYPE")
+           (implies (and (fn2-corep fn2-core) (,pred p))
+                    (fn2-corep (,update p fn2-core)))))
+       (fn2-core-child-read-facts field all)
+       (fn2-core-child-facts (cdr children) all)))))
+(defmacro fn2-core-children-facts (&rest children)
+  `(progn ,@(fn2-core-child-facts children children)))
+; Expansion fixture catches wrong same-child and cross-child equations.
+(assert-event
+ (equal (fn2-core-child-read-facts 'fn2-core-pool
+          '((fn2-core-pool fn2-pool) (fn2-core-ops fn2-ops)))
+        '((defthm fn2-core-pool-of-update-fn2-core-pool
+            (equal (fn2-core-pool (update-fn2-core-pool p c)) p))
+          (defthm fn2-core-pool-of-update-fn2-core-ops
+            (equal (fn2-core-pool (update-fn2-core-ops p c))
+                   (fn2-core-pool c))))))
+(fn2-core-children-facts
+ (fn2-core-pool fn2-pool) (fn2-core-ops fn2-ops)
+ (fn2-core-sched fn2-sched) (fn2-core-machines fn2-machines)
+ (fn2-core-trace fn2-trace) (fn2-core-control fn2-control))
+(in-theory (disable fn2-corep fn2-core-pool fn2-core-ops fn2-core-sched
+                    fn2-core-machines fn2-core-trace fn2-core-control
+                    update-fn2-core-pool update-fn2-core-ops update-fn2-core-sched
+                    update-fn2-core-machines update-fn2-core-trace update-fn2-core-control))
 
 (defun fn2-core-wfp (fn2-core)
   (declare (xargs :stobjs fn2-core))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
-              (fn2-ops (fn2-core-ops fn2-core)))
-    (answer) (and (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)) answer))
+              (fn2-ops (fn2-core-ops fn2-core))
+              (fn2-sched (fn2-core-sched fn2-core))
+              (fn2-machines (fn2-core-machines fn2-core))
+              (fn2-trace (fn2-core-trace fn2-core))
+              (fn2-control (fn2-core-control fn2-core)))
+    (answer)
+    (and (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
+         (fn2-sched-wfp fn2-sched) (fn2-machines-wfp fn2-machines)
+         (fn2-trace-wfp fn2-trace) (fn2-control-wfp fn2-control)
+         (equal (fn2-control-rows fn2-control) 1))
+    answer))
 
 ; The pool has at most sixteen size classes; general profile validity alone
 ; does not impose that representation constraint.
 (defun fn2-core-profilep (profile)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable fn2-profilep)))))
   (and (fn2-profilep profile)
-       (fn2-pool-profilep (fn2-profile-pool-classes profile))))
+       (fn2-pool-profilep (fn2-profile-pool-classes profile))
+       (fn2-sched-profilep profile)
+       (fn2-machines-profilep profile)
+       (unsigned-byte-p 32 (* 4 (+ (fn2-profile-h profile)
+                                  (fn2-profile-k profile))))))
 
 (in-theory (disable fn2-pool-init fn2-pool-reserve fn2-pool-release
                     fn2-pool-lease-in fn2-pool-lease-out fn2-pool-complete-in
@@ -50,16 +95,27 @@
                     fn2-op-cell fn2-op-range fn2-op-phase))
 
 (defun fn2-core-init (profile fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
+                  :guard-hints (("Goal" :in-theory (enable fn2-profilep)))))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
-              (fn2-ops (fn2-core-ops fn2-core)))
-    (fn2-pool fn2-ops)
+              (fn2-ops (fn2-core-ops fn2-core))
+              (fn2-sched (fn2-core-sched fn2-core))
+              (fn2-machines (fn2-core-machines fn2-core))
+              (fn2-trace (fn2-core-trace fn2-core))
+              (fn2-control (fn2-core-control fn2-core)))
+    (fn2-pool fn2-ops fn2-sched fn2-machines fn2-trace fn2-control)
     (let* ((fn2-pool (fn2-pool-init
                      (fn2-profile-pool-classes profile)
                      (fn2-profile-generation-start profile)
                      (fn2-profile-generation-limit profile) fn2-pool))
-          (fn2-ops (fn2-ops-init profile fn2-ops)))
-      (mv fn2-pool fn2-ops))
+           (fn2-ops (fn2-ops-init profile fn2-ops))
+           (fn2-sched (fn2-sched-init profile fn2-sched))
+           (fn2-machines (fn2-machines-init profile fn2-machines))
+           (fn2-trace (fn2-trace-init
+                       (* 4 (+ (fn2-profile-h profile) (fn2-profile-k profile)))
+                       (fn2-profile-trace profile) fn2-trace))
+           (fn2-control (fn2-control-init profile fn2-control)))
+      (mv fn2-pool fn2-ops fn2-sched fn2-machines fn2-trace fn2-control))
     fn2-core))
 (defthm fn2-core-init-type
   (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
@@ -68,6 +124,10 @@
   (implies (fn2-core-profilep profile)
            (fn2-core-wfp (fn2-core-init profile fn2-core))))
 (in-theory (disable fn2-core-init fn2-core-profilep))
+(assert-event
+ (and (fn2-core-profilep *fn2-profile-concrete*)
+      (fn2-core-profilep *fn2-profile-tiny*)
+      (fn2-core-profilep *fn2-profile-tiny-near-limit*)))
 
 (defmacro fn2-core-shape-lemmas (name args position)
   (let ((call `(,name ,@args fn2-core)))
@@ -198,6 +258,58 @@
 (fn2-core-issue-wrapper fn2-issue-entropy (slot gen len)
   *fn2-action-entropy* 0 0 0 0 slot gen 0 len 0 0 0)
 
+ ; ArmWake owns an ordinary outbox credit but no completion cell is posted.
+; Its separate scalar payload is never overloaded onto a storage offset.
+(defun fn2-issue-arm-wake (deadline observation-gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+    (code opslot opgen fn2-ops)
+    (b* (((unless (and (unsigned-byte-p 60 deadline)
+                       (unsigned-byte-p 60 observation-gen)))
+          (mv :bounds 0 0 fn2-ops))
+         ((unless (fn2-core-outbox-ready fn2-ops))
+          (mv :state 0 0 fn2-ops))
+         ((mv code opslot opgen fn2-ops)
+          (fn2-op-reserve *fn2-action-arm-wake* 0 0 0 0 0 fn2-ops))
+         ((unless (eq code :ok)) (mv code 0 0 fn2-ops))
+         ((mv ?ignored fn2-ops)
+          (fn2-op-set-wake opslot opgen deadline observation-gen fn2-ops))
+         ((mv ?ignored fn2-ops) (fn2-op-enqueue opslot opgen fn2-ops)))
+      (mv :ok opslot opgen fn2-ops))
+    (mv code opslot opgen fn2-core)))
+(fn2-core-shape-lemmas fn2-issue-arm-wake (deadline observation-gen) 3)
+
+; Peek before harvest finishes/recycles a row, preserving its machine identity
+; for observation routing. This is bounded scalar work, not a FIFO traversal.
+(defun fn2-ops-next-owner (fn2-ops)
+  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
+  (let ((head (fn2-ops-post-head fn2-ops))
+          (count (fn2-ops-post-count fn2-ops))
+          (capacity (fn2-ops-posted-fifo-length fn2-ops)))
+      (if (or (zp count) (>= head capacity)
+              (>= capacity 1152921504606846976))
+          (mv nil 0 0 0 0)
+        (let* ((index (fn2-ops-posted-fifoi head fn2-ops))
+               (slot (floor index 2)) (cell (mod index 2)))
+          (if (and (unsigned-byte-p 1 cell) (fn2-op-slotp slot fn2-ops)
+                   (if (= cell 0)
+                       (and (= (fn2-ops-c0-posted slot fn2-ops) 1)
+                            (= (fn2-ops-c0-harvested slot fn2-ops) 0))
+                     (and (= (fn2-ops-c1-posted slot fn2-ops) 1)
+                          (= (fn2-ops-c1-harvested slot fn2-ops) 0))))
+              (mv t (fn2-ops-owner-kind slot fn2-ops)
+                  (fn2-ops-owner-slot slot fn2-ops)
+                  (fn2-ops-owner-gen slot fn2-ops)
+                  (fn2-ops-principal slot fn2-ops))
+            (mv nil 0 0 0 0))))))
+(in-theory (disable fn2-ops-next-owner))
+(defun fn2-core-next-owner (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+    (found okind oslot ogen principal)
+    (fn2-ops-next-owner fn2-ops)
+    (mv found okind oslot ogen principal)))
+
 (defun fn2-harvest-one (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
@@ -234,7 +346,8 @@
   '(fn2-core-init fn2-core-wfp fn2-core-profilep fn2-core-reserve fn2-core-release
     fn2-core-reset fn2-core-write fn2-core-read fn2-core-issue fn2-core-lease
     fn2-issue-receive fn2-issue-send fn2-issue-read fn2-issue-write
-    fn2-issue-fence fn2-issue-accept fn2-issue-close fn2-issue-cancel fn2-issue-entropy fn2-harvest-one)
+    fn2-issue-fence fn2-issue-accept fn2-issue-close fn2-issue-cancel fn2-issue-entropy fn2-issue-arm-wake
+    fn2-ops-next-owner fn2-core-next-owner fn2-harvest-one)
   (w state)))
 
 ; Test-only evidence traversals. Free rows are canonical: their only nonzero
@@ -245,9 +358,11 @@
   (if (zp n) t
     (let ((slot (- n 1)))
       (and (or (not (equal (fn2-op-phase slot fn2-ops) *fn2-op-phase-free*))
-               (equal (take 34 (cdr (fn2-ops-row-snapshot slot fn2-ops)))
-                      '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-                        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+               (and (equal (take 34 (cdr (fn2-ops-row-snapshot slot fn2-ops)))
+                           '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+                             0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+                    (equal (fn2-ops-wake-deadline slot fn2-ops) 0)
+                    (equal (fn2-ops-wake-observation-gen slot fn2-ops) 0)))
            (fn2-core-canonical-freep slot fn2-ops)))))
 (defun fn2-core-refusal-hyps (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))

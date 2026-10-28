@@ -1,0 +1,43 @@
+; Fixed executor control row. Profile values are copied only at initialization.
+(in-package "ACL2")
+(include-book "columns")
+(include-book "profile")
+
+(defcolumns fn2-control
+  ((h :u32) (k :u32) (aturn :u32)
+   (run-bytes :u32) (run-steps :u32) (run-descriptors :u32)
+   (stop :bool) (idle-deadline :u60) (wake-generation :u60)
+   (armed-deadline :u60) (now :u60) (timer-cursor :u32)
+   (turn-bytes :u60) (turn-steps :u60))
+  :init-name fn2-control-columns-init)
+
+(defun fn2-control-init (profile fn2-control)
+  (declare (xargs :stobjs fn2-control :guard (fn2-profilep profile)
+                  :guard-hints (("Goal" :in-theory (enable fn2-profilep)))))
+  (let* ((fn2-control (fn2-control-columns-init 1 fn2-control))
+         (fn2-control (fn2-control-set-h 0 (fn2-profile-h profile) fn2-control))
+         (fn2-control (fn2-control-set-k 0 (fn2-profile-k profile) fn2-control))
+         (fn2-control (fn2-control-set-aturn 0 (fn2-profile-aturn profile) fn2-control))
+         (fn2-control (fn2-control-set-run-bytes 0 (fn2-profile-run-bytes profile) fn2-control))
+         (fn2-control (fn2-control-set-run-steps 0 (fn2-profile-run-steps profile) fn2-control))
+         (fn2-control (fn2-control-set-run-descriptors 0 (fn2-profile-run-descriptors profile) fn2-control))
+         (fn2-control (fn2-control-set-stop 0 0 fn2-control))
+         (fn2-control (fn2-control-set-idle-deadline 0 1152921504606846975 fn2-control))
+         (fn2-control (fn2-control-set-wake-generation 0 0 fn2-control))
+         (fn2-control (fn2-control-set-armed-deadline 0 1152921504606846975 fn2-control))
+         (fn2-control (fn2-control-set-now 0 0 fn2-control))
+         (fn2-control (fn2-control-set-timer-cursor 0 0 fn2-control))
+         (fn2-control (fn2-control-set-turn-bytes 0 0 fn2-control))
+         (fn2-control (fn2-control-set-turn-steps 0 0 fn2-control)))
+    fn2-control))
+(defthm fn2-control-init-type
+  (implies (and (fn2-controlp fn2-control) (fn2-profilep profile))
+           (fn2-controlp (fn2-control-init profile fn2-control)))
+  :hints (("Goal" :in-theory (enable fn2-profilep))))
+(defthm fn2-control-init-wfp
+  (implies (fn2-profilep profile)
+           (fn2-control-wfp (fn2-control-init profile fn2-control))))
+(defthm fn2-control-init-rows
+  (equal (fn2-control-rows (fn2-control-init profile fn2-control)) 1))
+(in-theory (disable fn2-control-init))
+(assert-event (eq (symbol-class 'fn2-control-init (w state)) :common-lisp-compliant))

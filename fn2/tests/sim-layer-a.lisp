@@ -1,4 +1,4 @@
-; Run from repo root: nohup env FN_ACL2_SLOT_DIR=/tmp/fn2-a3-acl2-slots FN_ACL2_SLOTS=4 timeout -k 5 1800 tools/acl2 < fn2/tests/sim-layer-a-driver.lsp > build/a3-sim-layer-a.log 2>&1 & echo $! > build/a3-sim-layer-a.pid
+; Run from repo root: nohup env FN_ACL2_SLOT_DIR=/tmp/fn2-a4-acl2-slots FN_ACL2_SLOTS=6 timeout -k 5 3600 tools/acl2 < fn2/tests/sim-layer-a-a4-driver.lsp > build/a4-sim-layer-a.log 2>&1 & echo $! > build/a4-sim-layer-a.pid
 ; This is an ACL2 ld script, not a certified book. Checkers and workload
 ; traversals are test-only; the adapter and core runtime books are certified.
 (in-package "ACL2")
@@ -7,7 +7,7 @@
 (include-book "std/util/bstar" :dir :system)
 
 ; Updated from HEAD and the sorted runtime-book source manifest before acceptance.
-(defconst *fn2-scenario-revision* "HEAD=0d78dc1ed4bd87be5b7a6e9babe279e79766e730;fn2-runtime-sha256=ed6d6df659bcacc875effe7d87ca5f1bb195c438b12953ef899eb1f3bd74cf1f")
+(defconst *fn2-scenario-revision* "HEAD=e0cd1f4ddd728c044cdb11d1242d1d854f475e90;fn2-runtime-sha256=3d4fa7b0772ea8e78670222263d747705a45c5e86b56c6b63c68f9b273e1c9b1")
 
 ; Termination depends only on the explicit fuel, not the threaded states.
 (defthm fn2-test-countdown
@@ -461,3 +461,8 @@
       (progn$ (cw "POOL CONTROLS: outbox saturation, op/pool retirement, stale results, OWN=~x0~%" status)
               status))))
 (in-theory (disable fn2-scenario-controls))
+
+; A4 executes the real scheduler and machines under the same adapter. These
+; are test drivers (independent list oracles), not served runtime books.
+(ld "../sim/echo-scenario.lisp" :ld-error-action :error)
+(ld "scribe-scenario.lisp" :ld-error-action :error)

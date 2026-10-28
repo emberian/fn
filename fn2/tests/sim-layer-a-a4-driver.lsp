@@ -1,0 +1,41 @@
+(in-package "ACL2")
+(set-prover-step-limit 300000)
+(set-cbd "fn2/tests/")
+(ld "sim-layer-a.lisp" :ld-error-action :error)
+(ld "sim-fault-controls.lisp" :ld-error-action :error)
+(ld "sim-replay-controls.lisp" :ld-error-action :error)
+(set-guard-checking nil)
+; Session-only meter wraps the exact runtime function after leaving ACL2.
+; It preserves all five values and restores the raw definition on exit.
+:q
+(load "turn-meter.lsp")
+(handler-case
+    (progn
+      (assert (fn2-client-oracle-control))
+      (assert (eq (fn2-scenario-controls) :pass))
+      (assert (eq (fn2-sim-fault-controls) :pass))
+      (assert (eq (fn2-sim-recovery-controls) :pass))
+      (assert (fn2-sim-replay-control))
+      (multiple-value-bind (passes failure)
+          (fn2-sim-run-pool-scenarios 0 10000 *fn2-profile-tiny*)
+        (assert (and (= passes 10000) (null failure))))
+      (multiple-value-bind (passes failure)
+          (fn2-sim-run-pool-scenarios 0 1000 *fn2-profile-tiny-near-limit*)
+        (assert (and (= passes 1000) (null failure))))
+      (assert (eq (car (fn2-sim-run-scribe)) :pass))
+      (fn2-meter-install)
+      (unwind-protect
+          (progn
+            (fn2-meter-control)
+            (let ((result (fn2-sim-run-echo 20261028 1000 *fn2-echo-profile*)))
+              (assert (eq (car result) :pass))
+              (assert (= (second result) 1000))
+              (assert (= *fn2-meter-calls* (sixth result)))
+              (assert (= (+ (third result) (fourth result)) 1000))
+              (assert (>= (third result) 500)))
+            (fn2-meter-report "ECHO TURN CPU profile=CONCRETE-TRACE adapter-faults=BROAD"))
+        (fn2-meter-restore))
+      (sb-ext:exit :code 0))
+  (cl:error (condition)
+    (format *error-output* "ECHO MEASUREMENT FAILED: ~A~%" condition)
+    (sb-ext:exit :code 1)))

@@ -41,7 +41,9 @@
    (c1-count :u32)
    (c1-aux0 :u32)
    (c1-aux1 :u32)
-   (next-free :u32))
+   (next-free :u32)
+   (wake-deadline :u60)
+   (wake-observation-gen :u60))
   :rows-bound 4294967296
   :init-name fn2-ops-columns-init
   :extra-fields
@@ -158,7 +160,9 @@
     (c1-count 0)
     (c1-aux0 0)
     (c1-aux1 0)
-    (next-free next)))
+    (next-free next)
+    (wake-deadline 0)
+    (wake-observation-gen 0)))
 (defthm fn2-ops-clear-row-type
   (implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops) (natp slot)
                 (< slot (fn2-ops-rows fn2-ops))
@@ -311,6 +315,23 @@
                (mv :ok fn2-ops))))))
 (fn2-ops-shape-lemmas fn2-op-set-cancel-target (slot gen tslot tgen) 1)
 (in-theory (disable fn2-op-set-cancel-target))
+
+ ; ArmWake payloads are independent of the op handle's reuse generation.
+; The observation token identifies the clock view whose earliest deadline is
+; being armed. Only reserved ArmWake descriptors may receive this payload.
+(defun fn2-op-set-wake (slot gen deadline observation-gen fn2-ops)
+  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
+  (let ((code (fn2-op-phase-code slot gen *fn2-op-phase-reserved* fn2-ops)))
+    (cond ((not (eq code :ok)) (mv code fn2-ops))
+          ((not (= (fn2-ops-kind slot fn2-ops) *fn2-action-arm-wake*))
+           (mv :state fn2-ops))
+          ((not (and (unsigned-byte-p 60 deadline)
+                     (unsigned-byte-p 60 observation-gen))) (mv :bounds fn2-ops))
+          (t (let ((fn2-ops (fn2-ops-put (wake-deadline deadline)
+                                         (wake-observation-gen observation-gen))))
+               (mv :ok fn2-ops))))))
+(fn2-ops-shape-lemmas fn2-op-set-wake (slot gen deadline observation-gen) 1)
+(in-theory (disable fn2-op-set-wake))
 
 ; The caller checks phase. Both recycling paths erase old descriptor/result
 ; payloads; no posted, unharvested cell can be recycled by a valid lifecycle.
@@ -806,6 +827,12 @@
 (defun fn2-op-storage (slot fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
   (if (fn2-op-slotp slot fn2-ops) (mv (fn2-ops-storage-offset slot fn2-ops) (fn2-ops-fua slot fn2-ops)) (mv 0 0)))
+(defun fn2-op-wake (slot fn2-ops)
+  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
+  (if (fn2-op-slotp slot fn2-ops)
+      (mv (fn2-ops-wake-deadline slot fn2-ops)
+          (fn2-ops-wake-observation-gen slot fn2-ops))
+    (mv 0 0)))
 (defun fn2-op-principal (slot fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
   (if (fn2-op-slotp slot fn2-ops) (fn2-ops-principal slot fn2-ops) 0))
@@ -831,6 +858,7 @@
 (assert-event (eq (symbol-class 'fn2-op-set-range (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-set-capability (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-set-storage (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-op-set-wake (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-set-cancel-target (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-unreserve (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-enqueue (w state)) :common-lisp-compliant))
@@ -856,6 +884,7 @@
 (assert-event (eq (symbol-class 'fn2-op-range (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-capability (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-storage (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-op-wake (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-principal (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-may-release (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-op-cancel-target (w state)) :common-lisp-compliant))
@@ -921,6 +950,8 @@
     (fn2-ops-c1-aux0 slot fn2-ops)
     (fn2-ops-c1-aux1 slot fn2-ops)
     (fn2-ops-next-free slot fn2-ops)
+    (fn2-ops-wake-deadline slot fn2-ops)
+    (fn2-ops-wake-observation-gen slot fn2-ops)
   ))
 
 (defun fn2-ops-rows-snapshot (n fn2-ops)
@@ -1131,7 +1162,7 @@
 
 
 (defconst *fn2-ops-operations*
-  '(:init :reserve :set-range :set-capability :set-storage :set-cancel-target
+  '(:init :reserve :set-range :set-capability :set-storage :set-cancel-target :set-wake
     :unreserve :enqueue :ack :post-result :harvest :finish :request-cancel
     :post-clock :take-clock :post-signal :take-signal :peek))
 
@@ -1157,6 +1188,9 @@
     (:set-cancel-target (mv-let (code q)
                           (fn2-op-set-cancel-target (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) p)
                           (list code q)))
+    (:set-wake (mv-let (code q)
+                 (fn2-op-set-wake (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) p)
+                 (list code q)))
     (:unreserve (mv-let (code q) (fn2-op-unreserve (nth 0 a) (nth 1 a) p) (list code q)))
     (:enqueue (mv-let (code q) (fn2-op-enqueue (nth 0 a) (nth 1 a) p) (list code q)))
     (:ack (mv-let (code q) (fn2-outbox-ack (nth 0 a) p) (list code q)))
