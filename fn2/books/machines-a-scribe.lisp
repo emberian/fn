@@ -5,6 +5,8 @@
 (include-book "machines-a-access")
 (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system)
 
+(defmacro fn2-scribe-events ()
+ '(progn
 (defun fn2-scribe-u32-byte (word index)
   (declare (xargs :guard (and (natp word) (natp index))))
   (mod (floor word (case index (0 1) (1 256) (2 65536)
@@ -312,3 +314,5 @@
     fn2-scribe-fill-run fn2-scribe-patch-loop fn2-scribe-patch
     fn2-scribe-write fn2-scribe-fence fn2-scribe-reset fn2-scribe-read
     fn2-scribe-result fn2-scribe-verify-run fn2-scribe-next) (w state)))
+
+))

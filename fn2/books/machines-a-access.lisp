@@ -3,6 +3,8 @@
 (in-package "ACL2")
 (include-book "core")
 
+(defmacro fn2-machine-access-events ()
+ '(progn
 (make-event
  (value `(defthm fn2-machine-core-child-shapes
            (implies (fn2-core-wfp fn2-core)
@@ -53,7 +55,6 @@
 (fn2-machine-scalar-access refusals 60)
 (fn2-machine-scalar-access active-count 32)
 (fn2-machine-scalar-access gen-limit 60)
-(fn2-machine-scalar-access echo-mode 1)
 (fn2-machine-scalar-access wake-id 32)
 (fn2-machine-scalar-access pool-wait-id 32)
 (fn2-machine-scalar-access wait-head 32)
@@ -259,8 +260,29 @@
   (let ((fn2-core (fn2-machine-write-stopped id 1 fn2-core)))
     (fn2-machine-result 0 1 0 nil fn2-core)))
 (fn2-core-shape-lemmas fn2-machine-refuse-phase (id) 4)
+(in-theory (disable fn2-machines-kind-basesi))
+(defun fn2-machine-kind-base (kind fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
+    (id) (if (unsigned-byte-p 8 kind) (fn2-machines-kind-basesi kind fn2-machines) 4294967295) id))
+(defthm fn2-machine-kind-base-natp
+  (implies (fn2-corep fn2-core) (natp (fn2-machine-kind-base kind fn2-core)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use (fn2-core-machines-type
+                        (:instance fn2-machines-kind-basesi-natp
+                          (i kind) (fn2-machines (fn2-core-machines fn2-core)))))))
+(in-theory (disable fn2-machine-kind-base))
 (defun fn2-machine-scribe-id (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (stobj-let ((fn2-sched (fn2-core-sched fn2-core)))
-    (id) (fn2-sched-scribe-index fn2-sched) id))
+  (fn2-machine-kind-base *fn2-scribe-kind* fn2-core))
 (in-theory (disable fn2-machine-scribe-id))
+
+; Probe behavior belongs to each connection row, not the directory.
+(defun fn2-machine-init-modes (left base mode fn2-core)
+  (declare (xargs :stobjs fn2-core :measure (nfix left)
+                  :guard (and (fn2-core-wfp fn2-core) (natp left) (natp base))))
+  (if (zp left) fn2-core
+    (let ((fn2-core (fn2-machine-write-mode (+ base (- left 1)) mode fn2-core)))
+      (fn2-machine-init-modes (- left 1) base mode fn2-core))))
+(fn2-machine-core-shape fn2-machine-init-modes (left base mode))
+))

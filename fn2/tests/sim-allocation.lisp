@@ -16,6 +16,29 @@
 
 (in-theory (disable fn2-core-wfp fn2-sim-ready fn2-own-wfp))
 
+; These audit compositions call already framed APIs. Preserve the generator's
+; exact statements, but keep the parent invariant closed instead of expanding
+; every child's representation through five successive calls.
+(defun fn2-audit-closed-core-hint (event)
+  (if (atom event) event
+    (if (and (eq (car event) 'defthm)
+             (eq (car (caddr (caddr event))) 'fn2-core-wfp))
+        (append (take 3 event) '(:hints (("Goal" :in-theory (disable fn2-core-wfp)))))
+      (cons (fn2-audit-closed-core-hint (car event))
+            (fn2-audit-closed-core-hint (cdr event))))))
+(assert-event
+ (equal (fn2-audit-closed-core-hint
+          '(defthm sample (implies h (fn2-core-wfp result))
+             :hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+        '(defthm sample (implies h (fn2-core-wfp result))
+           :hints (("Goal" :in-theory (disable fn2-core-wfp))))))
+(defmacro fn2-sim-audit-shape (&rest args)
+  `(make-event
+    (er-let* ((event (macroexpand1 '(fn2-sim-adapter-shape ,@args)
+                                   'fn2-sim-audit-shape state)))
+      (value (fn2-audit-closed-core-hint event)))))
+
+
 (defun fn2-sim-audit-drain (expected fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
@@ -37,7 +60,7 @@
              (equal reason *fn2-reason-none*) (equal count expected)
              (eq stray-code :ok) (equal (fn2-own-error fn2-own) 0))
         fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-audit-drain (expected) 1 2 3)
+(fn2-sim-audit-shape fn2-sim-audit-drain (expected) 1 2 3)
 
 ; Close the parent observer boundary without unfolding it at every issue kind.
 (defthm fn2-audit-observe-issue-own-wfp
@@ -68,7 +91,7 @@
        ((unless (eq code :ok)) (mv nil fn2-core fn2-sim fn2-own))
        (fn2-own (fn2-own-observe-issue op fn2-core fn2-own)))
     (fn2-sim-audit-drain (if (equal kind 2) 0 1) fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-audit-op (kind slot gen) 1 2 3)
+(fn2-sim-audit-shape fn2-sim-audit-op (kind slot gen) 1 2 3)
 
 ; Reopen and refill the preallocated pipe after each death so the measured
 ; send/receive paths transfer bytes, rather than only returning Closed.
@@ -98,13 +121,13 @@
        ((mv fn2-core fn2-sim fn2-own)
         (fn2-sim-crash *fn2-profile-tiny* fn2-core fn2-sim fn2-own)))
     (mv (and a b c d e) fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-audit-cycle () 1 2 3 1)
-(fn2-sim-adapter-shape fn2-sim-audit-cycle () 1 2 3 2)
-(fn2-sim-adapter-shape fn2-sim-audit-cycle () 1 2 3 3)
-(fn2-sim-adapter-shape fn2-sim-audit-cycle () 1 2 3 4)
-(fn2-sim-adapter-shape fn2-sim-audit-cycle () 1 2 3 5)
-(fn2-sim-adapter-shape fn2-sim-audit-cycle () 1 2 3 6)
-(fn2-sim-adapter-shape fn2-sim-audit-cycle () 1 2 3 7)
+(fn2-sim-audit-shape fn2-sim-audit-cycle () 1 2 3 1)
+(fn2-sim-audit-shape fn2-sim-audit-cycle () 1 2 3 2)
+(fn2-sim-audit-shape fn2-sim-audit-cycle () 1 2 3 3)
+(fn2-sim-audit-shape fn2-sim-audit-cycle () 1 2 3 4)
+(fn2-sim-audit-shape fn2-sim-audit-cycle () 1 2 3 5)
+(fn2-sim-audit-shape fn2-sim-audit-cycle () 1 2 3 6)
+(fn2-sim-audit-shape fn2-sim-audit-cycle () 1 2 3 7)
 
 (defun fn2-sim-audit-loop (left fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
@@ -114,7 +137,7 @@
     (mv-let (ok fn2-core fn2-sim fn2-own) (fn2-sim-audit-cycle fn2-core fn2-sim fn2-own)
       (if ok (fn2-sim-audit-loop (- left 1) fn2-core fn2-sim fn2-own)
         (mv nil fn2-core fn2-sim fn2-own)))))
-(fn2-sim-adapter-shape fn2-sim-audit-loop (left) 1 2 3)
+(fn2-sim-audit-shape fn2-sim-audit-loop (left) 1 2 3)
 
 (defthm fn2-audit-crash-flight-core-car-wfp
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
@@ -136,7 +159,7 @@
             (fn2-own (fn2-own-restart fn2-own)))
         (mv fn2-core fn2-sim fn2-own))
       (fn2-sim-audit-crash-work-loop (- left 1) fn2-core fn2-sim fn2-own))))
-(fn2-sim-adapter-shape fn2-sim-audit-crash-work-loop (left) 1 2 3)
+(fn2-sim-audit-shape fn2-sim-audit-crash-work-loop (left) 1 2 3)
 
 (defun fn2-sim-audit-init-loop (left fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :measure (nfix left)
@@ -146,7 +169,7 @@
     (mv-let (fn2-core fn2-sim fn2-own)
       (let ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))) (mv fn2-core fn2-sim fn2-own))
       (fn2-sim-audit-init-loop (- left 1) fn2-core fn2-sim fn2-own))))
-(fn2-sim-adapter-shape fn2-sim-audit-init-loop (left) 1 2 3)
+(fn2-sim-audit-shape fn2-sim-audit-init-loop (left) 1 2 3)
 
 (defun fn2-sim-audit-death-loop (left fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :measure (nfix left)
@@ -156,7 +179,7 @@
     (mv-let (fn2-core fn2-sim fn2-own)
       (fn2-sim-crash *fn2-profile-tiny* fn2-core fn2-sim fn2-own)
       (fn2-sim-audit-death-loop (- left 1) fn2-core fn2-sim fn2-own))))
-(fn2-sim-adapter-shape fn2-sim-audit-death-loop (left) 1 2 3)
+(fn2-sim-audit-shape fn2-sim-audit-death-loop (left) 1 2 3)
 
 ; Reuse the reserved buffer by resetting its fill before each five-operation
 ; cycle; read and receive each append one byte. Reopen/refill the pipe too.
@@ -173,13 +196,13 @@
        ((mv d fn2-core fn2-sim fn2-own) (fn2-sim-audit-op 3 slot gen fn2-core fn2-sim fn2-own))
        ((mv e fn2-core fn2-sim fn2-own) (fn2-sim-audit-op 4 slot gen fn2-core fn2-sim fn2-own)))
     (mv (and a b c d e) fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 1)
-(fn2-sim-adapter-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 2)
-(fn2-sim-adapter-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 3)
-(fn2-sim-adapter-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 4)
-(fn2-sim-adapter-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 5)
-(fn2-sim-adapter-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 6)
-(fn2-sim-adapter-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 7)
+(fn2-sim-audit-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 1)
+(fn2-sim-audit-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 2)
+(fn2-sim-audit-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 3)
+(fn2-sim-audit-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 4)
+(fn2-sim-audit-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 5)
+(fn2-sim-audit-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 6)
+(fn2-sim-audit-shape fn2-sim-audit-live-cycle (slot gen) 1 2 3 7)
 
 (defun fn2-sim-audit-live-loop (left slot gen fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :measure (nfix left)
@@ -190,11 +213,18 @@
       (fn2-sim-audit-live-cycle slot gen fn2-core fn2-sim fn2-own)
       (if ok (fn2-sim-audit-live-loop (- left 1) slot gen fn2-core fn2-sim fn2-own)
         (mv nil fn2-core fn2-sim fn2-own)))))
-(fn2-sim-adapter-shape fn2-sim-audit-live-loop (left slot gen) 1 2 3)
+(fn2-sim-audit-shape fn2-sim-audit-live-loop (left slot gen) 1 2 3)
+
+; Prove creation once, keeping the large nested constant out of the audit's
+; composition guard. The runtime and the 300000-step budget are unchanged.
+(defthm fn2-audit-create-core-type
+  (fn2-corep (create-fn2-core))
+  :hints (("Goal" :in-theory (enable fn2-corep create-fn2-core))))
+(in-theory (disable create-fn2-core))
 
 (defun fn2-sim-allocation-audit ()
   (declare (xargs :guard t
-                  :guard-hints (("Goal" :in-theory (enable fn2-corep fn2-simp fn2-ownp)))))
+                  :guard-hints (("Goal" :in-theory (enable fn2-simp fn2-ownp)))))
   (with-local-stobj fn2-core
     (mv-let (ok fn2-core)
       (with-local-stobj fn2-sim

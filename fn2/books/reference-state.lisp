@@ -1,9 +1,11 @@
 ; Test/reference access generated from the column declarations. No served caller.
 (in-package "ACL2")
-(include-book "executor")
+(include-book "core")
 
  ; Array traversal termination depends only on fuel, not the wide stobj
 ; recognizers. Keep the prover out of their generated column definitions.
+(defmacro fn2-reference-state-events ()
+ '(progn
 (local (defthm fn2-ref-countdown
          (implies (not (zp left)) (o< (nfix (- left 1)) (nfix left)))
          :rule-classes nil))
@@ -96,7 +98,7 @@
 (local (deftheory fn2-ref-base-theory (current-theory :here)))
 (local (in-theory nil))
 (make-event
- (value (cons 'progn (fn2-ref-state-events (append '(fn2-pool fn2-ops fn2-machines fn2-control) (fn2-machine-names (w state)))
+ (value (cons 'progn (fn2-ref-state-events (fn2-core-child-types (fn2-core-child-registry (w state)))
                        (table-alist 'fn2-columns (w state))))))
 (local (in-theory (theory 'fn2-ref-base-theory)))
 
@@ -106,11 +108,10 @@
           (fn2-ref-core-fields (cdr children)))))
 (make-event (value `(defstobj fn2-ref-core ,@(fn2-ref-core-fields *fn2-core-children*)
                      :congruent-to fn2-core)))
-(defun fn2-ref-children (children)
-  (if (atom children) nil
-    (if (member-eq (cadar children) '(fn2-sched fn2-trace))
-        (fn2-ref-children (cdr children))
-      (cons (car children) (fn2-ref-children (cdr children))))))
+(make-event
+ (value `(defconst *fn2-core-reference-children*
+           ',(fn2-core-registered-pairs
+               (fn2-core-reference-entries (fn2-core-child-registry (w state)))))))
 (defun fn2-ref-child-bindings (children refp)
   (if (atom children) nil
     (cons (if refp
@@ -131,7 +132,7 @@
             (fn2-ref-child-diffs (cdr children))))))
 
 (make-event
- (let* ((children (fn2-ref-children *fn2-core-children*))
+ (let* ((children *fn2-core-children*)
         (bindings (fn2-ref-child-bindings children t)) (refs (strip-cars bindings)))
    (value `(defun fn2-ref-copy-core (fn2-core fn2-ref-core)
              (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
@@ -198,7 +199,7 @@
 ; descriptor kind, OpRef, owner and range, reservations, phases and fills.
 ; Trace diagnostics and the reference's unused intrusive scheduler are absent.
 (make-event
- (let ((children (fn2-ref-children *fn2-core-children*)))
+ (let ((children *fn2-core-reference-children*))
    (value `(defun fn2-ref-core-difference (fn2-core fn2-ref-core)
              (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
              (stobj-let ,(fn2-ref-child-bindings children nil) (difference)
@@ -207,3 +208,5 @@
                      (fn2-ref-live-bytes-difference (fn2-pool-rows fn2-pool)
                        fn2-pool fn2-pool-ref fn2-ops)) difference) difference)))))
 (in-theory (disable fn2-ref-core-difference))
+
+))

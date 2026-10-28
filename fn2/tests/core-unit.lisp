@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../books/core")
+(include-book "../books/assembly")
 (include-book "pool-unit")
 
 (defun fn2-core-test-snapshot (fn2-core)

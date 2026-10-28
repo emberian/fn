@@ -276,7 +276,8 @@
 
 (defun fn2-echo-initial-queues (profile)
   (declare (xargs :verify-guards nil))
-  (list (cons 0 (append (fn2-echo-initial-ids (fn2-profile-accept-credits profile) 0)
+  (list (cons 0 (append (fn2-echo-initial-ids (fn2-profile-accept-credits profile)
+                          (fn2-machine-global-id *fn2-listener-kind* 0 profile))
                         (list (fn2-machine-global-id *fn2-scribe-kind* 0 profile))))))
 (in-theory (disable fn2-echo-initial-queues))
 

@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../books/machines-a-run")
+(include-book "../books/assembly")
 
 ; Focused lifetime fixtures, independent of the random simulator world.
 (defun fn2-machine-test-post (ack cell op opgen event count aux fn2-core)
@@ -33,6 +33,8 @@
 (defun fn2-machine-test-short-send (release-already-posted-p fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+       (fn2-core (fn2-machine-init-modes (fn2-machine-connection-count fn2-core)
+                   (fn2-machine-kind-base *fn2-echo-kind* fn2-core) 1 fn2-core))
        ((mv & fn2-core) (fn2-machine-observe 0 0 1 *fn2-event-accept-result*
                          *fn2-outcome-done* 0 0 4 9 fn2-core))
        ((mv & & actions & fn2-core) (fn2-machine-run 0 4 fn2-core))
@@ -106,7 +108,8 @@
 (defun fn2-machine-test-null (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
-       (fn2-core (fn2-machine-set-echo-mode 0 fn2-core))
+       (fn2-core (fn2-machine-init-modes (fn2-machine-connection-count fn2-core)
+                   (fn2-machine-kind-base *fn2-echo-kind* fn2-core) 0 fn2-core))
        ((mv & & actions & fn2-core) (fn2-machine-run 0 4 fn2-core))
        ((unless (equal actions 1)) (mv :null-accept fn2-core))
        (fn2-core (fn2-machine-test-post 1 0 0 1 *fn2-event-accept-result* 0 4 fn2-core))

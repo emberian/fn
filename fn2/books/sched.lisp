@@ -1,7 +1,8 @@
 ; A4 scheduler: one global machine index, intrusive principal FIFOs, fixed calendar.
 (in-package "ACL2")
 (include-book "columns")
-(include-book "machines-a")
+(include-book "machines")
+(include-book "profile")
 (include-book "owed")
 
 (defconst *fn2-sched-none* 4294967295)
@@ -14,25 +15,19 @@
   ((fn2-sched-heads :type (array (unsigned-byte 32) (0)) :initially 4294967295 :resizable t)
    (fn2-sched-tails :type (array (unsigned-byte 32) (0)) :initially 4294967295 :resizable t)
    (fn2-sched-counts :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t)
-   (fn2-sched-weights :type (array (unsigned-byte 16) (0)) :initially 1 :resizable t)
    (fn2-sched-calendar :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t)
    (fn2-sched-services :type (array (unsigned-byte 1) (4)) :initially 0)
    (fn2-sched-nprincipals :type (unsigned-byte 32) :initially 0)
    (fn2-sched-cursor :type (unsigned-byte 32) :initially 0)
-   (fn2-sched-queued :type (unsigned-byte 32) :initially 0)
-   (fn2-sched-connection-base :type (unsigned-byte 32) :initially 0)
-   (fn2-sched-scribe-index :type (unsigned-byte 32) :initially 0)))
+   (fn2-sched-queued :type (unsigned-byte 32) :initially 0)))
 
 ; Init accepts precisely the declared calendar geometry.  Each group has up
 ; to sixteen principal slots and all four protected services, in that order.
 (defun fn2-sched-profilep (profile)
   (declare (xargs :guard t))
-  (let ((p (fn2-profile-p profile)) (a (fn2-profile-accept-credits profile))
-        (l (fn2-profile-calendar-length profile)))
-    (and (fn2-profilep profile) (posp p) (<= p 65536)
-         (natp a) (natp l) (unsigned-byte-p 32 l)
-         (and (fn2-machines-profilep profile) (unsigned-byte-p 32 (fn2-machine-index-count profile)))
-         (equal l (+ p (* 4 (ceiling p 16)))))))
+  (and (fn2-profilep profile)
+       (posp (fn2-profile-p profile)) (<= (fn2-profile-p profile) 65536)
+       (unsigned-byte-p 32 (fn2-profile-calendar-length profile))))
 
 (defun fn2-sched-calendar-code (position principals)
   (declare (xargs :guard (and (natp position) (natp principals))))
@@ -51,8 +46,7 @@
        (< principal 65536)
        (< principal (fn2-sched-heads-length fn2-sched))
        (< principal (fn2-sched-tails-length fn2-sched))
-       (< principal (fn2-sched-counts-length fn2-sched))
-       (< principal (fn2-sched-weights-length fn2-sched))))
+       (< principal (fn2-sched-counts-length fn2-sched))))
 
 (defun fn2-sched-clear-machines (i fn2-sched)
   (declare (xargs :stobjs fn2-sched :guard (and (natp i) (fn2-sched-wfp fn2-sched))
@@ -77,8 +71,7 @@
   (if (not (fn2-sched-principalp i fn2-sched)) fn2-sched
     (let* ((fn2-sched (update-fn2-sched-headsi i *fn2-sched-none* fn2-sched))
            (fn2-sched (update-fn2-sched-tailsi i *fn2-sched-none* fn2-sched))
-           (fn2-sched (update-fn2-sched-countsi i 0 fn2-sched))
-           (fn2-sched (update-fn2-sched-weightsi i 1 fn2-sched)))
+           (fn2-sched (update-fn2-sched-countsi i 0 fn2-sched)))
       (fn2-sched-clear-principals (+ 1 i) fn2-sched))))
 (defthm fn2-sched-clear-principals-wfp
   (implies (fn2-sched-wfp fn2-sched)
@@ -104,19 +97,16 @@
            (fn2-schedp (fn2-sched-fill-calendar i fn2-sched))))
 (in-theory (disable fn2-sched-fill-calendar))
 
-(defun fn2-sched-init (profile fn2-sched)
-  (declare (xargs :stobjs fn2-sched :guard (fn2-sched-profilep profile)))
+(defun fn2-sched-init (profile n fn2-sched)
+  (declare (xargs :stobjs fn2-sched :guard (and (fn2-sched-profilep profile) (unsigned-byte-p 32 n))))
   (let* ((p (fn2-profile-p profile))
          (l (fn2-profile-calendar-length profile))
-         (fn2-sched (fn2-sched-columns-init (fn2-machine-index-count profile) fn2-sched))
+         (fn2-sched (fn2-sched-columns-init n fn2-sched))
          (fn2-sched (resize-fn2-sched-heads p fn2-sched))
          (fn2-sched (resize-fn2-sched-tails p fn2-sched))
          (fn2-sched (resize-fn2-sched-counts p fn2-sched))
-         (fn2-sched (resize-fn2-sched-weights p fn2-sched))
          (fn2-sched (resize-fn2-sched-calendar l fn2-sched))
          (fn2-sched (update-fn2-sched-nprincipals p fn2-sched))
-         (fn2-sched (update-fn2-sched-connection-base (fn2-machine-global-id *fn2-echo-kind* 0 profile) fn2-sched))
-         (fn2-sched (update-fn2-sched-scribe-index (fn2-machine-global-id *fn2-scribe-kind* 0 profile) fn2-sched))
          (fn2-sched (update-fn2-sched-cursor 0 fn2-sched))
          (fn2-sched (update-fn2-sched-queued 0 fn2-sched))
          (fn2-sched (update-fn2-sched-servicesi 0 0 fn2-sched))
@@ -127,11 +117,11 @@
          (fn2-sched (fn2-sched-clear-principals 0 fn2-sched)))
     (fn2-sched-fill-calendar 0 fn2-sched)))
 (defthm fn2-sched-init-wfp
-  (implies (fn2-sched-profilep profile)
-           (fn2-sched-wfp (fn2-sched-init profile fn2-sched))))
+  (implies (and (fn2-sched-profilep profile) (unsigned-byte-p 32 n))
+           (fn2-sched-wfp (fn2-sched-init profile n fn2-sched))))
 (defthm fn2-sched-init-type
-  (implies (and (fn2-schedp fn2-sched) (fn2-sched-profilep profile))
-           (fn2-schedp (fn2-sched-init profile fn2-sched))))
+  (implies (and (fn2-schedp fn2-sched) (fn2-sched-profilep profile) (unsigned-byte-p 32 n))
+           (fn2-schedp (fn2-sched-init profile n fn2-sched))))
 (in-theory (disable fn2-sched-init fn2-sched-profilep fn2-sched-calendar-code))
 
 (defun fn2-sched-make-runnable (machine principal fn2-sched)

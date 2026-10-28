@@ -147,7 +147,7 @@ bound (`2^60-1` means no requested deadline). `:more` preserves runnable work,
 `:idle` permits adapter progress, and `:stop` records a sticky stop.
 
 `sched.lisp` stores one intrusive link per global machine index, principal
-FIFO heads/tails/counts/weight-one entries, four service flags, the calendar,
+FIFO heads/tails/counts, four service flags, the calendar,
 and its cursor. The concrete calendar is exactly four groups of sixteen
 principals followed by commit, timer/grant, wake and maintenance (80 entries);
 tiny has four principals then those services (eight entries). Tail insertion
@@ -173,15 +173,62 @@ event takes the named refusal. Per-kind phase-write macros reject another kind's
 constants. Global field setters guard both the declared width and the presence
 of that field in the target kind. Unknown kinds cannot pass the charge guard.
 
-The core owns the pool, outstanding operations, scheduler, machine columns,
-trace ring and one control row. Harvest captures the outstanding owner before
-finishing its operation row, returns input ownership, then changes machine
-state and wakes its continuation. Posted results retain FIFO order; the clock
-mailbox follows the posted FIFO, then sticky signals. One calendar visit
-selects one bounded continuation; new machines enter before the selected
-machine's own tail requeue. Resource waits are separate from runnable links;
-operation/output-credit waits have a FIFO, and the sole pool-waiting scribe
-has a reserved wait reference. Adapter-only waits do not keep `:more` asserted.
+`books/assembly.lisp` is the sole served core instance. `defcorechild FIELD
+STOBJ :init FORM :profilep FORM :why "reason"` in `core-children.lisp` records
+an ordered `fn2-core-children` world-table entry. `:init` returns the child
+stobj, with `profile` and that stobj as its only free runtime inputs;
+`:profilep` is a guard-verified predicate form over `profile`. The conjunction
+of all those predicates and `fn2-profilep` must suffice to verify every init
+call and establish each child's `-wfp`. Sizes come from the profile. The
+registration requires a nonempty reason and rejects duplicate fields or stobjs.
+Layer A registers pool, ops, sched, machines, trace, control through the same
+declaration (`:order :foundation`), in that order. Generated machine-child
+registrations follow (`:order :machine`), then other registrations in declaration
+order (`:order :extension`, the default). No hand-maintained child list remains.
+
+The registry generates `fn2-core`, its `wfp`, `init`, `profilep`, rectangular
+read-over-write facts, `fn2-machine-core-child-shapes`, and the congruent
+`fn2-ref-core` with every child's clone and copy. Reference difference includes
+every state child. Only an explicit `:reference :environment` with `:why` opts a
+child out: scheduler has an independent list relation, and trace is diagnostic
+output checked separately. Pool byte comparison retains its live-byte domain.
+B registers its existing `defcolumns` tables in a registration book that includes
+`core-children`, then adds that book to assembly's registration includes before
+`fn2-machine-index-events`. For example, extents can use
+`(defcorechild fn2-core-extents fn2-extents :init (fn2-extents-init-for profile
+fn2-extents) :profilep (fn2-extents-profilep profile) :why "Persistent allocator
+state across commit yields.")`; B owns those profile/init adapters and replaces assembly's A-only profile
+smoke assertions with the node profiles when it requires new keys.
+
+`machines-all.lisp` includes A's kind declarations; assembly includes B's
+`machines-b.lisp`, and later D's kind and child books, after it. That ordered
+include list determines kind tags and global-ID ranges. Index generation runs
+only after all registrations. Other layers' continuation event macros run after
+the core/access events and before `fn2-machine-dispatch-events`. Its run,
+charge and observe arms, including `fn2-machine-refuse-phase`, receive the same
+`fn2-core`; D continuations borrow D's registered children with `stobj-let`,
+without extra stobj arguments or per-call allocation.
+
+Pool, vocab, sched, machines, machines-a and machines-directory are library
+books. Core, machine access, scribe/run, dispatch and reference-state provide
+instance event macros; including them creates no core instance. Assembly expands
+those macros once. Executor-access/executor and reference include assembly
+(the reference through executor); simulator consumers follow those instance
+books. Adding a D registration changes assembly and its consumers, without
+recertifying the A library books. `tests/core-child-assembly.lisp` certifies a
+separate test instance using the same events, since a certified assembly's
+expansion is closed. Its external test registration never reaches the served
+assembly.
+
+The scheduler accepts the assembled row count, stores no connection/scribe IDs
+or unused weights, and derives calendar length as `p + 4*ceiling(p/16)`. Runtime
+probe IDs come from the directory's generated kind-base map. Echo/discard mode
+lives in connection rows initialized by `fn2-init-executor`, not the directory;
+they share the connection free list. Harvest captures the outstanding owner
+before finishing its operation row, returns input ownership, then changes
+machine state and wakes its continuation. Posted results retain FIFO order;
+the clock mailbox follows, then sticky signals. One calendar visit selects one
+bounded continuation. Resource waits remain separate from runnable links.
 
 Echo reserves its RX slot when accepting a connection, receives into that
 slot, and sends the received range itself. A short send issues the remaining

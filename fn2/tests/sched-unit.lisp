@@ -1,10 +1,10 @@
 (in-package "ACL2")
-(include-book "../books/sched")
+(include-book "../books/assembly")
 (include-book "std/util/bstar" :dir :system)
 
 (defun fn2-sched-test-fifo-run (fn2-sched)
   (declare (xargs :stobjs fn2-sched :verify-guards nil))
-  (b* ((fn2-sched (fn2-sched-init *fn2-profile-tiny* fn2-sched))
+  (b* ((fn2-sched (fn2-sched-init *fn2-profile-tiny* (fn2-machine-index-count *fn2-profile-tiny*) fn2-sched))
        ((mv c0 fn2-sched) (fn2-sched-make-runnable 2 0 fn2-sched))
        ((mv c1 fn2-sched) (fn2-sched-make-runnable 3 0 fn2-sched))
        ((mv c2 fn2-sched) (fn2-sched-make-runnable 4 0 fn2-sched))
@@ -47,7 +47,7 @@
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-sched
     (mv-let (result fn2-sched)
-      (let ((fn2-sched (fn2-sched-init profile fn2-sched)))
+      (let ((fn2-sched (fn2-sched-init profile (fn2-machine-index-count profile) fn2-sched)))
         (fn2-sched-test-calendar-run n fn2-sched)) result)))
 (assert-event
  (equal (fn2-sched-test-calendar *fn2-profile-tiny* 9)
@@ -87,13 +87,13 @@
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-sched
     (mv-let (result fn2-sched)
-      (let ((fn2-sched (fn2-sched-init *fn2-profile-concrete* fn2-sched)))
+      (let ((fn2-sched (fn2-sched-init *fn2-profile-concrete* (fn2-machine-index-count *fn2-profile-concrete*) fn2-sched)))
         (fn2-sched-test-starvation-principals 0 fn2-sched)) result)))
 (assert-event (fn2-sched-test-starvation))
 
 (defun fn2-sched-test-starvation-negative-run (fn2-sched)
   (declare (xargs :stobjs fn2-sched :verify-guards nil))
-  (b* ((fn2-sched (fn2-sched-init *fn2-profile-tiny* fn2-sched))
+  (b* ((fn2-sched (fn2-sched-init *fn2-profile-tiny* (fn2-machine-index-count *fn2-profile-tiny*) fn2-sched))
        ((mv code fn2-sched) (fn2-sched-make-runnable 0 0 fn2-sched))
        (fn2-sched (update-fn2-sched-calendari 0 1 fn2-sched))
        (hyp (fn2-sched-starvation-hyps 0 fn2-sched))
