@@ -112,7 +112,7 @@ def expected_bytes(module: str, cap: str, root: Path = ROOT) -> int:
     return min(memory_bytes(cap), max(PEAK_FLOOR_BYTES, int(PEAK_FACTOR * peak * 1024 ** 2)))
 
 
-def memory_jobs(lines, budget="88G", maximum=8, root: Path = ROOT):
+def memory_jobs(lines, budget="88G", maximum=3, root: Path = ROOT):
     """A module concurrency bound whose worst-case summed memory fits BUDGET:
     each module counts as `expected_bytes` (its cap until it has a measured
     peak)."""
@@ -564,14 +564,15 @@ def main(argv: list[str] | None = None) -> int:
                         help="add native module memory sizes to a stdin environment plan")
     parser.add_argument("--memory-jobs", action="store_true",
                         help="print a concurrency bound for a --memory-plan on stdin: "
-                             "at most 8 jobs and 88G of summed MemoryMax")
+                             "at most --max-jobs (default 3) and 88G of summed expected memory")
+    parser.add_argument("--max-jobs", type=int, default=3, help="bound for --memory-jobs")
     parser.add_argument("--memory-override", default=None,
                         help="explicit MemoryMax override for --memory-plan")
     parser.add_argument("--cases", default="", help=argparse.SUPPRESS)
     arguments = parser.parse_args(argv)
     if arguments.memory_jobs:
         try:
-            print(memory_jobs(sys.stdin))
+            print(memory_jobs(sys.stdin, maximum=arguments.max_jobs))
         except (OSError, ValueError, IndexError) as error:
             parser.error(str(error))
         return 0

@@ -65,7 +65,8 @@ class NativeMemoryTests(unittest.TestCase):
             self.assertEqual(test_budget.expected_bytes("tests.test_small", "2G", root),
                              2 * 1024 ** 3)
             lines = ["tests.test_small 24G 0 ", "tests.test_large 24G 0 "]
-            self.assertEqual(test_budget.memory_jobs(lines, root=root), 8)
+            self.assertEqual(test_budget.memory_jobs(lines, root=root), 3)
+            self.assertEqual(test_budget.memory_jobs(lines, maximum=8, root=root), 8)
             self.assertEqual(test_budget.memory_jobs(lines + ["tests.test_none 24G 0 "],
                                                      root=root), 3)
 

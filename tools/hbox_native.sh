@@ -122,7 +122,7 @@
 # keeps the toolchain's.  Default /tank/fn/toolchains/w28/acl2-literal-4g-tls64k,
 # the w28 launcher at --tls-limit 65536; use the toolchain's own path for 16384),
 # --jobs N|auto (modules run N at a time against the one image set, default 1;
-# auto takes at most 8 and keeps the sum of their MemoryMax limits within 88G
+# auto takes at most 3 (auto8: at most 8, from measured peaks) and keeps the sum of their MemoryMax limits within 88G
 # (a module counts as 8x its measured peak, tests/native_peaks.json, at least 4G, in
 # that bound; its own MemoryMax scope stays 24G, which the node reads to decide its heap):
 # each is its own process, its own MemoryMax scope and its own ports; a
@@ -537,7 +537,7 @@ while [ $# -gt 0 ]; do
         --mem) MEM=$2; shift 2 ;;
         --allow-certify) ALLOW_CERTIFY=--allow-certify; shift ;;
         --jobs)
-            case $2 in auto) ;; ''|*[!0-9]*|0) echo "hbox_native: --jobs takes auto or a positive integer" >&2; exit 2 ;; esac
+            case $2 in auto|auto8) ;; ''|*[!0-9]*|0) echo "hbox_native: --jobs takes auto or a positive integer" >&2; exit 2 ;; esac
             MODULE_JOBS=$2; shift 2 ;;
         --certify-jobs) JOBS=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
@@ -685,8 +685,9 @@ if [ -n "$MEM" ]; then
 else
     PLAN=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-plan) || exit 2
 fi
-if [ "$MODULE_JOBS" = auto ]; then
-    MODULE_JOBS=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-jobs) || exit 2
+if [ "$MODULE_JOBS" = auto ] || [ "$MODULE_JOBS" = auto8 ]; then
+    MAXJ=3; [ "$MODULE_JOBS" = auto8 ] && MAXJ=8
+    MODULE_JOBS=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-jobs --max-jobs $MAXJ) || exit 2
 fi
 if [ "$REV" = . ]; then
     # The image's declared source: HEAD, marked +dirty for uncommitted edits.
