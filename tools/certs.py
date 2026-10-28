@@ -1371,6 +1371,154 @@ def date_after_source(cert: Path) -> None:
         return
 
 
+# The run-scoped resolution plan (FN_RESOLUTION_PLAN, one file per run tree,
+# tools/hbox_native.sh).  A gate resolves the same ~1,300-book closure three
+# times in three processes (install-partial, acquire, acquire-dtn): each used
+# to list every origin directory of every closure key, take an entry lock,
+# read meta.json and stat the payload per candidate (2026-10-27: 10 + 5 + 4
+# minutes at the last green gate, 38 at load 12).  The plan keeps, per closure
+# key, the origin directories found, each one's metadata and whether its
+# payload matched that metadata, under the stat identities of the key
+# directory and of the entry's meta.json, cert, port and fasl.  A later
+# process (or lookup) trusts a record only while those identities are
+# unchanged: a new origin changes the key directory's identity, a republished
+# or damaged file changes its own, and either redoes just that key or entry.
+# The plan is a hint about what to look at, never an authority about bytes:
+# every selected entry is read again under its entry lock by `install_entry`.
+RESOLUTION_PLAN_ENV = "FN_RESOLUTION_PLAN"
+_PLAN: dict = {"loaded": False, "keys": {}, "dirty": set()}
+
+
+def _plan_file() -> Path | None:
+    value = os.environ.get(RESOLUTION_PLAN_ENV)
+    return Path(value) if value else None
+
+
+def _stat_identity(path: Path) -> list | None:
+    try:
+        status = os.stat(path)
+    except OSError:
+        return None
+    return [status.st_dev, status.st_ino, status.st_size, status.st_mtime_ns,
+            status.st_ctime_ns]
+
+
+def _entry_identity(directory: Path) -> list:
+    return [_stat_identity(directory / name)
+            for name in ("meta.json", "book.cert", "book.port", "book.fasl")]
+
+
+def _load_plan() -> dict:
+    if not _PLAN["loaded"]:
+        _PLAN["loaded"] = True
+        where = _plan_file()
+        if where is not None:
+            try:
+                stored = json.loads(where.read_text(encoding="utf-8"))
+                if isinstance(stored, dict):
+                    _PLAN["keys"] = stored
+            except (OSError, ValueError):
+                pass
+    return _PLAN["keys"]
+
+
+def flush_resolution_plan() -> None:
+    """Merge this process's records into FN_RESOLUTION_PLAN (locked, atomic
+    replace).  Registered at exit; harmless to call more than once."""
+    where, dirty = _plan_file(), _PLAN["dirty"]
+    if where is None or not dirty:
+        return
+    try:
+        where.parent.mkdir(parents=True, exist_ok=True)
+        with open(str(where) + ".lock", "a+b") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                merged = json.loads(where.read_text(encoding="utf-8"))
+                if not isinstance(merged, dict):
+                    merged = {}
+            except (OSError, ValueError):
+                merged = {}
+            for name in dirty:
+                merged[name] = _PLAN["keys"][name]
+            temporary = where.with_name(where.name + f".{os.getpid()}.tmp")
+            temporary.write_text(json.dumps(merged, sort_keys=True), encoding="utf-8")
+            os.replace(temporary, where)
+        dirty.clear()
+    except (OSError, KeyError):
+        pass
+
+
+atexit.register(flush_resolution_plan)
+
+
+def _planned_entries(cache: Path, key: str,
+                     metadata_filter: Callable[[dict], bool] | None
+                     ) -> list[tuple[Path, dict]]:
+    base = cache / key
+    plans = _load_plan()
+    name = f"{cache}\0{key}"
+    record = plans.get(name)
+    identity = _stat_identity(base)
+    known = record.get("entries", {}) if isinstance(record, dict) else {}
+    if isinstance(record, dict) and record.get("base") == identity:
+        names = sorted(known)
+        phase_add("plan-key-hit", 0.0)
+    else:
+        names = sorted(child.name for child in base.iterdir() if child.is_dir())
+        phase_add("plan-key-miss", 0.0)
+    entries: dict[str, dict] = {}
+    found: list[tuple[Path, dict]] = []
+    changed = not (isinstance(record, dict) and record.get("base") == identity
+                   and set(names) == set(known))
+    for entry_name in names:
+        directory = base / entry_name
+        stamp = _entry_identity(directory)
+        planned = known.get(entry_name)
+        if not (isinstance(planned, dict) and planned.get("stat") == stamp):
+            planned = {"stat": stamp, "meta": None, "valid": None}
+            changed = True
+        entries[entry_name] = planned
+        if planned["meta"] is None:
+            with entry_lock(directory, exclusive=False):
+                planned["meta"] = read_meta(directory)
+            changed = True
+            phase_add("plan-entry-read", 0.0)
+        meta = planned["meta"]
+        if metadata_filter is not None and not metadata_filter(meta):
+            continue
+        if planned["valid"] is None:
+            with entry_lock(directory, exclusive=False):
+                planned["valid"] = entry_matches_meta(directory, meta)
+            changed = True
+            phase_add("plan-entry-check", 0.0)
+        if planned["valid"]:
+            found.append((directory, meta))
+    if changed:
+        plans[name] = {"base": identity, "entries": entries}
+        _PLAN["dirty"].add(name)
+    return found
+
+
+def resolve_plan(root: Path, cache: Path, roots: Iterable[str],
+                 toolchain_identity: str) -> int:
+    """Fill the resolution plan for the union closure of ROOTS (what
+    install-partial, acquire and acquire-dtn will all ask about); the books
+    whose entries it holds are returned."""
+    target = str(root.resolve())
+
+    def eligible(meta: dict) -> bool:
+        return (usable_origin(meta, target)
+                and meta.get("toolchain_identity") == toolchain_identity)
+
+    with closure_scope():
+        required = required_closure(root, tuple(roots))
+        held = sum(1 for name in sorted(required)
+                   if book_entries(root, cache, name, eligible))
+    flush_resolution_plan()
+    phase_report("resolve")
+    return held
+
+
 def cached_entries(cache: Path, key: str,
                    metadata_filter: Callable[[dict], bool] | None = None
                    ) -> list[tuple[Path, dict]]:
@@ -1389,6 +1537,8 @@ def cached_entries(cache: Path, key: str,
     base = cache / key
     if not base.is_dir():
         return []
+    if _plan_file() is not None:
+        return _planned_entries(cache, key, metadata_filter)
     found = []
     for directory in sorted(base.iterdir()):
         if not directory.is_dir():
@@ -3041,7 +3191,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("action", choices=("publish", "install", "install-set",
                                            "install-partial", "install-umbrellas", "status", "prune",
-                                           "compact-pair-facts",
+                                           "compact-pair-facts", "resolve",
                                            "rekey"))
     parser.add_argument("books", nargs="*", default=None,
                         help="repository-relative book names without .lisp "
@@ -3162,6 +3312,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  index {facts['index_bytes_before']} bytes"
               + (f" -> {facts['index_bytes_after']} bytes (rebuilt)" if facts["applied"]
                  else " (rebuilt from the kept log on --apply)"))
+        return 0
+    elif arguments.action == "resolve":
+        if not names or not arguments.toolchain_identity:
+            parser.error("resolve needs root books and --toolchain-identity")
+        held = resolve_plan(root, cache, names, arguments.toolchain_identity)
+        print(f"resolve: {held} books of the roots' union closure have a usable "
+              f"entry; plan {_plan_file() or 'not kept (FN_RESOLUTION_PLAN unset)'}")
         return 0
     elif arguments.action == "rekey":
         report = rekey(root, cache, names)

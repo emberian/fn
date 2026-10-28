@@ -2371,6 +2371,104 @@ class InstallOncePerRunTests(unittest.TestCase):
             self.assertGreater(self.calls, calls)
 
 
+class ResolutionPlanTests(unittest.TestCase):
+    """FN_RESOLUTION_PLAN: a later process lists a cache key from the plan, by
+    stat; a new origin, a damaged file or a newly eligible entry is looked at."""
+
+    def fresh_process(self):
+        certs._PLAN.update(loaded=False, keys={}, dirty=set())
+
+    def setUp(self):
+        self.fresh_process()
+        self.addCleanup(self.fresh_process)
+
+    def fixture(self, base: Path):
+        source = worktree(str(base / "source"), certified=["books/base", "books/mid"])
+        manifest_for(source, ["books/base", "books/mid"])
+        cache = base / "cache"
+        certs.publish(source, cache, origin="/farm/plan-a")
+        key = certs.closure_key(source, "books/base")[0]
+        return source, cache, key
+
+    def reads_of_metadata(self, call):
+        reads = []
+        real = certs.read_meta
+
+        def counting(directory):
+            reads.append(directory)
+            return real(directory)
+
+        with mock.patch.object(certs, "read_meta", counting):
+            found = call()
+        return found, reads
+
+    def test_a_later_process_reads_no_metadata_and_a_new_origin_is_found(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            source, cache, key = self.fixture(base)
+            plan = base / "plan.json"
+            with mock.patch.dict(os.environ, {"FN_RESOLUTION_PLAN": str(plan)}):
+                first, reads = self.reads_of_metadata(
+                    lambda: certs.cached_entries(cache, key))
+                self.assertEqual(len(first), 1)
+                self.assertEqual(len(reads), 1)
+                certs.flush_resolution_plan()
+                self.fresh_process()
+                again, reads = self.reads_of_metadata(
+                    lambda: certs.cached_entries(cache, key))
+                self.assertEqual(again, first)
+                self.assertEqual(reads, [])
+                certs.publish(source, cache, origin="/farm/plan-b")
+                grown, reads = self.reads_of_metadata(
+                    lambda: certs.cached_entries(cache, key))
+                self.assertEqual(len(grown), 2)
+                self.assertEqual(len(reads), 1)  # only the new origin
+
+    def test_a_damaged_payload_leaves_the_plan_even_when_size_and_mtime_stay(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            source, cache, key = self.fixture(base)
+            with mock.patch.dict(os.environ, {
+                    "FN_RESOLUTION_PLAN": str(base / "plan.json")}):
+                (entry,) = [d for d, _ in certs.cached_entries(cache, key)]
+                certs.flush_resolution_plan()
+                self.fresh_process()
+                path = entry / "book.cert"
+                before = path.stat()
+                data = path.read_bytes()
+                path.write_bytes(bytes([data[0] ^ 1]) + data[1:])
+                os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+                self.assertEqual(certs.cached_entries(cache, key), [])
+
+    def test_a_filtered_entry_is_checked_only_when_a_later_filter_wants_it(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            source, cache, key = self.fixture(base)
+            with mock.patch.dict(os.environ, {
+                    "FN_RESOLUTION_PLAN": str(base / "plan.json")}):
+                checked = []
+                real = certs.entry_matches_meta
+                with mock.patch.object(certs, "entry_matches_meta",
+                                       lambda d, m: checked.append(d) or real(d, m)):
+                    self.assertEqual(certs.cached_entries(cache, key, lambda m: False), [])
+                    self.assertEqual(checked, [])
+                    self.assertEqual(len(certs.cached_entries(cache, key)), 1)
+                    self.assertEqual(len(checked), 1)
+                    self.assertEqual(len(certs.cached_entries(cache, key)), 1)
+                    self.assertEqual(len(checked), 1)
+
+    def test_without_the_variable_every_lookup_reads_the_entry(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            source, cache, key = self.fixture(base)
+            env = {k: v for k, v in os.environ.items() if k != "FN_RESOLUTION_PLAN"}
+            with mock.patch.dict(os.environ, env, clear=True):
+                for _ in range(2):
+                    _, reads = self.reads_of_metadata(
+                        lambda: certs.cached_entries(cache, key))
+                    self.assertEqual(len(reads), 1)
+
+
 class PersistedContentHashTests(unittest.TestCase):
     """FN_CONTENT_HASH_FILE: a digest one process computed is a stat, not a
     read, in the next; a changed file is read again; no variable, no file."""

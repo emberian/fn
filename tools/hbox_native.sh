@@ -829,6 +829,10 @@ export FN_INSTALL_RUN=\$S-\$\$
 # (the key is the file's inode, size, mtime and ctime, so a rewritten file is
 # read again).  A fresh run tree no longer re-reads ~20,000 cache files.
 export FN_CONTENT_HASH_FILE=\$CACHE/.content-hashes.json
+# One resolution plan per run tree (tools/certs.py _planned_entries): the
+# install, acquire and acquire-dtn steps read the cache entries the resolve step
+# below listed once for the union closure, redoing only what changed since.
+export FN_RESOLUTION_PLAN=\$T/build/.resolution-plan.json
 # The book reader's per-text cache (tools/ledger.py), shared by this box's
 # runs: content-addressed, so a fresh tree reads only what changed.
 export FN_LEDGER_FORMS_CACHE=\${FN_LEDGER_FORMS_CACHE:-$BASE/.ledger-forms}
@@ -1018,6 +1022,8 @@ fi
 BOX
         fi
         cat <<BOX
+# The union closure of the default and DTN roots, listed once (roots.txt).
+step resolve python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" resolve \$(cat \$L/roots.txt)
 if [ \$ACQUIRED_DEFAULT -eq 0 ]; then
     step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 fi
