@@ -1,7 +1,7 @@
 ; Machine declarations extend columns; all lists below are expansion-time data.
 ; Continuation calls are finite tags, never function-valued resident fields.
 (in-package "ACL2")
-(include-book "columns")
+(include-book "vocab")
 
 (defconst *fn2-machine-common-fields*
   '((generation :u60) (principal-slot :u16) (account-ref :u32)
@@ -77,7 +77,73 @@
 ; A declaration emits a dispatch MACRO because its run functions are defined
 ; after the containing core. The macro is expanded there, then guard-verified
 ; as ordinary ACL2 code. No forward declarations or hidden executable twins.
-(defun fn2-machine-events (name states fields accounts budget continuations capacity initial)
+(defun fn2-machine-checked-bindings (id fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (cons `(fn2-core (,(fn2-columns-col-name 'fn2-machine
+                        (fn2-columns-pre "WRITE-" (caar fields)))
+                      ,id ,(cadar fields) fn2-core))
+          (fn2-machine-checked-bindings id (cdr fields)))))
+
+(defun fn2-machine-phase-formp (form constants)
+  (declare (xargs :verify-guards nil))
+  (or (member-eq form constants)
+      (and (true-listp form) (equal (len form) 4) (eq (car form) 'if)
+           (fn2-machine-phase-formp (caddr form) constants)
+           (fn2-machine-phase-formp (cadddr form) constants))))
+(defun fn2-machine-write-formp (name columns states fields)
+  (declare (xargs :verify-guards nil))
+  (let ((constants (strip-cars (strip-cdrs (fn2-columns-enum-constants
+                                 (fn2-columns-sym name "-STATE") states 0)))))
+    (and (doublet-listp fields) (no-duplicatesp-eq (strip-cars fields))
+         (subsetp-eq (strip-cars fields) (strip-cars columns))
+         (or (not (assoc-eq 'phase fields))
+             (fn2-machine-phase-formp (cadr (assoc-eq 'phase fields)) constants)))))
+(defun fn2-machine-core-put-expansion (name columns states id fields corep)
+  (declare (xargs :verify-guards nil))
+  (if (fn2-machine-write-formp name columns states fields)
+      (if corep
+          `(if (equal (fn2-machine-kind ,id fn2-core)
+                      ,(fn2-columns-pre "*" (fn2-columns-sym name "-KIND*")))
+               (let* ,(fn2-machine-checked-bindings id fields) fn2-core)
+             (fn2-machine-refuse-write fn2-core))
+        `(let* ,(fn2-machine-put-bindings name name id fields) ,name))
+    (er hard 'defmachine "Invalid field list or cross-kind phase in ~x0 write: ~x1." name fields)))
+
+(defun fn2-machine-continuationsp (entries observationp)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) (null entries)
+    (and (true-listp (car entries)) (equal (len (car entries)) 2)
+         (keywordp (caar entries)) (consp (cadar entries))
+         (or (not observationp) (fn2-event-keyword->code (caar entries)))
+         (fn2-machine-continuationsp (cdr entries) observationp))))
+(defun fn2-machine-observe-event-arms (observes predicatep)
+  (declare (xargs :verify-guards nil))
+  (if (atom observes) nil
+    (let ((tag (fn2-event-keyword->code (caar observes))))
+      (if (not tag) (er hard 'defmachine "Unknown observation event ~x0." (caar observes))
+        (cons (list tag (if predicatep t (cadar observes)))
+              (fn2-machine-observe-event-arms (cdr observes) predicatep))))))
+(defun fn2-machine-observe-dispatch-expansion (name observes event)
+  (declare (xargs :verify-guards nil))
+  (let* ((arms (fn2-machine-observe-event-arms observes nil))
+         (constants (strip-cars (strip-cdrs
+                       (fn2-columns-enum-constants 'fn2-event (strip-cars observes) 0)))))
+    (if (or (and (integerp event) (not (assoc-equal event arms)))
+            (and (symbolp event) (< 0 (length (symbol-name event)))
+                 (eql (char (symbol-name event) 0) #\*) (not (member-eq event constants))))
+        (er hard 'defmachine "Unrouted observation ~x0 for ~x1." event name)
+      `(case ,event ,@arms (otherwise (fn2-machine-refuse-observation fn2-core))))))
+(defun fn2-machine-observe-kind-arms (names tag predicatep router)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (cons `(,tag ,(if predicatep
+                     `(,(fn2-columns-sym (car names) "-OBSERVES-P") phase event)
+                   `(,(fn2-columns-col-name router (car names))
+                     id event outcome reason count aux0 aux1 fn2-core)))
+          (fn2-machine-observe-kind-arms (cdr names) (+ 1 (nfix tag)) predicatep router))))
+
+(defun fn2-machine-events (name states fields accounts budget continuations observes capacity initial)
   (declare (xargs :verify-guards nil))
   (let* ((enum (fn2-columns-sym name "-STATE"))
          (cols (append `((phase (:enum ,enum ,states))) *fn2-machine-common-fields* fields))
@@ -89,7 +155,9 @@
     `(progn
        (defcolumns ,name ,cols)
        (defmacro ,put (slot &rest fields)
-         (cons 'let* (list (fn2-machine-put-bindings ',name ',name slot fields) ',name)))
+         (fn2-machine-core-put-expansion ',name ',cols ',states slot fields nil))
+       (defmacro ,(fn2-columns-sym name "-PUT-CORE") (id &rest fields)
+         (fn2-machine-core-put-expansion ',name ',cols ',states id fields t))
        (defconst ,(fn2-columns-pre "*" (fn2-columns-sym name "-BUDGET*")) ',budget)
        ; Scalar multiple values are the runtime budget record: no consing.
        ; A call's guard establishes all three simultaneous bounds.
@@ -103,26 +171,38 @@
                ,@(pairlis$ (make-list (len states) :initial-element 'quote)
                             (pairlis$ (fn2-machine-state-arms states continuations 0) nil))
                '(otherwise (fn2-machine-refuse-phase id fn2-core))))
+       (defun ,(fn2-columns-sym name "-OBSERVES-P") (phase event)
+         (declare (xargs :guard t) ,@(if (or (member-eq :free states) (member-eq :retired states)) nil '((ignore phase))))
+         (and ,(if (member-eq :free states) `(not (equal phase ,(position-eq :free states))) t)
+              ,(if (member-eq :retired states) `(not (equal phase ,(position-eq :retired states))) t)
+              (case event ,@(fn2-machine-observe-event-arms observes t) (otherwise nil))))
+       (defmacro ,(fn2-columns-sym name "-OBSERVE-DISPATCH") (event)
+         (fn2-machine-observe-dispatch-expansion ',name ',observes event))
        ,@(fn2-machine-prepare-events name cols initial)
        (table fn2-machine-kinds ',name
               '(:states ,states :columns ,cols :accounts ,accounts :budget ,budget
-                :continuations ,continuations :capacity ,capacity :initial ,initial
+                :continuations ,continuations :observes ,observes :capacity ,capacity :initial ,initial
                 :layout ,cols :packed ,(fn2-machine-packed-layout cols 0)
                 :obligations (initialization preservation frame output-correspondence
                               budget-progress flat-representation flat-transition))))))
 
-(defmacro defmachine (name &key states fields accounts budget continuations (capacity '1) initial)
+(defmacro defmachine (name &key states fields accounts budget continuations observes (capacity '1) initial)
   (if (and (symbolp name) name (consp states)
            (fn2-columns-keyword-listp states) (no-duplicatesp-eq states)
            (<= (len states) 256) (fn2-columns-declarationsp fields)
            (no-duplicatesp-eq (append '(phase) (strip-cars *fn2-machine-common-fields*)
                                       (strip-cars fields)))
-           (true-listp accounts) (true-listp continuations)
+           (true-listp accounts) (fn2-machine-continuationsp continuations nil)
+           (fn2-machine-continuationsp observes t) (no-duplicatesp-eq (strip-cars observes))
+           (fn2-machine-write-formp name
+             (append `((phase (:enum state ,states))) *fn2-machine-common-fields* fields)
+             states initial)
+           (fn2-columns-keyword-listp (strip-cars observes))
            (equal (strip-cars continuations) states)
            (natp (cadr (member-eq :bytes budget)))
            (natp (cadr (member-eq :steps budget)))
            (natp (cadr (member-eq :descriptors budget))) capacity)
-      (fn2-machine-events name states fields accounts budget continuations capacity initial)
+      (fn2-machine-events name states fields accounts budget continuations observes capacity initial)
     (er hard 'defmachine "Invalid machine declaration ~x0." name)))
 
 ; Table order is declaration order, independent of TABLE-ALIST's newest first.
@@ -138,6 +218,46 @@
   (if (atom names) nil
     (cons `(nfix ,(fn2-machine-property (car names) :capacity world))
           (fn2-machine-capacities (cdr names) world))))
+(defun fn2-machine-observe-handlers (router names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (let ((handler (fn2-columns-col-name router (car names))))
+      (append
+       `((defun ,handler (id event outcome reason count aux0 aux1 fn2-core)
+           (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))
+                    (ignorable id event outcome reason count aux0 aux1))
+           (case event
+             ,@(fn2-machine-observe-event-arms (fn2-machine-property (car names) :observes world) nil)
+             (otherwise (fn2-machine-refuse-observation fn2-core))))
+         (fn2-core-shape-lemmas ,handler (id event outcome reason count aux0 aux1) 1))
+       (fn2-machine-observe-handlers router (cdr names) world)))))
+(defun fn2-machine-observe-events (router names world)
+  (declare (xargs :verify-guards nil))
+  (let ((accepts (fn2-columns-sym router "-ACCEPTS-P")))
+    (append (fn2-machine-observe-handlers router names world)
+     `((defun ,accepts (kind phase event)
+         (declare (xargs :guard t))
+         (case kind ,@(fn2-machine-observe-kind-arms names 0 t router) (otherwise nil)))
+       (defun ,router (okind id gen event outcome reason count aux0 aux1 fn2-core)
+         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+         (if (not (and (fn2-machine-idp id fn2-core)
+                       (equal gen (fn2-machine-generation id fn2-core))
+                       (equal okind (fn2-machine-kind id fn2-core))
+                       (,accepts okind (fn2-machine-phase id fn2-core) event)))
+             (fn2-machine-refuse-observation fn2-core)
+           (mv-let (wake fn2-core)
+             (case okind ,@(fn2-machine-observe-kind-arms names 0 nil router)
+               (otherwise (fn2-machine-refuse-observation fn2-core)))
+             ; Consume every completion before generic bookkeeping. A handler
+             ; may accumulate many in-flight results without an event cell.
+             (let ((fn2-core (if (equal event *fn2-event-borrow-released*) fn2-core
+                               (fn2-machine-observe-terminal id fn2-core))))
+               (mv (if (or (equal (fn2-machine-wait-reason id fn2-core) 2)
+                           (equal (fn2-machine-wait-reason id fn2-core) 3)
+                           (equal (fn2-machine-stopped id fn2-core) 1)) 4294967295 wake)
+                   fn2-core)))))
+       (fn2-core-shape-lemmas ,router (okind id gen event outcome reason count aux0 aux1) 1)))))
+
 (defun fn2-machine-index-arms (names capacities base tag inverse)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
@@ -223,11 +343,21 @@
     (append (and (assoc-eq field (fn2-machine-property (car names) :columns world))
                  (list (fn2-columns-col-name (car names) field)))
             (fn2-machine-field-readers field (cdr names) world))))
+(defun fn2-machine-field-kinds (field names world tag)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (append (and (assoc-eq field (fn2-machine-property (car names) :columns world))
+                 (list tag))
+            (fn2-machine-field-kinds field (cdr names) world (+ 1 (nfix tag))))))
 (defun fn2-machine-field-events (field kind names world)
   (declare (xargs :verify-guards nil))
   (let* ((get (fn2-columns-col-name 'fn2-machine field))
          (put (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "SET-" field)))
-         (width (fn2-columns-width kind)))
+         (write (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "WRITE-" field)))
+         (width (fn2-columns-width kind))
+         (supported (fn2-machine-field-kinds field names world 0))
+         (valid `(and (unsigned-byte-p ,width value)
+                      (member-equal (fn2-machine-kind id fn2-core) ',supported))))
     `((in-theory (disable ,@(fn2-machine-field-readers field names world)))
       (defun ,get (id fn2-core)
         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -241,8 +371,8 @@
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                  (< (,get id fn2-core) ,(expt 2 width))) :rule-classes :linear)
       (defun ,put (id value fn2-core)
-        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-        (if (not (unsigned-byte-p ,width value)) fn2-core
+        (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) ,valid)))
+        (if (not ,valid) fn2-core
           (let ((slot (if (fn2-machine-idp id fn2-core) (fn2-machine-slot id fn2-core) 4294967295)))
             (case (fn2-machine-kind id fn2-core)
               ,@(fn2-machine-field-cases field names world 0 t) (otherwise fn2-core)))))
@@ -252,7 +382,17 @@
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                  (fn2-core-wfp (,put id value fn2-core)))
         :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-      (in-theory (disable ,get ,put)))))
+      (in-theory (disable ,get ,put))
+      (defun ,write (id value fn2-core)
+        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+        (if ,valid (,put id value fn2-core) (fn2-machine-refuse-write fn2-core)))
+      (defthm ,(fn2-columns-sym write "-TYPE")
+        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                 (fn2-corep (,write id value fn2-core))))
+      (defthm ,(fn2-columns-sym write "-WFP")
+        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                 (fn2-core-wfp (,write id value fn2-core))))
+      (in-theory (disable ,write)))))
 (defun fn2-machine-fields-events (fields cols names world)
   (declare (xargs :verify-guards nil))
   (if (atom fields) nil
@@ -266,11 +406,11 @@
       (append (fn2-machine-fields-events new cols all world)
               (fn2-machine-all-field-events (cdr names) all world (append new seen))))))
 (defmacro fn2-machine-put (id &rest fields)
-  `(let* ,(fn2-machine-put-bindings 'fn2-machine 'fn2-core id fields) fn2-core))
+  (if (assoc-eq 'phase fields)
+      (er hard 'defmachine "Phase writes require the kind's PUT-CORE macro.")
+    `(let* ,(fn2-machine-checked-bindings id fields) fn2-core)))
 (defmacro fn2-machine-result (bytes steps descriptors runnable core)
-  `(mv-let (used-bytes used-steps used-descriptors)
-     (fn2-machine-charge (fn2-machine-kind id ,core) ,bytes ,steps ,descriptors)
-     (mv used-bytes used-steps used-descriptors ,runnable ,core)))
+  `(fn2-machine-finish id ,bytes ,steps ,descriptors ,runnable ,core))
 
 (defmacro fn2-machines-shape (name args)
   `(progn

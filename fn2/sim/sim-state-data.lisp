@@ -16,12 +16,18 @@
   ((active :u8) (gen :u60) (kind :u8) (due :u60) (range-slot :u32) (range-gen :u60) (range-off :u32) (range-len :u32) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (cap-index :u32) (cap-nonce :u32) (storage-offset :u60) (fua :bool) (may-release :bool) (cancel-slot :u32) (cancel-gen :u60) (last-gen :u60) (cancelled :bool) (terminal-outcome :u8) (terminal-reason :u8) (terminal-count :u32) (terminal-aux0 :u32) (terminal-aux1 :u32))
   :init-name fn2-sim-columns-init
   :extra-fields
-  ((fn2-sim-net :type fn2-sim-network)
-   (fn2-sim-disk :type fn2-sim-storage)
-   (fn2-sim-profile :type t :initially nil)
-   (fn2-sim-profile-name :type t :initially nil)
-   (fn2-sim-revision :type t :initially nil)
-   (fn2-sim-initial-seed :type t :initially 0)
+  ((fn2-sim-net :type fn2-sim-network
+    :why "Simulator-only nested network stobj; its own defcolumns schema bounds resident fields.")
+   (fn2-sim-disk :type fn2-sim-storage
+    :why "Simulator-only nested storage stobj; its own defcolumns schema bounds resident fields.")
+   (fn2-sim-profile :type t :initially nil
+    :why "Simulator-only immutable initialization profile retained for replay.")
+   (fn2-sim-profile-name :type t :initially nil
+    :why "Simulator-only diagnostic profile label retained for replay.")
+   (fn2-sim-revision :type t :initially nil
+    :why "Simulator-only diagnostic source revision retained for replay.")
+   (fn2-sim-initial-seed :type t :initially 0
+    :why "Simulator-only original seed retained for replay; runtime PRNG uses bounded u32 state.")
    (fn2-sim-seed :type (unsigned-byte 32) :initially 0)
    (fn2-sim-s0 :type (unsigned-byte 32) :initially 0)
    (fn2-sim-s1 :type (unsigned-byte 32) :initially 0)

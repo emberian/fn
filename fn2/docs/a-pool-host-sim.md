@@ -14,7 +14,7 @@ that is not recorded here is a defect.
 | records/columns DSL seed | `fn2/books/columns.lisp` | ACL2 book (macro) |
 | byte pool | `fn2/books/pool.lisp` | ACL2 book, guard-verified |
 | events, actions, outstanding table, outbox | `fn2/books/vocab.lisp` | ACL2 book, guard-verified |
-| scheduler, executor loop, echo/null/scribe machines | `fn2/books/executor.lisp` (+ `fn2/books/machines-a.lisp`) | ACL2 book, guard-verified |
+| scheduler, executor loop, listener/connection/scribe machines | `fn2/books/executor.lisp` (+ `fn2/books/machines-a.lisp`) | ACL2 book, guard-verified |
 | simulator: SimNetwork, SimStorage, SimClock, PRNG, faults, recovery stub | `fn2/sim/*.lisp` | ACL2 books, guard-verified |
 | checkers: OWN (independent), TRACE and WORK (see the caveat in §6); ACCOUNT owed in A6; framework names all eleven | `fn2/sim/check*.lisp` | ACL2 books |
 | Linux adapter (and the darwin development backend) | `fn2/host/*.lisp` | raw SBCL, loaded by a session script behind one trust tag |
@@ -30,16 +30,27 @@ Package: `"ACL2"`, every name prefixed `fn2-`. No `defpkg`, no trust tag, no `sk
 `defaxiom`, no `:program` in any book; the host's trust tag lives in the session script that loads
 `fn2/host/`, never in a book.
 
-## 2. Widths (decision A-WIDTHS)
-ROUND2 §B.1 writes process-local generations as `u64`. On SBCL a `u64` is not a fixnum and every
-read of one may cons a bignum. fn2 holds in-memory generations and counters as `(unsigned-byte 60)`
-(`:u60` in the column DSL): fixnums, sums of two still fixnums, and an explicit exhaustion rule
-instead of a width argument: a slot or row whose generation would pass the profile's
-`generation-limit` (at most `2^60 - 1`) is **retired**, never reused, never wrapped (§B.1 "No counter
-wraps into a previously valid identity"; "Process-local slots may be retired"). The profile sets
-the limit and the starting generation, so the simulator starts generations near the limit
-(scenario 19). Persistent `u64` encodings (layer B on) are a separate on-disk type and are written
-as two fixnum halves or a checked byte encoding, never as a resident bignum.
+## 2. Column widths (decision A-WIDTH-PER-COLUMN)
+fn2 has **no fixed word**: width is a per-column property of the DSL. Native
+`defcolumns` kinds include `:u64`, stored in `(unsigned-byte 64)` stobj arrays.
+Arithmetic above `2^62` allocates in SBCL, so hot counters default to `:u60`;
+a `:u64` column on a served path must record a `:why` explaining its width.
+The DSL requires this for every `:u64` declaration and records it under
+`:column-reasons` in the column registry.
+Widths beyond 64 bits use a `(hi, lo)` column pair or a pool range. Pair comparison
+and increment-with-carry operate on the columns without constructing one wider
+resident integer. `defwide-columns` declares `hi` and `lo`, with `:u60` limbs
+by default (120 bits), or justified `:u64` limbs (128 bits). Its `-COMPARE`
+returns `:lt`, `:eq` or `:gt`; `-INCREMENT` returns `:ok` or `:exhausted`,
+leaving an exhausted pair unchanged. Planet-scale identity is content hashes in the pool and
+`(history incarnation, local sequence)` per STORAGE-DESIGN, never one wider counter.
+An **incarnation column belongs beside any counter that could wrap**. The pair
+`(incarnation, counter)` is the identity; a counter at its limit retires and the
+incarnation advances, never wrapping into a previous identity. Incarnation
+exhaustion retires the namespace rather than reusing it. This extends the pool's
+existing generation-retirement discipline: a slot at the profile's generation
+limit retires. The current pool uses `:u60` generations and does not yet advance
+an incarnation; that is an implementation choice, not a fixed-word ruling.
 
 ## 3. The byte pool (contract item 1; rule 6)
 - **Carving.** At init the profile names size classes `((count . bytes) ...)`; the pool resizes its
@@ -141,14 +152,26 @@ and its cursor. The concrete calendar is exactly four groups of sixteen
 principals followed by commit, timer/grant, wake and maintenance (80 entries);
 tiny has four principals then those services (eight entries). Tail insertion
 is idempotent. All A4 connections use anonymous principal zero. Listener rows
-occupy `[0, accept-credits)`, followed by `C` echo rows, `C` null rows, and
-one scribe row. These disjoint global ID ranges and their inverse are generated
-from the `defmachine` declarations; echo and null share a `C`-connection
-admission count. Each kind has its own nested table. A4 implements the declared per-run caps 4,096 bytes, 32
+occupy `[0, accept-credits)`, followed by `C` connection rows and one scribe row.
+The `fn2-echo` connection declaration has a per-row mode bit for echo or discard;
+both modes share one free list and one admission count. These disjoint global ID
+ranges and their inverse are generated from the `defmachine` declarations.
+Each kind has its own nested table. A4 implements the declared per-run caps 4,096 bytes, 32
 structural steps and four descriptors. Every continuation returns through a
 guard-checked charge against those declared simultaneous caps. The machine
 initializer requires those execution-quanta profile values. Resident capacities
 remain profile parameters.
+
+`defmachine` owns both phase dispatch and `:observes` event routing. Each kind's
+handler receives `(id event outcome reason count aux0 aux1 fn2-core)` and returns
+`(mv wake fn2-core)`. The router validates the row's kind, generation and non-free
+state before invoking the handler, then performs generic pending accounting.
+Handlers see every completion before the pending decrement and own any event-cell
+store; a handler may accumulate several completions before its machine runs.
+Scribe retains its single event cell by storing in its own handler. An unrouted
+event takes the named refusal. Per-kind phase-write macros reject another kind's
+constants. Global field setters guard both the declared width and the presence
+of that field in the target kind. Unknown kinds cannot pass the charge guard.
 
 The core owns the pool, outstanding operations, scheduler, machine columns,
 trace ring and one control row. Harvest captures the outstanding owner before
@@ -306,7 +329,7 @@ no-reuse-while-borrowed, conservation; outstanding-table result reservation; tur
 the refinement obligation of EXECUTION-MODEL §4 over `fn2-turn` and `fn2-ref-turn`.
 
 ## 9. Departures and open items
-- `u60` in-memory generations instead of `u64` (§2).
+- Current pool generations use `:u60`; widths are chosen per column (§2).
 - A send carries one range in layer A (ROUND2 D.3 allows four); the descriptor reserves the field
   width for four.
 - A2 boundary details: the tiny calendar has 8 entries; row conservation includes retired rows; a release harvested before its terminal leaves the op submitted; ArmWake/Trace/ServicePosture finish at acknowledgment because they have no result event; clock bits 0/1 mean realtime-valid/negative and bits 2/3 record backward/malformed input, with a retained monotonic high-water and separate saturating rejected count.

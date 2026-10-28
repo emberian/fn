@@ -107,12 +107,12 @@
  (implies (and (fn2-simp fn2-sim) (integerp word))
   (natp (nth (mod word 26) (nth *fn2-sim-probabilitiesi* fn2-sim))))
  :rule-classes :type-prescription
- :hints (("Goal" :use ((:instance fn2-sim-probabilities-raw-nth-natp (i (mod word 26)))))))
+ :hints (("Goal" :use ((:instance fn2-sim-probabilitiesi-natp (i (mod word 26)))))))
 (defthm fn2-sim-hits-word-type
  (implies (and (fn2-simp fn2-sim) (integerp word))
   (natp (nth (mod word 26) (nth *fn2-sim-hitsi* fn2-sim))))
  :rule-classes :type-prescription
- :hints (("Goal" :use ((:instance fn2-sim-hits-raw-nth-natp (i (mod word 26)))))))
+ :hints (("Goal" :use ((:instance fn2-sim-hitsi-natp (i (mod word 26)))))))
 (defun fn2-sim-choose-fault (fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)
                   :guard-hints (("Goal" :use ((:instance fn2-sim-random-state-type)

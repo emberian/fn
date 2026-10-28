@@ -75,7 +75,7 @@
     ; Starting an already active or stopped probe must never erase a lease
     ; or permit a write/fence retry. Only init makes the row inactive again.
     (if (equal (fn2-machine-phase id fn2-core) *fn2-scribe-state-free*)
-        (let ((fn2-core (fn2-machine-put id
+        (let ((fn2-core (fn2-scribe-put-core id
                           (phase *fn2-scribe-state-reserve*) (sequence 1) (cursor 0)
                           (checksum 2166136261) (completed 0) (verified 0)
                           (stopped 0) (event-ready 0))))
@@ -91,7 +91,7 @@
 
 (defun fn2-scribe-stop (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let ((fn2-core (fn2-machine-put id
+  (let ((fn2-core (fn2-scribe-put-core id
                     (phase *fn2-scribe-state-stopped*) (stopped 1) (event-ready 0))))
     (fn2-machine-result 0 4 0 nil fn2-core)))
 (fn2-core-shape-lemmas fn2-scribe-stop (id) 4)
@@ -120,7 +120,7 @@
   (let ((owner-gen (fn2-machine-generation id fn2-core))
         (class (fn2-scribe-window-class fn2-core)))
     (if (null class)
-        (let ((fn2-core (fn2-machine-put id (phase *fn2-scribe-state-stopped*) (stopped 1))))
+        (let ((fn2-core (fn2-scribe-put-core id (phase *fn2-scribe-state-stopped*) (stopped 1))))
           (fn2-machine-result 0 20 0 nil fn2-core))
       (mv-let (code slot gen fn2-core)
         (fn2-core-reserve class *fn2-scribe-kind* id owner-gen fn2-core)
@@ -132,7 +132,7 @@
                 (fn2-scribe-stop id fn2-core)
                 (declare (ignore bytes steps descriptors))
                 (fn2-machine-result 0 24 0 runnable fn2-core)))
-          (let ((fn2-core (fn2-machine-put id
+          (let ((fn2-core (fn2-scribe-put-core id
                             (pool-slot slot) (pool-gen gen) (cursor 0)
                             (checksum 2166136261) (phase *fn2-scribe-state-fill*))))
             (fn2-machine-result 0 24 0 t fn2-core)))))))
@@ -147,7 +147,7 @@
       (fn2-machine-pool-slot id fn2-core)
       (fn2-machine-pool-gen id fn2-core) id
       (fn2-machine-generation id fn2-core) fn2-core)
-    (let ((fn2-core (fn2-machine-put id
+    (let ((fn2-core (fn2-scribe-put-core id
                       (cursor cursor) (checksum hash)
                       (phase (if (eq code :ok) (if (equal cursor 4096) *fn2-scribe-state-patch* *fn2-scribe-state-fill*) *fn2-scribe-state-stopped*))
                       (stopped (if (eq code :ok) 0 1)))))
@@ -175,7 +175,7 @@
       (fn2-machine-pool-slot id fn2-core)
       (fn2-machine-pool-gen id fn2-core) id
       (fn2-machine-generation id fn2-core) fn2-core)
-    (let ((fn2-core (fn2-machine-put id
+    (let ((fn2-core (fn2-scribe-put-core id
                       (phase (if (eq code :ok) *fn2-scribe-state-write* *fn2-scribe-state-stopped*))
                       (stopped (if (eq code :ok) 0 1)))))
       (fn2-machine-result 4 12 0 (eq code :ok) fn2-core))))
@@ -191,7 +191,7 @@
       (fn2-machine-principal-slot id fn2-core) fn2-core)
     (declare (ignore opslot opgen))
     (if (not (eq code :ok)) (fn2-scribe-refused code id fn2-core)
-      (let ((fn2-core (fn2-machine-put id
+      (let ((fn2-core (fn2-scribe-put-core id
                         (phase *fn2-scribe-state-write-result*) (pending 1) (event-ready 0))))
         (fn2-machine-result 4096 12 1 nil fn2-core)))))
 (fn2-core-shape-lemmas fn2-scribe-write (id) 4)
@@ -203,7 +203,7 @@
       (fn2-machine-principal-slot id fn2-core) fn2-core)
     (declare (ignore opslot opgen))
     (if (not (eq code :ok)) (fn2-scribe-refused code id fn2-core)
-      (let ((fn2-core (fn2-machine-put id
+      (let ((fn2-core (fn2-scribe-put-core id
                         (phase *fn2-scribe-state-fence-result*) (pending 1) (event-ready 0))))
         (fn2-machine-result 0 12 1 nil fn2-core)))))
 (fn2-core-shape-lemmas fn2-scribe-fence (id) 4)
@@ -214,7 +214,7 @@
     (fn2-core-reset (fn2-machine-pool-slot id fn2-core)
       (fn2-machine-pool-gen id fn2-core) *fn2-scribe-kind* id
       (fn2-machine-generation id fn2-core) fn2-core)
-    (let ((fn2-core (fn2-machine-put id
+    (let ((fn2-core (fn2-scribe-put-core id
                       (cursor 0) (phase (if (eq code :ok) *fn2-scribe-state-read* *fn2-scribe-state-stopped*))
                       (stopped (if (eq code :ok) 0 1)))))
       (fn2-machine-result 0 8 0 (eq code :ok) fn2-core))))
@@ -233,7 +233,7 @@
           (fn2-machine-principal-slot id fn2-core) fn2-core)
         (declare (ignore opslot opgen))
         (if (not (eq code :ok)) (fn2-scribe-refused code id fn2-core)
-          (let ((fn2-core (fn2-machine-put id
+          (let ((fn2-core (fn2-scribe-put-core id
                             (phase *fn2-scribe-state-read-result*) (pending 1) (event-ready 0))))
             (fn2-machine-result (- 4096 cursor) 12 1 nil fn2-core)))))))
 (fn2-core-shape-lemmas fn2-scribe-read (id) 4)
@@ -253,15 +253,15 @@
                       (equal (fn2-machine-outcome id fn2-core) *fn2-outcome-short*))))
        (fn2-scribe-stop id fn2-core))
       ((and (equal phase *fn2-scribe-state-write-result*) (equal event *fn2-event-write-result*) (equal count 4096))
-       (let ((fn2-core (fn2-machine-put id (phase *fn2-scribe-state-fence*) (event-ready 0))))
+       (let ((fn2-core (fn2-scribe-put-core id (phase *fn2-scribe-state-fence*) (event-ready 0))))
          (fn2-machine-result 0 6 0 t fn2-core)))
       ((and (equal phase *fn2-scribe-state-fence-result*) (equal event *fn2-event-fence-result*))
-       (let ((fn2-core (fn2-machine-put id
+       (let ((fn2-core (fn2-scribe-put-core id
                          (phase *fn2-scribe-state-reset*) (completed seq) (event-ready 0))))
          (fn2-machine-result 0 8 0 t fn2-core)))
       ((and (equal phase *fn2-scribe-state-read-result*) (equal event *fn2-event-read-result*)
              (< 0 count) (<= (+ cursor count) 4096))
-       (let ((fn2-core (fn2-machine-put id
+       (let ((fn2-core (fn2-scribe-put-core id
                          (phase (if (equal (+ cursor count) 4096) *fn2-scribe-state-verify* *fn2-scribe-state-read*))
                          (cursor (if (equal (+ cursor count) 4096) 0 (+ cursor count)))
                          (event-ready 0))))
@@ -278,7 +278,7 @@
       (fn2-machine-pool-slot id fn2-core)
       (fn2-machine-pool-gen id fn2-core) id
       (fn2-machine-generation id fn2-core) fn2-core)
-    (let ((fn2-core (fn2-machine-put id
+    (let ((fn2-core (fn2-scribe-put-core id
                       (cursor cursor) (phase (if ok (if (equal cursor 4096) *fn2-scribe-state-next* *fn2-scribe-state-verify*) *fn2-scribe-state-stopped*))
                       (stopped (if ok 0 1)))))
       (fn2-machine-result 16 24 0 ok fn2-core))))
@@ -292,7 +292,7 @@
         (fn2-core-reset (fn2-machine-pool-slot id fn2-core)
           (fn2-machine-pool-gen id fn2-core) *fn2-scribe-kind* id
           (fn2-machine-generation id fn2-core) fn2-core)
-        (let ((fn2-core (fn2-machine-put id
+        (let ((fn2-core (fn2-scribe-put-core id
                           (verified seq) (sequence (+ 1 seq)) (cursor 0)
                           (checksum 2166136261) (phase (if (eq code :ok) *fn2-scribe-state-fill* *fn2-scribe-state-stopped*))
                           (stopped (if (eq code :ok) 0 1)))))

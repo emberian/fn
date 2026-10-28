@@ -93,7 +93,7 @@
        ((mv wake fn2-core) (fn2-machine-grant-one fn2-core))
        ((unless (and (equal wake id) (not (fn2-machine-waiting-p fn2-core))))
         (mv :grant fn2-core))
-       (fn2-core (fn2-machine-set-phase id *fn2-echo-state-draining* fn2-core))
+       (fn2-core (fn2-echo-put-core id (phase *fn2-echo-state-draining*)))
        ((mv & & & & fn2-core) (fn2-machine-run id 4 fn2-core)))
     (mv (if (and (equal (fn2-machine-phase id fn2-core) *fn2-echo-state-retired*)
                  (equal (fn2-machine-pool-slot id fn2-core) 4294967295))
@@ -113,7 +113,7 @@
        ((mv & fn2-core) (fn2-machine-test-harvest 0 fn2-core))
        ((mv & & & & fn2-core) (fn2-machine-run 0 4 fn2-core))
        ((mv id fn2-core) (fn2-machine-take-wake fn2-core))
-       ((unless (and (equal id (fn2-machine-global-id *fn2-null-kind* 0 *fn2-profile-tiny*)) (equal (fn2-machine-kind id fn2-core) 2)))
+       ((unless (and (equal id (fn2-machine-global-id *fn2-echo-kind* 0 *fn2-profile-tiny*)) (equal (fn2-machine-mode id fn2-core) 0)))
         (mv :null-admission fn2-core))
        (slot (fn2-machine-pool-slot id fn2-core))
        (gen (fn2-machine-pool-gen id fn2-core))
@@ -157,7 +157,7 @@
                  (equal (fn2-machine-phase id fn2-core) *fn2-echo-state-free*)
                  (equal (fn2-machine-generation id fn2-core) 2)
                  (equal (fn2-machine-pool-slot id fn2-core) 4294967295)
-                 (equal (fn2-machine-null-free-head fn2-core) id))
+                 (equal (fn2-machine-free-head fn2-core) id))
             :ok :null-release)
         fn2-core)))
 
@@ -174,8 +174,8 @@
       answer)))
 (assert-event (equal (fn2-machines-a-unit) :ok))
 
-; Directory identity comes from declarations, including the separate null
-; range. Test both directions at every tiny-profile slot and at the sentinel.
+; Directory identity comes from declarations. Test both directions at every
+; tiny-profile slot and at the sentinel.
 (defun fn2-machine-index-control (left profile)
   (declare (xargs :verify-guards nil :measure (nfix left)))
   (if (zp left) t
@@ -190,7 +190,7 @@
  (let* ((world (w state))
         (listener (fn2-machine-property 'fn2-listener :columns world))
         (scribe (fn2-machine-property 'fn2-scribe :columns world)))
-   (and (equal (fn2-machine-names world) '(fn2-listener fn2-echo fn2-null fn2-scribe))
+   (and (equal (fn2-machine-names world) '(fn2-listener fn2-echo fn2-scribe))
         (not (assoc-eq 'checksum listener)) (assoc-eq 'checksum scribe)
         (equal (fn2-machine-property 'fn2-scribe :layout world) scribe)
         (equal (car (fn2-machine-property 'fn2-scribe :packed world))
@@ -210,3 +210,152 @@
                  (= bytes 0) (= steps 1) (= actions 0) (not runnable)) fn2-core)) answer)))
 (assert-event (fn2-machine-refusal-control))
 (value-triple (cw "MACHINE UNIT: lifetimes/null/retirement, declaration layout, ID roundtrip, invalid-phase refusal PASS~%"))
+
+(include-book "std/testing/must-fail" :dir :system)
+; These are rejected programs, not failed theorem searches. Echo COMMAND
+; and listener CLOSING both encode 1: the first control checks provenance.
+(assert-event (= *fn2-echo-state-command* *fn2-listener-state-closing*))
+(must-fail
+ (defun fn2-control-cross-kind (fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (fn2-listener-put-core 0 (phase *fn2-echo-state-command*)))
+ :with-output-off nil :check-expansion t)
+(must-fail
+ (defun fn2-control-duplicate-phase (fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (fn2-listener-put-core 0 (phase *fn2-listener-state-closing*)
+                            (phase *fn2-echo-state-command*)))
+ :with-output-off nil :check-expansion t)
+(must-fail
+ (defun fn2-control-wide-set (fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (fn2-machine-set-generation 0 1152921504606846976 fn2-core))
+ :with-output-off nil :check-expansion t)
+(must-fail
+ (defun fn2-control-missing-set (id fn2-core)
+   (declare (xargs :stobjs fn2-core
+                   :guard (and (fn2-core-wfp fn2-core)
+                               (equal (fn2-machine-kind id fn2-core) *fn2-listener-kind*))))
+   (fn2-machine-set-checksum id 0 fn2-core))
+ :with-output-off nil :check-expansion t)
+(must-fail
+ (defun fn2-control-unknown-charge ()
+   (declare (xargs :guard t))
+   (fn2-machine-charge 255 999999999 999999999 999999999))
+ :with-output-off nil :check-expansion t)
+(must-fail
+ (defun fn2-control-unrouted-event (fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (fn2-listener-observe-dispatch *fn2-event-send-result*))
+ :with-output-off nil :check-expansion t)
+
+(must-fail
+ (defmachine fn2-control-empty-observer
+   :states (:ready) :budget (:bytes 1 :steps 1 :descriptors 1)
+   :continuations ((:ready (fn2-machine-idle id fn2-core)))
+   :observes ((:accept-result nil)))
+ :expected :hard :with-output-off nil :check-expansion t)
+
+(defun fn2-machine-checked-write-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+           (before (fn2-machine-phase 0 fn2-core))
+           ; Own constant but wrong actual row kind: refusal changes its counter.
+           (fn2-core (fn2-echo-put-core 0 (phase *fn2-echo-state-closing*)))
+           (fn2-core (fn2-machine-write-generation 0 1152921504606846976 fn2-core))
+           (fn2-core (fn2-machine-write-checksum 0 0 fn2-core))
+           ((mv wake fn2-core) (fn2-machine-observe *fn2-listener-kind* 0 1
+                                *fn2-event-send-result* 0 0 0 0 0 fn2-core))
+           ; Kind, generation and each kind's inactive states reject before
+           ; any handler or pending decrement (listener phase zero is live).
+           (free (fn2-machine-global-id *fn2-echo-kind* 0 *fn2-profile-tiny*))
+           (fn2-core (fn2-echo-put-core free (pending 2)))
+           ((mv & fn2-core) (fn2-machine-observe *fn2-echo-kind* free 1
+                             *fn2-event-receive-result* 0 0 1 0 0 fn2-core))
+           ((mv & fn2-core) (fn2-machine-observe *fn2-listener-kind* 0 2
+                             *fn2-event-accept-result* 0 0 0 0 0 fn2-core))
+           ((mv & fn2-core) (fn2-machine-observe *fn2-echo-kind* 0 1
+                             *fn2-event-receive-result* 0 0 1 0 0 fn2-core))
+           (fn2-core (fn2-echo-put-core free (phase *fn2-echo-state-retired*)))
+           ((mv & fn2-core) (fn2-machine-observe *fn2-echo-kind* free 1
+                             *fn2-event-receive-result* 0 0 1 0 0 fn2-core)))
+        (mv (and (= before (fn2-machine-phase 0 fn2-core))
+                 (= (fn2-machine-generation 0 fn2-core) 1)
+                 (= (fn2-machine-refusals fn2-core) 8)
+                 (= (fn2-machine-pending free fn2-core) 2)
+                 (= wake 4294967295)) fn2-core)) answer)))
+(assert-event (fn2-machine-checked-write-control))
+(value-triple (cw "R5a MACHINE REFUSALS: cross-kind, width, missing-field, unknown-kind charge, unrouted-event; counted runtime refusals PASS~%"))
+
+; Two issued writes complete before any machine run. The test declaration
+; chooses accumulation instead of scribe's one-cell policy; routing is the
+; same generator, and completions pass through the real FIFO and harvest.
+(defun fn2-machine-test-accumulate (id reason count fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let ((fn2-core (fn2-scribe-put-core id
+          (completed (min 4294967295 (+ 1 (fn2-machine-completed id fn2-core))))
+          (verified (min 4294967295 (+ (nfix count) (fn2-machine-verified id fn2-core))))
+          (checksum (min 4294967295 (+ (nfix reason) (* 16 (fn2-machine-checksum id fn2-core)))))
+          (cursor (min 4294967295 (+ (fn2-machine-pending id fn2-core)
+                                    (* 10 (fn2-machine-cursor id fn2-core))))))))
+    (mv id fn2-core)))
+(fn2-core-shape-lemmas fn2-machine-test-accumulate (id reason count) 1)
+
+(encapsulate ()
+ (local (table fn2-machine-kinds 'fn2-scribe
+          (list* :observes
+                 (cons '(:write-result (fn2-machine-test-accumulate id reason count fn2-core))
+                       (cdr (fn2-machine-property 'fn2-scribe :observes world)))
+                 (cdr (assoc-eq 'fn2-scribe (table-alist 'fn2-machine-kinds world))))))
+ (make-event
+  (value (cons 'progn (fn2-machine-observe-events 'fn2-machine-test-observe
+                       (fn2-machine-names (w state)) (w state))))))
+
+(defun fn2-machine-test-harvest-accumulate (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((mv found kind id gen &) (fn2-core-next-owner fn2-core))
+       ((unless found) (mv nil fn2-core))
+       ((mv harvested & & & event outcome reason count aux0 aux1 fn2-core)
+        (fn2-harvest-one fn2-core))
+       ((mv wake fn2-core) (fn2-machine-test-observe kind id gen
+                            event outcome reason count aux0 aux1 fn2-core)))
+    (mv (and harvested (equal wake id)) fn2-core)))
+
+(defun fn2-machine-test-two-completions (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+       (id (fn2-machine-scribe-id fn2-core))
+       (fn2-core (fn2-scribe-put-core id (phase *fn2-scribe-state-write*) (pending 2)))
+       ((mv code slot gen fn2-core) (fn2-core-reserve 0 *fn2-scribe-kind* id 1 fn2-core))
+       ((unless (eq code :ok)) (mv :reserve fn2-core))
+       ((mv & fn2-core) (fn2-core-write slot gen 0 7 *fn2-scribe-kind* id 1 fn2-core))
+       ((mv & fn2-core) (fn2-core-write slot gen 1 8 *fn2-scribe-kind* id 1 fn2-core))
+       ((mv & fn2-core) (fn2-core-write slot gen 2 9 *fn2-scribe-kind* id 1 fn2-core))
+       ((mv code op0 og0 fn2-core) (fn2-issue-write 0 slot gen 0 3 0 *fn2-scribe-kind* id 1 0 fn2-core))
+       ((unless (eq code :ok)) (mv :write-first fn2-core))
+       ((mv code op1 og1 fn2-core) (fn2-issue-write 3 slot gen 0 3 0 *fn2-scribe-kind* id 1 0 fn2-core))
+       ((unless (eq code :ok)) (mv :write-second fn2-core))
+       (fn2-core
+        (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (fn2-ops)
+          (b* (((mv & fn2-ops) (fn2-outbox-ack 2 fn2-ops))
+               (fn2-ops (fn2-post-result 0 op0 og0 *fn2-event-write-result*
+                         *fn2-outcome-failed* *fn2-reason-io* 3 0 0 fn2-ops)))
+            (fn2-post-result 0 op1 og1 *fn2-event-write-result*
+              *fn2-outcome-failed* *fn2-reason-uncertain* 2 0 0 fn2-ops)) fn2-core))
+       ((mv first fn2-core) (fn2-machine-test-harvest-accumulate fn2-core))
+       ((mv second fn2-core) (fn2-machine-test-harvest-accumulate fn2-core)))
+    (mv (if (and first second (= (fn2-machine-completed id fn2-core) 2)
+                 (= (fn2-machine-verified id fn2-core) 5)
+                 (= (fn2-machine-checksum id fn2-core)
+                    (+ (* 16 *fn2-reason-io*) *fn2-reason-uncertain*))
+                 (= (fn2-machine-cursor id fn2-core) 21)
+                 (= (fn2-machine-pending id fn2-core) 0)
+                 (= (fn2-machine-event-ready id fn2-core) 0)
+                 (= (fn2-machine-refusals fn2-core) 0)) :ok :lost-completion) fn2-core)))
+(defun fn2-machine-two-completions-control ()
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core) (fn2-machine-test-two-completions fn2-core) answer)))
+(assert-event (equal (fn2-machine-two-completions-control) :ok))
+(value-triple (cw "R5a OBSERVE: two harvested writes counted before run; reason order, pre-decrement pending 2/1, no cell overwrite PASS~%"))

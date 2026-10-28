@@ -9,54 +9,40 @@
                     fn2-profile-run-bytes fn2-profile-run-steps fn2-profile-run-descriptors))
 
 (defmachine fn2-listener
- :states (:free :accepting :command :reply :closing :draining :retired)
+ :states (:accepting :closing)
  :fields ((cap-index :u32) (cap-nonce :u32) (pending :u32) (stopped :bool) (event-ready :bool))
  :accounts (:operations :bytes :row)
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-profile-accept-credits profile)
  :initial ((generation gen) (ready-prev 4294967295) (ready-next 4294967295)
             (phase *fn2-listener-state-accepting*))
+ :observes ((:accept-result (fn2-listener-observe-accept id outcome aux0 aux1 fn2-core))
+            (:close-result (let ((fn2-core (fn2-listener-put-core id
+                             (phase *fn2-listener-state-accepting*) (event-ready 0))))
+                             (mv id fn2-core))))
  :continuations
- ((:free (fn2-machine-refuse-phase id fn2-core))
-  (:accepting (fn2-listener-step id t budget fn2-core))
-  (:command (fn2-machine-refuse-phase id fn2-core))
-  (:reply (fn2-machine-refuse-phase id fn2-core))
-  (:closing (fn2-listener-step id nil budget fn2-core))
-  (:draining (fn2-machine-refuse-phase id fn2-core))
-  (:retired (fn2-machine-refuse-phase id fn2-core))))
+ ((:accepting (fn2-listener-step id t budget fn2-core))
+  (:closing (fn2-listener-step id nil budget fn2-core))))
 
 (defmachine fn2-echo
- :states (:free :accepting :command :reply :closing :draining :retired)
+ :states (:free :command :reply :closing :draining :retired)
  :fields ((cap-index :u32) (cap-nonce :u32) (pool-slot :u32) (pool-gen :u60)
           (off :u32) (length :u32) (pending :u32) (borrows :u32)
-          (next-free :u32) (stopped :bool))
+          (next-free :u32) (stopped :bool) (mode :bool))
  :accounts (:operations :bytes :row)
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-profile-c profile)
  :initial ((generation gen) (ready-prev 4294967295) (ready-next 4294967295)
             (pool-slot 4294967295) (next-free (if (< (+ slot 1) n) (+ base slot 1) 4294967295)))
+ :observes ((:receive-result (fn2-echo-observe-receive id outcome count fn2-core))
+            (:send-result (fn2-echo-observe-send id outcome count fn2-core))
+            (:borrow-released (let ((fn2-core (fn2-machine-write-borrows id
+                 (fn2-machine-pool-borrows (fn2-machine-pool-slot id fn2-core) fn2-core) fn2-core)))
+                 (mv id fn2-core)))
+            (:close-result (let ((fn2-core (fn2-echo-put-core id (phase *fn2-echo-state-draining*))))
+                             (mv id fn2-core))))
  :continuations
  ((:free (fn2-machine-idle id fn2-core))
-  (:accepting (fn2-machine-refuse-phase id fn2-core))
-  (:command (fn2-connection-submit id *fn2-echo-state-command* budget fn2-core))
-  (:reply (fn2-connection-reply id budget fn2-core))
-  (:closing (fn2-connection-submit id *fn2-echo-state-closing* budget fn2-core))
-  (:draining (fn2-connection-drain id fn2-core))
-  (:retired (fn2-machine-idle id fn2-core))))
-
-(defmachine fn2-null
- :states (:free :accepting :command :reply :closing :draining :retired)
- :fields ((cap-index :u32) (cap-nonce :u32) (pool-slot :u32) (pool-gen :u60)
-          (off :u32) (length :u32) (pending :u32) (borrows :u32)
-          (next-free :u32) (stopped :bool))
- :accounts (:operations :bytes :row)
- :budget (:bytes 4096 :steps 32 :descriptors 4)
- :capacity (fn2-profile-c profile)
- :initial ((generation gen) (ready-prev 4294967295) (ready-next 4294967295)
-            (pool-slot 4294967295) (next-free (if (< (+ slot 1) n) (+ base slot 1) 4294967295)))
- :continuations
- ((:free (fn2-machine-idle id fn2-core))
-  (:accepting (fn2-machine-refuse-phase id fn2-core))
   (:command (fn2-connection-submit id *fn2-echo-state-command* budget fn2-core))
   (:reply (fn2-connection-reply id budget fn2-core))
   (:closing (fn2-connection-submit id *fn2-echo-state-closing* budget fn2-core))
@@ -74,6 +60,9 @@
  :capacity 1
  :initial ((generation gen) (ready-prev 4294967295) (ready-next 4294967295)
             (pool-slot 4294967295) (sequence 1))
+ :observes ((:write-result (fn2-scribe-observe id event outcome count aux0 aux1 fn2-core))
+            (:fence-result (fn2-scribe-observe id event outcome count aux0 aux1 fn2-core))
+            (:read-result (fn2-scribe-observe id event outcome count aux0 aux1 fn2-core)))
  :continuations
  ((:free (fn2-machine-idle id fn2-core))
   (:reserve (fn2-scribe-reserve id fn2-core))
@@ -105,7 +94,7 @@
    (fn2-machines-pool-wait-id :type (unsigned-byte 32) :initially 4294967295)
    (fn2-machines-wait-head :type (unsigned-byte 32) :initially 4294967295)
    (fn2-machines-wait-tail :type (unsigned-byte 32) :initially 4294967295)
-   (fn2-machines-null-free-head :type (unsigned-byte 32) :initially 4294967295)
+   (fn2-machines-refusals :type (unsigned-byte 60) :initially 0)
    (fn2-machines-active-count :type (unsigned-byte 32) :initially 0)))
 
 (defun fn2-machines-init-rows (left profile fn2-machines)
@@ -140,8 +129,7 @@
          (fn2-machines (update-fn2-machines-accept-count a fn2-machines))
          (fn2-machines (update-fn2-machines-connection-count c fn2-machines))
          (fn2-machines (update-fn2-machines-free-head a fn2-machines))
-         (fn2-machines (update-fn2-machines-null-free-head
-                        (fn2-machine-global-id *fn2-null-kind* 0 profile) fn2-machines))
+         (fn2-machines (update-fn2-machines-refusals 0 fn2-machines))
          (fn2-machines (update-fn2-machines-active-count 0 fn2-machines))
          (fn2-machines (update-fn2-machines-gen-limit
                         (fn2-profile-generation-limit profile) fn2-machines))

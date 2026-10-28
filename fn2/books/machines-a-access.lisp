@@ -47,14 +47,10 @@
 (fn2-machine-index-access kind 8)
 (fn2-machine-index-access slot 32)
 
-(make-event
- (value (cons 'progn (fn2-machine-all-field-events (fn2-machine-names (w state))
-                       (fn2-machine-names (w state)) (w state) nil))))
-
 (fn2-machine-scalar-access accept-count 32)
 (fn2-machine-scalar-access connection-count 32)
 (fn2-machine-scalar-access free-head 32)
-(fn2-machine-scalar-access null-free-head 32)
+(fn2-machine-scalar-access refusals 60)
 (fn2-machine-scalar-access active-count 32)
 (fn2-machine-scalar-access gen-limit 60)
 (fn2-machine-scalar-access echo-mode 1)
@@ -62,6 +58,22 @@
 (fn2-machine-scalar-access pool-wait-id 32)
 (fn2-machine-scalar-access wait-head 32)
 (fn2-machine-scalar-access wait-tail 32)
+
+(defun fn2-machine-refuse-write (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (fn2-machine-set-refusals (min 1152921504606846975
+                            (+ 1 (fn2-machine-refusals fn2-core))) fn2-core))
+(defthm fn2-machine-refuse-write-type
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (fn2-corep (fn2-machine-refuse-write fn2-core))))
+(defthm fn2-machine-refuse-write-wfp
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (fn2-core-wfp (fn2-machine-refuse-write fn2-core))))
+(in-theory (disable fn2-machine-refuse-write))
+
+(make-event
+ (value (cons 'progn (fn2-machine-all-field-events (fn2-machine-names (w state))
+                       (fn2-machine-names (w state)) (w state) nil))))
 
 (defmacro fn2-machine-core-shape (name args)
   `(progn
@@ -82,7 +94,7 @@
                        (wait-reason 2) (ready-prev tail) (ready-next 4294967295)))
            (fn2-core (if (equal tail 4294967295)
                          (fn2-machine-set-wait-head id fn2-core)
-                       (fn2-machine-set-ready-next tail id fn2-core)))
+                       (fn2-machine-write-ready-next tail id fn2-core)))
            (fn2-core (fn2-machine-set-wait-tail id fn2-core)))
       fn2-core)))
 (fn2-machine-core-shape fn2-machine-park (id))
@@ -99,7 +111,7 @@
              (fn2-core (fn2-machine-set-wait-head next fn2-core))
              (fn2-core (if (equal next 4294967295)
                            (fn2-machine-set-wait-tail 4294967295 fn2-core)
-                         (fn2-machine-set-ready-prev next 4294967295 fn2-core)))
+                         (fn2-machine-write-ready-prev next 4294967295 fn2-core)))
              (fn2-core (fn2-machine-put id
                          (wait-reason 0) (ready-prev 4294967295)
                          (ready-next 4294967295))))
@@ -149,7 +161,7 @@
         ((fn2-machine-pool-credit-p fn2-core)
          (let* ((id (fn2-machine-pool-wait-id fn2-core))
                 (fn2-core (fn2-machine-set-pool-wait-id 4294967295 fn2-core))
-                (fn2-core (fn2-machine-set-wait-reason id 0 fn2-core)))
+                (fn2-core (fn2-machine-write-wait-reason id 0 fn2-core)))
            (mv id fn2-core)))
         (t (mv 4294967295 fn2-core))))
 (fn2-core-shape-lemmas fn2-machine-grant-one () 1)
@@ -196,15 +208,42 @@
     fn2-machine-grant-ready-p fn2-machine-grant-one
     fn2-machine-pool-capacity fn2-machine-pool-borrows fn2-machine-take-wake) (w state)))
 
-; Layer A's four declarations share this quantum. The charge call is inside
-; every return from a continuation; guard verification checks the caps there.
+(defun fn2-machine-refuse-charge ()
+  (declare (xargs :guard t))
+  (mv 0 0 0))
+(make-event
+ (value `(defun fn2-machine-charge-kindp (kind)
+           (declare (xargs :guard t))
+           (member-equal kind ',(strip-cars
+              (fn2-machine-charge-arms (fn2-machine-names (w state)) 0))))))
 (make-event
  (value `(defun fn2-machine-charge (kind bytes steps descriptors)
            (declare (xargs :guard
                       (case kind ,@(fn2-machine-charge-guards (fn2-machine-names (w state)) (w state) 0)
-                        (otherwise (and (natp bytes) (natp steps) (natp descriptors))))))
+                        (otherwise nil))))
            (case kind ,@(fn2-machine-charge-arms (fn2-machine-names (w state)) 0)
-             (otherwise (mv bytes steps descriptors))))))
+             (otherwise (fn2-machine-refuse-charge))))))
+(in-theory (disable fn2-machine-charge))
+
+; Package the charge once behind shape lemmas. Inlining this kind test in
+; every continuation multiplies preservation branches by the number of kinds.
+(make-event
+ (value `(defun fn2-machine-finish (id bytes steps descriptors runnable fn2-core)
+           (declare (xargs :stobjs fn2-core
+                      :guard (and (fn2-core-wfp fn2-core)
+                               (case (fn2-machine-kind id fn2-core)
+                                 ,@(fn2-machine-charge-guards (fn2-machine-names (w state)) (w state) 0)
+                                 (otherwise t)))))
+           (if (fn2-machine-charge-kindp (fn2-machine-kind id fn2-core))
+               (mv-let (used-bytes used-steps used-descriptors)
+                 (fn2-machine-charge (fn2-machine-kind id fn2-core) bytes steps descriptors)
+                 (mv used-bytes used-steps used-descriptors runnable fn2-core))
+             (mv-let (used-bytes used-steps used-descriptors)
+               (fn2-machine-refuse-charge)
+               (let ((fn2-core (fn2-machine-refuse-write fn2-core)))
+                 (mv used-bytes used-steps used-descriptors nil fn2-core)))))))
+(fn2-core-shape-lemmas fn2-machine-finish (id bytes steps descriptors runnable) 4)
+(in-theory (disable fn2-machine-charge-kindp))
 
 (defun fn2-machine-idle (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -217,7 +256,7 @@
 (defun fn2-machine-refuse-phase (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   ; Named invalid-phase refusal; retained stopped evidence, never an idle arm.
-  (let ((fn2-core (fn2-machine-set-stopped id 1 fn2-core)))
+  (let ((fn2-core (fn2-machine-write-stopped id 1 fn2-core)))
     (fn2-machine-result 0 1 0 nil fn2-core)))
 (fn2-core-shape-lemmas fn2-machine-refuse-phase (id) 4)
 (defun fn2-machine-scribe-id (fn2-core)
