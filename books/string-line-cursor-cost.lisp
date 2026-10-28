@@ -50,3 +50,5 @@
 (def-cost-check fn-sl-one)
 (def-cost-check fn-sl-loop)
 (def-cost-check fn-sl-step)
+
+; Comment only: the book is in every image's world, so editing it changes the image keys (the full path) and not the closure key.
