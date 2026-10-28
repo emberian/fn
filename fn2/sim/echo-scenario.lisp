@@ -179,7 +179,7 @@
       (mv (cons (list slot gen) rest) fn2-own))))
 (in-theory (disable fn2-echo-outbox-refs))
 
-(defun fn2-echo-check-turn (profile cursor queues before trace nobs nvisits nactions fn2-core fn2-own)
+(defun fn2-echo-check-turn (profile before trace nobs nvisits nactions fn2-core fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-own) :verify-guards nil))
   (b* (((mv & fn2-own)
         (fn2-echo-outbox-refs nactions before fn2-core fn2-own))
@@ -208,7 +208,7 @@
               ((not (eq trace :pass)) trace)
               ((not (eq work :pass)) work)
               (t own))
-        certificate cursor queues fn2-core fn2-own)))
+        certificate fn2-core fn2-own)))
 (in-theory (disable fn2-echo-check-turn))
 
 (defun fn2-echo-failure-trace (fn2-core)
@@ -277,7 +277,7 @@
 (defun fn2-echo-initial-queues (profile)
   (declare (xargs :verify-guards nil))
   (list (cons 0 (append (fn2-echo-initial-ids (fn2-profile-accept-credits profile) 0)
-                        (list (+ (fn2-profile-accept-credits profile) (fn2-profile-c profile)))))))
+                        (list (fn2-machine-global-id *fn2-scribe-kind* 0 profile))))))
 (in-theory (disable fn2-echo-initial-queues))
 
 ; Force a small, identified prefix of real receive/send completions to
@@ -342,8 +342,8 @@
          (before (fn2-echo-outbox-count fn2-core))
          ((mv trace status nobs nvisits nactions cursor queues fn2-core fn2-ref-core)
           (fn2-check-trace-turn profile cursor queues fn2-core fn2-ref-core))
-         ((mv verdict cert cursor queues fn2-core fn2-own)
-          (fn2-echo-check-turn profile cursor queues before trace nobs nvisits nactions fn2-core fn2-own))
+         ((mv verdict cert fn2-core fn2-own)
+          (fn2-echo-check-turn profile before trace nobs nvisits nactions fn2-core fn2-own))
          (certificate (fn2-echo-sum-certificate certificate cert))
          ((unless (eq verdict :pass))
           (mv verdict accepted echoed dropped checked turns certificate stats samples clients cursor queues fn2-core fn2-sim fn2-own fn2-ref-core))

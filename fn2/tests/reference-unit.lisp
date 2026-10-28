@@ -25,7 +25,7 @@
   (b* ((profile (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*))
        (fn2-core (fn2-init-executor profile :echo t fn2-core))
        (fn2-ref-core (fn2-init-executor profile :echo t fn2-ref-core))
-       (scribe (+ (fn2-profile-accept-credits profile) (fn2-profile-c profile)))
+       (scribe (fn2-machine-global-id *fn2-scribe-kind* 0 profile))
        (lists (fn2-ref-lists 4 0 (list (list 0 0 1 scribe))))
        ((mv h0 c0 lists fn2-core fn2-ref-core) (fn2-ref-test-turn lists fn2-core fn2-ref-core))
        ; Two remaining runnable machines have different continuations.
@@ -51,3 +51,29 @@
                    (equal (nth 16 (fn2-ref-calendar 64)) '(:service 0))
                    (equal (nth 79 (fn2-ref-calendar 64)) '(:service 3))
                    (equal (fn2-ref-enqueue 2 0 '((0 1 2 3))) '((0 1 2 3)))))
+
+; A mutation in each kind's table must break the full-field relation. This
+; accompanies, and does not replace, the swapped-FIFO scheduling negative.
+(defun fn2-ref-kind-control (kind fn2-core fn2-ref-core)
+  (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
+  (let* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+         (fn2-ref-core (fn2-ref-reset *fn2-profile-tiny* fn2-core fn2-ref-core))
+         (before (fn2-ref-core-difference fn2-core fn2-ref-core))
+         (id (fn2-machine-global-id kind 0 *fn2-profile-tiny*))
+         (fn2-core (fn2-machine-set-generation id 2 fn2-core)))
+    (mv (and (not before) (consp (fn2-ref-core-difference fn2-core fn2-ref-core)))
+        fn2-core fn2-ref-core)))
+(defun fn2-ref-kind-controls ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (with-local-stobj fn2-ref-core
+        (mv-let (answer fn2-core fn2-ref-core)
+          (b* (((mv a fn2-core fn2-ref-core) (fn2-ref-kind-control *fn2-listener-kind* fn2-core fn2-ref-core))
+               ((mv b fn2-core fn2-ref-core) (fn2-ref-kind-control *fn2-echo-kind* fn2-core fn2-ref-core))
+               ((mv c fn2-core fn2-ref-core) (fn2-ref-kind-control *fn2-null-kind* fn2-core fn2-ref-core))
+               ((mv d fn2-core fn2-ref-core) (fn2-ref-kind-control *fn2-scribe-kind* fn2-core fn2-ref-core)))
+            (mv (and a b c d) fn2-core fn2-ref-core))
+          (mv answer fn2-core))) answer)))
+(assert-event (fn2-ref-kind-controls))
+(value-triple (cw "REFERENCE UNIT: positive turn, swapped-FIFO negative, every-kind mutation negative PASS~%"))

@@ -96,6 +96,36 @@ as two fixnum halves or a checked byte encoding, never as a resident bignum.
 - **Single-shot** accept, receive, read, send (ROUND2 D.1); a short send is terminal; the remainder
   is a new action.
 
+**Decision A-STORAGE-ABI (R4).** The core observes an I/O effect only at its
+completion, when the result is harvested. The simulator's completion-time,
+reorderable semantics is the contract: in-flight operations can complete in
+any order, and a read issued while a write to the same sectors is in flight
+may observe either value. A completed read is an observation in its own right;
+it does not establish that the overlapping write has completed or is durable.
+Only the completed fence's specified coverage establishes ordering and
+persistence (§E.3: complete dependencies, then the covering barrier).
+
+**The native adapter must obey this sentence:** an adapter may execute an
+operation physically at any time between acknowledgement and posting its
+result, but it must not make an effect observable to the core through any
+other path before that result is harvested, and the core must not rely on any
+ordering of in-flight operations other than what a completed fence establishes.
+Physical input fills remain under the exclusive loan until harvest; neither
+posting a result nor seeing bytes in the pool authorizes a core read. Physical
+write completion alone authorizes neither publication nor durable acceptance.
+
+**A5 re-do item.** The parked `fn2/a5-native-wip` adapter executes storage
+operations inline during `fn2-native-take`, after `fn2-host-outbox-ack`, and
+queues their results for later posting by `fn2-native-post-completions`.
+That is a legal schedule, including its stronger physical ordering. It needs
+no asynchronous storage rewrite to satisfy this decision. Preserve the
+acknowledge/execute/post/harvest boundary, update its machine accessors to the
+R4 declarations, and retain death cuts around each boundary. Confirm that no
+native status/read path exposes an unharvested input or treats inline write
+success as a durable core outcome. Future workers/io_uring may reorder freely
+under this same contract; their fence implementation must establish §E.3
+coverage without assuming take order.
+
 ## 5. Executor (contract item 5)
 `fn2-turn` calls `fn2-concrete-turn` / `fn2-concrete-loop`, the bounded
 dispatcher over `fn2-transition` and the intrusive scheduler;
@@ -111,10 +141,13 @@ and its cursor. The concrete calendar is exactly four groups of sixteen
 principals followed by commit, timer/grant, wake and maintenance (80 entries);
 tiny has four principals then those services (eight entries). Tail insertion
 is idempotent. All A4 connections use anonymous principal zero. Listener rows
-occupy `[0, accept-credits)`, connections the following `C` indices, and scribe
-one final index. A4 implements the declared per-run caps 4,096 bytes, 32
-structural steps and four descriptors; its machine initializer currently
-requires those exact execution-quanta profile values. Resident capacities
+occupy `[0, accept-credits)`, followed by `C` echo rows, `C` null rows, and
+one scribe row. These disjoint global ID ranges and their inverse are generated
+from the `defmachine` declarations; echo and null share a `C`-connection
+admission count. Each kind has its own nested table. A4 implements the declared per-run caps 4,096 bytes, 32
+structural steps and four descriptors. Every continuation returns through a
+guard-checked charge against those declared simultaneous caps. The machine
+initializer requires those execution-quanta profile values. Resident capacities
 remain profile parameters.
 
 The core owns the pool, outstanding operations, scheduler, machine columns,

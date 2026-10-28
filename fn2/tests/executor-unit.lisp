@@ -64,24 +64,18 @@
 (make-event
  (value (cons 'progn
    (fn2-executor-test-snapshot-events
-    '(fn2-pool fn2-ops fn2-sched fn2-machines fn2-trace fn2-control)
+    (strip-cars (strip-cdrs *fn2-core-children*))
     (table-alist 'fn2-columns (w state))))))
 
-(defun fn2-executor-test-snapshot (fn2-core)
-  (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
-              (fn2-ops (fn2-core-ops fn2-core))
-              (fn2-sched (fn2-core-sched fn2-core))
-              (fn2-machines (fn2-core-machines fn2-core))
-              (fn2-trace (fn2-core-trace fn2-core))
-              (fn2-control (fn2-core-control fn2-core)))
-    (copy)
-    (list (fn2-pool-test-logical-snapshot fn2-pool)
-          (fn2-ops-test-logical-snapshot fn2-ops)
-          (fn2-sched-test-logical-snapshot fn2-sched)
-          (fn2-machines-test-logical-snapshot fn2-machines)
-          (fn2-trace-test-logical-snapshot fn2-trace)
-          (fn2-control-test-logical-snapshot fn2-control)) copy))
+(defun fn2-executor-test-snapshot-calls (children)
+  (if (atom children) nil
+    (cons `(,(fn2-columns-sym (cadar children) "-TEST-LOGICAL-SNAPSHOT") ,(cadar children))
+          (fn2-executor-test-snapshot-calls (cdr children)))))
+(make-event
+ (value `(defun fn2-executor-test-snapshot (fn2-core)
+           (declare (xargs :stobjs fn2-core :verify-guards nil))
+           (stobj-let ,(fn2-core-child-bindings *fn2-core-children*) (answer)
+             (list ,@(fn2-executor-test-snapshot-calls *fn2-core-children*)) answer))))
 (in-theory (disable fn2-executor-test-snapshot))
 
 (defun fn2-executor-test-post (slot gen fn2-core)
@@ -241,10 +235,9 @@
                          fn2-exec-h fn2-exec-k fn2-exec-aturn
                          fn2-exec-set-turn-bytes fn2-exec-set-turn-steps
                          fn2-corep fn2-core-wfp
-                         fn2-core-pool fn2-core-ops fn2-core-sched
-                         fn2-core-machines fn2-core-trace fn2-core-control
                          update-fn2-core-control
                          fn2-control-wfp fn2-control-rows)
+                       (strip-cars *fn2-core-children*)
                        (fn2-executor-test-control-logic-names columns))))
    (value
     `(defthm fn2-executor-test-bounds-hypothesis-removal

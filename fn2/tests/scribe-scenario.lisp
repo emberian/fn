@@ -42,7 +42,7 @@
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own fn2-ref-core) :verify-guards nil :measure (nfix fuel)
                   :hints (("Goal" :use ((:instance fn2-test-countdown (x fuel))
                                         (:instance fn2-test-count-op (x fuel))) :in-theory nil))))
-  (b* ((id (+ (fn2-machine-accept-count fn2-core) (fn2-machine-connection-count fn2-core)))
+  (b* ((id (fn2-machine-scribe-id fn2-core))
        ((when (zp fuel)) (mv '(:fail :scribe-fuel) certificate fn2-core fn2-sim fn2-own fn2-ref-core))
        ; A one-descriptor take admits every handoff boundary as a death cut.
        ((mv & fn2-core fn2-sim fn2-own)
@@ -52,8 +52,8 @@
        (before (fn2-echo-outbox-count fn2-core))
        ((mv trace status nobs nvisits nactions cursor queues fn2-core fn2-ref-core)
         (fn2-check-trace-turn *fn2-scribe-profile* cursor queues fn2-core fn2-ref-core))
-       ((mv verdict cert cursor queues fn2-core fn2-own)
-        (fn2-echo-check-turn *fn2-scribe-profile* cursor queues before trace nobs nvisits nactions
+       ((mv verdict cert fn2-core fn2-own)
+        (fn2-echo-check-turn *fn2-scribe-profile* before trace nobs nvisits nactions
                               fn2-core fn2-own))
        (certificate (fn2-echo-sum-certificate certificate cert))
        ((unless (eq verdict :pass)) (mv verdict certificate fn2-core fn2-sim fn2-own fn2-ref-core))
@@ -100,7 +100,7 @@
        (fn2-sim (fn2-sim-echo-network-reset fn2-sim))
        (fn2-own (fn2-own-init profile fn2-own))
        (fn2-recovery-image (fn2-recovery-init (fn2-sim-sectors profile) fn2-recovery-image))
-       (id (+ (fn2-profile-accept-credits profile) (fn2-profile-c profile)))
+       (id (fn2-machine-global-id *fn2-scribe-kind* 0 profile))
        (queues (list (cons 0 (append (fn2-echo-initial-ids (fn2-profile-accept-credits profile) 0)
                                      (list id)))))
        ((mv result certificate fn2-core fn2-sim fn2-own fn2-ref-core)

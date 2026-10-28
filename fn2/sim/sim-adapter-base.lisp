@@ -4,6 +4,10 @@
 (include-book "sim-state")
 (include-book "sim-transfer")
 
+; Peek is read-only: frame proofs need its result, not its queue branches.
+(local (in-theory (disable fn2-outbox-peek)))
+
+
 (defthm fn2-sim-cap-u60-type
   (implies (natp x) (unsigned-byte-p 60 (min #xfffffffffffffff x))))
 (defthm fn2-sim-cap-u32-type
@@ -91,7 +95,8 @@
        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
                      (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
                      (fn2-ownp fn2-own) (fn2-own-wfp fn2-own))
-                (fn2-core-wfp (mv-nth ,corepos (,name ,@args fn2-core fn2-sim fn2-own)))))
+                (fn2-core-wfp (mv-nth ,corepos (,name ,@args fn2-core fn2-sim fn2-own))))
+       :hints (("Goal" :in-theory (enable fn2-core-wfp))))
      (defthm ,(fn2-columns-sym name "-SIM-TYPE")
        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
                      (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
