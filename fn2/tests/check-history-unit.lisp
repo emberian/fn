@@ -203,22 +203,30 @@
    (list :wrong-classification
          (append *fn2-history-unit-acked* '((:crash))) :torn-tail *fn2-history-unit-h1*)))
 
+(fn2-cm-defreaders fn2-history-action-fixture-name
+                   fn2-history-action-fixture-events
+                   fn2-history-action-fixture-code)
+(fn2-cm-defreaders fn2-history-recovery-fixture-name
+                   fn2-history-recovery-fixture-events
+                   fn2-history-recovery-fixture-classification
+                   fn2-history-recovery-fixture-history)
+
 (defun fn2-history-unit-action-count (fixtures)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp fixtures)
       (mv-let (passed total) (fn2-history-unit-action-count (cdr fixtures))
-        (mv-let (code trace) (fn2-history-translate (fn2-lm-at 1 (car fixtures)))
+        (mv-let (code trace) (fn2-history-translate (fn2-history-action-fixture-events (car fixtures)))
           (declare (ignore trace))
-          (mv (+ passed (if (equal code (fn2-lm-at 2 (car fixtures))) 1 0)) (+ 1 total))))
+          (mv (+ passed (if (equal code (fn2-history-action-fixture-code (car fixtures))) 1 0)) (+ 1 total))))
     (mv 0 0)))
 
 (defun fn2-history-unit-recovery-count (fixtures expected)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp fixtures)
       (mv-let (passed total) (fn2-history-unit-recovery-count (cdr fixtures) expected)
-        (let* ((fixture (car fixtures)) (events (fn2-lm-at 1 fixture))
+        (let* ((fixture (car fixtures)) (events (fn2-history-recovery-fixture-events fixture))
                (verdict (fn2-check-history events *fn2-history-unit-profile*
-                                           (fn2-lm-at 2 fixture) (fn2-lm-at 3 fixture))))
+                                           (fn2-history-recovery-fixture-classification fixture) (fn2-history-recovery-fixture-history fixture))))
           (mv-let (code trace) (fn2-history-translate events)
             (declare (ignore trace))
             (mv (+ passed (if (and (eq code :ok) (iff verdict expected)) 1 0)) (+ 1 total)))))

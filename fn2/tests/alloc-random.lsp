@@ -5,7 +5,17 @@
 (ld "alloc-random.lisp" :ld-error-action :error)
 :q
 (handler-case
-    (progn (assert (equal (fn2-alloc-random-all) t)) (sb-ext:exit :code 0))
+    (progn
+      (let ((*hard-error-is-error* t) (*hard-error-returns-nilp* nil))
+        (dolist (kind '(:free-link :pending-link :counter))
+          (assert (handler-case (progn (fn2-alloc-test-corruption kind) nil)
+                    (cl:error () t))))
+        (dolist (kind '(:saturated :zero))
+          (assert (handler-case (progn (fn2-alloc-test-edge-corruption kind) nil)
+                    (cl:error () t)))))
+      (format t "ALLOC ASSERTIONS: malformed links, accounting underflow and inconsistent edge counts fail loudly PASS~%")
+      (assert (equal (fn2-alloc-random-all) t))
+      (sb-ext:exit :code 0))
   (cl:error (condition)
     (format *error-output* "ALLOC RANDOM ERROR: ~A~%" condition)
     (sb-ext:exit :code 1)))

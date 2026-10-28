@@ -24,7 +24,7 @@
  (and (fn2-lm-durable-ack-hyps *fn2-lm-test-ack-trace* *fn2-lm-test-honest*
                                :intact *fn2-lm-test-history*)
       (fn2-lm-acknowledged-in-historyp
-       (fn2-lm-at 3 (fn2-lm-trace-state *fn2-lm-test-ack-trace*)) *fn2-lm-test-history*)))
+       (fn2-lm-state-acknowledged (fn2-lm-trace-state *fn2-lm-test-ack-trace*)) *fn2-lm-test-history*)))
 
 ; Hypothesis-removal tooth 1: every other premise holds, but lying barriers
 ; permit the shorter consistent image without an independent witness.
@@ -79,7 +79,7 @@
 (assert-event
  (let ((recovered (list *fn2-lm-test-b1*)))
    (and (equal (fn2-lm-conflicting-witness
-                (fn2-lm-at 8 (fn2-lm-trace-state *fn2-lm-test-receipt*)) recovered)
+                (fn2-lm-state-witnesses (fn2-lm-trace-state *fn2-lm-test-receipt*)) recovered)
                'client-receipt-batch-2)
         (fn2-lm-recovery-allowedp *fn2-lm-test-receipt* *fn2-lm-test-witness* :damaged recovered)
         (fn2-lm-recovery-allowedp *fn2-lm-test-receipt* *fn2-lm-test-witness* :unknown recovered)
