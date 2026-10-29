@@ -532,3 +532,31 @@ DM0b, then the re-cut R5e and R7**. R7 is the first producer of `:bound` and
 second time is pure churn; DM1's estimated five days are smaller than R7's
 re-migration plus its review. This supersedes the design's still-written
 “DM1 after R7” sequence, not its registry or contract requirements.
+
+DM1 stores obligations in `fn2-squares`; `defthm-owed` is its author view.
+`:schema` defaults to `:assertion`; A's migrated rows are explicitly classified.
+The row retains the untranslated formula, its admitted `$OWED` body, variables,
+teeth, owner (`:from`), contract, origin/case/source/boundary, sides and checker.
+`:proof` is `(:owed)` or `(:proved THM)`; the table guard requires the admitted
+formula to equal the translated body or its exact `$OWED` application.
+`:checks` records contract, revision, profile, domain, horizon/unit, reached and
+exercised counts, verdict and location. Appending evidence cannot discharge debt.
+The export separately counts requirements, bound statements, proofs and rows with
+passing exercised checks, by correspondence/owner, case source and schema.
+A requirement without a statement counts only as a requirement. Case catalogues
+and bindings arrive in DM2/DM3; the turn-composition row already names Q1.
+
+`:shared` lists qualified declaration identities common to both sides.
+The default `:claim :semantic` requires `:contract (:independent NAME ...)` and
+`:shared-handler-mutation NAME` when sides share declarations. These are named
+contracts/controls, not claims that they have been discharged. Representation or
+compiler refinement may explicitly use `:claim :representation` or `:compiler`
+with a refinement schema. Q1's existing turn row claims representation refinement
+of independent selection over shared machine semantics, not independent behaviour.
+Layer inference accepts absolute and ACL2 project-relative paths; `fn2/b/`, `c/`,
+`d/` (also under `sprint/`) identify their layers, and `books/` and `sim/` default
+to A. B adds one `(fn2-book-layer :b)` line at the head of each of its books,
+after including the declaration machinery; every form in that book inherits B.
+A conflicting second book-layer declaration is refused. An explicit `:layer`
+in a registrar payload (including `defthm-owed :layer`) overrides the book's
+recorded layer, which overrides the path default. Tests default to `:test`.

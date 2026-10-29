@@ -187,6 +187,7 @@
       (declare (ignore status after))
       (and (<= nobs (fn2-exec-h core)) (<= nvisits (fn2-exec-k core))
            (<= nactions (fn2-exec-aturn core)))))
+  :schema :bound :from (:operation fn2-turn)
   :teeth (fn2-executor-bounds-teeth fn2-executor-bounds-negative)
   :doc "Owed simultaneous observation, calendar-visit and descriptor bounds over fn2-turn.")
 

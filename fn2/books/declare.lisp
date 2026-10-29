@@ -4,7 +4,7 @@
 (defun fn2-decl-table (kind)
   (declare (xargs :guard t))
   (case kind (:columns 'fn2-columns) (:machine 'fn2-machine-kinds)
-        (:core-child 'fn2-core-children) (:owed 'fn2-owed)))
+        (:core-child 'fn2-core-children) ((:owed :square) 'fn2-squares)))
 (defun fn2-decl-row (id world)
   (declare (xargs :verify-guards nil))
   (cdr (assoc-eq (cadr id) (table-alist (fn2-decl-table (car id)) world))))
@@ -132,14 +132,50 @@
   (declare (xargs :verify-guards nil))
   (append (fn2-decl-rows :columns world) (fn2-decl-rows :machine world)
           (fn2-decl-rows :core-child world) (fn2-decl-rows :owed world)))
+; DEFUN-NX's outer RETURN-LAST only prevents execution; its last argument
+; is the translated logical statement. Do not unfold arbitrary functions.
+(defun fn2-decl-statement-body (statement world)
+  (declare (xargs :verify-guards nil))
+  (let ((body (getpropc statement 'unnormalized-body nil world)))
+    (if (eq (car body) 'return-last) (cadddr body) body)))
+(defun fn2-decl-layer (book explicit)
+  (declare (xargs :verify-guards nil))
+  (let ((book (concatenate 'string "/" (if (consp book) (cdr book) book))))
+    (or explicit
+      (cond ((or (search "/fn2/b/" book) (search "/fn2/sprint/b/" book)) :b)
+            ((or (search "/fn2/c/" book) (search "/fn2/sprint/c/" book)) :c)
+            ((or (search "/fn2/d/" book) (search "/fn2/sprint/d/" book)) :d)
+            ((or (search "/fn2/books/" book) (search "/fn2/sim/" book)) :a)
+            (t :test)))))
+(defmacro fn2-decl-current-book ()
+  '(or (car (global-val 'include-book-path (w state)))
+       (and (@ certify-book-info)
+            (access certify-book-info (@ certify-book-info) :full-book-name))
+       (cbd)))
+(defmacro fn2-book-layer (layer)
+  `(make-event
+    (let* ((book (fn2-decl-current-book))
+           (old (cdr (assoc-equal book (table-alist 'fn2-book-layers (w state))))))
+      (cond ((not (keywordp ',layer))
+             (er soft 'fn2-book-layer "Layer must be a keyword: ~x0." ',layer))
+            ((and old (not (eq old ',layer)))
+             (er soft 'fn2-book-layer "Conflicting layer for ~x0: ~x1 versus ~x2."
+                 book old ',layer))
+            (t (value `(table fn2-book-layers ',book ',',layer)))))))
 (defun fn2-decl-finish (id payload requires events book world)
   (declare (xargs :verify-guards nil))
   (let ((manifest (fn2-decl-manifests events :exported world)))
     `(table ,(fn2-decl-table (car id)) ',(cadr id)
        ',(append payload
-           (list :decl-id id :layer :a :book book :requires requires
+           (append (and (member-eq (car id) '(:owed :square))
+                        (list :translated (fn2-decl-statement-body
+                                            (fn2-decl-get :statement payload) world)))
+           (list :decl-id id :layer (fn2-decl-layer book
+                   (or (fn2-decl-get :layer payload)
+                       (cdr (assoc-equal book (table-alist 'fn2-book-layers world)))))
+                 :book book :requires requires
                  :generated manifest :signature events
-                 :reuse (fn2-decl-reuses manifest (fn2-decl-all-rows world)))))))
+                 :reuse (fn2-decl-reuses manifest (fn2-decl-all-rows world))))))))
 (defun fn2-decl-new-events (id payload requires events book)
   (declare (xargs :verify-guards nil))
   `(encapsulate () ,@events
@@ -156,14 +192,15 @@
   (declare (xargs :verify-guards nil))
   `(make-event
     (let* ((world (w state)) (old (fn2-decl-row ',id world))
-           (book (or (car (global-val 'include-book-path world))
-                     (and (@ certify-book-info)
-                          (access certify-book-info (@ certify-book-info) :full-book-name))
-                     (cbd))))
+           (book (fn2-decl-current-book)))
       (cond
        ((not (fn2-decl-idp ',id)) (er soft 'fn2-declare "Malformed identity ~x0." ',id))
        (old
-        (if (and (equal (take ,(len payload) old) ',payload)
+        (if (and (equal (take ,(len payload)
+                               ,(if (eq (car id) :owed)
+                                    '(fn2-decl-set :checks nil
+                                       (fn2-decl-set :proof '(:owed) old))
+                                  'old)) ',payload)
                  (equal (fn2-decl-get :requires old) ',requires)
                  (equal (fn2-decl-get :signature old) ',events))
             (value (fn2-decl-reuse-event ',id old book))

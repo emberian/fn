@@ -184,7 +184,7 @@
                (and (true-listp reference) (equal (len reference) 2)
                     (symbolp (cadr reference))
                     (case (car reference)
-                      (:owed (fn2-decl-row (list :owed (cadr reference)) world))
+                      (:owed (fn2-decl-row (list :square (cadr reference)) world))
                       (:generator (and (assoc-eq (cadr reference) (table-alist 'fn2-obligation-generators world))
                                        (or (function-symbolp (cadr reference) world)
                                            (getpropc (cadr reference) 'macro-body nil world))))

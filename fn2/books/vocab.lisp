@@ -1227,6 +1227,7 @@
 (defthm-owed fn2-ops-credit-conservation (op a p)
   (implies (fn2-ops-conservation-hyps op a p)
            (fn2-ops-conservation-conclusion op a p))
+  :schema :invariant :from (:columns fn2-ops)
   :teeth (fn2-vocab-conservation-teeth)
   :doc "Init establishes and every operation preserves exact row partition including retired rows, acyclic free chain/count, reserved+queued outbox credit, ordered queued references, and a bijection between posted FIFO entries and posted unharvested cells.")
 
@@ -1254,6 +1255,7 @@
 (defthm-owed fn2-ops-stale-or-duplicate-post (cell slot gen evkind outcome reason count aux0 aux1 p)
   (implies (fn2-ops-stray-hyps cell slot gen p)
            (fn2-ops-stray-conclusion cell slot gen evkind outcome reason count aux0 aux1 p))
+  :schema :invariant :from (:columns fn2-ops)
   :teeth (fn2-vocab-stray-teeth)
   :doc "A stale, duplicate, unreserved, or phase-ineligible result changes exactly the saturating stray counter, including preservation of unused ring storage and every row field.")
 
@@ -1280,6 +1282,7 @@
                           (fn2-ops-rows-snapshot (fn2-ops-rows q) q))))
 (defthm-owed fn2-ops-outbox-order (n p)
   (implies (fn2-ops-order-hyps n p) (fn2-ops-order-conclusion n p))
+  :schema :invariant :from (:columns fn2-ops)
   :teeth (fn2-vocab-order-teeth)
   :doc "Acknowledgment consumes exactly the oldest n queued descriptors in enqueue order, moves completion-bearing actions to submitted and arm-wake/trace/service-posture to done, preserves every other row and field, and leaves the exact unacknowledged suffix in order.")
 
@@ -1307,5 +1310,6 @@
 (defthm-owed fn2-ops-result-reservation (slot gen evkind outcome reason count aux0 aux1 p)
   (implies (fn2-ops-reservation-hyps slot gen evkind outcome reason count aux0 aux1 p)
            (fn2-ops-reservation-conclusion slot gen evkind outcome reason count aux0 aux1 p))
+  :schema :invariant :from (:columns fn2-ops)
   :teeth (fn2-vocab-reservation-teeth)
   :doc "A reserved operation already owns its descriptor and two result cells: enqueue and acknowledgment succeed and its genuine terminal result is accepted with exact payload and FIFO append, even with all other available cells occupied.")

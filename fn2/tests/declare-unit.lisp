@@ -1,6 +1,9 @@
 (in-package "ACL2")
 (include-book "../books/core-children")
 (include-book "std/testing/must-fail" :dir :system)
+(fn2-book-layer :b)
+(fn2-book-layer :b)
+(must-fail (fn2-book-layer :a) :expected :soft)
 
 (defmachine fn2-x :states (:free) :fields nil :accounts nil
   :budget (:bytes 0 :steps 1 :descriptors 0) :continuations ((:free fn2-x-free))
@@ -70,3 +73,23 @@
         (equal (fn2-decl-get :visibility (cddr (fn2-decl-find-artifact 'fn2-three-init-wfp manifest))) :exported)
         (getpropc 'fn2-three-init-wfp 'theorem nil (w state)))))
 (value-triple (cw "DECLARE UNIT: identities, soft conflicts, reuse, admitted manifest PASS~%"))
+
+; ACL2's :FN book names are (project . relative-path), not always strings.
+(assert-event
+ (and (eq (fn2-decl-layer '(:fn . "fn2/books/pool.lisp") nil) :a)
+      (eq (fn2-decl-layer "/tree/fn2/sim/check.lisp" nil) :a)
+      (eq (fn2-decl-layer '(:fn . "fn2/b/layout.lisp") nil) :b)
+      (eq (fn2-decl-layer '(:fn . "fn2/books/layout.lisp") :b) :b)))
+
+(local (defun fn2-decl-layer-tooth () (natp 0)))
+(local (defthm-owed fn2-decl-layer-owed (x) (natp x)
+         :teeth (fn2-decl-layer-tooth)))
+(local (defthm-owed fn2-decl-layer-override (x) (natp x)
+         :teeth (fn2-decl-layer-tooth) :layer :c))
+(fn2-assert-owed-teeth fn2-decl-layer-owed fn2-decl-layer-override)
+(assert-event
+ (and (eq (fn2-decl-get :layer (fn2-decl-row '(:columns fn2-three) (w state))) :b)
+      (eq (fn2-decl-get :layer (fn2-decl-row '(:owed fn2-decl-layer-owed) (w state))) :b)
+      (eq (fn2-decl-get :layer (fn2-decl-row '(:owed fn2-decl-layer-override) (w state))) :c)
+      (eq (fn2-decl-get :layer (fn2-decl-row '(:columns fn2-ops) (w state))) :a)))
+(value-triple (cw "BOOK LAYER UNIT: columns=:B owed=:B override=:C default=:A; identical replay and conflicting-layer refusal PASS~%"))

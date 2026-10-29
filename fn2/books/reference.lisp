@@ -257,5 +257,8 @@
              (<= actions (fn2-exec-aturn concrete))
              (<= (+ visits (fn2-exec-turn-bytes after) (fn2-exec-turn-steps after) 1)
                  (+ (* (fn2-exec-h concrete) 24) (* (fn2-exec-k concrete) 4129) 1))))))
+  :schema :g1 :from (:correspondence fn2-q1)
+  :boundary :turn :case-source :composition :claim :representation
+  :shared ((:machine fn2-listener) (:machine fn2-echo) (:machine fn2-scribe))
   :teeth (fn2-reference-teeth)
   :doc "Owed refinement to independent list selection, observation ordering and budget accounting; shared bounded machine semantics, no fusion.")
