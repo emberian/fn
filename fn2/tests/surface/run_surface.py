@@ -2,13 +2,15 @@
 import argparse
 from collections import Counter
 import os
+import json
+import time
 from pathlib import Path
 import re
 import sys
 import unittest
 
 from fn2.tests.harness import run_natives, shim
-from . import FAMILIES, MANIFEST, RUN, form_suite, fuzz_allocations
+from . import FAMILIES, MANIFEST, RUN, form_suite, fuzz_allocations, driver, native_timeout
 
 
 def intended_skip(record, module=None):
@@ -108,6 +110,85 @@ def execute_suite(suite):
     return list(records.values()), fixtures
 
 
+def test_timeout(family, form, test_id):
+    """Outer supervisors leave time for the nested native/fuzz supervisor."""
+    if form == 'F':
+        return RUN.get('fuzz_allocations', {}).get(family, 0) + 30
+    if form == 'E' and '.test_native_' in test_id:
+        return native_timeout(test_id.rsplit('.test_native_', 1)[1]) + 30
+    return MANIFEST['budget'][RUN.get('box', 'laptop')]['native_timeout']
+
+
+def child_test(family, form, test):
+    """Run one selected TestCase, preserving its actual outcome and evidence."""
+    name = re.sub('[^a-zA-Z0-9_.-]', '_', test.id())
+    directory = Path(RUN['out']) / family / 'children' / form / name
+    directory.mkdir(parents=True, exist_ok=True)
+    config = directory / 'request.json'
+    result_file = directory / 'result.json'
+    if config.exists() or result_file.exists():
+        raise ValueError('surface child output already exists; choose a fresh --out directory')
+    run_natives.write_json(config, dict(family=family, form=form, test=test.id(),
+        target=os.environ.get('FN2_SURFACE_TARGET', 'fn2'),
+        run={key: str(value) if isinstance(value, Path) else value for key, value in RUN.items()
+             if key != 'native_envs'}))
+    native = test.id().rsplit('.test_native_', 1)[-1] if '.test_native_' in test.id() else None
+    environment = RUN.get('native_envs', {}).get(native)
+    started = time.monotonic()
+    try:
+        code = driver([sys.executable, '-m', 'fn2.tests.surface.run_surface',
+                       '--child-config', str(config)], directory, test_timeout(family, form, test.id()), env=environment)
+        if code not in (0, 1) or not result_file.exists():
+            raise RuntimeError(f'child exit {code}; see {directory / "driver.log"}')
+        data = json.loads(result_file.read_text())
+        if [row['test'] for row in data['records']] != [test.id()]:
+            raise ValueError('child did not report exactly its selected TestCase')
+        return data['records'], data['fixtures']
+    except Exception as error:
+        # A child resource fault remains this selected test's outcome. Later
+        # tests and families still get a fresh interpreter and descriptor table.
+        record = run_natives.row(test.id(), 'error', exception=f'{type(error).__name__}: {error}',
+                                 duration=time.monotonic() - started)
+        record['evidence'] = dict(child_log=str(directory / 'driver.log'))
+        failure = Path(RUN['out']) / family / 's-failure.json'
+        if form == 'S' and failure.exists():
+            record['evidence']['s_failure_path'] = str(failure)
+        data = dict(records=[record], fixtures=[])
+        run_natives.write_json(result_file, data)
+        return data['records'], data['fixtures']
+
+
+def isolated_suite(family, form, suite):
+    records, fixtures = [], []
+    for test in run_natives.flatten(suite):
+        rows, setup = child_test(family, form, test)
+        records.extend(rows)
+        fixtures.extend(setup)
+    return records, fixtures
+
+
+def child_main(config):
+    request = json.loads(config.read_text())
+    RUN.clear()
+    RUN.update(request['run'])
+    os.environ['FN2_SURFACE_TARGET'] = request['target']
+    if '.test_native_' in request['test']:
+        name = request['test'].rsplit('.test_native_', 1)[1]
+        RUN['native_envs'] = {name: dict(os.environ)}
+    try:
+        shim.install(request['target'])
+        tests = [test for test in run_natives.flatten(form_suite(request['family'], request['form']))
+                 if test.id() == request['test']]
+        if len(tests) != 1:
+            raise ValueError('child could not collect its selected TestCase')
+        records, fixtures = execute_suite(unittest.TestSuite(tests))
+        data = dict(records=records, fixtures=fixtures)
+        run_natives.write_json(config.with_name('result.json'), data)
+        return int(bool(totals(records)['fail']))
+    finally:
+        shim.uninstall()
+
+
 def totals(records):
     def reasons(record):
         return dict.fromkeys(row['skip_reason'] for row in [record, *record.get('additional', [])]
@@ -180,7 +261,12 @@ def run_family(family, box):
         if is_owed:
             owed.append(dict(form=form, model=info['model']))
         if form in selected and not is_owed:
-            records, fixtures = execute_suite(form_suite(family, form))
+            suite = form_suite(family, form)
+            target = os.environ.get('FN2_SURFACE_TARGET', 'fn2')
+            if form in ('S', 'E', 'F', 'H') and family in MANIFEST['serves'][target]:
+                records, fixtures = isolated_suite(family, form, suite)
+            else:
+                records, fixtures = execute_suite(suite)
         reason = 'owed: ' + info['model'] if is_owed else '' if form in selected else (
                  '§2.2 dash' if not info['applicable'] else
                  'simulator driver' if form == 'P' else 'hbox nightly only')
@@ -212,7 +298,10 @@ def main(argv=None):
     parser.add_argument('--target', choices=('fn1', 'fn2'), default=os.environ.get('FN2_SURFACE_TARGET', 'fn2'))
     parser.add_argument('--out', type=Path, default=Path('build/surface'))
     parser.add_argument('--pid-file', type=Path)
+    parser.add_argument('--child-config', type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.child_config is not None:
+        return child_main(args.child_config)
     families = list(dict.fromkeys(f.strip().replace('-', '_') for f in args.family.split(','))) if args.family else list(FAMILIES)
     if any(f not in FAMILIES for f in families):
         parser.error('unknown family; choose ' + ','.join(FAMILIES))

@@ -6,11 +6,14 @@ Literal defaults and wire bytes intentionally duplicate facts as a control.
 This is not live-server evidence. No TCP bind or native image is needed.
 """
 import re
+from types import SimpleNamespace
 import unittest
 
-from .limits_model import ADJUDICATIONS, KEYS, LimitsModel, U32, parse_value
+from .limits_model import (ADJUDICATIONS, KEYS, LimitsModel, OperatorExpectation,
+    STORE_DEFAULTS, STORE_INIT, U32, init_history_expectation, parse_value)
 from .nntp_model import NntpModel
-from fn2.tests.surface.config_limits.test_model_config_limits import Exercise, machine, VALID
+from fn2.tests.surface.config_limits.test_model_config_limits import (
+    Exercise, LISTENER_REFUSALS, init_store, machine, VALID)
 
 
 class FakeTarget:
@@ -28,7 +31,7 @@ class FakeTarget:
             'complaints-to', 'max-transactions', 'max-history-octets', 'max-article-octets'), (
             '31', '31', '0', '0', '0', '0', '0', 'none', 'open', '30', '16', '5000', 'none',
             'none', '64', '16777216', '5000', '30000', '1000', '0', '67108864', '86400',
-            '4096', '0', 'unset', 'open', 'unset', '4096', '16777216', '32768')))
+            '4096', '0', 'unset', 'open', 'unset', '4096', '25165824', '32768')))
         self.wire_values = dict(self.values)
         self.explicit = set()
         self.sockets = []
@@ -166,6 +169,55 @@ class FakeWire:
 
 
 class LimitsTests(unittest.TestCase):
+    def test_init_history_relation_and_named_refusal(self):
+        # Vary R: the relation must not be a constant copied from a live reply.
+        for record in (196608, 24 * 1024 * 1024, 64 * 1024 * 1024):
+            for history in (record - 1, record, record + 1):
+                expected = init_history_expectation(history, record)
+                refused = history < record
+                result = {'exit': 1 if refused else 0, 'text': (
+                    'refused operator init MAX-HISTORY-OCTETS-BELOW-MAX-RECORD-OCTETS'
+                    if refused else 'accepted')}
+                self.assertIsNone(expected.check(result))
+                self.assertIsNotNone(expected.check({**result, 'exit': 5}))
+                if refused:
+                    for text in ('host', 'profile-invalid',
+                        'prefix-MAX-HISTORY-OCTETS-BELOW-MAX-RECORD-OCTETS-suffix'):
+                        self.assertIsNotNone(expected.check({**result, 'text': text}))
+
+    def test_live_init_passes_explicit_record_and_derived_history(self):
+        calls = []
+
+        class InitTarget:
+            def operator(self, *args, **kwargs):
+                calls.append((args, kwargs))
+                record = int(args[args.index('--max-record-octets') + 1])
+                history = int(args[args.index('--max-history-octets') + 1])
+                return SimpleNamespace(returncode=1 if history < record else 0,
+                    stdout=b'refused MAX-HISTORY-OCTETS-BELOW-MAX-RECORD-OCTETS'
+                           if history < record else b'accepted', stderr=b'')
+
+        init_store(self, InitTarget())
+        init_store(self, InitTarget(), history_octets=STORE_INIT['max-record-octets'] - 1)
+        self.assertGreaterEqual(STORE_DEFAULTS['max-history-octets'], STORE_INIT['max-record-octets'])
+        self.assertEqual(len(calls), 2)
+        for args, kwargs in calls:
+            self.assertEqual(args[:3], ('init', '--profile', 'development'))
+            self.assertEqual(kwargs, {'timeout': 10})
+            self.assertEqual(set(args[3:-1:2]), {'--' + key for key in STORE_INIT})
+
+    def test_listener_named_usage_refusals(self):
+        self.assertEqual(dict(LISTENER_REFUSALS), {
+            'not-an-address.invalid': 'listener-address',
+            '0.0.0.0': 'listener-unspecified', '::': 'listener-unspecified',
+            '::ffff:127.0.0.1': 'listener-mapped'})
+        for host, reason in LISTENER_REFUSALS:
+            expected = OperatorExpectation(5, reason)
+            result = {'exit': 5, 'text': f'usage operator request (configuration {reason})'}
+            self.assertIsNone(expected.check(result), host)
+            self.assertIsNotNone(expected.check({**result, 'exit': 1}))
+            self.assertIsNotNone(expected.check({**result, 'text': 'host'}))
+
     def test_defaults_are_listener_specific_and_store_defaults_are_inputs(self):
         loop, public = LimitsModel(), LimitsModel(public=True)
         self.assertEqual([public.get(k) for k in ('exposure-connections', 'exposure-per-address',

@@ -15,6 +15,7 @@ import unittest
 
 from fn2.tests.model.consumer_model import ConsumerModel, Cursor, Event, Request
 from fn2.tests.surface import SurfaceCase, Target, serving
+from fn2.tests.surface.live_evidence import capture_step, record_failure, run_live_machine
 
 
 class ConsumerTarget:
@@ -132,6 +133,7 @@ def machine(case, target_factory=ConsumerTarget, traces=None, recorded_differenc
     class ConsumerMachine(RuleBasedStateMachine):
         consumers, cursors = Bundle('consumers'), Bundle('cursors')
 
+        @capture_step(case, 'consumer')
         def __init__(self):
             super().__init__()
             self.cleanup, self.trace = ExitStack(), []
@@ -147,6 +149,8 @@ def machine(case, target_factory=ConsumerTarget, traces=None, recorded_differenc
                 self.cleanup.close()
                 raise
 
+        @capture_step(case, 'consumer', request=lambda self, verb, name, **kwargs:
+            dict(verb=verb, consumer=name, **kwargs))
         def step(self, verb, name, **kwargs):
             self.model.frontier = self.target.sync_frontier()
             expected = self.model.rule(verb, name, **kwargs)
@@ -158,7 +162,11 @@ def machine(case, target_factory=ConsumerTarget, traces=None, recorded_differenc
             target = getattr(self.target, 'adjudication_target', 'fake')
             recorded = expected.recorded_difference(reply, target)
             if recorded is None:
-                case.assertIsNone(expected.check(reply), (expected.check(reply), expected.request, reply))
+                verdict = expected.check(reply)
+                if verdict is not None:
+                    record_failure(case, 'consumer', rule=verb, request=expected.request,
+                                   reply=reply, verdict=dict(ok=False, detail=verdict), trace=self.trace)
+                case.assertIsNone(verdict, (verdict, expected.request, reply))
             expected.update(reply, target)
             if recorded is not None:
                 recorded['step'] = len(self.trace)
@@ -229,6 +237,7 @@ def machine(case, target_factory=ConsumerTarget, traces=None, recorded_differenc
                 self.step('ack', cursor.consumer, cursor=replace(cursor, **{field: value}))
 
         @invariant()
+        @capture_step(case, 'consumer')
         def durable_positions(self):
             for name in list(self.model.consumers):
                 self.step('position', name)
@@ -248,8 +257,5 @@ class TestSurface(SurfaceCase):
 
     @serving('consumer')
     def test_live_state_machine(self):
-        from hypothesis.stateful import run_state_machine_as_test
-        from fn2.tests.surface import live_model_settings
         recorded = self.evidence['recorded_differences'] = []
-        run_state_machine_as_test(machine(self, recorded_differences=recorded),
-                                  settings=live_model_settings('consumer'))
+        run_live_machine(self, 'consumer', machine(self, recorded_differences=recorded))

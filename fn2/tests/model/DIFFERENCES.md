@@ -442,3 +442,38 @@ would retain a false positive after both the RFC ordering and the paired probe
 resolve it. The model therefore owns the transition; the probe adapter reuses
 it instead of maintaining a second, weaker 439-only oracle. Matching old
 command-only records remains explicitly a prefix claim.
+
+## HX: predicate classes retain new byte variants (2026-10-29)
+
+`adjudications.json` schema 2 records structural classes with `match`, while
+nonstructural groups retain `command_pattern` exact bytes. Both modes still
+require the recorded rule, detail, and reply bytes. `command_example` preserves
+a historical witness for predicate groups and never supplies a matching fallback.
+The result's `match` names the class; `group` names the latest applicable archive
+row. Superseded H2c rows cannot restore an older ambiguity when H2d evidence is
+missing.
+
+The one function table is `surface/adjudication_predicates.py:PREDICATES`:
+
+| Predicate | Required observation |
+|---|---|
+| `A13-invalid-keyword` | A complete bounded command whose first token fails RFC 3977's `ALPHA 2*(ALPHA / DIGIT / "." / "-")` grammar. A well-formed unknown keyword remains a new class. |
+| `A15-malformed-reader-transit` | IHAVE, CHECK, or TAKETHIS with a malformed Message-ID argument or argument count on a reader/node connection; peer mode does not match. |
+| `H2d-preceding-501-close` | The preceding command is structurally malformed or overlength, receives 501, and the current empty response observes clean EOF before client shutdown. An ordinary semantic argument error cannot match. |
+| `H2d-malformed-takethis-wait` | A peer's malformed TAKETHIS command receives no command reply and times out before its article; EOF or reset does not match this class. |
+| `H2d-rejected-article-continuation` | The preceding NUL-containing article is dot-terminated and receives the verb's rejection, with no preceding QUIT, 205, or observed EOF. |
+
+Closure is a property of the causal prefix, not of an arbitrary unanswered
+command. `adjudicate_differences(..., evidence_dir=...)` therefore reads the
+row's reproducer for that prefix, checks its identity against the row, and
+rejects paths outside that directory. Missing context stays `new`. This is a
+deliberate design judgment beside the requested class matching: generalizing
+H2d from the unanswered token alone would exempt genuinely new server closes.
+The predicates classify evidence; they do not alter the model's verdict.
+
+`test_adjudications` records three fresh `.\r\n` rows as A13, retains a planted
+well-formed unknown-keyword 501 as `new`, checks both target scopes, and removes
+the causal/transport conditions one at a time. The archived H2d run's 322 rows
+(77, 88, 81, and 76 in shards 0–3) all classify `recorded` on fn1 with their
+original reproducers; none becomes `new`. This is offline adjudication of that
+archive, not a new fn1 conformance run.

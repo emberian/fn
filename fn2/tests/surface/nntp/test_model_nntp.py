@@ -3,7 +3,8 @@
 H2b's differential CLI supplies the wider generated command/transport hook;
 accepted POST projection, cancellation and nonempty pinned views remain extensions.
 """
-from fn2.tests.surface import live_model_settings, SurfaceCase, Target, serving
+from fn2.tests.surface import SurfaceCase, Target, serving
+from fn2.tests.surface.live_evidence import capture_step, record_failure, run_live_machine
 
 
 def machine(case):
@@ -12,6 +13,7 @@ def machine(case):
     from fn2.tests.model.nntp_model import NntpModel
 
     class NntpMachine(RuleBasedStateMachine):
+        @capture_step(case, 'nntp')
         def __init__(self):
             super().__init__()
             # Cleanup per Hypothesis example, including construction failure.
@@ -21,6 +23,7 @@ def machine(case):
             self.resources = unittest.TestCase()
             self.resources.addCleanup = self.cleanup.callback
             self.client = None
+            self.trace = []
             try:
                 self.target = Target(self.resources)
                 self.model = NntpModel({'surface.test': {}}, [], {}, {'posting': True})
@@ -29,16 +32,23 @@ def machine(case):
                 self.cleanup.close()
                 raise
 
-        def check(self, expected, status, body=None):
+        def check(self, expected, status, body=None, *, command=None):
             verdict = expected.check(status, body)
+            self.trace.append(dict(rule=verdict.rule, request=command,
+                                   reply=dict(status=status, body=body), model_verdict=verdict))
+            if not verdict.ok:
+                record_failure(case, 'nntp', rule=verdict.rule, request=command,
+                               reply=dict(status=status, body=body), verdict=verdict, trace=self.trace)
             case.assertTrue(verdict.ok, f'{verdict.rule}: {verdict.detail}; {status!r}')
             expected.update(status, body)
 
+        @capture_step(case, 'nntp')
         def connect(self):
             self.conn = self.model.connect(tls=False, implicit_tls=False)
             self.client = self.target.connect()
             self.check(self.conn.greeting(), self.client.greeting)
 
+        @capture_step(case, 'nntp', request=lambda self, command: command + b'\r\n')
         def command(self, command):
             expected = self.conn.send(command + b'\r\n')
             status = self.client.command(command)
@@ -52,7 +62,7 @@ def machine(case):
                     if line == b'.\r\n':
                         break
                 body = b''.join(rows)
-            self.check(expected, status, body)
+            self.check(expected, status, body, command=command + b'\r\n')
 
         @rule(group=st.sampled_from(['surface.test', 'absent']))
         def select(self, group):
@@ -74,6 +84,7 @@ def machine(case):
             self.connect()
 
         @invariant()
+        @capture_step(case, 'nntp')
         def empty_cursor(self):
             case.assertIsNone(self.conn.current_article_number)
             case.assertEqual(self.model.watermarks['surface.test'], 0)
@@ -93,5 +104,4 @@ class TestSurface(SurfaceCase):
 
     @serving('nntp')
     def test_live_state_machine(self):
-        from hypothesis.stateful import run_state_machine_as_test
-        run_state_machine_as_test(machine(self), settings=live_model_settings('nntp'))
+        run_live_machine(self, 'nntp', machine(self))

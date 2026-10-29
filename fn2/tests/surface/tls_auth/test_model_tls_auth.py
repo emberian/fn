@@ -19,7 +19,9 @@ import unittest
 import uuid
 
 from fn2.tests.model.nntp_model import NntpModel
-from fn2.tests.surface import SurfaceCase, Target, live_model_settings, serving
+from fn2.tests.surface import SurfaceCase, Target, serving
+from fn2.tests.surface.live_evidence import capture_step, record_failure, run_live_machine
+from fn2.tests.surface import owned_ports
 
 GROUP = 'surface.test'
 IDENT = '<hu-cursor@surface.invalid>'
@@ -86,6 +88,7 @@ class Wire:
 
 class TlsAuthTarget(Target):
     """Only public operator verbs and native Client; one fresh Node per example."""
+    @owned_ports
     def __init__(self, case, accounts, policy):
         from tests.native_harness import Node, native_image
         self.case = case
@@ -151,6 +154,8 @@ def machine(case, target_factory=TlsAuthTarget, traces=None):
 
         @initialize(target=connections, required=st.booleans(), protected=st.booleans(),
                     mode=st.sampled_from(['plain', 'starttls', 'implicit']))
+        @capture_step(case, 'tls_auth', request=lambda self, required, protected, mode:
+            dict(required=required, protected=protected, mode=mode))
         def setup(self, required, protected, mode):
             # Fresh test literals, never credentials from the environment.
             self.accounts = {name: {'password': 'hu-' + uuid.uuid4().hex, 'posting': posting}  # FAKE-SECRET
@@ -249,10 +254,14 @@ def machine(case, target_factory=TlsAuthTarget, traces=None):
             self.trace.append(dict(command=command.hex(), status=status.hex(),
                                    body=None if body is None else body.hex(), eof=eof,
                                    rule=verdict.rule, detail=verdict.detail))
+            if not verdict.ok:
+                record_failure(case, 'tls_auth', rule=verdict.rule, request=command,
+                               reply=dict(status=status, body=body, eof=eof), verdict=verdict, trace=self.trace)
             case.assertTrue(verdict.ok,
                 f'{command!r}: {verdict.rule} ({verdict.spec}): {verdict.detail}; {status!r}')
             expected.update(status, body, eof=eof)
 
+        @capture_step(case, 'tls_auth', request=lambda self, session, command, **kwargs: command)
         def step(self, session, command, *, observe=True):
             if isinstance(command, str):
                 command = command.encode()
@@ -274,10 +283,16 @@ def machine(case, target_factory=TlsAuthTarget, traces=None):
                 except TimeoutError as exc:
                     self.trace.append(dict(command=command.hex(), status=status.hex(),
                                            eof=False, error='mandatory EOF timeout'))
+                    record_failure(case, 'tls_auth', rule='mandatory-eof', request=command,
+                                   reply=dict(status=status, eof=False),
+                                   verdict=dict(ok=False, detail='mandatory EOF timeout'), trace=self.trace)
                     raise AssertionError('mandatory EOF not observed') from exc
                 else:
                     self.trace.append(dict(command=command.hex(), status=status.hex(),
                                            eof=False, extra=extra.hex()))
+                    record_failure(case, 'tls_auth', rule='mandatory-eof', request=command,
+                                   reply=dict(status=status, eof=False, extra=extra),
+                                   verdict=dict(ok=False, detail='bytes after closing reply'), trace=self.trace)
                     case.fail(f'mandatory EOF not observed; extra reply {extra!r}')
             if expected.multiline_for(status):
                 rows = []
@@ -441,7 +456,5 @@ class TestSurface(SurfaceCase):
 
     @serving('tls_auth')
     def test_live_state_machine(self):
-        from hypothesis.stateful import run_state_machine_as_test
         traces = self.evidence['traces'] = []
-        run_state_machine_as_test(machine(self, traces=traces),
-                                  settings=live_model_settings('tls_auth'))
+        run_live_machine(self, 'tls_auth', machine(self, traces=traces))

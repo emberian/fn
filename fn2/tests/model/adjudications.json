@@ -1,12 +1,11 @@
 {
-  "schema_version": 1,
-  "matching": "Exact hex command and one recorded reply, plus exact rule and detail. Later H2d groups take precedence; no wildcard exemptions.",
+  "schema_version": 2,
+  "matching": "Exact rule, detail and one recorded reply, with either exact command_pattern or a named match predicate. command_example is provenance, not a fallback. Closure predicates require exchange/wire evidence. Superseded H2c rows never override H2d.",
   "groups": [
     {
       "group": "H2c-01",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "446174653a204d6f6e2c2033312046656220323032362031323a30303a3030202b303030300d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -14,7 +13,10 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Layer D: choose invalid-keyword rejection; retain well-formed unknown 500.",
       "original_count": 18,
-      "command_shape": "Date: Mon, 31 Feb 2026 12:00:00 +0000\\r\\n"
+      "command_shape": "Date: Mon, 31 Feb 2026 12:00:00 +0000\\r\\n",
+      "superseded_by": "H2d-01",
+      "match": "A13-invalid-keyword",
+      "command_example": "446174653a204d6f6e2c2033312046656220323032362031323a30303a3030202b303030300d0a"
     },
     {
       "group": "H2c-02",
@@ -28,13 +30,13 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 3,
-      "command_shape": "TAKETHIS <a@b@c\\r\\n"
+      "command_shape": "TAKETHIS <a@b@c\\r\\n",
+      "superseded_by": "H2d-02"
     },
     {
       "group": "H2c-03",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "446174653a20676172626167650d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -42,7 +44,10 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Layer D: choose invalid-keyword rejection; retain well-formed unknown 500.",
       "original_count": 9,
-      "command_shape": "Date: garbage\\r\\n"
+      "command_shape": "Date: garbage\\r\\n",
+      "superseded_by": "H2d-03",
+      "match": "A13-invalid-keyword",
+      "command_example": "446174653a20676172626167650d0a"
     },
     {
       "group": "H2c-04",
@@ -56,7 +61,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 9,
-      "command_shape": "XPAT Xref 1844674407370\\t\\r\\n"
+      "command_shape": "XPAT Xref 1844674407370\\t\\r\\n",
+      "superseded_by": "H2d-04"
     },
     {
       "group": "H2c-05",
@@ -70,7 +76,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 6,
-      "command_shape": "POST\\t\\r\\n"
+      "command_shape": "POST\\t\\r\\n",
+      "superseded_by": "H2d-05"
     },
     {
       "group": "H2c-06",
@@ -84,7 +91,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 3,
-      "command_shape": "From: \\r\\n"
+      "command_shape": "From: \\r\\n",
+      "superseded_by": "H2d-06"
     },
     {
       "group": "H2c-07",
@@ -112,7 +120,8 @@
       "spec": "specs/nntp.md:2486-2506; RFC 8054 \u00a72.1",
       "decision": "Historical run-1 classification predates HV; its inactive-only advertisement obligation is withdrawn. Authentication state is required to judge omission; original run-1 files lack exchanges. H2d-08 contains the audited run-2 ruling.",
       "original_count": 24,
-      "command_shape": "CAPABILITIES\\r\\n"
+      "command_shape": "CAPABILITIES\\r\\n",
+      "superseded_by": "H2d-08"
     },
     {
       "group": "H2c-09",
@@ -154,13 +163,13 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 9,
-      "command_shape": "OVER\\r\\n"
+      "command_shape": "OVER\\r\\n",
+      "superseded_by": "H2d-13"
     },
     {
       "group": "H2c-12",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "506174683a206e6f742d666f722d6d61696c0d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -168,7 +177,10 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Layer D: choose invalid-keyword rejection; retain well-formed unknown 500.",
       "original_count": 17,
-      "command_shape": "Path: not-for-mail\\r\\n"
+      "command_shape": "Path: not-for-mail\\r\\n",
+      "superseded_by": "H2d-16",
+      "match": "A13-invalid-keyword",
+      "command_example": "506174683a206e6f742d666f722d6d61696c0d0a"
     },
     {
       "group": "H2c-13",
@@ -182,7 +194,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 3,
-      "command_shape": "TAKETHIS <a@b\\r\\n"
+      "command_shape": "TAKETHIS <a@b\\r\\n",
+      "superseded_by": "H2d-17"
     },
     {
       "group": "H2c-14",
@@ -196,7 +209,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 6,
-      "command_shape": "IHAVE <>\\r\\n"
+      "command_shape": "IHAVE <>\\r\\n",
+      "superseded_by": "H2d-18"
     },
     {
       "group": "H2c-15",
@@ -210,7 +224,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 3,
-      "command_shape": "IHAVE <>\\r\\n"
+      "command_shape": "IHAVE <>\\r\\n",
+      "superseded_by": "H2d-19"
     },
     {
       "group": "H2c-16",
@@ -224,7 +239,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 6,
-      "command_shape": "LIST OVERVIEW.FMT\\r\\n"
+      "command_shape": "LIST OVERVIEW.FMT\\r\\n",
+      "superseded_by": "H2d-21"
     },
     {
       "group": "H2c-17",
@@ -238,7 +254,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 9,
-      "command_shape": "CHECK <a>\\r\\n"
+      "command_shape": "CHECK <a>\\r\\n",
+      "superseded_by": "H2d-25"
     },
     {
       "group": "H2c-18",
@@ -252,13 +269,13 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 9,
-      "command_shape": "CAPABILITIESCAPABILITIES AUTOUPDATE\\r\\n"
+      "command_shape": "CAPABILITIESCAPABILITIES AUTOUPDATE\\r\\n",
+      "superseded_by": "H2d-26"
     },
     {
       "group": "H2c-19",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "506174683a2061216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121780d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -266,7 +283,10 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Layer D: choose invalid-keyword rejection; retain well-formed unknown 500.",
       "original_count": 6,
-      "command_shape": "Path: a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a\u2026 (409 bytes)"
+      "command_shape": "Path: a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a\u2026 (409 bytes)",
+      "superseded_by": "H2d-27",
+      "match": "A13-invalid-keyword",
+      "command_example": "506174683a2061216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121780d0a"
     },
     {
       "group": "H2c-20",
@@ -280,13 +300,13 @@
       "spec": "specs/nntp.md:530-534,2428-2435; rfc4644.txt:370-387",
       "decision": "Layer D: echo offered Message-ID on every response, including local 436. Use 439 for explicit body-bound refusal; 436 remains legal for deferred/uncertain.",
       "original_count": 3,
-      "command_shape": "TAKETHIS body (13513 bytes; long Path)"
+      "command_shape": "TAKETHIS body (13513 bytes; long Path)",
+      "superseded_by": "H2d-28"
     },
     {
       "group": "H2c-21",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "46726f6d3a20617574686f72406578616d706c652e696e76616c69640d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -294,7 +314,10 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Layer D: choose invalid-keyword rejection; retain well-formed unknown 500.",
       "original_count": 12,
-      "command_shape": "From: author@example.invalid\\r\\n"
+      "command_shape": "From: author@example.invalid\\r\\n",
+      "superseded_by": "H2d-29",
+      "match": "A13-invalid-keyword",
+      "command_example": "46726f6d3a20617574686f72406578616d706c652e696e76616c69640d0a"
     },
     {
       "group": "H2c-22",
@@ -308,7 +331,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 3,
-      "command_shape": "LISTGROUP fn.letters.sub 99999999999999999999\\r\\n"
+      "command_shape": "LISTGROUP fn.letters.sub 99999999999999999999\\r\\n",
+      "superseded_by": "H2d-30"
     },
     {
       "group": "H2c-23",
@@ -336,13 +360,13 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 3,
-      "command_shape": "TAKETHIS <fz405.1.213088405@fuzz.invalid>Path: not-for-mail\\r\\n"
+      "command_shape": "TAKETHIS <fz405.1.213088405@fuzz.invalid>Path: not-for-mail\\r\\n",
+      "superseded_by": "H2d-31"
     },
     {
       "group": "H2c-25",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "446174653a204d6f6e2c2032312053657020323032362031323a30303a3030202b303030300d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -350,7 +374,10 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Layer D: choose invalid-keyword rejection; retain well-formed unknown 500.",
       "original_count": 6,
-      "command_shape": "Date: Mon, 21 Sep 2026 12:00:00 +0000\\r\\n"
+      "command_shape": "Date: Mon, 21 Sep 2026 12:00:00 +0000\\r\\n",
+      "superseded_by": "H2d-32",
+      "match": "A13-invalid-keyword",
+      "command_example": "446174653a204d6f6e2c2032312053657020323032362031323a30303a3030202b303030300d0a"
     },
     {
       "group": "H2c-26",
@@ -364,7 +391,8 @@
       "spec": "specs/nntp.md:530-534,2428-2435; rfc4644.txt:370-387",
       "decision": "Layer D: echo offered Message-ID on every response, including local 436. Use 439 for explicit body-bound refusal; 436 remains legal for deferred/uncertain.",
       "original_count": 3,
-      "command_shape": "TAKETHIS body (15029 bytes; empty Path)"
+      "command_shape": "TAKETHIS body (15029 bytes; empty Path)",
+      "superseded_by": "H2d-33"
     },
     {
       "group": "H2c-27",
@@ -409,7 +437,6 @@
       "group": "H2c-29",
       "rule": "syntax",
       "detail": "code 502; permitted [501]",
-      "command_pattern": "54414b4554484953203c66ca7a3630332e312e32353435373431314066757a7a2e696e76616c69643e506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a",
       "reply_patterns": [
         "353032207472616e736974206973206e6f74207065726d6974746564206f6e207468697320636f6e6e656374696f6e0d0a"
       ],
@@ -417,7 +444,10 @@
       "spec": "A15; specs/nntp.md:78-80; rfc3977.txt:547-555,579-603,5866-5899",
       "decision": "Layer D: choose malformed-input versus transit-permission precedence.",
       "original_count": 6,
-      "command_shape": "TAKETHIS <f\\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\\r\\n"
+      "command_shape": "TAKETHIS <f\\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\\r\\n",
+      "superseded_by": "H2d-40",
+      "match": "A15-malformed-reader-transit",
+      "command_example": "54414b4554484953203c66ca7a3630332e312e32353435373431314066757a7a2e696e76616c69643e506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a"
     },
     {
       "group": "H2c-30",
@@ -431,13 +461,13 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 3,
-      "command_shape": "TAKETHIS <f\\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\\r\\n"
+      "command_shape": "TAKETHIS <f\\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\\r\\n",
+      "superseded_by": "H2d-41"
     },
     {
       "group": "H2c-31",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "504f535446726f6d3a20c3a9203c6140623e0d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -445,13 +475,15 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Layer D: choose invalid-keyword rejection; retain well-formed unknown 500.",
       "original_count": 9,
-      "command_shape": "POSTFrom: \\xc3\\xa9 <a@b>\\r\\n"
+      "command_shape": "POSTFrom: \\xc3\\xa9 <a@b>\\r\\n",
+      "superseded_by": "H2d-42",
+      "match": "A13-invalid-keyword",
+      "command_example": "504f535446726f6d3a20c3a9203c6140623e0d0a"
     },
     {
       "group": "H2c-32",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -459,7 +491,10 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Layer D: choose invalid-keyword rejection; retain well-formed unknown 500.",
       "original_count": 3,
-      "command_shape": "Path: src.example.invalid!not-for-mail\\r\\n"
+      "command_shape": "Path: src.example.invalid!not-for-mail\\r\\n",
+      "superseded_by": "H2d-43",
+      "match": "A13-invalid-keyword",
+      "command_example": "506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a"
     },
     {
       "group": "H2c-33",
@@ -473,7 +508,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 6,
-      "command_shape": "HEAD <fz605.1.154121121@fuzz.invalid>\\nAUTHINFO PASS fuzz-password\\r\\n"
+      "command_shape": "HEAD <fz605.1.154121121@fuzz.invalid>\\nAUTHINFO PASS fuzz-password\\r\\n",
+      "superseded_by": "H2d-44"
     },
     {
       "group": "H2c-34",
@@ -487,7 +523,8 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 9,
-      "command_shape": "\\tSTAT <a\\t@b>\\r\\n"
+      "command_shape": "\\tSTAT <a\\t@b>\\r\\n",
+      "superseded_by": "H2d-46"
     },
     {
       "group": "H2c-35",
@@ -515,13 +552,13 @@
       "spec": "A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899",
       "decision": "Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame.",
       "original_count": 4,
-      "command_shape": "BODY -1\\r\\n"
+      "command_shape": "BODY -1\\r\\n",
+      "superseded_by": "H2d-47"
     },
     {
       "group": "H2d-01",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "446174653a204d6f6e2c2033312046656220323032362031323a30303a3030202b303030300d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -529,13 +566,14 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 24,
-      "command_shape": "Date: Mon, 31 Feb 2026 12:00:00 +0000\\r\\n"
+      "command_shape": "Date: Mon, 31 Feb 2026 12:00:00 +0000\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "446174653a204d6f6e2c2033312046656220323032362031323a30303a3030202b303030300d0a"
     },
     {
       "group": "H2d-02",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "54414b4554484953203c61406240630d0a",
       "reply_patterns": [
         ""
       ],
@@ -543,13 +581,14 @@
       "spec": "A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387",
       "decision": "Closed by HT: RFC 4644 2.5 requires reading the immediate article before 439; all 15 HS probes awaited body.",
       "original_count": 3,
-      "command_shape": "TAKETHIS <a@b@c\\r\\n"
+      "command_shape": "TAKETHIS <a@b@c\\r\\n",
+      "match": "H2d-malformed-takethis-wait",
+      "command_example": "54414b4554484953203c61406240630d0a"
     },
     {
       "group": "H2d-03",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "446174653a20676172626167650d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -557,13 +596,14 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 9,
-      "command_shape": "Date: garbage\\r\\n"
+      "command_shape": "Date: garbage\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "446174653a20676172626167650d0a"
     },
     {
       "group": "H2d-04",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "5850415420587265662031383434363734343037333730090d0a",
       "reply_patterns": [
         ""
       ],
@@ -571,13 +611,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 9,
-      "command_shape": "XPAT Xref 1844674407370\\t\\r\\n"
+      "command_shape": "XPAT Xref 1844674407370\\t\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "5850415420587265662031383434363734343037333730090d0a"
     },
     {
       "group": "H2d-05",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "504f5354090d0a",
       "reply_patterns": [
         ""
       ],
@@ -585,13 +626,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 6,
-      "command_shape": "POST\\t\\r\\n"
+      "command_shape": "POST\\t\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "504f5354090d0a"
     },
     {
       "group": "H2d-06",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "46726f6d3a200d0a",
       "reply_patterns": [
         ""
       ],
@@ -599,13 +641,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 3,
-      "command_shape": "From: \\r\\n"
+      "command_shape": "From: \\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "46726f6d3a200d0a"
     },
     {
       "group": "H2d-07",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "6c697374206f766572766965772e666d74202a0d0a",
       "reply_patterns": [
         ""
       ],
@@ -613,7 +656,9 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 6,
-      "command_shape": "list overview.fmt *\\r\\n"
+      "command_shape": "list overview.fmt *\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "6c697374206f766572766965772e666d74202a0d0a"
     },
     {
       "group": "H2d-08",
@@ -633,7 +678,6 @@
       "group": "H2d-09",
       "rule": "CAPABILITIES",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "4341504142494c49544945530d0a",
       "reply_patterns": [
         ""
       ],
@@ -641,13 +685,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 3,
-      "command_shape": "CAPABILITIES\\r\\n"
+      "command_shape": "CAPABILITIES\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "4341504142494c49544945530d0a"
     },
     {
       "group": "H2d-10",
       "rule": "XOVER",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "584f5645522020310d0a",
       "reply_patterns": [
         ""
       ],
@@ -655,13 +700,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 9,
-      "command_shape": "XOVER  1\\r\\n"
+      "command_shape": "XOVER  1\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "584f5645522020310d0a"
     },
     {
       "group": "H2d-11",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "582d467a2d33343a2033340d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -669,13 +715,14 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 6,
-      "command_shape": "X-Fz-34: 34\\r\\n"
+      "command_shape": "X-Fz-34: 34\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "582d467a2d33343a2033340d0a"
     },
     {
       "group": "H2d-12",
       "rule": "closed",
       "detail": "expected no reply and no framing",
-      "command_pattern": "4c4153540d0a",
       "reply_patterns": [
         "343132206e6f206e65777367726f75702073656c65637465640d0a"
       ],
@@ -683,13 +730,14 @@
       "spec": "specs/nntp.md:513-518",
       "decision": "Closed: dot-terminated rejected article may drain and continue; retain QUIT silence requirement.",
       "original_count": 2,
-      "command_shape": "LAST\\r\\n"
+      "command_shape": "LAST\\r\\n",
+      "match": "H2d-rejected-article-continuation",
+      "command_example": "4c4153540d0a"
     },
     {
       "group": "H2d-13",
       "rule": "OVER",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "4f5645520d0a",
       "reply_patterns": [
         ""
       ],
@@ -697,13 +745,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 9,
-      "command_shape": "OVER\\r\\n"
+      "command_shape": "OVER\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "4f5645520d0a"
     },
     {
       "group": "H2d-14",
       "rule": "AUTHINFO",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "41555448494e464f205341534c20534352414d2d5348412d3235360d0a",
       "reply_patterns": [
         ""
       ],
@@ -711,7 +760,9 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 3,
-      "command_shape": "AUTHINFO SASL SCRAM-SHA-256\\r\\n"
+      "command_shape": "AUTHINFO SASL SCRAM-SHA-256\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "41555448494e464f205341534c20534352414d2d5348412d3235360d0a"
     },
     {
       "group": "H2d-15",
@@ -731,7 +782,6 @@
       "group": "H2d-16",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "506174683a206e6f742d666f722d6d61696c0d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -739,13 +789,14 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 24,
-      "command_shape": "Path: not-for-mail\\r\\n"
+      "command_shape": "Path: not-for-mail\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "506174683a206e6f742d666f722d6d61696c0d0a"
     },
     {
       "group": "H2d-17",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "54414b4554484953203c6140620d0a",
       "reply_patterns": [
         ""
       ],
@@ -753,13 +804,14 @@
       "spec": "A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387",
       "decision": "Closed by HT: RFC 4644 2.5 requires reading the immediate article before 439; all 15 HS probes awaited body.",
       "original_count": 3,
-      "command_shape": "TAKETHIS <a@b\\r\\n"
+      "command_shape": "TAKETHIS <a@b\\r\\n",
+      "match": "H2d-malformed-takethis-wait",
+      "command_example": "54414b4554484953203c6140620d0a"
     },
     {
       "group": "H2d-18",
       "rule": "IHAVE",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "4948415645203c3e0d0a",
       "reply_patterns": [
         ""
       ],
@@ -767,13 +819,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 6,
-      "command_shape": "IHAVE <>\\r\\n"
+      "command_shape": "IHAVE <>\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "4948415645203c3e0d0a"
     },
     {
       "group": "H2d-19",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "4948415645203c3e0d0a",
       "reply_patterns": [
         ""
       ],
@@ -781,7 +834,9 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 3,
-      "command_shape": "IHAVE <>\\r\\n"
+      "command_shape": "IHAVE <>\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "4948415645203c3e0d0a"
     },
     {
       "group": "H2d-20",
@@ -801,7 +856,6 @@
       "group": "H2d-21",
       "rule": "LIST",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "4c495354204f564552564945572e464d540d0a",
       "reply_patterns": [
         ""
       ],
@@ -809,13 +863,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 9,
-      "command_shape": "LIST OVERVIEW.FMT\\r\\n"
+      "command_shape": "LIST OVERVIEW.FMT\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "4c495354204f564552564945572e464d540d0a"
     },
     {
       "group": "H2d-22",
       "rule": "unknown",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "584645415455524520434f4d505245535320475a49500d0a",
       "reply_patterns": [
         ""
       ],
@@ -823,13 +878,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 9,
-      "command_shape": "XFEATURE COMPRESS GZIP\\r\\n"
+      "command_shape": "XFEATURE COMPRESS GZIP\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "584645415455524520434f4d505245535320475a49500d0a"
     },
     {
       "group": "H2d-23",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "582d467a2d303a20300d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -837,7 +893,9 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 6,
-      "command_shape": "X-Fz-0: 0\\r\\n"
+      "command_shape": "X-Fz-0: 0\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "582d467a2d303a20300d0a"
     },
     {
       "group": "H2d-24",
@@ -857,7 +915,6 @@
       "group": "H2d-25",
       "rule": "CHECK",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "434845434b203c613e0d0a",
       "reply_patterns": [
         ""
       ],
@@ -865,13 +922,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 9,
-      "command_shape": "CHECK <a>\\r\\n"
+      "command_shape": "CHECK <a>\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "434845434b203c613e0d0a"
     },
     {
       "group": "H2d-26",
       "rule": "unknown",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "4341504142494c49544945534341504142494c4954494553204155544f5550444154450d0a",
       "reply_patterns": [
         ""
       ],
@@ -879,13 +937,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 9,
-      "command_shape": "CAPABILITIESCAPABILITIES AUTOUPDATE\\r\\n"
+      "command_shape": "CAPABILITIESCAPABILITIES AUTOUPDATE\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "4341504142494c49544945534341504142494c4954494553204155544f5550444154450d0a"
     },
     {
       "group": "H2d-27",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "506174683a2061216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121780d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -893,7 +952,9 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 6,
-      "command_shape": "Path: a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!\u2026 (409 bytes)"
+      "command_shape": "Path: a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!a!\u2026 (409 bytes)",
+      "match": "A13-invalid-keyword",
+      "command_example": "506174683a2061216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121612161216121780d0a"
     },
     {
       "group": "H2d-28",
@@ -913,7 +974,6 @@
       "group": "H2d-29",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "46726f6d3a20617574686f72406578616d706c652e696e76616c69640d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -921,13 +981,14 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 12,
-      "command_shape": "From: author@example.invalid\\r\\n"
+      "command_shape": "From: author@example.invalid\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "46726f6d3a20617574686f72406578616d706c652e696e76616c69640d0a"
     },
     {
       "group": "H2d-30",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "4c49535447524f555020666e2e6c6574746572732e7375622039393939393939393939393939393939393939390d0a",
       "reply_patterns": [
         ""
       ],
@@ -935,13 +996,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 3,
-      "command_shape": "LISTGROUP fn.letters.sub 99999999999999999999\\r\\n"
+      "command_shape": "LISTGROUP fn.letters.sub 99999999999999999999\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "4c49535447524f555020666e2e6c6574746572732e7375622039393939393939393939393939393939393939390d0a"
     },
     {
       "group": "H2d-31",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "54414b4554484953203c667a3430352e312e3231333038383430354066757a7a2e696e76616c69643e506174683a206e6f742d666f722d6d61696c0d0a",
       "reply_patterns": [
         ""
       ],
@@ -949,13 +1011,14 @@
       "spec": "A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387",
       "decision": "Closed by HT: RFC 4644 2.5 requires reading the immediate article before 439; all 15 HS probes awaited body.",
       "original_count": 3,
-      "command_shape": "TAKETHIS <fz405.1.213088405@fuzz.invalid>Path: not-for-mail\\r\\n"
+      "command_shape": "TAKETHIS <fz405.1.213088405@fuzz.invalid>Path: not-for-mail\\r\\n",
+      "match": "H2d-malformed-takethis-wait",
+      "command_example": "54414b4554484953203c667a3430352e312e3231333038383430354066757a7a2e696e76616c69643e506174683a206e6f742d666f722d6d61696c0d0a"
     },
     {
       "group": "H2d-32",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "446174653a204d6f6e2c2032312053657020323032362031323a30303a3030202b303030300d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -963,7 +1026,9 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 6,
-      "command_shape": "Date: Mon, 21 Sep 2026 12:00:00 +0000\\r\\n"
+      "command_shape": "Date: Mon, 21 Sep 2026 12:00:00 +0000\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "446174653a204d6f6e2c2032312053657020323032362031323a30303a3030202b303030300d0a"
     },
     {
       "group": "H2d-33",
@@ -983,7 +1048,6 @@
       "group": "H2d-34",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "54414b4554484953203c6140623e6a756e6b0d0a",
       "reply_patterns": [
         ""
       ],
@@ -991,7 +1055,9 @@
       "spec": "A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387",
       "decision": "Closed by HT: RFC 4644 2.5 requires reading the immediate article before 439; all 15 HS probes awaited body.",
       "original_count": 3,
-      "command_shape": "TAKETHIS <a@b>junk\\r\\n"
+      "command_shape": "TAKETHIS <a@b>junk\\r\\n",
+      "match": "H2d-malformed-takethis-wait",
+      "command_example": "54414b4554484953203c6140623e6a756e6b0d0a"
     },
     {
       "group": "H2d-35",
@@ -1011,7 +1077,6 @@
       "group": "H2d-36",
       "rule": "unknown",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "46726f6d3a20617574686f72406578616d706c652e696e76616c69640d0a",
       "reply_patterns": [
         ""
       ],
@@ -1019,13 +1084,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 9,
-      "command_shape": "From: author@example.invalid\\r\\n"
+      "command_shape": "From: author@example.invalid\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "46726f6d3a20617574686f72406578616d706c652e696e76616c69640d0a"
     },
     {
       "group": "H2d-37",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "4d6573736167652d49443a203c667a3630312e322e3131373838363934344066757a7a2e696e76616c69643e0d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -1033,13 +1099,14 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 6,
-      "command_shape": "Message-ID: <fz601.2.117886944@fuzz.invalid>\\r\\n"
+      "command_shape": "Message-ID: <fz601.2.117886944@fuzz.invalid>\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "4d6573736167652d49443a203c667a3630312e322e3131373838363934344066757a7a2e696e76616c69643e0d0a"
     },
     {
       "group": "H2d-38",
       "rule": "closed",
       "detail": "expected no reply and no framing",
-      "command_pattern": "4e45574e455753203f2039393939313233312032333539353920676d74090d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -1047,13 +1114,14 @@
       "spec": "specs/nntp.md:513-518",
       "decision": "Closed: dot-terminated rejected article may drain and continue; retain QUIT silence requirement.",
       "original_count": 3,
-      "command_shape": "NEWNEWS ? 99991231 235959 gmt\\t\\r\\n"
+      "command_shape": "NEWNEWS ? 99991231 235959 gmt\\t\\r\\n",
+      "match": "H2d-rejected-article-continuation",
+      "command_example": "4e45574e455753203f2039393939313233312032333539353920676d74090d0a"
     },
     {
       "group": "H2d-39",
       "rule": "closed",
       "detail": "expected no reply and no framing",
-      "command_pattern": "47524f555020666e2eff20200d4948415645203c667a3630322e322e3235373031373439324066757a7a2e696e76616c69643e0d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -1061,13 +1129,14 @@
       "spec": "specs/nntp.md:513-518",
       "decision": "Closed: dot-terminated rejected article may drain and continue; retain QUIT silence requirement.",
       "original_count": 9,
-      "command_shape": "GROUP fn.\\xff  \\rIHAVE <fz602.2.257017492@fuzz.invalid>\\r\\n"
+      "command_shape": "GROUP fn.\\xff  \\rIHAVE <fz602.2.257017492@fuzz.invalid>\\r\\n",
+      "match": "H2d-rejected-article-continuation",
+      "command_example": "47524f555020666e2eff20200d4948415645203c667a3630322e322e3235373031373439324066757a7a2e696e76616c69643e0d0a"
     },
     {
       "group": "H2d-40",
       "rule": "syntax",
       "detail": "code 502; permitted [501]",
-      "command_pattern": "54414b4554484953203c66ca7a3630332e312e32353435373431314066757a7a2e696e76616c69643e506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a",
       "reply_patterns": [
         "353032207472616e736974206973206e6f74207065726d6974746564206f6e207468697320636f6e6e656374696f6e0d0a"
       ],
@@ -1075,13 +1144,14 @@
       "spec": "A15; specs/nntp.md:78-80; rfc3977.txt:547-555,5866-5899",
       "decision": "Keep open: choose malformed-argument versus reader transit-permission precedence.",
       "original_count": 6,
-      "command_shape": "TAKETHIS <f\\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\\r\\n"
+      "command_shape": "TAKETHIS <f\\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\\r\\n",
+      "match": "A15-malformed-reader-transit",
+      "command_example": "54414b4554484953203c66ca7a3630332e312e32353435373431314066757a7a2e696e76616c69643e506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a"
     },
     {
       "group": "H2d-41",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "54414b4554484953203c66ca7a3630332e312e32353435373431314066757a7a2e696e76616c69643e506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a",
       "reply_patterns": [
         ""
       ],
@@ -1089,13 +1159,14 @@
       "spec": "A14; specs/nntp.md:513-518,2421-2422; rfc4644.txt:375-387",
       "decision": "Closed by HT: RFC 4644 2.5 requires reading the immediate article before 439; all 15 HS probes awaited body.",
       "original_count": 3,
-      "command_shape": "TAKETHIS <f\\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\\r\\n"
+      "command_shape": "TAKETHIS <f\\xcaz603.1.25457411@fuzz.invalid>Path: src.example.invalid!not-for-mail\\r\\n",
+      "match": "H2d-malformed-takethis-wait",
+      "command_example": "54414b4554484953203c66ca7a3630332e312e32353435373431314066757a7a2e696e76616c69643e506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a"
     },
     {
       "group": "H2d-42",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "504f535446726f6d3a20c3a9203c6140623e0d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -1103,13 +1174,14 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 9,
-      "command_shape": "POSTFrom: \\xc3\\xa9 <a@b>\\r\\n"
+      "command_shape": "POSTFrom: \\xc3\\xa9 <a@b>\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "504f535446726f6d3a20c3a9203c6140623e0d0a"
     },
     {
       "group": "H2d-43",
       "rule": "unknown",
       "detail": "code 501; permitted [500]",
-      "command_pattern": "506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a",
       "reply_patterns": [
         "3530312073796e746178206572726f720d0a"
       ],
@@ -1117,13 +1189,14 @@
       "spec": "A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422",
       "decision": "Keep open: choose invalid-keyword policy; retain well-formed unknown 500.",
       "original_count": 6,
-      "command_shape": "Path: src.example.invalid!not-for-mail\\r\\n"
+      "command_shape": "Path: src.example.invalid!not-for-mail\\r\\n",
+      "match": "A13-invalid-keyword",
+      "command_example": "506174683a207372632e6578616d706c652e696e76616c6964216e6f742d666f722d6d61696c0d0a"
     },
     {
       "group": "H2d-44",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "48454144203c667a3630352e312e3135343132313132314066757a7a2e696e76616c69643e0a41555448494e464f20504153532066757a7a2d70617373776f72640d0a",
       "reply_patterns": [
         ""
       ],
@@ -1131,7 +1204,9 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 6,
-      "command_shape": "HEAD <fz605.1.154121121@fuzz.invalid>\\nAUTHINFO PASS fuzz-password\\r\\n"
+      "command_shape": "HEAD <fz605.1.154121121@fuzz.invalid>\\nAUTHINFO PASS fuzz-password\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "48454144203c667a3630352e312e3135343132313132314066757a7a2e696e76616c69643e0a41555448494e464f20504153532066757a7a2d70617373776f72640d0a"
     },
     {
       "group": "H2d-45",
@@ -1151,7 +1226,6 @@
       "group": "H2d-46",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "0953544154203c610940623e0d0a",
       "reply_patterns": [
         ""
       ],
@@ -1159,13 +1233,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 9,
-      "command_shape": "\\tSTAT <a\\t@b>\\r\\n"
+      "command_shape": "\\tSTAT <a\\t@b>\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "0953544154203c610940623e0d0a"
     },
     {
       "group": "H2d-47",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "424f4459202d310d0a",
       "reply_patterns": [
         ""
       ],
@@ -1173,13 +1248,14 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 6,
-      "command_shape": "BODY -1\\r\\n"
+      "command_shape": "BODY -1\\r\\n",
+      "match": "H2d-preceding-501-close",
+      "command_example": "424f4459202d310d0a"
     },
     {
       "group": "H2d-48",
       "rule": "syntax",
       "detail": "wrong number of status lines (including closing 400)",
-      "command_pattern": "504f53542078787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878780d0a",
       "reply_patterns": [
         ""
       ],
@@ -1187,7 +1263,9 @@
       "spec": "specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899",
       "decision": "Closed by model close alternative plus driver attribution to preceding 501.",
       "original_count": 4,
-      "command_shape": "POST xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026 (513 bytes)"
+      "command_shape": "POST xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026 (513 bytes)",
+      "match": "H2d-preceding-501-close",
+      "command_example": "504f53542078787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878780d0a"
     }
   ]
 }

@@ -15,6 +15,12 @@ is outside this short S profile. No fn1 reply has been recorded for HW.
 Set outcomes use their exit status and named refusal, with any success line
 accepted where no literal is specified. Effects are observed on the NNTP wire;
 no implementation-derived fallback oracle is used.
+
+HX design note for Astra: init now pins the record bound and derives history
+from H >= R. I prefer this to raising history to a number copied from a failed
+fn1 init: preset changes cannot invalidate that relation, and the H=R-1 witness
+tests its refusal explicitly. Listener witnesses require the spec's named
+usage refusal, rather than accepting a broad substring such as ``host``.
 """
 from contextlib import ExitStack
 import json
@@ -22,9 +28,12 @@ import select
 import time
 import unittest
 
-from fn2.tests.model.limits_model import INIT_FIXED, KEYS, LimitsModel, STORE_DEFAULTS, TOML_KEYS, U32
+from fn2.tests.model.limits_model import (INIT_FIXED, KEYS, LimitsModel, OperatorExpectation,
+    STORE_DEFAULTS, STORE_INIT, TOML_KEYS, U32, init_history_expectation)
 from fn2.tests.model.nntp_model import NntpModel
-from fn2.tests.surface import SurfaceCase, live_model_settings, serving
+from fn2.tests.surface import SurfaceCase, serving
+from fn2.tests.surface.live_evidence import capture_step, record_failure, run_live_machine
+from fn2.tests.surface import owned_ports
 
 GROUP = 'surface.test'
 ACCOUNT = {'hw-poster': {'password': 'hw-fixture-password', 'posting': True}}  # FAKE-SECRET
@@ -34,6 +43,25 @@ ARTICLE = (b'From: hw@surface.invalid\r\nNewsgroups: surface.test\r\n'
            b'Date: Thu, 29 Oct 2026 12:00:00 +0000\r\n\r\nHW\r\n')
 PROBE = .15
 CLOSE_BOUND = 2.5
+
+# NNT-041, specs/nntp.md:2395-2405. These are usage/configuration refusals,
+# not a generic host error and not policy-set's exit 1.
+LISTENER_REFUSALS = (
+    ('not-an-address.invalid', 'listener-address'),
+    ('0.0.0.0', 'listener-unspecified'),
+    ('::', 'listener-unspecified'),
+    ('::ffff:127.0.0.1', 'listener-mapped'),
+)
+
+
+def init_store(case, node, *, history_octets=STORE_DEFAULTS['max-history-octets']):
+    values = {**STORE_INIT, 'max-history-octets': history_octets}
+    expected = init_history_expectation(history_octets, values['max-record-octets'])
+    flags = [item for k, v in values.items() for item in ('--' + k, str(v))]
+    result = node.operator('init', '--profile', 'development', *flags, GROUP, timeout=10)
+    observed = {'exit': result.returncode,
+                'text': (result.stdout + result.stderr).decode('ascii')}
+    case.assertIsNone(expected.check(observed), (expected.check(observed), observed))
 
 
 class Wire:
@@ -68,12 +96,11 @@ class Wire:
 
 
 class LimitsTarget:
+    @owned_ports
     def __init__(self, case):
         from tests.native_harness import Node, native_image
         self.node = Node(case, native_image('FN_NATIVE_HOST'))
-        flags = [item for k, v in STORE_DEFAULTS.items() for item in ('--' + k, str(v))]
-        self.node.operator('init', '--profile', 'development', *flags,
-                           GROUP, expect=0, timeout=10)
+        init_store(case, self.node)
         self.node.operator('principal', 'set-password', 'hw-poster', '--posting',
                            input=b'hw-fixture-password\nhw-fixture-password\n', expect=0, timeout=3)
         self.node.start(timeout=10)
@@ -106,25 +133,38 @@ class Exercise:
             {'posting': True, 'stored_articles': {IDENT: ARTICLE}}, limits=self.policy)
         self.sessions = []
 
+    @capture_step(None, 'config_limits', request=lambda self, key, value: dict(key=key, value=str(value)))
     def set(self, key, value):
         expected = self.policy.set(key, str(value))
         result = self.target.set(key, str(value))
         row = dict(key=key, value=str(value), result=result)
         self.trace.append(row)
-        self.case.assertIsNone(expected.check(result), (expected.check(result), key, value, result))
+        verdict = expected.check(result)
+        if verdict is not None:
+            record_failure(self.case, 'config_limits', rule='set', request=dict(key=key, value=str(value)),
+                           reply=result, verdict=dict(ok=False, detail=verdict), trace=self.trace)
+        self.case.assertIsNone(verdict, (verdict, key, value, result))
         expected.update(result)
 
-    def check(self, expected, status, *, eof=False):
+    def check(self, expected, status, *, eof=False, request=None):
         verdict = expected.check(status, None, eof=eof)
         self.trace.append(dict(rule=verdict.rule, spec=verdict.spec, status=status.hex(), eof=eof,
                                detail=verdict.detail))
+        if not verdict.ok:
+            record_failure(self.case, 'config_limits', rule=verdict.rule, request=request,
+                           reply=dict(status=status, eof=eof), verdict=verdict, trace=self.trace)
         self.case.assertTrue(verdict.ok, (verdict, status))
         # Expect permits an optional close for some NNTP branches. HW's capacity
         # and deadline witnesses REQUIRE it, so check this independently too.
         if expected.close_after_reply or expected.close_without_reply:
+            if not eof:
+                record_failure(self.case, 'config_limits', rule='mandatory-eof', request=request,
+                               reply=dict(status=status, eof=eof),
+                               verdict=dict(ok=False, detail='mandatory EOF not observed'), trace=self.trace)
             self.case.assertTrue(eof, 'mandatory EOF not observed')
         expected.update(status, None, eof=eof)
 
+    @capture_step(None, 'config_limits')
     def open(self):
         conn = self.wire_model.connect(tls=False, implicit_tls=False)
         wire = self.target.open()
@@ -137,6 +177,7 @@ class Exercise:
         self.check(expected, wire.greeting, eof=eof)
         return conn, wire
 
+    @capture_step(None, 'config_limits', request=lambda self, session, command, **kwargs: command)
     def command(self, session, command, *, sent=False, block=False):
         conn, wire = session
         command = command.encode() if isinstance(command, str) else command
@@ -152,7 +193,7 @@ class Exercise:
                 status += wire.line()
             extra, eof = wire.observe(CLOSE_BOUND)
             self.case.assertEqual(extra, b'', 'bytes after closing reply')
-        self.check(expected, status, eof=eof)
+        self.check(expected, status, eof=eof, request=command)
         return status
 
     def release(self):
@@ -216,6 +257,7 @@ class Exercise:
         self.command(session, b'DATE', sent=True)  # queued command resumes, no resend
         self.release()
 
+    @capture_step(None, 'config_limits')
     def deadlines(self):
         for first in (True, False):
             key = 'exposure-first-seconds' if first else 'exposure-idle-seconds'
@@ -275,6 +317,7 @@ def machine(case, target_factory=LimitsTarget, traces=None):
     from hypothesis.stateful import RuleBasedStateMachine, precondition, rule
 
     class LimitsMachine(RuleBasedStateMachine):
+        @capture_step(case, 'config_limits')
         def __init__(self):
             super().__init__()
             self.cleanup = ExitStack()
@@ -318,6 +361,7 @@ def machine(case, target_factory=LimitsTarget, traces=None):
     return LimitsMachine
 
 
+@owned_ports
 def config_witnesses(case):
     """Parse every accepted key; refusal-to-run is distinct from parse refusal.
 
@@ -327,7 +371,10 @@ def config_witnesses(case):
     """
     from tests.native_harness import Node, native_image
     node = Node(case, native_image('FN_NATIVE_HOST'))
-    node.init(GROUP, profile='development', timeout=10)
+    # The refused init writes nothing (docs/operator-internals.md:210-215), so
+    # the succeeding init on this same path also observes that property.
+    init_store(case, node, history_octets=STORE_INIT['max-record-octets'] - 1)
+    init_store(case, node)
     values = {
         'store': {'path': str(node.store_path)},
         'listener': {'host': '127.0.0.1', 'port': node.port, 'tls_port': 563 if node.port != 563 else 564,
@@ -361,13 +408,15 @@ def config_witnesses(case):
         result = node.operator('show', timeout=3)
         case.assertEqual(result.returncode, 0, (table, result.stdout, result.stderr))
     for table, fields, reason in [
-        ('listener', {'host': '0.0.0.0'}, 'host'), ('listener', {'host': '::'}, 'host'),
+        *(('listener', {'host': host}, reason) for host, reason in LISTENER_REFUSALS),
         ('posting', {'agent': 'hw.invalid'}, 'agent'), ('anchor', {'server': '127.0.0.1'}, 'anchor'),
         ('acl2', {'path': '/tmp/hw-acl2', 'slots': 1}, 'acl2')]:
         write(table, fields)
         result = node.operator('run', timeout=3)
-        case.assertEqual(result.returncode, 5, (table, result.stdout, result.stderr))
-        case.assertIn(reason, (result.stdout + result.stderr).decode('ascii').lower())
+        observed = {'exit': result.returncode,
+                    'text': (result.stdout + result.stderr).decode('ascii')}
+        expected = OperatorExpectation(5, reason)
+        case.assertIsNone(expected.check(observed), (table, expected.check(observed), observed))
 
 
 class TestSurface(SurfaceCase):
@@ -375,10 +424,9 @@ class TestSurface(SurfaceCase):
 
     @serving('config_limits')
     def test_live_state_machine(self):
-        from hypothesis.stateful import run_state_machine_as_test
         self.evidence['recorded_differences'] = []
         traces = self.evidence['traces'] = []
-        run_state_machine_as_test(machine(self, traces=traces), settings=live_model_settings('config_limits'))
+        run_live_machine(self, 'config_limits', machine(self, traces=traces))
 
     @serving('config_limits')
     def test_init_config_witnesses(self):

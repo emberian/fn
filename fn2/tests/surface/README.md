@@ -28,7 +28,8 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   in the manifest. The layer A–E simulator runs remain separate drivers; Python
   does not emulate those machines. There is no P test module.
 - **S** takes live counts from each family’s per-box `model_examples`: NNTP
-  200/5,000 (laptop/hbox), consumer 5/50, with 50 steps each. H5a measured
+  200/5,000 (laptop/hbox), consumer 5/50, with 50 steps each; TLS/auth and
+  config/limits use 5/50 examples with 30 generated steps plus fixed witnesses. H5a measured
   NNTP’s 200 examples at 96.016 seconds; consumer measured about 30 seconds
   per example. Fake model unit tests retain 200 examples. `live_model_settings`
   disables Hypothesis’s shrink phase: zero shrink executions. Failure replay
@@ -39,7 +40,8 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   selection, absent articles, reader/cursor commands and reconnects, comparing
   replies before applying model updates. Accepted POST projection, cancellation
   and nonempty pinned-view schedules are extensions, not covered by this machine.
-  Other S forms are `owed` in the manifest, with their required model module.
+  Consumer, TLS/auth and config/limits also have implemented live S machines.
+  The remaining S forms are `owed` in the manifest, with their required model module.
   They appear in reports but generate no test and are not counted as run.
 - **F** uses H2b through its public CLI for NNTP, without importing driver
   internals: `python3 -m fn2.tests.model.differential --target fn1 --seeds 0..199
@@ -90,17 +92,60 @@ cap is not a measurement of total child CPU. The runner does not claim the
 simulator, layer READY gates or weekly soak ran.
 
 NNTP mismatches use [`../model/adjudications.json`](../model/adjudications.json),
-the source of truth generated once from the H2c/H2d markdown groups and their
-original observed bytes. Schema 1 has one record per group: exact `rule`,
-`detail`, hex `command_pattern`, observed hex `reply_patterns`, `primary_class`,
-source and decision. These patterns are exact literals, not regex wildcards:
-a changed reply is new evidence even when its rule and command match. H2d takes
+the source of truth derived from the H2c/H2d markdown groups and their observed
+bytes. Schema 2 keeps exact `rule`, `detail` and observed `reply_patterns`.
+Groups with structural classes use a named `match` predicate and preserve the
+original command as `command_example`; other groups retain exact
+`command_pattern`. A13 recognizes a malformed first keyword token, A15 requires
+reader mode and a malformed transit argument, and H2d closure predicates require
+the relevant command sequence and transport evidence. Missing causal context
+is new evidence. A changed reply remains new even when the command class matches.
+H2d takes
 precedence over overlapping H2c groups. fn1 accepts recorded observations of
 all adjudicated classes; fn2 accepts only `spec-ambiguity`. Fake targets accept
 none. Reports list each mismatch’s group/class and count recorded versus new;
 new mismatches fail. Driver setup errors, interruption, missing/inconsistent
 summary evidence, unexpected exit status and supervisor timeouts still fail.
 Use fresh output directories so an old mismatch file cannot excuse a new run.
+
+## Process and example lifetimes (HX)
+
+Every served E/S/F/H TestCase runs in its own interpreter. The child writes
+`OUT/<family>/children/<form>/<test-id>/result.json`, with its own original
+TestCase outcome, evidence and assertion count; `request.json` records the
+selection and cadence, and `driver.log` retains diagnostics. `driver.pid` is
+exclusive while the child lives and is removed after reaping. Native environment
+plans travel in the child's environment, never in these JSON artifacts.
+A dead child, exhausted descriptor table, invalid/missing result or timeout is
+an error for that selected test; later tests and families still run. E retains
+its existing per-native child inside this supervisor. Unserved families only
+execute their skip gates in the parent.
+
+S and H use the manifest's 300-second laptop / 2,400-second hbox timeout per
+TestCase. E native wrappers allow their native timeout plus 30 seconds; F
+allows its reserved share plus 30 seconds so its inner driver supervisor can
+record its own timeout. These are wall limits, separate from Hypothesis counts.
+Use a fresh output directory; an existing child request/result is refused.
+
+The descriptor leak was `tools.ports.reserve`'s process-lifetime port-lock
+files: every fresh `Node` holds another lock descriptor, even after
+`Node.stop_all` and all streams close. Implicit TLS reserves a second one.
+The surface `owned_ports` adapter records the exact `(port, fd)` acquired by
+its construction thread and releases only those leases after the node and
+socket cleanups. Concurrent decorated constructors are serialized; another
+thread's ordinary reservations stay process-owned. This applies to the shared
+Target (NNTP/consumer), TLS/auth, config/limits and its fixed config witnesses.
+Tests retain all fake-machine instances after every teardown, exercise real
+port-lock files with only the TCP-bind probe replaced, and compare `/proc/self/fd`
+or `/dev/fd` before/after all five examples of each machine. Constructor failure
+also preserves unrelated leases and releases owned ports after node cleanup.
+
+Design note for Astra: isolation per TestCase gives the smallest useful fault
+boundary and keeps an original outcome visible, while family isolation would
+lose later tests in the failed family. The shared port allocator would ideally
+return an explicit releasable lease. HX leaves its process-lifetime API intact
+and confines the adaptation to surface constructors; no resource is recovered
+by guessing from all global descriptors or waiting for garbage collection.
 
 ## Provisioning and driver hooks
 

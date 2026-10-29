@@ -9,6 +9,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import unittest
 
 from fn2.tests.harness import run_natives
@@ -43,18 +44,22 @@ def native_timeout(name):
 
 
 def live_model_settings(family):
-    """Live generation only: zero shrink executions, not a wall-clock deadline.
+    """Live explicit/generation phases, with no shrinking or database replay.
 
-    Hypothesis has no public shrink-time setting. Disabling Phase.shrink bounds
-    that expensive work to zero; a failing example may still be replayed once.
-    Fake-target model unit tests keep their own 200-example shrinking settings.
+    Hypothesis 6.170.13 core.py:1537-1574 unconditionally replays discovered
+    failures for reporting even without Phase.shrink (whose separate guard is
+    internal/conjecture/engine.py:1693). No public setting disables that final
+    replay. Each live machine records its first failing step through
+    live_evidence (OUT/<family>/s-failure.json) before raising, and the
+    replay's error carries a pointer to it.
+    Fake-target model unit tests retain their own shrinking settings.
     """
     from hypothesis import Phase, settings
     box = RUN.get('box', os.environ.get('FN2_SURFACE_BOX', 'laptop'))
     cadence = FAMILIES[family]['cadence'][box]
     return settings(max_examples=cadence['model_examples'],
                     stateful_step_count=cadence['steps'], deadline=None,
-                    database=None, derandomize=True, phases=(Phase.generate,),
+                    database=None, derandomize=True, phases=(Phase.explicit, Phase.generate),
                     report_multiple_bugs=False)
 
 
@@ -66,21 +71,45 @@ def fuzz_allocations(families, box):
     return dict.fromkeys(eligible, share)
 
 
-def adjudicate_differences(rows, target):
-    """Only exact recorded observations are exemptions; fresh values stay new."""
+def adjudicate_differences(rows, target, evidence_dir=None):
+    """Match exact observations or reviewed predicates; missing evidence stays new."""
+    from .adjudication_predicates import PREDICATES
     ledger = json.loads((ROOT / 'fn2/tests/model/adjudications.json').read_text())
-    if ledger['schema_version'] != 1:
+    if ledger['schema_version'] != 2:
         raise ValueError('unsupported differential adjudication schema')
-    groups = list(reversed(ledger['groups']))  # H2d supersedes overlapping H2c evidence.
+    for group in ledger['groups']:
+        if ('match' in group) == ('command_pattern' in group):
+            raise ValueError('adjudication needs exactly one command matcher')
+        if 'match' in group and group['match'] not in PREDICATES:
+            raise ValueError('unknown adjudication predicate: ' + group['match'])
+    groups = [g for g in reversed(ledger['groups']) if not g.get('superseded_by')]
     result = []
     for row in rows:
-        group = next((g for g in groups if row.get('rule') == g['rule'] and row.get('detail') == g['detail']
-            and row.get('command_hex') == g['command_pattern']
-            and row.get('reply_hex') in g['reply_patterns']), None)
+        evidence = row
+        # The differential summary deliberately stays small. Only its named
+        # reproducer supplies the causal prefix needed by closure predicates.
+        name = row.get('reproducer')
+        if evidence_dir is not None and isinstance(name, str) and Path(name).name == name:
+            directory = Path(evidence_dir).resolve()
+            path = (directory / name).resolve()
+            if path.parent == directory and path.is_file():
+                try:
+                    saved = json.loads(path.read_text())
+                except (OSError, ValueError):
+                    saved = None
+                binding = ('command_index', 'command_hex', 'reply_hex', 'rule', 'detail', 'mode')
+                if isinstance(saved, dict) and all(saved.get(k) == row.get(k) for k in binding):
+                    evidence = dict(saved, **row)
+        group = next((g for g in groups
+            if row.get('rule') == g['rule'] and row.get('detail') == g['detail']
+            and row.get('reply_hex') in g['reply_patterns']
+            and (PREDICATES[g['match']](evidence) if 'match' in g
+                 else row.get('command_hex') == g['command_pattern'])), None)
         recorded = group is not None and (target == 'fn1' or
             (target == 'fn2' and group['primary_class'] == 'spec-ambiguity'))
         result.append(dict(row, disposition='recorded' if recorded else 'new',
                            group=group['group'] if group else None,
+                           match=group.get('match') if group else None,
                            primary_class=group['primary_class'] if group else row.get('class', 'unclassified')))
     return result
 
@@ -136,8 +165,57 @@ def driver(command, directory, seconds, env=None):
             pidfile.unlink()
 
 
+_PORT_CONSTRUCTION = threading.RLock()
+
+
+def owned_ports(call):
+    """Scope native harness port locks to this target's registered cleanups.
+
+    tools.ports deliberately retains each lock until process exit. Live S has
+    many fresh nodes per process, so its adapter must release only leases that
+    this constructor acquired, after Node.stop_all and client cleanups finish.
+    """
+    @functools.wraps(call)
+    def wrapped(*args, **kwargs):
+        with _PORT_CONSTRUCTION:
+            return construct(*args, **kwargs)
+
+    def construct(*args, **kwargs):
+        from tests import native_harness
+        from tools import ports
+        case = args[0] if isinstance(args[0], unittest.TestCase) else args[1]
+        leases = []
+        thread = threading.get_ident()
+        original = native_harness.free_port
+
+        def release():
+            with ports._lock:
+                for port, descriptor in leases:
+                    if ports._held.get(port) == descriptor:
+                        del ports._held[port]
+                        os.close(descriptor)
+            leases.clear()
+
+        def acquire():
+            port = original()
+            if threading.get_ident() == thread:
+                with ports._lock:
+                    leases.append((port, ports._held[port]))
+            return port
+
+        # Register first: LIFO cleanup stops nodes before releasing their ports.
+        case.addCleanup(release)
+        native_harness.free_port = acquire
+        try:
+            return call(*args, **kwargs)
+        finally:
+            native_harness.free_port = original
+    return wrapped
+
+
 class Target:
     """The selected live backend; the model owns expected replies, never this class."""
+    @owned_ports
     def __init__(self, case, groups=('surface.test',)):
         import tests.native_harness as native_harness
         image = native_harness.native_image('FN_NATIVE_HOST')
@@ -210,7 +288,8 @@ class SurfaceCase(unittest.TestCase):
             summary = json.loads((directory / 'summary.json').read_text())
             path = directory / 'differences.jsonl'
             rows = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
-            judged = adjudicate_differences(rows, os.environ.get('FN2_SURFACE_TARGET', 'fn2'))
+            judged = adjudicate_differences(rows, os.environ.get('FN2_SURFACE_TARGET', 'fn2'),
+                                           evidence_dir=directory)
             self.evidence['differences'] = judged
             self.evidence['recorded_difference_count'] = sum(r['disposition'] == 'recorded' for r in judged)
             self.evidence['new_difference_count'] = sum(r['disposition'] == 'new' for r in judged)

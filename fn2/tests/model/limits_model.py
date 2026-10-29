@@ -61,8 +61,17 @@ import re
 
 U32 = (1 << 32) - 1
 ADJUDICATIONS = ()
-STORE_DEFAULTS = {'max-transactions': 4096, 'max-history-octets': 16777216,
+# These are fixture choices, not universal defaults. Pin R as well as H so
+# init's profile resolution cannot silently choose an R larger than our H.
+# specs/storage.md:46-128 makes these operator inputs subject to profile
+# relations; docs/operator-internals.md:210-215 spells out R <= H and
+# docs/operator.md:1321-1327 specifies init's named refusal. 24 MiB is the
+# documented development history size, not a number learned from fn1 replies.
+INIT_RECORD_OCTETS = 24 * 1024 * 1024
+STORE_DEFAULTS = {'max-transactions': 4096,
+                  'max-history-octets': max(16 * 1024 * 1024, INIT_RECORD_OCTETS),
                   'max-article-octets': 32768}  # explicit init fixture, not universal defaults
+STORE_INIT = {'max-record-octets': INIT_RECORD_OCTETS, **STORE_DEFAULTS}
 INIT_FIXED = ('max-record-octets', 'max-groups-per-article', 'max-open-suffix',
               'max-consumers', 'max-config-generations', 'max-credentials',
               'max-bp-rows', 'max-group-name-octets', 'max-policy-members', 'profile', 'budget')
@@ -77,6 +86,31 @@ TOML_KEYS = {
                   'cold_file_ids', 'output_heap_octets', 'output_quantum_heap_octets', 'reclaim_live'),
     'ops': ('mission', 'unit', 'scope', 'keep_releases', 'log_max_bytes', 'log_keep', 'memory_max'),
 }
+
+
+@dataclass(frozen=True)
+class OperatorExpectation:
+    exit: int
+    reason: str | None = None
+
+    def check(self, result):
+        if result['exit'] != self.exit:
+            return f'operator: expected exit {self.exit}'
+        words = re.findall(r'[a-z][a-z0-9-]*', result['text'].lower())
+        if self.reason and self.reason.lower() not in words:
+            return 'operator: expected named refusal ' + self.reason
+        return None
+
+
+def init_history_expectation(history_octets, record_octets):
+    """The H >= R relation, for an otherwise valid explicit init fixture.
+
+    This does not model the remaining profile or machine-budget refusals.
+    Refusal is exit 1, distinct from a configuration grammar/usage error (5).
+    """
+    if history_octets < record_octets:
+        return OperatorExpectation(1, 'MAX-HISTORY-OCTETS-BELOW-MAX-RECORD-OCTETS')
+    return OperatorExpectation(0)
 
 
 @dataclass(frozen=True)
