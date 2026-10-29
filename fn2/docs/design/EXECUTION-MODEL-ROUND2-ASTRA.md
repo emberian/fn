@@ -11,7 +11,7 @@ The main additional decisions are:
 - Treat storage uncertainty as persistent uncertainty until recovery establishes an outcome. A timeout does not establish refusal.
 - Page persistent namespaces through bounded caches. Resident capacity must not determine how many objects the store can retain.
 
-All `fn2-*` names below are proposed definitions and obligations, not existing certified functions. The inspected checkout is `3a937ebc3`; [INTERFACES-TODAY.md](build/coordinator/fn2/INTERFACES-TODAY.md) describes `3bbfc4dca`. Its runtime-contract inventory is therefore a revision-scoped source, not a claim about files present in this checkout.
+All `fn2-*` names below are proposed definitions and obligations, not existing certified functions. The inspected checkout is `3a937ebc3`; [INTERFACES-TODAY.md](/Users/ember/dev/fn/build/coordinator/fn2/INTERFACES-TODAY.md) describes `3bbfc4dca`. Its runtime-contract inventory is therefore a revision-scoped source, not a claim about files present in this checkout.
 
 ## A. ACL2 realization and proof obligations
 
@@ -31,7 +31,7 @@ Use a foundational `fn2-core$c` containing:
 
 Each machine table is a struct of arrays. A machine instance is a row identified by `(kind, slot, generation)`. Nested stobjs provide modular access to tables; their nesting is not the logical decomposition of the server.
 
-Access children through `stobj-let`. Cross-table transitions bind all required children together and pass scalar root information explicitly. They must not reach back into the parent while borrowed children are live. This follows the restrictions and examples in [03-modelling-data.md, §3.8](~/dev/acl2aiguide/humans/03-modelling-data.md:1178).
+Access children through `stobj-let`. Cross-table transitions bind all required children together and pass scalar root information explicitly. They must not reach back into the parent while borrowed children are live. This follows the restrictions and examples in [03-modelling-data.md, §3.8](/Users/ember/dev/acl2aiguide/humans/03-modelling-data.md:1178).
 
 Place an abstract interface over this foundation where it simplifies invariant reasoning. Its logical state contains maps, sequences, and octet-list views; the executable state contains the columns and pool. The logical view is never materialized on the served path.
 
@@ -86,13 +86,13 @@ The supporting obligations are:
 
 The byte-fill boundary requires its own theorem: an input completion exposes exactly the initialized range written under the corresponding exclusive loan. The adapter cannot mutate other pool bytes or make a still-borrowed range readable.
 
-An abstract-stobj export that performs multiple updates requires the appropriate protection discipline. `:protect t` protects ACL2’s abstraction machinery against interrupted execution; it does **not** prove disk crash consistency. See [03-modelling-data.md, §3.9](~/dev/acl2aiguide/humans/03-modelling-data.md:1312).
+An abstract-stobj export that performs multiple updates requires the appropriate protection discipline. `:protect t` protects ACL2’s abstraction machinery against interrupted execution; it does **not** prove disk crash consistency. See [03-modelling-data.md, §3.9](/Users/ember/dev/acl2aiguide/humans/03-modelling-data.md:1312).
 
-These are boundary proofs, not instructions to hand-write a logical twin of every helper. The representation history shows why that distinction matters: efficient islands repeatedly landed while the list paths remained executable. [REPRESENTATION-HISTORY-20261028.md, §§2–4](build/coordinator/REPRESENTATION-HISTORY-20261028.md:53)
+These are boundary proofs, not instructions to hand-write a logical twin of every helper. The representation history shows why that distinction matters: efficient islands repeatedly landed while the list paths remained executable. [REPRESENTATION-HISTORY-20261028.md, §§2–4](/Users/ember/dev/fn/build/coordinator/REPRESENTATION-HISTORY-20261028.md:53)
 
 ### A.3 ATC is an explicit lowering boundary
 
-**Ordinary stobj code is not automatically ATC input.** The inspected ATC interface expects its shallow C representation: C integer recognizers and operations, supported arrays/structures, guard-verified functions, and restricted recursive loop forms. `(unsigned-byte-p 32 x)` alone is not the C type declaration ATC expects. [05-high-performance.md, §5.8](~/dev/acl2aiguide/humans/05-high-performance.md:985), [ATC reference](https://www.cs.utexas.edu/~moore/acl2/manuals/current/manual/index-seo.php?xkey=C____ATC)
+**Ordinary stobj code is not automatically ATC input.** The inspected ATC interface expects its shallow C representation: C integer recognizers and operations, supported arrays/structures, guard-verified functions, and restricted recursive loop forms. `(unsigned-byte-p 32 x)` alone is not the C type declaration ATC expects. [05-high-performance.md, §5.8](/Users/ember/dev/acl2aiguide/humans/05-high-performance.md:985), [ATC reference](https://www.cs.utexas.edu/~moore/acl2/manuals/current/manual/index-seo.php?xkey=C____ATC)
 
 Use the same machine/column declarations to generate:
 
@@ -100,7 +100,7 @@ Use the same machine/column declarations to generate:
 2. a flat ATC-compatible representation and dispatcher;
 3. their representation and transition correspondence obligations.
 
-For the C realization, use flat structures containing integer arrays, or distinct array arguments. Do not depend on arbitrary nested-stobj translation. The relevant demonstrated forms are in [ATC arrays.lisp](~/tools/acl2-fn/acl2-8.7/books/kestrel/c/atc/tests/arrays.lisp) and [ATC structs.lisp](~/tools/acl2-fn/acl2-8.7/books/kestrel/c/atc/tests/structs.lisp).
+For the C realization, use flat structures containing integer arrays, or distinct array arguments. Do not depend on arbitrary nested-stobj translation. The relevant demonstrated forms are in [ATC arrays.lisp](/Users/ember/tools/acl2-fn/acl2-8.7/books/kestrel/c/atc/tests/arrays.lisp) and [ATC structs.lisp](/Users/ember/tools/acl2-fn/acl2-8.7/books/kestrel/c/atc/tests/structs.lisp).
 
 Additional requirements:
 
@@ -111,7 +111,7 @@ Additional requirements:
 - Establish the target ABI’s widths and alignment.
 - Preserve checked arithmetic, action ordering, and ownership through lowering.
 
-ATC’s generated correctness theorem relates its input function to generated C semantics; it does not establish the preceding lowering or the adapter’s behavior. Its pointer theorem also assumes non-overlapping objects. [ATC doc.lisp](~/tools/acl2-fn/acl2-8.7/books/kestrel/c/atc/doc.lisp:1536)
+ATC’s generated correctness theorem relates its input function to generated C semantics; it does not establish the preceding lowering or the adapter’s behavior. Its pointer theorem also assumes non-overlapping objects. [ATC doc.lisp](/Users/ember/tools/acl2-fn/acl2-8.7/books/kestrel/c/atc/doc.lisp:1536)
 
 The guide explicitly says ATC’s closure was not certified locally. The upstream test drivers also request tooling trust tags. Thus ATC is a concrete proposed route with a qualification task, not an already established extraction claim under fn’s current no-trust-tag rule.
 
@@ -221,7 +221,7 @@ These caps define loop bounds. They are not yet a CPU-cost theorem. Each run mus
 
 A 64 KiB I/O window can require sixteen 4 KiB verification runs before it becomes readable. Buffer size and execution quantum need not coincide.
 
-The existing runtime contract supplies useful ownership vocabulary, but its reported served instances are only echo and host leases. The catalogue above must become the actual composed execution path. [INTERFACES-TODAY.md, §9](build/coordinator/fn2/INTERFACES-TODAY.md:612)
+The existing runtime contract supplies useful ownership vocabulary, but its reported served instances are only echo and host leases. The catalogue above must become the actual composed execution path. [INTERFACES-TODAY.md, §9](/Users/ember/dev/fn/build/coordinator/fn2/INTERFACES-TODAY.md:612)
 
 ## C. Deterministic scheduler
 
@@ -317,7 +317,7 @@ Commit completion cannot jump ahead merely because “commit” is processed bef
 
 The executor may wait externally only when no eligible internal continuation remains. Machines waiting solely for adapter submission capacity allow an external wait; machines with remaining parsing, expiry, recovery, or notification work do not.
 
-The distinction between safety and this progress claim is already explicit in [04-modelling-systems.md, §4.4](~/dev/acl2aiguide/humans/04-modelling-systems.md:516).
+The distinction between safety and this progress claim is already explicit in [04-modelling-systems.md, §4.4](/Users/ember/dev/acl2aiguide/humans/04-modelling-systems.md:516).
 
 ## D. Event and action vocabulary, with capacities
 
@@ -480,7 +480,7 @@ A malformed tail under the broader corruption profile is **unknown or damaged**,
 
 Recovery may discover a complete batch whose client never received success. That is a legitimate recovered commitment. Retry uses exact identity and the recorded operation semantics.
 
-After a failed barrier, reopening and reading the same bytes does not by itself prove durability: the platform may still expose volatile cached data. Recovery must use a backend procedure that re-establishes the required persistence evidence before renewed acceptance. The underlying failure distinction is documented in the [paper survey’s crash-model table, rows 8–9](~/paperbin/README-fn2-20261028.md:383).
+After a failed barrier, reopening and reading the same bytes does not by itself prove durability: the platform may still expose volatile cached data. Recovery must use a backend procedure that re-establishes the required persistence evidence before renewed acceptance. The underlying failure distinction is documented in the [paper survey’s crash-model table, rows 8–9](/Users/ember/paperbin/README-fn2-20261028.md:383).
 
 ### E.5 Independent evidence and claim profiles
 
@@ -516,7 +516,7 @@ A checkpoint writes a captured root’s pages and installs its descriptor throug
 
 The “never rewrite an acknowledged sector” rule therefore means **never overwrite a still-required sector**. Permanent prohibition would prevent reclamation.
 
-These requirements preserve the client distinction between transport acknowledgement, durable consumer acknowledgement, and evidence authorizing retention release. [CLIENTS-AND-DATA-MODELS.md, §§1.1, 2.1–2.2](build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md:77)
+These requirements preserve the client distinction between transport acknowledgement, durable consumer acknowledgement, and evidence authorizing retention release. [CLIENTS-AND-DATA-MODELS.md, §§1.1, 2.1–2.2](/Users/ember/dev/fn/build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md:77)
 
 ## F. First slice as simulator acceptance scenarios
 
@@ -578,7 +578,7 @@ For performance, report wake latency, per-turn CPU, throughput, retained memory,
 
 The table should distinguish **execution capacity**, **admission policy**, **format geometry**, and **fault-model assumptions**. Putting all four under “hard-code these bounds” hides consequential design choices.
 
-The governing requirement remains [D27](~/dev/fn/planning/decisions.md:1182): data limits belong to the supported operator profile; concrete representation and bounded execution must not introduce smaller accidental limits.
+The governing requirement remains [D27](/Users/ember/dev/fn/planning/decisions.md:1182): data limits belong to the supported operator profile; concrete representation and bounded execution must not introduce smaller accidental limits.
 
 ### G.1 Storage choices masquerading as execution bounds
 

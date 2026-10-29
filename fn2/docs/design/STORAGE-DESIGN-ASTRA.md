@@ -4,10 +4,10 @@ I would keep the ordered journal, separated immutable payloads, parent-held inte
 
 References below use these names:
 
-- **Execution**: [build/coordinator/fn2/EXECUTION-MODEL.md](build/coordinator/fn2/EXECUTION-MODEL.md).
-- **Study**: [build/coordinator/fn2/STORAGE-DESIGN-ANGLES.md](build/coordinator/fn2/STORAGE-DESIGN-ANGLES.md).
-- **Clients**: [build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md](build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md).
-- **Envelope**: [build/coordinator/fn2/ENVELOPE-AND-HOST.md](build/coordinator/fn2/ENVELOPE-AND-HOST.md).
+- **Execution**: [build/coordinator/fn2/EXECUTION-MODEL.md](/Users/ember/dev/fn/build/coordinator/fn2/EXECUTION-MODEL.md).
+- **Study**: [build/coordinator/fn2/STORAGE-DESIGN-ANGLES.md](/Users/ember/dev/fn/build/coordinator/fn2/STORAGE-DESIGN-ANGLES.md).
+- **Clients**: [build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md](/Users/ember/dev/fn/build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md).
+- **Envelope**: [build/coordinator/fn2/ENVELOPE-AND-HOST.md](/Users/ember/dev/fn/build/coordinator/fn2/ENVELOPE-AND-HOST.md).
 
 **1. “The log is the only authority” needs a definition that survives reclamation.**
 
@@ -33,7 +33,7 @@ for every observation the retained contract permits—including duplicate checks
 
 This is D13, not ordinary checkpointing. A storage checkpoint, an application’s signed checkpoint claim, and permission to discard history are three different things. A successful storage checkpoint does not release an archive obligation. Signing a Merkle root does not establish the summary equation.
 
-Kafka’s compacted log makes the distinction concrete: it preserves current keyed state while deliberately allowing intermediate events and eventually tombstones to disappear. fn cannot copy that policy for identities that may be reoffered indefinitely. See `~/paperbin/kafka2026-docs-design.md`, “Log Compaction”; Clients §§2.2.6–8 and 3.1; `~/dev/fn/planning/decisions.md`, D13.
+Kafka’s compacted log makes the distinction concrete: it preserves current keyed state while deliberately allowing intermediate events and eventually tombstones to disappear. fn cannot copy that policy for identities that may be reoffered indefinitely. See `/Users/ember/paperbin/kafka2026-docs-design.md`, “Log Compaction”; Clients §§2.2.6–8 and 3.1; `/Users/ember/dev/fn/planning/decisions.md`, D13.
 
 **2. The recovery tables silently narrow the fault model.**
 
@@ -48,7 +48,7 @@ A checksum detects the missing dependency. It does not distinguish those histori
 
 Likewise, “bad final batch, nothing valid afterward” is insufficient evidence for `torn tail`. With acknowledged-write loss permitted, the answer may be `unknown`. A surviving successor, checkpoint or independent receipt can strengthen the evidence to `damaged`.
 
-Four superblocks do not solve this. TigerBeetle’s copies help its root-discovery protocol under its fault assumptions; its replicated recovery machinery supplies additional evidence. Copying the number four does not import that machinery. See `~/paperbin/tigerbeetle2026-internals-data-file.md`; Execution rule 8.
+Four superblocks do not solve this. TigerBeetle’s copies help its root-discovery protocol under its fault assumptions; its replicated recovery machinery supplies additional evidence. Copying the number four does not import that machinery. See `/Users/ember/paperbin/tigerbeetle2026-internals-data-file.md`; Execution rule 8.
 
 The three assumptions have distinct jobs:
 
@@ -101,7 +101,7 @@ Further, `(tag, sequence)` is not an exact identity index unless the original Me
 
 Retain the exact Message-ID in permanent identity metadata. A hash or Bloom filter may reject candidates cheaply; neither may decide equality. Store the content identity, original acceptance binding and relevant conflict state alongside it. This is particularly important because Clients §3.3 explicitly preserves collision quarantine rather than treating digest equality as unconditional byte equality.
 
-Bitcask’s resident keydir and hint-file rebuild are useful contrasts, not a first-slice escape hatch. See `~/paperbin/sheehy2010-bitcask-log-structured-hash-table.txt`.
+Bitcask’s resident keydir and hint-file rebuild are useful contrasts, not a first-slice escape hatch. See `/Users/ember/paperbin/sheehy2010-bitcask-log-structured-hash-table.txt`.
 
 **6. The proposed “small” index metadata still grows with the store.**
 
@@ -139,9 +139,9 @@ A logical historical query can instead read the current physical layout, using v
 
 The recommendation should receive credit for that separation. So should its alternatives.
 
-Likewise, uniform LSM storage does not require bodies to pass through a WAL and then be rewritten into tables. Study §A.1 already identifies direct blob dependencies as an alternative. TigerBeetle’s LSM documentation also describes moving nonoverlapping tables between levels by changing metadata, without rewriting values. See `~/paperbin/tigerbeetle2026-internals-lsm.md`, “Compaction Move Table.”
+Likewise, uniform LSM storage does not require bodies to pass through a WAL and then be rewritten into tables. Study §A.1 already identifies direct blob dependencies as an alternative. TigerBeetle’s LSM documentation also describes moving nonoverlapping tables between levels by changing metadata, without rewriting values. See `/Users/ember/paperbin/tigerbeetle2026-internals-lsm.md`, “Compaction Move Table.”
 
-Postgres contributes more than a deliberately expensive strawman: WAL separates commit latency from home-page writeback; HOT coalesces some hot-row costs; visibility maps enable index-only reads; TOAST separates large values. I would not build its complete recovery and MVCC machinery here, but those costs are not universal properties of pages. See the `postgresql2026-docs-{storage-hot,storage-vm,storage-toast,wal-intro}.txt` files in `~/paperbin`.
+Postgres contributes more than a deliberately expensive strawman: WAL separates commit latency from home-page writeback; HOT coalesces some hot-row costs; visibility maps enable index-only reads; TOAST separates large values. I would not build its complete recovery and MVCC machinery here, but those costs are not universal properties of pages. See the `postgresql2026-docs-{storage-hot,storage-vm,storage-toast,wal-intro}.txt` files in `/Users/ember/paperbin`.
 
 **9. Several numbers need correction or a narrower scope.**
 
@@ -157,7 +157,7 @@ Postgres contributes more than a deliberately expensive strawman: WAL separates 
 | LFS cleaning cost is `2/(1-u)` | Sprite’s figure counts **reads plus writes**. Survivor bytes written per newly freed byte are `u/(1-u)`; total writes including new data are `1/(1-u)`. Keep these denominators separate. |
 | SQLite WAL does not handle large transactions well | The quoted warning is obsolete, struck-through text on the source page. SQLite documents the change since 3.11.0. |
 
-Sources: Study §§A–G; Envelope §1; `~/paperbin/rosenblum1992-design-implementation-log-structured-file-system.txt`, §3.4; `~/paperbin/sqlite2026-docs-wal.txt` and the [SQLite WAL documentation](https://www.sqlite.org/wal.html).
+Sources: Study §§A–G; Envelope §1; `/Users/ember/paperbin/rosenblum1992-design-implementation-log-structured-file-system.txt`, §3.4; `/Users/ember/paperbin/sqlite2026-docs-wal.txt` and the [SQLite WAL documentation](https://www.sqlite.org/wal.html).
 
 The ~1.9×/~1.3× recommendation totals also omit enough machinery that I would not use them to choose a winner: exact identity storage, persistent directories, checkpoint roots, allocator metadata, proof material and cold-tail maintenance all need accounting.
 
@@ -167,13 +167,13 @@ An internal BLAKE3 chaining value is not an ordinary BLAKE3 digest of the block.
 
 More importantly, the authored source’s content identity should not include a node’s allocation address or generation. Physical page integrity should bind those fields. Consequently, one hash tree cannot automatically replace both contracts.
 
-I would use BLAKE3 range-proof material for portable source verification and a separate physical hash for storage pages. The additional hashing is a real cost. Tahoe is instructive precisely because it distinguishes different integrity subjects and commits to encoding parameters and length; see `~/paperbin/wilcoxohearn2008-tahoe-least-authority-filesystem.txt`, §4.3, and `tahoelafs2026-docs-file-encoding.rst`.
+I would use BLAKE3 range-proof material for portable source verification and a separate physical hash for storage pages. The additional hashing is a real cost. Tahoe is instructive precisely because it distinguishes different integrity subjects and commits to encoding parameters and length; see `/Users/ember/paperbin/wilcoxohearn2008-tahoe-least-authority-filesystem.txt`, §4.3, and `tahoelafs2026-docs-file-encoding.rst`.
 
 **11. “Only an honest flush is required” is too strong.**
 
 The design also needs exclusive writer ownership, a declared write-damage radius for its crash-only argument, correct completion/borrow handling, valid addressing, and a way to establish file growth and namespace durability when those occur.
 
-SQLite’s powersafe-overwrite documentation explicitly distinguishes collateral damage from atomic writes and states that SQLite normally does **not** assume atomic database-page writes. Study §J’s characterization of SQLite should be corrected. See `~/paperbin/sqlite2026-docs-psow.txt`.
+SQLite’s powersafe-overwrite documentation explicitly distinguishes collateral damage from atomic writes and states that SQLite normally does **not** assume atomic database-page writes. Study §J’s characterization of SQLite should be corrected. See `/Users/ember/paperbin/sqlite2026-docs-psow.txt`.
 
 None of this justifies rejecting ZFS, Btrfs, buffered I/O or a raw device. It specifies what claims each backend can support. An I/O error after persistence has become ambiguous enters `uncertain`; it is not converted into “refused, nothing stored.”
 
@@ -247,7 +247,7 @@ The storage layer stores, authenticates and transports ciphertext. It does not o
 
 The envelope may expose Message-ID, signer, stream, size and whatever public threading or subject fields the application deliberately supplies. Thus encryption does not inherently eliminate every overview field or thread relationship; it eliminates server access to fields placed inside the ciphertext.
 
-This is compatible with fn’s “encrypt before signing” position. It does not create a new cryptographic group-management protocol. Tahoe’s verify/read distinction is useful here, but Tahoe’s time-expiring leases must not replace fn’s evidence-gated obligations. See `~/paperbin/tahoelafs2026-docs-architecture.rst`, “Leases, Refreshing, Garbage Collection.”
+This is compatible with fn’s “encrypt before signing” position. It does not create a new cryptographic group-management protocol. Tahoe’s verify/read distinction is useful here, but Tahoe’s time-expiring leases must not replace fn’s evidence-gated obligations. See `/Users/ember/paperbin/tahoelafs2026-docs-architecture.rst`, “Leases, Refreshing, Garbage Collection.”
 
 ## The concrete storage format and root-selection algorithm with recovery invariants
 
@@ -665,7 +665,7 @@ There are two necessary scope qualifications:
 
 For the broad fault profile, an unexplained bad final batch is therefore `unknown`, not automatically `torn tail`. This is the central correction to Study §B.
 
-ARIES supplies a useful discipline here: correlate persisted page state with logged progress and make repeated recovery itself recoverable. Its analysis/redo/undo machinery is unnecessary when uncommitted updates never overwrite required pages. See `~/paperbin/mohan1992-aries-recovery-method.txt`, opening description and restart-recovery discussion. FoundationDB likewise separates durable log order from storage materialization, but its recovery frontier depends on coordinated replica evidence that a single fn node does not possess: `~/paperbin/zhou2021-foundationdb-unbundled-transactional-kv-store.txt`, §§2.4.3–2.4.4.
+ARIES supplies a useful discipline here: correlate persisted page state with logged progress and make repeated recovery itself recoverable. Its analysis/redo/undo machinery is unnecessary when uncommitted updates never overwrite required pages. See `/Users/ember/paperbin/mohan1992-aries-recovery-method.txt`, opening description and restart-recovery discussion. FoundationDB likewise separates durable log order from storage materialization, but its recovery frontier depends on coordinated replica evidence that a single fn node does not possess: `/Users/ember/paperbin/zhou2021-foundationdb-unbundled-transactional-kv-store.txt`, §§2.4.3–2.4.4.
 
 ## The counter-design and what you would build
 
@@ -714,7 +714,7 @@ The reasons are concrete:
 
 The price is explicit: run overlap, compaction reservations, transient input/output space, filter/index reads, and checkpoint work. The system must apply backpressure before maintenance debt exhausts its reserved capacity. A maintenance calendar share is not itself proof that the allocated bandwidth can sustain admission.
 
-The relevant precedent is not “TigerBeetle, therefore correct.” It is the combination of incremental reserved compaction from `~/paperbin/tigerbeetle2026-internals-lsm.md`, WAL/materialization separation from the FoundationDB paper, value separation, and RocksDB’s explicit tradeoff between write, read and space amplification in `~/paperbin/dong2021-rocksdb-evolution-development-priorities.txt`. RocksDB’s reported SST write amplification excludes WAL writes; fn’s comparison must include them.
+The relevant precedent is not “TigerBeetle, therefore correct.” It is the combination of incremental reserved compaction from `/Users/ember/paperbin/tigerbeetle2026-internals-lsm.md`, WAL/materialization separation from the FoundationDB paper, value separation, and RocksDB’s explicit tradeoff between write, read and space amplification in `/Users/ember/paperbin/dong2021-rocksdb-evolution-development-priorities.txt`. RocksDB’s reported SST write amplification excludes WAL writes; fn’s comparison must include them.
 
 I would retain Study’s seven measurements, with these changes:
 

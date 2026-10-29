@@ -7,7 +7,7 @@ That is close to the proposal’s intended realization, but differs at two decis
 1. **Parsing, connection state, scheduling, buffer ownership, and admission belong inside the semantic core.** Already-validated commands are an internal interface, not the boundary of the server whose robustness we intend to establish.
 2. **An execution turn, a transport batch, and a persistence batch are different objects.** None should define the other’s lifetime.
 
-Pure semantics does not require copying state, allocating effect lists, dispatching through a heavyweight boundary per byte, or finishing a request before yielding. The representation investigation identifies actual costs: repeated conversions, reconstruction, and work under the owner mutex. It does not establish that functional semantics caused them. Conversely, replacing cons tuples with stobjs does not by itself establish bounded work, isolation, or an efficient persistence layout. [build/coordinator/REPRESENTATION-HISTORY-20261028.md, §§2–4](build/coordinator/REPRESENTATION-HISTORY-20261028.md)
+Pure semantics does not require copying state, allocating effect lists, dispatching through a heavyweight boundary per byte, or finishing a request before yielding. The representation investigation identifies actual costs: repeated conversions, reconstruction, and work under the owner mutex. It does not establish that functional semantics caused them. Conversely, replacing cons tuples with stobjs does not by itself establish bounded work, isolation, or an efficient persistence layout. [build/coordinator/REPRESENTATION-HISTORY-20261028.md, §§2–4](/Users/ember/dev/fn/build/coordinator/REPRESENTATION-HISTORY-20261028.md)
 
 ## 1. Where the proposal fails, and what “the batch is the step” misses
 
@@ -24,11 +24,11 @@ Pure semantics does not require copying state, allocating effect lists, dispatch
 | **C7: per-principal accounting** | A principal table is not enough. Every resource acquisition, including pre-authentication work and deferred maintenance debt, needs an accountable owner and an admission rule. |
 | **C8: resumability** | Explicit continuations are right, but must cover parsing, hashing, collision walks, wake fan-out, recovery, cleaning, and checkpointing as well as rendering and scans. |
 
-These objections address the specific proposal in [build/coordinator/fn2/EXECUTION-MODEL-ROUND1.md](build/coordinator/fn2/EXECUTION-MODEL-ROUND1.md) and executor in [build/coordinator/fn2/ENVELOPE-AND-HOST.md, §§1.8, 2.1–2.3](build/coordinator/fn2/ENVELOPE-AND-HOST.md).
+These objections address the specific proposal in [build/coordinator/fn2/EXECUTION-MODEL-ROUND1.md](/Users/ember/dev/fn/build/coordinator/fn2/EXECUTION-MODEL-ROUND1.md) and executor in [build/coordinator/fn2/ENVELOPE-AND-HOST.md, §§1.8, 2.1–2.3](/Users/ember/dev/fn/build/coordinator/fn2/ENVELOPE-AND-HOST.md).
 
 **C2 also needs a precise isolation promise.** Taken literally, “a client cannot exhaust anything another client needs” is impossible for arbitrary clients competing for finite public resources. We can guarantee that one principal cannot consume another admitted principal’s reserved capacity or minimum scheduling share. Best-effort capacity can run out. Unauthenticated connections must share a bounded admission class; opening more connections must not manufacture more entitlement.
 
-Likewise, static working memory must not quietly become a permanent store-size restriction. The envelope’s resident table sized to `max_articles`, u16 group namespace, and compile-time article ceiling are substantive storage choices, not consequences of bounded execution. Page persistent indexes through bounded caches; make supported admission limits explicit; handle namespace exhaustion deliberately. Startup resource ceilings can coexist with live policy changes within those ceilings. This respects both bounded execution and the objections to arbitrary data ceilings and compiled-in configuration in [build/coordinator/fn2/EMBER-ARCHITECTURE-WORDS.md, §14, sentences 3, 4, 7–9](build/coordinator/fn2/EMBER-ARCHITECTURE-WORDS.md:448).
+Likewise, static working memory must not quietly become a permanent store-size restriction. The envelope’s resident table sized to `max_articles`, u16 group namespace, and compile-time article ceiling are substantive storage choices, not consequences of bounded execution. Page persistent indexes through bounded caches; make supported admission limits explicit; handle namespace exhaustion deliberately. Startup resource ceilings can coexist with live policy changes within those ceilings. This respects both bounded execution and the objections to arbitrary data ceilings and compiled-in configuration in [build/coordinator/fn2/EMBER-ARCHITECTURE-WORDS.md, §14, sentences 3, 4, 7–9](/Users/ember/dev/fn/build/coordinator/fn2/EMBER-ARCHITECTURE-WORDS.md:448).
 
 ### Three different meanings of “batch”
 
@@ -81,7 +81,7 @@ The ordinary rule—finish all dependency writes, then flush, then authorize suc
 
 **A checksum chain cannot always detect rollback.** Suppose a lying device loses an acknowledged suffix and all newer superblock copies, returning a complete, self-consistent older image. Local recovery cannot distinguish that image from a world in which the suffix was never accepted. Detection requires surviving independent evidence—a trusted monotonic anchor, client receipt, or peer—or a fault-budget assumption that preserves such evidence. Four copies alone do not resolve correlated loss.
 
-These are counterexamples to the envelope’s stated arguments, not objections to checksums or group commit. They follow directly from the stronger fault classes in [~/paperbin/README-fn2-20261028.md, crash-model table, rows 1–6, 11–15, 20](~/paperbin/README-fn2-20261028.md:383).
+These are counterexamples to the envelope’s stated arguments, not objections to checksums or group commit. They follow directly from the stronger fault classes in [/Users/ember/paperbin/README-fn2-20261028.md, crash-model table, rows 1–6, 11–15, 20](/Users/ember/paperbin/README-fn2-20261028.md:383).
 
 ## 2. The core/host boundary I would implement
 
@@ -97,7 +97,7 @@ The outer core includes:
 
 It does not manipulate OS socket objects. It does manipulate connection capabilities and their lifecycle. “The core never sees a socket” is useful only if it means no file descriptors or kernel APIs, not no connection semantics.
 
-The database operation interface remains valuable **inside** this core. NNTP, the web reader, remote consumers, and BP submit typed operations through it. They share identity, authorization, persistence, and accounting rules. This follows the shared-contract direction in [build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md, §§1–3](build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md).
+The database operation interface remains valuable **inside** this core. NNTP, the web reader, remote consumers, and BP submit typed operations through it. They share identity, authorization, persistence, and accounting rules. This follows the shared-contract direction in [build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md, §§1–3](/Users/ember/dev/fn/build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md).
 
 ### Events entering the core
 
@@ -146,7 +146,7 @@ Logical semantics includes the bytes delivered by input operations. The optimize
 
 One representation permits several physical uses: receive chunks, aligned batch packing, cache blocks, and bounded render buffers. Persistent references name extents/blocks, not process addresses. Pool slots can then be reused without pretending an entire article remains resident.
 
-This is substantially the ownership structure already described in [build/coordinator/fn2/INTERFACES-TODAY.md, §9](build/coordinator/fn2/INTERFACES-TODAY.md:588). That document also records the important limitation: today’s general runtime contract is not the execution path for most of the served product. Reusing its vocabulary does not inherit whole-server assurance.
+This is substantially the ownership structure already described in [build/coordinator/fn2/INTERFACES-TODAY.md, §9](/Users/ember/dev/fn/build/coordinator/fn2/INTERFACES-TODAY.md:588). That document also records the important limitation: today’s general runtime contract is not the execution path for most of the served product. Reusing its vocabulary does not inherit whole-server assurance.
 
 ### TLS and expensive foreign computation
 
@@ -173,7 +173,7 @@ A wait records its cursor scope, query/view version, principal, deadline, and su
 
 A commit marks affected subscriptions eligible. Actual wake processing is budgeted, coalesced, and resumable. A connection watching several groups needs several bounded subscription edges; a single intrusive link per connection cannot inhabit all those group lists.
 
-A wake is a hint to reconsider the durable predicate, not the delivery authority. Reconnect and poll recover from a lost notification. An ack advances durable consumer progress only through the persistence machine. This preserves the consumer-owned inbox/outbox semantics documented in [build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md, §§1.1–1.2, 2.1](build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md).
+A wake is a hint to reconsider the durable predicate, not the delivery authority. Reconnect and poll recover from a lost notification. An ack advances durable consumer progress only through the persistence machine. This preserves the consumer-owned inbox/outbox semantics documented in [build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md, §§1.1–1.2, 2.1](/Users/ember/dev/fn/build/coordinator/fn2/CLIENTS-AND-DATA-MODELS.md).
 
 ### Per-principal accounting
 
@@ -185,7 +185,7 @@ Shared costs need an explicit allocation rule: batch padding, flushes, shared ca
 
 ## 3. What assurance should prove first—and what is not about `step` alone
 
-There is a naming discrepancy worth fixing. Round 1 names five targets: no crash, bounded work, isolation, durable acceptance, exact identity. The actual [specs/node-functionality.md, §3](~/dev/fn/specs/node-functionality.md:563) lists totality, work, memory, typed failures, and reply semantics, then adds connection isolation in §3.6. We should preserve both sets of obligations.
+There is a naming discrepancy worth fixing. Round 1 names five targets: no crash, bounded work, isolation, durable acceptance, exact identity. The actual [specs/node-functionality.md, §3](/Users/ember/dev/fn/specs/node-functionality.md:563) lists totality, work, memory, typed failures, and reply semantics, then adds connection isolation in §3.6. We should preserve both sets of obligations.
 
 ### First prove the executable transition’s ownership and resource invariant
 
@@ -204,7 +204,7 @@ Here `Inv` includes initialized readable ranges, exclusive write ownership, outs
 
 There must be **no “client bytes are well formed” premise**. Boundary premises describe the host’s physical delivery contract, not successful NNTP parsing. Malformed input and stale or invalid descriptors must be handled before unsafe access.
 
-Prove the concrete arrays’ abstraction relation at this boundary and carry it through execution. Do not revalidate the whole state every turn or create an independently callable list implementation of every helper. The history of representation twins is a direct warning against that approach. [build/coordinator/REPRESENTATION-HISTORY-20261028.md, §§3.1, 4](build/coordinator/REPRESENTATION-HISTORY-20261028.md)
+Prove the concrete arrays’ abstraction relation at this boundary and carry it through execution. Do not revalidate the whole state every turn or create an independently callable list implementation of every helper. The history of representation twins is a direct warning against that approach. [build/coordinator/REPRESENTATION-HISTORY-20261028.md, §§3.1, 4](/Users/ember/dev/fn/build/coordinator/REPRESENTATION-HISTORY-20261028.md)
 
 Then establish the trace refinement: internal turns can stutter, requests span turns, and externally visible actions correspond to the abstract node’s behavior.
 
