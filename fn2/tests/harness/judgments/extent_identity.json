@@ -1,0 +1,177 @@
+{
+  "module": "extent_identity",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "ExtentIdentitySourceTests.test_the_realizer_decides_against_the_descriptor_and_keys_its_cache_by_identity",
+    "ExtentIdentityProductionTests.test_a_cached_entry_serves_under_its_identity_and_the_cache_off_arm_refuses"
+  ],
+  "mixed_tests": [
+    "ExtentIdentityTests.test_a_different_valid_same_sized_entry_at_the_offset_is_refused_by_name",
+    "ExtentIdentityTests.test_an_entry_of_another_store_at_the_offset_is_refused_by_name",
+    "ExtentIdentityTests.test_a_wrong_recorded_trailer_under_an_intact_prefix_is_refused_by_name",
+    "ExtentIdentityTests.test_a_prefix_damaged_under_its_own_trailer_is_refused_by_a_distinct_name",
+    "ExtentIdentityTests.test_a_cached_entry_serves_under_its_identity_and_the_cache_off_arm_refuses",
+    "ExtentIdentityProductionTests.test_a_different_valid_same_sized_entry_at_the_offset_is_refused_by_name",
+    "ExtentIdentityProductionTests.test_an_entry_of_another_store_at_the_offset_is_refused_by_name",
+    "ExtentIdentityProductionTests.test_a_wrong_recorded_trailer_under_an_intact_prefix_is_refused_by_name",
+    "ExtentIdentityProductionTests.test_a_prefix_damaged_under_its_own_trailer_is_refused_by_a_distinct_name"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "All substantive native cases parse and corrupt fn1 FNLG extents and expect private arena diagnostics; source test fixes cache implementation. Public ARTICLE corruption/identity coverage must be rebuilt through fn2 fault hooks.",
+  "representation_sites": [
+    {
+      "line": 66,
+      "reason": "Replace log-layout scanning with fn2 storage corruption fixture and ARTICLE identity assertion.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Parses 4096-byte aligned FNLG segment magic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 67,
+      "reason": "Private log record encoding is not carried.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Decodes FNLG u32 body length at offset 6",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 74,
+      "reason": "Witness no substituted payload is served through ARTICLE; do not assert cache keys or function names.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Reads host/native/extent.lisp and asserts cache tuple equality and verification call graph",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 96,
+      "reason": "Replace release call-shape checks with safe reads after storage relocation.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Reads host/native/owner.lisp release-extents implementation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 121,
+      "reason": "Physical segment path becomes fn2 fault fixture, not adapter translation.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Selects store/journal/000001.log via store alias",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 138,
+      "reason": "Derive corruption fixture through fn2 storage model; assert refused corrupted reads.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Reads node.store_path/journal/000001.log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 139,
+      "reason": "FNLG extent parsing is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Parses segment entries for exact entry boundaries",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 140,
+      "reason": "Assert accepted articles by public reads instead of record cardinality.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Asserts physical entry count equals post count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 141,
+      "reason": "Fixture precondition is fn1 layout-specific.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Asserts equal physical entry lengths",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 154,
+      "reason": "Use fn2 named storage fault hook.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Reads selected segment into mutable bytearray",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 156,
+      "reason": "Use corruption injection with explicitly modeled process cut.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Opens segment r+b for in-place substitution",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 158,
+      "reason": "Preserve identity refusal behavior, replace direct FNLG edit.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Writes altered bytes into held segment inode",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 167,
+      "reason": "Use public fault exit and no substituted article; internal arena names need disposition.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Parses fn1 owner core/store fault and arena-extent-* diagnostic names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 191,
+      "reason": "Replace fixed trailer/entry layout with fn2 identity-substitution fault.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Swaps whole entries including 32-byte trailers",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 211,
+      "reason": "Foreign committed payload substitution remains useful via fn2 storage fixture; no peering occurs.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Reads second node journal/000001.log as foreign entry fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 218,
+      "reason": "Use fn2 corruption/identity-substitution hook.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Copies foreign entry/trailer bytes over target offset",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 233,
+      "reason": "Replace FNLG digest trailer manipulation with fn2 identity mismatch injection.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Replaces recorded trailer with another entry trailer",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 245,
+      "reason": "Preserve corrupt-read refusal using fn2 storage fault injection.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Flips final prefix byte beneath intact trailer",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 263,
+      "reason": "Cache organization is not public; replace with cold/warm read fault scenario.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Disables fn1 extent cache using FN_NATIVE_EXTENT_CACHE_TEST_OFF",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    66,
+    74,
+    138,
+    167,
+    191,
+    211,
+    233,
+    245,
+    263
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Production subclass inherits four substantive corruption methods; its cache-off method is an unconditional skip. Two Node instances here are foreign-storage fixtures, not peering. Existing public fault names need explicit fn2 disposition."
+}

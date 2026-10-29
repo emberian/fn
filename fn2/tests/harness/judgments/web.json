@@ -1,0 +1,100 @@
+{
+  "module": "web",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "FaceCases.test_compressed_article_uses_physical_windows_through_web_and_restart"
+  ],
+  "module_verdict": "carry-with-adapter",
+  "reason": "HTTP, HTTPS, NNTP account/post/read/remove behavior carries through config, socket, control and lifecycle hooks; the compressed-article test must replace fn1 decoded-window trace assertions with retained HTML/article bytes across restart.",
+  "representation_sites": [
+    {
+      "line": 264,
+      "reason": "Public store compression reporting is listed in the top-level store verbs; retain a documented report or its explicit per-verb replacement.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "store compression report",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 265,
+      "reason": "Public store compression reporting is listed in the top-level store verbs; retain a documented report or its explicit per-verb replacement.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "compressed-records counter in public store compression output",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 267,
+      "reason": "Public store compression reporting is listed in the top-level store verbs; retain a documented report or its explicit per-verb replacement.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "asserts compressed-records is positive",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 283,
+      "reason": "Replace physical-window trace identity with exact HTML and NNTP article body preservation before and after restart; fn2 resource ownership belongs to its checker.",
+      "row": "`GET /` (groups, LIST ACTIVE), `GET /g?name&before` (group, older posts), `GET /a?g&n` (article)",
+      "touches": "DECODED-WINDOW issue count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 284,
+      "reason": "Replace physical-window trace identity with exact HTML and NNTP article body preservation before and after restart; fn2 resource ownership belongs to its checker.",
+      "row": "`GET /` (groups, LIST ACTIVE), `GET /g?name&before` (group, older posts), `GET /a?g&n` (article)",
+      "touches": "requires decoded-window issue diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 285,
+      "reason": "Replace physical-window trace identity with exact HTML and NNTP article body preservation before and after restart; fn2 resource ownership belongs to its checker.",
+      "row": "`GET /` (groups, LIST ACTIVE), `GET /g?name&before` (group, older posts), `GET /a?g&n` (article)",
+      "touches": "one DECODED-WINDOW physical event per issue",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 286,
+      "reason": "Replace physical-window trace identity with exact HTML and NNTP article body preservation before and after restart; fn2 resource ownership belongs to its checker.",
+      "row": "`GET /` (groups, LIST ACTIVE), `GET /g?name&before` (group, older posts), `GET /a?g&n` (article)",
+      "touches": "one DECODED-WINDOW release event per issue",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 287,
+      "reason": "Replace physical-window trace identity with exact HTML and NNTP article body preservation before and after restart; fn2 resource ownership belongs to its checker.",
+      "row": "`GET /` (groups, LIST ACTIVE), `GET /g?name&before` (group, older posts), `GET /a?g&n` (article)",
+      "touches": ":PARTIAL-FIXED-STORAGE trace token",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 288,
+      "reason": "Replace physical-window trace identity with exact HTML and NNTP article body preservation before and after restart; fn2 resource ownership belongs to its checker.",
+      "row": "`GET /` (groups, LIST ACTIVE), `GET /g?name&before` (group, older posts), `GET /a?g&n` (article)",
+      "touches": "word=:RELEASED trace token",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    93,
+    96,
+    109,
+    264,
+    283,
+    287
+  ],
+  "socket_only_tests": [
+    "FaceCases.test_health_is_bounded_readiness_in_the_running_owner_without_login",
+    "FaceCases.test_stalled_socket_does_not_block_health_reader_or_account_post",
+    "FaceCases.test_two_requests_in_flight_are_answered_out_of_arrival_order",
+    "FaceCases.test_1_a_friend_makes_an_account_reads_posts_and_removes",
+    "FaceCases.test_2_refusals",
+    "FaceCases.test_3_the_code_works_once",
+    "NativeWebFaceTests.test_4_fuzzed_requests_are_answered_or_closed"
+  ],
+  "uncertainty": "Quarry labels this node although its decoded-window test inspects obsolete implementation traces. Retain its public socket assertions but rewrite the trace portion; do not emulate those traces."
+}

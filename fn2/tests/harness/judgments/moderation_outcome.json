@@ -1,0 +1,76 @@
+{
+  "module": "moderation_outcome",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeModerationOutcome.test_refused_cause_keeps_authorization_across_restart"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "The single test mixes public authorization/withdrawal behavior with direct developer REPL queries of fn-owner-moderation-plan. There is no separable socket-only method. Replace the internal plan predicate with a documented authorization/evidence query and retain refused cause, restart, completed retry and withdrawn ARTICLE assertions.",
+  "representation_sites": [
+    {
+      "line": 36,
+      "reason": "Replace internal plan layout access with fn2 authorization/evidence CLI or independently modeled public retry outcome.",
+      "row": "`control grant|revoke|list|log|evidence`, `article withdraw MSGID --reason`, `keys redecide MSGID`",
+      "touches": "fn_dev.evaluate runs fnn-owner-advance-clock and fnn-owner-core fn-owner-moderation-plan through developer.sock",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 38,
+      "reason": "The list shape/car/cadr plan representation is obsolete.",
+      "row": "`control grant|revoke|list|log|evidence`, `article withdraw MSGID --reason`, `keys redecide MSGID`",
+      "touches": "accepts only (:WITHDRAW NIL) or (:WITHDRAW T) developer Lisp output",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 39,
+      "reason": "Use public authorization evidence, not the absence of an internal configuration argv.",
+      "row": "`control grant|revoke|list|log|evidence`, `article withdraw MSGID --reason`, `keys redecide MSGID`",
+      "touches": "interprets (:WITHDRAW T) as carried authorization",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 51,
+      "reason": "Establish initial public authorization/evidence state.",
+      "row": "`control grant|revoke|list|log|evidence`, `article withdraw MSGID --reason`, `keys redecide MSGID`",
+      "touches": "asserts initial internal planner lacks existing authorization",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 60,
+      "reason": "Retain persisted authorization despite failed cause via public evidence query.",
+      "row": "`control grant|revoke|list|log|evidence`, `article withdraw MSGID --reason`, `keys redecide MSGID`",
+      "touches": "asserts internal planner has authorization after refused cause",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 65,
+      "reason": "Retain restart durability witness with documented evidence and successful subsequent withdrawal.",
+      "row": "`control grant|revoke|list|log|evidence`, `article withdraw MSGID --reason`, `keys redecide MSGID`",
+      "touches": "asserts internal planner retains authorization after restart",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    31,
+    36,
+    51,
+    54,
+    55,
+    58,
+    60,
+    65,
+    67,
+    69
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "A new public authorization observation may be needed to avoid weakening the original persisted-authorization assertion; successful retry alone does not prove the authorization survived restart."
+}

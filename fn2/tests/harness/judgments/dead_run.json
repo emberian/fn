@@ -1,0 +1,158 @@
+{
+  "module": "dead_run",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeDeadRun.test_group_execution_counts_over_a_lagging_dead_run"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "The timing method uses public IHAVE/cancel/GROUP and CLI configuration. The complexity method instruments saved-image catalog symbols via a Lisp count hook; its public workload survives but its counting proof must target fn2 work accounting.",
+  "representation_sites": [
+    {
+      "line": 196,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "reads profiling snapshot emitted by fn1 count hook",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 201,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "splits ACL2 package and symbol names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 202,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "filters ACL2/ACL2_*1*_ACL2 packages and catalog/view symbols",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 205,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "requires ACL2::FN-CAT$P-LIVE-* and FN-SCV-IN-XP wrapped counters",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 207,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "aggregates raw and *1* wrapper counts by symbol",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 225,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "loads tools/profile/count-hook.lisp into measured owner",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 227,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "selects FN-CAT$P/FN-CAT$C-LIVE-PREV/NEXT and FN-SCV-IN-XP symbols",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 232,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "initial in-image counter snapshot",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 234,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "per-round internal counter snapshot",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 251,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "per-GROUP internal counter snapshot",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 252,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "extracts FN-SCV-IN-XP call delta",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 255,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "bounds representation membership calls per GROUP pair",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 257,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "asserts live-link implementation branch ran",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 261,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "requires high-in-X branch witness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 269,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "final in-image counter snapshot",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 273,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "asserts live-link counter delta positive",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 275,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "asserts membership counter delta positive",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 276,
+      "reason": "Retain dead-run GROUP/cancel output and scaling witness; replace fn1 catalog symbol counters with fn2 WORK accounting for the public operation.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "bounds FN-SCV-IN-XP count by groups+rounds",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    111,
+    132,
+    196,
+    216,
+    225,
+    276
+  ],
+  "socket_only_tests": [
+    "NativeDeadRun.test_cancel_and_group_flat_over_a_dead_run"
+  ],
+  "uncertainty": "The first method needs start_store_owner mapped to start and native_peer_add mapped to control/config. It does not inspect store layout merely by passing store_path as CLI argument."
+}

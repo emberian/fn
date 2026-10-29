@@ -1,0 +1,75 @@
+{
+  "module": "start_every_preset",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Preserve preset init/start/refusal through start/config/control/observe; developer owner argv and SBCL heap overrides require replacement hooks rather than copying fn1 runtime internals.",
+  "representation_sites": [
+    {
+      "line": 46,
+      "reason": "Public heap probe pending recorded profile replacement.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "direct heap -- WORDS probe",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 78,
+      "reason": "Replace developer owner entry with supported operator run and profile startup checks.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "owner run STORE 0 0 8 developer entry",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 82,
+      "reason": "The BP node CLI paths are caller-owned files; retain start(verb=...) for the BP endpoint.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "bp-node serve with journals supplied as argv",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 97,
+      "reason": "Assert successful startup and service within the profile instead of an fn1 history-root refresh diagnostic.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "assert absence of HISTORY root refresh not built",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 114,
+      "reason": "Replace developer owner reservation probe with the fn2 runtime profile report.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "heap probe must not report profile=none for owner run",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 144,
+      "reason": "Replace runtime heap shrink with insufficient fn2 profile capacity and named refusal before LISTENING.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "SBCL_USER_ARGS --dynamic-space-size set to 85 percent of probe",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    46,
+    60,
+    62,
+    75,
+    78,
+    82,
+    99,
+    125
+  ],
+  "socket_only_tests": [
+    "StartEveryPresetTests.test_the_served_run_starts_at_every_preset",
+    "StartEveryPresetTests.test_the_store_owner_starts_at_every_preset",
+    "StartEveryPresetTests.test_the_bp_node_starts_at_every_preset",
+    "StartEveryPresetTests.test_a_heap_below_the_decided_figure_is_refused_by_name"
+  ],
+  "uncertainty": "The developer owner entry is not explicitly carried by section 1; retain its startup property via operator run, not its argv."
+}

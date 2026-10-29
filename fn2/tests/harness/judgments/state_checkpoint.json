@@ -1,0 +1,1884 @@
+{
+  "module": "state_checkpoint",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "StateCheckpointSourceTests.test_the_host_calls_the_keystone_subject_and_writes_the_program"
+  ],
+  "mixed_tests": [
+    "StateCheckpointTests.test_checkpoint_open_equals_full_replay",
+    "StateCheckpointTests.test_a_corrupt_checkpoint_falls_back_to_full_replay",
+    "StateCheckpointTests.test_a_file_without_the_arena_run_is_refused_by_name",
+    "StateCheckpointTests.test_the_header_carries_the_charged_totals_of_its_records",
+    "StateCheckpointTests.test_the_read_decision_sees_the_header_totals_only_with_no_suffix",
+    "StateCheckpointTests.test_the_read_decision_sees_the_records_past_the_header",
+    "StateCheckpointTests.test_the_read_refuses_a_segment_past_the_decided_extent",
+    "StateCheckpointTests.test_a_damaged_header_falls_back_to_full_replay_with_the_empty_seed",
+    "StateCheckpointTests.test_a_schema_three_file_is_refused_by_name",
+    "StateCheckpointTests.test_a_checkpoint_past_the_profile_bound_is_refused_by_name",
+    "StateCheckpointTests.test_a_watermark_past_the_bound_refuses_the_start_by_name",
+    "StateCheckpointTests.test_a_running_owner_answers_the_request_and_the_offline_verb_is_refused",
+    "StateCheckpointTests.test_the_checkpoint_carries_its_history_image_and_the_open_adopts_it",
+    "StateCheckpointTests.test_a_damaged_history_image_is_refused_by_name",
+    "StateCheckpointTests.test_an_equal_count_checkpoint_of_another_history_is_refused_by_name",
+    "StateCheckpointTests.test_a_second_image_header_is_refused_not_seeked_forever",
+    "StateCheckpointTests.test_a_running_owner_is_asked_and_answers_by_name",
+    "StateCheckpointCutTests.test_a_staged_file_that_does_not_read_back_keeps_the_old_and_the_log",
+    "StateCheckpointCutTests.test_staged_history_page_corruption_keeps_checkpoint_and_log",
+    "StateCheckpointCutTests.test_a_killed_owner_reopens_from_the_checkpoint_without_replay",
+    "StateCheckpointCutTests.test_a_kill_inside_the_arena_run_never_trusts_the_torn_file",
+    "StateCheckpointCutTests.test_every_cut_reopens_with_the_old_or_the_new_checkpoint"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "Every live method transitively calls fixture helpers that inspect or mutate fn1 checkpoint and journal representation; the source test checks fn1 implementation spelling. Rewrite around operator checkpoint/reclaim, durable recovery and article observations, preserving the public error and capacity assertions where applicable.",
+  "representation_sites": [
+    {
+      "line": 48,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 53,
+      "reason": "Source-only structural checks (no image executed) retire with fn1; replace by public checkpoint request completion and post-recovery content checks.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 store-node/native I/O/book source, refinement theorem names and STATE_CHECKPOINT_CUTS source map",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 54,
+      "reason": "Source-only structural checks (no image executed) retire with fn1; replace by public checkpoint request completion and post-recovery content checks.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 store-node/native I/O/book source, refinement theorem names and STATE_CHECKPOINT_CUTS source map",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 77,
+      "reason": "Source-only structural checks (no image executed) retire with fn1; replace by public checkpoint request completion and post-recovery content checks.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 store-node/native I/O/book source, refinement theorem names and STATE_CHECKPOINT_CUTS source map",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 79,
+      "reason": "Source-only structural checks (no image executed) retire with fn1; replace by public checkpoint request completion and post-recovery content checks.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 store-node/native I/O/book source, refinement theorem names and STATE_CHECKPOINT_CUTS source map",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 102,
+      "reason": "Source-only structural checks (no image executed) retire with fn1; replace by public checkpoint request completion and post-recovery content checks.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 store-node/native I/O/book source, refinement theorem names and STATE_CHECKPOINT_CUTS source map",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 126,
+      "reason": "Source-only structural checks (no image executed) retire with fn1; replace by public checkpoint request completion and post-recovery content checks.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 store-node/native I/O/book source, refinement theorem names and STATE_CHECKPOINT_CUTS source map",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 219,
+      "reason": "Source-only structural checks (no image executed) retire with fn1; replace by public checkpoint request completion and post-recovery content checks.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 store-node/native I/O/book source, refinement theorem names and STATE_CHECKPOINT_CUTS source map",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 235,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 236,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 237,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 244,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 245,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 252,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 253,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 254,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 255,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 283,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 286,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 298,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 300,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 307,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 308,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 309,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 318,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 343,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 344,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 345,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 349,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 350,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 358,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 361,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 369,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 370,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 371,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 374,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 376,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 377,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 379,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 380,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 381,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 383,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 391,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 392,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 393,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 396,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 400,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 401,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 402,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 408,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 418,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 419,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 420,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 421,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 423,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 424,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 425,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 426,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 427,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 439,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 441,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 442,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 446,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 449,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 450,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 451,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 452,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 453,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 454,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 455,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 456,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 465,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 466,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 467,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 469,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 471,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 472,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 473,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 474,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 475,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 484,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 485,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 486,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 487,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 489,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 491,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 494,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 495,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 496,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 498,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 499,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 527,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 535,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 537,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 538,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 546,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 547,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 548,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 549,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 551,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 552,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 553,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 554,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 557,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 564,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 566,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 575,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 578,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 580,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 595,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 596,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 597,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 598,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 608,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 609,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 610,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 611,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 612,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 613,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 616,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 617,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 619,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 620,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 621,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 624,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 625,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 626,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 627,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 628,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 647,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 648,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 651,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 652,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 654,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 655,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 656,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 658,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 670,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 671,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 673,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 674,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 675,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 676,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 677,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 679,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 680,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 689,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 690,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 691,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 693,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 694,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 695,
+      "reason": "Replace fn1 resident/arena and heap equations with fn2 profile resource limits and observable bounded allocation/refusal. The heap probe has an explicit per-verb disposition, not compatibility for these internal totals.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "charged-totals fields records/arena/hcharge/memberships/events/log/history/charge/residency; heap totals and fn1 log extent-cap diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 696,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 697,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 699,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 708,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 709,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 711,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 712,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 713,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 714,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 718,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 719,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 720,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 721,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 722,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 723,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 738,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 741,
+      "reason": "Retain RFC article-number bound refusal using a fn2 state/fault fixture instead of ACL2 rewriting fn1 checkpoint tables.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "damaged_checkpoint invokes ACL2 to rewrite checkpoint article-number watermark",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 746,
+      "reason": "Retain RFC article-number bound refusal using a fn2 state/fault fixture instead of ACL2 rewriting fn1 checkpoint tables.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "damaged_checkpoint invokes ACL2 to rewrite checkpoint article-number watermark",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 748,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 749,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 758,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 759,
+      "reason": "Retain RFC article-number bound refusal using a fn2 state/fault fixture instead of ACL2 rewriting fn1 checkpoint tables.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "damaged_checkpoint invokes ACL2 to rewrite checkpoint article-number watermark",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 760,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 775,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 779,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 790,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 794,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 805,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 806,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 807,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 808,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 809,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 810,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 813,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 814,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 832,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 833,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 834,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 835,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 838,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 839,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 840,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 842,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 845,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 847,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 848,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 863,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 864,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 865,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 877,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 880,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 881,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 883,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 884,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 885,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 886,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 898,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 900,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 901,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 902,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 923,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 929,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 935,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 936,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 941,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 946,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 947,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 948,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 949,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 955,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 956,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 957,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 958,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 959,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 960,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 961,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 967,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 971,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 984,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 986,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 987,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 988,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 989,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 992,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 993,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 994,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 995,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 999,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1004,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1006,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1007,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1008,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1011,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1012,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1013,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1014,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1018,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1032,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1035,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1036,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1037,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1046,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1048,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1050,
+      "reason": "Public checkpoint/recovery capability remains; replace exact fn1 sequence/suffix/arena/file-header diagnostics with fn2 public operation status and recovered article assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "open=checkpoint/full-replay, suffix count, checkpoint-file, CHECKPOINT auto and image-refusal implementation diagnostics",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1051,
+      "reason": "Replace fn1 binary layout edits and byte-equality checks with fn2 corruption/failure hooks and assert restored public contents and named checkpoint/recovery outcomes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "store-checkpoint.fnsc existence, digest, frame/schema/arena/FNSI history-image bytes and named corruption/swap fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1054,
+      "reason": "Inject publication and recovery failures through fn2 storage hooks, then assert durable content and recovered/refused/uncertain public outcomes; the segment names and staging layout retire.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "journal/*.log hard-link preservation/restoration, genesis/extent corruption and staging-directory emptiness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1059,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1063,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1064,
+      "reason": "Map logical publication failure cuts to fn2 and check public recovery; exact fn1 file offsets and named arena batch stages are not carried.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 checkpoint cut names, file-offset readback flips and whole-store snapshot fixtures",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    48,
+    52,
+    283,
+    298,
+    343,
+    364,
+    387,
+    746,
+    944
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "All methods are mixed except the source-only check; even apparently socket-facing live-checkpoint requests call init_with_checkpoint_at_three, which hard-links journal segments and asserts fn1 open diagnostics. Section 1 mechanically claims this module for the four exchanges row, but these tests do not themselves exercise those consumer exchange bytes. Heap-specific expectations require the E6 per-verb disposition."
+}

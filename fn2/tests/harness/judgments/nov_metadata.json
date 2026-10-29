@@ -1,0 +1,86 @@
+{
+  "module": "nov_metadata",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [
+    "NativeNovMetadata.test_saved_core_wide_metadata"
+  ],
+  "mixed_tests": [],
+  "module_verdict": "carry-socket-half",
+  "reason": "Retain exact served OVER metadata versus ARTICLE bytes. The saved-core fixture parses an SBCL launcher and invokes fn-nov-line directly, so it needs an independent encoder/model fixture instead.",
+  "representation_sites": [
+    {
+      "line": 23,
+      "reason": "Replace fn1 launcher introspection and fn-nov-line/fn-nntp-multi/fn-nntp-decimal-field calls with fn2 renderer fixtures plus the retained public OVER metadata test.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "reads image launcher text",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 24,
+      "reason": "Replace fn1 launcher introspection and fn-nov-line/fn-nntp-multi/fn-nntp-decimal-field calls with fn2 renderer fixtures plus the retained public OVER metadata test.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "finds launcher exec line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 25,
+      "reason": "Replace fn1 launcher introspection and fn-nov-line/fn-nntp-multi/fn-nntp-decimal-field calls with fn2 renderer fixtures plus the retained public OVER metadata test.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "strips SBCL_USER_ARGS and shlex-parses runtime",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 26,
+      "reason": "Replace fn1 launcher introspection and fn-nov-line/fn-nntp-multi/fn-nntp-decimal-field calls with fn2 renderer fixtures plus the retained public OVER metadata test.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "extracts --end-runtime-options prefix",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 28,
+      "reason": "Replace fn1 launcher introspection and fn-nov-line/fn-nntp-multi/fn-nntp-decimal-field calls with fn2 renderer fixtures plus the retained public OVER metadata test.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "extracts SBCL_HOME assignment",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 31,
+      "reason": "Replace fn1 launcher introspection and fn-nov-line/fn-nntp-multi/fn-nntp-decimal-field calls with fn2 renderer fixtures plus the retained public OVER metadata test.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "executes tests/native_nov_metadata_image.lisp against saved core",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 35,
+      "reason": "Replace fn1 launcher introspection and fn-nov-line/fn-nntp-multi/fn-nntp-decimal-field calls with fn2 renderer fixtures plus the retained public OVER metadata test.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "asserts internal fixture exit code",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 36,
+      "reason": "Replace fn1 launcher introspection and fn-nov-line/fn-nntp-multi/fn-nntp-decimal-field calls with fn2 renderer fixtures plus the retained public OVER metadata test.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "asserts internal fixture marker",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    23,
+    31,
+    38,
+    49,
+    51
+  ],
+  "socket_only_tests": [
+    "NativeNovMetadata.test_served_metadata_matches_retained_article"
+  ],
+  "uncertainty": null
+}

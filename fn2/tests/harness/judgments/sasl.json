@@ -1,0 +1,31 @@
+{
+  "module": "sasl",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "All authentication assertions use RFC SASL exchanges over plaintext/STARTTLS/implicit TLS; SCRAM parsing is a client protocol implementation, not an ACL2 probe. config/start/control/socket supply the node; external openssl s_client supplies TLS exporter support.",
+  "representation_sites": [],
+  "sites": [
+    43,
+    44,
+    47,
+    51,
+    57,
+    59,
+    95,
+    138,
+    181,
+    217,
+    220
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

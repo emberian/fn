@@ -1,0 +1,34 @@
+{
+  "module": "peer_misbehaving",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-unchanged",
+  "reason": "Real socket fragmentation, reset, garbage and unread replies are checked with concurrent DATE/IHAVE/ARTICLE and process liveness; no representation dependency.",
+  "representation_sites": [],
+  "sites": [
+    123,
+    126,
+    134,
+    155,
+    171,
+    187,
+    213,
+    228,
+    243
+  ],
+  "socket_only_tests": [
+    "MisbehavingPeerTests.test_a_peer_trickling_an_article_inside_ihave_pins_nothing",
+    "MisbehavingPeerTests.test_a_peer_resetting_half_way_through_takethis_spoils_nothing",
+    "MisbehavingPeerTests.test_garbage_and_an_endless_line_from_a_peer_stop_nothing",
+    "MisbehavingPeerTests.test_a_peer_that_never_reads_its_check_replies_pins_nothing"
+  ],
+  "uncertainty": null
+}

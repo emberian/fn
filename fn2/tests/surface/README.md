@@ -17,8 +17,10 @@ This runner does not build images or initiate a remote job. Family names accept
 both `tls_auth` and `tls-auth` (likewise config/store). Omitted selection means all.
 `--target` defaults to `FN2_SURFACE_TARGET`, or `fn2`. Direct unittest discovery
 uses the same environment variable and the same shared `serving` decorator.
-Every fn2 test skips before invoking a driver, with `layer D/E not yet serving`
-followed by its relevant first `node.Fn2Backend` execution requirement.
+`families.json` declares the families each target `serves`: fn1 claims all nine;
+fn2 claims none until layer D declares them. An unserved family skips before
+invoking a driver, with `layer D/E not yet serving` followed by its relevant
+first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit 3.
 
 ## Forms and scope
 
@@ -31,7 +33,8 @@ followed by its relevant first `node.Fn2Backend` execution requirement.
   selection, absent articles, reader/cursor commands and reconnects, comparing
   replies before applying model updates. Accepted POST projection, cancellation
   and nonempty pinned-view schedules are extensions, not covered by this machine.
-  Other S modules name their future model and skip until its adapter exists.
+  Other S forms are `owed` in the manifest, with their required model module.
+  They appear in reports but generate no test and are not counted as run.
 - **F** uses H2b through its public CLI for NNTP, without importing driver
   internals: `python3 -m fn2.tests.model.differential --target fn1 --seeds 0..199
   --mode reader,node,peer --steps 50 --out DIR`. Its independent model comparison
@@ -47,8 +50,10 @@ followed by its relevant first `node.Fn2Backend` execution requirement.
   config/limits family's F module is specifically for config parsing.
 - **E** creates one test per carried native. Each runs an isolated
   `run_natives.child`, with its backend set to fn1 after the shared fn2 gate,
-  and asserts every collected outcome is ok or an explicitly intended retirement.
-  Empty results, timeouts and unintended skips fail. Fixture hooks name concrete
+  and checks every collected outcome. Native skips remain skips in the surface
+  report: inventoried retirements and `harness/intended-skips.json` entries are
+  permitted; other skips make the run NOT RUN. Empty results and timeouts fail.
+  Fixture hooks name concrete
   corpus paths or explicitly owed paths. Merely finding a fixture is never a pass.
   RFC fixtures require live setup (e.g. an issued watermark of 3999), so their
   full live replay adapter remains owed rather than replaying them against the
@@ -95,18 +100,31 @@ assertions. To try H2b's independent smoke target separately:
 `python3 -m fn2.tests.model.differential --target fake --seeds 0..199 --mode reader,node,peer --steps 50 --out DIR`.
 The surface runner itself accepts only fn1/fn2.
 
+Each family package has one `load_tests` hook backed by the shared form generator.
+Implemented forms keep their prior unittest IDs. The substantive NNTP model
+module remains; other per-form discovery wrapper files are unnecessary. The
+runner explicitly installs the selected native adapter before collection and
+uninstalls it in `finally`; importing surface modules does not install an adapter.
+
 ## Reports
 
 `OUT/surface.json` contains the profile, budget, family/form selection, individual
-outcomes and evidence, skip reasons, native records, and executed assertion-call
-counts. `OUT/<family>.md` contains form totals and a separate performance table
+outcomes and evidence, skip reasons, native records, pass/fail counts, and
+**TestCase-call count**. `OUT/<family>.md` contains each form's status and totals,
+owed forms, and a separate performance table
 headed **published, not a gate**. Native subprocess counts are added once to
 wrapper assertions. The metric counts `TestCase.assert*/fail*` calls including
 delegation; it does not count Python `assert` or assertions inside external fuzz
 drivers (whose detailed output remains beside the report).
 
-A run exits nonzero for a failure/error (including malformed drivers and timeouts),
-never for a skip or a performance value. The parent PID file is exclusive and
+A run exits 1 for a failure/error (including malformed drivers and timeouts),
+or when a served family executes zero tests (`served family ran nothing`).
+Otherwise, any selected test skipped without an inventoried retirement or
+intended-skips entry gives exit 3, with a **NOT RUN** count and reasons. Failures
+take precedence over NOT RUN. Only passing tests and explicitly permitted skips
+give exit 0. Skipped forms still show **NOT RUN**, even when their skips are
+permitted; owed forms show **OWED**. A performance value is never a gate.
+The parent PID file is exclusive and
 removed on completion; by default it is `OUT/surface.pid`. Driver PID files are
 also exclusive. An existing PID file stops the launch; no process is selected by
 name or pattern. Per-family JSON reporting is checkpointed after each family.

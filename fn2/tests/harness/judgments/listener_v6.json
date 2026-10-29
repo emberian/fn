@@ -1,0 +1,30 @@
+{
+  "module": "listener_v6",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "All assertions are public listener/config/TLS behavior; inherited starttls fixture requires config/start/stop adapters and openssl certificate generation.",
+  "representation_sites": [],
+  "sites": [
+    43,
+    54,
+    60,
+    63,
+    73,
+    101,
+    107
+  ],
+  "socket_only_tests": [
+    "NativeListenerV6Tests.test_every_address_serves_plain_and_implicit_tls",
+    "NativeListenerV6Tests.test_refusals_are_named_before_any_listener"
+  ],
+  "uncertainty": null
+}

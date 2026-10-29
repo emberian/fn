@@ -1,0 +1,187 @@
+{
+  "module": "commit_log",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Preserve concurrent POST/restart bodies, public store maintenance success and cut outcomes. Several tests otherwise assert journal naming, physical segment sizes, transactions-directory absence, pipeline trace and fn1 cut names, so they need assertion rewrites.",
+  "representation_sites": [
+    {
+      "line": 87,
+      "reason": "Keep acknowledged article durability; fn2 need not have or omit transactions/.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "store_path/transactions directory listing",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 127,
+      "reason": "Initial storage representation is private; assert init success and accepted/replayed posts.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "journal/000001.log initial segment path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 128,
+      "reason": "Remove filename assertion; use public restart durability.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires initial journal segment file",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 137,
+      "reason": "Retain every 240 article after restart, independent of storage layout.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires transactions directory empty after concurrent posts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 179,
+      "reason": "Replace with fn2 scheduling/fairness and durability evidence; exact fn1 pipeline phase is obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "developer stderr prepared behind the barrier pipeline phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 197,
+      "reason": "Map to fn2 commit-machine death cuts with explicit old/new outcome evidence.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires exact fn1 POST_LOG_CUTS names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 263,
+      "reason": "Replace physical segment growth trigger with fn2 allocator/commit cut.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "journal/000001.log segment path for growth test",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 264,
+      "reason": "The fn2 profile determines storage growth; keep acknowledged-post preservation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires initial segment size 1048576 bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 283,
+      "reason": "Use fn2 named growth-cut evidence and public article recovery.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "reads segment physical size after cut",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 284,
+      "reason": "fn1 extent doubling is not a public contract.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires physical segment larger than original extent",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 285,
+      "reason": "Move storage alignment to fn2 layer B tests; keep public crash durability here.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires segment size multiple of 4096",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 304,
+      "reason": "No fn2 journal filename or genesis exception requirement.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "globs journal/*.log excluding genesis 000000.log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 306,
+      "reason": "Assert public content remains served after growth/restart.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires nonempty set of history segment files",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 308,
+      "reason": "Retire fn1 disk layout check in favor of fn2 storage tests and public durability.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "asserts every physical history segment size is 4096-aligned",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 318,
+      "reason": "Keep successful store post and duplicate/reopen behavior.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "direct store post test requires journal/000001.log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 329,
+      "reason": "Physical absence of transaction files is not a carried API requirement.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "lists transactions/ and asserts empty",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 334,
+      "reason": "Keep public store probe success/output, retire private filename.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "probe root must contain journal/000001.log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 355,
+      "reason": "Retain recovered count and duplicate/new POST behavior.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "requires no transaction files after three posts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 324,
+      "reason": "This is command output reporting durable commitment; carry public sequence semantics if E6 keeps that field.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "store post committed sequence= result",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 358,
+      "reason": "Public recover report counts can remain while storage representation changes.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store recover transactions=3 articles=3 report",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 369,
+      "reason": "Keep durable public article/transaction counts and post recovery progression.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store recover transactions=4 articles=4 report",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    87,
+    124,
+    127,
+    179,
+    197,
+    263,
+    304,
+    318,
+    355,
+    371
+  ],
+  "socket_only_tests": [
+    "CommitLogMixin.test_concurrent_posts_are_committed_through_the_log_and_served_again",
+    "DeveloperCommitLogTests.test_the_next_batch_prepares_behind_the_barrier",
+    "DeveloperCommitLogTests.test_every_post_log_cut_is_old_or_new_and_the_node_goes_on",
+    "DeveloperCommitLogTests.test_the_segment_grows_and_a_death_while_it_grows_keeps_every_acknowledged_post",
+    "DeveloperCommitLogTests.test_store_post_and_probe_commit_through_the_log",
+    "DeveloperCommitLogTests.test_format_9_history_is_read_from_the_log_after_the_open",
+    "DeveloperCommitLogTests.test_format_9_compact_reclaim_and_export_run_over_the_log"
+  ],
+  "uncertainty": null
+}

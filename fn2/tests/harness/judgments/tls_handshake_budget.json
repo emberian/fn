@@ -1,0 +1,57 @@
+{
+  "module": "tls_handshake_budget",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Keep public TLS admission, per-source limits and timeout behavior; configure listener/log paths and use control policy set, start/stop, socket and observe. Service log refusal reasons are public diagnostics rather than internal structures.",
+  "representation_sites": [
+    {
+      "line": 94,
+      "reason": "Use observe for configured service log output; no store layout is accessed.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "Read configured service log while waiting for TLS refusal reason",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 106,
+      "reason": "Retain named refusal alongside source isolation on actual TLS handshakes.",
+      "row": "handshake admission `tls-handshakes-in-flight` (16)",
+      "touches": "Require tls refused reason=handshake-budget source=127.0.0.2",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 128,
+      "reason": "Retain source-specific budget refusal with successful override/control handshakes.",
+      "row": "handshake admission `tls-handshakes-in-flight` (16)",
+      "touches": "Require tls refused reason=handshake-budget for the non-overridden source",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 153,
+      "reason": "Retain named timeout and bounded progress of the waiting legitimate client.",
+      "row": "handshake admission `tls-handshakes-in-flight` (16)",
+      "touches": "Require tls refused reason=timeout after silent handshakes",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    49,
+    52,
+    55,
+    65,
+    94,
+    106,
+    128,
+    153
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

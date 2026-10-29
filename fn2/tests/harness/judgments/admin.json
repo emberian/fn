@@ -1,0 +1,244 @@
+{
+  "module": "admin",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "AdminSectionStructureTests.test_every_owner_section_site_is_the_declared_control_section",
+    "AdminSectionStructureTests.test_no_function_of_the_file_classifies_a_condition_by_a_parent_class",
+    "AdminSectionStructureTests.test_the_cache_refresh_leaves_its_failure_to_the_section",
+    "AdminSectionStructureTests.test_admin_is_a_strict_lock_check_enclave"
+  ],
+  "mixed_tests": [
+    "NativeAdminTests.test_create_capacity_retire_reopen_preserves_history",
+    "NativeAdminTests.test_policy_set_path_identity_is_a_durable_configuration_record",
+    "NativeAdminTests.test_running_owner_applies_policy_set_path_identity",
+    "NativeAdminTests.test_peer_add_and_remove_use_public_native_admin",
+    "NativeAdminTests.test_running_owner_applies_durable_administration",
+    "NativeAdminTests.test_running_owner_applies_symmetric_peer_add_and_remove",
+    "NativeAdminTests.test_live_uncertain_publication_fences_and_recovers",
+    "NativeAdminTests.test_uncertain_publication_recovers_and_sweeps_admitted_stage_residue",
+    "AdminSectionBoundaryTests.test_a_fault_in_the_inspect_section_stops_the_owner_as_a_fault",
+    "AdminSectionBoundaryTests.test_an_uncertain_outcome_in_the_inspect_section_fences_the_owner",
+    "AdminSectionBoundaryTests.test_a_fault_in_the_compaction_section_stops_the_owner_as_a_fault",
+    "AdminSectionBoundaryTests.test_a_fault_in_the_compaction_status_section_stops_the_owner_as_a_fault",
+    "AdminSectionBoundaryTests.test_a_fault_in_the_admin_section_stops_the_owner_as_a_fault"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Preserve public administrative CLI/control outcomes. Rewrite .cfg/.stage names, numeric config-generation filenames, SBCL .core preflight and section injections; retire source lint.",
+  "representation_sites": [
+    {
+      "line": 22,
+      "reason": "Use fn2 artifact identity; .core is not a public CLI promise.",
+      "row": "none: retire, capability = fn1 SBCL launcher/core pairing preflight",
+      "touches": "IMAGE + .core sidecar and SHA256 image-ready gate at 38-45",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 81,
+      "reason": "Keep successful durable administrative update; remove fn1 record filename expectation.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "configured generation=2 record=00000002.cfg verification=VERIFIED stdout",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 84,
+      "reason": "Keep successful durable administrative update; remove fn1 record filename expectation.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "configured generation=3 record=00000003.cfg verification=VERIFIED stdout",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 93,
+      "reason": "Keep successful durable administrative update; remove fn1 record filename expectation.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "configured generation=4 record=00000004.cfg verification=VERIFIED stdout",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 97,
+      "reason": "Public CLI distinguishes service eligibility from historical group obligations.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "store config served/domain fields",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 109,
+      "reason": "Keep successful durable administrative update; remove fn1 record filename expectation.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "configured generation=2 record=00000002.cfg verification=VERIFIED stdout",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 111,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "store config generation=2; related assertions 114-115,122,130,134,141,152,161,178",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 114,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "CLI store config exact generation assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 115,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "CLI store config exact generation assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 122,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "CLI store config exact generation assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 128,
+      "reason": "Keep successful durable administrative update; remove fn1 record filename expectation.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "configured generation=2 record=00000002.cfg verification=VERIFIED stdout",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 130,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "CLI store config exact generation assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 132,
+      "reason": "Keep successful durable administrative update; remove fn1 record filename expectation.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "configured generation=3 record=00000003.cfg verification=VERIFIED stdout",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 134,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "CLI store config exact generation assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 141,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "CLI store config exact generation assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 152,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "CLI store config exact generation assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 161,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "CLI store config exact generation assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 168,
+      "reason": "Check recovered public configuration instead.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/config/00000002.cfg existence",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 173,
+      "reason": "fn1 stage namespace is replaced; use fn2 recovery fault hook.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/staging/.stage-native-admin-residue; write 174, absence 177",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 174,
+      "reason": "fn1 stage namespace is replaced; use fn2 recovery fault hook.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "writes/asserts absence of store/staging/.stage-native-admin-residue",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 177,
+      "reason": "fn1 stage namespace is replaced; use fn2 recovery fault hook.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "writes/asserts absence of store/staging/.stage-native-admin-residue",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 178,
+      "reason": "Replace exact fn1 record generations with policy/group/peer readback and restart.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "CLI store config exact generation assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 228,
+      "reason": "fn2 machine declarations replace these host functions.",
+      "row": "none: retire, capability = fn1 def-section site shape",
+      "touches": "host/native/admin.lisp; section call count and fault names at 235-245",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 229,
+      "reason": "Source architecture is not carried.",
+      "row": "none: retire, capability = fn1 owner section declaration",
+      "touches": "host/native/owner.lisp section actor/admission declaration",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 248,
+      "reason": "New machines need their own structural checks.",
+      "row": "none: retire, capability = fn1 condition classification implementation lint",
+      "touches": "host/native/admin.lisp host_function condition handler-class scans",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 272,
+      "reason": "Specific fn1 cache/owner wrapper removed.",
+      "row": "none: retire, capability = fn1 cache-refresh handler structure",
+      "touches": "host/native/admin.lisp fnn-owner-refresh-config-cache source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 279,
+      "reason": "No fn1 owner mutex enclave in fn2.",
+      "row": "none: retire, capability = fn1 lock-discipline enclave lint",
+      "touches": "tools/lock_discipline_contracts.json admin enclave entry",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 304,
+      "reason": "Retain externally observed fault/uncertain outcomes via fn2 named kill_at hooks; fn1 inspect/compaction/admin sections are implementation specific.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "FN_NATIVE_ADMIN_FAULT SECTION:kind; section names 315,319,323,327,331",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    22,
+    81,
+    168,
+    228,
+    304
+  ],
+  "socket_only_tests": [
+    "NativeAdminTests.test_two_administrators_have_no_post_publish_generation_race"
+  ],
+  "uncertainty": "Medium: exact generation counters are CLI diagnostics but section1 promises config semantics rather than fn1 record generations. IMAGE_READY preflight must change for all NativeAdminTests, including the otherwise public race test."
+}

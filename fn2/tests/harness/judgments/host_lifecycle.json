@@ -1,0 +1,226 @@
+{
+  "module": "host_lifecycle",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Keep TLS pipelines, descriptor exhaustion, stalled HTTP POST and pull delivery; adapt start/stop/observe fault coordination and replace fn1 journal/worker/mux assertions individually.",
+  "representation_sites": [
+    {
+      "line": 181,
+      "reason": "Inject checkpoint publication failure through the fn2 storage fault hook rather than deriving segment names.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "self.store/journal selects six-digit active .log segment",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 184,
+      "reason": "Replace named segment collision with publication failure; require refused result, durable state and clean shutdown.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "writes empty next journal segment to force rename collision",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 185,
+      "reason": "The new fault hook owns cleanup without knowing journal layout.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "unlinks injected next-segment collision file",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 190,
+      "reason": "Operation receipt is public operator feedback; retain named terminal refusal.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "compaction requested receipt= output after refused checkpoint",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 191,
+      "reason": "Assert checkpoint terminal refusal and restart/readability instead of fn1 rotation details.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "ROTATION_REFUSED matches spare-rename-exists checkpoint diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 201,
+      "reason": "Use a storage completion hold hook and assert stop waits for outstanding work; no fn1 worker roster.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "WORKER-TAIL held publisher/exporter trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 214,
+      "reason": "Observe completion and stop exit, replacing publisher/exporter thread names.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "WORKER-TAIL released worker trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 223,
+      "reason": "Translate to fn2 asynchronous storage completion hold.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "FN_NATIVE_WORKER_TAIL_HOLD publisher selector",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 232,
+      "reason": "Translate to export completion hold with eventual export/readability.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "FN_NATIVE_WORKER_TAIL_HOLD exporter selector",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 278,
+      "reason": "Replace host mux adoption phases with connection/stop event ordering in fn2.",
+      "row": "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)",
+      "touches": "FN_NATIVE_ADOPT_HOLD and FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 285,
+      "reason": "Expose a fault hook at accept/adoption boundary; do not require fn1 trace.",
+      "row": "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)",
+      "touches": "waits for ADOPT held trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 292,
+      "reason": "Assert stop settles and adopted descriptor closes through the lifecycle hook.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "waits for OWNER-CLEANUP trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 293,
+      "reason": "OS socket closure is a public lifecycle/resource observation; preserve through observe.",
+      "row": "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)",
+      "touches": "owner_sockets /proc check of late-adopted socket after stop",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 342,
+      "reason": "Use fn2 work/yield counters for held response fairness.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "FN_NATIVE_OVER_WINDOW per-loop trace selector",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 343,
+      "reason": "Replace fn1 cursor-loop counter syntax with fn2 work counters.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "regex OVER cursor/empty-yield cid passes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 353,
+      "reason": "Measure bounded progress with fn2 counters and socket responsiveness.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "counts cursor-yield traces while reader holds response",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 360,
+      "reason": "Replace fn1 mux pass counter with fn2 work-budget observations.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "parses cursor-yield passes from owner stderr",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 364,
+      "reason": "Assert complete resumable reply with bounded work, not a particular cursor branch.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "asserts cursor arm reached via nonempty passes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 371,
+      "reason": "Do not preserve fn1 per-row quantum count; assert bounded quanta and eventual complete rows.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "expects more than COUNT/2 fn1 cursor yields",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 376,
+      "reason": "Measure nonbusy waiting/fairness using fn2 work accounting.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "median loop pass delta less than ten",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 383,
+      "reason": "Replace fn1 scheduler pass threshold with bounded work while waiting.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "maximum held-loop pass delta below 2000",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 415,
+      "reason": "Adapt disk stall through start env/fault hook; retain responsive /health and eventual Posted!.",
+      "row": "`GET /new?g`, `POST /post` (CSRF; the three sentences: Posted! / The server said no / We couldn't tell)",
+      "touches": "FN_NATIVE_TEST_DISK_STALL_FILE at web node start",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 505,
+      "reason": "Replace fn1 mux-loop pause with fn2 acceptance/backpressure hook.",
+      "row": "capacity 400s: too many connections / from this address (8 public) / authentication failures; then close",
+      "touches": "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM and window trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 515,
+      "reason": "Observe held work without assuming fn1 loop count.",
+      "row": "capacity 400s: too many connections / from this address (8 public) / authentication failures; then close",
+      "touches": "waits for OVER quantum-held once per mux loop",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 525,
+      "reason": "Preserve bounded descriptor use but derive bound from fn2 profile, not two fn1 mux loops.",
+      "row": "capacity 400s: too many connections / from this address (8 public) / authentication failures; then close",
+      "touches": "descriptor growth <= LOOPS + 2 with LOOPS=2",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 527,
+      "reason": "Assert admission defer/close and continued service under fn2 capacity contract.",
+      "row": "capacity 400s: too many connections / from this address (8 public) / authentication failures; then close",
+      "touches": "accept deferred reason=pending-accept-bound trace",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    53,
+    117,
+    173,
+    217,
+    228,
+    274,
+    323,
+    436,
+    492,
+    563
+  ],
+  "socket_only_tests": [
+    "TlsPipelineTests.test_a_pipelined_cold_line_in_one_tls_record_is_served_in_order",
+    "TlsPipelineTests.test_a_cold_first_line_then_a_pipelined_line_in_one_tls_record",
+    "AcceptExhaustionTests.test_a_descriptor_flood_on_both_listeners_is_survived",
+    "WorkerRosterTests.test_a_refused_rotation_leaves_no_nil_worker_and_the_stop_settles",
+    "WorkerRosterTests.test_the_stop_joins_the_publisher_through_its_tail",
+    "WorkerRosterTests.test_the_stop_joins_the_exporter_through_its_tail",
+    "AdoptionRaceTests.test_a_socket_adopted_across_a_stop_is_closed_by_its_adopter",
+    "IdleTimerTests.test_a_long_cursor_reply_does_not_busy_poll_between_quanta",
+    "LogicalFeedTests.test_a_web_post_on_a_stalled_device_waits_off_the_owner",
+    "PendingAcceptBoundTests.test_accepted_sockets_stay_bounded_while_the_loops_are_held",
+    "PullCommitLatencyMeasure.test_measure_pull_commit_latency"
+  ],
+  "uncertainty": "Some cases are socket-public, while worker/adopt/pending-accept hooks are fn1-specific. Module is carry-with-adapter only with the listed per-site replacements; the plan names it for status and exit rows rather than every lifecycle behavior."
+}

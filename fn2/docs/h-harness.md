@@ -1,12 +1,12 @@
 - The fn1 node runs on hbox, not the laptop. The laptop has no fn1 image and building one certifies the ~1,440-book closure (hours; the common brief puts anything over minutes on hbox). hbox holds the published image set /tank/fn/images/keyed/c14e9e8e29ef4e34765271d69885970751f516ba317e583774b9bb9d261a40c4 (TREE_SHA d377d4559, one commit below origin/dev 6521f18c4; the only differences are tools/hbox_native.sh and tools/test_budget.py, no node code). Codex writes and unit-tests on the laptop; the seat runs every fn1 verification on hbox under swarm-build with PID files.
-- The natives are not edited. They run through an import shim that replaces `tests.native_harness`; the adapter's fn1 backend is fn1's own Node, so a green fn1 run through the shim is evidence the adapter preserves behaviour, and the fn2 backend is the stub whose named failures are the list of what layer D owes.
+- The natives are not edited. They run against the real `tests.native_harness` module, on which `shim.install(backend)` sets the declared patch points (HR); the adapter's fn1 backend is fn1's own Node, so a green fn1 run through the shim is evidence the adapter preserves behaviour, and the fn2 backend is the stub whose named failures are the list of what layer D owes.
 - fn1 key `[resources] cold_*`/`output_*` -> fn2 `[profile]` (RELEASE-PLAN §1, the accepted key set): replaced by name, old names refused by name.
 
 # H1b: the Node adapter and isolated runner
 
 The adapter implements the seven inventory operations and preserves the remaining
-fn1 Node methods. `Fn1Backend` subclasses the separately loaded
-`fn1_native_harness.Node`. `Fn2Backend` inherits its exact constructor and scratch
+fn1 Node methods. `Fn1Backend` subclasses `tests.native_harness.Node` as captured
+at import (`node.ORIGINAL_NODE`). `Fn2Backend` inherits its exact constructor and scratch
 fixture behavior, translates the configuration table name, and raises the original
 `NodeDead` at every node execution entry. It does not launch an echo host or claim
 NNTP liveness. This is the seat's specified stub, not layer D's implementation.
@@ -21,12 +21,15 @@ inspect; the adapter does not fabricate a new died_at implementation.
 
 ## Imports and host selection
 
-`shim.install()` writes both `sys.modules['tests.native_harness']` and the package
-attribute before any native import. Public fn1 names are copied; missing private
-names are forwarded with module `__getattr__`, because `compress` explicitly imports
-`_line_containing` and harness controls use private state. The fn1 module itself is
-never patched. `Node.session()` uses the shim's Client subclass so observation also
-covers clients created through a Node.
+There is one module: `tests.native_harness`, imported normally. `shim.PATCH_POINTS`
+declares every name the adapter replaces on it, per backend (fn1: `Node`, `Client`;
+fn2: those plus `native_image`, `executable`, `requires`, `run`, `start`,
+`start_filed`, `installed_launcher`). `shim.install(backend)` sets them and
+`shim.uninstall()` restores exactly the values present before; importing `shim`
+changes nothing, and every runner installs before collecting a module and
+uninstalls in `finally`. Because natives and helpers see the same module object,
+`mock.patch` on any name reaches both, and fn1's own `Node.session()` builds the
+installed `Client`, so observation covers clients created through a Node.
 
 Under fn2, `native_image` resolves every image variable to `FN2_HOST`, defaulting to
 `fn2/host/fn` under the repository root. Only that path is treated as executable by
@@ -137,8 +140,13 @@ Laptops select E/S/F/H at 200 model examples; hbox adds performance rows and use
 CPU-minute envelope. `surface.json` and one Markdown table per family publish
 selection, outcomes, skips and assertion calls beside the profile. Performance
 values appear under `published, not a gate` and are never threshold assertions.
-Missing drivers and fn2's lack of service produce skips; failures/errors alone
-make the exit nonzero. The parent and child drivers own exclusive PID files.
+Skip is not pass (HR): a failure/error, or a served family that executed nothing,
+exits 1; otherwise any selected test skipped for a reason other than an inventoried
+retirement or an `intended-skips.json` entry exits 3 (NOT RUN, with counts and
+reasons). `families.json` `serves` names what each target serves (fn1 all nine,
+fn2 none until layer D declares them). S forms without a model are `owed`: listed
+in every report as OWED, generating no test. Each family package has one
+`load_tests` hook; reports count pass/fail per form beside the TestCase-call count. The parent and child drivers own exclusive PID files.
 
 `run_natives --env-plan IMAGES` invokes `native_env.py plan --allow-skips` once
 for the selected modules. Its selection-sized planning timeout is separate from
@@ -207,12 +215,19 @@ failure line for every `other` test are recorded in `build/REPORT-H4b.md`.
 A placeholder is not a production-profile image or a published-source manifest;
 those semantic checks remain observable. The raw-SBCL guard is unchanged.
 
-## H1c
+## H1c (superseded by HR)
 
-The shim now forwards attribute writes and deletes to fn1 when their current
-values are identical. This supersedes H1b's statement that fn1 is never patched:
-patching shared `start` now reaches `Fn1Backend.start` and restores on exit.
-Backend replacements (`Node`, `Client`, and fn2 launch/image helpers) stay local.
-For private names supplied through `__getattr__`, the shim remembers the original
-fn1 value so the matching patch-exit delete restores it and removes the local
-shadow. Nested patches restore each level; newly introduced names stay local.
+H1c made a two-module shim transparent to module-level patching. HR removed the
+second module (see "Imports and host selection"), which makes transparency a
+property of the design rather than of forwarding code; the three H1c lifecycle
+scenarios stay in `test_harness` as controls, run directly and through the adapter.
+
+## Inventory data (HR)
+
+The reviewed judgments are data: one JSON record per module under
+`fn2/tests/harness/judgments/`, validated against `judgments.schema.json`.
+`natives-inventory.json` and `natives.md` are build outputs under `build/natives/`
+(`python3 -m fn2.tests.harness.inventory --out build/natives`; `inventory.load()`
+regenerates them when an input's digest changes). The migration was checked byte
+for byte against the last committed copies before they were removed.
+

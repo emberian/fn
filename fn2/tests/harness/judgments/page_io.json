@@ -1,0 +1,808 @@
+{
+  "module": "page_io",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "All native cases depend on fn1 WINDOW/PAGE-IO tokens, descriptor ids, worker phases and history-image retention diagnostics; preserve public timeout/recovery semantics with fn2 I/O fault schedules.",
+  "representation_sites": [
+    {
+      "line": 34,
+      "reason": "Replace internal token/trace parsers with fn2 simulator OWN/WORK/TRACE checks and wire-visible article outcome.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "parses/formats WINDOW token fields, primitive descriptors, join trace or NATIVE-HM collector status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 36,
+      "reason": "Replace internal token/trace parsers with fn2 simulator OWN/WORK/TRACE checks and wire-visible article outcome.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "parses/formats WINDOW token fields, primitive descriptors, join trace or NATIVE-HM collector status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 43,
+      "reason": "Replace internal token/trace parsers with fn2 simulator OWN/WORK/TRACE checks and wire-visible article outcome.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "parses/formats WINDOW token fields, primitive descriptors, join trace or NATIVE-HM collector status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 46,
+      "reason": "Replace internal token/trace parsers with fn2 simulator OWN/WORK/TRACE checks and wire-visible article outcome.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "parses/formats WINDOW token fields, primitive descriptors, join trace or NATIVE-HM collector status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 51,
+      "reason": "Replace internal token/trace parsers with fn2 simulator OWN/WORK/TRACE checks and wire-visible article outcome.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "parses/formats WINDOW token fields, primitive descriptors, join trace or NATIVE-HM collector status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 68,
+      "reason": "Replace internal token/trace parsers with fn2 simulator OWN/WORK/TRACE checks and wire-visible article outcome.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "parses/formats WINDOW token fields, primitive descriptors, join trace or NATIVE-HM collector status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 84,
+      "reason": "Replace internal token/trace parsers with fn2 simulator OWN/WORK/TRACE checks and wire-visible article outcome.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "parses/formats WINDOW token fields, primitive descriptors, join trace or NATIVE-HM collector status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 95,
+      "reason": "Replace internal token/trace parsers with fn2 simulator OWN/WORK/TRACE checks and wire-visible article outcome.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "parses/formats WINDOW token fields, primitive descriptors, join trace or NATIVE-HM collector status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 111,
+      "reason": "Replace internal token/trace parsers with fn2 simulator OWN/WORK/TRACE checks and wire-visible article outcome.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "parses/formats WINDOW token fields, primitive descriptors, join trace or NATIVE-HM collector status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 125,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 129,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 130,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 132,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 135,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 138,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 142,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 143,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 146,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 147,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 149,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 152,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 153,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 155,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 158,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 161,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 164,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 166,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 167,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 168,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 171,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 172,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 173,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 175,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 178,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 180,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 181,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 183,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 184,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 185,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 186,
+      "reason": "These Python-only parser tests prove the retired diagnostic grammar, not the public article surface.",
+      "row": "none: retire, capability = parsing fn1 PageIO debug grammar",
+      "touches": "synthetic fn1 WINDOW/PAGE-IO/NATIVE-HM parser fixture and assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 217,
+      "reason": "Stopped-store copying is a documented external backup fixture.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "copy_of helper opaque stopped-store clone via expiry.DeveloperExpiryTests.copy_of",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 224,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 242,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 243,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 256,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 258,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 259,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 260,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 261,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 262,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 265,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 267,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 269,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 271,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 272,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 274,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 276,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 277,
+      "reason": "Keep delayed ARTICLE nonpublication and correct completion; check internal ownership using fn2 simulator checker instead of fn1 descriptors.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "held window token, fd capture/binding, physical primitive chronology and settlement phase",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 300,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 301,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 305,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 306,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 308,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 309,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 327,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 328,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 332,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 350,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 353,
+      "reason": "Preserve exact ARTICLE data, timeout and session continuation with fn2 fault scheduling; old cache/token trace is obsolete.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "window publish/cache/admit/cancel/settle and collector trace assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 372,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 373,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 374,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 378,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 380,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 386,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 387,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 388,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 389,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 390,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 391,
+      "reason": "Check safe shutdown and exact data after reopen; validate fn2 ownership order in its trace model.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "SIGTERM executor join call/return and physical return ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 422,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 430,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 431,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 433,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 440,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 443,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 445,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 446,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 447,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 448,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 449,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 451,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 453,
+      "reason": "Keep no late response into replacement session and exact retained content; rewrite physical completion/retirement observations for fn2.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "checkpoint reseated extents, held fd retirement, late stale/duplicate worker completions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 486,
+      "reason": "Check successful compaction and continued retained article reads; fn1 history-image exclusion has no fn2 representation contract.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "auto checkpoint sequence and history-image descriptor exclusion from retirement",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 493,
+      "reason": "Check successful compaction and continued retained article reads; fn1 history-image exclusion has no fn2 representation contract.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "auto checkpoint sequence and history-image descriptor exclusion from retirement",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 494,
+      "reason": "Check successful compaction and continued retained article reads; fn1 history-image exclusion has no fn2 representation contract.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "auto checkpoint sequence and history-image descriptor exclusion from retirement",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 502,
+      "reason": "Check successful compaction and continued retained article reads; fn1 history-image exclusion has no fn2 representation contract.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "auto checkpoint sequence and history-image descriptor exclusion from retirement",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 504,
+      "reason": "Check successful compaction and continued retained article reads; fn1 history-image exclusion has no fn2 representation contract.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "auto checkpoint sequence and history-image descriptor exclusion from retirement",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 505,
+      "reason": "Check successful compaction and continued retained article reads; fn1 history-image exclusion has no fn2 representation contract.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "auto checkpoint sequence and history-image descriptor exclusion from retirement",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 518,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 521,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 527,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 529,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 531,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 532,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 533,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 545,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 546,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 549,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 550,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 551,
+      "reason": "Assert correct fault exit, no late body and safe restart under fn2 native faults; use fn2 checker for worker/buffer ownership.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "late I/O fault settlement, arena-extent diagnostics and retained-worker/no-buffer dispatch trace",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    34,
+    84,
+    111,
+    242,
+    265,
+    300,
+    430,
+    493,
+    545
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "The module includes nine pure Python parser tests and eight native schedules, with no ACL2 process probe. Retire parser tests with the old diagnostic grammar; public safety assertions need simulator and native replacements."
+}

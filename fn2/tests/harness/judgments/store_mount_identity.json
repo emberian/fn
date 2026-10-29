@@ -1,0 +1,132 @@
+{
+  "module": "store_mount_identity",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "MountIdentitySourceTests.test_every_open_checks_the_filesystem_before_reading",
+    "MountIdentitySourceTests.test_the_owner_start_asks_the_policy"
+  ],
+  "mixed_tests": [
+    "MountIdentityNativeTests.test_init_records_and_the_open_on_the_same_filesystem_opens",
+    "MountIdentityNativeTests.test_rebind_on_the_same_filesystem_opens_a_log_store",
+    "MountIdentityNativeTests.test_a_removed_or_corrupted_record_is_refused_by_name"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Separate CLI filesystem identity/rebind and durability-policy witnesses survive; source-shape checks and named-record corruption need replacement. socket_only here includes public CLI-only methods without probes.",
+  "representation_sites": [
+    {
+      "line": 40,
+      "reason": "Replace source ordering with recover refusing a filesystem mismatch before mutation.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Reads host/native/io.lisp; compares filesystem checks against config load and exact ACL2 function names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 51,
+      "reason": "Assert start refusal and unchanged store through supported operator behavior.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Reads host/native/owner.lisp; requires filesystem check before fnn-owner-recover-core",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 80,
+      "reason": "Assert same-filesystem recover succeeds; fn2 record filename is not a contract.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Tests filesystem-identity.fnmi existence",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 84,
+      "reason": "Whole-store movement is an operator-observable filesystem identity scenario.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Copies the complete store directory onto same filesystem",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 96,
+      "reason": "Rebind success is public; fn1 frontier filename absence is obsolete.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Asserts allocation-frontier.json absent from log store",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 107,
+      "reason": "Filesystem mismatch refusal and explicit rebind are public operations.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Copies whole store to another filesystem before recover and rebind",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 174,
+      "reason": "Verify filesystem mismatch refusal independent of mount namespace.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Copies whole store to different filesystem and bind-mount view",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 188,
+      "reason": "No mutation of an unrecorded empty directory is observable and independent of layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Enumerates empty store root after refused recover",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 193,
+      "reason": "Replace named-record injection with fn2 storage fault hook and public refusal.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Selects private filesystem-identity.fnmi record",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 194,
+      "reason": "Record encoding is private; fault injection must target fn2 persistence behavior.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Reads filesystem identity record bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 195,
+      "reason": "Use corruption fault hook rather than fixed record offset.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Flips byte 12 of filesystem identity record",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 196,
+      "reason": "Keep recovery refusal outcome through fn2 fault injection.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Writes corrupted filesystem identity record",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 199,
+      "reason": "fn2 has no old-layout migration obligation; retain independent unrecorded-root/start refusal coverage.",
+      "row": "none: retire, capability = pre-filesystem-identity fn1 store migration",
+      "touches": "Unlinks filesystem identity record to exercise legacy unrecorded store behavior",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    40,
+    51,
+    80,
+    96,
+    101,
+    190,
+    235
+  ],
+  "socket_only_tests": [
+    "MountIdentityNativeTests.test_a_store_on_another_filesystem_is_refused_by_name_then_rebound",
+    "MountIdentityNativeTests.test_the_units_bind_view_of_the_same_filesystem_opens",
+    "MountIdentityNativeTests.test_the_bind_view_of_another_filesystem_is_still_refused",
+    "MountIdentityNativeTests.test_an_empty_directory_where_the_store_was_is_refused_as_unrecorded",
+    "MountIdentityNativeTests.test_a_policy_store_on_a_memory_filesystem_is_refused_at_start_then_allowed"
+  ],
+  "uncertainty": "Filesystem identity/refusal semantics are carried via rebind-filesystem row; old record-removal compatibility semantics are not. Whole-store copies are classified public fixture setup, not private filename coupling."
+}

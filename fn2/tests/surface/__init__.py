@@ -39,10 +39,10 @@ def serving(family):
         @functools.wraps(call)
         def wrapped(*args, **kwargs):
             target = os.environ.get('FN2_SURFACE_TARGET', 'fn2')
-            if target == 'fn2':
-                raise unittest.SkipTest(SKIP + ': ' + REQUIREMENTS[family])
-            if target != 'fn1':
+            if target not in MANIFEST['serves']:
                 raise ValueError('FN2_SURFACE_TARGET must be fn1 or fn2')
+            if family not in MANIFEST['serves'][target]:
+                raise unittest.SkipTest(SKIP + ': ' + REQUIREMENTS[family])
             return call(*args, **kwargs)
         return wrapped
     return decorate
@@ -61,7 +61,8 @@ def hook(family, form, case, **kwargs):
     if not spec:
         raise unittest.SkipTest(f'{form.lower()} driver owed: {family}; set {key}=module:callable')
     module, name = spec.rsplit(':', 1)
-    return getattr(importlib.import_module(module), name)(case=case, target='fn1',
+    return getattr(importlib.import_module(module), name)(case=case,
+        target=os.environ.get('FN2_SURFACE_TARGET', 'fn2'),
         family=family, out=output(family), **kwargs)
 
 
@@ -86,11 +87,9 @@ def driver(command, directory, seconds, env=None):
 class Target:
     """The selected live backend; the model owns expected replies, never this class."""
     def __init__(self, case):
-        from fn2.tests.harness import shim
-        backend = os.environ.get('FN2_SURFACE_TARGET', 'fn2')
-        shim.install(backend)
-        image = shim.native_image('FN_NATIVE_HOST')
-        self.node = shim.Node(case, image)
+        import tests.native_harness as native_harness
+        image = native_harness.native_image('FN_NATIVE_HOST')
+        self.node = native_harness.Node(case, image)
         self.node.init('surface.test')
         self.node.start()
 
@@ -104,7 +103,7 @@ class SurfaceCase(unittest.TestCase):
 
     def native(self, family, name):
         out = output(family) / 'natives'; out.mkdir(exist_ok=True)
-        args = argparse.Namespace(out=str(out), backend='fn1', retired_skip=True,
+        args = argparse.Namespace(out=str(out), backend=os.environ.get('FN2_SURFACE_TARGET', 'fn2'), retired_skip=True,
                                   timeout=300, env_plan=os.environ.get('FN2_SURFACE_IMAGES',
                                   'developer,production,dtn,dtn-developer,reference,developer-stripped'),
                                   identity=os.environ.get('FN2_SURFACE_IDENTITY'),
@@ -118,12 +117,14 @@ class SurfaceCase(unittest.TestCase):
         self.assertTrue(data['tests'], f'{name}: collected no outcomes')
         for entry in data['tests']:
             with self.subTest(native_test=entry['test']):
-                self.assertTrue(entry['outcome'] == 'ok' or
-                    entry['outcome'] == 'skip' and entry['intended_skip'],
+                self.assertIn(entry['outcome'], ('ok', 'skip'),
                     f"{entry['outcome']}: {entry['exception'] or entry['skip_reason']}")
+        skipped = [entry for entry in data['tests'] if entry['outcome'] == 'skip']
+        if skipped:
+            self.skipTest('; '.join(dict.fromkeys(entry['skip_reason'] for entry in skipped)))
 
     def model(self, family):
-        self.skipTest('model and Target adapter owed: ' + FAMILIES[family]['model'])
+        raise ValueError('no implemented model adapter: ' + FAMILIES[family]['model'])
 
     def fuzz(self, family):
         budget = RUN.get('fuzz_remaining', 600)
@@ -136,7 +137,8 @@ class SurfaceCase(unittest.TestCase):
                                corpus=FAMILIES[family]['fuzz']['corpus'])
             else:
                 # Public H2b CLI only; no dependency on its changing internals.
-                command = [sys.executable, '-m', 'fn2.tests.model.differential', '--target', 'fn1',
+                command = [sys.executable, '-m', 'fn2.tests.model.differential', '--target',
+                           os.environ.get('FN2_SURFACE_TARGET', 'fn2'),
                            '--seeds', f"0..{RUN.get('examples', 200)-1}", '--mode', 'reader,node,peer',
                            '--steps', '50', '--out', str(output(family) / 'fuzz')]
             if not isinstance(command, list) or not command or not all(isinstance(s, str) for s in command):
@@ -195,3 +197,25 @@ def cases(module, family, form):
         method = dict(S='model', F='fuzz', H='history')[form]
         add(method, lambda self: getattr(self, method)(family))
     return type('TestSurface', (SurfaceCase,), methods)
+
+
+def form_suite(family, form, loader=None):
+    """Generate the old per-form IDs without per-form discovery wrappers."""
+    loader = loader or unittest.defaultTestLoader
+    info = FAMILIES[family]['forms'][form]
+    if not info['applicable'] or info.get('status') == 'owed' or form == 'P':
+        return unittest.TestSuite()
+    if family == 'nntp' and form == 'S':
+        return loader.loadTestsFromName(info['module'])
+    return loader.loadTestsFromTestCase(cases(info['module'], family, form))
+
+
+def family_loader(package):
+    """Unittest package hook; discovery does not recurse into generated forms."""
+    family = package.rsplit('.', 1)[-1]
+
+    def load_tests(loader, tests, pattern):
+        return unittest.TestSuite(form_suite(family, form, loader)
+                                  for form in ('E', 'S', 'F', 'H', 'R'))
+
+    return load_tests

@@ -1,0 +1,117 @@
+{
+  "module": "consumer_exchange_two_nodes",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeTwoNodeConsumerExchangeTests.test_exchange_across_two_nodes_and_every_cut",
+    "NativeTwoNodeConsumerExchangeTests.test_signed_report_reply_cross_bp_and_reopen"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "The revoked-author case drives public consumer/NNTP/CLI behavior. Exchange identity evidence also reads the client SQLite schema, and the BP exchange constructs its request through Acl2Session.",
+  "representation_sites": [
+    {
+      "line": 160,
+      "reason": "Public configured service log; preserves progress observation without opening pull journals.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "pull round=done service-log observation",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 176,
+      "reason": "Article count is the public operator status observation.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator status articles=N parser",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 182,
+      "reason": "The consumer status reply exports its committed position and frontier.",
+      "row": "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
+      "touches": "consumer committed-ack / committed-journal-frontier parser",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 292,
+      "reason": "Use consumer summary/artifact/export to witness exactly-once inbox behavior rather than bind the test to a SQLite schema.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "opens consumer state.db using SQLite",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 294,
+      "reason": "Retain per-hop signature/source equality via the public consumer artifact and verifier commands.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "SELECT message_id/source/received/disposition/verdict/store_sequence FROM inbox",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 321,
+      "reason": "Use consumer artifact output; database filename and SQL schema are private client implementation.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "opens consumer state.db to inspect submissions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 323,
+      "reason": "Compare immutable artifacts emitted by consumer artifact rather than SQL columns.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "SELECT message_id/source/ed_sig/ml_sig FROM submissions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 548,
+      "reason": "Produce the request through the public BP/application command and observe request acceptance and returned receipt.",
+      "row": "custody and receipts: forwarding as a retention obligation released only by the peer's receipt or a recorded waiver; `carry` verbs; receipt regeneration",
+      "touches": "Acl2Session builds BP request",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 549,
+      "reason": "Use public request producer; no fn1 subject helper in the test.",
+      "row": "custody and receipts: forwarding as a retention obligation released only by the peer's receipt or a recorded waiver; `carry` verbs; receipt regeneration",
+      "touches": "bridge.subject derives private request subject",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 552,
+      "reason": "Use public request producer or external conformance fixture.",
+      "row": "custody and receipts: forwarding as a retention obligation released only by the peer's receipt or a recorded waiver; `carry` verbs; receipt regeneration",
+      "touches": "bridge.bp_request constructs request ADU",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 563,
+      "reason": "The operator-visible retention obligation remains until receipt.",
+      "row": "custody and receipts: forwarding as a retention obligation released only by the peer's receipt or a recorded waiver; `carry` verbs; receipt regeneration",
+      "touches": "bp-obligation status pinned=yes before receipt",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 572,
+      "reason": "The public status must show receipt releases the obligation.",
+      "row": "custody and receipts: forwarding as a retention obligation released only by the peer's receipt or a recorded waiver; `carry` verbs; receipt regeneration",
+      "touches": "bp-obligation status pinned=no after receipt",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    294,
+    323,
+    357,
+    548,
+    580,
+    643
+  ],
+  "socket_only_tests": [
+    "NativeTwoNodeConsumerExchangeTests.test_revoked_author_settles_by_observation_across_nodes"
+  ],
+  "uncertainty": "The direct SQL accesses concern fn-consumer, not the node store; still private representation and replaceable by public artifact/summary output. Only the BP test invokes an in-image ACL2 helper."
+}

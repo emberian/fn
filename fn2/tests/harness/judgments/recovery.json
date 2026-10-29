@@ -1,0 +1,857 @@
+{
+  "module": "recovery",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [
+    "NativeRecoverySourceMapTests.test_missing_enrollment_fixture_is_acl2_encoded_and_nonempty",
+    "StagingSweepDecisionTests.test_sweep_rounds_collect_sixty_five_allocation_orphans"
+  ],
+  "internal_only_tests": [
+    "NativeRecoverySourceMapTests.test_acquire_checks_staging_and_recovery_calls_the_acl2_sweep_subject",
+    "NativeRecoverySourceMapTests.test_every_prefix_the_host_stages_under_is_an_acl2_staging_prefix"
+  ],
+  "mixed_tests": [
+    "NativeRecoveryKeyringCheckpointTests.test_author_keyring_rotation_checkpoint_matches_full_replay",
+    "NativeRecoveryReclaimKeyringTests.test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves",
+    "NativeRecoveryFidelityTests.test_missing_staging_is_a_current_native_fault",
+    "NativeRecoveryFidelityTests.test_recover_removes_only_acl2_stage_names_and_preserves_unknown_names",
+    "NativeRecoveryFidelityTests.test_sixty_five_allocation_orphans_are_swept_in_rounds",
+    "NativeRecoveryFidelityTests.test_every_host_staging_prefix_is_swept",
+    "NativeRecoveryFidelityTests.test_secret_rotation_orphan_is_swept_without_changing_key_authority",
+    "NativeRecoveryFidelityTests.test_over_limit_unrecognized_names_refuse_without_removing_them",
+    "NativeRecoveryFidelityTests.test_orphans_beyond_one_observation_go_with_foreign_names_kept",
+    "NativeRecoveryFidelityTests.test_post_unlink_eio_is_uncertain_then_a_new_process_recovers",
+    "NativeRecoveryFidelityTests.test_sigkill_after_one_unlink_restarts_and_reconciles_remaining_stage",
+    "NativeRecoveryFidelityTests.test_atomic_hybrid_article_without_enrollment_faults_and_retains_bytes"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "The source checks, ACL2 sweep/fixture probes, fn1 staging names, journal files and held-row verdict dump dominate this module. Public recovery, export/import and HDR behavior should be retained in rewritten tests. No complete method is socket-only once inherited checkpoint helpers and missing_enrollment_fixture are followed.",
+  "representation_sites": [
+    {
+      "line": 28,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 29,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 30,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 54,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 110,
+      "reason": "Retain checkpoint versus restart HDR equivalence using public observations and fn2 fault fixtures; remove fn1 checkpoint/journal layout assumptions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "inherited AutoCheckpointFixture path/keep_log/open_line and captured.fnsc rename, CHECKPOINT_AUTO sequence count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 111,
+      "reason": "Retain checkpoint versus restart HDR equivalence using public observations and fn2 fault fixtures; remove fn1 checkpoint/journal layout assumptions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "inherited AutoCheckpointFixture path/keep_log/open_line and captured.fnsc rename, CHECKPOINT_AUTO sequence count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 115,
+      "reason": "Retain checkpoint versus restart HDR equivalence using public observations and fn2 fault fixtures; remove fn1 checkpoint/journal layout assumptions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "inherited AutoCheckpointFixture path/keep_log/open_line and captured.fnsc rename, CHECKPOINT_AUTO sequence count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 117,
+      "reason": "Retain checkpoint versus restart HDR equivalence using public observations and fn2 fault fixtures; remove fn1 checkpoint/journal layout assumptions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "inherited AutoCheckpointFixture path/keep_log/open_line and captured.fnsc rename, CHECKPOINT_AUTO sequence count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 120,
+      "reason": "Retain checkpoint versus restart HDR equivalence using public observations and fn2 fault fixtures; remove fn1 checkpoint/journal layout assumptions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "inherited AutoCheckpointFixture path/keep_log/open_line and captured.fnsc rename, CHECKPOINT_AUTO sequence count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 125,
+      "reason": "Retain checkpoint versus restart HDR equivalence using public observations and fn2 fault fixtures; remove fn1 checkpoint/journal layout assumptions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "inherited AutoCheckpointFixture path/keep_log/open_line and captured.fnsc rename, CHECKPOINT_AUTO sequence count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 126,
+      "reason": "Retain checkpoint versus restart HDR equivalence using public observations and fn2 fault fixtures; remove fn1 checkpoint/journal layout assumptions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "inherited AutoCheckpointFixture path/keep_log/open_line and captured.fnsc rename, CHECKPOINT_AUTO sequence count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 127,
+      "reason": "Retain checkpoint versus restart HDR equivalence using public observations and fn2 fault fixtures; remove fn1 checkpoint/journal layout assumptions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "inherited AutoCheckpointFixture path/keep_log/open_line and captured.fnsc rename, CHECKPOINT_AUTO sequence count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 183,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 186,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 225,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 228,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 246,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 247,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 248,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 249,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 250,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 251,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 252,
+      "reason": "HDR :fn-verified is public; comparison of unreachable tombstone verdicts and internal held-row dumps retires. Compare visible article verdicts before reclaim and after restart instead.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "developer held-verdicts dump of owner held rows and tombstones, RECLAIM record counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 258,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 259,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 261,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 264,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 266,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 268,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 269,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 270,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 273,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 274,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 275,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 276,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 280,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 281,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 282,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 284,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 286,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 287,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 288,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 294,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 296,
+      "reason": "Source-only tests launch no image; replace checks of fn1 staging-prefix names and call order with fn2 recover behavior under interrupted publication.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp acquire/recover/sweep call graph and books/store-sweep staging prefix constants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 302,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 318,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 319,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 320,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 322,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 323,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 325,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 327,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 329,
+      "reason": "Replace direct fn1 model evaluation with fn2 recovery faults and durable public observations. The source-map test fixture transitively calls missing_enrollment_fixture.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "Acl2Session raw fn-record/fn-stxa/fn-sn expressions, encoded record fixture and staging sweep decisions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 362,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 369,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 370,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 371,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 372,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 375,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 376,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 377,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 390,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 392,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 398,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 399,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 403,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 404,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 405,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 408,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 412,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 413,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 415,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 418,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 430,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 431,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 432,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 433,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 434,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 435,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 437,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 438,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 439,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 440,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 444,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 445,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 446,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 453,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 455,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 457,
+      "reason": "Retain key authority across recovery and rotation through identity/signature observations; fn1 secret-file placement and naming are not a public fn2 store layout.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/keys node-secret.key and retained epoch key filenames and raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 463,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 466,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 468,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 473,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 475,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 478,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 480,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 484,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 485,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 490,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 493,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 498,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 501,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 504,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 505,
+      "reason": "Replace manually constructed fn1 staging/layout debris with fn2 interrupted-write/recovery hooks; retain recovery idempotence, unknown evidence preservation and uncertain-versus-refused distinctions.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "staging namespace files (.stage, .allocation, .init-node-secret and foreign operator evidence), journal/000001.log and staging-orphans status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 521,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 522,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 523,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 524,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 528,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 529,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 530,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 531,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 532,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 533,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 542,
+      "reason": "Keep import refusal without publication and archive preservation; rewrite fixture for fn2 declared export grammar instead of fn1 event/manifest encoders.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export records/00000000000000000000.txn and MANIFEST; raw ACL2 fn-sxp-manifest-line creates malformed import fixture",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    25,
+    76,
+    182,
+    246,
+    257,
+    278,
+    301,
+    316,
+    360,
+    507
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Secret rotation filenames and export archive bytes are operator-visible but no section-1 row promises their fn1 representation; marked obsolete pending the fn2 format contract. NativeRecoveryReclaimKeyringTests explicitly says its tombstone invariant has no served observable, so that internal assertion retires while HDR comparisons carry. Source-only tests occupy the internal-only in_image_tests bucket without claiming they execute ACL2."
+}

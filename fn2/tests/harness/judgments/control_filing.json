@@ -1,0 +1,51 @@
+{
+  "module": "control_filing",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Assertions are public NNTP, hybrid CLI, and service-log contracts. Route explicit process death through kill_at and command argv through control; no store files or raw image probes.",
+  "representation_sites": [
+    {
+      "line": 196,
+      "reason": "The operator service log is a public observation; keep reason and Message-ID correlation with the NNTP refusal.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "service log refused transit code=437 detail=control-not-filed message-id=",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 416,
+      "reason": "This is a documented NNTP metadata item, not an internal control-table read.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "HDR :fn-control executed withdrawal metadata",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    55,
+    105,
+    196,
+    243,
+    375,
+    416,
+    555,
+    598
+  ],
+  "socket_only_tests": [
+    "NativeControlFilingTests.test_served_post",
+    "NativeControlFilingTests.test_transit_ihave",
+    "NativeControlFilingTests.test_signed_author",
+    "NativeControlFilingTests.test_signed_withdrawal",
+    "NativeControlFilingTests.test_two_node_withdrawal",
+    "NativeControlFilingTests.test_transit_revoked_signed_cancel"
+  ],
+  "uncertainty": null
+}

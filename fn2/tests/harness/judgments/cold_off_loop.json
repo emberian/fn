@@ -1,0 +1,27 @@
+{
+  "module": "cold_off_loop",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "The test asserts ARTICLE and other readers make progress while a developer selector holds a read. start(env) must translate FN_NATIVE_TEST_READ_STALL_FILE and observe supplies diagnostics; the marker lives under root, not in the store layout.",
+  "representation_sites": [],
+  "sites": [
+    31,
+    41,
+    43,
+    50,
+    61,
+    65,
+    66,
+    69
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

@@ -1,0 +1,343 @@
+{
+  "module": "log_compaction",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Compaction, reclaim and recovery have useful public assertions, but every test additionally requires fn1 journal segment names, rotation cuts or checkpoint layout.",
+  "representation_sites": [
+    {
+      "line": 61,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 66,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 93,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 120,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 124,
+      "reason": "Keep compaction completion and unchanged public history; replace fn1 phase and segment assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "compacted steps=checkpoint,drop and segment/dropped counters",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 125,
+      "reason": "Keep compaction completion and unchanged public history; replace fn1 phase and segment assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "compacted steps=checkpoint,drop and segment/dropped counters",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 126,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 133,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 144,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 147,
+      "reason": "The explicit export artifact is public; compare round-trip content under the carried export contract.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export archive file byte equality",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 148,
+      "reason": "The explicit export artifact is public; compare round-trip content under the carried export contract.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export archive file byte equality",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 155,
+      "reason": "Replace raw backing-file scans with the reclaim public outcome plus simulator RECLAIM ownership evidence; encoding may change.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "recursive search of all store files for payload octets",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 162,
+      "reason": "Replace raw backing-file scans with the reclaim public outcome plus simulator RECLAIM ownership evidence; encoding may change.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "recursive search of all store files for payload octets",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 171,
+      "reason": "Retain operator reclaimable/reclaimed accounting where carried by the operator contract.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "public reclaim count fields",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 175,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 179,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 181,
+      "reason": "Replace raw backing-file scans with the reclaim public outcome plus simulator RECLAIM ownership evidence; encoding may change.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "recursive search of all store files for payload octets",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 185,
+      "reason": "Retain operator reclaimable/reclaimed accounting where carried by the operator contract.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "public reclaim count fields",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 197,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 200,
+      "reason": "Opaque stopped-store copies are the documented backup/restore surface; no filenames decoded at these sites.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "whole stopped-store copy and restore for fault replay",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 206,
+      "reason": "Opaque stopped-store copies are the documented backup/restore surface; no filenames decoded at these sites.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "whole stopped-store copy and restore for fault replay",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 207,
+      "reason": "Opaque stopped-store copies are the documented backup/restore surface; no filenames decoded at these sites.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "whole stopped-store copy and restore for fault replay",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 211,
+      "reason": "Replace corrupt fn1-file fixtures with fn2 recovery fault cases and named refused/fault outcomes.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "copies/renames numbered journal segments or deletes store-checkpoint.fnsc",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 212,
+      "reason": "Carry refused versus uncertain semantics; use fn2 corruption cases rather than log-chain/checkpoint file names.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "layout-specific recovery refusal names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 214,
+      "reason": "Replace corrupt fn1-file fixtures with fn2 recovery fault cases and named refused/fault outcomes.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "copies/renames numbered journal segments or deletes store-checkpoint.fnsc",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 215,
+      "reason": "Carry refused versus uncertain semantics; use fn2 corruption cases rather than log-chain/checkpoint file names.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "layout-specific recovery refusal names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 217,
+      "reason": "Replace corrupt fn1-file fixtures with fn2 recovery fault cases and named refused/fault outcomes.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "copies/renames numbered journal segments or deletes store-checkpoint.fnsc",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 218,
+      "reason": "Carry refused versus uncertain semantics; use fn2 corruption cases rather than log-chain/checkpoint file names.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "layout-specific recovery refusal names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 229,
+      "reason": "Opaque stopped-store copies are the documented backup/restore surface; no filenames decoded at these sites.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "whole stopped-store copy and restore for fault replay",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 230,
+      "reason": "Map meaningful durable compaction transitions to kill_at; assert unchanged retained history after reopen.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 rotation/drop and state-checkpoint process-death cuts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 235,
+      "reason": "Opaque stopped-store copies are the documented backup/restore surface; no filenames decoded at these sites.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "whole stopped-store copy and restore for fault replay",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 236,
+      "reason": "Opaque stopped-store copies are the documented backup/restore surface; no filenames decoded at these sites.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "whole stopped-store copy and restore for fault replay",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 237,
+      "reason": "Map meaningful durable compaction transitions to kill_at; assert unchanged retained history after reopen.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 rotation/drop and state-checkpoint process-death cuts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 242,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 244,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 249,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 253,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 254,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 259,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 263,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 268,
+      "reason": "Map meaningful durable compaction transitions to kill_at; assert unchanged retained history after reopen.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "fn1 rotation/drop and state-checkpoint process-death cuts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 272,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 276,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 282,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 285,
+      "reason": "Assert compact/reclaim success and preserved ARTICLE/inspect results across recovery; physical segment numbering and staging layout do not carry.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/NNNNNN.log enumeration, genesis retention or staging segment contents",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    61,
+    118,
+    157,
+    192,
+    225,
+    265
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

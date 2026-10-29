@@ -1,0 +1,205 @@
+{
+  "module": "operator_walk",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Installed CLI, mission, TLS, peering, backup/move and crash recovery are public; adapt launcher/start/config/socket/control/observe/kill_at, and replace core-file package assertion.",
+  "representation_sites": [
+    {
+      "line": 147,
+      "reason": "Use fn2 installed executable/artifact identity; old SBCL core filename is obsolete.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "installed libexec/fn/fn-host.core equals source image .core",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 150,
+      "reason": "Use fn2 installed executable/artifact identity; old SBCL core filename is obsolete.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "installed libexec/fn/fn-host.core equals source image .core",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 152,
+      "reason": "Use fn2 installed executable/artifact identity; old SBCL core filename is obsolete.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "installed libexec/fn/fn-host.core equals source image .core",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 209,
+      "reason": "Operator service log is an explicit public surface; preserve observable peer reason/completion semantics.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads service log at mission-provided log/fn.log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 230,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 327,
+      "reason": "Operator service log is an explicit public surface; preserve observable peer reason/completion semantics.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads service log at mission-provided log/fn.log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 329,
+      "reason": "Operator service log is an explicit public surface; preserve observable peer reason/completion semantics.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads service log at mission-provided log/fn.log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 385,
+      "reason": "Opaque stopped backup/move and original-node independence are public; no store entry names are assumed.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "stopped node/store copying and original store directory enumeration",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 386,
+      "reason": "Opaque stopped backup/move and original-node independence are public; no store entry names are assumed.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "stopped node/store copying and original store directory enumeration",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 398,
+      "reason": "Opaque stopped backup/move and original-node independence are public; no store entry names are assumed.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "stopped node/store copying and original store directory enumeration",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 399,
+      "reason": "Opaque stopped backup/move and original-node independence are public; no store entry names are assumed.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "stopped node/store copying and original store directory enumeration",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 429,
+      "reason": "Opaque stopped backup/move and original-node independence are public; no store entry names are assumed.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "stopped node/store copying and original store directory enumeration",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 431,
+      "reason": "Opaque stopped backup/move and original-node independence are public; no store entry names are assumed.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "stopped node/store copying and original store directory enumeration",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 447,
+      "reason": "Opaque stopped backup/move and original-node independence are public; no store entry names are assumed.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "stopped node/store copying and original store directory enumeration",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 478,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 479,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 480,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 481,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 502,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 505,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 507,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 508,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 510,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 511,
+      "reason": "Generated certificate/key outputs and owner-only key mode are public operator outputs.",
+      "row": "`tls reload`, `tls self-signed NAME… [--days]`",
+      "touches": "mission-produced tls/cert.pem and tls/key.pem bytes, permissions and refusal to overwrite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 526,
+      "reason": "The Unix control endpoint path is public; recovery must tolerate stale endpoint after death.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "stale store/control.sock after process death",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    139,
+    152,
+    175,
+    276,
+    372,
+    420,
+    462,
+    515
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "The core hash equality at 152 must become shipped fn2 executable integrity. Directory nonmutation at 447 checks names only, so retain its limited scope rather than claiming byte equality."
+}

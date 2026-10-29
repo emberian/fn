@@ -1,0 +1,65 @@
+{
+  "module": "credits",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Concurrent POST/reader outcomes remain public; start must expose a storage barrier stall, and fn1 fixed article-slot/reserve assumptions need fn2 profile mapping.",
+  "representation_sites": [
+    {
+      "line": 100,
+      "reason": "Translate to fn2 asynchronous durable-write delay while preserving memory refusal and eventual acceptance.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "FN_NATIVE_OWNER_TEST_BARRIER_MS storage barrier delay",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 102,
+      "reason": "Derive the hold/fill workload from fn2 supported resource profile; do not pin packed-article credit count.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "SLOTS_4MIB imported fn1 slot count sets number of articles",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 104,
+      "reason": "Use fn2 resource limit to construct exhaustion premise.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "creates SLOTS_4MIB-1 half-article fillers",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 140,
+      "reason": "Preserve public accepted-work report with fn2 accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "headroom transactions-used equals slot-derived accepted posts",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 188,
+      "reason": "Use public accepted article count if fn2 transactions have different meaning.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "headroom transactions-used equals POSTERS",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    100,
+    104,
+    121,
+    140,
+    145,
+    188
+  ],
+  "socket_only_tests": [
+    "CreditsTests.test_the_batch_in_flight_keeps_its_credit_past_the_close",
+    "CreditsTests.test_many_large_posters_and_readers_never_fault_the_node"
+  ],
+  "uncertainty": "Memory 440 and exact count of simultaneous offered bodies need explicit fn2 resource/refusal mapping; socket behavior should not be lost with the old credit implementation."
+}

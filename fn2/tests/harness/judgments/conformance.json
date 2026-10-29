@@ -1,0 +1,112 @@
+{
+  "module": "conformance",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "The NNTP, authentication, transit and CLI cases exercise public behavior. Adapt start/config/control/observe and the uncertainty selector through kill_at. The configured-record filename expectations need replacement with successful configuration plus readback; ordinary status counts and service logging remain public observations.",
+  "representation_sites": [
+    {
+      "line": 69,
+      "reason": "Public replayed counts, not direct traversal of storage.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator status --replay transaction/article counts",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 76,
+      "reason": "Public recovery and non-destructive refusal; preserve article count and identity.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "operator recover before refused reinit; compared to recovery afterwards at 79-81",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 114,
+      "reason": "Public status corroborates one accepted identity.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator status --replay articles=1 after crosspost/restart",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 142,
+      "reason": "The service log is an operator observable explicitly carried by this row.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "service.log accepted post path=control line",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 166,
+      "reason": "Keep recovery outcome/readback; the transaction count is externally reported.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "recover stdout recovered transactions=",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 187,
+      "reason": "The .cfg record filename exposes fn1 layout. Assert the create result and GROUP fn.matrix instead.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "configured generation=N record=N.cfg verification=VERIFIED regex defined at 186",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 193,
+      "reason": "Replace physical config record naming with successful retirement and refusal to GROUP the retired name.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "group retire stdout matched against configured .cfg record regex",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 197,
+      "reason": "Replace record filename with capacity result and observable admission boundary.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "capacity stdout matched against configured .cfg record regex",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 205,
+      "reason": "Keep policy success and transit loop behavior, remove the .cfg record detail.",
+      "row": "live limits: `exposure-connections` 31, `-per-address` 8, `-steps-per-second` 64, `-first-seconds` 60, `-idle-seconds` 600, `-auth-failures` 10/min, `-posts-per-minute` 60, `exposure-trusted`, `anonymous`; `tls-handshakes-per-source-per-minute` 30, `-in-flight` 16, `tls-handshake-ms` 5000, `-source-overrides`, `tls-proxy-trusted-peers`; `log-batch-records` 64, `log-batch-octets` 16 MiB; `barrier-deadline-ms` 5000, `barrier-stall-ms` 30000, `clock-event-ms` 1000; `compress-min-octets`; `disk-reserve-octets`; `relay-date-skew` 86400, `refused-offer-capacity` 4096, `relay-require-path`; `path-identity`, `posting-policy`, `complaints-to`; `max-transactions`, `max-history-octets`, `max-article-octets` (applied now / recorded for next start / refused by name)",
+      "touches": "policy path-identity stdout matched against configured .cfg record regex",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    60,
+    69,
+    122,
+    142,
+    159,
+    186,
+    238,
+    252,
+    291,
+    378,
+    417
+  ],
+  "socket_only_tests": [
+    "NodeOperatorRows.test_init_reinit_status_and_the_store_it_names",
+    "NodeOperatorRows.test_a_crosspost_is_one_article_and_a_resubmission_overwrites_nothing",
+    "NodeOperatorRows.test_a_wildcard_listener_is_refused_before_bind",
+    "NodeOperatorRows.test_log_path_is_honoured_and_a_posting_agent_is_refused_by_name",
+    "NodeOperatorRows.test_the_three_outcomes_stay_distinct_and_recover_resolves_the_third",
+    "NodeOperatorRows.test_group_capacity_peer_identity_and_principal_administration",
+    "NodeOperatorRows.test_an_article_past_the_capacity_is_refused_before_it_is_written",
+    "NodeOperatorRows.test_live_administration_reaches_the_served_configuration",
+    "ServedSurfaceRows.test_post_cycle",
+    "ServedSurfaceRows.test_reader_profile",
+    "ServedSurfaceRows.test_capabilities_are_exactly_what_is_dispatched",
+    "ServedSurfaceRows.test_a_reader_stays_live_across_another_connections_post",
+    "AuthinfoRows.test_advertised_login_withdrawn_post_and_wrong",
+    "AuthinfoRows.test_post_before_a_login_is_refused_where_authentication_is_required",
+    "TransitCommandRows.test_ihave_duplicate_loop_and_streaming"
+  ],
+  "uncertainty": "The external configured output includes a record=.cfg filename; it is observable but section 1 carries configuration behavior, not this storage naming. Four assertions need editing in addition to Node adaptation."
+}

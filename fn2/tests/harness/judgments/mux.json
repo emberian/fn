@@ -1,0 +1,86 @@
+{
+  "module": "mux",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "MuxCase.test_a_capacity_the_machine_cannot_hold_is_refused_at_start",
+    "MuxCase.test_connections_cost_no_thread_and_the_bound_is_kept_live"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "Rewrite fn1 memory-model and threading assertions around fn2 profile admission/resource bounds, retaining the socket capacity and responsiveness campaign.",
+  "representation_sites": [
+    {
+      "line": 112,
+      "reason": "Retain public live policy and admission capacity reporting.",
+      "row": "live limits: `exposure-connections` 31, `-per-address` 8, `-steps-per-second` 64, `-first-seconds` 60, `-idle-seconds` 600, `-auth-failures` 10/min, `-posts-per-minute` 60, `exposure-trusted`, `anonymous`; `tls-handshakes-per-source-per-minute` 30, `-in-flight` 16, `tls-handshake-ms` 5000, `-source-overrides`, `tls-proxy-trusted-peers`; `log-batch-records` 64, `log-batch-octets` 16 MiB; `barrier-deadline-ms` 5000, `barrier-stall-ms` 30000, `clock-event-ms` 1000; `compress-min-octets`; `disk-reserve-octets`; `relay-date-skew` 86400, `refused-offer-capacity` 4096, `relay-require-path`; `path-identity`, `posting-policy`, `complaints-to`; `max-transactions`, `max-history-octets`, `max-article-octets` (applied now / recorded for next start / refused by name)",
+      "touches": "parse exposure capacity status values",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 128,
+      "reason": "Re-state startup refusal against fn2 profile resource reservations; fn1 per-connection KiB formula is not the fn2 contract.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "parse connections-exceed-memory holds/per-connection/machine arithmetic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 135,
+      "reason": "Report fn2 profile refusal reason and relevant reservation rather than fn1 arithmetic.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "assert identical fn1 memory arithmetic line in service log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 143,
+      "reason": "Use fn2 runtime profile admission bound.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "parse connections holds/per-connection KiB from log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 146,
+      "reason": "Assert fn2 chosen profile admits the intended workload.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "assert fn1 holds bound covers 320 connections",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 162,
+      "reason": "Retain responsiveness and bounded resource use under connection load; no-thread growth is a fn1 implementation requirement, not listed public surface.",
+      "row": "capacity 400s: too many connections / from this address (8 public) / authentication failures; then close",
+      "touches": "OS thread-count delta <= 1 for 299 more connections",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 169,
+      "reason": "Re-state for measured fn2 profile resident budget rather than carrying fn1 numeric baseline.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "resident memory delta less than 64 KiB per connection",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 177,
+      "reason": "Use fn2 declared capacity/reservation bound for the refusal control.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "live capacity request at parsed holds+1",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    128,
+    143,
+    162,
+    169,
+    177,
+    191
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "OS thread/RSS observations are external, but the exact +1-thread and 64-KiB claims describe fn1 architecture; the fn2 profile baseline must be supplied by layer D."
+}

@@ -117,7 +117,9 @@
         "S": {
           "applicable": true,
           "module": "fn2.tests.surface.nntp.test_model_nntp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN \u00a72.2",
+          "status": "implemented",
+          "model": "fn2.tests.model.nntp_model"
         },
         "F": {
           "applicable": true,
@@ -424,8 +426,10 @@
         },
         "S": {
           "applicable": true,
-          "module": "fn2.tests.surface.consumer.test_model_consumer",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "module": null,
+          "reason": "RELEASE-PLAN \u00a72.2",
+          "status": "owed",
+          "model": "fn2.tests.model.consumer_model"
         },
         "F": {
           "applicable": true,
@@ -498,7 +502,7 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.consumer_model (owed)",
+      "model": "fn2.tests.model.consumer_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
         "driver": "fn2.tests.surface.consumer:fuzz (owed)",
@@ -687,8 +691,10 @@
         },
         "S": {
           "applicable": true,
-          "module": "fn2.tests.surface.operator.test_model_operator",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "module": null,
+          "reason": "RELEASE-PLAN \u00a72.2",
+          "status": "owed",
+          "model": "fn2.tests.model.operator_model"
         },
         "F": {
           "applicable": true,
@@ -798,7 +804,7 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.operator_model (owed)",
+      "model": "fn2.tests.model.operator_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
         "driver": "fn2.tests.surface.operator:fuzz (owed)",
@@ -895,8 +901,10 @@
         },
         "S": {
           "applicable": true,
-          "module": "fn2.tests.surface.web.test_model_web",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "module": null,
+          "reason": "RELEASE-PLAN \u00a72.2",
+          "status": "owed",
+          "model": "fn2.tests.model.web_model"
         },
         "F": {
           "applicable": true,
@@ -935,7 +943,7 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.web_model (owed)",
+      "model": "fn2.tests.model.web_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
         "driver": "fn2.tests.surface.web:fuzz (owed)",
@@ -1051,8 +1059,10 @@
         },
         "S": {
           "applicable": true,
-          "module": "fn2.tests.surface.peering.test_model_peering",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "module": null,
+          "reason": "RELEASE-PLAN \u00a72.2",
+          "status": "owed",
+          "model": "fn2.tests.model.peering_model"
         },
         "F": {
           "applicable": true,
@@ -1140,7 +1150,7 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.peering_model (owed)",
+      "model": "fn2.tests.model.peering_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
         "driver": "fn2.tests.surface.peering:fuzz (owed)",
@@ -1244,8 +1254,10 @@
         },
         "S": {
           "applicable": true,
-          "module": "fn2.tests.surface.bp.test_model_bp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "module": null,
+          "reason": "RELEASE-PLAN \u00a72.2",
+          "status": "owed",
+          "model": "fn2.tests.model.bp_model"
         },
         "F": {
           "applicable": true,
@@ -1283,7 +1295,7 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.bp_model (owed)",
+      "model": "fn2.tests.model.bp_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
         "driver": "fn2.tests.surface.bp:fuzz (owed)",
@@ -1424,8 +1436,10 @@
         },
         "S": {
           "applicable": true,
-          "module": "fn2.tests.surface.tls_auth.test_model_tls_auth",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "module": null,
+          "reason": "RELEASE-PLAN \u00a72.2",
+          "status": "owed",
+          "model": "fn2.tests.model.tls_auth_model"
         },
         "F": {
           "applicable": true,
@@ -1545,7 +1559,7 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.tls_auth_model (owed)",
+      "model": "fn2.tests.model.tls_auth_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
         "driver": "fn2.tests.surface.tls_auth:fuzz (owed)",
@@ -1648,8 +1662,10 @@
         },
         "S": {
           "applicable": true,
-          "module": "fn2.tests.surface.config_limits.test_model_config_limits",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "module": null,
+          "reason": "RELEASE-PLAN \u00a72.2",
+          "status": "owed",
+          "model": "fn2.tests.model.config_limits_model"
         },
         "F": {
           "applicable": true,
@@ -1757,7 +1773,7 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.config_limits_model (owed)",
+      "model": "fn2.tests.model.config_limits_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
         "driver": "fn2.tests.surface.config_limits:fuzz (owed)",
@@ -1852,8 +1868,10 @@
         },
         "S": {
           "applicable": true,
-          "module": "fn2.tests.surface.store_ops.test_model_store_ops",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "module": null,
+          "reason": "RELEASE-PLAN \u00a72.2",
+          "status": "owed",
+          "model": "fn2.tests.model.store_ops_model"
         },
         "F": {
           "applicable": true,
@@ -1950,7 +1968,7 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.store_ops_model (owed)",
+      "model": "fn2.tests.model.store_ops_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
         "driver": "fn2.tests.surface.store_ops:fuzz (owed)",
@@ -2013,5 +2031,19 @@
       "fuzz_seconds": 3600
     }
   },
-  "excluded_scope": "P simulator runs, cut_release gates and weekly F9 soak remain their own drivers. No Python test modules for P. R numbers are published, never gates."
+  "excluded_scope": "P simulator runs, cut_release gates and weekly F9 soak remain their own drivers. No Python test modules for P. R numbers are published, never gates.",
+  "serves": {
+    "fn1": [
+      "nntp",
+      "consumer",
+      "operator",
+      "web",
+      "peering",
+      "bp",
+      "tls_auth",
+      "config_limits",
+      "store_ops"
+    ],
+    "fn2": []
+  }
 }

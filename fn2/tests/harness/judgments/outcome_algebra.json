@@ -1,0 +1,89 @@
+{
+  "module": "outcome_algebra",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "OutcomeAlgebraSourceTests.test_the_host_constants_are_acl2s_map"
+  ],
+  "mixed_tests": [
+    "OutcomeAlgebraNativeTests.test_operator_family",
+    "OutcomeAlgebraNativeTests.test_bp_not_connected_and_the_clockless_decode",
+    "OutcomeAlgebraNativeTests.test_bp_decode_the_clock_cannot_decide_is_a_refusal_not_a_fence"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "CLI exit classes and owner-control conflict outcomes are public; source assertions, config.json corruption and raw ACL2 BP fixture generation require rewriting. Native setup inherited from operator_verbs constructs Node and runs operator init, without an in-image probe.",
+  "representation_sites": [
+    {
+      "line": 48,
+      "reason": "Replace fn1 codec constructor with independent golden BP bundle bytes.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "construct raw fn-bpp-make-block Lisp form",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 50,
+      "reason": "BP lifetime/exit witness is public, but fixture generation depends on fn1 in-image codec.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "Acl2Session developer-image evaluation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 52,
+      "reason": "Use independently authored RFC9171 fixture instead of codec under test.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "fn-bpb-encode/fn-bpb-make-bundle raw Lisp call",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 60,
+      "reason": "Replace host source spelling with complete public exit-class fixtures.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "host/native/io.lisp defconstant exit-source assertions",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 65,
+      "reason": "Host constant implementation spelling does not carry.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "books/native-operator.lisp old constant absence",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 95,
+      "reason": "Retain FAULT exit witness via fn2 storage fault injection, not fn1 authority filename.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "overwrite store/config.json with not-a-frame bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 139,
+      "reason": "Retain send/decode behavior but obtain bundle through supported export or fixture, not private journal naming.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "glob authored BP journal *.wire files",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    50,
+    60,
+    65,
+    72,
+    95,
+    139,
+    158
+  ],
+  "socket_only_tests": [
+    "OutcomeAlgebraNativeTests.test_store_family",
+    "OutcomeAlgebraNativeTests.test_control_conflict_is_a_refusal_named_conflict",
+    "OutcomeAlgebraNativeTests.test_a_lost_durable_outcome_exits_three_and_recover_resolves_it",
+    "OutcomeAlgebraNativeTests.test_the_production_image_refuses_the_selector"
+  ],
+  "uncertainty": "Socket-only means public CLI/control as well as network assertions. Two inherited tests must be counted separately from locally declared methods. BP journal wire-file naming may be documented externally, but the release table commits to bundle bytes and machine behavior, not this layout."
+}

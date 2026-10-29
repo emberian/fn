@@ -1,33 +1,22 @@
 """The one Node adapter. See the generated layer-D requirements below."""
 import functools
 import hashlib
-import importlib.util
 import itertools
 import json
 import os
 from pathlib import Path
 import re
-import sys
 import time
 import threading
 from typing import Protocol
 
+import tests.native_harness as fn1
+from . import inventory
+
 ROOT = Path(__file__).resolve().parents[3]
-INVENTORY = json.loads(Path(__file__).with_name('natives-inventory.json').read_text())
+INVENTORY = inventory.load()
+ORIGINAL_NODE = fn1.Node
 
-
-def load_fn1():
-    """Load the original file once, independently of the installed import shim."""
-    name = 'fn1_native_harness'
-    if name not in sys.modules:
-        spec = importlib.util.spec_from_file_location(name, ROOT / 'tests/native_harness.py')
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[name] = module
-        spec.loader.exec_module(module)
-    return sys.modules[name]
-
-
-fn1 = load_fn1()
 __doc__ = 'What layer D must provide (top 40 inventory requirements by modules):\n' + '\n'.join(
     f"{r['modules']:3} modules | {r['kind']} | {r['value']}"
     for r in sorted(INVENTORY['aggregates']['host_requirements'],
@@ -157,7 +146,7 @@ def observed(kind, fields=lambda *a, **k: {}, result=lambda value: {}):
             if not os.environ.get('FN2_OBSERVE_DIR'):
                 return call(*args, **kwargs)
             before = dict(call=unique_id()) | fields(*args, **kwargs)
-            if args and isinstance(args[0], fn1.Node):
+            if args and isinstance(args[0], ORIGINAL_NODE):
                 before.update(node_fields(args[0]))
             elif kind.startswith('client.'):
                 before.update(args[0]._observation)
@@ -201,9 +190,9 @@ def process_fields(process):
                 stderr=process.stderr.since(0).decode('utf-8', 'replace'))
 
 
-class Fn1Backend(fn1.Node):
+class Fn1Backend(ORIGINAL_NODE):
     """The real fn1 Node, with optional observation and structural aliases."""
-    @functools.wraps(fn1.Node.__init__)
+    @functools.wraps(ORIGINAL_NODE.__init__)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if os.environ.get('FN2_OBSERVE_DIR'):
@@ -244,11 +233,9 @@ class Fn1Backend(fn1.Node):
         return process_fields(self.process)
 
     def session(self, **options):
-        # fn1.Node.session closes over its original module's Client.
-        from .shim import Client
         if os.environ.get('FN2_OBSERVE_DIR'):
             node_fields(self)
-        return Client(self.port, **options)
+        return super().session(**options)
 
     @observed('node.start', lambda self, **kw: dict(
         pid=None, argv=list(map(str, self.argv(kw.get('image'),

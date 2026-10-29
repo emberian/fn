@@ -1,0 +1,154 @@
+{
+  "module": "consumer_exchange",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "The consumer client owns its SQLite schema; node observations are public control/CLI. Adapter start and kill_at must provide after-submit stop, CONTROL-SUBMITTED announcement, and process death before reply.",
+  "representation_sites": [
+    {
+      "line": 163,
+      "reason": "These are consumer position/status output; retain progress and uncertainty settlement, independent of store format.",
+      "row": "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
+      "touches": "consumer status committed-ack and committed-journal-frontier fields",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 197,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite deliveries cursor/report/state read",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 217,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite pending delivery preserved after projection failure",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 232,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite delivery becomes handled without changing saved cursor/report",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 242,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite saved authored source",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 608,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite inbox operation/disposition after wait",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 617,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite applied inbox operation identifiers",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 624,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite inbox count before empty wait",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 629,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite inbox count unchanged after empty wait",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 651,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite persisted submission artifact",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 652,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite attempts state in-flight",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 663,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite submission artifact unchanged after retry",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 664,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite attempts unanswered then answered",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 668,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite saved artifact unchanged after conflicting payload",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 669,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite attempt count unchanged after refusal",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 680,
+      "reason": "Consumer-owned database observation witnesses the carried client exactly-once contract; it does not inspect fn node storage.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "client SQLite saved source and signatures for byte-identical resend",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    51,
+    61,
+    70,
+    163,
+    197,
+    374,
+    456,
+    693,
+    714
+  ],
+  "socket_only_tests": [
+    "NativeConsumerExchangeTests.test_saved_delivery_survives_projection_fault_and_owner_restart",
+    "NativeConsumerExchangeTests.test_two_sleeping_agents_exchange_across_every_ownership_cut",
+    "NativeConsumerExchangeTests.test_death_after_acceptance_then_revocation_is_never_refused",
+    "NativeConsumerExchangeTests.test_consumer_killed_after_the_owner_commits_then_revocation",
+    "NativeConsumerExchangeTests.test_death_while_recording_and_before_sending_are_reconciled",
+    "NativeConsumerExchangeTests.test_a_report_from_an_author_the_consumer_does_not_trust_is_not_consumed",
+    "NativeConsumerExchangeTests.test_a_conflicting_claim_arrives_before_and_after_the_legitimate_one",
+    "NativeConsumerExchangeTests.test_sleeping_consumer_waits_for_the_report_then_acks",
+    "NativeConsumerExchangeTests.test_saved_submission_retries_after_restart_without_signing_keys",
+    "NativeConsumerExchangeTests.test_identical_signed_resend_answers_duplicate",
+    "NativeConsumerExchangeTests.test_identical_operator_post_resend_answers_duplicate"
+  ],
+  "uncertainty": "The client SQLite assertions intentionally retain the shipped client schema; if E6 rewrites that client too, use its inspect/export APIs instead of SQL. This is not a node-store-layout dependency."
+}

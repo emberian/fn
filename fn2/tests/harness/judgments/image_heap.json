@@ -1,0 +1,56 @@
+{
+  "module": "image_heap",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "The workload measures public resident process memory while posting and connecting; start must translate fn1 workload/SBCL resource settings to fn2 profile, observe exposes PID memory.",
+  "representation_sites": [
+    {
+      "line": 43,
+      "reason": "Preserve workload dimensions while restating runtime profile for fn2; section1 explicitly calls for resident numbers.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "nmem3_clean imported workload includes fn1 init flags and sbcl_user_args",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 84,
+      "reason": "Translate resource choice to fn2 start profile.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "SBCL_USER_ARGS from workload passed to node",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 107,
+      "reason": "Resident peak is external observation, independent of store representation.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "reads /proc memory sample",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 119,
+      "reason": "Keep bar pending explicit fn2 resource disposition; do not weaken silently.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "VmHWM <=128MiB over complete workload",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    43,
+    84,
+    88,
+    107,
+    119
+  ],
+  "socket_only_tests": [
+    "ImageHeapBarTests.test_nmem3_clean_resident_set_is_within_the_bar"
+  ],
+  "uncertainty": "Section1 says image_heap is restated for fn2 resident numbers; the 128MiB bar is observed externally but its fn2 release disposition is not specified here."
+}

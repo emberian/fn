@@ -1,0 +1,55 @@
+{
+  "module": "tls_reload",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-unchanged",
+  "reason": "Certificate replacement, reload refusal, preserved existing sessions and advertised served certificate are public TLS contracts.",
+  "representation_sites": [
+    {
+      "line": 132,
+      "reason": "These report the certificate and key exchange actually served on the TLS socket.",
+      "row": "TLS key exchange: post-quantum first (ML-KEM hybrid), the certificate reload",
+      "touches": "operator status served TLS names/expiry and key-exchange line selection",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 142,
+      "reason": "Retain the served certificate metadata alongside handshake certificate comparison.",
+      "row": "TLS key exchange: post-quantum first (ML-KEM hybrid), the certificate reload",
+      "touches": "exact TLS served names/not-after status format",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 156,
+      "reason": "Reloaded served names are public operator output.",
+      "row": "TLS key exchange: post-quantum first (ML-KEM hybrid), the certificate reload",
+      "touches": "TLS status names after accepted reload",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    43,
+    52,
+    102,
+    130,
+    149,
+    162,
+    170,
+    179
+  ],
+  "socket_only_tests": [
+    "TlsReloadCases.test_reload_serves_new_connections_and_keeps_open_sessions",
+    "TlsReloadCases.test_start_refuses_a_mismatched_pair_by_name",
+    "TlsReloadCases.test_start_refuses_an_expired_pair_by_name",
+    "TlsReloadCases.test_reload_without_an_owner_is_not_accepted"
+  ],
+  "uncertainty": null
+}

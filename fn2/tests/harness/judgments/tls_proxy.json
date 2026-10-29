@@ -1,0 +1,33 @@
+{
+  "module": "tls_proxy",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-unchanged",
+  "reason": "PROXY v1/v2 bytes, source budgets, TLS handshake deadlines and refusal logs are public connection policy.",
+  "representation_sites": [],
+  "sites": [
+    59,
+    65,
+    79,
+    84,
+    113,
+    126,
+    151,
+    170
+  ],
+  "socket_only_tests": [
+    "NativeTlsProxyTests.test_the_asserted_source_pays_its_own_budget",
+    "NativeTlsProxyTests.test_a_public_client_is_never_read_for_a_header",
+    "NativeTlsProxyTests.test_partial_header_progress_does_not_refresh_the_deadline",
+    "NativeTlsProxyTests.test_a_malformed_or_silent_header_from_the_proxy_is_refused_by_name"
+  ],
+  "uncertainty": null
+}

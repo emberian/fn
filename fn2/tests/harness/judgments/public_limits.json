@@ -1,0 +1,37 @@
+{
+  "module": "public_limits",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public connection limits, policy mutations and health/status capacity reports; adapter maps configuration, launch and observations.",
+  "representation_sites": [
+    {
+      "line": 90,
+      "reason": "These are public policy/capacity values, not hidden table geometry; preserve equivalent operator report and socket admission witnesses.",
+      "row": "live limits: `exposure-connections` 31, `-per-address` 8, `-steps-per-second` 64, `-first-seconds` 60, `-idle-seconds` 600, `-auth-failures` 10/min, `-posts-per-minute` 60, `exposure-trusted`, `anonymous`; `tls-handshakes-per-source-per-minute` 30, `-in-flight` 16, `tls-handshake-ms` 5000, `-source-overrides`, `tls-proxy-trusted-peers`; `log-batch-records` 64, `log-batch-octets` 16 MiB; `barrier-deadline-ms` 5000, `barrier-stall-ms` 30000, `clock-event-ms` 1000; `compress-min-octets`; `disk-reserve-octets`; `relay-date-skew` 86400, `refused-offer-capacity` 4096, `relay-require-path`; `path-identity`, `posting-policy`, `complaints-to`; `max-transactions`, `max-history-octets`, `max-article-octets` (applied now / recorded for next start / refused by name)",
+      "touches": "CAPACITY parser reads exposure capacity connections/capacity/per-address/trusted from operator status or health",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    79,
+    85,
+    88,
+    148,
+    155,
+    158,
+    174
+  ],
+  "socket_only_tests": [
+    "PublicLimitsCase.test_capacity_and_trusted_range"
+  ],
+  "uncertainty": null
+}

@@ -5,18 +5,23 @@ import json
 import os
 from pathlib import Path
 import socketserver
+import subprocess
+import sys
 import tempfile
 import threading
 import unittest
 from unittest.mock import patch
 import tomllib
 
-from . import node, run_natives, shim
+import tests.native_harness as native_harness
+from . import inventory, node, run_natives, shim
 
 
 class HarnessTests(unittest.TestCase):
     def setUp(self):
-        self.addCleanup(shim.install, 'fn1')
+        shim.uninstall()
+        shim.install('fn1')
+        self.addCleanup(shim.uninstall)
 
     def test_import_aliases(self):
         shim.install('fn2')
@@ -26,14 +31,14 @@ class HarnessTests(unittest.TestCase):
              'import tests.native_harness as h', scope)
         self.assertIs(scope['Node'], node.Fn2Backend)
         self.assertIs(scope['Client'], shim.Client)
-        self.assertIs(scope['native_harness'], shim)
-        self.assertIs(scope['h'], shim)
-        self.assertIs(shim._line_containing, node.fn1._line_containing)
+        self.assertIs(scope['native_harness'], native_harness)
+        self.assertIs(scope['h'], native_harness)
+        self.assertIs(node.fn1, native_harness)
 
     def test_constructor_and_config(self):
-        self.assertEqual(inspect.signature(node.Fn2Backend), inspect.signature(node.fn1.Node))
+        self.assertEqual(inspect.signature(node.Fn2Backend), inspect.signature(node.ORIGINAL_NODE))
         self.assertEqual(set(node.CONFIG_KEYS),
-                         {r['value'] for r in node.INVENTORY['aggregates']['config_keys']})
+                         {r['value'] for r in inventory.load()['aggregates']['config_keys']})
         n = node.Fn2Backend(self, 'absent', listener=True,
             tls='key_exchange = "hybrid-preferred"',
             extra='tls_port = 1563\ntls_cert = "cert.pem"\ntls_key = "key.pem"\n',
@@ -50,39 +55,75 @@ class HarnessTests(unittest.TestCase):
         self.assertTrue(tomllib.loads(n.config.read_text())['auth']['protected_only'])
         self.assertIs(n.socket, n)
 
-    def test_module_patches_follow_only_shared_exports(self):
+    def test_module_patches_use_the_real_module(self):
         for backend in ('fn1', 'fn2'):
             shim.install(backend)
             for name in ('start', 'Node', 'Client', '_NODE_DEAD', '_line_containing'):
                 with self.subTest(backend=backend, name=name):
-                    original, local = getattr(node.fn1, name), name in vars(shim)
-                    shared = getattr(shim, name) is original
-                    with patch.object(shim, name) as outer:
-                        self.assertIs(getattr(node.fn1, name), outer if shared else original)
-                        with patch.object(shim, name) as inner:
-                            self.assertIs(getattr(node.fn1, name), inner if shared else original)
-                        self.assertIs(getattr(shim, name), outer)
-                        self.assertIs(getattr(node.fn1, name), outer if shared else original)
-                    self.assertIs(getattr(node.fn1, name), original)
-                    self.assertEqual(name in vars(shim), local)
-        with patch.object(shim, 'h1c_new_name', create=True):
-            self.assertNotIn('h1c_new_name', vars(node.fn1))
-        self.assertNotIn('h1c_new_name', vars(shim))
+                    original = getattr(native_harness, name)
+                    with patch.object(native_harness, name) as outer:
+                        self.assertIs(getattr(node.fn1, name), outer)
+                        with patch.object(native_harness, name) as inner:
+                            self.assertIs(getattr(node.fn1, name), inner)
+                        self.assertIs(getattr(node.fn1, name), outer)
+                    self.assertIs(getattr(native_harness, name), original)
+        with patch.object(native_harness, 'h1c_new_name', create=True) as value:
+            self.assertIs(node.fn1.h1c_new_name, value)
+        self.assertNotIn('h1c_new_name', vars(native_harness))
+
+    def test_install_uninstall_restores_every_patch_point(self):
+        shim.uninstall()
+        originals = {name: getattr(native_harness, name) for name in shim.PATCH_POINTS}
+        for backend in ('fn1', 'fn2', 'fn2', 'fn1'):
+            self.assertIs(shim.install(backend), native_harness)
+            for name, replacements in shim.PATCH_POINTS.items():
+                self.assertIs(getattr(native_harness, name), replacements.get(backend, originals[name]))
+        shim.uninstall()
+        shim.uninstall()
+        for name, original in originals.items():
+            self.assertIs(getattr(native_harness, name), original)
+        with patch.object(native_harness, 'run') as replacement:
+            shim.install('fn2')
+            shim.uninstall()
+            self.assertIs(native_harness.run, replacement)
+        with self.assertRaises(ValueError):
+            shim.install('unknown')
+        self.assertIs(node.Fn1Backend.__bases__[0], originals['Node'])
+
+    def test_importing_shim_changes_nothing(self):
+        # A fresh interpreter exercises import, not an already cached module.
+        source = """import sys
+import tests
+import tests.native_harness as native_harness
+before = dict(vars(native_harness))
+from fn2.tests.harness import shim
+assert vars(native_harness).keys() == before.keys()
+assert all(vars(native_harness)[name] is value for name, value in before.items())
+assert sys.modules['tests.native_harness'] is native_harness
+assert tests.native_harness is native_harness
+assert 'fn1_native_harness' not in sys.modules
+assert shim.node.Fn1Backend.__bases__[0] is before['Node']
+"""
+        result = subprocess.run([sys.executable, '-c', source], cwd=node.ROOT,
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_patched_start_preserves_fn1_lifecycle_scenarios(self):
         from tests import test_native_harness as controls
-        shim.install('fn1')
         names = (
             'test_a_planned_death_before_readiness_requires_its_actual_cut_marker',
             'test_a_restart_after_a_named_cut_needs_its_own_greeting_and_has_no_cut_allowance',
             'test_ready_none_is_asynchronous_and_an_unanswered_start_still_owes_liveness',
         )
         # The original controls already supply fake processes, including negative cases.
-        for harness in (node.fn1, shim):
-            with patch.object(controls, 'native_harness', harness), patch.dict(
+        for adapted in (False, True):
+            shim.uninstall()
+            if adapted:
+                shim.install('fn1')
+            with patch.object(controls, 'native_harness', native_harness), patch.dict(
                     os.environ, {'FN2_OBSERVE_DIR': ''}):
                 for name in names:
-                    with self.subTest(harness=harness.__name__, scenario=name):
+                    with self.subTest(adapted=adapted, scenario=name):
                         result = unittest.TestResult()
                         controls.NodeLivenessTests(name).run(result)
                         self.assertEqual(result.testsRun, 1)
@@ -100,32 +141,32 @@ class HarnessTests(unittest.TestCase):
 
     def test_images_do_not_skip_fn2(self):
         shim.install('fn2')
-        image = shim.native_image('FN_NATIVE_HOST')
+        image = native_harness.native_image('FN_NATIVE_HOST')
         self.assertEqual(image, node.ROOT / 'fn2/host/fn')
-        self.assertTrue(shim.executable(image))
-        @shim.requires(image)
+        self.assertTrue(native_harness.executable(image))
+        @native_harness.requires(image)
         def case():
             return 'ran'
         self.assertEqual(case(), 'ran')
         self.assertFalse(getattr(case, '__unittest_skip__', False))
         with self.assertRaisesRegex(node.fn1.NodeDead, '^' + run_natives.PREFIX):
-            shim.run([image, '--fn', 'operator', 'config', 'run'])
-        self.assertIs(shim.slow, node.fn1.slow)
+            native_harness.run([image, '--fn', 'operator', 'config', 'run'])
+        self.assertIs(native_harness.slow, node.fn1.slow)
 
     def test_fn1_inheritance_and_dispatch(self):
         shim.install('fn1')
-        self.assertTrue(issubclass(shim.Node, node.fn1.Node))
-        self.assertIs(shim.native_image, node.fn1.native_image)
-        self.assertIs(shim.requires, node.fn1.requires)
-        self.assertIs(shim.start, node.fn1.start)
-        self.assertIs(shim.installed_launcher, node.fn1.installed_launcher)
-        n = shim.Node(self, 'absent')
-        with patch.object(node.fn1.Node, 'invoke', return_value='sent') as invoke:
+        self.assertTrue(issubclass(native_harness.Node, node.ORIGINAL_NODE))
+        self.assertIs(native_harness.native_image, shim.ORIGINALS['native_image'])
+        self.assertIs(native_harness.requires, shim.ORIGINALS['requires'])
+        self.assertIs(native_harness.start, shim.ORIGINALS['start'])
+        self.assertIs(native_harness.installed_launcher, shim.ORIGINALS['installed_launcher'])
+        n = native_harness.Node(self, 'absent')
+        with patch.object(node.ORIGINAL_NODE, 'invoke', return_value='sent') as invoke:
             self.assertEqual(n.invoke('status', timeout=1), 'sent')
             invoke.assert_called_once_with('status', timeout=1)
         for name in ('snapshot', 'restore', 'use_tls',
                      'exited', 'environment', 'argv', 'launch', 'log_on_failure'):
-            self.assertIs(getattr(node.Fn1Backend, name), getattr(node.fn1.Node, name))
+            self.assertIs(getattr(node.Fn1Backend, name), getattr(node.ORIGINAL_NODE, name))
 
     def test_observe_client_exchange(self):
         class Handler(socketserver.StreamRequestHandler):
@@ -180,10 +221,10 @@ class HarnessTests(unittest.TestCase):
                 os.environ, FN2_OBSERVE_DIR=directory, FN2_TEST_ID='process.control'):
             n = node.Fn1Backend(self, 'absent')
             n.process = process
-            with patch.object(node.fn1.Node, 'start', return_value=process):
+            with patch.object(node.ORIGINAL_NODE, 'start', return_value=process):
                 self.assertIs(n.start(env={'FN_NATIVE_CONTROL_FAULT': 'cut'},
                                      death_cut=(-9, b'CUT')), process)
-            with patch.object(node.fn1.Node, 'stop', return_value=0):
+            with patch.object(node.ORIGINAL_NODE, 'stop', return_value=0):
                 self.assertEqual(n.stop(), 0)
             records = [json.loads(line) for line in
                        (Path(directory) / 'process.control.jsonl').read_text().splitlines()]
@@ -212,7 +253,7 @@ class HarnessTests(unittest.TestCase):
                                   SimpleNamespace(since=lambda _: b''))
             p.signal, p.finish = Mock(), Mock()
             signal, finish = p.signal, p.finish
-            with patch.object(node.fn1.Node, 'start', return_value=p):
+            with patch.object(node.ORIGINAL_NODE, 'start', return_value=p):
                 self.assertIs(n.start(death_cut=(-9, b'CUT')), p)
             p.kill()
             p.finish()
@@ -235,7 +276,7 @@ class HarnessTests(unittest.TestCase):
             def invoke(*words, **kw):
                 path.write_bytes(b'after')
                 return subprocess.CompletedProcess([], 0, b'consumer accepted', b'')
-            with patch.object(node.fn1.Node, 'invoke', side_effect=invoke):
+            with patch.object(node.ORIGINAL_NODE, 'invoke', side_effect=invoke):
                 n.invoke('consumer', 'position', str(path), str(large))
             records = [json.loads(line) for line in (Path(directory) / 'snapshots.jsonl').read_text().splitlines()]
             self.assertEqual(records[0]['files_before'][str(path)], b'before'.hex())
@@ -263,10 +304,10 @@ class HarnessTests(unittest.TestCase):
                 wrapped = node.observed('client.' + name, lambda *a: a[0].missing)(lambda *a: 42)
                 self.assertEqual(wrapped(Untouchable(), *args), 42)
             n = node.Fn1Backend.__new__(node.Fn1Backend)
-            with patch.object(node.fn1.Node, 'start', return_value=42):
+            with patch.object(node.ORIGINAL_NODE, 'start', return_value=42):
                 self.assertEqual(n.start(), 42)
             client = shim.Client.__new__(shim.Client)
-            with patch.object(node.fn1.Client, '__init__', return_value=None):
+            with patch.object(shim.ORIGINAL_CLIENT, '__init__', return_value=None):
                 client.__init__(123)
             self.assertEqual(vars(client), {})
             client.sock = type('Socket', (), {'sendall': lambda *args: None})()
@@ -278,9 +319,9 @@ class HarnessTests(unittest.TestCase):
                 os.environ, FN2_OBSERVE_DIR=directory, FN2_TEST_ID='invoke.control'):
             n = node.Fn1Backend(self, 'absent')
             answer = subprocess.CompletedProcess(['absent'], 1, b'x' * 5000, b'refused')
-            with patch.object(node.fn1.Node, 'invoke', return_value=answer):
+            with patch.object(node.ORIGINAL_NODE, 'invoke', return_value=answer):
                 self.assertIs(n.invoke('store', 'status'), answer)
-            with patch.object(node.fn1.Node, 'invoke', side_effect=TimeoutError('unknown')):
+            with patch.object(node.ORIGINAL_NODE, 'invoke', side_effect=TimeoutError('unknown')):
                 with self.assertRaises(TimeoutError):
                     n.invoke('store', 'status')
             records = [json.loads(line) for line in
@@ -537,7 +578,7 @@ class ProvisionTests(unittest.TestCase):
             try:
                 result = run_natives.run_one('consumer_exchange', 'fn2', True)
             finally:
-                shim.install('fn1')
+                shim.uninstall()
         self.assertGreater(sum(t.get('classification') == 'named-node-dead' for t in result['tests']), 0)
         self.assertFalse(any('set FN_RUN_CONSUMER_EXCHANGE' in t['skip_reason'] for t in result['tests']))
 

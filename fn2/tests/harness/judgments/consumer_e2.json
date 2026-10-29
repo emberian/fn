@@ -1,0 +1,140 @@
+{
+  "module": "consumer_e2",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeConsumerE2Tests.test_signed_composite_poll_and_lost_positive_ack_reply"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Four methods observe consumer CLI/control replies and cursors. The signed composite method additionally decodes concrete fn1 stxa/record values through ACL2; replace that half with the public consumer verifier.",
+  "representation_sites": [
+    {
+      "line": 82,
+      "reason": "Cursor bytes are the external fncu artifact.",
+      "row": "the cursor `fncu` v1 (≤ 346 octets: history, incarnation, consumer, epoch, principal, query, query-version, view-version, position); a foreign cursor refused before any mutation",
+      "touches": "reads emitted register cursor file",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 83,
+      "reason": "The cursor family and version are specified public encoding.",
+      "row": "the cursor `fncu` v1 (≤ 346 octets: history, incarnation, consumer, epoch, principal, query, query-version, view-version, position); a foreign cursor refused before any mutation",
+      "touches": "asserts cursor fncu v1 prefix",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 92,
+      "reason": "Position is the public recovery observation.",
+      "row": "the cursor `fncu` v1 (≤ 346 octets: history, incarnation, consumer, epoch, principal, query, query-version, view-version, position); a foreign cursor refused before any mutation",
+      "touches": "reads emitted position cursor file",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 101,
+      "reason": "These are public status reply fields, not a private journal scan.",
+      "row": "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
+      "touches": "parses consumer status committed-ack/frontier/distance",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 210,
+      "reason": "Consumer status JSON exposes these counts.",
+      "row": "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
+      "touches": "JSON journal_event_distance = journal_frontier - committed_ack",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 318,
+      "reason": "The poll cursor is public wire output.",
+      "row": "the cursor `fncu` v1 (≤ 346 octets: history, incarnation, consumer, epoch, principal, query, query-version, view-version, position); a foreign cursor refused before any mutation",
+      "touches": "reads poll continuation cursor",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 319,
+      "reason": "The report is public consumer poll output.",
+      "row": "the replies: `reply` k5, `status-reply` k9, `poll-reply` k6 (FNWD1 withdrawal report; FNRB1 collection), `reasoned-reply` k18, `line-reply` k23",
+      "touches": "reads poll report output",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 320,
+      "reason": "Public cursor encoding/version assertion.",
+      "row": "the cursor `fncu` v1 (≤ 346 octets: history, incarnation, consumer, epoch, principal, query, query-version, view-version, position); a foreign cursor refused before any mutation",
+      "touches": "asserts continuation fncu v1 prefix",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 328,
+      "reason": "Use consumer-inspect/consumer-project and independent verifier to compare exact signed source.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "Acl2Session decodes signed poll composite",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 329,
+      "reason": "Replace concrete stxa/record inspectors with public consumer report parser and signature/source verification.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "fn-stxa-decode-exact, fn-stmt-value, fn-record-decode-exact and fn-stxa-bindsp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 339,
+      "reason": "Keep the identity assertion through public consumer inspect/project output and verifier.",
+      "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
+      "touches": "acl2_boolean of raw composite-binding/source equality form",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 346,
+      "reason": "Repeated poll is read-only at the public cursor boundary.",
+      "row": "the cursor `fncu` v1 (≤ 346 octets: history, incarnation, consumer, epoch, principal, query, query-version, view-version, position); a foreign cursor refused before any mutation",
+      "touches": "compares second poll cursor bytes unchanged",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 347,
+      "reason": "Repeated poll preserves the external report.",
+      "row": "the replies: `reply` k5, `status-reply` k9, `poll-reply` k6 (FNWD1 withdrawal report; FNRB1 collection), `reasoned-reply` k18, `line-reply` k23",
+      "touches": "compares second poll report bytes unchanged",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 399,
+      "reason": "Public poll reports no unacknowledged article.",
+      "row": "the replies: `reply` k5, `status-reply` k9, `poll-reply` k6 (FNWD1 withdrawal report; FNRB1 collection), `reasoned-reply` k18, `line-reply` k23",
+      "touches": "empty post-ack report file",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 432,
+      "reason": "Exercises peer-UID authentication beyond the filesystem permission gate.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "chmod control socket fixture to offer foreign UID",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    111,
+    184,
+    237,
+    261,
+    328,
+    425
+  ],
+  "socket_only_tests": [
+    "NativeConsumerE2Tests.test_durable_scope_ack_and_unrelated_article",
+    "NativeConsumerE2Tests.test_refusals_name_their_reason_json_lines_and_bind_of_an_unknown_name",
+    "NativeConsumerE2Tests.test_lost_register_reply_resolves_by_reopened_position",
+    "NativeConsumerE2Tests.test_different_local_uid_is_refused_by_owner"
+  ],
+  "uncertainty": null
+}

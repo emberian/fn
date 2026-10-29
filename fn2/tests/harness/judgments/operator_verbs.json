@@ -1,0 +1,417 @@
+{
+  "module": "operator_verbs",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "NativeOperatorVerbCompositionTests.test_init_outcome_is_acl2s_and_the_host_only_observes",
+    "NativeOperatorVerbCompositionTests.test_peer_list_is_a_query_and_the_host_asks_acl2_which",
+    "NativeOperatorVerbCompositionTests.test_uncertain_fault_is_gated_on_the_saved_image_profile",
+    "NativeOperatorVerbCompositionTests.test_the_uncertain_word_is_acl2s_control_vocabulary",
+    "NativeOperatorReservedGroupSourceTests.test_reserved_names_are_refused_by_acl2_at_init_and_create"
+  ],
+  "mixed_tests": [
+    "NativeOperatorInitTests.test_init_creates_the_configured_store_and_then_refuses_it",
+    "NativeOperatorInitTests.test_a_locked_store_is_refused_without_the_lock_being_touched",
+    "NativeOperatorReservedGroupTests.test_group_create_poster_is_refused_and_publishes_nothing",
+    "NativeOperatorPeerListTests.test_listing_a_locked_store_refuses_and_publishes_nothing",
+    "NativeOperatorCapacityTests.test_the_development_profile_budget_is_reported_and_refused_by_name",
+    "NativeOperatorCapacityTests.test_the_scale_profile_is_reachable_from_init",
+    "NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them",
+    "NativeOperatorCapacityTests.test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see",
+    "NativeOperatorCapacityTests.test_init_capacity_fields_take_the_development_preset",
+    "NativeOperatorCapacityTests.test_bare_init_takes_the_budgeted_preset",
+    "NativeOperatorCapacityTests.test_init_refuses_a_profile_by_the_relation_it_breaks"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Preserve public operator/NNTP tests; retire source composition tests and rewrite fn1 store filenames, format=10 and memory-preset assumptions. No in-image ACL2 evaluations occur.",
+  "representation_sites": [
+    {
+      "line": 38,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "books/native-operator.lisp setup read; init source assertions 44-59",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 39,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "books/native-admin.lisp setup read; query source assertions 61-91",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 40,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "host/native/operator.lisp setup read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 41,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/owner.lisp setup read; developer selector source assertions 93-112",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 42,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "host/native/admin.lisp setup read; query executor source assertions 85-91",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 66,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "books/native-admin-peer.lisp read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 77,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "native_cuts.book_function of dynamically found peer report",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 105,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/io.lisp developer selector source read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 112,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/native/operator.lisp source reread",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 115,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "books/native-control.lisp outcome vocabulary source read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 118,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "books/owner.lisp source read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 211,
+      "reason": "Assert usable initialized store through public CLI, not fn1 layout names.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "store/config.json, writer.lock, journal/000001.log, config existence; assertion at 212",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 212,
+      "reason": "Assert usable initialized store through public CLI, not fn1 layout names.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "asserts named fn1 config.json/writer.lock/journal/000001.log/config path exists",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 216,
+      "reason": "Public replayed status count rather than a file inspection.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "status --replay transactions=0",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 226,
+      "reason": "Use competing public process or explicit fault adapter; fn1 lock filename and flock mechanics are not surface.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "opens store/writer.lock and obtains flock at 228",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 228,
+      "reason": "Use competing public process or explicit fault adapter; fn1 lock filename and flock mechanics are not surface.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "fcntl.flock on store/writer.lock descriptor",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 246,
+      "reason": "No durable store creation on invalid/refused init is observable at configured path.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "store root absence/emptiness after refused init",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 249,
+      "reason": "No durable store creation on invalid/refused init is observable at configured path.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "store root absence/emptiness after refused init",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 252,
+      "reason": "No durable store creation on invalid/refused init is observable at configured path.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "store root absence/emptiness after refused init",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 275,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "books/native-operator.lisp reserved-name source read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 276,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "books/native-admin.lisp reserved-name source read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 277,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "host/config-host.lisp reserved-name source read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 283,
+      "reason": "Replace fn1 source symbol/call-graph assertions with the named public CLI behavior.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "all host/native/*.lisp source text searched for example/poster",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 295,
+      "reason": "No durable store creation on invalid/refused init is observable at configured path.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "store root absence/emptiness after refused init",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 299,
+      "reason": "Replace no-publication file comparison with public configuration readback.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "enumerates store/config record filenames",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 303,
+      "reason": "Replace no-publication file comparison with public configuration readback.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "enumerates store/config record filenames",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 346,
+      "reason": "Replace no-publication file comparison with public configuration readback.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "enumerates store/config record filenames",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 347,
+      "reason": "Replace fn1 lock-file injection with competing public process or adapter hook.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "opens store/writer.lock and obtains flock at 349",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 349,
+      "reason": "Replace fn1 lock-file injection with competing public process or adapter hook.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "fcntl.flock on store/writer.lock descriptor",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 356,
+      "reason": "Replace no-publication file comparison with public configuration readback.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "enumerates store/config record filenames",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 425,
+      "reason": "Public recovery report is carried; no storage structure inspected.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "recover output recovered transactions=",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 476,
+      "reason": "Public budget/status observation, including used versus budget counters.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "status headroom fields and transactions count parsed at 476-483",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 500,
+      "reason": "Profile presets need fn2 resident/resource numbers; re-state limits using the selected fn2 profile.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "development profile transaction budget exactly 128; repeated at 520,557",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 521,
+      "reason": "Reservation is an advertised resource/status observable.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "headroom charge-reserved after POST",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 537,
+      "reason": "Re-state admission and maintenance reserve behavior for fn2 profile instead of inherited fn1 fixed capacity.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "fn1 admission boundary: 127 stored articles for budget 128; counts at 556-557",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 599,
+      "reason": "Public charge reporting tested for crosspost payloads; no store-file read.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "headroom bytes-used comparison at 599,604,609,614",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 623,
+      "reason": "Re-state preset values for fn2 profile.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "scale profile transactions-budget exactly 4096",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 631,
+      "reason": "Profile capacities remain public; format subfield assertions separately obsolete.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "status profile line parsed into format and capacity fields",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 655,
+      "reason": "No durable store creation on invalid/refused init is observable at configured path.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "store root absence/emptiness after refused init",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 662,
+      "reason": "fn-store-10 genesis/record-log version is fn1 storage format.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "status profile format=10",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 666,
+      "reason": "fn1 suffix representation limit needs explicit profile-key disposition.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "status max-open-suffix=1000",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 693,
+      "reason": "Heap probe is candidate removal only with replacement; preserve launcher sizing capability using fn2 profile.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "heap -- operator CONFIG status and heap= report at 695-701",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 702,
+      "reason": "fn1 offline heap-figure diagnosis does not describe fn2 memory accounting.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "heap -- operator CONFIG status --replay; exact pre-payload-only figure/header totals unseen suffix 706-709",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 719,
+      "reason": "Byte floor comes from fn1 record/event representation; replace with fn2 named profile refusal.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "exact minimum max-record-octets 17138486 in refusal message",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 721,
+      "reason": "No durable store creation on invalid/refused init is observable at configured path.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "store root absence/emptiness after refused init",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 731,
+      "reason": "Re-state profile numbers for fn2.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "development preset max-history-octets exactly 25165824",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 748,
+      "reason": "fn-store-10 layout not carried.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "status profile format=10",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 749,
+      "reason": "fn1 heap reservation ladder must be re-stated against fn2 profile.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "budgeted preset transaction ladder 131072/65536/32768/16384",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 751,
+      "reason": "Public admission headroom report.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "status capacity articles-left=",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 756,
+      "reason": "Reason names fn1 event representation; replace with named fn2 profile relation refusal.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "max-record-octets-below-an-event-kind refusal",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 757,
+      "reason": "Check failed init through public usability/root effect instead of fn1 config.json filename.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "store/config.json absence",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    38,
+    146,
+    211,
+    226,
+    476,
+    662,
+    693
+  ],
+  "socket_only_tests": [
+    "NativeOperatorWideArgvTests.test_init_names_sixty_groups_and_a_live_command_carries_sixty_words",
+    "NativeOperatorInitTests.test_reports_piped_to_a_reader_that_left_exit_quietly",
+    "NativeOperatorInitTests.test_init_without_a_group_is_usage_and_writes_nothing",
+    "NativeOperatorInitTests.test_help_names_init",
+    "NativeOperatorReservedGroupTests.test_init_of_a_reserved_name_is_refused_and_writes_nothing",
+    "NativeOperatorPeerListTests.test_an_added_peer_reads_back_in_the_grammar_that_wrote_it",
+    "NativeOperatorPeerListTests.test_the_d23_rows_are_listed_one_word_per_row",
+    "NativeOperatorPeerListTests.test_peer_list_takes_no_argument",
+    "NativeOperatorUncertainOutcomeTests.test_a_lost_durable_outcome_exits_three_and_recover_resolves_it",
+    "NativeOperatorUncertainOutcomeTests.test_the_production_image_refuses_the_selector",
+    "NativeOperatorCapacityTests.test_a_crosspost_is_charged_its_payload_alone"
+  ],
+  "uncertainty": "Medium: public status budget/headroom fields are retained as contract observables, but exact fn1 preset numbers and storage format identifiers require explicit fn2 profile disposition. Heap verb remains candidate removal, so its launcher sizing capability needs replacement coverage rather than silent retirement."
+}

@@ -1,0 +1,221 @@
+{
+  "module": "install",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Release installation/rollback, argv, health, and preserved posted content are public; adapt launcher/control/start/observe and replace config.json foreign-format corruption fixture.",
+  "representation_sites": [
+    {
+      "line": 83,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 84,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 86,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 144,
+      "reason": "These are external operator/installer observations; carry semantics and explicitly revise any representation-specific checkpoint label.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "transaction status, run-opened service-log timing and stopped checkpoint CLI report",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 149,
+      "reason": "These are external operator/installer observations; carry semantics and explicitly revise any representation-specific checkpoint label.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "transaction status, run-opened service-log timing and stopped checkpoint CLI report",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 159,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 160,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 161,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 162,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 175,
+      "reason": "These are external operator/installer observations; carry semantics and explicitly revise any representation-specific checkpoint label.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "transaction status, run-opened service-log timing and stopped checkpoint CLI report",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 188,
+      "reason": "These are external operator/installer observations; carry semantics and explicitly revise any representation-specific checkpoint label.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "transaction status, run-opened service-log timing and stopped checkpoint CLI report",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 191,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 192,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 193,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 216,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 234,
+      "reason": "Create fn2 foreign-format rejection fixture through its own format; preserve refused switch and unchanged current release.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/config.json format mutation and foreign.make_store helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 235,
+      "reason": "Create fn2 foreign-format rejection fixture through its own format; preserve refused switch and unchanged current release.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/config.json format mutation and foreign.make_store helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 236,
+      "reason": "Create fn2 foreign-format rejection fixture through its own format; preserve refused switch and unchanged current release.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/config.json format mutation and foreign.make_store helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 237,
+      "reason": "Create fn2 foreign-format rejection fixture through its own format; preserve refused switch and unchanged current release.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/config.json format mutation and foreign.make_store helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 238,
+      "reason": "Create fn2 foreign-format rejection fixture through its own format; preserve refused switch and unchanged current release.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/config.json format mutation and foreign.make_store helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 244,
+      "reason": "Create fn2 foreign-format rejection fixture through its own format; preserve refused switch and unchanged current release.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/config.json format mutation and foreign.make_store helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 245,
+      "reason": "Create fn2 foreign-format rejection fixture through its own format; preserve refused switch and unchanged current release.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/config.json format mutation and foreign.make_store helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 249,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 250,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 267,
+      "reason": "Create fn2 foreign-format rejection fixture through its own format; preserve refused switch and unchanged current release.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "store/config.json format mutation and foreign.make_store helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 275,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 276,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 277,
+      "reason": "Release artifacts and installed command paths are public deployment surface.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "release SHA256SUMS/layout, current/previous symlinks, service argv and rollback installer",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    74,
+    127,
+    151,
+    234,
+    267
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Upgrade/rollback walks stage the same format twice, not migration. fn2 release policy and missing foreign-format fixture need review; behavior does not imply cross-format compatibility."
+}

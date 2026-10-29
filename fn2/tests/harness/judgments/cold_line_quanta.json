@@ -1,0 +1,27 @@
+{
+  "module": "cold_line_quanta",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "socket",
+    "control"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public NNTP complete replies and concurrent reader latency; the cache-size rationale is a comment, not an internal probe. Needs start, socket, control initialization and stop.",
+  "representation_sites": [],
+  "sites": [
+    53,
+    54,
+    55,
+    82,
+    93,
+    94,
+    102,
+    104,
+    107
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

@@ -1,0 +1,33 @@
+{
+  "module": "friends_accounts",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public invitation/login/post tests need start to select installed launcher or developer image and kill_at to map the publication-before-reply cut.",
+  "representation_sites": [],
+  "sites": [
+    71,
+    146,
+    363,
+    375
+  ],
+  "socket_only_tests": [
+    "NativeFriendsAccountsTests.test_fn_redeem_over_starttls_and_tls",
+    "NativeFriendsAccountsTests.test_authinfo_is_offered_after_starttls_before_any_account",
+    "NativeFriendsAccountsTests.test_fn_redeem_to_an_unreachable_node_is_uncertain_never_refused",
+    "NativeFriendsAccountsTests.test_a_redeemed_login_is_bound_and_keeps_its_binding",
+    "NativeFriendsAccountsTests.test_one_account_system",
+    "NativeFriendsAccountsTests.test_a_code_invited_while_the_node_is_stopped_redeems",
+    "NativeFriendsAccountsTests.test_a_friend_redeems_a_code_once_across_a_crash"
+  ],
+  "uncertainty": null
+}

@@ -1,0 +1,244 @@
+{
+  "module": "journal_torn",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "JournalWriterSourceTests.test_the_writer_and_the_open_call_acl2"
+  ],
+  "mixed_tests": [
+    "JournalWriterNativeTests.test_failed_appends_leave_whole_entries_and_a_named_gap",
+    "JournalWriterNativeTests.test_a_torn_tail_is_cut_when_the_next_run_opens_the_journal"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "Both native tests rely on seven-column decisions.fnj bytes/marks; the separate source test pins fn1 writer call structure. Rewrite failure/recovery evidence against public journal/log behavior with kill_at injection; source-only method is in the internal bucket.",
+  "representation_sites": [
+    {
+      "line": 37,
+      "reason": "Keep observable recoverable service-log behavior; fn1 writer function names/state machine representation do not carry.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads host/native/io.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 38,
+      "reason": "Keep observable recoverable service-log behavior; fn1 writer function names/state machine representation do not carry.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "slices fnn-journal-write and asserts fn-otm-jw calls",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 42,
+      "reason": "Keep observable recoverable service-log behavior; fn1 writer function names/state machine representation do not carry.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "slices fnn-log-write-item journal-gap dispatch",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 44,
+      "reason": "Keep observable recoverable service-log behavior; fn1 writer function names/state machine representation do not carry.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "slices fnn-log-offer and dropped flag behavior",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 47,
+      "reason": "Keep observable recoverable service-log behavior; fn1 writer function names/state machine representation do not carry.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads host/native/owner.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 48,
+      "reason": "Keep observable recoverable service-log behavior; fn1 writer function names/state machine representation do not carry.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "slices fnn-owner-journal-open and cut-line calls",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 54,
+      "reason": "Keep observable recoverable service-log behavior; fn1 writer function names/state machine representation do not carry.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "compares fnn-journal-w assignment and fn-otm-start-line source ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 66,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "store_path/decisions/decisions.fnj named file",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 88,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads decision-journal bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 91,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "parses each journal line as list of integer columns",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 92,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts exactly seven fields per entry",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 104,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "entries helper reads named journal after append failures",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 105,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts seven-integer MARK in journal",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 106,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "locates MARK record",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 108,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts internal journal kind column",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 111,
+      "reason": "Observable operator journal/service-log result; E6 must give the retained log/journal verb an explicit disposition.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "store journal status=whole",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 112,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "gap-at-N derived from journal sequence column",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 113,
+      "reason": "Observable operator journal/service-log result; E6 must give the retained log/journal verb an explicit disposition.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "store journal output not malformed",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 119,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads whole decisions.fnj before corruption",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 121,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "opens decisions.fnj for direct tail corruption",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 122,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "appends partial integer record",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 124,
+      "reason": "Observable operator journal/service-log result; E6 must give the retained log/journal verb an explicit disposition.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "store journal status=torn before restart",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 128,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads decisions.fnj after restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 129,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "compares whole byte prefix",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 130,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts next-run record begins 0 space",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 131,
+      "reason": "Inject journal failure/process death through adapter; assert public journal/replay disposition and service availability without depending on decisions.fnj or seven-integer records.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "entries checks seven-field records after restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 133,
+      "reason": "Observable operator journal/service-log result; E6 must give the retained log/journal verb an explicit disposition.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "stderr reports previous torn entry cut",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 136,
+      "reason": "Observable operator journal/service-log result; E6 must give the retained log/journal verb an explicit disposition.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "store journal status=whole after restart",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 137,
+      "reason": "Observable operator journal/service-log result; E6 must give the retained log/journal verb an explicit disposition.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "store journal segments=2",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 138,
+      "reason": "Observable operator journal/service-log result; E6 must give the retained log/journal verb an explicit disposition.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "store journal replay=agrees",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    37,
+    66,
+    88,
+    95,
+    115,
+    121
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Release plan carries log/reopen behavior but log/checkpoint command dispositions are candidates for removal. Exact journal replay text must be resolved by E6, while private integer line encoding retires."
+}

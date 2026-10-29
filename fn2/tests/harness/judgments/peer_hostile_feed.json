@@ -1,0 +1,35 @@
+{
+  "module": "peer_hostile_feed",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-unchanged",
+  "reason": "Scripted peer and raw NNTP transcripts test public streaming, retry and Message-ID isolation with no store inspection or in-image probes.",
+  "representation_sites": [],
+  "sites": [
+    162,
+    168,
+    179,
+    196,
+    221,
+    255,
+    301,
+    318
+  ],
+  "socket_only_tests": [
+    "HostileFeedTests.test_a_peer_throttling_with_431_still_gets_the_article",
+    "HostileFeedTests.test_a_stray_239_is_not_the_answer_to_the_next_offer",
+    "HostileFeedTests.test_a_silent_peer_is_dropped_at_the_round_deadline_and_redialled",
+    "HostileFeedTests.test_a_takethis_with_an_ungrammatical_id_never_desynchronises_the_stream",
+    "HostileFeedTests.test_a_forged_offer_from_one_peer_denies_nothing_to_another",
+    "HostileFeedTests.test_changed_bytes_after_acceptance_are_refused_and_change_nothing"
+  ],
+  "uncertainty": null
+}

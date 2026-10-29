@@ -1,0 +1,94 @@
+{
+  "module": "group_policy",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "GroupPolicySourceTests.test_the_owner_installs_the_closed_list",
+    "GroupPolicySourceTests.test_the_post_step_gates_an_accepted_article"
+  ],
+  "mixed_tests": [],
+  "module_verdict": "carry-socket-half",
+  "reason": "The offline/live/restart native method is entirely public; two source methods require fn1 gate/delegate structure and should be removed after public fixture replacement. in_image_tests denotes static internal checks.",
+  "representation_sites": [
+    {
+      "line": 34,
+      "reason": "Keep group policy n/y behavior in LIST ACTIVE, refused/accepted POST and restart; retire fn1 source shape assertions.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "reads books/nntp-post.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 37,
+      "reason": "Keep group policy n/y behavior in LIST ACTIVE, refused/accepted POST and restart; retire fn1 source shape assertions.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "requires fn-post-gated-decision text",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 38,
+      "reason": "Keep group policy n/y behavior in LIST ACTIVE, refused/accepted POST and restart; retire fn1 source shape assertions.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "requires fn-post-command-env expression",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 41,
+      "reason": "Keep group policy n/y behavior in LIST ACTIVE, refused/accepted POST and restart; retire fn1 source shape assertions.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "orders fn-inj-decide before fn-gst-post-gate by substring offsets",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 42,
+      "reason": "Keep group policy n/y behavior in LIST ACTIVE, refused/accepted POST and restart; retire fn1 source shape assertions.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "requires fn-inj-refuse :group-read-only text",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 45,
+      "reason": "Keep group policy n/y behavior in LIST ACTIVE, refused/accepted POST and restart; retire fn1 source shape assertions.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "reads books/owner-agent.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 46,
+      "reason": "Keep group policy n/y behavior in LIST ACTIVE, refused/accepted POST and restart; retire fn1 source shape assertions.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "requires fn-cfg-closed-names projection text",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 47,
+      "reason": "Keep group policy n/y behavior in LIST ACTIVE, refused/accepted POST and restart; retire fn1 source shape assertions.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "reads host/owner-host.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 50,
+      "reason": "Keep group policy n/y behavior in LIST ACTIVE, refused/accepted POST and restart; retire fn1 source shape assertions.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "requires fn-inj-config-closed in fn-owner-posting-configure",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    34,
+    45,
+    47,
+    84
+  ],
+  "socket_only_tests": [
+    "GroupPolicyImageTests.test_read_only_group_offline_live_and_after_restart"
+  ],
+  "uncertainty": null
+}

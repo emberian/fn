@@ -1,0 +1,89 @@
+{
+  "module": "article_subject",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeArticleSubjectTests.test_relay_variants_keep_one_article_subject_and_distinct_bytes"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "Two independent nodes receive relay variants and read bodies publicly, but the decisive identity assertions parse service-log article-subject/bytes-subject encodings and require fn1 domain tags. Retain relay invariance and distinct bytes using fn2 documented identity observables, with explicit replacement evidence for subject binding.",
+  "representation_sites": [
+    {
+      "line": 55,
+      "reason": "Service log and transit outcome are public operator observations.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads configured service.log and selects transit message-id lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 62,
+      "reason": "Successful transit outcome is a public logged event.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "requires code=235 in matching transit log line",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 68,
+      "reason": "Section 1 carries article identity/read behavior, not fn1 serialized subject representation. Replace with documented fn2 identity observation.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "extracts article-subject hex field from service log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 69,
+      "reason": "Keep distinct stored-byte commitments through fn2 documented observable or exact served byte comparison.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "extracts bytes-subject hex field from service log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 70,
+      "reason": "Retain identity-binding evidence with an implementation-independent identity contract.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "compares serialized article-subject values of two relay variants",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 71,
+      "reason": "Retain the distinct body/representation evidence through public fn2 commitment or served bytes.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "requires different serialized bytes-subject commitments",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 72,
+      "reason": "fn1 subject domain encoding is not enumerated as a carried surface.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "requires hex domain prefix fn/article-subject/v1",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 74,
+      "reason": "Replace serialization-prefix assertion with fn2 documented commitment contract.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "requires commitment prefix fn/subject/v1",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    30,
+    45,
+    48,
+    55,
+    68,
+    69,
+    70,
+    71,
+    72,
+    74
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Subject encodings appear in the public service log but are not explicitly preserved by section 1. Identity binding must keep replacement coverage; simply dropping these assertions would weaken the test."
+}

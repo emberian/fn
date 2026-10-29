@@ -1,0 +1,80 @@
+{
+  "module": "over_cursor_cost",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeOverCursorCost.test_cost_by_store_size"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "The two wire OVER replies are reusable, but this measurement specifically requires fn1 owner mutex hold/cons allocation labels and binary store fixtures. Preserve the stream-equality scenario and replace measurement with fn2 work/allocation accounting and profile-based fixture generation.",
+  "representation_sites": [
+    {
+      "line": 52,
+      "reason": "Regenerate fn2 corpus stores through public operations; old genesis schema is obsolete.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "fixtures.schema_digest reads books/store-genesis.lisp for fixture admission",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 58,
+      "reason": "Use fn2 import or init/post population, preserving corpus and ranges.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "copies a fn1 fixture binary store into node.store_path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 59,
+      "reason": "Remove fn1 lock-file assumptions from fixture setup.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "names and checks store_path/writer.lock",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 61,
+      "reason": "Use the store owner lifecycle, not synthetic lock files.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "touches missing writer.lock mode 0600",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 100,
+      "reason": "The owner mutex/cons allocation mechanism does not exist in fn2. Measure bounded cursor work under fn2 profile and keep reply equality.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "parses fn-owner-measure holds/held-us/max-us/bytes stderr labels using MEASURE at 43",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 102,
+      "reason": "Replace mandatory fn1 instrumentation with fn2 work counters or external latency measurement.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires at least one fn-owner-measure label",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 114,
+      "reason": "Rewrite performance measurement for fn2 machine steps/allocation rather than nonexistent owner mutex holds.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "reports fn1 owner mutex hold counts, held time and bytes per hold",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    52,
+    58,
+    59,
+    61,
+    67,
+    100,
+    102,
+    114
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

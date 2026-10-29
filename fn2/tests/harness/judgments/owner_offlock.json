@@ -1,0 +1,95 @@
+{
+  "module": "owner_offlock",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "OwnerOfflockNativeTests.test_the_owner_hold_per_commit_excludes_the_feed_fsync"
+  ],
+  "module_verdict": "carry-with-adapter",
+  "reason": "GROUP/health responsiveness and duplicate/conflict replies are public; start must translate delay selectors, observe must replace the fn1 mutex-hold measurement with responsiveness evidence. The measurement method needs assertion changes, not a fabricated compatibility log.",
+  "representation_sites": [
+    {
+      "line": 93,
+      "reason": "Translate to a persistence-stall adapter hook; retain no-early-240 and unrelated GROUP/health progress.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "FN_NATIVE_TEST_FEED_STALL_FILE stalls the FNFD feed-journal fsync",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 144,
+      "reason": "Replace old mutex and feed-journal phase instrumentation by fn2 scheduling/durability fault hooks.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "FN_OWNER_MEASURE with FN_NATIVE_TEST_FEED_FSYNC_MS measures mutex holds and injects per-FNFD-fsync delay",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 160,
+      "reason": "Use observable unrelated-command progress during a stalled POST instead of fn1 owner mutex counters.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "measured(log) parses fn-owner-measure holds/held-us/max-us/bytes/max-bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 167,
+      "reason": "Preserve POST waits for durable acceptance and unrelated commands make progress; retire implementation-specific commit quantum and two-FNFD-fsync arithmetic.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires commit measurement label",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 168,
+      "reason": "Preserve POST waits for durable acceptance and unrelated commands make progress; retire implementation-specific commit quantum and two-FNFD-fsync arithmetic.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "extracts commit holds/held/max-us",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 169,
+      "reason": "Preserve POST waits for durable acceptance and unrelated commands make progress; retire implementation-specific commit quantum and two-FNFD-fsync arithmetic.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires one mutex hold per post",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 172,
+      "reason": "Preserve POST waits for durable acceptance and unrelated commands make progress; retire implementation-specific commit quantum and two-FNFD-fsync arithmetic.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "compares max mutex hold with one feed fsync",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 175,
+      "reason": "Preserve POST waits for durable acceptance and unrelated commands make progress; retire implementation-specific commit quantum and two-FNFD-fsync arithmetic.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires POST latency to include exactly two injected FNFD fsync delays",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 114,
+      "reason": "The operator health state is explicitly carried; no direct reading of the cited book occurs.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "unavailable-peer held health state",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    93,
+    105,
+    144,
+    160,
+    172,
+    191
+  ],
+  "socket_only_tests": [
+    "OwnerOfflockNativeTests.test_a_stalled_feed_journal_holds_no_owner_quantum",
+    "OwnerOfflockNativeTests.test_a_refusal_with_frames_is_still_told"
+  ],
+  "uncertainty": "Fixed quarry classification is node, but the hold-per-commit case depends on an obsolete mutex diagnostic. Public latency assertions survive; the precise two-fsync minimum does not."
+}

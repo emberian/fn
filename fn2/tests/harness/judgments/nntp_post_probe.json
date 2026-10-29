@@ -1,0 +1,108 @@
+{
+  "module": "nntp_post_probe",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "ServedArmDerivationTests.test_every_served_cut_has_the_arm_its_coordinate_gives",
+    "ServedArmDerivationTests.test_the_served_order_is_the_hosts",
+    "ServedArmDerivationTests.test_a_table_disagreeing_with_the_arm_is_refused",
+    "ServedArmDerivationTests.test_a_statement_cut_before_its_barrier_is_refused",
+    "ServedArmDerivationTests.test_the_arm_follows_the_program_not_the_name",
+    "JudgeTeethTests.test_no_cut_before_the_reply_passes_with_240",
+    "JudgeTeethTests.test_kill_rows",
+    "JudgeTeethTests.test_eio_rows",
+    "JudgeTeethTests.test_controls",
+    "DeadNodeStartTests.test_cut_uses_its_own_greeting_before_sending_post",
+    "DeadNodeStartTests.test_post_checks_liveness_after_greeting_credit_in_both_full_and_half_send_paths",
+    "DeadNodeStartTests.test_dead_start_never_becomes_a_cut_or_recovery_row",
+    "NativeServedWireProbeTests.test_every_served_cut_answers_as_its_coordinate_says"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "The wire durability obligation remains essential, but its oracle and campaign fixture hard-code fn1 commit program ordering, named cuts, journal/staging snapshots and the campaign-specific Node. Rebuild against fn2 action-boundary cuts and externally observed accepted/refused/uncertain/recovered article histories; retain judge negative controls and greeting checks.",
+  "representation_sites": [
+    {
+      "line": 44,
+      "reason": "Replace fn-lg-*/fn-bs-* ordering with fn2 action-boundary cut dispositions and recovered readback.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "probe.verify_served_arms and served_cuts pin fn1 reservation/finish/append/fence order",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 52,
+      "reason": "Source-order assertions about fn1 commit implementation do not witness fn2; use simulator cut histories and native wire outcomes.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "native_cuts.verify_post_log_cut_map reads host/native/io.lisp, host/native/owner.lisp and books log programs/owner-queued-work.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 53,
+      "reason": "Replace fn1 statement executor ordering checks with durable authorization/control outcomes after recovery.",
+      "row": "control messages: cancel (own-cancel, control.cancel filing), moderation `Approved`, injection info (RFC 5537)",
+      "touches": "native_cuts.verify_statement_cut_map reads statement and owner-ack-after-barrier books plus host/native/owner.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 61,
+      "reason": "Keep a negative oracle control after rederiving the cut table for fn2.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "verify_served_arms rejects mutated fn1 cut candidate table",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 67,
+      "reason": "Rebuild against fn2 authorization persistence cuts.",
+      "row": "control messages: cancel (own-cancel, control.cancel filing), moderation `Approved`, injection info (RFC 5537)",
+      "touches": "mocked STATEMENT_CUTS candidate table checked by verify_served_arms",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 75,
+      "reason": "A fn1 program coordinate is not a public POST invariant.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "probe.served_arm of finish-durable is pre-append",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 77,
+      "reason": "Keep oracle mutation coverage over fn2 boundaries, not these program names.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "mocked SERVED_PROGRAMS order changes finish-durable to fenced",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 79,
+      "reason": "Replace fn1 finish program ordering with fn2 durability cut model.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "verify_served_arms expects finish-consumed mismatch after program reorder",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 249,
+      "reason": "Replace storage snapshots with recovered ARTICLE bytes, GROUP/OVER visibility and duplicate/retry outcomes; the called helper is tests/campaign/native_operator_campaign.py:142-170.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "probe.run invokes campaign seed/settle snapshots of journal/, staging/ files and fn log scan-store chained trailer",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    44,
+    52,
+    53,
+    61,
+    67,
+    75,
+    77,
+    79,
+    249
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Mocked greeting tests and generic judge controls can remain as harness unit tests, but no whole module can carry unchanged because the campaign oracle is fn1-specific."
+}

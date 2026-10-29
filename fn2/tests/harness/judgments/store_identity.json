@@ -1,0 +1,75 @@
+{
+  "module": "store_identity",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Identity and consumer bootstrap are public control exchanges; adapt start/control/observe and resolve the shipped grammar artifact.",
+  "representation_sites": [
+    {
+      "line": 29,
+      "reason": "These are explicit fields of the public identity exchange, not direct access to internal structures.",
+      "row": "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27",
+      "touches": "fn-store-identity-v1 fields including format/schema/profile/revisions/grammar",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 49,
+      "reason": "These are explicit fields of the public identity exchange, not direct access to internal structures.",
+      "row": "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27",
+      "touches": "fn-store-identity-v1 fields including format/schema/profile/revisions/grammar",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 53,
+      "reason": "Bind identity grammar digest to fn2 shipped wire grammar; change build artifact lookup only.",
+      "row": "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27",
+      "touches": "box_artifacts wire-grammar.json load, file hash and identity digest comparison",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 54,
+      "reason": "Bind identity grammar digest to fn2 shipped wire grammar; change build artifact lookup only.",
+      "row": "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27",
+      "touches": "box_artifacts wire-grammar.json load, file hash and identity digest comparison",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 55,
+      "reason": "Bind identity grammar digest to fn2 shipped wire grammar; change build artifact lookup only.",
+      "row": "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27",
+      "touches": "box_artifacts wire-grammar.json load, file hash and identity digest comparison",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 60,
+      "reason": "These are explicit fields of the public identity exchange, not direct access to internal structures.",
+      "row": "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27",
+      "touches": "fn-store-identity-v1 fields including format/schema/profile/revisions/grammar",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 65,
+      "reason": "These are explicit fields of the public identity exchange, not direct access to internal structures.",
+      "row": "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27",
+      "touches": "fn-store-identity-v1 fields including format/schema/profile/revisions/grammar",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    39,
+    43,
+    49,
+    54,
+    58,
+    60
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Exact grammar artifact location changes from build/box to release share/fn; digest binding is carried."
+}

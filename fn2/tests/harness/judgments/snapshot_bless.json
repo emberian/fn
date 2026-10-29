@@ -1,0 +1,174 @@
+{
+  "module": "snapshot_bless",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Stopped-copy blessing and retrieval are public, but malformed-input and lineage cases manipulate node-secret/config/checkpoint files and inherit fn1 checkpoint fixtures.",
+  "representation_sites": [
+    {
+      "line": 34,
+      "reason": "Use fn2 public open/refusal report; fn1 checkpoint/suffix detail must not be required.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "status --replay open= line selection",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 49,
+      "reason": "Documented stopped-copy independence remains an external backup/restore observation.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "opaque stopped-store copy and source offline rename",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 50,
+      "reason": "Snapshot blessing observes producer completion input; carry or explicitly replace its format in E6.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "SNAPSHOT explicit completion marker fixture",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 54,
+      "reason": "Snapshot blessing observes producer completion input; carry or explicitly replace its format in E6.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "SNAPSHOT explicit completion marker fixture",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 61,
+      "reason": "Documented stopped-copy independence remains an external backup/restore observation.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "opaque stopped-store copy and source offline rename",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 68,
+      "reason": "Documented stopped-copy independence remains an external backup/restore observation.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "opaque stopped-store copy and source offline rename",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 80,
+      "reason": "Replace key-path-specific fixtures with fn2 named missing/malformed snapshot-key inputs and blessing refusal.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "keys/node-secret.key reads, deletion, corruption and restore",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 81,
+      "reason": "Replace key-path-specific fixtures with fn2 named missing/malformed snapshot-key inputs and blessing refusal.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "keys/node-secret.key reads, deletion, corruption and restore",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 82,
+      "reason": "Replace key-path-specific fixtures with fn2 named missing/malformed snapshot-key inputs and blessing refusal.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "keys/node-secret.key reads, deletion, corruption and restore",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 87,
+      "reason": "Replace key-path-specific fixtures with fn2 named missing/malformed snapshot-key inputs and blessing refusal.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "keys/node-secret.key reads, deletion, corruption and restore",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 88,
+      "reason": "Replace key-path-specific fixtures with fn2 named missing/malformed snapshot-key inputs and blessing refusal.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "keys/node-secret.key reads, deletion, corruption and restore",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 92,
+      "reason": "Replace key-path-specific fixtures with fn2 named missing/malformed snapshot-key inputs and blessing refusal.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "keys/node-secret.key reads, deletion, corruption and restore",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 93,
+      "reason": "Replace fn1 config frame corruption with malformed fn2 snapshot/profile fixture and preserve fault versus refusal.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "config.json corruption and ACL2 durable-frame diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 94,
+      "reason": "Replace fn1 config frame corruption with malformed fn2 snapshot/profile fixture and preserve fault versus refusal.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "config.json corruption and ACL2 durable-frame diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 101,
+      "reason": "Replace fn1 config frame corruption with malformed fn2 snapshot/profile fixture and preserve fault versus refusal.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "config.json corruption and ACL2 durable-frame diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 105,
+      "reason": "Snapshot blessing observes producer completion input; carry or explicitly replace its format in E6.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "SNAPSHOT explicit completion marker fixture",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 113,
+      "reason": "Exercise divergent-copy rejection through fn2 snapshot lineage metadata, not store-checkpoint.fnsc bytes.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "diverged_copies helper and path() checkpoint transplant; state_checkpoint.py:282 and store_lineage.py:54-90",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 114,
+      "reason": "Snapshot blessing observes producer completion input; carry or explicitly replace its format in E6.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "SNAPSHOT explicit completion marker fixture",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 115,
+      "reason": "Snapshot blessing observes producer completion input; carry or explicitly replace its format in E6.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "SNAPSHOT explicit completion marker fixture",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 119,
+      "reason": "Exercise divergent-copy rejection through fn2 snapshot lineage metadata, not store-checkpoint.fnsc bytes.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "diverged_copies helper and path() checkpoint transplant; state_checkpoint.py:282 and store_lineage.py:54-90",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 123,
+      "reason": "Exercise divergent-copy rejection through fn2 snapshot lineage metadata, not store-checkpoint.fnsc bytes.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "diverged_copies helper and path() checkpoint transplant; state_checkpoint.py:282 and store_lineage.py:54-90",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    49,
+    50,
+    80,
+    93,
+    113,
+    119
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "SNAPSHOT completion marker is part of fn1 blessing input; fn2 E6 must state whether its exact marker survives. Treat marker as an observable backup input, not evidence that a running capture producer exists."
+}

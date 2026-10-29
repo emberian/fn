@@ -1,0 +1,163 @@
+{
+  "module": "checkpoint",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Socket/CLI preservation checks survive, but production compaction asserts numbered segments and old checkpoint phase output, and developer tests exercise retired generation verbs.",
+  "representation_sites": [
+    {
+      "line": 199,
+      "reason": "Assert successful compaction preserves export and served article numbers, without fn1 phase or segment identity.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "checkpoint,drop phase strings and segment/dropped counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 236,
+      "reason": "Resolve top-level checkpoint verb disposition; preserve named refusal or backup replacement coverage, not generation layout.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "retired generation diagnostic, checkpoints directory absence and checkpoint-free recovered line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 238,
+      "reason": "Resolve top-level checkpoint verb disposition; preserve named refusal or backup replacement coverage, not generation layout.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "retired generation diagnostic, checkpoints directory absence and checkpoint-free recovered line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 239,
+      "reason": "Resolve top-level checkpoint verb disposition; preserve named refusal or backup replacement coverage, not generation layout.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "retired generation diagnostic, checkpoints directory absence and checkpoint-free recovered line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 243,
+      "reason": "Resolve top-level checkpoint verb disposition; preserve named refusal or backup replacement coverage, not generation layout.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "retired generation diagnostic, checkpoints directory absence and checkpoint-free recovered line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 253,
+      "reason": "Export is a public artifact; keep round-trip content equality and replace record-file-count assumption if export format changes.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export archive bytes and records/ entries",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 254,
+      "reason": "Export is a public artifact; keep round-trip content equality and replace record-file-count assumption if export format changes.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export archive bytes and records/ entries",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 392,
+      "reason": "Assert history and next-number preservation after repeated compact/reopen instead of journal files.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/000000.log genesis and numbered active segment enumeration",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 393,
+      "reason": "Assert history and next-number preservation after repeated compact/reopen instead of journal files.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/000000.log genesis and numbered active segment enumeration",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 396,
+      "reason": "Export is a public artifact; keep round-trip content equality and replace record-file-count assumption if export format changes.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "export archive bytes and records/ entries",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 398,
+      "reason": "Assert history and next-number preservation after repeated compact/reopen instead of journal files.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/000000.log genesis and numbered active segment enumeration",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 402,
+      "reason": "Assert successful compaction preserves export and served article numbers, without fn1 phase or segment identity.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "checkpoint,drop phase strings and segment/dropped counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 404,
+      "reason": "Assert successful compaction preserves export and served article numbers, without fn1 phase or segment identity.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "checkpoint,drop phase strings and segment/dropped counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 406,
+      "reason": "Assert history and next-number preservation after repeated compact/reopen instead of journal files.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/000000.log genesis and numbered active segment enumeration",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 411,
+      "reason": "Assert successful compaction preserves export and served article numbers, without fn1 phase or segment identity.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "checkpoint,drop phase strings and segment/dropped counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 413,
+      "reason": "Assert successful compaction preserves export and served article numbers, without fn1 phase or segment identity.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "checkpoint,drop phase strings and segment/dropped counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 414,
+      "reason": "Assert history and next-number preservation after repeated compact/reopen instead of journal files.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/000000.log genesis and numbered active segment enumeration",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 418,
+      "reason": "Assert history and next-number preservation after repeated compact/reopen instead of journal files.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/000000.log genesis and numbered active segment enumeration",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 427,
+      "reason": "Assert history and next-number preservation after repeated compact/reopen instead of journal files.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "journal/000000.log genesis and numbered active segment enumeration",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    199,
+    225,
+    239,
+    392,
+    402,
+    404
+  ],
+  "socket_only_tests": [
+    "NativeCheckpointTests.test_clone_reopens_historical_authorship_verdict",
+    "NativeProductionCompactTests.test_operator_compact_keeps_every_article_and_next_number"
+  ],
+  "uncertainty": "checkpoint clone and retired top-level checkpoint verbs are candidates for disposition, not settled removals; retain authored-content recovery coverage whichever verb replaces clone."
+}

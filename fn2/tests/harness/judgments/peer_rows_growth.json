@@ -1,0 +1,51 @@
+{
+  "module": "peer_rows_growth",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-unchanged",
+  "reason": "Only operator peer requests and peer-list results are asserted; the store_path alias at line 46 is unused. No internal evaluation or disk layout inspection.",
+  "representation_sites": [
+    {
+      "line": 56,
+      "reason": "Public peer-list result; keep the complete principal list and duplicate-idempotence assertions.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "peer list carries-principal= fields",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 83,
+      "reason": "Public result of an accepted configuration request, not a read of its configuration record.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "peer carries verification=VERIFIED output",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 136,
+      "reason": "Keep peer configuration persistence across owner shutdown; no row-layout dependency.",
+      "row": "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
+      "touches": "live peer list carries-principal= fields and budget text",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    45,
+    52,
+    69,
+    83,
+    88,
+    124,
+    134
+  ],
+  "socket_only_tests": [
+    "NativePeerRowsGrowthTests.test_a_peer_carries_more_than_the_old_row_cap",
+    "NativePeerRowsLiveTests.test_the_live_owner_extends_a_peer"
+  ],
+  "uncertainty": null
+}

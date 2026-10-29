@@ -1,0 +1,203 @@
+{
+  "module": "live_reconfiguration",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "LiveReconfigurationSourceTests.test_the_live_arm_stages_acls_delta_list_and_builds_none",
+    "LiveReconfigurationSourceTests.test_completion_publishes_what_recovery_replays",
+    "LiveReconfigurationSourceTests.test_actual_native_open_and_completion_call_the_physical_history_model",
+    "LiveReconfigurationSourceTests.test_the_live_arm_is_the_event_sequence_the_theorem_names",
+    "LiveReconfigurationSourceTests.test_the_live_arm_reads_the_open_connection_id_as_an_id",
+    "LiveReconfigurationSourceTests.test_publication_is_authorized_on_the_stores_own_lock_observation",
+    "LiveReconfigurationSourceTests.test_a_request_being_answered_is_not_shut_by_the_stop_it_caused"
+  ],
+  "mixed_tests": [
+    "LiveReconfigurationImageTests.test_the_live_verb_answers_and_the_owner_keeps_serving",
+    "LiveReconfigurationImageTests.test_an_offline_mutation_is_refused_at_the_lock_while_the_owner_lives",
+    "LiveReconfigurationCostTests.test_reconfiguration_hold_does_not_grow_with_the_history"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Keep live CLI/NNTP config and restart behavior; retire source checks and replace config directory counting, occupied generation filenames and owner mutex measurements.",
+  "representation_sites": [
+    {
+      "line": 50,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "host/native-admin-host.lisp setup read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 51,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "books/native-admin.lisp setup read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 52,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "none: retire, capability = unused fn1 owner-config source load",
+      "touches": "books/owner-config.lisp unused setup read",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 53,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "host/native/admin.lisp setup read; source call order assertions 141-195",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 81,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "books/config-owner-live-complete.lisp source/theorem names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 94,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "host/owner-host.lisp source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 95,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "host/store-node-host.lisp recovery source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 96,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "books/config-owner-live-complete.lisp source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 111,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "books/replay-identity-index.lisp theorem names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 114,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "native_cuts.book_function(fn-rii-sco-extend-open)",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 120,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "native_cuts.calls_through_book(fn-store-sn-open-extended)",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 124,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "books/replay-identity-index.lisp reread",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 126,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "native_cuts.book_function(fn-sopc-classified-open)",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 128,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "books/config-owner-publish.lisp source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 133,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "books/config-owner-carried.lisp theorem names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 173,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "host/owner-host.lisp source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 178,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "`policy set KEY VALUE` (every live limit below)",
+      "touches": "books/owner-connection-callbacks.lisp source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 198,
+      "reason": "fn1 implementation source names and call graph are replaced; witness durable live behavior through CLI/NNTP.",
+      "row": "none: retire, capability = fn1 control-handler call ordering",
+      "touches": "host/native/control.lisp answering call-order source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 264,
+      "reason": "Compare publicly visible configuration before/after instead of numbered records.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "store/config enumeration; calls 271,275,293,300,307",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 370,
+      "reason": "fn2 machines replace fn1 owner mutex; use bounded-work measurements appropriate to fn2.",
+      "row": "none: retire, capability = fn1 owner mutex hold-time growth measurement",
+      "touches": "fn-owner-measure control held-us/max-us/holds stderr",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 379,
+      "reason": "Track successful public mutations rather than .cfg file count.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "store/config enumeration for depth; calls 392,406,413",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 409,
+      "reason": "No numbered config record namespace in fn2; replace with supported failed-publication fault hook.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "writes next store/config/NNNNNNNN.cfg; delete at 415",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 415,
+      "reason": "No numbered config record namespace in fn2; replace with supported failed-publication fault hook.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "deletes synthetic next store/config/NNNNNNNN.cfg",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    50,
+    223,
+    264,
+    370,
+    409
+  ],
+  "socket_only_tests": [
+    "LiveReconfigurationImageTests.test_a_live_peer_add_leaves_a_pinned_reader_unchanged_and_is_durable",
+    "LiveReconfigurationImageTests.test_a_group_created_live_is_served_before_restart"
+  ],
+  "uncertainty": "Low: bounded reconfiguration work remains important, but fn1 owner-mutex timing is not a fn2 surface promise."
+}

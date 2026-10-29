@@ -1,0 +1,373 @@
+{
+  "module": "owner",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [
+    "NativeOwnerHandlerStructureTests.test_the_chunk_loop_keeps_its_suffix_and_reads_a_clock_per_step",
+    "NativeOwnerHandlerStructureTests.test_developer_selectors_gate_arm_the_owner_and_stop_synchronously"
+  ],
+  "internal_only_tests": [
+    "NativeOwnerHandlerStructureTests.test_extent_close_uncertainty_fences_before_unlock_and_never_retries",
+    "NativeOwnerHandlerStructureTests.test_every_owner_quantum_runs_inside_the_one_fence_boundary",
+    "NativeOwnerHandlerStructureTests.test_a_condition_leaving_a_boundary_is_classified_by_acl2_from_its_concrete_class",
+    "NativeOwnerHandlerStructureTests.test_worker_threads_classify_through_the_thread_boundary",
+    "NativeOwnerHandlerStructureTests.test_the_stop_exit_escalates_on_the_lattice_and_a_failed_barrier_fences",
+    "NativeOwnerHandlerStructureTests.test_the_reclaim_install_quantum_is_live_and_its_cleanup_finishes_before_the_raise",
+    "NativeOwnerHandlerStructureTests.test_tcpcl_listen_re_signals_an_uncertain_outcome_and_a_fault",
+    "NativeOwnerHandlerStructureTests.test_a_node_secret_publication_barrier_failure_is_uncertain",
+    "NativeOwnerHandlerStructureTests.test_an_admission_pending_verdict_is_a_refusal_of_the_request",
+    "NativeOwnerHandlerStructureTests.test_transit_take_uses_transfer_decision_and_store_outcome",
+    "NativeOwnerHandlerStructureTests.test_condition_handlers_and_cleanup_enclose_the_served_body",
+    "NativeOwnerHandlerStructureTests.test_no_os_error_after_publication_is_classified_as_a_refusal",
+    "NativeOwnerHandlerStructureTests.test_the_served_listener_passes_a_documented_accept_queue",
+    "NativeOwnerTests.test_invalid_complete_feed_evidence_is_process_fault",
+    "NativeOwnerTests.test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence"
+  ],
+  "mixed_tests": [
+    "NativeOwnerTests.test_funded_syncer_from_mux_hold_post_and_stop",
+    "NativeOwnerTests.test_raw_owner_entries_answer_as_the_counterpart",
+    "NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Independent NNTP durability, client isolation, clock and transit witnesses survive. Source-form invariants, raw-dispatch parity, custody traces and FNFD layout assertions are fn1 implementation dependencies.",
+  "representation_sites": [
+    {
+      "line": 24,
+      "reason": "Replace private syncer custody trace with persisted POST/restart observations; token protocol is not public.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "custody install trace thread/stack counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 26,
+      "reason": "Replace private syncer custody trace with persisted POST/restart observations; token protocol is not public.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "custody issue :resource :owner token shape",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 30,
+      "reason": "Replace private syncer custody trace with persisted POST/restart observations; token protocol is not public.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "custody physical/outcome receipt generation and settlement ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 46,
+      "reason": "Replace private syncer custody trace with persisted POST/restart observations; token protocol is not public.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "custody drained typed/retained diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 55,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp release/shared-action handlers",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 56,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "extent.lisp close ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 109,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "host/native/*.lisp extent-release caller scan",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 121,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "_forms dynamically reads owner.lisp and tcpcl.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 168,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp section envelope source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 180,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "io.lisp observed mutex macro",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 251,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp condition classification",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 252,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "io.lisp condition classes and durable primitives",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 266,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "books/failure-scope.lisp class tables",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 276,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "host/native/*.lisp define-condition inheritance scan",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 322,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp worker thread boundaries",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 351,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "books/owner-export-request.lisp archive uncertainty",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 354,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "operator.lisp archive uncertainty arms",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 363,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp stop lattice/pipeline ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 376,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "books/failure-scope.lisp theorem existence",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 388,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp reclaim quantum/cleanup ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 420,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "tcpcl.lisp listen condition handler",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 428,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "io.lisp node-secret publication handlers",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 443,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp admission-pending implementation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 450,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "books/failure-scope.lisp admission-pending membership",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 457,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp transit take/drain implementation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 485,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "mux.lisp handler/cleanup forms",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 488,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "mux.lisp exception/cleanup lexical ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 520,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "io.lisp finish-cut handler ancestors",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 535,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp attempt handler source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 548,
+      "reason": "fn2 has no fn1 owner mutex or host Lisp implementation; retain public behavioral uncertainty and isolation assertions separately.",
+      "row": "none: retire, capability = fn1 host source-form and mutex structure checks",
+      "touches": "owner.lisp literal backlog argument",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 568,
+      "reason": "Raw SBCL evaluation against recording stubs tests fn1 implementation, not saved-image or public behavior.",
+      "row": "none: retire, capability = fn1 extracted host implementation evaluation",
+      "touches": "runtime_sbcl executes native_owner_chunk_loop_raw-mock.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 588,
+      "reason": "Raw SBCL evaluation against recording stubs tests fn1 implementation, not saved-image or public behavior.",
+      "row": "none: retire, capability = fn1 extracted host implementation evaluation",
+      "touches": "runtime_sbcl executes native_developer_selectors_raw-mock.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 712,
+      "reason": "Keep POST/duplicate/ARTICLE transcript but retire fn1 dispatch implementation and exact entry count.",
+      "row": "none: retire, capability = fn1 raw-dispatch registry equivalence",
+      "touches": "interface_emit.registry(ROOT) raw_dispatched/raw_guarded source registry",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 731,
+      "reason": "Keep POST/duplicate/ARTICLE transcript but retire fn1 dispatch implementation and exact entry count.",
+      "row": "none: retire, capability = fn1 raw-dispatch registry equivalence",
+      "touches": "absence of fn-dispatch counterpart diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 732,
+      "reason": "Keep POST/duplicate/ARTICLE transcript but retire fn1 dispatch implementation and exact entry count.",
+      "row": "none: retire, capability = fn1 raw-dispatch registry equivalence",
+      "touches": "fn-dispatch counterpart raw-entry count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 784,
+      "reason": "Replace fn1 file layout/size observation with storage fault injection and peer-visible eligible-article delivery or safe recovery.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "store/feed path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 785,
+      "reason": "Replace fn1 file layout/size observation with storage fault injection and peer-visible eligible-article delivery or safe recovery.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "create feed directory",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 786,
+      "reason": "Replace fn1 file layout/size observation with storage fault injection and peer-visible eligible-article delivery or safe recovery.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "store/feed/bad.fnfd corrupt complete frame",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 792,
+      "reason": "No fn2 migration obligation for historical FNFD namespace.",
+      "row": "none: retire, capability = fn1 historical FNFD namespace rejection",
+      "touches": "create store/feed/v1 empty legacy namespace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 796,
+      "reason": "No fn2 migration obligation for historical FNFD namespace.",
+      "row": "none: retire, capability = fn1 historical FNFD namespace rejection",
+      "touches": "preserve store/feed/v1 directory",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 869,
+      "reason": "Replace fn1 file layout/size observation with storage fault injection and peer-visible eligible-article delivery or safe recovery.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "store/feed/sink.fnfd path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 870,
+      "reason": "Replace fn1 file layout/size observation with storage fault injection and peer-visible eligible-article delivery or safe recovery.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "FNFD file existence",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 871,
+      "reason": "Replace fn1 file layout/size observation with storage fault injection and peer-visible eligible-article delivery or safe recovery.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "FNFD byte size before recovery",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 881,
+      "reason": "Replace fn1 file layout/size observation with storage fault injection and peer-visible eligible-article delivery or safe recovery.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "FNFD byte growth after recovery",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    51,
+    553,
+    576,
+    668,
+    717,
+    738,
+    783,
+    869
+  ],
+  "socket_only_tests": [
+    "NativeOwnerTests.test_client_disconnect_is_not_a_global_owner_fault",
+    "NativeOwnerTests.test_reset_peer_does_not_stop_concurrent_writer_or_reader",
+    "NativeOwnerTests.test_local_handler_fault_uses_core_fault_and_preserves_other_clients",
+    "NativeOwnerTests.test_configured_source_address_opens_native_transit_session",
+    "NativeOwnerTests.test_once_sigterm_closes_client_with_incomplete_post",
+    "NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation",
+    "NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit",
+    "NativeOwnerTests.test_article_over_the_body_limit_is_refused_and_the_owner_survives",
+    "NativeOwnerTests.test_date_on_connection_older_than_a_minute_is_current",
+    "NativeOwnerTests.test_each_submission_and_each_connection_take_a_fresh_reading"
+  ],
+  "uncertainty": "The two in_image_tests execute raw SBCL scripts with extracted host functions, not the saved image. start_store_owner diagnostic owner argv needs mapping to supported start intent; feed corruption needs a fault hook, not layout translation."
+}

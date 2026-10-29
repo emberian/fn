@@ -1,0 +1,78 @@
+{
+  "module": "frozen_relocation",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Relocated release TLS/signing and failed startup are public, but core/runtime/lib fixture assembly must follow the fn2 package layout.",
+  "representation_sites": [
+    {
+      "line": 29,
+      "reason": "Check fn2 shipped SHA256SUMS artifact and relocation integrity instead of an image-specific sidecar.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "image.sha256 frozen image manifest",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 34,
+      "reason": "Check fn2 shipped SHA256SUMS artifact and relocation integrity instead of an image-specific sidecar.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "image.sha256 frozen image manifest",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 87,
+      "reason": "Construct missing-runtime dependency in fn2 release layout; keep prompt-free bounded startup refusal.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "copied launcher plus .core/runtime/lib and empty openssl/lib bundle",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 88,
+      "reason": "Construct missing-runtime dependency in fn2 release layout; keep prompt-free bounded startup refusal.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "copied launcher plus .core/runtime/lib and empty openssl/lib bundle",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 89,
+      "reason": "Construct missing-runtime dependency in fn2 release layout; keep prompt-free bounded startup refusal.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "copied launcher plus .core/runtime/lib and empty openssl/lib bundle",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 90,
+      "reason": "Construct missing-runtime dependency in fn2 release layout; keep prompt-free bounded startup refusal.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "copied launcher plus .core/runtime/lib and empty openssl/lib bundle",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 91,
+      "reason": "Construct missing-runtime dependency in fn2 release layout; keep prompt-free bounded startup refusal.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "copied launcher plus .core/runtime/lib and empty openssl/lib bundle",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    29,
+    34,
+    60,
+    74,
+    87,
+    104
+  ],
+  "socket_only_tests": [
+    "FrozenRelocationTest.test_relocated_image_uses_bundled_tls_and_ml_dsa"
+  ],
+  "uncertainty": "Image sidecar/core layout is not a Node operation; R3 packaging fixture must be adapted alongside start/control. Failure on missing crypto runtime remains public."
+}

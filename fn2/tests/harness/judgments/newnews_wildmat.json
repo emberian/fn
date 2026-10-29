@@ -1,0 +1,30 @@
+{
+  "module": "newnews_wildmat",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "All assertions are NNTP reply bytes, uniqueness/completeness and concurrent-reader timing. Needs start/socket/control/stop adaptation and a supported profile equivalent to init --profile scale; no internal probe is executed.",
+  "representation_sites": [],
+  "sites": [
+    73,
+    74,
+    75,
+    102,
+    109,
+    114,
+    120,
+    122
+  ],
+  "socket_only_tests": [
+    "NativeNewnewsWildmat.test_wildmat_newnews_is_bounded_and_others_are_served"
+  ],
+  "uncertainty": null
+}

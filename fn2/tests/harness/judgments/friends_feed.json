@@ -1,0 +1,60 @@
+{
+  "module": "friends_feed",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-unchanged",
+  "reason": "Public installed launcher/version, peer key files, invitations, signed author CLI and NNTP STAT; neither log diagnostic printing nor source comments inspect node internals.",
+  "representation_sites": [
+    {
+      "line": 131,
+      "reason": "Keep security permissions of the operator-produced key directory.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "peer keygen output directory permissions",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 136,
+      "reason": "These are operator keygen output files consumed by the carried peer and hybrid CLI, not store representation.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "peer keygen ed-public.bin, ed-secret.bin, ml-private.pem, ml-public.pem permissions",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 138,
+      "reason": "Preserve the keygen output format needed by the carried signing CLI.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "peer keygen ed-secret.bin length",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 139,
+      "reason": "Bind the operator-produced public identity to keygen output.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "peer keygen principal.bin matches printed principal",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    62,
+    103,
+    110,
+    128,
+    131,
+    148,
+    185,
+    202
+  ],
+  "socket_only_tests": [
+    "NativeFriendsFeedTests.test_bare_fn_and_version",
+    "NativeFriendsFeedTests.test_a_cancel_reaches_the_friend_through_the_ordinary_feed"
+  ],
+  "uncertainty": null
+}

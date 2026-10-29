@@ -110,7 +110,8 @@ def capture_refusals(result):
 
 
 def inventory():
-    return json.loads(Path(__file__).with_name('natives-inventory.json').read_text())['modules']
+    from .inventory import load
+    return load()['modules']
 
 
 def flatten(suite):
@@ -248,14 +249,17 @@ def module_name(name):
 
 
 def run_one(name, backend, retired_skip=False):
+    from . import shim
     result = Result()
-    with capture_refusals(result) if backend == 'fn2' else nullcontext():
-        return _run_one(name, backend, retired_skip, result)
+    shim.install(backend)
+    try:
+        with capture_refusals(result) if backend == 'fn2' else nullcontext():
+            return _run_one(name, backend, retired_skip, result)
+    finally:
+        shim.uninstall()
 
 
 def _run_one(name, backend, retired_skip, result):
-    from . import shim
-    shim.install(backend)
     module = module_name(name)
     try:
         loaded = importlib.import_module(module)
