@@ -20,38 +20,46 @@
 
 ; Positive tooth evaluates the whole keystone antecedent and conclusion, on
 ; a nonempty history with two actual acknowledgements.
-(assert-event
+(defun fn2-lm-ack-positive ()
+  (declare (xargs :verify-guards nil))
  (and (fn2-lm-durable-ack-hyps *fn2-lm-test-ack-trace* *fn2-lm-test-honest*
                                :intact *fn2-lm-test-history*)
       (fn2-lm-acknowledged-in-historyp
        (fn2-lm-state-acknowledged (fn2-lm-trace-state *fn2-lm-test-ack-trace*)) *fn2-lm-test-history*)))
+(assert-event (equal (fn2-lm-ack-positive) t))
 
 ; Hypothesis-removal tooth 1: every other premise holds, but lying barriers
 ; permit the shorter consistent image without an independent witness.
-(assert-event
+(defun fn2-lm-ack-fence-negative ()
+  (declare (xargs :verify-guards nil))
  (let ((recovered (list *fn2-lm-test-b1*)))
    (and (not (fn2-cm-persistence-fence *fn2-lm-test-lying*))
         (fn2-lm-no-destructionp (fn2-lm-trace-state *fn2-lm-test-ack-trace*))
         (fn2-lm-recovery-allowedp *fn2-lm-test-ack-trace* *fn2-lm-test-lying* :intact recovered)
         (not (fn2-lm-acknowledged-in-historyp '(2 1) recovered)))))
+(assert-event (equal (fn2-lm-ack-fence-negative) t))
 
 ; Hypothesis-removal tooth 2: honest barriers do not prevent later destruction.
 (defconst *fn2-lm-test-corrupt*
   (append *fn2-lm-test-ack-trace* '((:corrupt-required 2))))
-(assert-event
+(defun fn2-lm-ack-destruction-negative ()
+  (declare (xargs :verify-guards nil))
  (let ((recovered (list *fn2-lm-test-b1*)))
    (and (fn2-cm-persistence-fence *fn2-lm-test-broad*)
         (not (fn2-lm-no-destructionp (fn2-lm-trace-state *fn2-lm-test-corrupt*)))
         (fn2-lm-recovery-allowedp *fn2-lm-test-corrupt* *fn2-lm-test-broad* :damaged recovered)
         (not (fn2-lm-acknowledged-in-historyp '(2 1) recovered)))))
+(assert-event (equal (fn2-lm-ack-destruction-negative) t))
 
 ; Hypothesis-removal tooth 3: the forbidden shorter result is an actual value.
-(assert-event
+(defun fn2-lm-ack-recovery-negative ()
+  (declare (xargs :verify-guards nil))
  (let ((recovered (list *fn2-lm-test-b1*)))
    (and (fn2-cm-persistence-fence *fn2-lm-test-honest*)
         (fn2-lm-no-destructionp (fn2-lm-trace-state *fn2-lm-test-ack-trace*))
         (not (fn2-lm-recovery-allowedp *fn2-lm-test-ack-trace* *fn2-lm-test-honest* :intact recovered))
         (not (fn2-lm-acknowledged-in-historyp '(2 1) recovered)))))
+(assert-event (equal (fn2-lm-ack-recovery-negative) t))
 
 ; ROUND2 E.5 row 1: honest fence/no later destruction, including repeated death.
 (assert-event
@@ -165,3 +173,5 @@
    (and (fn2-lm-recovery-allowedp *fn2-lm-test-corrupt* *fn2-lm-test-no-integrity* :damaged recovered)
         (fn2-lm-recovery-allowedp *fn2-lm-test-corrupt* *fn2-lm-test-no-integrity* :unknown recovered)
         (not (fn2-lm-recovery-allowedp *fn2-lm-test-corrupt* *fn2-lm-test-no-integrity* :torn-tail recovered)))))
+
+(fn2-assert-owed-teeth fn2-lm-durable-acknowledgement)
