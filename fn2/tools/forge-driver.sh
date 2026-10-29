@@ -17,9 +17,10 @@ case "${1:-}" in
   sim-acquisition-driver)      secs=1800 ;;
   sim-layer-a-a4-smoke)        secs=1800 ;;
   crash-model-differential)    secs=1800 ;;   # layer B's concrete differential sweep (B1)
+  sim-layer-b)                 secs=7200 ;;   # layer B's commit-machine concrete sweep (B3b-2 nightly row; FN2_B_PROFILE=tiny for the gate)
   blake3-vectors)              secs=7200 ;;
   "") echo "A: sim-layer-a-a4-driver core-allocation-driver sim-allocation-driver executor-allocation-driver sim-acquisition-driver sim-layer-a-a4-smoke" >&2
-      echo "B: crash-model-differential blake3-vectors (sim-layer-b, the 20,000-case concrete sweep, when B3b-2 lands: any tests/NAME.lsp runs the same way, SECS=N sets its timeout)" >&2; exit 2 ;;
+      echo "B: crash-model-differential blake3-vectors sim-layer-b (the 20,000-case concrete sweep; any tests/NAME.lsp runs the same way, SECS=N sets its timeout)" >&2; exit 2 ;;
   *) [ -f "$root/fn2/tests/$1.lsp" ] || { echo "no fn2/tests/$1.lsp" >&2; exit 2; }; secs=3600 ;;
 esac
 name=$1

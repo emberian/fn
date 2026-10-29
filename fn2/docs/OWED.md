@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 194; bound statements: 189; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+Requirements: 196; bound statements: 191; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -1530,6 +1530,30 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-LAYOUT-TEST-AUDIT-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-LAYOUT-TEST-AUDIT-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 14) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((MAGIC :U32) (VERSION :U16) (ADDRESS :U64) (CHECKPOINT (:ID CHECKPOINT)) (ALLOCATION (:ID ALLOCATION)) (ARTICLE (:ID ARTICLE)) (NUMBER (:ID GROUP-NUMBER)) (COUNT :VARINT) (COUNTER :U60) (VALID :BOOL) (INTEGRITY :DIGEST) (PADDING (:ZERO 7)) (BYTE :U8) (PAYLOAD (:OCTETS 17))) (FN2-LAYOUT-VALUES '((MAGIC :U32) (VERSION :U16) (ADDRESS :U64) (CHECKPOINT (:ID CHECKPOINT)) (ALLOCATION (:ID ALLOCATION)) (ARTICLE (:ID ARTICLE)) (NUMBER (:ID GROUP-NUMBER)) (COUNT :VARINT) (COUNTER :U60) (VALID :BOOL) (INTEGRITY :DIGEST) (PADDING (:ZERO 7)) (BYTE :U8) (PAYLOAD (:OCTETS 17))) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-COMMIT-ACK-IMPLIES-DURABLE)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-COMMIT-ACK-IMPLIES-DURABLE` | :OWED | :ASSERTION | `(LET ((RESULT (FN2-COMMIT-PROOF-RUN COMMANDS PROFILE MODE MEMBERS SEED))) (IMPLIES (FN2-COMMIT-ACK-HYPS PROFILE RESULT) (FN2-COMMIT-ACK-EVIDENCEP RESULT)))` | `(FN2-COMMIT-PROOF-ACK-BASELINE FN2-COMMIT-PROOF-ACK-FUA FN2-COMMIT-PROOF-FENCE-REMOVAL FN2-COMMIT-PROOF-FOLLOWER-FIRST FN2-COMMIT-PROOF-REUSE-BASELINE FN2-COMMIT-PROOF-REUSE-FUA FN2-COMMIT-PROOF-DUPLICATE-START FN2-COMMIT-PROOF-REFUSED-RETRY-CONTRACT)` | Actual B3 replay on the B-owned tiny profile, including explicit starts and reused rows under supported adapter faults and fixed test transactions; exact write identities/completions, baseline or preflush/FUA boundary, and required durable-image prefix. Only terminal :refuse events are removed for this physical claim; full HISTORY retains them. No flag premises; a persistent client refusal/idempotency ledger is a proposed layer-C integration need, and B5 discovery and arbitrary host adapters remain outside scope. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-COMMIT-UNCERTAIN-PERSISTS)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-COMMIT-UNCERTAIN-PERSISTS` | :OWED | :ASSERTION | `(LET ((RESULT (FN2-COMMIT-PROOF-RUN COMMANDS PROFILE MODE MEMBERS SEED))) (IMPLIES (FN2-COMMIT-PROOF-ADMITTED RESULT) (FN2-COMMIT-PROOF-STABLE RESULT)))` | `(FN2-COMMIT-PROOF-TIMEOUT-BASELINE FN2-COMMIT-PROOF-TIMEOUT-FUA FN2-COMMIT-PROOF-DISPATCH-REMOVAL FN2-COMMIT-PROOF-UNCERTAIN-REARM)` | Every supported replay transition preserves uncertain once entered; final process death/recovery is explicitly outside the epoch. No recovery transition is implemented by this claim. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:OPERATION-SET FN2-GRAMMAR)`
 
