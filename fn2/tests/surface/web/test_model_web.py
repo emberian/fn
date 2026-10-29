@@ -16,7 +16,7 @@ from urllib.parse import urlencode
 from fn2.tests.model.limits_model import STORE_INIT
 from fn2.tests.model.web_model import DOMAIN, GROUPS, PATHS, Request, WebModel
 from fn2.tests.surface import SurfaceCase, owned_ports, serving
-from fn2.tests.surface.live_evidence import capture_step, json_value, record_failure, run_live_machine
+from fn2.tests.surface.live_evidence import capture_step, record_failure, run_live_machine
 
 PASSWORD = 'web-fixture-password-1'  # FAKE-SECRET
 OTHER_PASSWORD = 'web-fixture-password-2'  # FAKE-SECRET
@@ -171,7 +171,7 @@ class Exercise:
         self.request(browser, 'GET', f'/remove?g={post.group}&id={quote(node_id, safe="")}')
         self.request(browser, 'POST', '/remove', dict(id=post.ident, g=post.group), csrf=csrf)
 
-    def matrix(self, browser, note):
+    def matrix(self, browser):
         for path in PATHS + ('/nope',):
             for method in ('GET', 'HEAD', 'POST'):
                 self.request(browser, method, path, {} if method == 'POST' else None, csrf='none')
@@ -185,7 +185,7 @@ class Exercise:
 
     @capture_step(None, 'web')
     def witnesses(self):
-        self.matrix('a', 'signed out')
+        self.matrix('a')
         self.request('a', 'GET', '/g?name=hz.web')
         self.request('a', 'POST', '/signin', dict(user='x', password='y', next='/'), pre=False)
         self.request('a', 'GET', '/redeem')
@@ -193,7 +193,7 @@ class Exercise:
                                                    again='mismatch-' + PASSWORD))
         self.request('a', 'POST', '/redeem', dict(code=self.model.pending[-1], user='wren',
                                                    password=PASSWORD, again=PASSWORD))
-        self.matrix('a', 'signed in')
+        self.matrix('a')
         self.request('a', 'GET', '/')
         self.request('a', 'GET', '/new?g=hz.web')
         self.post('a', 'hz.web', 'S0', 'b0', csrf='wrong')

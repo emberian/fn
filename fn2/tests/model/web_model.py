@@ -31,7 +31,7 @@ Profile: <=3 logins, <=12 posts, two browsers, one group set; plain HTTP on loop
 is one connection. A removal targets a post on the page, never a forged id. "We couldn't tell"
 (503, an uncertain submission) is not reachable in this profile and fails the run if seen.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import html
 import re
 from urllib.parse import quote
