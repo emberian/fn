@@ -1,0 +1,8 @@
+(in-package "ACL2")
+(set-prover-step-limit 300000)
+(set-cbd "../../tests/")
+(ld "sim-layer-a.lisp" :ld-error-action :error)
+(set-cbd "../../")
+(include-book "fn2/experiments/squares/choices")
+(include-book "fn2/experiments/squares/checks")
+(set-guard-checking nil)
