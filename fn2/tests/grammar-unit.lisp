@@ -171,7 +171,7 @@
     (let ((k (if (and (consp sizes) (posp (car sizes))) (car sizes) (len octets))))
       (mv-let (rest fn2-pool) (fn2-nntp-feed k octets slot gen fn2-pool)
         (mv-let (mode start pos overflow events fn2-pool)
-          (fn2-nntp-drive (+ 8 (* 4 (len octets))) mode pos pos 0 mask events slot gen tslot tgen fn2-pool)
+          (fn2-nntp-drive (+ 8 (* 4 (len octets))) mode pos pos 0 mask nil events slot gen tslot tgen fn2-pool)
           (declare (ignore start overflow))
           (if (>= (len rest) (len octets)) (mv events fn2-pool)
             (fn2-gu-wrong-chunks (if (consp sizes) (cdr sizes) nil) rest mode pos mask events slot gen tslot tgen fn2-pool)))))))

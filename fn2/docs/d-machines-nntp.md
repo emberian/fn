@@ -24,7 +24,7 @@ is attributed to layer D. Package `"ACL2"`, prefix `fn2-`; no `skip-proofs`, `de
 | T10, resident state bounded by the profile | `fn2/books/resident.lisp` (generator), `fn2/books/owed-d.lisp`, `fn2/tests/owed-d-unit.lisp`, `fn2/tests/owed-d-coverage.lisp` | D1a | D |
 | the command-grammar DSL `defgrammar` (framer, block framer, validators, renderer, runner) | `fn2/books/grammar.lisp`, evidence `fn2/tests/grammar-unit.lisp` | D2a | D |
 | the NNTP command and reply table | `fn2/books/nntp-grammar.lisp` | D2a | D |
-| generator, mutator, fuzzer and its three mutation controls | `fn2/books/grammar-gen.lisp`, `fn2/tests/grammar-fuzz.lisp` | D2b | D |
+| generator, mutator, fuzzer and its three mutation controls | `fn2/tests/grammar-gen.lisp` (a test library: it uses the simulator's PRNG, and nothing served includes it), `fn2/tests/grammar-fuzz.lisp`; the mutation controls are `*fn2-gram-faults*` in the grammar's logical runner | D2b | D |
 | table check against H's model | `fn2/tests/grammar-export.lsp` (writes the table), `fn2/tests/grammar-oracle.py` (reads `fn2/tests/model/nntp_model.py`) | D2a | D |
 | listener/connection machine | `fn2/books/conn.lisp` | D3 | D |
 | upload, transaction, cursor, TLS admission, wait | `fn2/books/{upload,txn,cursor,tls-admit,wait}.lisp` | D4-D8 | D |
@@ -375,7 +375,64 @@ and `wildmat`. Result: 0 disagreements. The oracle catches a mutated row or verd
   decision code. The grammar bounds it: three arguments at most for AUTHINFO.
 - The parser scans line ends byte by byte through the scalar export; D2c moves it onto R6a1's
   `fn2-pool-scan` / `fn2-pool-drop-prefix` and deletes that loop.
-- Generator, mutator and the fuzzer's three mutation controls are D2b.
+
+**The fuzzer (D2b; form F of RELEASE-PLAN §2.4).** `defgrammar-generator NAME`
+(`fn2/tests/grammar-gen.lisp`) reads NAME's `(:command ...)` rows from the declaration table, so
+the generator works from the same declared table as the parser. It emits `NAME-generate seed mask
+budget` and `NAME-mutate seed class mask budget spec`. A case is `(octets events replies mode)`: the
+transcript, the events the transcript runner must report, the reply codes it must render, and the
+mode it must end in. Randomness comes from the simulator's PRNG (`sim/prng`), so every case replays
+from `(seed, class, mask, budget)`.
+
+- **Generated.** A generated transcript holds one to six pipelined command lines, all admitted by
+  the mask. Keywords come in random case, and separators are runs of SP/TAB. Every argument kind has
+  its own generator: numbers at their edges, `n`, `n-` and `n-m` ranges, Message-IDs over RFC 3977
+  §3.6's octets, wildmats with negated alternatives, labels, calendar dates of six or eight digits,
+  times, GMT, tokens and rests. Block commands carry a dot-stuffed block that contains empty lines,
+  dot-led lines, 8-bit octets and long lines of up to 998 octets. A hand-off command (STARTTLS, or
+  COMPRESS when authenticated) ends the transcript. The expected event of each line is exact: its
+  tag, its argument count, and every argument descriptor, spans included.
+- **Mutated.** Twenty-one operators each change one line or one block line inside a transcript that
+  has valid commands before and after it, so the case also observes what follows a refusal. The
+  line operators are NUL, bare CR, bare LF, ill-formed UTF-8, the empty line, a control octet,
+  leading or trailing whitespace, a line over 512 octets, arguments over 497 octets, an unknown
+  keyword, an extra argument, a missing argument, an argument invalid for its kind, and a command in
+  a state that refuses it. The block operators are an unstuffed leading dot, NUL, bare CR, bare LF,
+  a line over 1,000 octets, and a missing terminator. The reply that each mutation must receive
+  comes from the spec table `*fn2-gf-spec*` (`tests/grammar-fuzz.lisp`). That table is written from
+  RFC 3977 §§3.1, 3.1.1, 3.2.1, RFC 5322 §2.1.1, `specs/nntp.md` and H's COMPRESS ruling, one
+  citation per row, and is never read from the grammar. For example: 501 and close for a malformed
+  line, 501 for a syntax error, 500 for an unknown keyword, 502 for transit commands on a reader
+  connection, 480 for COMPRESS before authentication, and a `:bad-line` event for a block line.
+- **Random.** One to three byte operations are applied to a valid transcript: a flip, an insertion
+  of CR, LF, NUL, `.`, SP, TAB or an 8-bit octet, a deletion, or a truncation. A random case has no
+  expectation of its own.
+- **Checked on every case.** Every case runs through the real framer, parser and renderer, both
+  unsplit and in a seeded chunking whose deliveries are bounded by the simulator's network capacity
+  (`*fn2-sim-network-capacity*`, 4,096). Each framer call runs within the 4 KiB run quantum. A case
+  must match its expectation if it has one. It must also be sound: every event is declared and
+  well formed, every reply passes its type check, there is one reply line per command or overflow,
+  and the run stops exactly where the grammar stops. And it must be invariant under fragmentation:
+  the chunked run equals the unsplit run, and for the first four seeds every split point is checked.
+- **Result.** 256 seeds × 3 masks (reader, peer, reader+authenticated) × 23 classes (valid, 21
+  operators, random) give 17,664 cases. None fails and no class is skipped. The run is
+  `tests/grammar-fuzz.lisp`, certified in 12.2 s; its tallies are in the `.cert.out`.
+- **Mutation controls.** The grammar's logical runner takes `fault`, which is nil in every statement
+  (`NAME-run` is `NAME-run-fault` with no fault). Each of the three faults makes the runner a
+  deliberately wrong grammar:
+  - `:accept` takes an argument that its syntax refuses (a wrong acceptance);
+  - `:reply` answers a syntax refusal with 500 (a wrong reply);
+  - `:drop` keeps the connection open after a malformed line (a dropped effect: the close).
+
+  The same campaign (16 seeds) catches all three, and the book asserts which classes catch each one.
+  `:accept` is caught by extra-arg, missing-arg and bad-arg. `:reply` is caught by every class whose
+  spec reply is 501. `:drop` is caught by the five malformed classes, and by random mutations.
+- **Not yet covered.** D2b exercises the grammar layer only: the framer, the parser, the typed
+  refusals and the hand-offs, through the transcript runner and its test responder (a line that
+  parses gets the command's first declared reply). The served replies, the WIRE and WORK checkers,
+  and the scenario `fuzz-nntp` under the simulator wait for D3's connection machine. Running against
+  a live node (`tests/test_fuzz_nntp.py` with fn1's nine reproducer sets) waits for D9. H's model
+  as a second oracle over the same cases is the next commit.
 
 ## 7. Keystones, phased
 
@@ -460,7 +517,7 @@ them.
 | D0 | resources.lisp, the tables of §3 as data with certification checks, the owed deadlock-freedom keystone, per-bundle exhaustion and cancellation scenarios for A's existing bundles | A only | done |
 | D1a | T10 in owed-d.lisp with teeth | A only | done |
 | D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | done |
-| D2b | generator, mutator, fuzzer, the three mutation controls | D2a | |
+| D2b | generator, mutator, fuzzer, the three mutation controls | D2a | generator, mutator, fuzzer and controls done; H-model oracle over the cases next |
 | D2c | parser onto R6a1's scan and drop-prefix | R6a1 | |
 | D3 | connection machine, greeting/HELP/QUIT/MODE/DATE/CAPABILITIES, timers, 400 refusals, ABI reconciled, T1 and T8 | R7, C2/C3, D0, D2 | |
 | D4-D9 | per the brief | per the brief | |

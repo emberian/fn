@@ -768,6 +768,21 @@
   (declare (xargs :guard t))
   (if (atom x) (null x) (and (natp (car x)) (< (car x) 256) (fn2-gram-octetsp (cdr x)))))
 
+;; Mutation controls (D2b, RELEASE-PLAN section 2.4): the logical runner
+;; takes FAULT, which is nil in every statement and every served use. Each
+;; named fault makes the runner a deliberately wrong grammar that the fuzzer
+;; (tests/grammar-fuzz.lisp) must catch: :accept takes an argument the
+;; command's syntax refuses (a wrong acceptance), :reply answers a syntax
+;; refusal with the unknown-command reply (a wrong reply), :drop keeps the
+;; connection open after a malformed line (a dropped effect: the close).
+(defconst *fn2-gram-faults* '(:accept :reply :drop))
+(defun fn2-gram-fault-code (fault code tag none)
+  (declare (xargs :guard t))
+  (if (and (eq fault :accept) (eq code :syntax) (natp tag) (natp none) (< tag none)) :ok code))
+(defun fn2-gram-fault-reply (fault reply rsyntax runknown)
+  (declare (xargs :guard t))
+  (if (and (eq fault :reply) (equal reply rsyntax)) runknown reply))
+
 ;; The first reply row of each command tag, by index.
 (defun fn2-gram-first-reply-arms (rows index last)
   (declare (xargs :verify-guards nil))
@@ -792,7 +807,8 @@
          (runknown (fn2-gram-const g "-reply-unknown"))
          (respond (fn2-gram-sym g "-respond"))
          (drive (fn2-gram-sym g "-drive"))
-         (run (fn2-gram-sym g "-run")))
+         (run (fn2-gram-sym g "-run"))
+         (run-fault (fn2-gram-sym g "-run-fault")))
     `((defun ,(fn2-gram-sym g "-parse-outcome-p") (s e mask slot gen okind oslot ogen fn2-pool)
         (declare (xargs :stobjs fn2-pool :verify-guards nil))
         (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
@@ -813,7 +829,7 @@
           (:unknown (mv ,none ,runknown))
           (:state (mv tag (,(fn2-gram-sym g "-state-refusal") tag)))
           (otherwise (mv ,none ,rsyntax))))
-      (defun ,drive (fuel mode start pos overflow mask events slot gen tslot tgen fn2-pool)
+      (defun ,drive (fuel mode start pos overflow mask fault events slot gen tslot tgen fn2-pool)
         (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix fuel)))
         (if (or (zp fuel) (eq mode :stopped)) (mv mode start pos overflow events fn2-pool)
           (if (eq mode :block)
@@ -821,33 +837,35 @@
                 (fn2-gram-block-step *fn2-gram-run-bytes* start pos overflow ,bcap slot gen 1 1 1 fn2-pool)
                 (case status
                   ((:need-more) (mv mode s p o events fn2-pool))
-                  ((:budget) (,drive (- fuel 1) mode s p o mask events slot gen tslot tgen fn2-pool))
+                  ((:budget) (,drive (- fuel 1) mode s p o mask fault events slot gen tslot tgen fn2-pool))
                   ((:fault) (mv :stopped s p o (cons (list :fault) events) fn2-pool))
-                  ((:overflow) (,drive (- fuel 1) mode s p o mask (cons (list :block-overflow) events) slot gen tslot tgen fn2-pool))
+                  ((:overflow) (,drive (- fuel 1) mode s p o mask fault (cons (list :block-overflow) events) slot gen tslot tgen fn2-pool))
                   (otherwise
-                   (,drive (- fuel 1) (if (eq status :terminator) :command :block) p p 0 mask
+                   (,drive (- fuel 1) (if (eq status :terminator) :command :block) p p 0 mask fault
                            (cons (if (eq status :data) (list :data ds de) (list status)) events)
                            slot gen tslot tgen fn2-pool))))
             (mv-let (status s p o)
               (fn2-gram-frame *fn2-gram-run-bytes* start pos overflow ,cap slot gen 1 1 1 fn2-pool)
               (case status
                 ((:need-more) (mv mode s p o events fn2-pool))
-                ((:budget) (,drive (- fuel 1) mode s p o mask events slot gen tslot tgen fn2-pool))
+                ((:budget) (,drive (- fuel 1) mode s p o mask fault events slot gen tslot tgen fn2-pool))
                 ((:line)
-                 (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
+                 (mv-let (code0 tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
                    (,parse s p mask slot gen 1 1 1 fn2-pool)
-                   (mv-let (cmd reply) (,respond code tag)
-                     (mv-let (rcode fn2-pool)
-                       (,render cmd reply mask 0 0 0 slot gen s 0 tslot tgen 1 1 1 fn2-pool)
-                       (let ((next (cond ((eq code :malformed) :stopped)
-                                         ((not (eq code :ok)) :command)
-                                         ((,(fn2-gram-sym g "-hand-off") tag) :stopped)
-                                         ((,(fn2-gram-sym g "-block") tag) :block)
-                                         (t :command))))
-                         (,drive (- fuel 1) next p p 0 mask
-                                 (cons (list :command code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3 s p rcode)
-                                       events)
-                                 slot gen tslot tgen fn2-pool))))))
+                   (let ((code (fn2-gram-fault-code fault code0 tag ,none)))
+                     (mv-let (cmd reply0) (,respond code tag)
+                       (mv-let (rcode fn2-pool)
+                         (,render cmd (fn2-gram-fault-reply fault reply0 ,rsyntax ,runknown)
+                                  mask 0 0 0 slot gen s 0 tslot tgen 1 1 1 fn2-pool)
+                         (let ((next (cond ((eq code :malformed) (if (eq fault :drop) :command :stopped))
+                                           ((not (eq code :ok)) :command)
+                                           ((,(fn2-gram-sym g "-hand-off") tag) :stopped)
+                                           ((,(fn2-gram-sym g "-block") tag) :block)
+                                           (t :command))))
+                           (,drive (- fuel 1) next p p 0 mask fault
+                                   (cons (list :command code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3 s p rcode)
+                                         events)
+                                   slot gen tslot tgen fn2-pool)))))))
                 (otherwise
                  (mv-let (rcode fn2-pool)
                    (,render ,none ,rsyntax mask 0 0 0 slot gen 0 0 tslot tgen 1 1 1 fn2-pool)
@@ -863,19 +881,20 @@
         (if (>= (nfix k) (nfix n)) nil
           (mv-let (ok b) (fn2-gram-read slot gen (nfix k) 1 1 1 fn2-pool)
             (cons (if ok b :unreadable) (,(fn2-gram-sym g "-slot-bytes") (+ 1 (nfix k)) n slot gen fn2-pool)))))
-      (defun ,(fn2-gram-sym g "-chunks") (sizes octets mode start pos overflow mask events slot gen tslot tgen fn2-pool)
+      (defun ,(fn2-gram-sym g "-chunks") (sizes octets mode start pos overflow mask fault events slot gen tslot tgen fn2-pool)
         (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (len octets)))
         (if (atom octets) (mv mode events fn2-pool)
           (let ((k (if (and (consp sizes) (posp (car sizes))) (car sizes) (len octets))))
             (mv-let (rest fn2-pool) (,(fn2-gram-sym g "-feed") k octets slot gen fn2-pool)
               (mv-let (mode start pos overflow events fn2-pool)
-                (,drive (+ 8 (* 4 (len octets))) mode start pos overflow mask events slot gen tslot tgen fn2-pool)
+                (,drive (+ 8 (* 4 (len octets))) mode start pos overflow mask fault events slot gen tslot tgen fn2-pool)
                 (if (>= (len rest) (len octets)) (mv mode events fn2-pool)
                   (,(fn2-gram-sym g "-chunks") (if (consp sizes) (cdr sizes) nil) rest mode start pos overflow
-                                               mask events slot gen tslot tgen fn2-pool)))))))
+                                               mask fault events slot gen tslot tgen fn2-pool)))))))
       ;; Events in order, and the rendered reply bytes, for octets arriving in
-      ;; chunks of the given sizes (the remainder as one chunk).
-      (defun ,run (octets sizes mask)
+      ;; chunks of the given sizes (the remainder as one chunk), under FAULT
+      ;; (nil, or a mutation control of *fn2-gram-faults*).
+      (defun ,run-fault (octets sizes mask fault)
         (declare (xargs :verify-guards nil))
         (with-local-stobj fn2-pool
           (mv-let (result fn2-pool)
@@ -883,11 +902,14 @@
               (mv-let (c1 slot gen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
                 (mv-let (c2 tslot tgen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
                   (mv-let (mode events fn2-pool)
-                    (,(fn2-gram-sym g "-chunks") sizes octets :command 0 0 0 mask nil slot gen tslot tgen fn2-pool)
+                    (,(fn2-gram-sym g "-chunks") sizes octets :command 0 0 0 mask fault nil slot gen tslot tgen fn2-pool)
                     (mv (list c1 c2 mode (reverse events)
                               (,(fn2-gram-sym g "-slot-bytes") 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool))
                         fn2-pool)))))
             result)))
+      (defun ,run (octets sizes mask)
+        (declare (xargs :verify-guards nil))
+        (,run-fault octets sizes mask nil))
       (make-event (value (fn2-declare '(:operation-set ,g) nil nil nil)))
       (defthm-owed ,(fn2-gram-sym g "-parse-total") (s e mask slot gen okind oslot ogen pool)
         (implies (and (fn2-poolp pool) (fn2-pool-wfp pool) (natp s) (natp e))
