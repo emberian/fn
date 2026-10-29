@@ -5,7 +5,7 @@
 (include-book "fn2/books/crash-model")
 (include-book "fn2/sim/storage")
 (include-book "fn2/sim/prng")
-(ld "fn2/tests/crash-model-differential.lisp" :ld-error-action :error)
+(include-book "fn2/tests/crash-model-differential")
 ; Session-only compiled evaluation, following sim-layer-a-a4-driver.lsp.
 ; No book bypasses admission or installs a trust tag.
 :q

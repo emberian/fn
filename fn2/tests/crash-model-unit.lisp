@@ -171,7 +171,8 @@
   (and (fn2-cm-statep s)
        (fn2-cm-statep (fn2-cm-step s event profile))))
 
-(assert-event
+(defun fn2-cmu-wfp-positive ()
+  (declare (xargs :verify-guards nil))
  (and (fn2-cm-statep *fn2-cmu-s0*)
       (fn2-cmu-preservedp *fn2-cmu-s0* (list :submit-write 1 0 *fn2-cmu-a* nil) *fn2-cmu-honest*)
       (fn2-cmu-preservedp *fn2-cmu-submitted* '(:complete-write 1 :ok) *fn2-cmu-honest*)
@@ -188,13 +189,16 @@
       (fn2-cmu-preservedp *fn2-cmu-written* '(:dead) *fn2-cmu-broad*)
       (fn2-cmu-preservedp *fn2-cmu-fenced* (list :corrupt 0 *fn2-cmu-garbage*) *fn2-cmu-budget*)
       (fn2-cmu-preservedp *fn2-cmu-fenced* '(:read 0) *fn2-cmu-honest*)))
+(assert-event (equal (fn2-cmu-wfp-positive) t))
 
 ; Removing the initial state invariant makes the actual preservation
 ; conclusion false, not merely unprovable. A read cannot repair a bad image.
-(assert-event
+(defun fn2-cmu-wfp-negative ()
+  (declare (xargs :verify-guards nil))
  (let* ((bad (fn2-cm-put 1 nil *fn2-cmu-s0*))
         (after (fn2-cm-step bad '(:read 0) *fn2-cmu-honest*)))
    (and (not (fn2-cm-statep bad)) (not (fn2-cm-statep after)))))
+(assert-event (equal (fn2-cmu-wfp-negative) t))
 
 ; Completion identity remains unique while its completed-write record lives.
 (assert-event
@@ -213,25 +217,29 @@
 
 ; Removing A-PERSISTENCE-FENCE allows a successful lying fence followed by
 ; the old image. This is a concrete falsification of the same conclusion.
-(assert-event
+(defun fn2-cmu-fence-negative ()
+  (declare (xargs :verify-guards nil))
  (let ((lied (fn2-cm-complete-fence *fn2-cmu-fencing* 10 :ok *fn2-cmu-empty* *fn2-cmu-lying*)))
    (and (not (fn2-cm-persistence-fence *fn2-cmu-lying*))
         (fn2-cm-fence-allowedp *fn2-cmu-fencing* 10 :ok *fn2-cmu-empty* *fn2-cmu-lying*)
         (fn2-cm-crash-image-allowedp lied *fn2-cmu-empty* *fn2-cmu-lying*)
         (not (fn2-cm-fence-durability-hyps *fn2-cmu-fencing* 10 *fn2-cmu-empty* *fn2-cmu-lying*))
         (not (fn2-cm-fence-durability-concl *fn2-cmu-fencing* 10 *fn2-cmu-empty*
-                                           *fn2-cmu-empty* *fn2-cmu-lying*)))) )
+                                           *fn2-cmu-empty* *fn2-cmu-lying*)))))
+(assert-event (equal (fn2-cmu-fence-negative) t))
 
 ; FUA tooth over a dirty unrelated dependency, so "unchanged" is substantive.
 ; Replacing plain FUA by preflush+FUA removes precisely the own-only premise
 ; and makes the same conclusion false: the dependency becomes durable.
-(assert-event
+(defun fn2-cmu-fua-teeth ()
+  (declare (xargs :verify-guards nil))
  (let* ((fua (fn2-cm-submit-write *fn2-cmu-written* 2 4096 *fn2-cmu-b* t))
         (pre (fn2-cm-submit-write *fn2-cmu-written* 2 4096 *fn2-cmu-b* :preflush-fua)))
    (and (fn2-cm-fua-only-hyps fua 2 '(:ok 4096) *fn2-cmu-honest* 0 512)
         (fn2-cm-fua-only-concl fua 2 '(:ok 4096) *fn2-cmu-honest* 0 512)
         (not (fn2-cm-fua-only-hyps pre 2 '(:ok 4096) *fn2-cmu-honest* 0 512))
         (not (fn2-cm-fua-only-concl pre 2 '(:ok 4096) *fn2-cmu-honest* 0 512)))))
+(assert-event (equal (fn2-cmu-fua-teeth) t))
 
 ; Misdirection may occur while a request is still in flight: the crash cut
 ; must tear its physical destination even though no completion was delivered.
@@ -352,7 +360,8 @@
 ; Unit isolation, not global quiescence: a covered write survives even when
 ; another in-flight write tears in an unrelated unit. The whole crash image
 ; is deliberately different from the fence snapshot.
-(assert-event
+(defun fn2-cmu-fence-positive ()
+  (declare (xargs :verify-guards nil))
  (let* ((s (fn2-cm-submit-write *fn2-cmu-fencing* 2 4096 *fn2-cmu-b* nil))
         (after (fn2-cm-complete-fence s 10 :ok *fn2-cmu-image-a* *fn2-cmu-honest*))
         (torn (update-nth 8 *fn2-cmu-garbage* *fn2-cmu-image-a*)))
@@ -360,10 +369,12 @@
         (fn2-cm-crash-image-allowedp after torn *fn2-cmu-honest*)
         (not (equal torn (fn2-cm-visible s)))
         (fn2-cm-fence-durability-concl s 10 *fn2-cmu-image-a* torn *fn2-cmu-honest*))))
+(assert-event (equal (fn2-cmu-fence-positive) t))
 
 ; Removing unit isolation admits a concrete destructive overlap. The fence
 ; itself still succeeds honestly; only its later overwrite defeats the claim.
-(assert-event
+(defun fn2-cmu-isolation-negative ()
+  (declare (xargs :verify-guards nil))
  (let* ((s (fn2-cm-submit-write *fn2-cmu-fencing* 2 0 *fn2-cmu-b* nil))
         (after (fn2-cm-complete-fence s 10 :ok *fn2-cmu-image-a* *fn2-cmu-honest*))
         (torn (update-nth 0 *fn2-cmu-garbage* *fn2-cmu-image-a*)))
@@ -372,6 +383,7 @@
         (not (fn2-cm-fence-durability-hyps s 10 *fn2-cmu-image-a* *fn2-cmu-honest*))
         (fn2-cm-crash-image-allowedp after torn *fn2-cmu-honest*)
         (not (fn2-cm-fence-durability-concl s 10 *fn2-cmu-image-a* torn *fn2-cmu-honest*)))))
+(assert-event (equal (fn2-cmu-isolation-negative) t))
 
 ; Shape-valid stamps alone do not establish snapshot freshness. A newer
 ; persisted version invalidates the snapshot premise, and an older visible
@@ -439,3 +451,5 @@
         (not (fn2-cm-find 2 (fn2-cm-inflight after)))
         (equal (fn2-cm-durable after) *fn2-cmu-image-a*)
         (equal (fn2-cm-complete-preflush s 2 :io bad *fn2-cmu-broad*) s))))
+
+(fn2-assert-owed-teeth fn2-cm-well-formedness fn2-cm-honest-fence-durability fn2-cm-fua-alone)
