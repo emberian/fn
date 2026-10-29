@@ -4,7 +4,9 @@
 (defun fn2-decl-table (kind)
   (declare (xargs :guard t))
   (case kind (:columns 'fn2-columns) (:machine 'fn2-machine-kinds)
-        (:operation-set 'fn2-operation-sets) (:core-child 'fn2-core-children) ((:owed :square) 'fn2-squares)))
+        (:operation-set 'fn2-operation-sets) (:core-child 'fn2-core-children) (:square 'fn2-squares)
+        (:correspondence 'fn2-correspondences)
+        (:command 'fn2-commands)))
 (defun fn2-decl-row (id world)
   (declare (xargs :verify-guards nil))
   (cdr (assoc-eq (cadr id) (table-alist (fn2-decl-table (car id)) world))))
@@ -134,7 +136,8 @@
 (defun fn2-decl-all-rows (world)
   (declare (xargs :verify-guards nil))
   (append (fn2-decl-rows :columns world) (fn2-decl-rows :machine world)
-          (fn2-decl-rows :core-child world) (fn2-decl-rows :operation-set world) (fn2-decl-rows :owed world)))
+          (fn2-decl-rows :core-child world) (fn2-decl-rows :operation-set world) (fn2-decl-rows :square world)
+          (fn2-decl-rows :correspondence world)))
 ; DEFUN-NX's outer RETURN-LAST only prevents execution; its last argument
 ; is the translated logical statement. Do not unfold arbitrary functions.
 (defun fn2-decl-statement-body (statement world)
@@ -170,7 +173,7 @@
   (let ((manifest (fn2-decl-manifests events :exported world)))
     `(table ,(fn2-decl-table (car id)) ',(cadr id)
        ',(append payload
-           (append (and (member-eq (car id) '(:owed :square))
+           (append (and (eq (car id) :square)
                         (list :translated (fn2-decl-statement-body
                                             (fn2-decl-get :statement payload) world)))
            (list :decl-id id :layer (fn2-decl-layer book
@@ -192,7 +195,7 @@
      ',(fn2-decl-set :reuse
          (cons (list :declaration id :book book) (fn2-decl-get :reuse old)) old)))
 (defun fn2-decl-input (kind)
-  (case kind (:machine :machines) (:core-child :children) ((:owed :square) :evidence)))
+  (case kind (:machine :machines) (:core-child :children) ((:square :correspondence) :evidence)))
 (defun fn2-decl-sealed (id world)
   (declare (xargs :verify-guards nil))
   (cdr (assoc-eq (fn2-decl-input (car id)) (table-alist 'fn2-input-seals world))))
@@ -234,7 +237,7 @@
             ',id (fn2-decl-get :section (fn2-decl-sealed ',id world))))
        (old
         (if (and (equal (take ,(len payload)
-                               ,(if (eq (car id) :owed)
+                               ,(if (eq (car id) :square)
                                     '(fn2-decl-set :checks nil
                                        (fn2-decl-set :proof '(:owed) old))
                                   'old)) ',payload)

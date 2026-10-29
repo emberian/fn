@@ -206,3 +206,44 @@
   '(fn2-transition fn2-concrete-loop fn2-concrete-turn fn2-turn fn2-init-executor
     fn2-core-idle-deadline fn2-exec-harvest fn2-exec-mailbox fn2-exec-principal
     fn2-exec-service fn2-exec-account-work) (w state)))
+
+; The executor's case source (DSL-METATHEORY 3.2): the executor is not a
+; machine; it contributes seven labels with named selectors over the core in
+; which fn2-transition runs with observations allowed. Selectors are
+; proof-facing (non-executable); that they partition the non-machine
+; transitions under the loop invariant is owed by the correspondence.
+(defun-nx fn2-exec-select-clock (fn2-core)
+  (and (fn2-exec-observation-p fn2-core) (not (fn2-core-posted-p fn2-core))
+       (equal (fn2-ops-clock-posted (fn2-core-ops fn2-core)) 1)))
+(defun-nx fn2-exec-select-signal (fn2-core)
+  (and (fn2-exec-observation-p fn2-core) (not (fn2-core-posted-p fn2-core))
+       (not (equal (fn2-ops-clock-posted (fn2-core-ops fn2-core)) 1))))
+(defun-nx fn2-exec-select-visit (kind fn2-core)
+  (and (not (fn2-exec-observation-p fn2-core)) (fn2-exec-eligible-p fn2-core)
+       (mv-let (visit principal position core) (fn2-exec-visit fn2-core)
+         (declare (ignore position))
+         (and (equal visit kind)
+              (or (not (equal kind *fn2-visit-principal*))
+                  (mv-let (code id core) (fn2-exec-pop principal core)
+                    (declare (ignore id core)) (not (eq code :ok))))))))
+(defun-nx fn2-exec-select-service-0 (fn2-core) (fn2-exec-select-visit *fn2-visit-commit* fn2-core))
+(defun-nx fn2-exec-select-service-1 (fn2-core) (fn2-exec-select-visit *fn2-visit-timer* fn2-core))
+(defun-nx fn2-exec-select-service-2 (fn2-core) (fn2-exec-select-visit *fn2-visit-notification* fn2-core))
+(defun-nx fn2-exec-select-service-3 (fn2-core) (fn2-exec-select-visit *fn2-visit-maintenance* fn2-core))
+(defun-nx fn2-exec-select-empty-principal (fn2-core)
+  (fn2-exec-select-visit *fn2-visit-principal* fn2-core))
+(make-event
+ (value (fn2-declare '(:operation-set fn2-executor-cases)
+          '(:cases ((:executor :clock) (:executor :signal)
+                    (:executor :service 0) (:executor :service 1)
+                    (:executor :service 2) (:executor :service 3)
+                    (:executor :empty-principal))
+            :selectors (((:executor :clock) fn2-exec-select-clock)
+                        ((:executor :signal) fn2-exec-select-signal)
+                        ((:executor :service 0) fn2-exec-select-service-0)
+                        ((:executor :service 1) fn2-exec-select-service-1)
+                        ((:executor :service 2) fn2-exec-select-service-2)
+                        ((:executor :service 3) fn2-exec-select-service-3)
+                        ((:executor :empty-principal) fn2-exec-select-empty-principal))
+            :doc "Clock, signal, four service visits and the empty principal visit.")
+          nil nil)))

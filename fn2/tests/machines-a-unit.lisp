@@ -375,19 +375,21 @@
    :budget (:bytes 1 :steps 1 :descriptors 1) :continuations ((:ready fn2-machine-idle))
    :initial ((generation (+ slot base))))
  :expected :hard :with-output-off nil :check-expansion t)
+; The seven-name obligation list is gone: a machine contributes its case
+; catalogue and states nothing; an :obligations key is refused.
 (must-fail
- (defmachine fn2-control-unregistered-obligation :states (:ready)
+ (defmachine fn2-control-obligations-key :states (:ready)
    :budget (:bytes 1 :steps 1 :descriptors 1) :continuations ((:ready fn2-machine-idle))
-   :obligations ((initialization (:generator fn2-no-such-generator)) (preservation :owed)
-                 (frame :owed) (output-correspondence :owed) (budget-progress :owed)
-                 (flat-representation :owed) (flat-transition :owed)))
- :with-output-off nil :check-expansion t)
+   :obligations ((initialization :owed)))
+ :expected :any :with-output-off nil :check-expansion t)
 (assert-event
- (and (equal (fn2-machine-property 'fn2-scribe :obligations (w state)) *fn2-machine-obligations*)
+ (and (equal (fn2-machine-property 'fn2-listener :cases (w state))
+             '((:run fn2-listener :accepting) (:run fn2-listener :closing)
+               (:observe fn2-listener :accept-result) (:observe fn2-listener :close-result)))
       (equal (getpropc 'fn2-listener-run 'formals nil (w state)) '(id budget fn2-core))
       (equal (fn2-machine-property 'fn2-listener :continuations (w state))
              '((:accepting fn2-listener-step) (:closing fn2-listener-step)))))
-(value-triple (cw "R5a DECLARATION: named callbacks and initializers; explicit owed entries; code/unregistered obligation refusals PASS~%"))
+(value-triple (cw "R5a DECLARATION: named callbacks and initializers; case catalogue; code and :obligations refusals PASS~%"))
 
 (must-fail
  (defun fn2-control-wrong-kind-run (id fn2-core)

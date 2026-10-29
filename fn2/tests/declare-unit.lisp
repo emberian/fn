@@ -89,7 +89,7 @@
 (fn2-assert-owed-teeth fn2-decl-layer-owed fn2-decl-layer-override)
 (assert-event
  (and (eq (fn2-decl-get :layer (fn2-decl-row '(:columns fn2-three) (w state))) :b)
-      (eq (fn2-decl-get :layer (fn2-decl-row '(:owed fn2-decl-layer-owed) (w state))) :b)
-      (eq (fn2-decl-get :layer (fn2-decl-row '(:owed fn2-decl-layer-override) (w state))) :c)
+      (eq (fn2-decl-get :layer (fn2-decl-row '(:square fn2-decl-layer-owed) (w state))) :b)
+      (eq (fn2-decl-get :layer (fn2-decl-row '(:square fn2-decl-layer-override) (w state))) :c)
       (eq (fn2-decl-get :layer (fn2-decl-row '(:columns fn2-ops) (w state))) :a)))
 (value-triple (cw "BOOK LAYER UNIT: columns=:B owed=:B override=:C default=:A; identical replay and conflicting-layer refusal PASS~%"))

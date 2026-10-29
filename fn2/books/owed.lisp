@@ -76,9 +76,9 @@
   (if (and (consp teeth) (fn2-owed-teethp teeth))
       (let ((statement (intern-in-package-of-symbol
                         (concatenate 'string (symbol-name name) "$OWED") name)))
-        (fn2-declare (list :owed name)
+        (fn2-declare (list :square name)
           (append (and layer (list :layer layer))
-            (list :schema schema :template template :owner (or from (list :owed name))
+            (list :schema schema :template template :owner (or from (list :square name))
                   :origin origin :case case :case-source case-source :boundary boundary
                   :contract contract :sides sides :shared shared :claim claim
                   :shared-handler-mutation shared-handler-mutation

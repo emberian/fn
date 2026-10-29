@@ -147,25 +147,21 @@
              (fn2-columns-phase-formp (cadar fields)
               (strip-cars (strip-cdrs (fn2-columns-enum-constants (fn2-columns-sym name "-STATE") states 0)))))
          (fn2-machine-initialp name columns states (cdr fields)))))
-(defconst *fn2-machine-obligations*
- '((initialization :owed) (preservation :owed) (frame :owed)
-   (output-correspondence :owed) (budget-progress :owed)
-   (flat-representation :owed) (flat-transition :owed)))
-(defun fn2-machine-obligationsp (entries world)
+; The machine's case catalogue (DSL-METATHEORY 3.2): one label per phase,
+; then one per observed event, in declaration order. A correspondence binds
+; statements to these labels; the machine states none itself.
+(defun fn2-machine-phase-labels (name states)
   (declare (xargs :verify-guards nil))
-  (if (atom entries) (null entries)
-    (let ((reference (cadar entries)))
-      (and (doublet-listp entries)
-           (or (eq reference :owed)
-               (and (true-listp reference) (equal (len reference) 2)
-                    (symbolp (cadr reference))
-                    (case (car reference)
-                      (:owed (fn2-decl-row (list :square (cadr reference)) world))
-                      (:generator (and (assoc-eq (cadr reference) (table-alist 'fn2-obligation-generators world))
-                                       (or (function-symbolp (cadr reference) world)
-                                           (getpropc (cadr reference) 'macro-body nil world))))
-                      (otherwise nil))))
-           (fn2-machine-obligationsp (cdr entries) world)))))
+  (if (atom states) nil
+    (cons (list :run name (car states)) (fn2-machine-phase-labels name (cdr states)))))
+(defun fn2-machine-observe-labels (name observes)
+  (declare (xargs :verify-guards nil))
+  (if (atom observes) nil
+    (cons (list :observe name (caar observes)) (fn2-machine-observe-labels name (cdr observes)))))
+(defun fn2-machine-case-labels (name states observes)
+  (declare (xargs :verify-guards nil))
+  (append (fn2-machine-phase-labels name states)
+          (fn2-machine-observe-labels name observes)))
 
 (defun fn2-machine-observe-kind-arms (names tag predicatep router)
   (declare (xargs :verify-guards nil))
@@ -181,7 +177,7 @@
     (cons (list :function (cadar entries) :at :callbacks)
           (fn2-machine-requirements (cdr entries)))))
 
-(defun fn2-machine-events (name states fields accounts budget continuations observes capacity initial obligations)
+(defun fn2-machine-events (name states fields accounts budget continuations observes capacity initial)
   (declare (xargs :verify-guards nil))
   (let* ((enum (fn2-columns-sym name "-STATE"))
          (cols (append `((phase (:enum ,enum ,states))) *fn2-machine-common-fields* fields))
@@ -195,7 +191,7 @@
                 :layout ,cols :packed ,(fn2-machine-packed-layout cols 0)
                 :calling-convention (:run (id budget ,@(fn2-machine-row-vars cols) fn2-core)
                                      :observe (id event outcome reason count aux0 aux1 ,@(fn2-machine-row-vars cols) fn2-core))
-                :obligations ,obligations)
+                :cases ,(fn2-machine-case-labels name states observes))
       (append (list (list :declaration (list :columns name)))
               (fn2-machine-requirements (append continuations observes)))
       `((defcolumns ,name ,cols :put-policy ,states)
@@ -222,8 +218,7 @@
 
        ,@(fn2-machine-prepare-events name cols initial)))))
 
-(defmacro defmachine (name &key states fields accounts budget continuations observes (capacity '1) initial
-                             (obligations '*fn2-machine-obligations*))
+(defmacro defmachine (name &key states fields accounts budget continuations observes (capacity '1) initial)
   (if (and (consp states)
            (fn2-columns-keyword-listp states) (no-duplicatesp-eq states)
            (<= (len states) 256) (fn2-columns-declarationsp fields)
@@ -240,13 +235,7 @@
            (natp (cadr (member-eq :bytes budget)))
            (natp (cadr (member-eq :steps budget)))
            (natp (cadr (member-eq :descriptors budget))) capacity)
-      `(make-event
-        (let ((obligations ,(if (eq obligations '*fn2-machine-obligations*) obligations `',obligations)))
-          (if (and (equal (strip-cars obligations) (strip-cars *fn2-machine-obligations*))
-                   (fn2-machine-obligationsp obligations (w state)))
-              (value (fn2-machine-events ',name ',states ',fields ',accounts ',budget
-                       ',continuations ',observes ',capacity ',initial obligations))
-            (er soft 'defmachine "Unregistered or unstated machine obligation in ~x0." ',name))))
+      (fn2-machine-events name states fields accounts budget continuations observes capacity initial)
     (er hard 'defmachine "Invalid machine declaration ~x0." name)))
 
 ; Table order is declaration order, independent of TABLE-ALIST's newest first.
@@ -750,3 +739,12 @@
                   (fn2-core-wfp (,put value fn2-core)))
          :hints (("Goal" :in-theory (enable fn2-core-wfp))))
        (in-theory (disable ,get ,put)))))
+
+; The generated router's one case: an observation it cannot deliver (stale
+; generation, wrong kind, a phase that does not observe the event). Its
+; contract is the composite effect of the executor's harvest transition.
+(make-event
+ (value (fn2-declare '(:operation-set fn2-machine-router)
+          '(:cases ((:router :fallback))
+            :doc "Unrouted observation: the generated router's refusal inside harvest.")
+          nil nil)))

@@ -29,7 +29,7 @@
 (fn2-resolve :callbacks)
 (must-fail (fn2-resolve :core) :expected :soft)
 (assert-event (equal (fn2-decl-unresolved (fn2-decl-all-rows (w state)) :core (w state))
-                    '((:owed fn2-dm-orphan) (:owner (:operation-set fn2-dm-operations) :at :core))))
+                    '((:square fn2-dm-orphan) (:owner (:operation-set fn2-dm-operations) :at :core))))
 (make-event (value (fn2-declare '(:operation-set fn2-dm-operations) nil nil nil)))
 (fn2-resolve :core)
 (defwide-columns fn2-dm-wide)
