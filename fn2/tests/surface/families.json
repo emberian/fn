@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source": "RELEASE-PLAN.md \u00a71, \u00a72.1\u20132.6 (2026-10-28); H1a natives-inventory.json",
+  "source": "RELEASE-PLAN.md §1, §2.1–2.6 (2026-10-28); H1a natives-inventory.json",
   "inventory_count": 120,
   "duplicate_native_assignments": {},
   "families": {
@@ -19,12 +19,12 @@
         },
         {
           "line": 23,
-          "row": "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST \u2026, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
+          "row": "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST …, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
           "carried": true
         },
         {
           "line": 24,
-          "row": "HELP (31 keywords; an unknown keyword in command state \u2192 500, PRF-194)",
+          "row": "HELP (31 keywords; an unknown keyword in command state → 500, PRF-194)",
           "carried": true
         },
         {
@@ -99,7 +99,7 @@
         },
         {
           "line": 43,
-          "row": "XFN-ZARTICLE &lt;msgid&gt; &lt;digest&gt;\u2026 (a digest *list*; 229 with the encoded response on a dictionary match, else the plain ARTICLE reply; `specs/nntp.md` l.2484-2499), capability XFN-DICT",
+          "row": "XFN-ZARTICLE &lt;msgid&gt; &lt;digest&gt;… (a digest *list*; 229 with the encoded response on a dictionary match, else the plain ARTICLE reply; `specs/nntp.md` l.2484-2499), capability XFN-DICT",
           "carried": true
         },
         {
@@ -117,29 +117,29 @@
         "S": {
           "applicable": true,
           "module": "fn2.tests.surface.nntp.test_model_nntp",
-          "reason": "RELEASE-PLAN \u00a72.2",
+          "reason": "RELEASE-PLAN §2.2",
           "status": "implemented",
           "model": "fn2.tests.model.nntp_model"
         },
         "F": {
           "applicable": true,
           "module": "fn2.tests.surface.nntp.test_fuzz_nntp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "H": {
           "applicable": true,
           "module": "fn2.tests.surface.nntp.test_history_nntp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "E": {
           "applicable": true,
           "module": "fn2.tests.surface.nntp.test_examples_nntp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "R": {
           "applicable": true,
           "module": "fn2.tests.surface.nntp.test_perf_nntp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         }
       },
       "carried_natives": [
@@ -197,8 +197,8 @@
         ],
         "conformance": [
           "greeting 200/201 (posting allowed / not), banner `fn VERSION`",
-          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST \u2026, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
-          "HELP (31 keywords; an unknown keyword in command state \u2192 500, PRF-194)",
+          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST …, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
+          "HELP (31 keywords; an unknown keyword in command state → 500, PRF-194)",
           "QUIT, MODE READER (200/201, not mode-switching), DATE (503 without a clock)",
           "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
           "NEXT / LAST (moves only to an available article)",
@@ -290,7 +290,7 @@
           "unclaimed"
         ]
       },
-      "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
+      "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.nntp_model",
       "model_scope": "live empty-group reader/cursor state machine; H2b differential CLI expands command/transport coverage",
       "fuzz": {
@@ -375,7 +375,7 @@
       "section1_rows": [
         {
           "line": 61,
-          "row": "the cursor `fncu` v1 (\u2264 346 octets: history, incarnation, consumer, epoch, principal, query, query-version, view-version, position); a foreign cursor refused before any mutation",
+          "row": "the cursor `fncu` v1 (≤ 346 octets: history, incarnation, consumer, epoch, principal, query, query-version, view-version, position); a foreign cursor refused before any mutation",
           "carried": true
         },
         {
@@ -390,7 +390,7 @@
         },
         {
           "line": 64,
-          "row": "the four exchanges: consumer request \u2192 {reply, status, poll}; reasoned-request \u2192 {\u2026, reasoned-reply}; store-identity k24 \u2192 k25; live-profile k26 \u2192 k27",
+          "row": "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27",
           "carried": true
         },
         {
@@ -410,7 +410,7 @@
         },
         {
           "line": 68,
-          "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer \u2026`, `consumer-article/inspect/project`",
+          "row": "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`",
           "carried": true
         },
         {
@@ -428,29 +428,29 @@
         "S": {
           "applicable": true,
           "module": "fn2.tests.surface.consumer.test_model_consumer",
-          "reason": "RELEASE-PLAN \u00a72.2",
+          "reason": "RELEASE-PLAN §2.2",
           "status": "implemented",
           "model": "fn2.tests.model.consumer_model"
         },
         "F": {
           "applicable": true,
           "module": "fn2.tests.surface.consumer.test_fuzz_consumer",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "H": {
           "applicable": true,
           "module": "fn2.tests.surface.consumer.test_history_consumer",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "E": {
           "applicable": true,
           "module": "fn2.tests.surface.consumer.test_examples_consumer",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "R": {
           "applicable": true,
           "module": "fn2.tests.surface.consumer.test_perf_consumer",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         }
       },
       "carried_natives": [
@@ -467,14 +467,14 @@
       "carried_count": 9,
       "native_rows": {
         "agent_wait": [
-          "XREDEEM CODE NAME / XREDEEM PASS PW (381 \u2192 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
+          "XREDEEM CODE NAME / XREDEEM PASS PW (381 → 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
           "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
           "`account invite|list|set-password|access|delete|hash`, `principal list|set-password|delete|bind|unbind`, `consumer bind|unbind|show`"
         ],
         "consumer_e2": [
           "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
           "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
-          "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer \u2026`, `consumer-article/inspect/project`"
+          "the consumer's exactly-once contract (its own inbox keyed `(history, incarnation, source, application-id, operation-id)`), `fn consumer …`, `consumer-article/inspect/project`"
         ],
         "consumer_exchange": [
           "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22"
@@ -483,7 +483,7 @@
           "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22"
         ],
         "consumer_identity": [
-          "XREDEEM CODE NAME / XREDEEM PASS PW (381 \u2192 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
+          "XREDEEM CODE NAME / XREDEEM PASS PW (381 → 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
           "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
           "`account invite|list|set-password|access|delete|hash`, `principal list|set-password|delete|bind|unbind`, `consumer bind|unbind|show`"
         ],
@@ -495,14 +495,14 @@
           "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)"
         ],
         "store_identity": [
-          "the four exchanges: consumer request \u2192 {reply, status, poll}; reasoned-request \u2192 {\u2026, reasoned-reply}; store-identity k24 \u2192 k25; live-profile k26 \u2192 k27",
+          "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27",
           "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)"
         ],
         "topic_local": [
           "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)"
         ]
       },
-      "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
+      "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.consumer_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
@@ -576,7 +576,7 @@
       "section1_rows": [
         {
           "line": 70,
-          "row": "`init [--budget --largest --profile --max-*] GROUP\u2026`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+          "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
           "carried": true
         },
         {
@@ -616,7 +616,7 @@
         },
         {
           "line": 78,
-          "row": "`tls reload`, `tls self-signed NAME\u2026 [--days]`",
+          "row": "`tls reload`, `tls self-signed NAME… [--days]`",
           "carried": true
         },
         {
@@ -656,12 +656,12 @@
         },
         {
           "line": 86,
-          "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, \u2026; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+          "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
           "carried": true
         },
         {
           "line": 114,
-          "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/\u2026,share/fn/\u2026,clients/}`; no images, no signatures",
+          "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
           "carried": true
         },
         {
@@ -693,30 +693,30 @@
         },
         "S": {
           "applicable": true,
-          "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2",
-          "status": "owed",
+          "module": "fn2.tests.surface.operator.test_model_operator",
+          "reason": "RELEASE-PLAN §2.2",
+          "status": "implemented",
           "model": "fn2.tests.model.operator_model"
         },
         "F": {
           "applicable": true,
           "module": "fn2.tests.surface.operator.test_fuzz_operator",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "H": {
           "applicable": false,
           "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2 dash: no history form"
+          "reason": "RELEASE-PLAN §2.2 dash: no history form"
         },
         "E": {
           "applicable": true,
           "module": "fn2.tests.surface.operator.test_examples_operator",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "R": {
           "applicable": true,
           "module": "fn2.tests.surface.operator.test_perf_operator",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         }
       },
       "carried_natives": [
@@ -762,7 +762,7 @@
         ],
         "host_lifecycle": [
           "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
-          "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, \u2026; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)"
+          "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)"
         ],
         "installed_start": [
           "unclaimed"
@@ -771,19 +771,19 @@
           "unclaimed"
         ],
         "operator_cli": [
-          "`init [--budget --largest --profile --max-*] GROUP\u2026`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`"
+          "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`"
         ],
         "operator_verbs": [
           "LIST, LIST ACTIVE [wildmat] (y/n/m), NEWSGROUPS, OVERVIEW.FMT, HEADERS, ACTIVE.TIMES, COUNTS, MOTD, SUBSCRIPTIONS (RFC 3977/6048)",
-          "`init [--budget --largest --profile --max-*] GROUP\u2026`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+          "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
           "`recover [--repair truncate SEG:OFF]`",
           "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
           "`bp-boundary add`, `bp-route add|remove`, `carry JOURNAL list|inspect|pause|resume|drop [--abandon]`"
         ],
         "operator_walk": [
-          "`init [--budget --largest --profile --max-*] GROUP\u2026`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+          "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
           "`recover [--repair truncate SEG:OFF]`",
-          "`tls reload`, `tls self-signed NAME\u2026 [--days]`"
+          "`tls reload`, `tls self-signed NAME… [--days]`"
         ],
         "outcome_algebra": [
           "unclaimed"
@@ -805,9 +805,9 @@
           "**The natives as the classical gate**"
         ]
       },
-      "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
+      "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.operator_model",
-      "model_scope": "model and live Target adapter owed",
+      "model_scope": "HZ: row 76 group create/retire/describe/policy/moderate, moderation list/approve/reject, motd set/clear, capacity, retention set/expire; row 77 account invite/list/set-password/access/delete and principal list/set-password/delete. CLI state composed into NntpModel; fixed per-verb success/refusal witnesses plus generated steps. Other operator rows and authority, subscribe-default, account hash, principal/consumer bindings remain outside this S slice.",
       "fuzz": {
         "driver": "fn2.tests.surface.operator:fuzz (owed)",
         "grammar": "argv",
@@ -833,8 +833,8 @@
             "S",
             "F"
           ],
-          "model_examples": 200,
-          "steps": 50,
+          "model_examples": 5,
+          "steps": 30,
           "natives": "selected families",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
@@ -845,8 +845,8 @@
             "F",
             "R"
           ],
-          "model_examples": 5000,
-          "steps": 50,
+          "model_examples": 50,
+          "steps": 30,
           "natives": "all natives in selected families; --all selects all 120",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
@@ -904,29 +904,29 @@
         "S": {
           "applicable": true,
           "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2",
+          "reason": "RELEASE-PLAN §2.2",
           "status": "owed",
           "model": "fn2.tests.model.web_model"
         },
         "F": {
           "applicable": true,
           "module": "fn2.tests.surface.web.test_fuzz_web",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "H": {
           "applicable": false,
           "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2 dash: no history form"
+          "reason": "RELEASE-PLAN §2.2 dash: no history form"
         },
         "E": {
           "applicable": true,
           "module": "fn2.tests.surface.web.test_examples_web",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "R": {
           "applicable": true,
           "module": "fn2.tests.surface.web.test_perf_web",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         }
       },
       "carried_natives": [
@@ -944,7 +944,7 @@
           "404 / 405 with Allow (15 routes on 12 paths: `/ /a /g /health /new /post /redeem /remove /signin /signout /style.css /theme`); `[web]` config; `LISTENING-WEB`; sessions in memory until sign-out, `idle_seconds` or restart; no accounts or permissions of its own (WEB-003/005)"
         ]
       },
-      "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
+      "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.web_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
@@ -1014,7 +1014,7 @@
         },
         {
           "line": 42,
-          "row": "XFNCATCHUP WILDMAT FROM CHAIN QUANTUM \u2192 291 / 423 / 501 (serving half)",
+          "row": "XFNCATCHUP WILDMAT FROM CHAIN QUANTUM → 291 / 423 / 501 (serving half)",
           "carried": true
         },
         {
@@ -1049,7 +1049,7 @@
         },
         {
           "line": 105,
-          "row": "the guide's two \"known gaps\" (peering-with-a-friend L243-250) are stale, *[Astra]*: dedicated pull credentials exist and are tested (`peer pull-login`; `tests/test_native_peer_pull.py:805-833`, SCN-1139: survives feed edits and restart, works with outbound disabled) and the 500/501 \u2192 IHAVE fallback for non-streaming peers is specified (`specs/nntp.md:2414-2450`)",
+          "row": "the guide's two \"known gaps\" (peering-with-a-friend L243-250) are stale, *[Astra]*: dedicated pull credentials exist and are tested (`peer pull-login`; `tests/test_native_peer_pull.py:805-833`, SCN-1139: survives feed edits and restart, works with outbound disabled) and the 500/501 → IHAVE fallback for non-streaming peers is specified (`specs/nntp.md:2414-2450`)",
           "carried": true
         }
       ],
@@ -1062,29 +1062,29 @@
         "S": {
           "applicable": true,
           "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2",
+          "reason": "RELEASE-PLAN §2.2",
           "status": "owed",
           "model": "fn2.tests.model.peering_model"
         },
         "F": {
           "applicable": true,
           "module": "fn2.tests.surface.peering.test_fuzz_peering",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "H": {
           "applicable": true,
           "module": "fn2.tests.surface.peering.test_history_peering",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "E": {
           "applicable": true,
           "module": "fn2.tests.surface.peering.test_examples_peering",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "R": {
           "applicable": true,
           "module": "fn2.tests.surface.peering.test_perf_peering",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         }
       },
       "carried_natives": [
@@ -1118,7 +1118,7 @@
           "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`"
         ],
         "peer_catchup": [
-          "XFNCATCHUP WILDMAT FROM CHAIN QUANTUM \u2192 291 / 423 / 501 (serving half)",
+          "XFNCATCHUP WILDMAT FROM CHAIN QUANTUM → 291 / 423 / 501 (serving half)",
           "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
           "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`"
         ],
@@ -1133,7 +1133,7 @@
         "peer_pull": [
           "`peer set|login|add|remove|list|pull|pull-login|catch-up|feed pause/resume|distributions|budget`, `peer keygen|invite|accept|confirm`",
           "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
-          "the guide's two \"known gaps\" (peering-with-a-friend L243-250) are stale, *[Astra]*: dedicated pull credentials exist and are tested (`peer pull-login`; `tests/test_native_peer_pull.py:805-833`, SCN-1139: survives feed edits and restart, works with outbound disabled) and the 500/501 \u2192 IHAVE fallback for non-streaming peers is specified (`specs/nntp.md:2414-2450`)"
+          "the guide's two \"known gaps\" (peering-with-a-friend L243-250) are stale, *[Astra]*: dedicated pull credentials exist and are tested (`peer pull-login`; `tests/test_native_peer_pull.py:805-833`, SCN-1139: survives feed edits and restart, works with outbound disabled) and the 500/501 → IHAVE fallback for non-streaming peers is specified (`specs/nntp.md:2414-2450`)"
         ],
         "peer_rows_growth": [
           "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD"
@@ -1144,14 +1144,14 @@
           "`retire [--drain S]`",
           "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
           "the round driver (deadlines, resume, idle, write quanta)",
-          "the guide's two \"known gaps\" (peering-with-a-friend L243-250) are stale, *[Astra]*: dedicated pull credentials exist and are tested (`peer pull-login`; `tests/test_native_peer_pull.py:805-833`, SCN-1139: survives feed edits and restart, works with outbound disabled) and the 500/501 \u2192 IHAVE fallback for non-streaming peers is specified (`specs/nntp.md:2414-2450`)"
+          "the guide's two \"known gaps\" (peering-with-a-friend L243-250) are stale, *[Astra]*: dedicated pull credentials exist and are tested (`peer pull-login`; `tests/test_native_peer_pull.py:805-833`, SCN-1139: survives feed edits and restart, works with outbound disabled) and the 500/501 → IHAVE fallback for non-streaming peers is specified (`specs/nntp.md:2414-2450`)"
         ],
         "protected_peering": [
           "IHAVE (435/436/437/335/235; 502 on a reader connection), MODE STREAM (203), CHECK (238/431/438), TAKETHIS (239/439; 436 deferred not 400; `max-inflight` 16)",
           "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`"
         ]
       },
-      "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
+      "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.peering_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
@@ -1257,29 +1257,29 @@
         "S": {
           "applicable": true,
           "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2",
+          "reason": "RELEASE-PLAN §2.2",
           "status": "owed",
           "model": "fn2.tests.model.bp_model"
         },
         "F": {
           "applicable": true,
           "module": "fn2.tests.surface.bp.test_fuzz_bp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "H": {
           "applicable": true,
           "module": "fn2.tests.surface.bp.test_history_bp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "E": {
           "applicable": true,
           "module": "fn2.tests.surface.bp.test_examples_bp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "R": {
           "applicable": true,
           "module": "fn2.tests.surface.bp.test_perf_bp",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         }
       },
       "carried_natives": [
@@ -1296,7 +1296,7 @@
           "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)"
         ]
       },
-      "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
+      "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.bp_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
@@ -1361,7 +1361,7 @@
       "section1_rows": [
         {
           "line": 41,
-          "row": "XREDEEM CODE NAME / XREDEEM PASS PW (381 \u2192 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
+          "row": "XREDEEM CODE NAME / XREDEEM PASS PW (381 → 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
           "carried": true
         },
         {
@@ -1421,7 +1421,7 @@
         },
         {
           "line": 78,
-          "row": "`tls reload`, `tls self-signed NAME\u2026 [--days]`",
+          "row": "`tls reload`, `tls self-signed NAME… [--days]`",
           "carried": true
         },
         {
@@ -1439,29 +1439,29 @@
         "S": {
           "applicable": true,
           "module": "fn2.tests.surface.tls_auth.test_model_tls_auth",
-          "reason": "RELEASE-PLAN \u00a72.2",
+          "reason": "RELEASE-PLAN §2.2",
           "status": "implemented",
           "model": "fn2.tests.model.nntp_model"
         },
         "F": {
           "applicable": true,
           "module": "fn2.tests.surface.tls_auth.test_fuzz_tls_auth",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "H": {
           "applicable": false,
           "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2 dash: no history form"
+          "reason": "RELEASE-PLAN §2.2 dash: no history form"
         },
         "E": {
           "applicable": true,
           "module": "fn2.tests.surface.tls_auth.test_examples_tls_auth",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "R": {
           "applicable": true,
           "module": "fn2.tests.surface.tls_auth.test_perf_tls_auth",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         }
       },
       "carried_natives": [
@@ -1486,23 +1486,23 @@
       "carried_count": 17,
       "native_rows": {
         "auth": [
-          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST \u2026, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
+          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST …, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
           "third failed AUTHINFO PASS / SASL: 481, 400, close",
           "AUTHINFO USER/PASS (salted tagged BLAKE3 verifier `:fn-authsec-v2`); `auth required` / `protected-only` (483 before TLS)",
           "`account invite|list|set-password|access|delete|hash`, `principal list|set-password|delete|bind|unbind`, `consumer bind|unbind|show`"
         ],
         "compress": [
-          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST \u2026, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
+          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST …, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
           "COMPRESS DEFLATE (206; bomb and BFINAL close rules)"
         ],
         "friends_accounts": [
-          "XREDEEM CODE NAME / XREDEEM PASS PW (381 \u2192 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
+          "XREDEEM CODE NAME / XREDEEM PASS PW (381 → 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
           "AUTHINFO USER/PASS (salted tagged BLAKE3 verifier `:fn-authsec-v2`); `auth required` / `protected-only` (483 before TLS)",
           "`account invite|list|set-password|access|delete|hash`, `principal list|set-password|delete|bind|unbind`, `consumer bind|unbind|show`",
           "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)"
         ],
         "group_access": [
-          "XREDEEM CODE NAME / XREDEEM PASS PW (381 \u2192 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
+          "XREDEEM CODE NAME / XREDEEM PASS PW (381 → 281 / 482; 502 when authenticated; 483 before TLS under protected-only)",
           "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
           "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
           "`account invite|list|set-password|access|delete|hash`, `principal list|set-password|delete|bind|unbind`, `consumer bind|unbind|show`"
@@ -1516,7 +1516,7 @@
           "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)"
         ],
         "implicit_tls": [
-          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST \u2026, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
+          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST …, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
           "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)"
         ],
         "key_statements": [
@@ -1525,11 +1525,11 @@
           "`control grant|revoke|list|log|evidence`, `article withdraw MSGID --reason`, `keys redecide MSGID`"
         ],
         "listener_v6": [
-          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST \u2026, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
+          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST …, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
           "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)"
         ],
         "sasl": [
-          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST \u2026, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
+          "CAPABILITIES (always: VERSION 2, READER, OVER MSGID, HDR, XPAT, NEWNEWS, LIST …, IMPLEMENTATION; conditional: POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT)",
           "AUTHINFO SASL: PLAIN (TLS only), SCRAM-SHA-256, SCRAM-SHA-256-PLUS (tls-exporter channel binding); 383/283/503/504; DIGEST-MD5 is a stated deviation"
         ],
         "starttls": [
@@ -1550,7 +1550,7 @@
         "tls_reload": [
           "STARTTLS (382; nothing framed during the handshake; resets group and cursor; 502 after auth / twice / after COMPRESS)",
           "TLS key exchange: post-quantum first (ML-KEM hybrid), the certificate reload",
-          "`tls reload`, `tls self-signed NAME\u2026 [--days]`"
+          "`tls reload`, `tls self-signed NAME… [--days]`"
         ],
         "tls_transport": [
           "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)"
@@ -1560,7 +1560,7 @@
           "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)"
         ]
       },
-      "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
+      "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.nntp_model",
       "model_scope": "live TLS/auth connection sequences over the shared NNTP model; transport and authentication gates",
       "fuzz": {
@@ -1652,7 +1652,7 @@
         },
         {
           "line": 90,
-          "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, \u2026)",
+          "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
           "carried": true
         }
       ],
@@ -1665,29 +1665,29 @@
         "S": {
           "applicable": true,
           "module": "fn2.tests.surface.config_limits.test_model_config_limits",
-          "reason": "RELEASE-PLAN \u00a72.2",
+          "reason": "RELEASE-PLAN §2.2",
           "status": "implemented",
           "model": "fn2.tests.model.limits_model"
         },
         "F": {
           "applicable": true,
           "module": "fn2.tests.surface.config_limits.test_fuzz_config_limits",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "H": {
           "applicable": false,
           "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2 dash: no history form"
+          "reason": "RELEASE-PLAN §2.2 dash: no history form"
         },
         "E": {
           "applicable": true,
           "module": "fn2.tests.surface.config_limits.test_examples_config_limits",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "R": {
           "applicable": true,
           "module": "fn2.tests.surface.config_limits.test_perf_config_limits",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         }
       },
       "carried_natives": [
@@ -1727,13 +1727,13 @@
           "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)"
         ],
         "image_floor": [
-          "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, \u2026)"
+          "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)"
         ],
         "image_heap": [
-          "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, \u2026)"
+          "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)"
         ],
         "install": [
-          "`init [--budget --largest --profile --max-*] GROUP\u2026`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+          "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
           "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
           "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`"
         ],
@@ -1751,7 +1751,7 @@
         ],
         "profile": [
           "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
-          "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, \u2026)"
+          "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)"
         ],
         "public_exposure": [
           "greeting 200/201 (posting allowed / not), banner `fn VERSION`",
@@ -1769,12 +1769,12 @@
           "unclaimed"
         ],
         "start_every_preset": [
-          "`init [--budget --largest --profile --max-*] GROUP\u2026`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+          "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
           "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
-          "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, \u2026)"
+          "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)"
         ]
       },
-      "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
+      "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.limits_model",
       "model_scope": "HW policy state + NNTP exposure witnesses; policy set outcomes and wire effects, no recorded fn1 adjudications; init key parsing/refusals; send-stalled remains E",
       "fuzz": {
@@ -1870,30 +1870,30 @@
         },
         "S": {
           "applicable": true,
-          "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2",
-          "status": "owed",
+          "module": "fn2.tests.surface.store_ops.test_model_store_ops",
+          "reason": "RELEASE-PLAN §2.2",
+          "status": "implemented",
           "model": "fn2.tests.model.store_ops_model"
         },
         "F": {
           "applicable": true,
           "module": "fn2.tests.surface.store_ops.test_fuzz_store_ops",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "H": {
           "applicable": false,
           "module": null,
-          "reason": "RELEASE-PLAN \u00a72.2 dash: no history form"
+          "reason": "RELEASE-PLAN §2.2 dash: no history form"
         },
         "E": {
           "applicable": true,
           "module": "fn2.tests.surface.store_ops.test_examples_store_ops",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         },
         "R": {
           "applicable": true,
           "module": "fn2.tests.surface.store_ops.test_perf_store_ops",
-          "reason": "RELEASE-PLAN \u00a72.2"
+          "reason": "RELEASE-PLAN §2.2"
         }
       },
       "carried_natives": [
@@ -1960,7 +1960,7 @@
           "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)"
         ],
         "state_checkpoint": [
-          "the four exchanges: consumer request \u2192 {reply, status, poll}; reasoned-request \u2192 {\u2026, reasoned-reply}; store-identity k24 \u2192 k25; live-profile k26 \u2192 k27"
+          "the four exchanges: consumer request → {reply, status, poll}; reasoned-request → {…, reasoned-reply}; store-identity k24 → k25; live-profile k26 → k27"
         ],
         "store_lineage": [
           "unclaimed"
@@ -1969,9 +1969,9 @@
           "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`"
         ]
       },
-      "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
+      "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.store_ops_model",
-      "model_scope": "model and live Target adapter owed",
+      "model_scope": "HZ: rows 73-75 and row 84 subset status/recover/export/export --status/import with field override/bless-snapshot/compact/checkpoint/inspect. Authenticated POST, identity/group/number/BODY round trips through NntpModel, stopped/live lifecycle and named refusals. Reclaim/RSS, rebind-filesystem, node-secret, repair-control, provenance, probe, digest, journal, retention/compression and repair truncation remain outside this S slice.",
       "fuzz": {
         "driver": "fn2.tests.surface.store_ops:fuzz (owed)",
         "grammar": "argv",
@@ -1997,8 +1997,8 @@
             "S",
             "F"
           ],
-          "model_examples": 200,
-          "steps": 50,
+          "model_examples": 5,
+          "steps": 20,
           "natives": "selected families",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
@@ -2009,8 +2009,8 @@
             "F",
             "R"
           ],
-          "model_examples": 5000,
-          "steps": 50,
+          "model_examples": 50,
+          "steps": 20,
           "natives": "all natives in selected families; --all selects all 120",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"

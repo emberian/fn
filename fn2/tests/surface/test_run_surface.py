@@ -238,7 +238,7 @@ class SurfaceRunnerTests(unittest.TestCase):
 
     def test_owed_forms_are_listed_but_not_generated(self):
         for family, entry in surface.FAMILIES.items():
-            if family in ('nntp', 'consumer', 'tls_auth', 'config_limits'):
+            if family in ('nntp', 'consumer', 'tls_auth', 'config_limits', 'operator', 'store_ops'):
                 continue
             self.assertEqual(entry['forms']['S']['status'], 'owed')
             self.assertEqual(entry['forms']['S']['model'], entry['model'])
@@ -257,6 +257,26 @@ class SurfaceRunnerTests(unittest.TestCase):
         self.assertIn('test_live_state_machine', result.skipped[0][0].id())
         self.assertIn(surface.SKIP, result.skipped[0][1])
         self.assertEqual(surface.FAMILIES['consumer']['forms']['S']['status'], 'implemented')
+
+    def test_hz_s_modules_cadence_and_unserved_gate(self):
+        for family, steps in (('operator', 30), ('store_ops', 20)):
+            with self.subTest(family=family):
+                entry = surface.FAMILIES[family]
+                self.assertEqual(entry['forms']['S']['status'], 'implemented')
+                self.assertEqual(entry['forms']['S']['module'],
+                                 f'fn2.tests.surface.{family}.test_model_{family}')
+                for box, examples in (('laptop', 5), ('hbox', 50)):
+                    with mock.patch.dict(surface.RUN, box=box):
+                        selected = surface.live_model_settings(family)
+                    self.assertEqual((selected.max_examples, selected.stateful_step_count),
+                                     (examples, steps))
+                with mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn2'}):
+                    result = run_surface.Result()
+                    surface.form_suite(family, 'S').run(result)
+                self.assertEqual(len(result.skipped), 1)
+                self.assertEqual(result.skipped[0][0].id(),
+                    f'fn2.tests.surface.{family}.test_model_{family}.TestSurface.test_live_state_machine')
+                self.assertIn(surface.SKIP, result.skipped[0][1])
 
     def test_package_discovery_preserves_ids_without_owed_forms(self):
         suite = unittest.defaultTestLoader.loadTestsFromName('fn2.tests.surface.nntp')
@@ -629,6 +649,30 @@ class DescriptorLifecycleTests(unittest.TestCase):
                 super().__init__(case)
         self.examples('config_limits', lambda: machine(self, target_factory=FakeTarget)(),
                       lambda m: m.valid_set(('exposure-connections', '8')))
+
+    def test_operator_descriptor_lifecycle(self):
+        from fn2.tests.model.test_operator_model import FakeTarget as Base
+        from fn2.tests.surface.operator.test_model_operator import machine
+        owner = self
+        class FakeTarget(Base):
+            @surface.owned_ports
+            def __init__(self, case):
+                self.node = owner.reserve_node(case)
+                super().__init__(case)
+        self.examples('operator', lambda: machine(self, target_factory=FakeTarget)(),
+                      lambda m: m.transition(('motd set', 'Lifecycle witness'), False))
+
+    def test_store_ops_descriptor_lifecycle(self):
+        from fn2.tests.model.test_store_ops_model import FakeTarget as Base
+        from fn2.tests.surface.store_ops.test_model_store_ops import machine
+        owner = self
+        class FakeTarget(Base):
+            @surface.owned_ports
+            def __init__(self, case):
+                self.node = owner.reserve_node(case)
+                super().__init__(case)
+        self.examples('store_ops', lambda: machine(self, target_factory=FakeTarget)(),
+                      lambda m: m.maintenance('checkpoint', False))
 
 
 if __name__ == '__main__':

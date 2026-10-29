@@ -29,7 +29,8 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   does not emulate those machines. There is no P test module.
 - **S** takes live counts from each family’s per-box `model_examples`: NNTP
   200/5,000 (laptop/hbox), consumer 5/50, with 50 steps each; TLS/auth and
-  config/limits use 5/50 examples with 30 generated steps plus fixed witnesses. H5a measured
+  config/limits and operator use 5/50 examples with 30 generated steps plus fixed
+  witnesses; store_ops uses 5/50 with 20 generated steps plus fixed witnesses. H5a measured
   NNTP’s 200 examples at 96.016 seconds; consumer measured about 30 seconds
   per example. Fake model unit tests retain 200 examples. `live_model_settings`
   disables Hypothesis’s shrink phase: zero shrink executions. Failure replay
@@ -40,7 +41,17 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   selection, absent articles, reader/cursor commands and reconnects, comparing
   replies before applying model updates. Accepted POST projection, cancellation
   and nonempty pinned-view schedules are extensions, not covered by this machine.
-  Consumer, TLS/auth and config/limits also have implemented live S machines.
+  Consumer, TLS/auth, config/limits, operator and store_ops also have implemented
+  live S machines. Operator covers the row 76 group/moderation/MOTD/capacity/
+  retention verbs and row 77 account/principal login management; authority,
+  subscribe-default, hashes and bindings remain outside this slice. Store_ops
+  covers export/import, stopped-copy blessing, compact/checkpoint, inspect,
+  recover and status, preserving Message-IDs, group numbers and bodies through
+  the single NNTP model. Reclaim and its RSS measurement remain outside this slice.
+  Both HZ machines use independent fake targets and mutation controls, record
+  mismatches before asserting, and leave their adjudication tables empty until
+  the seat records fn1 replies. Each example targets roughly 30 seconds nominal;
+  live timing is unmeasured here, and the child supervisor remains the hard bound.
   The remaining S forms are `owed` in the manifest, with their required model module.
   They appear in reports but generate no test and are not counted as run.
 - **F** uses H2b through its public CLI for NNTP, without importing driver
@@ -134,7 +145,8 @@ The surface `owned_ports` adapter records the exact `(port, fd)` acquired by
 its construction thread and releases only those leases after the node and
 socket cleanups. Concurrent decorated constructors are serialized; another
 thread's ordinary reservations stay process-owned. This applies to the shared
-Target (NNTP/consumer), TLS/auth, config/limits and its fixed config witnesses.
+Target (NNTP/consumer), TLS/auth, config/limits and its fixed config witnesses,
+operator and store_ops.
 Tests retain all fake-machine instances after every teardown, exercise real
 port-lock files with only the TCP-bind probe replaced, and compare `/proc/self/fd`
 or `/dev/fd` before/after all five examples of each machine. Constructor failure
