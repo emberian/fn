@@ -544,10 +544,29 @@ The sprint (`origin/fn2/sprint-cd` 8e3488fcb) is compost; its gaps are the seams
 
 ## 11. Deferred assertions E must restore
 
-Everything that needs authentication, access rules, the TLS adapter or the CLI: AUTHINFO/SASL,
-XREDEEM, STARTTLS completion (D7 has the admission half), COMPRESS (after authentication only),
-posting permissions, access-rule refusals, the natives needing them. Listed per command as D3-D9 meet
-them.
+D gates only what it can execute without authentication, access rules, the TLS adapter or the CLI
+(brief, "Acceptance"). Every assertion it cannot gate is listed here, per command or behaviour. Each
+row gives the D quest that builds the half D owns, the reason D cannot assert the rest, and the E
+quest that restores it, with its test (RELEASE-PLAN §1.1). Until E restores a row, D's simulator
+scenarios run with an anonymous principal under `anonymous open` on a plaintext listener, and its
+natives skip the row by name. A row leaves this table only when E's test is green.
+
+| command or behaviour | D builds (quest) | what D cannot assert | E restores (quest): test |
+|---|---|---|---|
+| every reader and posting command under `anonymous none` / `auth required`: 480 | D2 (480 replies declared; COMPRESS's 480 is grammar-level), D3 (the connection carries its auth reference, anonymous until set) | that an unauthenticated session gets 480 for every command but the public set (`specs/nntp.md:2322`), and that the pinned configuration decides it | E2: `auth`, `public_exposure`; the H model's `_requires_auth` |
+| the pinned access rule (H ruling HZ3, fn1 bug W01) | D3 (one access-rule reference per connection, pinned at authentication and re-read only at re-authentication; every command reads that one reference) | that LIST ACTIVE, GROUP, ARTICLE and POST apply the same pinned rule after an `account access` change on an open connection | E2: `group_access`; a W01 differential row in H |
+| GROUP/LISTGROUP/ARTICLE/... on a group the login cannot read: "no such newsgroup" (411/430), never a distinguishing refusal | D6 (the cursor answers from the visibility the connection's view grants) | the visibility itself: read wildmats, private groups, moderation queues | E2: `group_access`, `visibility_join` |
+| POST 440 (`:principal`, `:not-permitted`), read-only and moderated groups, `Approved` from a moderator only, signed-post bindings | D5 (the transaction's typed refusals, each a fixture) | which principal may post where, who moderates, the hybrid-signature binding | E2, E6: `moderation`, `hybrid_author`, `key_statements` |
+| CAPABILITIES conditional labels (POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT) | D3 (the always-on labels; the slots for the conditional ones) | the conditions: TLS state, the auth profile, the peer record, the shipped dictionaries | E1, E2, E4: `conformance`, `auth`, `sasl`, `compress`, `implicit_tls` |
+| AUTHINFO USER/PASS, SASL PLAIN/SCRAM/SCRAM-PLUS (381/281/481/482/483/383/283/503/504) | D2 (the grammar; 502 once authenticated, fuzz-checked against H's model), D3 (sub-form arity, the auth reference, the 483 slot) | the credential check, the verifier `:fn-authsec-v2`, SCRAM, channel binding, the third failure's 481 + 400 + close (NNT-1002) | E2: `auth`, `sasl`, the RFC 7677 vectors |
+| XREDEEM (381/281/482/483) | D2 (the grammar; 502 once authenticated), D3 (arity) | invitation codes and account binding | E2: `friends_accounts`, `consumer_identity` |
+| STARTTLS (382; nothing framed during the handshake; 502 after auth, twice, or after COMPRESS; 580) | D2 (the hand-off), D7 (the admission machine, `Ltls` 16, the simulator's TLS stub; scenario 18's admission half) | the handshake, the reset of group and cursor after it, key exchange, certificate reload | E1: `starttls`, `tls_handshake_budget`, `tls_key_exchange`, `tls_reload` |
+| implicit TLS listener, protected-only (483 before TLS), the PROXY header | D3 (a listener kind field) | everything: E's listener and adapter | E1: `implicit_tls`, `tls_transport`, `tls_proxy` |
+| COMPRESS DEFLATE (206; the bomb and BFINAL close rules) and XFN-DICT / XFN-ZARTICLE (229) | D2 (the grammar: 480 before authentication, the hand-off after 206; XFN-ZARTICLE's line), D3 (the digest syntax) | the inflate and deflate streams, the dictionaries, the stored-payload carriage | E2: `compress`, new native `compress_dict` |
+| IHAVE/CHECK/TAKETHIS identity of the peer; transit body bound from the peer record's `inbound-max-octets` | D3 (the peer bit of the connection), D4 (the bound as a parameter; 437/439 then close; scenario 4), D5 (offer/transfer decisions; scenario 5) | which addresses are peers and their records' limits and max-inflight | E4: `peering`, `peer_misbehaving`, `peer_hostile_feed` |
+| XFNCATCHUP (291/423/501) | D2 (the grammar; 502 on a reader connection), D3 (field values) | the catch-up log and its chain | E4: `peer_catchup` |
+| live limits and `policy set` (capacity 400s, pacing, posts per minute, timers) | D7 (the limits as configuration generations in the simulator; scenarios 10, 11, 18) | the operator verbs that change them on a live node | E6: `limits_live`, `live_reconfiguration`, `public_limits` |
+| the Qc control inbox's operator sources (shutdown, reload) | D9 (Qc delivered by the simulator and the adapter) | the CLI and signals that write it | E6: `operator_verbs`, `operator_cli` |
 
 ## 12. Quests
 
