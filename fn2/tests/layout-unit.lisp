@@ -98,7 +98,7 @@
   (declare (xargs :stobjs fn2-fields :verify-guards nil))
   (list (fn2-layout-test-row 0 fn2-fields) (fn2-layout-test-row 1 fn2-fields)
         (fn2-fields-cursor fn2-fields) (fn2-fields-pos fn2-fields) (fn2-fields-acc fn2-fields)
-        (fn2-fields-high fn2-fields) (fn2-fields-size fn2-fields) (fn2-fields-ref fn2-fields)
+        (fn2-fields-high fn2-fields) (fn2-fields-size fn2-fields) (fn2-fields-resume-ref fn2-fields)
         (fn2-fields-phase fn2-fields) (fn2-fields-next fn2-fields)))
 (defconst *fn2-layout-test-malformed*
   '((((v :varint)) (128 0) :noncanonical)

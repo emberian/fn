@@ -17,6 +17,7 @@
 (include-book "fn2/tests/merkle-unit")
 (include-book "fn2/tests/format-check-unit")
 (include-book "fn2/tests/layout-teeth-unit")
+(include-book "fn2/tests/commit-proof-unit")
 
 (defun fn2-owed-write-term (term channel state)
   (declare (xargs :stobjs state :verify-guards nil))
