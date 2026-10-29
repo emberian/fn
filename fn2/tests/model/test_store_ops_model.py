@@ -36,7 +36,8 @@ class FakeTarget:
         before = deepcopy(self.archives.get(r.argument)) if r.verb == 'export' else None
         text, reason, code = '', None, 0
         if r.malformed:
-            return dict(exit=5, text='usage: store ' + r.verb)
+            tag = ('status ' + 'UNEXPECTED-ARGUMENTS') if r.verb in ('status', 'recover') else 'store INVALID-STORE-COMMAND'
+            return dict(exit=5, text='usage: store ' + r.verb + '\nusage operator ' + tag + '\n')
         if r.verb == 'export':
             if r.argument in self.archives and self.plant != 'export-nonempty':
                 reason = 'archive-exists'
@@ -59,8 +60,6 @@ class FakeTarget:
                 reason = 'manifest-mismatch'
             elif saved['kind'] != 'export':
                 reason = 'archive-incomplete'
-            elif dict(r.override).get('max-history-octets') == 1000:
-                reason = 'profile'
             else:
                 self.stores[r.destination] = deepcopy(saved['rows'])
                 self.overrides[r.destination] = dict(r.override)
@@ -101,7 +100,10 @@ class FakeTarget:
                 self.stores[self.current] = [(n + 1, i, b) for n, i, b in self.rows]
         else:
             raise AssertionError('unsupported fake verb ' + r.verb)
-        reply = dict(exit=1 if reason else code, text='refused reason=' + reason if reason else text)
+        code = 1 if reason else code
+        word = {0: 'accepted', 1: 'refused'}[code]
+        text = text + '\n' if text else ''
+        reply = dict(exit=code, text=text + f'{word} operator store' + (' ' + reason.upper() if reason else (' ABSENT' if code else '')) + '\n')
         if r.verb == 'export':
             reply.update(archive_before=before, archive_after=deepcopy(self.archives.get(r.argument)))
         if r.verb == 'import':
@@ -276,11 +278,17 @@ class StoreOpsTests(unittest.TestCase):
                 if words[0] == 'store' and words[2] == 'import':
                     Path(words[1]).mkdir()
                 return SimpleNamespace(returncode=0, stdout=b'accepted', stderr=b'')
+            configured = []
             def operator(*words, **kwargs):
                 calls.append((('operator', *words), kwargs))
+                if words[:2] == ('store', 'import'):
+                    configured.append(node.store_path)
+                    Path(node.store_path).mkdir()
                 return SimpleNamespace(returncode=0, stdout=b'accepted', stderr=b'')
             target = object.__new__(StoreTarget)
-            target.node = SimpleNamespace(root=root, store_path=source, invoke=invoke, operator=operator)
+            node = SimpleNamespace(root=root, store_path=source, invoke=invoke, operator=operator,
+                                   write_config=lambda: configured.append(('config', node.store_path)))
+            target.node = node
             target.stores, target.paths = {'source': source}, {}
             target.call(Request('recover'))
             self.assertEqual(calls[-1], (('operator', 'recover'), {'timeout': 3}))
@@ -292,8 +300,12 @@ class StoreOpsTests(unittest.TestCase):
             self.assertEqual(calls[-1][0], ('store', str(source), 'checkpoint'))
             reply = target.call(Request('import', 'archive', 'imported', (('max-transactions', 8192),)))
             imported = root / 'store-imported'
-            self.assertEqual(calls[-1], (('store', str(imported), 'import', str(root / 'archive'),
+            # The operator form into the configured path (the form that honours
+            # --FIELD); the owner's store path is restored after.
+            self.assertEqual(calls[-1], (('operator', 'store', 'import', str(root / 'archive'),
                                          '--max-transactions', '8192'), {'timeout': 10}))
+            self.assertEqual(configured, [('config', imported), imported, ('config', source)])
+            self.assertEqual(node.store_path, source)
             self.assertTrue(reply['destination_exists'])
             self.assertEqual((imported / 'auth.toml').read_bytes(), (source / 'auth.toml').read_bytes())
             self.assertEqual((imported / 'keys' / 'node-secret.key').read_bytes(), b'fake-node-key')

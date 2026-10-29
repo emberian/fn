@@ -4,25 +4,28 @@ SPEC-MAP (lines at 287655a40)
 ===========================
 Decision / effect                       Source
 accepted 0; refused 1, unchanged;        docs/operator.md:1232-1242 (usage 5).
- usage extra arguments                  Extra-argument reason `usage` is provisional:
-                                        exit table defines the class, not each verb.
+ usage extra arguments                  The exit table names the class only; the tags
+                                        are fn1's (HZ2 probe): UNEXPECTED-ARGUMENTS
+                                        (status, recover), INVALID-STORE-COMMAND
+                                        (`store` sub-verbs). Reasons are tags
+                                        (operator_model.reason_word), never prose.
 export: history, archive-exists          docs/operator.md:819-837; storage.md:1810-1839.
 export --status live / no-owner          docs/operator.md:834-837; stopped no-owner
-                                        provisional; native_maintenance_live:146-148
-                                        supplies command shape, not adjudication.
+                                        is fn1's tag (HZ2 probe).
 import preserves IDs/numbers/body;       docs/install.md:322-371; specs/storage.md:
- overrides, manifest-mismatch, profile,  1840-1848,1920-1933. `manifest-mismatch` word
- archive-incomplete, store-exists        provisional: normative text says mismatch by
-                                        name; native_store_export:119-151 names it.
-bless: marker, own open, secret;          docs/operator.md:774-803. snapshot-incomplete
- snapshot-incomplete / no-node-secret    and no-node-secret reason words provisional
-                                        (native_snapshot_bless:56-87).
+ raised overrides, manifest-mismatch,    1840-1848,1920-1933. Through `operator CONFIG
+ archive-incomplete, store-exists        store import` into the configured path: fn1's
+                                        direct `fn store S import` ignores --FIELD.
+                                        A lowered field is not tested (the docs say
+                                        only "with any field raised"; fn1 accepts it).
+bless: marker, own open, secret;          docs/operator.md:774-803. no-node-secret is
+ snapshot-incomplete / no-node-secret    provisional (no witness reaches it).
 compact/checkpoint preserve state        docs/operator.md:1173-1190; specs/storage.md:
                                         602-608,637-649,668-700. Literal success
                                         text may differ live/offline; require a
                                         checkpoint/compaction outcome, exit 0.
-inspect ID accepted / absent             docs/operator.md:1078-1095 (absent exit 1
-                                        provisional; native_maintenance_live:53-59).
+inspect ID accepted / absent             docs/operator.md:1078-1095 (absent exit 1,
+                                        `absent <ID>`: fn1's, HZ2 probe).
 inspect group exact count/numbers/IDs;   docs/operator.md:1097-1110 (unknown-group 1).
  unknown-group                          Numbers are checked by NntpModel as well.
 recover live/stopped preserves POSTs     docs/operator.md:938-946,974-979;
@@ -30,6 +33,8 @@ recover live/stopped preserves POSTs     docs/operator.md:938-946,974-979;
 status live exact transaction count;     docs/install.md:271-289; stopped conservative
  stopped conservative bound             header bound, not invented exact replay count.
 wire BODY/STAT/GROUP/LISTGROUP            NntpModel SPEC-MAP; no second wire oracle.
+The fixed witnesses agree with fn1 on all 42 CLI replies (HZ2 probe, image
+c14e9e8e; build/coordinator/fn2/lanes/h-quests/wp2-store_ops.json).
 
 Scope: RELEASE-PLAN rows 73-75 and row 84's status/checkpoint/export/import/
 bless-snapshot/inspect/recover subset. Next slice: reclaim (reclaim_live and
@@ -58,7 +63,7 @@ from dataclasses import dataclass
 import re
 
 from .nntp_model import NntpModel
-from .limits_model import STORE_INIT
+from .operator_model import reason_word, result_problem
 
 GROUP = 'surface.test'
 LOGIN = 'hz-store-poster'
@@ -80,15 +85,11 @@ def wire_model():
 
 
 def named_reason(reply):
-    """Exact reason token, never substring/prefix matching an adjudication."""
+    """operator_model.reason_word; `absent <ID>` is inspect's report of absence."""
     text = reply.get('text', '')
-    reasons = re.findall(r'\breason=([A-Za-z0-9-]+)', text)
-    if reasons:
-        return reasons[0].lower() if len(reasons) == 1 else None
-    found = re.search(r'\b(?:refused\s+)([A-Za-z0-9-]+)', text)
-    if found:
-        return found[1].lower()
-    return 'usage' if re.search(r'(?im)^usage:', text) else 'absent' if re.search(r'(?m)^absent ', text) else None
+    if re.search(r'(?m)^absent <', text) and not re.search(r'\breason=', text):
+        return 'absent'
+    return reason_word(text)
 
 
 @dataclass(frozen=True)
@@ -107,10 +108,11 @@ class Expect:
         self.exit, self.reason, self.argument_class = model.classify(request)
 
     def check(self, reply):
-        if reply.get('exit') != self.exit:
-            return f'{self.request.verb}: expected exit {self.exit}'
-        if self.reason and named_reason(reply) != self.reason:
-            return 'named refusal: expected ' + self.reason
+        problem = result_problem(reply, self.exit, None, tagged=False)
+        if problem is None and self.reason and named_reason(reply) != self.reason:
+            problem = f'expected named refusal {self.reason}, observed {named_reason(reply)}'
+        if problem:
+            return f'{self.request.verb}: {problem}'
         if self.request.verb == 'import':
             exists = self.exit == 0 or self.request.destination in self.model.stores
             if reply.get('destination_exists') is not exists:
@@ -225,7 +227,12 @@ class StoreOpsModel:
 
     def classify(self, r):
         if r.malformed:
-            return 5, 'usage', 'extra-argument'
+            # The exit table names the class only (usage 5); the words are fn1's
+            # observed tags (wp2-store_ops.json, image c14e9e8e): top-level verbs
+            # refuse extra words as UNEXPECTED-ARGUMENTS, `store` sub-verbs as
+            # INVALID-STORE-COMMAND.
+            word = 'unexpected-arguments' if r.verb in ('status', 'recover') else 'invalid-store-command'
+            return 5, word, 'extra-argument'
         if r.verb == 'export' and r.argument in self.archives:
             return 1, 'archive-exists', 'existing-archive'
         if r.verb == 'export-status' and not self.running:
@@ -237,8 +244,6 @@ class StoreOpsModel:
             if not archive.get('valid'):
                 reason = 'manifest-mismatch' if archive['kind'] == 'tampered' else 'archive-incomplete'
                 return 1, reason, archive['kind']
-            if r.override and dict(r.override).get('max-history-octets', STORE_INIT['max-history-octets']) < STORE_INIT['max-record-octets']:
-                return 1, 'profile', 'inconsistent-profile'
         if r.verb == 'bless-snapshot':
             archive = self.archives[r.argument]
             if not archive.get('marker'):

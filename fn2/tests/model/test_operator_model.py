@@ -35,10 +35,10 @@ class FakeTarget:
             reason, code = 'argv-malformed', 5
         elif v == 'group create':
             if '/' in a[0]:
-                reason = 'group-name'
+                reason, code = 'syntax', 5
             elif a[0] in self.groups and self.groups[a[0]]['active']:
                 reason = 'duplicate-group'
-        elif v in ('group retire', 'group describe', 'group policy', 'group moderate', 'retention expire', 'moderation list'):
+        elif v in ('group retire', 'group describe', 'group policy', 'group moderate', 'retention expire'):
             if a[0] not in self.groups or not self.groups[a[0]]['active']:
                 reason = 'no-such-group'
             elif v == 'group moderate' and '--off' not in a:
@@ -47,12 +47,12 @@ class FakeTarget:
                     reason = 'moderation-queue'
         elif v == 'capacity':
             if not a[0].isdigit() or int(a[0]) > 4294967295:
-                reason, code = 'capacity', 5
+                reason, code = 'syntax', 5
             elif int(a[0]) == 0 and self.articles:
                 reason = 'capacity-below-reserved'
         elif v == 'account access' and a != ('show',):
             if '[' in a[a.index('--read')+1] or '[' in a[a.index('--post')+1]:
-                reason = 'account-access'
+                reason, code = 'access-pattern', 5
         elif v in ('account delete', 'principal delete'):
             if a[0] not in self.file and a[0] not in self.redeemed:
                 reason = 'account-unknown'
@@ -65,12 +65,13 @@ class FakeTarget:
             elif held['state'] != 'held':
                 reason = 'already-' + held['state']
         if self.plant == 'duplicate-create' and reason == 'duplicate-group':
-            return dict(exit=0, text='accepted')
+            return dict(exit=0, text='accepted operator ' + v.split()[0] + '\n')
         if reason:
             if self.plant == 'refusal-mutation' and reason == 'duplicate-group':
                 self.motd = ['CORRUPTED by refusal']
-            return dict(exit=code, text='refused (ADMINISTRATION ' + reason.upper() + ')\n')
-        text = 'accepted\n'
+            word = 'usage' if code == 5 else 'refused'
+            return dict(exit=code, text=f'{word} operator {v.split()[0]} (ADMINISTRATION {reason.upper()})\n')
+        text = ''
         if v == 'group create':
             self.groups.setdefault(a[0], dict(active=True, desc='(no description)', policy='y', mods=[], queue=None, entries=[], high=0))['active'] = True
         elif v == 'group retire':
@@ -118,6 +119,8 @@ class FakeTarget:
         elif v == 'principal list':
             text += ''.join(login + ' principal=' + 'b'*64 + ' posting=' + str(row['posting']).lower() + '\n'
                             for login, row in sorted(self.file.items()))
+        elif v == 'moderation list' and not self.groups.get(a[0], {}).get('mods'):
+            text += f'moderation group={a[0]} moderated=no\n'
         elif v == 'moderation list':
             g = self.groups[a[0]]
             held = [(ident, h) for ident, h in self.held.items() if h['group'] == a[0]]
@@ -132,7 +135,7 @@ class FakeTarget:
             else:
                 self.articles[h['envelope']]['withdrawn'] = True
                 self.add('<fn-withdraw.' + h['envelope'][1:], b'\r\n', 'control.cancel')
-        return dict(exit=0, text=text)
+        return dict(exit=0, text=text + 'accepted operator ' + v.split()[0] + '\n')
 
     def add(self, ident, source, group):
         self.groups[group]['high'] += 1
@@ -284,13 +287,33 @@ class OperatorTests(unittest.TestCase):
                     self.assertTrue(record.called)
                     self.assertIsNotNone(record.call_args_list[0].kwargs['reply'])
 
-    def test_empty_adjudications_and_exact_scoped_match(self):
-        self.assertEqual(oracle.ADJUDICATIONS, ())
+    def test_adjudication_rows_are_recorded_and_scoped(self):
+        for row in oracle.ADJUDICATIONS:
+            self.assertIn(row['class'], ('fn1-bug', 'spec-ambiguity'))
+            self.assertIn(row['verb'], OperatorModel.VERBS)
+            self.assertTrue(row['group'] and row['spec'] and row['fn1_reply'])
+
+    def test_effect_row_follows_fn1_only(self):
+        reply = dict(exit=0, text='accepted operator group ACCEPTED\n')
+        for target, retired in (('fn1', None), ('fn2', True), ('fake', True)):
+            with self.subTest(target=target):
+                model = OperatorModel()
+                model.groups['hz.test']['description'] = 'kept unless fn1'
+                recorded = model.rule('group retire', 'hz.test').update(reply, target)
+                self.assertEqual('description' in model.groups['hz.test'], target != 'fn1')
+                self.assertEqual(model.groups['hz.test'].get('retired'), retired)
+                self.assertEqual(recorded is not None, target == 'fn1')
+        # A refused retire never matches the effect row.
+        model = OperatorModel()
+        self.assertIsNone(model.rule('group retire', 'hz.absent').recorded_difference(
+            dict(exit=1, text='refused operator group REFUSED no-such-group\n'), 'fn1'))
+
+    def test_scoped_refusal_match(self):
         model = OperatorModel()
         expected = model.rule('group describe', 'absent', 'text')
         row = dict(group='TEST-ONLY', verb='group describe', argument_class='unknown-group',
-                   exit=5, reason='OTHER', **{'class': 'fn1-bug'})
-        reply = dict(exit=5, text='refused (ADMINISTRATION OTHER)')
+                   exit=5, reason='other', **{'class': 'fn1-bug'})
+        reply = dict(exit=5, text='usage operator group (ADMINISTRATION OTHER)\n')
         before = deepcopy(model.groups)
         # Synthetic matcher control, never a recorded fn1 observation.
         with patch.object(oracle, 'ADJUDICATIONS', (row,)):
@@ -299,7 +322,7 @@ class OperatorTests(unittest.TestCase):
             self.assertIsNone(expected.recorded_difference(reply, 'fake'))
             expected.update(reply, 'fn1')
             for changed in (dict(reply, exit=4), dict(reply, text='OTHER'),
-                            dict(reply, text='(ADMINISTRATION OTHER-SUFFIX)')):
+                            dict(reply, text='usage operator group (ADMINISTRATION OTHER-SUFFIX)\n')):
                 self.assertIsNone(expected.recorded_difference(changed, 'fn1'))
             self.assertIsNone(model.rule('group retire', 'absent').recorded_difference(reply, 'fn1'))
             self.assertIsNone(model.rule('group describe', 'hz.test', '').recorded_difference(reply, 'fn1'))
@@ -345,8 +368,8 @@ class OperatorTests(unittest.TestCase):
 
     def test_principal_list_is_not_success_only(self):
         model = OperatorModel()
-        model.rule('principal set-password', 'hz-check', '--no-posting', password='hz-test-password').update(dict(exit=0, text='ok'))  # FAKE-SECRET
+        model.rule('principal set-password', 'hz-check', '--no-posting', password='hz-test-password').update(dict(exit=0, text='accepted operator principal\n'))  # FAKE-SECRET
         expected = model.rule('principal list')
-        for text in ('accepted', 'hz-check principal=' + 'a'*64 + ' posting=true\n'):
+        for text in ('accepted operator principal\n', 'hz-check principal=' + 'a'*64 + ' posting=true\naccepted operator principal\n'):
             self.assertIsNotNone(expected.check(dict(exit=0, text=text)))
-        self.assertIsNone(expected.check(dict(exit=0, text='hz-check principal=' + 'a'*64 + ' posting=false\n')))
+        self.assertIsNone(expected.check(dict(exit=0, text='hz-check principal=' + 'a'*64 + ' posting=false\naccepted operator principal\n')))

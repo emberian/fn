@@ -65,11 +65,23 @@ class StoreTarget:
             words += ('hz-extra-argument',)
         bound = 10 if r.verb in ('export', 'import') else 3
         if r.verb == 'import':
-            result = self.node.invoke('store', str(self.store(r.destination)), *words, timeout=bound)
+            # docs/install.md:340-352: `operator CONFIG store import` into the
+            # configured store path; only that form honours --FIELD overrides
+            # (books/native-operator.lisp fn-native-operator-result-import-request).
+            # The owner's configured store is restored after; start(name) switches.
+            current = self.node.store_path
+            self.node.store_path = self.store(r.destination)
+            self.node.write_config()
+            try:
+                result = self.node.operator('store', *words, timeout=bound)
+            finally:
+                self.node.store_path = current
+                self.node.write_config()
             if result.returncode == 0:
-                # Export excludes these files. Copy only this example's fixtures.
+                # Export excludes these files; install.md:345-352 copies the old
+                # store's keys over whatever import made (fn1 makes keys/).
                 source, destination = self.node.store_path, self.store(r.destination)
-                shutil.copytree(source / 'keys', destination / 'keys')
+                shutil.copytree(source / 'keys', destination / 'keys', dirs_exist_ok=True)
                 shutil.copy2(source / 'auth.toml', destination / 'auth.toml')
         elif r.direct:
             result = self.node.invoke('store', str(self.node.store_path), *words, timeout=bound)
@@ -311,7 +323,6 @@ class Exercise:
         self.cli('import', 'tampered', destination='tampered-destination')
         self.cli('import', 'unmarked', destination='snapshot-destination')
         self.cli('import', 'good', destination='source')
-        self.cli('import', 'good', destination='invalid-profile', override=(('max-history-octets', 1000),))
         self.cli('import', 'good', destination='imported', override=(('max-transactions', 8192),))
         self.start('imported')
         self.cli('status')

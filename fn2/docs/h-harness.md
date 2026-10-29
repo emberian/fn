@@ -255,3 +255,47 @@ decides when it writes the command grammar, and the model follows that decision.
 - **A14** (15 rows; malformed TAKETHIS answered by silence) is evidence, not
   precedence: `differential --takethis-probe` now records whether the server was
   awaiting the article body.
+
+## HZ: the operator and store_ops S forms (live on fn1)
+
+Both forms pass live against fn1 at the laptop cadence (hbox, image c14e9e8e,
+TREE_SHA d377d4559): operator 5 examples in 173 s, store_ops 5 in 46 s. Before
+the live runs the seat ran each family's fixed witnesses through a recording
+probe (`build/coordinator/fn2/lanes/h-quests/witprobe2.py`; replies kept as
+`wp2-operator.json`, 62 CLI calls, and `wp2-store_ops.json`, 42 calls) and
+fixed what it found.
+
+- **Reply shape.** A CLI reply is checked by its exit and, when the verb prints
+  one, the tagged result line `WORD operator SUBJECT [REASON]` whose WORD names
+  that exit (docs/operator.md:1232-1242; fn1 renders it in
+  host/native/operator.lisp `fnn-operator-emit-status`, after any unterminated
+  `Password:` prompt). A refusal's reason is a tag: the one `reason=X` key, else
+  the tagged line's REASON (`(ADMINISTRATION X)` or the echoed `REFUSED X`), else
+  a report line `refused X` (`operator_model.reason_word`). The first cut matched
+  the expected word anywhere in the reply, and fn1's usage text (which names
+  `refused while an owner runs`) satisfied or broke it by accident.
+- **Tags where the docs name only the class.** The models carry fn1's observed
+  tags: ARGV-MALFORMED, SYNTAX (a capacity that is not a u32 decimal; a malformed
+  group name), ACCESS-PATTERN (a malformed wildmat), all usage 5;
+  UNEXPECTED-ARGUMENTS (status, recover) and INVALID-STORE-COMMAND (`store`
+  sub-verbs) for extra words. The draft's provisional exit-1 words for these were
+  wrong. Tags no witness reaches stay provisional and are listed in each model's
+  SPEC-MAP.
+- **`moderation list` of an unmoderated or absent group** is accepted with
+  `moderation group=G moderated=no` (the spec names no refusal; the draft
+  invented `no-such-group`).
+- **Import through the operator form.** `fn store S import ... --FIELD N`
+  ignores the override; `operator CONFIG store import` (the documented form,
+  docs/install.md:340-352) honours it. The target imports into the configured
+  path and restores the owner's path after. The draft's lowered-field refusal
+  witness (`max-history-octets` below the record bound) was cut: the docs say
+  only "with any field raised" and fn1 accepts the lowered one.
+- **O01, fn1-bug (the operator ADJUDICATIONS' one row, an effect row).** `group
+  retire` is accepted and retires the group in the configuration (`group create`
+  is then accepted and restores its description), but the reader wire keeps
+  serving it: LIST ACTIVE lists it and GROUP answers 211, at once, after 3 s and
+  after a restart; LIST NEWSGROUPS shows `(no description)`. docs/operator.md
+  says retire stops serving the group. An effect row makes the model follow the
+  recorded effect for fn1 only, so every later wire read checks it; the fake and
+  fn2 get the documented retirement (the `retire-visible` mutation control still
+  fails), and a fixed fn1 fails the next observation, so a stale row cannot hide.
