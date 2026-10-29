@@ -385,7 +385,21 @@
         (case phase ,@(fn2-machine-next-cases arms states 0 states) (otherwise nil)))
       (defun ,(fn2-columns-sym name "-OBSERVE-NEXT-OK-P") (event from next)
         (declare (xargs :guard t) (ignorable from next))
-        (case event ,@(fn2-machine-observe-next-cases observes states) (otherwise nil))))))
+        (case event ,@(fn2-machine-observe-next-cases observes states) (otherwise nil)))
+      ; The asserts' conditions as opaque calls, so the generated entries'
+      ; shape proofs never open them.
+      (defun ,(fn2-columns-sym name "-ARM-OK-P") (id phase bytes steps descriptors fn2-core)
+        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+        (or (not (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*))
+            (and (,(fn2-columns-sym name "-ARM-CHARGE-OK-P") phase bytes steps descriptors)
+                 (eq (fn2-machine-phase-read-code id fn2-core) :ok)
+                 (,(fn2-columns-sym name "-ARM-NEXT-OK-P") phase (fn2-machine-phase id fn2-core)))))
+      (defun ,(fn2-columns-sym name "-OBSERVE-OK-P") (id event from fn2-core)
+        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+        (or (not (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*))
+            (and (eq (fn2-machine-phase-read-code id fn2-core) :ok)
+                 (,(fn2-columns-sym name "-OBSERVE-NEXT-OK-P") event from (fn2-machine-phase id fn2-core)))))
+      (in-theory (disable ,(fn2-columns-sym name "-ARM-OK-P") ,(fn2-columns-sym name "-OBSERVE-OK-P"))))))
 
 ; Semantic checks over every arm once its callbacks exist (the :callbacks
 ; section): the evaluated cost within the kind's caps, a cap-reaching arm
@@ -864,13 +878,9 @@
              ; The arm's contract, asserted where it holds: its charge is
              ; within its certificate and its row moves only to a declared
              ; phase, or the core stops with a named reason.
-             (if (or (not (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*))
-                     (and (,(fn2-columns-sym name "-ARM-CHARGE-OK-P") row-phase bytes steps descriptors)
-                          (eq (fn2-machine-phase-read-code id fn2-core) :ok)
-                          (,(fn2-columns-sym name "-ARM-NEXT-OK-P") row-phase (fn2-machine-phase id fn2-core))))
-                 (mv bytes steps descriptors runnable fn2-core)
-               (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-contract* fn2-core)))
-                 (mv bytes steps descriptors nil fn2-core)))))) name 4)
+             (fn2-machine-contract-check
+              (,(fn2-columns-sym name "-ARM-OK-P") id row-phase bytes steps descriptors fn2-core)
+              bytes steps descriptors runnable fn2-core)))) name 4)
       `((fn2-core-preserves ,run (id budget fn2-core) :position 4 :rows nil)) nil)
        ,@(fn2-machine-teeth-events name world)
        ,@(fn2-machine-arm-rows name (fn2-machine-property name :continuations world) world)
@@ -896,13 +906,9 @@
                  ,@(fn2-machine-observe-event-arms (fn2-machine-property name :observes world) nil
                     `(id event outcome reason count aux0 aux1 ,@vars fn2-core))
                  (otherwise (fn2-machine-refuse-observation fn2-core)))
-               (if (or (not (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*))
-                       (and (eq (fn2-machine-phase-read-code id fn2-core) :ok)
-                            (,(fn2-columns-sym name "-OBSERVE-NEXT-OK-P") event row-phase
-                             (fn2-machine-phase id fn2-core))))
-                   (mv wake fn2-core)
-                 (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-contract* fn2-core)))
-                   (mv *fn2-none* fn2-core)))))) name 1))
+               (fn2-machine-observe-contract-check
+                (,(fn2-columns-sym name "-OBSERVE-OK-P") id event row-phase fn2-core)
+                wake fn2-core)))) name 1))
          (fn2-core-preserves ,handler (id event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil))
        (fn2-machine-observe-handlers router (cdr names) world)))))
 ; The handlers' owed rows, once for the served router (machine-dispatch).
