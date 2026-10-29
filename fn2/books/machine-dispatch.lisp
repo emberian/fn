@@ -21,7 +21,8 @@
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-machine-observe fn2-machine-run fn2-machine-take-wake
-    fn2-listener-step fn2-connection-submit fn2-connection-reply fn2-connection-drain fn2-machine-grant-one fn2-machine-park)
+    fn2-listener-accept fn2-listener-admitting fn2-listener-close fn2-machine-admit-connection
+    fn2-connection-submit fn2-connection-reply fn2-connection-drain fn2-machine-grant-one fn2-machine-park)
   (w state)))
 
 

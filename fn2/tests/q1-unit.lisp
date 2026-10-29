@@ -1,4 +1,5 @@
-; Q1 controls: the assembled catalogue is E1's 39 labels (a pinned regression
+; Q1 controls: the assembled catalogue is E1's 39 labels plus the listener's
+; :admitting phase (R7's split, agreed with layer D; a pinned regression
 ; control, DSL-METATHEORY 5.8), every label is bound, the composition row is
 ; the unchanged fn2-turn-refinement, and a declared role that does not occur in
 ; the generated statement is refused (E2's role-divergence control).
@@ -7,7 +8,7 @@
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *fn2-q1-pinned-catalogue*
-  '((:run fn2-listener :accepting) (:run fn2-listener :closing)
+  '((:run fn2-listener :accepting) (:run fn2-listener :admitting) (:run fn2-listener :closing)
     (:observe fn2-listener :accept-result) (:observe fn2-listener :close-result)
     (:run fn2-echo :free) (:run fn2-echo :command) (:run fn2-echo :reply)
     (:run fn2-echo :closing) (:run fn2-echo :draining) (:run fn2-echo :retired)
@@ -24,15 +25,15 @@
     (:executor :service 0) (:executor :service 1) (:executor :service 2)
     (:executor :service 3) (:executor :empty-principal)))
 (assert-event (equal (fn2-case-catalogue (w state)) *fn2-q1-pinned-catalogue*))
-(assert-event (equal (len *fn2-q1-pinned-catalogue*) 39))
+(assert-event (equal (len *fn2-q1-pinned-catalogue*) 40))
 (assert-event
  (equal (fn2-square-coverage 'fn2-q1 (w state))
-        '(:required 39 :bound 39 :unmatched nil
+        '(:required 40 :bound 40 :unmatched nil
           :unresolved-depends (fn2-q1-entry fn2-q1-exit fn2-q1-partition))))
 (assert-event
  (equal (fn2-decl-get :owner (fn2-decl-row '(:square fn2-turn-refinement) (w state)))
         '(:correspondence fn2-q1)))
-(value-triple (cw "Q1 CATALOGUE: 39 labels = E1 (31 machine, 1 router, 7 executor); 39 bound, 0 unmatched PASS~%"))
+(value-triple (cw "Q1 CATALOGUE: 40 labels = E1's 39 + listener :admitting (32 machine, 1 router, 7 executor); 40 bound, 0 unmatched PASS~%"))
 
 ; E2's divergence control: the generated statement kept, the relation role
 ; declared as the nested pure relation instead of the full invariant.

@@ -20,6 +20,12 @@
   (fn2-machine-set-admission-credits
     (+ 1 (fn2-machine-admission-credits fn2-core)) fn2-core)))
 (fn2-core-preserves fn2-listener-return-credit (fn2-core) :rows nil :prefix "")
+(fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
+(defun fn2-listener-take-credit (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (fn2-machine-set-admission-credits
+    (fn2-machine-dec (fn2-machine-admission-credits fn2-core)) fn2-core)))
+(fn2-core-preserves fn2-listener-take-credit (fn2-core) :rows nil :prefix "")
 
 (defun fn2-machine-observe-terminal (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -35,7 +41,7 @@
          (if (equal outcome *fn2-outcome-done*)
              (fn2-listener-put-core id (cap-index aux0) (cap-nonce aux1) (event-ready 1))
            (let ((fn2-core (fn2-listener-return-credit fn2-core)))
-             (fn2-listener-put-core id (event-ready 0))))))
+             (fn2-listener-put-core id (phase *fn2-listener-state-accepting*) (event-ready 0))))))
     (mv id fn2-core)))
 
 (defmachine-callback fn2-echo-observe-receive fn2-echo (id event outcome reason count aux0 aux1) 1
@@ -97,68 +103,94 @@
         (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))))
 (fn2-core-preserves fn2-machine-issue-result (id code bytes fn2-core) :position 4 :rows nil)
 
-(defmachine-callback fn2-listener-admit fn2-listener (id budget) 4
-  (fn2-machine-with-work 0 *fn2-work-transition* 0
-  ; The listener's own row is read once, before any write: admission writes
-  ; the directory, the pool and the target row, never this row's fields.
-  (b* ((index row-cap-index)
-       (nonce row-cap-nonce)
-       (mode row-mode)
-       (target (fn2-machine-free-head fn2-core))
-       (kind *fn2-echo-kind*))
+;; Admission of an accepted connection (the allocator operation the listener
+;; uses; the listener never touches the echo table itself): take the free
+;; head, reserve its RX slot, install the row in :command and wake it. The
+;; listener's reserved row credit moves to the echo row on success.
+(fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
+(defun fn2-machine-admit-connection (index nonce mode fn2-core)
+  (declare (xargs :stobjs fn2-core
+                  :guard (and (fn2-core-wfp fn2-core) (unsigned-byte-p 32 index)
+                              (unsigned-byte-p 32 nonce) (unsigned-byte-p 1 mode))))
+  (let ((target (fn2-machine-free-head fn2-core)))
     (if (or (equal target *fn2-none*)
             (not (eq (fn2-machine-generation-read-code target fn2-core) :ok))
             (not (eq (fn2-machine-next-free-read-code target fn2-core) :ok))
             (>= (fn2-machine-active-count fn2-core) (fn2-machine-connection-count fn2-core)))
-        (let* ((fn2-core (fn2-listener-return-credit fn2-core))
-               (fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
-          (fn2-machine-result 0 *fn2-work-state* 0 t fn2-core))
+        (mv :no-row fn2-core)
       (let ((gen (fn2-machine-generation target fn2-core))
             (next (fn2-machine-next-free target fn2-core)))
-      (mv-let (code slot poolgen fn2-core)
-        (fn2-core-reserve 0 kind target gen fn2-core)
-        (if (not (eq code :ok))
-            (let* ((fn2-core (fn2-listener-return-credit fn2-core))
-               (fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
-              (fn2-machine-result 0 *fn2-work-refusal* 0 t fn2-core))
-          (let* ((fn2-core (fn2-machine-set-free-head next fn2-core))
-                 (fn2-core (fn2-machine-set-active-count
-                             (+ 1 (fn2-machine-active-count fn2-core)) fn2-core))
-                 (fn2-core (fn2-echo-put-core target
-                             (phase *fn2-echo-state-command*) (cap-index index) (cap-nonce nonce)
-                             (pool-slot slot) (pool-gen poolgen) (off 0) (length 0)
-                             (pending 0) (borrows 0) (wait-reason *fn2-wait-none*)
-                             (mode mode)))
-                 (fn2-core (fn2-listener-put-core id (event-ready 0)))
-                 (fn2-core (fn2-machine-set-wake-id target fn2-core)))
-            (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core)))))))))
+        (mv-let (code slot poolgen fn2-core)
+          (fn2-core-reserve 0 *fn2-echo-kind* target gen fn2-core)
+          (if (not (eq code :ok)) (mv :pool fn2-core)
+            (let* ((fn2-core (fn2-machine-set-free-head next fn2-core))
+                   (fn2-core (fn2-machine-set-active-count
+                               (+ 1 (fn2-machine-active-count fn2-core)) fn2-core))
+                   (fn2-core (fn2-echo-put-core target
+                               (phase *fn2-echo-state-command*) (cap-index index) (cap-nonce nonce)
+                               (pool-slot slot) (pool-gen poolgen) (off 0) (length 0)
+                               (pending 0) (borrows 0) (wait-reason *fn2-wait-none*)
+                               (mode mode)))
+                   (fn2-core (fn2-machine-set-wake-id target fn2-core)))
+              (mv :ok fn2-core)))))))))
+(fn2-core-preserves fn2-machine-admit-connection (index nonce mode fn2-core) :position 1 :rows nil :prefix "")
 
-(defmachine-callback fn2-listener-step fn2-listener (id budget) 4
+; The listener reads its own row once, before any write.
+(defmachine-callback fn2-listener-admit fn2-listener (id budget) 4
+  (fn2-machine-with-work 0 *fn2-work-transition* 0
+  (b* ((index row-cap-index)
+       (nonce row-cap-nonce)
+       (mode row-mode))
+    (mv-let (code fn2-core) (fn2-machine-admit-connection index nonce mode fn2-core)
+      (if (eq code :ok)
+          (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-accepting*) (event-ready 0))))
+            (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))
+        (let* ((fn2-core (fn2-listener-return-credit fn2-core))
+               (fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
+          (fn2-machine-result 0 (if (eq code :no-row) *fn2-work-state* *fn2-work-refusal*) 0 t
+                              fn2-core)))))))
+
+; :accepting holds only the accept credit. A successful Accept issue takes
+; one row credit (the reservation the admission will spend) and moves to
+; :admitting; without a credit the listener parks on the admission FIFO.
+(defmachine-callback fn2-listener-accept fn2-listener (id budget) 4
   (fn2-machine-with-work 0 *fn2-work-transition* 1
   (cond ((not (equal row-pending 0))
          (fn2-machine-result 0 *fn2-work-empty* 0 nil fn2-core))
-        ((and (equal row-phase *fn2-listener-state-accepting*) (equal row-event-ready 1))
-         (fn2-call fn2-listener-admit id budget))
-        ; Park separately from op waiters so the adapter can make progress.
-        ((and (equal row-phase *fn2-listener-state-accepting*)
-              (zp (fn2-machine-admission-credits fn2-core)))
+        ((zp (fn2-machine-admission-credits fn2-core))
          (let ((fn2-core (fn2-machine-park-admission id fn2-core)))
            (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
         ((not (and (natp budget) (< 0 budget))) (fn2-machine-result 0 *fn2-work-empty* 0 t fn2-core))
         (t
          (mv-let (code op opgen fn2-core)
-           (if (equal row-phase *fn2-listener-state-accepting*)
-               (fn2-issue-accept 0 0 *fn2-listener-kind* id row-generation 0 fn2-core)
-             (fn2-issue-close row-cap-index
-               row-cap-nonce *fn2-listener-kind* id
-               row-generation 0 fn2-core))
+           (fn2-issue-accept 0 0 *fn2-listener-kind* id row-generation 0 fn2-core)
            (declare (ignore op opgen))
-           (let ((fn2-core
-                  (if (and (eq code :ok) (equal row-phase *fn2-listener-state-accepting*))
-                      (fn2-machine-set-admission-credits
-                        (fn2-machine-dec (fn2-machine-admission-credits fn2-core)) fn2-core)
-                    fn2-core)))
+           (let ((fn2-core (if (eq code :ok)
+                               (let ((fn2-core (fn2-listener-take-credit fn2-core)))
+                                 (fn2-listener-put-core id (phase *fn2-listener-state-admitting*)))
+                             fn2-core)))
              (fn2-machine-issue-result id code 0 fn2-core)))))))
+
+; :admitting holds the accept credit and one reserved row credit, with the
+; Accept pending or its capability ready. Reached without either, the row is
+; inconsistent: the run stops rather than parking forever.
+(defmachine-callback fn2-listener-admitting fn2-listener (id budget) 4
+  (cond ((not (equal row-pending 0))
+         (fn2-machine-result 0 *fn2-work-empty* 0 nil fn2-core))
+        ((equal row-event-ready 1) (fn2-call fn2-listener-admit id budget))
+        (t (fn2-machine-refuse-phase id fn2-core))))
+
+; :closing closes a capability whose admission was refused.
+(defmachine-callback fn2-listener-close fn2-listener (id budget) 4
+  (fn2-machine-with-work 0 *fn2-work-transition* 1
+  (cond ((not (equal row-pending 0))
+         (fn2-machine-result 0 *fn2-work-empty* 0 nil fn2-core))
+        ((not (and (natp budget) (< 0 budget))) (fn2-machine-result 0 *fn2-work-empty* 0 t fn2-core))
+        (t
+         (mv-let (code op opgen fn2-core)
+           (fn2-issue-close row-cap-index row-cap-nonce *fn2-listener-kind* id row-generation 0 fn2-core)
+           (declare (ignore op opgen))
+           (fn2-machine-issue-result id code 0 fn2-core))))))
 
 
 (defmachine-callback fn2-connection-release fn2-echo (id budget) 4

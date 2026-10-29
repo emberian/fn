@@ -168,7 +168,7 @@
   '((fn2-q1-entry :schema :g1 :doc "Turn entry establishes fn2-q1-loop-invp from fn2-turn-refinement's antecedent.")
     (fn2-q1-exit :schema :g1 :doc "Loop exit: status and the reference's counter finalisation agree with fn2-turn.")
     (fn2-q1-termination :schema :bound :doc "Both loops stop within fuel h+k under the shared budgets.")
-    (fn2-q1-partition :schema :assertion :doc "The 39 selectors partition the loop's transitions under the invariant; stopped, invalid and no-transition dispatch excluded.")
+    (fn2-q1-partition :schema :assertion :doc "The catalogue's selectors partition the loop's transitions under the invariant; stopped, invalid and no-transition dispatch excluded.")
     (fn2-q1-accounting :schema :bound :doc "Per-arm cost certificates compose to the turn work bound of fn2-turn-refinement.")))
 (defun fn2-q1-bind-cases (cases index contract sides world)
   (declare (xargs :verify-guards nil))

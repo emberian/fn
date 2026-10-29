@@ -235,7 +235,8 @@
 ; they await. R7 moves the holds into each defmachine's :holds and deletes
 ; this table; the wait-reason enum then names D0's kinds directly.
 (defconst *fn2-resource-a-holds*
-  '((fn2-listener (:accepting :accept-credit) (:closing :accept-credit))
+  '((fn2-listener (:accepting :accept-credit) (:admitting :accept-credit :connection-row)
+                 (:closing :accept-credit))
     (fn2-echo (:free) (:command :connection-row :rx-range) (:reply :connection-row :rx-range)
               (:closing :connection-row :rx-range) (:draining :connection-row :rx-range) (:retired))
     (fn2-scribe (:free) (:reserve :storage-job)

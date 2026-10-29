@@ -30,10 +30,18 @@
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
     (s g off len) (fn2-op-range slot fn2-ops) (mv s g off len)))
 
+; The listener's state after a successful Accept issue: :admitting, one row
+; credit reserved. Fixtures inject the completion directly.
+(defun fn2-machine-test-admitting (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((fn2-core (fn2-listener-take-credit fn2-core)))
+    (fn2-listener-put-core 0 (phase *fn2-listener-state-admitting*))))
+
 (defun fn2-machine-test-short-send (release-already-posted-p fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
        (fn2-core (fn2-listener-set-mode-all 1 fn2-core))
+       (fn2-core (fn2-machine-test-admitting fn2-core))
        ((mv & fn2-core) (fn2-machine-observe 0 0 1 *fn2-event-accept-result*
                          *fn2-outcome-done* 0 0 4 9 fn2-core))
        ((mv & & actions & fn2-core) (fn2-machine-run 0 4 fn2-core))
@@ -78,6 +86,7 @@
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((profile (put-assoc-equal :generation-limit 1 *fn2-profile-tiny*))
        (fn2-core (fn2-core-init profile fn2-core))
+       (fn2-core (fn2-machine-test-admitting fn2-core))
        ((mv & fn2-core) (fn2-machine-observe 0 0 1 *fn2-event-accept-result*
                          *fn2-outcome-done* 0 0 4 9 fn2-core))
        ((mv & & & & fn2-core) (fn2-machine-run 0 4 fn2-core))
@@ -219,8 +228,8 @@
 
 (include-book "std/testing/must-fail" :dir :system)
 ; These are rejected programs, not failed theorem searches. Echo COMMAND
-; and listener CLOSING both encode 1: the first control checks provenance.
-(assert-event (= *fn2-echo-state-command* *fn2-listener-state-closing*))
+; and listener ADMITTING both encode 1: the first control checks provenance.
+(assert-event (= *fn2-echo-state-command* *fn2-listener-state-admitting*))
 (must-fail
  (defun fn2-control-cross-kind (fn2-core)
    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -384,11 +393,12 @@
  :expected :any :with-output-off nil :check-expansion t)
 (assert-event
  (and (equal (fn2-machine-property 'fn2-listener :cases (w state))
-             '((:run fn2-listener :accepting) (:run fn2-listener :closing)
+             '((:run fn2-listener :accepting) (:run fn2-listener :admitting) (:run fn2-listener :closing)
                (:observe fn2-listener :accept-result) (:observe fn2-listener :close-result)))
       (equal (getpropc 'fn2-listener-run 'formals nil (w state)) '(id budget fn2-core))
       (equal (fn2-machine-property 'fn2-listener :continuations (w state))
-             '((:accepting fn2-listener-step) (:closing fn2-listener-step)))))
+             '((:accepting fn2-listener-accept) (:admitting fn2-listener-admitting)
+               (:closing fn2-listener-close)))))
 (value-triple (cw "R5a DECLARATION: named callbacks and initializers; case catalogue; code and :obligations refusals PASS~%"))
 
 (must-fail

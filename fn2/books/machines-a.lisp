@@ -14,7 +14,7 @@
   (if (< (+ (nfix slot) 1) (nfix n)) (+ (nfix base) (nfix slot) 1) *fn2-none*))
 
 (defmachine fn2-listener
- :states (:accepting :closing)
+ :states (:accepting :admitting :closing)
  :fields ((cap-index :u32) (cap-nonce :u32) (pending :u32) (stopped :bool) (event-ready :bool) (mode :bool))
  :accounts (:operations :bytes :row)
  :budget (:bytes 4096 :steps 32 :descriptors 4)
@@ -22,7 +22,8 @@
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (phase *fn2-listener-state-accepting*) (mode 1))
  :observes ((:accept-result fn2-listener-observe-accept) (:close-result fn2-listener-observe-close))
- :continuations ((:accepting fn2-listener-step) (:closing fn2-listener-step)))
+ :continuations ((:accepting fn2-listener-accept) (:admitting fn2-listener-admitting)
+                 (:closing fn2-listener-close)))
 
 (defmachine fn2-echo
  :states (:free :command :reply :closing :draining :retired)
