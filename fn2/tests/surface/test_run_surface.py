@@ -89,6 +89,34 @@ class SurfaceRunnerTests(unittest.TestCase):
         code, _, _, _ = self.run_gate([self.case(lambda case: case.skipTest('retired (inventory): invented'))])
         self.assertEqual(code, 3)
 
+    def test_native_not_run_reports_first_unpermitted_skip(self):
+        for module, reason in (
+                ('state_checkpoint', 'no ACL2 executable (set FN_ACL2)'),
+                ('store_mount_identity', 'unprivileged user namespaces are refused'),
+                ('image_heap', 'measurement unavailable')):
+            with self.subTest(module=module):
+                permitted = ("FN_RUN_IMAGE_HEAP=1 runs the 128 MB bar's measurement"
+                             if module == 'image_heap' else 'retired (inventory): obsolete')
+                native_rows = [run_surface.run_natives.row(
+                    f'tests.test_native_{module}.Fixture.{name}', 'skip', reason=why)
+                    for name, why in [('test_old', permitted), ('test_blocked', reason),
+                                      ('test_later', 'later missing prerequisite')]]
+
+                def wrapper(case):
+                    case.evidence = {'native': {'module': module, 'tests': native_rows}}
+                    case.skipTest('; '.join(row['skip_reason'] for row in native_rows))
+
+                inventory = [{'module': module, 'judgment': {'in_image_tests': ['Fixture.test_old']}}]
+                code, report, stdout, markdown = self.run_gate([self.case(wrapper)], inventory=inventory)
+                self.assertEqual(code, 3)
+                self.assertEqual(report['totals']['not_run_reasons'], {reason: 1})
+                record = report['families']['nntp']['forms']['E']['records'][0]
+                self.assertEqual(record['skip_reason'], reason)
+                self.assertEqual(record['evidence']['native']['tests'], native_rows)
+                self.assertIn(reason, stdout)
+                self.assertIn(reason, markdown)
+                self.assertNotIn(permitted, markdown)
+
     def test_setup_skip_is_not_run(self):
         class Fixture(unittest.TestCase):
             @classmethod

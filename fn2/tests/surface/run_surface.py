@@ -65,6 +65,9 @@ class Result(run_natives.Result):
                 skipped = [row for row in native.get('tests', []) if row['outcome'] == 'skip']
                 entry['intended_skip'] = (all(intended_skip(row, native['module']) for row in skipped)
                     if skipped and entry['outcome'] == 'skip' else intended_skip(entry))
+                if skipped and entry['outcome'] == 'skip' and not entry['intended_skip']:
+                    entry['skip_reason'] = next(row['skip_reason'] for row in skipped
+                        if not intended_skip(row, native['module']))
 
 
 def execute_suite(suite):

@@ -267,6 +267,30 @@ class DifferentialTests(unittest.TestCase):
             for cut in d.CUTS:
                 self.assertEqual(d.compare(commands, transport=transport, cut=cut).rows, [])
 
+    def test_compression_authentication_and_capability_transitions(self):
+        commands = [line + b'\r\n' for line in (
+            b'CAPABILITIES', b'COMPRESS DEFLATE', b'AUTHINFO USER fuzz',
+            b'AUTHINFO PASS fuzz-password', b'CAPABILITIES', b'COMPRESS DEFLATE',
+            b'CAPABILITIES', b'AUTHINFO USER fuzz', b'COMPRESS DEFLATE')]
+        for mode in ('reader', 'node', 'peer'):
+            for transport in ('plain', 'starttls', 'implicit'):
+                with self.subTest(mode=mode, transport=transport):
+                    result = d.compare(commands, mode=mode, transport=transport)
+                    self.assertEqual(result.rows, [])
+                    compress = [bytes.fromhex(row['status_hex'])[:3] for row in result.exchanges
+                                if bytes.fromhex(row['command_hex']) == b'COMPRESS DEFLATE\r\n']
+                    self.assertEqual(compress, [b'480', b'206', b'502'])
+                    caps = [row for row in result.exchanges
+                            if bytes.fromhex(row['command_hex']) == b'CAPABILITIES\r\n']
+                    label = b'COMPRESS DEFLATE\r\n'
+                    self.assertEqual([label in bytes.fromhex(row['body_hex']) for row in caps],
+                                     [False, True, False])
+                    record = dict(mode=mode, transport=transport, exchanges=result.exchanges,
+                                  wire=result.wire)
+                    self.assertTrue(d.replay_recorded(record)['matched'])
+                    caps[1]['body_hex'] = bytes.fromhex(caps[1]['body_hex']).replace(label, b'').hex()
+                    self.assertFalse(d.replay_recorded(record)['matched'])
+
     def test_cuts_preserve_items_and_bytes(self):
         items = [b'HE', b'LP\r\nGROUP fn.test\r\n', b'QUIT\r\n']
         for cut in d.CUTS:

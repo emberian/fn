@@ -90,6 +90,8 @@ class Fake:
         if verb == 'COMPRESS':
             if self.compressed:
                 return self.reply(502)
+            if not self.login:
+                return self.reply(480)
             return self.reply(206)
         if verb in ('GROUP', 'STAT'):
             if self.target.policy['required'] and not self.login:
@@ -213,6 +215,9 @@ class TestTlsAuthUnit(unittest.TestCase):
                 for mode in ('plain', 'starttls', 'implicit'):
                     with self.subTest(required=required, protected=protected, mode=mode):
                         d, s = self.make(required, protected, mode)
+                        d.compress(s)
+                        self.assertEqual(bytes.fromhex(d.trace[-2]['status'])[:3], b'480')
+                        self.assertFalse(s.conn.compressed)
                         d.password(s, 'right')
                         d.login(s, 'unknown', False)
                         d.login(s, 'hu-reader', False)
@@ -235,8 +240,14 @@ class TestTlsAuthUnit(unittest.TestCase):
         self.assertEqual(bytes.fromhex(d.trace[-2]['status'])[:3], b'412')
         d.starttls(s)
         d.compress(s)
-        self.assertTrue(s.conn.compressed)
+        self.assertFalse(s.conn.compressed)
         self.assertIsNone(s.conn.authenticated_as)
+        d.login(s, 'hu-poster', True)
+        d.compress(s)
+        self.assertTrue(s.conn.compressed)
+        self.assertEqual(s.conn.authenticated_as, 'hu-poster')
+        self.assertEqual(bytes.fromhex(d.trace[-2]['command']), b'AUTHINFO USER hu-reader')
+        self.assertEqual(bytes.fromhex(d.trace[-2]['status'])[:3], b'502')
 
     def test_sasl_plain_scram_cancellation_and_success(self):
         for scram in (False, True):
@@ -273,7 +284,8 @@ class TestTlsAuthUnit(unittest.TestCase):
 
     def test_mutation_authinfo_after_refused_starttls(self):
         d, s = self.make()
-        d.step(s, b'COMPRESS DEFLATE')
+        d.login(s, 'hu-poster', True)
+        d.compress(s)
         d.starttls(s)
         d.step(s, b'AUTHINFO USER hu-reader')  # unmutated 502 control
         d.target.mutation = 'auth-after-refused-tls'

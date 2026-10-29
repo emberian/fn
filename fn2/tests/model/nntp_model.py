@@ -550,7 +550,9 @@ class Conn:
             required |= {b"IHAVE", b"STREAMING"}
         if not (self.tls or self.authenticated_as or self.compressed) and self.policy.get("starttls", True):
             required.add(b"STARTTLS")
-        if not self.compressed:
+        if not self.compressed and self.authenticated_as:
+            # NNT-054 (specs/nntp.md:2482): compression after authentication; before
+            # it RFC 8054 §2.1 still permits the label, fn1 omits it: either is admitted.
             required.add(b"COMPRESS DEFLATE")
         def content(data):
             rows = framing.lines(data)
@@ -1334,6 +1336,12 @@ class Conn:
     def _cmd_compress(self, args):
         if self.compressed:
             return self._reply("COMPRESS", 502)
+        if not self.authenticated_as:
+            # NNT-054: "a client may compress its session after authentication".
+            # Neither spec orders that gate against the argument checks, so an
+            # unauthenticated bad argument admits either refusal (HV-01).
+            extra = {501} if len(args) != 1 else {503} if args[0].upper() != "DEFLATE" else set()
+            return self._reply("COMPRESS", {480} | extra)
         if len(args) != 1:
             return self._error()
         if args[0].upper() != "DEFLATE":

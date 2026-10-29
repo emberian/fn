@@ -140,6 +140,11 @@ limitation, not equivalent coverage obtained by synthesizing shorter transcripts
 
 ## H2c fn1 adjudication (2026-10-28)
 
+Historical run-1 classes below predate HV. Its inactive-only COMPRESS obligation
+is withdrawn by the HV seat ruling: authentication state is necessary to judge
+an omitted advertisement. The original run-1 files lack `exchanges`; the full
+24-session authentication audit below concerns H2d's run-2 evidence.
+
 The four `build/h2b-fn1/shard-*` ledgers contain **267 original mismatch rows**.
 All command and reply octets were read from these rows and their reproducers;
 classification is independent of fn1 books/host code. The table below groups by
@@ -199,8 +204,9 @@ recovered independently. A separately labeled coarse run-day bound can check
 shape and plausibility only; it is not an exact replay closure.
 
 The 24 missing-capability rows contain READER, POST, OVER, HDR, XPAT, NEWNEWS,
-LIST, IMPLEMENTATION, AUTHINFO and SASL, but omit COMPRESS DEFLATE. TLS does not
-excuse that omission and the spec has no peer-only restriction. The six TAKETHIS
+LIST, IMPLEMENTATION, AUTHINFO and SASL, but omit COMPRESS DEFLATE. The original
+inactive-only requirement was wrong: HV permits omission before authentication;
+TLS alone does not establish authentication. The six TAKETHIS
 rows say `436 the article was not received; closing` without the offered ID.
 436 itself is explicitly legal for deferred/uncertain outcomes (2428-2435), so
 this ledger does **not** claim a universal 436-versus-439 defect. The missing ID
@@ -215,7 +221,7 @@ is determinate; actual body-bound refusal additionally requires 439 (530-534).
 | H2c-05 | 6 | syntax | wrong number of status lines (including closing 400) | `POST\t\r\n` | `build/h2b-fn1/shard-0/repro-3-node-whole-00027.json` | spec-ambiguity | A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899 | Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame. |
 | H2c-06 | 3 | syntax | wrong number of status lines (including closing 400) | `From: \r\n` | `build/h2b-fn1/shard-0/repro-4-reader-whole-00033.json` | spec-ambiguity | A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899 | Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame. |
 | H2c-07 | 6 | POST | status arguments/text do not match the rule | `POST body (10139 bytes; empty From, empty Newsgroups)` | `build/h2b-fn1/shard-0/repro-4-node-whole-00036.json` | model-bug | specs/nntp.md:724-725,782-785,857-860; RFC 3977 §6.3.1 | Closed by allowing syntax as a reason for missing required fields; retain 441 and exact named duplicate/conflict rules. |
-| H2c-08 | 24 | CAPABILITIES | missing or duplicate capability | `CAPABILITIES\r\n` | `build/h2b-fn1/shard-0/repro-5-reader-whole-00042.json` | fn1-bug | specs/nntp.md:2486-2506; RFC 8054 §2.1 | Layer D: advertise COMPRESS DEFLATE while inactive on reader/node sessions too; no peer-only exclusion in spec. |
+| H2c-08 | 24 | CAPABILITIES | missing or duplicate capability | `CAPABILITIES\r\n` | `build/h2b-fn1/shard-0/repro-5-reader-whole-00042.json` | fn1-bug | specs/nntp.md:2486-2506; RFC 8054 §2.1 | Historical obligation withdrawn by HV; authentication state is necessary. See audited H2d-08. |
 | H2c-09 | 12 | CAPABILITIES | SASL mechanism list differs from configured connection context | `CAPABILITIES\r\n` | `build/h2b-fn1/shard-0/repro-5-peer-whole-00048.json` | driver-bug | specs/nntp.md:1705-1709,1729-1731 | Supply unknown TLS-exporter observation explicitly; permit optional PLUS only on TLS. Cryptographic exporter installation remains unverified. |
 | H2c-10 | 6 | MODE | code 501; permitted [502] | `MODE STREAM\r\n` | `build/h2b-fn1/shard-1/repro-200-reader-whole-00000.json` | model-bug | specs/nntp.md:78-80,2416-2418; rfc3977.txt:552-555; rfc4644.txt:270-274 | Closed: reader MODE STREAM is unavailable variant 501; explicit three-verb transit 502 remains. |
 | H2c-11 | 9 | OVER | wrong number of status lines (including closing 400) | `OVER\r\n` | `build/h2b-fn1/shard-1/repro-201-reader-whole-00009.json` | spec-ambiguity | A14; specs/nntp.md:513-518; rfc3977.txt:5866-5899 | Record EOF versus timeout and full prior replies; repeat on clean connection before assigning fn1 blame. |
@@ -255,8 +261,8 @@ not minimized outcomes or additional liveness annotations.
 
 | Class | Original rows | Disposition |
 |---|---:|---|
-| fn1-bug | 37 | 24 missing COMPRESS; 13 TAKETHIS replies omit the offered Message-ID. |
-| model-bug | 159 | 130 permissible closes; 14 invented article-rejection closes; 15 malformed TAKETHIS command-prefix timeouts (HT). |
+| fn1-bug | 13 | TAKETHIS replies omit the offered Message-ID. |
+| model-bug | 183 | 130 permissible closes; 14 invented article-rejection closes; 15 malformed TAKETHIS command-prefix timeouts (HT); 24 optional unauthenticated COMPRESS advertisements (HV). Three of those 24 prefixes expose an earlier COMPRESS mismatch under HV. |
 | driver-bug | 3 | Unterminated POST over TLS: client raw half-close followed by TLS decode-error alert; reply evidence cannot establish a clean server close. |
 | spec-ambiguity | 123 | 114 A13 malformed keywords; 6 A15 syntax/permission precedence; 3 A16 multiple article defects/refusal-reason precedence. |
 | **Total** | **322** | One primary class per original row. |
@@ -294,10 +300,15 @@ QUIT prohibition at specs/nntp.md:521-528 remains unchanged; a real 205 followed
 by another framed reply still fails. The known `diff-quit-then-*` and
 `node-quit-then-*` corpus controls are separate from these fourteen observations.
 
-**Layer D must not reproduce these demonstrated fn1 bugs:** omit COMPRESS
-DEFLATE from reader/node capability lists while compression is inactive (24
-rows; specs/nntp.md:2486-2506), or emit a TAKETHIS response without the offered
-Message-ID (13 rows; specs/nntp.md:2428-2435; RFC 4644 §2.5.1). Every one of the
+**Layer D must not reproduce these demonstrated fn1 bugs:** emit a TAKETHIS
+response without the offered Message-ID (13 rows; specs/nntp.md:2428-2435;
+RFC 4644 §2.5.1), or return 503 for unauthenticated COMPRESS before applying
+the seat's 480 precedence (three seed-5 reader prefixes, identified below).
+H2d.REPORT.md item 1, the 24 capability omissions, is **withdrawn**, not narrowed
+to a residual authenticated subset: all 24 sessions were unauthenticated.
+Layer D must require COMPRESS DEFLATE only when authenticated and inactive,
+permit its omission before authentication, and prohibit it when active.
+Every one of the
 13 replies is `436 the article was not received; closing`. The local 436 code
 is explicitly allowed for deferred/uncertain outcomes, so “436 instead of 439”
 alone is not the adjudicated bug; the missing ID is. Body-bound refusal still
@@ -313,7 +324,7 @@ bug. A13/A15/A16 policy questions remain distinct from those requirements; HT re
 | H2d-05 | 6 | syntax | wrong number of status lines (including closing 400) | `POST\t\r\n` | `HEAD <a@b\r>\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-3-node-whole-00027.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
 | H2d-06 | 3 | syntax | wrong number of status lines (including closing 400) | `From: \r\n` | `POST xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… (1027 bytes)` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-4-reader-whole-00033.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
 | H2d-07 | 6 | syntax | wrong number of status lines (including closing 400) | `list overview.fmt *\r\n` | `NEWNEWS fn.* 2026010 00000\n\rOVER \r\n` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-4-node-whole-00036.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
-| H2d-08 | 24 | CAPABILITIES | missing or duplicate capability | `CAPABILITIES\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-0/repro-5-reader-whole-00042.json` | fn1-bug | specs/nntp.md:2486-2506; RFC 8054 §2.1 | Layer D: advertise COMPRESS DEFLATE on reader/node too when inactive. |
+| H2d-08 | 24 | CAPABILITIES | missing or duplicate capability | `CAPABILITIES\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-0/repro-5-reader-whole-00042.json` | model-bug | NNT-054, specs/nntp.md:2482; RFC 8054 §2.1; HV seat ruling | All 24 unauthenticated: omission permitted. 21 full prefixes match; three seed-5 reader cuts stop earlier at COMPRESS DEFLATECAPABILITIES returning 503 instead of 480. H2d report item 1 withdrawn. |
 | H2d-09 | 3 | CAPABILITIES | wrong number of status lines (including closing 400) | `CAPABILITIES\r\n` | `NEXT\r\x00\nGROUP fn.nowhere\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-5-peer-whole-00048.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
 | H2d-10 | 9 | XOVER | wrong number of status lines (including closing 400) | `XOVER  1\r\n` | `ARTICLE <fz7.2.734559255@fuzz.invalid> \rCHECK <fz7.3.673767654@fuzz.invalid>\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-0/repro-7-reader-whole-00060.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
 | H2d-11 | 6 | unknown | code 501; permitted [500] | `X-Fz-34: 34\r\n` | normal reply; final drain is not server-close evidence | `build/h2c-fn1/shard-0/repro-8-reader-whole-00069.json` | spec-ambiguity | A13; specs/nntp.md:83-87; rfc3977.txt:543-555,5422 | Keep open: choose invalid-keyword policy; retain well-formed unknown 500. |
@@ -355,15 +366,42 @@ bug. A13/A15/A16 policy questions remain distinct from those requirements; HT re
 | H2d-47 | 6 | syntax | wrong number of status lines (including closing 400) | `BODY -1\r\n` | `DATE xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… (519 bytes)` → 501 → clean EOF | `build/h2c-fn1/shard-3/repro-609-node-whole-00066.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
 | H2d-48 | 4 | syntax | wrong number of status lines (including closing 400) | `POST xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… (513 bytes)` | `XPAT X-Fuzz 1-1 !fn.*\nCAPABILITIES\r\n` → 501 → clean EOF | `build/h2c-fn1/shard-3/repro-611-reader-whole-00072.json` | model-bug | specs/nntp.md:513-518; rfc3977.txt:547-551,5866-5899 | Closed by model close alternative plus driver attribution to preceding 501. |
 
-**Recorded-byte replay after HT:** all 322 original rows were replayed using
+**Recorded-byte replay after HV:** all 322 original rows were replayed using
 original `exchanges` and reply-time wire evidence, not minimized outcomes.
-**159 match / 163 remain open**: 130 permitted malformed-command closes,
+**180 match / 142 remain open** (after HT: 159 / 163): 130 permitted malformed-command closes,
 14 article-rejection continuations, and all 15 malformed TAKETHIS command-prefix
-timeouts match. The timeout rows match because no reply is expected before the
+timeouts match, plus 21 H2d-08 prefixes. The timeout rows match because no reply is expected before the
 article; this does not establish an unseen article reply or convert timeout to
-EOF. Open rows are 37 fn1 bugs, 123 specification ambiguities, and 3 historical
-TLS half-close evidence failures. The H2c table remains the adjudication of its
+EOF. Open prefixes are 13 original fn1 bugs, three newly exposed COMPRESS
+precedence mismatches, 123 specification ambiguities, and three historical
+TLS half-close evidence failures. The H2c table remains the historical adjudication of its
 original evidence; run-2 wire facts are not retroactively substituted into run 1.
+
+**HV authentication audit (2026-10-29).** Each row below covers all three
+recorded cuts (`whole`, `per-item`, `bytewise`), checked individually. None has
+an authentication success (281/283) or compression success (206) before its
+CAPABILITIES. A cached USER is not an authenticated session.
+
+| Seed | Mode | Authentication replies before CAPABILITIES | Full prefixes matched |
+|---|---|---|---:|
+| 5 | reader | AUTHINFO SIMPLE → 501 | 0 / 3 |
+| 5 | node | No AUTHINFO | 3 / 3 |
+| 202 | reader | No AUTHINFO | 3 / 3 |
+| 202 | node | No AUTHINFO | 3 / 3 |
+| 203 | reader | USER → 381, argumentless PASS → 501 | 3 / 3 |
+| 203 | node | USER → 381, argumentless PASS → 501 | 3 / 3 |
+| 206 | reader | No AUTHINFO | 3 / 3 |
+| 206 | node | No AUTHINFO | 3 / 3 |
+
+All **24 omission findings are model-bug**. In the three seed-5 reader prefixes,
+command index 9 is `COMPRESS DEFLATECAPABILITIES\r\n` on an unauthenticated
+session, answered `503 compression algorithm not supported\r\n`. NNT-054 gates
+compression on authentication and RFC 8054 §2.2 refuses an unknown algorithm
+with 503; neither orders the two, so the model admits 480 or 503 there (and 480
+or 501 for a malformed argument count): no invented precedence. Layer D may
+choose either; the seat recommends 480 first (the gate before the argument).
+The per-session evidence and replay command are in `build/hv-replay.json` and
+`build/hv-replay.py`; `build/REPORT-HV.md` records the acceptance results.
 
 **HS harness follow-up and HT resolution (2026-10-29).** Live TLS uses `TLS`,
 an `SSLObject`/`MemoryBIO` transport: `unwrap` emits client close_notify, then
@@ -372,8 +410,9 @@ No TCP half-close occurs on TLS; historical raw-half-close rows remain open.
 The TLS control covers TLS 1.2/1.3 and observes 441 after the client alert; where
 loopback bind is forbidden, socket-pair fallback is recorded.
 
-The six HS ledgers (`diff-{0,203,204,405,408,603}`) replay to **15 matched /
-39 open**. All 15 A14 probes read the body before returning 439. Each row in
+The six HS ledgers (`diff-{0,203,204,405,408,603}`) replay to **21 matched /
+33 open** after HV (after HT: 15 / 39): six unauthenticated seed-203 reader/node
+capability omissions now match. All 15 A14 probes read the body before returning 439. Each row in
 this table covers exactly its `whole`, `per-item`, and `bytewise` observations:
 
 | Seed | Original H2d group | Offered line shape | HS reply (all three cuts) | HT disposition of each cut |

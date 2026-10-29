@@ -107,10 +107,10 @@ class TlsAuthTarget(Target):
         # budget. This is a public fixture policy, not a server-default claim.
         self.node.operator('policy', 'set', 'exposure-trusted', '127.0.0.1/32',
                            expect=0, timeout=20)
-        path = self.node.root / 'hu-cursor.eml'
-        path.write_bytes(ARTICLE)
-        self.node.store('post', IDENT, path, '-', '-', GROUP, expect=0, timeout=30)
         self.node.start()
+        # `store post` is a developer-image selector; the production image takes
+        # the operator's live post (as tests/test_native_moderation_outcome.py).
+        self.node.post(IDENT, ARTICLE, group=GROUP, expect=0, timeout=30)
 
     def connect(self, implicit=False):
         from tests.native_harness import Client, client_context
@@ -198,6 +198,7 @@ def machine(case, target_factory=TlsAuthTarget, traces=None):
             """
             self.handshake_witness()
             plain = self.open('plain')
+            self.compress(plain)  # 480 even when authentication is not required
             self.password(plain, 'right')  # PASS-before-USER / protected-only
             self.step(plain, b'AUTHINFO SASL PLAIN')  # always 483 before TLS
             self.user(plain, 'hu-reader')
@@ -218,11 +219,8 @@ def machine(case, target_factory=TlsAuthTarget, traces=None):
             clear = self.open('plain')
             self.login(clear, 'hu-poster', True)
             self.starttls(clear)
+            self.compress(clear)
             self.quit(clear)
-            if not self.policy['required']:
-                clear = self.open('plain')
-                self.compress(clear)  # 502 after COMPRESS with TLS inactive
-                self.quit(clear)
 
             protected = self.open('implicit')
             self.redeem(protected, 'pass-first')
@@ -380,13 +378,10 @@ def machine(case, target_factory=TlsAuthTarget, traces=None):
 
         @rule(session=connections)
         def compress(self, session):
-            # Authentication-required pre-login COMPRESS precedence is not
-            # specified by H2's oracle; cover layering after login there.
-            if self.policy['required'] and not session.conn.authenticated_as:
-                return
-            self.step(session, b'COMPRESS DEFLATE')
-            self.step(session, b'STARTTLS')
-            self.step(session, b'AUTHINFO USER hu-reader')
+            status = self.step(session, b'COMPRESS DEFLATE')
+            if status and status.startswith((b'206', b'502')):
+                self.step(session, b'STARTTLS')
+                self.step(session, b'AUTHINFO USER hu-reader')
 
         @rule(session=connections, kind=st.sampled_from(['fresh', 'used', 'wrong', 'pass-first']))
         def redeem(self, session, kind):

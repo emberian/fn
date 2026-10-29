@@ -103,7 +103,7 @@ def fake_content(c, command, exp):
         rows += [b'IHAVE', b'STREAMING'] if c.peer else []
         if not (c.tls or c.authenticated_as or c.compressed):
             rows += [b'STARTTLS']
-        if not c.compressed:
+        if c.authenticated_as and not c.compressed:
             rows += [b'COMPRESS DEFLATE']
         rows += [b'SASL SCRAM-SHA-256' + (b' PLAIN' if c.tls else b'')]
         if not (c.authenticated_as or c.compressed):

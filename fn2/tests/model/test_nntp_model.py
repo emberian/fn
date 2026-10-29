@@ -373,7 +373,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertTrue(c.quit)
 
     def test_starttls_handshake_resets_selection_preserves_mode_and_failures(self):
-        c = selected()
+        c = selected(model(accounts={"a": "pw"}))
         send(c, "MODE READER", "200 ready")
         send(c, "AUTHINFO USER missing", "381 password")
         send(c, "AUTHINFO PASS bad", "481 failed")
@@ -386,21 +386,40 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(c.failed_auth_count, 1)
         self.assertIsNone(c.current_group)
         send(c, "STARTTLS", "502 unavailable")
+        send(c, "COMPRESS DEFLATE", "480 authenticate")
+        send(c, "AUTHINFO USER a", "381 password")
+        send(c, "AUTHINFO PASS pw", "281 accepted")
         send(c, "COMPRESS DEFLATE", "206 compression active")
         send(c, "STARTTLS", "502 unavailable")
         send(c, "COMPRESS DEFLATE", "502 unavailable")
         send(c, "AUTHINFO USER a", "502 unavailable")
 
     def test_compression_preserves_cursor_and_implicit_tls(self):
-        m = model()
+        m = model(accounts={"a": "pw"})
         c = m.connect(tls=False, implicit_tls=True)
         self.assertTrue(c.tls)
         send(c, "STARTTLS", "502 unavailable")
+        send(c, "AUTHINFO USER a", "381 password")
+        send(c, "AUTHINFO PASS pw", "281 accepted")
         send(c, "GROUP test", "211 0 1 0 test")
         send(c, "COMPRESS GZIP", "503 unsupported")
         send(c, "COMPRESS", "501 syntax")
         send(c, "COMPRESS DEFLATE", "206 active")
         self.assertEqual(c.current_group, "test")
+
+    def test_compression_requires_authentication_even_when_reading_is_public(self):
+        for required in (False, True):
+            for tls in (False, True):
+                with self.subTest(required=required, tls=tls):
+                    c = connect(model(required=required), tls=tls)
+                    for command in ("COMPRESS DEFLATE", "COMPRESS GZIP", "COMPRESS"):
+                        e = c.send(command.encode() + b"\r\n")
+                        self.assertFalse(e.check(b"206 active\r\n", None).ok)
+                        accept(e, "480 authenticate")
+                        self.assertFalse(c.compressed)
+                    # Active-layer refusal takes precedence even without a login.
+                    c.compressed = True
+                    send(c, "COMPRESS DEFLATE", "502 unavailable")
 
     def test_sasl_states_cancellation_shapes_and_third_failure(self):
         c = connect(model(accounts={"alice": "pw"}), tls=True)
@@ -461,6 +480,27 @@ class AuthenticationTests(unittest.TestCase):
         rows[rows.index("SASL SCRAM-SHA-256")] = "SASL SCRAM-SHA-256 PLAIN"
         accept(e, "101 capabilities", encode_block(packed(rows)))
 
+    def test_compress_capability_before_after_authentication_and_activation(self):
+        rows = ["VERSION 2", "READER", "OVER MSGID", "HDR", "XPAT", "NEWNEWS", "POST",
+                "AUTHINFO USER SASL", "SASL SCRAM-SHA-256 PLAIN",
+                "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT",
+                "IMPLEMENTATION fn test"]
+        c = connect(model(accounts={"a": "pw"}), tls=True)
+        for advertised in (False, True):
+            send(c, "CAPABILITIES", "101 capabilities",
+                 packed(rows + (["COMPRESS DEFLATE"] if advertised else [])))
+        send(c, "AUTHINFO USER a", "381 password")
+        send(c, "AUTHINFO PASS pw", "281 accepted")
+        rows.remove("AUTHINFO USER SASL")
+        e = c.send(b"CAPABILITIES\r\n")
+        self.assertFalse(e.check(b"101 capabilities\r\n", encode_block(packed(rows))).ok)
+        accept(e, "101 capabilities", encode_block(packed(rows + ["COMPRESS DEFLATE"])))
+        send(c, "COMPRESS DEFLATE", "206 active")
+        e = c.send(b"CAPABILITIES\r\n")
+        self.assertFalse(e.check(b"101 capabilities\r\n",
+                                 encode_block(packed(rows + ["COMPRESS DEFLATE"]))).ok)
+        accept(e, "101 capabilities", encode_block(packed(rows)))
+
 
 class H2cRecordedReplyTests(unittest.TestCase):
     def test_reader_stream_is_unimplemented_mode_variant(self):
@@ -490,7 +530,7 @@ class H2cRecordedReplyTests(unittest.TestCase):
                  b"XFN-DICT 845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e\r\n.\r\n")
         c = connect(model(peer=True, tls_exporter=None), tls=True)
         e = c.send(b"CAPABILITIES\r\n")
-        self.assertFalse(e.check(b"101 capability list follows\r\n", reply.replace(b"COMPRESS DEFLATE\r\n", b"")).ok)
+        self.assertTrue(e.check(b"101 capability list follows\r\n", reply.replace(b"COMPRESS DEFLATE\r\n", b"")).ok)
         self.assertFalse(e.check(b"101 capability list follows\r\n", reply.replace(b"PLAIN", b"PLAIN DIGEST-MD5")).ok)
         accept(e, b"101 capability list follows\r\n", reply)
         c = connect(model(peer=True, tls_exporter=False), tls=True)

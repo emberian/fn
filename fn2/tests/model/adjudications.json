@@ -110,7 +110,7 @@
       ],
       "primary_class": "fn1-bug",
       "spec": "specs/nntp.md:2486-2506; RFC 8054 \u00a72.1",
-      "decision": "Layer D: advertise COMPRESS DEFLATE while inactive on reader/node sessions too; no peer-only exclusion in spec.",
+      "decision": "Historical run-1 classification predates HV; its inactive-only advertisement obligation is withdrawn. Authentication state is required to judge omission; original run-1 files lack exchanges. H2d-08 contains the audited run-2 ruling.",
       "original_count": 24,
       "command_shape": "CAPABILITIES\\r\\n"
     },
@@ -623,9 +623,9 @@
       "reply_patterns": [
         "313031206361706162696c697479206c69737420666f6c6c6f77730d0a56455253494f4e20320d0a5245414445520d0a504f53540d0a4f564552204d534749440d0a4844520d0a585041540d0a4e45574e4557530d0a4c49535420414354495645204143544956452e54494d455320434f554e54532048454144455253204d4f5444204e45575347524f555053204f564552564945572e464d540d0a494d504c454d454e544154494f4e20666e2d6e6e74702d6c61620d0a41555448494e464f2055534552205341534c0d0a5341534c20534352414d2d5348412d3235362d504c555320534352414d2d5348412d32353620504c41494e0d0a2e0d0a"
       ],
-      "primary_class": "fn1-bug",
-      "spec": "specs/nntp.md:2486-2506; RFC 8054 \u00a72.1",
-      "decision": "Layer D: advertise COMPRESS DEFLATE on reader/node too when inactive.",
+      "primary_class": "model-bug",
+      "spec": "NNT-054, specs/nntp.md:2482; RFC 8054 \u00a72.1; HV seat ruling",
+      "decision": "HV: all 24 recorded sessions are unauthenticated at CAPABILITIES; omission is permitted. 21 full prefixes match. Three seed-5 reader cuts stop earlier at COMPRESS DEFLATECAPABILITIES: 503 observed, 480 required. H2d report item 1 withdrawn; require advertisement only when authenticated and inactive, forbid it when active.",
       "original_count": 24,
       "command_shape": "CAPABILITIES\\r\\n"
     },
