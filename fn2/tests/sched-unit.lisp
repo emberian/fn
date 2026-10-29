@@ -27,10 +27,10 @@
                     '(:ok :ok :ok :already :ok :ok :ok :ok :ok :empty))
              (= queued 3) (= p3 0) (= prev3 2) (= next3 4)
              (equal (list m0 m1 m2 m3) '(2 3 4 2))
-             (= none *fn2-sched-none*) idle ready
+             (= none *fn2-none*) idle ready
              (not (fn2-sched-eligiblep fn2-sched))
-             (= (fn2-sched-headsi 0 fn2-sched) *fn2-sched-none*)
-             (= (fn2-sched-tailsi 0 fn2-sched) *fn2-sched-none*)) fn2-sched)))
+             (= (fn2-sched-headsi 0 fn2-sched) *fn2-none*)
+             (= (fn2-sched-tailsi 0 fn2-sched) *fn2-none*)) fn2-sched)))
 (defun fn2-sched-test-fifo ()
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-sched

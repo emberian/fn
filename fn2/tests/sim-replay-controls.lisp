@@ -19,7 +19,7 @@
   (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
     (hash)
     (fn2-replay-disk-hash-aux (fn2-sim-storage-rows fn2-sim-storage)
-       (fn2-sim-fold 2166136261 (fn2-storage-dead fn2-sim-storage)) fn2-sim-storage)
+       (fn2-sim-fold *fn2-fnv-offset-basis* (fn2-storage-dead fn2-sim-storage)) fn2-sim-storage)
     hash))
 (in-theory (disable fn2-replay-disk-hash))
 

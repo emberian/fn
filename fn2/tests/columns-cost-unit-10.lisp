@@ -9,7 +9,7 @@
  :accounts (:operations :bytes :row)
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity 1
- :initial ((storage-bytes 131072) (generation fn2-columns-cost10-initial-generation) (ready-prev 4294967295) (ready-next 4294967295))
+ :initial ((storage-bytes 131072) (generation fn2-columns-cost10-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :continuations ((:accepting fn2-columns-cost10-accepting) (:greeting fn2-columns-cost10-greeting) (:command fn2-columns-cost10-command) (:article-input fn2-columns-cost10-article-input) (:reply fn2-columns-cost10-reply) (:group-select fn2-columns-cost10-group-select) (:lookup fn2-columns-cost10-lookup) (:render fn2-columns-cost10-render) (:post-check fn2-columns-cost10-post-check) (:log-write fn2-columns-cost10-log-write) (:fence fn2-columns-cost10-fence) (:publish fn2-columns-cost10-publish) (:closing fn2-columns-cost10-closing) (:draining fn2-columns-cost10-draining) (:done fn2-columns-cost10-done))
  :observes ((:read-result fn2-columns-cost10-observe-read) (:write-result fn2-columns-cost10-observe-write)))
 

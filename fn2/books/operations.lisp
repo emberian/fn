@@ -55,9 +55,53 @@
     (fn2-operation-events owner (cadr definition) carrier (butlast formals 1)
       returns nil section (cadddr definition) (cddddr definition) nil nil)))
 
-; Shared guard-status check; the historical name stays for existing consumers.
-(defun fn2-profile-exports-compliant-p (names world)
+; Shared guard-status check for declared exports.
+(defun fn2-assert-compliant-p (names world)
   (declare (xargs :guard (and (symbol-listp names) (plist-worldp world))))
   (if (endp names) t
     (and (eq (symbol-class (car names) world) :common-lisp-compliant)
-         (fn2-profile-exports-compliant-p (cdr names) world))))
+         (fn2-assert-compliant-p (cdr names) world))))
+
+; Semantic code families have no resident table. Explicit values preserve sparse
+; ABI tags and flag masks; every generated constant belongs to this manifest.
+(defun fn2-code-constants (prefix entries)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) nil
+    (cons `(defconst ,(intern-in-package-of-symbol
+                        (concatenate 'string "*" (symbol-name prefix) "-"
+                                     (symbol-name (caar entries)) "*") prefix)
+             ,(cadar entries))
+          (fn2-code-constants prefix (cdr entries)))))
+(defun fn2-code-families (families)
+  (declare (xargs :verify-guards nil))
+  (if (atom families) nil
+    (append (fn2-code-constants (caar families) (cdar families))
+            (fn2-code-families (cdr families)))))
+(defun fn2-code-enums (families)
+  (declare (xargs :verify-guards nil))
+  (if (atom families) nil
+    (cons (cons (caar families) (remove-assoc-equal :count (cdar families)))
+          (fn2-code-enums (cdr families)))))
+(make-event
+ (let ((families
+        '((fn2-wait (:none 0) (:issued 1) (:op-credit 2) (:pool 3) (:admission 4) (:count 5))
+          (fn2-trace-kind (:mailbox 0) (:machine 1) (:service 2) (:clock 3) (:signal 4) (:count 5))
+          (fn2-visit (:principal 0) (:commit 1) (:timer 2) (:notification 3) (:maintenance 4) (:none 255))
+          (fn2-clock-flag (:realtime-valid 1) (:realtime-negative 2) (:backward 4) (:malformed 8) (:input-mask 3) (:error-mask 12))
+          (fn2-work (:empty 1) (:poll 2) (:state 4) (:refusal 6) (:mailbox 8) (:small 12) (:release 20) (:transition 24))
+          (fn2-calendar (:principals-per-group 16) (:services 4) (:group-size 20))
+          (fn2-format (:sector-bytes 4096) (:magic 843990611) (:version-offset 4) (:address-offset 8)
+            (:sequence-offset 12) (:checksum-offset 16) (:payload-offset 20) (:word-bytes 4))
+          (fn2-scribe (:chunk-bytes 16))
+          (fn2-fnv (:offset-basis 2166136261) (:prime 16777619))
+          (fn2-record (:clock 256) (:advance 257) (:client-drain 258) (:wake 259) (:death 260))
+          (fn2-fault (:fragment 0) (:short-send 1) (:delay 2) (:reset 3) (:half-open 4) (:nonreading 5)
+            (:read-io 6) (:bitrot 7) (:misread 8) (:miswrite 9) (:lying-flush 10) (:tear 11)
+            (:no-space 12) (:dead 13) (:fail-slow 14) (:crash 15) (:monotonic-jump 16)
+            (:realtime-back 17) (:duplicate 18) (:stale 19) (:forged 20) (:overcount 21)
+            (:malformed 22) (:flush-io 23) (:short-write 24) (:release-order 25) (:none 26) (:count 26)))))
+   (value (fn2-declare '(:operation-set fn2-codes) (list :enums (fn2-code-enums families)) nil
+                      (fn2-code-families families)))))
+(defconst *fn2-none* 4294967295)
+(defconst *fn2-u60-max* 1152921504606846975)
+(defconst *fn2-no-deadline* *fn2-u60-max*)

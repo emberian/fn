@@ -105,6 +105,6 @@
         (time$ (fn2-core-audit-loop 100000 slot gen fn2-core)
                :msg "CORE HOT LOOP: 100000 cycles, ~sa bytes, ~st seconds~%"))
       ok)))
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-core-audit-loop fn2-core-allocation-audit) (w state)))
 (assert-event (fn2-core-allocation-audit))

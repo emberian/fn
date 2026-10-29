@@ -192,7 +192,7 @@
             ((>= slot (fn2-pool-rows fn2-pool)) (fn2-own-fail 1 fn2-own))
             (t
              (let* ((base (+ (fn2-pool-base slot fn2-pool) off))
-                    (hash (fn2-own-pool-digest base count 2166136261 fn2-pool))
+                    (hash (fn2-own-pool-digest base count *fn2-fnv-offset-basis* fn2-pool))
                     (fn2-own (fn2-own-set-seen opslot 1 fn2-own))
                     (fn2-own (fn2-own-set-gen opslot gen fn2-own))
                     (fn2-own (fn2-own-set-digest opslot hash fn2-own)))
@@ -218,7 +218,7 @@
                      (equal (fn2-own-digest opslot fn2-own)
                             (fn2-own-pool-digest
                              (+ (fn2-pool-base slot fn2-pool) (fn2-ops-range-off opslot fn2-ops))
-                             (fn2-ops-range-len opslot fn2-ops) 2166136261 fn2-pool))))
+                             (fn2-ops-range-len opslot fn2-ops) *fn2-fnv-offset-basis* fn2-pool))))
           (fn2-own-fail 2 fn2-own)
         fn2-own))))
 (fn2-own-preserves fn2-own-observe-output-parts (opslot fn2-pool fn2-ops fn2-own) :position nil :rows nil
@@ -398,7 +398,7 @@
                     (equal (fn2-own-digest i fn2-own)
                            (fn2-own-pool-digest
                             (+ (fn2-pool-base slot fn2-pool) (fn2-ops-range-off i fn2-ops))
-                            (fn2-ops-range-len i fn2-ops) 2166136261 fn2-pool))))
+                            (fn2-ops-range-len i fn2-ops) *fn2-fnv-offset-basis* fn2-pool))))
            (fn2-own-output-digests-p i fn2-pool fn2-ops fn2-own)))))
 
 (defun fn2-own-status (fn2-own)
@@ -419,7 +419,7 @@
         (t :pass)))
 
 (assert-event
- (fn2-profile-exports-compliant-p
+ (fn2-assert-compliant-p
   '(fn2-own-fail fn2-op-output-kindp fn2-op-input-kindp fn2-fnv-step
     fn2-own-pool-digest fn2-own-op-column-word fn2-own-op-scalar-word
     fn2-own-ops-word-count fn2-own-ops-word fn2-own-copy-ops fn2-own-same-ops-p

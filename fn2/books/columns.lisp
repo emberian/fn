@@ -72,7 +72,7 @@
 (defun fn2-columns-width (kind)
   (declare (xargs :guard t :verify-guards nil))
   (cond ((eq kind :u8) 8) ((eq kind :u16) 16)
-        ((eq kind :u32) 32) ((eq kind :u60) 60)
+        ((member-eq kind '(:u32 :link)) 32) ((eq kind :u60) 60)
         ((eq kind :u64) 64) ((eq kind :bool) 1) (t 8)))
 
 (defun fn2-columns-fields (name cols)
@@ -80,7 +80,7 @@
   (if (atom cols) nil
     (cons `(,(fn2-columns-sym (fn2-columns-col-name name (caar cols)) "$A")
             :type (array (unsigned-byte ,(fn2-columns-width (cadar cols))) (0))
-            :initially 0 :resizable t)
+            :initially ,(if (eq (cadar cols) :link) *fn2-none* 0) :resizable t)
           (fn2-columns-fields name (cdr cols)))))
 
 (defun fn2-columns-enum-constants (name kws n)
@@ -495,7 +495,7 @@
 (defun fn2-columns-init-nth (name cols index)
   (declare (xargs :verify-guards nil))
   (if (atom cols) `(if (equal (nfix k) ,index) n (nth k ,name))
-    `(if (equal (nfix k) ,index) (resize-list (nth ,index ,name) n 0)
+    `(if (equal (nfix k) ,index) (resize-list (nth ,index ,name) n ,(if (eq (cadar cols) :link) *fn2-none* 0))
        ,(fn2-columns-init-nth name (cdr cols) (+ 1 (nfix index))))))
 
 (defun fn2-columns-shape-expansions (n)
@@ -772,6 +772,13 @@
       name nil :infer nil :reference `(declare (xargs :stobjs ,name :verify-guards nil))
       `((list ,@(fn2-columns-snapshot-calls name fields))) nil nil))))
 
+(defun fn2-columns-record-readers (name cols index)
+  (declare (xargs :verify-guards nil))
+  (if (atom cols) nil
+    (cons `(defun ,(fn2-columns-col-name (fn2-columns-sym name "-RECORD") (caar cols)) (record)
+             (declare (xargs :guard t)) (nth ,index (true-list-fix record)))
+          (fn2-columns-record-readers name (cdr cols) (+ 1 (nfix index))))))
+
 (defun fn2-columns-events (name cols bound extras init-name put-policy)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((rows (fn2-columns-sym name "-ROWS"))
@@ -842,9 +849,11 @@
        (defmacro ,(fn2-columns-sym name "-DIFF") (source target &key skip)
          (cons 'or (fn2-columns-diff-terms source target ',fields skip)))
        (defun ,(fn2-columns-sym name "-ROW-SNAPSHOT") (i ,name)
-         (declare (xargs :stobjs ,name :guard (and (,wfp ,name) (natp i) (< i (,rows ,name)))))
+         (declare (xargs :stobjs ,name :guard (and (,wfp ,name) (natp i) (< i (,rows ,name)))) (ignorable i ,name))
          (list ,@(strip-cars (strip-cdrs (strip-cdrs (fn2-columns-row-terms name cols))))))
+       ,@(fn2-columns-record-readers name cols 0)
        (defun-nx ,row-view (i ,name)
+         (declare (ignorable i ,name))
          (list ,@(fn2-columns-row-terms name cols)))
        (defun-nx ,view-aux (i n ,name)
          (declare (xargs :measure (nfix (- (nfix n) (nfix i)))))
@@ -853,7 +862,7 @@
        (defun-nx ,(fn2-columns-sym name "-VIEW") (,name)
          (,view-aux 0 (,rows ,name) ,name))
        (in-theory (disable ,wfp ,init))
-       (assert-event (fn2-profile-exports-compliant-p
+       (assert-event (fn2-assert-compliant-p
                       '(,init ,@(fn2-columns-accessor-names name cols)) (w state)))))))
 
 (defun fn2-columns-keyword-listp (xs)
@@ -863,7 +872,7 @@
 
 (defun fn2-columns-kindp (kind)
   (declare (xargs :guard t :verify-guards nil))
-  (or (member-eq kind '(:u8 :u16 :u32 :u60 :u64 :bool))
+  (or (member-eq kind '(:u8 :u16 :u32 :u60 :u64 :bool :link))
       (and (true-listp kind) (equal (len kind) 3) (eq (car kind) :enum)
            (symbolp (cadr kind)) (cadr kind)
            (consp (caddr kind)) (fn2-columns-keyword-listp (caddr kind))
@@ -888,12 +897,19 @@
     (cons (if (consp (car fields)) (caar fields) (car fields))
           (fn2-columns-field-names (cdr fields)))))
 
+(defun fn2-columns-constants (form world)
+  (declare (xargs :verify-guards nil))
+  (if (consp form)
+      (cons (fn2-columns-constants (car form) world) (fn2-columns-constants (cdr form) world))
+    (let ((value (and (symbolp form) (getpropc form 'const nil world))))
+      (if value (unquote value) form))))
+
 (defmacro defcolumns (name columns &key (rows-bound '4294967296)
                           extra-fields init-name put-policy)
   (if (not (fn2-columns-extra-okp extra-fields))
       `(make-event (er soft 'defcolumns "Extra field ~x0 of ~x1 requires a nonempty :why."
                       ',(car (fn2-columns-unjustified-extra extra-fields)) ',name))
-    (if (and (consp columns) (fn2-columns-declarationsp columns)
+    (if (and (true-listp columns) (fn2-columns-declarationsp columns)
            (no-duplicatesp-equal (strip-cars columns))
            (integerp rows-bound) (< 0 rows-bound) (<= rows-bound (expt 2 60))
            (true-listp extra-fields)
@@ -902,7 +918,8 @@
                                (list (list (fn2-columns-sym name "-ROWS")))
                                extra-fields)))
            (or (null init-name) (and (symbolp init-name) init-name)))
-      (fn2-columns-events name columns rows-bound extra-fields init-name put-policy)
+      `(make-event (value (fn2-columns-events ',name ',columns ,rows-bound
+        (fn2-columns-constants ',extra-fields (w state)) ',init-name ',put-policy)))
     (er hard 'defcolumns
         "Invalid defcolumns declaration for ~x0: use distinct column names, supported kinds, unique nonempty enums of at most 256 keywords, a positive rows bound at most 2^60, and a nonempty :why string for every :u64 column."
         name))))
@@ -946,7 +963,7 @@
            (implies ,guard (,wfp (mv-nth 1 (,inc i ,name)))))
          (defthm ,(fn2-columns-sym inc "-ROWS")
            (equal (nth 2 (mv-nth 1 (,inc i ,name))) (nth 2 ,name)))
-         (assert-event (fn2-profile-exports-compliant-p '(,compare ,inc) (w state)))))))
+         (assert-event (fn2-assert-compliant-p '(,compare ,inc) (w state)))))))
 
 ; Freeze the generating book's theory, independent of the includer's world.
 (make-event

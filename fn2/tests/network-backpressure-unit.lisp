@@ -53,7 +53,7 @@
        answer))))
 (local
  (assert-event
-  (fn2-profile-exports-compliant-p
+  (fn2-assert-compliant-p
    '(fn2-network-backpressure-run fn2-network-backpressure-test) (w state))))
 (local (assert-event (eq (fn2-network-backpressure-test) :pass)))
 
@@ -101,6 +101,6 @@
        answer))))
 (local
  (assert-event
-  (fn2-profile-exports-compliant-p
+  (fn2-assert-compliant-p
    '(fn2-network-half-open-run fn2-network-half-open-test) (w state))))
 (local (assert-event (eq (fn2-network-half-open-test) :pass)))

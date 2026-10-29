@@ -75,7 +75,7 @@
                    (not (fn2-check-resultp nil))))
 
 (assert-event
- (fn2-profile-exports-compliant-p
+ (fn2-assert-compliant-p
   '(fn2-checker-namep fn2-check-resultp fn2-own-observe-issue
     fn2-own-observe-output fn2-own-record-input-byte fn2-own-observe-read
     fn2-own-observe-core-write)

@@ -412,19 +412,19 @@
 (defun fn2-vocab-test-clock-run (fn2-ops)
   (declare (xargs :stobjs fn2-ops :verify-guards nil))
   (b* ((fn2-ops (fn2-ops-init *fn2-profile-tiny* fn2-ops))
-       (fn2-ops (fn2-post-clock 10 100 1 fn2-ops))
-       (fn2-ops (fn2-post-clock 12 102 1 fn2-ops))
-       (fn2-ops (fn2-post-clock 11 999 1 fn2-ops))
+       (fn2-ops (fn2-post-clock 10 100 *fn2-clock-flag-realtime-valid* fn2-ops))
+       (fn2-ops (fn2-post-clock 12 102 *fn2-clock-flag-realtime-valid* fn2-ops))
+       (fn2-ops (fn2-post-clock 11 999 *fn2-clock-flag-realtime-valid* fn2-ops))
        ((unless (and (equal (fn2-ops-clock-coalesced fn2-ops) 2) (equal (fn2-ops-clock-rejected fn2-ops) 1))) (mv :clock-counted fn2-ops))
        ((mv posted mono real flags fn2-ops) (fn2-take-clock fn2-ops))
        ((unless (and posted (equal mono 12) (equal real 102) (equal flags 5))) (mv :clock-coalesced fn2-ops))
        ((mv posted ?mono ?real ?flags fn2-ops) (fn2-take-clock fn2-ops))
        ((unless (not posted)) (mv :clock-cleared fn2-ops))
-       (fn2-ops (fn2-post-clock 9 999 1 fn2-ops))
-       (fn2-ops (fn2-post-clock -1 999 1 fn2-ops))
+       (fn2-ops (fn2-post-clock 9 999 *fn2-clock-flag-realtime-valid* fn2-ops))
+       (fn2-ops (fn2-post-clock -1 999 *fn2-clock-flag-realtime-valid* fn2-ops))
        ((mv posted mono real flags fn2-ops) (fn2-take-clock fn2-ops))
-       ((unless (and posted (equal mono 12) (equal real 102) (equal (logand flags 12) 12) (equal (fn2-ops-clock-rejected fn2-ops) 3))) (mv :clock-high-water fn2-ops))
-       (fn2-ops (fn2-post-clock 13 103 3 fn2-ops))
+       ((unless (and posted (equal mono 12) (equal real 102) (equal (logand flags *fn2-clock-flag-error-mask*) *fn2-clock-flag-error-mask*) (equal (fn2-ops-clock-rejected fn2-ops) 3))) (mv :clock-high-water fn2-ops))
+       (fn2-ops (fn2-post-clock 13 103 (logior *fn2-clock-flag-realtime-valid* *fn2-clock-flag-realtime-negative*) fn2-ops))
        ((mv posted mono real flags fn2-ops) (fn2-take-clock fn2-ops))
        ((unless (and posted (equal mono 13) (equal real 103) (equal flags 3))) (mv :clock-new-valid fn2-ops))
        ((unless (fn2-ops-semanticp fn2-ops)) (mv :conservation fn2-ops)))
@@ -702,7 +702,7 @@
 
 (assert-event (equal (fn2-vocab-test-result-capacity) t))
 
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-ops-init fn2-op-reserve fn2-op-set-range fn2-op-set-capability
     fn2-op-set-storage fn2-op-set-cancel-target fn2-op-unreserve fn2-op-enqueue
     fn2-outbox-queued fn2-outbox-peek fn2-outbox-ack fn2-post-result
@@ -782,7 +782,7 @@
        ((unless (eq code :ok)) (mv :mutation fn2-ops))
        ((mv code fn2-ops) (fn2-outbox-ack 1 fn2-ops))
        ((unless (eq code :ok)) (mv :mutation fn2-ops))
-       (fn2-ops (update-fn2-ops-stray 1152921504606846975 fn2-ops))
+       (fn2-ops (update-fn2-ops-stray *fn2-u60-max* fn2-ops))
        (before (fn2-ops-snapshot fn2-ops))
        (fn2-ops (fn2-post-result 0 slot (+ 1 gen) *fn2-event-receive-result*
                                  *fn2-outcome-done* *fn2-reason-none* 0 0 0 fn2-ops))
@@ -1256,7 +1256,7 @@
         (time$ (fn2-vocab-audit-loop 100000 fn2-ops)
                :msg "VOCAB HOT LOOP: ~sa bytes, ~st seconds~%"))
       ok)))
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-vocab-audit-loop fn2-vocab-allocation-audit) (w state)))
 (assert-event (equal (fn2-vocab-allocation-audit) t))
 
@@ -1310,7 +1310,7 @@
   (with-local-stobj fn2-ops
     (mv-let (result fn2-ops) (fn2-vocab-test-wake-run fn2-ops) result)))
 (assert-event (equal (fn2-vocab-test-wake) t))
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-op-set-wake fn2-op-wake) (w state)))
 
 ; Registry teeth run the existing full positive and negative fixtures.
@@ -1339,3 +1339,14 @@
         (mv (and (eq code :state) (equal before (fn2-ops-snapshot fn2-ops))) fn2-ops)) answer)))
 (assert-event (fn2-op-recycle-phase-control))
 (value-triple (cw "R5d RECYCLE: free-row double recycle refuses :state without mutation PASS~%"))
+
+(defun fn2-op-read-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-ops
+  (mv-let (ok fn2-ops)
+    (let ((fn2-ops (fn2-ops-init *fn2-profile-tiny* fn2-ops)))
+      (mv-let (valid row) (fn2-op-read 0 fn2-ops)
+        (mv-let (invalid absent) (fn2-op-read *fn2-none* fn2-ops)
+          (mv (and (eq valid :ok) (= (fn2-ops-record-kind row) *fn2-action-accept*)
+                   (eq invalid :bounds) (null absent)) fn2-ops)))) ok)))
+(assert-event (fn2-op-read-control))

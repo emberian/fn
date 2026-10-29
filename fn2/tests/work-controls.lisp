@@ -59,8 +59,8 @@
 
 ; Per-record caps alone used to admit this over-budget combined turn.
 (assert-event
- (let ((h '(0 0 0 0 4096 24 0 0 4294967295 0 0 0 0 0 0 0 0 0 0))
-       (r '(1 0 0 0 4096 32 0 0 4294967295 0 0 0 0 0 0 0 0 0 0)))
+ (let ((h `(0 0 0 0 4096 24 0 0 ,*fn2-none* 0 0 0 0 0 0 0 0 0 0))
+       (r `(1 0 0 0 4096 32 0 0 ,*fn2-none* 0 0 0 0 0 0 0 0 0 0)))
    (equal (fn2-check-work (list h h h h r r r r r r r r)
                           0 4 8 0 *fn2-profile-tiny*)
           '(:fail :turn-work-cost))))

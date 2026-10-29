@@ -31,7 +31,7 @@
               (assert (= (+ (third result) (fourth result)) 1000))
               (assert (>= (third result) 500))
               (assert (zerop (fn2-echo-stat :unattributed (nth 7 result))))
-              (assert (= (length (nth 8 result)) 26))
+              (assert (= (length (nth 8 result)) *fn2-fault-count*))
               (assert (every (lambda (entry) (zerop (cdr entry))) (nth 8 result)))
               (assert (= *fn2-meter-calls* (sixth result))))
             (fn2-meter-report "STEADY ECHO TURN CPU profile=CONCRETE-TRACE adapter-faults=NONE"))

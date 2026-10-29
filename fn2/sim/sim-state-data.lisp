@@ -2,9 +2,19 @@
 ; diagnostic ring are preallocated; only init may resize arrays or save metadata.
 (in-package "ACL2")
 (include-book "../books/profile")
+(include-book "../books/vocab")
 (include-book "network")
 (include-book "storage")
 (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system)
+
+(defconst *fn2-sim-network-capacity* 4096)
+; Between checker acknowledgments, pool runs execute one advance: at most
+; TX-capacity drained bytes + Advance + Clock + two posts. Stray+terminal
+; and duplicate+terminal are exclusive faults. Take/issue/harvest add none.
+; Echo drains clients directly (no records), so its automatic=nil advance
+; plus two possible handoff deaths needs <=6; scribe <=4. Device trials
+; have one bootstrap post then <=4 records with empty TX; ABI trials <=2.
+(defconst *fn2-sim-observation-capacity* (+ *fn2-sim-network-capacity* 4))
 
 ; Fault IDs are persisted in the observation ring. 26 means no fault.
 ; 0 fragment, 1 short-send, 2 delay, 3 reset, 4 half-open, 5 nonreading,
@@ -38,23 +48,25 @@
    (fn2-sim-deaths :type (unsigned-byte 32) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
    (fn2-sim-stamp :type (unsigned-byte 60) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
    (fn2-sim-fault-budget :type (unsigned-byte 32) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
-   (fn2-sim-forced-fault :type (unsigned-byte 8) :initially 26 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-forced-fault :type (unsigned-byte 8) :initially *fn2-fault-none* :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
    (fn2-sim-digest :type (unsigned-byte 32) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
-   (fn2-sim-ring-head :type (unsigned-byte 8) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-ring-head :type (unsigned-byte 16) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-ring-unread :type (unsigned-byte 16) :initially 0 :why "Unacknowledged observation records prevent silent diagnostic overwrite.")
+   (fn2-sim-lost :type (unsigned-byte 60) :initially 0 :why "Sticky count of records overwritten before checker acknowledgment.")
    (fn2-sim-observations :type (unsigned-byte 60) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
-   (fn2-sim-probabilities :type (array (unsigned-byte 8) (26)) :initially 0 :why "Counters or policy indexed by fault/action kind, not flight rows.")
-   (fn2-sim-hits :type (array (unsigned-byte 32) (26)) :initially 0 :why "Counters or policy indexed by fault/action kind, not flight rows.")
-   (fn2-sim-action-counts :type (array (unsigned-byte 32) (14)) :initially 0 :why "Counters or policy indexed by fault/action kind, not flight rows.")
-   (fn2-sim-ring-op :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
-   (fn2-sim-ring-gen :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
-   (fn2-sim-ring-cell :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
-   (fn2-sim-ring-event :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
-   (fn2-sim-ring-outcome :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
-   (fn2-sim-ring-reason :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
-   (fn2-sim-ring-count :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
-   (fn2-sim-ring-aux0 :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
-   (fn2-sim-ring-aux1 :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
-   (fn2-sim-ring-fault :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-probabilities :type (array (unsigned-byte 8) (*fn2-fault-count*)) :initially 0 :why "Counters or policy indexed by fault/action kind, not flight rows.")
+   (fn2-sim-hits :type (array (unsigned-byte 32) (*fn2-fault-count*)) :initially 0 :why "Counters or policy indexed by fault/action kind, not flight rows.")
+   (fn2-sim-action-counts :type (array (unsigned-byte 32) (*fn2-action-count*)) :initially 0 :why "Counters or policy indexed by fault/action kind, not flight rows.")
+   (fn2-sim-ring-op :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-gen :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-cell :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-event :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-outcome :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-reason :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-count :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-aux0 :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-aux1 :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-fault :type (array (unsigned-byte 60) (*fn2-sim-observation-capacity*)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
    (fn2-sim-wake-pending :type (unsigned-byte 1) :initially 0 :why "One adapter wake reservation shared by all flights.")
    (fn2-sim-wake-deadline :type (unsigned-byte 60) :initially 0 :why "One adapter wake reservation shared by all flights.")
    (fn2-sim-wake-observation-gen :type (unsigned-byte 60) :initially 0 :why "One adapter wake reservation shared by all flights.")))
@@ -108,5 +120,5 @@
            (fn2-sim-storage-wfp fn2-sim-storage))
       ok)))
 
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-sim-ready) (w state)))

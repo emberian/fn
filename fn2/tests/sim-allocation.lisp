@@ -257,6 +257,6 @@
       ok)))
 
 (in-theory (disable fn2-sim-allocation-audit))
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-sim-audit-loop fn2-sim-audit-crash-work-loop fn2-sim-audit-init-loop fn2-sim-audit-death-loop
     fn2-sim-audit-live-loop fn2-sim-allocation-audit) (w state)))

@@ -76,7 +76,7 @@
 
 (defun fn2-sim-force-fault (fault fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
-  (update-fn2-sim-forced-fault (if (and (natp fault) (< fault 26)) fault 26) fn2-sim))
+  (update-fn2-sim-forced-fault (if (and (natp fault) (< fault *fn2-fault-none*)) fault *fn2-fault-none*) fn2-sim))
 (fn2-sim-preserves fn2-sim-force-fault (fault fn2-sim) :forward t
   :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
   :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
@@ -94,21 +94,21 @@
 (in-theory (disable fn2-sim-fold))
 
 (defthm fn2-sim-fault-mod-natp
- (implies (integerp word) (natp (mod word 26)))
+ (implies (integerp word) (natp (mod word *fn2-fault-count*)))
  :rule-classes :type-prescription)
 (defthm fn2-sim-fault-mod-bound
- (implies (integerp word) (< (mod word 26) 26))
+ (implies (integerp word) (< (mod word *fn2-fault-count*) *fn2-fault-count*))
  :rule-classes :linear)
 (defthm fn2-sim-probability-word-type
  (implies (and (fn2-simp fn2-sim) (integerp word))
-  (natp (nth (mod word 26) (nth *fn2-sim-probabilitiesi* fn2-sim))))
+  (natp (nth (mod word *fn2-fault-count*) (nth *fn2-sim-probabilitiesi* fn2-sim))))
  :rule-classes :type-prescription
- :hints (("Goal" :use ((:instance fn2-sim-probabilitiesi-natp (i (mod word 26)))))))
+ :hints (("Goal" :use ((:instance fn2-sim-probabilitiesi-natp (i (mod word *fn2-fault-count*)))))))
 (defthm fn2-sim-hits-word-type
  (implies (and (fn2-simp fn2-sim) (integerp word))
-  (natp (nth (mod word 26) (nth *fn2-sim-hitsi* fn2-sim))))
+  (natp (nth (mod word *fn2-fault-count*) (nth *fn2-sim-hitsi* fn2-sim))))
  :rule-classes :type-prescription
- :hints (("Goal" :use ((:instance fn2-sim-hitsi-natp (i (mod word 26)))))))
+ :hints (("Goal" :use ((:instance fn2-sim-hitsi-natp (i (mod word *fn2-fault-count*)))))))
 (defun fn2-sim-choose-fault (fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)
                   :guard-hints (("Goal" :use ((:instance fn2-sim-random-state-type)
@@ -116,22 +116,22 @@
                                         :in-theory (disable fn2-sim-random-state-type fn2-sim-random-ready)))))
   (mv-let (word fn2-sim) (fn2-sim-random fn2-sim)
     (let* ((forced (fn2-sim-forced-fault fn2-sim))
-           (candidate (if (< forced 26) forced (mod word 26)))
-           (coin (mod (floor word 26) 256))
+           (candidate (if (< forced *fn2-fault-none*) forced (mod word *fn2-fault-count*)))
+           (coin (mod (floor word *fn2-fault-count*) 256))
            (hit (and (< 0 (fn2-sim-fault-budget fn2-sim))
-                     (or (< forced 26) (< coin (fn2-sim-probabilitiesi candidate fn2-sim)))))
-           (fn2-sim (update-fn2-sim-forced-fault 26 fn2-sim))
+                     (or (< forced *fn2-fault-none*) (< coin (fn2-sim-probabilitiesi candidate fn2-sim)))))
+           (fn2-sim (update-fn2-sim-forced-fault *fn2-fault-none* fn2-sim))
            (fn2-sim (update-fn2-sim-digest
                        (fn2-sim-fold (fn2-sim-digest fn2-sim)
-                                      (+ 61440 (if hit candidate 26))) fn2-sim)))
-      (if (not hit) (mv 26 fn2-sim)
+                                      (+ 61440 (if hit candidate *fn2-fault-none*))) fn2-sim)))
+      (if (not hit) (mv *fn2-fault-none* fn2-sim)
         (let ((fn2-sim (update-fn2-sim-fault-budget (- (fn2-sim-fault-budget fn2-sim) 1) fn2-sim)))
           (mv candidate fn2-sim))))))
 
 ; Coverage is recorded at the effect, never at random selection.
 (defun fn2-sim-land (fault fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard t))
-  (if (and (natp fault) (< fault 26))
+  (if (and (natp fault) (< fault *fn2-fault-none*))
       (update-fn2-sim-hitsi fault (min #xffffffff (+ 1 (fn2-sim-hitsi fault fn2-sim))) fn2-sim)
     fn2-sim))
 (fn2-sim-preserves fn2-sim-land (fault fn2-sim) :forward t
@@ -147,7 +147,7 @@
 (defthm fn2-sim-choose-fault-result
   (implies (fn2-simp fn2-sim)
            (and (natp (mv-nth 0 (fn2-sim-choose-fault fn2-sim)))
-                (<= (mv-nth 0 (fn2-sim-choose-fault fn2-sim)) 26))))
+                (<= (mv-nth 0 (fn2-sim-choose-fault fn2-sim)) *fn2-fault-none*))))
 (fn2-sim-preserves fn2-sim-choose-fault (fn2-sim) :forward t
   :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
   :specs (("-TYPE" fn2-simp 1) ("-READY" fn2-sim-ready 1) ("-WFP" fn2-sim-wfp 1)))
@@ -159,8 +159,11 @@
                 (unsigned-byte-p 60 outcome) (unsigned-byte-p 60 reason)
                 (unsigned-byte-p 60 count) (unsigned-byte-p 60 aux0)
                 (unsigned-byte-p 60 aux1) (unsigned-byte-p 60 fault)))
-      fn2-sim
-    (let* ((i (mod (fn2-sim-ring-head fn2-sim) 64))
+      (update-fn2-sim-lost (min *fn2-u60-max* (+ 1 (fn2-sim-lost fn2-sim))) fn2-sim)
+    (let* ((i (mod (fn2-sim-ring-head fn2-sim) *fn2-sim-observation-capacity*))
+           (fn2-sim (if (<= *fn2-sim-observation-capacity* (fn2-sim-ring-unread fn2-sim))
+                        (update-fn2-sim-lost (min *fn2-u60-max* (+ 1 (fn2-sim-lost fn2-sim))) fn2-sim)
+                      (update-fn2-sim-ring-unread (+ 1 (fn2-sim-ring-unread fn2-sim)) fn2-sim)))
            (fn2-sim (update-fn2-sim-ring-opi i op fn2-sim))
            (fn2-sim (update-fn2-sim-ring-geni i gen fn2-sim))
            (fn2-sim (update-fn2-sim-ring-celli i cell fn2-sim))
@@ -183,9 +186,9 @@
            (hash (fn2-sim-fold hash aux1))
            (hash (fn2-sim-fold hash fault))
            (fn2-sim (update-fn2-sim-digest hash fn2-sim))
-           (fn2-sim (update-fn2-sim-ring-head (mod (+ i 1) 64) fn2-sim))
+           (fn2-sim (update-fn2-sim-ring-head (mod (+ i 1) *fn2-sim-observation-capacity*) fn2-sim))
            (fn2-sim (update-fn2-sim-observations
-                       (min #xfffffffffffffff (+ 1 (fn2-sim-observations fn2-sim))) fn2-sim)))
+                       (min *fn2-u60-max* (+ 1 (fn2-sim-observations fn2-sim))) fn2-sim)))
       fn2-sim)))
 (fn2-sim-preserves fn2-sim-record (op gen cell evkind outcome reason count aux0 aux1 fault fn2-sim) :forward t
   :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
@@ -195,10 +198,10 @@
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
   (let* ((target (if (unsigned-byte-p 60 target) target (fn2-sim-now fn2-sim)))
          (now (max target (fn2-sim-now fn2-sim)))
-         (now (if (equal fault 16) (min #xfffffffffffffff (+ now 1000000)) now))
-         (real (if (equal fault 17) (max 0 (- (fn2-sim-real fn2-sim) 1000000)) now))
-         (fn2-sim (if (or (and (equal fault 16) (< (max target (fn2-sim-now fn2-sim)) now))
-                          (and (equal fault 17) (< real (fn2-sim-real fn2-sim))))
+         (now (if (equal fault *fn2-fault-monotonic-jump*) (min *fn2-u60-max* (+ now 1000000)) now))
+         (real (if (equal fault *fn2-fault-realtime-back*) (max 0 (- (fn2-sim-real fn2-sim) 1000000)) now))
+         (fn2-sim (if (or (and (equal fault *fn2-fault-monotonic-jump*) (< (max target (fn2-sim-now fn2-sim)) now))
+                          (and (equal fault *fn2-fault-realtime-back*) (< real (fn2-sim-real fn2-sim))))
                        (fn2-sim-land fault fn2-sim) fn2-sim))
          (fn2-sim (update-fn2-sim-now now fn2-sim))
          (fn2-sim (update-fn2-sim-real real fn2-sim)))
@@ -333,15 +336,15 @@
 
 (defun fn2-sim-init-faults (i profile-name fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (and (fn2-sim-ready fn2-sim) (natp i))
-                  :measure (nfix (- 26 (nfix i)))
+                  :measure (nfix (- *fn2-fault-count* (nfix i)))
                   :guard-hints (("Goal" :use ((:instance fn2-sim-random-state-type)
                                                (:instance fn2-sim-random-ready))
                                         :in-theory (disable fn2-sim-random-state-type fn2-sim-random-ready)))))
-  (if (or (not (natp i)) (>= i 26)) fn2-sim
+  (if (or (not (natp i)) (>= i *fn2-fault-count*)) fn2-sim
     (mv-let (word fn2-sim) (fn2-sim-random fn2-sim)
       (let* ((enabled (and (not (eq profile-name :none))
                            (or (not (eq profile-name :crash-only))
-                               (member-equal i '(0 1 2 11 14 15 25)))))
+                               (member-equal i (list *fn2-fault-fragment* *fn2-fault-short-send* *fn2-fault-delay* *fn2-fault-tear* *fn2-fault-fail-slow* *fn2-fault-crash* *fn2-fault-release-order*)))))
              (fn2-sim (update-fn2-sim-probabilitiesi i (if enabled (+ 1 (mod word 64)) 0) fn2-sim))
              (fn2-sim (update-fn2-sim-hitsi i 0 fn2-sim)))
         (fn2-sim-init-faults (+ 1 i) profile-name fn2-sim)))))
@@ -371,8 +374,8 @@
 
 (defun fn2-sim-init-counters (i fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (and (fn2-sim-ready fn2-sim) (natp i))
-                  :measure (nfix (- 64 (nfix i)))))
-  (if (or (not (natp i)) (>= i 64)) fn2-sim
+                  :measure (nfix (- *fn2-sim-observation-capacity* (nfix i)))))
+  (if (or (not (natp i)) (>= i *fn2-sim-observation-capacity*)) fn2-sim
     (let* (
            (fn2-sim (update-fn2-sim-ring-opi i 0 fn2-sim))
            (fn2-sim (update-fn2-sim-ring-geni i 0 fn2-sim))
@@ -384,7 +387,7 @@
            (fn2-sim (update-fn2-sim-ring-aux0i i 0 fn2-sim))
            (fn2-sim (update-fn2-sim-ring-aux1i i 0 fn2-sim))
            (fn2-sim (update-fn2-sim-ring-faulti i 0 fn2-sim))
-           (fn2-sim (if (< i 14) (update-fn2-sim-action-countsi i 0 fn2-sim) fn2-sim)))
+           (fn2-sim (if (< i *fn2-action-count*) (update-fn2-sim-action-countsi i 0 fn2-sim) fn2-sim)))
       (fn2-sim-init-counters (+ 1 i) fn2-sim))))
 (fn2-sim-preserves fn2-sim-init-counters (i fn2-sim) :forward t
   :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
@@ -407,9 +410,9 @@
 (defun fn2-sim-configp (profile)
   (declare (xargs :guard t))
   (and (fn2-profilep profile) (unsigned-byte-p 32 (fn2-profile-c profile))
-       (unsigned-byte-p 60 (* 4096 (fn2-profile-c profile)))
+       (unsigned-byte-p 60 (* *fn2-sim-network-capacity* (fn2-profile-c profile)))
        (posp (fn2-sim-sectors profile)) (< (fn2-sim-sectors profile) 1048576)
-       (< (* 4096 (fn2-sim-sectors profile) (fn2-profile-fence-slots profile)) #x1000000000000000)))
+       (< (* *fn2-format-sector-bytes* (fn2-sim-sectors profile) (fn2-profile-fence-slots profile)) #x1000000000000000)))
 
 (local (in-theory (disable fn2-profile-o fn2-profile-c fn2-profile-fence-slots fn2-profile-get)))
 (fn2-word-facts fn2-sim-profile-fence-slots (fn2-profile-fence-slots profile) fn2-profile-fence-slots-bounds (fn2-profilep profile))
@@ -421,7 +424,7 @@
     (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim))
                 (fn2-sim-storage (fn2-sim-disk fn2-sim)))
       (fn2-sim-network fn2-sim-storage)
-      (let* ((fn2-sim-network (fn2-network-init (fn2-profile-c profile) 4096 fn2-sim-network))
+      (let* ((fn2-sim-network (fn2-network-init (fn2-profile-c profile) *fn2-sim-network-capacity* fn2-sim-network))
              (fn2-sim-storage (fn2-storage-init (fn2-sim-sectors profile) (fn2-profile-fence-slots profile) fn2-sim-storage)))
         (mv-let (code nonce fn2-sim-network) (fn2-network-accept 0 fn2-sim-network)
           (declare (ignore code nonce))
@@ -445,10 +448,12 @@
                (fn2-sim (update-fn2-sim-deaths 0 fn2-sim))
                (fn2-sim (update-fn2-sim-stamp 0 fn2-sim))
                (fn2-sim (update-fn2-sim-fault-budget 128 fn2-sim))
-               (fn2-sim (update-fn2-sim-forced-fault 26 fn2-sim))
-               (fn2-sim (update-fn2-sim-digest 2166136261 fn2-sim))
+               (fn2-sim (update-fn2-sim-forced-fault *fn2-fault-none* fn2-sim))
+               (fn2-sim (update-fn2-sim-digest *fn2-fnv-offset-basis* fn2-sim))
                (fn2-sim (update-fn2-sim-observations 0 fn2-sim))
                (fn2-sim (update-fn2-sim-ring-head 0 fn2-sim))
+               (fn2-sim (update-fn2-sim-ring-unread 0 fn2-sim))
+               (fn2-sim (update-fn2-sim-lost 0 fn2-sim))
                (fn2-sim (fn2-sim-clear-flights 0 fn2-sim))
                (fn2-sim (fn2-sim-init-counters 0 fn2-sim)))
           (fn2-sim-init-faults 0 profile-name fn2-sim))))))
@@ -459,7 +464,7 @@
   (implies (and (fn2-simp fn2-sim) (natp seed) (fn2-sim-configp profile))
            (fn2-sim-ready (fn2-sim-init seed profile-name revision profile fn2-sim))))
 (in-theory (disable fn2-sim-init fn2-sim-configp))
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
                '(fn2-sim-ready fn2-sim-random fn2-sim-force-fault fn2-sim-choose-fault
                  fn2-sim-fold fn2-sim-record fn2-sim-clock fn2-sim-earliest fn2-sim-arm-wake fn2-sim-land
                  fn2-sim-next-flight fn2-sim-cap fn2-sim-clear-flights
@@ -476,20 +481,20 @@
               (initial (and (fn2-sim-ready fn2-sim)
                             (equal (fn2-sim-rows fn2-sim) 8)
                             (equal (fn2-sim-cap 0 fn2-sim) 1)))
-              (fn2-sim (fn2-sim-force-fault 19 fn2-sim)))
+              (fn2-sim (fn2-sim-force-fault *fn2-fault-stale* fn2-sim)))
          (mv-let (fault fn2-sim) (fn2-sim-choose-fault fn2-sim)
-           (let* ((chosen (and (equal fault 19) (equal (fn2-sim-fault-budget fn2-sim) 127)
-                               (equal (fn2-sim-hitsi 19 fn2-sim) 0)))
+           (let* ((chosen (and (equal fault *fn2-fault-stale*) (equal (fn2-sim-fault-budget fn2-sim) 127)
+                               (equal (fn2-sim-hitsi *fn2-fault-stale* fn2-sim) 0)))
                   (fn2-sim (fn2-sim-record 1 2 0 3 0 0 4 0 0 fault fn2-sim))
                   (digest (fn2-sim-digest fn2-sim))
                   (recorded (and (equal (fn2-sim-observations fn2-sim) 1)
                                  (equal (fn2-sim-ring-counti 0 fn2-sim) 4)))
-                  (fn2-sim (fn2-sim-clock 10000 16 fn2-sim))
-                  (fn2-sim (fn2-sim-clock 1010000 17 fn2-sim))
+                  (fn2-sim (fn2-sim-clock 10000 *fn2-fault-monotonic-jump* fn2-sim))
+                  (fn2-sim (fn2-sim-clock 1010000 *fn2-fault-realtime-back* fn2-sim))
                   (clocked (and (equal (fn2-sim-now fn2-sim) 1010000)
                                 (equal (fn2-sim-real fn2-sim) 10000)))
                   (fn2-sim (fn2-sim-init 73 :broad "state-fixture" *fn2-profile-tiny* fn2-sim))
-                  (fn2-sim (fn2-sim-force-fault 19 fn2-sim)))
+                  (fn2-sim (fn2-sim-force-fault *fn2-fault-stale* fn2-sim)))
              (mv-let (fault fn2-sim) (fn2-sim-choose-fault fn2-sim)
                (let ((fn2-sim (fn2-sim-record 1 2 0 3 0 0 4 0 0 fault fn2-sim)))
                  (mv (and initial chosen recorded clocked (equal digest (fn2-sim-digest fn2-sim)))

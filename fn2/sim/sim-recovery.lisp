@@ -38,7 +38,7 @@
                   :guard (and (fn2-sim-ready fn2-sim) (unsigned-byte-p 32 sector))))
   (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
     (code fn2-recovery-image)
-    (fn2-sim-recovery-copy-bytes (* 4096 sector) 4096 fn2-sim-storage fn2-recovery-image)
+    (fn2-sim-recovery-copy-bytes (* *fn2-format-sector-bytes* sector) *fn2-format-sector-bytes* fn2-sim-storage fn2-recovery-image)
     (mv code fn2-recovery-image)))
 (defthm fn2-sim-recovery-copy-sector-type
   (implies (and (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
@@ -60,12 +60,12 @@
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
   (mv-let (word fn2-sim) (fn2-sim-random fn2-sim)
     (if (and (< 0 (fn2-sim-fault-budget fn2-sim))
-             (or (equal (fn2-sim-forced-fault fn2-sim) 15)
-                 (and (equal (fn2-sim-forced-fault fn2-sim) 26)
-                      (< (mod word 256) (fn2-sim-probabilitiesi 15 fn2-sim)))))
-        (let ((fn2-sim (fn2-sim-force-fault 15 fn2-sim)))
+             (or (equal (fn2-sim-forced-fault fn2-sim) *fn2-fault-crash*)
+                 (and (equal (fn2-sim-forced-fault fn2-sim) *fn2-fault-none*)
+                      (< (mod word 256) (fn2-sim-probabilitiesi *fn2-fault-crash* fn2-sim)))))
+        (let ((fn2-sim (fn2-sim-force-fault *fn2-fault-crash* fn2-sim)))
           (fn2-sim-choose-fault fn2-sim))
-      (mv 26 fn2-sim))))
+      (mv *fn2-fault-none* fn2-sim))))
 (fn2-sim-preserves fn2-sim-recovery-choice (fn2-sim) :forward t
   :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
   :specs (("-TYPE" fn2-simp 1) ("-READY" fn2-sim-ready 1) ("-WFP" fn2-sim-wfp 1)))
@@ -88,7 +88,7 @@
   (if (not (fn2-core-profilep profile))
       (mv :bounds i bad-tail damaged never fn2-core fn2-sim fn2-own fn2-recovery-image)
     (mv-let (fault fn2-sim) (fn2-sim-recovery-choice fn2-sim)
-    (if (equal fault 15)
+    (if (equal fault *fn2-fault-crash*)
         (mv-let (fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own)
           (mv-let (start-code restart-n restart-tail restart-damage)
             (fn2-recover-start ack-seq fn2-recovery-image)
@@ -178,6 +178,6 @@
 (in-theory (disable fn2-sim-recover-run))
 
 (assert-event
- (fn2-profile-exports-compliant-p
+ (fn2-assert-compliant-p
   '(fn2-sim-recovery-copy-bytes fn2-sim-recovery-copy-sector fn2-sim-recovery-choice
     fn2-sim-recovery-step fn2-sim-recover-loop fn2-sim-recover-run) (w state)))

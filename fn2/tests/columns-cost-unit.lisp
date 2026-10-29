@@ -16,7 +16,7 @@
  :accounts (:operations :bytes :row)
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity 1
- :initial ((storage-bytes 131072) (generation fn2-columns-cost32-initial-generation) (ready-prev 4294967295) (ready-next 4294967295))
+ :initial ((storage-bytes 131072) (generation fn2-columns-cost32-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :continuations ((:accepting fn2-columns-cost32-accepting) (:greeting fn2-columns-cost32-greeting) (:command fn2-columns-cost32-command) (:article-input fn2-columns-cost32-article-input) (:reply fn2-columns-cost32-reply) (:group-select fn2-columns-cost32-group-select) (:lookup fn2-columns-cost32-lookup) (:render fn2-columns-cost32-render) (:post-check fn2-columns-cost32-post-check) (:log-write fn2-columns-cost32-log-write) (:fence fn2-columns-cost32-fence) (:publish fn2-columns-cost32-publish) (:closing fn2-columns-cost32-closing) (:draining fn2-columns-cost32-draining) (:done fn2-columns-cost32-done))
  :observes ((:read-result fn2-columns-cost32-observe-read) (:write-result fn2-columns-cost32-observe-write)))
 
@@ -45,7 +45,7 @@
              (equal (fn2-columns-cost32-rows fn2-columns-cost32) 1)
              (equal (fn2-columns-cost32-generation 0 fn2-columns-cost32) 17)
              (equal (fn2-columns-cost32-storage-bytes 0 fn2-columns-cost32) 131072)
-             (equal (fn2-columns-cost32-ready-prev 0 fn2-columns-cost32) 4294967295)
-             (equal (fn2-columns-cost32-ready-next 0 fn2-columns-cost32) 4294967295)) fn2-columns-cost32)) ok)))
+             (equal (fn2-columns-cost32-ready-prev 0 fn2-columns-cost32) *fn2-none*)
+             (equal (fn2-columns-cost32-ready-next 0 fn2-columns-cost32) *fn2-none*)) fn2-columns-cost32)) ok)))
 (assert-event (fn2-columns-cost-unit))
 (value-triple (cw "COLUMNS COST UNIT: sprint 32 declared/40 array/41 total fields, initialization PASS~%"))

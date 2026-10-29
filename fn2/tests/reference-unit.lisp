@@ -119,7 +119,7 @@
   (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
   (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
        (fn2-ref-core (fn2-ref-reset *fn2-profile-tiny* fn2-core fn2-ref-core))
-       (id (if (eq which :bounds) 999 (if (eq which :none) *fn2-sched-none* 0)))
+       (id (if (eq which :bounds) 999 (if (eq which :none) *fn2-none* 0)))
        (lists (fn2-ref-lists 4 0 (if (eq which :state) '((0 999)) nil)))
        (fn2-core (if (eq which :state)
                      (stobj-let ((fn2-sched (fn2-core-sched fn2-core))) (fn2-sched)

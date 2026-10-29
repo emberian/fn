@@ -1,6 +1,35 @@
-; TRACE is a differential of the concrete turn against reference.lisp.
+; TRACE compares independent selection first, then the resulting projection.
 (in-package "ACL2")
 (include-book "../books/reference")
+
+(defun fn2-trace-selections (records)
+  (declare (xargs :verify-guards nil))
+  (if (atom records) nil
+    (let* ((r (car records)) (kind (fn2-trace-record-kind r))
+           (visit (member-equal kind (list *fn2-trace-kind-machine* *fn2-trace-kind-service*))))
+      (cons (list kind (and (= kind *fn2-trace-kind-machine*) (fn2-trace-record-machine r))
+                  (and visit (fn2-trace-record-principal r))
+                  (and visit (fn2-trace-record-position r)))
+            (fn2-trace-selections (cdr records))))))
+(defun fn2-trace-field-difference (fields actual expected)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (if (equal (car actual) (car expected))
+        (fn2-trace-field-difference (cdr fields) (cdr actual) (cdr expected))
+      (list (car fields) (car actual) (car expected)))))
+(defun fn2-trace-selection-difference (actual expected)
+  (declare (xargs :verify-guards nil))
+  (cond ((and (atom actual) (atom expected)) nil)
+        ((or (atom actual) (atom expected)) (list :selection-count (len actual) (len expected)))
+        (t (or (fn2-trace-field-difference '(:kind :machine :principal :position) (car actual) (car expected))
+               (fn2-trace-selection-difference (cdr actual) (cdr expected))))))
+
+(defun fn2-trace-classify (lost selection before after)
+  (declare (xargs :guard t))
+  (cond (selection (cons :selection selection))
+        ((not (equal lost 0)) (list :state :trace-lost lost))
+        ((or before after) (cons :state (or before after)))
+        (t nil)))
 
 ; Both cores persist across turns; import only the common adapter boundary.
 (defun fn2-check-trace-turn (profile cursor queues fn2-core fn2-ref-core)
@@ -10,10 +39,23 @@
        (before (fn2-ref-difference fn2-core fn2-ref-core lists))
        ((mv rs ro rv ra lists fn2-ref-core) (fn2-ref-turn lists fn2-ref-core))
        ((mv status obs visits actions fn2-core) (fn2-turn fn2-core))
-       (difference (or before (fn2-ref-difference fn2-core fn2-ref-core lists)
-                       (and (not (equal (list status obs visits actions) (list rs ro rv ra)))
-                            (list :turn-result (list status obs visits actions) (list rs ro rv ra)))))
+       ((mv records lost) (stobj-let ((fn2-trace (fn2-core-trace fn2-core)))
+                           (records lost) (mv (fn2-trace-records fn2-trace) (fn2-trace-lost fn2-trace))
+                           (mv records lost)))
+       (selection (fn2-trace-selection-difference (fn2-trace-selections records) (fn2-ref-selections lists)))
+       (difference (fn2-trace-classify lost selection before
+                      (or (fn2-ref-difference fn2-core fn2-ref-core lists)
+                          (fn2-trace-field-difference '(:status :observations :visits :actions)
+                             (list status obs visits actions) (list rs ro rv ra)))))
        (verdict (if difference (list :fail :trace difference) :pass)))
     (progn$ (if difference (cw "TRACE DIFFERENCE ~x0~%" difference) nil)
             (mv verdict status obs visits actions (nth 1 lists) (nth 2 lists) fn2-core fn2-ref-core))))
 (in-theory (disable fn2-check-trace-turn))
+(assert-event
+ (and (equal (fn2-trace-classify 0 '(:machine 7 8) '(:generation) nil) '(:selection :machine 7 8))
+      (equal (fn2-trace-classify 0 nil nil '(:steps 3 4)) '(:state :steps 3 4))
+      (equal (fn2-trace-classify 1 '(:machine 7 8) nil nil) '(:selection :machine 7 8))
+      (equal (fn2-trace-classify 1 nil nil nil) '(:state :trace-lost 1))
+      (equal (fn2-trace-selection-difference `((,*fn2-trace-kind-machine* 7 2 3))
+                                             `((,*fn2-trace-kind-machine* 8 2 3))) '(:machine 7 8))
+      (equal (fn2-trace-field-difference '(:bytes :steps) '(2 3) '(2 4)) '(:steps 3 4))))

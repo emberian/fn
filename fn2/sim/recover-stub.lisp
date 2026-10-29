@@ -14,20 +14,17 @@
 (include-book "../books/assumptions-integrity")
 
 (defcolumns fn2-recovery-image
-  ((tag :u8))
+  nil
   :rows-bound 4294967296
   :init-name fn2-recovery-columns-init
   :extra-fields
   ((fn2-recovery-bytes :type (array (unsigned-byte 8) (0))
-                       :initially 0 :resizable t :why "Byte image contains 4096 bytes per sector row.")))
+                       :initially 0 :resizable t :why "Contiguous recovery bytes have no row identity or per-sector columns.")))
 
 (defun fn2-recovery-init (sectors fn2-recovery-image)
   (declare (xargs :stobjs fn2-recovery-image
                   :guard (unsigned-byte-p 32 sectors)))
-  (let* ((fn2-recovery-image (fn2-recovery-columns-init sectors fn2-recovery-image))
-         (fn2-recovery-image
-          (resize-fn2-recovery-bytes (* sectors 4096) fn2-recovery-image)))
-    fn2-recovery-image))
+  (resize-fn2-recovery-bytes (* sectors *fn2-format-sector-bytes*) fn2-recovery-image))
 
 (defthm fn2-recovery-init-type
   (implies (and (fn2-recovery-imagep fn2-recovery-image) (unsigned-byte-p 32 sectors))
@@ -48,39 +45,44 @@
 (in-theory (disable fn2-recovery-put-byte))
 
 (defun fn2-recovery-byte (i fn2-recovery-image)
-  (declare (xargs :stobjs fn2-recovery-image))
+  (declare (xargs :stobjs fn2-recovery-image
+                  :guard (and (natp i) (< i (fn2-recovery-bytes-length fn2-recovery-image)))))
   (if (and (natp i) (< i (fn2-recovery-bytes-length fn2-recovery-image)))
       (fn2-recovery-bytesi i fn2-recovery-image)
-    0))
+    (prog2$ (er hard? 'fn2-recovery-byte "Invalid recovery byte index ~x0" i) 0)))
 (defthm fn2-recovery-byte-type
   (implies (fn2-recovery-imagep fn2-recovery-image)
-           (unsigned-byte-p 8 (fn2-recovery-byte i fn2-recovery-image)))
-  )
-(in-theory (disable fn2-recovery-byte))
+           (unsigned-byte-p 8 (fn2-recovery-byte i fn2-recovery-image))))
+(in-theory (disable fn2-recovery-byte fn2-recovery-bytes-length))
 (fn2-word-facts fn2-recovery-byte (fn2-recovery-byte i fn2-recovery-image)
   fn2-recovery-byte-type (fn2-recovery-imagep fn2-recovery-image) 256)
 
+; External byte probes carry refusal separately from the byte value.
+(defun fn2-recovery-read-byte (i fn2-recovery-image)
+  (declare (xargs :stobjs fn2-recovery-image))
+  (if (and (natp i) (< i (fn2-recovery-bytes-length fn2-recovery-image)))
+      (mv :ok (fn2-recovery-byte i fn2-recovery-image)) (mv :bounds 0)))
+
 (defun fn2-recovery-u32 (i fn2-recovery-image)
-  (declare (xargs :stobjs fn2-recovery-image :guard (natp i)))
+  (declare (xargs :stobjs fn2-recovery-image :guard (and (natp i) (<= (+ i *fn2-format-word-bytes*) (fn2-recovery-bytes-length fn2-recovery-image)))))
   (+ (fn2-recovery-byte i fn2-recovery-image)
      (* 256 (fn2-recovery-byte (+ 1 i) fn2-recovery-image))
      (* 65536 (fn2-recovery-byte (+ 2 i) fn2-recovery-image))
      (* 16777216 (fn2-recovery-byte (+ 3 i) fn2-recovery-image))))
 (defthm fn2-recovery-u32-type
   (implies (fn2-recovery-imagep fn2-recovery-image)
-           (unsigned-byte-p 32 (fn2-recovery-u32 i fn2-recovery-image)))
-  )
+           (unsigned-byte-p 32 (fn2-recovery-u32 i fn2-recovery-image))))
 (in-theory (disable fn2-recovery-u32))
 (fn2-word-facts fn2-recovery-u32 (fn2-recovery-u32 i fn2-recovery-image)
   fn2-recovery-u32-type (fn2-recovery-imagep fn2-recovery-image) 4294967296)
 
 (defun fn2-recovery-hash-loop (base j hash fn2-recovery-image)
-  (declare (xargs :stobjs fn2-recovery-image :measure (nfix (- 4096 (nfix j)))
-                  :guard (and (natp base) (natp j) (unsigned-byte-p 32 hash))))
-  (if (or (not (natp j)) (>= j 4096)) hash
+  (declare (xargs :stobjs fn2-recovery-image :measure (nfix (- *fn2-format-sector-bytes* (nfix j)))
+                  :guard (and (natp base) (natp j) (<= (+ base *fn2-format-sector-bytes*) (fn2-recovery-bytes-length fn2-recovery-image)) (unsigned-byte-p 32 hash))))
+  (if (or (not (natp j)) (>= j *fn2-format-sector-bytes*)) hash
     (fn2-recovery-hash-loop
      base (+ j 1)
-     (fn2-fnv-step hash (if (and (<= 16 j) (< j 20)) 0
+     (fn2-fnv-step hash (if (and (<= *fn2-format-checksum-offset* j) (< j *fn2-format-payload-offset*)) 0
                                  (fn2-recovery-byte (+ base j) fn2-recovery-image)))
      fn2-recovery-image)))
 (defthm fn2-recovery-hash-loop-type
@@ -90,8 +92,9 @@
 (in-theory (disable fn2-recovery-hash-loop))
 
 (defun fn2-recovery-checksum (sector fn2-recovery-image)
-  (declare (xargs :stobjs fn2-recovery-image :guard (unsigned-byte-p 32 sector)))
-  (fn2-recovery-hash-loop (* 4096 sector) 0 2166136261 fn2-recovery-image))
+  (declare (xargs :stobjs fn2-recovery-image :guard (and (unsigned-byte-p 32 sector)
+                              (<= (* *fn2-format-sector-bytes* (+ sector 1)) (fn2-recovery-bytes-length fn2-recovery-image)))))
+  (fn2-recovery-hash-loop (* *fn2-format-sector-bytes* sector) 0 *fn2-fnv-offset-basis* fn2-recovery-image))
 (defthm fn2-recovery-checksum-type
   (unsigned-byte-p 32 (fn2-recovery-checksum sector fn2-recovery-image))
   :hints (("Goal" :in-theory (disable unsigned-byte-p))))
@@ -99,22 +102,22 @@
 (fn2-word-facts fn2-recovery-checksum (fn2-recovery-checksum sector fn2-recovery-image) fn2-recovery-checksum-type)
 
 (defun fn2-recovery-zero-loop (base j fn2-recovery-image)
-  (declare (xargs :stobjs fn2-recovery-image :measure (nfix (- 4096 (nfix j)))
-                  :guard (and (natp base) (natp j))))
-  (if (or (not (natp j)) (>= j 4096)) t
+  (declare (xargs :stobjs fn2-recovery-image :measure (nfix (- *fn2-format-sector-bytes* (nfix j)))
+                  :guard (and (natp base) (natp j) (<= (+ base *fn2-format-sector-bytes*) (fn2-recovery-bytes-length fn2-recovery-image)))))
+  (if (or (not (natp j)) (>= j *fn2-format-sector-bytes*)) t
     (and (= 0 (fn2-recovery-byte (+ base j) fn2-recovery-image))
          (fn2-recovery-zero-loop base (+ j 1) fn2-recovery-image))))
 
 (defun fn2-recovery-sector (sector fn2-recovery-image)
   (declare (xargs :stobjs fn2-recovery-image :guard (unsigned-byte-p 32 sector)))
-  (let ((base (* sector 4096)))
-    (cond ((> (+ base 4096) (fn2-recovery-bytes-length fn2-recovery-image)) :torn-corrupt)
+  (let ((base (* sector *fn2-format-sector-bytes*)))
+    (cond ((> (+ base *fn2-format-sector-bytes*) (fn2-recovery-bytes-length fn2-recovery-image)) :torn-corrupt)
           ((fn2-recovery-zero-loop base 0 fn2-recovery-image) :never-written)
-          ((or (not (= (fn2-recovery-u32 base fn2-recovery-image) 843990611))
-               (not (= (fn2-recovery-u32 (+ base 4) fn2-recovery-image) 1))) :torn-corrupt)
-          ((not (= (fn2-recovery-u32 (+ base 8) fn2-recovery-image) sector)) :misdirected)
-          ((or (not (= (fn2-recovery-u32 (+ base 12) fn2-recovery-image) (+ sector 1)))
-               (not (= (fn2-recovery-u32 (+ base 16) fn2-recovery-image)
+          ((or (not (= (fn2-recovery-u32 base fn2-recovery-image) *fn2-format-magic*))
+               (not (= (fn2-recovery-u32 (+ base *fn2-format-version-offset*) fn2-recovery-image) 1))) :torn-corrupt)
+          ((not (= (fn2-recovery-u32 (+ base *fn2-format-address-offset*) fn2-recovery-image) sector)) :misdirected)
+          ((or (not (= (fn2-recovery-u32 (+ base *fn2-format-sequence-offset*) fn2-recovery-image) (+ sector 1)))
+               (not (= (fn2-recovery-u32 (+ base *fn2-format-checksum-offset*) fn2-recovery-image)
                        (fn2-recovery-checksum sector fn2-recovery-image)))) :torn-corrupt)
           (t :valid))))
 (in-theory (disable fn2-recovery-sector))
@@ -123,9 +126,9 @@
 ; any step; no step mutates the image, so restart discards only these scalars.
 (defun fn2-recover-start (ack-seq fn2-recovery-image)
   (declare (xargs :stobjs fn2-recovery-image :guard (unsigned-byte-p 32 ack-seq)))
-  (let* ((len (fn2-recovery-bytes-length fn2-recovery-image)) (n (floor len 4096)))
+  (let* ((len (fn2-recovery-bytes-length fn2-recovery-image)) (n (floor len *fn2-format-sector-bytes*)))
     (if (not (unsigned-byte-p 32 n)) (mv :bounds 0 t nil)
-      (mv :ok n (not (= (mod len 4096) 0)) (> ack-seq n)))))
+      (mv :ok n (not (= (mod len *fn2-format-sector-bytes*) 0)) (> ack-seq n)))))
 
 (defthm fn2-recover-start-n-type
   (unsigned-byte-p 32 (mv-nth 1 (fn2-recover-start ack-seq fn2-recovery-image))))
@@ -211,16 +214,28 @@
 
 (defun fn2-recovery-stamp (sector fn2-recovery-image)
   (declare (xargs :stobjs fn2-recovery-image
-                  :guard (and (unsigned-byte-p 32 sector) (< sector 4294967295))))
-  (let* ((base (* sector 4096))
-         (fn2-recovery-image (fn2-recovery-put-u32 base 843990611 fn2-recovery-image))
-         (fn2-recovery-image (fn2-recovery-put-u32 (+ base 4) 1 fn2-recovery-image))
-         (fn2-recovery-image (fn2-recovery-put-u32 (+ base 8) sector fn2-recovery-image))
-         (fn2-recovery-image (fn2-recovery-put-u32 (+ base 12) (+ 1 sector) fn2-recovery-image))
+                  :guard (and (unsigned-byte-p 32 sector) (< sector *fn2-none*)
+                              (<= (* *fn2-format-sector-bytes* (+ sector 1)) (fn2-recovery-bytes-length fn2-recovery-image)))))
+  (let* ((base (* sector *fn2-format-sector-bytes*))
+         (fn2-recovery-image (fn2-recovery-put-u32 base *fn2-format-magic* fn2-recovery-image))
+         (fn2-recovery-image (fn2-recovery-put-u32 (+ base *fn2-format-version-offset*) 1 fn2-recovery-image))
+         (fn2-recovery-image (fn2-recovery-put-u32 (+ base *fn2-format-address-offset*) sector fn2-recovery-image))
+         (fn2-recovery-image (fn2-recovery-put-u32 (+ base *fn2-format-sequence-offset*) (+ 1 sector) fn2-recovery-image))
          (hash (fn2-recovery-checksum sector fn2-recovery-image))
-         (fn2-recovery-image (fn2-recovery-put-u32 (+ base 16) hash fn2-recovery-image)))
+         (fn2-recovery-image (fn2-recovery-put-u32 (+ base *fn2-format-checksum-offset*) hash fn2-recovery-image)))
     fn2-recovery-image))
 
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-recover-start fn2-recover-step fn2-recover-stub fn2-recovery-sector
     fn2-recovery-stamp fn2-recovery-put-byte) (w state)))
+
+(defun fn2-recovery-read-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-recovery-image
+  (mv-let (ok fn2-recovery-image)
+    (let ((fn2-recovery-image (fn2-recovery-init 1 fn2-recovery-image)))
+      (mv-let (valid zero) (fn2-recovery-read-byte 0 fn2-recovery-image)
+        (mv-let (invalid absent) (fn2-recovery-read-byte *fn2-format-sector-bytes* fn2-recovery-image)
+          (declare (ignore absent))
+          (mv (and (eq valid :ok) (= zero 0) (eq invalid :bounds)) fn2-recovery-image)))) ok)))
+(assert-event (fn2-recovery-read-control))

@@ -72,7 +72,7 @@
   (mv-let (answer fn2-wide-test)
    (let* ((fn2-wide-test (fn2-wide-test-init 2 fn2-wide-test))
           (fn2-wide-test (fn2-wide-test-set-hi 0 7 fn2-wide-test))
-          (fn2-wide-test (fn2-wide-test-set-lo 0 1152921504606846975 fn2-wide-test))
+          (fn2-wide-test (fn2-wide-test-set-lo 0 *fn2-u60-max* fn2-wide-test))
           (fn2-wide-test (fn2-wide-test-set-hi 1 7 fn2-wide-test))
           (low-order (fn2-wide-test-compare 0 1 fn2-wide-test))
           (fn2-wide-test (fn2-wide-test-set-hi 1 8 fn2-wide-test))
@@ -82,12 +82,12 @@
                          (eq (fn2-wide-test-compare 0 1 fn2-wide-test) :eq)
                          (= (fn2-wide-test-hi 0 fn2-wide-test) 8)
                          (= (fn2-wide-test-lo 0 fn2-wide-test) 0)))
-            (fn2-wide-test (fn2-wide-test-set-hi 1 1152921504606846975 fn2-wide-test))
-            (fn2-wide-test (fn2-wide-test-set-lo 1 1152921504606846975 fn2-wide-test)))
+            (fn2-wide-test (fn2-wide-test-set-hi 1 *fn2-u60-max* fn2-wide-test))
+            (fn2-wide-test (fn2-wide-test-set-lo 1 *fn2-u60-max* fn2-wide-test)))
       (mv-let (code fn2-wide-test) (fn2-wide-test-increment 1 fn2-wide-test)
        (mv (and carried (eq code :exhausted)
-                (= (fn2-wide-test-hi 1 fn2-wide-test) 1152921504606846975)
-                (= (fn2-wide-test-lo 1 fn2-wide-test) 1152921504606846975)
+                (= (fn2-wide-test-hi 1 fn2-wide-test) *fn2-u60-max*)
+                (= (fn2-wide-test-lo 1 fn2-wide-test) *fn2-u60-max*)
                 (eq (fn2-wide-test-compare 0 1 fn2-wide-test) :lt)
                 (eq (fn2-wide-test-compare 1 0 fn2-wide-test) :gt)) fn2-wide-test)))))
    answer)))
@@ -99,7 +99,7 @@
 (local
  (defcolumns fn2-columns-example
    ((byte :u8) (short :u16) (word :u32) (gen :u60) (flag :bool)
-    (phase (:enum fn2-columns-example-phase (:free :busy))))
+    (phase (:enum fn2-columns-example-phase (:free :busy))) (next :link))
    :rows-bound 32
    :extra-fields
    ((fn2-columns-example-bytes :type (array (unsigned-byte 8) (0))
@@ -140,7 +140,10 @@
          (mv (and (equal (fn2-columns-example-word 2 fn2-columns-example) 42)
                   (equal (fn2-columns-example-flag 1 fn2-columns-example) 1)
                   (equal (fn2-columns-example-rows fn2-columns-example) 3)
-                  (equal (fn2-columns-example-row-snapshot 2 fn2-columns-example) '(0 0 42 0 0 1)))
+                  (equal (fn2-columns-example-next 2 fn2-columns-example) *fn2-none*)
+                  (equal (fn2-columns-example-record-word (fn2-columns-example-row-snapshot 2 fn2-columns-example))
+                         (fn2-columns-example-word 2 fn2-columns-example))
+                  (equal (fn2-columns-example-row-snapshot 2 fn2-columns-example) `(0 0 42 0 0 1 ,*fn2-none*)))
              fn2-columns-example))
        answer))))
 
@@ -172,3 +175,19 @@
                                 (< 0 (fn2-columns-example-rows fn2-columns-example)))))
     (fn2-columns-example-set-phase 0 *fn2-columns-example-phase-count* fn2-columns-example))
   :with-output-off nil :check-expansion t))
+
+(defconst *fn2-columns-scalar-dimension* 3)
+(defcolumns fn2-columns-scalar nil
+ :extra-fields
+ ((fn2-columns-scalar-head :type (unsigned-byte 32) :initially *fn2-none*
+   :why "Single fixture head has no row index.")
+  (fn2-columns-scalar-bytes :type (array (unsigned-byte 8) (*fn2-columns-scalar-dimension*)) :initially 0
+   :why "Raw fixture bytes test a named dimension without a dummy row column.")))
+(defun fn2-columns-scalar-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-columns-scalar
+  (mv-let (ok fn2-columns-scalar)
+    (mv (equal (list (fn2-columns-scalar-head fn2-columns-scalar)
+                     (fn2-columns-scalar-bytes-length fn2-columns-scalar))
+               (list *fn2-none* *fn2-columns-scalar-dimension*)) fn2-columns-scalar) ok)))
+(assert-event (fn2-columns-scalar-control))

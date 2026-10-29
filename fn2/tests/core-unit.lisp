@@ -239,10 +239,10 @@
                         (mv fn2-pool fn2-ops)))
               (:output (mv-let (code fn2-pool) (fn2-pool-release-out slot gen fn2-pool)
                          (declare (ignore code)) (mv fn2-pool fn2-ops)))
-              (:finish (let ((fn2-ops (update-fn2-ops-free-count 4294967295 fn2-ops)))
+              (:finish (let ((fn2-ops (update-fn2-ops-free-count *fn2-none* fn2-ops)))
                          (mv fn2-pool fn2-ops)))
               (otherwise (let ((fn2-ops (update-fn2-ops-posted-fifoi
-                                         (fn2-ops-post-head fn2-ops) 1152921504606846975 fn2-ops)))
+                                         (fn2-ops-post-head fn2-ops) *fn2-u60-max* fn2-ops)))
                            (mv fn2-pool fn2-ops))))
             fn2-core))))
     (mv t fn2-core)))

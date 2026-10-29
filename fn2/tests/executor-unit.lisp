@@ -144,16 +144,16 @@
 
 ; Remove only the concrete recognizer hypothesis. This is an ordinary
 ; logical list, never an invalid write into a live specialized array. The
-; rectangular shape still holds, but the H cell is not an unsigned integer.
+; rectangular shape still holds, but the H scalar is not an unsigned integer.
 ; Its actual logical turn immediately returns nobs=0, violating 0 <= -1.
 (defconst *fn2-executor-test-bad-h*
   (let ((copy (fn2-executor-test-initial-snapshot)))
     (update-nth *fn2-core-control*
-      (update-nth *fn2-control-h$ai* '(-1) (nth *fn2-core-control* copy)) copy)))
+      (update-nth *fn2-control-h* -1 (nth *fn2-core-control* copy)) copy)))
 ; The malformed logical snapshot cannot inhabit the specialized stobj.
 ; This executable predicate checks its complete input/count witness. The
 ; theorem below connects shape=true and counts=(0 0 0) to actual fn2-turn;
-; no evaluator pretends to execute a negative value in an unsigned array.
+; no evaluator pretends to execute a negative value in an unsigned field.
 (defun fn2-executor-bounds-witnessp (recognized shape h k a counts)
   (declare (xargs :verify-guards nil))
   (and (not recognized) shape
@@ -166,23 +166,18 @@
          (control (nth *fn2-core-control* bad)))
     (fn2-executor-bounds-witnessp
      (fn2-corep bad) t
-     (car (nth *fn2-control-h$ai* control))
-     (car (nth *fn2-control-k$ai* control))
-     (car (nth *fn2-control-aturn$ai* control)) '(0 0 0))))
+     (nth *fn2-control-h* control)
+     (nth *fn2-control-k* control)
+     (nth *fn2-control-aturn* control) '(0 0 0))))
 (defun fn2-executor-bounds-teeth ()
   (declare (xargs :verify-guards nil))
   (equal (fn2-executor-unit-tests) '(t t t t t t t)))
 
-(defun fn2-executor-test-control-logic-names (columns)
+(defun fn2-executor-test-control-logic-names (fields)
   (declare (xargs :verify-guards nil))
-  (if (atom columns) nil
-    (let* ((reader (fn2-columns-col-name 'fn2-control (caar columns)))
-           (raw (fn2-columns-sym reader "$A")))
-      (append (list reader (fn2-columns-col-name 'fn2-control
-                             (fn2-columns-pre "SET-" (caar columns)))
-                    (fn2-columns-sym raw "I") (fn2-columns-sym raw "-LENGTH")
-                    (fn2-columns-pre "UPDATE-" (fn2-columns-sym raw "I")))
-              (fn2-executor-test-control-logic-names (cdr columns))))))
+  (if (atom fields) nil
+    (append (list (caar fields) (fn2-columns-pre "UPDATE-" (caar fields)))
+            (fn2-executor-test-control-logic-names (cdr fields)))))
 (defun fn2-executor-test-execution-runes (names)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
@@ -190,7 +185,7 @@
           (fn2-executor-test-execution-runes (cdr names)))))
 (make-event
  (let* ((schema (fn2-decl-row (list :columns 'fn2-control) (w state)))
-        (columns (cadr (member-eq :columns schema)))
+        (fields (cadr (member-eq :extra-fields schema)))
         (names (append '(fn2-executor-bounds-negative fn2-executor-bounds-witnessp
                          fn2-turn fn2-concrete-turn fn2-concrete-loop
                          fn2-exec-h fn2-exec-k fn2-exec-aturn
@@ -199,7 +194,7 @@
                          update-fn2-core-control
                          fn2-control-wfp fn2-control-rows)
                        (strip-cars *fn2-core-children*)
-                       (fn2-executor-test-control-logic-names columns))))
+                       (fn2-executor-test-control-logic-names fields))))
    (value
     `(defthm fn2-executor-test-bounds-hypothesis-removal
        (let ((bad *fn2-executor-test-bad-h*))
@@ -228,9 +223,9 @@
 (defun fn2-trace-test-ring-run (fn2-trace)
   (declare (xargs :stobjs fn2-trace :verify-guards nil))
   (let* ((fn2-trace (fn2-trace-init 2 t fn2-trace))
-         (fn2-trace (fn2-trace-append 1 10 0 0 0 1 0 nil 4294967295 0 0 fn2-trace))
-         (fn2-trace (fn2-trace-append 1 11 1 1 0 1 0 nil 4294967295 0 0 fn2-trace))
-         (fn2-trace (fn2-trace-append 1 12 2 2 0 1 1 nil 4294967295 0 0 fn2-trace))
+         (fn2-trace (fn2-trace-append *fn2-trace-kind-machine* 10 0 0 0 1 0 nil *fn2-none* 0 0 fn2-trace))
+         (fn2-trace (fn2-trace-append *fn2-trace-kind-machine* 11 1 1 0 1 0 nil *fn2-none* 0 0 fn2-trace))
+         (fn2-trace (fn2-trace-append *fn2-trace-kind-machine* 12 2 2 0 1 1 nil *fn2-none* 0 0 fn2-trace))
          (fn2-trace (fn2-trace-action 0 5 9 fn2-trace))
          (records (fn2-trace-records fn2-trace))
          (ok (and (equal (fn2-trace-lost fn2-trace) 1)
@@ -239,8 +234,10 @@
                   (equal (nth 1 (cadr records)) 12)
                   (equal (nth 11 (cadr records)) 5)
                   (equal (nth 12 (cadr records)) 9)))
+         (fn2-trace (fn2-trace-append -1 0 0 0 0 0 0 nil *fn2-none* 0 0 fn2-trace))
+         (ok (and ok (= (fn2-trace-lost fn2-trace) 2)))
          (fn2-trace (fn2-trace-init 2 nil fn2-trace))
-         (fn2-trace (fn2-trace-append 1 10 0 0 0 1 0 nil 4294967295 0 0 fn2-trace)))
+         (fn2-trace (fn2-trace-append *fn2-trace-kind-machine* 10 0 0 0 1 0 nil *fn2-none* 0 0 fn2-trace)))
     (mv (and ok (equal (fn2-trace-records fn2-trace) nil)) fn2-trace)))
 (defun fn2-trace-test-ring ()
   (declare (xargs :verify-guards nil))
