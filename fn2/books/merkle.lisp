@@ -274,7 +274,7 @@
  (equal (fn2-mk-run hashes) (fn-b3-words 8 (fn2-mk-mth records))))
 (defthm-owed fn2-mk-root-is-mth (records hashes)
  (implies (fn2-mk-root-hyps records hashes) (fn2-mk-root-result records hashes))
- :teeth "merkle-unit evaluates full hyp/result; changing one appended leaf hash violates the leaf-encoding hypothesis and the result."
+ :teeth (fn2-mk-root-positive fn2-mk-root-negative)
  :doc "Actual initialized append/root over canonical leaf hashes equals the RFC 6962 recursive MTH. Unproved.")
 (defun fn2-mk-load-proof (proof at fn2-digests)
  (declare (xargs :stobjs fn2-digests :verify-guards nil))
@@ -329,7 +329,7 @@
    (fn2-mk-consistency-premise old new proof)
    (eq (car (fn2-mk-consistency-observation old new proof)) :ok))
   (equal old (take (len old) new)))
- :teeth "merkle-unit evaluates positive full antecedent and conclusion; removing actual verifier acceptance admits a non-prefix with a collision-free opening premise."
+ :teeth (fn2-mk-consistency-positive fn2-mk-consistency-negative)
  :doc "Actual consistency verifier implies prefix under finite A-INTEGRITY-EVIDENCE on tree openings and actual verifier node inputs. Unproved; no real hash collision-resistance claim.")
 (assert-event (eq (symbol-class 'fn2-mk-init (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-mk-leaf-start (w state)) :common-lisp-compliant))

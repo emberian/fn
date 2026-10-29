@@ -53,21 +53,29 @@
 
 ; Evaluated whole antecedents and conclusions of both owed statements.
 ; The negative incremental witness removes the per-update budget hypothesis.
-(assert-event
+(defun fn2-b3-incremental-positive ()
+  (declare (xargs :verify-guards nil))
  (let* ((splits '((0) (1)))
         (hyp (fn2-b3-incremental-hyps splits))
         (conclusion (fn2-b3-incremental-resultp splits)))
    (and hyp conclusion)))
-(assert-event
+(assert-event (equal (fn2-b3-incremental-positive) t))
+(defun fn2-b3-incremental-negative ()
+  (declare (xargs :verify-guards nil))
  (let* ((splits (list (make-list 4097 :initial-element 0)))
         (hyp (fn2-b3-incremental-hyps splits))
         (conclusion (fn2-b3-incremental-resultp splits)))
    (and (not hyp) (not conclusion))))
+(assert-event (equal (fn2-b3-incremental-negative) t))
 ; The negative subtree witness removes the absolute right chunk counter.
-(assert-event
+(defun fn2-b3-subtree-teeth ()
+  (declare (xargs :verify-guards nil))
  (let* ((blocks (list (make-list 16 :initial-element (make-list 4096 :initial-element 0)) '((1))))
         (positive-hyp (fn2-b3-subtree-hyps blocks '(0 64)))
         (positive-conclusion (fn2-b3-subtree-resultp blocks '(0 64)))
         (negative-hyp (fn2-b3-subtree-hyps blocks '(0 0)))
         (negative-conclusion (fn2-b3-subtree-resultp blocks '(0 0))))
    (and positive-hyp positive-conclusion (not negative-hyp) (not negative-conclusion))))
+(assert-event (equal (fn2-b3-subtree-teeth) t))
+
+(fn2-assert-owed-teeth fn2-b3-incremental-is-blake3 fn2-b3-subtree-composition)

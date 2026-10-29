@@ -1,5 +1,5 @@
 ; Run from repo root: nohup env FN_ACL2_SLOT_DIR=/tmp/fn2-b1-acl2-slots FN_ACL2_SLOTS=4 timeout -k 5 1800 tools/acl2 < fn2/tests/crash-model-differential.lsp > build/b1-differential.log 2>&1 & echo $! > build/b1-differential.pid
-; An LD driver, not a certified book. The concrete calls below are the same
+; Certified differential definitions. The concrete calls below are the same
 ; storage entry points used by sim-transfer.lisp and sim-adapter-base.lisp.
 ; Data and faults come from layer A's PRNG; model predicates judge outcomes.
 (in-package "ACL2")
@@ -7,7 +7,6 @@
 (include-book "../sim/storage")
 (include-book "../sim/prng")
 (include-book "std/util/bstar" :dir :system)
-(set-guard-checking :none)
 
 (defthm fn2-diff-countdown
   (implies (not (zp x)) (o< (nfix (- x 1)) (nfix x))) :rule-classes nil)

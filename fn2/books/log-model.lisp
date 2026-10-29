@@ -260,5 +260,5 @@
   (implies (fn2-lm-durable-ack-hyps trace profile classification recovered-history)
            (fn2-lm-acknowledged-in-historyp
             (fn2-lm-state-acknowledged (fn2-lm-trace-state trace)) recovered-history))
-  :teeth "log-model-unit: two acknowledged batches survive, including repeated recovery crashes; dropping honest fences permits a shorter intact history; actual corruption removes the no-destruction premise and permits a damaged prefix."
+  :teeth (fn2-lm-ack-positive fn2-lm-ack-fence-negative fn2-lm-ack-destruction-negative fn2-lm-ack-recovery-negative)
   :doc "B1 specification obligation for HISTORY/RECOVERY; not a proof of B3 commit or B5 recovery.")
