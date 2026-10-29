@@ -39,3 +39,50 @@ Not in this baseline: `squares-unit` and `q1-unit` (not yet on dev), and the dri
 | tests/resources-unit.lisp | 0.0 | 0.00 | 0.0 | 0.02 s: INCLUDE-BOOK "../books/resources" |
 
 Sum of certify seconds: 160.0 over 30 books. Under 5 s: 22; 5 to 15 s: 6; over 15 s: 2 (core-child-assembly-callbacks 35.5, core-child-assembly-reference 23.0). core-child-assembly-reference proves nothing (0.14 s): its 23 s is compile and allocation (6.3 GB), so the ld column is not its cost.
+
+## After the first day's commits (same machine, load average 150 to 180 from other seats: realtime is noisy, CPU runtime is the steadier number)
+
+| book | baseline certify s | now certify s | now CPU s |
+|---|---|---|---|
+| tests/core-child-assembly-callbacks.lisp | 35.5 | 35.5 | 30.3 |
+| tests/core-child-assembly-reference.lisp | 23.0 | 23.0 | 18.1 |
+| tests/core-child-assembly-access.lisp | 11.8 | 11.8 | 9.2 |
+| tests/columns-cost-unit.lisp | 10.0 | 10.0 | 6.0 |
+| tests/core-child-assembly-core.lisp | 9.5 | 9.5 | 7.9 |
+| tests/columns-cost-unit-20.lisp | 6.7 | 6.7 | 4.2 |
+| tests/machines-a-unit.lisp | 9.5 | 5.2 | 4.2 |
+| tests/wake-unit.lisp | 9.9 | 3.7 | 2.3 |
+| tests/callbacks-unit.lisp | 3.7 | 3.7 | 2.8 |
+| tests/core-child-assembly-dispatch.lisp | 3.2 | 3.2 | 2.9 |
+| tests/sim-acquisition.lisp | 3.0 | 3.0 | 2.2 |
+| tests/executor-unit.lisp | 2.3 | 2.7 | 2.1 |
+| tests/columns-cost-unit-10.lisp | 2.6 | 2.6 | 2.0 |
+| tests/core-child-assembly.lisp | 2.6 | 2.6 | 2.0 |
+| tests/columns-unit.lisp | 2.6 | 2.6 | 2.1 |
+| tests/work-controls.lisp | 2.5 | 2.5 | 1.9 |
+| tests/reference-unit.lisp | 3.0 | 2.5 | 1.9 |
+| tests/declare-unit.lisp | 2.3 | 2.3 | 1.9 |
+| tests/core-child-unit.lisp | 2.3 | 2.3 | 2.1 |
+| tests/core-unit.lisp | 2.6 | 2.2 | 1.9 |
+| tests/sched-unit.lisp | 2.2 | 2.2 | 1.8 |
+| tests/core-child-assembly-index.lisp | 2.1 | 2.1 | 1.9 |
+| tests/staging-unit.lisp | 1.7 | 1.7 | 1.5 |
+| tests/core-child-registration.lisp | 1.7 | 1.7 | 1.5 |
+| tests/check-own-unit.lisp | 1.5 | 1.5 | 0.6 |
+| tests/vocab-unit.lisp | 1.1 | 1.1 | 1.0 |
+| tests/pool-unit.lisp | 0.7 | 0.7 | 0.6 |
+| tests/recover-unit.lisp | 0.2 | 0.2 | 0.2 |
+| tests/network-backpressure-unit.lisp | 0.1 | 0.1 | 0.1 |
+| tests/owed-unit.lisp | 0.1 | 0.1 | 0.1 |
+| tests/resources-unit.lisp | 0.0 | 0.0 | 0.0 |
+
+Only machines-a-unit changed by a commit; wake-unit's 9.9 s baseline was load noise (3.7 s on a re-run, nothing changed).
+
+Reading the table. Every test book except two certifies in under 15 s, and what is left over 3 s in the small ones is mostly INCLUDE-BOOK of the library books (the certify of a test book re-reads its dependencies' certificates and fasls twice).
+
+Why the remaining large ones are not tests-slice problems (measured 2026-10-29):
+
+- `core-child-assembly-callbacks` (35 s) runs the same event macros as `books/assembly-callbacks`. Per event: the guard proof of `fn2-listener-admit` (7.5 s, 607k prover steps, whose guard conjecture is 220 subgoals of path conditions over seven sequential core writes), its PRESERVES-TYPE and PRESERVES-WFP (2.2 s each) and `fn2-connection-issue` (4 s). Accumulated persistence shows no single rule: 2.0 M useful tries spread over the generated WFP/TYPE preservation rewrites and the stobj type prescriptions (`fn2-machines-rows-natp`, `fn2-listener-rows-natp`, `fn2-echo-rows-natp`, `fn2-machinesp`: 0 useful of 600k frames). Disabling those six type prescriptions saves 10% (607k to 540k steps in the defun hint), disabling tau makes it worse (754k). The structural cure is in the generator (`books/machines.lisp` `fn2-machine-callback-event`, DSL seat): the listener-admit success branch as its own declared operation (R7e) so its guard is not proved under the refusal branch's path conditions.
+- `core-child-assembly-reference` (23 s) proves nothing (0.14 s). Pass-1 events are 8 s (`fn2-ref-copy-core` 2.5 s, `fn2-ref-import-boundary` 1.2 s, the 45 ref defstobjs about 2.3 s), the pass-2 include is 4 s, compile-file of the 4.6 MB fasl is about 7 s. A statistical profile of certify-book shows 20 percent in EQUAL through `%assoc-test` and `%member-test`, called from `relevant-posns-term` / `relevant-posns-clique1` (translation of the nested stobj-let). GC is 1.2 s of it; a larger nursery does not help. `books/assembly-reference` (18 s) is the same macro.
+- `core-child-assembly-access` (12 s) and `-core` (9.5 s): `fn2-machine-access-events` and `fn2-core-events` (`fn2-harvest-one` PRESERVES 1.4 s each), shared with `books/assembly-access` and `books/assembly-core`.
+- `columns-cost-unit` family (10 s, 6.7 s, 2.6 s): the `defcolumns` encapsulate, 3.6 s of proving for the 32-field declaration; `books/columns.lisp`.
