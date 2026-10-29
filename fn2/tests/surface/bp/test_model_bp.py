@@ -78,7 +78,7 @@ class BpTarget:
 class Exercise:
     def __init__(self, case, target, trace=None):
         self.case, self.target = case, target
-        self.model = BpModel()
+        self.model = BpModel(fn1=getattr(target, 'adjudication_target', 'fake') == 'fn1')
         self.trace = trace if trace is not None else []
         self.checked_verbs, self.serial, self.attempt = set(), 0, 0
 
@@ -98,7 +98,7 @@ class Exercise:
         problem = expected.check(result)
         if recorded is None:
             self.require(problem is None, rule=verb, request=expected.request, reply=result, detail=problem)
-        expected.update(result, target)
+        recorded = expected.update(result, target)
         self.checked_verbs.add((verb, expected.exit not in (0, 7) and expected.argument_class != 'attempted'))
         if recorded is not None and hasattr(self.case, 'evidence'):
             self.case.evidence.setdefault('recorded_differences', []).append(json_value(dict(recorded, step=len(self.trace))))

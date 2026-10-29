@@ -225,3 +225,26 @@ class BpTests(unittest.TestCase):
         ok('carry abandon', 'w', 'gone')
         self.assertFalse(model.works['w']['pinned'])
         self.assertEqual(model.works['w']['reason'], 'retired')
+
+    def test_wildcard_effect_row_follows_fn1_only(self):
+        done = lambda text='accepted operator carry\n': dict(exit=0, text=text)
+        refused = dict(exit=1, text='refused operator carry carry refused reason=not-paused work=w\n')
+        for fn1 in (True, False):
+            with self.subTest(fn1=fn1):
+                model = BpModel(uid=1000, fn1=fn1)
+                model.enqueued('w', '<m@x>')
+                model.enqueued('v', '<n@x>')
+                self.assertIsNone(model.rule('carry pause', '*').update(done(), 'fn1' if fn1 else 'fake'))
+                expected = model.rule('carry resume', 'w')
+                self.assertEqual((expected.exit, expected.reason), (1, 'not-paused') if fn1 else (0, None))
+                if fn1:
+                    row = expected.update(refused, 'fn1')
+                    self.assertEqual(row['group'], 'B01')
+                    self.assertEqual(model.hold(model.works['w']), 'paused')
+                    self.assertEqual(model.rule('carry pause', '*').reason, 'already-paused')
+                    model.rule('carry resume', '*').update(done(), 'fn1')
+                    self.assertEqual({model.hold(w) for w in model.works.values()}, {'none'})
+                else:
+                    expected.update(done(), 'fake')
+                    self.assertEqual(model.hold(model.works['w']), 'none')
+                    self.assertEqual(model.hold(model.works['v']), 'paused')

@@ -376,3 +376,29 @@ c14e9e8e): peering 5 examples in 84 s, bp 5 examples in 322 s (per-step reads tr
 - **Harness note.** A whole-suite surface.json at the hbox cadence is large (run-h5b's was 1.7 GB: the
   S forms' traces of every example); read it on hbox (`python3 -m fn2.tests.surface.nightly OUT`), never
   copy it to the laptop.
+- **B01, fn1-bug (an effect row; found by the first nightly smoke at the hbox cadence, 50 examples).**
+  fn1 keeps `carry pause *` as one wildcard hold beside each work's own pause: `carry list` shows every
+  open work `hold=paused`, but `carry resume WORK` of a work paused only by `*` is refused `not-paused`,
+  and an accepted `resume WORK` under `*` leaves the work listed paused; `pause WORK` under `*` is
+  `already-paused`; a second `pause *` is refused `already-paused` whatever the works hold; `resume *`
+  clears the wildcard and every own pause; a request under `*` is refused `carry-paused`
+  (`h-quests/b01-micro.py`). docs/operator.md:740-745 make `*` mean every work. For fn1 only the model
+  carries the wildcard and records B01 wherever the per-work reading expects another reply or another
+  listed hold; fn2 and the fake get the documented per-work hold.
+- **Evidence is serialized as data.** A failing S test's evidence holds its traces, whose requests are
+  model dataclasses; `run_surface` now writes `json_value(evidence)` (the first smoke's bp child died on
+  a TypeError while recording its own failure; every family had the latent fault).
+
+## The hbox nightly (`fn2/tests/harness/hbox_nightly.sh`)
+
+`cd TREE && SWARM_MEM_MAX=64G setsid nohup swarm-build sh fn2/tests/harness/hbox_nightly.sh OUT > OUT.log
+2>&1 < /dev/null &`, TREE an extracted tree of the commit under test, OUT a fresh directory. The script
+refuses an existing OUT and an output filesystem under 60 GiB free, writes `OUT/nightly.pid` (its own PID;
+`kill $(cat OUT/nightly.pid)` stops it and passes TERM to run_surface's own PID file), links the image set
+into `TREE/build`, exports the production image (`FN_NATIVE_HOST`, its four identity variables) and the
+developer image (`FN_NATIVE_DEVELOPER_HOST`, its identity under the `FN_NATIVE_DEVELOPER_` prefix: the web
+and bp S forms and the natives that name it), the pinned OpenSSL wrapper, the durable tmp and the native
+opt-ins (`FN2_NIGHTLY_OPT_INS`, default `FN_RUN_SLOW=1 FN_RUN_RELOCATION_E2E=1`), runs `run_surface --box
+hbox` under the wall cap (`FN2_NIGHTLY_HOURS`, default 8), and renders `OUT/nightly.md` with
+`fn2.tests.surface.nightly` against `fn2/tests/surface/known-fn1.json` (an unmatched non-ok row prints
+`unclassified`: the morning's reading list). The last log line is `DONE`.

@@ -10,6 +10,7 @@ import sys
 import unittest
 
 from fn2.tests.harness import run_natives, shim
+from fn2.tests.surface.live_evidence import json_value
 from . import FAMILIES, MANIFEST, RUN, form_suite, fuzz_allocations, driver, native_timeout
 
 
@@ -60,7 +61,8 @@ class Result(run_natives.Result):
         for entry in self.records:
             if entry['test'] == test.id():
                 evidence = getattr(test, 'evidence', {})
-                entry['evidence'] = evidence
+                # Evidence is data on disk: a model's records (dataclasses, sets, bytes) become JSON values.
+                entry['evidence'] = json_value(evidence)
                 native = evidence.get('native', {})
                 # Native TestCase calls occurred in another process; count once.
                 entry['assertions'] += native.get('assertions', 0)

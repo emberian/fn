@@ -58,7 +58,20 @@ from .operator_model import reason_word, result_line
 from .peering_model import peer_reason
 
 PEER = 'dtn://fn-b/'
-ADJUDICATIONS = ()  # Seat adds rows only from a recorded fn1 reply.
+# Rows only from recorded fn1 replies (seat probes, hbox image c14e9e8e developer image;
+# build/coordinator/fn2/lanes/h-quests/b01-micro.py and the nightly smoke's s-failure.json).
+ADJUDICATIONS = (
+    dict(group='B01', kind='effect', verb='carry pause|resume *', argument_class='wildcard', effect='wildcard-hold',
+         spec='docs/operator.md:740-745 (`pause WORK` or `*` for all; `resume WORK` or `*`; list prints each '
+              "work's hold)",
+         fn1_reply=dict(exit=1, tagged='refused operator carry carry refused reason=not-paused work=work-1'),
+         observed='fn1 keeps `pause *` as one wildcard hold beside each work\'s own: list shows every open work '
+                  'hold=paused, but `resume WORK` of a work paused only by `*` is refused not-paused, and an '
+                  'accepted `resume WORK` under `*` leaves it listed paused; `pause WORK` under `*` is '
+                  'already-paused; a second `pause *` is refused already-paused whatever the works hold; '
+                  '`resume *` clears the wildcard and every own pause; a request under `*` is carry-paused',
+         **{'class': 'fn1-bug'}),
+)
 WORDS = {0: 'accepted', 1: 'refused', 3: 'uncertain', 4: 'fault', 5: 'usage', 7: None}
 FIELDS = ('message-id', 'peer', 'status', 'pinned', 'hold', 'reason', 'waived-by', 'waiver', 'attempt', 'transport')
 
@@ -145,8 +158,25 @@ class Expect:
         problem = self.check(reply)
         if problem and recorded is None:
             raise AssertionError(problem)
+        spec = None
+        if self.model.fn1:
+            # B01: the model follows fn1's recorded wildcard hold; the row is recorded wherever the
+            # specified per-work reading would have expected another reply or another listed hold.
+            spec = deepcopy(self.model)
+            spec.fn1, spec.wild = False, False
+            for w in spec.works.values():
+                w['own'] = self.model.hold(w) == 'paused' and not w['closed']
+            spec_verdict = spec.verdict(self.request)
         if recorded is None and (self.exit == 0 or self.argument_class == 'attempted'):
             self.model.apply(self.request)
+        if spec is not None:
+            if spec_verdict[0] == 0 or spec_verdict[2] == 'attempted':
+                spec.apply(self.request)
+            holds = lambda m: {n: m.hold(w) for n, w in m.works.items()}
+            if spec_verdict[:2] != (self.exit, self.reason) or holds(spec) != holds(self.model):
+                row = next(r for r in ADJUDICATIONS if r['group'] == 'B01')
+                recorded = dict(deepcopy(row), target=target, request=self.request, observed_reply=dict(reply),
+                                specified=dict(exit=spec_verdict[0], reason=spec_verdict[1]))
         return recorded
 
 
@@ -155,14 +185,21 @@ class BpModel:
              'bp-obligation undertake', 'bp-obligation status', 'bp-obligation request',
              'bp-obligation receipt', 'bp-boundary add', 'bp-route add', 'bp-route remove')
 
-    def __init__(self, uid=None):
+    def __init__(self, uid=None, fn1=False):
         self.uid = os.geteuid() if uid is None else uid
         self.works, self.boundaries, self.routes = {}, {}, {}
+        # B01: for fn1 only, `pause *` is one wildcard hold beside each work's own pause.
+        self.fn1, self.wild = fn1, False
+
+    def hold(self, w):
+        """The hold a list shows: closed (dropped, waived), else paused by its own pause (or, fn1, the
+        wildcard), else none."""
+        return w['closed'] or ('paused' if w['own'] or self.wild else 'none')
 
     def enqueued(self, work, msgid):
         """The fixture's `app-journal workflow-enqueue` (the producer), accepted: one outstanding work."""
-        self.works[work] = dict(msgid=msgid, peer=PEER, status='outstanding', pinned=False, hold='none',
-                                reason=None, waiver=None, attempted=False)
+        self.works[work] = dict(msgid=msgid, peer=PEER, status='outstanding', pinned=False, closed=None,
+                                own=False, reason=None, waiver=None, attempted=False)
 
     def rule(self, verb, *args):
         if verb not in self.VERBS:
@@ -182,40 +219,44 @@ class BpModel:
         if v in ('carry drop', 'carry abandon') and len(a) < 2:
             return bad('invalid-carry-command', 'no-reason', 5)
         if v in ('carry pause', 'carry resume') and a[0] == '*':
-            eligible = [w for w in self.works.values() if w['hold'] == ('none' if v == 'carry pause' else 'paused')]
-            if not eligible:
-                return bad('already-paused' if v == 'carry pause' else 'not-paused', 'none-eligible')
+            pause, own = v == 'carry pause', any(w['own'] for w in self.works.values())
+            if self.fn1:
+                refused = self.wild if pause else not (self.wild or own)
+            else:
+                refused = not any(self.hold(w) == 'none' for w in self.works.values()) if pause else not own
+            if refused:
+                return bad('already-paused' if pause else 'not-paused', 'none-eligible')
             return 0, None, 'valid'
         if v.startswith('carry ') and work is None:
             return bad('unknown-work', 'unknown-work')
         if v == 'carry pause':
-            if work['hold'] in ('dropped', 'waived'):
+            if work['closed']:
                 return bad('dropped', 'closed')
-            if work['hold'] == 'paused':
+            if self.hold(work) == 'paused':
                 return bad('already-paused', 'paused')
         if v == 'carry resume':
-            if work['hold'] in ('dropped', 'waived'):
+            if work['closed']:
                 return bad('dropped', 'closed')
-            if work['hold'] != 'paused':
+            if not work['own']:
                 return bad('not-paused', 'not-paused')
-        if v == 'carry drop' and work['hold'] in ('dropped', 'waived'):
+        if v == 'carry drop' and work['closed']:
             return bad('already-dropped', 'closed')
         if v == 'carry abandon':
-            if work['hold'] == 'waived':
+            if work['closed'] == 'waived':
                 return bad('already-waived', 'waived')
             if not work['pinned']:
                 return bad('not-held', 'unpinned')
         if v == 'bp-obligation undertake':
-            if work is None or work['pinned'] or work['hold'] == 'waived':
+            if work is None or work['pinned'] or work['closed'] == 'waived':
                 return bad('', 'inadmissible')
         if v == 'bp-obligation status':
             return 0, None, 'valid'
         if v == 'bp-obligation request':
             if work is None:
                 return bad('', 'unknown-work')
-            if work['hold'] == 'paused':
+            if self.hold(work) == 'paused':
                 return bad('carry-paused', 'paused')
-            if work['hold'] in ('dropped', 'waived'):
+            if work['closed']:
                 return bad('carry-dropped', 'closed')
             if not work['pinned']:
                 return bad('forward-pin-not-durable', 'unpinned')
@@ -281,7 +322,7 @@ class BpModel:
         for name in names:
             w, got = self.works[name], rows[name]
             wanted = {'message-id': w['msgid'], 'peer': w['peer'], 'pinned': 'yes' if w['pinned'] else 'no',
-                      'hold': w['hold']}
+                      'hold': self.hold(w)}
             if not w['attempted']:
                 wanted['status'] = 'outstanding'
             if w['reason'] is not None:
@@ -342,19 +383,21 @@ class BpModel:
     def apply(self, r):
         v, a = r.verb, r.args
         w = self.works.get(a[0]) if a else None
-        if v in ('carry pause', 'carry resume'):
-            targets = self.works.values() if a[0] == '*' else [w]
-            for t in targets:
-                if v == 'carry pause' and t['hold'] == 'none':
-                    t['hold'] = 'paused'
-                elif v == 'carry resume' and t['hold'] == 'paused':
-                    t['hold'] = 'none'
+        if v in ('carry pause', 'carry resume') and a[0] == '*':
+            if self.fn1:
+                self.wild = v == 'carry pause'
+            for t in self.works.values():
+                if v == 'carry resume' or (not self.fn1 and not t['closed']):
+                    t['own'] = v == 'carry pause'
+        elif v in ('carry pause', 'carry resume'):
+            w['own'] = v == 'carry pause'
         elif v == 'carry drop':
-            w.update(hold='dropped', reason=' '.join(a[1:]))
+            w.update(closed='dropped', own=False, reason=' '.join(a[1:]))
         elif v == 'carry abandon':
             # `drop --abandon` is a drop that also waives (docs/operator.md:754: "also gives up the
             # obligation"): a work not dropped before takes the waiver's words as its drop reason too.
-            w.update(hold='waived', waiver=' '.join(a[1:]), pinned=False, reason=w['reason'] or ' '.join(a[1:]))
+            w.update(closed='waived', own=False, waiver=' '.join(a[1:]), pinned=False,
+                     reason=w['reason'] or ' '.join(a[1:]))
         elif v == 'bp-obligation undertake':
             w['pinned'] = True
         elif v == 'bp-obligation request':
