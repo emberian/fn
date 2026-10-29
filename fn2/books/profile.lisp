@@ -33,7 +33,10 @@
 (fn2-def-profile-reader fn2-profile-generation-start :generation-start)
 (fn2-def-profile-reader fn2-profile-generation-limit :generation-limit)
 (fn2-def-profile-reader fn2-profile-trace :trace)
-(fn2-def-profile-reader fn2-profile-calendar-length :calendar-length)
+(defun fn2-profile-calendar-length (profile)
+  (declare (xargs :guard t))
+  (let ((p (nfix (fn2-profile-p profile))))
+    (+ p (* 4 (ceiling p 16)))))
 
 ; Initial storage domain: one fence in flight unless explicitly configured.
 (defun fn2-profile-fence-slots (profile)
@@ -82,7 +85,7 @@
    (fn2-profile-positive-fields-p
     '(:c :p :u :t :x :w :o :qa :h :k :aturn
       :run-bytes :run-steps :run-descriptors
-      :ncancel :jread :jwrite :accept-credits :calendar-length) profile)
+      :ncancel :jread :jwrite :accept-credits) profile)
    (fn2-profile-positive-u32p (fn2-profile-fence-slots profile))
    ; Principal references use u16; the other table references use u32.
    (<= (fn2-profile-p profile) 65536)
@@ -138,7 +141,7 @@
     (:ncancel . 32) (:jread . 64) (:jwrite . 16) (:accept-credits . 8)
     (:pool-classes . ((512 . 4096) (80 . 65536)))
     (:generation-start . 1) (:generation-limit . 1152921504606846975)
-    (:trace . nil) (:calendar-length . 80)))
+    (:trace . nil)))
 
 ; Tiny calendar: principal slots 0..3, commit, timer/grant, wake, maintenance.
 ; The run quanta remain the declared per-run caps; resident capacities shrink.
@@ -149,7 +152,7 @@
     (:ncancel . 2) (:jread . 2) (:jwrite . 2) (:accept-credits . 2)
     (:pool-classes . ((8 . 64) (4 . 256)))
     (:generation-start . 1) (:generation-limit . 1152921504606846975)
-    (:trace . t) (:calendar-length . 8)))
+    (:trace . t)))
 
 (defconst *fn2-profile-tiny-near-limit*
   (put-assoc-equal :generation-start 1152921504606846972 *fn2-profile-tiny*))

@@ -1,7 +1,7 @@
 ; Concrete dispatcher over the intrusive scheduler. No fusion.
 (in-package "ACL2")
 (include-book "executor-wake")
-(include-book "machines-a-run")
+(include-book "assembly")
 
 (defun fn2-exec-eligible-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -159,7 +159,8 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)))
   (b* ((fn2-core (fn2-core-init profile fn2-core))
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
-       (fn2-core (fn2-exec-start-listeners (fn2-machine-accept-count fn2-core) 0 fn2-core))
+       (fn2-core (fn2-exec-start-listeners (fn2-machine-accept-count fn2-core)
+                   (fn2-machine-kind-base *fn2-listener-kind* fn2-core) fn2-core))
        (fn2-core (if scribe-p (fn2-scribe-start fn2-core) fn2-core))
        ((mv wake fn2-core) (fn2-machine-take-wake fn2-core)))
     (fn2-exec-wake wake fn2-core)))

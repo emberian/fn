@@ -2,7 +2,8 @@
 ; ACL2 ld script, not a certified book. The measured loop includes all nine
 ; issue helpers, input writes, acknowledgements, results and harvests.
 (in-package "ACL2")
-(include-book "../books/core")
+(include-book "../books/assembly")
+(in-theory (enable fn2-core-wfp))
 
 (defun fn2-audit-post (slot gen kind count fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

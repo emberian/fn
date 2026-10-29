@@ -4,6 +4,8 @@
 (include-book "machines-a-access")
 (include-book "machines-a-scribe")
 
+(defmacro fn2-machine-a-events ()
+ '(progn
 (defun fn2-machine-dec (n)
   (declare (xargs :guard (natp n)))
   (if (zp n) 0 (- n 1)))
@@ -61,8 +63,6 @@
                     (borrows (fn2-machine-pool-borrows row-pool-slot fn2-core)))))
     (mv id fn2-core)))
 
-(make-event
- (value (cons 'progn (fn2-machine-observe-events 'fn2-machine-observe (fn2-machine-names (w state)) (w state)))))
 
 (defun fn2-machine-issue-result (id code bytes fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp bytes) (<= bytes 4096))))
@@ -216,19 +216,4 @@
 
 (defmachine-run fn2-echo)
 
-(make-event
- (value `(defun fn2-machine-run (id budget fn2-core)
-           (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-           (if (or (not (fn2-machine-idp id fn2-core))
-                   (equal (fn2-machine-stopped id fn2-core) 1))
-               (fn2-machine-idle id fn2-core)
-             (case (fn2-machine-kind id fn2-core)
-               ,@(fn2-machine-run-arms (fn2-machine-names (w state)) 0)
-               (otherwise (fn2-machine-refuse-phase id fn2-core)))))))
-(fn2-core-shape-lemmas fn2-machine-run (id budget) 4)
-
-(assert-event
- (fn2-profile-exports-compliant-p
-  '(fn2-machine-observe fn2-machine-run fn2-machine-take-wake
-    fn2-listener-step fn2-connection-submit fn2-connection-reply fn2-connection-drain fn2-machine-grant-one fn2-machine-park)
-  (w state)))
+))

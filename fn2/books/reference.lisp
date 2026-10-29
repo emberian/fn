@@ -1,6 +1,6 @@
 ; Independent ROUND2 C.1-C.3 scheduler and bounded reference transition system.
 (in-package "ACL2")
-(include-book "reference-state")
+(include-book "executor")
 
 (defun fn2-ref-list-member (x xs)
   (declare (xargs :guard t))

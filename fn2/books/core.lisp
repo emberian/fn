@@ -1,24 +1,22 @@
-; Layer-A core: bounded transitions over six fixed-capacity children.
+; Core event library: bounded transitions over registered children.
 (in-package "ACL2")
 (include-book "pool")
 (include-book "vocab")
 (include-book "std/util/bstar" :dir :system)
 
 (include-book "sched")
-(include-book "machines-a")
 (include-book "trace")
 (include-book "exec-state")
 
-(defun fn2-core-machine-children (names)
-  (if (atom names) nil
-    (cons (list (fn2-columns-sym (car names) "-TABLE") (car names))
-          (fn2-core-machine-children (cdr names)))))
+(include-book "core-children-a")
+(defmacro fn2-core-events ()
+ '(progn
+(make-event
+ (value (cons 'progn (fn2-core-register-machine-children (fn2-machine-names (w state)) (w state) 0))))
+(table fn2-core-instance :assembled t)
 (make-event
  (value `(defconst *fn2-core-children*
-           ',(append '((fn2-core-pool fn2-pool) (fn2-core-ops fn2-ops)
-                        (fn2-core-sched fn2-sched) (fn2-core-machines fn2-machines)
-                        (fn2-core-trace fn2-trace) (fn2-core-control fn2-control))
-                     (fn2-core-machine-children (fn2-machine-names (w state)))))))
+           ',(fn2-core-registered-pairs (fn2-core-child-registry (w state))))))
 (defun fn2-core-child-fields (children)
   (if (atom children) nil
     (cons (list (caar children) :type (cadar children))
@@ -87,15 +85,12 @@
 
 ; The pool has at most sixteen size classes; general profile validity alone
 ; does not impose that representation constraint.
-(defun fn2-core-profilep (profile)
-  (declare (xargs :guard t
-                  :guard-hints (("Goal" :in-theory (enable fn2-profilep)))))
-  (and (fn2-profilep profile)
-       (fn2-pool-profilep (fn2-profile-pool-classes profile))
-       (fn2-sched-profilep profile)
-       (fn2-machines-profilep profile)
-       (unsigned-byte-p 32 (* 4 (+ (fn2-profile-h profile)
-                                  (fn2-profile-k profile))))))
+(make-event
+ (value `(defun fn2-core-profilep (profile)
+           (declare (xargs :guard t
+                    :guard-hints (("Goal" :in-theory (enable fn2-profilep)))))
+           (and (fn2-profilep profile)
+                ,@(fn2-core-registered-forms (fn2-core-child-registry (w state)) :profilep)))))
 
 (in-theory (disable fn2-pool-init fn2-pool-reserve fn2-pool-release
                     fn2-pool-lease-in fn2-pool-lease-out fn2-pool-complete-in
@@ -103,33 +98,14 @@
                     fn2-pool-write fn2-pool-reset fn2-pool-read fn2-pool-rows
                     fn2-op-cell fn2-op-range fn2-op-phase))
 
-(defun fn2-core-machine-inits (names world base)
-  (declare (xargs :verify-guards nil))
-  (if (atom names) nil
-    (cons `(,(car names) (,(fn2-columns-sym (car names) "-PREPARE")
-                           (nfix ,(fn2-machine-property (car names) :capacity world))
-                           ,base
-                           (fn2-profile-generation-start profile) ,(car names)))
-          (fn2-core-machine-inits (cdr names) world `(+ ,base (nfix ,(fn2-machine-property (car names) :capacity world)))))))
 (make-event
  (value `(defun fn2-core-init (profile fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
                   :guard-hints (("Goal" :in-theory (enable fn2-machines-profilep fn2-profilep)))))
   (stobj-let ,(fn2-core-child-bindings *fn2-core-children*)
     ,(strip-cars (strip-cdrs *fn2-core-children*))
-    (let* ((fn2-pool (fn2-pool-init
-                     (fn2-profile-pool-classes profile)
-                     (fn2-profile-generation-start profile)
-                     (fn2-profile-generation-limit profile) fn2-pool))
-           (fn2-ops (fn2-ops-init profile fn2-ops))
-           (fn2-sched (fn2-sched-init profile fn2-sched))
-           (fn2-machines (fn2-machines-init profile fn2-machines))
-           (fn2-trace (fn2-trace-init
-                       (* 4 (+ (fn2-profile-h profile) (fn2-profile-k profile)))
-                       (fn2-profile-trace profile) fn2-trace))
-           (fn2-control (fn2-control-init profile fn2-control)))
-      (let* ,(fn2-core-machine-inits (fn2-machine-names (w state)) (w state) 0)
-        (mv ,@(strip-cars (strip-cdrs *fn2-core-children*)))))
+    (let* ,(fn2-core-registered-inits (fn2-core-child-registry (w state)))
+      (mv ,@(strip-cars (strip-cdrs *fn2-core-children*))))
     fn2-core))))
 (defthm fn2-core-init-type
   (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
@@ -140,10 +116,7 @@
            (fn2-core-wfp (fn2-core-init profile fn2-core)))
   :hints (("Goal" :in-theory (enable fn2-machines-profilep))))
 (in-theory (disable fn2-core-init fn2-core-profilep))
-(assert-event
- (and (fn2-core-profilep *fn2-profile-concrete*)
-      (fn2-core-profilep *fn2-profile-tiny*)
-      (fn2-core-profilep *fn2-profile-tiny-near-limit*)))
+
 
 (defmacro fn2-core-shape-lemmas (name args position)
   (let ((call `(,name ,@args fn2-core)))
@@ -474,3 +447,5 @@
             written)))))
   :teeth (fn2-core-unit)
   :doc "At the composed harvest boundary, an input completion exposes exactly the initialized loan prefix. Initialization is an explicit successful trace of the real adapter-write export; ready-ops supplies the independently posted observation state. This trace premise is the environmental fidelity obligation, not an inference from bytes that happen to be in memory.")
+
+))

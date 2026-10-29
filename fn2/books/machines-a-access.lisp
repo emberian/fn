@@ -3,6 +3,8 @@
 (in-package "ACL2")
 (include-book "core")
 
+(defmacro fn2-machine-access-events ()
+ '(progn
 (make-event
  (value `(defthm fn2-machine-core-child-shapes
            (implies (fn2-core-wfp fn2-core)
@@ -275,10 +277,21 @@
   (let ((fn2-core (fn2-machine-write-stopped id 1 fn2-core)))
     (fn2-machine-result 0 1 0 nil fn2-core)))
 (fn2-core-shape-lemmas fn2-machine-refuse-phase (id) 4)
+(in-theory (disable fn2-machines-kind-basesi))
+(defun fn2-machine-kind-base (kind fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
+    (id) (if (unsigned-byte-p 8 kind) (fn2-machines-kind-basesi kind fn2-machines) 4294967295) id))
+(defthm fn2-machine-kind-base-natp
+  (implies (fn2-corep fn2-core) (natp (fn2-machine-kind-base kind fn2-core)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use (fn2-core-machines-type
+                        (:instance fn2-machines-kind-basesi-natp
+                          (i kind) (fn2-machines (fn2-core-machines fn2-core)))))))
+(in-theory (disable fn2-machine-kind-base))
 (defun fn2-machine-scribe-id (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (stobj-let ((fn2-sched (fn2-core-sched fn2-core)))
-    (id) (fn2-sched-scribe-index fn2-sched) id))
+  (fn2-machine-kind-base *fn2-scribe-kind* fn2-core))
 (in-theory (disable fn2-machine-scribe-id))
 
 (defun fn2-echo-free-fields (id fn2-core)
@@ -325,3 +338,4 @@
            (fn2-core-wfp (fn2-listener-set-mode-all mode fn2-core)))
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-listener-set-mode-all))
+))

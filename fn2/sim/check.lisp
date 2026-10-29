@@ -1,7 +1,7 @@
 ; Eleven independent semantic checker names. A4 implements TRACE/WORK/OWN.
 ; Missing evidence and unimplemented checks are never passing results.
 (in-package "ACL2")
-(include-book "../books/core")
+(include-book "../books/assembly")
 (include-book "check-own")
 (include-book "check-trace")
 (include-book "check-work")
