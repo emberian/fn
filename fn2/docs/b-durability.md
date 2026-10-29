@@ -29,6 +29,20 @@ recorded here is a defect.
 | acceptance | `fn2/tests/sim-layer-b.lisp` (+ driver `.lsp`, **owed**) | B3-B7 |
 
 ## 2. Decisions inside the contract
+- **B-HASH-ATTACHED.** Every 64 KiB payload block is hashed and content-named;
+  BLAKE3 composes its subtree CVs into object hashes and range checks. Served hash-mode
+  paths attach the vendored C BLAKE3. `blake3-spec.lisp`, `blake3-pool-spec.lisp` and the
+  incremental ACL2 implementation remain the specification, differential oracle and
+  fallback. The target is device throughput. Each process must qualify its native
+  primitives before installing them; `A-CRYPTO-NATIVE` explicitly assumes their
+  correspondence to BLAKE3. Finite vectors and differential tests qualify that assumption,
+  rather than proving it. Keyed and derive modes retain the ACL2 implementation.
+  Padding scans use the separately qualified `A-NATIVE-SPAN` first-nonzero primitive;
+  ACL2 still decides admission, refusal order and consumed-byte charges.
+- **B-DIGEST-ROWS (remedy 16).** A digest is an index into the B-owned, profile-sized
+  `defcolumns fn2-digests` table of eight u32 columns. BLAKE3, Merkle proofs and format
+  expectations share this representation. Named workspace regions replace word offsets;
+  guarded indexes and widths replace absorbing reads and writes (B8).
 - **B-BLOCK-DEVICE.** The crash model is a block-device model, not a POSIX one: fn2 has one
   preallocated data file or a raw device and no directories, rename, unlink or fsync(dirfd)
   (ENVELOPE §2.3 "What is absent"). The quarry's `books/byte-store.lisp` contributes its outcome
@@ -256,7 +270,9 @@ random differential drivers are executable evidence, not proofs.
 
 ## 6. Format
 
-The layouts in `books/format.lisp` describe field encoding only. The readers in
+The catalog in `books/format.lisp` joins independently certified declarations in
+`format-physical.lisp`, `format-events.lisp` and `format-storage.lisp`, sharing
+`format-base.lisp`. The declarations and generated codecs describe field encoding only. The readers in
 `books/format-check.lisp` check framing, expected physical identities and integrity hashes.
 Neither establishes semantic folding, query completeness, availability, freshness, authority,
 or the predecessor-cut restriction (STORAGE-DESIGN §4.4).
@@ -273,19 +289,21 @@ the checker.
 
 The export is
 `fn2-format-run(kind, sealp, row, slot, gen, off, len, base, okind, oslot, ogen, budget,
-fc, context, b3, fields, pool)`, returning `(mv code fc b3 fields pool)`.
+fc, context, b3, fields, pool, digests)`, returning `(mv code fc b3 fields pool digests)`.
 `kind` is `:frame`, `:page`, `:anchor` or `:seal`; `sealp` selects writing the final
-hash instead of checking it (`:page` hashes live in their parent). `budget` is 1..4096
-byte transitions. `:more` retains the continuation; every terminal result resets it.
+hash instead of checking it. Page names live in their parent: `fn2-format-seal-page`
+uses the same continuation and writes the result into the digest row referenced by
+`context.hash`. `budget` is 1..4096 byte transitions. `:more` retains the continuation; every terminal result resets it.
 `fn2-fc-reset` explicitly abandons an unfinished operation. The internal driver uses
 `fn2-format-fuel(len)` rather than duplicating a fuel formula across wrappers.
 
 The expected-context row has named columns: `location`, `allocation`, `history`,
 `incarnation`, `writer-epoch`, `commit`, `page-kind`, `encoded-length`,
-`extent-writer-epoch`, `extent`, `previous-commit`, eight `hash-N` words, eight
-`geometry-N` words and eight `previous-seal-N` words. Digest words are u32; other
-expectations are u60. Populate columns with the generated `fn2-fc-context-set-NAME`
-setters. Keep expectations, input handles and input bytes immutable across `:more`;
+`extent-writer-epoch`, `extent`, `previous-commit`, and the u32 digest-row references
+`hash`, `geometry`, `previous-seal`. Other expectations are u60. The checker result is
+in its named `*fn2-fc-result*` digest region. Populate references with generated
+`fn2-fc-context-set-NAME` setters and words with the digest table's generated setters.
+Each checker also owns its numbered BLAKE3 row and digest workspace stripe. Keep expectations, input handles and input bytes immutable across `:more`;
 a sealer exclusively owns its output range. Decoded field accesses use the
 `deflayout` generated field-index constants.
 
@@ -298,7 +316,16 @@ commit, extent and extent allocation pair, and padding must be zero.
 Page hashing is `BLAKE3("fn2/physical-page/v1" || exact-encoded-page)`. The checker
 matches physical unit, allocation pair, kind, encoded length and parent-held hash,
 plus history and incarnation. Header/payload bounds and zero padding are checked.
-Device storage-domain binding belongs to the caller; the page header has no such field.
+The page/frame bulk path admits a whole readable span, scans padding for its first
+nonzero byte, and hashes only the valid prefix. Frames stop the bulk region before
+the algorithm tag and final digest, retaining their ordered byte checks.
+`fn2-fc-zero-prefix(absolute-offset, length, pool)` is an ACL2-defined, guard-verified
+read-only scan; its stateless native attachment reads at most 4096 admitted bytes
+and returns the exact first-nonzero offset, including a zero-length span. A failed span admission takes the original
+byte path, preserving refusal priority and the exact consumed prefix. Each successful
+span is charged by its consumed byte count; it never turns 4096 bytes of hashing into
+one budget unit. Device storage-domain binding belongs to the caller; the page header
+has no such field.
 
 Anchors use `fn2/anchor/v1`, their final 32 bytes zero while hashing. The checker
 matches slot, history, incarnation and all geometry digest bytes.
@@ -322,6 +349,15 @@ hypothesis-removal witnesses through the actual pool-backed checker. Collision
 freedom is stated directly for the two covered byte sequences. The seal statement
 binds identity, expected predecessor and exact covered content; it makes no real-world
 hash-security or disk-persistence claim.
+
+The checker preservation proofs share typed prefix selection, a read-only ordered
+byte check and a single span-size bounds theorem through the existing shape
+proof template. This reduces repeated case splits without changing any theorem
+formula, guard or teeth. The follow-up certificate takes 38.35 ACL2 seconds (previously
+93.90), or 39.00 seconds including the launcher; the independent format declaration books take 2.11, 10.45, 35.08
+and 24.07 seconds, and their public catalog 1.59 seconds. These are author-machine
+certification wall times; event/persistence profiles and the complete scope are in
+`build/REPORT.md`.
 
 ### Layout vocabulary
 
@@ -482,61 +518,148 @@ certification does not establish persistence or the composing machine's evidence
 
 ## 8. BLAKE3
 
-`books/blake3.lisp` is the incremental executable reference. `defcolumns` owns
-profile-sized hasher rows; each row has scalar continuation columns and 464
-u32 words: CV[8], key[8], buffered block[16], frontier[54][8]. The block's 64
-bytes are packed little-endian. Only table initialization resizes storage.
-The served path shares the scalar compression of `books/blake3-spec.lisp` (the quarry's
-`books/blake3.lisp` lifted whole with its two helpers made local, so fn2 has no quarry
-dependency); the spec's list functions are the keystones' and tests' reference only.
+`books/digests.lisp` declares the eight u32 digest columns, IV and empty-root
+constants, and named workspace regions. A profile allocates `136*n` workspace rows
+plus caller-owned keys, outputs and proof nodes for `n` continuations. Within each
+stripe, BLAKE3 owns its CV, key, 54 frontier rows, scratch and result; Merkle owns
+60 frontier rows and proof/frozen-argument rows; the format checker owns its result
+and expectation rows. Capacity is supplied at initialization. These are continuation
+resources, not a bound on stored objects. The only remaining BLAKE3 word buffer is
+16 u32 message words per hasher row. Guards check physical indexes and word widths;
+there are no out-of-range writes discarded or word reads replaced by zero.
 
-- `fn2-b3-table-init(n, b3)` allocates; `fn2-b3-init(row, mode, k0..k7, b3)`
-  resets a row. Modes are 0 (hash), 16 (keyed), 32 (derive context), 64
-  (derive material). Hash/context use the IV; keyed/material use eight key
-  words. Derivation hashes the context in mode 32, then uses its eight output
-  words as the mode-64 key.
-- `fn2-b3-update(row, slot, gen, off, len, okind, oslot, ogen, b3, pool)`
-  returns `(mv code consumed b3)`, consuming at most 4096 bytes; `:more`
-  means the caller yields and resumes at the returned prefix length. A pool
-  refusal retains the successfully consumed prefix. `fn2-b3-read` is the
-  single checked byte-access shim for A's future range primitive.
-- `fn2-b3-update-const(row, string, off, len, b3)` has the same result for
-  constant byte strings, with `len <= 4096`. Physical pages feed
-  `"fn2/physical-page/v1"` then their exact encoded bytes, including identity
-  context and padding; B2c owns that encoding.
-- `fn2-b3-finalize(row, b3)` returns eight u32 multiple values without changing
-  the row; later updates remain valid. `fn2-b3-start-subtree(row, counter, b3)`
-  sets an empty initialized row's absolute chunk counter, aligned to 64 chunks.
-  Feed the block and call `fn2-b3-subtree-cv(row, b3)` for eight non-root words.
-- `fn2-b3-parent-cv(l0..l7, r0..r7, k0..k7, flags)` and `fn2-b3-parent-root`
-  with the same arguments return eight words using PARENT or PARENT|ROOT.
-- `fn2-b3-verify-range(row, base, source-len, block, block-len, d0..d7, b3,
-  fields)` returns `(mv code b3)`. Hash the candidate at absolute counter
-  `64*block` first. Each source block's eight CV words occupy consecutive
-  `fields.value` rows from `base`; fields capacity is a profile resource.
-  Verification starts the continuation, then consumes one CV per call until
-  `:ok` or refusal. Keep arguments and fields unchanged across `:more`.
+- Initialize `fn2-digests-init(capacity, digests)` and `fn2-b3-table-init(n, b3)`.
+  `fn2-b3-init(row, mode, key-row, digests, b3)` returns `(mv digests b3)`.
+  Modes 0/16/32/64 retain hash/keyed/context/material semantics; context/material
+  derivation passes its key as a digest-row index.
+- `fn2-b3-update(row, slot, gen, off, len, okind, oslot, ogen, digests, b3, pool)`
+  returns `(mv code consumed digests b3)` and consumes at most 4096 bytes. Pool
+  refusal retains the exact successfully consumed prefix. `update-const` takes
+  `(row, string, off, len, digests, b3)` with `len <= 4096` and the same returns.
+- `fn2-b3-finalize(dst, row, digests, b3)` and `fn2-b3-subtree-cv` write digest row
+  `dst`, returning `digests`. Finalization preserves the resumable hasher state;
+  its destination must be outside that row's live CV/key/frontier region.
+  `fn2-b3-start-subtree(row, counter, b3)` still sets an empty row's absolute
+  counter aligned to a 64-chunk payload block.
+- `fn2-b3-parent-cv(dst, left, right, key, flags, digests)` and `parent-root`
+  take four row indexes and write one digest row. Aliased input/output rows work:
+  compression reads its inputs before writing any result column.
+- `fn2-b3-verify-range(row, base, source-len, block, block-len, expected-row,
+  digests, b3)` returns `(mv code digests b3)`. First hash the candidate at
+  `64*block`. Proof CVs occupy consecutive digest rows starting at `base`, outside
+  continuation workspace. Each call consumes at most one CV. Keep arguments,
+  expected digest and proof rows immutable across `:more`.
 
-Range verification checks the candidate's actual byte count, absolute counter,
-position, partial last chunk and expected ROOT digest. A source of at most
-65536 bytes uses whole-source finalization, including empty input. Source
-length must come from the authenticated descriptor: a sibling CV alone cannot
-reveal its byte length. Truncating the candidate or the declared length of its
-final block refuses. The verifier uses hash mode; generic hash/parent APIs
-also support keyed and derive modes. Both equivalence keystones remain owed.
+The replaceable subtree boundary is
+`fn2-b3-subtree-cv-into(dst, absolute-pool-offset, len, counter, digests, pool)`.
+It is guard-verified and defined by ACL2 compression over the pool array. Length is
+1024 times a power of two, at most 65536; the counter is absolute and the span must
+fit the pool's byte storage. Admission remains in ACL2: the caller validates handle,
+generation, owner and readability before passing the absolute offset. The primitive
+does not decide ownership or content identity.
 
-Cost (seat review): the verifier folds every block CV of the source, so one block's check
-costs the block's own hashing plus `ceil(len/65536)-1` parent compressions, and the source's
-CVs occupy `8*nblocks` fields rows. A logarithmic sibling path (the subtree CVs along the
-block's path in the left-balanced tree) is the later improvement; the manifest's per-block CVs
-are sufficient material for either.
+The incremental bulk path passes complete 1 KiB chunks through this boundary.
+A second entry, `fn2-b3-chunk-output-into(row, off, counter, digests, b3, pool)`,
+retains the rightmost chunk's CV before its final block and its 64 buffered bytes.
+A non-root CV alone cannot support a later ROOT decision or continued updates.
+`fn2-b3-fragment-into(row, absolute-offset, length, digests, b3, pool)` handles
+an admitted partial chunk through the same ACL2 byte semantics in one stateless
+call. Its native domain stays within the current 1 KiB chunk in hash mode; it
+preserves every digest and hasher column, including dirty unused message words and
+the last compression's scratch digest. Nonadmitted spans retain byte admission.
+`fn2-b3-output` and the two parent entries are also attached, covering remaining
+tails and format prefixes; the
+65-byte RFC Merkle node has its own attached `fn2-mk-node` entry. No C hasher state
+survives a call. The declared quantum stays 4096 bytes, including bulk input.
+Page and frame hashing yield at chunk boundaries when possible; partial chunks
+use the fragment boundary. Short domain prefixes, tag checks and zeroed digest
+bytes retain byte transitions. Charging uses actual
+consumed bytes, and an unreadable bulk span falls back to byte admission so that
+the refusal status, position and hashed prefix remain exact.
 
-Measured in this arm64 ACL2/SBCL executable: 6.774 MiB/s incremental versus
-6.821 MiB/s for quarry `fn-blake3`, each hashing the same 300000-byte input
-20 times (CPU time). After warmup, 100000 init/update(1025 bytes)/finalize
-iterations allocated 0 bytes; this exercises chunk completion and parent ROOT.
-All 105 official digests, 2000 random-length/random-split differential cases,
-and 306 true range checks passed, with the tested corruptions rejected.
+`host/b3-native.lisp` is raw SBCL code loaded after the certified books, never by a
+book. Build `build/lib/libfn-blake3` with `sh fn2/host/build-blake3.sh build/lib`.
+The lifted C adapter exports the quarry's formerly static subtree function and
+small compression/Output/node/fragment wrappers over vendored BLAKE3 1.8.7, plus
+the bounded zero-prefix scan. Pool storage
+must be a specialized `(simple-array (unsigned-byte 8) (*))`, checked at attach time;
+input is pinned and read in place. Fixed stack arrays marshal only message/digest
+words. Every replacement is reached through its submitted function symbol.
+
+Before installation, start-up compares all 35 official hash vectors, subtree
+lengths 1..64 chunks at six counters, partial and full chunk Outputs, parents and
+Merkle nodes with distinct children against saved ACL2 definitions. It also checks
+ten partial-chunk states with all-column effect comparisons, and zero-prefix scans
+at byte/word/4096-byte edges with first, middle, last and absent nonzero bytes.
+Missing libraries/symbols, wrong version,
+wrong pool specialization or any disagreement signal `fn2-b3-native-refused`, with
+reference definitions retained. SBCL save hooks restore reference functions; image
+init hooks run `fn2-b3-native-startup` again in each new process. Explicit reset also
+restores the reference functions. Fast domains are guarded hash-mode inputs;
+keyed/derive modes and arguments outside the native domain call the saved reference.
+The named correspondence assumption is `fn2-a-crypto-native` in
+`assumptions-integrity.lisp`, distinct from accidental-fault collision assumptions.
+`fn2-a-native-span` in `assumptions-native-span.lisp` names correspondence of the
+noncryptographic padding scan and its unchanged-pool effect.
+
+Range checking retains byte count, counter, position, partial-final-chunk and ROOT
+checks. For sources up to 64 KiB it finalizes the complete source, including empty
+input. Source length must come from an authenticated descriptor; an opaque sibling
+CV cannot authenticate its byte length. The current verifier folds every source
+block CV: candidate hashing plus `ceil(source-len/65536)-1` parent compressions and
+one digest row per block. Logarithmic sibling paths remain future work. The two
+ACL2 equivalence keystones remain owed; native attachment does not discharge them.
+
+Matched-session BH1 measurements (wall time; CPU times, before/after comparisons,
+profiles and verbatim acceptance in `build/REPORT.md`). No other BH1 job ran during
+the final measured session.
+
+Apple M2 Max, arm64 (`uname -m`), SBCL 2.6.8. Profile: one BLAKE3 and one
+checker continuation; 160/144 digest rows; 80 decoded fields; 300000/65536-byte
+pools; 4096-byte quantum; 65536-byte blocks; range source 196608 bytes / three CV
+rows. Each operation allocated **0 bytes** after warmup, in both modes.
+
+| Operation | ACL2 MiB/s | C-attached MiB/s | ACL2 µs/op | C-attached µs/op |
+|---|---:|---:|---:|---:|
+| Incremental, 64 KiB | 56.700 | 261.097 | 1102.293 | 239.375 |
+| Page seal, 64 KiB | 33.312 | 351.424 | 1876.215 | 177.848 |
+| Page seal + check, 64 KiB | 15.765 | 132.628 | 3964.535 | 471.242 |
+| Range: 64 KiB block in 192 KiB source | 69.468 | 301.511 | 899.691 | 207.289 |
+| Merkle node, 65 bytes | 40.593 | 163.129 | 1.527 | 0.380 |
+| Subtree primitive, 4 KiB | 81.065 | 1227.370 | 48.187 | 3.183 |
+| Frame seal + check, 4 KiB | 6.926 | 33.631 | 564.025 | 116.149 |
+
+A 4096-byte native subtree primitive takes 3.183 µs. Incremental hashing
+amortizes 239.375 µs over sixteen windows, or 14.961 µs/window. The
+11.778 µs difference includes admission, separate 1 KiB calls, frontier/Output
+maintenance, call/return and finalization; it is not a measurement of A's scheduler.
+At 1 GiB/s the 4096-byte cap requires 262144 resumptions/yields per second. This is
+the finding for A; neither its files nor the declared cap changed. The complete
+checker remains below the device-speed target. The page fixture has a 32-byte
+header area, three payload bytes and zero padding; range timing includes candidate
+hashing and verification in a three-block source. Seal+check counts each unit once.
+
+Before the follow-up, C-attached frame seal+check was 2.329 MiB/s (1676.988 µs)
+and page seal+check 23.703 MiB/s (2636.797 µs). Frame checked pool reads fell from
+8254 to 150 per cycle; page reads from 1037 to 33 per check. Padding scans and
+partial-chunk byte admission were the dominant local costs. The remaining page
+profile spends 56.9% of CPU samples in C's portable single-chunk compression;
+checked pool reads are no longer the bottleneck. Short prefix/tag/digest and header
+transitions remain; complete checker throughput is still below device speed.
+
+Acceptance: 105/105 official vectors, 2000 original differential cases, 10000/10000
+random subtree cases, 10000/10000 zero-prefix cases (pool unchanged), 10000/10000
+partial-fragment cases (all digest/hasher columns equal), unchanged range counts
+(306 accepted; 305 flip, 306 counter, 83 moved and 109 truncated refusals), and
+66 bulk/byte exact-prefix agreements across frame/page/anchor/seal and budgets
+1,7,4096. Missing-library and corrupted subtree/zero-prefix/fragment startup checks
+refuse attachment and retain every reference definition. Standalone ACL2-only
+BLAKE3, format and Merkle controls pass with unchanged driver counts: format retains
+224580 XOR1 mutants, 21 misplacements and 10206 budget agreements; Merkle retains
+2000 roots and 40000 each inclusion/tampered/shifted/resized-height checks.
+The earlier oracle measured 6.774 MiB/s incremental and 6.821 MiB/s list BLAKE3;
+BR1's frame seal+check measured 2.712 checked MiB/s. Pool-backed aligned hashing,
+digest rows and bulk checking account for the different oracle speeds above.
 
 ## 9. Event log
 
@@ -549,31 +672,32 @@ Physical pool location is not hashed into a leaf. Callers supply canonical seman
 encodings; this primitive does not validate their semantic schema.
 
 `fn2-mk-table-init(n, log)` allocates a profile-sized `defcolumns` table. Each row
-carries u60 size, proof continuation columns and 520 u32 words: 60 frontier roots and
-proof workspace. `fn2-mk-init(row, log)` resets the frontier and proof continuation.
-`fn2-mk-append(row, d0..d7, log)` returns `(mv code log)` and performs one full node hash
-per binary carry, at most 60. `fn2-mk-root(row, log)` returns eight digest words, folding
+carries u60 size and proof continuation columns. Its 60 frontier digests and proof
+workspace occupy the named digest-table regions described in §8. `fn2-mk-init(row, log)` resets the frontier and proof continuation.
+`fn2-mk-append(row, digest-row, digests, log)` returns `(mv code digests log)` and performs one full node hash
+per binary carry, at most 60. `fn2-mk-root(dst, row, digests, log)` writes the destination digest row, folding
 occupied levels small to large with each larger subtree on the left. Append refuses
 `:exhausted` at the resident u60 limit rather than wrapping. The 65-byte node hash uses
-B2b's scalar compression twice with CHUNK_START and CHUNK_END|ROOT; it is a complete
+two reference compressions with CHUNK_START and CHUNK_END|ROOT, or its checked native
+attachment; it is a complete
 BLAKE3 hash, not BLAKE3's internal parent-CV operation.
 
-`fn2-mk-leaf-start(b3row, b3)` initializes the hasher and feeds the leaf prefix (the caller owns the pairing of hasher row and log row; seat review removed a reuse of the BLAKE3 row's verify-target column for it).
-`fn2-mk-leaf(slot, gen, off, len, okind, oslot, ogen, b3row, b3, pool)` returns
-`(mv code b3)`, consuming at most 4096 record bytes per call. Repeat identical arguments
-and unchanged input bytes on `:more`; after `:ok`, `fn2-b3-finalize(b3row, b3)` returns
-the leaf's eight words. The active leaf owns that BLAKE3 row.
+`fn2-mk-leaf-start(b3row, digests, b3)` initializes the hasher and feeds the leaf prefix (the caller owns the pairing of hasher row and log row; seat review removed a reuse of the BLAKE3 row's verify-target column for it).
+`fn2-mk-leaf(slot, gen, off, len, okind, oslot, ogen, b3row, digests, b3, pool)` returns
+`(mv code digests b3)`, consuming at most 4096 record bytes per call. Repeat identical arguments
+and unchanged input bytes on `:more`; after `:ok`, `fn2-b3-finalize(dst, b3row, digests, b3)` writes
+the leaf digest row. The active leaf owns that BLAKE3 row.
 
 Proof verification follows [RFC 9162 §§2.1.3.2 and 2.1.4.2](https://www.rfc-editor.org/rfc/rfc9162.html#section-2.1.3.2).
-The APIs are `fn2-mk-verify-inclusion(row, index, size, d0..d7, base, count, r0..r7,
-log, fields)` and `fn2-mk-verify-consistency(row, old, new, base, count, o0..o7,
-n0..n7, log, fields)`, returning `(mv code log)`. Proof nodes occupy eight consecutive
-`fields.value` rows each, from `base`. One call consumes at most one sibling and two
-node hashes. Fixed arguments are checked on resume; proof fields stay immutable.
+The APIs are `fn2-mk-verify-inclusion(row, index, size, leaf-row, base, count, root-row,
+digests, log)` and `fn2-mk-verify-consistency(row, old, new, base, count, old-root-row,
+new-root-row, digests, log)`, returning `(mv code digests log)`. Proof nodes occupy
+consecutive digest rows from `base`, outside continuation workspace. One call consumes at most one sibling and two
+node hashes. Fixed arguments are checked on resume; proof rows stay immutable.
 `:more` retains continuation, and `fn2-mk-proof-reset(row, log)` cancels it without
 changing the frontier. `:state` preserves the active continuation; ordinary completion
 and proof refusal clear it. Refusals include `:index`, `:size`, `:proof-length`,
-`:proof-word`, `:root-mismatch` and `:state`; leaf input also passes pool refusals through.
+`:root-mismatch` and `:state`; leaf input also passes pool refusals through.
 Empty-old consistency extends the RFC algorithm and requires the canonical empty root;
 same-size consistency requires equal roots and no proof nodes.
 
