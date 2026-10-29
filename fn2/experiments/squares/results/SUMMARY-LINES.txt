@@ -1,0 +1,352 @@
+fn2/experiments/squares/results/M1-baseline-1.log
+E1 LOAD seconds=4.766029
+E1 SUMMARY mutant=M1 config=baseline seed=1 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.292999 trials=1 counters=(:ADAPTER 4317 :CORE 50062 :REFERENCE 50062) boundary=5178 result=fn2/experiments/squares/results/M1-baseline-1.sexp
+
+fn2/experiments/squares/results/M1-baseline-20261028.log
+E1 LOAD seconds=4.697107
+E1 SUMMARY mutant=M1 config=baseline seed=20261028 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.276662 trials=1 counters=(:ADAPTER 4335 :CORE 50158 :REFERENCE 50158) boundary=5190 result=fn2/experiments/squares/results/M1-baseline-20261028.sexp
+
+fn2/experiments/squares/results/M1-baseline-314159265.log
+E1 LOAD seconds=4.104079
+E1 SUMMARY mutant=M1 config=baseline seed=314159265 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.288490 trials=1 counters=(:ADAPTER 4306 :CORE 49796 :REFERENCE 49796) boundary=5152 result=fn2/experiments/squares/results/M1-baseline-314159265.sexp
+
+fn2/experiments/squares/results/M1-exhaustive-1.log
+E1 LOAD seconds=4.690932
+E1 SUMMARY mutant=M1 config=exhaustive seed=1 status=:COMPLETED contract=:DOMAIN-EXHAUSTED seconds=0.448466 trials=657 counters=(:REPLAYED-ADAPTER 560 :REJECTED-CANDIDATES 10170 :G1 5347 :REPLAYED-REFERENCE 10694 :REPLAYED-CORE 10694 :STATES-REACHED 657 :PREFIXES-ENUMERATED 657) boundary=NIL result=fn2/experiments/squares/results/M1-exhaustive-1.sexp
+
+fn2/experiments/squares/results/M1-random-1.log
+E1 LOAD seconds=5.441992
+E1 SUMMARY mutant=M1 config=random seed=1 status=:FOUND contract=:G2 seconds=0.376915 trials=1 counters=(:G2 61 :NON-EARLIEST 62 :REPLAYED-ADAPTER 369 :REPLAYED-REFERENCE 13252 :REPLAYED-CORE 13252 :ADAPTER 1 :REJECTED-CANDIDATES 132 :G1 6661 :REFERENCE 70 :CORE 70 :STATES-REACHED 18) boundary=27 result=fn2/experiments/squares/results/M1-random-1.sexp
+
+fn2/experiments/squares/results/M1-random-20261028.log
+E1 LOAD seconds=5.395942
+E1 SUMMARY mutant=M1 config=random seed=20261028 status=:FOUND contract=:G2 seconds=0.520415 trials=1 counters=(:G2 61 :NON-EARLIEST 64 :REPLAYED-ADAPTER 857 :REPLAYED-REFERENCE 18376 :REPLAYED-CORE 18376 :ADAPTER 5 :REJECTED-CANDIDATES 447 :G1 9244 :REFERENCE 112 :CORE 112 :STATES-REACHED 30) boundary=39 result=fn2/experiments/squares/results/M1-random-20261028.sexp
+
+fn2/experiments/squares/results/M1-random-314159265.log
+E1 LOAD seconds=4.847376
+E1 SUMMARY mutant=M1 config=random seed=314159265 status=:FOUND contract=:G2 seconds=0.019126 trials=2 counters=(:G2 1 :NON-EARLIEST 1 :REPLAYED-ADAPTER 13 :REPLAYED-REFERENCE 324 :REPLAYED-CORE 324 :ADAPTER 33 :REJECTED-CANDIDATES 1854 :G1 432 :REFERENCE 540 :CORE 540 :STATES-REACHED 156) boundary=37 result=fn2/experiments/squares/results/M1-random-314159265.sexp
+
+fn2/experiments/squares/results/M1-replay-1-M1-random.log
+E1 LOAD seconds=4.496115
+E1 SUMMARY mutant=M1 config=replay seed=1 status=:FOUND contract=:G2 seconds=0.007185 trials=0 counters=(:NON-EARLIEST 2 :REPLAYED-ADAPTER 9 :G1 146 :REPLAYED-REFERENCE 292 :REPLAYED-CORE 292) boundary=27 result=fn2/experiments/squares/results/M1-replay-1-M1-random.sexp
+
+fn2/experiments/squares/results/M2-baseline-1.log
+E1 LOAD seconds=4.515630
+E1 SUMMARY mutant=M2 config=baseline seed=1 status=:FOUND contract=:CLIENT-ORACLE seconds=0.003141 trials=1 counters=(:ADAPTER 20 :CORE 266 :REFERENCE 266) boundary=30 result=fn2/experiments/squares/results/M2-baseline-1.sexp
+
+fn2/experiments/squares/results/M2-baseline-20261028.log
+E1 LOAD seconds=5.400151
+E1 SUMMARY mutant=M2 config=baseline seed=20261028 status=:FOUND contract=:CLIENT-ORACLE seconds=0.004717 trials=1 counters=(:ADAPTER 9 :CORE 106 :REFERENCE 106) boundary=13 result=fn2/experiments/squares/results/M2-baseline-20261028.sexp
+
+fn2/experiments/squares/results/M2-baseline-314159265.log
+E1 LOAD seconds=5.275673
+E1 SUMMARY mutant=M2 config=baseline seed=314159265 status=:FOUND contract=:CLIENT-ORACLE seconds=0.001282 trials=1 counters=(:ADAPTER 8 :CORE 105 :REFERENCE 105) boundary=12 result=fn2/experiments/squares/results/M2-baseline-314159265.sexp
+
+fn2/experiments/squares/results/M2-exhaustive-1.log
+E1 LOAD seconds=3.891847
+E1 SUMMARY mutant=M2 config=exhaustive seed=1 status=:COMPLETED contract=:DOMAIN-EXHAUSTED seconds=0.335698 trials=657 counters=(:REPLAYED-ADAPTER 560 :REJECTED-CANDIDATES 10170 :G1 5347 :REPLAYED-REFERENCE 10694 :REPLAYED-CORE 10694 :STATES-REACHED 657 :PREFIXES-ENUMERATED 657) boundary=NIL result=fn2/experiments/squares/results/M2-exhaustive-1.sexp
+
+fn2/experiments/squares/results/M2-random-1.log
+E1 LOAD seconds=4.930625
+E1 SUMMARY mutant=M2 config=random seed=1 status=:FOUND contract=:CLIENT-ORACLE seconds=0.013961 trials=2 counters=(:NON-EARLIEST 4 :ADAPTER 45 :REJECTED-CANDIDATES 3870 :G1 289 :REFERENCE 578 :CORE 578 :STATES-REACHED 172) boundary=43 result=fn2/experiments/squares/results/M2-random-1.sexp
+
+fn2/experiments/squares/results/M2-random-20261028.log
+E1 LOAD seconds=4.500947
+E1 SUMMARY mutant=M2 config=random seed=20261028 status=:FOUND contract=:CLIENT-ORACLE seconds=0.004251 trials=1 counters=(:NON-EARLIEST 2 :ADAPTER 12 :REJECTED-CANDIDATES 1010 :G1 80 :REFERENCE 160 :CORE 160 :STATES-REACHED 46) boundary=46 result=fn2/experiments/squares/results/M2-random-20261028.sexp
+
+fn2/experiments/squares/results/M2-random-314159265.log
+E1 LOAD seconds=4.564848
+E1 SUMMARY mutant=M2 config=random seed=314159265 status=:FOUND contract=:CLIENT-ORACLE seconds=0.013653 trials=2 counters=(:ADAPTER 48 :REJECTED-CANDIDATES 2710 :G1 354 :REFERENCE 708 :CORE 708 :STATES-REACHED 209) boundary=80 result=fn2/experiments/squares/results/M2-random-314159265.sexp
+
+fn2/experiments/squares/results/M2-replay-1-M2-random.log
+E1 LOAD seconds=4.500052
+E1 SUMMARY mutant=M2 config=replay seed=1 status=:FOUND contract=:CLIENT-ORACLE seconds=0.004305 trials=0 counters=(:REPLAYED-ADAPTER 11 :G1 69 :REPLAYED-REFERENCE 138 :REPLAYED-CORE 138) boundary=43 result=fn2/experiments/squares/results/M2-replay-1-M2-random.sexp
+
+fn2/experiments/squares/results/M2-replay-20261028-M2-baseline.log
+E1 LOAD seconds=3.962269
+E1 SUMMARY mutant=M2 config=replay seed=20261028 status=:FOUND contract=:CLIENT-ORACLE seconds=0.002484 trials=0 counters=(:ADAPTER 9 :CORE 106 :REFERENCE 106) boundary=13 result=fn2/experiments/squares/results/M2-replay-20261028-M2-baseline.sexp
+
+fn2/experiments/squares/results/M3-baseline-1.log
+E1 LOAD seconds=4.154775
+E1 SUMMARY mutant=M3 config=baseline seed=1 status=:FOUND contract=:TURN-MONITORS seconds=0.000725 trials=1 counters=(:ADAPTER 1 :CORE 11 :REFERENCE 19) boundary=3 result=fn2/experiments/squares/results/M3-baseline-1.sexp
+
+fn2/experiments/squares/results/M3-baseline-20261028.log
+E1 LOAD seconds=3.998745
+E1 SUMMARY mutant=M3 config=baseline seed=20261028 status=:FOUND contract=:TURN-MONITORS seconds=0.000728 trials=1 counters=(:ADAPTER 1 :CORE 11 :REFERENCE 19) boundary=3 result=fn2/experiments/squares/results/M3-baseline-20261028.sexp
+
+fn2/experiments/squares/results/M3-baseline-314159265.log
+E1 LOAD seconds=3.786664
+E1 SUMMARY mutant=M3 config=baseline seed=314159265 status=:FOUND contract=:TURN-MONITORS seconds=0.000817 trials=1 counters=(:ADAPTER 1 :CORE 11 :REFERENCE 19) boundary=3 result=fn2/experiments/squares/results/M3-baseline-314159265.sexp
+
+fn2/experiments/squares/results/M3-exhaustive-1.log
+E1 LOAD seconds=5.154795
+E1 SUMMARY mutant=M3 config=exhaustive seed=1 status=:FOUND contract=:G1 seconds=0.070293 trials=103 counters=(:REPLAYED-ADAPTER 72 :REJECTED-CANDIDATES 1890 :G1 881 :REPLAYED-REFERENCE 1761 :REPLAYED-CORE 1761 :STATES-REACHED 102 :PREFIXES-ENUMERATED 103) boundary=4 result=fn2/experiments/squares/results/M3-exhaustive-1.sexp
+
+fn2/experiments/squares/results/M3-random-1.log
+E1 LOAD seconds=4.783974
+E1 SUMMARY mutant=M3 config=random seed=1 status=:FOUND contract=:G1 seconds=0.001122 trials=1 counters=(:ADAPTER 1 :REJECTED-CANDIDATES 45 :G1 9 :REFERENCE 17 :CORE 17 :STATES-REACHED 7) boundary=7 result=fn2/experiments/squares/results/M3-random-1.sexp
+
+fn2/experiments/squares/results/M3-random-20261028.log
+E1 LOAD seconds=4.695660
+E1 SUMMARY mutant=M3 config=random seed=20261028 status=:FOUND contract=:G1 seconds=0.001165 trials=1 counters=(:ADAPTER 1 :REJECTED-CANDIDATES 45 :G1 9 :REFERENCE 17 :CORE 17 :STATES-REACHED 4) boundary=4 result=fn2/experiments/squares/results/M3-random-20261028.sexp
+
+fn2/experiments/squares/results/M3-random-314159265.log
+E1 LOAD seconds=4.001227
+E1 SUMMARY mutant=M3 config=random seed=314159265 status=:FOUND contract=:G1 seconds=0.001387 trials=1 counters=(:ADAPTER 1 :REJECTED-CANDIDATES 45 :G1 10 :REFERENCE 19 :CORE 19 :STATES-REACHED 10) boundary=10 result=fn2/experiments/squares/results/M3-random-314159265.sexp
+
+fn2/experiments/squares/results/M3-replay-1-M3-random.log
+E1 LOAD seconds=4.621277
+E1 SUMMARY mutant=M3 config=replay seed=1 status=:FOUND contract=:G1 seconds=0.001512 trials=0 counters=(:REPLAYED-ADAPTER 1 :G1 9 :REPLAYED-REFERENCE 17 :REPLAYED-CORE 17) boundary=7 result=fn2/experiments/squares/results/M3-replay-1-M3-random.sexp
+
+fn2/experiments/squares/results/M4-baseline-1.log
+E1 LOAD seconds=4.791865
+E1 SUMMARY mutant=M4 config=baseline seed=1 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.249674 trials=1 counters=(:ADAPTER 4317 :CORE 50062 :REFERENCE 50062) boundary=5178 result=fn2/experiments/squares/results/M4-baseline-1.sexp
+
+fn2/experiments/squares/results/M4-baseline-20261028.log
+E1 LOAD seconds=4.412236
+E1 SUMMARY mutant=M4 config=baseline seed=20261028 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.261707 trials=1 counters=(:ADAPTER 4335 :CORE 50158 :REFERENCE 50158) boundary=5190 result=fn2/experiments/squares/results/M4-baseline-20261028.sexp
+
+fn2/experiments/squares/results/M4-baseline-314159265.log
+E1 LOAD seconds=4.416045
+E1 SUMMARY mutant=M4 config=baseline seed=314159265 status=:FOUND contract=:CLIENT-ORACLE seconds=0.001496 trials=1 counters=(:ADAPTER 11 :CORE 135 :REFERENCE 135) boundary=15 result=fn2/experiments/squares/results/M4-baseline-314159265.sexp
+
+fn2/experiments/squares/results/M4-exhaustive-1.log
+E1 LOAD seconds=4.399382
+E1 SUMMARY mutant=M4 config=exhaustive seed=1 status=:COMPLETED contract=:DOMAIN-EXHAUSTED seconds=0.450504 trials=657 counters=(:REPLAYED-ADAPTER 560 :REJECTED-CANDIDATES 10170 :G1 5347 :REPLAYED-REFERENCE 10694 :REPLAYED-CORE 10694 :STATES-REACHED 657 :PREFIXES-ENUMERATED 657) boundary=NIL result=fn2/experiments/squares/results/M4-exhaustive-1.sexp
+
+fn2/experiments/squares/results/M4-random-1.log
+E1 LOAD seconds=4.036966
+E1 SUMMARY mutant=M4 config=random seed=1 status=:FOUND contract=:CLIENT-ORACLE seconds=0.017442 trials=2 counters=(:NON-EARLIEST 4 :ADAPTER 65 :REJECTED-CANDIDATES 4335 :G1 453 :REFERENCE 906 :CORE 906 :STATES-REACHED 245) boundary=116 result=fn2/experiments/squares/results/M4-random-1.sexp
+
+fn2/experiments/squares/results/M4-random-20261028.log
+E1 LOAD seconds=4.956306
+E1 SUMMARY mutant=M4 config=random seed=20261028 status=:FOUND contract=:CLIENT-ORACLE seconds=0.162409 trials=14 counters=(:NON-EARLIEST 16 :ADAPTER 378 :REJECTED-CANDIDATES 24675 :G1 2913 :REFERENCE 5826 :CORE 5826 :STATES-REACHED 1731) boundary=54 result=fn2/experiments/squares/results/M4-random-20261028.sexp
+
+fn2/experiments/squares/results/M4-random-314159265.log
+E1 LOAD seconds=5.114245
+E1 SUMMARY mutant=M4 config=random seed=314159265 status=:FOUND contract=:CLIENT-ORACLE seconds=0.266941 trials=28 counters=(:NON-EARLIEST 10 :ADAPTER 742 :REJECTED-CANDIDATES 45545 :G1 6346 :REFERENCE 12692 :CORE 12692 :STATES-REACHED 3554) boundary=71 result=fn2/experiments/squares/results/M4-random-314159265.sexp
+
+fn2/experiments/squares/results/M4-replay-1-M4-random.log
+E1 LOAD seconds=4.844008
+E1 SUMMARY mutant=M4 config=replay seed=1 status=:FOUND contract=:CLIENT-ORACLE seconds=0.011399 trials=0 counters=(:REPLAYED-ADAPTER 32 :G1 218 :REPLAYED-REFERENCE 436 :REPLAYED-CORE 436) boundary=116 result=fn2/experiments/squares/results/M4-replay-1-M4-random.sexp
+
+fn2/experiments/squares/results/M5-baseline-1.log
+E1 LOAD seconds=4.534637
+E1 SUMMARY mutant=M5 config=baseline seed=1 status=:FOUND contract=:TURN-MONITORS seconds=0.000658 trials=1 counters=(:CORE 8 :REFERENCE 8) boundary=1 result=fn2/experiments/squares/results/M5-baseline-1.sexp
+
+fn2/experiments/squares/results/M5-baseline-20261028.log
+E1 LOAD seconds=4.570853
+E1 SUMMARY mutant=M5 config=baseline seed=20261028 status=:FOUND contract=:TURN-MONITORS seconds=0.000596 trials=1 counters=(:CORE 8 :REFERENCE 8) boundary=1 result=fn2/experiments/squares/results/M5-baseline-20261028.sexp
+
+fn2/experiments/squares/results/M5-baseline-314159265.log
+E1 LOAD seconds=4.424455
+E1 SUMMARY mutant=M5 config=baseline seed=314159265 status=:FOUND contract=:TURN-MONITORS seconds=0.001011 trials=1 counters=(:CORE 8 :REFERENCE 8) boundary=1 result=fn2/experiments/squares/results/M5-baseline-314159265.sexp
+
+fn2/experiments/squares/results/M5-exhaustive-1.log
+E1 LOAD seconds=3.877279
+E1 SUMMARY mutant=M5 config=exhaustive seed=1 status=:FOUND contract=:G1-ENTRY seconds=0.000867 trials=2 counters=(:STATES-REACHED 1 :PREFIXES-ENUMERATED 2) boundary=1 result=fn2/experiments/squares/results/M5-exhaustive-1.sexp
+
+fn2/experiments/squares/results/M5-random-1.log
+E1 LOAD seconds=4.682212
+E1 SUMMARY mutant=M5 config=random seed=1 status=:FOUND contract=:G1-ENTRY seconds=0.000664 trials=1 counters=(:STATES-REACHED 1) boundary=1 result=fn2/experiments/squares/results/M5-random-1.sexp
+
+fn2/experiments/squares/results/M5-random-20261028.log
+E1 LOAD seconds=4.431855
+E1 SUMMARY mutant=M5 config=random seed=20261028 status=:FOUND contract=:G1-ENTRY seconds=0.000621 trials=1 counters=(:STATES-REACHED 1) boundary=1 result=fn2/experiments/squares/results/M5-random-20261028.sexp
+
+fn2/experiments/squares/results/M5-random-314159265.log
+E1 LOAD seconds=4.424600
+E1 SUMMARY mutant=M5 config=random seed=314159265 status=:FOUND contract=:G1-ENTRY seconds=0.000607 trials=1 counters=(:STATES-REACHED 1) boundary=1 result=fn2/experiments/squares/results/M5-random-314159265.sexp
+
+fn2/experiments/squares/results/M5-replay-1-M5-random.log
+E1 LOAD seconds=4.443847
+E1 SUMMARY mutant=M5 config=replay seed=1 status=:FOUND contract=:G1-ENTRY seconds=0.001111 trials=0 counters=NIL boundary=1 result=fn2/experiments/squares/results/M5-replay-1-M5-random.sexp
+
+fn2/experiments/squares/results/M6-baseline-1.log
+E1 LOAD seconds=3.876443
+E1 SUMMARY mutant=M6 config=baseline seed=1 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.254690 trials=1 counters=(:ADAPTER 4317 :CORE 50062 :REFERENCE 50062) boundary=5178 result=fn2/experiments/squares/results/M6-baseline-1.sexp
+
+fn2/experiments/squares/results/M6-baseline-20261028.log
+E1 LOAD seconds=3.595785
+E1 SUMMARY mutant=M6 config=baseline seed=20261028 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.001078 trials=1 counters=(:ADAPTER 3 :CORE 45 :REFERENCE 45) boundary=6 result=fn2/experiments/squares/results/M6-baseline-20261028.sexp
+
+fn2/experiments/squares/results/M6-baseline-314159265.log
+E1 LOAD seconds=3.575637
+E1 SUMMARY mutant=M6 config=baseline seed=314159265 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.002521 trials=1 counters=(:ADAPTER 22 :CORE 241 :REFERENCE 241) boundary=28 result=fn2/experiments/squares/results/M6-baseline-314159265.sexp
+
+fn2/experiments/squares/results/M6-exhaustive-1.log
+E1 LOAD seconds=3.755079
+E1 SUMMARY mutant=M6 config=exhaustive seed=1 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.008317 trials=13 counters=(:REPLAYED-ADAPTER 7 :REJECTED-CANDIDATES 135 :G1 107 :REPLAYED-REFERENCE 214 :REPLAYED-CORE 214 :STATES-REACHED 12 :PREFIXES-ENUMERATED 13) boundary=4 result=fn2/experiments/squares/results/M6-exhaustive-1.sexp
+
+fn2/experiments/squares/results/M6-random-1.log
+E1 LOAD seconds=4.333648
+E1 SUMMARY mutant=M6 config=random seed=1 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.001926 trials=1 counters=(:ADAPTER 3 :REJECTED-CANDIDATES 325 :G1 35 :REFERENCE 70 :CORE 70 :STATES-REACHED 19) boundary=19 result=fn2/experiments/squares/results/M6-random-1.sexp
+
+fn2/experiments/squares/results/M6-random-20261028.log
+E1 LOAD seconds=4.107395
+E1 SUMMARY mutant=M6 config=random seed=20261028 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.002985 trials=1 counters=(:ADAPTER 4 :REJECTED-CANDIDATES 180 :G1 55 :REFERENCE 110 :CORE 110 :STATES-REACHED 24) boundary=24 result=fn2/experiments/squares/results/M6-random-20261028.sexp
+
+fn2/experiments/squares/results/M6-random-314159265.log
+E1 LOAD seconds=4.225828
+E1 SUMMARY mutant=M6 config=random seed=314159265 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.001986 trials=1 counters=(:ADAPTER 2 :REJECTED-CANDIDATES 90 :G1 27 :REFERENCE 54 :CORE 54 :STATES-REACHED 13) boundary=13 result=fn2/experiments/squares/results/M6-random-314159265.sexp
+
+fn2/experiments/squares/results/M6-replay-1-M6-random.log
+E1 LOAD seconds=4.484320
+E1 SUMMARY mutant=M6 config=replay seed=1 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.002526 trials=0 counters=(:REPLAYED-ADAPTER 3 :G1 35 :REPLAYED-REFERENCE 70 :REPLAYED-CORE 70) boundary=19 result=fn2/experiments/squares/results/M6-replay-1-M6-random.sexp
+
+fn2/experiments/squares/results/M6-replay-20261028-M6-baseline.log
+E1 LOAD seconds=5.141762
+E1 SUMMARY mutant=M6 config=replay seed=20261028 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.001707 trials=0 counters=(:ADAPTER 3 :CORE 45 :REFERENCE 45) boundary=6 result=fn2/experiments/squares/results/M6-replay-20261028-M6-baseline.sexp
+
+fn2/experiments/squares/results/ORIGINAL-baseline-1.log
+E1 LOAD seconds=5.227829
+E1 SUMMARY mutant=ORIGINAL config=baseline seed=1 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.276447 trials=1 counters=(:ADAPTER 4317 :CORE 50062 :REFERENCE 50062) boundary=5178 result=fn2/experiments/squares/results/ORIGINAL-baseline-1.sexp
+
+fn2/experiments/squares/results/ORIGINAL-baseline-20261028.log
+E1 LOAD seconds=5.232403
+E1 SUMMARY mutant=ORIGINAL config=baseline seed=20261028 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.284848 trials=1 counters=(:ADAPTER 4335 :CORE 50158 :REFERENCE 50158) boundary=5190 result=fn2/experiments/squares/results/ORIGINAL-baseline-20261028.sexp
+
+fn2/experiments/squares/results/ORIGINAL-baseline-314159265.log
+E1 LOAD seconds=5.114986
+E1 SUMMARY mutant=ORIGINAL config=baseline seed=314159265 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.281520 trials=1 counters=(:ADAPTER 4306 :CORE 49796 :REFERENCE 49796) boundary=5152 result=fn2/experiments/squares/results/ORIGINAL-baseline-314159265.sexp
+
+fn2/experiments/squares/results/ORIGINAL-exhaustive-1.log
+E1 LOAD seconds=4.512073
+E1 SUMMARY mutant=ORIGINAL config=exhaustive seed=1 status=:COMPLETED contract=:DOMAIN-EXHAUSTED seconds=0.384758 trials=657 counters=(:REPLAYED-ADAPTER 560 :REJECTED-CANDIDATES 10170 :G1 5347 :REPLAYED-REFERENCE 10694 :REPLAYED-CORE 10694 :STATES-REACHED 657 :PREFIXES-ENUMERATED 657) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-exhaustive-1.sexp
+
+fn2/experiments/squares/results/ORIGINAL-random-1.log
+E1 LOAD seconds=6.173446
+E1 SUMMARY mutant=ORIGINAL config=random seed=1 status=:CENSORED contract=:TRANSITIONS seconds=2.751965 trials=220 counters=(:NON-EARLIEST 141 :ADAPTER 5902 :REJECTED-CANDIDATES 369650 :G1 50000 :REFERENCE 100000 :CORE 100000 :STATES-REACHED 28366) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-random-1.sexp
+
+fn2/experiments/squares/results/ORIGINAL-random-20261028.log
+E1 LOAD seconds=6.408314
+E1 SUMMARY mutant=ORIGINAL config=random seed=20261028 status=:CENSORED contract=:TRANSITIONS seconds=2.758115 trials=221 counters=(:NON-EARLIEST 159 :ADAPTER 5994 :REJECTED-CANDIDATES 378880 :G1 50002 :REFERENCE 100004 :CORE 99996 :STATES-REACHED 28408) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-random-20261028.sexp
+
+fn2/experiments/squares/results/ORIGINAL-random-314159265.log
+E1 LOAD seconds=6.625848
+E1 SUMMARY mutant=ORIGINAL config=random seed=314159265 status=:CENSORED contract=:TRANSITIONS seconds=2.563844 trials=218 counters=(:NON-EARLIEST 159 :ADAPTER 5783 :REJECTED-CANDIDATES 371680 :G1 50000 :REFERENCE 100000 :CORE 100000 :STATES-REACHED 28075) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-random-314159265.sexp
+
+fn2/experiments/squares/results/ORIGINAL-replay-1-M2-random-retry.log
+E1 LOAD seconds=4.798082
+E1 SUMMARY mutant=ORIGINAL config=replay seed=1 status=:INVALID-PREFIX contract=:OUTSIDE-ENABLED-DOMAIN seconds=0.005493 trials=0 counters=(:REJECTED-PREFIXES 1 :REPLAYED-ADAPTER 9 :G1 65 :REPLAYED-REFERENCE 130 :REPLAYED-CORE 130) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-replay-1-M2-random-retry.sexp
+
+fn2/experiments/squares/results/ORIGINAL-replay-1-M2-random.log
+E1 LOAD seconds=4.602230
+E1 DRIVER-ERROR attempt to THROW to a tag that does not exist: E1-INVALID
+
+fn2/experiments/squares/results/ORIGINAL-replay-1-M3-random.log
+E1 LOAD seconds=5.047354
+E1 SUMMARY mutant=ORIGINAL config=replay seed=1 status=:COMPLETED contract=:REPLAY seconds=0.001389 trials=0 counters=(:REPLAYED-ADAPTER 1 :G1 18 :REPLAYED-REFERENCE 36 :REPLAYED-CORE 36) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-replay-1-M3-random.sexp
+
+fn2/experiments/squares/results/ORIGINAL-replay-1-M4-random-retry.log
+E1 LOAD seconds=4.982926
+E1 SUMMARY mutant=ORIGINAL config=replay seed=1 status=:INVALID-PREFIX contract=:OUTSIDE-ENABLED-DOMAIN seconds=0.011166 trials=0 counters=(:REJECTED-PREFIXES 1 :REPLAYED-ADAPTER 30 :G1 218 :REPLAYED-REFERENCE 436 :REPLAYED-CORE 436) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-replay-1-M4-random-retry.sexp
+
+fn2/experiments/squares/results/ORIGINAL-replay-1-M4-random.log
+E1 LOAD seconds=4.309617
+E1 DRIVER-ERROR attempt to THROW to a tag that does not exist: E1-INVALID
+
+fn2/experiments/squares/results/ORIGINAL-replay-1-M5-random.log
+E1 LOAD seconds=4.488841
+E1 SUMMARY mutant=ORIGINAL config=replay seed=1 status=:COMPLETED contract=:REPLAY seconds=0.002310 trials=0 counters=(:G1 8 :REPLAYED-REFERENCE 16 :REPLAYED-CORE 16) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-replay-1-M5-random.sexp
+
+fn2/experiments/squares/results/ORIGINAL-replay-1-M6-random.log
+E1 LOAD seconds=4.261494
+E1 SUMMARY mutant=ORIGINAL config=replay seed=1 status=:COMPLETED contract=:REPLAY seconds=0.003481 trials=0 counters=(:REPLAYED-ADAPTER 3 :G1 35 :REPLAYED-REFERENCE 70 :REPLAYED-CORE 70) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-replay-1-M6-random.sexp
+
+fn2/experiments/squares/results/ORIGINAL-replay-1-ORIGINAL-baseline.log
+E1 LOAD seconds=4.384268
+E1 SUMMARY mutant=ORIGINAL config=replay seed=1 status=:FOUND contract=:BASELINE-LIVENESS seconds=0.263013 trials=0 counters=(:ADAPTER 4317 :CORE 50062 :REFERENCE 50062) boundary=5178 result=fn2/experiments/squares/results/ORIGINAL-replay-1-ORIGINAL-baseline.sexp
+
+fn2/experiments/squares/results/ORIGINAL-replay-20261028-M2-baseline.log
+E1 LOAD seconds=3.884678
+E1 SUMMARY mutant=ORIGINAL config=replay seed=20261028 status=:REPLAY-PREFIX-EXHAUSTED contract=NIL seconds=0.001362 trials=0 counters=(:ADAPTER 9 :CORE 104 :REFERENCE 104) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-replay-20261028-M2-baseline.sexp
+
+fn2/experiments/squares/results/ORIGINAL-replay-20261028-M6-baseline.log
+E1 LOAD seconds=5.127970
+E1 SUMMARY mutant=ORIGINAL config=replay seed=20261028 status=:REPLAY-PREFIX-EXHAUSTED contract=NIL seconds=0.001101 trials=0 counters=(:ADAPTER 3 :CORE 45 :REFERENCE 45) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-replay-20261028-M6-baseline.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M1-random-1.log
+E1 LOAD seconds=4.178757
+E1 SUMMARY mutant=M1 config=random seed=1 status=:FOUND contract=:G2 seconds=0.268675 trials=1 counters=(:G2 61 :NON-EARLIEST 62 :REPLAYED-ADAPTER 369 :REPLAYED-REFERENCE 13252 :REPLAYED-CORE 13252 :ADAPTER 1 :REJECTED-CANDIDATES 132 :G1 6661 :REFERENCE 70 :CORE 70 :STATES-REACHED 18) boundary=27 result=fn2/experiments/squares/results/M1-random-1.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M1-random-20261028.log
+E1 LOAD seconds=4.840100
+E1 SUMMARY mutant=M1 config=random seed=20261028 status=:FOUND contract=:G2 seconds=0.406943 trials=1 counters=(:G2 61 :NON-EARLIEST 64 :REPLAYED-ADAPTER 857 :REPLAYED-REFERENCE 18376 :REPLAYED-CORE 18376 :ADAPTER 5 :REJECTED-CANDIDATES 447 :G1 9244 :REFERENCE 112 :CORE 112 :STATES-REACHED 30) boundary=39 result=fn2/experiments/squares/results/M1-random-20261028.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M1-random-314159265.log
+E1 LOAD seconds=5.062372
+E1 SUMMARY mutant=M1 config=random seed=314159265 status=:FOUND contract=:G2 seconds=0.031619 trials=2 counters=(:G2 1 :NON-EARLIEST 1 :REPLAYED-ADAPTER 13 :REPLAYED-REFERENCE 324 :REPLAYED-CORE 324 :ADAPTER 33 :REJECTED-CANDIDATES 1809 :G1 432 :REFERENCE 540 :CORE 540 :STATES-REACHED 155) boundary=37 result=fn2/experiments/squares/results/M1-random-314159265.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M2-random-1.log
+E1 LOAD seconds=4.862911
+E1 SUMMARY mutant=M2 config=random seed=1 status=:FOUND contract=:CLIENT-ORACLE seconds=0.012268 trials=2 counters=(:NON-EARLIEST 4 :ADAPTER 45 :REJECTED-CANDIDATES 3870 :G1 289 :REFERENCE 578 :CORE 578 :STATES-REACHED 171) boundary=43 result=fn2/experiments/squares/results/M2-random-1.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M2-random-20261028.log
+E1 LOAD seconds=4.718354
+E1 SUMMARY mutant=M2 config=random seed=20261028 status=:FOUND contract=:CLIENT-ORACLE seconds=0.003850 trials=1 counters=(:NON-EARLIEST 2 :ADAPTER 12 :REJECTED-CANDIDATES 1010 :G1 80 :REFERENCE 160 :CORE 160 :STATES-REACHED 46) boundary=46 result=fn2/experiments/squares/results/M2-random-20261028.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M2-random-314159265.log
+E1 LOAD seconds=3.890943
+E1 SUMMARY mutant=M2 config=random seed=314159265 status=:FOUND contract=:CLIENT-ORACLE seconds=0.013365 trials=2 counters=(:ADAPTER 48 :REJECTED-CANDIDATES 2665 :G1 354 :REFERENCE 708 :CORE 708 :STATES-REACHED 208) boundary=80 result=fn2/experiments/squares/results/M2-random-314159265.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M3-random-1.log
+E1 LOAD seconds=3.829525
+E1 SUMMARY mutant=M3 config=random seed=1 status=:FOUND contract=:G1 seconds=0.000938 trials=1 counters=(:ADAPTER 1 :REJECTED-CANDIDATES 45 :G1 9 :REFERENCE 17 :CORE 17 :STATES-REACHED 7) boundary=7 result=fn2/experiments/squares/results/M3-random-1.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M3-random-20261028.log
+E1 LOAD seconds=4.525850
+E1 SUMMARY mutant=M3 config=random seed=20261028 status=:FOUND contract=:G1 seconds=0.001032 trials=1 counters=(:ADAPTER 1 :REJECTED-CANDIDATES 45 :G1 9 :REFERENCE 17 :CORE 17 :STATES-REACHED 4) boundary=4 result=fn2/experiments/squares/results/M3-random-20261028.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M3-random-314159265.log
+E1 LOAD seconds=4.738516
+E1 SUMMARY mutant=M3 config=random seed=314159265 status=:FOUND contract=:G1 seconds=0.001902 trials=1 counters=(:ADAPTER 1 :REJECTED-CANDIDATES 45 :G1 10 :REFERENCE 19 :CORE 19 :STATES-REACHED 10) boundary=10 result=fn2/experiments/squares/results/M3-random-314159265.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M4-random-1.log
+E1 LOAD seconds=4.118335
+E1 SUMMARY mutant=M4 config=random seed=1 status=:FOUND contract=:CLIENT-ORACLE seconds=0.024491 trials=2 counters=(:NON-EARLIEST 4 :ADAPTER 65 :REJECTED-CANDIDATES 4290 :G1 453 :REFERENCE 906 :CORE 906 :STATES-REACHED 244) boundary=116 result=fn2/experiments/squares/results/M4-random-1.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M4-random-20261028.log
+E1 LOAD seconds=4.184536
+E1 SUMMARY mutant=M4 config=random seed=20261028 status=:FOUND contract=:CLIENT-ORACLE seconds=0.113326 trials=14 counters=(:NON-EARLIEST 16 :ADAPTER 378 :REJECTED-CANDIDATES 24450 :G1 2913 :REFERENCE 5826 :CORE 5826 :STATES-REACHED 1718) boundary=54 result=fn2/experiments/squares/results/M4-random-20261028.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M4-random-314159265.log
+E1 LOAD seconds=4.359235
+E1 SUMMARY mutant=M4 config=random seed=314159265 status=:FOUND contract=:CLIENT-ORACLE seconds=0.339408 trials=28 counters=(:NON-EARLIEST 10 :ADAPTER 742 :REJECTED-CANDIDATES 45365 :G1 6346 :REFERENCE 12692 :CORE 12692 :STATES-REACHED 3527) boundary=71 result=fn2/experiments/squares/results/M4-random-314159265.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M5-random-1.log
+E1 LOAD seconds=4.227409
+E1 SUMMARY mutant=M5 config=random seed=1 status=:FOUND contract=:G1-ENTRY seconds=0.000660 trials=1 counters=(:STATES-REACHED 1) boundary=1 result=fn2/experiments/squares/results/M5-random-1.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M5-random-20261028.log
+E1 LOAD seconds=4.847398
+E1 SUMMARY mutant=M5 config=random seed=20261028 status=:FOUND contract=:G1-ENTRY seconds=0.000813 trials=1 counters=(:STATES-REACHED 1) boundary=1 result=fn2/experiments/squares/results/M5-random-20261028.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M5-random-314159265.log
+E1 LOAD seconds=4.592178
+E1 SUMMARY mutant=M5 config=random seed=314159265 status=:FOUND contract=:G1-ENTRY seconds=0.000603 trials=1 counters=(:STATES-REACHED 1) boundary=1 result=fn2/experiments/squares/results/M5-random-314159265.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M6-random-1.log
+E1 LOAD seconds=3.941532
+E1 SUMMARY mutant=M6 config=random seed=1 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.002092 trials=1 counters=(:ADAPTER 3 :REJECTED-CANDIDATES 325 :G1 35 :REFERENCE 70 :CORE 70 :STATES-REACHED 19) boundary=19 result=fn2/experiments/squares/results/M6-random-1.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M6-random-20261028.log
+E1 LOAD seconds=3.984570
+E1 SUMMARY mutant=M6 config=random seed=20261028 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.002262 trials=1 counters=(:ADAPTER 4 :REJECTED-CANDIDATES 180 :G1 55 :REFERENCE 110 :CORE 110 :STATES-REACHED 24) boundary=24 result=fn2/experiments/squares/results/M6-random-20261028.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/M6-random-314159265.log
+E1 LOAD seconds=3.753463
+E1 SUMMARY mutant=M6 config=random seed=314159265 status=:FOUND contract=:ADAPTER-CLASS-LATENCY seconds=0.001618 trials=1 counters=(:ADAPTER 2 :REJECTED-CANDIDATES 90 :G1 27 :REFERENCE 54 :CORE 54 :STATES-REACHED 13) boundary=13 result=fn2/experiments/squares/results/M6-random-314159265.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/ORIGINAL-random-1.log
+E1 LOAD seconds=5.202837
+E1 SUMMARY mutant=ORIGINAL config=random seed=1 status=:CENSORED contract=:TRANSITIONS seconds=1.935545 trials=220 counters=(:NON-EARLIEST 141 :ADAPTER 5902 :REJECTED-CANDIDATES 366725 :G1 50000 :REFERENCE 100000 :CORE 100000 :STATES-REACHED 28147) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-random-1.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/ORIGINAL-random-20261028.log
+E1 LOAD seconds=4.387664
+E1 SUMMARY mutant=ORIGINAL config=random seed=20261028 status=:CENSORED contract=:TRANSITIONS seconds=1.892360 trials=221 counters=(:NON-EARLIEST 159 :ADAPTER 5994 :REJECTED-CANDIDATES 375670 :G1 50002 :REFERENCE 100004 :CORE 99996 :STATES-REACHED 28188) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-random-20261028.sexp
+
+fn2/experiments/squares/results/superseded-random-endpoint/ORIGINAL-random-314159265.log
+E1 LOAD seconds=4.458895
+E1 SUMMARY mutant=ORIGINAL config=random seed=314159265 status=:CENSORED contract=:TRANSITIONS seconds=1.800668 trials=218 counters=(:NON-EARLIEST 159 :ADAPTER 5783 :REJECTED-CANDIDATES 368890 :G1 50000 :REFERENCE 100000 :CORE 100000 :STATES-REACHED 27858) boundary=NIL result=fn2/experiments/squares/results/ORIGINAL-random-314159265.sexp
+

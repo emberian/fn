@@ -1,0 +1,93 @@
+fn2/experiments/squares/mutants/original-prefix-M2-20261028.log
+E1 QUALIFICATION LOAD mutant=ORIGINAL seconds=4.480511
+E1 QUALIFICATION mutant=ORIGINAL seed=20261028 verdict=:REPLAY-PREFIX-EXHAUSTED seconds=0.001294 core=77 reference=77 turns=11 randoms=72 boundary=NIL schedule=fn2/experiments/squares/mutants/original-prefix-M2-20261028.sexp
+
+fn2/experiments/squares/mutants/original-prefix-M3-20261028.log
+E1 QUALIFICATION LOAD mutant=ORIGINAL seconds=4.412988
+E1 QUALIFICATION mutant=ORIGINAL seed=20261028 verdict=:REPLAY-PREFIX-EXHAUSTED seconds=0.001057 core=19 reference=19 turns=3 randoms=35 boundary=NIL schedule=fn2/experiments/squares/mutants/original-prefix-M3-20261028.sexp
+
+fn2/experiments/squares/mutants/original-prefix-M4-20261028.log
+E1 QUALIFICATION LOAD mutant=ORIGINAL seconds=4.545940
+E1 QUALIFICATION mutant=ORIGINAL seed=20261028 verdict=:REPLAY-PREFIX-EXHAUSTED seconds=0.001476 core=98 reference=98 turns=14 randoms=86 boundary=NIL schedule=fn2/experiments/squares/mutants/original-prefix-M4-20261028.sexp
+
+fn2/experiments/squares/mutants/original-prefix-M5-20261028.log
+E1 QUALIFICATION LOAD mutant=ORIGINAL seconds=4.608910
+E1 QUALIFICATION mutant=ORIGINAL seed=20261028 verdict=:REPLAY-PREFIX-EXHAUSTED seconds=0.000597 core=8 reference=8 turns=1 randoms=27 boundary=NIL schedule=fn2/experiments/squares/mutants/original-prefix-M5-20261028.sexp
+
+fn2/experiments/squares/mutants/qualification-M1-20261028.log
+E1 QUALIFICATION LOAD mutant=M1 seconds=4.662322
+E1 QUALIFICATION mutant=M1 seed=20261028 verdict=:PASS seconds=0.389004 core=47230 reference=47230 turns=4891 randoms=16923 boundary=NIL schedule=fn2/experiments/squares/mutants/qualification-M1-20261028.sexp
+
+fn2/experiments/squares/mutants/qualification-M2-20261028.log
+E1 QUALIFICATION LOAD mutant=M2 seconds=4.607346
+E1 QUALIFICATION mutant=M2 seed=20261028 verdict=(:FAIL :ECHO-BYTE 0 2 240 199) seconds=0.004359 core=77 reference=77 turns=11 randoms=72 boundary=(:KIND
+                                                                                                                                                    :CLIENT-ORACLE
+                                                                                                                                                    :TURN
+                                                                                                                                                    11
+                                                                                                                                                    :CORE
+                                                                                                                                                    77
+                                                                                                                                                    :REFERENCE
+                                                                                                                                                    77
+                                                                                                                                                    :RANDOMS
+                                                                                                                                                    72
+                                                                                                                                                    :CONTRACT
+                                                                                                                                                    (:FAIL
+                                                                                                                                                     :ECHO-BYTE
+                                                                                                                                                     0
+                                                                                                                                                     2
+                                                                                                                                                     240
+                                                                                                                                                     199)) schedule=fn2/experiments/squares/mutants/qualification-M2-20261028.sexp
+
+fn2/experiments/squares/mutants/qualification-M3-20261028.log
+E1 QUALIFICATION LOAD mutant=M3 seconds=4.122502
+E1 QUALIFICATION mutant=M3 seed=20261028 verdict=(:FAIL :TRACE
+                                                  (:RUNNABLE-COUNT)) seconds=0.001217 core=11 reference=19 turns=3 randoms=35 boundary=(:KIND
+                                                                                                                                        :TURN-MONITORS
+                                                                                                                                        :TURN
+                                                                                                                                        3
+                                                                                                                                        :CORE
+                                                                                                                                        11
+                                                                                                                                        :REFERENCE
+                                                                                                                                        19
+                                                                                                                                        :RANDOMS
+                                                                                                                                        35
+                                                                                                                                        :CONTRACT
+                                                                                                                                        (:FAIL
+                                                                                                                                         :TRACE
+                                                                                                                                         (:RUNNABLE-COUNT))) schedule=fn2/experiments/squares/mutants/qualification-M3-20261028.sexp
+
+fn2/experiments/squares/mutants/qualification-M4-20261028.log
+E1 QUALIFICATION LOAD mutant=M4 seconds=4.063680
+E1 QUALIFICATION mutant=M4 seed=20261028 verdict=(:FAIL :ECHO-BYTE 0 2 151 203) seconds=0.002234 core=98 reference=98 turns=14 randoms=86 boundary=(:KIND :CLIENT-ORACLE :TURN 14 :CORE 98 :REFERENCE 98 :RANDOMS 86 :CONTRACT (:FAIL :ECHO-BYTE 0 2 151 203)) schedule=fn2/experiments/squares/mutants/qualification-M4-20261028.sexp
+
+fn2/experiments/squares/mutants/qualification-M5-20261028.log
+E1 QUALIFICATION LOAD mutant=M5 seconds=4.988849
+E1 QUALIFICATION mutant=M5 seed=20261028 verdict=(:FAIL :TRACE (:PRINCIPAL-FIFO 0 (2 0) (0 2))) seconds=0.005027 core=8 reference=8 turns=1 randoms=27 boundary=(:KIND :TURN-MONITORS :TURN 1 :CORE 8 :REFERENCE 8 :RANDOMS 27 :CONTRACT (:FAIL :TRACE (:PRINCIPAL-FIFO 0 (2 0) (0 2)))) schedule=fn2/experiments/squares/mutants/qualification-M5-20261028.sexp
+
+fn2/experiments/squares/mutants/qualification-M6-retry-20261028.log
+E1 QUALIFICATION LOAD mutant=M6 seconds=4.493095
+E1 QUALIFICATION mutant=M6 seed=20261028 verdict=:PASS seconds=0.370589 core=47230 reference=47230 turns=4891 randoms=16923 boundary=NIL schedule=fn2/experiments/squares/mutants/qualification-M6-retry-20261028.sexp
+
+fn2/experiments/squares/mutants/qualification-ORIGINAL-20261028.log
+E1 QUALIFICATION LOAD mutant=ORIGINAL seconds=4.018190
+E1 QUALIFICATION mutant=ORIGINAL seed=20261028 verdict=:PASS seconds=0.322477 core=47230 reference=47230 turns=4891 randoms=16923 boundary=NIL schedule=fn2/experiments/squares/mutants/qualification-ORIGINAL-20261028.sexp
+
+fn2/experiments/squares/mutants/replay-M2-20261028.log
+E1 QUALIFICATION LOAD mutant=M2 seconds=4.473633
+E1 QUALIFICATION mutant=M2 seed=20261028 verdict=(:FAIL :ECHO-BYTE 0 2 240 199) seconds=0.001939 core=77 reference=77 turns=11 randoms=72 boundary=(:KIND :CLIENT-ORACLE :TURN 11 :CORE 77 :REFERENCE 77 :RANDOMS 72 :CONTRACT (:FAIL :ECHO-BYTE 0 2 240 199)) schedule=fn2/experiments/squares/mutants/replay-M2-20261028.sexp
+
+fn2/experiments/squares/mutants/replay-M3-20261028.log
+E1 QUALIFICATION LOAD mutant=M3 seconds=4.520685
+E1 QUALIFICATION mutant=M3 seed=20261028 verdict=(:FAIL :TRACE (:RUNNABLE-COUNT)) seconds=0.003894 core=11 reference=19 turns=3 randoms=35 boundary=(:KIND :TURN-MONITORS :TURN 3 :CORE 11 :REFERENCE 19 :RANDOMS 35 :CONTRACT (:FAIL :TRACE (:RUNNABLE-COUNT))) schedule=fn2/experiments/squares/mutants/replay-M3-20261028.sexp
+
+fn2/experiments/squares/mutants/replay-M4-20261028.log
+E1 QUALIFICATION LOAD mutant=M4 seconds=4.471581
+E1 QUALIFICATION mutant=M4 seed=20261028 verdict=(:FAIL :ECHO-BYTE 0 2 151 203) seconds=0.002017 core=98 reference=98 turns=14 randoms=86 boundary=(:KIND :CLIENT-ORACLE :TURN 14 :CORE 98 :REFERENCE 98 :RANDOMS 86 :CONTRACT (:FAIL :ECHO-BYTE 0 2 151 203)) schedule=fn2/experiments/squares/mutants/replay-M4-20261028.sexp
+
+fn2/experiments/squares/mutants/replay-M5-20261028.log
+E1 QUALIFICATION LOAD mutant=M5 seconds=4.806186
+E1 QUALIFICATION mutant=M5 seed=20261028 verdict=(:FAIL :TRACE (:PRINCIPAL-FIFO 0 (2 0) (0 2))) seconds=0.001049 core=8 reference=8 turns=1 randoms=27 boundary=(:KIND :TURN-MONITORS :TURN 1 :CORE 8 :REFERENCE 8 :RANDOMS 27 :CONTRACT (:FAIL :TRACE (:PRINCIPAL-FIFO 0 (2 0) (0 2)))) schedule=fn2/experiments/squares/mutants/replay-M5-20261028.sexp
+
+fn2/experiments/squares/mutants/replay-ORIGINAL-20261028.log
+E1 QUALIFICATION LOAD mutant=ORIGINAL seconds=5.236812
+E1 QUALIFICATION mutant=ORIGINAL seed=20261028 verdict=:PASS seconds=0.327013 core=47230 reference=47230 turns=4891 randoms=16923 boundary=NIL schedule=fn2/experiments/squares/mutants/replay-ORIGINAL-20261028.sexp

@@ -1,0 +1,17 @@
+E2 standalone seconds=0.142; no ACL2 claim
+E2 certify defsquare certified=True seconds=0.530
+E2 certify defsquare-tests certified=True seconds=0.794
+E2 certify fold-contract certified=True seconds=0.573
+E2 certify read-state-history certified=True seconds=0.315
+E2 certify read-state-summary certified=True seconds=0.429
+E2 certify read-state-transport certified=True seconds=1.144
+E2 certify read-state-teeth certified=True seconds=1.260
+E2 certify q4-checker certified=True seconds=1.042
+E2 certify q4-template certified=True seconds=0.392
+E2 certify q4-square certified=True seconds=1.092
+E2 certify q4-template-tests certified=True seconds=0.947
+E2 certify q1-contract certified=True seconds=2.697
+E2 certify q1-bindings certified=True seconds=3.576
+E2 certify q1-template-tests certified=True seconds=3.143
+E2 Q1 FORMULAS PASS rows=39 sha256=c2b514f22e46ffa58a15fa4c247605feb25ef21ac2409f652fa89eb2ab2dec78
+E2 acceptance seconds=5.845; laptop author check only

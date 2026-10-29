@@ -1,0 +1,20 @@
+{
+  "frozen_utc": "2026-10-29T04:22:12.640251+00:00",
+  "base": "4f2a101e4",
+  "files": {
+    "MANIFEST.md": "98627244dc9142886f546d3cd54f2b1e8a6630a740883e9464387feb19933c28",
+    "campaigns.py": "138f680d03dbd670faa8ec8230ca5adc0dcfab3207c690dce486727834cea73c",
+    "data-prefix.sexp": "bab212ef949dc94fb39187734f393916b8b2ccb877a04ce56d837368ee18366f",
+    "data-state.sexp": "ec00cd9743018a7b6ab015e8d839c629b6cd242e0c9e6cc7950bf32c71319740",
+    "driver.lsp": "0cbcc4b0aa7a2bbc346dd065607475c17988bc1684339213d9ca040867551df7",
+    "runner.lsp": "81aa82832fc68dec63b551f8db0b18e440e4e38310a3fa2690eade23440156ef"
+  },
+  "mutants": {
+    "M1.lsp": "b040e6428c98825ca38e0c98353b0e24edc8bef907e43ce8aad0b2fdb89fdcfc",
+    "M2.lsp": "5425be2f7c822167e8b36959c23e2db19aded90d38d36bdfe41c5677d9fd3518",
+    "M3.lsp": "4afc0e3e8631bcc0ef9026d4d3a008fbac1db98679ef8924ff55216d377b4bf0",
+    "M4.lsp": "4203329fe052be79b381d4dda32121cbf43876a622f7558d7327d48f2acf5f30",
+    "M5.lsp": "6e8fec7ea0dc4a58d50c4acf877c34abacbaa2a4127f5cb60312c32c20120174",
+    "M6.lsp": "94fd42b724ee97bea73e9c734ec78449fc072cdc1eb8fe33ea06b04539f11e0f"
+  }
+}

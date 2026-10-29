@@ -1,0 +1,21 @@
+{
+  "campaigns.py": "81bb39ee5f3741f1125cd5c9b667c05536f792e9a3e710467e10621e0a12d330",
+  "checks.lisp": "ae195a05444270a5c62de5b4d1a275127f466a055e50265b06b667083acfe044",
+  "choices.lisp": "8bc512957ada574b266437af8748fd402d7f528fa0b8f6dcbc55be5155b25172",
+  "driver.lsp": "9b88b808c1bd2affbc0fd5021b3d5ee8d7095af637cb2dab8512ac7a883548ca",
+  "fixtures.lsp": "4dba2a5f47a99d224742c7d02c15c15af07a5d0e4abf5b5076815eddca0ed9fa",
+  "load.lsp": "33c4c1eb160b9c5df67a373823dcfc676d328c015b9858442f2df790b048ebff",
+  "mutants/M1.lsp": "b040e6428c98825ca38e0c98353b0e24edc8bef907e43ce8aad0b2fdb89fdcfc",
+  "mutants/M2.lsp": "5425be2f7c822167e8b36959c23e2db19aded90d38d36bdfe41c5677d9fd3518",
+  "mutants/M3.lsp": "4afc0e3e8631bcc0ef9026d4d3a008fbac1db98679ef8924ff55216d377b4bf0",
+  "mutants/M4.lsp": "4203329fe052be79b381d4dda32121cbf43876a622f7558d7327d48f2acf5f30",
+  "mutants/M5.lsp": "6e8fec7ea0dc4a58d50c4acf877c34abacbaa2a4127f5cb60312c32c20120174",
+  "mutants/M6.lsp": "94fd42b724ee97bea73e9c734ec78449fc072cdc1eb8fe33ea06b04539f11e0f",
+  "mutants/qualification-hooks.lsp": "740eaddc00a6925fcefbe5ded224e7f78b30a7a138d5e5a32a68ebace533ffab",
+  "mutants/qualify.lsp": "c0855407eda5783dc966ca467327a3d9f17c22ffeaecc93b36f48d090e6b0778",
+  "mutants/replay-batch.sh": "9c3f066d7a934453ab5ea5bf059e90900d3dee2c208d5426b4db3796321c2788",
+  "replay-campaigns.py": "18742c4fc04367f19f9bb7a942271d5b886396b1db95dc50ea92b370d113c4e6",
+  "runner.lsp": "2a3f3a636a95028d18955d716eb385247f1fc4e87511eae040b4aa3177b34f79",
+  "summarize.py": "cb99d0cdde17d9fc55dfbd4f0e4bd079416332b266aad72f01c1da293514adb4",
+  "verify-evidence.py": "ac3730099a76eda1bdf47d2012400932166cd3e5fd0e7d2b76b950233be56f99"
+}

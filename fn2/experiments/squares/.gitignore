@@ -1,0 +1,16 @@
+# Raw campaign, replay and qualification records are regenerable build output, never source.
+# The write-ups name the command that regenerates each set (E1-RESULTS.md, "Raw records").
+/results/**/*.sexp
+/results/campaigns.json
+/results/*-processes*.json
+/pass2/*.sexp
+/pass2/results/**/*.sexp
+/pass2/results/**/*.json
+/pass2/results/**/*.log
+/pass2/results/**/*.pid
+/mutants/*.sexp
+/mutants/*.log
+/mutants/*.pid
+/e2/evidence.sexp
+/e2/q1-campaign-evidence.sexp
+/e2/q1-translated.sexp
