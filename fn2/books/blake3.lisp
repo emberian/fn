@@ -1,12 +1,13 @@
 ; Incremental BLAKE3. Digests are rows; only the buffered block is words.
 (in-package "ACL2")
 (include-book "digests")
+(fn2-book-layer :b)
 (defcolumns fn2-b3
  ((pos :u8) (blocks :u8) (counter :u60) (origin :u60) (depth :u8) (flags :u8)
   (verify-phase :u8) (verify-next :u32) (verify-base :u32)
   (verify-count :u32) (verify-target :u32) (verify-length :u60))
  :init-name fn2-b3-columns-init
- :extra-fields ((fn2-b3-words :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t)))
+ :extra-fields ((fn2-b3-words :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t :why "Buffered-block and chaining words, eight-word stripes per hasher row, not one column.")))
 (include-book "layout")
 (include-book "blake3-spec")
 (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
@@ -299,7 +300,9 @@
 (local (defthm fn2-b3-pool-byte-type
  (implies (and (fn2-poolp fn2-pool) (natp off) (< off (fn2-pool-data-length fn2-pool)))
           (unsigned-byte-p 8 (fn2-pool-datai off fn2-pool)))
- :hints (("Goal" :in-theory (enable fn2-poolp fn2-pool-data-length)))))
+ :hints (("Goal" :use ((:instance fn2-pool-datai-natp (i off))
+                       (:instance fn2-pool-datai-bound (i off)))
+          :in-theory (disable fn2-poolp fn2-pool-datai fn2-pool-data-length)))))
 (local (in-theory (disable fn2-pool-datai)))
 ; A partial chunk's admitted prefix is one stateless replaceable operation.
 (defun fn2-b3-fragment-into (row off n fn2-digests fn2-b3 fn2-pool)

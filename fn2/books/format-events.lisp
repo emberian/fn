@@ -1,6 +1,7 @@
 ; Independent declaration family; format.lisp exports the complete catalog.
 (in-package "ACL2")
 (include-book "format-base")
+(fn2-book-layer :b)
 
 ; Maintenance has a kind/version but no semantic event number.
 (deflayout fn2-format-maintenance-header

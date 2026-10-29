@@ -13,6 +13,13 @@
     (allocation (:id allocation)) (article (:id article))
     (number (:id group-number)) (count :varint) (counter :u60)
     (valid :bool) (integrity :digest) (padding (:zero 7))))
+(assert-event
+ (and (equal *fn2-layout-test-anchor-phase-count* 13)
+      (equal *fn2-layout-test-anchor-phase-field-count* 7)
+      (equal (fn2-layout-test-anchor-phase-keyword->code :field-count) 7)
+      (equal (fn2-layout-test-anchor-phase-code->keyword 7) :field-count)
+      (not (no-duplicatesp-eq (fn2-codec-phase-keywords '((done :u8)))))
+      (not (no-duplicatesp-eq (fn2-codec-phase-keywords '((:done :u8)))))))
 (assert-event (and (fn2-layoutp *fn2-layout-test-header*)
                    (fn2-layoutp *fn2-layout-test-anchor*)
                    (not (fn2-layoutp '((x (:id typo)))))

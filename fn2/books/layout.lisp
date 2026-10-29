@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "pool")
 (include-book "std/util/bstar" :dir :system)
+(fn2-book-layer :b)
 ; Profile chooses row count at init; only resident ranges have u32 bounds.
 (defcolumns fn2-fields
   ((value :u60) (ref-slot :u32) (ref-gen :u60)
@@ -10,15 +11,15 @@
    (decode-high :u32) (decode-size :u32) (decode-ref :u32)
    (decode-payload :u8) (decode-next :u32))
   :extra-fields
-  ((fn2-fields-cursor :type (unsigned-byte 32) :initially 0)
-   (fn2-fields-pos :type (unsigned-byte 32) :initially 0)
-   (fn2-fields-acc :type (unsigned-byte 60) :initially 0)
+  ((fn2-fields-cursor :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: one cursor for the active layout run.")
+   (fn2-fields-pos :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: byte position inside the current field.")
+   (fn2-fields-acc :type (unsigned-byte 60) :initially 0 :why "Streaming codec resume state: partially decoded field value.")
    ; Sticky wide-varint flag; never a high limb of a resident value.
-   (fn2-fields-high :type (unsigned-byte 32) :initially 0)
-   (fn2-fields-size :type (unsigned-byte 32) :initially 0)
-   (fn2-fields-ref :type (unsigned-byte 32) :initially 0)
-   (fn2-fields-phase :type (unsigned-byte 8) :initially 0)
-   (fn2-fields-next :type (unsigned-byte 32) :initially 0)))
+   (fn2-fields-high :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: sticky wide-varint flag.")
+   (fn2-fields-size :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: size of the current field.")
+   (fn2-fields-ref :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: saved reference cursor.")
+   (fn2-fields-phase :type (unsigned-byte 8) :initially 0 :why "Streaming codec resume state: phase of the active layout.")
+   (fn2-fields-next :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: next input offset to resume at.")))
 
 (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 (local (in-theory (disable fn2-pool-write fn2-pool-read)))
@@ -126,7 +127,7 @@
                             (- len 1) okind oslot ogen fn2-pool))))
 (encapsulate ()
   (local (in-theory (disable fn2-pool-rows)))
-  (fn2-pool-shape-lemmas fn2-layout-copy-loop (src-slot src-gen src-off dst-slot dst-gen dst-off len okind oslot ogen) 1))
+  (fn2-pool-preserves fn2-layout-copy-loop (src-slot src-gen src-off dst-slot dst-gen dst-off len okind oslot ogen fn2-pool) :position 1 :disable nil))
 (in-theory (disable fn2-layout-copy-loop))
 ; Layer A is adding measured range primitives (copy, compare, scan over a
 ; handle's range); this shim is replaced by them when they merge.
@@ -143,7 +144,7 @@
             (t (fn2-layout-copy-loop src-slot src-gen src-off dst-slot dst-gen dst-off len okind oslot ogen fn2-pool))))))
 (encapsulate ()
   (local (in-theory (disable fn2-pool-rows)))
-  (fn2-pool-shape-lemmas fn2-layout-copy (src-slot src-gen src-off dst-slot dst-gen dst-off len okind oslot ogen) 1))
+  (fn2-pool-preserves fn2-layout-copy (src-slot src-gen src-off dst-slot dst-gen dst-off len okind oslot ogen fn2-pool) :position 1 :disable nil))
 (in-theory (disable fn2-layout-copy fn2-layout-range-code))
 
 ; One byte transition, bounded shifts only. :payload starts a reference range.
@@ -383,7 +384,7 @@
         (fn2-pool-write slot gen next byte okind oslot ogen fn2-pool)))))
 (encapsulate ()
   (local (in-theory (disable fn2-pool-rows)))
-  (fn2-pool-shape-lemmas fn2-layout-emit-byte (k i pos slot gen next okind oslot ogen fn2-fields) 1))
+  (fn2-pool-preserves fn2-layout-emit-byte (k i pos slot gen next okind oslot ogen fn2-fields fn2-pool) :position 1 :disable nil))
 (in-theory (disable fn2-layout-emit-byte))
 (defun fn2-layout-emit (layout fuel i pos next slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :measure (+ (nfix fuel) (len layout))
@@ -404,7 +405,7 @@
                      (if done 0 (+ pos 1)) (if empty next (+ next 1)) slot gen okind oslot ogen fn2-fields fn2-pool)))
 (encapsulate ()
   (local (in-theory (disable fn2-pool-rows fn2-layout-field-size nfix)))
-  (fn2-pool-shape-lemmas fn2-layout-emit (layout fuel i pos next slot gen okind oslot ogen fn2-fields) 4))
+  (fn2-pool-preserves fn2-layout-emit (layout fuel i pos next slot gen okind oslot ogen fn2-fields fn2-pool) :position 4 :disable nil))
 (in-theory (disable fn2-layout-emit fn2-layout-check-values fn2-layout-size))
 (defun fn2-layout-encode (layout slot gen off okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
@@ -421,7 +422,7 @@
     (mv code next fn2-pool)))
 (encapsulate ()
   (local (in-theory (disable fn2-pool-rows)))
-  (fn2-pool-shape-lemmas fn2-layout-encode (layout slot gen off okind oslot ogen fn2-fields) 2))
+  (fn2-pool-preserves fn2-layout-encode (layout slot gen off okind oslot ogen fn2-fields fn2-pool) :position 2 :disable nil))
 (in-theory (disable fn2-layout-encode))
 
 (defun fn2-layout-encode-step (layout slot gen off okind oslot ogen budget fn2-fields fn2-pool)
@@ -580,7 +581,7 @@
         (fn2-codec-emit-fixed (- n 1) (floor v 256) slot gen (+ next 1) okind oslot ogen fn2-pool)))))
 (encapsulate ()
  (local (in-theory (disable fn2-pool-rows)))
- (fn2-pool-shape-lemmas fn2-codec-emit-fixed (n v slot gen next okind oslot ogen) 2))
+ (fn2-pool-preserves fn2-codec-emit-fixed (n v slot gen next okind oslot ogen fn2-pool) :position 2 :disable nil))
 (defthm fn2-codec-emit-fixed-next-natp
   (implies (natp next) (natp (mv-nth 1 (fn2-codec-emit-fixed n v slot gen next okind oslot ogen fn2-pool))))
   :rule-classes :type-prescription)
@@ -595,7 +596,7 @@
           (t (fn2-codec-emit-varint (floor v 128) slot gen (+ next 1) okind oslot ogen fn2-pool)))))
 (encapsulate ()
  (local (in-theory (disable fn2-pool-rows)))
- (fn2-pool-shape-lemmas fn2-codec-emit-varint (v slot gen next okind oslot ogen) 2))
+ (fn2-pool-preserves fn2-codec-emit-varint (v slot gen next okind oslot ogen fn2-pool) :position 2 :disable nil))
 (defthm fn2-codec-emit-varint-next-natp
   (implies (natp next) (natp (mv-nth 1 (fn2-codec-emit-varint v slot gen next okind oslot ogen fn2-pool))))
   :rule-classes :type-prescription)
@@ -625,13 +626,20 @@
 (defun fn2-codec-field (name field)
   (declare (xargs :verify-guards nil))
   (fn2-codec-constant name (concatenate 'string "-FIELD-" (symbol-name field))))
+; Field tags cannot collide with the enum machinery's COUNT constant.
+(defun fn2-codec-phase-keyword (field)
+  (declare (xargs :verify-guards nil))
+  (if (equal (symbol-name field) "DONE") :done
+    (intern-in-package-of-symbol
+      (concatenate 'string "FIELD-" (symbol-name field)) :keyword)))
 (defun fn2-codec-phase (name field)
   (declare (xargs :verify-guards nil))
-  (fn2-codec-constant name (concatenate 'string "-PHASE-" (symbol-name field))))
+  (fn2-codec-constant name (concatenate 'string "-PHASE-"
+    (symbol-name (fn2-codec-phase-keyword field)))))
 (defun fn2-codec-phase-keywords (layout)
   (declare (xargs :verify-guards nil))
   (if (atom layout) (list :done)
-    (cons (intern-in-package-of-symbol (symbol-name (caar layout)) :keyword)
+    (cons (fn2-codec-phase-keyword (caar layout))
           (fn2-codec-phase-keywords (cdr layout)))))
 (defun fn2-codec-byte-form (k value-width)
   (declare (xargs :verify-guards nil))
@@ -668,8 +676,7 @@
 (defun fn2-codec-index-events (name layout index)
   (declare (xargs :verify-guards nil))
   (if (atom layout) nil
-    (append `((defconst ,(fn2-codec-field name (caar layout)) ,index)
-              (defconst ,(fn2-codec-phase name (caar layout)) ,index))
+    (append `((defconst ,(fn2-codec-field name (caar layout)) ,index))
             (fn2-codec-index-events name (cdr layout) (+ 1 (nfix index))))))
 (defun fn2-codec-map-arms (name layout mode)
   (declare (xargs :verify-guards nil))
@@ -815,7 +822,7 @@
            (b* (,@(fn2-codec-emit-bindings name (list (car layout)) fixed)) ,tail))
          (encapsulate ()
            (local (in-theory (disable fn2-poolp fn2-pool-wfp fn2-pool-rows)))
-           (fn2-pool-shape-lemmas ,step ,args 2))
+           (fn2-pool-preserves ,step (,@args fn2-pool) :position 2 :disable nil))
          (verify-guards ,step)
          (in-theory (disable ,step)))))))
 (defun fn2-codec-fields-facts (name args index)
@@ -1045,7 +1052,7 @@
           base slot gen off off okind oslot ogen fn2-fields fn2-pool)))
     (encapsulate ()
       (local (in-theory (disable fn2-poolp fn2-pool-wfp fn2-pool-rows)))
-      (fn2-pool-shape-lemmas ,encode (base slot gen off okind oslot ogen fn2-fields) 2))
+      (fn2-pool-preserves ,encode (base slot gen off okind oslot ogen fn2-fields fn2-pool) :position 2 :disable nil))
     (verify-guards ,encode)
     (in-theory (disable ,encode))
     (assert-event (eq (symbol-class ',encode (w state)) :common-lisp-compliant))

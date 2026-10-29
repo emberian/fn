@@ -211,8 +211,10 @@ of the tests, not a completed durability/refinement proof. Their statements and 
 layout is `*fn2-format-frame-header*`. Composition with `append` and
 `fn2-format-prefix` happens only during expansion. The compiler records a `fn2-layouts`
 world-table row keyed by NAME. It emits `*NAME-NUM-FIELDS*`, `*NAME-MAX-SIZE*`,
-`*NAME-FIELD-<field>*` indexes and `*NAME-PHASE-<field>*` / `*NAME-PHASE-DONE*`
-continuation constants; enum fields also emit their declared enum's named constants.
+`*NAME-FIELD-<field>*` indexes and `*NAME-PHASE-FIELD-<field>*` / `*NAME-PHASE-DONE*`
+continuation constants. The enum machinery owns these phase constants and
+`*NAME-PHASE-COUNT*`; field tags use `:FIELD-<field>` so a field named `count`
+cannot collide with the cardinality. Enum fields also emit their declared enum's named constants.
 The encoder, size calculation and value checks use statically named field steps
 (`NAME-emit-<field>`, `NAME-size-<field>`, `NAME-check-<field>`). Each step has a small
 proof boundary and calls its fixed successor; this avoids expanding a whole layout's
@@ -796,3 +798,45 @@ must read the simulator's durable image through B2d frame/seal checkers and
 validate the required dependency prefix. A supplied expected history or a
 machine's completed counter cannot substitute for that readback. Checker unit
 fixtures alone establish neither scenario 13/14 nor HISTORY on simulator runs.
+
+## 14. Delivery record: the B3b slip review (2026-10-29)
+
+§9 is the event log, so the slip finding lives here. Sections 11-13 stay reserved for recovery,
+checkpoint/cleaner and acceptance.
+
+**Finding: the main cause was integration and base churn. Scope was a secondary cause. No design
+wall caused the slip.** B's accepted library (B1, B2a-f, B4a/b, BR1, BH1, BR2: about 11,500 lines
+that touch no A file except one owed-export include block) sat on `fn2/b-durability` without
+reaching fn2/main. The B seat reported READY only at layer milestones, never for an accepted
+library prefix. Every A change to the declaration forms therefore landed as a B rebase plus a
+conversion, inside a quest that was already running. While B3b and B3c were open, the base moved
+eight times: d90b821b3, 957b018c1 (R5a pass 3: named callbacks), 1fa1fe24b (W1: section books),
+4cf85c4a8 (DM0a), 9cc09f2bf (DM1: obligation store, layer stamps), d8ec35855 (DM0b: restricted
+callback arms, `fn2-call`), 26570c101 (coverage seal moved) and 0cad033b0/9eb370594. Three of
+those moves changed forms that B3b's code calls.
+
+Each move cost one Codex resume plus the full acceptance. That acceptance includes a 20,000-case
+concrete sweep of 2,400-2,600 s, which has run five times so far. The tiny exhaustive sweep is the
+real gate: 2,198 death cuts in 11 s.
+
+**Scope.** B3b produced 3,310 lines against a 1,200-line target. The machine, its allocator and
+format glue, the HISTORY projection, the recovery stand-in, the keystone proof book and the
+scenario driver were in one quest, so the diff could not be read in one sitting and every
+acceptance coupled the machine to the slowest driver.
+
+**The design walls each closed within one session.**
+- The 60 s rule on machines-b (229 s) and the assembly (294 s) was fixed in B3b part 2 by named
+  checked updates and an exact opaque invariant interface. Now machines-b takes 11.9 s and the
+  slowest section takes 50.5 s.
+- The DM0b refusal of `b*` binders inside callbacks was a mechanical conversion to `cond` and
+  `mv-let`, with no change to the language (ember's decision 2).
+- The obligation seal inside sim/check was moved by A to the top of owed-export within the hour.
+
+**What changes.**
+1. B's accepted library merges to main now, as its own fast-forward, ahead of the commit machine.
+2. The commit machine lands split. B3b-1 is the machine and its books (machines-b, commit,
+   commit-alloc, commit-format; commit-resources, check-deadlock; the HISTORY,
+   resource and deadlock units, and the tiny exhaustive sweep as its gate). B3b-2 is the
+   keystone book commit-proof, the scenario driver sim-layer-b and the concrete sweep.
+3. The concrete 10,000-seed sweep becomes a nightly row, not a per-quest gate.
+4. From now on, every accepted B quest whose files touch no A seam is reported READY for merge.
