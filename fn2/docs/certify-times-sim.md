@@ -24,3 +24,26 @@ non-wrapper event in the book's .cert.out. LD-only files (abi-evidence, echo-evi
 | recover-stub | 1.0 | 0.2 | ENCAPSULATE NIL (LOCAL (0.11) |
 
 Total 179.1 s over 15 books; over 15 s: 3; under 5 s: 9.
+
+## For the DSL seat: sim-state-data's defcolumns encapsulate (measured 2026-10-29, laptop, loaded)
+
+sim-state-data certifies in 13.5-14.6 s (9.35 s in the one `defcolumns fn2-sim` MAKE-EVENT/ENCAPSULATE,
+15.6 s when the laptop was at load 90+). I replayed the 1,227 events that `fn2-columns-events` returns for it
+as top-level forms (same theory, same constants) and timed each:
+
+- Total 5.8 s over 1,101 timed events; no rule family dominates, the tail is flat.
+- Largest: `CREATE-FN2-SIM-TYPE` 0.86 s (one event, `:in-theory (enable p create)` over a 90-field stobj),
+  the 22 `*-FIELD-TYPE` theorems 0.54 s, the `defstobj` 0.34 s, `FN2-SIM-RECORD-P-UPDATE` 0.18 s, the 21
+  `*-NTH-NATP` and 21 `*-NTH-BOUND` theorems 0.13 s each, the 20 `*-PRESERVES-WFP` 0.11 s.
+- The remaining ~3.5 s of the 9.35 s is encapsulate and world-extension overhead that per-event times do not show.
+- Ruled out: the per-field `*-NTH-NATP` type-prescription rules (307 of them in the sim world) look
+  expensive in accumulated-persistence (16,000+ useless tries each in every downstream proof), but disabling
+  all 307 before proving sim-adapter-base changed its total from 27-28.5 s to 26.1 s in one ld session, which is noise.
+  Do not spend generator effort there.
+
+Change I would try, in the generator, none measured beyond the numbers above: (1) prove `CREATE-...-TYPE`
+by a `:use` of the per-field `*-FIELD-TYPE` facts instead of enabling `p` and `create` together (the one
+0.86 s event); (2) emit the five scalar families (`-NATP`, `-BOUND`, `-NTH-NATP`, `-NTH-BOUND`, `-RAW-NTH-*`,
+about 0.5 s together) only for fields some proof uses. The most this can buy is about 1.5 s of 14 s, below the
+2 s noise floor of the laptop, so I would not prioritise it: sim-state-data is already under 15 s. Re-measure on
+dregg-forge before touching the generator.
