@@ -1,251 +1,288 @@
-# Experiment E1 — the generator mode, measured
+# Experiment E1 pass 2 — measured with matched search budgets
 
-**ORIGINAL finding first:** all three baseline seeds return the echo driver's
-`:PASS` while its live phase records accepted=200, echoed=67, dropped=133,
-all 133 drops `:unattributed`. The existing A4 accepted/echoed/drop assertion
-fails on this admitted one-row tiny profile. The slowest of these three
-baseline findings took **0.284848 s**, excluding loading. An exact replay
-reproduced seed 1's final assertion and transition counts. This is a workload
-liveness/applicability and summary defect, not evidence that capacity refusal
-is a server safety bug. [Notes to A](NOTES-TO-A.md) gives the source locations
-and the separate original qualification replay. No A source was edited.
+**ORIGINAL first:** the baseline's first live phase still returns `:PASS` with
+200 physical accepts, 67 echoes and133 unattributed drops on each declared
+campaign seed. Pass2 now records that known failure and continues. The first
+actual drop has been traced: the listener refuses a new capability while the
+previous echo row remains occupied; the server closes it with703 bytes supplied
+and zero returned. QA=5 reproduces the QA=4 witness with strict capacity slack.
+Thus the numerical capacity check does not establish admission reservation;
+this is not an accounting-only artifact, nor a refutation of C.3's conditional
+scheduling-opportunity bound. [Notes to A](NOTES-TO-A.md) and the
+[executed QA4/QA5 witness](mutants/PASS2-LIVENESS.md) give the source citations.
 
-## The verdict table
+## The main verdict table
 
-Each cell gives detection fraction; **slowest successful seed** in seconds;
-trials; `C/R/PC/PR` transitions (direct core/reference, replayed core/reference);
-and its saved schedule. For a cell without a hit, the slowest stop is shown.
-These are pessimistic observed timings over these three fixed random seeds,
-not distribution tails. G1 copies and both diamond routes count as execution.
-`O-stop` means the original liveness failure stopped the campaign; it is not
-a mutation detection or a timeout. `exhausted` means all 657 declared prefixes,
-not the full input language. Full per-seed contracts, first boundaries, G2
-instances, counters and schedules are in [the 49-run ledger](CAMPAIGNS.md).
+C1/default/initial only. Each cell reports detection fraction, **slowest
+successful seed** (or slowest censoring when none succeeds), trials,
+`C/R/PC/PR/OC/OR` transitions, and a saved record. C/R are direct core/reference;
+PC/PR are replayed core/reference; OC/OR are original counterfactual work.
+All categories consume the same 200,000-transition budget in configurations2,
+3 and3b; wall budget is120 s. Original baseline control campaigns are reused
+by trial seed rather than rerun inside each mutant campaign. Their cost is
+published in the ORIGINAL row. M1 has no baseline diamond checker.
 
-| Mutation | (1) Existing random driver | (2) Random explicit choices + G1/G2 | (3) Exhaustive prefixes + G1/G2 |
-|---|---|---|---|
-| ORIGINAL control | O-stop 3/3; 0.284848s; 1 trials; `50158/50158/0/0`; [s20261028](results/ORIGINAL-baseline-20261028-schedule.sexp) | 0/3; transition-censored; 2.758115s; 221 trials; `99996/100004/0/0`; [s20261028](results/ORIGINAL-random-20261028.sexp) | 0/1; exhausted; 0.384758s; 657 trials; `0/0/10694/10694`; [s1](results/ORIGINAL-exhaustive-1.sexp) |
-| M1 false independence | not detectable; 3 O-stop; 0.292999s; 1 trials; `50062/50062/0/0`; [s1](results/M1-baseline-1-schedule.sexp) | found 3/3; 0.520415s; 1 trials; `112/112/18376/18376`; [s20261028](results/M1-random-20261028-schedule.sexp) | 0/1; exhausted; 0.448466s; 657 trials; `0/0/10694/10694`; [s1](results/M1-exhaustive-1.sexp) |
-| M2 stale row snapshot | found 3/3; 0.004717s; 1 trials; `106/106/0/0`; [s20261028](results/M2-baseline-20261028-schedule.sexp) | found 3/3; 0.013961s; 2 trials; `578/578/0/0`; [s1](results/M2-random-1-schedule.sexp) | 0/1; exhausted; 0.335698s; 657 trials; `0/0/10694/10694`; [s1](results/M2-exhaustive-1.sexp) |
-| M3 dropped routing | found 3/3; 0.000817s; 1 trials; `11/19/0/0`; [s314159265](results/M3-baseline-314159265-schedule.sexp) | found 3/3; 0.001387s; 1 trials; `19/19/0/0`; [s314159265](results/M3-random-314159265-schedule.sexp) | found 1/1; 0.070293s; 103 trials; `0/0/1761/1761`; [s1](results/M3-exhaustive-1-schedule.sexp) |
-| M4 short-send summary | found 1/3; 2 O-stop; 0.001496s; 1 trials; `135/135/0/0`; [s314159265](results/M4-baseline-314159265-schedule.sexp) | found 3/3; 0.266941s; 28 trials; `12692/12692/0/0`; [s314159265](results/M4-random-314159265-schedule.sexp) | 0/1; exhausted; 0.450504s; 657 trials; `0/0/10694/10694`; [s1](results/M4-exhaustive-1.sexp) |
-| M5 FIFO head insertion | found 3/3; 0.001011s; 1 trials; `8/8/0/0`; [s314159265](results/M5-baseline-314159265-schedule.sexp) | found 3/3; 0.000664s; 1 trials; `0/0/0/0`; [s1](results/M5-random-1-schedule.sexp) | found 1/1; 0.000867s; 2 trials; `0/0/0/0`; [s1](results/M5-exhaustive-1-schedule.sexp) |
-| M6 swapped latency | found 2/3; 1 O-stop; 0.002521s; 1 trials; `241/241/0/0`; [s314159265](results/M6-baseline-314159265-schedule.sexp) | found 3/3; 0.002985s; 1 trials; `110/110/0/0`; [s20261028](results/M6-random-20261028-schedule.sexp) | found 1/1; 0.008317s; 13 trials; `0/0/214/214`; [s1](results/M6-exhaustive-1-schedule.sexp) |
+A mutation hit requires a different first contract or boundary from ORIGINAL
+on that trial. Inapplicable original choices are unqualified candidates and
+search continues. Explicit counterfactuals retain occurrence identity, fault
+and word; descriptor-field differences are recorded as a correspondence.
+No operation, generation or capability is renamed. Every found record carries
+its original comparison. Timing includes inline validation and both diamond
+routes, excludes loading. These are fixed-seed observations, not statistical
+tail estimates. The [full100-campaign ledger](CAMPAIGNS.md) gives every seed,
+first boundary, counter category, horizon and schedule.
 
-The three precommitted seeds are 1, 20261028 and 314159265; enumeration has one
-order. Every campaign had a 120 s wall budget and a 200,000 combined transition
-cap, stopping at the first failure. All 49 processes exited normally. ORIGINAL
-random reached the transition cap on each seed; its slowest campaign was
-2.758115 s. There was no wall-time censoring. Loading the same laptop ACL2/SBCL
-closure took **at most 6.625848 s across these 49 campaigns** (minimum 3.575637 s),
-excluded from the table; per-process load lines remain in the raw logs.
+| Mutation | (1) Baseline, known ORIGINAL failures continued | (2) Random explicit choices | (3) Iterative deepening | (3b) Exact-state cache |
+|---|---|---|---|---|
+| ORIGINAL | control; censored; 0.678375s; 3 trials; `99995/100005/0/0/0/0`; [s314159265](pass2/results/ORIGINAL-baseline-c1-default-initial-314159265.sexp) | control; censored; 2.588588s; 218 trials; `100000/100000/0/0/0/0`; [s314159265](pass2/results/ORIGINAL-random-c1-default-initial-314159265.sexp) | control; censored; 3.952521s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; [s1](pass2/results/ORIGINAL-iterative-c1-default-initial-1.sexp) | control; censored; 14.974495s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; [s1](pass2/results/ORIGINAL-dedup-c1-default-initial-1.sexp) |
+| M1 | not detectable; censored; 0.863454s; 3 trials; `99995/100005/0/0/0/0`; [s1](pass2/results/M1-baseline-c1-default-initial-1.sexp) | 3/3 found; 0.526972s; 1 trials; `112/112/18376/18376/0/0`; [s20261028](pass2/results/M1-random-c1-default-initial-20261028-schedule.sexp) | 0/1; censored; 5.597152s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; [s1](pass2/results/M1-iterative-c1-default-initial-1.sexp) | 0/1; censored; 18.629313s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; [s1](pass2/results/M1-dedup-c1-default-initial-1.sexp) |
+| M2 | 3/3 found; 0.009501s; 1 trials; `266/266/0/0/0/0`; [s1](pass2/results/M2-baseline-c1-default-initial-1-schedule.sexp) | 3/3 found; 0.649265s; 50 trials; `19340/19340/0/0/3174/3174`; [s1](pass2/results/M2-random-c1-default-initial-1-schedule.sexp) | 0/1; censored; 5.630289s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; [s1](pass2/results/M2-iterative-c1-default-initial-1.sexp) | 0/1; censored; 18.579044s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; [s1](pass2/results/M2-dedup-c1-default-initial-1.sexp) |
+| M3 | 3/3 found; 0.001647s; 1 trials; `11/19/0/0/0/0`; [s20261028](pass2/results/M3-baseline-c1-default-initial-20261028-schedule.sexp) | 3/3 found; 0.003894s; 1 trials; `19/19/0/0/38/38`; [s314159265](pass2/results/M3-random-c1-default-initial-314159265-schedule.sexp) | 1/1 found; 0.183651s; 208 trials; `0/0/3049/3049/36/36`; full h3, partial h4; [s1](pass2/results/M3-iterative-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.649553s; 174 trials; `0/0/2651/2651/36/36`; full h3, partial h4; [s1](pass2/results/M3-dedup-c1-default-initial-1-schedule.sexp) |
+| M4 | 3/3 found; 0.387680s; 2 trials; `50423/50423/0/0/0/0`; [s20261028](pass2/results/M4-baseline-c1-default-initial-20261028-schedule.sexp) | 3/3 found; 1.437136s; 108 trials; `47620/47620/0/0/2970/2970`; [s1](pass2/results/M4-random-c1-default-initial-1-schedule.sexp) | 0/1; censored; 4.082319s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; [s1](pass2/results/M4-iterative-c1-default-initial-1.sexp) | 0/1; censored; 17.341163s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; [s1](pass2/results/M4-dedup-c1-default-initial-1.sexp) |
+| M5 | 3/3 found; 0.000896s; 1 trials; `8/8/0/0/0/0`; [s1](pass2/results/M5-baseline-c1-default-initial-1-schedule.sexp) | 3/3 found; 0.002884s; 1 trials; `0/0/0/0/16/16`; [s1](pass2/results/M5-random-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.002744s; 3 trials; `0/0/0/0/16/16`; full h0, partial h1; [s1](pass2/results/M5-iterative-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.005125s; 3 trials; `0/0/0/0/16/16`; full h0, partial h1; [s1](pass2/results/M5-dedup-c1-default-initial-1-schedule.sexp) |
+| M6 | 3/3 found; 0.391370s; 2 trials; `50137/50137/0/0/0/0`; [s1](pass2/results/M6-baseline-c1-default-initial-1-schedule.sexp) | 3/3 found; 0.008032s; 1 trials; `70/70/0/0/70/70`; [s1](pass2/results/M6-random-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.031927s; 38 trials; `0/0/430/430/16/16`; full h2, partial h3; [s1](pass2/results/M6-iterative-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.105229s; 35 trials; `0/0/414/414/16/16`; full h2, partial h3; [s1](pass2/results/M6-dedup-c1-default-initial-1-schedule.sexp) |
 
-## Reading the experiment
+All100 final campaigns exited normally. Every non-finding campaign exhausted
+its transition budget; none stopped merely because a finite horizon completed.
+The maximum load time across these100 processes was **7.049041 s**
+(minimum4.390563 s), excluded from campaign timing. No wall timeout
+occurred. Some subsecond timings reflect laptop contention and fixed execution
+order; no speedup distribution is inferred.
 
-**No demonstrated difference. The generator mode is an exercise for layer A's
-workload in this demonstrator.** Applying COHERENCE §6.1's readings to (2)
-versus (3), rather than crediting the new instrumentation as a search result:
+## What changed in attribution
 
-- **Same bugs found faster:** not established. Enumeration finds only M3/M5/M6;
-  random explicit choices find all six. Enumeration's M3 and M6 detections
-  use more replay transitions and wall time than these random seeds. M5 is
-  an initialization-order discrepancy, caught before any G1 transition; that
-  is a sharper diagnostic, not evidence for systematic reachability.
-- **New bugs found within budget:** none in (3) that (2) missed. M1 is a real
-  declaration refutation found only by a diamond checker, but (2) already
-  finds it on all three seeds. It is not a runtime defect. The ORIGINAL
-  liveness-summary defect is separate, and was exposed by the baseline's
-  existing final assertion, not by prefix enumeration.
-- **No demonstrated difference:** this is the supported reading. Keep the
-  explicit replay seam, normalized G1 diagnostics, allocator monitor and
-  negative controls. This table does not justify a larger generator framework
-  or a claim about summary composition or representation transport.
+The baseline now finds M2–M6 on all three seeds. M4 seeds1/20261028 and M6 seed1
+continue past the known live failure and find their mutation on trial2. M1
+repeats the original's known failures and reaches the transition cap; it is
+not counted as found. Each ORIGINAL campaign records two complete trial
+failures and a partial third trial. The raw `last-boundary` on a partial trial
+is its entered turn; comparison uses the preceding fully checked turn. The
+ledger lists the actual trial seeds and original first-failure signatures.
 
-M4 remains the discriminating shared-handler example: concrete and reference
-agree on the wrong accumulated offset, while the client byte oracle fails.
-M5 uses coherent FIFO head insertion rather than an unobservable reordered
-notification. The baseline catches it in TRACE; G1 detects the queue mismatch
-at entry. M6 is detected by the same added latency-contract monitor in all
-three configurations; its result cannot be credited to an oracle withheld
-from baseline sampling. The baseline's native broad fault domain and cadence
-are different from the explicit domain, so (1)/(2) are not an equal-domain
-search comparison. M4's two and M6's one original-liveness stops limit their
-baseline detection fractions; they do not prove those seeds cannot find the
-mutation under a different stopping policy.
+Counterfactual qualification matters for explicit search too. M2/M4 schedules
+can cease to be legal on ORIGINAL after their states diverge; those are not
+credited. For C1/random, M2 rejects13/7/4 such candidates before its three
+qualified detections; M4 rejects9/1/1. The selected seed1 witnesses now fail at
+explicit boundaries115 (M2) and123 (M4), while ORIGINAL completes those same
+input choices under the recorded descriptor correspondence. Their byte
+oracle failures remain invisible to shared-handler G1 equality.
 
-## What ran, and what is missing
+## Reading the mode comparison
 
-`choices.lisp` drives the actual echo adapter with explicit full occurrence
-identities: operation slot, generation, terminal/release state, kind,
-capability, retained payload, fault and word. Any active flight can land,
-including a non-earliest flight. Registration latency, client actions and
-turns are explicit boundaries. `checks.lisp` derives the catalogue from the
-machine registry; each G1 preflight uses fresh core/reference copies,
-compares all five transition results, accounts work on both sides as their
-loops do, normalizes only the reference work counters, checks representation
-agreement and shape invariants, and checks loop continuation/exit. TRACE then
-checks the composed turn independently. These are executable checks, not
-universal correspondence theorems or guard-verified served code.
+**No demonstrated search improvement in this demonstrator.** This conclusion
+now compares budget-exhausting modes rather than a four-choice cutoff:
 
-The [manifest](MANIFEST.md) fixes a one-row tiny profile, two concrete generated
-payloads, seven fault codes and words 0/1; every choice prefix of length 0–4 is
-in the enumeration tree. ORIGINAL reaches **657 prefix endpoints**, including
-repeats, performs **5,347 G1 instances**, rejects **10,170 candidate occurrence
-pairs**, and admits **zero G2 instances**. Its three random campaigns visit
-84,849 endpoints and perform 150,002 G1 instances. Counts include replay work;
-none of these endpoint counts denotes distinct states. The full ledger keeps
-states, enumerated prefixes, G1, G2, rejected candidates and illegal residuals
-separate. The three M1 random campaigns check 61,61,1 diamonds respectively
-before their first refutation. Conservative-declaration campaigns check zero.
+- **Same bugs found faster:** not established for (3) or (3b). They find M3/M5/M6,
+  whereas random explicit choices find all six. Repeated prefix replay and G2
+  checking consume their transition budget. The exact-state cache buys one
+  deeper completed horizon, but costs more wall time and adds no mutation hit.
+- **New bugs found within budget:** neither enumerator finds a qualified defect
+  missed by random explicit choices. The original liveness issue remains a
+  separate finding in the baseline/control claim.
+- **No demonstrated difference:** this is still COHERENCE §6.1's supported
+  reading for generator-mode search. It remains an exercise for layer A's
+  workload at this budget. The positive contract-relative G2 result below is
+  a useful result about local observations, credited to the checker and its
+  reached states, not to enumeration superiority.
 
-The conservative `different-capability-and-allocator-disjoint` footprint
-names the posted FIFO, shared counts, clock mailbox and, for admission/close,
-the allocator and principal 0 FIFO. Those shared resources make it reject every
-completion pair in this implementation. **It has no positive G2 coverage and
-no independence theorem.** This deliberately conservative first declaration
-is a substantial limitation: the experiment exercises a false declaration
-and its counterexample search, not a useful nonempty independence relation.
+For ORIGINAL C1, ordinary iterative deepening completes horizons0–4, then
+visits4,865 prefixes of horizon5 before censoring (5,627 prefix attempts total).
+3b completes horizons0–5 and visits771 prefixes of horizon6 (5,374 total).
+The former uses3.952521 s and the latter14.974495 s, each at200,000 transitions.
+3b prunes770 exact duplicate keys and clears its64-key retention table69 times.
+Every eviction permits re-exploration, so the bounded cache loses efficiency,
+not choices. A key contains remaining depth, exact copied concrete/reference/
+simulator/OWN/client/cursor/queue state, and ordered observation histories.
+EQUALP resolves hash collisions. There is no hash-only semantic comparison and
+no restore/checkpoint mechanism. The initial unbounded cache exhausted its
+heap; that attempt is preserved as development evidence, not a censored or
+successful final campaign.
 
-This is not the pessimistic 12-engineer-day experiment. There are no pool
-scenario campaigns, no separate scribe progression campaign, no near-retired
-or crowded-prefix search, no stale/duplicate/death faults in the explicit
-domain, no harvest-only choice boundary inside a turn, no second enumeration
-rotation, no 20-seed distribution, no ten-minute campaigns, no checkpoint
-library, no partial-order reduction, and no proof that the finite observation
-continuation is complete. Enumeration starts only at initialization; the
-16-choice negative-control prefix is supplied separately and is not search
-coverage. Nineteen of the 39 dispatch labels are exercised by ORIGINAL random;
-only nine are exercised by ORIGINAL enumeration. Unexercised labels below
-are not passing cases. The two new books certify in 3.671 s and 2.813 s on this
-laptop; their imported A closure took about 26.5 minutes, with its slowest book
-810.697 s. No farm certification or record-toolchain green claim is made.
+## Positive independence under the client contract
 
-## G2 negative control and replay evidence
+The third declaration, `data-different-echo-capability`, admits receive/send
+terminal completions and their borrow-release cells on different echo
+capabilities, excluding accept/close. It deliberately allows shared posted-FIFO
+effects. Rows below use C=2, QA=8 with the same words/fault domain for both modes.
+They are separate from the C1 main matrix. The named contract remains
+`E1-CLIENT-OWN-STOP-v1`: ordered bytes per capability, effective closes, client
+terminal/drop outcomes, OWN verdict and stop reason, with identity
+correspondence and a fixed finite observing continuation.
 
-The named observation contract is `E1-CLIENT-OWN-STOP-v1`: ordered actual bytes
-per(cap-index,nonce), effective client closes, client terminal/drop markers,
-OWN verdict and stop reason. Identifier correspondence is identity; there is
-no implicit identifier renaming. Both branches replay the common prefix into
-fresh state, then run a fixed observing policy of turns, handoffs, client
-reads and pending closes. Equality under that finite policy does not establish
-future congruence. Array or hash inequality alone is never a finding.
+| Runtime | Start | Mode | Qualified mutation hits | Positive G2 | With byte observations | Refutations | Budget result / completed horizon |
+|---|---|---|---|---:|---:|---:|---|
+| ORIGINAL | initialization | random | 0/3 | 377 | 347 | 0 | 3 censored |
+| ORIGINAL | initialization | iterative | 0/1 | 0 | 0 | 0 | 1 censored; full h4 |
+| ORIGINAL | initialization | dedup | 0/1 | 0 | 0 | 0 | 1 censored; full h5 |
+| ORIGINAL | **supplied two-Send prefix** | random | 0/3 | 727 | 672 | 0 | 3 censored |
+| ORIGINAL | **supplied two-Send prefix** | iterative | 0/1 | 244 | 226 | 0 | 1 censored; full h0 |
+| ORIGINAL | **supplied two-Send prefix** | dedup | 0/1 | 244 | 226 | 0 | 1 censored; full h0 |
+| M2 | initialization | random | 1/3 | 269 | 239 | 0 | 2 censored |
+| M2 | initialization | iterative | 0/1 | 0 | 0 | 0 | 1 censored; full h4 |
+| M2 | initialization | dedup | 0/1 | 0 | 0 | 0 | 1 censored; full h5 |
+| M2 | **supplied two-Send prefix** | random | 0/3 | 731 | 676 | 0 | 3 censored |
+| M2 | **supplied two-Send prefix** | iterative | 0/1 | 244 | 226 | 0 | 1 censored; full h0 |
+| M2 | **supplied two-Send prefix** | dedup | 0/1 | 244 | 226 | 0 | 1 censored; full h0 |
+| M4 | initialization | random | 1/3 | 349 | 307 | 0 | 2 censored |
+| M4 | initialization | iterative | 0/1 | 0 | 0 | 0 | 1 censored; full h4 |
+| M4 | initialization | dedup | 0/1 | 0 | 0 | 0 | 1 censored; full h5 |
+| M4 | **supplied two-Send prefix** | random | 0/3 | 727 | 672 | 0 | 3 censored |
+| M4 | **supplied two-Send prefix** | iterative | 0/1 | 244 | 226 | 0 | 1 censored; full h0 |
+| M4 | **supplied two-Send prefix** | dedup | 0/1 | 244 | 226 | 0 | 1 censored; full h0 |
 
-The [listener state](results/listener-state.sexp) has one occupied echo row,
-free-head 4294967295, active-count=capacity=1, an outstanding Accept on listener
-capability(0,0), and an outstanding Close on echo capability(0,2), in principal 0's
-FIFO. The common prefix has 16 choices. AcceptResult;CloseResult closes new
-client(0,3) and records an unattributed drop; CloseResult;AcceptResult admits
-that client and does not close it. OWN passes and stop reason 0 on both routes.
-[Both complete routes](results/listener-routes.sexp) and the
-[prefix](results/listener-prefix.sexp) are saved. The naive declaration admits
-the pair; the allocator-aware declaration rejects it. This is the required
-listener/reclamation false diamond, not an assertion that the node should
-admit a connection before capacity is reclaimed. The searched M1 witnesses
-also refute the naive declaration; their found pairs need not be this fixture.
+ORIGINAL random exploration from initialization checks **377 legal equal
+pairs**, 347 with nonempty client-byte observations, and finds no refutation
+within the three200,000-transition campaigns. These are instances including
+repeats, not377 independent laws; byte history can include the common prefix.
+Ordinary and deduplicated initialization enumeration reach no admitted data
+pair before their budgets end. That zero is unexercised, not passing.
 
-All six mutation files were read in full and hashed before the 49 measured
-campaigns; [freeze.json](freeze.json) and the manifest retain the hashes.
-[Qualification](mutants/QUALIFICATION.md) gives the concrete source-line
-citations and legal original/mutant controls. M2–M5 have exact baseline-tape
-replays and original-prefix controls; M1 has the negative-control routes;
-M6 has an original-passing delay schedule and a mutant latency failure.
-Fresh processes redefine both ACL2 executable forms; no runtime restoration
-is relied upon.
+The supplied28-choice C2 prefix reaches two pending Sends. Its first positive
+pair sends60 bytes on capability (0,2) and40 bytes on (1,1). In both orders the
+clients receive exactly their messages, both become `:ECHOED` and close, OWN
+passes, and stop reason is0. There are no earlier Send completions in this
+prefix: these byte observations are caused by the tested pair. The100 fault/
+word pairings at that state all compare equal; 91 contain byte observations.
+The measured local searches repeat and extend those checks, as counted above.
+[The state](pass2/data-state.sexp), [prefix](pass2/data-prefix.sexp), and
+[first positive routes](pass2/results/ORIGINAL-iterative-c2-data-data-1.sexp)
+are saved. Fresh-process replay reproduced selected positive pairs from each
+ORIGINAL random seed exactly.
 
-Postmeasurement replay reproduced a selected random failing schedule for
-**each M1–M6**, including both complete M1 routes and their exact observations.
-Original replays of M3/M5/M6 explicit prefixes pass. M2/M4 explicit occurrence
-lists retain mutated range fields and become inapplicable on the original
-once its descriptors diverge; those are **invalid original prefixes**, not
-original passes. Their baseline qualification tapes supply the legal paired
-witnesses. The first two original-prefix replay attempts exposed an uncaught
-invalid-prefix report in the replay helper; the helper was fixed to return
-`:INVALID-PREFIX` and both retries are retained. Measured search logic and
-frozen mutations were unchanged. The replay helper also now reapplies the
-baseline final assertion and reconstructs saved G2 routes. No failed trial
-was removed or relabeled as a semantic counterexample.
+This is nonempty positive evidence that shared FIFO effects need not destroy
+commutation of these finite client observations. It is not a universal
+independence theorem or a proof of equal future behavior. No third-declaration
+refutation occurred in any of the 30 data campaigns. Positive diamonds also
+occur under M2/M4, so passing a local diamond does not establish handler
+correctness: client-oracle mutation detections and positive local commutation
+can coexist. Starting from the supplied Sends spends much of the budget
+replaying/checking that state and does not itself expose M2/M4 within budget.
 
-`results/domain-payloads.sexp` records the exact two byte messages.
-`ORIGINAL-replay-control-1.sexp` checks complete concrete/ref/simulator/OWN/client
-state equality across fresh replay and verifies that advancing one branch
-does not mutate the other's fresh state. Raw PRNG tapes are retained for the
-legacy baseline. Full occurrence schedules are retained for explicit search;
-G2 records include common prefix, occurrences and both observing routes.
+## Local claims from the supplied C1 prefixes
 
-## G1 per-label coverage (all 39 labels)
+These rows start from the existing listener/send prefixes, not initialization.
+Their horizons count additional choices; prefix replay and both diamond
+routes are charged. Failures in setup are distinguished from suffix discoveries.
 
-Counts below are completed G1 calls, including failing calls and replayed
-prefixes. They exclude the separate untimed qualification/negative controls.
-The mutant aggregate is diagnostic execution, not passing coverage. No
-outside-catalogue label was observed in the measured campaigns.
+| Runtime | Listener prefix | Send prefix |
+|---|---|---|
+| ORIGINAL | censored/transitions; 2.662888s; full h2; [record](pass2/results/ORIGINAL-iterative-c1-default-listener-1.sexp) | censored/transitions; 2.821956s; full h2; [record](pass2/results/ORIGINAL-iterative-c1-default-send-1.sexp) |
+| M1 | found/g2; 0.010212s; full h-1; [record](pass2/results/M1-iterative-c1-default-listener-1-schedule.sexp) | found/g2; 0.368716s; full h-1; [record](pass2/results/M1-iterative-c1-default-send-1-schedule.sexp) |
+| M2 | censored/transitions; 2.365245s; full h2; [record](pass2/results/M2-iterative-c1-default-listener-1.sexp) | censored/transitions; 2.387922s; full h2; [record](pass2/results/M2-iterative-c1-default-send-1.sexp) |
+| M3 | found/g1; 0.003516s; full h-1; [record](pass2/results/M3-iterative-c1-default-listener-1-schedule.sexp) | found/g1; 0.003736s; full h-1; [record](pass2/results/M3-iterative-c1-default-send-1-schedule.sexp) |
+| M4 | censored/transitions; 2.659340s; full h2; [record](pass2/results/M4-iterative-c1-default-listener-1.sexp) | censored/transitions; 2.745536s; full h2; [record](pass2/results/M4-iterative-c1-default-send-1.sexp) |
+| M5 | found/g1-entry; 0.001519s; full h-1; [record](pass2/results/M5-iterative-c1-default-listener-1-schedule.sexp) | found/g1-entry; 0.001548s; full h-1; [record](pass2/results/M5-iterative-c1-default-send-1-schedule.sexp) |
+| M6 | found/adapter-class-latency; 0.043147s; full h0; [record](pass2/results/M6-iterative-c1-default-listener-1-schedule.sexp) | found/adapter-class-latency; 0.044080s; full h0; [record](pass2/results/M6-iterative-c1-default-send-1-schedule.sexp) |
 
-| G1 label | ORIGINAL random (3 seeds) | ORIGINAL exhaustive | All mutant campaigns |
-|---|---:|---:|---:|
-| `(:run fn2-listener :accepting)` | 8181 | 626 | 3714 |
-| `(:run fn2-listener :closing)` | 1201 | unexercised | 80 |
-| `(:observe fn2-listener :accept-result)` | 4899 | 20 | 1048 |
-| `(:observe fn2-listener :close-result)` | 1127 | unexercised | 77 |
-| `(:run fn2-echo :free)` | unexercised | unexercised | unexercised |
-| `(:run fn2-echo :command)` | 2150 | unexercised | 403 |
-| `(:run fn2-echo :reply)` | 2031 | unexercised | 517 |
-| `(:run fn2-echo :closing)` | 1289 | unexercised | 92 |
-| `(:run fn2-echo :draining)` | 1163 | unexercised | 85 |
-| `(:run fn2-echo :retired)` | unexercised | unexercised | unexercised |
-| `(:observe fn2-echo :receive-result)` | 2029 | unexercised | 390 |
-| `(:observe fn2-echo :send-result)` | 1349 | unexercised | 229 |
-| `(:observe fn2-echo :borrow-released)` | 1347 | unexercised | 108 |
-| `(:observe fn2-echo :close-result)` | 1194 | unexercised | 85 |
-| `(:run fn2-scribe :free)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :reserve)` | 659 | 151 | 831 |
-| `(:run fn2-scribe :fill)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :patch)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :write)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :write-result)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :fence)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :fence-result)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :reset)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :read)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :read-result)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :verify)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :next)` | unexercised | unexercised | unexercised |
-| `(:run fn2-scribe :stopped)` | unexercised | unexercised | unexercised |
-| `(:observe fn2-scribe :write-result)` | unexercised | unexercised | unexercised |
-| `(:observe fn2-scribe :fence-result)` | unexercised | unexercised | unexercised |
-| `(:observe fn2-scribe :read-result)` | unexercised | unexercised | unexercised |
-| `(:router :fallback)` | unexercised | unexercised | unexercised |
-| `(:executor :clock)` | 9278 | 28 | 1630 |
-| `(:executor :signal)` | unexercised | unexercised | unexercised |
-| `(:executor :service 0)` | 16015 | 646 | 4951 |
-| `(:executor :service 1)` | 16015 | 646 | 4951 |
-| `(:executor :service 2)` | 16015 | 646 | 4951 |
-| `(:executor :service 3)` | 16015 | 646 | 4951 |
-| `(:executor :empty-principal)` | 48045 | 1938 | 14853 |
+M1's listener row is the original allocator false diamond, detected at suffix
+horizon 0. The original conservative declaration rejects it. M3/M5 fail during
+prefix replay, before the supplied state is reached; they are valid mutation
+witnesses but provide no suffix reachability evidence. M6 fails in the first
+suffix horizon. M2/M4 and ORIGINAL complete suffix horizon 2 and censor in 3.
+No local row is counted as discovering its supplied prefix.
 
-Final review found that the first random harness omitted G2 at the endpoint
-following choice 128. All 21 affected random campaigns were rerun with that
-endpoint checked, after the unchanged mutant freeze. The table uses only the
-corrected measurements; the earlier records remain under
-`results/superseded-random-endpoint/`. Baseline and enumeration were unaffected.
-The selected failure schedules have the same exact failure details on replay.
-Timing order was not rotated, and laptop contention can affect these short
-runs; no statistical speedup is inferred from their subsecond differences.
+## Pass 1, retained for comparison
+
+Pass 1's fixed-horizon 4 ORIGINAL run exhausted 657 prefixes in 0.384758 s,
+performing 5,347 G1 checks and 21,388 core+reference replay transitions
+(10,694 on each side). It exercised 9/39 labels. Its random mode found all six
+mutations, and enumeration found M3/M5/M6. Baseline fractions were M4=1/3 and
+M6=2/3 because the original liveness failure stopped the other seeds. Pass 2
+spends the enumerators' budget, removes those baseline stops as mutation
+findings, and adds same-trial original qualification and positive G2 checks.
+[Pass 1's full write-up](pass2/PASS1-E1-RESULTS.md) and
+[ledger](pass2/PASS1-CAMPAIGNS.md) retain those measurements; raw pass1 evidence
+is unchanged. Direct pass1/pass2 timing differences include changed checking
+work and are not a search-only speed comparison.
+
+## Scope and validation
+
+There are 100 final campaigns: 56 main matrix, 14 supplied-C1-prefix local claims,
+and 30 C2/data campaigns. The six mutant hashes are unchanged. The fixed seeds,
+choice domain, budgets, iterative order and exact-key policy are recorded in
+the [pass2 manifest](pass2/MANIFEST.md). Layer-A source is unchanged; no new
+book was required, and the two pass1 book certificates are reused. No farm or
+record-toolchain certification claim is made.
+
+The first fixture used the same network capability for both accepts; its
+failed attempt is retained, and the second accept now explicitly chooses
+capability 1. Four first random campaigns stopped on an unclassified invalid
+original handoff. The implementation was repaired to follow the manifest's
+unqualified-candidate rule and all four cells were rerun; their earlier
+records remain under `pass2/results/development-invalid-control/`. A partial
+baseline control's entered turn is conservatively excluded from its checked
+coverage. These corrections change no frozen mutation. No failed attempt
+is counted as a counterexample or silently discarded.
+
+The work still excludes the full 26-fault explicit domain, pool/scribe campaigns,
+near-retired states, harvest-only boundaries inside a turn, a second ordering,
+large-seed distributions and general checkpointing. Three seeds and tiny
+profiles do not characterize production workloads. All shared monitors remain
+in place; conservative independence still admits zero pairs. The data
+relation is tested only under the finite observation contract, with no claim
+that equal observations establish a future bisimulation.
+
+## Completed G1 coverage (39 labels)
+
+The C1 columns are ORIGINAL runs from initialization. C2/data includes ORIGINAL
+initialization and supplied-prefix runs, clearly separated from C1. The mutant
+column is diagnostic execution, not passing coverage. An interrupted G1
+attempt at budget exhaustion is reported separately and excluded here.
+
+| Label | C1 random | C1 iterative | C1 3b | C2/data ORIGINAL | All mutants |
+|---|---:|---:|---:|---:|---:|
+| `(:run fn2-listener :accepting)` | 8181 | 5597 | 5487 | 29930 | 108250 |
+| `(:run fn2-listener :closing)` | 1201 | unexercised | unexercised | 27 | 656 |
+| `(:observe fn2-listener :accept-result)` | 4899 | 376 | 478 | 9382 | 26380 |
+| `(:observe fn2-listener :close-result)` | 1127 | unexercised | unexercised | 22 | 626 |
+| `(:run fn2-echo :free)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-echo :command)` | 2150 | unexercised | 8 | 7957 | 19373 |
+| `(:run fn2-echo :reply)` | 2031 | unexercised | unexercised | 14236 | 29489 |
+| `(:run fn2-echo :closing)` | 1289 | unexercised | unexercised | 1270 | 4803 |
+| `(:run fn2-echo :draining)` | 1163 | unexercised | unexercised | 1245 | 2538 |
+| `(:run fn2-echo :retired)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:observe fn2-echo :receive-result)` | 2029 | unexercised | unexercised | 7775 | 19109 |
+| `(:observe fn2-echo :send-result)` | 1349 | unexercised | unexercised | 6739 | 13003 |
+| `(:observe fn2-echo :borrow-released)` | 1347 | unexercised | unexercised | 3027 | 5685 |
+| `(:observe fn2-echo :close-result)` | 1194 | unexercised | unexercised | 1259 | 2564 |
+| `(:run fn2-scribe :free)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :reserve)` | 659 | 1871 | 2381 | 7513 | 32718 |
+| `(:run fn2-scribe :fill)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :patch)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :write)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :write-result)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :fence)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :fence-result)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :reset)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :read)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :read-result)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :verify)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :next)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:run fn2-scribe :stopped)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:observe fn2-scribe :write-result)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:observe fn2-scribe :fence-result)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:observe fn2-scribe :read-result)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:router :fallback)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:executor :clock)` | 9278 | 629 | 801 | 22230 | 58529 |
+| `(:executor :signal)` | unexercised | unexercised | unexercised | unexercised | unexercised |
+| `(:executor :service 0)` | 16015 | 5933 | 5835 | 55344 | 168498 |
+| `(:executor :service 1)` | 16015 | 5933 | 5835 | 55344 | 168498 |
+| `(:executor :service 2)` | 16015 | 5933 | 5835 | 55343 | 168495 |
+| `(:executor :service 3)` | 16015 | 5932 | 5835 | 55342 | 168490 |
+| `(:executor :empty-principal)` | 48045 | 17799 | 17505 | 166033 | 505500 |
 
 ## Reproduction
 
-From this worktree, after the certified A closure and `build/scenario-revision.lsp`
-exist, the launchers are `python 3 fn2/experiments/squares/campaigns.py
---controls-only`, then `--mutants-only`. Launch under detached `timeout -k5`
-with a PID file, as the recorded `build/e1-controls.pid` and
-`build/e1-mutants.pid` runs did. Each launcher checks the freeze and free disk,
-limits itself to two fresh processes, and writes a PID/log/result per campaign.
-Do not run a second launcher concurrently. `replay-campaigns.py` runs the
-selected postmeasurement replays; `summarize.py` regenerates the ledger and
-coverage from the immutable measured records. These launchers overwrite their
-named outputs, so preserve this experiment's evidence before a new campaign.
+Run `pass2/campaigns.py controls` first, then `main`, `local`, and `data`, each
+under the PID/timeout discipline in the manifest. `fixture` constructs the
+C2 supplied prefix; its result is a control, not a search measurement.
+Each launcher permits at most two fresh ACL2 processes. Do not overlap
+launchers. `retry-jobs.json` records the four corrected reruns;
+`replay-jobs.json` records selected exact replays. Paths are relative to
+`fn2/experiments/squares/` for saved replay sources. Loading remains outside
+campaign time. Preserve named outputs before a new measurement.
 
-For one saved witness, run `tools/acl2 < fn2/experiments/squares/driver.lsp`
-under the same PID/timeout discipline with `E1_MUTANT=M3`, `E1_CONFIG=replay`,
-`E1_SEED=1`, `E1_REPLAY` set to the absolute path of
-`results/M3-random-1-schedule.sexp`, and `E1_OUTPUT_TAG` set to a fresh suffix.
-Set `FN_ACL2_SLOT_DIR=/tmp/fn2-a4-acl2-slots` and `FN_ACL2_SLOTS=6` as in the
-recorded launchers. Replay time is diagnostic, excluded from campaign results.
+`pass2/summarize.py` regenerates CAMPAIGNS.md and coverage;
+`pass2/write-results.py` regenerates this write-up; `verify-evidence.py` checks
+both passes, counterfactual qualification, all 100 final process results,
+horizons, positive routes, replays, frozen hashes and source fences.
