@@ -54,6 +54,9 @@
 ; These lists are independently evaluated checker units, not simulator runs.
 (defconst *fn2-history-unit-positive*
   (list
+   (list :explicit-fence-zero
+         (append *fn2-history-unit-fence* '((:fence-result (4 1) :done 0) (:publish 1) (:ack 1) (:crash)))
+         :intact *fn2-history-unit-h1*)
    (list :empty '((:crash)) :intact nil)
    (list :reordered-writes (append *fn2-history-unit-acked* '((:crash)))
          :intact *fn2-history-unit-h1*)
@@ -95,6 +98,8 @@
 ; from recovery does not establish that the action checker saw the defect.
 (defconst *fn2-history-unit-negative*
   (list
+   (list :nonzero-fence-count
+         (append *fn2-history-unit-fence* '((:fence-result (4 1) :done 1))) :stray-fence-result)
    (list :duplicate-dependency
          '((:batch (1 0 ((:put k v)) (dep dep)) (log))) :bad-manifest)
    (list :duplicate-log
@@ -256,3 +261,142 @@
         (equal trace (list (list :submit-batch *fn2-history-unit-b1*)
                            '(:batch-writes-complete 1 (dep-a dep-b))
                            '(:fence-ok 1) '(:crash))))))
+
+; The alternate contract is successful dependency preflush, then ALL log
+; writes FUA; a successful preflush alone has no batch durability effect.
+(defconst *fn2-history-unit-fua-submit*
+  (list (list :batch *fn2-history-unit-b1* '(log-a log-b) :preflush-fua)))
+(defconst *fn2-history-unit-fua-deps*
+  (append *fn2-history-unit-fua-submit* *fn2-history-unit-dep-issue*
+          *fn2-history-unit-dep-done*))
+(defconst *fn2-history-unit-preflush*
+  (append *fn2-history-unit-fua-deps* '((:preflush (4 1) 1))))
+(defconst *fn2-history-unit-preflushed*
+  (append *fn2-history-unit-preflush* '((:fence-result (4 1) :done))))
+(defconst *fn2-history-unit-fua-issue*
+  '((:write (2 1) 1 :log log-a 4096 1) (:write (3 1) 1 :log log-b 4096 1)))
+(defconst *fn2-history-unit-fua-durable*
+  (append *fn2-history-unit-preflushed* *fn2-history-unit-fua-issue*
+          *fn2-history-unit-log-done*))
+(defconst *fn2-history-unit-fua-acked*
+  (append *fn2-history-unit-fua-durable* '((:publish 1) (:ack 1))))
+(defconst *fn2-history-unit-fua-late*
+  (append *fn2-history-unit-preflushed* *fn2-history-unit-fua-issue*
+          '((:timeout 1)) *fn2-history-unit-log-done*))
+(defconst *fn2-history-unit-fua-positive*
+  (list
+   (list :fua-reordered-results (append *fn2-history-unit-fua-acked* '((:crash)))
+         :intact *fn2-history-unit-h1*)
+   (list :preflush-alone (append *fn2-history-unit-preflushed* '((:crash))) :intact nil)
+   (list :preflush-timeout-late
+         (append *fn2-history-unit-preflush* '((:timeout 1) (:fence-result (4 1) :done) (:crash)))
+         :intact nil)
+   (list :fua-timeout-late (append *fn2-history-unit-fua-late* '((:crash)))
+         :intact *fn2-history-unit-h1*)
+   (list :preflush-failed
+         (append *fn2-history-unit-preflush* '((:fence-result (4 1) :failed) (:crash))) :intact nil)
+   (list :fua-short
+         (append *fn2-history-unit-preflushed* *fn2-history-unit-fua-issue*
+                 '((:write-result (2 1) :short 512) (:write-result (3 1) :done 4096) (:crash)))
+         :intact nil)))
+(defconst *fn2-history-unit-fua-negative*
+  (list
+   (list :nonzero-preflush-count
+         (append *fn2-history-unit-preflush* '((:fence-result (4 1) :done 1))) :stray-fence-result)
+   (list :preflush-before-dependencies
+         (append *fn2-history-unit-fua-submit* *fn2-history-unit-dep-issue*
+                 '((:preflush (4 1) 1))) :bad-fence)
+   (list :fua-log-before-preflush
+         (append *fn2-history-unit-fua-deps* *fn2-history-unit-fua-issue*) :bad-write)
+   (list :fua-log-before-preflush-result
+         (append *fn2-history-unit-preflush* *fn2-history-unit-fua-issue*) :bad-write)
+   (list :fua-log-missing-fua
+         (append *fn2-history-unit-preflushed* *fn2-history-unit-log-issue*) :bad-write)
+   (list :fua-log-explicit-zero
+         (append *fn2-history-unit-preflushed* '((:write (2 1) 1 :log log-a 4096 0))) :bad-write)
+   (list :invalid-fua-bit
+         (append *fn2-history-unit-preflushed* '((:write (2 1) 1 :log log-a 4096 2))) :bad-write)
+   (list :preflush-not-publishable
+         (append *fn2-history-unit-preflushed* '((:publish 1))) :unsafe-visibility)
+   (list :fua-missing-one-completion
+         (append *fn2-history-unit-preflushed* *fn2-history-unit-fua-issue*
+                 '((:write-result (3 1) :done 4096) (:publish 1))) :unsafe-visibility)
+   (list :fua-short-not-publishable
+         (append *fn2-history-unit-preflushed* *fn2-history-unit-fua-issue*
+                 '((:write-result (2 1) :done 512) (:write-result (3 1) :done 4096) (:publish 1)))
+         :unsafe-visibility)
+   (list :late-fua-still-uncertain
+         (append *fn2-history-unit-fua-late* '((:publish 1))) :unsafe-visibility)
+   (list :late-preflush-still-uncertain
+         (append *fn2-history-unit-preflush* '((:timeout 1) (:fence-result (4 1) :done))
+                 *fn2-history-unit-fua-issue*) :bad-write)
+   (list :failed-preflush-blocks-log
+         (append *fn2-history-unit-preflush* '((:fence-result (4 1) :failed))
+                 *fn2-history-unit-fua-issue*) :bad-write)
+   (list :baseline-cannot-preflush
+         (append *fn2-history-unit-deps* '((:preflush (4 1) 1))) :bad-fence)
+   (list :fua-cannot-baseline-fence
+         (append *fn2-history-unit-fua-deps* '((:fence (4 1) 1))) :bad-fence)
+   (list :preflush-token-is-not-write
+         (append *fn2-history-unit-preflush* '((:write-result (4 1) :done 0))) :stray-write-result)
+   (list :preflush-duplicate-result
+         (append *fn2-history-unit-preflushed* '((:fence-result (4 1) :done))) :stray-fence-result)
+   (list :mixed-domain-fence
+         (append *fn2-history-unit-preflush* *fn2-history-unit-second-writes*
+                 '((:fence (7 1) 2))) :bad-fence)
+   (list :timeout-keeps-domain-fence
+         (append *fn2-history-unit-preflush* *fn2-history-unit-second-writes*
+                 '((:timeout 1) (:fence (7 1) 2))) :bad-fence)))
+(defconst *fn2-history-unit-fua-recovery-negative*
+  (list
+   (list :lost-fua-ack (append *fn2-history-unit-fua-acked* '((:crash))) :intact nil)
+   (list :preflush-not-complete
+         (append *fn2-history-unit-preflushed* '((:crash))) :intact *fn2-history-unit-h1*)))
+(assert-event
+ (mv-let (passed total) (fn2-history-unit-recovery-count *fn2-history-unit-fua-positive* t)
+   (equal passed total)))
+(assert-event
+ (mv-let (passed total) (fn2-history-unit-action-count *fn2-history-unit-fua-negative*)
+   (equal passed total)))
+(assert-event
+ (mv-let (passed total) (fn2-history-unit-recovery-count *fn2-history-unit-fua-recovery-negative* nil)
+   (equal passed total)))
+(assert-event
+ (mv-let (code trace) (fn2-history-translate *fn2-history-unit-preflushed*)
+   (and (eq code :ok) (equal trace (list (list :submit-batch *fn2-history-unit-b1*))))))
+(assert-event
+ (mv-let (code trace) (fn2-history-translate *fn2-history-unit-fua-acked*)
+   (and (eq code :ok)
+        (equal trace (list (list :submit-batch *fn2-history-unit-b1*)
+                           '(:batch-writes-complete 1 (dep-a dep-b))
+                           '(:fence-ok 1) '(:acknowledge 1))))))
+
+; Actual admission identities are separate from canonical persisted records.
+(defconst *fn2-history-unit-request* '(:request 1 ((:operation 0 7)) :baseline))
+(defconst *fn2-history-unit-bound-batch*
+ (list :batch *fn2-history-unit-b1* '(log-a log-b) :baseline '((:operation 0 7))))
+(defconst *fn2-history-unit-request-positive*
+ (list
+  (list :admitted (append (list *fn2-history-unit-request* *fn2-history-unit-bound-batch*)
+                          (cdr *fn2-history-unit-acked*) '((:crash))) :intact *fn2-history-unit-h1*)
+  (list :request-death (list *fn2-history-unit-request* '(:crash)) :intact nil)
+  (list :terminal-refusal '((:refuse (:operation 0 99)) (:crash)) :intact nil)))
+(defconst *fn2-history-unit-request-negative*
+ (list
+  (list :unrequested (list *fn2-history-unit-bound-batch*) :bad-manifest)
+  (list :wrong-identity (list *fn2-history-unit-request*
+         (update-nth 4 '((:operation 0 8)) *fn2-history-unit-bound-batch*)) :bad-manifest)
+  (list :wrong-mode (list *fn2-history-unit-request*
+         (update-nth 3 :preflush-fua *fn2-history-unit-bound-batch*)) :bad-manifest)
+  (list :duplicate-request (list *fn2-history-unit-request* *fn2-history-unit-request*) :bad-request)
+  (list :reuse-identity (list *fn2-history-unit-request*
+         '(:request 2 ((:operation 0 7)) :baseline)) :bad-request)
+  (list :refused-then-requested (list '(:refuse (:operation 0 7)) *fn2-history-unit-request*) :bad-request)
+  (list :requested-then-refused (list *fn2-history-unit-request* '(:refuse (:operation 0 7))) :refused-member)
+  (list :erase-identity (append (list *fn2-history-unit-request*) *fn2-history-unit-submit1*) :bad-manifest)))
+(assert-event
+ (mv-let (passed total) (fn2-history-unit-recovery-count *fn2-history-unit-request-positive* t)
+  (equal passed total)))
+(assert-event
+ (mv-let (passed total) (fn2-history-unit-action-count *fn2-history-unit-request-negative*)
+  (equal passed total)))

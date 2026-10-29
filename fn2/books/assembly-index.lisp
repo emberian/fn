@@ -4,6 +4,7 @@
 (include-book "machine-dispatch")
 (include-book "reference-state")
 ; B/C/D registration books go HERE, before either registry is consumed.
+(include-book "machines-b")
 (fn2-machine-index-events)
 (in-theory (disable fn2-machine-local-id))
 (fn2-machine-directory-events)
