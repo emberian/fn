@@ -426,9 +426,9 @@
         },
         "S": {
           "applicable": true,
-          "module": null,
+          "module": "fn2.tests.surface.consumer.test_model_consumer",
           "reason": "RELEASE-PLAN \u00a72.2",
-          "status": "owed",
+          "status": "implemented",
           "model": "fn2.tests.model.consumer_model"
         },
         "F": {

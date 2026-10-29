@@ -1,11 +1,15 @@
 """No node/image required: wire controls, planted failures and corpus inventory."""
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import errno
 import json
 import os
 from pathlib import Path
 import socket
+import ssl
+import shutil
+import subprocess
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -21,6 +25,159 @@ def setUpModule():
 
 
 class DifferentialTests(unittest.TestCase):
+    def test_tls_incomplete_body_orderly_eof_keeps_final_reply(self):
+        self.tls_close_control(peer_first=False)
+
+    def test_tls_peer_initiated_close_gets_client_notify(self):
+        self.tls_close_control(peer_first=True)
+        self.tls_close_control(peer_first='cleanup')
+
+    def tls_close_control(self, *, peer_first):
+        openssl = os.environ.get('FN_TEST_OPENSSL_BIN') or shutil.which('openssl')
+        self.assertIsNotNone(openssl, 'openssl required for loopback TLS control')
+        with tempfile.TemporaryDirectory(prefix='hs-tls-') as tmp:
+            cert, key = Path(tmp) / 'cert.pem', Path(tmp) / 'key.pem'
+            subprocess.run([openssl, 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
+                            '-keyout', str(key), '-out', str(cert), '-days', '1',
+                            '-subj', '/CN=localhost'], check=True, timeout=20,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            server = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            server.load_cert_chain(cert, key)
+            client = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            client.check_hostname = False
+            client.verify_mode = ssl.CERT_NONE
+            for version in (ssl.TLSVersion.TLSv1_2, ssl.TLSVersion.TLSv1_3):
+                server.minimum_version = server.maximum_version = version
+                client.minimum_version = client.maximum_version = version
+                errors, observed = [], []
+                with socket.socket() as listener:
+                    local_pair, why = None, ''
+                    try:
+                        # Reader sessions connect from 127.0.0.2 (fixture()); macOS
+                        # has no such loopback alias, Linux has all of 127/8.
+                        with socket.socket() as source:
+                            source.bind(('127.0.0.2', 0))
+                        listener.bind(('127.0.0.1', 0))
+                        listener.listen(1)
+                        listener.settimeout(3)
+                    except OSError as exc:
+                        # A sandbox may forbid bind; a host may lack the alias.
+                        # Exercise identical TLS bytes over local connected FDs;
+                        # the TCP branch runs where both binds succeed (hbox).
+                        local_pair, why = socket.socketpair(), f' ({exc.strerror})'
+                    (ARTIFACTS / 'tls-transport.txt').write_text(
+                        'socketpair' + why + '\n' if local_pair else 'TCP loopback\n')
+                    def respond():
+                        try:
+                            raw = local_pair[1] if local_pair else listener.accept()[0]
+                            raw.settimeout(3)
+                            with server.wrap_socket(raw, server_side=True, suppress_ragged_eofs=False) as stream:
+                                stream.sendall(b'200 ready\r\n')
+                                pending = bytearray()
+                                while b'\r\n' not in pending:
+                                    chunk = stream.recv(4096)
+                                    self.assertTrue(chunk, 'EOF before POST')
+                                    pending.extend(chunk)
+                                if peer_first:
+                                    self.assertEqual(pending, b'DATE\r\n' if peer_first == 'cleanup' else b'QUIT\r\n')
+                                    stream.sendall(b'503 unavailable\r\n' if peer_first == 'cleanup' else b'205 closing\r\n')
+                                    raw = stream.unwrap()
+                                    observed.append('client-close-notify')
+                                    raw.close()
+                                    return
+                                self.assertEqual(pending, b'POST\r\n')
+                                stream.sendall(b'340 proceed\r\n')
+                                pending.clear()
+                                while True:
+                                    data = stream.recv(4096)
+                                    if not data:
+                                        observed.append('client-close-notify')
+                                        break
+                                    pending.extend(data)
+                                self.assertEqual(pending, b'From: a@b\r\n')
+                                stream.sendall(b'441 posting failed; the article was not received\r\n')
+                                raw = stream.unwrap()
+                                raw.close()
+                        except BaseException as exc:
+                            errors.append(exc)
+                    worker = threading.Thread(target=respond, daemon=True)
+                    worker.start()
+                    node = type('Node', (), {'config': None, 'tls_port': listener.getsockname()[1],
+                                             'tls_context': lambda _: client, 'alive': lambda _: True})()
+                    try:
+                        with (patch.object(d.socket, 'create_connection', return_value=local_pair[0])
+                              if local_pair else nullcontext()):
+                            result = d.compare([b'DATE\r\n' if peer_first == 'cleanup' else b'QUIT\r\n']
+                                               if peer_first else [b'POST\r\n', b'From: a@b\r\n'],
+                                               node=node, transport='implicit', timeout=2)
+                    finally:
+                        worker.join(5)
+                    self.assertFalse(worker.is_alive())
+                    self.assertEqual(errors, [])
+                    self.assertEqual(observed, ['client-close-notify'])
+                    self.assertEqual(result.rows, [], result)
+                    self.assertEqual(result.exchanges[-1]['rule'], 'DATE' if peer_first == 'cleanup' else
+                                     'QUIT' if peer_first else 'POST')
+                    self.assertTrue(result.exchanges[-1]['status_hex'].startswith(
+                        (b'503' if peer_first == 'cleanup' else b'205' if peer_first else b'441').hex()))
+                    self.assertTrue(result.wire['client_close_notify'])
+                    self.assertTrue(result.wire['server_close_notify'], result.wire)
+                    self.assertFalse(result.wire['reply_client_half_closed'])
+                    self.assertIsNone(result.wire['reset'])
+
+    def test_reset_after_close_notify_is_not_old_driver_halfclose(self):
+        expected = Expect([441], rule='POST')
+        old = d.reply_verdict(expected, b'', None, reset='reset', tls=True,
+                              client_half_closed=True)
+        new = d.reply_verdict(expected, b'', None, reset='reset', tls=True,
+                              client_close_notify=True)
+        self.assertEqual(old.rule, 'driver-environment')
+        self.assertEqual(new.rule, 'tls-close')
+        self.assertFalse(new.ok)
+
+    def test_takethis_body_probe_awaited_silent_wrong_and_missing_id(self):
+        original = d.Fake.sendall
+        command = b'TAKETHIS <probe@test> \r\n'  # Valid ID, malformed trailing space.
+        for reply in (b'439 <probe@test> malformed article\r\n', b'',
+                      b'239 <probe@test> accepted\r\n'):
+            sent = []
+            def respond(server, data):
+                sent.append(data)
+                if data == command:
+                    return
+                if data == b'\r\n.\r\n':
+                    server.output.extend(reply)
+                    return
+                original(server, data)
+            with patch.object(d.Fake, 'sendall', respond):
+                result = d.compare([command], mode='peer', takethis_probe=True)
+            evidence = result.exchanges[-1]['takethis_probe']
+            self.assertEqual(evidence['observation'], 'awaited-body' if reply else 'no-reply-after-body')
+            self.assertLessEqual(len(bytes.fromhex(evidence['body_hex'])), 512)
+            self.assertFalse(evidence['command_verdict']['ok'])
+            self.assertEqual(result.rows == [], reply.startswith(b'439'))
+            replay = d.replay_recorded(dict(mode='peer', exchanges=result.exchanges, wire=result.wire))
+            self.assertEqual(replay['matched'], reply.startswith(b'439'))
+            if reply:
+                self.assertEqual(evidence['article_verdict']['ok'], reply.startswith(b'439'))
+            else:
+                self.assertEqual(result.rows[0]['rule'], 'A14')
+            with patch.object(d.Fake, 'sendall', respond):
+                sent.clear()
+                control = d.compare([command], mode='peer')
+            self.assertTrue(control.rows)
+            self.assertNotIn(b'\r\n.\r\n', sent)
+        command = b'TAKETHIS <a@b\r\n'
+        reply = b'439 <a@b malformed article\r\n'
+        with patch.object(d.Fake, 'sendall', respond):
+            result = d.compare([command], mode='peer', takethis_probe=True)
+        self.assertEqual(result.rows[0]['rule'], 'A14')
+        self.assertEqual(result.exchanges[-1]['takethis_probe']['article_verdict']['echo_binding'], 'unspecified')
+        command = b'takethis <probe@test> \r\n'
+        reply = b'439 <probe@test> malformed article\r\n'
+        with patch.object(d.Fake, 'sendall', respond):
+            self.assertEqual(d.compare([command], mode='peer', takethis_probe=True).rows, [])
+
     def test_200_seeds_each_mode_every_cut(self):
         summary = dict(seeds_run=200, sessions=0, commands_compared=0, matches=0,
                        mismatches={}, steps=20, modes=['reader', 'node', 'peer'])
@@ -412,7 +569,8 @@ class DifferentialTests(unittest.TestCase):
                 raise RuntimeError('listen: EADDRINUSE')
             yield object()
         with tempfile.TemporaryDirectory() as tmp, patch.object(d, 'owner', owner), patch.object(d, 'compare', return_value=d.Result(reusable=True)):
-            with d.SessionRunner('image', Path(tmp)) as run:
+            # This is a retry/ownership control, not a bind-availability test.
+            with d.SessionRunner('image', Path(tmp), ports=iter(range(31000, 31004)).__next__) as run:
                 result = run([b'HELP\r\n'])
                 self.assertEqual(len(result.rows), 1)
                 self.assertEqual(result.rows[0]['rule'], 'driver-environment')

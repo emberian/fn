@@ -187,7 +187,7 @@ class SurfaceRunnerTests(unittest.TestCase):
 
     def test_owed_forms_are_listed_but_not_generated(self):
         for family, entry in surface.FAMILIES.items():
-            if family == 'nntp':
+            if family in ('nntp', 'consumer'):
                 continue
             self.assertEqual(entry['forms']['S']['status'], 'owed')
             self.assertEqual(entry['forms']['S']['model'], entry['model'])
@@ -197,6 +197,15 @@ class SurfaceRunnerTests(unittest.TestCase):
         self.assertEqual(report['forms']['S']['status'], 'OWED')
         self.assertFalse(report['forms']['S']['selected'])
         self.assertEqual(report['owed_forms'], [{'form': 'S', 'model': surface.FAMILIES['web']['model']}])
+
+    def test_consumer_s_loads_implemented_module_and_skips_unserved(self):
+        with mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn2'}):
+            result = run_surface.Result()
+            surface.form_suite('consumer', 'S').run(result)
+        self.assertEqual(len(result.skipped), 1)
+        self.assertIn('test_live_state_machine', result.skipped[0][0].id())
+        self.assertIn(surface.SKIP, result.skipped[0][1])
+        self.assertEqual(surface.FAMILIES['consumer']['forms']['S']['status'], 'implemented')
 
     def test_package_discovery_preserves_ids_without_owed_forms(self):
         suite = unittest.defaultTestLoader.loadTestsFromName('fn2.tests.surface.nntp')

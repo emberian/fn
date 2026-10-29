@@ -361,3 +361,31 @@ half-close evidence failures. Fixing the TLS driver's shutdown does not fabricat
 a missing historical POST response. The H2c table remains the adjudication of
 its original evidence; run-2 wire facts are not retroactively substituted into
 run 1.
+
+**HS harness follow-up (2026-10-29).** Live TLS now uses `TLS`, a small
+`SSLObject`/`MemoryBIO` transport: `unwrap` emits the client's close_notify,
+then application reads retain the incomplete-body reply before the peer's
+close_notify. All waits have the wire deadline. No TCP half-close occurs on
+TLS. Exchanges and final wire evidence distinguish `client_close_notify`,
+`server_close_notify`, and the old `client_half_closed`; a reset after our TLS
+alert is `tls-close`, not the historical raw-half-close `driver-environment`.
+The loopback TLS control covers TLS 1.2 and 1.3 and observes 441 after the client
+alert. Where the sandbox forbids loopback bind, that same real TLS exchange uses
+a local socket pair and records the fallback; seat TCP validation remains owed.
+The original 322-row replay remains **144 matched / 178 open**, including all
+three old TLS rows as driver-environment. New transport cannot repair old evidence.
+
+`--takethis-probe` is opt-in. After the model rejects a malformed TAKETHIS line
+and the reply window expires without bytes or EOF, the driver sends the
+five-octet body `\r\n.\r\n` (missing mandatory article headers). It records
+`awaited-body` or `no-reply-after-body`, both wire observations, the original
+line verdict, and the independent article verdict. A valid offered Message-ID
+allows the existing TAKETHIS article predicate to judge 439 and its exact echo;
+a bad article reply fails. An invalid/missing offered ID leaves echo binding
+unspecified, so even 439 remains A14; an impossible success still fails the
+article refusal rule. No response remains A14: NNT-003 (513-518) does not impose
+immediate rejection timing. The diagnostic ends the session without committing
+a speculative command transition. Recorded replay understands this evidence;
+mode-off old records retain their original interpretation. Fake awaiting-body,
+silent, bad-reply, lowercase-command and invalid-ID controls cover these branches.
+No A13/A15/A16 precedence ruling or model change is made here.

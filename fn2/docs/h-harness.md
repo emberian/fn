@@ -231,3 +231,27 @@ The reviewed judgments are data: one JSON record per module under
 regenerates them when an input's digest changes). The migration was checked byte
 for byte against the last committed copies before they were removed.
 
+
+## Open spec ambiguities handed to layer D (HS; recommendations, not rulings)
+
+The H2d differential leaves three precedence questions the specs do not settle.
+Astra's recommendation, which the seat endorses, beside the alternative; layer D
+decides when it writes the command grammar, and the model follows that decision.
+
+- **A13** (114 rows; malformed unknown keyword, fn1 answers 501): a token that
+  fails RFC 3977 §9.8's keyword grammar gets 501, a well-formed unrecognised
+  keyword 500; neither mutates. Alternative: 500 for every unrecognised token
+  after framing (simpler dispatch, conflates malformed with unsupported).
+- **A15** (6 rows; malformed UTF-8 TAKETHIS on a reader connection, fn1 502):
+  framing and UTF-8 validation precede authorisation, so malformed arguments get
+  501 and a well-formed transit command on a reader connection 502. Alternative:
+  recognise the verb, refuse transit 502 before parsing arguments (bounds
+  forbidden work, hides argument validation).
+- **A16** (3 rows; empty Path plus an unnamed header): malformed header framing
+  takes precedence and gets the generic syntax refusal; a structurally valid block
+  with a bad Path gets the named Path refusal. Alternative: the named Path refusal
+  whenever Path is recognisable (better diagnostics, needs a parse-past-defect
+  policy and an order among named defects).
+- **A14** (15 rows; malformed TAKETHIS answered by silence) is evidence, not
+  precedence: `differential --takethis-probe` now records whether the server was
+  awaiting the article body.

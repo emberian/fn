@@ -205,7 +205,7 @@ def form_suite(family, form, loader=None):
     info = FAMILIES[family]['forms'][form]
     if not info['applicable'] or info.get('status') == 'owed' or form == 'P':
         return unittest.TestSuite()
-    if family == 'nntp' and form == 'S':
+    if form == 'S' and info.get('status') == 'implemented':
         return loader.loadTestsFromName(info['module'])
     return loader.loadTestsFromTestCase(cases(info['module'], family, form))
 

@@ -17,6 +17,7 @@ import re
 from re import _parser as regex_parser  # Python 3.11; fake witness renderer only
 import signal
 import socket
+import ssl
 import subprocess
 import time
 import tomllib
@@ -25,7 +26,7 @@ import zlib
 
 from tests import fuzz_nntp as fz
 from . import framing
-from .nntp_model import Expect, HELP, NntpModel, Verdict, packed, wildmat
+from .nntp_model import Expect, HELP, NntpModel, Verdict, msgid, packed, wildmat
 
 PLANTS = ('reuse-number', '423-for-420', 'frame-after-quit',
           'wrong-over-field', 'dot-unstuffed')
@@ -262,6 +263,102 @@ class Fake:
         self.enc, self.dec = zlib.compressobj(wbits=-15), zlib.decompressobj(wbits=-15)
 
 
+class TLS:
+    """TLS half-close with application reads between the two close_notify alerts.
+
+    SSLSocket.unwrap waits for BOTH alerts and can discard a final application
+    reply as APPLICATION_DATA_AFTER_CLOSE_NOTIFY. MemoryBIO lets unwrap send our
+    alert first, then read the reply before completing the peer's shutdown.
+    """
+    def __init__(self, sock, context, timeout):
+        self.sock, self.timeout = sock, timeout
+        self.incoming, self.outgoing = ssl.MemoryBIO(), ssl.MemoryBIO()
+        self.session = context.wrap_bio(self.incoming, self.outgoing,
+                                        server_hostname='localhost')
+        self.buffer = bytearray()
+        self.client_close_notify = self.server_close_notify = False
+        self._call(self.session.do_handshake)
+
+    def _flush(self):
+        while self.outgoing.pending:
+            self.sock.sendall(self.outgoing.read())
+
+    def _call(self, operation):
+        deadline = time.monotonic() + self.timeout
+        while True:
+            try:
+                result = operation()
+                self._flush()
+                return result
+            except ssl.SSLWantReadError:
+                self._flush()
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise socket.timeout('TLS operation deadline')
+                self.sock.settimeout(remaining)
+                data = self.sock.recv(65536)
+                if data:
+                    self.incoming.write(data)
+                else:
+                    self.incoming.write_eof()
+
+    def settimeout(self, timeout):
+        self.timeout = timeout
+        self.sock.settimeout(timeout)
+
+    def sendall(self, data):
+        while data:
+            used = self._call(lambda: self.session.write(data))
+            data = data[used:]
+
+    def recv(self, size):
+        if self.buffer:
+            data = bytes(self.buffer[:size])
+            del self.buffer[:size]
+            return data
+        try:
+            data = self._call(lambda: self.session.read(size))
+        except ssl.SSLZeroReturnError:
+            data = b''
+        if not data:
+            self.server_close_notify = True
+            self.close_write()  # Respond only after observing the peer's alert.
+        return data
+
+    def close_write(self):
+        if self.client_close_notify:
+            return
+        # A socket read can have supplied several records. Preserve already
+        # buffered application records before asking SSL_shutdown to inspect
+        # them; SSL_shutdown itself rejects those as post-close application data.
+        while True:
+            try:
+                data = self.session.read(65536)
+                if not data:
+                    self.server_close_notify = True
+                    break
+                self.buffer.extend(data)
+            except ssl.SSLWantReadError:
+                break
+            except ssl.SSLZeroReturnError:
+                self.server_close_notify = True
+                break
+        # No network read here: leave final application records for recv().
+        try:
+            self.session.unwrap()
+            self.server_close_notify = True
+        except ssl.SSLWantReadError:
+            pass
+        self._flush()
+        self.client_close_notify = True
+
+    def version(self):
+        return self.session.version()
+
+    def close(self):
+        self.sock.close()
+
+
 class Wire:
     def __init__(self, sock, node=None, timeout=3):
         self.sock, self.node, self.timeout = sock, node, timeout
@@ -336,21 +433,25 @@ class Wire:
         if isinstance(self.sock, Fake):
             self.sock.tls()
         else:
-            self.sock = self.node.tls_context().wrap_socket(self.sock, server_hostname='localhost')
-            self.sock.settimeout(self.timeout)
+            self.sock = TLS(self.sock, self.node.tls_context(), self.timeout)
 
     def compress(self):
         self.enc, self.dec = zlib.compressobj(wbits=-15), zlib.decompressobj(wbits=-15)
 
     def half_close(self):
-        self.client_half_closed = True
         try:
+            if isinstance(self.sock, TLS):
+                self.sock.settimeout(self.timeout)
+                self.sock.close_write()
+                return
+            self.client_half_closed = True
             if isinstance(self.sock, Fake):
                 self.sock.shutdown(socket.SHUT_WR)
             else:
                 socket.socket.shutdown(self.sock, socket.SHUT_WR)
-        except OSError:
-            pass
+        except OSError as exc:
+            if isinstance(self.sock, TLS):
+                self.reset, self.eof = repr(exc), True
 
     def finish(self, *, half_close=True):
         if half_close:
@@ -398,8 +499,11 @@ def preceding_close(previous, status, body, *, eof):
 
 
 def reply_verdict(exp, status, body, *, eof=False, reset=None, timeout=False,
-                  client_half_closed=False, tls=False):
+                  client_half_closed=False, tls=False, client_close_notify=False):
     eof = eof and not (timeout or reset)
+    if reset and client_close_notify:
+        return Verdict(False, 'tls-close', 'SPEC-MAP.md:E1',
+                       'reset after client TLS close_notify; no orderly server TLS EOF')
     if reset and client_half_closed and tls:
         return Verdict(False, 'driver-environment', 'SPEC-MAP.md:E1',
                        'TLS incomplete-body EOF: reset after client TCP half-close')
@@ -423,8 +527,52 @@ def pieces(items, start, end, cut):
     return result
 
 
+def probe_verdict(c, command, status, response, evidence):
+    words = command.decode('utf-8', 'replace').split()
+    offered = words[1] if len(words) > 1 else ''
+    evidence['offered_id'] = offered
+    if status:
+        if msgid(offered):
+            diagnostic = connection(c.model, 'peer', 'plain')
+            diagnostic.pending = ('TAKETHIS', offered)
+            article = diagnostic.send_block(bytes.fromhex(evidence['body_hex']))
+        else:
+            # Missing mandatory article headers requires refusal regardless of
+            # the unresolved echo binding for the malformed offered identifier.
+            article = Expect([439], rule='TAKETHIS', spec='specs/nntp.md:2412-2435')
+        verdict = reply_verdict(article, status, response, eof=evidence['wire_eof'],
+                                reset=evidence['wire_reset'], timeout=evidence['wire_timeout'])
+        evidence['article_verdict'] = dict(ok=verdict.ok, rule=verdict.rule, detail=verdict.detail,
+                                           echo_binding='specified' if msgid(offered) else 'unspecified')
+        if msgid(offered) or not verdict.ok:
+            return verdict
+    return Verdict(False, 'A14', 'specs/nntp.md:513-518,2412-2435',
+                   evidence['observation'] + '; malformed TAKETHIS rejection timing/echo binding remains unspecified')
+
+
+def probe_takethis(wire, command, c):
+    """Observe a timed-out malformed command without committing invented state.
+
+    NNT-003 does not require immediate rejection. A body response can be judged
+    by the existing article rule only if the offered Message-ID is well-formed;
+    malformed/missing identifiers leave that rule's binding unspecified (A14).
+    Stop the session after this diagnostic; no speculative transition escapes.
+    """
+    body = b'\r\n.\r\n'  # Five octets; missing required article fields => 439.
+    wire.timed_out = False
+    wire.send([body])
+    status, response = wire.reply(Expect([439], rule='TAKETHIS'))
+    observation = 'awaited-body' if status else 'no-reply-after-body'
+    evidence = dict(observation=observation, body_hex=body.hex(),
+                    status_hex=status.hex(), body_response_hex=None if response is None else response.hex(),
+                    wire_timeout=wire.timed_out, wire_eof=wire.eof,
+                    wire_reset=wire.reset, ambiguity='A14', initial_reply_timeout=True)
+    verdict = probe_verdict(c, command, status, response, evidence)
+    return status, response, verdict, evidence
+
+
 def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
-            plants=(), node=None, timeout=3):
+            plants=(), node=None, timeout=3, takethis_probe=False):
     result = Result()
     model = fixture(node is None, node.config if node else None)
     if node:
@@ -447,7 +595,9 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
             wire_eof=bool(wire and wire.eof),
             wire_timeout=bool(wire and wire.timed_out),
             wire_reset=wire.reset if wire else None,
-            client_half_closed=bool(wire and wire.client_half_closed)))
+            client_half_closed=bool(wire and wire.client_half_closed),
+            client_close_notify=bool(wire and getattr(wire.sock, 'client_close_notify', False)),
+            server_close_notify=bool(wire and getattr(wire.sock, 'server_close_notify', False))))
         result.compared += int(index >= 0)
         if verdict.ok:
             result.matches += int(index >= 0)
@@ -463,14 +613,31 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
         wire = Wire(sock, node, timeout)
         if node:
             sock.settimeout(timeout)
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            if getattr(sock, 'family', socket.AF_INET) in (socket.AF_INET, socket.AF_INET6):
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             if transport == 'implicit':
-                wire.sock = node.tls_context().wrap_socket(sock, server_hostname='localhost')
+                if isinstance(sock, Fake):
+                    wire.sock = node.tls_context().wrap_socket(sock, server_hostname='localhost')
+                else:
+                    wire.tls()
                 observe_tls()
         def exchange(command, exp, index):
             nonlocal previous
             wire.failed_auth = c.failed_auth_count
             status, body = wire.reply(exp)
+            if (takethis_probe and wire.timed_out and not status and not wire.eof
+                    and command.split() and command.split()[0].upper() == b'TAKETHIS'
+                    and exp._get().rule == 'syntax'):
+                original = exp.check(status, body)
+                command_reply = dict(status_hex=status.hex(), body_hex=None if body is None else body.hex())
+                status, body, verdict, evidence = probe_takethis(wire, command, c)
+                evidence['command_verdict'] = dict(ok=original.ok, rule=original.rule, detail=original.detail)
+                evidence['command_reply'] = command_reply
+                record(command, status, body, verdict, index)
+                result.exchanges[-1]['takethis_probe'] = evidence
+                if result.rows:
+                    result.rows[-1]['takethis_probe'] = evidence
+                return False
             clean_eof = wire.eof and not (wire.timed_out or wire.reset)
             closure = preceding_close(previous, status, body,
                                       eof=clean_eof and not wire.client_half_closed)
@@ -482,7 +649,7 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
             v = reply_verdict(exp, status, body, eof=clean_eof,
                               reset=wire.reset, timeout=wire.timed_out,
                               client_half_closed=wire.client_half_closed,
-                              tls=c.tls)
+                              tls=c.tls, client_close_notify=getattr(wire.sock, 'client_close_notify', False))
             if v.ok:
                 try:
                     exp.update(status, body, eof=clean_eof)
@@ -563,6 +730,8 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
                                timeout=wire.timed_out, connect_error=None, elapsed=timeout)
                 owner = node or type('Alive', (), {'alive': lambda self: True})()
                 fault = fz.node_verdict(owner, session, False)  # EOF bound also on TLS.
+                if wire.reset and getattr(wire.sock, 'client_close_notify', False):
+                    fault = ('tls-close', 'reset after client TLS close_notify; no orderly server TLS EOF')
                 if c.quit and wire.timed_out:
                     fault = ('hang', 'missing required server EOF after closing reply')
                 if fault or wire.buffer:
@@ -570,7 +739,8 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
                     if result.rows:
                         result.rows[0]['liveness'] = detail
                     else:
-                        record(b'', bytes(wire.buffer), None, Verdict(False, 'liveness',
+                        record(b'', bytes(wire.buffer), None, Verdict(False,
+                               'tls-close' if fault and fault[0] == 'tls-close' else 'liveness',
                                'RFC 3977 §§3.1,5.1,5.4; specs/nntp.md:521-528', detail), len(result.commands))
                 result.reusable = (wire.eof and not wire.reset and not (reply_timeout or wire.timed_out)
                                    and not wire.buffer and read_only(items)
@@ -580,6 +750,8 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
                                    timeout=reply_timeout or wire.timed_out, reset=wire.reset,
                                    reply_eof=reply_eof, reply_timeout=reply_timeout, reply_reset=reply_reset,
                                    reply_client_half_closed=reply_client_half_closed,
+                                   client_close_notify=getattr(wire.sock, 'client_close_notify', False),
+                                   server_close_notify=getattr(wire.sock, 'server_close_notify', False),
                                    tls_version=c.policy.get('tls_version'),
                                    group_creation_window=c.policy.get('group_creation_window'))
                 for row in result.rows:
@@ -741,6 +913,7 @@ def replay_fixture(path, **kwargs):
                     detail='No NNTP command transcript; requires disk or streaming-budget oracle.')
     options = dict(seed=record.get('seed', 0), mode=record.get('role', 'reader'),
                    cut=record.get('cut', 'whole'), plants=record.get('plants', ()),
+                   takethis_probe=bool(record.get('takethis_probe')),
                    transport=record.get('transport', 'implicit' if record.get('tls') else 'plain'))
     options.update(kwargs)
     result = compare([bytes.fromhex(x) for x in chunks], **options)
@@ -783,6 +956,16 @@ def replay_recorded(source):
         pending = bool(c.pending)
         exp = c.greeting() if not cmd and old['command_index'] == -1 else (
             c.send_block(cmd) if pending else c.send(cmd))
+        if 'takethis_probe' in old:
+            probe = dict(old['takethis_probe'])
+            verdict = probe_verdict(c, cmd, status, body, probe)
+            exchange = dict(old, ok=verdict.ok, rule=verdict.rule, detail=verdict.detail,
+                            takethis_probe=probe)
+            result['exchanges'].append(exchange)
+            result['matched'] = verdict.ok
+            if not verdict.ok:
+                result['rows'].append(dict(exchange, spec=verdict.spec))
+            break  # Live probe also ends the session without a speculative update.
         eof = old.get('wire_eof', evidence.get('reply_eof', False) if last else False)
         timeout = old.get('wire_timeout', evidence.get('reply_timeout', False) if last else False)
         reset = old.get('wire_reset', evidence.get('reply_reset') if last else None)
@@ -797,7 +980,8 @@ def replay_recorded(source):
             break
         try:
             verdict = reply_verdict(exp, status, body, eof=clean_eof, reset=reset,
-                                    timeout=timeout, client_half_closed=half_closed, tls=c.tls)
+                                    timeout=timeout, client_half_closed=half_closed, tls=c.tls,
+                                    client_close_notify=old.get('client_close_notify', False))
             if verdict.ok:
                 exp.update(status, body, eof=clean_eof)
         except (ValueError, RuntimeError) as exc:
@@ -837,6 +1021,8 @@ def main(argv=None):
     p.add_argument('--seconds', type=float, default=float('inf'))
     p.add_argument('--minimize-seconds', type=float, default=30)
     p.add_argument('--port-range', help='inclusive LOW..HIGH, disjoint for each shard')
+    p.add_argument('--takethis-probe', action='store_true',
+                   help='probe malformed TAKETHIS timeouts with a bounded article body')
     args = p.parse_args(argv)
     modes, cuts, plants = args.mode.split(','), args.cuts.split(','), tuple(filter(None, args.plant.split(',')))
     if set(modes) - {'reader', 'node', 'peer'} or set(cuts) - set(CUTS) or set(plants) - set(PLANTS):
@@ -865,7 +1051,8 @@ def main(argv=None):
         p.error('fn1 requires --image or FN_NATIVE_HOST; this driver never builds an image')
     stats = dict(seeds_run=0, sessions=0, commands_compared=0, matches=0,
                  mismatches={}, minimized_reproducers=0, target=args.target,
-                 seed_range=args.seeds, modes=modes, cuts=cuts, steps=args.steps)
+                 seed_range=args.seeds, modes=modes, cuts=cuts, steps=args.steps,
+                 takethis_probe=args.takethis_probe)
     counts, deadline = Counter(), time.monotonic() + args.seconds
     def dump():
         stats['mismatches'] = dict(counts)
@@ -886,7 +1073,8 @@ def main(argv=None):
                     for cut in cuts:
                         if time.monotonic() >= deadline:
                             break
-                        kw = dict(seed=seed, mode=mode, cut=cut, transport=transport)
+                        kw = dict(seed=seed, mode=mode, cut=cut, transport=transport,
+                                  takethis_probe=args.takethis_probe)
                         result = run(items, **kw)
                         stats['sessions'] += 1
                         stats['commands_compared'] += result.compared
