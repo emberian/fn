@@ -11,7 +11,7 @@
       (declare (ignore bytes steps))
       (assert (and (zerop actions) (null runnable))))
     (assert (= (fn2-machine-admission-head core) 1))
-    (assert (= (fn2-machine-wait-head core) 4294967295))
+    (assert (= (fn2-machine-wait-head core) *fn2-none*))
     ; An unsuccessful Accept returns the reservation and wakes the FIFO waiter.
     (fn2-machine-observe *fn2-listener-kind* 0 1 *fn2-event-accept-result*
                          *fn2-outcome-failed* 0 0 0 0 core)
@@ -20,6 +20,7 @@
     (assert (= (nth-value 2 (fn2-machine-run 1 4 core)) 1))
     (assert (zerop (fn2-machine-admission-credits core))))
   (let ((reserve (symbol-function 'fn2-core-reserve))
+        (abi (symbol-function 'fn2-abi-landings))
         (refuse (symbol-function 'fn2-network-refuse))
         (profile (put-assoc-equal :c 1 (put-assoc-equal :accept-credits 1 *fn2-profile-tiny*))))
     (unwind-protect
@@ -28,6 +29,15 @@
                 (lambda (class kind owner generation core)
                   (if (= kind *fn2-echo-kind*) (values :exhausted 0 0 core)
                     (funcall reserve class kind owner generation core))))
+          ; The refusal mutation targets the workload. Physical ABI evidence
+          ; still executes every probe using the real reservation operation.
+          (setf (symbol-function 'fn2-abi-landings)
+                (lambda (core sim own)
+                  (let ((injected-reserve (symbol-function 'fn2-core-reserve)))
+                    (unwind-protect
+                        (progn (setf (symbol-function 'fn2-core-reserve) reserve)
+                               (funcall abi core sim own))
+                      (setf (symbol-function 'fn2-core-reserve) injected-reserve)))))
           (let* ((result (fn2-sim-run-echo 20261028 0 profile)) (live (nth 9 result)))
             (assert (equal (first result) '(:fail :liveness-drops)))
             (assert (equal (first live) '(:fail :liveness-drops)))
@@ -40,5 +50,9 @@
             (assert (equal (first result) '(:fail :unattributed-drops)))
             (assert (= (fn2-echo-stat :unattributed (nth 7 result)) 1))))
       (setf (symbol-function 'fn2-core-reserve) reserve
-            (symbol-function 'fn2-network-refuse) refuse)))
+            (symbol-function 'fn2-abi-landings) abi
+            (symbol-function 'fn2-network-refuse) refuse))
+    (assert (and (eq (symbol-function 'fn2-core-reserve) reserve)
+                 (eq (symbol-function 'fn2-abi-landings) abi)
+                 (eq (symbol-function 'fn2-network-refuse) refuse))))
   (format t "L1 CONTROLS reservation=PASS FIFO-wake=PASS admission-refused=200 live-drop=REJECTED unattributed-safety=REJECTED~%"))

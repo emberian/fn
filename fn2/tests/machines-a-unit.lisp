@@ -86,10 +86,10 @@
        (fn2-core (fn2-machine-park id fn2-core))
        ((mv wake fn2-core) (fn2-machine-observe 1 id 1 *fn2-event-borrow-released*
                            *fn2-outcome-done* 0 0 0 0 fn2-core))
-       ((unless (and (equal wake 4294967295)
+       ((unless (and (equal wake *fn2-none*)
                      (equal (fn2-machine-wait-head fn2-core) id)
                      (equal (fn2-machine-wait-tail fn2-core) id)
-                     (equal (fn2-machine-ready-next id fn2-core) 4294967295)))
+                     (equal (fn2-machine-ready-next id fn2-core) *fn2-none*)))
         (mv :parked-wake fn2-core))
        ((mv wake fn2-core) (fn2-machine-grant-one fn2-core))
        ((unless (and (equal wake id) (not (fn2-machine-waiting-p fn2-core))))
@@ -97,7 +97,7 @@
        (fn2-core (fn2-echo-put-core id (phase *fn2-echo-state-draining*)))
        ((mv & & & & fn2-core) (fn2-machine-run id 4 fn2-core)))
     (mv (if (and (equal (fn2-machine-phase id fn2-core) *fn2-echo-state-retired*)
-                 (equal (fn2-machine-pool-slot id fn2-core) 4294967295))
+                 (equal (fn2-machine-pool-slot id fn2-core) *fn2-none*))
             :ok :retirement)
         fn2-core)))
 
@@ -157,7 +157,7 @@
     (mv (if (and released (equal actions 0) (not runnable)
                  (equal (fn2-machine-phase id fn2-core) *fn2-echo-state-free*)
                  (equal (fn2-machine-generation id fn2-core) 2)
-                 (equal (fn2-machine-pool-slot id fn2-core) 4294967295)
+                 (equal (fn2-machine-pool-slot id fn2-core) *fn2-none*)
                  (equal (fn2-machine-free-head fn2-core) id))
             :ok :null-release)
         fn2-core)))
@@ -275,11 +275,11 @@
            ((mv wake fn2-core)
             (case control
               (:kind (let ((fn2-core (fn2-echo-put-core 0 (phase *fn2-echo-state-closing*))))
-                       (mv 4294967295 fn2-core)))
+                       (mv *fn2-none* fn2-core)))
               (:width (let ((fn2-core (fn2-machine-write-generation 0 1152921504606846976 fn2-core)))
-                        (mv 4294967295 fn2-core)))
+                        (mv *fn2-none* fn2-core)))
               (:field (let ((fn2-core (fn2-machine-write-checksum 0 0 fn2-core)))
-                        (mv 4294967295 fn2-core)))
+                        (mv *fn2-none* fn2-core)))
               (:event (fn2-machine-observe *fn2-listener-kind* 0 1 *fn2-event-send-result* 0 0 0 0 0 fn2-core))
               (:generation (fn2-machine-observe *fn2-listener-kind* 0 2 *fn2-event-accept-result* 0 0 0 0 0 fn2-core))
               (:wrong-kind (fn2-machine-observe *fn2-echo-kind* 0 1 *fn2-event-receive-result* 0 0 1 0 0 fn2-core))
@@ -289,7 +289,7 @@
                  (= (fn2-core-stop-reason fn2-core)
                     (if (member-eq control '(:kind :width :field))
                         *fn2-stop-reason-machine-write* *fn2-stop-reason-machine-observation*))
-                 (= (fn2-machine-pending free fn2-core) 2) (= wake 4294967295)) fn2-core)) answer)))
+                 (= (fn2-machine-pending free fn2-core) 2) (= wake *fn2-none*)) fn2-core)) answer)))
 (assert-event (and (fn2-machine-checked-write-control :kind) (fn2-machine-checked-write-control :width)
                    (fn2-machine-checked-write-control :field) (fn2-machine-checked-write-control :event)
                    (fn2-machine-checked-write-control :free) (fn2-machine-checked-write-control :generation)
@@ -301,10 +301,10 @@
 ; same generator, and completions pass through the real FIFO and harvest.
 (defmachine-callback fn2-machine-test-accumulate fn2-scribe (id event outcome reason count aux0 aux1) 1
   (let ((fn2-core (fn2-scribe-put-core id
-          (completed (min 4294967295 (+ 1 row-completed)))
-          (verified (min 4294967295 (+ (nfix count) row-verified)))
-          (checksum (min 4294967295 (+ (nfix reason) (* 16 row-checksum))))
-          (cursor (min 4294967295 (+ row-pending
+          (completed (min *fn2-none* (+ 1 row-completed)))
+          (verified (min *fn2-none* (+ (nfix count) row-verified)))
+          (checksum (min *fn2-none* (+ (nfix reason) (* 16 row-checksum))))
+          (cursor (min *fn2-none* (+ row-pending
                                     (* 10 row-cursor)))))))
     (mv id fn2-core)))
 
@@ -421,3 +421,23 @@
        (machine (fn2-decl-get :generated (fn2-decl-row '(:machine fn2-echo) (w state)))))
    (and (fn2-decl-find-artifact 'fn2-echo-put columns)
         (not (fn2-decl-find-artifact 'fn2-echo-put machine)))))
+
+(defun fn2-machine-read-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+  (mv-let (ok fn2-core)
+    (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+         ((mv valid zero) (fn2-machine-kind-read 0 fn2-core))
+         ((mv invalid absent) (fn2-machine-kind-read *fn2-none* fn2-core))
+         ((mv wrong-kind missing) (fn2-machine-cap-index-read (fn2-machine-scribe-id fn2-core) fn2-core)))
+      (mv (and (eq valid :ok) (= zero 0) (eq invalid :bounds) (null absent)
+               (eq wrong-kind :kind) (null missing)) fn2-core)) ok)))
+(assert-event (fn2-machine-read-control))
+
+(defun fn2-machine-invalid-read-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+   (mv-let (answer fn2-core)
+     (let ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core)))
+       (mv (fn2-machine-kind *fn2-none* fn2-core) fn2-core)) answer)))
+(must-fail (assert-event (fn2-machine-invalid-read-control)) :with-output-off nil)

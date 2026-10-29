@@ -40,7 +40,7 @@
   (let* ((m (+ (fn2-profile-c profile) (fn2-profile-accept-credits profile) 1))
          (v (max 1 (min (fn2-profile-k profile) (fn2-profile-aturn profile))))
          (s (+ 1 (ceiling (* (fn2-profile-calendar-length profile) m) v)))
-         (q (max 1 (min 4096 (min (fn2-profile-run-bytes profile)
+         (q (max 1 (min *fn2-sim-network-capacity* (min *fn2-echo-run-bytes*
                              (cdar (fn2-profile-pool-classes profile))))))
          (d (fn2-profile-o profile)))
     (+ (* 2 s) 2 (* (ceiling (nfix bytes) q) (+ (* 3 s) (* 3 d) 1)))))
@@ -66,15 +66,15 @@
                     (= (fn2-sim-kind slot fn2-sim) *fn2-action-accept*)))
        ((mv & fn2-core fn2-sim fn2-own)
         (cond ((and accept allow)
-               (fn2-sim-echo-accept slot 26 (fn2-u32 (fn2-sim-now fn2-sim)) t fn2-core fn2-sim fn2-own))
+               (fn2-sim-echo-accept slot *fn2-fault-none* (fn2-u32 (fn2-sim-now fn2-sim)) t fn2-core fn2-sim fn2-own))
               (accept
                (fn2-sim-complete-result slot (fn2-sim-gen slot fn2-sim) *fn2-action-accept*
-                 *fn2-event-accept-result* 0 :busy 0 0 26 0 (fn2-sim-now fn2-sim) nil
+                 *fn2-event-accept-result* 0 :busy 0 0 *fn2-fault-none* 0 (fn2-sim-now fn2-sim) nil
                  fn2-core fn2-sim fn2-own))
-              (t (fn2-sim-complete slot 26 0 fn2-core fn2-sim fn2-own))))
+              (t (fn2-sim-complete slot *fn2-fault-none* 0 fn2-core fn2-sim fn2-own))))
        (verdict (if (= (fn2-sim-active slot fn2-sim) 1)
                     (list :fail :liveness-adapter-would-block slot) :pass))
-       (fn2-sim (fn2-sim-clock (+ 1 (fn2-sim-now fn2-sim)) 26 fn2-sim))
+       (fn2-sim (fn2-sim-clock (+ 1 (fn2-sim-now fn2-sim)) *fn2-fault-none* fn2-sim))
        (fn2-core (fn2-sim-post-clock (fn2-sim-now fn2-sim) (fn2-sim-real fn2-sim) fn2-core)))
     (mv verdict (mod (+ 1 slot) (fn2-sim-rows fn2-sim)) fn2-core fn2-sim fn2-own)))
 (in-theory (disable fn2-echo-live-advance))

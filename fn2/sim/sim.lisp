@@ -33,7 +33,7 @@
        (fn2-sim (fn2-sim-set-fua slot 0 fn2-sim))
        ((mv & & & fn2-core fn2-sim fn2-own)
         (if (= (mod word 2) 1)
-            (fn2-sim-physical slot 26 word fn2-core fn2-sim fn2-own)
+            (fn2-sim-physical slot *fn2-fault-none* word fn2-core fn2-sim fn2-own)
           (mv :ok 0 0 fn2-core fn2-sim fn2-own)))
        (fn2-sim (fn2-sim-set-active slot 0 fn2-sim)))
     (mv t fn2-core fn2-sim fn2-own)))
@@ -141,7 +141,7 @@
     (b* (((mv fn2-core fn2-sim fn2-own)
           (fn2-sim-crash-flight-writes (fn2-sim-rows fn2-sim) fn2-core fn2-sim fn2-own))
          (fn2-sim (fn2-sim-crash-state fn2-sim))
-         (fn2-sim (fn2-sim-land 15 fn2-sim))
+         (fn2-sim (fn2-sim-land *fn2-fault-crash* fn2-sim))
          (fn2-own (fn2-own-restart fn2-own))
          (fn2-core (fn2-core-init profile fn2-core)))
       (mv fn2-core fn2-sim fn2-own))))
@@ -158,7 +158,7 @@
   :hints (("Goal" :use (fn2-sim-crash-core-type fn2-sim-crash-core-wfp)
                    :in-theory (disable fn2-sim-crash-core-type fn2-sim-crash-core-wfp))))
 
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-sim-crash) (w state)))
 
 (defun fn2-sim-result-outcome (kind code count len)
@@ -248,15 +248,15 @@
             (fn2-sim-post 0 slot gen event outcome reason count aux0 aux1 fault nil
                           fn2-core fn2-sim fn2-own)))
          ((mv & fn2-core fn2-sim fn2-own)
-          (if (equal fault 18)
+          (if (equal fault *fn2-fault-duplicate*)
               (fn2-sim-post 0 slot gen event outcome reason count aux0 aux1 fault t
                             fn2-core fn2-sim fn2-own)
             (mv :ok fn2-core fn2-sim fn2-own)))
-         (fn2-sim (if (and early (eq post-code :ok)) (fn2-sim-land 25 fn2-sim) fn2-sim))
+         (fn2-sim (if (and early (eq post-code :ok)) (fn2-sim-land *fn2-fault-release-order* fn2-sim) fn2-sim))
          (fn2-sim (fn2-sim-set-last-gen slot gen fn2-sim))
          (fn2-sim (fn2-sim-set-active slot (cond (early 3) (release 2) (t 0)) fn2-sim))
          (fn2-sim (fn2-sim-set-due slot
-                      (min #xfffffffffffffff (+ 1 (mod word 100) now)) fn2-sim)))
+                      (min *fn2-u60-max* (+ 1 (mod word 100) now)) fn2-sim)))
       (mv t fn2-core fn2-sim fn2-own))))
 (fn2-sim-preserves fn2-sim-terminal-post (slot gen event outcome reason count aux0 aux1 fault word now release early fn2-core fn2-sim fn2-own) :part nil
   :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
@@ -318,7 +318,7 @@
             (fn2-sim-cancel-target slot fn2-sim) (mv nil fn2-sim)))
        ((mv outcome reason count aux0 aux1)
         (fn2-sim-terminal-values kind code physical-count aux len release cancelled))
-       (early (and release (equal fault 25))))
+       (early (and release (equal fault *fn2-fault-release-order*))))
     (fn2-sim-terminal-post slot gen event outcome reason count aux0 aux1
       fault word now release early fn2-core fn2-sim fn2-own)))
 (fn2-sim-preserves fn2-sim-complete-result (slot gen kind event len code physical-count aux fault word now release fn2-core fn2-sim fn2-own) :part nil
@@ -365,7 +365,7 @@
                 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own)))
              ((when (and (eq code :would-block) (equal physical-count 0)))
               (let ((fn2-sim (fn2-sim-set-due slot
-                              (min #xfffffffffffffff (+ 100 now)) fn2-sim)))
+                              (min *fn2-u60-max* (+ 100 now)) fn2-sim)))
                 (mv t fn2-core fn2-sim fn2-own)))
              ((mv found fn2-core fn2-sim fn2-own)
               (fn2-sim-complete-result slot gen kind event len code physical-count aux
@@ -395,8 +395,8 @@
       (code byte fn2-sim-network)
       (fn2-network-client-read cap nonce fn2-sim-network)
       (if (not (eq code :ok)) fn2-sim
-        (let ((fn2-sim (fn2-sim-record cap nonce 0 258 0 0 byte
-                                      (fn2-sim-now fn2-sim) 0 26 fn2-sim)))
+        (let ((fn2-sim (fn2-sim-record cap nonce 0 *fn2-record-client-drain* 0 0 byte
+                                      (fn2-sim-now fn2-sim) 0 *fn2-fault-none* fn2-sim)))
           (fn2-sim-client-drain (- left 1) cap nonce fn2-sim))))))
 
 (fn2-sim-preserves fn2-sim-client-drain (left cap nonce fn2-sim) :forward t
@@ -416,17 +416,17 @@
 (fn2-sim-preserves fn2-sim-environment (slot fault word fn2-sim) :disable nil
   :specs (("-RAW-ROWS" (lambda (s) (nth *fn2-sim-rows* s)) nil :frame fn2-sim))
   :hints (("Goal" :in-theory (enable fn2-sim-environment))))
-(in-theory (disable fn2-profile-run-bytes))
+
 
 (defun fn2-sim-delay-flight (slot fault word fn2-sim)
  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
  (if (not (and (natp slot) (< slot (fn2-sim-rows fn2-sim))
                 (unsigned-byte-p 32 word)))
      fn2-sim
-   (let ((latency (if (equal fault 14)
+   (let ((latency (if (equal fault *fn2-fault-fail-slow*)
                    (case (mod word 3) (0 1000) (1 10000) (otherwise 100000)) 100)))
-    (let* ((due (min #xfffffffffffffff (+ latency (fn2-sim-now fn2-sim))))
-           (fn2-sim (if (and (member-equal fault '(2 14)) (< (fn2-sim-due slot fn2-sim) due))
+    (let* ((due (min *fn2-u60-max* (+ latency (fn2-sim-now fn2-sim))))
+           (fn2-sim (if (and (member-equal fault `(,*fn2-fault-delay* ,*fn2-fault-fail-slow*)) (< (fn2-sim-due slot fn2-sim) due))
                         (fn2-sim-land fault fn2-sim) fn2-sim)))
       (fn2-sim-set-due slot due fn2-sim)))))
 
@@ -440,7 +440,7 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                   :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-    (fn2-ops) (fn2-post-clock mono real 1 fn2-ops) fn2-core))
+    (fn2-ops) (fn2-post-clock mono real *fn2-clock-flag-realtime-valid* fn2-ops) fn2-core))
 (defthm fn2-sim-post-clock-type
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
            (fn2-corep (fn2-sim-post-clock mono real fn2-core)))
@@ -475,7 +475,7 @@
                 (unsigned-byte-p 32 word)))
       (mv nil fn2-core fn2-sim fn2-own)
     (if (not allow)
-        (let ((fn2-sim (fn2-sim-delay-flight slot 26 word fn2-sim)))
+        (let ((fn2-sim (fn2-sim-delay-flight slot *fn2-fault-none* word fn2-sim)))
           (mv t fn2-core fn2-sim fn2-own))
     (b* ((gen (fn2-sim-gen slot fn2-sim))
          (now (fn2-sim-now fn2-sim))
@@ -491,7 +491,7 @@
          ((mv & fn2-core fn2-sim fn2-own)
           (fn2-sim-inject slot fault fn2-core fn2-sim fn2-own))
          ((when (eq code :would-block))
-          (let ((fn2-sim (fn2-sim-set-due slot (min #xfffffffffffffff (+ 100 now)) fn2-sim)))
+          (let ((fn2-sim (fn2-sim-set-due slot (min *fn2-u60-max* (+ 100 now)) fn2-sim)))
             (mv t fn2-core fn2-sim fn2-own))))
       (fn2-sim-complete-result slot gen *fn2-action-accept* *fn2-event-accept-result*
                                0 code cap nonce fault word now nil
@@ -508,14 +508,14 @@
                               (or (not found)
                                   (and (natp slot) (< slot (fn2-sim-rows fn2-sim)))))))
   (b* ((fn2-sim (if (or automatic found) (fn2-sim-environment slot fault word fn2-sim) fn2-sim))
-       (quantum (fn2-profile-run-bytes (fn2-sim-profile fn2-sim)))
+       (quantum *fn2-echo-run-bytes*)
        (fn2-sim (if (and automatic found)
                     (fn2-sim-client-drain (if (unsigned-byte-p 32 quantum) quantum 0)
                                           (fn2-sim-cap-index slot fn2-sim)
                                           (fn2-sim-cap-nonce slot fn2-sim) fn2-sim)
                   fn2-sim))
        ((when (not found)) (mv nil fn2-core fn2-sim fn2-own))
-       ((when (or (equal fault 2) (equal fault 14)))
+       ((when (or (equal fault *fn2-fault-delay*) (equal fault *fn2-fault-fail-slow*)))
         (let ((fn2-sim (fn2-sim-delay-flight slot fault word fn2-sim)))
           (mv t fn2-core fn2-sim fn2-own))))
     (if (and (not automatic) (equal (fn2-sim-active slot fn2-sim) 1)
@@ -535,13 +535,13 @@
                  (if found (fn2-sim-due slot fn2-sim) (fn2-sim-now fn2-sim))))
        (fn2-sim (fn2-sim-clock target fault fn2-sim))
        (mono (fn2-sim-now fn2-sim)) (real (fn2-sim-real fn2-sim))
-       (fn2-sim (fn2-sim-record 0 0 0 256 0 0 mono real 1 fault fn2-sim))
+       (fn2-sim (fn2-sim-record 0 0 0 *fn2-record-clock* 0 0 mono real 1 fault fn2-sim))
        (fn2-core (fn2-sim-post-clock mono real fn2-core))
        ((when wake-first)
         (let* ((token (fn2-sim-wake-observation-gen fn2-sim))
                (deadline (fn2-sim-wake-deadline fn2-sim))
                (fn2-sim (update-fn2-sim-wake-pending 0 fn2-sim))
-               (fn2-sim (fn2-sim-record 0 token 0 259 0 0 deadline mono 0 fault fn2-sim)))
+               (fn2-sim (fn2-sim-record 0 token 0 *fn2-record-wake* 0 0 deadline mono 0 fault fn2-sim)))
           (mv t fn2-core fn2-sim fn2-own))))
     (fn2-sim-advance-flight automatic allow-accept found slot fault word fn2-core fn2-sim fn2-own)))
 (fn2-sim-preserves fn2-sim-advance-selected (automatic allow-accept found slot fault word fn2-core fn2-sim fn2-own) :part nil
@@ -557,10 +557,10 @@
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
                               (fn2-own-wfp fn2-own))))
   (b* (((mv found slot) (fn2-sim-next-flight fn2-sim))
-       ((mv fault fn2-sim) (if found (fn2-sim-choose-flight-fault slot fn2-sim) (mv 26 fn2-sim)))
+       ((mv fault fn2-sim) (if found (fn2-sim-choose-flight-fault slot fn2-sim) (mv *fn2-fault-none* fn2-sim)))
        ((mv word fn2-sim) (fn2-sim-random fn2-sim))
-       (fn2-sim (fn2-sim-record 0 0 0 257 0 0 word (fn2-sim-now fn2-sim) 0 fault fn2-sim))
-       ((when (equal fault 15))
+       (fn2-sim (fn2-sim-record 0 0 0 *fn2-record-advance* 0 0 word (fn2-sim-now fn2-sim) 0 fault fn2-sim))
+       ((when (equal fault *fn2-fault-crash*))
         (let ((profile (fn2-sim-profile fn2-sim)))
           (mv-let (fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own)
             (mv t fn2-core fn2-sim fn2-own)))))
@@ -577,7 +577,7 @@
   :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
 (assert-event
- (fn2-profile-exports-compliant-p
+ (fn2-assert-compliant-p
   '(fn2-sim-amount fn2-sim-redirect fn2-sim-client-feed fn2-sim-client-drain
     fn2-sim-unused-op fn2-sim-find-write fn2-sim-crash-flight-writes fn2-sim-choose-flight-fault
     fn2-sim-transfer fn2-sim-post fn2-sim-register fn2-sim-take-one

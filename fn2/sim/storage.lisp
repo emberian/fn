@@ -65,8 +65,8 @@
   (declare (xargs :stobjs fn2-sim-storage
                   :guard (and (natp nsectors) (< nsectors 1048576)
                               (unsigned-byte-p 32 nfences)
-                              (< (* 4096 nsectors nfences) 1152921504606846976))))
-  (let* ((nbytes (* 4096 nsectors))
+                              (< (* *fn2-format-sector-bytes* nsectors nfences) 1152921504606846976))))
+  (let* ((nbytes (* *fn2-format-sector-bytes* nsectors))
          (fn2-sim-storage (fn2-storage-columns-init nbytes fn2-sim-storage))
          (fn2-sim-storage (resize-fn2-storage-snapshot (* nbytes nfences) fn2-sim-storage))
          (fn2-sim-storage (resize-fn2-storage-snapshot-stamp (* nbytes nfences) fn2-sim-storage))
@@ -333,7 +333,7 @@
               fn2-sim-storage)))
       fn2-sim-storage)))
 
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-storage-init fn2-storage-read-byte fn2-storage-write-byte fn2-storage-fence-capture
     fn2-storage-fence-complete fn2-storage-crash-unit fn2-storage-crash-reset fn2-storage-corrupt-byte) (w state)))
 
@@ -410,7 +410,7 @@
 (defthm fn2-storage-init-preserves-type
   (implies (and (fn2-sim-storagep s) (natp nsectors) (< nsectors 1048576)
                 (unsigned-byte-p 32 nfences)
-                (< (* 4096 nsectors nfences) 1152921504606846976))
+                (< (* *fn2-format-sector-bytes* nsectors nfences) 1152921504606846976))
            (fn2-sim-storagep (fn2-storage-init nsectors nfences s)))
   :hints (("Goal" :in-theory (enable fn2-storage-init))))
 
@@ -427,7 +427,7 @@
 (in-theory (disable fn2-sim-storage-rows))
 (defthm fn2-storage-init-rows
   (equal (fn2-sim-storage-rows (fn2-storage-init nsectors nfences s))
-         (* 4096 nsectors))
+         (* *fn2-format-sector-bytes* nsectors))
   :hints (("Goal" :in-theory (enable fn2-storage-init))))
 
 ; Evaluated storage controls: overlapping writes straddling a fence, reversed

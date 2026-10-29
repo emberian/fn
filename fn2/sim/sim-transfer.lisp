@@ -65,7 +65,7 @@
            ((equal kind *fn2-action-read*)
             (mv-let (code byte)
               (fn2-storage-read-byte (+ offset i) (+ redirect i)
-                                     (if (equal fault 6) :io :none) fn2-sim-storage)
+                                     (if (equal fault *fn2-fault-read-io*) :io :none) fn2-sim-storage)
               (mv code byte fn2-sim-network)))
            ((equal kind *fn2-action-entropy*)
             (mv :ok (mod (fn2-prng-mix32 (fn2-u32 (+ salt i))) 256)
@@ -90,7 +90,7 @@
            (t
             (mv-let (code fn2-sim-storage)
               (fn2-storage-write-byte (+ offset i) (+ redirect i) byte stamp fua
-                                      (if (equal fault 12) :no-space :none) fn2-sim-storage)
+                                      (if (equal fault *fn2-fault-no-space*) :no-space :none) fn2-sim-storage)
               (mv code fn2-pool fn2-sim-network fn2-sim-storage fn2-own)))))
          ((when (not (eq code :ok)))
           (mv code i fn2-pool fn2-sim-network fn2-sim-storage fn2-own)))
@@ -114,5 +114,5 @@
              (fn2-sim-storage 4 :prefix "-STORAGE") (fn2-own 5 :prefix "-OWN")))
 
 (assert-event
- (fn2-profile-exports-compliant-p
+ (fn2-assert-compliant-p
   '(fn2-op-input-kindp fn2-op-output-kindp fn2-sim-transfer) (w state)))

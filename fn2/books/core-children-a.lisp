@@ -22,9 +22,9 @@
  :init (fn2-machines-init profile fn2-machines) :profilep (fn2-machines-profilep profile)
  :order :foundation :why "Global machine directory and admission state.")
 (defcorechild fn2-core-trace fn2-trace
- :init (fn2-trace-init (* 4 (+ (fn2-profile-h profile) (fn2-profile-k profile)))
+ :init (fn2-trace-init (fn2-profile-trace-capacity profile)
          (fn2-profile-trace profile) fn2-trace)
- :profilep (unsigned-byte-p 32 (* 4 (+ (fn2-profile-h profile) (fn2-profile-k profile))))
+ :profilep (unsigned-byte-p 32 (fn2-profile-trace-capacity profile))
  :reference :environment :order :foundation
  :why "Diagnostic output is checked by TRACE; it does not drive reference transitions.")
 (defcorechild fn2-core-control fn2-control

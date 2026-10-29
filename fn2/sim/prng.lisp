@@ -162,6 +162,6 @@
 
 (assert-event (equal (mv-list 5 (fn2-prng-next 1 2 3 4))
                      '(11520 7 0 1026 12288)))
-(assert-event (equal (fn2-u32-mul 4294967295 4294967295) 1))
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (equal (fn2-u32-mul *fn2-none* *fn2-none*) 1))
+(assert-event (fn2-assert-compliant-p
   '(fn2-prng-next fn2-prng-seed fn2-prng-below fn2-prng-chance) (w state)))

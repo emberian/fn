@@ -389,7 +389,7 @@
   (fn2-network-drop-all 0 fn2-sim-network))
 (fn2-sim-network-preserves fn2-network-restart (fn2-sim-network) :position nil :prefix "" :rows nil :wfp-type nil)
 
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-network-init fn2-network-accept fn2-network-close fn2-network-refuse
     fn2-network-faults fn2-network-transfer-tick fn2-network-queue-put fn2-network-queue-get
     fn2-network-client-byte fn2-network-client-read fn2-network-receive-byte fn2-network-send-byte

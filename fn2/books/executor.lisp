@@ -3,6 +3,12 @@
 (include-book "executor-wake")
 (include-book "assembly")
 
+(defconst *fn2-turn-transition-max*
+  (+ *fn2-work-empty*
+     (max (+ *fn2-listener-run-bytes* *fn2-listener-run-steps*)
+          (max (+ *fn2-echo-run-bytes* *fn2-echo-run-steps*)
+               (+ *fn2-scribe-run-bytes* *fn2-scribe-run-steps*)))))
+
 (defun fn2-exec-eligible-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (or (fn2-exec-runnable-p fn2-core) (fn2-exec-wake-p fn2-core)))
@@ -15,22 +21,22 @@
 
 (defun fn2-exec-harvest (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((mv & kind id gen principal) (fn2-core-next-owner fn2-core))
+  (b* (((mv ownerp kind id gen principal) (fn2-core-next-owner fn2-core))
        (start (fn2-exec-queued fn2-core))
-       (bytes (if (fn2-machine-charge-kindp kind)
+       (bytes (if (and ownerp (fn2-machine-charge-kindp kind))
                   (fn2-machine-next-input-bytes fn2-core) 0))
        ; Leave an over-budget observation posted, without exposing its range.
-       ((unless (or (not (fn2-machine-charge-kindp kind))
-                    (fn2-machine-work-fits-p kind bytes 24 0)))
+       ((unless (or (not ownerp) (not (fn2-machine-charge-kindp kind))
+                    (fn2-machine-work-fits-p kind bytes *fn2-work-transition* 0)))
         (mv 0 0 0 0 0 fn2-core))
        ((mv delivered & & & event outcome reason count aux0 aux1 fn2-core)
         (fn2-harvest-one fn2-core))
-       ((unless delivered) (mv 1 0 0 0 24 fn2-core))
+       ((unless delivered) (mv 1 0 0 0 *fn2-work-transition* fn2-core))
        ((mv wake fn2-core)
         (fn2-machine-observe kind id gen event outcome reason count aux0 aux1 fn2-core))
        (fn2-core (fn2-exec-wake wake fn2-core))
-       (fn2-core (fn2-exec-record 0 wake principal 0 bytes 24 0 nil 4294967295 start fn2-core)))
-    (mv 1 0 0 bytes 24 fn2-core)))
+       (fn2-core (fn2-exec-record *fn2-trace-kind-mailbox* wake principal 0 bytes *fn2-work-transition* 0 nil *fn2-none* start fn2-core)))
+    (mv 1 0 0 bytes *fn2-work-transition* fn2-core)))
 (fn2-core-preserves fn2-exec-harvest (fn2-core) :position 5 :rows nil)
 
 (defun fn2-exec-mailbox (fn2-core)
@@ -49,9 +55,9 @@
           (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
             (bits fn2-ops) (fn2-take-signal fn2-ops)
             (if (< 0 (nfix bits)) (fn2-core-stop *fn2-stop-reason-signal* fn2-core) fn2-core))))
-       (fn2-core (fn2-exec-record (if clockp 3 4) 4294967295 0 0 0 8 0
-                                 nil 4294967295 start fn2-core)))
-    (mv 1 0 0 0 8 fn2-core)))
+       (fn2-core (fn2-exec-record (if clockp *fn2-trace-kind-clock* *fn2-trace-kind-signal*) *fn2-none* 0 0 0 *fn2-work-mailbox* 0
+                                 nil *fn2-none* start fn2-core)))
+    (mv 1 0 0 0 *fn2-work-mailbox* fn2-core)))
 (fn2-core-preserves fn2-exec-mailbox (fn2-core) :position 5 :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
 (defun fn2-exec-principal (principal position budget fn2-core)
@@ -59,16 +65,16 @@
   (b* ((start (fn2-exec-queued fn2-core))
        ((mv code id fn2-core) (fn2-exec-pop principal fn2-core))
        ((unless (eq code :ok))
-        (let ((fn2-core (fn2-exec-record 1 4294967295 principal position
-                          0 1 0 nil 4294967295 start fn2-core)))
-          (mv 0 1 0 0 1 fn2-core)))
+        (let ((fn2-core (fn2-exec-record *fn2-trace-kind-machine* *fn2-none* principal position
+                          0 *fn2-work-empty* 0 nil *fn2-none* start fn2-core)))
+          (mv 0 1 0 0 *fn2-work-empty* fn2-core)))
        ((mv bytes steps actions runnable fn2-core) (fn2-machine-run id budget fn2-core))
        ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
        ; New work enters before the running machine's tail requeue. The
        ; trace checker reconstructs this order without consulting links.
        (fn2-core (fn2-exec-wake wake fn2-core))
        (fn2-core (if runnable (fn2-exec-wake id fn2-core) fn2-core))
-       (fn2-core (fn2-exec-record 1 id principal position bytes steps actions
+       (fn2-core (fn2-exec-record *fn2-trace-kind-machine* id principal position bytes steps actions
                                  runnable wake start fn2-core)))
     (mv 0 1 actions bytes steps fn2-core)))
 (fn2-core-preserves fn2-exec-principal (principal position budget fn2-core) :position 5 :rows nil)
@@ -79,14 +85,14 @@
        (fn2-core (fn2-exec-clear-service service fn2-core))
        ((mv wake fn2-core)
         (if (and (equal service 1) (fn2-exec-grant-p fn2-core))
-            (fn2-machine-grant-one fn2-core) (mv 4294967295 fn2-core)))
+            (fn2-machine-grant-one fn2-core) (mv *fn2-none* fn2-core)))
        ((mv actions fn2-core)
         (if (and (equal service 1) (natp budget) (< 0 budget))
             (fn2-exec-arm fn2-core) (mv 0 fn2-core)))
        (fn2-core (fn2-exec-wake wake fn2-core))
-       (fn2-core (fn2-exec-record 2 4294967295 service position 0
-                    (if (and (equal wake 4294967295) (equal actions 0)) 1 24) actions nil wake start fn2-core)))
-    (mv 0 1 actions 0 (if (and (equal wake 4294967295) (equal actions 0)) 1 24) fn2-core)))
+       (fn2-core (fn2-exec-record *fn2-trace-kind-service* *fn2-none* service position 0
+                    (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) actions nil wake start fn2-core)))
+    (mv 0 1 actions 0 (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) fn2-core)))
 (fn2-core-preserves fn2-exec-service (service position budget fn2-core) :position 5 :rows nil)
 
 ; Observation order is the posted FIFO, then the coalesced clock mailbox,
@@ -100,9 +106,9 @@
         (fn2-exec-harvest fn2-core) (fn2-exec-mailbox fn2-core)))
    ((fn2-exec-eligible-p fn2-core)
     (mv-let (kind principal position fn2-core) (fn2-exec-visit fn2-core)
-      (if (equal kind 0)
+      (if (equal kind *fn2-visit-principal*)
           (fn2-exec-principal principal position action-budget fn2-core)
-        (fn2-exec-service (nfix (- (nfix kind) 1)) position action-budget fn2-core))))
+        (fn2-exec-service (nfix (- (nfix kind) *fn2-visit-commit*)) position action-budget fn2-core))))
    (t (mv 0 0 0 0 0 fn2-core))))
 (fn2-core-preserves fn2-transition (allow-observation action-budget fn2-core) :position 5 :rows nil)
 
@@ -124,8 +130,8 @@
 ; executing it. Insufficient room yields with all pending work retained.
 (defun fn2-turn-work-room-p (h k visits bytes steps)
   (declare (xargs :guard t))
-  (<= (+ (nfix visits) (nfix bytes) (nfix steps) 4129)
-      (+ (* (nfix h) 24) (* (nfix k) 4129))))
+  (<= (+ (nfix visits) (nfix bytes) (nfix steps) *fn2-turn-transition-max*)
+      (+ (* (nfix h) *fn2-work-transition*) (* (nfix k) *fn2-turn-transition-max*))))
 (in-theory (disable fn2-turn-work-room-p))
 
 (defun fn2-concrete-loop (fuel h k a nobs nvisits nactions fn2-core)
@@ -172,7 +178,11 @@
 (fn2-core-preserves fn2-exec-start-listeners (left id fn2-core) :rows nil :prefix "")
 
 (defun fn2-init-executor (profile mode scribe-p fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
+    :guard-hints (("Goal" :use
+      (:instance fn2-machine-kind-base-natp (kind *fn2-listener-kind*)
+        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1)
+                    (fn2-core-init profile fn2-core))))))))
   (b* ((fn2-core (fn2-core-init profile fn2-core))
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-exec-start-listeners (fn2-machine-accept-count fn2-core)
@@ -192,7 +202,7 @@
   :doc "Owed simultaneous observation, calendar-visit and descriptor bounds over fn2-turn.")
 
 (assert-event
- (fn2-profile-exports-compliant-p
+ (fn2-assert-compliant-p
   '(fn2-transition fn2-concrete-loop fn2-concrete-turn fn2-turn fn2-init-executor
     fn2-core-idle-deadline fn2-exec-harvest fn2-exec-mailbox fn2-exec-principal
     fn2-exec-service fn2-exec-account-work) (w state)))

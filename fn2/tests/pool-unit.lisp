@@ -912,7 +912,7 @@
 (assert-event (fn2-pool-test-stale-teeth nil))
 
 ; Check the imported certified executable interface in this world.
-(assert-event (fn2-profile-exports-compliant-p
+(assert-event (fn2-assert-compliant-p
   '(fn2-pool-init fn2-pool-class-for fn2-pool-reserve fn2-pool-release
     fn2-pool-lease-in fn2-pool-adapter-write fn2-pool-complete-in fn2-pool-lease-out
     fn2-pool-release-out fn2-pool-hand fn2-pool-accept-hand fn2-pool-read

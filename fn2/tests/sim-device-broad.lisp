@@ -20,7 +20,7 @@
         (mv nil fn2-core fn2-sim fn2-own))
        ((mv taken fn2-core fn2-sim fn2-own) (fn2-sim-take-prefix 1 0 fn2-core fn2-sim fn2-own))
        ((unless (= taken 1)) (mv nil fn2-core fn2-sim fn2-own))
-       ((mv status fn2-core fn2-sim fn2-own) (fn2-fault-control-step 26 fn2-core fn2-sim fn2-own))
+       ((mv status fn2-core fn2-sim fn2-own) (fn2-fault-control-step *fn2-fault-none* fn2-core fn2-sim fn2-own))
        ((unless (eq status :pass)) (mv nil fn2-core fn2-sim fn2-own))
        ((mv word fn2-sim) (fn2-sim-random fn2-sim))
        (kind (nth (mod word 4) (list *fn2-action-read* *fn2-action-write* *fn2-action-fence* *fn2-action-receive*)))
@@ -30,7 +30,8 @@
        ((unless (= taken 1)) (mv nil fn2-core fn2-sim fn2-own))
        (fn2-sim (update-fn2-sim-fault-budget 128 fn2-sim))
        ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-advance fn2-core fn2-sim fn2-own))
-       ((mv status fn2-core fn2-own) (fn2-scenario-harvest 2 fn2-core fn2-own)))
+       ((mv status fn2-core fn2-own) (fn2-scenario-harvest 2 fn2-core fn2-own))
+       ((mv status fn2-sim) (fn2-scenario-check-observations status fn2-sim)))
     (mv (eq status :pass) fn2-core fn2-sim fn2-own)))
 (in-theory (disable fn2-device-broad-one))
 
@@ -54,7 +55,8 @@
         (mv-let (answer fn2-core fn2-sim)
           (with-local-stobj fn2-own
             (mv-let (status counts fn2-core fn2-sim fn2-own)
-              (fn2-device-broad-rounds trials seed nil fn2-core fn2-sim fn2-own)
+              (b* (((mv fn2-core fn2-sim fn2-own) (fn2-abi-check fn2-core fn2-sim fn2-own)))
+                (fn2-device-broad-rounds trials seed nil fn2-core fn2-sim fn2-own))
               (progn$ (cw "DEVICE BROAD seed=~x0 trials=~x1 applied=~x2 OWN=~x3 stop=~x4~%"
                           seed trials counts status (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))
                       (mv (list status counts) fn2-core fn2-sim))))

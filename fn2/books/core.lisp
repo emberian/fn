@@ -84,8 +84,7 @@
            (declare (xargs :stobjs fn2-core))
            (stobj-let ,(fn2-core-child-bindings *fn2-core-children*)
              (answer)
-             (and ,@(fn2-core-child-wfps *fn2-core-children*)
-                  (equal (fn2-control-rows fn2-control) 1)) answer))))
+             (and ,@(fn2-core-child-wfps *fn2-core-children*)) answer))))
 
 ; The pool has at most sixteen size classes; general profile validity alone
 ; does not impose that representation constraint.
@@ -123,7 +122,7 @@
 (in-theory (disable fn2-core-init fn2-core-profilep))
 
 ; First corruption wins: later cleanup cannot erase the diagnostic.
-(in-theory (disable fn2-control-rows fn2-control-stop fn2-control-stop-reason
+(in-theory (disable fn2-control-stop fn2-control-stop-reason
                     fn2-stop-reason-code->keyword))
 (defun fn2-core-stop (reason fn2-core)
   (declare (xargs :stobjs fn2-core
@@ -132,9 +131,9 @@
                               (not (= reason *fn2-stop-reason-none*)))))
   (stobj-let ((fn2-control (fn2-core-control fn2-core)))
     (fn2-control)
-    (if (= (fn2-control-stop 0 fn2-control) 1) fn2-control
-      (let* ((fn2-control (fn2-control-set-stop 0 1 fn2-control))
-             (fn2-control (fn2-control-set-stop-reason 0 reason fn2-control)))
+    (if (= (fn2-control-stop fn2-control) 1) fn2-control
+      (let* ((fn2-control (update-fn2-control-stop 1 fn2-control))
+             (fn2-control (update-fn2-control-stop-reason reason fn2-control)))
         fn2-control))
     fn2-core))
 (defthm fn2-core-stop-type
@@ -149,7 +148,7 @@
 (defun fn2-core-stop-reason (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-control (fn2-core-control fn2-core)))
-    (reason) (fn2-control-stop-reason 0 fn2-control) reason))
+    (reason) (fn2-control-stop-reason fn2-control) reason))
 (defthm fn2-core-stop-reason-byte
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
            (unsigned-byte-p 8 (fn2-core-stop-reason fn2-core))))
@@ -341,6 +340,8 @@
          ((unless (eq found t))
           (mv (if (eq found :corrupt) *fn2-stop-reason-harvest-fifo* *fn2-stop-reason-none*)
               nil 0 0 0 0 0 0 0 0 0 fn2-pool fn2-ops))
+         ((unless (and (fn2-op-slotp opslot fn2-ops) (unsigned-byte-p 1 cell)))
+          (mv *fn2-stop-reason-harvest-fifo* nil 0 0 0 0 0 0 0 0 0 fn2-pool fn2-ops))
          ((mv ?posted ?harvested evkind outcome reason count aux0 aux1)
           (fn2-op-cell cell opslot fn2-ops))
          ((mv slot gen ?off ?len) (fn2-op-range opslot fn2-ops))
@@ -377,7 +378,7 @@
 (fn2-core-preserves fn2-harvest-one (fn2-core) :position 10 :rows nil)
 
 (assert-event
- (fn2-profile-exports-compliant-p
+ (fn2-assert-compliant-p
   '(fn2-core-init fn2-core-wfp fn2-core-profilep fn2-core-reserve fn2-core-release
     fn2-core-reset fn2-core-write fn2-core-read fn2-core-issue fn2-core-lease
     fn2-issue-receive fn2-issue-send fn2-issue-read fn2-issue-write

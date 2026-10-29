@@ -127,6 +127,37 @@ it does not establish that the overlapping write has completed or is durable.
 Only the completed fence's specified coverage establishes ordering and
 persistence (§E.3: complete dependencies, then the covering barrier).
 
+The ABI's effect theory uses nondeterministic choice `⊕` (associative,
+commutative and idempotent). These are its named equations:
+
+- **E1 — posting order is free.** For outstanding operations `a`, `b` with
+  no completed fence between them, `post_a ; post_b ⊕ post_b ; post_a`,
+  whatever their submission order. This applies to socket and storage effects.
+- **E2 — an overlapping read sees either.** While `write(l, v)` is outstanding,
+  `read(l) = return old(l) ⊕ return v`, per declared write unit.
+- **E3 — a read orders nothing.** `read(l) = return v` establishes no equation
+  about the completion or durability of the overlapping `write(l, v)`.
+- **E4 — a fence is the only order.** If all writes in `W` completed before
+  submission of a successful `fence(W)`, every subsequent crash keeps `W`'s
+  bytes, modulo the declared faults (including `lying-flush`).
+- **E5 — death after acknowledgement.** Death between `fn2-outbox-ack` and
+  posting the result chooses a subset of the submitted effects to survive,
+  with tears per declared write unit: `crash = ⊕ survival(S)` over allowed
+  subsets `S` of the writes since the last successful covering fence.
+
+A lent input range being unreadable until harvest is a separate typing rule,
+not an ordering equation. The simulator and native adapter must select outcomes
+allowed by E1–E5; a particular schedule proves no stronger ordering guarantee.
+Result reservation and generation checks tolerate E1; `harvest-byte-fill`
+uses the input-loan typing rule and makes no E3 durability inference. Scribe's
+`completed` frontier uses E4, while its `verified` frontier uses E2–E3 and
+checksum evidence. Recovery's acknowledged frontier and uncertainty
+classification use E4–E5: neither a valid sector nor readback alone establishes
+acknowledgement. TRACE's storage projection compares a shared selected outcome
+under E1–E5; it is not an independent storage implementation. WORK and OWN
+bound or authorize accesses under any of those choices and assume no extra
+posting order.
+
 **The native adapter must obey this sentence:** an adapter may execute an
 operation physically at any time between acknowledgement and posting its
 result, but it must not make an effect observable to the core through any
@@ -154,10 +185,10 @@ dispatcher over `fn2-transition` and the intrusive scheduler;
 there is no fusion. A turn stops at the first exhausted `H`, `K`, or `Aturn`
 budget, or when nothing eligible remains. Results are `(mv status nobs nvisits
 nactions fn2-core)`; `fn2-core-idle-deadline` supplies the accompanying sleep
-bound (`2^60-1` means no requested deadline). `:more` preserves runnable work,
+bound (`*fn2-no-deadline*` means no requested deadline). `:more` preserves runnable work,
 `:idle` permits adapter progress, and `:stop` records a sticky stop.
 
-The control row's `stop-reason` uses the declared `fn2-stop-reason` enum;
+The scalar control field `stop-reason` uses the declared `fn2-stop-reason` enum;
 `fn2-core-stop` retains the first reason. `:none` means no stop. The corruption
 reasons are `:issue-unreserve`, `:issue-range`, `:issue-capability`,
 `:issue-storage`, `:issue-cancel-target`, `:issue-wake`, `:issue-enqueue`, `:harvest-fifo`,
@@ -214,9 +245,11 @@ The independent checker measures visible I/O and observation work; internal
 scalar operations and hashing remain code-reviewed bounds. Both loops reserve
 one maximum transition before executing another, retaining the existing
 `H*24 + K*4129 + 1` turn cost bound as harvest bytes consume that allowance.
-Exhaustion returns `:more` with pending work retained. The machine
-initializer requires those execution-quanta profile values. Resident capacities
-remain profile parameters.
+Exhaustion returns `:more` with pending work retained. The caps are machine declarations, exported as `*NAME-RUN-BYTES*`,
+`*NAME-RUN-STEPS*` and `*NAME-RUN-DESCRIPTORS*`; the profile has no
+execution-quanta fields. Resident capacities and `:trace-capacity` remain
+profile parameters. `fn2-control` contains scalar fields; the recovery image
+contains a byte-array field without a dummy column.
 
 `defmachine` owns both phase dispatch and `:observes` event routing. Declarations
 name functions, never pasted code forms. The fixed run convention is
@@ -311,7 +344,8 @@ one pending accept; an accepted capability that cannot obtain a connection
 row and RX slot is closed. Scribe encodes the A3 sector format incrementally,
 writes, waits for its fence, reads and verifies; failed write/fence outcomes
 stop the probe without retry. Its `completed` frontier advances only on the
-successful fence, and `verified` advances after complete readback.
+successful fence (E4), and `verified` advances after complete readback
+(E2–E3, without a further durability inference).
 
 `fn2-request-wake` coalesces the earliest explicitly registered wake
 requirement. The timer/grant service emits `ArmWake` with dedicated u60
@@ -344,8 +378,9 @@ receive the same posted operation state (including submission acknowledgments,
 clock and signals) and physically written input-loan bytes. Initialization and
 process-death reset establish a fresh copy; no completed turn is copied back
 into the reference. Four service flags start at zero; layer A only clears them.
-A mismatch fails the scenario at that turn and prints the first differing
-projection field.
+A mismatch fails the scenario at that turn and prints `:selection` with the
+first differing transition field, or `:state` with the first differing
+projection field when selections agree. The shared adapter outcome obeys E1–E5.
 
 `fn2-representation-relation(concrete, reference-core, reference-lists)`
 compares ordered outbox entries and every operation field (including kind,
@@ -402,7 +437,8 @@ completed FUA, not the provenance of arbitrary media bytes. A live tear changes
 media bytes without advancing that stamp, so an honest fence still persists its
 covered write. Dirty means `stamp > durable-stamp`; a reopened stale cache never
 authorizes a crash landing over a newer durable version, even beside dirty bytes
-in the same 512-byte unit. FUA persists only its own request.
+in the same 512-byte unit. FUA persists only its own request. These frontiers
+implement E4–E5; readback supplies no additional ordering (E3).
 
 `:fence-slots` defaults to 1 per simulated storage domain; both tiny and concrete
 profiles specify 1, independently of `O`. Operation tokens map to occupied slots;
@@ -424,11 +460,17 @@ zero; this probe format is replaced by layer B, not a persistent namespace
 limit for fn2. `A-INTEGRITY-EVIDENCE` restricts use of this checksum to evidence
 against the simulator's accidental faults; it makes no cryptographic claim.
 Recovery receives an explicit acknowledged contiguous sequence frontier;
-sector validity alone does not establish acknowledgement.
+sector validity alone does not establish acknowledgement (E3–E5).
 `fn2-recover-start` / `fn2-recover-step` retain only scalar scan progress;
 each step reads one sector and writes no storage. A death discards that
 progress and starts again. `fn2-recover-stub` uses the same step to scan the
 whole supplied byte image.
+
+Every public `:broad` echo, pool, device and scribe run also executes physical
+ABI probes with two outstanding operations. Four counters must each reach one:
+socket and storage completions posted against submission order (E1), and an
+overlapping read returning the old and new values (E2). Counts require the
+posted FIFO order and harvested bytes, not merely a requested schedule.
 
 **Fault selection and landing coverage (R5d).** The simulator reserves 26 u8
 probability cells, one per fault class. An enabled class draws a threshold in

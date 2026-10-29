@@ -10,20 +10,20 @@
   ((gen :u60) (base :u60) (cap :u32)
    (state (:enum fn2-pool-state (:free :workspace :leased-in :leased-out :handed :retired)))
    (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
-   (lease-op-slot :u32) (lease-op-gen :u60) (lease-off :u32) (lease-len :u32)
+   (lease-op-slot :link) (lease-op-gen :u60) (lease-off :u32) (lease-len :u32)
    (out-count :u32) (fill :u32)
-   (hand-to-kind :u8) (hand-to-slot :u32) (hand-to-gen :u60)
-   (next-free :u32) (class :u8))
+   (hand-to-kind :u8) (hand-to-slot :link) (hand-to-gen :u60)
+   (next-free :link) (class :u8))
   :rows-bound 4294967296
   :init-name fn2-pool-columns-init
   :extra-fields
   ((fn2-pool-data :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Byte backing store, addressed by each slot base and capacity.")
-   (fn2-pool-class-heads :type (array (unsigned-byte 32) (16)) :initially 4294967295 :why "Pool-wide allocation metadata, independent of slot rows.")
-   (fn2-pool-class-counts :type (array (unsigned-byte 32) (16)) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")
-   (fn2-pool-class-sizes :type (array (unsigned-byte 32) (16)) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")
-   (fn2-pool-nclasses :type (integer 0 16) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")
-   (fn2-pool-gen-limit :type (unsigned-byte 60) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")
-   (fn2-pool-retired-count :type (unsigned-byte 32) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")))
+   (fn2-pool-class-heads :type (array (unsigned-byte 32) (16)) :initially *fn2-none* :why "One free-chain head per size class, not per slot.")
+   (fn2-pool-class-counts :type (array (unsigned-byte 32) (16)) :initially 0 :why "Free capacity is counted by size class.")
+   (fn2-pool-class-sizes :type (array (unsigned-byte 32) (16)) :initially 0 :why "Class geometry has a different cardinality from slots.")
+   (fn2-pool-nclasses :type (integer 0 16) :initially 0 :why "Number of configured size classes governs class-array access.")
+   (fn2-pool-gen-limit :type (unsigned-byte 60) :initially 0 :why "A single retirement limit applies to all pool slots.")
+   (fn2-pool-retired-count :type (unsigned-byte 32) :initially 0 :why "Aggregate retired capacity survives slot reuse.")))
 
 ; Expansion only: runtime is a straight let* of scalar column writes.
 
@@ -82,7 +82,7 @@
                            (out-count 0) (fill 0)
                            (hand-to-kind 0) (hand-to-slot 0) (hand-to-gen 0)
                            (next-free (if (and (< 1 left) (< (+ 1 slot) (fn2-pool-rows fn2-pool)))
-                                          (+ 1 slot) 4294967295))
+                                          (+ 1 slot) *fn2-none*))
                            (class class))))
       (fn2-pool-carve-slots (- left 1) (+ slot 1) (+ base cap) cap class gen fn2-pool))))
 
@@ -113,7 +113,7 @@
            (fn2-pool (fn2-pool-carve-slots count slot base bytes class gen fn2-pool))
            (fn2-pool (update-fn2-pool-class-headsi
                        class (if (and (< 0 count) (< slot nslots))
-                                 slot 4294967295) fn2-pool))
+                                 slot *fn2-none*) fn2-pool))
            (fn2-pool (update-fn2-pool-class-countsi class count fn2-pool))
            (fn2-pool (update-fn2-pool-class-sizesi class bytes fn2-pool)))
       (fn2-pool-carve-classes (cdr classes) (+ 1 class) (+ slot count)
@@ -164,7 +164,7 @@
       (mv :bounds 0 0 fn2-pool)
     (let ((slot (fn2-pool-class-headsi class fn2-pool))
           (count (fn2-pool-class-countsi class fn2-pool)))
-      (cond ((or (= count 0) (= slot 4294967295)) (mv :exhausted 0 0 fn2-pool))
+      (cond ((or (= count 0) (= slot *fn2-none*)) (mv :exhausted 0 0 fn2-pool))
             ((>= slot (fn2-pool-rows fn2-pool)) (mv :bounds 0 0 fn2-pool))
             ((not (equal (fn2-pool-state slot fn2-pool) *fn2-pool-state-free*))
              (mv :state 0 0 fn2-pool))
@@ -283,7 +283,7 @@
     (cond ((not (eq code :ok)) (mv code fn2-pool))
           ((not (and (unsigned-byte-p 32 off) (unsigned-byte-p 32 len) (<= (+ off len) (fn2-pool-fill slot fn2-pool))))
            (mv :bounds fn2-pool))
-          ((= (fn2-pool-out-count slot fn2-pool) 4294967295) (mv :exhausted fn2-pool))
+          ((= (fn2-pool-out-count slot fn2-pool) *fn2-none*) (mv :exhausted fn2-pool))
           (t (let* ((count (+ 1 (fn2-pool-out-count slot fn2-pool)))
                     (fn2-pool (fn2-pool-put slot (state *fn2-pool-state-leased-out*) (out-count count))))
                (mv :ok fn2-pool))))))
@@ -445,7 +445,7 @@
 
 ; Guard class, queried from ACL2's world, is an executable-path acceptance gate.
 (assert-event
- (fn2-profile-exports-compliant-p
+ (fn2-assert-compliant-p
   '(fn2-pool-init fn2-pool-class-for fn2-pool-reserve
     fn2-pool-release fn2-pool-lease-in fn2-pool-adapter-write
     fn2-pool-complete-in fn2-pool-lease-out fn2-pool-release-out
@@ -531,7 +531,7 @@
 (defun fn2-pool-free-chain (fuel slot fn2-pool)
   (declare (xargs :stobjs fn2-pool :verify-guards nil))
   (declare (xargs :measure (nfix fuel)))
-  (cond ((equal slot 4294967295) nil)
+  (cond ((equal slot *fn2-none*) nil)
         ((or (zp fuel) (not (fn2-pool-logical-slotp slot fn2-pool))) (list :bad-chain))
         (t (cons slot (fn2-pool-free-chain (- fuel 1) (fn2-pool-next-free slot fn2-pool) fn2-pool)))))
 

@@ -6,6 +6,13 @@
 (include-book "../sim/check")
 (include-book "std/util/bstar" :dir :system)
 
+(assert-event
+ (let ((selection (fn2-trace-classify 0 '(:machine 7 8) '(:generation) nil))
+       (projection (fn2-trace-classify 0 nil nil '(:steps 3 4))))
+   (prog2$ (cw "TRACE LABEL CONTROLS selection=~x0 state=~x1~%" selection projection)
+     (and (equal selection '(:selection :machine 7 8))
+          (equal projection '(:state :steps 3 4))))))
+
 ; The launcher writes HEAD and dirty runtime/test source hashes for this run.
 ; No checked-in revision can silently label a later acceptance.
 (ld "../../build/scenario-revision.lsp" :ld-error-action :error)
@@ -201,6 +208,15 @@
          ((unless (and found (eq status :pass))) (mv status fn2-core fn2-own)))
       (fn2-scenario-harvest (- left 1) fn2-core fn2-own))))
 (in-theory (disable fn2-scenario-harvest))
+(ld "../sim/abi-evidence.lisp" :ld-error-action :error)
+
+(defun fn2-scenario-check-observations (status fn2-sim)
+  (declare (xargs :stobjs fn2-sim :verify-guards nil))
+  (cond ((< 0 (fn2-sim-lost fn2-sim)) (mv '(:fail :work :trace :observation-lost) fn2-sim))
+        ((eq status :pass) (let ((fn2-sim (update-fn2-sim-ring-unread 0 fn2-sim)))
+                              (mv status fn2-sim)))
+        (t (mv status fn2-sim))))
+(in-theory (disable fn2-scenario-check-observations))
 
 (defun fn2-scenario-rounds (left step mask fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil
@@ -232,6 +248,7 @@
          (status (fn2-check-own fn2-core fn2-own))
          ((unless (eq status :pass)) (mv status mask fn2-core fn2-sim fn2-own))
          ((mv status fn2-core fn2-own) (fn2-scenario-harvest 2 fn2-core fn2-own))
+         ((mv status fn2-sim) (fn2-scenario-check-observations status fn2-sim))
          ((unless (eq status :pass)) (mv status mask fn2-core fn2-sim fn2-own)))
       (fn2-scenario-rounds (- left 1) (+ 1 (nfix step)) mask fn2-core fn2-sim fn2-own))))
 (in-theory (disable fn2-scenario-rounds))
@@ -313,7 +330,7 @@
                            :use ((:instance fn2-test-countdown (x left))
                                  (:instance fn2-test-count-op (x left)))))))
   (if (zp left) nil
-    (let ((i (mod (- (fn2-sim-ring-head fn2-sim) left) 64)))
+    (let ((i (mod (- (fn2-sim-ring-head fn2-sim) left) *fn2-sim-observation-capacity*)))
       (progn$ (cw "OBS op=~x0 gen=~x1 cell=~x2 event=~x3 outcome=~x4 reason=~x5 count=~x6 aux0=~x7 aux1=~x8 fault=~x9~%"
                   (fn2-sim-ring-opi i fn2-sim) (fn2-sim-ring-geni i fn2-sim)
                   (fn2-sim-ring-celli i fn2-sim) (fn2-sim-ring-eventi i fn2-sim)
@@ -338,8 +355,8 @@
          (- run-mask)
          (status (if (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*) status
                    (list :fail :executor-stop (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))))
-         (mask (logior (nfix mask) (fn2-scenario-action-mask 14 fn2-sim)
-                       (ash (fn2-scenario-fault-mask 26 fn2-sim) 14))))
+         (mask (logior (nfix mask) (fn2-scenario-action-mask *fn2-action-count* fn2-sim)
+                       (ash (fn2-scenario-fault-mask *fn2-fault-count* fn2-sim) *fn2-action-count*))))
       (if (eq status :pass)
           (fn2-scenario-runs (+ 1 (nfix seed)) (- left 1) profile (+ 1 (nfix passes))
                              mask fn2-core fn2-sim fn2-own)
@@ -359,15 +376,16 @@
         (mv-let (passes failure mask fn2-core fn2-sim)
           (with-local-stobj fn2-own
             (mv-let (passes failure mask fn2-core fn2-sim fn2-own)
-              (fn2-scenario-runs first-seed nruns profile 0 0 fn2-core fn2-sim fn2-own)
+              (b* (((mv fn2-core fn2-sim fn2-own) (fn2-abi-check fn2-core fn2-sim fn2-own)))
+                (fn2-scenario-runs first-seed nruns profile 0 0 fn2-core fn2-sim fn2-own))
               (mv passes failure mask fn2-core fn2-sim)))
           (progn$ (cw "POOL STOP reason=~x0~%" (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))
                   (mv passes failure mask fn2-core))))
       (progn$ (cw "POOL REVISION ~x0~%" *fn2-scenario-revision*)
               (cw "POOL SCENARIOS profile=~x0 first-seed=~x1 runs=~x2 passed=~x3 first-failure=~x4 action-mask=~x5 fault-landing-mask=~x6 OWN=~x7~%"
                   (if (equal profile *fn2-profile-tiny-near-limit*) :tiny-near-limit :tiny)
-                  first-seed nruns passes failure (logand mask 16383)
-                  (ash mask -14) (if failure :fail :pass))
+                  first-seed nruns passes failure (logand mask (- (expt 2 *fn2-action-count*) 1))
+                  (ash mask (- *fn2-action-count*)) (if failure :fail :pass))
               (mv passes failure)))))
 (in-theory (disable fn2-sim-run-pool-scenarios))
 

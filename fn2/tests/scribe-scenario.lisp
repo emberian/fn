@@ -3,7 +3,7 @@
 ; window. The durable image is the same one the simulated adapter mutated.
 (in-package "ACL2")
 (defconst *fn2-scribe-profile*
-  (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*))
+  (put-assoc-equal :pool-classes `((8 . ,*fn2-format-sector-bytes*) (4 . 65536)) *fn2-profile-tiny*))
 
 (defun fn2-scribe-action-total (fn2-sim)
   (declare (xargs :stobjs fn2-sim :verify-guards nil))
@@ -18,23 +18,23 @@
     (if (not found) fn2-sim
       (let ((kind (fn2-sim-kind slot fn2-sim)))
         (cond ((and (eq scenario :short-write) (equal kind *fn2-action-write*))
-               (fn2-sim-force-fault 24 fn2-sim))
+               (fn2-sim-force-fault *fn2-fault-short-write* fn2-sim))
               ((and (eq scenario :fence-failure) (equal kind *fn2-action-fence*))
-               (fn2-sim-force-fault 23 fn2-sim))
+               (fn2-sim-force-fault *fn2-fault-flush-io* fn2-sim))
               ((and (eq scenario :misdirected-write) (equal kind *fn2-action-write*))
-               (fn2-sim-force-fault 9 fn2-sim))
+               (fn2-sim-force-fault *fn2-fault-miswrite* fn2-sim))
               ((and (eq scenario :read-failure) (equal kind *fn2-action-read*))
-               (fn2-sim-force-fault 6 fn2-sim))
+               (fn2-sim-force-fault *fn2-fault-read-io* fn2-sim))
               ((and (eq scenario :misread) (equal kind *fn2-action-read*))
-               (fn2-sim-force-fault 8 fn2-sim))
+               (fn2-sim-force-fault *fn2-fault-misread* fn2-sim))
               ((and (eq scenario :bitrot) (equal kind *fn2-action-read*))
-               (fn2-sim-force-fault 7 fn2-sim))
+               (fn2-sim-force-fault *fn2-fault-bitrot* fn2-sim))
               ((and (eq scenario :no-space) (equal kind *fn2-action-write*))
-               (fn2-sim-force-fault 12 fn2-sim))
+               (fn2-sim-force-fault *fn2-fault-no-space* fn2-sim))
               ((and (eq scenario :dead) (equal kind *fn2-action-write*))
-               (fn2-sim-force-fault 13 fn2-sim))
+               (fn2-sim-force-fault *fn2-fault-dead* fn2-sim))
               ((and (eq scenario :lying-fence) (equal kind *fn2-action-fence*))
-               (fn2-sim-force-fault 10 fn2-sim))
+               (fn2-sim-force-fault *fn2-fault-lying-flush* fn2-sim))
               (t fn2-sim))))))
 (in-theory (disable fn2-scribe-test-fault))
 
@@ -55,6 +55,7 @@
        ((mv verdict cert fn2-core fn2-own)
         (fn2-echo-check-turn *fn2-scribe-profile* before trace nobs nvisits nactions
                               fn2-core fn2-own))
+       ((mv verdict fn2-sim) (fn2-scenario-check-observations verdict fn2-sim))
        (certificate (fn2-echo-sum-certificate certificate cert))
        ((unless (eq verdict :pass)) (mv verdict certificate fn2-core fn2-sim fn2-own fn2-ref-core))
        ((when (= (fn2-machine-stopped id fn2-core) 1))
@@ -114,9 +115,11 @@
        (verified (fn2-machine-verified id fn2-core))
        (writes (fn2-sim-action-countsi *fn2-action-write* fn2-sim))
        (fences (fn2-sim-action-countsi *fn2-action-fence* fn2-sim))
-       (fault-id (cdr (assoc-eq scenario '((:short-write . 24) (:fence-failure . 23)
-                       (:misdirected-write . 9) (:read-failure . 6) (:misread . 8)
-                       (:bitrot . 7) (:no-space . 12) (:dead . 13) (:lying-fence . 10)))))
+       (fault-id (cdr (assoc-eq scenario `((:short-write . ,*fn2-fault-short-write*)
+                       (:fence-failure . ,*fn2-fault-flush-io*) (:misdirected-write . ,*fn2-fault-miswrite*)
+                       (:read-failure . ,*fn2-fault-read-io*) (:misread . ,*fn2-fault-misread*)
+                       (:bitrot . ,*fn2-fault-bitrot*) (:no-space . ,*fn2-fault-no-space*)
+                       (:dead . ,*fn2-fault-dead*) (:lying-fence . ,*fn2-fault-lying-flush*)))))
        (fault-hit (or (eq scenario :none)
                       (and (natp fault-id) (< 0 (fn2-sim-hitsi fault-id fn2-sim)))))
        ; The ack is captured externally before death. Core restart cannot
@@ -172,12 +175,13 @@
             (mv-let (answer fn2-core fn2-sim fn2-own fn2-ref-core)
               (with-local-stobj fn2-recovery-image
                 (mv-let (status results certificate fn2-core fn2-sim fn2-own fn2-recovery-image fn2-ref-core)
-                  (fn2-scribe-cases
+                  (b* (((mv fn2-core fn2-sim fn2-own) (fn2-abi-check fn2-core fn2-sim fn2-own)))
+                   (fn2-scribe-cases
                    '((:none 0) (:none 1) (:none 2) (:none 3) (:none 4) (:none 5)
                      (:none 6) (:none 7) (:none 8) (:none 9)
                      (:short-write 20) (:fence-failure 20) (:misdirected-write 20) (:read-failure 20)
                      (:misread 20) (:no-space 20) (:dead 20) (:lying-fence 20) (:bitrot 20))
-                   1000 nil nil fn2-core fn2-sim fn2-own fn2-recovery-image fn2-ref-core)
+                   1000 nil nil fn2-core fn2-sim fn2-own fn2-recovery-image fn2-ref-core))
                   (progn$
                    (if (eq status :pass) nil (fn2-echo-failure-trace fn2-core))
                    (cw "WORK BYTES SCRIBE charged=~x0 outbox=~x1 harvested=~x2~%"
