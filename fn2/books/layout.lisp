@@ -17,7 +17,7 @@
    ; Sticky wide-varint flag; never a high limb of a resident value.
    (fn2-fields-high :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: sticky wide-varint flag.")
    (fn2-fields-size :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: size of the current field.")
-   (fn2-fields-ref :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: saved reference cursor.")
+   (fn2-fields-resume-ref :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: saved reference cursor.")
    (fn2-fields-phase :type (unsigned-byte 8) :initially 0 :why "Streaming codec resume state: phase of the active layout.")
    (fn2-fields-next :type (unsigned-byte 32) :initially 0 :why "Streaming codec resume state: next input offset to resume at.")))
 
@@ -98,7 +98,7 @@
          (fn2-fields (update-fn2-fields-acc 0 fn2-fields))
          (fn2-fields (update-fn2-fields-high 0 fn2-fields))
          (fn2-fields (update-fn2-fields-size 0 fn2-fields))
-         (fn2-fields (update-fn2-fields-ref 0 fn2-fields))
+         (fn2-fields (update-fn2-fields-resume-ref 0 fn2-fields))
          (fn2-fields (update-fn2-fields-phase 0 fn2-fields))
          (fn2-fields (update-fn2-fields-next 0 fn2-fields))) fn2-fields))
 
@@ -259,7 +259,7 @@
            (fn2-fields (update-fn2-fields-acc v fn2-fields))
            (fn2-fields (update-fn2-fields-high hi fn2-fields))
            (fn2-fields (update-fn2-fields-size size fn2-fields))
-           (fn2-fields (update-fn2-fields-ref ref fn2-fields))
+           (fn2-fields (update-fn2-fields-resume-ref ref fn2-fields))
            (fn2-fields (update-fn2-fields-phase phase fn2-fields))
            (fn2-fields (update-fn2-fields-next next fn2-fields))) fn2-fields)))
 (defthm fn2-layout-save-wfp
@@ -288,7 +288,7 @@
        (v (if resume (fn2-fields-acc fn2-fields) 0))
        (hi (if resume (fn2-fields-high fn2-fields) 0))
        (size (if resume (fn2-fields-size fn2-fields) 0))
-       (ref (if resume (fn2-fields-ref fn2-fields) 0))
+       (ref (if resume (fn2-fields-resume-ref fn2-fields) 0))
        (phase (if resume (fn2-fields-phase fn2-fields) 0))
        (next (if (and resume (not (equal (fn2-fields-next fn2-fields) 0))) (fn2-fields-next fn2-fields) off))
        ((unless (and (<= i (len layout)) (<= off next) (<= next end))) (mv :bounds off fn2-fields))

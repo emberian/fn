@@ -245,7 +245,21 @@
                 (:fence :storage-job :storage-window) (:fence-result :storage-job :storage-window)
                 (:reset :storage-job :storage-window) (:read :storage-job :storage-window)
                 (:read-result :storage-job :storage-window) (:verify :storage-job :storage-window)
-                (:next :storage-job :storage-window) (:stopped :storage-job :storage-window))))
+                (:next :storage-job :storage-window) (:stopped :storage-job :storage-window))
+    ; Layer B's commit batch (interim row until R7 moves holds into defmachine):
+    ; membership from admission to publish, its pool workspaces until drained,
+    ; its storage job while writes and the fence are outstanding, and the
+    ; domain fence slot in fence. Uncertain retains what it held (B3c).
+    (fn2-commit (:free) (:collect :batch-membership :storage-window)
+                (:seal :batch-membership :storage-window)
+                (:dependencies :batch-membership :storage-job :storage-window)
+                (:log-write :batch-membership :storage-job :storage-window)
+                (:fence :batch-membership :storage-job :storage-window :fence-slot)
+                (:durable :batch-membership :storage-window)
+                (:install :batch-membership :storage-window)
+                (:publish :batch-membership :storage-window)
+                (:notify :storage-window) (:draining :storage-window)
+                (:uncertain :batch-membership :storage-job :storage-window :fence-slot))))
 ; A's wait reasons are no longer integers mapped here: defmachine's common
 ; wait-reason enum is (:none :completion . the kinds of *fn2-resource-order*).
 
