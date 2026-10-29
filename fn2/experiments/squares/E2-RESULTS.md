@@ -509,3 +509,5 @@ lines: checks 119, choices 80, runner 371, fixtures 88; excluded from new source
 | `rs-summarize-related` | `defthm` | 9 |
 | `rs-summarize-adequate` | `defthm` | 7 |
 
+
+Generated files `e2/evidence.sexp`, `e2/q1-campaign-evidence.sexp` and `e2/q1-translated.sexp` are git-ignored; `timeout 1800 python3 fn2/experiments/squares/e2/run.py` regenerates them (the tracked `e2/q1-pass2-translated.sha256` checks the last).

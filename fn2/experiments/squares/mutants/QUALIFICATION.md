@@ -94,3 +94,5 @@ these summaries and is not counted as another run. One initial M6 launcher
 left an empty log and its PID was no longer running; it produced no measurement
 or qualification result. `qualification-M6-retry-20261028` is the actual M6
 baseline qualification. No qualification process remains running.
+
+Records named here are regenerable and git-ignored; `E1-RESULTS.md` ("Raw records") gives the commands.

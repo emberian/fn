@@ -4,106 +4,106 @@ Main matrix: c1/default/initial. Supplied listener/send/data rows are local clai
 
 | Mutation | Mode | Profile/declaration/start | Seed | Result/contract | Seconds | Trials | C/R/PC/PR/OC/OR | Boundary | Known ORIGINAL | Evidence |
 |---|---|---|---:|---|---:|---:|---|---:|---:|---|
-| M1 | baseline | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 0.863454 | 3 | 99995/100005/0/0/0/0 | — | 2 | [record](pass2/results/M1-baseline-c1-default-initial-1.sexp) |
-| M1 | baseline | c1/default/initial | 20261028 | :CENSORED/:TRANSITIONS | 0.774047 | 3 | 99997/100003/0/0/0/0 | — | 2 | [record](pass2/results/M1-baseline-c1-default-initial-20261028.sexp) |
-| M1 | baseline | c1/default/initial | 314159265 | :CENSORED/:TRANSITIONS | 0.686899 | 3 | 99995/100005/0/0/0/0 | — | 2 | [record](pass2/results/M1-baseline-c1-default-initial-314159265.sexp) |
-| M1 | dedup | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 18.629313 | 5374 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M1-dedup-c1-default-initial-1.sexp) |
-| M1 | iterative | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 5.597152 | 5627 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M1-iterative-c1-default-initial-1.sexp) |
-| M1 | iterative | c1/default/listener | 1 | :FOUND/:G2 | 0.010212 | 1 | 0/0/414/414/0/0 | 27 | 0 | [record](pass2/results/M1-iterative-c1-default-listener-1-schedule.sexp) |
-| M1 | iterative | c1/default/send | 1 | :FOUND/:G2 | 0.368716 | 1 | 0/0/15782/15782/0/0 | 26 | 0 | [record](pass2/results/M1-iterative-c1-default-send-1-schedule.sexp) |
-| M1 | random | c1/default/initial | 1 | :FOUND/:G2 | 0.375256 | 1 | 70/70/13252/13252/0/0 | 27 | 0 | [record](pass2/results/M1-random-c1-default-initial-1-schedule.sexp) |
-| M1 | random | c1/default/initial | 20261028 | :FOUND/:G2 | 0.526972 | 1 | 112/112/18376/18376/0/0 | 39 | 0 | [record](pass2/results/M1-random-c1-default-initial-20261028-schedule.sexp) |
-| M1 | random | c1/default/initial | 314159265 | :FOUND/:G2 | 0.022960 | 2 | 540/540/324/324/0/0 | 37 | 0 | [record](pass2/results/M1-random-c1-default-initial-314159265-schedule.sexp) |
-| M2 | baseline | c1/default/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.009501 | 1 | 266/266/0/0/0/0 | 30 | 0 | [record](pass2/results/M2-baseline-c1-default-initial-1-schedule.sexp) |
-| M2 | baseline | c1/default/initial | 20261028 | :FOUND/:CLIENT-ORACLE | 0.001722 | 1 | 106/106/0/0/0/0 | 13 | 0 | [record](pass2/results/M2-baseline-c1-default-initial-20261028-schedule.sexp) |
-| M2 | baseline | c1/default/initial | 314159265 | :FOUND/:CLIENT-ORACLE | 0.002560 | 1 | 105/105/0/0/0/0 | 12 | 0 | [record](pass2/results/M2-baseline-c1-default-initial-314159265-schedule.sexp) |
-| M2 | dedup | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 18.579044 | 5374 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M2-dedup-c1-default-initial-1.sexp) |
-| M2 | dedup | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 3.003948 | 3 | 0/0/99998/100002/0/0 | — | 0 | [record](pass2/results/M2-dedup-c2-data-data-1.sexp) |
-| M2 | dedup | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 16.987952 | 5374 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M2-dedup-c2-data-initial-1.sexp) |
-| M2 | iterative | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 5.630289 | 5627 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M2-iterative-c1-default-initial-1.sexp) |
-| M2 | iterative | c1/default/listener | 1 | :CENSORED/:TRANSITIONS | 2.365245 | 1104 | 0/0/99996/100004/0/0 | — | 0 | [record](pass2/results/M2-iterative-c1-default-listener-1.sexp) |
-| M2 | iterative | c1/default/send | 1 | :CENSORED/:TRANSITIONS | 2.387922 | 1106 | 0/0/99998/100002/0/0 | — | 0 | [record](pass2/results/M2-iterative-c1-default-send-1.sexp) |
-| M2 | iterative | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.660158 | 3 | 0/0/99998/100002/0/0 | — | 0 | [record](pass2/results/M2-iterative-c2-data-data-1.sexp) |
-| M2 | iterative | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 3.834288 | 5627 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M2-iterative-c2-data-initial-1.sexp) |
-| M2 | random | c1/default/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.649265 | 50 | 19340/19340/0/0/3174/3174 | 115 | 0 | [record](pass2/results/M2-random-c1-default-initial-1-schedule.sexp) |
-| M2 | random | c1/default/initial | 20261028 | :FOUND/:CLIENT-ORACLE | 0.253380 | 17 | 6030/6030/0/0/1946/1946 | 44 | 0 | [record](pass2/results/M2-random-c1-default-initial-20261028-schedule.sexp) |
-| M2 | random | c1/default/initial | 314159265 | :FOUND/:CLIENT-ORACLE | 0.248791 | 21 | 8744/8744/0/0/1302/1302 | 52 | 0 | [record](pass2/results/M2-random-c1-default-initial-314159265-schedule.sexp) |
-| M2 | random | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.133743 | 1 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M2-random-c2-data-data-1.sexp) |
-| M2 | random | c2/data/data | 20261028 | :CENSORED/:TRANSITIONS | 2.019519 | 1 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M2-random-c2-data-data-20261028.sexp) |
-| M2 | random | c2/data/data | 314159265 | :CENSORED/:TRANSITIONS | 2.845353 | 1 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M2-random-c2-data-data-314159265.sexp) |
-| M2 | random | c2/data/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.095922 | 6 | 2476/2476/0/0/646/646 | 110 | 0 | [record](pass2/results/M2-random-c2-data-initial-1-schedule.sexp) |
-| M2 | random | c2/data/initial | 20261028 | :CENSORED/:TRANSITIONS | 2.489630 | 23 | 8772/8772/89138/89138/2090/2090 | — | 0 | [record](pass2/results/M2-random-c2-data-initial-20261028.sexp) |
-| M2 | random | c2/data/initial | 314159265 | :CENSORED/:TRANSITIONS | 2.391383 | 2 | 502/502/99232/99232/266/266 | — | 0 | [record](pass2/results/M2-random-c2-data-initial-314159265.sexp) |
-| M3 | baseline | c1/default/initial | 1 | :FOUND/:TURN-MONITORS | 0.000799 | 1 | 11/19/0/0/0/0 | 3 | 0 | [record](pass2/results/M3-baseline-c1-default-initial-1-schedule.sexp) |
-| M3 | baseline | c1/default/initial | 20261028 | :FOUND/:TURN-MONITORS | 0.001647 | 1 | 11/19/0/0/0/0 | 3 | 0 | [record](pass2/results/M3-baseline-c1-default-initial-20261028-schedule.sexp) |
-| M3 | baseline | c1/default/initial | 314159265 | :FOUND/:TURN-MONITORS | 0.001625 | 1 | 11/19/0/0/0/0 | 3 | 0 | [record](pass2/results/M3-baseline-c1-default-initial-314159265-schedule.sexp) |
-| M3 | dedup | c1/default/initial | 1 | :FOUND/:G1 | 0.649553 | 174 | 0/0/2651/2651/36/36 | 4 | 0 | [record](pass2/results/M3-dedup-c1-default-initial-1-schedule.sexp) |
-| M3 | iterative | c1/default/initial | 1 | :FOUND/:G1 | 0.183651 | 208 | 0/0/3049/3049/36/36 | 4 | 0 | [record](pass2/results/M3-iterative-c1-default-initial-1-schedule.sexp) |
-| M3 | iterative | c1/default/listener | 1 | :FOUND/:G1 | 0.003516 | 1 | 0/0/19/19/38/38 | 7 | 0 | [record](pass2/results/M3-iterative-c1-default-listener-1-schedule.sexp) |
-| M3 | iterative | c1/default/send | 1 | :FOUND/:G1 | 0.003736 | 1 | 0/0/19/19/38/38 | 7 | 0 | [record](pass2/results/M3-iterative-c1-default-send-1-schedule.sexp) |
-| M3 | random | c1/default/initial | 1 | :FOUND/:G1 | 0.002352 | 1 | 17/17/0/0/36/36 | 7 | 0 | [record](pass2/results/M3-random-c1-default-initial-1-schedule.sexp) |
-| M3 | random | c1/default/initial | 20261028 | :FOUND/:G1 | 0.002823 | 1 | 17/17/0/0/36/36 | 4 | 0 | [record](pass2/results/M3-random-c1-default-initial-20261028-schedule.sexp) |
-| M3 | random | c1/default/initial | 314159265 | :FOUND/:G1 | 0.003894 | 1 | 19/19/0/0/38/38 | 10 | 0 | [record](pass2/results/M3-random-c1-default-initial-314159265-schedule.sexp) |
-| M4 | baseline | c1/default/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.346015 | 2 | 50386/50386/0/0/0/0 | 41 | 1 | [record](pass2/results/M4-baseline-c1-default-initial-1-schedule.sexp) |
-| M4 | baseline | c1/default/initial | 20261028 | :FOUND/:CLIENT-ORACLE | 0.387680 | 2 | 50423/50423/0/0/0/0 | 34 | 1 | [record](pass2/results/M4-baseline-c1-default-initial-20261028-schedule.sexp) |
-| M4 | baseline | c1/default/initial | 314159265 | :FOUND/:CLIENT-ORACLE | 0.001902 | 1 | 135/135/0/0/0/0 | 15 | 0 | [record](pass2/results/M4-baseline-c1-default-initial-314159265-schedule.sexp) |
-| M4 | dedup | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 17.341163 | 5374 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M4-dedup-c1-default-initial-1.sexp) |
-| M4 | dedup | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.458866 | 3 | 0/0/99998/100002/0/0 | — | 0 | [record](pass2/results/M4-dedup-c2-data-data-1.sexp) |
-| M4 | dedup | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 18.720881 | 5374 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M4-dedup-c2-data-initial-1.sexp) |
-| M4 | iterative | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 4.082319 | 5627 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M4-iterative-c1-default-initial-1.sexp) |
-| M4 | iterative | c1/default/listener | 1 | :CENSORED/:TRANSITIONS | 2.659340 | 1104 | 0/0/99996/100004/0/0 | — | 0 | [record](pass2/results/M4-iterative-c1-default-listener-1.sexp) |
-| M4 | iterative | c1/default/send | 1 | :CENSORED/:TRANSITIONS | 2.745536 | 1106 | 0/0/99998/100002/0/0 | — | 0 | [record](pass2/results/M4-iterative-c1-default-send-1.sexp) |
-| M4 | iterative | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.545903 | 3 | 0/0/99998/100002/0/0 | — | 0 | [record](pass2/results/M4-iterative-c2-data-data-1.sexp) |
-| M4 | iterative | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 5.134768 | 5627 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M4-iterative-c2-data-initial-1.sexp) |
-| M4 | random | c1/default/initial | 1 | :FOUND/:CLIENT-ORACLE | 1.437136 | 108 | 47620/47620/0/0/2970/2970 | 123 | 0 | [record](pass2/results/M4-random-c1-default-initial-1-schedule.sexp) |
-| M4 | random | c1/default/initial | 20261028 | :FOUND/:CLIENT-ORACLE | 0.277536 | 21 | 8924/8924/0/0/348/348 | 70 | 0 | [record](pass2/results/M4-random-c1-default-initial-20261028-schedule.sexp) |
-| M4 | random | c1/default/initial | 314159265 | :FOUND/:CLIENT-ORACLE | 0.373756 | 36 | 16104/16104/0/0/506/506 | 90 | 0 | [record](pass2/results/M4-random-c1-default-initial-314159265-schedule.sexp) |
-| M4 | random | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.588798 | 1 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M4-random-c2-data-data-1.sexp) |
-| M4 | random | c2/data/data | 20261028 | :CENSORED/:TRANSITIONS | 2.286784 | 1 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M4-random-c2-data-data-20261028.sexp) |
-| M4 | random | c2/data/data | 314159265 | :CENSORED/:TRANSITIONS | 2.159807 | 1 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/M4-random-c2-data-data-314159265.sexp) |
-| M4 | random | c2/data/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.981844 | 11 | 5218/5218/36800/36800/338/338 | 101 | 0 | [record](pass2/results/M4-random-c2-data-initial-1-schedule.sexp) |
-| M4 | random | c2/data/initial | 20261028 | :CENSORED/:TRANSITIONS | 2.361636 | 23 | 10490/10490/89508/89512/0/0 | — | 0 | [record](pass2/results/M4-random-c2-data-initial-20261028.sexp) |
-| M4 | random | c2/data/initial | 314159265 | :CENSORED/:TRANSITIONS | 2.442590 | 16 | 7060/7060/92622/92622/318/318 | — | 0 | [record](pass2/results/M4-random-c2-data-initial-314159265.sexp) |
-| M5 | baseline | c1/default/initial | 1 | :FOUND/:TURN-MONITORS | 0.000896 | 1 | 8/8/0/0/0/0 | 1 | 0 | [record](pass2/results/M5-baseline-c1-default-initial-1-schedule.sexp) |
-| M5 | baseline | c1/default/initial | 20261028 | :FOUND/:TURN-MONITORS | 0.000702 | 1 | 8/8/0/0/0/0 | 1 | 0 | [record](pass2/results/M5-baseline-c1-default-initial-20261028-schedule.sexp) |
-| M5 | baseline | c1/default/initial | 314159265 | :FOUND/:TURN-MONITORS | 0.000690 | 1 | 8/8/0/0/0/0 | 1 | 0 | [record](pass2/results/M5-baseline-c1-default-initial-314159265-schedule.sexp) |
-| M5 | dedup | c1/default/initial | 1 | :FOUND/:G1-ENTRY | 0.005125 | 3 | 0/0/0/0/16/16 | 1 | 0 | [record](pass2/results/M5-dedup-c1-default-initial-1-schedule.sexp) |
-| M5 | iterative | c1/default/initial | 1 | :FOUND/:G1-ENTRY | 0.002744 | 3 | 0/0/0/0/16/16 | 1 | 0 | [record](pass2/results/M5-iterative-c1-default-initial-1-schedule.sexp) |
-| M5 | iterative | c1/default/listener | 1 | :FOUND/:G1-ENTRY | 0.001519 | 1 | 0/0/0/0/16/16 | 1 | 0 | [record](pass2/results/M5-iterative-c1-default-listener-1-schedule.sexp) |
-| M5 | iterative | c1/default/send | 1 | :FOUND/:G1-ENTRY | 0.001548 | 1 | 0/0/0/0/16/16 | 1 | 0 | [record](pass2/results/M5-iterative-c1-default-send-1-schedule.sexp) |
-| M5 | random | c1/default/initial | 1 | :FOUND/:G1-ENTRY | 0.002884 | 1 | 0/0/0/0/16/16 | 1 | 0 | [record](pass2/results/M5-random-c1-default-initial-1-schedule.sexp) |
-| M5 | random | c1/default/initial | 20261028 | :FOUND/:G1-ENTRY | 0.001486 | 1 | 0/0/0/0/16/16 | 1 | 0 | [record](pass2/results/M5-random-c1-default-initial-20261028-schedule.sexp) |
-| M5 | random | c1/default/initial | 314159265 | :FOUND/:G1-ENTRY | 0.002065 | 1 | 0/0/0/0/16/16 | 1 | 0 | [record](pass2/results/M5-random-c1-default-initial-314159265-schedule.sexp) |
-| M6 | baseline | c1/default/initial | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.391370 | 2 | 50137/50137/0/0/0/0 | 9 | 1 | [record](pass2/results/M6-baseline-c1-default-initial-1-schedule.sexp) |
-| M6 | baseline | c1/default/initial | 20261028 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.001281 | 1 | 45/45/0/0/0/0 | 6 | 0 | [record](pass2/results/M6-baseline-c1-default-initial-20261028-schedule.sexp) |
-| M6 | baseline | c1/default/initial | 314159265 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.004723 | 1 | 241/241/0/0/0/0 | 28 | 0 | [record](pass2/results/M6-baseline-c1-default-initial-314159265-schedule.sexp) |
-| M6 | dedup | c1/default/initial | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.105229 | 35 | 0/0/414/414/16/16 | 3 | 0 | [record](pass2/results/M6-dedup-c1-default-initial-1-schedule.sexp) |
-| M6 | iterative | c1/default/initial | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.031927 | 38 | 0/0/430/430/16/16 | 3 | 0 | [record](pass2/results/M6-iterative-c1-default-initial-1-schedule.sexp) |
-| M6 | iterative | c1/default/listener | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.043147 | 11 | 0/0/990/990/90/90 | 17 | 0 | [record](pass2/results/M6-iterative-c1-default-listener-1-schedule.sexp) |
-| M6 | iterative | c1/default/send | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.044080 | 11 | 0/0/990/990/90/90 | 17 | 0 | [record](pass2/results/M6-iterative-c1-default-send-1-schedule.sexp) |
-| M6 | random | c1/default/initial | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.008032 | 1 | 70/70/0/0/70/70 | 19 | 0 | [record](pass2/results/M6-random-c1-default-initial-1-schedule.sexp) |
-| M6 | random | c1/default/initial | 20261028 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.005928 | 1 | 110/110/0/0/110/110 | 24 | 0 | [record](pass2/results/M6-random-c1-default-initial-20261028-schedule.sexp) |
-| M6 | random | c1/default/initial | 314159265 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.004864 | 1 | 54/54/0/0/54/54 | 13 | 0 | [record](pass2/results/M6-random-c1-default-initial-314159265-schedule.sexp) |
-| ORIGINAL | baseline | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 0.676644 | 3 | 99995/100005/0/0/0/0 | — | 2 | [record](pass2/results/ORIGINAL-baseline-c1-default-initial-1.sexp) |
-| ORIGINAL | baseline | c1/default/initial | 20261028 | :CENSORED/:TRANSITIONS | 0.620928 | 3 | 99997/100003/0/0/0/0 | — | 2 | [record](pass2/results/ORIGINAL-baseline-c1-default-initial-20261028.sexp) |
-| ORIGINAL | baseline | c1/default/initial | 314159265 | :CENSORED/:TRANSITIONS | 0.678375 | 3 | 99995/100005/0/0/0/0 | — | 2 | [record](pass2/results/ORIGINAL-baseline-c1-default-initial-314159265.sexp) |
-| ORIGINAL | dedup | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 14.974495 | 5374 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/ORIGINAL-dedup-c1-default-initial-1.sexp) |
-| ORIGINAL | dedup | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.468055 | 3 | 0/0/99998/100002/0/0 | — | 0 | [record](pass2/results/ORIGINAL-dedup-c2-data-data-1.sexp) |
-| ORIGINAL | dedup | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 17.497501 | 5374 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/ORIGINAL-dedup-c2-data-initial-1.sexp) |
-| ORIGINAL | iterative | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 3.952521 | 5627 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/ORIGINAL-iterative-c1-default-initial-1.sexp) |
-| ORIGINAL | iterative | c1/default/listener | 1 | :CENSORED/:TRANSITIONS | 2.662888 | 1104 | 0/0/99996/100004/0/0 | — | 0 | [record](pass2/results/ORIGINAL-iterative-c1-default-listener-1.sexp) |
-| ORIGINAL | iterative | c1/default/send | 1 | :CENSORED/:TRANSITIONS | 2.821956 | 1106 | 0/0/99998/100002/0/0 | — | 0 | [record](pass2/results/ORIGINAL-iterative-c1-default-send-1.sexp) |
-| ORIGINAL | iterative | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.613506 | 3 | 0/0/99998/100002/0/0 | — | 0 | [record](pass2/results/ORIGINAL-iterative-c2-data-data-1.sexp) |
-| ORIGINAL | iterative | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 4.662559 | 5627 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/ORIGINAL-iterative-c2-data-initial-1.sexp) |
-| ORIGINAL | random | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 2.145678 | 220 | 100000/100000/0/0/0/0 | — | 0 | [record](pass2/results/ORIGINAL-random-c1-default-initial-1.sexp) |
-| ORIGINAL | random | c1/default/initial | 20261028 | :CENSORED/:TRANSITIONS | 2.450316 | 221 | 99996/100004/0/0/0/0 | — | 0 | [record](pass2/results/ORIGINAL-random-c1-default-initial-20261028.sexp) |
-| ORIGINAL | random | c1/default/initial | 314159265 | :CENSORED/:TRANSITIONS | 2.588588 | 218 | 100000/100000/0/0/0/0 | — | 0 | [record](pass2/results/ORIGINAL-random-c1-default-initial-314159265.sexp) |
-| ORIGINAL | random | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.772799 | 1 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/ORIGINAL-random-c2-data-data-1.sexp) |
-| ORIGINAL | random | c2/data/data | 20261028 | :CENSORED/:TRANSITIONS | 2.528416 | 1 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/ORIGINAL-random-c2-data-data-20261028.sexp) |
-| ORIGINAL | random | c2/data/data | 314159265 | :CENSORED/:TRANSITIONS | 2.752441 | 1 | 0/0/100000/100000/0/0 | — | 0 | [record](pass2/results/ORIGINAL-random-c2-data-data-314159265.sexp) |
-| ORIGINAL | random | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 2.452780 | 11 | 5312/5312/94688/94688/0/0 | — | 0 | [record](pass2/results/ORIGINAL-random-c2-data-initial-1.sexp) |
-| ORIGINAL | random | c2/data/initial | 20261028 | :CENSORED/:TRANSITIONS | 2.357745 | 23 | 10508/10508/89492/89492/0/0 | — | 0 | [record](pass2/results/ORIGINAL-random-c2-data-initial-20261028.sexp) |
-| ORIGINAL | random | c2/data/initial | 314159265 | :CENSORED/:TRANSITIONS | 2.754185 | 23 | 10732/10732/89268/89268/0/0 | — | 0 | [record](pass2/results/ORIGINAL-random-c2-data-initial-314159265.sexp) |
+| M1 | baseline | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 0.863454 | 3 | 99995/100005/0/0/0/0 | — | 2 | record (`pass2/results/M1-baseline-c1-default-initial-1.sexp`) |
+| M1 | baseline | c1/default/initial | 20261028 | :CENSORED/:TRANSITIONS | 0.774047 | 3 | 99997/100003/0/0/0/0 | — | 2 | record (`pass2/results/M1-baseline-c1-default-initial-20261028.sexp`) |
+| M1 | baseline | c1/default/initial | 314159265 | :CENSORED/:TRANSITIONS | 0.686899 | 3 | 99995/100005/0/0/0/0 | — | 2 | record (`pass2/results/M1-baseline-c1-default-initial-314159265.sexp`) |
+| M1 | dedup | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 18.629313 | 5374 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M1-dedup-c1-default-initial-1.sexp`) |
+| M1 | iterative | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 5.597152 | 5627 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M1-iterative-c1-default-initial-1.sexp`) |
+| M1 | iterative | c1/default/listener | 1 | :FOUND/:G2 | 0.010212 | 1 | 0/0/414/414/0/0 | 27 | 0 | record (`pass2/results/M1-iterative-c1-default-listener-1-schedule.sexp`) |
+| M1 | iterative | c1/default/send | 1 | :FOUND/:G2 | 0.368716 | 1 | 0/0/15782/15782/0/0 | 26 | 0 | record (`pass2/results/M1-iterative-c1-default-send-1-schedule.sexp`) |
+| M1 | random | c1/default/initial | 1 | :FOUND/:G2 | 0.375256 | 1 | 70/70/13252/13252/0/0 | 27 | 0 | record (`pass2/results/M1-random-c1-default-initial-1-schedule.sexp`) |
+| M1 | random | c1/default/initial | 20261028 | :FOUND/:G2 | 0.526972 | 1 | 112/112/18376/18376/0/0 | 39 | 0 | record (`pass2/results/M1-random-c1-default-initial-20261028-schedule.sexp`) |
+| M1 | random | c1/default/initial | 314159265 | :FOUND/:G2 | 0.022960 | 2 | 540/540/324/324/0/0 | 37 | 0 | record (`pass2/results/M1-random-c1-default-initial-314159265-schedule.sexp`) |
+| M2 | baseline | c1/default/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.009501 | 1 | 266/266/0/0/0/0 | 30 | 0 | record (`pass2/results/M2-baseline-c1-default-initial-1-schedule.sexp`) |
+| M2 | baseline | c1/default/initial | 20261028 | :FOUND/:CLIENT-ORACLE | 0.001722 | 1 | 106/106/0/0/0/0 | 13 | 0 | record (`pass2/results/M2-baseline-c1-default-initial-20261028-schedule.sexp`) |
+| M2 | baseline | c1/default/initial | 314159265 | :FOUND/:CLIENT-ORACLE | 0.002560 | 1 | 105/105/0/0/0/0 | 12 | 0 | record (`pass2/results/M2-baseline-c1-default-initial-314159265-schedule.sexp`) |
+| M2 | dedup | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 18.579044 | 5374 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M2-dedup-c1-default-initial-1.sexp`) |
+| M2 | dedup | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 3.003948 | 3 | 0/0/99998/100002/0/0 | — | 0 | record (`pass2/results/M2-dedup-c2-data-data-1.sexp`) |
+| M2 | dedup | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 16.987952 | 5374 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M2-dedup-c2-data-initial-1.sexp`) |
+| M2 | iterative | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 5.630289 | 5627 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M2-iterative-c1-default-initial-1.sexp`) |
+| M2 | iterative | c1/default/listener | 1 | :CENSORED/:TRANSITIONS | 2.365245 | 1104 | 0/0/99996/100004/0/0 | — | 0 | record (`pass2/results/M2-iterative-c1-default-listener-1.sexp`) |
+| M2 | iterative | c1/default/send | 1 | :CENSORED/:TRANSITIONS | 2.387922 | 1106 | 0/0/99998/100002/0/0 | — | 0 | record (`pass2/results/M2-iterative-c1-default-send-1.sexp`) |
+| M2 | iterative | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.660158 | 3 | 0/0/99998/100002/0/0 | — | 0 | record (`pass2/results/M2-iterative-c2-data-data-1.sexp`) |
+| M2 | iterative | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 3.834288 | 5627 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M2-iterative-c2-data-initial-1.sexp`) |
+| M2 | random | c1/default/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.649265 | 50 | 19340/19340/0/0/3174/3174 | 115 | 0 | record (`pass2/results/M2-random-c1-default-initial-1-schedule.sexp`) |
+| M2 | random | c1/default/initial | 20261028 | :FOUND/:CLIENT-ORACLE | 0.253380 | 17 | 6030/6030/0/0/1946/1946 | 44 | 0 | record (`pass2/results/M2-random-c1-default-initial-20261028-schedule.sexp`) |
+| M2 | random | c1/default/initial | 314159265 | :FOUND/:CLIENT-ORACLE | 0.248791 | 21 | 8744/8744/0/0/1302/1302 | 52 | 0 | record (`pass2/results/M2-random-c1-default-initial-314159265-schedule.sexp`) |
+| M2 | random | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.133743 | 1 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M2-random-c2-data-data-1.sexp`) |
+| M2 | random | c2/data/data | 20261028 | :CENSORED/:TRANSITIONS | 2.019519 | 1 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M2-random-c2-data-data-20261028.sexp`) |
+| M2 | random | c2/data/data | 314159265 | :CENSORED/:TRANSITIONS | 2.845353 | 1 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M2-random-c2-data-data-314159265.sexp`) |
+| M2 | random | c2/data/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.095922 | 6 | 2476/2476/0/0/646/646 | 110 | 0 | record (`pass2/results/M2-random-c2-data-initial-1-schedule.sexp`) |
+| M2 | random | c2/data/initial | 20261028 | :CENSORED/:TRANSITIONS | 2.489630 | 23 | 8772/8772/89138/89138/2090/2090 | — | 0 | record (`pass2/results/M2-random-c2-data-initial-20261028.sexp`) |
+| M2 | random | c2/data/initial | 314159265 | :CENSORED/:TRANSITIONS | 2.391383 | 2 | 502/502/99232/99232/266/266 | — | 0 | record (`pass2/results/M2-random-c2-data-initial-314159265.sexp`) |
+| M3 | baseline | c1/default/initial | 1 | :FOUND/:TURN-MONITORS | 0.000799 | 1 | 11/19/0/0/0/0 | 3 | 0 | record (`pass2/results/M3-baseline-c1-default-initial-1-schedule.sexp`) |
+| M3 | baseline | c1/default/initial | 20261028 | :FOUND/:TURN-MONITORS | 0.001647 | 1 | 11/19/0/0/0/0 | 3 | 0 | record (`pass2/results/M3-baseline-c1-default-initial-20261028-schedule.sexp`) |
+| M3 | baseline | c1/default/initial | 314159265 | :FOUND/:TURN-MONITORS | 0.001625 | 1 | 11/19/0/0/0/0 | 3 | 0 | record (`pass2/results/M3-baseline-c1-default-initial-314159265-schedule.sexp`) |
+| M3 | dedup | c1/default/initial | 1 | :FOUND/:G1 | 0.649553 | 174 | 0/0/2651/2651/36/36 | 4 | 0 | record (`pass2/results/M3-dedup-c1-default-initial-1-schedule.sexp`) |
+| M3 | iterative | c1/default/initial | 1 | :FOUND/:G1 | 0.183651 | 208 | 0/0/3049/3049/36/36 | 4 | 0 | record (`pass2/results/M3-iterative-c1-default-initial-1-schedule.sexp`) |
+| M3 | iterative | c1/default/listener | 1 | :FOUND/:G1 | 0.003516 | 1 | 0/0/19/19/38/38 | 7 | 0 | record (`pass2/results/M3-iterative-c1-default-listener-1-schedule.sexp`) |
+| M3 | iterative | c1/default/send | 1 | :FOUND/:G1 | 0.003736 | 1 | 0/0/19/19/38/38 | 7 | 0 | record (`pass2/results/M3-iterative-c1-default-send-1-schedule.sexp`) |
+| M3 | random | c1/default/initial | 1 | :FOUND/:G1 | 0.002352 | 1 | 17/17/0/0/36/36 | 7 | 0 | record (`pass2/results/M3-random-c1-default-initial-1-schedule.sexp`) |
+| M3 | random | c1/default/initial | 20261028 | :FOUND/:G1 | 0.002823 | 1 | 17/17/0/0/36/36 | 4 | 0 | record (`pass2/results/M3-random-c1-default-initial-20261028-schedule.sexp`) |
+| M3 | random | c1/default/initial | 314159265 | :FOUND/:G1 | 0.003894 | 1 | 19/19/0/0/38/38 | 10 | 0 | record (`pass2/results/M3-random-c1-default-initial-314159265-schedule.sexp`) |
+| M4 | baseline | c1/default/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.346015 | 2 | 50386/50386/0/0/0/0 | 41 | 1 | record (`pass2/results/M4-baseline-c1-default-initial-1-schedule.sexp`) |
+| M4 | baseline | c1/default/initial | 20261028 | :FOUND/:CLIENT-ORACLE | 0.387680 | 2 | 50423/50423/0/0/0/0 | 34 | 1 | record (`pass2/results/M4-baseline-c1-default-initial-20261028-schedule.sexp`) |
+| M4 | baseline | c1/default/initial | 314159265 | :FOUND/:CLIENT-ORACLE | 0.001902 | 1 | 135/135/0/0/0/0 | 15 | 0 | record (`pass2/results/M4-baseline-c1-default-initial-314159265-schedule.sexp`) |
+| M4 | dedup | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 17.341163 | 5374 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M4-dedup-c1-default-initial-1.sexp`) |
+| M4 | dedup | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.458866 | 3 | 0/0/99998/100002/0/0 | — | 0 | record (`pass2/results/M4-dedup-c2-data-data-1.sexp`) |
+| M4 | dedup | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 18.720881 | 5374 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M4-dedup-c2-data-initial-1.sexp`) |
+| M4 | iterative | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 4.082319 | 5627 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M4-iterative-c1-default-initial-1.sexp`) |
+| M4 | iterative | c1/default/listener | 1 | :CENSORED/:TRANSITIONS | 2.659340 | 1104 | 0/0/99996/100004/0/0 | — | 0 | record (`pass2/results/M4-iterative-c1-default-listener-1.sexp`) |
+| M4 | iterative | c1/default/send | 1 | :CENSORED/:TRANSITIONS | 2.745536 | 1106 | 0/0/99998/100002/0/0 | — | 0 | record (`pass2/results/M4-iterative-c1-default-send-1.sexp`) |
+| M4 | iterative | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.545903 | 3 | 0/0/99998/100002/0/0 | — | 0 | record (`pass2/results/M4-iterative-c2-data-data-1.sexp`) |
+| M4 | iterative | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 5.134768 | 5627 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M4-iterative-c2-data-initial-1.sexp`) |
+| M4 | random | c1/default/initial | 1 | :FOUND/:CLIENT-ORACLE | 1.437136 | 108 | 47620/47620/0/0/2970/2970 | 123 | 0 | record (`pass2/results/M4-random-c1-default-initial-1-schedule.sexp`) |
+| M4 | random | c1/default/initial | 20261028 | :FOUND/:CLIENT-ORACLE | 0.277536 | 21 | 8924/8924/0/0/348/348 | 70 | 0 | record (`pass2/results/M4-random-c1-default-initial-20261028-schedule.sexp`) |
+| M4 | random | c1/default/initial | 314159265 | :FOUND/:CLIENT-ORACLE | 0.373756 | 36 | 16104/16104/0/0/506/506 | 90 | 0 | record (`pass2/results/M4-random-c1-default-initial-314159265-schedule.sexp`) |
+| M4 | random | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.588798 | 1 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M4-random-c2-data-data-1.sexp`) |
+| M4 | random | c2/data/data | 20261028 | :CENSORED/:TRANSITIONS | 2.286784 | 1 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M4-random-c2-data-data-20261028.sexp`) |
+| M4 | random | c2/data/data | 314159265 | :CENSORED/:TRANSITIONS | 2.159807 | 1 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/M4-random-c2-data-data-314159265.sexp`) |
+| M4 | random | c2/data/initial | 1 | :FOUND/:CLIENT-ORACLE | 0.981844 | 11 | 5218/5218/36800/36800/338/338 | 101 | 0 | record (`pass2/results/M4-random-c2-data-initial-1-schedule.sexp`) |
+| M4 | random | c2/data/initial | 20261028 | :CENSORED/:TRANSITIONS | 2.361636 | 23 | 10490/10490/89508/89512/0/0 | — | 0 | record (`pass2/results/M4-random-c2-data-initial-20261028.sexp`) |
+| M4 | random | c2/data/initial | 314159265 | :CENSORED/:TRANSITIONS | 2.442590 | 16 | 7060/7060/92622/92622/318/318 | — | 0 | record (`pass2/results/M4-random-c2-data-initial-314159265.sexp`) |
+| M5 | baseline | c1/default/initial | 1 | :FOUND/:TURN-MONITORS | 0.000896 | 1 | 8/8/0/0/0/0 | 1 | 0 | record (`pass2/results/M5-baseline-c1-default-initial-1-schedule.sexp`) |
+| M5 | baseline | c1/default/initial | 20261028 | :FOUND/:TURN-MONITORS | 0.000702 | 1 | 8/8/0/0/0/0 | 1 | 0 | record (`pass2/results/M5-baseline-c1-default-initial-20261028-schedule.sexp`) |
+| M5 | baseline | c1/default/initial | 314159265 | :FOUND/:TURN-MONITORS | 0.000690 | 1 | 8/8/0/0/0/0 | 1 | 0 | record (`pass2/results/M5-baseline-c1-default-initial-314159265-schedule.sexp`) |
+| M5 | dedup | c1/default/initial | 1 | :FOUND/:G1-ENTRY | 0.005125 | 3 | 0/0/0/0/16/16 | 1 | 0 | record (`pass2/results/M5-dedup-c1-default-initial-1-schedule.sexp`) |
+| M5 | iterative | c1/default/initial | 1 | :FOUND/:G1-ENTRY | 0.002744 | 3 | 0/0/0/0/16/16 | 1 | 0 | record (`pass2/results/M5-iterative-c1-default-initial-1-schedule.sexp`) |
+| M5 | iterative | c1/default/listener | 1 | :FOUND/:G1-ENTRY | 0.001519 | 1 | 0/0/0/0/16/16 | 1 | 0 | record (`pass2/results/M5-iterative-c1-default-listener-1-schedule.sexp`) |
+| M5 | iterative | c1/default/send | 1 | :FOUND/:G1-ENTRY | 0.001548 | 1 | 0/0/0/0/16/16 | 1 | 0 | record (`pass2/results/M5-iterative-c1-default-send-1-schedule.sexp`) |
+| M5 | random | c1/default/initial | 1 | :FOUND/:G1-ENTRY | 0.002884 | 1 | 0/0/0/0/16/16 | 1 | 0 | record (`pass2/results/M5-random-c1-default-initial-1-schedule.sexp`) |
+| M5 | random | c1/default/initial | 20261028 | :FOUND/:G1-ENTRY | 0.001486 | 1 | 0/0/0/0/16/16 | 1 | 0 | record (`pass2/results/M5-random-c1-default-initial-20261028-schedule.sexp`) |
+| M5 | random | c1/default/initial | 314159265 | :FOUND/:G1-ENTRY | 0.002065 | 1 | 0/0/0/0/16/16 | 1 | 0 | record (`pass2/results/M5-random-c1-default-initial-314159265-schedule.sexp`) |
+| M6 | baseline | c1/default/initial | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.391370 | 2 | 50137/50137/0/0/0/0 | 9 | 1 | record (`pass2/results/M6-baseline-c1-default-initial-1-schedule.sexp`) |
+| M6 | baseline | c1/default/initial | 20261028 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.001281 | 1 | 45/45/0/0/0/0 | 6 | 0 | record (`pass2/results/M6-baseline-c1-default-initial-20261028-schedule.sexp`) |
+| M6 | baseline | c1/default/initial | 314159265 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.004723 | 1 | 241/241/0/0/0/0 | 28 | 0 | record (`pass2/results/M6-baseline-c1-default-initial-314159265-schedule.sexp`) |
+| M6 | dedup | c1/default/initial | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.105229 | 35 | 0/0/414/414/16/16 | 3 | 0 | record (`pass2/results/M6-dedup-c1-default-initial-1-schedule.sexp`) |
+| M6 | iterative | c1/default/initial | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.031927 | 38 | 0/0/430/430/16/16 | 3 | 0 | record (`pass2/results/M6-iterative-c1-default-initial-1-schedule.sexp`) |
+| M6 | iterative | c1/default/listener | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.043147 | 11 | 0/0/990/990/90/90 | 17 | 0 | record (`pass2/results/M6-iterative-c1-default-listener-1-schedule.sexp`) |
+| M6 | iterative | c1/default/send | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.044080 | 11 | 0/0/990/990/90/90 | 17 | 0 | record (`pass2/results/M6-iterative-c1-default-send-1-schedule.sexp`) |
+| M6 | random | c1/default/initial | 1 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.008032 | 1 | 70/70/0/0/70/70 | 19 | 0 | record (`pass2/results/M6-random-c1-default-initial-1-schedule.sexp`) |
+| M6 | random | c1/default/initial | 20261028 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.005928 | 1 | 110/110/0/0/110/110 | 24 | 0 | record (`pass2/results/M6-random-c1-default-initial-20261028-schedule.sexp`) |
+| M6 | random | c1/default/initial | 314159265 | :FOUND/:ADAPTER-CLASS-LATENCY | 0.004864 | 1 | 54/54/0/0/54/54 | 13 | 0 | record (`pass2/results/M6-random-c1-default-initial-314159265-schedule.sexp`) |
+| ORIGINAL | baseline | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 0.676644 | 3 | 99995/100005/0/0/0/0 | — | 2 | record (`pass2/results/ORIGINAL-baseline-c1-default-initial-1.sexp`) |
+| ORIGINAL | baseline | c1/default/initial | 20261028 | :CENSORED/:TRANSITIONS | 0.620928 | 3 | 99997/100003/0/0/0/0 | — | 2 | record (`pass2/results/ORIGINAL-baseline-c1-default-initial-20261028.sexp`) |
+| ORIGINAL | baseline | c1/default/initial | 314159265 | :CENSORED/:TRANSITIONS | 0.678375 | 3 | 99995/100005/0/0/0/0 | — | 2 | record (`pass2/results/ORIGINAL-baseline-c1-default-initial-314159265.sexp`) |
+| ORIGINAL | dedup | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 14.974495 | 5374 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/ORIGINAL-dedup-c1-default-initial-1.sexp`) |
+| ORIGINAL | dedup | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.468055 | 3 | 0/0/99998/100002/0/0 | — | 0 | record (`pass2/results/ORIGINAL-dedup-c2-data-data-1.sexp`) |
+| ORIGINAL | dedup | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 17.497501 | 5374 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/ORIGINAL-dedup-c2-data-initial-1.sexp`) |
+| ORIGINAL | iterative | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 3.952521 | 5627 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/ORIGINAL-iterative-c1-default-initial-1.sexp`) |
+| ORIGINAL | iterative | c1/default/listener | 1 | :CENSORED/:TRANSITIONS | 2.662888 | 1104 | 0/0/99996/100004/0/0 | — | 0 | record (`pass2/results/ORIGINAL-iterative-c1-default-listener-1.sexp`) |
+| ORIGINAL | iterative | c1/default/send | 1 | :CENSORED/:TRANSITIONS | 2.821956 | 1106 | 0/0/99998/100002/0/0 | — | 0 | record (`pass2/results/ORIGINAL-iterative-c1-default-send-1.sexp`) |
+| ORIGINAL | iterative | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.613506 | 3 | 0/0/99998/100002/0/0 | — | 0 | record (`pass2/results/ORIGINAL-iterative-c2-data-data-1.sexp`) |
+| ORIGINAL | iterative | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 4.662559 | 5627 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/ORIGINAL-iterative-c2-data-initial-1.sexp`) |
+| ORIGINAL | random | c1/default/initial | 1 | :CENSORED/:TRANSITIONS | 2.145678 | 220 | 100000/100000/0/0/0/0 | — | 0 | record (`pass2/results/ORIGINAL-random-c1-default-initial-1.sexp`) |
+| ORIGINAL | random | c1/default/initial | 20261028 | :CENSORED/:TRANSITIONS | 2.450316 | 221 | 99996/100004/0/0/0/0 | — | 0 | record (`pass2/results/ORIGINAL-random-c1-default-initial-20261028.sexp`) |
+| ORIGINAL | random | c1/default/initial | 314159265 | :CENSORED/:TRANSITIONS | 2.588588 | 218 | 100000/100000/0/0/0/0 | — | 0 | record (`pass2/results/ORIGINAL-random-c1-default-initial-314159265.sexp`) |
+| ORIGINAL | random | c2/data/data | 1 | :CENSORED/:TRANSITIONS | 2.772799 | 1 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/ORIGINAL-random-c2-data-data-1.sexp`) |
+| ORIGINAL | random | c2/data/data | 20261028 | :CENSORED/:TRANSITIONS | 2.528416 | 1 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/ORIGINAL-random-c2-data-data-20261028.sexp`) |
+| ORIGINAL | random | c2/data/data | 314159265 | :CENSORED/:TRANSITIONS | 2.752441 | 1 | 0/0/100000/100000/0/0 | — | 0 | record (`pass2/results/ORIGINAL-random-c2-data-data-314159265.sexp`) |
+| ORIGINAL | random | c2/data/initial | 1 | :CENSORED/:TRANSITIONS | 2.452780 | 11 | 5312/5312/94688/94688/0/0 | — | 0 | record (`pass2/results/ORIGINAL-random-c2-data-initial-1.sexp`) |
+| ORIGINAL | random | c2/data/initial | 20261028 | :CENSORED/:TRANSITIONS | 2.357745 | 23 | 10508/10508/89492/89492/0/0 | — | 0 | record (`pass2/results/ORIGINAL-random-c2-data-initial-20261028.sexp`) |
+| ORIGINAL | random | c2/data/initial | 314159265 | :CENSORED/:TRANSITIONS | 2.754185 | 23 | 10732/10732/89268/89268/0/0 | — | 0 | record (`pass2/results/ORIGINAL-random-c2-data-initial-314159265.sexp`) |
 
 ## Horizon ledger
 
@@ -393,3 +393,5 @@ Completed known failures do not stop the campaign. A partial control authorizes 
 | 314159265 | 314159265 | True | [':BASELINE-LIVENESS', 5152] | 5152 |
 | 314159265 | 1811288460 | True | [':BASELINE-LIVENESS', 4875] | 4875 |
 | 314159265 | 2039979899 | False | None | 325 |
+
+Records named here are regenerable and git-ignored; `E1-RESULTS.md` ("Raw records") gives the commands.

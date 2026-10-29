@@ -34,13 +34,13 @@ first boundary, counter category, horizon and schedule.
 
 | Mutation | (1) Baseline, known ORIGINAL failures continued | (2) Random explicit choices | (3) Iterative deepening | (3b) Exact-state cache |
 |---|---|---|---|---|
-| ORIGINAL | control; censored; 0.678375s; 3 trials; `99995/100005/0/0/0/0`; [s314159265](pass2/results/ORIGINAL-baseline-c1-default-initial-314159265.sexp) | control; censored; 2.588588s; 218 trials; `100000/100000/0/0/0/0`; [s314159265](pass2/results/ORIGINAL-random-c1-default-initial-314159265.sexp) | control; censored; 3.952521s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; [s1](pass2/results/ORIGINAL-iterative-c1-default-initial-1.sexp) | control; censored; 14.974495s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; [s1](pass2/results/ORIGINAL-dedup-c1-default-initial-1.sexp) |
-| M1 | not detectable; censored; 0.863454s; 3 trials; `99995/100005/0/0/0/0`; [s1](pass2/results/M1-baseline-c1-default-initial-1.sexp) | 3/3 found; 0.526972s; 1 trials; `112/112/18376/18376/0/0`; [s20261028](pass2/results/M1-random-c1-default-initial-20261028-schedule.sexp) | 0/1; censored; 5.597152s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; [s1](pass2/results/M1-iterative-c1-default-initial-1.sexp) | 0/1; censored; 18.629313s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; [s1](pass2/results/M1-dedup-c1-default-initial-1.sexp) |
-| M2 | 3/3 found; 0.009501s; 1 trials; `266/266/0/0/0/0`; [s1](pass2/results/M2-baseline-c1-default-initial-1-schedule.sexp) | 3/3 found; 0.649265s; 50 trials; `19340/19340/0/0/3174/3174`; [s1](pass2/results/M2-random-c1-default-initial-1-schedule.sexp) | 0/1; censored; 5.630289s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; [s1](pass2/results/M2-iterative-c1-default-initial-1.sexp) | 0/1; censored; 18.579044s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; [s1](pass2/results/M2-dedup-c1-default-initial-1.sexp) |
-| M3 | 3/3 found; 0.001647s; 1 trials; `11/19/0/0/0/0`; [s20261028](pass2/results/M3-baseline-c1-default-initial-20261028-schedule.sexp) | 3/3 found; 0.003894s; 1 trials; `19/19/0/0/38/38`; [s314159265](pass2/results/M3-random-c1-default-initial-314159265-schedule.sexp) | 1/1 found; 0.183651s; 208 trials; `0/0/3049/3049/36/36`; full h3, partial h4; [s1](pass2/results/M3-iterative-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.649553s; 174 trials; `0/0/2651/2651/36/36`; full h3, partial h4; [s1](pass2/results/M3-dedup-c1-default-initial-1-schedule.sexp) |
-| M4 | 3/3 found; 0.387680s; 2 trials; `50423/50423/0/0/0/0`; [s20261028](pass2/results/M4-baseline-c1-default-initial-20261028-schedule.sexp) | 3/3 found; 1.437136s; 108 trials; `47620/47620/0/0/2970/2970`; [s1](pass2/results/M4-random-c1-default-initial-1-schedule.sexp) | 0/1; censored; 4.082319s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; [s1](pass2/results/M4-iterative-c1-default-initial-1.sexp) | 0/1; censored; 17.341163s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; [s1](pass2/results/M4-dedup-c1-default-initial-1.sexp) |
-| M5 | 3/3 found; 0.000896s; 1 trials; `8/8/0/0/0/0`; [s1](pass2/results/M5-baseline-c1-default-initial-1-schedule.sexp) | 3/3 found; 0.002884s; 1 trials; `0/0/0/0/16/16`; [s1](pass2/results/M5-random-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.002744s; 3 trials; `0/0/0/0/16/16`; full h0, partial h1; [s1](pass2/results/M5-iterative-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.005125s; 3 trials; `0/0/0/0/16/16`; full h0, partial h1; [s1](pass2/results/M5-dedup-c1-default-initial-1-schedule.sexp) |
-| M6 | 3/3 found; 0.391370s; 2 trials; `50137/50137/0/0/0/0`; [s1](pass2/results/M6-baseline-c1-default-initial-1-schedule.sexp) | 3/3 found; 0.008032s; 1 trials; `70/70/0/0/70/70`; [s1](pass2/results/M6-random-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.031927s; 38 trials; `0/0/430/430/16/16`; full h2, partial h3; [s1](pass2/results/M6-iterative-c1-default-initial-1-schedule.sexp) | 1/1 found; 0.105229s; 35 trials; `0/0/414/414/16/16`; full h2, partial h3; [s1](pass2/results/M6-dedup-c1-default-initial-1-schedule.sexp) |
+| ORIGINAL | control; censored; 0.678375s; 3 trials; `99995/100005/0/0/0/0`; s314159265 (`pass2/results/ORIGINAL-baseline-c1-default-initial-314159265.sexp`) | control; censored; 2.588588s; 218 trials; `100000/100000/0/0/0/0`; s314159265 (`pass2/results/ORIGINAL-random-c1-default-initial-314159265.sexp`) | control; censored; 3.952521s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; s1 (`pass2/results/ORIGINAL-iterative-c1-default-initial-1.sexp`) | control; censored; 14.974495s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; s1 (`pass2/results/ORIGINAL-dedup-c1-default-initial-1.sexp`) |
+| M1 | not detectable; censored; 0.863454s; 3 trials; `99995/100005/0/0/0/0`; s1 (`pass2/results/M1-baseline-c1-default-initial-1.sexp`) | 3/3 found; 0.526972s; 1 trials; `112/112/18376/18376/0/0`; s20261028 (`pass2/results/M1-random-c1-default-initial-20261028-schedule.sexp`) | 0/1; censored; 5.597152s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; s1 (`pass2/results/M1-iterative-c1-default-initial-1.sexp`) | 0/1; censored; 18.629313s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; s1 (`pass2/results/M1-dedup-c1-default-initial-1.sexp`) |
+| M2 | 3/3 found; 0.009501s; 1 trials; `266/266/0/0/0/0`; s1 (`pass2/results/M2-baseline-c1-default-initial-1-schedule.sexp`) | 3/3 found; 0.649265s; 50 trials; `19340/19340/0/0/3174/3174`; s1 (`pass2/results/M2-random-c1-default-initial-1-schedule.sexp`) | 0/1; censored; 5.630289s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; s1 (`pass2/results/M2-iterative-c1-default-initial-1.sexp`) | 0/1; censored; 18.579044s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; s1 (`pass2/results/M2-dedup-c1-default-initial-1.sexp`) |
+| M3 | 3/3 found; 0.001647s; 1 trials; `11/19/0/0/0/0`; s20261028 (`pass2/results/M3-baseline-c1-default-initial-20261028-schedule.sexp`) | 3/3 found; 0.003894s; 1 trials; `19/19/0/0/38/38`; s314159265 (`pass2/results/M3-random-c1-default-initial-314159265-schedule.sexp`) | 1/1 found; 0.183651s; 208 trials; `0/0/3049/3049/36/36`; full h3, partial h4; s1 (`pass2/results/M3-iterative-c1-default-initial-1-schedule.sexp`) | 1/1 found; 0.649553s; 174 trials; `0/0/2651/2651/36/36`; full h3, partial h4; s1 (`pass2/results/M3-dedup-c1-default-initial-1-schedule.sexp`) |
+| M4 | 3/3 found; 0.387680s; 2 trials; `50423/50423/0/0/0/0`; s20261028 (`pass2/results/M4-baseline-c1-default-initial-20261028-schedule.sexp`) | 3/3 found; 1.437136s; 108 trials; `47620/47620/0/0/2970/2970`; s1 (`pass2/results/M4-random-c1-default-initial-1-schedule.sexp`) | 0/1; censored; 4.082319s; 5627 trials; `0/0/100000/100000/0/0`; full h4, partial h5; s1 (`pass2/results/M4-iterative-c1-default-initial-1.sexp`) | 0/1; censored; 17.341163s; 5374 trials; `0/0/100000/100000/0/0`; full h5, partial h6; s1 (`pass2/results/M4-dedup-c1-default-initial-1.sexp`) |
+| M5 | 3/3 found; 0.000896s; 1 trials; `8/8/0/0/0/0`; s1 (`pass2/results/M5-baseline-c1-default-initial-1-schedule.sexp`) | 3/3 found; 0.002884s; 1 trials; `0/0/0/0/16/16`; s1 (`pass2/results/M5-random-c1-default-initial-1-schedule.sexp`) | 1/1 found; 0.002744s; 3 trials; `0/0/0/0/16/16`; full h0, partial h1; s1 (`pass2/results/M5-iterative-c1-default-initial-1-schedule.sexp`) | 1/1 found; 0.005125s; 3 trials; `0/0/0/0/16/16`; full h0, partial h1; s1 (`pass2/results/M5-dedup-c1-default-initial-1-schedule.sexp`) |
+| M6 | 3/3 found; 0.391370s; 2 trials; `50137/50137/0/0/0/0`; s1 (`pass2/results/M6-baseline-c1-default-initial-1-schedule.sexp`) | 3/3 found; 0.008032s; 1 trials; `70/70/0/0/70/70`; s1 (`pass2/results/M6-random-c1-default-initial-1-schedule.sexp`) | 1/1 found; 0.031927s; 38 trials; `0/0/430/430/16/16`; full h2, partial h3; s1 (`pass2/results/M6-iterative-c1-default-initial-1-schedule.sexp`) | 1/1 found; 0.105229s; 35 trials; `0/0/414/414/16/16`; full h2, partial h3; s1 (`pass2/results/M6-dedup-c1-default-initial-1-schedule.sexp`) |
 
 All100 final campaigns exited normally. Every non-finding campaign exhausted
 its transition budget; none stopped merely because a finite horizon completed.
@@ -144,8 +144,8 @@ passes, and stop reason is0. There are no earlier Send completions in this
 prefix: these byte observations are caused by the tested pair. The100 fault/
 word pairings at that state all compare equal; 91 contain byte observations.
 The measured local searches repeat and extend those checks, as counted above.
-[The state](pass2/data-state.sexp), [prefix](pass2/data-prefix.sexp), and
-[first positive routes](pass2/results/ORIGINAL-iterative-c2-data-data-1.sexp)
+The state (`pass2/data-state.sexp`), prefix (`pass2/data-prefix.sexp`), and
+first positive routes (`pass2/results/ORIGINAL-iterative-c2-data-data-1.sexp`)
 are saved. Fresh-process replay reproduced selected positive pairs from each
 ORIGINAL random seed exactly.
 
@@ -166,13 +166,13 @@ routes are charged. Failures in setup are distinguished from suffix discoveries.
 
 | Runtime | Listener prefix | Send prefix |
 |---|---|---|
-| ORIGINAL | censored/transitions; 2.662888s; full h2; [record](pass2/results/ORIGINAL-iterative-c1-default-listener-1.sexp) | censored/transitions; 2.821956s; full h2; [record](pass2/results/ORIGINAL-iterative-c1-default-send-1.sexp) |
-| M1 | found/g2; 0.010212s; full h-1; [record](pass2/results/M1-iterative-c1-default-listener-1-schedule.sexp) | found/g2; 0.368716s; full h-1; [record](pass2/results/M1-iterative-c1-default-send-1-schedule.sexp) |
-| M2 | censored/transitions; 2.365245s; full h2; [record](pass2/results/M2-iterative-c1-default-listener-1.sexp) | censored/transitions; 2.387922s; full h2; [record](pass2/results/M2-iterative-c1-default-send-1.sexp) |
-| M3 | found/g1; 0.003516s; full h-1; [record](pass2/results/M3-iterative-c1-default-listener-1-schedule.sexp) | found/g1; 0.003736s; full h-1; [record](pass2/results/M3-iterative-c1-default-send-1-schedule.sexp) |
-| M4 | censored/transitions; 2.659340s; full h2; [record](pass2/results/M4-iterative-c1-default-listener-1.sexp) | censored/transitions; 2.745536s; full h2; [record](pass2/results/M4-iterative-c1-default-send-1.sexp) |
-| M5 | found/g1-entry; 0.001519s; full h-1; [record](pass2/results/M5-iterative-c1-default-listener-1-schedule.sexp) | found/g1-entry; 0.001548s; full h-1; [record](pass2/results/M5-iterative-c1-default-send-1-schedule.sexp) |
-| M6 | found/adapter-class-latency; 0.043147s; full h0; [record](pass2/results/M6-iterative-c1-default-listener-1-schedule.sexp) | found/adapter-class-latency; 0.044080s; full h0; [record](pass2/results/M6-iterative-c1-default-send-1-schedule.sexp) |
+| ORIGINAL | censored/transitions; 2.662888s; full h2; record (`pass2/results/ORIGINAL-iterative-c1-default-listener-1.sexp`) | censored/transitions; 2.821956s; full h2; record (`pass2/results/ORIGINAL-iterative-c1-default-send-1.sexp`) |
+| M1 | found/g2; 0.010212s; full h-1; record (`pass2/results/M1-iterative-c1-default-listener-1-schedule.sexp`) | found/g2; 0.368716s; full h-1; record (`pass2/results/M1-iterative-c1-default-send-1-schedule.sexp`) |
+| M2 | censored/transitions; 2.365245s; full h2; record (`pass2/results/M2-iterative-c1-default-listener-1.sexp`) | censored/transitions; 2.387922s; full h2; record (`pass2/results/M2-iterative-c1-default-send-1.sexp`) |
+| M3 | found/g1; 0.003516s; full h-1; record (`pass2/results/M3-iterative-c1-default-listener-1-schedule.sexp`) | found/g1; 0.003736s; full h-1; record (`pass2/results/M3-iterative-c1-default-send-1-schedule.sexp`) |
+| M4 | censored/transitions; 2.659340s; full h2; record (`pass2/results/M4-iterative-c1-default-listener-1.sexp`) | censored/transitions; 2.745536s; full h2; record (`pass2/results/M4-iterative-c1-default-send-1.sexp`) |
+| M5 | found/g1-entry; 0.001519s; full h-1; record (`pass2/results/M5-iterative-c1-default-listener-1-schedule.sexp`) | found/g1-entry; 0.001548s; full h-1; record (`pass2/results/M5-iterative-c1-default-send-1-schedule.sexp`) |
+| M6 | found/adapter-class-latency; 0.043147s; full h0; record (`pass2/results/M6-iterative-c1-default-listener-1-schedule.sexp`) | found/adapter-class-latency; 0.044080s; full h0; record (`pass2/results/M6-iterative-c1-default-send-1-schedule.sexp`) |
 
 M1's listener row is the original allocator false diamond, detected at suffix
 horizon 0. The original conservative declaration rejects it. M3/M5 fail during
@@ -286,3 +286,22 @@ campaign time. Preserve named outputs before a new measurement.
 `pass2/write-results.py` regenerates this write-up; `verify-evidence.py` checks
 both passes, counterfactual qualification, all 100 final process results,
 horizons, positive routes, replays, frozen hashes and source fences.
+
+## Raw records
+
+The per-campaign, replay and qualification records named in these tables (`results/`, `pass2/results/`,
+`mutants/*.sexp`, `results/campaigns.json`, the `*-processes.json` process ledgers) are regenerable output,
+git-ignored by `fn2/experiments/squares/.gitignore`, and not in the tree. From the repository root, after the
+A4 closure is certified (one certify at a time; every command already sets
+`FN_ACL2_SLOT_DIR=/tmp/fn2-a4-acl2-slots FN_ACL2_SLOTS=6` and keeps PID files beside its records):
+
+- pass 1: `python3 fn2/experiments/squares/campaigns.py --controls-only`, then `--mutants-only`, then
+  `python3 fn2/experiments/squares/summarize.py` (writes `results/campaigns.json`) and
+  `python3 fn2/experiments/squares/replay-campaigns.py`;
+- qualification: the `qualify.lsp` launch in `mutants/README.md` per mutant, then `bash fn2/experiments/squares/mutants/replay-batch.sh`;
+- pass 2: `python3 fn2/experiments/squares/pass2/campaigns.py PHASE` for PHASE in `fixture controls main local data`,
+  then `retry --jobs-file fn2/experiments/squares/pass2/retry-jobs.json` and
+  `replay --jobs-file fn2/experiments/squares/pass2/replay-jobs.json`, then `pass2/summarize.py` and `pass2/write-results.py`.
+
+The seeds, enumeration orders and source hashes are frozen in `freeze.json`, `pass2/measurement-freeze.json` and
+`pass2/final-source-hashes.json` (tracked), so a regenerated record is checked against the same inputs.

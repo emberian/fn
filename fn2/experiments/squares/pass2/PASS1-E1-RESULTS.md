@@ -24,13 +24,13 @@ instances, counters and schedules are in [the 49-run ledger](../CAMPAIGNS.md).
 
 | Mutation | (1) Existing random driver | (2) Random explicit choices + G1/G2 | (3) Exhaustive prefixes + G1/G2 |
 |---|---|---|---|
-| ORIGINAL control | O-stop 3/3; 0.284848s; 1 trials; `50158/50158/0/0`; [s20261028](../results/ORIGINAL-baseline-20261028-schedule.sexp) | 0/3; transition-censored; 2.758115s; 221 trials; `99996/100004/0/0`; [s20261028](../results/ORIGINAL-random-20261028.sexp) | 0/1; exhausted; 0.384758s; 657 trials; `0/0/10694/10694`; [s1](../results/ORIGINAL-exhaustive-1.sexp) |
-| M1 false independence | not detectable; 3 O-stop; 0.292999s; 1 trials; `50062/50062/0/0`; [s1](../results/M1-baseline-1-schedule.sexp) | found 3/3; 0.520415s; 1 trials; `112/112/18376/18376`; [s20261028](../results/M1-random-20261028-schedule.sexp) | 0/1; exhausted; 0.448466s; 657 trials; `0/0/10694/10694`; [s1](../results/M1-exhaustive-1.sexp) |
-| M2 stale row snapshot | found 3/3; 0.004717s; 1 trials; `106/106/0/0`; [s20261028](../results/M2-baseline-20261028-schedule.sexp) | found 3/3; 0.013961s; 2 trials; `578/578/0/0`; [s1](../results/M2-random-1-schedule.sexp) | 0/1; exhausted; 0.335698s; 657 trials; `0/0/10694/10694`; [s1](../results/M2-exhaustive-1.sexp) |
-| M3 dropped routing | found 3/3; 0.000817s; 1 trials; `11/19/0/0`; [s314159265](../results/M3-baseline-314159265-schedule.sexp) | found 3/3; 0.001387s; 1 trials; `19/19/0/0`; [s314159265](../results/M3-random-314159265-schedule.sexp) | found 1/1; 0.070293s; 103 trials; `0/0/1761/1761`; [s1](../results/M3-exhaustive-1-schedule.sexp) |
-| M4 short-send summary | found 1/3; 2 O-stop; 0.001496s; 1 trials; `135/135/0/0`; [s314159265](../results/M4-baseline-314159265-schedule.sexp) | found 3/3; 0.266941s; 28 trials; `12692/12692/0/0`; [s314159265](../results/M4-random-314159265-schedule.sexp) | 0/1; exhausted; 0.450504s; 657 trials; `0/0/10694/10694`; [s1](../results/M4-exhaustive-1.sexp) |
-| M5 FIFO head insertion | found 3/3; 0.001011s; 1 trials; `8/8/0/0`; [s314159265](../results/M5-baseline-314159265-schedule.sexp) | found 3/3; 0.000664s; 1 trials; `0/0/0/0`; [s1](../results/M5-random-1-schedule.sexp) | found 1/1; 0.000867s; 2 trials; `0/0/0/0`; [s1](../results/M5-exhaustive-1-schedule.sexp) |
-| M6 swapped latency | found 2/3; 1 O-stop; 0.002521s; 1 trials; `241/241/0/0`; [s314159265](../results/M6-baseline-314159265-schedule.sexp) | found 3/3; 0.002985s; 1 trials; `110/110/0/0`; [s20261028](../results/M6-random-20261028-schedule.sexp) | found 1/1; 0.008317s; 13 trials; `0/0/214/214`; [s1](../results/M6-exhaustive-1-schedule.sexp) |
+| ORIGINAL control | O-stop 3/3; 0.284848s; 1 trials; `50158/50158/0/0`; s20261028 (`../results/ORIGINAL-baseline-20261028-schedule.sexp`) | 0/3; transition-censored; 2.758115s; 221 trials; `99996/100004/0/0`; s20261028 (`../results/ORIGINAL-random-20261028.sexp`) | 0/1; exhausted; 0.384758s; 657 trials; `0/0/10694/10694`; s1 (`../results/ORIGINAL-exhaustive-1.sexp`) |
+| M1 false independence | not detectable; 3 O-stop; 0.292999s; 1 trials; `50062/50062/0/0`; s1 (`../results/M1-baseline-1-schedule.sexp`) | found 3/3; 0.520415s; 1 trials; `112/112/18376/18376`; s20261028 (`../results/M1-random-20261028-schedule.sexp`) | 0/1; exhausted; 0.448466s; 657 trials; `0/0/10694/10694`; s1 (`../results/M1-exhaustive-1.sexp`) |
+| M2 stale row snapshot | found 3/3; 0.004717s; 1 trials; `106/106/0/0`; s20261028 (`../results/M2-baseline-20261028-schedule.sexp`) | found 3/3; 0.013961s; 2 trials; `578/578/0/0`; s1 (`../results/M2-random-1-schedule.sexp`) | 0/1; exhausted; 0.335698s; 657 trials; `0/0/10694/10694`; s1 (`../results/M2-exhaustive-1.sexp`) |
+| M3 dropped routing | found 3/3; 0.000817s; 1 trials; `11/19/0/0`; s314159265 (`../results/M3-baseline-314159265-schedule.sexp`) | found 3/3; 0.001387s; 1 trials; `19/19/0/0`; s314159265 (`../results/M3-random-314159265-schedule.sexp`) | found 1/1; 0.070293s; 103 trials; `0/0/1761/1761`; s1 (`../results/M3-exhaustive-1-schedule.sexp`) |
+| M4 short-send summary | found 1/3; 2 O-stop; 0.001496s; 1 trials; `135/135/0/0`; s314159265 (`../results/M4-baseline-314159265-schedule.sexp`) | found 3/3; 0.266941s; 28 trials; `12692/12692/0/0`; s314159265 (`../results/M4-random-314159265-schedule.sexp`) | 0/1; exhausted; 0.450504s; 657 trials; `0/0/10694/10694`; s1 (`../results/M4-exhaustive-1.sexp`) |
+| M5 FIFO head insertion | found 3/3; 0.001011s; 1 trials; `8/8/0/0`; s314159265 (`../results/M5-baseline-314159265-schedule.sexp`) | found 3/3; 0.000664s; 1 trials; `0/0/0/0`; s1 (`../results/M5-random-1-schedule.sexp`) | found 1/1; 0.000867s; 2 trials; `0/0/0/0`; s1 (`../results/M5-exhaustive-1-schedule.sexp`) |
+| M6 swapped latency | found 2/3; 1 O-stop; 0.002521s; 1 trials; `241/241/0/0`; s314159265 (`../results/M6-baseline-314159265-schedule.sexp`) | found 3/3; 0.002985s; 1 trials; `110/110/0/0`; s20261028 (`../results/M6-random-20261028-schedule.sexp`) | found 1/1; 0.008317s; 13 trials; `0/0/214/214`; s1 (`../results/M6-exhaustive-1-schedule.sexp`) |
 
 The three precommitted seeds are 1, 20261028 and 314159265; enumeration has one
 order. Every campaign had a 120 s wall budget and a 200,000 combined transition
@@ -130,14 +130,14 @@ fresh state, then run a fixed observing policy of turns, handoffs, client
 reads and pending closes. Equality under that finite policy does not establish
 future congruence. Array or hash inequality alone is never a finding.
 
-The [listener state](../results/listener-state.sexp) has one occupied echo row,
+The listener state (`../results/listener-state.sexp`) has one occupied echo row,
 free-head 4294967295, active-count=capacity=1, an outstanding Accept on listener
 capability(0,0), and an outstanding Close on echo capability(0,2), in principal 0's
 FIFO. The common prefix has 16 choices. AcceptResult;CloseResult closes new
 client(0,3) and records an unattributed drop; CloseResult;AcceptResult admits
 that client and does not close it. OWN passes and stop reason 0 on both routes.
-[Both complete routes](../results/listener-routes.sexp) and the
-[prefix](../results/listener-prefix.sexp) are saved. The naive declaration admits
+Both complete routes (`../results/listener-routes.sexp`) and the
+prefix (`../results/listener-prefix.sexp`) are saved. The naive declaration admits
 the pair; the allocator-aware declaration rejects it. This is the required
 listener/reclamation false diamond, not an assertion that the node should
 admit a connection before capacity is reclaimed. The searched M1 witnesses
@@ -249,3 +249,5 @@ under the same PID/timeout discipline with `E1_MUTANT=M3`, `E1_CONFIG=replay`,
 `results/M3-random-1-schedule.sexp`, and `E1_OUTPUT_TAG` set to a fresh suffix.
 Set `FN_ACL2_SLOT_DIR=/tmp/fn2-a4-acl2-slots` and `FN_ACL2_SLOTS=6` as in the
 recorded launchers. Replay time is diagnostic, excluded from campaign results.
+
+Records named here are regenerable and git-ignored; `E1-RESULTS.md` ("Raw records") gives the commands.
