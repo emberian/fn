@@ -84,7 +84,9 @@
                   :shared-handler-mutation shared-handler-mutation
                   :statement statement :vars vars :formula formula :teeth teeth :doc doc
                   :checker checker :proof '(:owed) :checks nil))
-          nil `((defun-nx ,statement ,vars ,formula))))
+          (and from (fn2-decl-table (car from)) (list (list :owner from :at
+                           (if (eq (car from) :operation-set) :core :coverage))))
+          `((defun-nx ,statement ,vars ,formula))))
     (er hard 'defthm-owed
         "~x0 requires :teeth to name evaluating functions, not prose or forms." name)))
 

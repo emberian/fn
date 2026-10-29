@@ -5,3 +5,5 @@
 (fn2-scribe-events)
 (fn2-machine-a-events)
 (fn2-test-machine-events)
+
+(fn2-resolve :callbacks)

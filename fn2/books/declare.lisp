@@ -4,7 +4,7 @@
 (defun fn2-decl-table (kind)
   (declare (xargs :guard t))
   (case kind (:columns 'fn2-columns) (:machine 'fn2-machine-kinds)
-        (:core-child 'fn2-core-children) ((:owed :square) 'fn2-squares)))
+        (:operation-set 'fn2-operation-sets) (:core-child 'fn2-core-children) ((:owed :square) 'fn2-squares)))
 (defun fn2-decl-row (id world)
   (declare (xargs :verify-guards nil))
   (cdr (assoc-eq (cadr id) (table-alist (fn2-decl-table (car id)) world))))
@@ -89,8 +89,11 @@
   (if (atom requires) (null requires)
     (and (case (caar requires)
            (:declaration (fn2-decl-row (cadar requires) world))
-           (:function (and (symbolp (cadar requires))
-                           (member-eq :at (cddar requires)))))
+           (:function (and (symbolp (cadar requires)) (cadar requires)
+                           (member-eq (fn2-decl-get :at (cddar requires))
+                                      '(:index :core :access :callbacks :dispatch :reference :coverage))))
+           (:owner (and (fn2-decl-idp (cadar requires))
+                        (member-eq (fn2-decl-get :at (cddar requires)) '(:core :coverage)))))
          (fn2-decl-requiresp (cdr requires) world))))
 (defun fn2-decl-find-artifact (name entries)
   (declare (xargs :verify-guards nil))
@@ -131,7 +134,7 @@
 (defun fn2-decl-all-rows (world)
   (declare (xargs :verify-guards nil))
   (append (fn2-decl-rows :columns world) (fn2-decl-rows :machine world)
-          (fn2-decl-rows :core-child world) (fn2-decl-rows :owed world)))
+          (fn2-decl-rows :core-child world) (fn2-decl-rows :operation-set world) (fn2-decl-rows :owed world)))
 ; DEFUN-NX's outer RETURN-LAST only prevents execution; its last argument
 ; is the translated logical statement. Do not unfold arbitrary functions.
 (defun fn2-decl-statement-body (statement world)
@@ -188,6 +191,37 @@
   `(table ,(fn2-decl-table (car id)) ',(cadr id)
      ',(fn2-decl-set :reuse
          (cons (list :declaration id :book book) (fn2-decl-get :reuse old)) old)))
+(defun fn2-decl-input (kind)
+  (case kind (:machine :machines) (:core-child :children) ((:owed :square) :evidence)))
+(defun fn2-decl-sealed (id world)
+  (declare (xargs :verify-guards nil))
+  (cdr (assoc-eq (fn2-decl-input (car id)) (table-alist 'fn2-input-seals world))))
+; Each section records exactly the rows it consumed, independently of other inputs.
+(defmacro fn2-seal (input section kind)
+  `(make-event
+    (value (list 'table 'fn2-input-seals ,input
+                 (list 'quote (list :section ,section :rows (fn2-decl-rows ,kind (w state))))))))
+(defun fn2-decl-missing (requirements section world)
+  (declare (xargs :verify-guards nil))
+  (if (atom requirements) nil
+    (let ((r (car requirements)))
+      (if (and (eq (fn2-decl-get :at (cddr r)) section)
+               (not (case (car r)
+                      (:function (function-symbolp (cadr r) world))
+                      (:owner (fn2-decl-row (cadr r) world))))) r
+        (fn2-decl-missing (cdr requirements) section world)))))
+(defun fn2-decl-unresolved (rows section world)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) nil
+    (let* ((row (cdar rows))
+           (missing (fn2-decl-missing (fn2-decl-get :requires row) section world)))
+      (if missing (list (fn2-decl-get :decl-id row) missing)
+        (fn2-decl-unresolved (cdr rows) section world)))))
+(defmacro fn2-resolve (section)
+  `(make-event
+    (let ((missing (fn2-decl-unresolved (fn2-decl-all-rows (w state)) ,section (w state))))
+      (if missing (er soft 'fn2-resolve "Section ~x0: unresolved ~x1." ,section missing)
+        (value '(value-triple :resolved))))))
 (defun fn2-declare (id payload requires events)
   (declare (xargs :verify-guards nil))
   `(make-event
@@ -195,6 +229,9 @@
            (book (fn2-decl-current-book)))
       (cond
        ((not (fn2-decl-idp ',id)) (er soft 'fn2-declare "Malformed identity ~x0." ',id))
+       ((fn2-decl-sealed ',id world)
+        (er soft 'fn2-declare "~x0 is declared after section ~x1 consumed its inputs."
+            ',id (fn2-decl-get :section (fn2-decl-sealed ',id world))))
        (old
         (if (and (equal (take ,(len payload)
                                ,(if (eq (car id) :owed)

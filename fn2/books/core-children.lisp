@@ -29,14 +29,14 @@
            (member-eq reference '(:state :environment))
            (member-eq order '(:foundation :machine :extension)))
       `(make-event
-        (if (or (table-alist 'fn2-core-instance (w state))
-                (member-eq ',stobj (fn2-core-child-types
-                  (remove-assoc-eq ',field (fn2-decl-rows :core-child (w state))))))
+        (if (member-eq ',stobj (fn2-core-child-types
+                  (remove-assoc-eq ',field (fn2-decl-rows :core-child (w state)))))
             (er soft 'defcorechild "Child registration requires an open assembly and unique stobj: ~x0 / ~x1." ',field ',stobj)
           (value (fn2-declare '(:core-child ,field)
                    '(:stobj ,stobj :init ,init :profilep ,profilep
                      :reference ,reference :order ,order :why ,why)
-                   '((:declaration (:columns ,stobj))) nil))))
+                   '((:declaration (:columns ,stobj))
+                     ,@(and (consp init) `((:function ,(car init) :at :core)))) nil))))
     (er hard 'defcorechild "Invalid child ~x0: init, profilep and nonempty why are required." field)))
 (defun fn2-core-registered-pairs (entries)
   (declare (xargs :verify-guards nil))

@@ -104,8 +104,8 @@
 
 (defmachine-callback fn2-scribe-refused fn2-scribe (code id budget) 4
   (if (eq code :exhausted)
-      (fn2-scribe-park id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
-    (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)))
+      (fn2-call fn2-scribe-park id budget)
+    (fn2-call fn2-scribe-stop id budget)))
 
 
 (defun fn2-scribe-window-class (fn2-core)
@@ -127,7 +127,7 @@
                 (let ((fn2-core (fn2-machine-park-pool id class fn2-core)))
                   (fn2-machine-result 0 24 0 nil fn2-core))
               (mv-let (bytes steps descriptors runnable fn2-core)
-                (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
+                (fn2-call fn2-scribe-stop id budget)
                 (declare (ignore bytes steps descriptors))
                 (fn2-machine-result 0 24 0 runnable fn2-core)))
           (let ((fn2-core (fn2-scribe-put-core id
@@ -189,7 +189,7 @@
       row-generation
       row-principal-slot fn2-core)
     (declare (ignore opslot opgen))
-    (if (not (eq code :ok)) (fn2-scribe-refused code id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
+    (if (not (eq code :ok)) (fn2-call fn2-scribe-refused code id budget)
       (let ((fn2-core (fn2-scribe-put-core id
                         (phase *fn2-scribe-state-write-result*) (pending 1) (event-ready 0))))
         (fn2-machine-result 4096 12 1 nil fn2-core)))))))
@@ -202,7 +202,7 @@
     (fn2-issue-fence *fn2-scribe-kind* id row-generation
       row-principal-slot fn2-core)
     (declare (ignore opslot opgen))
-    (if (not (eq code :ok)) (fn2-scribe-refused code id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
+    (if (not (eq code :ok)) (fn2-call fn2-scribe-refused code id budget)
       (let ((fn2-core (fn2-scribe-put-core id
                         (phase *fn2-scribe-state-fence-result*) (pending 1) (event-ready 0))))
         (fn2-machine-result 0 12 1 nil fn2-core)))))))
@@ -223,7 +223,7 @@
   (fn2-machine-with-work 4096 12 1
   (if (not (and (natp budget) (< 0 budget))) (fn2-machine-yield id fn2-core)
     (let ((cursor row-cursor))
-    (if (>= cursor 4096) (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
+    (if (>= cursor 4096) (fn2-call fn2-scribe-stop id budget)
       (mv-let (code opslot opgen fn2-core)
         (fn2-issue-read
           (+ (* 4096 (nfix (- row-sequence 1))) cursor)
@@ -232,7 +232,7 @@
           row-generation
           row-principal-slot fn2-core)
         (declare (ignore opslot opgen))
-        (if (not (eq code :ok)) (fn2-scribe-refused code id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
+        (if (not (eq code :ok)) (fn2-call fn2-scribe-refused code id budget)
           (let ((fn2-core (fn2-scribe-put-core id
                             (phase *fn2-scribe-state-read-result*) (pending 1) (event-ready 0))))
             (fn2-machine-result (- 4096 cursor) 12 1 nil fn2-core)))))))))
@@ -250,7 +250,7 @@
       ((not (or (equal row-outcome *fn2-outcome-done*)
                  (and (equal phase *fn2-scribe-state-read-result*)
                       (equal row-outcome *fn2-outcome-short*))))
-       (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core))
+       (fn2-call fn2-scribe-stop id budget))
       ((and (equal phase *fn2-scribe-state-write-result*) (equal event *fn2-event-write-result*) (equal count 4096))
        (let ((fn2-core (fn2-scribe-put-core id (phase *fn2-scribe-state-fence*) (event-ready 0))))
          (fn2-machine-result 0 6 0 t fn2-core)))
@@ -265,7 +265,7 @@
                          (cursor (if (equal (+ cursor count) 4096) 0 (+ cursor count)))
                          (event-ready 0))))
          (fn2-machine-result 0 8 0 t fn2-core)))
-      (t (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)))))
+      (t (fn2-call fn2-scribe-stop id budget)))))
 
 
 (defmachine-callback fn2-scribe-verify-run fn2-scribe (id budget) 4
@@ -285,7 +285,7 @@
 
 (defmachine-callback fn2-scribe-next fn2-scribe (id budget) 4
   (let ((seq row-sequence))
-    (if (>= seq 4294967295) (fn2-scribe-stop id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-pool-slot row-pool-gen row-pending row-borrows row-sequence row-cursor row-checksum row-completed row-verified row-stopped row-event row-outcome row-count row-aux0 row-aux1 row-event-ready fn2-core)
+    (if (>= seq 4294967295) (fn2-call fn2-scribe-stop id budget)
       (mv-let (code fn2-core)
         (fn2-core-reset row-pool-slot
           row-pool-gen *fn2-scribe-kind* id

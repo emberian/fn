@@ -13,7 +13,10 @@
  '(progn
 (make-event
  (value (cons 'progn (fn2-core-register-machine-children (fn2-machine-names (w state)) (w state) 0))))
-(table fn2-core-instance :assembled t)
+(fn2-seal :children :core :core-child)
+(fn2-resolve :core)
+(make-event (value (fn2-declare '(:operation-set fn2-core-issue) nil nil nil)))
+(make-event (value (fn2-declare '(:operation-set fn2-core-harvest) nil nil nil)))
 (make-event
  (value `(defconst *fn2-core-children*
            ',(fn2-core-registered-pairs (fn2-core-child-registry (w state))))))
@@ -166,16 +169,16 @@
 ; DSL for bounded pool operations through the parent. Lists exist only at
 ; macro expansion, never in the emitted runtime paths.
 (defmacro fn2-core-pool-wrapper (name target args results position)
-  `(progn
-     (defun ,name (,@args fn2-core)
-       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-       (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
-         (,@results fn2-pool)
-         (,target ,@args fn2-pool)
-         (mv ,@results fn2-core)))
-     (fn2-core-shape-lemmas ,name ,args ,position)))
+  (declare (ignore position))
+  (fn2-operation-events '(:operation-set fn2-core-issue) name 'fn2-core args
+    (append results '(fn2-core)) nil :core
+    '(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    `((stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+        (,@results fn2-pool) (,target ,@args fn2-pool) (mv ,@results fn2-core)))
+    `((fn2-core-shape-lemmas ,name ,args ,(len results))) nil))
 (fn2-core-pool-wrapper fn2-core-reserve fn2-pool-reserve
   (class okind oslot ogen) (code slot gen) 3)
+(fn2-defoperation (:operation-set fn2-core-issue) :core :infer
 (defun fn2-core-release (slot gen okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
@@ -185,17 +188,18 @@
       (mv :corrupt fn2-pool))
     (let ((fn2-core (if (or (eq code :ok) (eq code :retired)) fn2-core
                      (fn2-core-stop *fn2-stop-reason-pool-release* fn2-core))))
-      (mv code fn2-core))))
+      (mv code fn2-core)))))
 (fn2-core-shape-lemmas fn2-core-release (slot gen okind oslot ogen) 1)
 (fn2-core-pool-wrapper fn2-core-reset fn2-pool-reset
   (slot gen okind oslot ogen) (code) 1)
 (fn2-core-pool-wrapper fn2-core-write fn2-pool-write
   (slot gen idx byte okind oslot ogen) (code) 1)
+(fn2-defoperation (:operation-set fn2-core-issue) :core :infer
 (defun fn2-core-read (slot gen idx okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
     (code byte) (fn2-pool-read slot gen idx okind oslot ogen fn2-pool)
-    (mv code byte)))
+    (mv code byte))))
 
 ; No row traversal: these are the scalar outbox preconditions needed by
 ; enqueue. A reservation takes the row and credit before a pool loan.
@@ -223,6 +227,7 @@
 ; Shared issue implementation. The public wrappers supply only their own
 ; descriptor fields. Validate scalar widths before any mutation. The only
 ; post-reservation refusal is the pool lease; unreserve restores its row.
+(fn2-defoperation (:operation-set fn2-core-issue) :core :infer
 (defun fn2-core-issue (kind cap-index cap-nonce offset fua slot gen off len
                            may-release target-slot target-gen
                            okind oslot ogen principal fn2-core)
@@ -264,7 +269,7 @@
           code opslot opgen fn2-pool fn2-ops))
     (let ((fn2-core (if (= stop-reason *fn2-stop-reason-none*) fn2-core
                      (fn2-core-stop stop-reason fn2-core))))
-      (mv code opslot opgen fn2-core))))
+      (mv code opslot opgen fn2-core)))))
 
 (fn2-core-shape-lemmas fn2-core-issue
   (kind cap-index cap-nonce offset fua slot gen off len may-release
@@ -272,13 +277,13 @@
 
 (defmacro fn2-core-issue-wrapper (name args kind cap-index cap-nonce offset fua
                                       slot gen off len may-release target-slot target-gen)
-  `(progn
-     (defun ,name (,@args okind oslot ogen principal fn2-core)
-       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-       (fn2-core-issue ,kind ,cap-index ,cap-nonce ,offset ,fua ,slot ,gen ,off ,len
-                       ,may-release ,target-slot ,target-gen
-                       okind oslot ogen principal fn2-core))
-     (fn2-core-shape-lemmas ,name (,@args okind oslot ogen principal) 3)))
+  (fn2-operation-events '(:operation-set fn2-core-issue) name 'fn2-core
+    (append args '(okind oslot ogen principal)) '(code slot gen fn2-core) nil :core
+    '(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    `((fn2-core-issue ,kind ,cap-index ,cap-nonce ,offset ,fua ,slot ,gen ,off ,len
+                     ,may-release ,target-slot ,target-gen okind oslot ogen principal fn2-core))
+    `((fn2-core-shape-lemmas ,name (,@args okind oslot ogen principal) 3))
+    (list :refusal (list :square (fn2-columns-sym name "-REFUSAL")))))
 (fn2-core-issue-wrapper fn2-issue-receive (cap-index cap-nonce slot gen len)
   *fn2-action-receive* cap-index cap-nonce 0 0 slot gen 0 len 0 0 0)
 (fn2-core-issue-wrapper fn2-issue-send (cap-index cap-nonce slot gen off len may-release)
@@ -301,6 +306,7 @@
 
  ; ArmWake owns an ordinary outbox credit but no completion cell is posted.
 ; Its separate scalar payload is never overloaded onto a storage offset.
+(fn2-defoperation (:operation-set fn2-core-issue) :core :infer
 (defun fn2-issue-arm-wake (deadline observation-gen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
@@ -320,7 +326,7 @@
           code opslot opgen fn2-ops))
     (let ((fn2-core (if (= stop-reason *fn2-stop-reason-none*) fn2-core
                      (fn2-core-stop stop-reason fn2-core))))
-      (mv code opslot opgen fn2-core))))
+      (mv code opslot opgen fn2-core)))))
 (fn2-core-shape-lemmas fn2-issue-arm-wake (deadline observation-gen) 3)
 
 ; Peek before harvest finishes/recycles a row, preserving its machine identity
@@ -361,6 +367,7 @@
     (fn2-ops-next-owner fn2-ops)
     (mv found okind oslot ogen principal)))
 
+(fn2-defoperation (:operation-set fn2-core-harvest) :core :infer
 (defun fn2-harvest-one (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
@@ -402,7 +409,7 @@
           opslot opgen cell evkind outcome reason count aux0 aux1 fn2-pool fn2-ops))
     (let ((fn2-core (if (= stop-reason *fn2-stop-reason-none*) fn2-core
                      (fn2-core-stop stop-reason fn2-core))))
-      (mv found opslot opgen cell evkind outcome reason count aux0 aux1 fn2-core))))
+      (mv found opslot opgen cell evkind outcome reason count aux0 aux1 fn2-core)))))
 (fn2-core-shape-lemmas fn2-harvest-one () 10)
 
 (assert-event
@@ -524,5 +531,7 @@
   :schema :invariant :from (:operation-set fn2-core-harvest)
   :teeth (fn2-core-unit)
   :doc "At the composed harvest boundary, an input completion exposes exactly the initialized loan prefix. Initialization is an explicit successful trace of the real adapter-write export; ready-ops supplies the independently posted observation state. This trace premise is the environmental fidelity obligation, not an inference from bytes that happen to be in memory.")
+
+(fn2-resolve :core)
 
 ))

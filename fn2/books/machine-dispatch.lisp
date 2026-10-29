@@ -2,6 +2,7 @@
 (include-book "machines-a-run")
 (defmacro fn2-machine-dispatch-events ()
  '(progn
+(fn2-resolve :callbacks)
 (make-event
  (value (cons 'progn (fn2-machine-observe-events 'fn2-machine-observe (fn2-machine-names (w state)) (w state)))))
 
@@ -22,4 +23,6 @@
     fn2-listener-step fn2-connection-submit fn2-connection-reply fn2-connection-drain fn2-machine-grant-one fn2-machine-park)
   (w state)))
 
+
+(fn2-resolve :dispatch)
 ))

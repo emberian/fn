@@ -4,3 +4,5 @@
 (fn2-scribe-events)
 (fn2-machine-a-events)
 ; Other layers' continuation event macros go HERE, before final dispatch.
+
+(fn2-resolve :callbacks)

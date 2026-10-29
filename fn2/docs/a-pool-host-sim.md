@@ -576,3 +576,23 @@ after including the declaration machinery; every form in that book inherits B.
 A conflicting second book-layer declaration is refused. An explicit `:layer`
 in a registrar payload (including `defthm-owed :layer`) overrides the book's
 recorded layer, which overrides the path default. Tests default to `:test`.
+
+DM0b adds `fn2/books/operations.lisp`, the one carrier-parameterised emitter
+below `columns` and `machines`. `defwide-columns`, `defmachine-callback`, the
+generated run entries and the core's pool and issue wrappers all emit through
+it, and each function is entered in its owner row's callback map (`:args
+:returns :row-bindings :calling-convention :carrier :writes :cost :refusal
+:section`). The core operations sit under `(:operation-set fn2-core-issue)` and
+`(:operation-set fn2-core-harvest)`; L1's credit and wait-queue functions sit
+under `(:operation-set fn2-machine-resources)`. `(fn2-call CALLEE extra...)`
+expands from the callee's authoritative calling convention, and positional
+`ROW-` forwarding is refused. After every binding that rebinds `fn2-core`, the
+callback emitter re-snapshots the row from the returned core before any later
+`ROW-` read, on refusal paths too; unsupported `b*` binders are refused.
+`:writes` and `:cost` stay `:unchecked` until R7. Requirements resolve by `:at`
+at `fn2-resolve` points (index, core, access, callbacks, dispatch, reference,
+coverage). `fn2-input-seals` replaces `fn2-core-instance`: machines seal at
+`:index`, children at `:core`, and obligations at `:coverage` (the end of
+`sim/check.lisp`). An owed row declared in a book that includes `sim/check` is
+refused there; layer B's unit books that include checker books must register
+their rows before that include, or the seal moves. This is a merge item for B.

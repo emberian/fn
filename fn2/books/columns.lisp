@@ -2,7 +2,7 @@
 ; Generated array storage is the executable representation.  The row/table
 ; views are non-executable, and resizing belongs only to the generated init.
 (in-package "ACL2")
-(include-book "declare")
+(include-book "operations")
 
 (defthm fn2-columns-len-update-nth
   (implies (and (natp i) (< i (len xs)))
@@ -688,13 +688,15 @@
       `(progn
          (defcolumns ,name ((hi ,limb-kind ,@(and why `(:why ,why)))
                             (lo ,limb-kind ,@(and why `(:why ,why)))) :rows-bound ,rows-bound)
+         (fn2-defoperation (:columns ,name) :declaration (order)
          (defun ,compare (i j ,name)
            (declare (xargs :stobjs ,name
                            :guard (and ,guard (natp j) (< j (,rows ,name)))))
            (let ((ahi (,hi i ,name)) (bhi (,hi j ,name))
                  (alo (,lo i ,name)) (blo (,lo j ,name)))
              (cond ((< ahi bhi) :lt) ((< bhi ahi) :gt)
-                   ((< alo blo) :lt) ((< blo alo) :gt) (t :eq))))
+                   ((< alo blo) :lt) ((< blo alo) :gt) (t :eq)))))
+         (fn2-defoperation (:columns ,name) :declaration (code ,name)
          (defun ,inc (i ,name)
            (declare (xargs :stobjs ,name :guard ,guard))
            (let ((hi (,hi i ,name)) (lo (,lo i ,name)))
@@ -703,7 +705,7 @@
                    ((< hi ,limit)
                     (let* ((,name (,sethi i (+ 1 hi) ,name)) (,name (,setlo i 0 ,name)))
                       (mv :ok ,name)))
-                   (t (mv :exhausted ,name)))))
+                   (t (mv :exhausted ,name))))))
          (defthm ,(fn2-columns-sym inc "-TYPE")
            (implies (and (,p ,name) ,guard) (,p (mv-nth 1 (,inc i ,name)))))
          (defthm ,(fn2-columns-sym inc "-WFP")

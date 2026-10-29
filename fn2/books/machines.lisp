@@ -200,6 +200,11 @@
                      id event outcome reason count aux0 aux1 fn2-core)))
           (fn2-machine-observe-kind-arms (cdr names) (+ 1 (nfix tag)) predicatep router))))
 
+(defun fn2-machine-requirements (entries)
+  (if (atom entries) nil
+    (cons (list :function (cadar entries) :at :callbacks)
+          (fn2-machine-requirements (cdr entries)))))
+
 (defun fn2-machine-events (name states fields accounts budget continuations observes capacity initial obligations)
   (declare (xargs :verify-guards nil))
   (let* ((enum (fn2-columns-sym name "-STATE"))
@@ -216,7 +221,8 @@
                 :calling-convention (:run (id budget ,@(fn2-machine-row-vars cols) fn2-core)
                                      :observe (id event outcome reason count aux0 aux1 ,@(fn2-machine-row-vars cols) fn2-core))
                 :obligations ,obligations)
-      (list (list :declaration (list :columns name)))
+      (append (list (list :declaration (list :columns name)))
+              (fn2-machine-requirements (append continuations observes)))
       `((defcolumns ,name ,cols)
        (defmacro ,put (slot &rest fields)
          (fn2-machine-core-put-expansion ',name ',cols ',states slot fields nil))
@@ -294,6 +300,22 @@
   (declare (xargs :verify-guards nil))
   (if (atom vars) nil
     (cons `(mv-nth ,n ,call) (fn2-machine-mv-fields (cdr vars) (+ 1 (nfix n)) call))))
+(defun fn2-machine-snapshot-value-facts (name columns n)
+  (declare (xargs :verify-guards nil))
+  (if (atom columns) nil
+    (let ((value (if (zp n) `(car (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core))
+                  `(mv-nth ,n (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core))))
+          (hyps '(and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))))
+      (cons `(defthm ,(fn2-columns-col-name (fn2-columns-sym name "-SNAPSHOT") (caar columns))
+               (implies ,hyps (unsigned-byte-p ,(fn2-columns-width (cadar columns)) ,value))
+               :rule-classes (:rewrite
+                 (:type-prescription :corollary (implies ,hyps (natp ,value)))
+                 (:rewrite :corollary
+                   (implies ,hyps (and (rationalp ,value) (acl2-numberp ,value)))))
+               :hints (("Goal" :use ,(fn2-columns-sym name "-SNAPSHOT-VALUES")
+                         :in-theory (e/d (,(fn2-columns-sym name "-VALUESP"))
+                                         (,(fn2-columns-sym name "-SNAPSHOT"))))))
+            (fn2-machine-snapshot-value-facts name (cdr columns) (1+ (nfix n)))))))
 (defun fn2-machine-snapshot-events (name columns)
   (declare (xargs :verify-guards nil))
   (let* ((vars (fn2-machine-row-vars columns)) (snapshot (fn2-columns-sym name "-SNAPSHOT"))
@@ -312,52 +334,155 @@
       (defthm ,(fn2-columns-sym snapshot "-VALUES")
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                  (,valuesp ,@(fn2-machine-mv-fields vars 0 `(,snapshot id fn2-core)))))
-      (in-theory (disable ,snapshot)))))
+      (in-theory (disable ,snapshot))
+      ,@(fn2-machine-snapshot-value-facts name columns 0))))
 (defun fn2-machine-all-snapshots (names world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
     (append (fn2-machine-snapshot-events (car names) (fn2-machine-property (car names) :columns world))
             (fn2-machine-all-snapshots (cdr names) world))))
+; The submitted spelling check ignores quoted data and shadowed row names.
+(defun fn2-callback-forwarding (form vars world)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom form) nil) ((eq (car form) 'quote) nil)
+        ((and (symbolp (car form)) (fn2-decl-get :row-bindings (fn2-operation-row (car form) world))
+              (intersection-eq vars (cdr form))) (car form))
+        ((member-eq (car form) '(let let*))
+         (or (fn2-callback-forwarding (cadr form) vars world)
+             (fn2-callback-forwarding (cddr form)
+               (set-difference-eq vars (strip-cars (cadr form))) world)))
+        ((eq (car form) 'mv-let)
+         (or (fn2-callback-forwarding (caddr form) vars world)
+             (fn2-callback-forwarding (cdddr form)
+               (set-difference-eq vars (cadr form)) world)))
+        (t (or (fn2-callback-forwarding (car form) vars world)
+               (fn2-callback-forwarding (cdr form) vars world)))))
+(defun fn2-call-expand (form world)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom form) form) ((eq (car form) 'quote) form)
+        ((eq (car form) 'fn2-call)
+         (let* ((row (fn2-operation-row (cadr form) world))
+                (args (fn2-decl-get :args row)))
+           (if (and row (equal (len args) (len (cddr form))))
+               (cons (cadr form)
+                 (sublis (pairlis$ args (cddr form)) (fn2-decl-get :calling-convention row)))
+             (er hard 'fn2-call "Unknown callback or wrong argument count: ~x0." form))))
+        (t (cons (fn2-call-expand (car form) world) (fn2-call-expand (cdr form) world)))))
+(defun fn2-callback-reads (form vars)
+  (cond ((atom form) (member-eq form vars)) ((eq (car form) 'quote) nil)
+        (t (or (fn2-callback-reads (car form) vars) (fn2-callback-reads (cdr form) vars)))))
+(defun fn2-callback-snapshot-vars (all active)
+  (declare (xargs :verify-guards nil))
+  (if (atom all) nil
+    (cons (if (member-eq (car all) active) (car all)
+            (fn2-columns-sym (car all) "$SNAPSHOT"))
+          (fn2-callback-snapshot-vars (cdr all) active))))
+(defun fn2-callback-fresh-body (body kind vars all)
+  (declare (xargs :verify-guards nil))
+  (if (eq (caar body) 'declare)
+      (cons (car body) (fn2-callback-fresh-body (cdr body) kind vars all))
+    (if (fn2-callback-reads body vars)
+        `((mv-let ,(fn2-callback-snapshot-vars all vars) (,(fn2-columns-sym kind "-SNAPSHOT") id fn2-core)
+            (declare (ignorable ,@(fn2-callback-snapshot-vars all vars))) ,@body))
+      body)))
+; Refresh from the returned core, never the proposed write values. LET* is
+; lowered to nested LETs so every intervening read sees the current core.
+; Fuel bounds the syntax transformation (three times the submitted tree size).
+(defun fn2-callback-refresh (form kind vars all fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond ((or (zp fuel) (atom form)) form)
+        ((member-eq (car form) '(quote declare)) form)
+        ((and (eq (car form) 'b*) (consp (cadr form)))
+         (let ((binding (caadr form)))
+           (fn2-callback-refresh
+             (cond ((symbolp (car binding))
+                    `(let (,binding) (b* ,(cdadr form) ,@(cddr form))))
+                   ((eq (caar binding) 'mv)
+                    `(mv-let ,(cdar binding) ,(cadr binding)
+                       (b* ,(cdadr form) ,@(cddr form))))
+                   (t (er hard 'defmachine-callback "Unsupported b* binder ~x0." binding)))
+             kind vars all (1- fuel))))
+        ((and (eq (car form) 'let*) (consp (cadr form)))
+         (fn2-callback-refresh
+           `(let (,(caadr form))
+              ,@(if (cdadr form) `((let* ,(cdadr form) ,@(cddr form))) (cddr form)))
+           kind vars all (1- fuel)))
+        ((member-eq (car form) '(let mv-let))
+         (let* ((mvp (eq (car form) 'mv-let))
+                (bound (if mvp (cadr form) (strip-cars (cadr form))))
+                (active (set-difference-eq vars bound))
+                (body (fn2-callback-refresh (if mvp (cdddr form) (cddr form))
+                                            kind active all (1- fuel)))
+                (body (if (member-eq 'fn2-core bound)
+                          (fn2-callback-fresh-body body kind active all) body)))
+           (if mvp `(mv-let ,(cadr form)
+                       ,(fn2-callback-refresh (caddr form) kind vars all (1- fuel)) ,@body)
+             `(let ,(fn2-callback-refresh (cadr form) kind vars all (1- fuel)) ,@body))))
+        (t (cons (fn2-callback-refresh (car form) kind vars all (1- fuel))
+                 (fn2-callback-refresh (cdr form) kind vars all (1- fuel))))))
+(defun fn2-callback-bad-binder (bindings)
+  (if (atom bindings) nil
+    (if (or (symbolp (caar bindings)) (eq (caaar bindings) 'mv))
+        (fn2-callback-bad-binder (cdr bindings)) (car bindings))))
+(defun fn2-callback-input-error (form world)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom form) nil) ((eq (car form) 'quote) nil)
+        ((and (eq (car form) 'fn2-call)
+              (let ((row (fn2-operation-row (cadr form) world)))
+                (or (not row) (not (equal (len (fn2-decl-get :args row)) (len (cddr form))))))) form)
+        ((and (eq (car form) 'b*) (fn2-callback-bad-binder (cadr form))) form)
+        (t (or (fn2-callback-input-error (car form) world)
+               (fn2-callback-input-error (cdr form) world)))))
 (defun fn2-machine-callback-event (name kind args position body world)
   (declare (xargs :verify-guards nil))
-  (let ((vars (fn2-machine-row-vars (fn2-machine-property kind :columns world))))
-    `(progn
-       (defun ,name (,@args ,@vars fn2-core)
-         (declare (xargs :stobjs fn2-core
-                    :guard (and (fn2-core-wfp fn2-core) (,(fn2-columns-sym kind "-VALUESP") ,@vars)))
-                  (ignorable ,@args ,@vars))
-         ,@body)
-       (fn2-core-shape-lemmas ,name (,@args ,@vars) ,position))))
+  (let* ((vars (butlast (cddr (fn2-decl-get :run
+                                (fn2-machine-property kind :calling-convention world))) 1))
+         (problem (fn2-callback-forwarding body vars world)))
+    (cond ((fn2-callback-input-error body world)
+           `(make-event (er soft 'defmachine-callback
+                          "~x0 has an unknown call, wrong arity or unsupported binder: ~x1."
+                          ',name ',(fn2-callback-input-error body world))))
+          (problem
+        `(make-event (er soft 'defmachine-callback
+                       "~x0 calls callback ~x1 with positional row fields; use fn2-call."
+                       ',name ',problem)))
+          (t (fn2-operation-events (list :machine kind) name 'fn2-core args
+          (append (make-list position :initial-element :value) '(fn2-core)) vars :callbacks
+          `(declare (xargs :stobjs fn2-core
+                     :guard (and (fn2-core-wfp fn2-core) (,(fn2-columns-sym kind "-VALUESP") ,@vars)))
+                    (ignorable ,@args ,@vars))
+          (fn2-callback-refresh (fn2-call-expand body world) kind vars vars (* 3 (acl2-count (fn2-call-expand body world))))
+          `((fn2-core-shape-lemmas ,name (,@args ,@vars) ,position)) nil)))))
 ; ROW-<field> is the public scalar argument vocabulary, in declaration order.
 ; No resident list and no child/core alias crosses the callback boundary.
 (defmacro defmachine-callback (name kind args position &rest body)
   `(make-event (value (fn2-machine-callback-event ',name ',kind ',args ',position ',body (w state)))))
 (defun fn2-machine-run-event (name world)
   (declare (xargs :verify-guards nil))
-  (let* ((vars (fn2-machine-row-vars (fn2-machine-property name :columns world)))
+  (let* ((vars (butlast (cddr (fn2-decl-get :run (fn2-machine-property name :calling-convention world))) 1))
          (run (fn2-columns-sym name "-RUN")))
-    `(progn
-       (defun ,run (id budget fn2-core)
-         (declare (xargs :stobjs fn2-core
+    (fn2-operation-events (list :machine name) run 'fn2-core '(id budget)
+      '(bytes steps descriptors runnable fn2-core) nil :callbacks
+      `(declare (xargs :stobjs fn2-core
                     :guard-hints (("Goal" :use ((:instance ,(fn2-columns-sym name "-SNAPSHOT-VALUES")))
                                   :in-theory (disable ,(fn2-columns-sym name "-VALUESP"))))
                     :guard (and (fn2-core-wfp fn2-core)
                    (fn2-machine-idp id fn2-core)
                    (equal (fn2-machine-kind id fn2-core)
                           ,(fn2-columns-pre "*" (fn2-columns-sym name "-KIND*"))))))
-         (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
+      `((mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
            (case row-phase
              ,@(fn2-machine-state-arms (fn2-machine-property name :states world)
                 (fn2-machine-property name :continuations world) 0 `(id budget ,@vars fn2-core))
              (otherwise (fn2-machine-refuse-phase id fn2-core)))))
-       (fn2-core-shape-lemmas ,run (id budget) 4))))
+      `((fn2-core-shape-lemmas ,run (id budget) 4)) nil)))
 (defmacro defmachine-run (name)
   `(make-event (value (fn2-machine-run-event ',name (w state)))))
 (defun fn2-machine-observe-handlers (router names world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
     (let* ((name (car names)) (handler (fn2-columns-col-name router name))
-           (vars (fn2-machine-row-vars (fn2-machine-property name :columns world))))
+           (vars (butlast (cddr (fn2-decl-get :run (fn2-machine-property name :calling-convention world))) 1)))
       (append
        `((defun ,handler (id event outcome reason count aux0 aux1 fn2-core)
            (declare (xargs :stobjs fn2-core
@@ -416,7 +541,8 @@
     (cons `(defconst ,(fn2-columns-pre "*" (fn2-columns-sym (car names) "-KIND*")) ,tag)
           (fn2-machine-kind-constants (cdr names) (+ 1 (nfix tag))))))
 (defmacro fn2-machine-index-events ()
-  '(make-event
+  '(progn (fn2-seal :machines :index :machine)
+    (make-event
     (let* ((names (fn2-machine-names (w state)))
            (caps (fn2-machine-capacities names (w state))))
       (value
@@ -433,8 +559,9 @@
             (declare (xargs :guard t))
             (if (not (natp id)) (mv 255 0)
               (cond ,@(fn2-machine-index-arms names caps 0 0 nil)
-                    (t (mv 255 0))))))))))
-
+                    (t (mv 255 0)))))))))
+(fn2-resolve :index)
+))
 
 (defun fn2-machine-run-arms (names tag)
   (declare (xargs :verify-guards nil))

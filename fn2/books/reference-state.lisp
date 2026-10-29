@@ -209,4 +209,6 @@
                        fn2-pool fn2-pool-ref fn2-ops)) difference) difference)))))
 (in-theory (disable fn2-ref-core-difference))
 
+
+(fn2-resolve :reference)
 ))

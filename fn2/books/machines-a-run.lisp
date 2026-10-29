@@ -14,10 +14,11 @@
 ; admission and echo reclamation. Failed Accept/admission returns its credit.
 ; Thus free rows = credits + outstanding admission reservations. Only listener
 ; admission removes a free row; retirement never returns a credit.
+(fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
 (defun fn2-listener-return-credit (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-machine-set-admission-credits
-    (+ 1 (fn2-machine-admission-credits fn2-core)) fn2-core))
+    (+ 1 (fn2-machine-admission-credits fn2-core)) fn2-core)))
 (fn2-machine-core-shape fn2-listener-return-credit ())
 
 (defun fn2-machine-observe-terminal (id fn2-core)
@@ -125,7 +126,7 @@
   (cond ((not (equal row-pending 0))
          (fn2-machine-result 0 1 0 nil fn2-core))
         ((and (equal row-phase *fn2-listener-state-accepting*) (equal row-event-ready 1))
-         (fn2-listener-admit id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pending row-stopped row-event-ready row-mode fn2-core))
+         (fn2-call fn2-listener-admit id budget))
         ; Park separately from op waiters so the adapter can make progress.
         ((and (equal row-phase *fn2-listener-state-accepting*)
               (zp (fn2-machine-admission-credits fn2-core)))
@@ -217,7 +218,7 @@
   (cond ((not (equal row-pending 0))
          (fn2-machine-result 0 1 0 nil fn2-core))
         ((not (and (natp budget) (< 0 budget))) (fn2-machine-result 0 2 0 t fn2-core))
-        (t (fn2-connection-issue id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pool-slot row-pool-gen row-off row-length row-pending row-borrows row-next-free row-stopped row-mode fn2-core))))
+        (t (fn2-call fn2-connection-issue id budget))))
 
 (defmachine-callback fn2-connection-reply fn2-echo (id budget) 4
   (cond ((not (equal row-pending 0))
@@ -226,13 +227,13 @@
          (fn2-machine-result 0 2 0 nil fn2-core))
         ((or (equal row-mode 0)
              (>= row-off row-length))
-         (fn2-connection-reset id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pool-slot row-pool-gen row-off row-length row-pending row-borrows row-next-free row-stopped row-mode fn2-core))
-        (t (fn2-connection-submit id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pool-slot row-pool-gen row-off row-length row-pending row-borrows row-next-free row-stopped row-mode fn2-core))))
+         (fn2-call fn2-connection-reset id budget))
+        (t (fn2-call fn2-connection-submit id budget))))
 
 (defmachine-callback fn2-connection-drain fn2-echo (id budget) 4
   (cond ((not (equal row-pending 0))
          (fn2-machine-result 0 1 0 nil fn2-core))
-        ((equal row-borrows 0) (fn2-connection-release id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pool-slot row-pool-gen row-off row-length row-pending row-borrows row-next-free row-stopped row-mode fn2-core))
+        ((equal row-borrows 0) (fn2-call fn2-connection-release id budget))
         (t (fn2-machine-result 0 2 0 nil fn2-core))))
 
 

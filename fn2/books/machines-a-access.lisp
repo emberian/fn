@@ -105,6 +105,8 @@
                 (fn2-core-wfp (,name ,@args fn2-core))))
      (in-theory (disable ,name))))
 
+(make-event (value (fn2-declare '(:operation-set fn2-machine-resources) nil nil nil)))
+
  ; Both resource queues use the dormant row's ready links. Separate FIFO
 ; heads prevent a row waiter from hiding an operation needed for reclamation.
 (defmacro fn2-machine-wait-queue (park grant head tail reason)
@@ -113,6 +115,7 @@
         (set-head (fn2-columns-sym 'fn2-machine-set- (symbol-name head)))
         (set-tail (fn2-columns-sym 'fn2-machine-set- (symbol-name tail))))
     `(progn
+       (fn2-defoperation (:operation-set fn2-machine-resources) :access (fn2-core)
        (defun ,park (id fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
          (if (or (not (fn2-machine-idp id fn2-core))
@@ -122,8 +125,9 @@
                               (wait-reason ,reason) (ready-prev tail) (ready-next 4294967295)))
                   (fn2-core (if (equal tail 4294967295) (,set-head id fn2-core)
                               (fn2-machine-write-ready-next tail id fn2-core))))
-             (,set-tail id fn2-core))))
+             (,set-tail id fn2-core)))))
        (fn2-machine-core-shape ,park (id))
+       (fn2-defoperation (:operation-set fn2-machine-resources) :access (id fn2-core)
        (defun ,grant (fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
          (let ((id (,get-head fn2-core)))
@@ -134,7 +138,7 @@
                                 (fn2-machine-write-ready-prev next 4294967295 fn2-core)))
                     (fn2-core (fn2-machine-put id
                                 (wait-reason 0) (ready-prev 4294967295) (ready-next 4294967295))))
-               (mv id fn2-core)))))
+               (mv id fn2-core))))))
        (fn2-core-shape-lemmas ,grant () 1))))
 (fn2-machine-wait-queue fn2-machine-park fn2-machine-grant-op wait-head wait-tail 2)
 (fn2-machine-wait-queue fn2-machine-park-admission fn2-machine-grant-admission admission-head admission-tail 4)
@@ -208,6 +212,13 @@
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
            (natp (fn2-machine-pool-capacity slot fn2-core)))
   :rule-classes :type-prescription)
+(defthm fn2-machine-pool-capacity-natural
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (and (integerp (fn2-machine-pool-capacity slot fn2-core))
+                (<= 0 (fn2-machine-pool-capacity slot fn2-core))
+                (rationalp (fn2-machine-pool-capacity slot fn2-core))
+                (acl2-numberp (fn2-machine-pool-capacity slot fn2-core))))
+  :hints (("Goal" :use fn2-machine-pool-capacity-natp)))
 (in-theory (disable fn2-machine-pool-capacity))
 
 ; Harvest has already settled the loan. Mirror the pool's authoritative
@@ -394,4 +405,6 @@
            (fn2-core-wfp (fn2-listener-set-mode-all mode fn2-core)))
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-listener-set-mode-all))
+
+(fn2-resolve :access)
 ))

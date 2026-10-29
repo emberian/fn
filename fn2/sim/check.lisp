@@ -82,3 +82,7 @@
   (w state)))
 
  ; TRACE needs a pre-turn reference copy: call fn2-check-trace-turn.
+
+; Evidence inputs close after the reference and checker books have loaded.
+(fn2-resolve :coverage)
+(fn2-seal :evidence :coverage :square)
