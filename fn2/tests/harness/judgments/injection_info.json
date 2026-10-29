@@ -1,0 +1,33 @@
+{
+  "module": "injection_info",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Two nodes are instantiated through initialize. All assertions observe ARTICLE Injection-Info, public account hash and policy/peer/principal CLI outcomes. No account store format or ACL2 state is read.",
+  "representation_sites": [],
+  "sites": [
+    63,
+    65,
+    67,
+    74,
+    78,
+    122,
+    123,
+    127,
+    140,
+    141,
+    158,
+    172,
+    179
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

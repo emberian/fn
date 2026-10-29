@@ -1,0 +1,190 @@
+{
+  "module": "image_floor",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [
+    "GuardViolationTests.test_guard_violation_is_one_fault_line",
+    "GuardViolationTests.test_guard_violation_with_system_books"
+  ],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "This module principally measures ACL2 guard dispatch, SBCL launcher/core/stack layout and fn1 checkpoint replay. Keep large-article/restart/refusal scenarios under fn2 profile coverage and retire executable-world machinery.",
+  "representation_sites": [
+    {
+      "line": 58,
+      "reason": "Replace source-derived SBCL stack with supported fn2 profile fixture.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "profile_limits.get stack-kib reads books/profile-limits.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 81,
+      "reason": "Replace only the public fault classification coverage; fn2 does not carry ACL2 executable world.",
+      "row": "none: retire, capability = fn1 ACL2 saved-world guard dispatch",
+      "touches": "developer guard-probe executes fn-b3-left-chunks invalid guard",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 84,
+      "reason": "Use fn2 boundary fault fixture without ACL2 function names.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "exact host-entry-guard fn-b3-left-chunks fault line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 88,
+      "reason": "No fn2 runtime analogue; retain general fault/usage class coverage separately.",
+      "row": "none: retire, capability = ACL2 LP project-dir world preservation",
+      "touches": "guard-probe with ACL2_SYSTEM_BOOKS",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 90,
+      "reason": "Use fn2 public fault fixture.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "exact ACL2 guard diagnostic with system books",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 106,
+      "reason": "Replace launcher implementation inspection with profile application at runtime.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "reads launcher text and regexes --tls-limit / --control-stack-size",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 109,
+      "reason": "Use fn2 resource profile fixture rather than ACL2 source constants.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "profile_limits.get run-tls-limit reads books/profile-limits.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 110,
+      "reason": "Replace SBCL control-stack contract with fn2 profile resource bound.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "profile_limits.get stack-kib against launcher text",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 113,
+      "reason": "Preserve unsupported verb usage class with fn2-supported fixture.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "production guard-probe refusal by developer verb name",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 118,
+      "reason": "Replace SBCL core bytes with fn2 resident-process measurement.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "node_measure.py core parses SBCL saved-core dynamic content",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 122,
+      "reason": "Use the fn2 resident/resource bar, not saved image dynamic section size.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "core_required_kib <128 MiB",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 126,
+      "reason": "Restate bounded startup/large-line workloads under fn2 profile; no SBCL stack-floor search.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "node_measure.py stack-floor runs SBCL --control-stack-size trials",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 135,
+      "reason": "Use supported fn2 runtime profile with large article and restart.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "requires decided SBCL stack trial succeeds",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 142,
+      "reason": "Negative witness tied to fn1 runtime has no fn2 equivalent.",
+      "row": "none: retire, capability = historical SBCL 142 KiB control-stack floor",
+      "touches": "expects 96 KiB SBCL stack fails",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 259,
+      "reason": "Heap public command stays until documented replacement; use fn2 profile afterward.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "heap -- operator CONFIG run stack/heap probe",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 269,
+      "reason": "Set fn2 runtime resources through start(config), not SBCL argv.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "SBCL_USER_ARGS dynamic-space-size and control-stack-size",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 282,
+      "reason": "Check runtime profile application instead of shell launcher source.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "reads IMAGE launcher text for control-stack-size",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 298,
+      "reason": "Preserve successful 1MiB article under supported profile, not stack number.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "requires stack equal source-derived SMALL_STACK_KIB",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 337,
+      "reason": "Drive checkpoint/recovery by supported operation/fault hook.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "recursive filesystem traversal of copied store",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 338,
+      "reason": "Never identify fn2 state by fn1 checkpoint filename.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "finds every filename containing checkpoint",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 339,
+      "reason": "Use recovery scenario with public retained-content assertion and fn2 crash hook.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "unlinks checkpoint files to force full replay",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    58,
+    81,
+    88,
+    106,
+    118,
+    126,
+    259,
+    282,
+    337
+  ],
+  "socket_only_tests": [
+    "ProductionTests.test_launcher_carries_the_profile_figures",
+    "ProductionTests.test_production_refuses_guard_probe",
+    "ProductionTests.test_core_dynamic_content",
+    "ProductionTests.test_decided_stack_holds_the_largest_small_article",
+    "ProductionTests.test_below_the_measured_floor_it_does_not",
+    "DeepInputStackTests.test_the_image_launcher_runs_at_the_decided_stack",
+    "DeepInputStackTests.test_a_1_mib_article_of_empty_lines_at_its_decided_stack",
+    "DeepInputStackTests.test_a_long_history_reopens_and_replays_at_the_decided_stack",
+    "DeepInputStackTests.test_error_paths_at_the_decided_stack"
+  ],
+  "uncertainty": null
+}

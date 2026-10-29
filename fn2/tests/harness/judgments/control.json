@@ -1,0 +1,229 @@
+{
+  "module": "control",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "NativeControlCutGateTests.test_every_selector_is_read_only_through_the_accessor",
+    "NativeControlCutGateTests.test_the_gate_runs_before_dispatch",
+    "NativeControlCutGateTests.test_the_reply_is_the_owners_status",
+    "NativeControlCutGateTests.test_the_stop_is_directed_at_the_calling_thread",
+    "NativeControlCutGateTests.test_feed_stop_follows_fnfd_flush_and_precedes_socket_send"
+  ],
+  "mixed_tests": [
+    "NativeControlTests.test_the_production_image_refuses_every_selector_at_startup",
+    "NativeControlTests.test_an_old_clients_plain_request_gets_the_plain_reply"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "NativeControlTests mostly exercise public CLI, sockets, lifecycle and refusals. Gate-source tests retire; the production-selector byte snapshot and legacy-client ACL2 encoder need replacement. Source-only tests use internal_only_tests and do not launch an image.",
+  "representation_sites": [
+    {
+      "line": 30,
+      "reason": "Replace source-pattern evidence with externally observed startup refusal, framed outcome, or crash/retry behavior; fn1 call names and layouts do not carry.",
+      "row": "none: retire, capability = fn1 selector registration implementation",
+      "touches": "reads host/native/io.lisp to derive SELECTORS",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 38,
+      "reason": "Replace source-pattern evidence with externally observed startup refusal, framed outcome, or crash/retry behavior; fn1 call names and layouts do not carry.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "reads consumer-local-control/topic-history-local-control books for reply-kind set",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 46,
+      "reason": "Use independent FNCT conformance fixture/codec for public kind-3 request and kind-2 accepted reply; do not require fn1 ACL2 symbols.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "Acl2Session for legacy FNCT request/reply frames",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 47,
+      "reason": "Use independent FNCT conformance fixture/codec for public kind-3 request and kind-2 accepted reply; do not require fn1 ACL2 symbols.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "Acl2Session.literal serializes old client argv",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 48,
+      "reason": "Use independent FNCT conformance fixture/codec for public kind-3 request and kind-2 accepted reply; do not require fn1 ACL2 symbols.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "fn-nctrl-seal/fn-nctrl-admin-argv-encode",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 51,
+      "reason": "Use independent FNCT conformance fixture/codec for public kind-3 request and kind-2 accepted reply; do not require fn1 ACL2 symbols.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "acl2_boolean compares reply to fn-nctrl-seal",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 103,
+      "reason": "Replace source-pattern evidence with externally observed startup refusal, framed outcome, or crash/retry behavior; fn1 call names and layouts do not carry.",
+      "row": "none: retire, capability = fn1 Lisp selector accessor implementation",
+      "touches": "globs host/native/*.lisp for selector access policy",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 104,
+      "reason": "Replace source-pattern evidence with externally observed startup refusal, framed outcome, or crash/retry behavior; fn1 call names and layouts do not carry.",
+      "row": "none: retire, capability = fn1 Lisp selector accessor implementation",
+      "touches": "reads each host/native Lisp file and asserts selector accessor use",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 122,
+      "reason": "Replace source-pattern evidence with externally observed startup refusal, framed outcome, or crash/retry behavior; fn1 call names and layouts do not carry.",
+      "row": "none: retire, capability = fn1 Lisp startup call ordering",
+      "touches": "reads fnn-main source for gate-before-dispatch order",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 128,
+      "reason": "Replace source-pattern evidence with externally observed startup refusal, framed outcome, or crash/retry behavior; fn1 call names and layouts do not carry.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "reads fnn-control-handle-client and reply status list layout",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 143,
+      "reason": "Replace source-pattern evidence with externally observed startup refusal, framed outcome, or crash/retry behavior; fn1 call names and layouts do not carry.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "reads host/native-control-host.lisp encoders by symbol name",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 152,
+      "reason": "Replace source-pattern evidence with externally observed startup refusal, framed outcome, or crash/retry behavior; fn1 call names and layouts do not carry.",
+      "row": "none: retire, capability = fn1 pthread stop helper implementation",
+      "touches": "reads calling-thread stop helper pthread_kill/pthread_self source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 160,
+      "reason": "Replace source-pattern evidence with externally observed startup refusal, framed outcome, or crash/retry behavior; fn1 call names and layouts do not carry.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "reads feed-service flush/stop/send call ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 325,
+      "reason": "Service log and reopen behavior are explicitly carried.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads configured service log and counts run started/stopped lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 452,
+      "reason": "Assert no accepted mutation by public status/digest and recovery/inspect rather than full layout equality.",
+      "row": "none: retire, capability = physical store byte equality after refusal",
+      "touches": "store_digest enumerates private relative paths",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 453,
+      "reason": "Public mutation observations replace bytes of implementation files.",
+      "row": "none: retire, capability = physical store byte equality after refusal",
+      "touches": "reads every store file for before/after digest comparison",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 454,
+      "reason": "fn2 store representation need not match fn1 filenames.",
+      "row": "none: retire, capability = physical store byte equality after refusal",
+      "touches": "recursively traverses store_path tree",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 455,
+      "reason": "Observe exclusive ownership and rejected mutation via public commands.",
+      "row": "none: retire, capability = fn1 writer.lock filename",
+      "touches": "excludes writer.lock from store byte equality",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 468,
+      "reason": "Use public status/digest as no-mutation witness.",
+      "row": "none: retire, capability = physical store byte equality after refusal",
+      "touches": "before snapshot uses store_digest over private store layout",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 489,
+      "reason": "Use public status/digest as no-mutation witness.",
+      "row": "none: retire, capability = physical store byte equality after refusal",
+      "touches": "after snapshot compares private store bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 598,
+      "reason": "Use independent FNCT conformance fixture/codec for public kind-3 request and kind-2 accepted reply; do not require fn1 ACL2 symbols.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "old_client_exchange invokes ACL2 frame codec",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 599,
+      "reason": "FNCT magic is the public framing contract.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "checks FNCT reply magic",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 600,
+      "reason": "Version and reply kind are public wire fields.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "checks FNCT v1 kind2 reply",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 601,
+      "reason": "Payload framing is public.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "checks FNCT reply payload length=1",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 602,
+      "reason": "Accepted status is the public reply payload.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "checks FNCT accepted status octet",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    30,
+    38,
+    100,
+    233,
+    452,
+    457,
+    588,
+    598,
+    623
+  ],
+  "socket_only_tests": [
+    "NativeControlTests.test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline",
+    "NativeControlTests.test_health_during_a_slow_start_says_starting",
+    "NativeControlTests.test_health_and_status_say_the_node_is_not_running_and_why",
+    "NativeControlTests.test_shared_control_path_is_not_stolen_by_another_store",
+    "NativeControlTests.test_two_clients_sigterm_cleanup_and_restart",
+    "NativeControlTests.test_prelisten_sigterm_skips_modules_and_reopens",
+    "NativeControlTests.test_lost_reply_after_submission_is_uncertain_and_recovers",
+    "NativeControlTests.test_operator_post_is_injected_and_refuses_what_post_refuses",
+    "NativeControlTests.test_every_refusal_names_its_reason_on_the_wire",
+    "NativeControlTests.test_disabled_posting_refuses_cli_and_served_post",
+    "NativeControlTests.test_control_worker_ceiling_returns_busy",
+    "NativeControlTests.test_partial_frame_has_one_absolute_deadline"
+  ],
+  "uncertainty": "Module import itself reads host/books to generate tables even for socket-only methods. H1b must replace these tables/isolated source tests; list labels classify method bodies and invoked helpers, not import-time contamination."
+}

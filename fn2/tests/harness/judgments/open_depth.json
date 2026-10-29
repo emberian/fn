@@ -1,0 +1,116 @@
+{
+  "module": "open_depth",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "The broad NNTP/control/offline command workload is reusable, but setup and decisive open-mode checks require fn1 schema fixtures, writer.lock and checkpoint/replay internals. Build fn2 fixtures via public init/import and keep the command matrix.",
+  "representation_sites": [
+    {
+      "line": 133,
+      "reason": "Retain generic fault/exit diagnostics without ACL2 symbol conventions.",
+      "row": "none: retire, capability = ACL2 runtime backtrace diagnosis",
+      "touches": "dying_frames strips ACL2::FN- symbols from stderr backtrace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 165,
+      "reason": "Replace fn1 store-schema digest with fn2 fixture creation/import contract.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "fixtures.schema_digest reads books schema and schema_refusal reads FIXTURE.json",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 169,
+      "reason": "Create/import fn2 content fixture instead of carrying fn1 on-disk layout.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "copytree fixture store into node.store_path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 170,
+      "reason": "No fn1 lock filename dependency; use supported fn2 init/import.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "node.store_path/writer.lock filename",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 172,
+      "reason": "Let fn2 own locking/storage construction.",
+      "row": "`init [--budget --largest --profile --max-*] GROUP…`, `run [--once]`, `mission small-community|relay|archive`, `show`, `help`",
+      "touches": "touch writer.lock mode0600 if absent",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 181,
+      "reason": "Assert public ready announcement and retained content instead of implementation open path.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "selects OWNER-OPEN internal log line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 193,
+      "reason": "Retain successful stop/resource bound without SBCL-specific string.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "assert absence of Control stack exhausted diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 356,
+      "reason": "Assert completion/exit and bounded resources using fn2 diagnostics.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "control report death detection includes Control stack exhausted",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 381,
+      "reason": "Use public exit classification and report completion.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "offline verb failure detection includes Control stack exhausted",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 393,
+      "reason": "Assert complete logical state after recovery, not fn1 full-replay algorithm.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "requires open=full-replay in OWNER-OPEN",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 404,
+      "reason": "Retain public checkpoint success through fn2 start/profile configuration.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "checkpoint command with SBCL stack override",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 411,
+      "reason": "Assert durable content after checkpoint/restart without a specific open implementation.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "requires open=checkpoint: in OWNER-OPEN",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    165,
+    169,
+    170,
+    181,
+    348,
+    375,
+    393,
+    411
+  ],
+  "socket_only_tests": [
+    "OpenDepthTests.test_full_replay_open_at_the_deployed_stack",
+    "OpenDepthTests.test_checkpoint_open_at_the_deployed_stack"
+  ],
+  "uncertainty": "served_commands is a static public matrix despite docstring citing protocol-table.lisp; this module does not read that book. The helper schema_digest does read fn1 books and must be replaced."
+}

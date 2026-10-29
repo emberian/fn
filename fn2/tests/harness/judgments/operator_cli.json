@@ -1,0 +1,102 @@
+{
+  "module": "operator_cli",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "NativeOperatorPrincipalCompositionTests.test_operator_calls_existing_acl2_credential_plan_and_executor"
+  ],
+  "mixed_tests": [
+    "NativeOperatorCliTests.test_show_preserves_output_policy_after_relative_path_resolution"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Seven CLI/socket methods are separable from one fn1 source-composition test, but the resource-show case explicitly tests keys the plan replaces. Keep the public cases through config/control/start/socket/observe.",
+  "representation_sites": [
+    {
+      "line": 14,
+      "reason": "Assert principal CLI credential effects rather than fn1 parser implementation.",
+      "row": "`account invite|list|set-password|access|delete|hash`, `principal list|set-password|delete|bind|unbind`, `consumer bind|unbind|show`",
+      "touches": "Reads books/native-operator.lisp; extracts principal parser and exact argv-tail call",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 17,
+      "reason": "Assert public credential behavior; fn2 host architecture differs.",
+      "row": "`account invite|list|set-password|access|delete|hash`, `principal list|set-password|delete|bind|unbind`, `consumer bind|unbind|show`",
+      "touches": "Reads host/native/operator-live.lisp and checks principal action registration/executor",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 29,
+      "reason": "Delete source-shape discovery; preserve principal CLI argument semantics.",
+      "row": "`account invite|list|set-password|access|delete|hash`, `principal list|set-password|delete|bind|unbind`, `consumer bind|unbind|show`",
+      "touches": "Glob-scans all books/*.lisp for argv-tail helper definition",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 34,
+      "reason": "Source parsing is not public behavior.",
+      "row": "`account invite|list|set-password|access|delete|hash`, `principal list|set-password|delete|bind|unbind`, `consumer bind|unbind|show`",
+      "touches": "Reads each candidate book to match exact guard-total tail definition",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 60,
+      "reason": "Plan explicitly refuses old resource keys and replaces them with fn2 profile keys.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "Writes cold_heap_octets/cold_workers/cold_descriptors/cold_read_ids/cold_file_ids/output_heap_octets/output_quantum_heap_octets config",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 68,
+      "reason": "Rewrite to named profile replacements and old-name refusal fixtures.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "Queries show resources for retired output heap fields",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 74,
+      "reason": "Rewrite serialized profile output contract.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "Requires serialized output_heap_octets field",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 75,
+      "reason": "Rewrite serialized profile output contract.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "Requires output_quantum_heap_octets serialized field",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 76,
+      "reason": "Rewrite serialized profile output contract.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "Requires cold_heap_octets serialized field",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    14,
+    17,
+    34,
+    60,
+    68,
+    152
+  ],
+  "socket_only_tests": [
+    "NativeOperatorCliTests.test_help_does_not_open_missing_config",
+    "NativeOperatorCliTests.test_show_renders_the_live_reclaim_opt_in_only_when_set",
+    "NativeOperatorCliTests.test_missing_directory_and_oversize_config_are_usage",
+    "NativeOperatorCliTests.test_unreadable_config_is_fault",
+    "NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv4_loopbacks",
+    "NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv6_loopback"
+  ],
+  "uncertainty": "reclaim_live is a public opt-in key in the config row, unlike the explicitly replaced cold_* and output_* keys; its preserve/replace/remove disposition is still a layer E fixture task."
+}

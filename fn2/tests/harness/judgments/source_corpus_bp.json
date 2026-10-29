@@ -1,0 +1,124 @@
+{
+  "module": "source_corpus_bp",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Retain corpus delivery, partition/heal, crash/reopen and exact source-byte assertions. Replace lifecycle/*.fnb inspection and the two-image DTN omission assertion; E5 uses one node build.",
+  "representation_sites": [
+    {
+      "line": 344,
+      "reason": "Obtain bundle identities from the TCPCL capture or a carried BP inspect verb, not fn1 custody storage.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "b-fnbs/lifecycle directory and *.fnb custody frame files",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 345,
+      "reason": "Capture public BPv7 bundle bytes at the relay or use a documented inspection command.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "reads every lifecycle .fnb frame into a filename-keyed dictionary",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 549,
+      "reason": "Use wire bundle observations and final served articles.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "loads receiver lifecycle frames after transfer",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 565,
+      "reason": "Correlate source corpus entries with public bundle payloads at the relay.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "finds Message-ID substrings in stored lifecycle frames",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 568,
+      "reason": "Parse the same RFC BPv7 identity from wire bytes, avoiding custody-frame wrapping.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "extracts BP bundle identity from kind-5 stored frame",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 611,
+      "reason": "Assert bundle receipt/delivery through BP/TCPCL and ARTICLE instead.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "asserts a bundle was found in the receiver kind-5 file",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 612,
+      "reason": "Retain source-EID assertion on captured public bundle bytes.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "asserts source EID from a bundle extracted from a stored frame",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 613,
+      "reason": "Retain bundle identity uniqueness using wire capture or public inspect.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "compares creation/sequence uniqueness from stored frames",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 651,
+      "reason": "fn2 has one build with DTN configuration; replace split-image refusal with configured surface admission.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "expects separate DTN image operator run/post refusal",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 652,
+      "reason": "Retire the image-splitting diagnostic; E5 explicitly uses one build, not a second server.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "requires needs-the-nntp-service-surface-which-this-image-omits diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 510,
+      "reason": "Carried bp* and app-journal CLI exposes durable undertaking; keep the outcome while avoiding internal frame-kind terminology.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "BP obligation request durable attempt line",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 529,
+      "reason": "Retain accepted/refused/duplicate delivery outcome and delivery while TCPCL session remains open.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "BP node delivery request-* result log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 545,
+      "reason": "This observes delivery before session close; prefer direct peer-session lifetime observation if log spelling changes.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "TCPCL bp-node summary compared with delivery log order",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    344,
+    417,
+    549,
+    565,
+    611,
+    618,
+    651,
+    742
+  ],
+  "socket_only_tests": [
+    "NativeSourceCorpusBpTests.test_corpus_carried_by_bp_through_dtn7",
+    "NativeSourceCorpusBpTests.test_partition_then_heal_carries_every_article"
+  ],
+  "uncertainty": "BP status line spellings are observed CLI/service output, but section 1 promises BP semantics rather than every fn1 diagnostic. Bundle metadata should move to relay capture, not be dropped."
+}

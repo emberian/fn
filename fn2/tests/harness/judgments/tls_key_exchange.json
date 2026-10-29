@@ -1,0 +1,66 @@
+{
+  "module": "tls_key_exchange",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-unchanged",
+  "reason": "TLS negotiation, configuration refusals and operator TLS summaries are public surfaces; OpenSSL prefix selection is start/config and service-log reading is observe.",
+  "representation_sites": [
+    {
+      "line": 163,
+      "reason": "The hybrid preference and classical fallback are externally negotiated TLS behavior.",
+      "row": "TLS key exchange: post-quantum first (ML-KEM hybrid), the certificate reload",
+      "touches": "operator status TLS policy, serving mode and negotiated-group tallies",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 167,
+      "reason": "Retain the public TLS group counters, independent of TLS context layout.",
+      "row": "TLS key exchange: post-quantum first (ML-KEM hybrid), the certificate reload",
+      "touches": "operator health TLS policy and negotiated-group tallies",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 196,
+      "reason": "Required hybrid serving is the configured public policy.",
+      "row": "TLS key exchange: post-quantum first (ML-KEM hybrid), the certificate reload",
+      "touches": "operator status hybrid-required serving=hybrid summary",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 225,
+      "reason": "Verify the fallback policy with the classical TLS handshake as well as status.",
+      "row": "TLS key exchange: post-quantum first (ML-KEM hybrid), the certificate reload",
+      "touches": "operator status classical fallback summary",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    94,
+    108,
+    122,
+    162,
+    207,
+    233,
+    268
+  ],
+  "socket_only_tests": [
+    "NativeTlsKeyExchangeTests.test_preferred_negotiates_the_hybrid_and_serves_classical_readers",
+    "NativeTlsKeyExchangeTests.test_the_release_pair_negotiates_the_hybrid",
+    "NativeTlsKeyExchangeTests.test_required_serves_the_hybrid_with_a_library_that_offers_it",
+    "NativeTlsKeyExchangeTests.test_required_is_refused_by_name_with_a_library_that_cannot_offer_it",
+    "NativeTlsKeyExchangeTests.test_preferred_serves_classical_groups_with_a_library_that_cannot_offer_it",
+    "NativeTlsKeyExchangeTests.test_a_missing_openssl_prefix_is_refused_by_name",
+    "NativeTlsKeyExchangeTests.test_a_missing_prefix_on_a_node_without_tls_runs_on_the_system_pair",
+    "NativeTlsKeyExchangeTests.test_a_missing_prefix_with_hybrid_required_and_no_tls_is_refused",
+    "NativeTlsKeyExchangeTests.test_an_unknown_policy_word_is_refused"
+  ],
+  "uncertainty": null
+}

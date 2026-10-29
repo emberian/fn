@@ -1,0 +1,61 @@
+{
+  "module": "group_authority",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public peer ingress, group authority policy and real signing/enrollment CLI; observe must expose configured service log authority outcomes.",
+  "representation_sites": [
+    {
+      "line": 36,
+      "reason": "The service log is an operator surface; preserve the per-message authority outcome.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "read configured service.log for transit decision",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 42,
+      "reason": "Preserve governed/ungoverned authority decisions across connection pin and restart.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "assert authority= expected in transit log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 117,
+      "reason": "Retain operator service log observation.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "read productive enrollment transit decisions from service.log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 123,
+      "reason": "Retain authority-policy and rotation decisions, independent of store layout.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "assert admitted/no-policy/equivocation authority log outcome",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    16,
+    22,
+    36,
+    42,
+    100,
+    117,
+    123,
+    127,
+    133
+  ],
+  "socket_only_tests": [
+    "NativeGroupAuthorityTests.test_durable_binding_replacement_obeys_connection_pin",
+    "NativeProductiveGroupAuthorityTests.test_enrolled_statement_policy_rotation_and_replay"
+  ],
+  "uncertainty": null
+}

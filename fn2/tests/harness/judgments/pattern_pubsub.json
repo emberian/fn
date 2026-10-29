@@ -1,0 +1,58 @@
+{
+  "module": "pattern_pubsub",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-unchanged",
+  "reason": "Public pattern CLI publication/subscription and pipeline partitions, subscriber-owned output payload files, and owner restart; no node-store reads.",
+  "representation_sites": [
+    {
+      "line": 112,
+      "reason": "The CLI promises delivered payload files; preserve their exact bytes.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "subscriber output payload file named in pattern sub reply",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 113,
+      "reason": "This is the caller-specified output directory, not node storage.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "subscriber delivered directory equals advertised output files",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 170,
+      "reason": "The test treats partition assignment as the pattern CLI contract; keep only if E6 preserves the documented partition function.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "pipeline worker partition is FNV-1a(Message-ID) modulo worker count",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 173,
+      "reason": "Keep exactly-once payload delivery through caller-owned output files.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "pipeline output payload file named in pattern pull reply",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    45,
+    74,
+    79,
+    112,
+    147,
+    162,
+    173
+  ],
+  "socket_only_tests": [
+    "NativePatternPubSubTest.test_three_payloads_in_order_across_an_owner_restart",
+    "NativePatternPubSubTest.test_pipeline_three_workers_partition_six_messages"
+  ],
+  "uncertainty": "The exact FNV-1a partition rule is more specific than section 1's carried pattern verb row; E6 should confirm that part of the per-verb contract."
+}

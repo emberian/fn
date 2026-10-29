@@ -1,0 +1,312 @@
+{
+  "module": "replay_determinism",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Six tests primarily compare fn1 digest schema or physical checkpoint/genesis/config representation. Keep the mixed workload and test_c NNTP transcript equality, replacing private clone/replay assertions with export/import and fn2 recovery evidence.",
+  "representation_sites": [
+    {
+      "line": 95,
+      "reason": "Replace internal field digest equality with stable public state and served NNTP transcript equality.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "parses digest field lines for fn1 folded state",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 96,
+      "reason": "A private recovery route is not required; compare public results after checkpoint/recovery.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "parses open= replay/checkpoint route",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 278,
+      "reason": "Use store export/import to create equivalent stores where exact physical clone identity is not the contract.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "copies the whole store directory using filesystem layout",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 287,
+      "reason": "Compare public served content and operator facts instead of fn1 state digest schema.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "requires digest state internal summary",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 298,
+      "reason": "Recovery correctness is visible content and refusal behavior, not which internal route was selected.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "requires open=full-replay report",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 319,
+      "reason": "Use the public export/import contract for cross-box replay comparison.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "exports the entire store via tar.add rather than store export",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 331,
+      "reason": "Keep successful checkpoint and subsequent visible-state equivalence.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "requires checkpoint sequence= internal metadata line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 332,
+      "reason": "Compare checkpoint/reopen public state instead of binary checkpoint serialization.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "reads store-checkpoint* files and names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 334,
+      "reason": "A successful checkpoint and durable public results replace the filename assertion.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "requires existence of store-checkpoint* files",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 335,
+      "reason": "No requirement for identical storage object names; compare visible state.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "compares physical checkpoint filenames across stores",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 337,
+      "reason": "No byte identity between fn1/fn2 checkpoint layouts; compare public state after reopen.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "compares physical checkpoint bytes across stores",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 341,
+      "reason": "Use a canonical digest of public NNTP/operator observations for cross-box comparison.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "hashes checkpoint filenames and physical file bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 344,
+      "reason": "Replace with cross-box public state equality.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "asserts cross-box physical checkpoint byte digest",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 346,
+      "reason": "Assert public reopen results, not selected private route.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "requires open=checkpoint report",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 354,
+      "reason": "Compare public state rather than checkpoint-specific digest schema.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "extracts checkpoint-digest internal lines",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 356,
+      "reason": "Checkpoint sequence numbering is a representation detail; keep visible-state equality.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "requires checkpoint-digest sequence= output",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 358,
+      "reason": "Compare public checkpoint/reopen semantics.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "compares checkpoint digest records across copies",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 361,
+      "reason": "Use the served-view transcript digest already computed by test_c.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "compares checkpoint digest across boxes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 365,
+      "reason": "Retire private checkpoint-presence line; assert unchanged public state.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "requires checkpoint-digest none before capture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 368,
+      "reason": "Keep equivalence via public observable state.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "compares folded fn1 state fields before/after checkpoint",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 427,
+      "reason": "Assert one new article and unchanged preexisting articles via NNTP.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "names canonical/state/files internal digest fields after post",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 429,
+      "reason": "Assert public history/identity behavior after successful post.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "compares internal digest history field keys",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 431,
+      "reason": "Compare public group listings and configured capacity instead of fn1 field digests.",
+      "row": "GROUP (211; empty group `211 0 wm+1 wm`; an issued article number is never reused, while an abandoned tentative assignment is distinct and may be), LISTGROUP [range]",
+      "touches": "requires unchanged internal groups/capacity digest fields",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 459,
+      "reason": "Verify import preserves exported public content while assigning fresh store identity.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "splits digest genesis from remaining internal state digests",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 464,
+      "reason": "Use public store identity to assert independent imported identities.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "compares journal/000000.log genesis file bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 466,
+      "reason": "Move corruption construction to fn2 storage fault/model fixtures, retain public refusal assertion.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "reads original journal/000000.log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 467,
+      "reason": "Use fn2 corruption fixtures and public recovery outcomes.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "reads alternate journal/000000.log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 474,
+      "reason": "Use a named fn2 corruption injection rather than physical filename/offset.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "reads copied journal genesis bytes for mutation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 475,
+      "reason": "Inject corrupted durable metadata in the fn2 storage model; assert named recovery refusal.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "flips byte 40 of fn1 genesis",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 476,
+      "reason": "Use fn2 storage-corruption fixture with explicit affected fact.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "writes modified fn1 genesis bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 479,
+      "reason": "Preserve refusal for damaged identity metadata under fn2 named diagnostics.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "requires reason=genesis-damaged diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 486,
+      "reason": "Replace with fn2 foreign-store identity/cross-store metadata corruption case.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "swaps journal/000000.log with another store genesis",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 490,
+      "reason": "Assert refusal and no publicly served accepted state on corrupted store.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "requires absence of digest state after mismatched genesis",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 528,
+      "reason": "Observe recorded reclaim through the public --recorded operation, not config file names.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "lists config/ files before reclaim",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 533,
+      "reason": "A recorded reclaim token must be public if needed; do not infer a private filename.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "extracts instant-record filename from reclaim report",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 534,
+      "reason": "Replace file-count delta with durable recorded-reclaim behavior.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "lists new config/ files produced by reclaim",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 535,
+      "reason": "Use public operation identity or resulting retained articles.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "matches config filename delta to instant-record",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 536,
+      "reason": "Reproduce reclaim via a fn2 public recorded-operation fixture rather than transplanting a config record.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "copies one config/ record into another store",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 546,
+      "reason": "Assert reclaimed state and retained articles, not open implementation route.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "requires reclaim reopened via open=checkpoint",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    278,
+    298,
+    326,
+    332,
+    400,
+    427,
+    464,
+    475,
+    536,
+    546
+  ],
+  "socket_only_tests": [
+    "NativeReplayDeterminismTests.test_a_mixed_store_full_replay_is_deterministic",
+    "NativeReplayDeterminismTests.test_b_checkpoint_bytes_and_checkpoint_open",
+    "NativeReplayDeterminismTests.test_c_served_view_is_identical",
+    "NativeReplayDeterminismTests.test_e_a_changed_history_digests_differently",
+    "NativeReplayDeterminismTests.test_g_the_genesis_is_read_only_where_it_must_be",
+    "NativeReplayDeterminismTests.test_f_a_reclaim_replays_from_its_recorded_instant",
+    "NativeReplayDeterminismTests.test_d_registered_fixture_replays_identically"
+  ],
+  "uncertainty": "The top-level store digest verb is carried, but section 1 does not preserve the fn1 logical-field names or physical checkpoint digest. Its fn2 public output contract needs E6 disposition."
+}

@@ -1,0 +1,46 @@
+{
+  "module": "header_lines",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "HeaderLineSourceTests.test_the_reply_is_the_tables"
+  ],
+  "mixed_tests": [],
+  "module_verdict": "carry-socket-half",
+  "reason": "Keep both socket scenarios, including transit; retire the separate protocol-table source-text assertion in favor of independent reply fixtures. in_image_tests here denotes a static internal source check, not image execution.",
+  "representation_sites": [
+    {
+      "line": 54,
+      "reason": "Use an independent expected 998-octet refusal reply fixture; do not read the implementation to supply or validate the oracle.",
+      "row": "framing: pipelining, any fragmentation, dot-stuffing, the 512-octet initial line, `fn-article-parse-limit` (long header line)",
+      "touches": "reads books/protocol-table.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 55,
+      "reason": "The socket tests already assert the exact public rejection line; make the fixture independent of book text.",
+      "row": "framing: pipelining, any fragmentation, dot-stuffing, the 512-octet initial line, `fn-article-parse-limit` (long header line)",
+      "touches": "asserts refusal text occurs in protocol-table source",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    54,
+    65,
+    114,
+    174,
+    179
+  ],
+  "socket_only_tests": [
+    "NativeHeaderLineTests.test_a_field_body_may_begin_on_a_continuation_line_and_transit_names_the_bound",
+    "NativeHeaderLineTests.test_long_fields_folded_are_served_whole_and_a_long_line_is_refused_by_name"
+  ],
+  "uncertainty": null
+}

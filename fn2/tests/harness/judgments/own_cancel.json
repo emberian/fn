@@ -1,0 +1,162 @@
+{
+  "module": "own_cancel",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeOwnCancelTests.test_node_secret_is_written_at_init_and_refused_by_name",
+    "NativeOwnCancelTests.test_a_same_source_retry_is_already_stored_across_accounts_and_epochs"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "The RFC 8315 cancel/relay/restart scenarios are public and separable. The node-secret format/filename tests and the missing retained-epoch subcase require rewriting through fn2 documented key lifecycle/security operations. No in-image Lisp evaluation occurs; the split is socket/CLI behavior versus file representation.",
+  "representation_sites": [
+    {
+      "line": 182,
+      "reason": "Replace fn1 key path with fn2 key lifecycle interface and supported security fixture hook.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "names store/keys/node-secret.key",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 183,
+      "reason": "Format bytes/length are fn1 representation; retain key preservation and confidentiality through fn2 contract.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "reads node-secret.key bytes, then size/magic/mode at 184-186",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 188,
+      "reason": "Replace byte-file comparison with public epoch/identity continuity and own-cancel continuity.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "rereads key bytes to prove refused create did not replace existing key",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 189,
+      "reason": "Retain unsafe-secret-permission refusal via fn2 supported key storage path or security fixture.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "chmods secret to 0644 to provoke startup refusal",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 191,
+      "reason": "Fixture repair depends on fn1 key file path; adapt security fixture.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "restores secret mode to 0600",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 192,
+      "reason": "Use fn2 key-store fault fixture and assert named refusal without silently recreating identity.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "renames node-secret.key aside to simulate missing secret",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 194,
+      "reason": "Keep no silent key replacement behavior using documented fn2 key lifecycle.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "checks missing key is not recreated",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 196,
+      "reason": "Use public epoch/identity/cancel behavior to demonstrate newly provisioned secret differs.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "reads regenerated secret bytes and compares to old bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 200,
+      "reason": "Retire the fn1 secret codec size assertion; keep create/rotate/refusal/retention behavior.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "asserts secret file length exactly 61 bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 201,
+      "reason": "Retire fn1 codec magic; fn2 has no storage layout compatibility duty.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "asserts exact fn-node-secret v1 magic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 202,
+      "reason": "Confidentiality requirement remains useful, but exact file target needs fn2 key-storage contract.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "asserts file mode 0600",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 203,
+      "reason": "Retain private key storage security through fn2 deployment/key-storage evidence.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "asserts keys directory mode 0700",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 210,
+      "reason": "Keep missing-secret refusal; remove the old physical filename from the expected diagnostic.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "requires node-secret.key is missing in startup error",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 251,
+      "reason": "Assert retained epoch usability through successful own-cancel after restart, rather than filename.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "checks keys/node-secret-1.key exists after rotation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 265,
+      "reason": "Use fn2 key-store retention fault fixture.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "names retained keys/node-secret-1.key",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 266,
+      "reason": "Inject missing retained-secret evidence via fn2 supported test hook, preserving refusal assertion.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "renames retained epoch key aside",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 268,
+      "reason": "Fixture lifecycle must use fn2 supported storage contract.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "restores retained epoch key by physical rename",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 279,
+      "reason": "The public cancellation-after-rotation assertions at 280-289 establish retained-key usefulness without filename.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "asserts retained epoch file existed",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    182,
+    183,
+    200,
+    201,
+    251,
+    265,
+    294,
+    367
+  ],
+  "socket_only_tests": [
+    "NativeOwnCancelTests.test_the_node_writes_the_lock_and_key_for_a_login",
+    "NativeOwnCancelTests.test_a_login_cancels_its_own_post_here_and_on_peers"
+  ],
+  "uncertainty": "Quarry labels this node, not node_internal, but source inspection finds two file-dependent methods. carry-socket-half describes the required evidence split without changing the supplied classification."
+}

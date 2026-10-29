@@ -1,0 +1,141 @@
+{
+  "module": "reclaim_walk",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "NativeReclaimWalkTests.test_the_opt_in_is_the_only_change_to_the_figure"
+  ],
+  "mixed_tests": [],
+  "module_verdict": "carry-socket-half",
+  "reason": "Reclaim survivor/count/restart and offline-only cases are public socket/operator tests, with shared checkpoint-progress observation needing adapter replacement. The heap-figure-only method binds fn1 owner reserve accounting and should be rewritten; no method calls ACL2 directly.",
+  "representation_sites": [
+    {
+      "line": 112,
+      "reason": "Use public operation receipt/status to know when reclaim can proceed; fn1 automatic-checkpoint stderr phases are implementation-specific.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "CHECKPOINT auto sequence/failed/abandoned/refused/done phase regex",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 123,
+      "reason": "Wait on public operation completion/queued status through observe/control.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "counts checkpoint publication-end lines before reclaim",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 135,
+      "reason": "Use public operation completion status instead of checkpoint phase names.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "waits for one additional CHECKPOINT auto phase line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 155,
+      "reason": "Public operator/service-log reclaim completion observation; records/reclaimed output needs an E6 fixture.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM installed records log line",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 157,
+      "reason": "Observable reclaim count and survivors are public.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "reclaimed count equals expired half",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 204,
+      "reason": "The public operation must not refuse a supported workload for inadequate reservation.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "absence of reason=credit in service output",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 205,
+      "reason": "Public reclaim completion accompanied by socket availability assertions.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM installed records log line",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 207,
+      "reason": "Public reclaim count.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "reclaimed count equals expected expired articles",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 224,
+      "reason": "Config key presence is external operator contract.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "fn.toml omits reclaim_live opt-in",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 235,
+      "reason": "Named offline-only refusal is an operator-visible outcome.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM request mode log lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 237,
+      "reason": "Retain named refusal or documented replacement disposition.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "answer=offline-only in reclaim log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 238,
+      "reason": "Public no-install observation supplements unchanged STAT result.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "no RECLAIM installed service log after refusal",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 267,
+      "reason": "fn2 resource profiles replace owner-heap sizing; assert profile admission and documented reservation cost instead.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "extracts status heap=MB for store without reclaim opt-in",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 271,
+      "reason": "fn2 resource profiles replace owner-heap sizing; compare the supported profile cost, not fn1 heap accounting.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "extracts status heap=MB with reclaim opt-in",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 275,
+      "reason": "Replace fn1 open/transient/reclaim-reserve inequality by profile-level admission/resource test.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "asserts opt-in does not lower old heap figure",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    103,
+    112,
+    141,
+    185,
+    216,
+    250,
+    279
+  ],
+  "socket_only_tests": [
+    "NativeReclaimWalkTests.test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+    "NativeReclaimWalkTests.test_a_capacity_free_node_reclaims_live",
+    "NativeReclaimWalkTests.test_without_the_opt_in_a_live_pass_is_refused_by_name",
+    "NativeReclaimWalkTests.test_resident_set_of_a_pass_at_1k_and_10k"
+  ],
+  "uncertainty": "The internal bucket contains a CLI-only heap-representation assertion, not an actual in-image evaluation. Shared reclaim_live helper watches fn1 checkpoint phases even for socket-only methods; adapt observe/control to operation receipts. RSS is Linux process observation, not a private fn store layout."
+}

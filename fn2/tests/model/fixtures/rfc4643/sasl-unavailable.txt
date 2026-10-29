@@ -1,0 +1,3 @@
+# RFC 4643 §2.4.3; verbatim transcript excerpt, rfc4643.txt lines 833-834
+[C] AUTHINFO SASL EXAMPLE
+[S] 503 Mechanism not recognized

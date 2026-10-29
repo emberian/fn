@@ -1,0 +1,44 @@
+{
+  "module": "consumer_identity",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "ConsumerIdentitySourceTests.test_the_host_calls_the_bound_decisions"
+  ],
+  "mixed_tests": [],
+  "module_verdict": "carry-socket-half",
+  "reason": "NativeConsumerIdentityTests is a public implicit-TLS/consumer/CLI scenario. ConsumerIdentitySourceTests is a separate host-text assertion and retires; its internal_only_tests bucket is source-only and launches no image.",
+  "representation_sites": [
+    {
+      "line": 53,
+      "reason": "Keep the two-account/bound-consumer behavior; fn2 has different owner implementation and no inherited text-call obligation.",
+      "row": "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
+      "touches": "reads host/owner-host.lisp and asserts fn-cbind/fn-cwd call text",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 142,
+      "reason": "Public consumer poll report contents expose the delivered articles.",
+      "row": "the replies: `reply` k5, `status-reply` k9, `poll-reply` k6 (FNWD1 withdrawal report; FNRB1 collection), `reasoned-reply` k18, `line-reply` k23",
+      "touches": "finds Message-IDs in consumer report output",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    53,
+    72,
+    142,
+    234
+  ],
+  "socket_only_tests": [
+    "NativeConsumerIdentityTests.test_two_accounts_two_bound_consumers"
+  ],
+  "uncertainty": null
+}

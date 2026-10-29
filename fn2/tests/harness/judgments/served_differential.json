@@ -1,0 +1,69 @@
+{
+  "module": "served_differential",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeServedDifferentialTests.test_whole_transcript_agrees",
+    "NativeServedDifferentialTests.test_cut_inside_a_command_agrees",
+    "NativeServedDifferentialTests.test_cut_after_a_reply_agrees",
+    "NativeServedDifferentialTests.test_bytewise_partition_agrees",
+    "NativeServedDifferentialTests.test_split_utf8_wildmat_agrees",
+    "NativeServedDifferentialTests.test_input_after_quit_is_ignored_identically",
+    "NativeServedDifferentialTests.test_framing_rejection_agrees",
+    "NativeServedDifferentialTests.test_over_range_agrees_under_a_one_number_quantum",
+    "NativeServedDifferentialTests.test_over_range_cut_inside_the_range_agrees"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "Every test compares the socket against fn-served-run evaluated by the old model diagnostic verb; replace the oracle and diagnostic listener with fn2 independent model/public run.",
+  "representation_sites": [
+    {
+      "line": 69,
+      "reason": "Use independently authored wire fixtures/model and fn2 public listener; comparison to fn1 evaluator is not carried.",
+      "row": "framing: pipelining, any fragmentation, dot-stuffing, the 512-octet initial line, `fn-article-parse-limit` (long header line)",
+      "touches": "--fn model invokes fn-served-run in the developer image",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 78,
+      "reason": "Seed articles through public POST/init and run through the start/socket adapter, then compare fragmented transcripts.",
+      "row": "framing: pipelining, any fragmentation, dot-stuffing, the 512-octet initial line, `fn-article-parse-limit` (long header line)",
+      "touches": "--fn reader seeded diagnostic archive/listener",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 106,
+      "reason": "Use independently authored wire fixtures/model and fn2 public listener; comparison to fn1 evaluator is not carried.",
+      "row": "framing: pipelining, any fragmentation, dot-stuffing, the 512-octet initial line, `fn-article-parse-limit` (long header line)",
+      "touches": "--fn model invokes fn-served-run in the developer image",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 142,
+      "reason": "Inject fn2 scheduling quantum through its supported test profile; assert identical OVER wire replies.",
+      "row": "framing: pipelining, any fragmentation, dot-stuffing, the 512-octet initial line, `fn-article-parse-limit` (long header line)",
+      "touches": "FN_NATIVE_OVER_WINDOW one-number owner cursor quantum",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 148,
+      "reason": "Inject fn2 scheduling quantum through its supported test profile; assert identical OVER wire replies.",
+      "row": "framing: pipelining, any fragmentation, dot-stuffing, the 512-octet initial line, `fn-article-parse-limit` (long header line)",
+      "touches": "FN_NATIVE_OVER_WINDOW one-number owner cursor quantum",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    69,
+    78,
+    106,
+    108
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Supplied Quarry classification is node, but --fn model is an in-image ACL2 evaluator. No test is purely socket-only as written; preserve subject classification and record mixed dependency."
+}

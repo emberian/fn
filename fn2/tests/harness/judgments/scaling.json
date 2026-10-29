@@ -1,0 +1,27 @@
+{
+  "module": "scaling",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Only public ARTICLE timing/bytes and POST outcome; start/config/control adapts inherited ProfileFixture to fn2. No reachable frame/config.json helper call.",
+  "representation_sites": [],
+  "sites": [
+    32,
+    58,
+    60,
+    67,
+    74
+  ],
+  "socket_only_tests": [
+    "ScalingTests.test_article_time_is_linear_in_the_article"
+  ],
+  "uncertainty": null
+}

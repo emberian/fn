@@ -1,0 +1,133 @@
+{
+  "module": "harness",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "DrainingStartTests.test_chatty_child_announces_and_keeps_its_tail",
+    "DrainingStartTests.test_refusal_on_stderr_is_in_the_failure",
+    "DrainingStartTests.test_output_until_advances_a_cursor",
+    "DrainingStartTests.test_communicate_returns_what_the_cursor_has_not_passed",
+    "StartupDiagnosticTests.test_short_stderr_is_quoted_whole_before_stdout",
+    "StartupDiagnosticTests.test_the_refusal_survives_a_breakdown_longer_than_the_tail",
+    "StartupDiagnosticTests.test_control_the_tail_alone_loses_the_refusal",
+    "StartupDiagnosticTests.test_an_announcing_node_is_answered_normally",
+    "OutcomeTableTests.test_the_codes_are_the_books",
+    "OutcomeTableTests.test_a_changed_table_is_refused_at_import",
+    "OutcomeTableTests.test_uncertain_is_never_taken_for_refused",
+    "ClientTests.test_article_builds_crlf_octets",
+    "FailedTestStderrTests.test_the_failed_tests_stderr_is_printed_and_kept",
+    "StableStatusLinesTests.test_open_and_stopped_lines_go_everything_else_stays",
+    "NodeLivenessTests.test_the_real_reader_accepts_a_buffered_greeting_after_the_owner_drains_and_exits",
+    "NodeLivenessTests.test_the_real_reader_rejects_an_owner_that_dies_without_a_greeting",
+    "NodeLivenessTests.test_control_and_http_replies_survive_exit_before_the_reader_records_them",
+    "NodeLivenessTests.test_terminal_outcomes_need_the_exact_result_line_and_matching_exit_class",
+    "NodeLivenessTests.test_ready_none_is_asynchronous_and_an_unanswered_start_still_owes_liveness",
+    "NodeLivenessTests.test_a_planned_death_before_readiness_requires_its_actual_cut_marker",
+    "NodeLivenessTests.test_a_restart_after_a_named_cut_needs_its_own_greeting_and_has_no_cut_allowance",
+    "NodeLivenessTests.test_peer_pull_restart_does_not_inherit_the_selector_or_death_contract",
+    "NodeLivenessTests.test_the_announced_control_path_is_used_without_recomputing_its_config_default",
+    "NodeLivenessTests.test_a_replacement_reply_does_not_credit_an_unanswered_dead_predecessor",
+    "Acl2SessionHeapTests.test_the_session_runs_at_its_own_heap_not_the_store_less_decision",
+    "Acl2SessionHeapTests.test_a_stack_only_session_takes_the_store_less_decision",
+    "FailedTestStderrTests.run_cases.Cases.test_refusal",
+    "FailedTestStderrTests.run_cases.Cases.test_filed",
+    "FailedTestStderrTests.run_cases.Cases.test_passes",
+    "FailedTestStderrTests.run_cases.Cases.test_two_processes"
+  ],
+  "mixed_tests": [
+    "InstalledLaunchTests.test_an_owner_run_goes_through_the_installed_launcher_at_the_decided_heap",
+    "InstalledLaunchTests.test_missing_default_prefix_reaches_the_image",
+    "InstalledLaunchTests.test_missing_operator_prefix_keeps_the_images_refusal_exit",
+    "InstalledLaunchTests.test_a_named_heap_opts_out_and_other_verbs_run_the_image"
+  ],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Harness self-tests use Python children, mock processes, fake loopback peer and shell images. Adapt start/stop, diagnostics, readiness/death-cut obligations, exit table and launcher dispatch; rewrite fn1 launcher/status fixtures. No actual ACL2 session/image executes.",
+  "representation_sites": [
+    {
+      "line": 144,
+      "reason": "Exit values and uncertainty distinction are carried; bind fn2 authoritative table.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "outcome_codes() reads books/outcome-class.lisp and compares complete accepted/refused/fenced/fault/usage/interrupted/not-connected table",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 154,
+      "reason": "Retain invalid-table detection where applicable; fn1 source syntax is not an adapter contract.",
+      "row": "**The natives as the classical gate**",
+      "touches": "Synthetic defconst *fn-outcome-codes* Lisp table for parser-conflict rejection",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 295,
+      "reason": "Update normalization to fn2 public report.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "Synthetic stopped checkpoint/journal-octets/transactions-at-most and open=checkpoint suffix status; normalizes at 297-305",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 579,
+      "reason": "Replace SBCL mechanism with fn2 profile launch contract.",
+      "row": "**The natives as the classical gate**",
+      "touches": "Exact fake-image SBCL_USER_ARGS heap/stack decision assertion",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 582,
+      "reason": "Harness must exercise installed bin/fn; source-copy linkage serves packaging contract.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "Reads installed launcher and packaging/fn bytes and compares equality at 582-583",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 588,
+      "reason": "Preserve installed launcher forwarding and refusal behavior through new packaging.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "Installed libexec/fn/openssl prefix; missing libssl.so.3 assertion at 593",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 609,
+      "reason": "Replace SBCL heap fixture with adapter launch-mode coverage.",
+      "row": "**The natives as the classical gate**",
+      "touches": "image_heap bypasses heap decision; non-run status dispatch at 611-613",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 624,
+      "reason": "Implementation text splicing is not public runtime surface.",
+      "row": "none: retire, capability = fn1 ACL2 session heap shell fixture",
+      "touches": "Reads packaging/launcher-decide.sh and packaging/fn at 625; extracts resolver comments at 626",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 631,
+      "reason": "No ACL2 is executed; private SBCL heap convention is the subject.",
+      "row": "none: retire, capability = fn1 ACL2 session heap precedence",
+      "touches": "Fake fn_decide_heap shell; acl2_session_user_args heap/stack precedence assertions at 641-651",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    37,
+    143,
+    194,
+    293,
+    341,
+    421,
+    573,
+    624,
+    641
+  ],
+  "socket_only_tests": [
+    "ClientTests.test_post_dot_stuffs_and_article_unstuffs"
+  ],
+  "uncertainty": "Special case: tests harness internals rather than node representation. Preserve quarry classification but do not count fake-process tests as real node witnesses. mixed_tests are fake launcher CLI plus source fixtures, not actual image probes. Nested Cases at 226/234/246/249 intentionally fail as controls."
+}

@@ -1,0 +1,217 @@
+{
+  "module": "peering",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Extensive socket and operator scenarios carry through start/observe/kill_at; remove FNFD existence assertions and SBCL --core identity parsing, and replace COMPACTION diagnostic checks with public retirement/restart results.",
+  "representation_sites": [
+    {
+      "line": 44,
+      "reason": "Use fn2 release artifact identity through start/observe, not the fn1 launcher/core packaging.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "hash explicit fn1 launcher file",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 45,
+      "reason": "Use fn2 release artifact identity; a .core sibling is not a public node capability.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "hash adjacent IMAGE.core file",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 48,
+      "reason": "Check availability of fn2 executable release artifact.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "require sibling .core as native image readiness condition",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 198,
+      "reason": "Observe launched artifact identity without an SBCL command-line shape.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "read /proc/PID/cmdline and locate SBCL --core",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 211,
+      "reason": "Retain source/artifact provenance through fn2 start/observe, independently of runtime implementation.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "assert running SBCL runtime hash equals pinned runtime",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 212,
+      "reason": "Verify fn2 executable provenance instead of SBCL core identity.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "assert running .core hash equals pinned core",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 398,
+      "reason": "Synchronize kill_at with durable enqueue and verify restart re-delivery through the peer socket.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "form store/feed/restart-b.fnfd and poll its existence",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 402,
+      "reason": "Use durable enqueue cut observation and the existing restarted delivery assertions.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "FNFD file existence is proof of durable feed intent",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1001,
+      "reason": "The peer socket already witnesses bytes before its withheld 239; retain obligation through public status or restart.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "form store/feed/productive-peer.fnfd",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1002,
+      "reason": "Assert public pending obligation while remote acceptance is withheld.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "require productive-peer.fnfd file",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1003,
+      "reason": "Assert resumable delivery/public obligation instead of journal byte size.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "require nonempty productive-peer.fnfd",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1009,
+      "reason": "Remove storage-size diagnostic or replace with public pending count.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "report productive-peer.fnfd byte length",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1395,
+      "reason": "docs/operator.md:868 explicitly promises the report file; preserve the documented operator artifact.",
+      "row": "`retire [--drain S]`",
+      "touches": "STORE/retire-report.txt path",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1396,
+      "reason": "Published retirement report is a public operator artifact.",
+      "row": "`retire [--drain S]`",
+      "touches": "assert retire-report.txt published",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1397,
+      "reason": "docs/operator.md:868 promises the CLI prints what it writes.",
+      "row": "`retire [--drain S]`",
+      "touches": "read retire-report.txt and require its bytes in CLI output",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1399,
+      "reason": "Assert bounded retirement, exit class and recovered data; fn2 has no fn1 compaction-request machinery.",
+      "row": "`retire [--drain S]`",
+      "touches": "assert no COMPACTION request answer diagnostic on deadline stop",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1433,
+      "reason": "The documented operator report is public, although located under store_path.",
+      "row": "`retire [--drain S]`",
+      "touches": "retire-report.txt path for drained shutdown",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1436,
+      "reason": "Observe incomplete retirement through absence of the documented final report.",
+      "row": "`retire [--drain S]`",
+      "touches": "assert no retirement report while peer acceptance remains withheld",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1447,
+      "reason": "Retain report publication at retirement completion.",
+      "row": "`retire [--drain S]`",
+      "touches": "assert drained report exists after peer acceptance",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1448,
+      "reason": "Preserve the documented report output, without inspecting store records.",
+      "row": "`retire [--drain S]`",
+      "touches": "compare drained report bytes against CLI output",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1451,
+      "reason": "Check clean exit, durable articles and drained report instead of fn1 checkpoint implementation log.",
+      "row": "`retire [--drain S]`",
+      "touches": "require COMPACTION request answer diagnostic on drained shutdown",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1484,
+      "reason": "The operator obligations report is carried.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "parse public obligations count",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1488,
+      "reason": "Report completeness is public output, independent of obligation storage.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "compare count to emitted obligation id= rows",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    44,
+    198,
+    398,
+    405,
+    1001,
+    1395,
+    1399,
+    1433,
+    1451
+  ],
+  "socket_only_tests": [
+    "NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate",
+    "NativePeeringTests.test_live_peer_configuration_activates_both_directions",
+    "NativePeeringTests.test_durable_feed_requeues_after_source_process_death",
+    "NativePeeringTests.test_receiver_killed_mid_ihave_keeps_what_it_acknowledged",
+    "NativePeeringTests.test_reset_while_transit_completes_keeps_durable_article_and_owner",
+    "NativePeeringTests.test_transit_into_a_node_with_a_path_identity_is_accepted_and_owner_stays",
+    "NativePeeringTests.test_inn_shaped_streaming_driver_gets_the_ihave_verdicts",
+    "NativePeeringTests.test_transit_hygiene_refused_offer_memory_and_relay_checks",
+    "NativePeeringTests.test_pipelined_takethis_in_one_read_answers_every_article",
+    "NativePeeringTests.test_a_full_store_defers_transit_and_the_sender_is_not_healthy",
+    "NativePeeringTests.test_fragmented_takethis_without_check_answers_every_article",
+    "NativePeeringTests.test_pipelined_post_in_one_read_answers_every_article",
+    "NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance",
+    "NativePeeringTests.test_productive_reader_answers_number_and_message_id",
+    "NativePeeringTests.test_pending_tls_feed_does_not_starve_new_healthy_peer",
+    "NativePeeringTests.test_feed_to_a_peer_without_streaming_falls_back_to_ihave",
+    "NativePeeringTests.test_feed_to_a_streaming_peer_uses_check_and_takethis",
+    "NativePeeringTests.test_feed_distribution_filter",
+    "NativePeeringTests.test_feeding_past_the_queue_bound_keeps_local_posts_accepted",
+    "NativePeeringTests.test_a_saturated_feed_queue_names_the_refusal_and_holds_health",
+    "NativePeeringTests.test_retire_drains_refuses_new_connections_and_reports_a_silent_peer",
+    "NativePeeringTests.test_retire_waits_for_a_peer_then_stops_drained_with_a_checkpoint",
+    "NativePeeringTests.test_plain_sigterm_after_feeding_a_peer_exits_ok",
+    "NativePeeringTests.test_obligations_report_of_five_thousand_articles_answers"
+  ],
+  "uncertainty": "The module is mainly public behavior despite mandatory fn1 image provenance and a few FNFD/COMPACTION checks; carry-with-adapter assumes those checks become observe/start hooks, not a promise that every source assertion is unchanged."
+}

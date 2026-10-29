@@ -1,0 +1,150 @@
+{
+  "module": "topic_local",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Topic admission/replay assertions carry, but two of three tests use FNLG committed-history identity through an indirect helper and filter fn1 checkpoint status. Rewrite those assertions around topic and compaction public outcomes.",
+  "representation_sites": [
+    {
+      "line": 62,
+      "reason": "Replace log scan-store with public topic replay/idempotence observations; log is a removal candidate and FNLG trailers are not fn2 state.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "native_log_observation.committed_history invokes log scan-store and parses FNLG record count/trailer",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 112,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "capture committed-history record/trailer before repeat report",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 116,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "repeat report leaves committed-history record/trailer identical",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 123,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "restart/replayed report leaves committed-history record/trailer identical",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 125,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "absent report leaves committed-history record/trailer identical",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 140,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "capture committed history before reopen",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 146,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "historical report leaves committed history identical",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 148,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "duplicate anchor leaves committed history identical",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 154,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "capture history after new signed root",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 155,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "new root increases FNLG record count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 158,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "repeated report leaves FNLG history identical",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 162,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "capture history after key revocation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 163,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "revocation increases FNLG record count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 166,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "historical report after revocation leaves FNLG history identical",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 195,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "capture committed-history identity after compaction",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 201,
+      "reason": "Assert carried topic report/anchor outcomes and visible durable history across restart instead of FNLG record-count/trailer identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "post-compaction replayed topic report leaves FNLG history identical",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 190,
+      "reason": "Compare public status facts and topic results across compaction, without knowing which fn1 checkpoint-derived lines to filter.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "stable_status_lines excludes checkpoint/open/charged-totals implementation fields before status comparison",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    62,
+    82,
+    94,
+    112,
+    128,
+    190,
+    201
+  ],
+  "socket_only_tests": [
+    "NativeTopicLocalTest.test_install_is_durable_and_absent_source_refuses",
+    "NativeTopicLocalTest.test_root_and_report_admit_from_historical_signed_sources",
+    "NativeTopicLocalTest.test_history_reopens_and_survives_compaction"
+  ],
+  "uncertainty": null
+}

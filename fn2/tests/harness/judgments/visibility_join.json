@@ -1,0 +1,104 @@
+{
+  "module": "visibility_join",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeVisibilityJoinTests.test_lost_reply_then_withdrawal_reconciles_to_already_stored",
+    "NativeVisibilityJoinTests.test_lost_reply_then_authorization_change_is_unresolved",
+    "NativeVisibilityJoinTests.test_lost_reply_then_login_rebound_is_unresolved"
+  ],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Carry public lost-reply reconciliation, cancellation and authorization cases through fault/start/control/socket adapters; replace ancillary log-history assertions.",
+  "representation_sites": [
+    {
+      "line": 103,
+      "reason": "Keep stable-message duplicate/reconciliation behavior and no new logical commit; replace fn1 chained-record observation with supported public state.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "native_log_observation.committed_history runs log scan-store and parses records/last",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 180,
+      "reason": "Use public duplicate/policy reply, unchanged group watermark and operation/history identity exposed by fn2; do not carry record-chain representation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "read log history before withdrawn reconcile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 184,
+      "reason": "Use public duplicate/policy reply, unchanged group watermark and operation/history identity exposed by fn2; do not carry record-chain representation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "read log history after withdrawn reconcile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 215,
+      "reason": "Use public duplicate/policy reply, unchanged group watermark and operation/history identity exposed by fn2; do not carry record-chain representation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "assert history equality after duplicate",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 242,
+      "reason": "Use public duplicate/policy reply, unchanged group watermark and operation/history identity exposed by fn2; do not carry record-chain representation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "read history before revoked-login reconcile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 246,
+      "reason": "Use public duplicate/policy reply, unchanged group watermark and operation/history identity exposed by fn2; do not carry record-chain representation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "read history after revoked-login reconcile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 259,
+      "reason": "Use public duplicate/policy reply, unchanged group watermark and operation/history identity exposed by fn2; do not carry record-chain representation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "assert no log record on unauthorized reconcile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 329,
+      "reason": "Use public duplicate/policy reply, unchanged group watermark and operation/history identity exposed by fn2; do not carry record-chain representation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "read history before rebound-login reconcile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 338,
+      "reason": "Use public duplicate/policy reply, unchanged group watermark and operation/history identity exposed by fn2; do not carry record-chain representation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "read history after rebound-login reconcile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 361,
+      "reason": "Use public duplicate/policy reply, unchanged group watermark and operation/history identity exposed by fn2; do not carry record-chain representation.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "assert no log record on principal mismatch",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    90,
+    103,
+    168,
+    211,
+    215,
+    259,
+    359,
+    361
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "The no-new-transaction assertion needs a fn2 public history/operation observation beyond the existing wire replies; do not silently drop this durability/idempotence tooth."
+}

@@ -1,0 +1,106 @@
+{
+  "module": "hybrid_author",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-unchanged",
+  "reason": "All signing, enrollment, revocation, carriage and read assertions use CLI/control/NNTP; FN-Authorship binary edits target portable public wire bytes, not store records.",
+  "representation_sites": [
+    {
+      "line": 173,
+      "reason": "hybrid-* verbs are explicitly carried; preserve key lifecycle output.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "hybrid-key-history generation/state/principal output",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 196,
+      "reason": "Acceptance-time verification metadata is an advertised NNTP field.",
+      "row": "HDR / XHDR incl. fn metadata items `:fn-verified`, `:fn-control`, `:fn-enrollment`",
+      "touches": "HDR :fn-verified keyring generation pin after key rotation",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 341,
+      "reason": "The supported admission bound is observable policy, independent of indexes.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator status max-article-octets bound used to make oversized carrier",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 418,
+      "reason": "Invalid signed carrier must be refused through the public signature verification CLI.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "FN-Authorship base64 carrier key bytes tampered in portable article",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 451,
+      "reason": "Size refusal is tested by submitting a real carrier at the declared admission bound.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator status max-article-octets limit",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 541,
+      "reason": "Retain key history semantics through the carried hybrid-* CLI.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "hybrid-key-history distinguishes principal-local revocation",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1107,
+      "reason": "Portable article carrier grammar is public wire, not fn1 store representation.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "FN-Authorship carrier decoded, patched and refolded",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1162,
+      "reason": "The refusal must name unsupported-profile for portable article bytes.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "public FN-Authorship suite octet changed to unsupported suite",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 1166,
+      "reason": "The refusal must distinguish unbound signer from malformed/unsupported carrier.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "public FN-Authorship principal octet changed",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    35,
+    65,
+    83,
+    173,
+    192,
+    730,
+    919,
+    1107
+  ],
+  "socket_only_tests": [
+    "NativeHybridAuthorTest.test_enroll_author_refuse_tamper_and_restart_query",
+    "NativeHybridAuthorTest.test_unserved_group_and_every_refusal_are_named",
+    "NativeHybridAuthorTest.test_v2_source_through_hybrid_author",
+    "NativeHybridAuthorTest.test_portable_carrier_verifies_exact_source_and_keyset",
+    "NativeHybridAuthorTest.test_local_revocation_targets_one_principal",
+    "NativeHybridAuthorTest.test_signed_post_over_nntp_gets_the_transit_classification",
+    "NativeHybridAuthorTest.test_signed_and_unsigned_posts_share_one_numbering",
+    "NativeHybridAuthorTest.test_authored_carrier_survives_native_peering_and_receiver_restart",
+    "NativeHybridAuthorTest.test_unenrolled_receiver_refuses_authored_carrier_once_and_both_sides_log_it",
+    "NativeHybridAuthorTest.test_d23_allowlisted_relay_carries_and_the_enrolled_sink_verifies",
+    "NativeHybridAuthorTest.test_d23_unlisted_relay_refuses_439_and_logs_it",
+    "NativeHybridAuthorTest.test_carried_budget_and_refusal_classes",
+    "NativeHybridAuthorTest.test_carrying_boundary_without_budget_carries_nothing"
+  ],
+  "uncertainty": null
+}

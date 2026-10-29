@@ -1,0 +1,109 @@
+{
+  "module": "served_crash_model",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Both tests rely on fn1 POST_LOG_CUTS/recovery barrier names and indirect FNLG history scans; preserve process-death public article assertions but rewrite the cut and history oracle for fn2.",
+  "representation_sites": [
+    {
+      "line": 49,
+      "reason": "Keep recover success and prior/candidate article observations; map or replace staging-orphan representation counters.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "parse_recover requires transactions/articles/staging-orphans legacy fields",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 50,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "recovered history equals pre-recovery FNLG record/trailer observation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 68,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "captures pre-cut FNLG history via inherited history helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 75,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "captures after-cut FNLG history via inherited history helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 78,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "assert_cut_history compares FNLG count/trailer against cut candidate column",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 82,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "candidate presence is equated with FNLG count increment",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 100,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "captures initial FNLG history before recovery-fault case",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 104,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "captures FNLG history after log-written fault",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 105,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "asserts FNLG old/new history after log-written cut",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 111,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "FNLG history equality across recovery death",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 113,
+      "reason": "NativeCampaignMixin.history calls native_log_observation.committed_history (log scan-store); replace with public prior/candidate inspect and fn2 crash-cut outcome model.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "candidate presence equals FNLG record-count increment",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    35,
+    49,
+    50,
+    68,
+    75,
+    78,
+    100,
+    111
+  ],
+  "socket_only_tests": [
+    "NativeServedCrashModelTests.test_served_post_log_cuts",
+    "NativeServedCrashModelTests.test_three_served_recovery_barriers_are_distinct_cuts"
+  ],
+  "uncertainty": null
+}

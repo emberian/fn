@@ -1,0 +1,237 @@
+{
+  "module": "image_differential",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [
+    "ReleaseAgainstReferenceTests.test_zz_world_reads_stay_within_the_dependency_set",
+    "ReleaseAgainstReferenceTests.test_zz_a_prover_read_of_stripped_state_fails_loudly",
+    "ReleaseAgainstReferenceTests.test_zz_the_check_catches_a_required_property_removed",
+    "GuardViolationTests.test_the_same_refusal_full_and_stripped"
+  ],
+  "internal_only_tests": [
+    "ImageLauncherSourceTests.test_both_twins_run_the_launcher_decision_and_checked_load_precedes_restart",
+    "ImageLauncherSourceTests.test_checked_launcher_creates_a_not_yet_created_work_directory",
+    "InitDecisionSourceTests.test_observer_captures_the_actual_decision_and_preserves_both_values",
+    "InitDecisionSourceTests.test_different_rungs_require_each_images_whole_decision_rows",
+    "InitDecisionSourceTests.test_wrong_missing_duplicate_or_extended_status_rows_are_rejected",
+    "InitDecisionSourceTests.test_other_status_bytes_and_profile_fields_still_compare_exactly"
+  ],
+  "mixed_tests": [
+    "ReleaseAgainstReferenceTests.test_ordinary_traffic",
+    "ReleaseAgainstReferenceTests.test_malformed_input",
+    "ReleaseAgainstReferenceTests.test_capacity_refusal",
+    "ReleaseAgainstReferenceTests.test_init_budget_refusal_and_init",
+    "ReleaseAgainstReferenceTests.test_corrupt_checkpoint",
+    "ReleaseAgainstReferenceTests.test_full_replay",
+    "ReleaseAgainstReferenceTests.test_checkpoint_deleted_after_compaction_is_refused_by_name",
+    "ReleaseAgainstReferenceTests.test_export_and_import",
+    "ReleaseAgainstReferenceTests.test_failed_signature_check",
+    "ReleaseAgainstReferenceTests.test_missing_runtime_dependency"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "Full-versus-stripped ACL2 equivalence plus world/property/prover instrumentation and physical file equality is the subject. All ReleaseAgainstReferenceTests inherit checked images at 425-426; extract public scenarios into new outcome tests.",
+  "representation_sites": [
+    {
+      "line": 61,
+      "reason": "No fn2 duty to preserve saved-world layout.",
+      "row": "none: retire, capability = fn1 saved-world dependency instrumentation",
+      "touches": "tools/runtime_image/world-deps-check.lisp injected into image",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 62,
+      "reason": "Replace with profile admission outcomes.",
+      "row": "none: retire, capability = fn1 init decision observer",
+      "touches": "tests/native_image_init_decision.lisp private heap/init observer",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 76,
+      "reason": "Use recover/export/read outcomes rather than physical bytes.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "tree hashes every regular store file recursively, read_bytes at 78",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 95,
+      "reason": "Depends on saved-image restart implementation.",
+      "row": "none: retire, capability = fn1 full/stripped core instrumentation",
+      "touches": "Reads/rewrites launcher exec --eval into --load probes; .core symlink at 118",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 144,
+      "reason": "Private instrumentation output.",
+      "row": "none: retire, capability = fn1 world dependency trace",
+      "touches": "Reads generated world-property trace files",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 157,
+      "reason": "fn2 profiles replace owner/core sizing.",
+      "row": "none: retire, capability = fn1 core-dependent heap normalization",
+      "touches": "Normalizes heap/reservation/holds values at 157-162 from core mappings",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 171,
+      "reason": "Use public admission/status without private observer.",
+      "row": "none: retire, capability = fn1 init decision correspondence",
+      "touches": "Compares profile/limit status rows to injected init decision and normalizes capacity rungs",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 227,
+      "reason": "Fake launcher control is not real node surface.",
+      "row": "none: retire, capability = fn1 extracted core launcher control",
+      "touches": "Fake extracted-core launcher; dynamic-space-size and --load-before---eval assertions at 238-244",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 258,
+      "reason": "Internal saved-core assumption.",
+      "row": "none: retire, capability = fn1 extracted core launcher control",
+      "touches": "Fake launcher .core symlink equality at 265-266",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 277,
+      "reason": "Not a built image or public CLI contract.",
+      "row": "none: retire, capability = fn1 internal init observer unit control",
+      "touches": "Raw Lisp stubs fnn-heap-init-decision-noted/fnn-core; reads/evals observer at 300-306; SBCL invocation at 323",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 328,
+      "reason": "fn2 profiles have a different representation.",
+      "row": "none: retire, capability = fn1 init decision normalization fixture",
+      "touches": "Hard-coded profile format=10, funded/ceiling/capacity rows used by tests at 334/342/357",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 359,
+      "reason": "Use recoverable logical state rather than diagnostic spelling.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "Synthetic stopped checkpoint=N status fixture",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 450,
+      "reason": "Use export/import or controlled public lifecycle fixtures.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "Copies raw store before checkpoint compaction; copy helper at 464",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 475,
+      "reason": "Physical equality across images is not the fn2 public contract.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "All pair cases capture tree(store); compare byte or filename equality at 491-498",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 571,
+      "reason": "Rebuild as public profile admission/status assertions.",
+      "row": "none: retire, capability = fn1 heap-init probe and raw store equality",
+      "touches": "Loads INIT_DECISION; reads init-decision.status at 585; tree(fresh) at 590",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 602,
+      "reason": "Use fn2 persistence fault injection, not checkpoint filenames.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "Finds checkpoint files by substring; flips/writes victim bytes at 606-608",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 626,
+      "reason": "Test recovery from accepted history without fn1 names.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "Requires journal/000001.log and absence of checkpoint-named files at 628",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 643,
+      "reason": "No carried internal journal layout.",
+      "row": "none: retire, capability = fn1 decision-journal clock normalization",
+      "touches": "Exempts decisions/decisions.fnj from byte equality",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 651,
+      "reason": "Inject fn2 persistent damage through its IO/fault boundary.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "Requires journal/000001.log absent; unlinks checkpoint files at 653-655",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 663,
+      "reason": "Preserve refusal/nonmutation with fn2 damage contract and logical state.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "Requires reason=checkpoint-damaged; physical tree unchanged at 664",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 679,
+      "reason": "Compare public imported logical contents.",
+      "row": "**Store operator operations** (init, import, status, reclaim, backup)",
+      "touches": "Compares imported stores filename lists",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 734,
+      "reason": "Internal image representation is the whole subject.",
+      "row": "none: retire, capability = fn1 saved ACL2 world strip correctness",
+      "touches": "KEPT/ABSENT/OMITTED traces and STRIPPED/REBUILT/PROVER-READ assertions at 750-760",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 769,
+      "reason": "No public behavior to preserve.",
+      "row": "none: retire, capability = fn1 stripped prover-state trap",
+      "touches": "FN_WORLD_DEPS_USE invokes ens/type-set-table; stripped-state trap assertions at 775-783",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 790,
+      "reason": "No public behavior to preserve.",
+      "row": "none: retire, capability = fn1 world dependency mutation witness",
+      "touches": "Selects FN-* SYMBOL-CLASS; FN_WORLD_DEPS_DROP at 800; OMITTED assertion at 806",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 822,
+      "reason": "Bridge/strip assurance is implementation-specific.",
+      "row": "none: retire, capability = fn1 guard/strip equivalence",
+      "touches": "guard-probe calls fn-b3-left-chunks through fnn-call; world trace comparison at 825-828",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    61,
+    62,
+    95,
+    171,
+    425,
+    426,
+    475,
+    491,
+    498,
+    571,
+    602,
+    626,
+    651,
+    734,
+    769,
+    798,
+    822
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "No uncertainty on rewrite-row. Public NNTP/signature/refusal scenarios remain valuable, but none of the native cases is socket-only because class setup injects probes. in_image_tests also inherit public base-store setup."
+}

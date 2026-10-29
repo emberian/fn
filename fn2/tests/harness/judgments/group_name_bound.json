@@ -1,0 +1,57 @@
+{
+  "module": "group_name_bound",
+  "adapter_operations": [
+    "config",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeGroupNameBoundTests.test_group_create_is_bounded_by_field_7"
+  ],
+  "module_verdict": "carry-with-adapter",
+  "reason": "CLI refusal/admission is public, but config-directory nonmutation check must become a public group listing/status comparison through control.",
+  "representation_sites": [
+    {
+      "line": 36,
+      "reason": "Compare public configured group listing before and after refused create; fn2 does not promise fn1 config files.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "list names in store/config directory",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 43,
+      "reason": "Take public group listing instead.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "snapshot store/config names before refused group create",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 47,
+      "reason": "Assert refused group absent and existing public configuration unchanged.",
+      "row": "`group create|retire|describe|policy|authority|moderate|subscribe-default`, `moderation list|approve|reject`, `motd set|clear`, `capacity N`, `retention set|expire`",
+      "touches": "assert store/config filenames unchanged after refusal",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 53,
+      "reason": "Retain public no-publication contract by checking init refusal and absence of an openable initialized store, without naming internal files.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "assert no store directory exists after refused init",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    31,
+    36,
+    43,
+    47,
+    53,
+    58
+  ],
+  "socket_only_tests": [
+    "NativeGroupNameBoundTests.test_init_is_bounded_by_field_7",
+    "NativeGroupNameBoundTests.test_the_default_profile_admits_the_longer_name"
+  ],
+  "uncertainty": null
+}

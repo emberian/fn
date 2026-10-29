@@ -1,0 +1,29 @@
+{
+  "module": "implicit_tls",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Borrows NativeStartTlsTests setup/certificate/stop helpers. Public implicit TLS, STARTTLS and store inspect outputs carry with config/control/start/socket/observe; LISTENING-TLS is an additional required announcement.",
+  "representation_sites": [],
+  "sites": [
+    39,
+    54,
+    58,
+    59,
+    79,
+    95,
+    125,
+    132,
+    137
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

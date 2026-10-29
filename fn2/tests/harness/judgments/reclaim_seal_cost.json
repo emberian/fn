@@ -1,0 +1,67 @@
+{
+  "module": "reclaim_seal_cost",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "The measured quantity is the old mutex-held tombstone sealing phase; keep public reclaim/STAT effects, replace the performance target with fn2 reclaim work.",
+  "representation_sites": [
+    {
+      "line": 42,
+      "reason": "Measure fn2 reclaim latency/work with retained/withdrawn article outcomes; no fn1 owner-mutex sealing phase survives.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM installed sealed and seal-us tombstone phase counters",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 43,
+      "reason": "Measure fn2 reclaim latency/work with retained/withdrawn article outcomes; no fn1 owner-mutex sealing phase survives.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM installed sealed and seal-us tombstone phase counters",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 46,
+      "reason": "Measure fn2 reclaim latency/work with retained/withdrawn article outcomes; no fn1 owner-mutex sealing phase survives.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM installed sealed and seal-us tombstone phase counters",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 48,
+      "reason": "Measure fn2 reclaim latency/work with retained/withdrawn article outcomes; no fn1 owner-mutex sealing phase survives.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM installed sealed and seal-us tombstone phase counters",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 49,
+      "reason": "Measure fn2 reclaim latency/work with retained/withdrawn article outcomes; no fn1 owner-mutex sealing phase survives.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM installed sealed and seal-us tombstone phase counters",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 56,
+      "reason": "Measure fn2 reclaim latency/work with retained/withdrawn article outcomes; no fn1 owner-mutex sealing phase survives.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM installed sealed and seal-us tombstone phase counters",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    42,
+    46,
+    48,
+    56
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

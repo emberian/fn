@@ -1,0 +1,31 @@
+{
+  "module": "starttls",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "TLS records, certificate bytes and NNTP lines are public wire observables; no host text or store internals are read. Adapter config, control, start/stop, socket and observe supply launch/refusal behavior.",
+  "representation_sites": [],
+  "sites": [
+    155,
+    157,
+    163,
+    172,
+    181,
+    185,
+    224,
+    227,
+    248,
+    274,
+    311
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

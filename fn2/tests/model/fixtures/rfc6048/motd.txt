@@ -1,0 +1,11 @@
+# RFC 6048 §2.5.3; verbatim transcript excerpt, rfc6048.txt lines 756-765
+[C] LIST MOTD
+[S] 215 Message of the day follows
+[S] Attention all users,
+[S]
+[S] This server will be down for scheduled upgrades on February 1st.
+[S] It should be back up by 8:00 a.m. February 2nd.
+[S] Any questions should be e-mailed to <newsmaster@example.com>.
+[S]
+[S] Apologies for the disturbance.
+[S] .

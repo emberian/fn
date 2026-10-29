@@ -1,0 +1,65 @@
+{
+  "module": "over_window",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "The assertion is a complete byte-identical OVER stream at two scheduling quanta. Rebuild the fixture through fn2 public init/post/import, replace raw fixture copying/lock repair and schema-source check, and map the quantum selector through start; Client and the public wire oracle carry.",
+  "representation_sites": [
+    {
+      "line": 56,
+      "reason": "fn1 schema text is not a fn2 fixture compatibility contract. Generate/import fn2 stores for the same article corpus.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "fixtures.schema_digest reads books/store-genesis.lisp and schema_refusal checks FIXTURE.json",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 62,
+      "reason": "Replace physical fixture clone with fn2 public import or initial population.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "shutil.copytree(source, self.node.store_path) of a fn1 binary store",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 63,
+      "reason": "writer.lock naming is fn1 layout; fn2 store initialization/import must own locking.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "names store_path/writer.lock and tests its existence",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 65,
+      "reason": "Replace manual lock repair with normal store initialization/import.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "creates missing writer.lock with mode 0600",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 96,
+      "reason": "224 overview reply is public; lift an independent wire fixture instead of reading the implementation table.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "table_reply(224, overview) reads books/protocol-table.lisp to supply wire reply",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    56,
+    62,
+    63,
+    65,
+    72,
+    96,
+    112
+  ],
+  "socket_only_tests": [
+    "NativeOverWindowTests.test_whole_range_under_a_small_quantum_is_the_unbounded_reply"
+  ],
+  "uncertainty": "The module is primarily a reusable wire test but requires fixture setup changes outside the seven current Node operations; carry-with-adapter includes that fixture provisioning work, not a claim of zero edits."
+}

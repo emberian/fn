@@ -1,0 +1,152 @@
+{
+  "module": "log_sink",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "LogSinkSourceTests.test_the_line_writer_offers_and_never_writes_under_the_queue_mutex",
+    "LogSinkSourceTests.test_the_owner_runs_the_writer_for_its_whole_service"
+  ],
+  "mixed_tests": [
+    "LogSinkNativeTests.test_an_unread_stderr_does_not_stop_the_node"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "The blocked-stderr workload is valuable, but its sole native case mixes public POST/health/termination with queue counters and physical decision-journal entry accounting. Two source-only tests pin writer implementation and retire.",
+  "representation_sites": [
+    {
+      "line": 35,
+      "reason": "Assert responsive service under a blocked log sink and clean shutdown, not fn1 mutex/queue/thread call text.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads host/native/io.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 36,
+      "reason": "Assert responsive service under a blocked log sink and clean shutdown, not fn1 mutex/queue/thread call text.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "slices fnn-log-offer queue implementation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 40,
+      "reason": "Assert responsive service under a blocked log sink and clean shutdown, not fn1 mutex/queue/thread call text.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "slices fnn-log-line offer call",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 42,
+      "reason": "Assert responsive service under a blocked log sink and clean shutdown, not fn1 mutex/queue/thread call text.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "slices fnn-err stderr offer call",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 46,
+      "reason": "Assert responsive service under a blocked log sink and clean shutdown, not fn1 mutex/queue/thread call text.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reads host/native/owner.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 47,
+      "reason": "Assert responsive service under a blocked log sink and clean shutdown, not fn1 mutex/queue/thread call text.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "slices fnn-owner-run for writer lifetime",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 53,
+      "reason": "Assert responsive service under a blocked log sink and clean shutdown, not fn1 mutex/queue/thread call text.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "native_cuts.host_function extracts fnn-owner-log-settlement",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 101,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "parses log-sink pending/dropped/written counters in health output",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 118,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts pending queue positive behind pipe",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 119,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts queue counters account for posts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 128,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "polls internal log-sink counters after draining pipe",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 134,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts pending=0",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 135,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts dropped=0",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 136,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts written>=POSTS",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 145,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "store_path/decisions/decisions.fnj",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 146,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "counts decision-journal physical newline entries",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 149,
+      "reason": "Keep POST/health responsiveness, emitted log observations and shutdown; fn2 need not expose the same sink counters or decision-journal record accounting.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "compares stderr plus journal line count to sink-written counter",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    35,
+    46,
+    72,
+    101,
+    106,
+    145
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

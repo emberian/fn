@@ -1,0 +1,6 @@
+# RFC 3977 §7.4.3; verbatim transcript excerpt, rfc3977.txt lines 3614-3618
+[C] NEWNEWS news.*,sci.* 19990624 000000 GMT
+[S] 230 list of new articles by message-id follows
+[S] <i.am.a.new.article@example.com>
+[S] <i.am.another.new.article@example.com>
+[S] .

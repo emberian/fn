@@ -1,0 +1,37 @@
+{
+  "module": "accept_maintenance",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "The test observes POST blockage and SIGTERM drain announcement under a fault stall, without inspecting the maintenance worker; adapt the stall hook and lifecycle observations.",
+  "representation_sites": [
+    {
+      "line": 66,
+      "reason": "Preserve operator-visible prompt drain announcement while the persistence barrier remains blocked; no worker identity is required.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "assert stopping: answering the posts in flight first diagnostic",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    37,
+    42,
+    56,
+    60,
+    66,
+    70
+  ],
+  "socket_only_tests": [
+    "NativeAcceptMaintenanceTests.test_sigterm_is_consumed_behind_a_stalled_barrier"
+  ],
+  "uncertainty": null
+}

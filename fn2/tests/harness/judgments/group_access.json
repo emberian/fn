@@ -1,0 +1,45 @@
+{
+  "module": "group_access",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "GroupAccessSourceTests.test_the_served_delegate_takes_the_view"
+  ],
+  "mixed_tests": [],
+  "module_verdict": "carry-socket-half",
+  "reason": "Both NativeGroupAccessTests methods are public TLS/NNTP/operator scenarios; the standalone delegate source check is obsolete. in_image_tests records that static source probe, not an image process.",
+  "representation_sites": [
+    {
+      "line": 46,
+      "reason": "Public restricted visibility, revocation, transit policy separation and restart persistence replace source body inspection.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "reads books/nntp-auth.lisp and books/served-carried.lisp through loop variable book",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 56,
+      "reason": "Use per-login GROUP/LIST/ARTICLE/OVER/HDR/POST outcomes and pinned/live revocation tests; fn2 has no fn1 delegate layout.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "asserts four fn-auth-view-* expressions in delegate source bodies",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    46,
+    62,
+    122,
+    270
+  ],
+  "socket_only_tests": [
+    "NativeGroupAccessTests.test_source_peer_reader_access_preserves_transit",
+    "NativeGroupAccessTests.test_two_accounts_one_private_group"
+  ],
+  "uncertainty": null
+}

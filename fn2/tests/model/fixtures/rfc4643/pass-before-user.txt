@@ -1,0 +1,3 @@
+# RFC 4643 §2.3.3; verbatim transcript excerpt, rfc4643.txt lines 490-491
+[C] AUTHINFO PASS flintstone
+[S] 482 Authentication commands issued out of sequence

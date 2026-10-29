@@ -1,0 +1,55 @@
+{
+  "module": "peer_by_name",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public DNS/TLS peering borrows protected_peering Node setup/profile/start; observe must replace inherited SBCL /proc --core provenance diagnostic, while config retains credential and TLS setup.",
+  "representation_sites": [
+    {
+      "line": 63,
+      "reason": "Report fn2 launch artifact identity through observe; inherited diagnostic is not an ACL2 evaluation.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "call inherited process_identity: /proc cmdline --core/runtime hash from test_native_peering:192-205",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 121,
+      "reason": "This is an operator input credential profile under node.root, not an internal store record.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "borrow profile(source,target), writing FNAUTH1 external credential file",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 128,
+      "reason": "Preserve the credential input consumed by the carried peer CLI.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "borrow credential profile for pinned peer setup",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    49,
+    54,
+    55,
+    56,
+    63,
+    114,
+    118,
+    158
+  ],
+  "socket_only_tests": [
+    "NativePeerByNameTests.test_feed_by_name_under_the_system_roots",
+    "NativePeerByNameTests.test_name_mismatch_is_refused_by_name_and_retried",
+    "NativePeerByNameTests.test_resolution_failure_is_named_and_retried",
+    "NativePeerByNameTests.test_peer_add_refuses_a_host_that_is_not_a_host"
+  ],
+  "uncertainty": "Inherited process_identity returns unknown on non-/proc or non-SBCL hosts and this module does not assert it; it can be dropped or mapped to observe without changing the peering oracle."
+}

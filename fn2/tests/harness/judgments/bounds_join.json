@@ -1,0 +1,77 @@
+{
+  "module": "bounds_join",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Large article identity, fragmentation and restart checks are public; start/control/observe adapt profile and reference image. Mutex allocation measurement must be replaced by fn2 bounded-work/resource evidence.",
+  "representation_sites": [
+    {
+      "line": 116,
+      "reason": "Public status accepted-work count requires documented fn2 accounting; use accepted article count if transactions differ.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "inherited headroom transactions-used equals3",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 290,
+      "reason": "Replace with fn2 resource/work budget scenario for a large POST.",
+      "row": "none: retire, capability = fn1 owner mutex SBCL allocation counters",
+      "touches": "FN_OWNER_MEASURE=1 selects owner-mutex allocation instrumentation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 298,
+      "reason": "Use fn2 pool/work counters, no owner mutex classes.",
+      "row": "none: retire, capability = fn1 owner mutex allocation report",
+      "touches": "parses fn-owner-measure gate-class table",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 305,
+      "reason": "Keep large-POST liveness and bounded work in fn2 scenario.",
+      "row": "none: retire, capability = fn1 owner mutex allocation report",
+      "touches": "requires nonempty fn-owner-measure table",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 306,
+      "reason": "Replace with fn2 resource bound.",
+      "row": "none: retire, capability = SBCL bytes allocated during owner mutex hold",
+      "touches": "max-bytes or bytes maximum over mutex holds",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 309,
+      "reason": "Use fn2 concrete buffer/work accounting without Lisp cons multiplier.",
+      "row": "none: retire, capability = fn1 cons-list allocation ceiling",
+      "touches": "largest hold <16 times article octets (one cons list)",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    107,
+    116,
+    145,
+    201,
+    252,
+    286,
+    376
+  ],
+  "socket_only_tests": [
+    "LargeArticleTests.test_a_4_mib_profile_admits_33k_200k_3m_and_names_the_size_past_it",
+    "LargeReplyTests.test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving",
+    "TenMibArticleTests.test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
+    "ArticleAboveTheBatchCeilingTests.test_a_20_mib_article_lands_and_rereads_across_a_reopen",
+    "PostHeapUnderMutexTests.test_large_post_allocates_less_than_one_article_list_under_the_mutex",
+    "SpanReferenceTests.test_span_read_serves_the_reference_images_bytes_at_33k_200k_3m_and_split_dot_lines"
+  ],
+  "uncertainty": "Span reference test compares public bytes but requires an old reference image. It can remain differential via start(image=...), or become a fixed transcript fixture."
+}

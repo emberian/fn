@@ -1,0 +1,143 @@
+{
+  "module": "tls_transport",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeTlsTransportTest.test_context_handshake_failure_and_roundtrip",
+    "NativeTlsTransportTest.test_client_chain_and_hostname_verification",
+    "NativeTlsTransportTest.test_client_clears_unrelated_openssl_error_before_handshake",
+    "NativeTlsTransportTest.test_session_tickets_before_the_greeting_are_no_data_yet"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "Every method executes a raw SBCL host/native/tls.lisp component fixture; no Node is constructed. Socket traffic is directed to component stubs rather than the composed node, so rewrite as real listener/peer TLS cases and move FFI-specific regressions to fn2 host tests.",
+  "representation_sites": [
+    {
+      "line": 76,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)",
+      "touches": "runs tests/native_tls_transport.lisp, which loads host/native/tls.lisp and calls fnn-tls-* internals",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 108,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)",
+      "touches": "requires FAILURE-ISOLATED internal fixture marker",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 116,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)",
+      "touches": "requires TLS-READY component marker",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 125,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "implicit TLS listener (`[listener] tls_port`, 563-style; protected-only from the first command; PROXY header from `tls-proxy-trusted-peers`)",
+      "touches": "requires ROUNDTRIP-PASSED component marker",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 170,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "runs tests/native_tls_client.lisp loading host/native/tls.lisp and invoking fnn-tls-connect/read/send-all",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 183,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "direct TLS client fixture success over fake peer",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 185,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "requires TLS-CLIENT-PASSED fixture marker",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 186,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "direct TLS client fixture wrong-name rejection",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 189,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "requires TLS-CLIENT-REFUSED fixture marker",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 190,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "direct TLS client fixture wrong-chain rejection",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 193,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "direct TLS client fixture interrupted handshake",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 196,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "requires interrupted fixture refusal marker",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 202,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "stale OpenSSL error injection wraps fnn-tls-client-begin/fnn-%ssl-connect in client Lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 205,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "requires stale-error fixture success marker",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 214,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "client fixture asserts internal :timeout polls for TLS tickets before application greeting",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 217,
+      "reason": "Exercise configured fn2 listener/peer TLS with valid and invalid certificates and delayed application bytes; replace fn1 raw Lisp/FFI state assertions with fn2-specific host tests.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "requires TLS-CLIENT-TICKETS-PASSED fixture marker",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    76,
+    170,
+    183,
+    202,
+    214
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "All four methods mix real sockets with internal host Lisp probes. Public intent survives (verification, failed handshake isolation, tickets), but helper script assertions also cover FFI preconditions not expressible as native Node API."
+}

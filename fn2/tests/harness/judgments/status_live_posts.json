@@ -1,0 +1,45 @@
+{
+  "module": "status_live_posts",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Keep concurrent POST/status/health observations; start chooses the developer launcher, control supplies store init and operator status/health, observe retains process/log diagnostics. The articles count is public status output, not a walk of verdict rows.",
+  "representation_sites": [
+    {
+      "line": 139,
+      "reason": "Keep the public status article count and latency assertion; no verdict-list representation is inspected.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "Parse articles=N from operator status to compare growth after accepted POSTs",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 200,
+      "reason": "Status must reflect durable accepted articles regardless of fn2 index layout.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "Require final status article count to equal initial count plus accepted POST count",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    118,
+    123,
+    136,
+    139,
+    154,
+    157,
+    183,
+    190,
+    200,
+    203
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

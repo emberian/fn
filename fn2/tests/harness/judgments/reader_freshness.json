@@ -1,0 +1,32 @@
+{
+  "module": "reader_freshness",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public GROUP/LISTGROUP refresh, peer IHAVE, and cancel visibility only; start must adapt start_store_owner and control must adapt native_peer_add.",
+  "representation_sites": [],
+  "sites": [
+    81,
+    118,
+    130,
+    134,
+    187,
+    191,
+    227,
+    231
+  ],
+  "socket_only_tests": [
+    "ReaderFreshnessProbe.test_another_connections_post",
+    "ReaderFreshnessProbe.test_a_peers_ihave",
+    "ReaderCrossedCancel.test_a_cancel_after_the_article_waits_for_the_readers_group"
+  ],
+  "uncertainty": null
+}

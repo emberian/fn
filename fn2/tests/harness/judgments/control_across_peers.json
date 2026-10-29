@@ -1,0 +1,35 @@
+{
+  "module": "control_across_peers",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public hybrid-author, control grants and NNTP observations across receiver death; kill_at must replace the direct process kill/wait/finish helper.",
+  "representation_sites": [],
+  "sites": [
+    106,
+    118,
+    142,
+    209,
+    259,
+    293,
+    319,
+    338,
+    398
+  ],
+  "socket_only_tests": [
+    "NativeControlAcrossPeersTests.test_a_self_cancel_is_declined",
+    "NativeControlAcrossPeersTests.test_a_view_with_every_article_withdrawn",
+    "NativeControlAcrossPeersTests.test_author_basis",
+    "NativeControlAcrossPeersTests.test_authority_basis"
+  ],
+  "uncertainty": null
+}

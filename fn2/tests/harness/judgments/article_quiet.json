@@ -1,0 +1,44 @@
+{
+  "module": "article_quiet",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "POST/ARTICLE/BODY bytes and process output are externally observable. Adapt start/socket/observe; the historical ACL2 warning regression should remain an output hygiene check without requiring ACL2 internals.",
+  "representation_sites": [
+    {
+      "line": 38,
+      "reason": "This observes service output rather than evaluating ACL2. Preserve quiet operation/error-free service output, allowing fn2-specific fault diagnostics.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts process stdout contains no ACL2 Warning after served ARTICLE/BODY",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 39,
+      "reason": "External diagnostic hygiene; it is not a proof of fn2 guard verification.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "asserts stdout contains no Guard-checking will be inhibited",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    21,
+    29,
+    32,
+    35,
+    37,
+    38,
+    39
+  ],
+  "socket_only_tests": [
+    "NativeArticleQuietTests.test_served_article_writes_nothing_on_stdout"
+  ],
+  "uncertainty": null
+}

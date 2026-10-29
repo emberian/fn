@@ -1,0 +1,228 @@
+{
+  "module": "expiry",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe",
+    "kill_at"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Retain retention/reclaim behavior, public CLI results and served numbering/history across restart; adapt config and fault selection. Several checkpoint/swap trace assertions need row-level rewrites explicitly listed below. This is not a wholesale representation-only module: its mixin and post-reclaim socket checks are public.",
+  "representation_sites": [
+    {
+      "line": 211,
+      "reason": "Keep observable dry-run summary and independently compare proposed Message-IDs with offline dry run.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Parse RECLAIM dry-run records= service log summary",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 213,
+      "reason": "Keep user-visible reclaim/expiry counts; do not constrain fn2 internal fold implementation.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Assert would-reclaim=2 would-expire=2 in live dry-run service log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 214,
+      "reason": "Keep the listed proposed public article identities and absence of actual reclamation.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Parse RECLAIM would-reclaim Message-ID service log lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 243,
+      "reason": "Stopped-store fixture cloning is opaque directory copying, not a filename-layout assertion; prefer export/import fixture when fn2 requires identity rebinding.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "Remove destination store directory before cloning a stopped test store",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 244,
+      "reason": "Preserve equivalent initial public articles per crash scenario using a fn2 fixture copy or export/import.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "Copy the whole base store tree into a crash-case node",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 245,
+      "reason": "Map to fn2 persistence action boundaries; prove recorded reclaim completes after each crash rather than preserving fn1 checkpoint phases.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Inject FN_NATIVE_STATE_CHECKPOINT_FAULT at created/written/staged-durable/replaced/durable cuts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 259,
+      "reason": "Use fn2 commit/installation frontier to determine old/new state after crash.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Classify replaced/durable as the installed side of checkpoint replacement",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 260,
+      "reason": "Assert idempotent completion under fn2 recorded reclaim semantics using its actual durable boundary.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Require reclaimed=0 only after fn1 checkpoint replaced/durable cuts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 277,
+      "reason": "Create the equivalent fn2 recorded-but-uncompleted reclaim through its crash hook.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Create recorded reclaim fixture via state-checkpoint-created:kill",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 287,
+      "reason": "Opaque fixture reset; replace with supported fn2 snapshot/import setup if store identity demands it.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "Remove copied-store destination directory for isolated crash fixture",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 288,
+      "reason": "No individual layout filename is inspected; keep logically identical fixture contents.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "Clone stopped store as a whole tree into each crash scenario",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 307,
+      "reason": "Keep observable completion of a live reclaim and validate subsequent reads and posts.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Wait for RECLAIM installed records= service log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 309,
+      "reason": "Keep reclamation count alongside socket proof that exactly the expired articles disappear.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Assert reclaimed=2 in installed service log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 324,
+      "reason": "Assert checkpoint/reopen preserves the post-reclaim logical state; do not require fn1 publication trace format.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Parse CHECKPOINT auto sequence=N trace and count future publications",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 328,
+      "reason": "Use fn2 checkpoint-completion observation or stop/reopen readback, without matching old auto trace cardinality.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Wait for exactly one additional CHECKPOINT auto sequence event",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 330,
+      "reason": "Remove coupling of public recovery assertions to fn1 checkpoint sequence layout.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Extract checkpoint sequence integer from the last auto publication",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 337,
+      "reason": "Inspect public recovery/service health and retained/reclaimed article outcomes, not storage-open mechanism.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "Select status --replay open= line",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 338,
+      "reason": "Replace with reopen preservation of expired, retained and newly posted articles; fn2 has different checkpoint/log representation.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Require open=checkpoint:SEQUENCE suffix=0 matching automatic checkpoint",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 354,
+      "reason": "Keep public completion and verify expired articles are unavailable while retained/new articles survive.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Wait for RECLAIM installed records= after live reclaim records its instant",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 356,
+      "reason": "Keep the operator-facing count without constraining internal swap implementation.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Assert reclaimed=2 in the live reclaim installed line",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 387,
+      "reason": "Use fn2 reclaim scheduling hook to interleave a pass with POST and prove no accepted data is lost.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Hold fn1 reclaim rebuilding using FN_NATIVE_TEST_RECLAIM_STALL_FILE",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 395,
+      "reason": "Interleave at fn2 reclamation work boundaries rather than requiring the rebuilt phase.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Wait for RECLAIM stalled at=rebuilt before concurrent posting",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 404,
+      "reason": "Allow fn2 supported completion/refusal outcome; prove every accepted POST survives either outcome.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Require REFUSED after posts arrive during stalled reclaim pass",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 405,
+      "reason": "Do not require fn1 inability to incorporate deltas; retain no-lost-post and expiry semantics.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Forbid installed in response after concurrent posts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 406,
+      "reason": "Replace with fn2 result and preservation check; fn2 may complete safely with concurrent changes.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Require RECLAIM deferred reason=delta service log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 408,
+      "reason": "Retire fn1 swap restriction; verify public retained/reclaimed sets after chosen fn2 outcome.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Require zero RECLAIM installed lines for concurrent-pass case",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 434,
+      "reason": "Exercise every fn2 reclaim persistence/process-death boundary through kill_at.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Inject FN_NATIVE_RECLAIM_FAULT across captured/rewritten/staged/interned/rebuilt/installed/swapped/released phases",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 442,
+      "reason": "Use fn2 durable commit frontier, with recovery yielding old/new state and no accepted data loss.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "Choose reclaimed-versus-retained expected state by installed/swapped/released fn1 cut names",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    86,
+    114,
+    125,
+    179,
+    201,
+    237,
+    299,
+    345,
+    383,
+    428
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "carry-with-adapter is coarse: most assertions are public, but config/fault adapters alone cannot satisfy lines 324-338 and 395-408. Those assertions require explicit row rewrites; the module is not mainly representation. Whole-store copying may need fn2 identity-safe fixture creation."
+}

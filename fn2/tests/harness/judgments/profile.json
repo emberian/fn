@@ -1,0 +1,67 @@
+{
+  "module": "profile",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "All assertions are config, log, NNTP headers and CLI outcomes; config/start/control/observe expose the log path and owner stderr.",
+  "representation_sites": [
+    {
+      "line": 68,
+      "reason": "Service-log content and append/reopen behavior are public operator observables.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "configured log path read_text in wait_for_log",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 72,
+      "reason": "Read the configured log through observe or its public path.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "final configured service-log read_text",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 81,
+      "reason": "Preserve append-only service log assertion.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "pre-seeds configured log with earlier line",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 95,
+      "reason": "Preserve service log fields as public fixtures.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "service log lines assert connection client-address and post agent/path",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 146,
+      "reason": "Keep relative log-path resolution and logging behavior.",
+      "row": "the accepted key set (`books/native-config.lisp:247-277`, `fn-ncfg-key-allowedp`): `[store] path`; `[listener] host|port|tls_cert|tls_key|tls_port` (0.0.0.0 and `::` refused); `[auth] required|protected_only|path`; `[posting] enabled|agent`; `[anchor] server`; `[acl2] path|slots`; `[log] path`; `[control] path`; `[alerts] command|headroom_min_percent|refusal_rate_per_minute|cooldown_seconds`; `[web] port|host|site|domain|proxied|tls|idle_seconds|max_sessions`; `[tls] key_exchange` (`hybrid-preferred`); `[resources] cold_heap_octets|cold_workers|cold_descriptors|cold_read_ids|cold_file_ids|output_heap_octets|output_quantum_heap_octets|reclaim_live`; `[ops] mission|unit|scope|keep_releases|log_max_bytes|log_keep|memory_max`; `run` refuses `[posting] agent`, `[anchor]`, `[acl2]`",
+      "touches": "reads relative fn.log beside fn.toml",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    32,
+    43,
+    75,
+    116,
+    128,
+    136
+  ],
+  "socket_only_tests": [
+    "NativeProfileTests.test_posts_land_in_the_configured_log_and_name_the_path_identity",
+    "NativeProfileTests.test_without_a_log_path_the_lines_go_to_stderr",
+    "NativeProfileTests.test_posting_agent_is_refused_by_name",
+    "NativeProfileTests.test_a_relative_log_path_lands_beside_fn_toml"
+  ],
+  "uncertainty": null
+}

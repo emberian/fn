@@ -1,0 +1,24 @@
+{"argv": ["fn", "--fn", "operator", "/config", "run"], "kind": "node.start", "phase": "invoke", "pid": null, "t": 100, "test": "hand"}
+{"argv": ["fn", "--fn", "operator", "/config", "run"], "exit_class": null, "kind": "node.start", "phase": "ok", "pid": 42, "t": 110, "test": "hand"}
+{"command_hex": "504f5354", "kind": "client.command", "phase": "invoke", "t": 120, "test": "hand"}
+{"kind": "client.line", "phase": "invoke", "t": 130, "test": "hand"}
+{"kind": "client.line", "phase": "ok", "reply_hex": "3334302073656e642061727469636c650d0a", "t": 140, "test": "hand"}
+{"command_hex": "504f5354", "kind": "client.command", "phase": "ok", "reply_hex": "3334302073656e642061727469636c650d0a", "t": 150, "test": "hand"}
+{"kind": "client.line", "phase": "invoke", "t": 160, "test": "hand"}
+{"kind": "client.line", "phase": "ok", "reply_hex": "3234302061727469636c65207265636569766564204f4b0d0a", "t": 170, "test": "hand"}
+{"command_hex": "41525449434c45203c783e", "kind": "client.command", "phase": "invoke", "t": 180, "test": "hand"}
+{"kind": "client.line", "phase": "invoke", "t": 190, "test": "hand"}
+{"kind": "client.line", "phase": "ok", "reply_hex": "3232302031203c783e2061727469636c650d0a", "t": 200, "test": "hand"}
+{"command_hex": "41525449434c45203c783e", "kind": "client.command", "phase": "ok", "reply_hex": "3232302031203c783e2061727469636c650d0a", "t": 210, "test": "hand"}
+{"kind": "client.block", "phase": "invoke", "t": 220, "test": "hand"}
+{"kind": "client.line", "phase": "invoke", "t": 230, "test": "hand"}
+{"kind": "client.line", "phase": "ok", "reply_hex": "46726f6d3a2061406578616d706c652e746573740d0a", "t": 240, "test": "hand"}
+{"kind": "client.block", "phase": "ok", "reply_hex": "46726f6d3a2061406578616d706c652e746573740d0a4d6573736167652d49443a203c783e0d0a0d0a7061796c6f61640d0a", "t": 250, "test": "hand"}
+{"exit_class": "code -9", "kind": "node.stop", "phase": "invoke", "pid": 42, "t": 260, "test": "hand"}
+{"exit_class": "code -9", "exit_code": -9, "kind": "node.stop", "phase": "fail", "pid": 42, "t": 270, "test": "hand"}
+{"argv": ["fn"], "kind": "node.start", "phase": "invoke", "pid": null, "t": 280, "test": "hand"}
+{"argv": ["fn"], "exit_class": null, "kind": "node.start", "phase": "ok", "pid": 43, "t": 290, "test": "hand"}
+{"command_hex": "53544154203c783e", "kind": "client.command", "phase": "invoke", "t": 300, "test": "hand"}
+{"kind": "client.line", "phase": "invoke", "t": 310, "test": "hand"}
+{"kind": "client.line", "phase": "ok", "reply_hex": "343330206e6f2061727469636c650d0a", "t": 320, "test": "hand"}
+{"command_hex": "53544154203c783e", "kind": "client.command", "phase": "ok", "reply_hex": "343330206e6f2061727469636c650d0a", "t": 330, "test": "hand"}

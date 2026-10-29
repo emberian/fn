@@ -1,0 +1,146 @@
+{
+  "module": "peer_pull",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Wire-observed NEWNEWS/retry/TLS behavior carries; config/start must replace FNP1 funding, kill_at maps journal publication cuts, and observe replaces FNPL filesystem/provenance checks.",
+  "representation_sites": [
+    {
+      "line": 477,
+      "reason": "Observe cursor progression through captured NEWNEWS commands and public pull log/status.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "enumerate files under store/pull (FNPL journal directory)",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 489,
+      "reason": "Replace with fn2 executable artifact provenance.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "hash IMAGE.core for witness identity",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 524,
+      "reason": "Configure supported fn2 peer resource allowances through config; retain concurrent catch-up progress assertion.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "fund_peer_flights writes FNP1 peer-flight-profile via native_harness:1706",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 585,
+      "reason": "Use captured peer commands and resulting article availability.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "collect FNPL filenames from pull directory",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 597,
+      "reason": "The existing later NEWNEWS/cursor progression and restart tests witness durability without named journal files.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "require FNPL file exists under pull directory",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 626,
+      "reason": "Retain byte-identical resumed NEWNEWS and delivered article, drop layout diagnostics.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "collect FNPL filenames after kill/restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 774,
+      "reason": "Observe rejected login leaves logical cursor unchanged through public log/next NEWNEWS.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "sum all store/pull journal byte sizes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 798,
+      "reason": "Keep protected transport and exactly-once article listing, omit journal layout.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "collect FNPL filenames for protected pull witness",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 833,
+      "reason": "The credential and articles after restart already witness the public behavior.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "collect FNPL filenames after dedicated credential restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 841,
+      "reason": "Use unchanged logical cursor and no delivered articles.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "sample FNPL journal size after failed login",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 843,
+      "reason": "Use unchanged logical cursor and no unauthorized ARTICLE requests.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "sample FNPL journal size after more failed logins",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 865,
+      "reason": "Assert authentication failure advances no public cursor or article state.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "require failed-login FNPL byte size unchanged",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 973,
+      "reason": "The recorded NEWNEWS sequence and exact unavailable bound are independent public evidence.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "collect FNPL filenames in unavailable-id bound test",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 1216,
+      "reason": "Retain INN transcript and local HEAD retrieval; remove storage layout evidence.",
+      "row": "pull: dial, DATE, NEWNEWS since a cursor; each Message-ID offered to the node's own IHAVE decision on a logical transit connection; pull journal; `peer pull friend SECONDS`",
+      "touches": "collect FNPL filenames for INN interoperability witness",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    477,
+    489,
+    524,
+    585,
+    649,
+    774,
+    841,
+    865,
+    913
+  ],
+  "socket_only_tests": [
+    "NativePeerPullTests.test_trickling_body_retained_while_other_pull_and_catchup_complete",
+    "NativePeerPullTests.test_pull_from_fn_node",
+    "NativePeerPullTests.test_kill_mid_round_recovery_asks_the_same_newnews",
+    "NativePeerPullTests.test_cursor_publication_cuts",
+    "NativePeerPullTests.test_tls_pull_as_its_own_principal",
+    "NativePeerPullTests.test_pull_only_credential_survives_feed_edits_and_restart",
+    "NativePeerPullTests.test_wrong_principal_is_refused_by_the_serving_node",
+    "NativePeerPullTests.test_unreadable_credential_refuses_before_any_connection",
+    "NativePeerPullTests.test_clear_credential_is_refused_before_any_connection",
+    "NativePeerPullTests.test_cursor_publication_cuts_over_tls",
+    "NativePeerPullTests.test_unavailable_id_is_dropped_at_the_bound",
+    "NativePeerPullTests.test_unavailable_count_survives_a_cut",
+    "NativePeerPullTests.test_tls_replay_bound_counted_by_the_server",
+    "NativePeerPullTests.test_loopback_lab_exception_against_an_unprotected_server",
+    "NativePeerPullTests.test_soak_two_nodes_and_an_unproducible_listing",
+    "NativePeerPullTests.test_pull_from_inn"
+  ],
+  "uncertainty": "The exact after-fsync:2/before-write:2 selector encodes fn1 append ordinal; fn2 kill_at must identify the same semantic cursor publication boundary, not retain an append counter accidentally."
+}

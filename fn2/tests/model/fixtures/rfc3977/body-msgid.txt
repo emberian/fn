@@ -1,0 +1,5 @@
+# RFC 3977 §6.2.3.3; verbatim transcript excerpt, rfc3977.txt lines 2895-2898
+[C] BODY <45223423@example.com>
+[S] 222 0 <45223423@example.com>
+[S] This is just a test article.
+[S] .

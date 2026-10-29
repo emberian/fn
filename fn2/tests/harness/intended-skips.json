@@ -1,0 +1,145 @@
+[
+  {
+    "category": "linux-only",
+    "reason_prefix": "run only against a combined E2/checkpoint developer image",
+    "modules": [
+      "checkpoint"
+    ],
+    "note": "The decorator also requires Linux. Provisioning enables FN_RUN_NATIVE_CLONE and supplies the image; only the platform predicate remains false on this laptop."
+  },
+  {
+    "category": "linux-only",
+    "reason_prefix": "run only against a combined E2/T10/checkpoint developer image",
+    "modules": [
+      "checkpoint"
+    ],
+    "note": "The decorator also requires Linux. Provisioning enables FN_RUN_NATIVE_CLONE and supplies the image; only the platform predicate remains false on this laptop."
+  },
+  {
+    "category": "linux-only",
+    "reason_prefix": "prlimit and /proc are Linux's",
+    "modules": [
+      "host_lifecycle"
+    ]
+  },
+  {
+    "category": "linux-only",
+    "reason_prefix": "/proc is Linux's",
+    "modules": [
+      "host_lifecycle"
+    ]
+  },
+  {
+    "category": "measurement-opt-in",
+    "reason_prefix": "a measurement: set FN_HOST_LIFECYCLE_MEASURE=1 (and FN_NATIVE_HOST)",
+    "modules": [
+      "host_lifecycle"
+    ]
+  },
+  {
+    "category": "measurement-opt-in",
+    "reason_prefix": "FN_RUN_IMAGE_HEAP=1 runs the 128 MB bar's measurement",
+    "modules": [
+      "image_heap"
+    ]
+  },
+  {
+    "category": "external-fixture",
+    "reason_prefix": "FN_OPEN_DEPTH_FIXTURES names no directory (hbox: /tank/fn/scratch/fixtures)",
+    "modules": [
+      "open_depth",
+      "over_window"
+    ]
+  },
+  {
+    "category": "live-public-node",
+    "reason_prefix": "FN_OUTSIDE_IN_LIVE=1 runs the read-only checks against fn.fg-goose.online",
+    "modules": [
+      "outside_in"
+    ]
+  },
+  {
+    "category": "external-fixture",
+    "reason_prefix": "a measurement: set FN_OPEN_DEPTH_FIXTURES and FN_OVER_COST_FIXTURES",
+    "modules": [
+      "over_cursor_cost"
+    ]
+  },
+  {
+    "category": "measurement-opt-in",
+    "reason_prefix": "FN_NATIVE_RECLAIM_SEAL_SCALE names the K values",
+    "modules": [
+      "reclaim_seal_cost"
+    ]
+  },
+  {
+    "category": "measurement-opt-in",
+    "reason_prefix": "FN_RUN_RECLAIM_RSS=1 runs the walk's resident-set measurement",
+    "modules": [
+      "reclaim_walk"
+    ]
+  },
+  {
+    "category": "external-fixture",
+    "reason_prefix": "set FN_DTN7_REPO to a built dtn7-rs checkout",
+    "modules": [
+      "source_corpus_bp"
+    ]
+  },
+  {
+    "category": "external-fixture",
+    "reason_prefix": "the temporary directory is not on tmpfs here",
+    "modules": [
+      "store_mount_identity"
+    ]
+  },
+  {
+    "category": "external-fixture",
+    "reason_prefix": "the temporary directory and the tree share a filesystem",
+    "modules": [
+      "store_mount_identity"
+    ]
+  },
+  {
+    "category": "external-fixture",
+    "reason_prefix": "OpenSSL 3.5.8 toolchain required: /tank/fn/toolchains/openssl-3.5.8",
+    "modules": [
+      "tls_key_exchange"
+    ]
+  },
+  {
+    "category": "linux-only",
+    "reason_prefix": "requires Linux root and setpriv to offer a distinct SO_PEERCRED uid to the real owner socket",
+    "modules": [
+      "consumer_e2"
+    ]
+  },
+  {
+    "category": "linux-only",
+    "reason_prefix": "run under a memory limit of at most 2 GiB (tools/hbox_native.sh --mem 2G)",
+    "modules": [
+      "heap_from_profile"
+    ]
+  },
+  {
+    "category": "external-fixture",
+    "reason_prefix": "set FN_INN_SRC to an installed INN 2.7 tree",
+    "modules": [
+      "peer_pull"
+    ]
+  },
+  {
+    "category": "measurement-opt-in",
+    "reason_prefix": "set FN_PULL_SOAK_SECONDS for the bounded soak (runbook)",
+    "modules": [
+      "peer_pull"
+    ]
+  },
+  {
+    "category": "linux-only",
+    "modules": [
+      "outside_in"
+    ],
+    "reason_prefix": "no non-loopback IPv4 address on this machine (hostname -I)"
+  }
+]

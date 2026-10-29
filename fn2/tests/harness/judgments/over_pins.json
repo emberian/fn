@@ -1,0 +1,240 @@
+{
+  "module": "over_pins",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeOverPinsTests.test_moved_arena_defers_by_name_and_seals_nothing",
+    "NativeOverPinsTests.test_pipelined_over_drain_preserves_old_reply_then_reclaim_installs",
+    "NativeOverPinsTests.test_cancelled_over_settles_ownership_before_reclaim_installs",
+    "NativeOverPinsTests.test_sparse_quanta_retain_pipeline_and_hold_until_complete_reply",
+    "NativeOverPinsTests.test_a_long_over_refreshes_the_idle_deadline",
+    "NativeOverPinsTests.test_a_stopped_reader_leaves_the_kernel_at_most_the_send_window_unsent",
+    "NativeOverPinsTests.test_a_cold_quantum_reads_off_the_owner_mutex",
+    "NativeOverPinsTests.test_service_stop_settles_a_paused_response"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Two independent slow/stopped ARTICLE reader methods observe public socket liveness and send-stalled behavior. The remaining methods mix useful OVER/reclaim/idle scenarios with fn1 cursor/arena/cache ownership diagnostics, copied binary stores, checkpoint cuts or hardcoded send/render windows; rewrite those assertions with fn2 scheduling/resource hooks while retaining wire outcomes.",
+  "representation_sites": [
+    {
+      "line": 36,
+      "reason": "Build equivalent retained/expired public data through fn2 operations; use fn2 crash hook and export/import rather than fn1 checkpoint cut/layout.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "recorded_base/copy_of fixture uses expiry.py:274-289: state-checkpoint-created death selector and physical store tree copy",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 107,
+      "reason": "Build equivalent retained/expired public data through fn2 operations; use fn2 crash hook and export/import rather than fn1 checkpoint cut/layout.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "recorded_base/copy_of fixture uses expiry.py:274-289: state-checkpoint-created death selector and physical store tree copy",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 482,
+      "reason": "Build equivalent retained/expired public data through fn2 operations; use fn2 crash hook and export/import rather than fn1 checkpoint cut/layout.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "recorded_base/copy_of fixture uses expiry.py:274-289: state-checkpoint-created death selector and physical store tree copy",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 523,
+      "reason": "Build equivalent retained/expired public data through fn2 operations; use fn2 crash hook and export/import rather than fn1 checkpoint cut/layout.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "recorded_base/copy_of fixture uses expiry.py:274-289: state-checkpoint-created death selector and physical store tree copy",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 144,
+      "reason": "Rebuild or import equivalent logical fixture through fn2 public store operations.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "copy_of clones the reclaimed base.store_path via expiry.py:284-289",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 484,
+      "reason": "Use equivalent fn2 data fixture without physical fn1 tree dependence.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "copy_of clones warm-over store tree through expiry helper",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 49,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "waits for OVER quantum-held cid diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 53,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires RECLAIM deferred reason=readers",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 61,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "parses deferred reclaim arena counter",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 62,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "extracts arena values from three deferred passes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 64,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires arena values remain identical",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 114,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires RECLAIM test-moved diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 116,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires deferred reason=moved arena diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 122,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires installed records=5 reclaimed=2 sealed=2 seal-us diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 185,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "extracts OVER empty-yield cid",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 191,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "parses empty-yield passes/ms",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 192,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "parses cursor-yield passes/ms",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 194,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires empty progress yield ms>=1",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 195,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires sent progress yield ms=0",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 197,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires response-settled status=released for cursor id",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 222,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "waits for OVER quantum-held before idle-deadline test",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 499,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "waits for PAGE-IO held token diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 515,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires OVER cold-quantum cid diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 534,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires OVER quantum-held before stop",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 539,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "extracts held cursor id after stop",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 541,
+      "reason": "Replace fn1 owner/cursor implementation diagnostic with fn2 machine-step hook and public complete-reply/continued-service observation.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "requires OVER response-settled status=released after stop",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 393,
+      "reason": "Named send-stalled refusal is a public service posture; keep diagnostic and finite socket drain/close.",
+      "row": "first-command 60 s and idle 600 s: silent close; the 10 s send deadline (`send-stalled`)",
+      "touches": "requires send refused reason=send-stalled in service stderr",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 464,
+      "reason": "Retain bounded backpressure/reader isolation, but derive the bound from fn2 profile instead of fn1 render window constants.",
+      "row": "OVER / XOVER (resumable cursor; 423 vs 420 empty range)",
+      "touches": "asserts /proc tx_queue <= hardcoded 65536 send + 16384 render + 65536 slack",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    36,
+    49,
+    61,
+    122,
+    185,
+    245,
+    337,
+    464,
+    499,
+    541
+  ],
+  "socket_only_tests": [
+    "NativeOverPinsTests.test_a_large_article_drained_slowly_refreshes_the_idle_deadline",
+    "NativeOverPinsTests.test_a_reader_that_stops_reading_is_refused_send_stalled"
+  ],
+  "uncertainty": "No method evaluates Lisp, despite many internal diagnostics. Quarry calls the module node; the useful public-method split is identified independently. The cold quantum test permits no held read and thus does not always witness concurrency under blocked storage."
+}

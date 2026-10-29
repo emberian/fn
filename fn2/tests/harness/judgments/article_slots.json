@@ -1,0 +1,79 @@
+{
+  "module": "article_slots",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "ArticleSlotsTests.test_thirty_one_mib_posters_are_all_mid_article_at_once",
+    "ArticleSlotsTests.test_partial_uploads_holding_the_pool_all_complete",
+    "ArticleSlotsTests.test_a_takethis_within_one_read_past_the_slot_is_refused_whole"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "All I/O is public, but the admission counts 30/7/8 are derived from fn1 packed article and heap-pool layout, including the 3947519-byte eight-slot profile. Re-express the same reserve-to-finish, saturation/refusal and eventual completion scenarios using fn2 explicit profile capacities; retain the concurrent NNTP transcript checks.",
+  "representation_sites": [
+    {
+      "line": 187,
+      "reason": "Use the configured fn2 admission capacity and test exactly capacity plus one; 30 is a fn1 packing consequence.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "hold_and_finish uses SLOTS_1MIB=30 derived from fn1 64 MiB heap article pool",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 190,
+      "reason": "Preserve reserve-to-finish under saturation with fn2 capacities, not fn1 bytes-per-block arithmetic.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "hold_and_finish uses SLOTS_4MIB=7 and fn1 heap-derived init profile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 194,
+      "reason": "Replace the representation-tuned article size/profile with an explicit fn2 capacity.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "initializes A8_PROFILE with max article 3947519 to force exactly eight fn1 slots",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 202,
+      "reason": "Retain simultaneous POST/IHAVE/TAKETHIS saturation at fn2 declared capacity.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "creates SLOTS_A8-1 posters to fill seven of eight derived heap slots",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 184,
+      "reason": "External status counts are public and corroborate completed posts; the ProfileFixture.frame helper is not called here.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "inherited headroom reads operator status --replay transactions-used and transactions count",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 264,
+      "reason": "Preserve completed-transaction observation via public status or independently counted accepted identities.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "headroom transactions-used equals accepted posters plus two transit articles",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    78,
+    80,
+    85,
+    86,
+    150,
+    163,
+    184,
+    187,
+    190,
+    202,
+    236,
+    264
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "This is a public-wire test classified rewrite-row because its core numeric oracle is representation-derived, not because it runs ACL2. Fixture inheritance must not incorrectly mark unused ProfileFixture.frame as a dependency."
+}

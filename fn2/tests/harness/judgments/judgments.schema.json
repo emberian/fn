@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Reviewed native module judgment",
+  "type": "object",
+  "required": [
+    "module",
+    "adapter_operations",
+    "in_image_tests",
+    "mixed_tests",
+    "module_verdict",
+    "reason",
+    "representation_sites",
+    "sites",
+    "socket_only_tests",
+    "uncertainty"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "module": {
+      "type": "string"
+    },
+    "adapter_operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "start",
+          "stop",
+          "config",
+          "socket",
+          "control",
+          "kill_at",
+          "observe"
+        ]
+      }
+    },
+    "in_image_tests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mixed_tests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "internal_only_tests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "module_verdict": {
+      "type": "string",
+      "enum": [
+        "carry-unchanged",
+        "carry-with-adapter",
+        "carry-socket-half",
+        "rewrite-row"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "representation_sites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "line",
+          "reason",
+          "row",
+          "touches",
+          "verdict"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "line": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "row": {
+            "type": "string"
+          },
+          "touches": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "public-contract",
+              "obsolete-representation"
+            ]
+          }
+        }
+      }
+    },
+    "sites": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "socket_only_tests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "uncertainty": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

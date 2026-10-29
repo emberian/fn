@@ -1,0 +1,29 @@
+{
+  "module": "feed_reply_cold",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public peer delivery and independent NNTP responsiveness while storage reads stall. start(env=...) needs the read-stall selector; observe and stop need the returned process handle.",
+  "representation_sites": [],
+  "sites": [
+    57,
+    59,
+    74,
+    76,
+    88,
+    93,
+    95
+  ],
+  "socket_only_tests": [
+    "NativeFeedReplyColdTests.test_owner_answers_others_while_a_feed_reply_article_read_is_stalled"
+  ],
+  "uncertainty": null
+}

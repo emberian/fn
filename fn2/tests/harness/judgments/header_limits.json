@@ -1,0 +1,48 @@
+{
+  "module": "header_limits",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public POST and transit acceptance/refusal boundaries and preserved configured header limits carry. Adapt start/control/socket and replace SBCL_USER_ARGS reservation with the fn2 profile; no in-image evaluation or storage file inspection occurs.",
+  "representation_sites": [
+    {
+      "line": 111,
+      "reason": "The host memory reservation is fn1-specific; select a fn2 profile that can apply the max-transactions raise without changing sealed header limits.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "SBCL_USER_ARGS --dynamic-space-size 4096 pins the live-limit resource reservation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 119,
+      "reason": "Applied-now versus recorded-for-restart is a carried public limit disposition.",
+      "row": "live limits: `exposure-connections` 31, `-per-address` 8, `-steps-per-second` 64, `-first-seconds` 60, `-idle-seconds` 600, `-auth-failures` 10/min, `-posts-per-minute` 60, `exposure-trusted`, `anonymous`; `tls-handshakes-per-source-per-minute` 30, `-in-flight` 16, `tls-handshake-ms` 5000, `-source-overrides`, `tls-proxy-trusted-peers`; `log-batch-records` 64, `log-batch-octets` 16 MiB; `barrier-deadline-ms` 5000, `barrier-stall-ms` 30000, `clock-event-ms` 1000; `compress-min-octets`; `disk-reserve-octets`; `relay-date-skew` 86400, `refused-offer-capacity` 4096, `relay-require-path`; `path-identity`, `posting-policy`, `complaints-to`; `max-transactions`, `max-history-octets`, `max-article-octets` (applied now / recorded for next start / refused by name)",
+      "touches": "asserts applied limit max-transactions=14 in CLI stderr",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    44,
+    47,
+    65,
+    111,
+    118,
+    119,
+    137,
+    157
+  ],
+  "socket_only_tests": [
+    "NativeHeaderLimitsTests.test_a_raised_profile_accepts_900_fields_and_refuses_1001_by_name",
+    "NativeHeaderLimitsTests.test_the_default_profile_is_unchanged",
+    "NativeHeaderLimitsTests.test_a_live_limit_change_keeps_the_sealed_header_limits",
+    "NativeHeaderLimitsTests.test_peer_transit_is_refused_past_the_profile_limits_by_name"
+  ],
+  "uncertainty": null
+}

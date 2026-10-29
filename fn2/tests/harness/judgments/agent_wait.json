@@ -1,0 +1,52 @@
+{
+  "module": "agent_wait",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "AgentWaitSourceTests.test_the_host_calls_the_wait_decisions"
+  ],
+  "mixed_tests": [],
+  "module_verdict": "carry-socket-half",
+  "reason": "Separate host-source shape test plus public TLS NNTP/consumer/operator scenario; retain the scenario and replace source coupling.",
+  "representation_sites": [
+    {
+      "line": 57,
+      "reason": "Replace exact host calls with wait admission and wake behavior.",
+      "row": "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
+      "touches": "Reads host/owner-host.lisp; asserts fn-cwd-wait-step-over and fn-cwait-admit calls at 60-61",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 62,
+      "reason": "Request acceptance is public; decoder spelling is not.",
+      "row": "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
+      "touches": "Reads host/native-control-host.lisp; asserts fn-cwait-request-decode at 63",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 64,
+      "reason": "Replace thread synchronization recipe with durable wake/timeout behavior.",
+      "row": "`fnct.consumer.request` k4 (codes: register 0, ack 1, position 2, unregister 3, bootstrap 4, poll 5, status 6, bound-poll 7, bound-ack 8, wait 9, bound-wait 10) and `reasoned-request` k22",
+      "touches": "Reads host/native/owner.lisp; asserts signal-commit durable suffix and SBCL condition-wait at 67-68",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    56,
+    57,
+    62,
+    64,
+    299
+  ],
+  "socket_only_tests": [
+    "NativeAgentWaitTests.test_two_agents_wait_for_their_own_news"
+  ],
+  "uncertainty": "CAPACITY=12 at 48 needs parameterization to fn2 operator waiter capacity. Cursor/report files at 103 and 234 are public consumer outputs, not store representation."
+}

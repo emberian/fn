@@ -1,0 +1,355 @@
+{
+  "module": "slow_disk",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "SlowDiskSourceTests.test_a_graceful_stop_drains_before_its_fence",
+    "SlowDiskSourceTests.test_the_committer_waits_with_a_deadline_and_the_reader_sheds"
+  ],
+  "mixed_tests": [
+    "SlowDiskNativeTests.test_a_retry_storm_on_a_stalled_disk_keeps_threads_and_reads_bounded",
+    "SlowDiskNativeTests.test_a_stall_past_h_tells_the_posters_uncertain_and_the_articles_land",
+    "SlowDiskNativeTests.test_the_adopted_default_bars_classify_an_unresolved_write"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Nine native methods exercise NNTP, operator status/health and shutdown through fault selectors; two source-only methods inspect fn1 Lisp and three native methods mix public assertions with worker-count or decision-journal internals. Source-only methods are listed in in_image_tests as the internal-only bucket; they do not actually launch an image.",
+  "representation_sites": [
+    {
+      "line": 45,
+      "reason": "These are operator observations of disk health and its exit state, not a requirement to retain fn1 mutexes, batches or files. Preserve or document their public wording.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator health/status disk slow, stalled, ok and free-space lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 47,
+      "reason": "These are operator observations of disk health and its exit state, not a requirement to retain fn1 mutexes, batches or files. Preserve or document their public wording.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator health/status disk slow, stalled, ok and free-space lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 49,
+      "reason": "These are operator observations of disk health and its exit state, not a requirement to retain fn1 mutexes, batches or files. Preserve or document their public wording.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator health/status disk slow, stalled, ok and free-space lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 58,
+      "reason": "Retain the bounded resource claim through the fn2 profile and allocation/worker accounting; the four-thread implementation is not carried.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "OS thread count compared with four fn1 cold-worker threads",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 60,
+      "reason": "Retain the bounded resource claim through the fn2 profile and allocation/worker accounting; the four-thread implementation is not carried.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "OS thread count compared with four fn1 cold-worker threads",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 69,
+      "reason": "Replace source spelling, mutex and scheduler checks with stalled POST outcome, concurrent reader progress and graceful shutdown observations.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "host/native owner, mux, control and live-status text; served-available-read and owner-article-slots call-chain checks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 121,
+      "reason": "Replace source spelling, mutex and scheduler checks with stalled POST outcome, concurrent reader progress and graceful shutdown observations.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "host/native owner, mux, control and live-status text; served-available-read and owner-article-slots call-chain checks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 135,
+      "reason": "Replace source spelling, mutex and scheduler checks with stalled POST outcome, concurrent reader progress and graceful shutdown observations.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "host/native owner, mux, control and live-status text; served-available-read and owner-article-slots call-chain checks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 139,
+      "reason": "Replace source spelling, mutex and scheduler checks with stalled POST outcome, concurrent reader progress and graceful shutdown observations.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "host/native owner, mux, control and live-status text; served-available-read and owner-article-slots call-chain checks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 150,
+      "reason": "Replace source spelling, mutex and scheduler checks with stalled POST outcome, concurrent reader progress and graceful shutdown observations.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "host/native owner, mux, control and live-status text; served-available-read and owner-article-slots call-chain checks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 153,
+      "reason": "Replace source spelling, mutex and scheduler checks with stalled POST outcome, concurrent reader progress and graceful shutdown observations.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "host/native owner, mux, control and live-status text; served-available-read and owner-article-slots call-chain checks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 164,
+      "reason": "Replace source spelling, mutex and scheduler checks with stalled POST outcome, concurrent reader progress and graceful shutdown observations.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "host/native owner, mux, control and live-status text; served-available-read and owner-article-slots call-chain checks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 174,
+      "reason": "Replace source spelling, mutex and scheduler checks with stalled POST outcome, concurrent reader progress and graceful shutdown observations.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "host/native owner, mux, control and live-status text; served-available-read and owner-article-slots call-chain checks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 184,
+      "reason": "Replace source spelling, mutex and scheduler checks with stalled POST outcome, concurrent reader progress and graceful shutdown observations.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "host/native owner, mux, control and live-status text; served-available-read and owner-article-slots call-chain checks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 373,
+      "reason": "Retain the bounded resource claim through the fn2 profile and allocation/worker accounting; the four-thread implementation is not carried.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "OS thread count compared with four fn1 cold-worker threads",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 389,
+      "reason": "Retain the bounded resource claim through the fn2 profile and allocation/worker accounting; the four-thread implementation is not carried.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "OS thread count compared with four fn1 cold-worker threads",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 398,
+      "reason": "Retain the bounded resource claim through the fn2 profile and allocation/worker accounting; the four-thread implementation is not carried.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "OS thread count compared with four fn1 cold-worker threads",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 411,
+      "reason": "Retain the bounded resource claim through the fn2 profile and allocation/worker accounting; the four-thread implementation is not carried.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "OS thread count compared with four fn1 cold-worker threads",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 424,
+      "reason": "Retain the bounded resource claim through the fn2 profile and allocation/worker accounting; the four-thread implementation is not carried.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "OS thread count compared with four fn1 cold-worker threads",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 752,
+      "reason": "These are operator observations of disk health and its exit state, not a requirement to retain fn1 mutexes, batches or files. Preserve or document their public wording.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator health/status disk slow, stalled, ok and free-space lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 764,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 765,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 767,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 768,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 769,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 770,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 772,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 773,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 776,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 777,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 778,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 780,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 781,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 891,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 892,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 893,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 896,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 898,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 899,
+      "reason": "Rewrite the journal checks as observable status, recovery and no duplicate POST outcomes; fn2 does not inherit the owner-time journal encoding.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "planning/events.json fn-otm codes and raw store/decisions/decisions.fnj seven-integer event rows",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 960,
+      "reason": "These are operator observations of disk health and its exit state, not a requirement to retain fn1 mutexes, batches or files. Preserve or document their public wording.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator health/status disk slow, stalled, ok and free-space lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 961,
+      "reason": "These are operator observations of disk health and its exit state, not a requirement to retain fn1 mutexes, batches or files. Preserve or document their public wording.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator health/status disk slow, stalled, ok and free-space lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 963,
+      "reason": "These are operator observations of disk health and its exit state, not a requirement to retain fn1 mutexes, batches or files. Preserve or document their public wording.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator health/status disk slow, stalled, ok and free-space lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 965,
+      "reason": "These are operator observations of disk health and its exit state, not a requirement to retain fn1 mutexes, batches or files. Preserve or document their public wording.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator health/status disk slow, stalled, ok and free-space lines",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 967,
+      "reason": "These are operator observations of disk health and its exit state, not a requirement to retain fn1 mutexes, batches or files. Preserve or document their public wording.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator health/status disk slow, stalled, ok and free-space lines",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    68,
+    168,
+    290,
+    360,
+    620,
+    790,
+    1272
+  ],
+  "socket_only_tests": [
+    "SlowDiskNativeTests.test_a_cold_read_on_a_stalled_disk_answers_403_while_cached_reads_stay_flat",
+    "SlowDiskNativeTests.test_more_cold_readers_than_workers_wait_instead_of_being_refused",
+    "SlowDiskNativeTests.test_reads_and_control_stay_flat_while_the_disk_stalls_and_posts_are_refused_try_later",
+    "SlowDiskNativeTests.test_a_full_disk_refuses_posts_before_the_write_and_recovers",
+    "SlowDiskNativeTests.test_a_full_store_refusal_is_told_while_another_barrier_stalls",
+    "SlowDiskNativeTests.test_a_graceful_stop_answers_the_posts_in_flight",
+    "SlowDiskNativeTests.test_a_graceful_stop_past_the_deadline_answers_uncertain",
+    "SlowDiskNativeTests.test_a_stop_with_clients_mid_article_and_mid_commit_ends_by_its_deadline",
+    "SlowDiskNativeTests.test_a_peer_is_told_to_retry_while_the_disk_is_slow"
+  ],
+  "uncertainty": "The nine public native methods need disk/read-stall and free-space adapters through start(env), plus socket/control/observe/stop. The retry-storm bound is externally measured but tied to fn1 thread counts; treated mixed pending a fn2 resource-profile oracle. The two journal-bearing native methods cannot carry whole even though most assertions use public surfaces."
+}

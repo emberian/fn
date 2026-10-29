@@ -1,0 +1,100 @@
+{
+  "module": "key_statements",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public key statement lifecycle predominates; kill_at must map statement publication cuts, observe must replace fn1 record-accounting assertions, and control must manage stale socket cleanup.",
+  "representation_sites": [
+    {
+      "line": 133,
+      "reason": "Carried hybrid-* CLI exposes key lifecycle without reading storage bytes.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "hybrid-key-history over the stopped store",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 312,
+      "reason": "Report public article retention/obligation state without requiring the fn1 retention-class partition.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "regex extracts articles/reclaimable/held/reclaimed/signed/kept status classes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 315,
+      "reason": "Replace with key-statement availability and public retention/obligation observations.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "assert all articles partition exactly among five fn1 retention classes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 319,
+      "reason": "Assert statements remain available and effective after retention/restart; do not count fn1 signed composite class.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "signed class count must include statement records",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 505,
+      "reason": "The owner socket is a public filesystem endpoint; adapter control owns cleanup after death.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "assert stale owner control path is a Unix socket",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 506,
+      "reason": "Retain safe owner-death cleanup through control; no store format is touched.",
+      "row": "the local control socket: FNCT frames (magic, v1, kind, payload limit, BLAKE3-256 trailer) on the owner's 0600 Unix socket, peer UID checked, 16 control clients",
+      "touches": "unlink dead owner control socket before offline operator revoke",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 547,
+      "reason": "Headroom is operator output; adapter observe must expose a supported resource measure.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "operator status --replay headroom transactions-used field",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 580,
+      "reason": "Use kill_at/resource fault or a supported profile boundary to witness durable statement with refused key change, without assuming fn1 record fanout.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "search only used+1 through used+4 transaction budgets for composite/key-change split",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 610,
+      "reason": "Replace with persisted statement, unchanged active key and named key-change-refused outcome.",
+      "row": "per-login group access (read/post wildmats), private groups, moderation bindings, signed-post bindings (`hybrid-sign` / `hybrid-author`, Ed25519 + ML-DSA-65)",
+      "touches": "assert statement adds exactly one used transaction",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    133,
+    310,
+    328,
+    488,
+    505,
+    547,
+    610
+  ],
+  "socket_only_tests": [
+    "NativeKeyStatementTests.test_succession_revocation_and_carried_statement",
+    "NativeKeyStatementTests.test_kill_at_the_cut_and_recovery_at_open",
+    "NativeKeyStatementTests.test_a_decline_across_a_restart_with_a_grant_added",
+    "NativeKeyStatementTests.test_redecide_a_declined_statement_after_its_grant",
+    "NativeKeyStatementTests.test_an_accepted_statement_cut_then_its_grant_revoked",
+    "NativeKeyStatementTests.test_a_refused_key_change_is_named_in_the_post_reply",
+    "NativeKeyStatementTests.test_a_forked_transit_pair_is_accepted_and_its_authority_named"
+  ],
+  "uncertainty": "Retention class partition and transactions-used are public status text but their exact class partition/one-record accounting encodes fn1 storage. Preserve durable key lifecycle and refusal behavior, review replacement headroom assertions with layer D."
+}

@@ -1,0 +1,6 @@
+# RFC 6048 §2.2.3; verbatim transcript excerpt, rfc6048.txt lines 376-380
+[C] LIST COUNTS *.tea,misc.*,!local.*
+[S] 215 List of newsgroups follows
+[S] misc.test 3002322 3000234 1234 y
+[S] rec.food.drink.tea 100 51 3 y
+[S] .

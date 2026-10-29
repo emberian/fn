@@ -1,0 +1,422 @@
+{
+  "module": "protected_peering",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeProtectedPeeringTests.test_acknowledged_protected_feed_does_not_reoffer_after_source_death",
+    "NativeProtectedPeeringTests.test_durable_sent_cut_requeues_on_protected_restart",
+    "NativeProtectedPeeringTests.test_untrusted_certificate_yields_430_and_feed_journal_evidence"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Three transfer/configuration/refusal methods use public NNTP/CLI once the shared SBCL process-identity observation is adapted. The other methods inspect durable feed files; two replay them through ACL2.",
+  "representation_sites": [
+    {
+      "line": 45,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "Acl2Session developer image for durable FNFD replay",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 47,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "acl2_result of feed inspector form",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 51,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "acl2_nat of feed inspector form",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 53,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-owner-feed-safe-offset global",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 54,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-open and fn-sched-contact construct replay state",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 56,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feedp recognizer of replay state",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 59,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "*fn-feed-journal-prefix-size*",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 60,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "reads durable feed file in prefix/frame chunks",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 65,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-journal-prefix decode",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 71,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-journal-scan with safe offset",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 74,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "car fn-test-scan next status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 77,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "cadr fn-test-scan updates safe offset",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 78,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-replay with caddr decoded record",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 80,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feedp after replay",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 82,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-journal-kind record histogram",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 86,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-state-of before restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 87,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-sentp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 88,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 91,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-state-of after restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 92,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "len internal feed queue",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 95,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-find and fn-feed-entry-attempts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 97,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-next-attempt",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 98,
+      "reason": "Replace FNFD layout/replay internals with peer wire observations of retry, no duplicate reoffer after acknowledged restart, and receiver article identity.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "fn-feed-inflightp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 147,
+      "reason": "Adapter observe should identify the fn2 executable/revision; no SBCL --core layout is required.",
+      "row": "none: retire, capability = SBCL saved-core identity pin",
+      "touches": "peer.process_identity reads /proc/PID/cmdline --core and hashes runtime/core files",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 189,
+      "reason": "Operator peer login accepts/produces this external credential artifact; retain explicit file/permission contract or record its replacement in E4/E6.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "writes FNAUTH1 login credential file",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 342,
+      "reason": "Operator peer login accepts/produces this external credential artifact; retain explicit file/permission contract or record its replacement in E4/E6.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "writes existing FNAUTH1 file to protect against clobber",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 346,
+      "reason": "Operator peer login accepts/produces this external credential artifact; retain explicit file/permission contract or record its replacement in E4/E6.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "compares existing credential bytes after refused peer login",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 362,
+      "reason": "Operator peer login accepts/produces this external credential artifact; retain explicit file/permission contract or record its replacement in E4/E6.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "checks generated login file mode 0600",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 363,
+      "reason": "Operator peer login accepts/produces this external credential artifact; retain explicit file/permission contract or record its replacement in E4/E6.",
+      "row": "invite / enrol: `peer keygen|invite|accept|confirm|list`; encrypted feed both ways with `--tls starttls|implicit --server-name --anchor`; `peer login`, `peer pull-login`",
+      "touches": "compares peer login output file FNAUTH1 bytes",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 407,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "store_path/feed/once-b.fnfd",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 408,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "asserts FNFD named file exists",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 419,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "inspect_feed_journal before restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 423,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "FNFD replay state_before_restart=nil",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 424,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "FNFD replay state_after_restart=nil",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 425,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "FNFD replay queue_length=0",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 426,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "feed-commit record count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 427,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "feed-outcome record count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 436,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "inspect_feed_journal after restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 437,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "FNFD replay state_after_restart=nil",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 438,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "FNFD queue_length after restart",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 439,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "feed-offer count unchanged",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 441,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "feed-sent count unchanged",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 490,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "store_path/feed/sent-b.fnfd",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 491,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "inspect_feed_journal after sent cut",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 492,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "sent_before_restart internal marker",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 493,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "state_after_restart=queued",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 494,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "feed-sent record count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 495,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "absence of feed-outcome record",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 506,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "inspect_feed_journal settled retry",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 507,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "settled replay state=nil",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 508,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "settled queue_length=0",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 509,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "settled feed-outcome record count",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 510,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "settled feed-offer count advanced",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 532,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "store_path/feed/<peer>.fnfd",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 533,
+      "reason": "Observe retry/settlement and duplicate suppression through recorded peer commands and receiver ARTICLE/STAT; a private FNFD filename or queue representation is unnecessary.",
+      "row": "outbound feed (push): Message-ID queue with offer state; IHAVE / CHECK+TAKETHIS streaming; 436 backoff; distributions; `path-identity` loop detection; feed journal FNFD",
+      "touches": "asserts failed-TLS post produced FNFD named file",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    147,
+    265,
+    310,
+    376,
+    392,
+    450,
+    521
+  ],
+  "socket_only_tests": [
+    "NativeProtectedPeeringTests.test_reciprocal_starttls_authinfo_transfer_and_reconnect",
+    "NativeProtectedPeeringTests.test_peer_set_and_peer_login_make_the_record_while_serving",
+    "NativeProtectedPeeringTests.test_bad_outbound_password_yields_authenticated_430_observation"
+  ],
+  "uncertainty": "Socket-only here excludes the shared /proc executable-identity assertion, which requires observe adaptation; test_untrusted_certificate has no ACL2 call but does require a private feed filename. FNAUTH1 is an external credential artifact, not a store record."
+}

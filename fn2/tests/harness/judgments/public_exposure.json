@@ -1,0 +1,51 @@
+{
+  "module": "public_exposure",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public NNTP flood/timeout/authentication pacing and operator pressure reporting; lifecycle/config/observe adapters retain the campaign.",
+  "representation_sites": [
+    {
+      "line": 427,
+      "reason": "Retain the operator-visible exposure pressure report.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "health exposure report line selection",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 429,
+      "reason": "Retain pressure reporting alongside actual admitted/refused sockets.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "assert exposure pressure held in operator health",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 430,
+      "reason": "Retain a public refused-address observation; no fn1 storage representation is inspected.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "assert refused-address counter label in health",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    129,
+    137,
+    196,
+    213,
+    424,
+    429,
+    438
+  ],
+  "socket_only_tests": [
+    "NativePublicExposureTests.test_flood_campaign"
+  ],
+  "uncertainty": null
+}

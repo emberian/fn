@@ -1,0 +1,77 @@
+{
+  "module": "reclaim_in_flight",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Admission refusal, shared operation receipt and readable retained data are public; map injected stall/start and diagnostic observation to fn2 operations.",
+  "representation_sites": [
+    {
+      "line": 38,
+      "reason": "Translate preparation to fn2 kill_at at reclaim recording; copy remains opaque stopped backup.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "recorded_base/copy_of helper: checkpoint-created kill then opaque store clone (expiry.py:274-290)",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 47,
+      "reason": "Use adapter observation of the controlled reclaim pause; retain concurrency admission semantics.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "RECLAIM stalled at=rebuilt internal phase observation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 58,
+      "reason": "Operation receipts are public operator outcomes; same held operation must be reported consistently.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reclaim receipt-in-flight and requested receipt identity on CLI",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 59,
+      "reason": "Operation receipts are public operator outcomes; same held operation must be reported consistently.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reclaim receipt-in-flight and requested receipt identity on CLI",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 62,
+      "reason": "Operation receipts are public operator outcomes; same held operation must be reported consistently.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reclaim receipt-in-flight and requested receipt identity on CLI",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 63,
+      "reason": "Retain no duplicate admitted operation with fn2 operation receipts or simulator evidence, not fn1 producer log grammar.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "counts RECLAIM request mode producer admissions in owner stderr",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 70,
+      "reason": "Operation receipts are public operator outcomes; same held operation must be reported consistently.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "reclaim receipt-in-flight and requested receipt identity on CLI",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    38,
+    41,
+    47,
+    58,
+    63,
+    70
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "The one-producer assertion uses a diagnostic RECLAIM request line; fn2 must expose an operation observation or simulator witness instead of preserving this log spelling."
+}

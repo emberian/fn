@@ -1,0 +1,48 @@
+{
+  "module": "compress",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "All five methods assert public compressed NNTP exchanges or documented close/refusal diagnostics, with no Lisp/source probes. Requires start(run --once), socket, control account setup and observe exit/service log hooks.",
+  "representation_sites": [
+    {
+      "line": 227,
+      "reason": "Carry observable bomb closure and named refusal via observe; no internal decoder structure is parsed.",
+      "row": "COMPRESS DEFLATE (206; bomb and BFINAL close rules)",
+      "touches": "service log compress-bomb refusal marker",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 238,
+      "reason": "Carry observable malformed-stream closure and named refusal via observe.",
+      "row": "COMPRESS DEFLATE (206; bomb and BFINAL close rules)",
+      "touches": "service log compress-malformed refusal marker",
+      "verdict": "public-contract"
+    }
+  ],
+  "sites": [
+    78,
+    82,
+    92,
+    125,
+    177,
+    227,
+    238
+  ],
+  "socket_only_tests": [
+    "NativeCompressTests.test_the_compressed_session",
+    "NativeCompressTests.test_pipelined_behind_the_command",
+    "NativeCompressTests.test_plaintext_the_inflater_still_owes_is_served",
+    "NativeCompressTests.test_the_bomb_is_refused_by_name",
+    "NativeCompressTests.test_a_malformed_stream_is_refused_by_name"
+  ],
+  "uncertainty": "Quarry node_internal is retained; comments cite decoder internals but the 689-command fixture is literal wire bytes and all tests are public-only. Confirm fn2 service-log refusal spellings as part of the carried COMPRESS contract."
+}

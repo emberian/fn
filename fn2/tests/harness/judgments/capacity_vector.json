@@ -1,0 +1,155 @@
+{
+  "module": "capacity_vector",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeCapacityVectorTests.test_full_store_finishes_releases_maintains_and_reuses"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "Preserve full-store obligation/release/reclaim/restart behavior, but fn1 reserve accounting, export layout exceptions, log cuts and inherited ACL2 BP request construction need replacement.",
+  "representation_sites": [
+    {
+      "line": 93,
+      "reason": "Replace in-image BP ADU construction with public wire fixtures/encoder; keep two-endpoint exchange.",
+      "row": "the BP outbound bundle machine (`fn-bpn-step`: enqueue, contact, resume, persist-result, forward-result, clock, restart; 64 jobs, 16 MiB, 4,096 records; keystone M1)",
+      "touches": "inherited NativeBpApplicationTests.setUp request_for uses Acl2Session subject and bp_request (base lines38,265-276)",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 120,
+      "reason": "Status is public, but its fn1 field names need explicit fn2 report mapping.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "status headroom/maintenance-reserve/reclaim line selection",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 137,
+      "reason": "Replace fn1 directory copy with supported snapshot/export setup or fn2 fixture.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "copytree entire store for crash trials",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 147,
+      "reason": "Export is public; verify round-trip logical content unless archive-byte stability is explicitly promised.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "hashes exported archive tree file-for-file",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 161,
+      "reason": "Compare imported public state, avoiding assumptions about fn1 export config layout.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "filters export config/ entries",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 162,
+      "reason": "Use a public logical comparison accounting for reclaim time; do not hardcode fn1 archive internals.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "ignores MANIFEST plus newest config file in convergence comparison",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 176,
+      "reason": "Map kill_at to fn2 durable operation boundaries and compare recovered content.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "FN_NATIVE_LOG_FAULT rotate/drop cut names",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 230,
+      "reason": "Preserve public obligation debt/held assertion via supported status.",
+      "row": "custody and receipts: forwarding as a retention obligation released only by the peer's receipt or a recorded waiver; `carry` verbs; receipt regeneration",
+      "touches": "maintenance-reserve debt=1 held assertion",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 253,
+      "reason": "Preserve outstanding retention obligation at exhaustion.",
+      "row": "custody and receipts: forwarding as a retention obligation released only by the peer's receipt or a recorded waiver; `carry` verbs; receipt regeneration",
+      "touches": "full store still reports debt=1 held",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 268,
+      "reason": "Obtain receipts through fn2 public BP output/receipt hook rather than private spool filenames.",
+      "row": "custody and receipts: forwarding as a retention obligation released only by the peer's receipt or a recorded waiver; `carry` verbs; receipt regeneration",
+      "touches": "sender spool receive-evidence/*.adu lookup",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 281,
+      "reason": "Retain public obligation discharge after durable receipt.",
+      "row": "custody and receipts: forwarding as a retention obligation released only by the peer's receipt or a recorded waiver; `carry` verbs; receipt regeneration",
+      "touches": "maintenance-reserve debt=0 after receipt",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 378,
+      "reason": "Map public resource/obligation reports to fn2 documented fields.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "headroom/maintenance-reserve report parser",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 408,
+      "reason": "Replace exact fn1 history-budget arithmetic with profile-bound admission and named refusal.",
+      "row": "live limits: `exposure-connections` 31, `-per-address` 8, `-steps-per-second` 64, `-first-seconds` 60, `-idle-seconds` 600, `-auth-failures` 10/min, `-posts-per-minute` 60, `exposure-trusted`, `anonymous`; `tls-handshakes-per-source-per-minute` 30, `-in-flight` 16, `tls-handshake-ms` 5000, `-source-overrides`, `tls-proxy-trusted-peers`; `log-batch-records` 64, `log-batch-octets` 16 MiB; `barrier-deadline-ms` 5000, `barrier-stall-ms` 30000, `clock-event-ms` 1000; `compress-min-octets`; `disk-reserve-octets`; `relay-date-skew` 86400, `refused-offer-capacity` 4096, `relay-require-path`; `path-identity`, `posting-policy`, `complaints-to`; `max-transactions`, `max-history-octets`, `max-article-octets` (applied now / recorded for next start / refused by name)",
+      "touches": "computes exact free H as history-bound minus bytes-used minus reserve",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 413,
+      "reason": "Use fn2 documented charged-unit accounting; no fn1 raw-payload equality.",
+      "row": "live limits: `exposure-connections` 31, `-per-address` 8, `-steps-per-second` 64, `-first-seconds` 60, `-idle-seconds` 600, `-auth-failures` 10/min, `-posts-per-minute` 60, `exposure-trusted`, `anonymous`; `tls-handshakes-per-source-per-minute` 30, `-in-flight` 16, `tls-handshake-ms` 5000, `-source-overrides`, `tls-proxy-trusted-peers`; `log-batch-records` 64, `log-batch-octets` 16 MiB; `barrier-deadline-ms` 5000, `barrier-stall-ms` 30000, `clock-event-ms` 1000; `compress-min-octets`; `disk-reserve-octets`; `relay-date-skew` 86400, `refused-offer-capacity` 4096, `relay-require-path`; `path-identity`, `posting-policy`, `complaints-to`; `max-transactions`, `max-history-octets`, `max-article-octets` (applied now / recorded for next start / refused by name)",
+      "touches": "expects bytes-used increment equals raw payload octets",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 424,
+      "reason": "Require resource reservation stays within supported profile and refusal is named.",
+      "row": "live limits: `exposure-connections` 31, `-per-address` 8, `-steps-per-second` 64, `-first-seconds` 60, `-idle-seconds` 600, `-auth-failures` 10/min, `-posts-per-minute` 60, `exposure-trusted`, `anonymous`; `tls-handshakes-per-source-per-minute` 30, `-in-flight` 16, `tls-handshake-ms` 5000, `-source-overrides`, `tls-proxy-trusted-peers`; `log-batch-records` 64, `log-batch-octets` 16 MiB; `barrier-deadline-ms` 5000, `barrier-stall-ms` 30000, `clock-event-ms` 1000; `compress-min-octets`; `disk-reserve-octets`; `relay-date-skew` 86400, `refused-offer-capacity` 4096, `relay-require-path`; `path-identity`, `posting-policy`, `complaints-to`; `max-transactions`, `max-history-octets`, `max-article-octets` (applied now / recorded for next start / refused by name)",
+      "touches": "asserts bytes-used+reserve exactly history-bound",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 436,
+      "reason": "Use fn2 public accepted-article count and documented limits rather than fn1 journal-record count.",
+      "row": "live limits: `exposure-connections` 31, `-per-address` 8, `-steps-per-second` 64, `-first-seconds` 60, `-idle-seconds` 600, `-auth-failures` 10/min, `-posts-per-minute` 60, `exposure-trusted`, `anonymous`; `tls-handshakes-per-source-per-minute` 30, `-in-flight` 16, `tls-handshake-ms` 5000, `-source-overrides`, `tls-proxy-trusted-peers`; `log-batch-records` 64, `log-batch-octets` 16 MiB; `barrier-deadline-ms` 5000, `barrier-stall-ms` 30000, `clock-event-ms` 1000; `compress-min-octets`; `disk-reserve-octets`; `relay-date-skew` 86400, `refused-offer-capacity` 4096, `relay-require-path`; `path-identity`, `posting-policy`, `complaints-to`; `max-transactions`, `max-history-octets`, `max-article-octets` (applied now / recorded for next start / refused by name)",
+      "touches": "expects one transactions-used increment per store post",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 439,
+      "reason": "Retain final admissible operation/refusal coverage with fn2 reservation definition.",
+      "row": "live limits: `exposure-connections` 31, `-per-address` 8, `-steps-per-second` 64, `-first-seconds` 60, `-idle-seconds` 600, `-auth-failures` 10/min, `-posts-per-minute` 60, `exposure-trusted`, `anonymous`; `tls-handshakes-per-source-per-minute` 30, `-in-flight` 16, `tls-handshake-ms` 5000, `-source-overrides`, `tls-proxy-trusted-peers`; `log-batch-records` 64, `log-batch-octets` 16 MiB; `barrier-deadline-ms` 5000, `barrier-stall-ms` 30000, `clock-event-ms` 1000; `compress-min-octets`; `disk-reserve-octets`; `relay-date-skew` 86400, `refused-offer-capacity` 4096, `relay-require-path`; `path-identity`, `posting-policy`, `complaints-to`; `max-transactions`, `max-history-octets`, `max-article-octets` (applied now / recorded for next start / refused by name)",
+      "touches": "requires transaction count exactly budget-1",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    93,
+    120,
+    137,
+    161,
+    176,
+    204,
+    268,
+    378,
+    408,
+    436
+  ],
+  "socket_only_tests": [
+    "NativeStorePostVerdictTests.test_store_post_admits_to_the_last_octet_of_h_and_the_last_transaction_of_t"
+  ],
+  "uncertainty": "Quarry labels this node, but inherited setUp constructs BP request through Acl2Session. This is actual reachable dependency, not a reclassification of the supplied list."
+}

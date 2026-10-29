@@ -1,0 +1,113 @@
+{
+  "module": "fence_boundary",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "PublicationBoundaryTests.test_an_uncertain_checkpoint_install_in_the_publication_fences_the_owner",
+    "ReclaimInstallFenceTests.test_an_uncertain_reclaim_install_fences_the_owner_before_completion"
+  ],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Public uncertainty/fault exit and recovery scenarios survive; kill_at maps semantic fault cuts, observe replaces fn1 worker diagnostics, and the journal/snapshot setup is rewritten.",
+  "representation_sites": [
+    {
+      "line": 59,
+      "reason": "Retain clean classified shutdown; the fn1 committer thread and join diagnostic need not exist.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "assert old committer-thread shutdown diagnostic absent",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 87,
+      "reason": "Remove journal preservation fixture here; the recovery witness is acknowledged ARTICLE bytes after restart.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "inherited keep_log hard-links store/journal segments (state_checkpoint.py:333-345)",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 100,
+      "reason": "Keep uncertainty and recovery requirement but replace checkpoint-worker diagnostic with fn2 outcome observation.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "assert CHECKPOINT auto uncertain recovery-required diagnostic",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 103,
+      "reason": "Assert the process fences/exits uncertain, without fn1 checkpoint log vocabulary.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "reject CHECKPOINT auto failed sequence log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 137,
+      "reason": "Create test state using supported export/import or an explicit opaque snapshot fixture, never fn1 file layout.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "delete copy.store_path before cloning frozen store",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 138,
+      "reason": "Use public store export/import for the fixture so identity and publication remain supported.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "copytree base.store_path to clone store",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 155,
+      "reason": "Use observable uncertain exit and completion response; fn2 has no owner mutex quantum.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "locate owner quantum uncertain log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 156,
+      "reason": "Preserve uncertain operation outcome through public receipt/status observation.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "locate receipt work uncertain log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 160,
+      "reason": "Assert no successful completion or new serving after uncertainty, without coupling to worker log ordering.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "assert owner fence log precedes receipt-worker log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 161,
+      "reason": "Retain no false successful reclaim completion at an uncertain cut via receipt outcome, rather than internal log text.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "assert RECLAIM installed absent from log",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    42,
+    55,
+    85,
+    87,
+    137,
+    138,
+    155,
+    160,
+    189,
+    208
+  ],
+  "socket_only_tests": [
+    "CommitterBoundaryTests.test_an_injected_committer_fault_stops_the_owner_as_a_fault",
+    "CommitterBoundaryTests.test_an_injected_committer_uncertain_outcome_fences_the_owner",
+    "NodeSecretBoundaryTests.test_a_barrier_failure_after_the_secrets_publication_is_uncertain",
+    "NodeSecretBoundaryTests.test_production_refuses_the_selector_before_dispatch",
+    "ReclaimInstallFenceTests.test_expires_is_honoured_and_expired_stays_distinct",
+    "ReclaimInstallFenceTests.test_size_window_keeps_the_newest",
+    "ReclaimInstallFenceTests.test_a_dry_run_on_the_serving_node"
+  ],
+  "uncertainty": "Checkpoint and reclaim worker-specific cuts need corresponding fn2 publication cuts; do not map selectors by matching names. ReclaimInstallFenceTests also inherits three public tests from expiry.ExpiryMixin."
+}

@@ -1,0 +1,101 @@
+{
+  "module": "post_seal_gate",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "PostSealGateRefusalSource.test_refused_staged_prepare_is_a_known_abort_not_a_reservation_refusal"
+  ],
+  "mixed_tests": [
+    "NativePostSealGate.test_refused_gate_seals_nothing"
+  ],
+  "module_verdict": "rewrite-row",
+  "reason": "Both methods target the fn1 staged-record/catalog seal gate: one source-text branch check and one mixed socket/arena-counter check. Rewrite as typed refusal/no committed mutation/no resource leak scenario through fn2 fault hooks.",
+  "representation_sites": [
+    {
+      "line": 22,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "reads host/native/owner.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 25,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "locates POST seal-gate refused branch by text",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 26,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "slices branch before fnn-owner-prepare-refusal-word",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 29,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "asserts fn-owner-known-abort call",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 45,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "FN_NATIVE_TEST_CAT_SEAL_REFUSE manipulates fn1 catalog seal gate",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 57,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "POST seal-gate refused arena counter pattern",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 58,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "reads matching owner arena diagnostics via ExpiryMixin.owner_lines",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 59,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "requires two arena diagnostic lines",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 60,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "extracts integer arena counter",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 61,
+      "reason": "Replace with fault-injected POST refusal, continued serving, no committed article, and fn2 resource/history checker; staged-record and sealed arena structures are obsolete.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "asserts arena counts identical",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    22,
+    29,
+    45,
+    57,
+    61
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "The 441 and owner-survival observations are useful, but no complete method is socket-only; arena equality must become a resource/history invariant, not a compatibility log."
+}

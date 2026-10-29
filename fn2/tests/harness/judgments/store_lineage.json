@@ -1,0 +1,127 @@
+{
+  "module": "store_lineage",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "All three cases transplant fn1 state-checkpoint bytes and inspect checkpoint/suffix recovery details; public lineage rejection needs fn2 recovery fixtures.",
+  "representation_sites": [
+    {
+      "line": 41,
+      "reason": "A stopped backup copy is public; preserve independently divergent histories.",
+      "row": "`store export DIR`, `export --status`, `store import DIR [--FIELD N]`, `store bless-snapshot DIR` (backup, move, restore)",
+      "touches": "opaque stopped-store fork copy",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 70,
+      "reason": "Assert correct public history or named foreign-lineage refusal without checkpoint sequence/suffix representation.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "exact open=checkpoint:N suffix=M observations",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 71,
+      "reason": "Provide fn2 lineage mismatch fixture and retained-content oracle; fn1 checkpoint bytes do not carry.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "path() reads/writes store-checkpoint.fnsc through StateCheckpointFixture.path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 75,
+      "reason": "Replace retained fn1 segment links with fn2 storage fault fixtures.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "keep_log() hard-links journal segments via StateCheckpointFixture.keep_log",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 78,
+      "reason": "Assert correct public history or named foreign-lineage refusal without checkpoint sequence/suffix representation.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "exact open=checkpoint:N suffix=M observations",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 79,
+      "reason": "Provide fn2 lineage mismatch fixture and retained-content oracle; fn1 checkpoint bytes do not carry.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "path() reads/writes store-checkpoint.fnsc through StateCheckpointFixture.path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 84,
+      "reason": "Provide fn2 lineage mismatch fixture and retained-content oracle; fn1 checkpoint bytes do not carry.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "path() reads/writes store-checkpoint.fnsc through StateCheckpointFixture.path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 90,
+      "reason": "Provide fn2 lineage mismatch fixture and retained-content oracle; fn1 checkpoint bytes do not carry.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "path() reads/writes store-checkpoint.fnsc through StateCheckpointFixture.path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 91,
+      "reason": "Assert correct public history or named foreign-lineage refusal without checkpoint sequence/suffix representation.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "exact open=checkpoint:N suffix=M observations",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 98,
+      "reason": "Assert correct public history or named foreign-lineage refusal without checkpoint sequence/suffix representation.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "exact open=checkpoint:N suffix=M observations",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 105,
+      "reason": "Assert correct public history or named foreign-lineage refusal without checkpoint sequence/suffix representation.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "exact open=checkpoint:N suffix=M observations",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 106,
+      "reason": "Assert correct public history or named foreign-lineage refusal without checkpoint sequence/suffix representation.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "exact open=checkpoint:N suffix=M observations",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 115,
+      "reason": "Provide fn2 lineage mismatch fixture and retained-content oracle; fn1 checkpoint bytes do not carry.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "path() reads/writes store-checkpoint.fnsc through StateCheckpointFixture.path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 116,
+      "reason": "Assert correct public history or named foreign-lineage refusal without checkpoint sequence/suffix representation.",
+      "row": "`recover [--repair truncate SEG:OFF]`",
+      "touches": "exact open=checkpoint:N suffix=M observations",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    70,
+    71,
+    75,
+    79,
+    84,
+    90,
+    105,
+    115
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

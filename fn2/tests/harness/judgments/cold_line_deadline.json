@@ -1,0 +1,28 @@
+{
+  "module": "cold_line_deadline",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "socket",
+    "control"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "All assertions are NNTP HDR/XHDR/XPAT/NEWNEWS completion, deadlines and concurrent-reader service. Cache and owner implementation names occur only in comments. Needs start, socket, control initialization and stop.",
+  "representation_sites": [],
+  "sites": [
+    50,
+    51,
+    52,
+    78,
+    90,
+    91,
+    93,
+    94,
+    99,
+    102
+  ],
+  "socket_only_tests": [],
+  "uncertainty": null
+}

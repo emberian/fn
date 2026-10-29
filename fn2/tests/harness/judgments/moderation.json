@@ -1,0 +1,60 @@
+{
+  "module": "moderation",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "ModerationSourceTests.test_the_post_step_runs_the_gate_after_the_read_only_gate",
+    "ModerationSourceTests.test_the_served_delegate_takes_the_approver_view"
+  ],
+  "mixed_tests": [],
+  "module_verdict": "carry-socket-half",
+  "reason": "The full native moderated-group scenario is public TLS/NNTP/operator behavior. Two standalone source checks inspect gate order/delegation and retire in favor of its socket assertions. in_image_tests includes these static source checks only.",
+  "representation_sites": [
+    {
+      "line": 68,
+      "reason": "Retain authenticated moderator/forged Approved/queue privacy/restart and read-only precedence outcomes through the public protocols, independent of function names.",
+      "row": "control messages: cancel (own-cancel, control.cancel filing), moderation `Approved`, injection info (RFC 5537)",
+      "touches": "reads books/nntp-post.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 71,
+      "reason": "Retain authenticated moderator/forged Approved/queue privacy/restart and read-only precedence outcomes through the public protocols, independent of function names.",
+      "row": "control messages: cancel (own-cancel, control.cancel filing), moderation `Approved`, injection info (RFC 5537)",
+      "touches": "checks textual fn-gst-post-gate precedes fn-mod-gate",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 74,
+      "reason": "Retain authenticated moderator/forged Approved/queue privacy/restart and read-only precedence outcomes through the public protocols, independent of function names.",
+      "row": "control messages: cancel (own-cancel, control.cancel filing), moderation `Approved`, injection info (RFC 5537)",
+      "touches": "reads books/nntp-auth.lisp",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 78,
+      "reason": "Retain authenticated moderator/forged Approved/queue privacy/restart and read-only precedence outcomes through the public protocols, independent of function names.",
+      "row": "control messages: cancel (own-cancel, control.cancel filing), moderation `Approved`, injection info (RFC 5537)",
+      "touches": "requires fn-auth-moderation-config in both delegate bodies",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    68,
+    74,
+    84,
+    91,
+    366
+  ],
+  "socket_only_tests": [
+    "NativeModerationTests.test_moderated_group_holds_approves_and_refuses"
+  ],
+  "uncertainty": null
+}

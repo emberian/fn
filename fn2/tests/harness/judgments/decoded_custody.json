@@ -1,0 +1,135 @@
+{
+  "module": "decoded_custody",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Rewrite the mixed scenario around fn2 read ownership/cancellation events and public ARTICLE/POST survival. The essential order witness is fn1 DECODED-WINDOW token, fd/file and PARTIAL-FIXED-STORAGE trace syntax; merely adapting launch would not preserve its claim.",
+  "representation_sites": [
+    {
+      "line": 44,
+      "reason": "Replace with fn2 executable identity/provenance in start; it is not evidence for served read ownership.",
+      "row": "none: retire, capability = fn1 SBCL source-runner provenance validation",
+      "touches": "source_execution_identity conditionally reads and hashes SBCL core/source execution manifests through tests.native_image_provenance",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 60,
+      "reason": "Retain the exposed compression report only if the compression capability remains; establish fn2 decoded-read coverage through its own supported selector, not this count alone.",
+      "row": "top-level: `fn store STORE {init|recover|node-secret create|rotate|status|checkpoint|digest|journal|export|bless-snapshot|import|retention|compression|rebind-filesystem|repair-control|config|inspect|provenance|probe|post}`, `fn redeem`, `fn identity`, `fn --version` (`fn 5.1.1 (REV12)`)",
+      "touches": "Parse compressed-records=N from store compression and require N > 0",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 67,
+      "reason": "Use fn2 read-delay/cancel hook to hold an ARTICLE dependency while independent POST/DATE work continues.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Hold physical decoded page I/O using FN_NATIVE_PAGE_IO_HOLD and a root release-file path",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 71,
+      "reason": "Observe fn2 request ownership with its own event identity; keep ARTICLE/POST bounded progress checks.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Require DECODED-WINDOW held token=(...) file=N fd=N offset=N count=N trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 76,
+      "reason": "Use fn2 ownership checker to assert no premature completion/release while the read is held.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Assert no physical/release trace for the observed decoded-window token before cancellation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 83,
+      "reason": "Retain independent POST progress and fn2 no-premature-release ownership evidence.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Assert again that physical/release trace remains absent after competing POST",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 85,
+      "reason": "Exercise disconnect cancellation through fn2 read-machine event/checker vocabulary.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Require DECODED-WINDOW cancel token=... word=:CANCELLED after reader disconnect",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 86,
+      "reason": "Require cancelled read resources remain owned until physical completion using fn2 OWN evidence.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Assert physical/release trace absent immediately after cancellation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 88,
+      "reason": "Observe completion of the held fn2 read request, without requiring fn1 token rendering.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Require DECODED-WINDOW read-return token=... status=:OK",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 91,
+      "reason": "Use fn2 pool ownership return evidence and forbid publication from cancelled read.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Require physical token event scope=:PARTIAL-FIXED-STORAGE",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 92,
+      "reason": "Use fn2 pool accounting to prove exactly one release after physical completion.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Require release token event scope=:PARTIAL-FIXED-STORAGE word=:RELEASED",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 93,
+      "reason": "Require cancellation-before-completion in the fn2 event history.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Compare cancel and read-return match offsets in fn1 stderr transcript",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 94,
+      "reason": "Require completion-before-resource-return in the fn2 ownership history.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Compare read-return and physical match offsets in fn1 stderr transcript",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 95,
+      "reason": "Require settlement only after physical completion, then retain public reopen ARTICLE assertions.",
+      "row": "ARTICLE / HEAD / BODY / STAT by number, by Message-ID, current; Xref prepend; 430 `withdrawn`",
+      "touches": "Compare physical and release match offsets in fn1 stderr transcript",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    44,
+    60,
+    67,
+    71,
+    76,
+    83,
+    85,
+    86,
+    88,
+    91,
+    92,
+    93,
+    94,
+    95,
+    97,
+    104
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Section 1 names decoded_custody only in the classical-gate row; ARTICLE/HEAD/BODY plus OWN scenario evidence is the substantive replacement. The compression report is a listed top-level verb, but its usefulness as a fn2 decoded-read precondition needs review."
+}

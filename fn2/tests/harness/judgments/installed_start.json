@@ -1,0 +1,50 @@
+{
+  "module": "installed_start",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "carry-with-adapter",
+  "reason": "The installed launcher, heap probe, process observation and NNTP exchange are public; start/observe must expose the shipped launcher and process command line.",
+  "representation_sites": [
+    {
+      "line": 47,
+      "reason": "Keep installed layout launch coverage through start.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "installed_launcher(image) arranges bin/fn and libexec/fn",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 48,
+      "reason": "Keep the probe until its profile replacement is documented; compare the chosen launch budget.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "heap -- operator CONFIG run probe and heap/stack report",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 56,
+      "reason": "Replace SBCL argv inspection with the fn2 profile reservation and observed memory; preserve successful budgeted startup.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "reads /proc/PID/cmdline to assert --dynamic-space-size equals probe",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    44,
+    47,
+    52,
+    55,
+    64,
+    72
+  ],
+  "socket_only_tests": [
+    "InstalledStartTests.test_a_fresh_store_starts_as_installed_and_serves"
+  ],
+  "uncertainty": null
+}

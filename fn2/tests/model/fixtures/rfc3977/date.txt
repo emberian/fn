@@ -1,0 +1,3 @@
+# RFC 3977 §7.1.3; verbatim transcript excerpt, rfc3977.txt lines 3448-3449
+[C] DATE
+[S] 111 19990623135624

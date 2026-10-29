@@ -1,0 +1,65 @@
+{
+  "module": "known_abort",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [
+    "NativeKnownAbortTest.test_topic_known_abort",
+    "NativeKnownAbortTest.test_consumer_known_abort",
+    "NativeKnownAbortTest.test_identity_known_abort"
+  ],
+  "module_verdict": "carry-with-adapter",
+  "reason": "Carry refusal-versus-uncertainty and restart behavior through kill_at/control/observe; replace record-chain/count assertions with public operation state.",
+  "representation_sites": [
+    {
+      "line": 61,
+      "reason": "Replace log chain observation with public identity/consumer/topic operation state before and after refusal; log is a removal candidate and fn1 record count is not a durable public identity.",
+      "row": "top-level `hybrid-sign|hybrid-author|hybrid-*`, `statement-sign` (`host/native/signature-command.lisp:257`), `checkpoint`, `heap`, `log`, `topic`, `pattern`, `anchor acquire STORE SERVER TIMEOUT` (`host/native/anchor.lisp:377`: obtains external evidence), `bp*`, `tcpcl`, `app-journal` (`host/native/workflow.lisp:722`: durable workflow and receipt operations), `config`, `digest-check`; `peer genesis` (`books/native-operator.lisp:964`)",
+      "touches": "native_log_observation.committed_history invokes log scan-store and parses records/last chain",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 73,
+      "reason": "Observe relevant public operation state before fault.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "snapshot committed log history before injected refusal",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 85,
+      "reason": "Assert repeated REFUSED outcomes and unchanged public operation state, followed by successful restart.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "assert committed log history unchanged after refused publication",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 91,
+      "reason": "Observe the newly completed public operation.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "read committed history after successful retry",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 92,
+      "reason": "Assert one logical public mutation; do not require exactly one storage record.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "assert exactly one fn1 log record added",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    53,
+    61,
+    75,
+    85,
+    92
+  ],
+  "socket_only_tests": [],
+  "uncertainty": "Replacement observation for topic install/bootstrap/enrollment must expose whether the logical mutation occurred; an exit code alone cannot replace the history nonmutation witness."
+}

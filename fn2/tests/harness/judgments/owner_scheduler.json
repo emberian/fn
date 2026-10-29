@@ -1,0 +1,192 @@
+{
+  "module": "owner_scheduler",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "internal_only_tests": [
+    "SchedulerSourceTests.test_every_owner_entry_is_gated_and_the_reply_leaves_the_mutex"
+  ],
+  "mixed_tests": [
+    "SchedulerNativeTests.test_health_carries_the_scheduler_lines_and_counts_the_classes",
+    "SchedulerNativeTests.test_control_requests_are_answered_under_three_tight_loop_readers",
+    "SchedulerNativeTests.test_status_and_readers_are_answered_while_a_batch_barrier_is_in_flight",
+    "SchedulerNativeTests.test_the_next_batch_is_prepared_while_the_previous_one_syncs",
+    "SchedulerNativeTests.test_a_control_request_is_admitted_under_sustained_post_load",
+    "SchedulerNativeTests.test_the_a6_campaign_keeps_accepted_history_through_one_integrated_scenario"
+  ],
+  "module_verdict": "carry-socket-half",
+  "reason": "Public large replies, concurrent control responsiveness, delayed durable POST visibility, TLS redeem and hostile-peer idempotence survive. Source-form, scheduler counters and private checkpoint/pipeline observations need replacement.",
+  "representation_sites": [
+    {
+      "line": 39,
+      "reason": "Replace private checkpoint diagnostic with public checkpoint completion/recovery witness.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "CHECKPOINT auto sequence diagnostic regex",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 40,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "sched order=control,reader,poster,transit bound/cursor regex",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 41,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "sched per-class holds and latency buckets regex",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 55,
+      "reason": "Host-source lexical structure is not fn2 public behavior.",
+      "row": "none: retire, capability = fn1 owner mutex scheduler implementation",
+      "touches": "owner.lisp scheduler gate/commit pipeline/render forms",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 90,
+      "reason": "Host-source lexical structure is not fn2 public behavior.",
+      "row": "none: retire, capability = fn1 owner mutex scheduler implementation",
+      "touches": "control.lisp live status dispatch source",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 114,
+      "reason": "Host-source lexical structure is not fn2 public behavior.",
+      "row": "none: retire, capability = fn1 owner mutex scheduler implementation",
+      "touches": "bp-app.lisp/bp-node.lisp/hybrid-control.lisp held-commit form counts",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 117,
+      "reason": "Host-source lexical structure is not fn2 public behavior.",
+      "row": "none: retire, capability = fn1 owner mutex scheduler implementation",
+      "touches": "books/owner-commit-class.lisp scheduler implementation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 131,
+      "reason": "Host-source lexical structure is not fn2 public behavior.",
+      "row": "none: retire, capability = fn1 owner mutex scheduler implementation",
+      "touches": "host/owner-host.lisp render wrapper implementation",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 187,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "parse scheduler header from health",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 190,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "parse scheduler class rows from health",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 194,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "log-sink versus scheduler line ordering",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 213,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "scheduler bound exactly 3",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 236,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "exact class quantum count relationships",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 243,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "transit idle-poll frequency bound",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 245,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "scheduler bucket sum equals holds",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 327,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "scheduler control/reader counts after reader load",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 411,
+      "reason": "Keep public response latency and durable visibility checks; mutex classes and hold buckets disappear in fn2.",
+      "row": "none: retire, capability = fn1 owner scheduler health counters",
+      "touches": "scheduler class set after delayed barrier",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 456,
+      "reason": "Keep accepted/delayed POST outcomes and fairness observations; retire private batch-pipeline trace wording.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "filter pipeline/start trace for reporting",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 459,
+      "reason": "Keep accepted/delayed POST outcomes and fairness observations; retire private batch-pipeline trace wording.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "require prepared behind the barrier trace",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 544,
+      "reason": "Keep accepted/delayed POST outcomes and fairness observations; retire private batch-pipeline trace wording.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "filter pipeline trace under sustained POST load",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 817,
+      "reason": "Replace private checkpoint diagnostic with public checkpoint completion/recovery witness.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "wait for internal checkpoint publication stderr marker",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    54,
+    187,
+    247,
+    271,
+    355,
+    414,
+    559,
+    667,
+    770
+  ],
+  "socket_only_tests": [
+    "SchedulerNativeTests.test_a_reply_larger_than_a_render_window_is_the_posted_article",
+    "SchedulerNativeTests.test_a_redeem_during_a_barrier_waits_for_the_complete_without_holding_the_owner",
+    "SchedulerNativeTests.test_a_hostile_peer_racing_a_durable_completion_gets_no_second_copy"
+  ],
+  "uncertainty": "Barrier-delay selectors need equivalent fn2 fault controls; A6 requires an observable checkpoint-completion hook. Scheduler latency/fairness goals survive but exact fn1 quanta and timing bounds need a profile-based fn2 specification."
+}

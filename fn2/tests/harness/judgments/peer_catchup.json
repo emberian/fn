@@ -1,0 +1,176 @@
+{
+  "module": "peer_catchup",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "kill_at",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "Every test touches fn1 FNP1 funding, FNCU framing or journal layout; retain catch-up socket/article/digest assertions but rewrite profile setup and publication-cut evidence against fn2 config/kill_at/observe.",
+  "representation_sites": [
+    {
+      "line": 120,
+      "reason": "The digest chain is a public XFNCATCHUP integrity contract, independent of the local journal.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "compute catch-up digest chain from served article bytes and Message-ID",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 249,
+      "reason": "Use semantic cursor-publication kill_at and captured resume request instead of FNCU journal bytes.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "read store/catch-up/A.fnfd raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 252,
+      "reason": "Replace storage framing introspection with public cursor resume/digest and article uniqueness.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "parse FNCU length-prefixed record sizes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 255,
+      "reason": "Assert recovery produces valid public catch-up progress after a cut.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "assert FNCU journal tail lands exactly at file end",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 275,
+      "reason": "Set fn2 resource profile through config; assert all peer articles become readable.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "fund_peer_flights writes binary peer-flight-profile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 287,
+      "reason": "Retain completed-round digest and article comparisons, omit filename enumeration.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "enumerate catch-up journal files under store",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 295,
+      "reason": "Verify durable resume after restart rather than journal publication by filename.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "assert some FNCU journal exists",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 300,
+      "reason": "Use fn2 supported resource profile setup.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "fund_peer_flights writes binary peer-flight-profile for cut case",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 311,
+      "reason": "Use kill_at evidence and next public catch-up request to locate the cut.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "read FNCU frames at developer publication cut",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 312,
+      "reason": "Assert semantic cursor stayed at prior published batch without assuming journal record count.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "require exactly two FNCU frames before third append",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 352,
+      "reason": "Configure supported fn2 spool/work allowances and preserve long-line transfer assertion.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "fund_peer_flights writes binary peer-flight-profile for long article",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 382,
+      "reason": "Test default catch-up works after init using public commands.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "read store/peer-flight-profile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 383,
+      "reason": "Default resource admission should be observable through catch-up success, not six-u64 layout.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "require 52-byte FNP1 binary resource profile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 404,
+      "reason": "Use config to select a deliberate insufficient peer resource profile.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "name store/peer-flight-profile for funding removal",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 405,
+      "reason": "Represent supported resource configuration as config keys.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "read original FNP1 bytes for later restoration",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 406,
+      "reason": "Drive a named insufficient-resource setting through supported config.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "unlink peer-flight-profile before catch-up verb",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 413,
+      "reason": "Require fn2 named resource refusal; FNP1-file absence is obsolete.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "require refusal says no peer flight profile",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 416,
+      "reason": "Restore supported resource allowances via config.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "restore peer-flight-profile raw bytes",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 418,
+      "reason": "Use supported resource withdrawal/fault hook at round admission.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "unlink peer-flight-profile after accepted catch-up verb",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 421,
+      "reason": "Preserve named resource-admission refusal under fn2 profile semantics.",
+      "row": "catch-up: XFNCATCHUP batches in 512-octet windows to a private spool; digest chain compared; replay oldest-first by IHAVE; FNCU journal; refusals `digest-mismatch`, `peer-lacks-catch-up`, `local-deferred`, `peer-flight-unfunded`",
+      "touches": "require round-time peer-flight-unfunded reason",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    249,
+    275,
+    287,
+    300,
+    311,
+    352,
+    382,
+    404
+  ],
+  "socket_only_tests": [
+    "NativePeerCatchupTests.test_catch_up_imports_every_article",
+    "NativePeerCatchupTests.test_kill_mid_catch_up_resumes",
+    "NativePeerCatchupTests.test_catch_up_carries_a_line_longer_than_a_megabyte",
+    "NativePeerCatchupTests.test_catch_up_out_of_the_box",
+    "NativePeerCatchupTests.test_catch_up_without_flight_funding_refuses_by_name"
+  ],
+  "uncertainty": "Catch-up digest/oldest-first wire semantics are expressly carried, but unfunded-profile refusal wording and the binary profile fixture describe fn1 resource architecture and need an explicit fn2 resource-policy counterpart."
+}

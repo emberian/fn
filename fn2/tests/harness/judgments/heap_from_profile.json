@@ -1,0 +1,168 @@
+{
+  "module": "heap_from_profile",
+  "adapter_operations": [
+    "start",
+    "stop",
+    "config",
+    "socket",
+    "control",
+    "observe"
+  ],
+  "in_image_tests": [],
+  "mixed_tests": [],
+  "module_verdict": "rewrite-row",
+  "reason": "The public small-machine startup/fill/restart story survives, but most assertions pin fn1 heap formulas, peer reserves, stack/probe format, and admission diagnostics. Restate it using fn2 profile limits.",
+  "representation_sites": [
+    {
+      "line": 148,
+      "reason": "Keep installed-layout smoke test.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "copies packaging/fn into installed bin/fn",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 149,
+      "reason": "Keep shipped executable layout; do not require an SBCL core.",
+      "row": "`fn-VERSION-linux-x86_64.tar.gz`, `fn-VERSION-openbsd-amd64.tar.gz`, `SHA256SUMS`; layout `fn/{SHA256SUMS,install.sh,bin/fn,libexec/fn/…,share/fn/…,clients/}`; no images, no signatures",
+      "touches": "symlinks fn-host in libexec/fn",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 150,
+      "reason": "Remove SBCL core packaging assumption; use fn2 release artefact.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "symlinks fn-host.core beside executable",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 277,
+      "reason": "Use fn2 profile reservation report and acceptance at stated budget; no fn1 peer-flight arithmetic.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "subtracts hardcoded PEER_LAUNCH_RESERVE=23082078 from init budget",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 294,
+      "reason": "Replace SBCL stack/thread formula with fn2 runtime resource report.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "HEAP_LINE requires stack and threads in status",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 323,
+      "reason": "Assert named budget bounds startup without pinned fn1 reserve.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "2000 MiB minus exact fn1 peer launch reserve",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 367,
+      "reason": "Operator capacity reporting is public; preserve semantics with fn2 names/disposition.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "status max-article-octets and capacity articles-left",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 426,
+      "reason": "Restate expected resource report for fn2 while retaining budget adherence.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "HEAP_LINE validates small heap, profile and cgroup machine figure",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 439,
+      "reason": "Request/observe durable checkpoint via public operation and verify reread after restart.",
+      "row": "`store compact` / `store checkpoint`, `store reclaim [--dry-run|--recorded]` (live only with `reclaim_live`), `store inspect MSGID|--group G`, `store rebind-filesystem`",
+      "touches": "waits CHECKPOINT auto sequence suffix octets steps ms",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 449,
+      "reason": "Do not require fn1 checkpoint replay implementation; verify retained articles after reopen.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "status --replay open=checkpoint:N",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 459,
+      "reason": "Restate memory admission against fn2 profile and externally observed connection cap.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "CAPACITY_LINE parser memory capacity of bound-by sum limit",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 519,
+      "reason": "Retain C+1 connection refusal and accepted/refused POSTs; replace internal pricing reason.",
+      "row": "capacity 400s: too many connections / from this address (8 public) / authentication failures; then close",
+      "touches": "requires bound-by=article-reply internal memory term",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 612,
+      "reason": "Public status counts confirm refused key statement causes no accepted mutation.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "status articles/signed counters parsed",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 716,
+      "reason": "Status counters are public but the fn1 admission oracle derived from them must change.",
+      "row": "`status [--watch --replay]`, `operation`, `health` (ten states; exit 19-29), `pins`, `obligations`; the service log and its reopen behaviour (`docs/operator.md` L227-240)",
+      "touches": "parses headroom transactions-used/budget bytes-used history-bound",
+      "verdict": "public-contract"
+    },
+    {
+      "line": 718,
+      "reason": "Assert named resource refusal and durable accepted articles rather than deriving fn1 charge arithmetic.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "derives per-post history charge from bytes-used",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 722,
+      "reason": "Choose refusal from supported fn2 profile and public report without fn1 maintenance constant.",
+      "row": "POST (340/440/480; 240; the 441 refusal words: duplicate, conflict, malformed, unaffordable, history-exhausted, storage-failed, control-not-filed, control-malformed, the generic refused, read-only group, moderation, login-unsigned, login-not-bound; `mpx-saturated` and the other index-specific words of fn1 retired by name in R3; the separate *uncertain* 441, never a 240 or a refusal; each word a fixture, *[Astra]*)",
+      "touches": "uses hardcoded 4096 maintenance reserve to choose expected refusal",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 737,
+      "reason": "Assert a full accepted store restarts within the same fn2 profile budget.",
+      "row": "`init`-time fixed limits (`--max-record-octets`, `--max-groups-per-article`, `--max-open-suffix`, `--max-consumers`, `--max-config-generations`, `--max-credentials`, `--max-bp-rows`, `--max-group-name-octets`, `--max-policy-members`, `--profile`, `--budget`) and the runtime profile (`max-connections` 32, `control-clients` 16, …)",
+      "touches": "post-fill HEAP_LINE parser",
+      "verdict": "obsolete-representation"
+    },
+    {
+      "line": 853,
+      "reason": "Preserve fault versus refusal distinction; update launcher-specific diagnostic when heap probe is replaced.",
+      "row": "exit codes: the complete exit-class table (refused 1, fault 4, usage, interrupted, not-connected, …; `books/outcome-class.lisp` read by `tools/outcome_codes.py:15-36`) and health's separate mapping: **ten** states (`fenced, exhausted, unqualified-profile, space-pressure, no-route, stranded-transfer, unavailable-peer, receipt-debt, disk, checkpoint-deferred`; `books/native-health.lisp:93-99`), exit 19 unobserved and 20-29 for the first state held; local fenced uncertainty distinguished from a client's uncertainty after reply loss (*[Astra]*)",
+      "touches": "expects fault heap-probe-did-not-run under low RLIMIT_DATA",
+      "verdict": "obsolete-representation"
+    }
+  ],
+  "sites": [
+    148,
+    155,
+    277,
+    323,
+    439,
+    449,
+    519,
+    716,
+    853
+  ],
+  "socket_only_tests": [
+    "FreshInitTests.test_a_bare_init_on_the_friends_2_gb_machine_is_accepted_and_runs",
+    "FreshInitTests.test_a_bare_init_is_conservative_printed_and_runs",
+    "FreshInitTests.test_largest_within_the_budget_on_request",
+    "FreshInitTests.test_the_default_mission_inits_and_runs",
+    "HeapFromProfileTests.test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
+    "HeapFromProfileTests.test_the_run_states_its_capacity_and_admits_every_post_up_to_it",
+    "HeapFromProfileTests.test_an_accepted_statement_composite_is_admitted_by_the_memory_gate_like_a_post",
+    "HeapFromProfileTests.test_a_store_init_admitted_fills_to_its_limit_and_still_restarts",
+    "HeapFromProfileTests.test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start",
+    "DatasizeTests.test_a_storeless_command_runs_under_both_stock_classes",
+    "DatasizeTests.test_a_limit_below_the_image_is_a_named_fault_not_a_refusal"
+  ],
+  "uncertainty": "The heap verb is a removal candidate, not already dropped. Profile semantics and exact diagnostics need E6 dispositions; tests must not silently stop checking low-memory startup."
+}
