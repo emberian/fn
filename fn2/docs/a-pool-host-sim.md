@@ -592,7 +592,8 @@ callback emitter re-snapshots the row from the returned core before any later
 `:writes` and `:cost` stay `:unchecked` until R7. Requirements resolve by `:at`
 at `fn2-resolve` points (index, core, access, callbacks, dispatch, reference,
 coverage). `fn2-input-seals` replaces `fn2-core-instance`: machines seal at
-`:index`, children at `:core`, and obligations at `:coverage` (the end of
-`sim/check.lisp`). An owed row declared in a book that includes `sim/check` is
-refused there; layer B's unit books that include checker books must register
-their rows before that include, or the seal moves. This is a merge item for B.
+`:index` and children at `:core`. Obligations seal at `:coverage` only at the
+top of the world, in `fn2/tools/owed-export.lsp` after every layer's unit and
+checker books are included, never inside a library book: a seal in a library
+would make include order refuse rows (B's commit keystones must include
+`sim/sim` before they can be stated).

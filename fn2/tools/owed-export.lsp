@@ -9,6 +9,11 @@
 (include-book "fn2/tests/sched-unit")
 (include-book "fn2/tests/executor-unit")
 (include-book "fn2/tests/reference-unit")
+; Other layers' unit and checker books are included above this line.
+; The obligation input closes here, at the top of the world, never inside a
+; library book (DSL-METATHEORY section 2.4): include order cannot refuse a row.
+(fn2-resolve :coverage)
+(fn2-seal :evidence :coverage :square)
 
 (defun fn2-owed-write-term (term channel state)
   (declare (xargs :stobjs state :verify-guards nil))
