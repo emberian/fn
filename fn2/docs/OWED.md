@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 173; bound statements: 168; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+Requirements: 178; bound statements: 173; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -1485,3 +1485,41 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-LAYOUT-TEST-AUDIT-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-LAYOUT-TEST-AUDIT-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 14) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((MAGIC :U32) (VERSION :U16) (ADDRESS :U64) (CHECKPOINT (:ID CHECKPOINT)) (ALLOCATION (:ID ALLOCATION)) (ARTICLE (:ID ARTICLE)) (NUMBER (:ID GROUP-NUMBER)) (COUNT :VARINT) (COUNTER :U60) (VALID :BOOL) (INTEGRITY :DIGEST) (PADDING (:ZERO 7)) (BYTE :U8) (PAYLOAD (:OCTETS 17))) (FN2-LAYOUT-VALUES '((MAGIC :U32) (VERSION :U16) (ADDRESS :U64) (CHECKPOINT (:ID CHECKPOINT)) (ALLOCATION (:ID ALLOCATION)) (ARTICLE (:ID ARTICLE)) (NUMBER (:ID GROUP-NUMBER)) (COUNT :VARINT) (COUNTER :U60) (VALID :BOOL) (INTEGRITY :DIGEST) (PADDING (:ZERO 7)) (BYTE :U8) (PAYLOAD (:OCTETS 17))) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:OPERATION-SET FN2-GRAMMAR)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :BOUND)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-GRAM-FRAME-TOTAL-LINEAR` | :OWED | :BOUND | `(IMPLIES (AND (FN2-POOLP POOL) (FN2-POOL-WFP POOL) (NATP LEFT) (NATP START) (NATP POS) (<= START POS) (<= (- POS START) CAP) (BITP OVERFLOW) (POSP CAP)) (FN2-GRAM-FRAME-OUTCOME-P LEFT START POS OVERFLOW CAP SLOT GEN OKIND OSLOT OGEN POOL))` | `(FN2-GRAM-TEST-FRAME-SHAPES FN2-GRAM-TEST-FRAME-SHAPES-NEGATIVE)` | Over arbitrary octets, the framer returns a declared status, never moves backwards, consumes at most its budget and never past fill, and retains at most the line cap (totality, linear consumption, bounded retention). | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:OPERATION-SET FN2-NNTP)`
+
+Requirements: 3; bound statements: 3; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :INVARIANT)`
+
+Requirements: 3; bound statements: 3; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-NNTP-PARSE-TOTAL` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-POOLP POOL) (FN2-POOL-WFP POOL) (NATP S) (NATP E)) (FN2-NNTP-PARSE-OUTCOME-P S E MASK SLOT GEN OKIND OSLOT OGEN POOL))` | `(FN2-NNTP-TEST-PARSE-TOTAL FN2-NNTP-TEST-PARSE-TOTAL-NEGATIVE)` | Totality over arbitrary octets: under only the pool and index guard, a line parse returns a declared code, a tag within the enum and at most four argument descriptors. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-NNTP-FRAGMENTATION` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-GRAM-OCTETSP OCTETS) (< (LEN OCTETS) 4096) (NAT-LISTP SIZES)) (EQUAL (FN2-NNTP-RUN OCTETS SIZES MASK) (FN2-NNTP-RUN OCTETS NIL MASK)))` | `(FN2-NNTP-TEST-FRAGMENTATION FN2-NNTP-TEST-FRAGMENTATION-NEGATIVE)` | Fragmentation invariance: every split of a transcript into chunks gives the same parsed commands, block lines and rendered reply bytes. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-NNTP-REPLY-TYPING` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-POOLP POOL) (FN2-POOL-WFP POOL)) (FN2-NNTP-RENDER-TYPED-P CMD REPLY MASK N0 N1 N2 SSLOT SGEN SOFF SLEN SLOT GEN OKIND OSLOT OGEN POOL))` | `(FN2-NNTP-TEST-REPLY-TYPING FN2-NNTP-TEST-REPLY-TYPING-NEGATIVE)` | Reply typing: a reply is rendered only for the command that declares it, in a state its layer admits; its status line opens with the declared code (checked at declaration). | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:OPERATION-SET FN2-RESIDENT)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :BOUND)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-CORE-STATE-BOUNDED` | :OWED | :BOUND | `(AND (IMPLIES (FN2-CORE-PROFILEP PROFILE) (EQUAL (FN2-CORE-RESIDENT-AT-INIT PROFILE CORE1) (FN2-CORE-RESIDENT-AT-INIT PROFILE CORE2))) (IMPLIES (AND (FN2-COREP CORE) (FN2-CORE-WFP CORE)) (EQUAL (FN2-CORE-RESIDENT-MEASURE (MV-NTH 4 (FN2-TURN CORE))) (FN2-CORE-RESIDENT-MEASURE CORE))) (IMPLIES (AND (FN2-COREP CORE) (FN2-CORE-WFP CORE)) (AND (EQUAL (FN2-CORE-RESIDENT-MEASURE (UPDATE-FN2-CORE-OPS (MV-NTH 1 (FN2-OUTBOX-ACK N (FN2-CORE-OPS CORE))) CORE)) (FN2-CORE-RESIDENT-MEASURE CORE)) (EQUAL (FN2-CORE-RESIDENT-MEASURE (UPDATE-FN2-CORE-OPS (FN2-POST-RESULT CELL SLOT GEN EVKIND OUTCOME REASON COUNT AUX0 AUX1 (FN2-CORE-OPS CORE)) CORE)) (FN2-CORE-RESIDENT-MEASURE CORE)) (EQUAL (FN2-CORE-RESIDENT-MEASURE (UPDATE-FN2-CORE-OPS (FN2-POST-CLOCK MONO REAL FLAGS (FN2-CORE-OPS CORE)) CORE)) (FN2-CORE-RESIDENT-MEASURE CORE)))))` | `(FN2-CORE-TEST-STATE-BOUNDED FN2-CORE-TEST-STATE-BOUNDED-NEGATIVE)` | T10: a core's resident bytes (every registered child's arrays and scalars at declared widths) are fixed by its profile at init and unchanged by every turn; no array grows or shrinks after init. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |

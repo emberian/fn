@@ -21,7 +21,7 @@ is attributed to layer D. Package `"ACL2"`, prefix `fn2-`; no `skip-proofs`, `de
 | the owed deadlock keystone over the assembled core | `fn2/books/resources-owed.lisp` | D0 | D |
 | acquisition and cancellation scenarios, per bundle | `fn2/tests/sim-acquisition.lisp`, `fn2/tests/sim-acquisition-driver.lsp` | D0 | D |
 | machine DSL arm contracts (`:cost :writes :tables :next :uses :holds`, `defcost`) | `fn2/books/machines.lisp` | R7 (A's quest; D1's requirements are its seam request, §4) | **A** |
-| T10, resident state bounded by the profile | `fn2/books/owed-d.lisp`, `fn2/tests/owed-d-unit.lisp` | D1a | D |
+| T10, resident state bounded by the profile | `fn2/books/resident.lisp` (generator), `fn2/books/owed-d.lisp`, `fn2/tests/owed-d-unit.lisp`, `fn2/tests/owed-d-coverage.lisp` | D1a | D |
 | the command-grammar DSL `defgrammar` (framer, block framer, validators, renderer, runner) | `fn2/books/grammar.lisp`, evidence `fn2/tests/grammar-unit.lisp` | D2a | D |
 | the NNTP command and reply table | `fn2/books/nntp-grammar.lisp` | D2a | D |
 | generator, mutator, fuzzer and its three mutation controls | `fn2/books/grammar-gen.lisp`, `fn2/tests/grammar-fuzz.lisp` | D2b | D |
@@ -381,10 +381,46 @@ and `wildmat`. Result: 0 disagreements. The oracle catches a mutated row or verd
 
 | statement | admitted with | over |
 |---|---|---|
-| T10 `fn2-core-state-bounded` | D1a | the assembled core's children and their `fn2-columns` rows: a generated resident measure equal to a registry sum of the profile, unchanged by `fn2-turn` (no array grows after init) |
+| T10 `fn2-core-state-bounded` | D1a (owed, with teeth) | the assembled core's children and their `fn2-columns` rows: a generated resident measure, the same for every core initialized from one profile, and unchanged by `fn2-turn` and by the adapter-boundary entries `fn2-outbox-ack`, `fn2-post-result`, `fn2-post-clock` (no array grows after init) |
 | T1 `fn2-turn-served-safety`, T8 `fn2-reply-trace-fragmentation-invariant` / `fn2-connection-privacy` | D3 | the connection machine and grammar |
 | T6 `fn2-refusal-no-committed-mutation` / `fn2-outcomes-three`, T9 `fn2-exact-identity` | D5 | the transaction machine, C's identity schema, B's commit batch |
 | closure audit `fn2/tests/turn-guards.lisp` | D9 | `fn2-turn`'s executable closure |
+
+**T10 as built (D1a).** `fn2/books/resident.lisp` is a library over the core-child registry. Its
+generator, `fn2-resident-measure-events`, emits one measure per registered child: the rows scalar
+(sized by `:rows-bound`), every column array's actual length times its declared width in bytes
+(`fn2-columns-width`, rounded up to whole bytes), and every extra field, whether an array (actual
+length × element bytes) or a scalar. It also emits their sum, `fn2-core-resident-measure`, and a
+per-child breakdown. A field it cannot measure (a hash table, a nested stobj, an untyped array) is
+refused at expansion by name unless the child's `:why` states its bound. Today no field is refused
+(`*fn2-resident-refused*` is nil). `fn2/books/owed-d.lisp` expands the generator once over the served
+assembly and states T10. `tests/owed-d-unit.lisp` holds the teeth. The positive tooth covers the
+tiny, near-limit and concrete profiles: each is initialized twice, then driven for 40 steps through
+the real executor (turns, outbox acknowledgements, Accept results, clock observations), and the
+measure must not change at any step. The negative tooth grows the pool's byte array after init.
+`tests/owed-d-coverage.lisp` expands the same generator in the separate test instance and checks
+that it measures that instance's test-only child and machine, and that four more test-child rows
+add exactly 16 bytes.
+
+The measured resident bytes, at declared widths:
+
+| child | tiny | concrete |
+|---|---:|---:|
+| fn2-core-pool | 2,705 | 7,387,601 |
+| fn2-core-ops | 1,324 | 161,900 |
+| fn2-core-sched | 177 | 4,023 |
+| fn2-core-machines | 1,123 | 2,413 |
+| fn2-core-trace | 3,813 | 60,693 |
+| fn2-core-control | 70 | 70 |
+| fn2-listener-table | 98 | 380 |
+| fn2-echo-table | 300 | 18,948 |
+| fn2-scribe-table | 92 | 92 |
+| **total** | **9,702** | **7,636,120** |
+
+T10 does not cover the adapter, the SBCL runtime (u60 arrays take 8 bytes per element there, which
+the declared width matches; headers are excluded) or the simulator's own state; that is W13's
+guardrail. Layer B's children join the table when B registers them in the assembly; the generator
+reads the registry, so nothing here changes.
 
 ## 8. The ABI reconciled *(D3)*
 
@@ -422,7 +458,7 @@ them.
 | quest | contents | waits on | state |
 |---|---|---|---|
 | D0 | resources.lisp, the tables of §3 as data with certification checks, the owed deadlock-freedom keystone, per-bundle exhaustion and cancellation scenarios for A's existing bundles | A only | done |
-| D1a | T10 in owed-d.lisp with teeth | A only | next after D2a |
+| D1a | T10 in owed-d.lisp with teeth | A only | done |
 | D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | done |
 | D2b | generator, mutator, fuzzer, the three mutation controls | D2a | |
 | D2c | parser onto R6a1's scan and drop-prefix | R6a1 | |
