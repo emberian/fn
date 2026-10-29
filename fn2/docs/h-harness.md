@@ -402,3 +402,12 @@ opt-ins (`FN2_NIGHTLY_OPT_INS`, default `FN_RUN_SLOW=1 FN_RUN_RELOCATION_E2E=1`)
 hbox` under the wall cap (`FN2_NIGHTLY_HOURS`, default 8), and renders `OUT/nightly.md` with
 `fn2.tests.surface.nightly` against `fn2/tests/surface/known-fn1.json` (an unmatched non-ok row prints
 `unclassified`: the morning's reading list). The last log line is `DONE`.
+
+## Spec pins read by layer D (adjudications both sides apply)
+
+| pin | spec line | the one answer | where each side reads it |
+|---|---|---|---|
+| P-UTF8-WS (H6, 2026-10-29) | specs/nntp.md:513-518 (NNT-003: "drain rejected input to a safe protocol boundary or close the connection"); RFC 3977 §3.1 | A command line that is not UTF-8 is **malformed** whatever else is wrong with it: the line is decoded before it has words, so surrounding whitespace on a bad-UTF-8 line does not make it a plain syntax error. The answer is `501`, then the connection closes. A valid-UTF-8 line with leading or trailing whitespace stays a plain `501` with the connection kept. | H: `fn2/tests/model/nntp_model.py` `_dispatch` (decode before the whitespace check), test `test_invalid_utf8_is_malformed_before_whitespace`. D: the grammar's `:malformed` class; `fn2/tests/grammar-fuzz-oracle.py`'s whitespace-order exception now counts 0 on the 4,416 cases (13,501 lines, 0 disagreements) and can be deleted. |
+
+The model still accepts a malformed line's 501 *without* a close (EOF optional, the fn1 tolerance
+`test_malformed_eof_is_optional_and_requires_observed_eof` records); for fn2 the pin is 501 and close, which is what D answers.

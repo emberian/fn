@@ -232,6 +232,11 @@ def machine(case, target_factory=TlsAuthTarget, traces=None):
             self.redeem(protected, 'fresh')
             self.redeem(protected, 'used')
             self.redeem(protected, 'wrong')
+            # One pending slot (H6, fn1 books/nntp-auth.lisp): XREDEEM CODE NAME replaces a cached
+            # USER, so the PASS after it is 482 out of sequence.
+            self.user(protected, 'hu-poster')
+            self.redeem(protected, 'wrong')
+            self.password(protected, 'right')
             self.quit(protected)
             unprotected = self.open('plain')
             self.redeem(unprotected, 'wrong')  # 483 under protected-only

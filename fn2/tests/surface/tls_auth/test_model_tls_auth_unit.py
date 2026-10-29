@@ -56,7 +56,7 @@ class Fake:
         return str(code).encode() + b' ' + data + b'\r\n'
 
     def failed(self, cancelled=False):
-        self.user = self.exchange = None
+        self.user = self.exchange = self.redemption = None
         if not cancelled:
             self.failures += 1
             if self.failures == 3:
@@ -85,7 +85,7 @@ class Fake:
             if self.tls or self.login or self.compressed:
                 self.tls_refused = True
                 return self.reply(502)
-            self.handshaking, self.user = True, None
+            self.handshaking, self.user, self.redemption = True, None, None
             return self.reply(382)
         if verb == 'COMPRESS':
             if self.compressed:
@@ -110,7 +110,7 @@ class Fake:
             if not self.tls and (self.target.policy['protected_only'] or args[:2] == ['SASL', 'PLAIN']):
                 return self.reply(483)
             if form == 'USER':
-                self.user = args[1]
+                self.user, self.redemption = args[1], None
                 return self.reply(381)
             if form == 'PASS':
                 if self.user is None:
@@ -119,7 +119,7 @@ class Fake:
                 if good or self.target.mutation == 'wrong-password':
                     return self.authenticated(self.user)
                 return self.failed()
-            self.exchange = args[1]
+            self.exchange, self.user, self.redemption = args[1], None, None
             if len(args) == 2:
                 return self.reply(383, b'=')
             return self.sasl_response(base64.b64decode(args[2], validate=True))
@@ -130,6 +130,8 @@ class Fake:
                 return self.reply(483)
             if args[0] != 'PASS':
                 self.redemption = tuple(args)
+                if self.target.mutation != 'redeem-keeps-user':
+                    self.user = None
                 return self.reply(381)
             if not self.redemption:
                 return self.reply(482)
@@ -276,6 +278,24 @@ class TestTlsAuthUnit(unittest.TestCase):
         d.redeem(s, 'fresh')  # authenticated => 502
         plain = d.open('plain')
         d.redeem(plain, 'fresh')  # protected-only => 483 on both lines
+
+    def test_one_pending_slot_redeem_replaces_user(self):
+        # H6: fn1 answers 482 to AUTHINFO PASS after USER then a refused XREDEEM exchange.
+        d, s = self.make(True, True, 'implicit')
+        d.user(s, 'hu-poster')
+        d.redeem(s, 'wrong')
+        self.assertIsNone(s.conn.username)
+        d.password(s, 'right')
+        self.assertEqual(bytes.fromhex(d.trace[-2]['status'])[:3], b'482')
+        self.assertIsNone(s.conn.authenticated_as)
+
+    def test_mutation_redeem_keeps_user(self):
+        d, s = self.make(True, True, 'implicit')
+        d.target.mutation = 'redeem-keeps-user'
+        d.user(s, 'hu-poster')
+        d.redeem(s, 'wrong')
+        with self.assertRaisesRegex(AssertionError, r'permitted \[482\]'):
+            d.password(s, 'right')
 
     def test_mutation_wrong_password_authenticates(self):
         # Mandatory setup witness itself must catch it, before model mutation.

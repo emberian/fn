@@ -512,9 +512,13 @@ class Conn:
                     result.malformed_takethis = True  # Optional bounded diagnostic.
                     result.effect = lambda *_: setattr(self, "pending", ("TAKETHIS", offered))
                     return result
+            # H6 pin (specs/nntp.md:513-518, adjudicated with layer D): the line must decode
+            # before its words exist, so invalid UTF-8 is malformed (501, close) even when the
+            # line also has surrounding whitespace; whitespace alone is a plain 501.
+            text = raw.decode("utf-8")
             if raw[:1] in b" \t" or raw[-1:] in b" \t":
                 return self._error()
-            words = re.split(r"[ \t]+", raw.decode("utf-8"))
+            words = re.split(r"[ \t]+", text)
             command, args = words[0].upper(), words[1:]
             if any(ord(c) < 32 or ord(c) == 127 for w in words for c in w):
                 return self._error()
@@ -1264,9 +1268,16 @@ class Conn:
 
     def _authenticate(self, name):
         self.authenticated_as = name
-        self.username = self.sasl = None
+        self._pend()
         if self.current_group and not self._visible(self.current_group):
             self.current_group = self.current_article_number = None
+
+    def _pend(self, username=None, sasl=None, redeem=None):
+        # One pending slot per connection (fn1 books/nntp-auth.lisp "The pending slot"; specs/nntp.md
+        # states each exchange alone): AUTHINFO USER's name, a SASL exchange, or XREDEEM's code and login.
+        # Starting one exchange replaces whatever another left (H6: USER, XREDEEM CODE NAME, AUTHINFO PASS
+        # answers 482 out of sequence on fn1).
+        self.username, self.sasl, self.redeem = username, sasl, redeem
 
     def _failed_auth(self, *, cancelled=False):
         # HW, specs/nntp.md:2320,2327-2331: count observed 481s per address,
@@ -1275,7 +1286,7 @@ class Conn:
         failures = self.model.address_failures.get(self.address, 0)
         closing = (not cancelled and self.failed_auth_count == 2) or bool(limit and failures + 1 >= limit)
         def effect(*_):
-            self.username = self.sasl = None
+            self._pend()
             if self.model.limits is not None:
                 self.model.address_failures[self.address] = failures + 1
             if not cancelled:
@@ -1299,7 +1310,7 @@ class Conn:
         if len(args) != 2:
             return self._error()
         if form == "USER":
-            return self._reply("AUTHINFO", 381, effect=lambda *_: setattr(self, "username", args[1]))
+            return self._reply("AUTHINFO", 381, effect=lambda *_: self._pend(username=args[1]))
         if self.username is None:
             return self._reply("AUTHINFO", 482)
         name = self.username
@@ -1336,7 +1347,7 @@ class Conn:
                 return self._reply("AUTHINFO", 504)
             return self._sasl_outcome(mech, self._sasl_name(mech, initial))
         return self._reply("AUTHINFO", 383, pattern=rb"383 =",
-                           effect=lambda *_: setattr(self, "sasl", mech))
+                           effect=lambda *_: self._pend(sasl=mech))
 
     def _sasl_name(self, mech, value):
         # Identity syntax only: proof, password and channel binding are H2b inputs.
@@ -1354,7 +1365,7 @@ class Conn:
         # A third failed exchange has an extra status; predicate selects that branch.
         def effect(code, status, body):
             if code == 383:
-                self.sasl = mech
+                self._pend(sasl=mech)
                 self.sasl_identity = identity or self.sasl_identity
             elif code == accepted:
                 name = identity or self.sasl_identity or self.policy.get("sasl_identity")
@@ -1400,7 +1411,8 @@ class Conn:
         def effect(code, *_):
             if code == 382:
                 self.handshaking = True
-                self.username = self.sasl = self.sasl_identity = None
+                self._pend()
+                self.sasl_identity = None
         return self._reply("STARTTLS", {382, 580}, effect=effect)
 
     def tls_established(self):
@@ -1434,7 +1446,7 @@ class Conn:
         if args[0].upper() != "PASS":
             if not re.fullmatch(r"[0-9a-fA-F]{32}", args[0]):
                 return self._error()
-            return self._reply("XREDEEM", 381, effect=lambda *_: setattr(self, "redeem", tuple(args)))
+            return self._reply("XREDEEM", 381, effect=lambda *_: self._pend(redeem=tuple(args)))
         if self.redeem is None:
             return self._reply("XREDEEM", 482)
         code, name = self.redeem
