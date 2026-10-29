@@ -7,7 +7,8 @@
         (:operation-set 'fn2-operation-sets) (:core-child 'fn2-core-children) (:square 'fn2-squares)
         (:correspondence 'fn2-correspondences)
         (:command 'fn2-commands)
-        (:cost 'fn2-costs)))
+        (:cost 'fn2-costs)
+        (:schema 'fn2-schemas)))
 (defun fn2-decl-row (id world)
   (declare (xargs :verify-guards nil))
   (cdr (assoc-eq (cadr id) (table-alist (fn2-decl-table (car id)) world))))
@@ -138,7 +139,8 @@
   (declare (xargs :verify-guards nil))
   (append (fn2-decl-rows :columns world) (fn2-decl-rows :machine world)
           (fn2-decl-rows :core-child world) (fn2-decl-rows :operation-set world) (fn2-decl-rows :square world)
-          (fn2-decl-rows :correspondence world) (fn2-decl-rows :cost world)))
+          (fn2-decl-rows :correspondence world) (fn2-decl-rows :cost world)
+          (fn2-decl-rows :schema world)))
 ; DEFUN-NX's outer RETURN-LAST only prevents execution; its last argument
 ; is the translated logical statement. Do not unfold arbitrary functions.
 (defun fn2-decl-statement-body (statement world)
