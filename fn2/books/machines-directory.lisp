@@ -14,6 +14,9 @@
    (fn2-machines-wait-head :type (unsigned-byte 32) :initially 4294967295)
    (fn2-machines-wait-tail :type (unsigned-byte 32) :initially 4294967295)
    (fn2-machines-refusals :type (unsigned-byte 60) :initially 0)
+   (fn2-machines-admission-head :type (unsigned-byte 32) :initially 4294967295)
+   (fn2-machines-admission-tail :type (unsigned-byte 32) :initially 4294967295)
+   (fn2-machines-admission-credits :type (unsigned-byte 32) :initially 0)
    (fn2-machines-active-count :type (unsigned-byte 32) :initially 0)))
 
 (defmacro fn2-machine-directory-events ()
@@ -63,6 +66,9 @@
          (fn2-machines (update-fn2-machines-free-head (fn2-machine-global-id *fn2-echo-kind* 0 profile) fn2-machines))
          (fn2-machines (update-fn2-machines-refusals 0 fn2-machines))
          (fn2-machines (update-fn2-machines-active-count 0 fn2-machines))
+         (fn2-machines (update-fn2-machines-admission-credits c fn2-machines))
+         (fn2-machines (update-fn2-machines-admission-head 4294967295 fn2-machines))
+         (fn2-machines (update-fn2-machines-admission-tail 4294967295 fn2-machines))
          (fn2-machines (update-fn2-machines-gen-limit
                         (fn2-profile-generation-limit profile) fn2-machines))
          (fn2-machines (update-fn2-machines-wake-id 4294967295 fn2-machines))

@@ -182,6 +182,22 @@ The `fn2-echo` connection declaration has a per-row mode bit for echo or discard
 both modes share one free list and one admission count. A listener supplies the mode
 to each admitted connection; the shared directory has no echo-mode flag. These disjoint global ID
 ranges and their inverse are generated from the `defmachine` declarations.
+L1 reserves row capacity before a listener issues Accept. The directory's
+`admission-credits` starts at C; a successful issue consumes one, a failed
+Accept or refused admission returns one, and echo reclamation returns one
+unless the row retires. Free rows equal credits plus pending admission
+reservations: issue moves a credit to a reservation, admission removes both
+one reservation and one free row, and reclamation adds a free row and credit.
+This preservation argument is an engineering derivation; R6b states it as an
+owed keystone with teeth (no row is in fn2-squares yet). Listeners
+without credits park on a separate FIFO, generated with the operation-wait
+FIFO by `fn2-machine-wait-queue`; the grant service wakes them after reclamation.
+R6b still owes pool/operation bundle reservation and the remaining refusal
+postures. L1 reserves rows only; A4's echo profiles have enough class-0 pool
+slots and generation headroom for their finite runs. Simulator listener Close
+marks the capability `:admission-refused`; ordinary unexplained Close remains
+`:unattributed`. A4 rejects any live drop and any unattributed safety drop.
+
 Each kind has its own nested table. A4 implements the declared per-run caps 4,096 bytes, 32
 structural steps and four descriptors. Every continuation returns through a
 guard-checked `fn2-machine-finish` against those declared simultaneous caps.

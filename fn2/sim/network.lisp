@@ -8,7 +8,7 @@
 ; these one-byte physical transitions admit every byte boundary as a cut.
 (defcolumns fn2-sim-network
   ((nonce :u32) (base :u60) (cap :u32)
-   (phase (:enum fn2-network-phase (:closed :open :reset)))
+   (phase (:enum fn2-network-phase (:closed :open :reset :admission-refused)))
    (rx-head :u32) (rx-count :u32) (tx-head :u32) (tx-count :u32)
    (half-open :bool) (nonreading :bool)
    (reset-armed :bool) (reset-left :u60))
@@ -94,6 +94,7 @@
   (cond ((not (and (natp slot) (< slot (fn2-sim-network-rows fn2-sim-network)))) :bounds)
         ((not (equal nonce (fn2-sim-network-nonce slot fn2-sim-network))) :stale)
         ((equal (fn2-sim-network-phase slot fn2-sim-network) *fn2-network-phase-reset*) :reset)
+        ((equal (fn2-sim-network-phase slot fn2-sim-network) *fn2-network-phase-admission-refused*) :admission-refused)
         ((not (equal (fn2-sim-network-phase slot fn2-sim-network) *fn2-network-phase-open*)) :closed)
         (t :ok)))
 
@@ -121,6 +122,18 @@
     (let ((fn2-sim-network (fn2-sim-network-set-phase slot *fn2-network-phase-closed* fn2-sim-network)))
       (mv :ok fn2-sim-network))))
 (fn2-network-shape fn2-network-close (slot nonce fn2-sim-network) 1)
+
+ ; A listener Close is an executed admission refusal, attached to this nonce.
+; Ordinary closes remain unexplained to the oracle unless another cause exists.
+(defun fn2-network-refuse (slot nonce fn2-sim-network)
+  (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
+  (if (or (not (and (natp slot) (< slot (fn2-sim-network-rows fn2-sim-network))))
+          (not (equal nonce (fn2-sim-network-nonce slot fn2-sim-network))))
+      (mv :stale fn2-sim-network)
+    (let ((fn2-sim-network
+           (fn2-sim-network-set-phase slot *fn2-network-phase-admission-refused* fn2-sim-network)))
+      (mv :ok fn2-sim-network))))
+(fn2-network-shape fn2-network-refuse (slot nonce fn2-sim-network) 1)
 
 ; Set half-open (= peer stops providing input without sending a FIN),
 ; non-reading client, and reset after exactly LEFT physical byte transfers.

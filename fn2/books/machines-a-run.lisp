@@ -10,6 +10,16 @@
   (declare (xargs :guard (natp n)))
   (if (zp n) 0 (- n 1)))
 
+ ; One credit per unretired row, held from successful Accept issue through
+; admission and echo reclamation. Failed Accept/admission returns its credit.
+; Thus free rows = credits + outstanding admission reservations. Only listener
+; admission removes a free row; retirement never returns a credit.
+(defun fn2-listener-return-credit (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (fn2-machine-set-admission-credits
+    (+ 1 (fn2-machine-admission-credits fn2-core)) fn2-core))
+(fn2-machine-core-shape fn2-listener-return-credit ())
+
 (defun fn2-machine-observe-terminal (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-machine-write-pending id (fn2-machine-dec (fn2-machine-pending id fn2-core)) fn2-core))
@@ -21,7 +31,8 @@
   (let ((fn2-core
          (if (equal outcome *fn2-outcome-done*)
              (fn2-listener-put-core id (cap-index aux0) (cap-nonce aux1) (event-ready 1))
-           (fn2-listener-put-core id (event-ready 0)))))
+           (let ((fn2-core (fn2-listener-return-credit fn2-core)))
+             (fn2-listener-put-core id (event-ready 0))))))
     (mv id fn2-core)))
 
 (defmachine-callback fn2-echo-observe-receive fn2-echo (id event outcome reason count aux0 aux1) 1
@@ -85,12 +96,14 @@
        (kind *fn2-echo-kind*))
     (if (or (equal target 4294967295)
             (>= (fn2-machine-active-count fn2-core) (fn2-machine-connection-count fn2-core)))
-        (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
+        (let* ((fn2-core (fn2-listener-return-credit fn2-core))
+               (fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
           (fn2-machine-result 0 4 0 t fn2-core))
       (mv-let (code slot poolgen fn2-core)
         (fn2-core-reserve 0 kind target gen fn2-core)
         (if (not (eq code :ok))
-            (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
+            (let* ((fn2-core (fn2-listener-return-credit fn2-core))
+               (fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
               (fn2-machine-result 0 6 0 t fn2-core))
           (let* ((index row-cap-index)
                  (nonce row-cap-nonce)
@@ -113,6 +126,11 @@
          (fn2-machine-result 0 1 0 nil fn2-core))
         ((and (equal row-phase *fn2-listener-state-accepting*) (equal row-event-ready 1))
          (fn2-listener-admit id budget row-phase row-generation row-principal-slot row-account-ref row-ready-prev row-ready-next row-wait-reason row-deadline row-cap-index row-cap-nonce row-pending row-stopped row-event-ready row-mode fn2-core))
+        ; Park separately from op waiters so the adapter can make progress.
+        ((and (equal row-phase *fn2-listener-state-accepting*)
+              (zp (fn2-machine-admission-credits fn2-core)))
+         (let ((fn2-core (fn2-machine-park-admission id fn2-core)))
+           (fn2-machine-result 0 8 0 nil fn2-core)))
         ((not (and (natp budget) (< 0 budget))) (fn2-machine-result 0 1 0 t fn2-core))
         (t
          (mv-let (code op opgen fn2-core)
@@ -122,7 +140,12 @@
                row-cap-nonce *fn2-listener-kind* id
                row-generation 0 fn2-core))
            (declare (ignore op opgen))
-           (fn2-machine-issue-result id code 0 fn2-core))))))
+           (let ((fn2-core
+                  (if (and (eq code :ok) (equal row-phase *fn2-listener-state-accepting*))
+                      (fn2-machine-set-admission-credits
+                        (fn2-machine-dec (fn2-machine-admission-credits fn2-core)) fn2-core)
+                    fn2-core)))
+             (fn2-machine-issue-result id code 0 fn2-core)))))))
 
 
 (defmachine-callback fn2-connection-release fn2-echo (id budget) 4
@@ -143,6 +166,7 @@
                            (cap-index 0) (cap-nonce 0) (off 0) (length 0)
                            (next-free next) (wait-reason 0)))
                (fn2-core (if retire fn2-core (fn2-machine-set-free-head id fn2-core)))
+               (fn2-core (if retire fn2-core (fn2-listener-return-credit fn2-core)))
                (fn2-core (fn2-machine-set-active-count
                            (fn2-machine-dec (fn2-machine-active-count fn2-core)) fn2-core)))
           (fn2-machine-result 0 20 0 nil fn2-core))))))

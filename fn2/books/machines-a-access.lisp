@@ -64,6 +64,9 @@
 (fn2-machine-scalar-access free-head 32)
 (fn2-machine-scalar-access refusals 60)
 (fn2-machine-scalar-access active-count 32)
+(fn2-machine-scalar-access admission-credits 32)
+(fn2-machine-scalar-access admission-head 32)
+(fn2-machine-scalar-access admission-tail 32)
 ; A release changes the child before adjusting this directory counter.
 ; Expose NATP to rewriting through the composed preservation facts.
 (defthm fn2-machine-active-count-natp-rewrite
@@ -102,38 +105,47 @@
                 (fn2-core-wfp (,name ,@args fn2-core))))
      (in-theory (disable ,name))))
 
-(defun fn2-machine-park (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (or (not (fn2-machine-idp id fn2-core))
-          (equal (fn2-machine-wait-reason id fn2-core) 2)) fn2-core
-    (let* ((tail (fn2-machine-wait-tail fn2-core))
-           (fn2-core (fn2-machine-put id
-                       (wait-reason 2) (ready-prev tail) (ready-next 4294967295)))
-           (fn2-core (if (equal tail 4294967295)
-                         (fn2-machine-set-wait-head id fn2-core)
-                       (fn2-machine-write-ready-next tail id fn2-core)))
-           (fn2-core (fn2-machine-set-wait-tail id fn2-core)))
-      fn2-core)))
-(fn2-machine-core-shape fn2-machine-park (id))
+ ; Both resource queues use the dormant row's ready links. Separate FIFO
+; heads prevent a row waiter from hiding an operation needed for reclamation.
+(defmacro fn2-machine-wait-queue (park grant head tail reason)
+  (let ((get-head (fn2-columns-sym 'fn2-machine- (symbol-name head)))
+        (get-tail (fn2-columns-sym 'fn2-machine- (symbol-name tail)))
+        (set-head (fn2-columns-sym 'fn2-machine-set- (symbol-name head)))
+        (set-tail (fn2-columns-sym 'fn2-machine-set- (symbol-name tail))))
+    `(progn
+       (defun ,park (id fn2-core)
+         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+         (if (or (not (fn2-machine-idp id fn2-core))
+                 (equal (fn2-machine-wait-reason id fn2-core) ,reason)) fn2-core
+           (let* ((tail (,get-tail fn2-core))
+                  (fn2-core (fn2-machine-put id
+                              (wait-reason ,reason) (ready-prev tail) (ready-next 4294967295)))
+                  (fn2-core (if (equal tail 4294967295) (,set-head id fn2-core)
+                              (fn2-machine-write-ready-next tail id fn2-core))))
+             (,set-tail id fn2-core))))
+       (fn2-machine-core-shape ,park (id))
+       (defun ,grant (fn2-core)
+         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+         (let ((id (,get-head fn2-core)))
+           (if (equal id 4294967295) (mv id fn2-core)
+             (let* ((next (fn2-machine-ready-next id fn2-core))
+                    (fn2-core (,set-head next fn2-core))
+                    (fn2-core (if (equal next 4294967295) (,set-tail 4294967295 fn2-core)
+                                (fn2-machine-write-ready-prev next 4294967295 fn2-core)))
+                    (fn2-core (fn2-machine-put id
+                                (wait-reason 0) (ready-prev 4294967295) (ready-next 4294967295))))
+               (mv id fn2-core)))))
+       (fn2-core-shape-lemmas ,grant () 1))))
+(fn2-machine-wait-queue fn2-machine-park fn2-machine-grant-op wait-head wait-tail 2)
+(fn2-machine-wait-queue fn2-machine-park-admission fn2-machine-grant-admission admission-head admission-tail 4)
 
 (defun fn2-machine-waiting-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (not (equal (fn2-machine-wait-head fn2-core) 4294967295)))
-
-(defun fn2-machine-grant-op (fn2-core)
+(defun fn2-machine-admission-ready-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let ((id (fn2-machine-wait-head fn2-core)))
-    (if (equal id 4294967295) (mv id fn2-core)
-      (let* ((next (fn2-machine-ready-next id fn2-core))
-             (fn2-core (fn2-machine-set-wait-head next fn2-core))
-             (fn2-core (if (equal next 4294967295)
-                           (fn2-machine-set-wait-tail 4294967295 fn2-core)
-                         (fn2-machine-write-ready-prev next 4294967295 fn2-core)))
-             (fn2-core (fn2-machine-put id
-                         (wait-reason 0) (ready-prev 4294967295)
-                         (ready-next 4294967295))))
-        (mv id fn2-core)))))
-(fn2-core-shape-lemmas fn2-machine-grant-op () 1)
+  (and (not (equal (fn2-machine-admission-head fn2-core) 4294967295))
+       (< 0 (fn2-machine-admission-credits fn2-core))))
 
 ; Only scribe waits for pool capacity: listeners close an accepted capability
 ; if its admission bundle is unavailable. Its reserved singleton wait link
@@ -169,7 +181,8 @@
 (defun fn2-machine-grant-ready-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (or (and (fn2-machine-waiting-p fn2-core) (fn2-machine-op-credit-p fn2-core))
-      (fn2-machine-pool-credit-p fn2-core)))
+      (fn2-machine-pool-credit-p fn2-core)
+      (fn2-machine-admission-ready-p fn2-core)))
 
 (defun fn2-machine-grant-one (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -180,6 +193,7 @@
                 (fn2-core (fn2-machine-set-pool-wait-id 4294967295 fn2-core))
                 (fn2-core (fn2-machine-write-wait-reason id 0 fn2-core)))
            (mv id fn2-core)))
+        ((fn2-machine-admission-ready-p fn2-core) (fn2-machine-grant-admission fn2-core))
         (t (mv 4294967295 fn2-core))))
 (fn2-core-shape-lemmas fn2-machine-grant-one () 1)
 

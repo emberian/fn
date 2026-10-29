@@ -396,6 +396,7 @@
                                (fn2-machine-observe-terminal id fn2-core))))
                (mv (if (or (equal (fn2-machine-wait-reason id fn2-core) 2)
                            (equal (fn2-machine-wait-reason id fn2-core) 3)
+                           (equal (fn2-machine-wait-reason id fn2-core) 4)
                            (equal (fn2-machine-stopped id fn2-core) 1)) 4294967295 wake)
                    fn2-core)))))
        (fn2-core-shape-lemmas ,router (okind id gen event outcome reason count aux0 aux1) 1)))))

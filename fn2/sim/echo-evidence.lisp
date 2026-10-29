@@ -19,7 +19,7 @@
 
 (defconst *fn2-echo-drop-causes*
   '(:process-death :reset :half-open-deadline :nonreading-deadline
-    :client-disconnect :unattributed))
+    :client-disconnect :admission-refused :unattributed))
 (defun fn2-echo-histogram (keys stats)
   (declare (xargs :verify-guards nil))
   (if (atom keys) nil

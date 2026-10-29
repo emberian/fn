@@ -29,21 +29,36 @@
         (assert (and (not erp) (eq value :eof))))
       (load "fn2/tests/turn-meter.lsp")
       (load "fn2/tests/own-read-hook.lsp")
+      (load "fn2/tests/liveness-controls.lsp")
       (fn2-own-hook-install)
       (unwind-protect
         (progn
       (fn2-own-hook-control)
       (assert (fn2-client-oracle-control))
       (dolist (case '(:process-death :reset :half-open-deadline :nonreading-deadline
-                      :client-disconnect :unattributed :at-bound :over-bound))
+                      :client-disconnect :admission-refused :unattributed :at-bound :over-bound))
         (assert (fn2-echo-evidence-control case)))
-      (format t "ECHO EVIDENCE CONTROLS: six drop causes and both turn-bound edges PASS~%")
+      (format t "ECHO EVIDENCE CONTROLS: seven drop causes and both turn-bound edges PASS~%")
+      (fn2-l1-controls)
+      ; Row capacity is reserved by the listener before issuing Accept.
       ; Capacity premises for the C.3 service bound: no resource parking,
       ; and at most three observations per turn in the liveness environment.
       (assert (> (fn2-profile-h *fn2-echo-profile*) 3))
       (assert (>= (min (fn2-profile-o *fn2-echo-profile*) (fn2-profile-qa *fn2-echo-profile*))
                   (+ (* 2 (fn2-profile-c *fn2-echo-profile*))
                      (fn2-profile-accept-credits *fn2-echo-profile*) 1)))
+      (let* ((profile (put-assoc-equal :c 1 (put-assoc-equal :accept-credits 1 *fn2-profile-tiny*)))
+             (result (fn2-sim-run-echo 20261028 1 profile)) (live (nth 9 result)))
+        (assert (fn2-core-profilep profile))
+        (assert (> (fn2-profile-h profile) 3))
+        (assert (>= (min (fn2-profile-o profile) (fn2-profile-qa profile))
+                    (+ (* 2 (fn2-profile-c profile)) (fn2-profile-accept-credits profile) 1)))
+        (assert (eq (first result) :pass))
+        (assert (eq (first live) :pass))
+        (assert (= (second live) (third live) 200))
+        (assert (zerop (fourth live)))
+        (format t "L1 REGRESSION seed=20261028 C=1 accept-credits=1 QA=4 safety=~S live=~S PASS~%"
+                (subseq result 0 6) (subseq live 0 6)))
       (assert (eq (fn2-scenario-controls) :pass))
       (assert (eq (fn2-sim-fault-controls) :pass))
       (assert (eq (fn2-sim-recovery-controls) :pass))
