@@ -725,7 +725,15 @@ and recovery composition remain later work.
 `commit.lisp` supplies `fn2-commit-events`; its continuations and observer are
 `defmachine-callback` functions over A’s scalar row snapshot. `defmachine-run`
 generates dispatch. Initial generation is a named initializer; declarations
-contain function names rather than executable forms. `commit-format.lisp` packs
+contain function names rather than executable forms. DM0b arms use ordinary
+`if`/`cond`, `let`/`let*` and `mv-let`; no early-exit `b*` binders or positional
+callback forwarding remain. A refreshes `row-` reads after each `fn2-core`
+rebinding. Explicit locals such as the seal stage and issued count capture the
+pre-transition value where the protocol needs it. All eleven callbacks are
+checked against the registered calling conventions in `commit-resource-unit`;
+an injected unsupported binder is refused. B currently has no callback-to-callback
+calls; any such call uses A's `fn2-call` form.
+`commit-format.lisp` packs
 using the B2 generated layout encoders. The test transaction is a keyed mutation: a
 consecutive range of distinct object/operation/event keys names one immutable
 manifest node. Its generated 73-byte layout binds the predecessor seal and
@@ -739,7 +747,11 @@ is an outstanding integration requirement, not an implemented seam.
 
 **B-MACHINE-SEAM.** The only A edits are `(include-book "machines-b")` before
 registry consumption in `assembly-index.lisp` and `(fn2-commit-events)` in
-`assembly-callbacks.lisp` before final dispatch. The remaining assembly sections
+`assembly-callbacks.lisp` before `fn2-resolve :callbacks`. DM0b seals machine
+and child inputs through `fn2-input-seals`; evidence remains open until the
+production `owed-export.lsp` includes all B unit roots and resolves/seals
+`:coverage`. Callback/staging fixture units certify separately from that export.
+The remaining assembly sections
 are A-owned. B registers allocator extents and holder edges, checker/context,
 BLAKE3, digest rows, layout fields, resource rows and root descriptors through
 `defcorechild`.

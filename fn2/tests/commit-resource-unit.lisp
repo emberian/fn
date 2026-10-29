@@ -119,3 +119,26 @@
       (equal ',(fn2-decl-get :init (fn2-decl-row '(:core-child fn2-core-commit-io) (w state)))
              '(fn2-commit-io-init 6 fn2-commit-io))
       (< (+ (* 1 *fn2-commit-write-resources*) (- *fn2-commit-write-resources* 1)) 6)))))
+
+; DM0b: check every B arm against the same input and forwarding checks used by
+; defmachine-callback, and check the admitted operation's authoritative formals.
+(defun fn2-cru-callback-contracts (names defs world)
+ (declare (xargs :verify-guards nil))
+ (if (atom names) t
+  (let* ((name (car names)) (body (cdr (assoc-eq name defs)))
+         (operation (fn2-operation-row name world))
+         (rows (fn2-decl-get :row-bindings operation)))
+   (and body operation
+        (equal (fn2-decl-get :owner operation) '(:machine fn2-commit))
+        (equal (fn2-decl-get :calling-convention operation)
+               (getpropc name 'formals nil world))
+        (not (fn2-callback-input-error body world))
+        (not (fn2-callback-forwarding body rows world))
+        (fn2-cru-callback-contracts (cdr names) defs world)))))
+(assert-event (fn2-cru-callback-contracts *fn2-cru-callbacks* *fn2-cru-defs* (w state)))
+(assert-event
+ (not (fn2-cru-callback-contracts *fn2-cru-callbacks*
+  (put-assoc-eq 'fn2-commit-writes
+   '((b* (((when t) (fn2-machine-yield id fn2-core)))
+       (fn2-machine-yield id fn2-core))) *fn2-cru-defs*) (w state))))
+(value-triple (cw "B3c DM0b: 11 callback contracts; unsupported-binder control PASS~%"))
