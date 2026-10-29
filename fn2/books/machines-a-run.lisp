@@ -99,7 +99,12 @@
 
 (defmachine-callback fn2-listener-admit fn2-listener (id budget) 4
   (fn2-machine-with-work 0 *fn2-work-transition* 0
-  (b* ((target (fn2-machine-free-head fn2-core))
+  ; The listener's own row is read once, before any write: admission writes
+  ; the directory, the pool and the target row, never this row's fields.
+  (b* ((index row-cap-index)
+       (nonce row-cap-nonce)
+       (mode row-mode)
+       (target (fn2-machine-free-head fn2-core))
        (kind *fn2-echo-kind*))
     (if (or (equal target *fn2-none*)
             (not (eq (fn2-machine-generation-read-code target fn2-core) :ok))
@@ -116,16 +121,14 @@
             (let* ((fn2-core (fn2-listener-return-credit fn2-core))
                (fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
               (fn2-machine-result 0 *fn2-work-refusal* 0 t fn2-core))
-          (let* ((index row-cap-index)
-                 (nonce row-cap-nonce)
-                 (fn2-core (fn2-machine-set-free-head next fn2-core))
+          (let* ((fn2-core (fn2-machine-set-free-head next fn2-core))
                  (fn2-core (fn2-machine-set-active-count
                              (+ 1 (fn2-machine-active-count fn2-core)) fn2-core))
                  (fn2-core (fn2-echo-put-core target
                              (phase *fn2-echo-state-command*) (cap-index index) (cap-nonce nonce)
                              (pool-slot slot) (pool-gen poolgen) (off 0) (length 0)
                              (pending 0) (borrows 0) (wait-reason *fn2-wait-none*)
-                             (mode row-mode)))
+                             (mode mode)))
                  (fn2-core (fn2-listener-put-core id (event-ready 0)))
                  (fn2-core (fn2-machine-set-wake-id target fn2-core)))
             (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core)))))))))
