@@ -1,0 +1,72 @@
+(in-package "ACL2")
+(include-book "../books/core-children")
+(include-book "std/testing/must-fail" :dir :system)
+
+(defmachine fn2-x :states (:free) :fields nil :accounts nil
+  :budget (:bytes 0 :steps 1 :descriptors 0) :continuations ((:free fn2-x-free))
+  :observes ((:read-result fn2-x-read)))
+(assert-event (and (fn2-decl-row '(:machine fn2-x) (w state))
+                   (fn2-decl-row '(:columns fn2-x) (w state))))
+(defcorechild fn2-x-table fn2-x :init fn2-x :profilep t :why "Registry control.")
+(defcorechild fn2-x-table fn2-x :init fn2-x :profilep t :why "Registry control.")
+(assert-event (fn2-decl-get :reuse (fn2-decl-row '(:core-child fn2-x-table) (w state))))
+(must-fail (defcorechild fn2-x-table fn2-x :init fn2-x :profilep nil :why "Conflict.")
+           :expected :hard)
+(must-fail (defcorechild fn2-x-table fn2-x :init fn2-x :profilep t :why "Conflict.")
+           :expected :soft)
+
+; Shared enum definitions are legitimate re-emissions, not name collisions.
+(defcolumns fn2-decl-one ((phase (:enum fn2-shared (:a :b)))))
+(defcolumns fn2-decl-two ((phase (:enum fn2-shared (:a :b)))))
+(assert-event (fn2-decl-get :reuse (fn2-decl-row '(:columns fn2-decl-two) (w state))))
+(must-fail (defcolumns fn2-decl-three ((phase (:enum fn2-shared (:a :c)))))
+           :expected :soft)
+(defcolumns fn2-decl-one ((phase (:enum fn2-shared (:a :b)))))
+(assert-event (fn2-decl-get :reuse (fn2-decl-row '(:columns fn2-decl-one) (w state))))
+(must-fail (defcolumns fn2-decl-one ((value :u8))) :expected :soft)
+(assert-event (equal (take 3 (reverse (strip-cars (fn2-decl-rows :columns (w state)))))
+                     '(fn2-decl-two fn2-decl-one fn2-x)))
+
+; Independent admitted-name collection and signature comparison, appended to
+; the real expansion before its LOCAL facts vanish.
+(defun fn2-decl-test-names (world lower)
+  (declare (xargs :verify-guards nil))
+  (if (atom world) nil
+    (if (eq (cadar world) 'absolute-event-number)
+        (if (< (cddar world) lower) nil
+          (cons (caar world) (fn2-decl-test-names (cdr world) lower)))
+      (fn2-decl-test-names (cdr world) lower))))
+(defun fn2-decl-test-signatures (manifest world)
+  (declare (xargs :verify-guards nil))
+  (if (atom manifest) t
+    (let* ((entry (car manifest)) (name (cadr entry)) (row (cddr entry)))
+      (and (getpropc name 'absolute-event-number nil world)
+           (if (getpropc name 'stobj-live-var nil world)
+               (eq (car entry) :stobj-live-var) t)
+           (if (eq (car entry) :function)
+               (and (equal (fn2-decl-get :formals row) (getpropc name 'formals nil world))
+                    (equal (fn2-decl-get :stobjs-in row) (getpropc name 'stobjs-in nil world))
+                    (equal (fn2-decl-get :stobjs-out row) (getpropc name 'stobjs-out nil world))
+                    (equal (fn2-decl-get :results row) (len (getpropc name 'stobjs-out nil world)))) t)
+           (fn2-decl-test-signatures (cdr manifest) world)))))
+(defun fn2-decl-test-events (id payload requires events book)
+  (declare (xargs :verify-guards nil))
+  (append (fn2-decl-new-events id payload requires events book)
+    '((assert-event
+       (let* ((manifest (fn2-decl-get :generated (fn2-decl-row '(:columns fn2-three) (w state))))
+              (names (fn2-decl-test-names (w state)
+                       (getpropc 'fn2-three 'absolute-event-number nil (w state)))))
+         (and (consp manifest) (no-duplicatesp-eq (strip-cadrs manifest))
+              (subsetp-eq names (strip-cadrs manifest))
+              (subsetp-eq (strip-cadrs manifest) names)
+              (fn2-decl-test-signatures manifest (w state))))))))
+(make-event
+ (value (sublis '((fn2-decl-new-events . fn2-decl-test-events))
+          (fn2-columns-events 'fn2-three '((a :u8) (b :u16) (c :u32)) 4294967296 nil nil))))
+(assert-event
+ (let ((manifest (fn2-decl-get :generated (fn2-decl-row '(:columns fn2-three) (w state)))))
+   (and (equal (fn2-decl-get :visibility (cddr (fn2-decl-find-artifact 'fn2-three-as-record manifest))) :local)
+        (not (getpropc 'fn2-three-as-record 'theorem nil (w state)))
+        (equal (fn2-decl-get :visibility (cddr (fn2-decl-find-artifact 'fn2-three-init-wfp manifest))) :exported)
+        (getpropc 'fn2-three-init-wfp 'theorem nil (w state)))))
+(value-triple (cw "DECLARE UNIT: identities, soft conflicts, reuse, admitted manifest PASS~%"))

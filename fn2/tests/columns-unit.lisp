@@ -32,7 +32,7 @@
  :extra-fields ((fn2-justified-metadata :type t
                 :why "Unit-only metadata: never served.")))
 (assert-event
- (let ((schema (cdr (assoc-eq 'fn2-justified (table-alist 'fn2-columns (w state))))))
+ (let ((schema (fn2-decl-row (list :columns 'fn2-justified) (w state))))
    (and (equal (cadr (member-eq :extra-fields schema)) '((fn2-justified-metadata :type t)))
         (equal (cadr (member-eq :extra-field-reasons schema))
                '((fn2-justified-metadata . "Unit-only metadata: never served."))))))
@@ -53,7 +53,7 @@
  :extra-fields ((fn2-u64-test-raw :type (array (unsigned-byte 64) (0)) :initially 0 :resizable t
                 :why "Unit-only raw u64 reason recording.")))
 (assert-event
- (let ((schema (cdr (assoc-eq 'fn2-u64-test (table-alist 'fn2-columns (w state))))))
+ (let ((schema (fn2-decl-row (list :columns 'fn2-u64-test) (w state))))
    (and (equal (cadr (member-eq :columns schema)) '((value :u64)))
         (equal (cadr (member-eq :column-reasons schema))
                '((value . "Unit-only full-width native u64 roundtrip.")))

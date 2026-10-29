@@ -184,7 +184,7 @@
                (and (true-listp reference) (equal (len reference) 2)
                     (symbolp (cadr reference))
                     (case (car reference)
-                      (:owed (assoc-eq (cadr reference) (table-alist 'fn2-owed world)))
+                      (:owed (fn2-decl-row (list :owed (cadr reference)) world))
                       (:generator (and (assoc-eq (cadr reference) (table-alist 'fn2-obligation-generators world))
                                        (or (function-symbolp (cadr reference) world)
                                            (getpropc (cadr reference) 'macro-body nil world))))
@@ -209,8 +209,15 @@
          (bytes (cadr (member-eq :bytes budget)))
          (steps (cadr (member-eq :steps budget)))
          (descriptors (cadr (member-eq :descriptors budget))))
-    `(progn
-       (defcolumns ,name ,cols)
+    (fn2-declare (list :machine name)
+      `(:states ,states :columns ,cols :accounts ,accounts :budget ,budget
+                :continuations ,continuations :observes ,observes :capacity ,capacity :initial ,initial
+                :layout ,cols :packed ,(fn2-machine-packed-layout cols 0)
+                :calling-convention (:run (id budget ,@(fn2-machine-row-vars cols) fn2-core)
+                                     :observe (id event outcome reason count aux0 aux1 ,@(fn2-machine-row-vars cols) fn2-core))
+                :obligations ,obligations)
+      (list (list :declaration (list :columns name)))
+      `((defcolumns ,name ,cols)
        (defmacro ,put (slot &rest fields)
          (fn2-machine-core-put-expansion ',name ',cols ',states slot fields nil))
        (defmacro ,(fn2-columns-sym name "-PUT-CORE") (id &rest fields)
@@ -231,18 +238,11 @@
               ,(if (member-eq :retired states) `(not (equal phase ,(position-eq :retired states))) t)
               (case event ,@(fn2-machine-observe-event-arms observes t nil) (otherwise nil))))
 
-       ,@(fn2-machine-prepare-events name cols initial)
-       (table fn2-machine-kinds ',name
-              '(:states ,states :columns ,cols :accounts ,accounts :budget ,budget
-                :continuations ,continuations :observes ,observes :capacity ,capacity :initial ,initial
-                :layout ,cols :packed ,(fn2-machine-packed-layout cols 0)
-                :calling-convention (:run (id budget ,@(fn2-machine-row-vars cols) fn2-core)
-                                     :observe (id event outcome reason count aux0 aux1 ,@(fn2-machine-row-vars cols) fn2-core))
-                :obligations ,obligations)))))
+       ,@(fn2-machine-prepare-events name cols initial)))))
 
 (defmacro defmachine (name &key states fields accounts budget continuations observes (capacity '1) initial
                              (obligations '*fn2-machine-obligations*))
-  (if (and (symbolp name) name (consp states)
+  (if (and (consp states)
            (fn2-columns-keyword-listp states) (no-duplicatesp-eq states)
            (<= (len states) 256) (fn2-columns-declarationsp fields)
            (no-duplicatesp-eq (append '(phase) (strip-cars *fn2-machine-common-fields*)
@@ -270,10 +270,10 @@
 ; Table order is declaration order, independent of TABLE-ALIST's newest first.
 (defun fn2-machine-names (world)
   (declare (xargs :verify-guards nil))
-  (reverse (strip-cars (table-alist 'fn2-machine-kinds world))))
+  (strip-cars (fn2-decl-rows :machine world)))
 (defun fn2-machine-property (name key world)
   (declare (xargs :verify-guards nil))
-  (cadr (member-eq key (cdr (assoc-eq name (table-alist 'fn2-machine-kinds world))))))
+  (cadr (member-eq key (fn2-decl-row (list :machine name) world))))
 
 (defun fn2-machine-capacities (names world)
   (declare (xargs :verify-guards nil))

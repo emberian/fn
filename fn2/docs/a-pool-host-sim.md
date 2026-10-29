@@ -504,3 +504,31 @@ book before and after; the 72-book before column is W1's source-identical baseli
 - A send carries one range in layer A (ROUND2 D.3 allows four); the descriptor reserves the field
   width for four.
 - A2 boundary details: the tiny calendar has 8 entries; row conservation includes retired rows; a release harvested before its terminal leaves the op submitted; ArmWake/Trace/ServicePosture finish at acknowledgment because they have no result event; clock bits 0/1 mean realtime-valid/negative and bits 2/3 record backward/malformed input, with a retained monotonic high-water and separate saturating rejected count.
+
+## 10. DSL metatheory decisions
+
+DM0a adds the internal `books/declare.lisp` library, included by `columns` and
+`owed`. The existing four tables retain their payloads; qualified identities
+and `fn2-decl-row`/`fn2-decl-rows` give them one read interface. Manifests record
+actual admitted signatures, including DEFSTOBJ's generated names and local
+facts inspected before their encapsulate closes. Conflicting identities or
+definitions are soft refusals; identical declarations and shared artifacts
+record reuse. No new author-facing form is introduced. Callback maps, staged
+function resolution and per-input seals belong to DM0b; the obligation store
+belongs to DM1. Current artifacts are emitted in `:declaration`; this manifest
+does not claim the later assembly's artifacts as declaration emissions.
+
+Ember's five DSL-METATHEORY §8 decisions are accepted:
+
+1. Shared declarations are allowed for representation/compiler refinement, with recorded sharing, independent consequential-behaviour contracts and the shared-handler mutation control.
+2. Complete arm-effect and cost checking requires a restricted arm language; outside calls have declared escapes whose contracts remain owed until discharged.
+3. Export requirements, bound statements, admitted proofs and check coverage as separate counts; checked obligations remain owed.
+4. Build each new form with its first real consumer; DM0a adds no user-facing form and `declare.lisp` remains internal.
+5. Adopt the Opus timing position: DM1 precedes R7, creating its arm obligations in `fn2-squares` once, with their schema and contract.
+
+The seat resolves §9's third open item in that order: **W1, R5b, DM0a, DM1,
+DM0b, then the re-cut R5e and R7**. R7 is the first producer of `:bound` and
+`:invariant` rows and D's first arm-contract consumer. Migrating those rows a
+second time is pure churn; DM1's estimated five days are smaller than R7's
+re-migration plus its review. This supersedes the design's still-written
+“DM1 after R7” sequence, not its registry or contract requirements.

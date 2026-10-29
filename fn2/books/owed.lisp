@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "declare")
 
 ; Forward references name unit/checker functions: production books do not
 ; include their tests. fn2-assert-owed-teeth resolves and runs them there.
@@ -13,17 +14,15 @@
   (if (and (consp teeth) (fn2-owed-teethp teeth))
       (let ((statement (intern-in-package-of-symbol
                         (concatenate 'string (symbol-name name) "$OWED") name)))
-        `(progn
-           (defun-nx ,statement ,vars ,formula)
-           (table fn2-owed ',name
-                  '(:vars ,vars :formula ,formula :teeth ,teeth
-                    :doc ,doc :status :owed))))
+        (fn2-declare (list :owed name)
+          (list :vars vars :formula formula :teeth teeth :doc doc :status :owed)
+          nil `((defun-nx ,statement ,vars ,formula))))
     (er hard 'defthm-owed
         "~x0 requires :teeth to name evaluating functions, not prose or forms." name)))
 
 (defun fn2-owed-names (world)
   (declare (xargs :guard (plist-worldp world)))
-  (let ((entries (table-alist 'fn2-owed world)))
+  (let ((entries (fn2-decl-rows :owed world)))
     (if (alistp entries) (strip-cars entries) nil)))
 
 (defun fn2-owed-tooth-events (teeth world)
@@ -39,9 +38,9 @@
 (defun fn2-owed-check-events (names world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
-    (let ((entry (assoc-eq (car names) (table-alist 'fn2-owed world))))
+    (let ((entry (fn2-decl-row (list :owed (car names)) world)))
       (if entry
-          (append (fn2-owed-tooth-events (cadr (member-eq :teeth (cdr entry))) world)
+          (append (fn2-owed-tooth-events (cadr (member-eq :teeth entry)) world)
                   (fn2-owed-check-events (cdr names) world))
         (er hard 'fn2-assert-owed-teeth "Unknown obligation ~x0." (car names))))))
 (defmacro fn2-assert-owed-teeth (&rest names)

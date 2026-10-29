@@ -99,7 +99,7 @@
 (local (in-theory nil))
 (make-event
  (value (cons 'progn (fn2-ref-state-events (fn2-core-child-types (fn2-core-child-registry (w state)))
-                       (table-alist 'fn2-columns (w state))))))
+                       (reverse (fn2-decl-rows :columns (w state)))))))
 (local (in-theory (theory 'fn2-ref-base-theory)))
 
 (defun fn2-ref-core-fields (children)

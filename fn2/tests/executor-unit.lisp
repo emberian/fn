@@ -65,7 +65,7 @@
  (value (cons 'progn
    (fn2-executor-test-snapshot-events
     (strip-cars (strip-cdrs *fn2-core-children*))
-    (table-alist 'fn2-columns (w state))))))
+    (reverse (fn2-decl-rows :columns (w state)))))))
 
 (defun fn2-executor-test-snapshot-calls (children)
   (if (atom children) nil
@@ -252,7 +252,7 @@
     (cons (list :executable-counterpart (car names))
           (fn2-executor-test-execution-runes (cdr names)))))
 (make-event
- (let* ((schema (cdr (assoc-eq 'fn2-control (table-alist 'fn2-columns (w state)))))
+ (let* ((schema (fn2-decl-row (list :columns 'fn2-control) (w state)))
         (columns (cadr (member-eq :columns schema)))
         (names (append '(fn2-executor-bounds-negative fn2-executor-bounds-witnessp
                          fn2-turn fn2-concrete-turn fn2-concrete-loop

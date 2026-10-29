@@ -191,7 +191,8 @@
  (let* ((world (w state))
         (listener (fn2-machine-property 'fn2-listener :columns world))
         (scribe (fn2-machine-property 'fn2-scribe :columns world)))
-   (and (equal (fn2-machine-names world) '(fn2-listener fn2-echo fn2-scribe))
+   (and ; A's kinds come first, in A's order; other layers may register more after them.
+        (equal (take 3 (fn2-machine-names world)) '(fn2-listener fn2-echo fn2-scribe))
         (not (assoc-eq 'checksum listener)) (assoc-eq 'checksum scribe)
         (equal (fn2-machine-property 'fn2-scribe :layout world) scribe)
         (equal (car (fn2-machine-property 'fn2-scribe :packed world))
@@ -310,7 +311,7 @@
           (list* :observes
                  (cons '(:write-result fn2-machine-test-accumulate)
                        (cdr (fn2-machine-property 'fn2-scribe :observes world)))
-                 (cdr (assoc-eq 'fn2-scribe (table-alist 'fn2-machine-kinds world))))))
+                 (fn2-decl-row (list :machine 'fn2-scribe) world))))
  (make-event
   (value (cons 'progn (fn2-machine-observe-events 'fn2-machine-test-observe
                        (fn2-machine-names (w state)) (w state))))))

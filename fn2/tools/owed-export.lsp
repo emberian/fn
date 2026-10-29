@@ -52,6 +52,6 @@ exactly `t` by its unit book. Unit fixtures never run on the served path.
 |---|---|---|---|---|
 " channel state))
            (state (fn2-owed-write-entries
-                   (reverse (table-alist 'fn2-owed (w state))) channel state))
+                   (fn2-decl-rows :owed (w state)) channel state))
            (state (close-output-channel channel state)))
       (prog2$ (cw "FN2-OWED-EXPORT PASS~%") state))))

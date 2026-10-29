@@ -13,7 +13,7 @@
             (fn2-core-child-order (cdr entries) order))))
 (defun fn2-core-child-registry (world)
   (declare (xargs :verify-guards nil))
-  (let ((entries (reverse (table-alist 'fn2-core-children world))))
+  (let ((entries (fn2-decl-rows :core-child world)))
     (append (fn2-core-child-order entries :foundation)
             (fn2-core-child-order entries :machine)
             (fn2-core-child-order entries :extension))))
@@ -24,20 +24,19 @@
           (fn2-core-child-types (cdr entries)))))
 (defmacro defcorechild (field stobj &key init profilep why
                               (reference ':state) (order ':extension))
-  (if (and (symbolp field) field (symbolp stobj) stobj init profilep
+  (if (and (symbolp stobj) stobj init profilep
            (stringp why) (< 0 (length why))
            (member-eq reference '(:state :environment))
            (member-eq order '(:foundation :machine :extension)))
       `(make-event
         (if (or (table-alist 'fn2-core-instance (w state))
-                (not (assoc-eq ',stobj (table-alist 'fn2-columns (w state))))
-                (assoc-eq ',field (table-alist 'fn2-core-children (w state)))
                 (member-eq ',stobj (fn2-core-child-types
-                                    (table-alist 'fn2-core-children (w state)))))
-            (er soft 'defcorechild "Child registration requires an open assembly, a defcolumns stobj, and unique field/stobj: ~x0 / ~x1." ',field ',stobj)
-          (value '(table fn2-core-children ',field
-                         '(:stobj ,stobj :init ,init :profilep ,profilep
-                           :reference ,reference :order ,order :why ,why)))))
+                  (remove-assoc-eq ',field (fn2-decl-rows :core-child (w state))))))
+            (er soft 'defcorechild "Child registration requires an open assembly and unique stobj: ~x0 / ~x1." ',field ',stobj)
+          (value (fn2-declare '(:core-child ,field)
+                   '(:stobj ,stobj :init ,init :profilep ,profilep
+                     :reference ,reference :order ,order :why ,why)
+                   '((:declaration (:columns ,stobj))) nil))))
     (er hard 'defcorechild "Invalid child ~x0: init, profilep and nonempty why are required." field)))
 (defun fn2-core-registered-pairs (entries)
   (declare (xargs :verify-guards nil))

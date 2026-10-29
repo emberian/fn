@@ -90,7 +90,7 @@
         (fn2-own-scalar-readers (cdr fields))
       (cons (caar fields) (fn2-own-scalar-readers (cdr fields))))))
 (make-event
- (let* ((schema (cdr (assoc-eq 'fn2-ops (table-alist 'fn2-columns (w state)))))
+ (let* ((schema (fn2-decl-row (list :columns 'fn2-ops) (w state)))
         (cols (fn2-own-column-readers (cadr (member-eq :columns schema))))
         (scalars (cons 'fn2-ops-rows
                        (fn2-own-scalar-readers (cadr (member-eq :extra-fields schema))))))

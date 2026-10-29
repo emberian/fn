@@ -2,6 +2,7 @@
 ; Generated array storage is the executable representation.  The row/table
 ; views are non-executable, and resizing belongs only to the generated init.
 (in-package "ACL2")
+(include-book "declare")
 
 (defthm fn2-columns-len-update-nth
   (implies (and (natp i) (< i (len xs)))
@@ -561,8 +562,13 @@
          (fields (append (fn2-columns-fields name cols)
                          `((,rows :type (integer 0 ,(- bound 1)) :initially 0))
                          (fn2-columns-extra-specs extras))))
-    `(encapsulate ()
-       ; Plain numeric columns need only this DSL's proof theory. Raw extras
+    (fn2-declare (list :columns name)
+      (list :columns (fn2-columns-specs cols)
+            :column-reasons (fn2-columns-extra-reasons cols) :rows-bound bound
+            :extra-fields (fn2-columns-extra-specs extras)
+            :extra-field-reasons (fn2-columns-extra-reasons extras) :init-name init)
+      nil
+      `(; Plain numeric columns need only this DSL's proof theory. Raw extras
        ; retain incoming rules for their external nested-stobj constructors.
        ,@(if extras nil '((local (in-theory (theory 'fn2-columns-proof-theory)))))
        ,@(fn2-columns-enum-events cols)
@@ -615,11 +621,7 @@
        (defun-nx ,(fn2-columns-sym name "-VIEW") (,name)
          (,view-aux 0 (,rows ,name) ,name))
        (in-theory (disable ,wfp ,init ,@(fn2-columns-array-nth-runes fields)))
-       (assert-event (eq (symbol-class ',init (w state)) :common-lisp-compliant))
-       (table fn2-columns ',name
-              '(:columns ,(fn2-columns-specs cols)
-                :column-reasons ,(fn2-columns-extra-reasons cols) :rows-bound ,bound :extra-fields ,(fn2-columns-extra-specs extras)
-                :extra-field-reasons ,(fn2-columns-extra-reasons extras) :init-name ,init)))))
+       (assert-event (eq (symbol-class ',init (w state)) :common-lisp-compliant))))))
 
 (defun fn2-columns-keyword-listp (xs)
   (declare (xargs :guard t :verify-guards nil))
@@ -657,8 +659,7 @@
                           extra-fields init-name)
   (if (not (fn2-columns-extra-okp extra-fields))
       (er hard 'defcolumns "Unjustified unbounded or wide extra field in ~x0: non-finite numeric fields and numeric ranges reaching u64 require a nonempty :why string." name)
-    (if (and (symbolp name) name
-           (consp columns) (fn2-columns-declarationsp columns)
+    (if (and (consp columns) (fn2-columns-declarationsp columns)
            (no-duplicatesp-equal (strip-cars columns))
            (integerp rows-bound) (< 0 rows-bound) (<= rows-bound (expt 2 60))
            (true-listp extra-fields)
@@ -767,4 +768,4 @@
 (local (assert-event (fn2-columns-example-test)))
 (local (assert-event (equal (fn2-columns-example-phase-code->keyword 1) :busy)))
 (local (assert-event (equal (fn2-columns-example-phase-keyword->code :free) 0)))
-(local (assert-event (assoc-eq 'fn2-columns-example (table-alist 'fn2-columns (w state)))))
+(local (assert-event (assoc-eq 'fn2-columns-example (reverse (fn2-decl-rows :columns (w state))))))
