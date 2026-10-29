@@ -1,0 +1,321 @@
+[
+  {
+    "file": "fn2/experiments/squares/e2/q1-bindings.lisp",
+    "physical_lines": 57,
+    "code_lines": 50,
+    "top_level_forms": 8,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "sq-q1-case-origin",
+        "line": 6,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-id",
+        "line": 9,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-bind-cases",
+        "line": 11,
+        "lines": 18,
+        "code_lines": 18
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-bindings",
+        "line": 29,
+        "lines": 18,
+        "code_lines": 18
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-q1",
+        "line": 49,
+        "lines": 5,
+        "code_lines": 5
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q1-contract.lisp",
+    "physical_lines": 110,
+    "code_lines": 89,
+    "top_level_forms": 24,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "sq-q1-fuel",
+        "line": 7,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-h",
+        "line": 8,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-k",
+        "line": 9,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-a",
+        "line": 10,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-obs",
+        "line": 11,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-visits",
+        "line": 12,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-actions",
+        "line": 13,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-ref-bytes",
+        "line": 14,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-ref-steps",
+        "line": 15,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-budget",
+        "line": 16,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-advance",
+        "line": 17,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-normalize-reference-work",
+        "line": 26,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-loop-relatedp",
+        "line": 28,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-nat-listp",
+        "line": 33,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-loop-invp",
+        "line": 40,
+        "lines": 18,
+        "code_lines": 18
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-continuep",
+        "line": 58,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-casep",
+        "line": 66,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-effects-agreep",
+        "line": 74,
+        "lines": 10,
+        "code_lines": 10
+      },
+      {
+        "kind": "defconst",
+        "name": "*sq-q1-contract*",
+        "line": 87,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defconst",
+        "name": "*sq-q1-sides*",
+        "line": 91,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-case-formula",
+        "line": 96,
+        "lines": 15,
+        "code_lines": 15
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q1-template-tests.lisp",
+    "physical_lines": 24,
+    "code_lines": 21,
+    "top_level_forms": 5,
+    "definitions": [
+      {
+        "kind": "defsquare",
+        "name": "sq-q1-role-divergence",
+        "line": 9,
+        "lines": 9,
+        "code_lines": 9
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q1-campaigns.lsp",
+    "physical_lines": 162,
+    "code_lines": 141,
+    "top_level_forms": 17,
+    "definitions": [
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-g1-original*",
+        "line": 7,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-scope*",
+        "line": 8,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-outside-catalogue*",
+        "line": 9,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-tooth-cases*",
+        "line": 10,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-campaign-results*",
+        "line": 11,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-copy-core",
+        "line": 13,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-fresh-sample",
+        "line": 17,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-install-teeth",
+        "line": 26,
+        "lines": 17,
+        "code_lines": 17
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-check-sample",
+        "line": 46,
+        "lines": 16,
+        "code_lines": 16
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-install-attribution",
+        "line": 63,
+        "lines": 19,
+        "code_lines": 19
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-attribution-counts",
+        "line": 84,
+        "lines": 15,
+        "code_lines": 15
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-restore-hooks",
+        "line": 100,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-run-one-campaign",
+        "line": 107,
+        "lines": 39,
+        "code_lines": 39
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-run-campaigns",
+        "line": 147,
+        "lines": 16,
+        "code_lines": 16
+      }
+    ]
+  }
+]

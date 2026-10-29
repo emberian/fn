@@ -1,0 +1,100 @@
+[
+  {
+    "book": "defsquare",
+    "elapsed_seconds": 0.5301085419487208,
+    "acl2_seconds": 0.13,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "defsquare-tests",
+    "elapsed_seconds": 0.793590041808784,
+    "acl2_seconds": 0.41,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "fold-contract",
+    "elapsed_seconds": 0.572787290904671,
+    "acl2_seconds": 0.05,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "read-state-history",
+    "elapsed_seconds": 0.3154862499795854,
+    "acl2_seconds": 0.03,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "read-state-summary",
+    "elapsed_seconds": 0.4285525830928236,
+    "acl2_seconds": 0.2,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "read-state-transport",
+    "elapsed_seconds": 1.1440649169962853,
+    "acl2_seconds": 0.09,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "read-state-teeth",
+    "elapsed_seconds": 1.2596953338943422,
+    "acl2_seconds": 0.48,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "q4-checker",
+    "elapsed_seconds": 1.041755999904126,
+    "acl2_seconds": 0.43,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "q4-template",
+    "elapsed_seconds": 0.3918057500850409,
+    "acl2_seconds": 0.03,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "q4-square",
+    "elapsed_seconds": 1.0919409999623895,
+    "acl2_seconds": 0.57,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "q4-template-tests",
+    "elapsed_seconds": 0.9469811250455678,
+    "acl2_seconds": 0.42,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "q1-contract",
+    "elapsed_seconds": 2.696643500123173,
+    "acl2_seconds": 2.24,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "q1-bindings",
+    "elapsed_seconds": 3.576046291971579,
+    "acl2_seconds": 2.69,
+    "returncode": 0,
+    "certified": true
+  },
+  {
+    "book": "q1-template-tests",
+    "elapsed_seconds": 3.1434970831032842,
+    "acl2_seconds": 2.29,
+    "returncode": 0,
+    "certified": true
+  }
+]

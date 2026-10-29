@@ -1,0 +1,1587 @@
+[
+  {
+    "file": "fn2/experiments/squares/e2/defsquare-tests.lisp",
+    "physical_lines": 103,
+    "code_lines": 96,
+    "top_level_forms": 24,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "sq-test-inc",
+        "line": 7,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defthm",
+        "name": "sq-test-positive-result",
+        "line": 8,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-test-positive",
+        "line": 9,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-test-negative",
+        "line": 10,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-test-binding",
+        "line": 11,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-test-envelope",
+        "line": 16,
+        "lines": 7,
+        "code_lines": 7
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-test-wrong-proof",
+        "line": 37,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-test-unresolved",
+        "line": 44,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-test-signature",
+        "line": 51,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-test-duplicate",
+        "line": 58,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-test-envelope",
+        "line": 65,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-test-placeholder",
+        "line": 72,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-test-owed",
+        "line": 86,
+        "lines": 5,
+        "code_lines": 5
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/defsquare.lisp",
+    "physical_lines": 208,
+    "code_lines": 182,
+    "top_level_forms": 21,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "sq-get",
+        "line": 4,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "sq-put",
+        "line": 10,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-namep",
+        "line": 15,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defun",
+        "name": "sq-resolved-functions-p",
+        "line": 18,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "sq-endpoints",
+        "line": 26,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-absent-roles",
+        "line": 33,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "sq-role-exceptions-p",
+        "line": 40,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-statement-name",
+        "line": 44,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-binding-id",
+        "line": 49,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defun",
+        "name": "sq-binding-ids",
+        "line": 52,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-row-event",
+        "line": 56,
+        "lines": 67,
+        "code_lines": 67
+      },
+      {
+        "kind": "defun",
+        "name": "sq-row-events",
+        "line": 124,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defun",
+        "name": "sq-missing-requires",
+        "line": 133,
+        "lines": 7,
+        "code_lines": 7
+      },
+      {
+        "kind": "defun",
+        "name": "sq-required-obligations",
+        "line": 141,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-expand",
+        "line": 146,
+        "lines": 29,
+        "code_lines": 29
+      },
+      {
+        "kind": "defmacro",
+        "name": "defsquare",
+        "line": 178,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-evidence-recordp",
+        "line": 183,
+        "lines": 10,
+        "code_lines": 10
+      },
+      {
+        "kind": "defun",
+        "name": "sq-evidence-records-p",
+        "line": 194,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-append-evidence-event",
+        "line": 199,
+        "lines": 7,
+        "code_lines": 7
+      },
+      {
+        "kind": "defmacro",
+        "name": "sq-append-evidence",
+        "line": 207,
+        "lines": 2,
+        "code_lines": 2
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/fold-contract.lisp",
+    "physical_lines": 100,
+    "code_lines": 58,
+    "top_level_forms": 9,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "fc1-init",
+        "line": 37,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "fc2-init",
+        "line": 38,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "fc1-step",
+        "line": 39,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "fc2-step",
+        "line": 40,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "fc1-obs",
+        "line": 41,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "fc2-obs",
+        "line": 42,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "fc1-ok",
+        "line": 43,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "fc2-ok",
+        "line": 44,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "fc-rel",
+        "line": 45,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defthm",
+        "name": "fc-init-ok",
+        "line": 48,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defthm",
+        "name": "fc-rel-init",
+        "line": 51,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defthm",
+        "name": "fc-rel-step",
+        "line": 55,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defthm",
+        "name": "fc-rel-obs",
+        "line": 62,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "fc1-fold",
+        "line": 66,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defun",
+        "name": "fc2-fold",
+        "line": 69,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defun",
+        "name": "fc-fold2-induct",
+        "line": 72,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defthm",
+        "name": "fc-ok-fold",
+        "line": 82,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defthm",
+        "name": "fc-rel-fold",
+        "line": 89,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defthm",
+        "name": "fc-obs-fold",
+        "line": 95,
+        "lines": 6,
+        "code_lines": 6
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q1-bindings.lisp",
+    "physical_lines": 57,
+    "code_lines": 50,
+    "top_level_forms": 8,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "sq-q1-case-origin",
+        "line": 6,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-id",
+        "line": 9,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-bind-cases",
+        "line": 11,
+        "lines": 18,
+        "code_lines": 18
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-bindings",
+        "line": 29,
+        "lines": 18,
+        "code_lines": 18
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-q1",
+        "line": 49,
+        "lines": 5,
+        "code_lines": 5
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q1-contract.lisp",
+    "physical_lines": 110,
+    "code_lines": 89,
+    "top_level_forms": 24,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "sq-q1-fuel",
+        "line": 7,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-h",
+        "line": 8,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-k",
+        "line": 9,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-a",
+        "line": 10,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-obs",
+        "line": 11,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-visits",
+        "line": 12,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-actions",
+        "line": 13,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-ref-bytes",
+        "line": 14,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-ref-steps",
+        "line": 15,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-budget",
+        "line": 16,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-advance",
+        "line": 17,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-normalize-reference-work",
+        "line": 26,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-loop-relatedp",
+        "line": 28,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-nat-listp",
+        "line": 33,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-loop-invp",
+        "line": 40,
+        "lines": 18,
+        "code_lines": 18
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-continuep",
+        "line": 58,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-casep",
+        "line": 66,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun-nx",
+        "name": "sq-q1-effects-agreep",
+        "line": 74,
+        "lines": 10,
+        "code_lines": 10
+      },
+      {
+        "kind": "defconst",
+        "name": "*sq-q1-contract*",
+        "line": 87,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defconst",
+        "name": "*sq-q1-sides*",
+        "line": 91,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-case-formula",
+        "line": 96,
+        "lines": 15,
+        "code_lines": 15
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q1-template-tests.lisp",
+    "physical_lines": 24,
+    "code_lines": 21,
+    "top_level_forms": 5,
+    "definitions": [
+      {
+        "kind": "defsquare",
+        "name": "sq-q1-role-divergence",
+        "line": 9,
+        "lines": 9,
+        "code_lines": 9
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q4-checker.lisp",
+    "physical_lines": 99,
+    "code_lines": 83,
+    "top_level_forms": 16,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "sq-q4-field",
+        "line": 7,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-queries-agree",
+        "line": 11,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-event-case",
+        "line": 18,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-positive",
+        "line": 22,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-count-only-refused",
+        "line": 34,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-off-by-one-refused",
+        "line": 42,
+        "lines": 9,
+        "code_lines": 9
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-negative",
+        "line": 52,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-checker",
+        "line": 56,
+        "lines": 25,
+        "code_lines": 25
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q4-square.lisp",
+    "physical_lines": 148,
+    "code_lines": 128,
+    "top_level_forms": 16,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "sq-q4-quoted-keywords",
+        "line": 9,
+        "lines": 7,
+        "code_lines": 7
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-cases",
+        "line": 17,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-theorem",
+        "line": 23,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defconst",
+        "name": "*sq-q4-contract*",
+        "line": 32,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-proof-name",
+        "line": 38,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-proof-support",
+        "line": 46,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-proof-events",
+        "line": 52,
+        "lines": 14,
+        "code_lines": 14
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-evidence",
+        "line": 71,
+        "lines": 14,
+        "code_lines": 14
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-requires",
+        "line": 86,
+        "lines": 12,
+        "code_lines": 12
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-bindings",
+        "line": 99,
+        "lines": 39,
+        "code_lines": 39
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-q4",
+        "line": 140,
+        "lines": 7,
+        "code_lines": 7
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q4-template-tests.lisp",
+    "physical_lines": 81,
+    "code_lines": 65,
+    "top_level_forms": 10,
+    "definitions": [
+      {
+        "kind": "defconst",
+        "name": "*sq-q4-count-contract*",
+        "line": 6,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-count-generated-step",
+        "line": 15,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-count-generated-composition",
+        "line": 18,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q4-template-negative",
+        "line": 24,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-q4-count-control",
+        "line": 40,
+        "lines": 14,
+        "code_lines": 14
+      },
+      {
+        "kind": "defsquare",
+        "name": "sq-q4-role-divergence",
+        "line": 66,
+        "lines": 9,
+        "code_lines": 9
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q4-template.lisp",
+    "physical_lines": 41,
+    "code_lines": 36,
+    "top_level_forms": 5,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "sq-fs-kind-formula",
+        "line": 6,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-fs-formula",
+        "line": 11,
+        "lines": 26,
+        "code_lines": 26
+      },
+      {
+        "kind": "defun",
+        "name": "sq-fs-vars",
+        "line": 38,
+        "lines": 4,
+        "code_lines": 4
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/read-state-history.lisp",
+    "physical_lines": 71,
+    "code_lines": 43,
+    "top_level_forms": 14,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "rs-eventp",
+        "line": 19,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "rs-event-covers",
+        "line": 26,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "rs-h-init",
+        "line": 33,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "rs-h-ok",
+        "line": 34,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "rs-h-step",
+        "line": 35,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "rs-h-fold",
+        "line": 37,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "rs-h-obs-read",
+        "line": 41,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "rs-h-obs-count",
+        "line": 47,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "rs-h-obs",
+        "line": 54,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-h-obs-read-of-step",
+        "line": 60,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-h-ok-of-step",
+        "line": 64,
+        "lines": 2,
+        "code_lines": 2
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/read-state-summary.lisp",
+    "physical_lines": 173,
+    "code_lines": 117,
+    "top_level_forms": 32,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "rs-above-okp",
+        "line": 21,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defun",
+        "name": "rs-s-ok",
+        "line": 30,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "rs-insert",
+        "line": 37,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "rs-drop-upto",
+        "line": 45,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "rs-compact",
+        "line": 51,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "rs-s-init",
+        "line": 58,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "rs-s-step",
+        "line": 60,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defun",
+        "name": "rs-s-fold",
+        "line": 69,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "rs-summarize",
+        "line": 74,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "rs-memberp",
+        "line": 79,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "rs-covered",
+        "line": 85,
+        "lines": 7,
+        "code_lines": 7
+      },
+      {
+        "kind": "defun",
+        "name": "rs-s-obs-read",
+        "line": 93,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "rs-s-obs-count",
+        "line": 97,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "rs-s-obs",
+        "line": 104,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-above-okp-of-insert",
+        "line": 113,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-above-okp-of-drop-upto",
+        "line": 117,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-s-ok-of-compact",
+        "line": 121,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-s-ok-of-step",
+        "line": 125,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-s-ok-of-init",
+        "line": 128,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-s-ok-of-summarize",
+        "line": 130,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-memberp-of-insert",
+        "line": 135,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-covered-of-drop-upto",
+        "line": 139,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-covered-of-compact",
+        "line": 144,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-s-obs-read-of-read-step",
+        "line": 154,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-s-obs-read-of-catchup-step",
+        "line": 159,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-s-obs-read-of-other-step",
+        "line": 164,
+        "lines": 4,
+        "code_lines": 4
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/read-state-teeth.lisp",
+    "physical_lines": 146,
+    "code_lines": 83,
+    "top_level_forms": 19,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "rs-count2-rel",
+        "line": 33,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defun",
+        "name": "rs-h-count2-obs",
+        "line": 37,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defconst",
+        "name": "*rs-s1*",
+        "line": 41,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defconst",
+        "name": "*rs-s2*",
+        "line": 42,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defconst",
+        "name": "*rs-suffix*",
+        "line": 43,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-count2-rel-not-step-closed",
+        "line": 54,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-count2-rel-step-obligation-false",
+        "line": 66,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-count2-rel-fold",
+        "line": 79,
+        "lines": 12,
+        "code_lines": 12
+      },
+      {
+        "kind": "defun",
+        "name": "rs-bad-compact",
+        "line": 95,
+        "lines": 7,
+        "code_lines": 7
+      },
+      {
+        "kind": "defun",
+        "name": "rs-s-bad-step",
+        "line": 103,
+        "lines": 7,
+        "code_lines": 7
+      },
+      {
+        "kind": "defun",
+        "name": "rs-s-bad-fold",
+        "line": 111,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-bad-step-breaks-relation",
+        "line": 124,
+        "lines": 11,
+        "code_lines": 11
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-s-bad-same-reads-of-read",
+        "line": 138,
+        "lines": 9,
+        "code_lines": 9
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/read-state-transport.lisp",
+    "physical_lines": 141,
+    "code_lines": 92,
+    "top_level_forms": 16,
+    "definitions": [
+      {
+        "kind": "defun-sk",
+        "name": "rs-same-reads",
+        "line": 23,
+        "lines": 2,
+        "code_lines": 2
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-same-reads-of-read",
+        "line": 35,
+        "lines": 9,
+        "code_lines": 9
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-same-reads-of-catchup",
+        "line": 45,
+        "lines": 9,
+        "code_lines": 9
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-same-reads-of-other",
+        "line": 55,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-same-reads-of-step",
+        "line": 64,
+        "lines": 8,
+        "code_lines": 8
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-obs-count-agree",
+        "line": 77,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-obs-agree",
+        "line": 83,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-same-reads-init",
+        "line": 90,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-summary-adequate",
+        "line": 98,
+        "lines": 21,
+        "code_lines": 21
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-summarize-related",
+        "line": 123,
+        "lines": 9,
+        "code_lines": 9
+      },
+      {
+        "kind": "defthm",
+        "name": "rs-summarize-adequate",
+        "line": 135,
+        "lines": 7,
+        "code_lines": 7
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/checker.lsp",
+    "physical_lines": 129,
+    "code_lines": 114,
+    "top_level_forms": 15,
+    "definitions": [
+      {
+        "kind": "defvar",
+        "name": "*sq-runtime-rows*",
+        "line": 4,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-coverage*",
+        "line": 5,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-revision*",
+        "line": 6,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-row-for-case",
+        "line": 8,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "sq-scope-record",
+        "line": 15,
+        "lines": 10,
+        "code_lines": 10
+      },
+      {
+        "kind": "defun",
+        "name": "sq-same-scope-p",
+        "line": 26,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-record-for-scope",
+        "line": 30,
+        "lines": 10,
+        "code_lines": 10
+      },
+      {
+        "kind": "defun",
+        "name": "sq-begin-scope",
+        "line": 41,
+        "lines": 6,
+        "code_lines": 6
+      },
+      {
+        "kind": "defun",
+        "name": "sq-check-row",
+        "line": 48,
+        "lines": 24,
+        "code_lines": 24
+      },
+      {
+        "kind": "defun",
+        "name": "sq-run-declared-evidence",
+        "line": 73,
+        "lines": 14,
+        "code_lines": 12
+      },
+      {
+        "kind": "defun",
+        "name": "sq-teeth-status",
+        "line": 88,
+        "lines": 7,
+        "code_lines": 7
+      },
+      {
+        "kind": "defun",
+        "name": "sq-write-object",
+        "line": 96,
+        "lines": 5,
+        "code_lines": 5
+      },
+      {
+        "kind": "defun",
+        "name": "sq-write-evidence-events",
+        "line": 102,
+        "lines": 10,
+        "code_lines": 10
+      },
+      {
+        "kind": "defun",
+        "name": "sq-report",
+        "line": 113,
+        "lines": 17,
+        "code_lines": 17
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/driver.lsp",
+    "physical_lines": 46,
+    "code_lines": 44,
+    "top_level_forms": 3,
+    "definitions": []
+  },
+  {
+    "file": "fn2/experiments/squares/e2/load.lsp",
+    "physical_lines": 9,
+    "code_lines": 9,
+    "top_level_forms": 9,
+    "definitions": []
+  },
+  {
+    "file": "fn2/experiments/squares/e2/q1-campaigns.lsp",
+    "physical_lines": 162,
+    "code_lines": 141,
+    "top_level_forms": 17,
+    "definitions": [
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-g1-original*",
+        "line": 7,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-scope*",
+        "line": 8,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-outside-catalogue*",
+        "line": 9,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-tooth-cases*",
+        "line": 10,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defvar",
+        "name": "*sq-q1-campaign-results*",
+        "line": 11,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-copy-core",
+        "line": 13,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-fresh-sample",
+        "line": 17,
+        "lines": 4,
+        "code_lines": 4
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-install-teeth",
+        "line": 26,
+        "lines": 17,
+        "code_lines": 17
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-check-sample",
+        "line": 46,
+        "lines": 16,
+        "code_lines": 16
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-install-attribution",
+        "line": 63,
+        "lines": 19,
+        "code_lines": 19
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-attribution-counts",
+        "line": 84,
+        "lines": 15,
+        "code_lines": 15
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-restore-hooks",
+        "line": 100,
+        "lines": 3,
+        "code_lines": 3
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-run-one-campaign",
+        "line": 107,
+        "lines": 39,
+        "code_lines": 39
+      },
+      {
+        "kind": "defun",
+        "name": "sq-q1-run-campaigns",
+        "line": 147,
+        "lines": 16,
+        "code_lines": 16
+      }
+    ]
+  },
+  {
+    "file": "fn2/experiments/squares/e2/standalone-check.lsp",
+    "physical_lines": 68,
+    "code_lines": 64,
+    "top_level_forms": 25,
+    "definitions": [
+      {
+        "kind": "defun",
+        "name": "natp",
+        "line": 4,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "posp",
+        "line": 5,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "nfix",
+        "line": 6,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "zp",
+        "line": 7,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "true-listp",
+        "line": 8,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "member-eq",
+        "line": 9,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "union-eq",
+        "line": 10,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "intern-in-package-of-symbol",
+        "line": 11,
+        "lines": 1,
+        "code_lines": 1
+      },
+      {
+        "kind": "defun",
+        "name": "load-functions",
+        "line": 12,
+        "lines": 15,
+        "code_lines": 15
+      }
+    ]
+  }
+]
