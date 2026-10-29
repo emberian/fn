@@ -322,16 +322,20 @@ theorem twoRecv_coherent {w w' : List Conn}
       s' Conn.c0 + s' Conn.c1 = n' :=
   coherence sumCorr twoRecv_diamonds (a := s) rfl hw hrun
 
-/-- The whole premise package inhabited at one state, with the conclusion: zero counters, the two
-receive orders, both counters one after either, and the reference total two. -/
+/-- The premise package of `coherence` inhabited at one state, with its conclusion: G0 at zero
+counters and total zero, G2 (`twoRecv_diamonds`), trace equivalence of the two receive orders, a
+successful run, the reference run along the other order, and equal observations (G1 and the edge
+are `sumCorr`'s fields). -/
 theorem twoRecv_coherence_witness :
     sumCorr.R (fun _ => 0) 0 ∧
+    Diamonds twoRecv (fun (t v : Conn) => footIndep (Action.incr t) (Action.incr v)) ∧
     TraceEq (fun (t v : Conn) => footIndep (Action.incr t) (Action.incr v))
       [Conn.c0, Conn.c1] [Conn.c1, Conn.c0] ∧
-    (∃ s', run twoRecv.step [Conn.c0, Conn.c1] (fun _ => 0) = some s' ∧
-      s' Conn.c0 = 1 ∧ s' Conn.c1 = 1) ∧
-    run total.step (expand sumCorr.interp [Conn.c1, Conn.c0]) 0 = some 2 :=
-  ⟨rfl, TraceEq.swap [] [] Conn.c0 Conn.c1 (incr_indep (by decide)), ⟨_, rfl, rfl, rfl⟩, rfl⟩
+    ∃ s', run twoRecv.step [Conn.c0, Conn.c1] (fun _ => 0) = some s' ∧
+      run total.step (expand sumCorr.interp [Conn.c1, Conn.c0]) 0 = some 2 ∧
+      sumCorr.obsA s' = sumCorr.obsB 2 :=
+  ⟨rfl, twoRecv_diamonds, TraceEq.swap [] [] Conn.c0 Conn.c1 (incr_indep (by decide)),
+    ⟨_, rfl, rfl, rfl⟩⟩
 
 /-! ### Teeth: Astra's accept/close false diamond (COHERENCE §2.4) -/
 
