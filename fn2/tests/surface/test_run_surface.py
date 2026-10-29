@@ -341,6 +341,14 @@ class SurfaceRunnerTests(unittest.TestCase):
 
 
 class SurfaceBudgetTests(unittest.TestCase):
+    def test_s_timeout_override_is_per_family_and_box(self):
+        # H5c: nntp S at 5000 hbox examples needs more than the default 2400 s TestCase limit.
+        for box, nntp, other in [('laptop', 300, 300), ('hbox', 7200, 2400)]:
+            with mock.patch.dict(surface.RUN, {'box': box}, clear=True):
+                self.assertEqual(run_surface.test_timeout('nntp', 'S', 'x.test_live_state_machine'), nntp)
+                self.assertEqual(run_surface.test_timeout('consumer', 'S', 'x.test_live_state_machine'), other)
+                self.assertEqual(run_surface.test_timeout('nntp', 'H', 'x.test_history'), other)
+
     def test_native_timeouts_are_per_box_and_module(self):
         for box, expected in [('laptop', 300), ('hbox', 2400)]:
             with mock.patch.dict(surface.RUN, {'box': box}, clear=True):

@@ -118,7 +118,10 @@ def test_timeout(family, form, test_id):
         return RUN.get('fuzz_allocations', {}).get(family, 0) + 30
     if form == 'E' and '.test_native_' in test_id:
         return native_timeout(test_id.rsplit('.test_native_', 1)[1]) + 30
-    return MANIFEST['budget'][RUN.get('box', 'laptop')]['native_timeout']
+    box = RUN.get('box', 'laptop')
+    if form == 'S' and 's_timeout' in FAMILIES[family]['cadence'][box]:
+        return FAMILIES[family]['cadence'][box]['s_timeout']
+    return MANIFEST['budget'][box]['native_timeout']
 
 
 def child_test(family, form, test):

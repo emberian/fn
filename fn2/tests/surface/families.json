@@ -360,12 +360,13 @@
           ],
           "model_examples": 5000,
           "steps": 50,
+          "s_timeout": 7200,
           "natives": "all natives in selected families; --all selects all 120",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
       },
-      "model_timing": "H5a fn1: 200 empty-group examples in 96.01559008471668s (~0.48s/example), surface.json S duration."
+      "model_timing": "H5a fn1: 200 empty-group examples in 96.01559008471668s (~0.48s/example), surface.json S duration. H5c: 5000 examples did not finish inside the default 2400 s TestCase limit (0.48 s x 5000 = 2400 s), so hbox's s_timeout is 7200 s."
     },
     "consumer": {
       "release_name": "consumer",

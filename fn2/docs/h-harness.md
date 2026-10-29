@@ -411,3 +411,79 @@ hbox` under the wall cap (`FN2_NIGHTLY_HOURS`, default 8), and renders `OUT/nigh
 
 The model still accepts a malformed line's 501 *without* a close (EOF optional, the fn1 tolerance
 `test_malformed_eof_is_optional_and_requires_observed_eof` records); for fn2 the pin is 501 and close, which is what D answers.
+
+## H5c: the whole suite at the hbox cadence against fn1 (harvested in H6)
+
+Run 05:16-09:19 hbox time on tree11 (dd05b20d6, HX), image set c14e9e8e (TREE_SHA d377d4559), `run_surface
+--target fn1 --box hbox --all` under a 64 GiB swarm-build ceiling (mux's start line: `machine=65536 MB`). **The tree predates HY, HZ, HZ2, HZ3, HZ4 and
+HZ5**: config_limits S fails on L01 (adjudicated by HY), and the operator, web, peering, bp and store_ops S forms
+show OWED (each now implemented and passing live on fn1 at the laptop cadence; bp and peering also at 50
+examples on hbox). Report rendered on hbox (`fn2.tests.surface.nightly`, HZ5's known-fn1.json; surface.json is
+1.7 GB and stays there): exit 1; 175 tests, 87 executed, 74 ok, 13 not ok, 88 skipped (57 NOT RUN);
+398,768 TestCase calls.
+
+| family | status | tests | executed | ok | not ok | skip | NOT RUN | E | S | F | H | R |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| nntp | FAIL | 42 | 26 | 24 | 2 | 16 | 10 | FAIL 22/23 | FAIL 0/1 | PASS 1/1 | PASS 1/1 | NOT RUN |
+| consumer | FAIL | 16 | 6 | 5 | 1 | 10 | 7 | FAIL 3/4 | PASS 1/1 | NOT RUN | PASS 1/1 | NOT RUN |
+| operator | FAIL | 22 | 6 | 5 | 1 | 16 | 6 | FAIL 5/6 | OWED | NOT RUN | - | NOT RUN |
+| web | NOT RUN | 4 | 1 | 1 | 0 | 3 | 3 | NOT RUN 1/1 | OWED | NOT RUN | - | NOT RUN |
+| peering | NOT RUN | 18 | 8 | 8 | 0 | 10 | 9 | NOT RUN 8/8 | OWED | NOT RUN | NOT RUN | NOT RUN |
+| bp | FAIL | 6 | 1 | 0 | 1 | 5 | 4 | FAIL 0/1 | OWED | NOT RUN | NOT RUN | NOT RUN |
+| tls_auth | FAIL | 21 | 17 | 15 | 2 | 4 | 3 | FAIL 15/16 | FAIL 0/1 | NOT RUN | - | NOT RUN |
+| config_limits | FAIL | 25 | 14 | 9 | 5 | 11 | 8 | FAIL 8/12 | FAIL 1/2 | NOT RUN | - | NOT RUN |
+| store_ops | FAIL | 21 | 8 | 7 | 1 | 13 | 7 | FAIL 7/8 | OWED | NOT RUN | - | NOT RUN |
+
+The 13 non-ok rows, each named:
+
+| family | form | row | class | the reading |
+|---|---|---|---|---|
+| nntp | E | conformance | known fn1 red | wildcard listener (H1) |
+| nntp | S | live_state_machine | **harness-side, fixed in H6** | 5,000 live examples at about 0.48 s each (H5a) is about 2,400 s, which is exactly the default TestCase limit. It timed out without a verdict. families.json now gives nntp's hbox cadence `s_timeout` 7200, and run_surface's `test_timeout` reads it (unit test `test_s_timeout_override_is_per_family_and_box`). |
+| consumer | E | store_identity | unprovisioned | box-step `build/box/wire-grammar.json` absent |
+| operator | E | status_live_posts | known fn1 red | times out run directly too (H1) |
+| bp | E | decoded_custody | known fn1 red | (H1) |
+| tls_auth | E | visibility_join | known fn1 red | `fn_client` import (H1) |
+| tls_auth | S | live_state_machine | **harness-side (model bug), fixed in H6** | The sequence was USER, a refused XREDEEM exchange, then AUTHINFO PASS; fn1 answered `482 authentication commands issued out of sequence`. fn1 keeps one pending slot per connection for AUTHINFO USER's name, a SASL exchange and XREDEEM's code and login (books/nntp-auth.lisp, "The pending slot"). The model kept three. specs/nntp.md states each exchange alone, so the model now follows the book. The model and fake share the slot (`_pend`); the live form has a fixed witness and the unit tests a mutation control (`redeem-keeps-user`). Committed in 22de14c4d. |
+| config_limits | E | bounds_join | known fn1 red | (H1) |
+| config_limits | E | image_differential | **harness-side (provisioning), fixed in H6** | 13 tests fail on `build/fn-host.world-deps` absent: the seat's H5c script and hbox_nightly.sh linked a fixed file list that omitted the image set's three `*.world-deps`. The nightly now links every `fn-host*` file of the set. Rerun alone with them linked (h-quests/h6-imgdiff.sh): 20/20 ok. |
+| config_limits | E | mux | known fn1 red | (H1) |
+| config_limits | E | public_limits | known fn1 red | (H1) |
+| config_limits | S | live_state_machine | fn1-bug L01 (adjudicated in HY) | The auth-failure 400 carries `; try again later`. The tree predates HY. |
+| store_ops | E | served_crash_model | known fn1 red | (H1) |
+
+None of the four harness-side rows was a stable red, so known-fn1.json is unchanged. NOT RUN by reason: perf
+drivers owed for every family (30 rows); fixture drivers owed (nntp 2, consumer 2, bp, peering, tls_auth, web);
+fuzz drivers owed for the eight families other than nntp; history drivers owed for peering and bp. Provisioning:
+the prof developer image (dead_run), the 2 GiB wrapper (heap_from_profile), a source-matched topic image, the
+combined E2/checkpoint developer image, FN_ACL2, FN_RUN_CONSUMER_E2E with a source-matched developer image, a
+copied frozen image (relocation), FN_RUN_SLOW (peer_rows_growth), unprivileged user namespaces (refused on hbox).
+
+## H6: control_across_peers and the memory ceiling (an adjudication, not an fn1 bug)
+
+nightly-smoke2's one `unclassified` row was peering E `control_across_peers`. Both matrix tests' connections were
+greeted with `400 too many connections; try again later`. That is fn1 keeping its declared capacity, not a
+connection limit hit by load. Every fn1 node sizes its connection capacity C' at start from the memory equation
+(books/admission-memory.lisp `fn-adm-capacity`). The limit there is the least memory ceiling the node observes:
+physical memory, or the cgroup's memory.max up the hierarchy (host/native/heap.lisp
+`fnn-heap-resident-observations`), less about 134 MB of pools. Each node prints the result as `memory capacity=C' of C`.
+
+The test holds every connection open until cleanup. On nodes A and B it holds 31 at once, the configured cap
+(`max-connections` 32, less one); H holds 25. The seat counted the held connections from the FN2_OBSERVE_DIR logs
+(h-quests/conncount.py):
+
+| run | ceiling | node's line | peak held | outcome |
+|---|---|---|---|---|
+| nightly-smoke2 | 16 GiB | `capacity=22 of 31 ... limit=16250 MB` | H's 23rd refused | fail (both matrix tests) |
+| run-h5 (the first hbox suite run) | 32 GiB | `capacity=31 of 31 bound-by=configured ... limit=32634 MB` | A 31, B 31, H 25 | ok |
+| H5c | 64 GiB | (no observation log kept) | - | ok, 4/4 |
+| H6 alone, quiet hbox | 64 GiB | `capacity=31 of 31 ... limit=65402 MB` | A 31, B 31, H 25 | ok, 4/4 |
+| H6 alone, quiet hbox | 96 GiB | `capacity=31 of 31 ... limit=98170 MB` | A 31, B 31, H 25 | ok, 4/4 |
+
+In each row the limit plus the pools comes to exactly the ceiling, so the smoke was launched under a 16 GiB
+swarm-build ceiling, not the documented 64G. fn1 refuses exactly at C'+1 with NNT-043's 400, which is the spec.
+The fix is on the harness side. hbox_nightly.sh now prints the least memory ceiling and refuses one under
+`FN2_NIGHTLY_MIN_MEM_GIB` (default 32). The test was run on hbox: 16 GiB is refused, and 64 GiB prints
+`memory ceiling 64 GiB`. Nothing is added to known-fn1.json, because the row passes at every ceiling the nightly
+now accepts. A note for layer D: the carried natives assume a node holds 31 connections, and an fn2 node that
+sizes its capacity from memory the same way needs the same floor.
