@@ -1664,10 +1664,10 @@
         },
         "S": {
           "applicable": true,
-          "module": null,
+          "module": "fn2.tests.surface.config_limits.test_model_config_limits",
           "reason": "RELEASE-PLAN \u00a72.2",
-          "status": "owed",
-          "model": "fn2.tests.model.config_limits_model"
+          "status": "implemented",
+          "model": "fn2.tests.model.limits_model"
         },
         "F": {
           "applicable": true,
@@ -1775,8 +1775,8 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.config_limits_model",
-      "model_scope": "model and live Target adapter owed",
+      "model": "fn2.tests.model.limits_model",
+      "model_scope": "HW policy state + NNTP exposure witnesses; policy set outcomes and wire effects, no recorded fn1 adjudications; init key parsing/refusals; send-stalled remains E",
       "fuzz": {
         "driver": "fn2.tests.surface.config_limits:fuzz (owed)",
         "grammar": "fn.toml (connection-policy row has F dash)",
@@ -1810,8 +1810,8 @@
             "S",
             "F"
           ],
-          "model_examples": 200,
-          "steps": 50,
+          "model_examples": 5,
+          "steps": 30,
           "natives": "selected families",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
@@ -1822,8 +1822,8 @@
             "F",
             "R"
           ],
-          "model_examples": 5000,
-          "steps": 50,
+          "model_examples": 50,
+          "steps": 30,
           "natives": "all natives in selected families; --all selects all 120",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"

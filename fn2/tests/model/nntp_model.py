@@ -290,7 +290,7 @@ def row_set(expected):
 
 class NntpModel:
     def __init__(self, groups: dict[str, dict], articles: list[tuple[str, bytes, list[str]]],
-                 accounts: dict, policy: dict):
+                 accounts: dict, policy: dict, *, limits=None):
         self.flags = copy.deepcopy(groups)
         self.groups = {g: list(f.get("entries", [])) for g, f in groups.items()}
         self.watermarks = {g: max([f.get("watermark", 0)] + [n for n, _ in self.groups[g]])
@@ -305,6 +305,12 @@ class NntpModel:
                 raise ValueError("initial entries must be in issue order")
         self.articles, self.sources, self.withdrawn = {}, {}, set()
         self.accounts, self.policy = copy.deepcopy(accounts), copy.deepcopy(policy)
+        # HW, specs/nntp.md:2307-2337,2352-2376: exposure reads LIVE policy,
+        # unlike a connection's pinned authentication/reader configuration.
+        self.limits = limits
+        # HW observes a single short fresh-owner window, with one login per
+        # principal. Rollover and shared-principal aliases are outside its scope.
+        self.address_failures, self.principal_posts = {}, {}
         self.connections, self.version = [], 0
         self.stamps = dict(policy.get("stamps", {}))
         self.redemptions = {}
@@ -348,14 +354,20 @@ class NntpModel:
     def connect(self, *, tls: bool, implicit_tls: bool, address: str = "127.0.0.1") -> Conn:
         conn = Conn(self, tls=tls or implicit_tls, implicit_tls=implicit_tls, address=address)
         live = [c for c in self.connections if not c.quit]
-        public = not ipaddress.ip_address(address).is_loopback
+        public = self.limits.public if self.limits is not None else not ipaddress.ip_address(address).is_loopback
         trusted = any(ipaddress.ip_address(address) in ipaddress.ip_network(n, strict=False)
                       for n in self.policy.get("trusted", []))
-        if len(live) >= self.policy.get("connections", 31):
+        total = self.limits.get('exposure-connections') if self.limits is not None else self.policy.get("connections", 31)
+        per_address = self.limits.get('exposure-per-address') if self.limits is not None else self.policy.get("per_address", 8 if public else total)
+        if self.limits is not None:
+            trusted = self.limits.trusted(address)
+        if len(live) >= total:
             conn.refused = "too many connections"
-        elif not trusted and sum(c.address == address for c in live) >= self.policy.get(
-                "per_address", 8 if public else self.policy.get("connections", 31)):
+        elif not trusted and sum(c.address == address for c in live) >= per_address:
             conn.refused = "too many connections from this address"
+        elif self.limits is not None and self.limits.get('exposure-auth-failures') and self.address_failures.get(address, 0) >= self.limits.get('exposure-auth-failures'):
+            # specs/nntp.md:2320: next accept after the address budget is spent.
+            conn.refused = "too many authentication failures from this address"
         self.connections.append(conn)
         return conn
 
@@ -371,6 +383,10 @@ class Conn:
         self._issued_expectations, self._committed_expectations = 0, 0
         self.credentials = copy.deepcopy(model.accounts)
         self.policy = copy.deepcopy(model.policy)
+        if model.limits is not None:
+            # HW, specs/nntp.md:2322-2336: the new session reads the current
+            # anonymous policy; explicit auth.required still cannot be weakened.
+            self.policy['anonymous'] = model.limits.get('anonymous')
         self.peer = self.policy.get("peer", False) or address in self.policy.get("peers", [])
         self._pin()
 
@@ -457,7 +473,14 @@ class Conn:
 
     def greeting(self) -> Expect:
         if self.refused:
-            return self._reply("capacity", 400, pattern=rb"400 " + re.escape(self.refused.encode()) + rb".*",
+            pattern = rb"400 " + re.escape(self.refused.encode()) + rb".*"
+            if self.model.limits is not None:
+                # HW exact public lines, specs/nntp.md:2315-2320,2358-2362.
+                # A total-capacity prefix must not also accept an address refusal.
+                suffix = '; try again later' if self.refused in (
+                    'too many connections', 'too many connections from this address') else ''
+                pattern = re.escape(('400 ' + self.refused + suffix).encode())
+            return self._reply("capacity", 400, pattern=pattern,
                                effect=lambda *_: setattr(self, "quit", True),
                                close_after_reply=True, close_spec=SPECS["capacity"])
         return self._reply("greeting", 200 if self._posting() else 201)
@@ -511,6 +534,40 @@ class Conn:
             return getattr(self, "_cmd_" + command.lower().replace("-", "_"))(args)
         except (ValueError, UnicodeError):
             return self._error()
+
+    def exposure_wait(self, kind, *, steps=0):
+        """HW short observation within one window; no pending command consumed.
+
+        specs/nntp.md:2317,2321: no reply while paced. The workload supplies
+        observed host-read steps; TCP writes are NOT equated to host reads.
+        A caller checks EOF separately: waiting must retain the connection.
+        """
+        if self.model.limits is None:
+            raise ValueError('live limits required')
+        if kind == 'posts':
+            count = self.model.principal_posts.get(self.authenticated_as, 0)
+            limit = self.model.limits.get('exposure-posts-per-minute')
+        elif kind == 'steps':
+            count, limit = steps, self.model.limits.get('exposure-steps-per-second')
+        else:
+            raise ValueError('unknown exposure wait')
+        if not limit or count < limit:
+            raise ValueError('pacing antecedent not established')
+        return Expect.none('exposure-wait', 'specs/nntp.md:2317,2321')
+
+    def exposure_deadline(self, *, elapsed, first):
+        """HW, specs/nntp.md:2318-2326: no progress, then silent close.
+
+        elapsed is the externally observed interval since greeting/last reply;
+        the model never sleeps or reads a clock. Zero disables this deadline.
+        """
+        key = 'exposure-first-seconds' if first else 'exposure-idle-seconds'
+        limit = self.model.limits.get(key) if self.model.limits is not None else 0
+        if not limit or elapsed < limit:
+            raise ValueError('deadline antecedent not established')
+        return Expect(rule='exposure-deadline', spec='specs/nntp.md:2318-2326',
+                      close_without_reply=True, close_spec='specs/nntp.md:2318-2326',
+                      close_effect=lambda: setattr(self, 'quit', True))
 
     def _cmd_quit(self, args):
         return self._error() if args else self._reply("QUIT", 205, effect=lambda *_: setattr(self, "quit", True),
@@ -1184,6 +1241,12 @@ class Conn:
             self._finish_body(close=transit and len(data) > limit)
             outcome = "accepted" if code == success else "uncertain" if b"uncertain" in status.lower() else "refused"
             self.model.post_outcomes.append((rule, ident or offered, outcome, status))
+            # HW, specs/nntp.md:2321: an accepted authenticated submission
+            # witnesses a principal charge. Refused malformed input may never
+            # reach submission, so this short workload makes no charge claim.
+            if self.model.limits is not None and code == success and not transit and self.authenticated_as:
+                posts = self.model.principal_posts
+                posts[self.authenticated_as] = posts.get(self.authenticated_as, 0) + 1
         return self._reply(rule, codes, pattern=pattern, effect=effect,
                            close_after_reply=transit and len(data) > limit,
                            close_spec="specs/nntp.md:530-534")
@@ -1199,12 +1262,18 @@ class Conn:
             self.current_group = self.current_article_number = None
 
     def _failed_auth(self, *, cancelled=False):
-        closing = not cancelled and self.failed_auth_count == 2
+        # HW, specs/nntp.md:2320,2327-2331: count observed 481s per address,
+        # independently of the RFC 4643 three-failure SESSION rule.
+        limit = self.model.limits.get('exposure-auth-failures') if self.model.limits is not None else 0
+        failures = self.model.address_failures.get(self.address, 0)
+        closing = (not cancelled and self.failed_auth_count == 2) or bool(limit and failures + 1 >= limit)
         def effect(*_):
             self.username = self.sasl = None
+            if self.model.limits is not None:
+                self.model.address_failures[self.address] = failures + 1
             if not cancelled:
                 self.failed_auth_count += 1
-                self.quit = closing
+            self.quit = closing
         return self._reply("AUTHINFO", 481, tail=(400,) if closing else (), effect=effect,
                            close_after_reply=closing, close_spec="specs/nntp.md:1661-1696; RFC 4643 §6")
 
