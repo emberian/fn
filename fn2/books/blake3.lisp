@@ -513,7 +513,7 @@
         (fn-b3-words 8 (fn-blake3 (fn2-b3-flatten splits)))))
 (defthm-owed fn2-b3-incremental-is-blake3 (splits)
  (implies (fn2-b3-incremental-hyps splits) (fn2-b3-incremental-resultp splits))
- :teeth "blake3-unit: complete hyp/result for multiple splits; removing per-call budget with 4097 octets falsifies both."
+ :teeth (fn2-b3-incremental-positive fn2-b3-incremental-negative)
  :doc "Every split into bounded checked pool updates, below BLAKE3's 2^64-byte domain, followed by actual finalize; no source must reside in one pool window. Unproved.")
 (defun fn2-b3-subtree-inputsp (blocks counters next)
  (declare (xargs :verify-guards nil))
@@ -547,7 +547,7 @@
         (fn-b3-words 8 (fn-blake3 (fn2-b3-flatten (fn2-b3-flatten blocks))))))
 (defthm-owed fn2-b3-subtree-composition (blocks counters)
  (implies (fn2-b3-subtree-hyps blocks counters) (fn2-b3-subtree-resultp blocks counters))
- :teeth "blake3-unit: 65536+1 octets; absolute counters (0 64) satisfy the entire hyp/result, (0 0) falsifies both."
+ :teeth (fn2-b3-subtree-teeth)
  :doc "The actual subtree-CV calculation and parent stack fold with ROOT equal the ordinary digest, including a partial final chunk. Unproved.")
 (assert-event (eq (symbol-class 'fn2-b3-init (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-b3-update (w state)) :common-lisp-compliant))

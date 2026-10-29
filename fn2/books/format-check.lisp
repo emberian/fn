@@ -603,14 +603,14 @@
                (not (equal (fn2-fc-frame-identity a) (fn2-fc-frame-identity b)))
                (fn2-fc-collision-free-pairp (fn2-fc-covered :frame bytes a) (fn2-fc-covered :frame bytes b)))
           (not (fn2-fc-acceptedp :frame bytes b)))
- :teeth "Unit: actual accepted frame, different-location refusal and same-location counterexample to removing distinctness. Direct collision-freedom premise evaluated."
+ :teeth (fn2-fc-frame-positive fn2-fc-frame-negative)
  :doc "Actual unified checker through its pool adapter. Frame physical location and extent allocation identity. Unproved.")
 (defthm-owed fn2-format-page-binds-parent (bytes a b)
  (implies (and (fn2-fc-expectedp a) (fn2-fc-expectedp b)
                (fn2-fc-acceptedp :page bytes a)
                (not (equal (fn2-fc-parent-identity a) (fn2-fc-parent-identity b))))
           (not (fn2-fc-acceptedp :page bytes b)))
- :teeth "Unit: accepted page, changed parent kind refusal and same-parent counterexample to removing distinctness."
+ :teeth (fn2-fc-page-positive fn2-fc-page-negative)
  :doc "Checked Ref tuple: physical unit, allocation pair, kind, length and hash. Device binding owns storage domain. Unproved.")
 (defthm-owed fn2-format-seal-commits (a b ca cb)
  (implies (and (fn2-fc-expectedp ca) (fn2-fc-expectedp cb)
@@ -620,6 +620,6 @@
           (and (equal (fn2-fc-seal-identity ca) (fn2-fc-seal-identity cb))
                (equal (fn2-fc-seal-predecessor ca) (fn2-fc-seal-predecessor cb))
                (equal (fn2-fc-covered :seal a ca) (fn2-fc-covered :seal b cb))))
- :teeth "Unit evaluates whole antecedent and conclusion on an accepted seal. Different accepted seals refute removal of equal hashes. Separate identity/predecessor mutants are refused by the served checker."
+ :teeth (fn2-fc-seal-positive fn2-fc-seal-negative)
  :doc "Binds history, incarnation, physical extent/allocation identity, exact predecessor commit/seal, and canonical sealed content. Direct pairwise collision freedom. External referenced data require independent checks. Unproved.")
 (assert-event (eq (symbol-class 'fn2-format-run (w state)) :common-lisp-compliant))

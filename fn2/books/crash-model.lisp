@@ -502,7 +502,7 @@
     (otherwise s)))
 (defthm-owed fn2-cm-well-formedness (s event profile)
   (implies (fn2-cm-statep s) (fn2-cm-statep (fn2-cm-step s event profile)))
-  :teeth "crash-model-unit: every dispatcher arm; malformed durable image retained by read falsifies pre/post."
+  :teeth (fn2-cmu-wfp-positive fn2-cmu-wfp-negative)
   :doc "Preservation of geometry, image/stamp shapes, typed pending records and sticky state, every export.")
 
 ; The fence claim concerns the tear units touched by its successfully
@@ -580,7 +580,7 @@
 (defthm-owed fn2-cm-honest-fence-durability (s op image crash-image profile)
   (implies (fn2-cm-fence-durability-hyps s op image profile)
            (fn2-cm-fence-durability-concl s op image crash-image profile))
-  :teeth "crash-model-unit: covered write survives beside an unrelated torn in-flight write; overlapping in-flight write and lying fence each falsify the conclusion when their premise is removed; stale-version regressions reject destructive crash images."
+  :teeth (fn2-cmu-fence-positive fn2-cmu-fence-negative fn2-cmu-isolation-negative)
   :doc "Successful honest fence preserves covered resolved tear units in every allowed crash image under unit isolation and version coherence; unrelated pending work is permitted.")
 
 ; FUA's immediate effect, NOT an assertion that a later crash cannot also
@@ -603,7 +603,7 @@
 (defthm-owed fn2-cm-fua-alone (s op outcome profile addr count)
   (implies (fn2-cm-fua-only-hyps s op outcome profile addr count)
            (fn2-cm-fua-only-concl s op outcome profile addr count))
-  :teeth "crash-model-unit: unrelated volatile dependency unchanged; preflush-FUA removes own-only hypothesis and persists it."
+  :teeth (fn2-cmu-fua-teeth)
   :doc "Plain FUA only persists its request. Preflush+FUA is a distinct primitive contract.")
 
 (in-theory (disable fn2-cm-statep fn2-cm-step fn2-cm-submit-write

@@ -16,25 +16,35 @@
    (and (equal (fn2-mk-run hashes) (fn-b3-words 8 (fn2-mk-test-mth xs (len xs))))
         (fn2-mk-test-roots (cdr sizes))))))
 (assert-event (fn2-mk-test-roots '(0 1 2 3 7 8)))
-(assert-event
+(defun fn2-mk-root-positive ()
+  (declare (xargs :verify-guards nil))
  (let* ((records '((0) (1) (2))) (hashes (fn2-mk-leaves records)))
   (and (fn2-mk-root-hyps records hashes) (fn2-mk-root-result records hashes))))
-(assert-event
+(assert-event (equal (fn2-mk-root-positive) t))
+(defun fn2-mk-root-negative ()
+  (declare (xargs :verify-guards nil))
  (let* ((records '((0) (1) (2))) (hashes (fn2-mk-leaves records))
         (bad (cons '(0 0 0 0 0 0 0 0) (cdr hashes))))
   (and (not (fn2-mk-root-hyps records bad)) (not (fn2-mk-root-result records bad)))))
-(assert-event
+(assert-event (equal (fn2-mk-root-negative) t))
+(defun fn2-mk-consistency-positive ()
+  (declare (xargs :verify-guards nil))
  (let* ((old '((0))) (new '((0) (1))) (proof (fn2-mk-leaves '((1)))))
   (and (true-list-listp old) (true-list-listp new) (< (len new) 1152921504606846976)
        (fn2-mk-consistency-premise old new proof)
        (eq (car (fn2-mk-consistency-observation old new proof)) :ok)
        (equal (len (cadr (fn2-mk-consistency-observation old new proof))) 1)
        (equal old (take (len old) new)))))
+(assert-event (equal (fn2-mk-consistency-positive) t))
 ; Remove only actual verifier acceptance. Integrity still holds for every
 ; opening; the claimed old leaves are nevertheless not a prefix.
-(assert-event
+(defun fn2-mk-consistency-negative ()
+  (declare (xargs :verify-guards nil))
  (let* ((old '((2))) (new '((0) (1))) (proof (fn2-mk-leaves '((1)))))
   (and (true-list-listp old) (true-list-listp new) (< (len new) 1152921504606846976)
        (fn2-mk-consistency-premise old new proof)
        (not (eq (car (fn2-mk-consistency-observation old new proof)) :ok))
        (not (equal old (take (len old) new))))))
+(assert-event (equal (fn2-mk-consistency-negative) t))
+
+(fn2-assert-owed-teeth fn2-mk-root-is-mth fn2-mk-consistency-sound)

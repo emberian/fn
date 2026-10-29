@@ -619,7 +619,7 @@
                 (equal (mv-nth 0 (fn2-alloc-release i epoch counter p)) :ok))
            (and (fn2-alloc-releasablep i p)
                 (equal (fn2-extents-state i (mv-nth 1 (fn2-alloc-release i epoch counter p))) *fn2-extent-state-free*)))
-  :teeth "alloc-unit evaluates a successful release and each independent protection removal."
+  :teeth (fn2-alloc-keystone-teeth fn2-alloc-release-protection-teeth)
   :doc "Successful release checks every typed edge and checkpoint coverage at the actual export.")
 (defun-nx fn2-alloc-id-step (op i epoch counter arg p edges)
   (case op
@@ -652,5 +652,5 @@
       (fn2-alloc-live-ids (fn2-alloc-view p)))))
 (defthm-owed fn2-alloc-ids-never-repeat (op i epoch counter arg p edges)
   (implies (fn2-alloc-invp p) (fn2-alloc-id-progress op i epoch counter arg p edges))
-  :teeth "alloc-unit evaluates issue, cancellation, reissue and epoch advance; rewind counter falsifies the invariant and freshness."
+  :teeth (fn2-alloc-keystone-teeth)
   :doc "All issuing/lifetime transitions monotonically advance the epoch/counter watermark; each successful issue consumes its old watermark strictly. Init is construction, never a restart transition; relocation only changes edge columns.")

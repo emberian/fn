@@ -460,3 +460,21 @@
             (fn2-alloc-edge-drop 0 101 0 1 0 :borrow fn2-extents fn2-alloc-edges))
           (mv code fn2-extents)))
       code)))
+
+
+; Every independent release protection is exercised on a real allocated row.
+(defun fn2-alloc-release-protection-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and
+    (fn2-alloc-test-tooth :installed-root)
+    (fn2-alloc-test-tooth :selectable-checkpoint)
+    (fn2-alloc-test-tooth :recovery-base)
+    (fn2-alloc-test-tooth :prepared-successor)
+    (fn2-alloc-test-tooth :obligation)
+    (fn2-alloc-test-tooth :promised-read)
+    (fn2-alloc-test-tooth :borrow)
+    (fn2-alloc-test-tooth :outstanding-io)
+    (fn2-alloc-test-tooth :recovery-candidate)
+    (fn2-alloc-test-tooth :checkpoint)
+    t))
+(fn2-assert-owed-teeth fn2-alloc-release-safe fn2-alloc-ids-never-repeat)
