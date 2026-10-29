@@ -3,18 +3,12 @@
 (in-package "ACL2")
 (include-book "../books/profile")
 
-(defun fn2-check-field (i xs)
-  (declare (xargs :guard (natp i)))
-  (if (consp xs)
-      (if (zp i) (car xs) (fn2-check-field (1- i) (cdr xs)))
-    nil))
-
 (defun fn2-work-recordp (record profile)
   (declare (xargs :guard t))
-  (let ((kind (fn2-check-field 0 record))
-        (bytes (fn2-check-field 4 record))
-        (steps (fn2-check-field 5 record))
-        (actions (fn2-check-field 6 record)))
+  (let ((kind (nth 0 (true-list-fix record)))
+        (bytes (nth 4 (true-list-fix record)))
+        (steps (nth 5 (true-list-fix record)))
+        (actions (nth 6 (true-list-fix record))))
     (and (true-listp record) (= (len record) 19)
          (member-equal kind '(0 1 2 3 4))
          (natp bytes) (natp steps) (natp actions)
@@ -29,15 +23,15 @@
   (declare (xargs :guard t))
   (if (atom records) (list 0 0 0 0 0)
     (let* ((record (car records))
-           (kind (fn2-check-field 0 record))
+           (kind (nth 0 (true-list-fix record)))
            (rest (fn2-work-certificate (cdr records))))
       (list (+ (if (member-equal kind '(0 3 4)) 1 0)
-               (nfix (fn2-check-field 0 rest)))
+               (nfix (nth 0 (true-list-fix rest))))
             (+ (if (member-equal kind '(1 2)) 1 0)
-               (nfix (fn2-check-field 1 rest)))
-            (+ (nfix (fn2-check-field 6 record)) (nfix (fn2-check-field 2 rest)))
-            (+ (nfix (fn2-check-field 4 record)) (nfix (fn2-check-field 3 rest)))
-            (+ (nfix (fn2-check-field 5 record)) (nfix (fn2-check-field 4 rest)))))))
+               (nfix (nth 1 (true-list-fix rest))))
+            (+ (nfix (nth 6 (true-list-fix record))) (nfix (nth 2 (true-list-fix rest))))
+            (+ (nfix (nth 4 (true-list-fix record))) (nfix (nth 3 (true-list-fix rest))))
+            (+ (nfix (nth 5 (true-list-fix record))) (nfix (nth 4 (true-list-fix rest))))))))
 
 ; Scalar scheduler/return overhead is explicit rather than silently omitted
 ; from the reported work sum. CSCHED and CRETURN are declared abstract costs;
@@ -47,9 +41,9 @@
 (defun fn2-work-cost-certificate (records csched creturn)
   (declare (xargs :guard (and (natp csched) (natp creturn))))
   (let* ((observed (fn2-work-certificate records))
-         (calendar (* csched (nfix (fn2-check-field 1 observed))))
-         (bytes (nfix (fn2-check-field 3 observed)))
-         (structural (nfix (fn2-check-field 4 observed))))
+         (calendar (* csched (nfix (nth 1 (true-list-fix observed)))))
+         (bytes (nfix (nth 3 (true-list-fix observed))))
+         (structural (nfix (nth 4 (true-list-fix observed)))))
     (list observed calendar creturn (+ bytes structural calendar creturn))))
 
 (defun fn2-work-records-p (records profile)
@@ -66,16 +60,16 @@
           ((not (fn2-work-records-p records profile)) '(:fail :run-work-cap))
           ((not (and (natp nobs) (natp nvisits) (natp nactions)))
            '(:fail :turn-work-count-type))
-          ((not (and (equal nobs (fn2-check-field 0 certificate))
-                     (equal nvisits (fn2-check-field 1 certificate))
-                     (equal nactions (fn2-check-field 2 certificate))))
+          ((not (and (equal nobs (nth 0 (true-list-fix certificate)))
+                     (equal nvisits (nth 1 (true-list-fix certificate)))
+                     (equal nactions (nth 2 (true-list-fix certificate)))))
            '(:fail :turn-work-certificate))
           ((or (> nobs (nfix (fn2-profile-h profile)))
                (> nvisits (nfix (fn2-profile-k profile)))
                (> nactions (nfix (fn2-profile-aturn profile))))
            '(:fail :turn-work-cap))
-          ((> (+ nvisits (nfix (fn2-check-field 3 certificate))
-                         (nfix (fn2-check-field 4 certificate)))
+          ((> (+ nvisits (nfix (nth 3 (true-list-fix certificate)))
+                         (nfix (nth 4 (true-list-fix certificate))))
               (+ (* (nfix (fn2-profile-h profile)) 24)
                  (* (nfix (fn2-profile-k profile)) 4129)))
            '(:fail :turn-work-cost))
@@ -83,7 +77,7 @@
 
 (assert-event
  (fn2-profile-exports-compliant-p
-  '(fn2-check-field fn2-work-recordp fn2-work-certificate
+  '(fn2-work-recordp fn2-work-certificate
     fn2-work-cost-certificate fn2-work-records-p fn2-check-work) (w state)))
 (assert-event
  (let ((r '(1 0 0 0 4096 32 4 0 4294967295 0 0 0 1 1 1 2 1 3 1)))
@@ -173,9 +167,9 @@
   (declare (xargs :guard t))
   (if (atom records) 0
     (+ (if (if observationp
-               (equal (fn2-check-field 0 (car records)) 0)
-             (member-equal (fn2-check-field 0 (car records)) '(1 2)))
-           (nfix (fn2-check-field 4 (car records))) 0)
+               (equal (nth 0 (true-list-fix (car records))) 0)
+             (member-equal (nth 0 (true-list-fix (car records))) '(1 2)))
+           (nfix (nth 4 (true-list-fix (car records)))) 0)
        (fn2-work-byte-charge (cdr records) observationp))))
 
 (defun fn2-check-work-visible (records lost nobs nvisits nactions profile visible)
@@ -183,18 +177,18 @@
   (let ((caps (fn2-check-work records lost nobs nvisits nactions profile))
         (charged (fn2-work-certificate records)))
     (cond ((not (eq caps :pass)) caps)
-          ((or (< (fn2-work-byte-charge records nil) (nfix (fn2-check-field 0 visible)))
-               (< (fn2-work-byte-charge records t) (nfix (fn2-check-field 1 visible))))
+          ((or (< (fn2-work-byte-charge records nil) (nfix (nth 0 (true-list-fix visible))))
+               (< (fn2-work-byte-charge records t) (nfix (nth 1 (true-list-fix visible)))))
            '(:fail :work-byte-undercharge))
-          ((< (nfix (fn2-check-field 3 charged)) (+ (nfix (fn2-check-field 0 visible)) (nfix (fn2-check-field 1 visible))))
+          ((< (nfix (nth 3 (true-list-fix charged))) (+ (nfix (nth 0 (true-list-fix visible))) (nfix (nth 1 (true-list-fix visible)))))
            '(:fail :work-byte-undercharge))
-          ((not (equal (fn2-check-field 2 charged) (fn2-check-field 2 visible))) '(:fail :work-descriptor-undercharge))
-          ((not (equal (fn2-check-field 0 charged) (fn2-check-field 3 visible))) '(:fail :work-observation-undercharge))
+          ((not (equal (nth 2 (true-list-fix charged)) (nth 2 (true-list-fix visible)))) '(:fail :work-descriptor-undercharge))
+          ((not (equal (nth 0 (true-list-fix charged)) (nth 3 (true-list-fix visible)))) '(:fail :work-observation-undercharge))
           (t :pass))))
 (defun fn2-work-visible-certificate (records visible)
   (declare (xargs :guard t))
   (append (fn2-work-certificate records)
-          (list (nfix (fn2-check-field 0 visible)) (nfix (fn2-check-field 1 visible)))))
+          (list (nfix (nth 0 (true-list-fix visible))) (nfix (nth 1 (true-list-fix visible))))))
 
 ; Mutation controls keep all self-reported counters consistent: only the
 ; independently observed evidence distinguishes each wrong implementation.

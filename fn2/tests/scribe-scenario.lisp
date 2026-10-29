@@ -70,7 +70,7 @@
         (mv :cut certificate fn2-core fn2-sim fn2-own fn2-ref-core))
        (fn2-sim (fn2-scribe-test-fault scenario fn2-sim))
        ((mv & fn2-core fn2-sim fn2-own)
-        (if (eq status :idle) (fn2-sim-echo-advance nil fn2-core fn2-sim fn2-own)
+        (if (eq status :idle) (fn2-sim-advance-with-clients nil nil fn2-core fn2-sim fn2-own)
           (mv nil fn2-core fn2-sim fn2-own))))
     (fn2-scribe-test-rounds (- fuel 1) cut scenario cursor queues certificate
                             fn2-core fn2-sim fn2-own fn2-ref-core)))

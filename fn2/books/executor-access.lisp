@@ -12,20 +12,6 @@
                 (equal (fn2-control-rows (fn2-core-control fn2-core)) 1)))
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
-(defmacro fn2-exec-direct-shape (name args &optional position)
-  (let* ((call `(,name ,@args fn2-core))
-         (after (if position `(mv-nth ,position ,call) call)))
-    `(progn
-       (defthm ,(fn2-columns-sym name "-TYPE")
-         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                  (fn2-corep ,after))
-         :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-       (defthm ,(fn2-columns-sym name "-WFP")
-         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                  (fn2-core-wfp ,after))
-         :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-       (in-theory (disable ,name)))))
-
 (defmacro fn2-exec-access (field width)
   (let ((get (fn2-columns-col-name 'fn2-exec field))
         (put (fn2-columns-col-name 'fn2-exec (fn2-columns-pre "SET-" field)))
@@ -53,7 +39,7 @@
            (fn2-control)
            (if (unsigned-byte-p ,width value) (,write 0 value fn2-control) fn2-control)
            fn2-core))
-       (fn2-exec-direct-shape ,put (value))
+       (fn2-core-preserves ,put (value fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
        (in-theory (disable ,get)))))
 (fn2-exec-access h 32)
 (fn2-exec-access k 32)
@@ -85,7 +71,7 @@
         ((:ok :already) fn2-core)
         (:bounds (fn2-core-stop *fn2-stop-reason-wake-bounds* fn2-core))
         (otherwise (fn2-core-stop *fn2-stop-reason-wake-state* fn2-core)))))))
-(fn2-exec-direct-shape fn2-exec-wake (id))
+(fn2-core-preserves fn2-exec-wake (id fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
 (defun fn2-exec-queued (fn2-core)
   (declare (xargs :stobjs fn2-core))
@@ -130,14 +116,14 @@
   (stobj-let ((fn2-sched (fn2-core-sched fn2-core)))
     (kind principal position fn2-sched) (fn2-sched-visit fn2-sched)
     (mv kind principal position fn2-core)))
-(fn2-exec-direct-shape fn2-exec-visit () 3)
+(fn2-core-preserves fn2-exec-visit (fn2-core) :position 3 :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
 (defun fn2-exec-pop (principal fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-sched (fn2-core-sched fn2-core)))
     (code id fn2-sched) (fn2-sched-pop-head principal fn2-sched)
     (mv code id fn2-core)))
-(fn2-exec-direct-shape fn2-exec-pop (principal) 2)
+(fn2-core-preserves fn2-exec-pop (principal fn2-core) :position 2 :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
 (defun fn2-exec-clear-service (service fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -146,7 +132,7 @@
     (if (and (natp service) (< service 4))
         (fn2-sched-set-service service 0 fn2-sched) fn2-sched)
     fn2-core))
-(fn2-exec-direct-shape fn2-exec-clear-service (service))
+(fn2-core-preserves fn2-exec-clear-service (service fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
 (defun fn2-exec-trace-actions (left ordinal start fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix left)
@@ -162,7 +148,7 @@
                (if (eq code :ok) (fn2-trace-action ordinal slot gen fn2-trace) fn2-trace))
              fn2-core)))
       (fn2-exec-trace-actions (- left 1) (+ ordinal 1) start fn2-core))))
-(fn2-exec-direct-shape fn2-exec-trace-actions (left ordinal start))
+(fn2-core-preserves fn2-exec-trace-actions (left ordinal start fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
 (defun fn2-exec-record (kind id principal position bytes steps actions runnable wake start fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
@@ -176,5 +162,4 @@
             fn2-core)))
     (if (and (natp actions) (natp start))
         (fn2-exec-trace-actions actions 0 start fn2-core) fn2-core)))
-(fn2-exec-direct-shape fn2-exec-record
-  (kind id principal position bytes steps actions runnable wake start))
+(fn2-core-preserves fn2-exec-record (kind id principal position bytes steps actions runnable wake start fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))

@@ -1,11 +1,11 @@
 (in-package "ACL2")
+(include-book "../books/profile")
 
 ; xoshiro128**. Four scalar words let the simulator store its state inline.
 ; All runtime products and left shifts are below 2^49 (SBCL fixnums).
 ; The 16-bit partial-product multiplier also serves seed expansion: never
 ; form the 64-bit product of two u32 words and discard its upper half later.
 (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system)
-
 
 ; Projection facts preserve the compact public functions in callers' guards.
 (defmacro fn2-word-facts (name term source &optional (hyp 't) (bound '4294967296))
@@ -163,7 +163,5 @@
 (assert-event (equal (mv-list 5 (fn2-prng-next 1 2 3 4))
                      '(11520 7 0 1026 12288)))
 (assert-event (equal (fn2-u32-mul 4294967295 4294967295) 1))
-(assert-event (and (eq (symbol-class 'fn2-prng-next (w state)) :common-lisp-compliant)
-                   (eq (symbol-class 'fn2-prng-seed (w state)) :common-lisp-compliant)
-                   (eq (symbol-class 'fn2-prng-below (w state)) :common-lisp-compliant)
-                   (eq (symbol-class 'fn2-prng-chance (w state)) :common-lisp-compliant)))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-prng-next fn2-prng-seed fn2-prng-below fn2-prng-chance) (w state)))

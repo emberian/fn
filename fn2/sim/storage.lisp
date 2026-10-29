@@ -4,6 +4,7 @@
 ; cannot accidentally persist a later overlapping write.  Durable version
 ; stamps prevent an older concurrent fence from rolling back a newer one.
 (in-package "ACL2")
+(include-book "../books/profile")
 (include-book "../books/columns")
 
 ; STAMP names the cached completed-write version (zero is the initial image).
@@ -18,11 +19,11 @@
   :rows-bound 4294967296
   :init-name fn2-storage-columns-init
   :extra-fields
-  ((fn2-storage-fence-owner :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t)
-   (fn2-storage-snapshot :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t)
-   (fn2-storage-snapshot-stamp :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t)
-   (fn2-storage-fences :type (unsigned-byte 32) :initially 0)
-   (fn2-storage-dead :type (unsigned-byte 1) :initially 0)))
+  ((fn2-storage-fence-owner :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t :why "Fence reservation slots are sized separately from media bytes.")
+   (fn2-storage-snapshot :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Each pending fence retains its submission image.")
+   (fn2-storage-snapshot-stamp :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t :why "Each pending fence retains submission versions per byte.")
+   (fn2-storage-fences :type (unsigned-byte 32) :initially 0 :why "Scalar capacity of the separately sized fence pool.")
+   (fn2-storage-dead :type (unsigned-byte 1) :initially 0 :why "Device-wide failure state shared by all media rows.")))
 
 (defun fn2-storage-clear (i fn2-sim-storage)
   (declare (xargs :stobjs fn2-sim-storage
@@ -157,7 +158,7 @@
   :rule-classes (:rewrite :linear))
 (in-theory (disable fn2-storage-find-fence))
 
-(defun fn2-storage-fence-roomp (fence fn2-sim-storage)
+(defun fn2-storage-fence-slot-of (fence fn2-sim-storage)
   (declare (xargs :stobjs fn2-sim-storage :guard (fn2-sim-storage-wfp fn2-sim-storage)))
   (and (unsigned-byte-p 32 fence)
        (fn2-storage-find-fence 0 (+ 1 fence) fn2-sim-storage)))
@@ -165,7 +166,7 @@
 (defun fn2-storage-fence-admission (fence fn2-sim-storage)
   (declare (xargs :stobjs fn2-sim-storage :guard (fn2-sim-storage-wfp fn2-sim-storage)))
   (cond ((not (unsigned-byte-p 32 fence)) :bounds)
-        ((fn2-storage-fence-roomp fence fn2-sim-storage) :exhausted)
+        ((fn2-storage-fence-slot-of fence fn2-sim-storage) :duplicate)
         ((fn2-storage-find-fence 0 0 fn2-sim-storage) :ok)
         (t :exhausted)))
 
@@ -221,7 +222,7 @@
   (declare (xargs :stobjs fn2-sim-storage :guard (fn2-sim-storage-wfp fn2-sim-storage)
                   :guard-hints (("Goal" :use ((:instance fn2-storage-find-fence-bounds
                                                (i 0) (owner (+ 1 fence)) (s fn2-sim-storage)))))))
-  (let ((slot (fn2-storage-fence-roomp fence fn2-sim-storage)))
+  (let ((slot (fn2-storage-fence-slot-of fence fn2-sim-storage)))
     (if (not slot) (mv :bounds fn2-sim-storage)
       (let* ((failed (or fail (equal (fn2-storage-dead fn2-sim-storage) 1)))
              (fn2-sim-storage
@@ -332,54 +333,79 @@
               fn2-sim-storage)))
       fn2-sim-storage)))
 
-(assert-event
- (and (eq (symbol-class 'fn2-storage-init (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn2-storage-read-byte (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn2-storage-write-byte (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn2-storage-fence-capture (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn2-storage-fence-complete (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn2-storage-crash-unit (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn2-storage-crash-reset (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn2-storage-corrupt-byte (w state)) :common-lisp-compliant)))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-storage-init fn2-storage-read-byte fn2-storage-write-byte fn2-storage-fence-capture
+    fn2-storage-fence-complete fn2-storage-crash-unit fn2-storage-crash-reset fn2-storage-corrupt-byte) (w state)))
 
 ; Shape facts are deliberately about representations, not storage correctness.
 ; They keep composed adapter guard proofs from opening the storage recognizer.
-(defmacro fn2-storage-shape-facts (name args extra mv-index)
-  (let* ((result (if mv-index `(mv-nth ,mv-index (,name ,@args fn2-sim-storage))
-                   `(,name ,@args fn2-sim-storage)))
-         (ty (intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-PRESERVES-TYPE") name))
-         (wf (intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-PRESERVES-WFP") name))
-         (rows (intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-PRESERVES-ROWS") name)))
-    `(progn
-       (defthm ,ty
-         (implies (and (fn2-sim-storagep fn2-sim-storage)
-                       (fn2-sim-storage-wfp fn2-sim-storage) ,extra)
-                  (fn2-sim-storagep ,result))
-         :hints (("Goal" :in-theory (enable ,name))))
-       (defthm ,wf
-         (implies (fn2-sim-storage-wfp fn2-sim-storage)
-                  (fn2-sim-storage-wfp ,result))
-         :hints (("Goal" :in-theory (enable ,name))))
-       (defthm ,rows
-         (equal (fn2-sim-storage-rows ,result)
-                (fn2-sim-storage-rows fn2-sim-storage))
-         :hints (("Goal" :in-theory (e/d (,name) (fn2-sim-storage-rows)))))
-       (in-theory (disable ,name)))))
 
-(fn2-storage-shape-facts fn2-storage-fence-bytes (i base commit) (and (natp i) (natp base)) nil)
-(fn2-storage-shape-facts fn2-storage-reopen-bytes (i) (natp i) nil)
-(fn2-storage-shape-facts fn2-storage-land-bytes (i end choice garbage)
-                         (and (natp i) (natp end) (unsigned-byte-p 8 garbage)) nil)
-(fn2-storage-shape-facts fn2-storage-write-byte (address physical byte stamp fua fault)
-                         (and (unsigned-byte-p 8 byte) (unsigned-byte-p 60 stamp)) 1)
-(fn2-storage-shape-facts fn2-storage-fence-capture (fence) t 1)
-(fn2-storage-shape-facts fn2-storage-fence-complete (fence fail lie) t 1)
-(fn2-storage-shape-facts fn2-storage-reopen (revert) t nil)
-(fn2-storage-shape-facts fn2-storage-crash-unit (unit choice garbage)
-                         (and (unsigned-byte-p 32 unit) (unsigned-byte-p 8 garbage)) nil)
-(fn2-storage-shape-facts fn2-storage-crash-reset () t nil)
-(fn2-storage-shape-facts fn2-storage-kill-device () t nil)
-(fn2-storage-shape-facts fn2-storage-corrupt-byte (address byte) (unsigned-byte-p 8 byte) nil)
+(fn2-sim-storage-preserves fn2-storage-fence-bytes (i base commit fn2-sim-storage) :position nil :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) (and (natp i) (natp base)))
+  :hints (("Goal" :in-theory (enable fn2-storage-fence-bytes)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep nil)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp nil :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows nil :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-fence-bytes) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-reopen-bytes (i fn2-sim-storage) :position nil :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) (natp i))
+  :hints (("Goal" :in-theory (enable fn2-storage-reopen-bytes)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep nil)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp nil :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows nil :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-reopen-bytes) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-land-bytes (i end choice garbage fn2-sim-storage) :position nil :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) (and (natp i) (natp end) (unsigned-byte-p 8 garbage)))
+  :hints (("Goal" :in-theory (enable fn2-storage-land-bytes)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep nil)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp nil :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows nil :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-land-bytes) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-write-byte (address physical byte stamp fua fault fn2-sim-storage) :position 1 :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) (and (unsigned-byte-p 8 byte) (unsigned-byte-p 60 stamp)))
+  :hints (("Goal" :in-theory (enable fn2-storage-write-byte)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep 1)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp 1 :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows 1 :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-write-byte) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-fence-capture (fence fn2-sim-storage) :position 1 :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) t)
+  :hints (("Goal" :in-theory (enable fn2-storage-fence-capture)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep 1)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp 1 :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows 1 :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-fence-capture) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-fence-complete (fence fail lie fn2-sim-storage) :position 1 :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) t)
+  :hints (("Goal" :in-theory (enable fn2-storage-fence-complete)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep 1)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp 1 :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows 1 :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-fence-complete) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-reopen (revert fn2-sim-storage) :position nil :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) t)
+  :hints (("Goal" :in-theory (enable fn2-storage-reopen)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep nil)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp nil :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows nil :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-reopen) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-crash-unit (unit choice garbage fn2-sim-storage) :position nil :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) (and (unsigned-byte-p 32 unit) (unsigned-byte-p 8 garbage)))
+  :hints (("Goal" :in-theory (enable fn2-storage-crash-unit)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep nil)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp nil :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows nil :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-crash-unit) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-crash-reset (fn2-sim-storage) :position nil :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) t)
+  :hints (("Goal" :in-theory (enable fn2-storage-crash-reset)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep nil)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp nil :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows nil :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-crash-reset) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-kill-device (fn2-sim-storage) :position nil :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) t)
+  :hints (("Goal" :in-theory (enable fn2-storage-kill-device)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep nil)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp nil :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows nil :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-kill-device) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-corrupt-byte (address byte fn2-sim-storage) :position nil :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) (unsigned-byte-p 8 byte))
+  :hints (("Goal" :in-theory (enable fn2-storage-corrupt-byte)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep nil)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp nil :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows nil :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-corrupt-byte) (fn2-sim-storage-rows)))))))
 
 (defthm fn2-storage-init-preserves-type
   (implies (and (fn2-sim-storagep s) (natp nsectors) (< nsectors 1048576)

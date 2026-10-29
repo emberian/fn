@@ -10,7 +10,7 @@
   (declare (xargs :guard (natp n)))
   (if (zp n) 0 (- n 1)))
 
- ; One credit per unretired row, held from successful Accept issue through
+; One credit per unretired row, held from successful Accept issue through
 ; admission and echo reclamation. Failed Accept/admission returns its credit.
 ; Thus free rows = credits + outstanding admission reservations. Only listener
 ; admission removes a free row; retirement never returns a credit.
@@ -19,12 +19,12 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-machine-set-admission-credits
     (+ 1 (fn2-machine-admission-credits fn2-core)) fn2-core)))
-(fn2-machine-core-shape fn2-listener-return-credit ())
+(fn2-core-preserves fn2-listener-return-credit (fn2-core) :rows nil :prefix "")
 
 (defun fn2-machine-observe-terminal (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-machine-write-pending id (fn2-machine-dec (fn2-machine-pending id fn2-core)) fn2-core))
-(fn2-machine-core-shape fn2-machine-observe-terminal (id))
+(fn2-core-preserves fn2-machine-observe-terminal (id fn2-core) :rows nil :prefix "")
 
 ; Handlers own their storage policy; generic routing never overwrites a
 ; machine event cell before its handler has consumed the completion.
@@ -63,7 +63,7 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-observation* fn2-core)))
     (mv 4294967295 fn2-core)))
-(fn2-core-shape-lemmas fn2-machine-refuse-observation () 1)
+(fn2-core-preserves fn2-machine-refuse-observation (fn2-core) :position 1 :rows nil)
 
 (defmachine-callback fn2-listener-observe-close fn2-listener (id event outcome reason count aux0 aux1) 1
   (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-accepting*) (event-ready 0))))
@@ -88,7 +88,7 @@
       ; named close/release or evidence posture chosen by R6.
       (let ((fn2-core (fn2-machine-put id (stopped 1) (wait-reason 0))))
         (fn2-machine-result 0 8 0 nil fn2-core)))))
-(fn2-core-shape-lemmas fn2-machine-issue-result (id code bytes) 4)
+(fn2-core-preserves fn2-machine-issue-result (id code bytes fn2-core) :position 4 :rows nil)
 
 (defmachine-callback fn2-listener-admit fn2-listener (id budget) 4
   (fn2-machine-with-work 0 24 0

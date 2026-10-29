@@ -54,3 +54,10 @@
   (let* ((formals (caddr definition)) (carrier (car (last formals))))
     (fn2-operation-events owner (cadr definition) carrier (butlast formals 1)
       returns nil section (cadddr definition) (cddddr definition) nil nil)))
+
+; Shared guard-status check; the historical name stays for existing consumers.
+(defun fn2-profile-exports-compliant-p (names world)
+  (declare (xargs :guard (and (symbol-listp names) (plist-worldp world))))
+  (if (endp names) t
+    (and (eq (symbol-class (car names) world) :common-lisp-compliant)
+         (fn2-profile-exports-compliant-p (cdr names) world))))

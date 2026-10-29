@@ -65,7 +65,7 @@
               (fn2-decl-test-signatures manifest (w state))))))))
 (make-event
  (value (sublis '((fn2-decl-new-events . fn2-decl-test-events))
-          (fn2-columns-events 'fn2-three '((a :u8) (b :u16) (c :u32)) 4294967296 nil nil))))
+          (fn2-columns-events 'fn2-three '((a :u8) (b :u16) (c :u32)) 4294967296 nil nil nil))))
 (assert-event
  (let ((manifest (fn2-decl-get :generated (fn2-decl-row '(:columns fn2-three) (w state)))))
    (and (equal (fn2-decl-get :visibility (cddr (fn2-decl-find-artifact 'fn2-three-as-record manifest))) :local)

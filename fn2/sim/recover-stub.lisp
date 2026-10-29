@@ -1,5 +1,7 @@
 (in-package "ACL2")
+(include-book "../books/profile")
 (include-book "../books/columns")
+(include-book "../books/fnv")
 (include-book "prng")
 
 ; Layer A scribe format v1, little endian, 4096 bytes per sector:
@@ -17,7 +19,7 @@
   :init-name fn2-recovery-columns-init
   :extra-fields
   ((fn2-recovery-bytes :type (array (unsigned-byte 8) (0))
-                       :initially 0 :resizable t)))
+                       :initially 0 :resizable t :why "Byte image contains 4096 bytes per sector row.")))
 
 (defun fn2-recovery-init (sectors fn2-recovery-image)
   (declare (xargs :stobjs fn2-recovery-image
@@ -72,22 +74,13 @@
 (fn2-word-facts fn2-recovery-u32 (fn2-recovery-u32 i fn2-recovery-image)
   fn2-recovery-u32-type (fn2-recovery-imagep fn2-recovery-image) 4294967296)
 
-(defun fn2-recovery-fnv-byte (hash byte)
-  (declare (xargs :guard (and (unsigned-byte-p 32 hash) (unsigned-byte-p 8 byte))))
-  ; u32 times this 25-bit FNV prime is strictly below 2^57.
-  (fn2-u32 (* 16777619 (logxor hash byte))))
-(defthm fn2-recovery-fnv-byte-type
-  (unsigned-byte-p 32 (fn2-recovery-fnv-byte hash byte)))
-(in-theory (disable fn2-recovery-fnv-byte))
-(fn2-word-facts fn2-recovery-fnv-byte (fn2-recovery-fnv-byte hash byte) fn2-recovery-fnv-byte-type)
-
 (defun fn2-recovery-hash-loop (base j hash fn2-recovery-image)
   (declare (xargs :stobjs fn2-recovery-image :measure (nfix (- 4096 (nfix j)))
                   :guard (and (natp base) (natp j) (unsigned-byte-p 32 hash))))
   (if (or (not (natp j)) (>= j 4096)) hash
     (fn2-recovery-hash-loop
      base (+ j 1)
-     (fn2-recovery-fnv-byte hash (if (and (<= 16 j) (< j 20)) 0
+     (fn2-fnv-step hash (if (and (<= 16 j) (< j 20)) 0
                                  (fn2-recovery-byte (+ base j) fn2-recovery-image)))
      fn2-recovery-image)))
 (defthm fn2-recovery-hash-loop-type
@@ -228,9 +221,6 @@
          (fn2-recovery-image (fn2-recovery-put-u32 (+ base 16) hash fn2-recovery-image)))
     fn2-recovery-image))
 
-(assert-event (and (eq (symbol-class 'fn2-recover-start (w state)) :common-lisp-compliant)
-                   (eq (symbol-class 'fn2-recover-step (w state)) :common-lisp-compliant)
-                   (eq (symbol-class 'fn2-recover-stub (w state)) :common-lisp-compliant)
-                   (eq (symbol-class 'fn2-recovery-sector (w state)) :common-lisp-compliant)
-                   (eq (symbol-class 'fn2-recovery-stamp (w state)) :common-lisp-compliant)
-                   (eq (symbol-class 'fn2-recovery-put-byte (w state)) :common-lisp-compliant)))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-recover-start fn2-recover-step fn2-recover-stub fn2-recovery-sector
+    fn2-recovery-stamp fn2-recovery-put-byte) (w state)))

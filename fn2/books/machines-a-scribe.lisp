@@ -3,7 +3,7 @@
 ; is its own successful FenceResult; a failed write/fence result never retries I/O.
 (in-package "ACL2")
 (include-book "machines-a-access")
-(include-book "arithmetic-3/floor-mod/floor-mod" :dir :system)
+(include-book "fnv")
 
 (defmacro fn2-scribe-events ()
  '(progn
@@ -36,13 +36,6 @@
   :rule-classes :linear)
 (in-theory (disable fn2-scribe-byte))
 
-(defun fn2-scribe-fnv (hash byte)
-  (declare (xargs :guard (and (unsigned-byte-p 32 hash) (unsigned-byte-p 8 byte))))
-  (mod (* 16777619 (logxor (ifix hash) (ifix byte))) 4294967296))
-(defthm fn2-scribe-fnv-type
-  (unsigned-byte-p 32 (fn2-scribe-fnv hash byte)))
-(in-theory (disable fn2-scribe-fnv))
-
 (defun fn2-scribe-fill (left cursor sequence hash slot gen id owner-gen fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix left)
                   :guard (and (fn2-core-wfp fn2-core) (natp left) (natp cursor)
@@ -54,9 +47,8 @@
         (fn2-core-write slot gen cursor byte *fn2-scribe-kind* id owner-gen fn2-core)
         (if (not (eq code :ok)) (mv code cursor hash fn2-core)
           (fn2-scribe-fill (- left 1) (+ cursor 1) sequence
-                           (fn2-scribe-fnv hash byte) slot gen id owner-gen fn2-core))))))
-(fn2-core-shape-lemmas fn2-scribe-fill
-  (left cursor sequence hash slot gen id owner-gen) 3)
+                           (fn2-fnv-step hash byte) slot gen id owner-gen fn2-core))))))
+(fn2-core-preserves fn2-scribe-fill (left cursor sequence hash slot gen id owner-gen fn2-core) :position 3 :rows nil)
 
 (defun fn2-scribe-verify (left cursor sequence checksum slot gen id owner-gen fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix left)
@@ -163,8 +155,7 @@
         (fn2-scribe-u32-byte hash cursor) *fn2-scribe-kind* id owner-gen fn2-core)
       (if (not (eq code :ok)) (mv code fn2-core)
         (fn2-scribe-patch-loop (- left 1) (+ cursor 1) hash slot gen id owner-gen fn2-core)))))
-(fn2-core-shape-lemmas fn2-scribe-patch-loop
-  (left cursor hash slot gen id owner-gen) 1)
+(fn2-core-preserves fn2-scribe-patch-loop (left cursor hash slot gen id owner-gen fn2-core) :position 1 :rows nil)
 
 (defmachine-callback fn2-scribe-patch fn2-scribe (id budget) 4
   (fn2-machine-with-work 4 12 0
@@ -305,7 +296,7 @@
 
 (assert-event
  (fn2-profile-exports-compliant-p
-  '(fn2-scribe-start fn2-scribe-run fn2-scribe-byte fn2-scribe-fnv
+  '(fn2-scribe-start fn2-scribe-run fn2-scribe-byte fn2-fnv-step
     fn2-scribe-fill fn2-scribe-verify fn2-scribe-stop fn2-scribe-park
     fn2-scribe-refused fn2-scribe-window-class fn2-scribe-reserve
     fn2-scribe-fill-run fn2-scribe-patch-loop fn2-scribe-patch

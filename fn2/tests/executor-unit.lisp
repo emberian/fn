@@ -3,79 +3,16 @@
 (in-package "ACL2")
 (include-book "reference-unit")
 
-; Snapshot the declaration, not a hand-maintained subset of its readers.
-; Array lists retain physical index order and include unused capacity. The
-; resulting list is exactly the logical defstobj layout, including extras.
-(defun fn2-executor-test-array-events (name fields)
-  (declare (xargs :verify-guards nil))
-  (if (atom fields) nil
-    (let* ((field (caar fields))
-           (reader (fn2-columns-sym field "I"))
-           (snapshot (fn2-columns-sym field "-TEST-COPY")))
-      (append
-       (if (fn2-columns-arrayp (car fields))
-           `((defun ,snapshot (left offset ,name)
-               (declare (xargs :stobjs ,name :verify-guards nil :measure (nfix left)))
-               (if (zp left) nil
-                 (cons (,reader offset ,name)
-                       (,snapshot (- left 1) (+ 1 (nfix offset)) ,name))))
-             (in-theory (disable ,snapshot))) nil)
-       (fn2-executor-test-array-events name (cdr fields))))))
-(defun fn2-executor-test-field-calls (name fields)
-  (declare (xargs :verify-guards nil))
-  (if (atom fields) nil
-    (cons (if (fn2-columns-arrayp (car fields))
-              `(,(fn2-columns-sym (caar fields) "-TEST-COPY")
-                (,(fn2-columns-sym (caar fields) "-LENGTH") ,name) 0 ,name)
-            `(,(caar fields) ,name))
-          (fn2-executor-test-field-calls name (cdr fields)))))
-(defun fn2-executor-test-snapshot-events (names registry)
-  (declare (xargs :verify-guards nil))
-  (if (atom names) nil
-    (let* ((name (car names))
-           (schema (cdr (assoc-eq name registry)))
-           (columns (cadr (member-eq :columns schema)))
-           (extras (cadr (member-eq :extra-fields schema)))
-           (fields (append (fn2-columns-fields name columns)
-                           `((,(fn2-columns-sym name "-ROWS") :type (unsigned-byte 32)))
-                           extras))
-           (snapshot (fn2-columns-sym name "-TEST-LOGICAL-SNAPSHOT")))
-      (append (fn2-executor-test-array-events name fields)
-              `((defun ,snapshot (,name)
-                  (declare (xargs :stobjs ,name :verify-guards nil))
-                  (list ,@(fn2-executor-test-field-calls name fields)))
-                (in-theory (disable ,snapshot)))
-              (fn2-executor-test-snapshot-events (cdr names) registry)))))
-(assert-event
- (equal (fn2-executor-test-field-calls 'scratch
-          '((octets :type (array (unsigned-byte 8) (0)))
-            (count :type (unsigned-byte 32))))
-        '((octets-test-copy (octets-length scratch) 0 scratch)
-          (count scratch))))
-(assert-event
- (equal (fn2-executor-test-array-events 'scratch
-          '((octets :type (array (unsigned-byte 8) (0)))))
-        '((defun octets-test-copy (left offset scratch)
-            (declare (xargs :stobjs scratch :verify-guards nil :measure (nfix left)))
-            (if (zp left) nil
-              (cons (octetsi offset scratch)
-                    (octets-test-copy (- left 1) (+ 1 (nfix offset)) scratch))))
-          (in-theory (disable octets-test-copy)))))
-(make-event
- (value (cons 'progn
-   (fn2-executor-test-snapshot-events
-    (strip-cars (strip-cdrs *fn2-core-children*))
-    (reverse (fn2-decl-rows :columns (w state)))))))
-
 (defun fn2-executor-test-snapshot-calls (children)
   (if (atom children) nil
-    (cons `(,(fn2-columns-sym (cadar children) "-TEST-LOGICAL-SNAPSHOT") ,(cadar children))
+    (cons `(,(fn2-columns-sym (cadar children) "-COPY") ,(cadar children))
           (fn2-executor-test-snapshot-calls (cdr children)))))
 (make-event
- (value `(defun fn2-executor-test-snapshot (fn2-core)
+ (value `(fn2-defoperation (:operation-set fn2-ref-core) :reference :infer
+         (defun fn2-executor-test-snapshot (fn2-core)
            (declare (xargs :stobjs fn2-core :verify-guards nil))
            (stobj-let ,(fn2-core-child-bindings *fn2-core-children*) (answer)
-             (list ,@(fn2-executor-test-snapshot-calls *fn2-core-children*)) answer))))
+             (list ,@(fn2-executor-test-snapshot-calls *fn2-core-children*)) answer)))))
 (in-theory (disable fn2-executor-test-snapshot))
 
 (defun fn2-executor-test-post (slot gen fn2-core)
@@ -285,3 +222,28 @@
                 (e/d ,names ,(fn2-executor-test-execution-runes names))))))))
 
 (fn2-assert-owed-teeth fn2-turn-bounds)
+
+; The ring is exercised through the same concrete writers used by the core.
+; Two rows retain only the latest two of three records and report one lost.
+(defun fn2-trace-test-ring-run (fn2-trace)
+  (declare (xargs :stobjs fn2-trace :verify-guards nil))
+  (let* ((fn2-trace (fn2-trace-init 2 t fn2-trace))
+         (fn2-trace (fn2-trace-append 1 10 0 0 0 1 0 nil 4294967295 0 0 fn2-trace))
+         (fn2-trace (fn2-trace-append 1 11 1 1 0 1 0 nil 4294967295 0 0 fn2-trace))
+         (fn2-trace (fn2-trace-append 1 12 2 2 0 1 1 nil 4294967295 0 0 fn2-trace))
+         (fn2-trace (fn2-trace-action 0 5 9 fn2-trace))
+         (records (fn2-trace-records fn2-trace))
+         (ok (and (equal (fn2-trace-lost fn2-trace) 1)
+                  (equal (len records) 2)
+                  (equal (nth 1 (car records)) 11)
+                  (equal (nth 1 (cadr records)) 12)
+                  (equal (nth 11 (cadr records)) 5)
+                  (equal (nth 12 (cadr records)) 9)))
+         (fn2-trace (fn2-trace-init 2 nil fn2-trace))
+         (fn2-trace (fn2-trace-append 1 10 0 0 0 1 0 nil 4294967295 0 0 fn2-trace)))
+    (mv (and ok (equal (fn2-trace-records fn2-trace) nil)) fn2-trace)))
+(defun fn2-trace-test-ring ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-trace
+    (mv-let (answer fn2-trace) (fn2-trace-test-ring-run fn2-trace) answer)))
+(assert-event (fn2-trace-test-ring))

@@ -2,31 +2,18 @@
 (include-book "../books/columns")
 (include-book "std/testing/must-fail" :dir :system)
 
-; A scalar named STAMP must not be mistaken for an array predicate ending
-; in P. Unbounded numeric arrays have no bound rule; metadata has neither.
-(assert-event
- (equal
-  (fn2-columns-array-nth-runes
-   '((stamp :type (unsigned-byte 60))
-     (bytes :type (array (unsigned-byte 8) (0)))
-     (naturals :type (array (integer 0 *) (0)))
-     (metadata :type t)))
-  '((:type-prescription bytesp-nth-natp)
-    (:linear bytesp-nth-bound)
-    (:type-prescription naturalsp-nth-natp))))
-
 (must-fail
  (defcolumns fn2-unjustified ((value :u8))
    :extra-fields ((fn2-unjustified-metadata :type t)))
- :expected :hard :with-output-off nil :check-expansion t)
+ :expected :soft :with-output-off nil :check-expansion t)
 (must-fail
  (defcolumns fn2-unjustified-hash ((value :u8))
    :extra-fields ((fn2-unjustified-cache :type (hash-table equal))))
- :expected :hard :with-output-off nil :check-expansion t)
+ :expected :soft :with-output-off nil :check-expansion t)
 (must-fail
  (defcolumns fn2-empty-reason ((value :u8))
    :extra-fields ((fn2-empty-metadata :type t :why "")))
- :expected :hard :with-output-off nil :check-expansion t)
+ :expected :soft :with-output-off nil :check-expansion t)
 
 (defcolumns fn2-justified ((value :u8)) :rows-bound 8
  :extra-fields ((fn2-justified-metadata :type t
@@ -43,9 +30,13 @@
 (must-fail
  (defcolumns fn2-unjustified-raw-u64 ((value :u8))
    :extra-fields ((fn2-raw-wide :type (array (unsigned-byte 64) (0)) :initially 0 :resizable t)))
- :expected :hard :with-output-off nil :check-expansion t)
-(assert-event (and (fn2-columns-extra-okp '((raw :type (unsigned-byte 63))))
-                   (fn2-columns-extra-okp '((raw :type (integer 0 9223372036854775807))))))
+ :expected :soft :with-output-off nil :check-expansion t)
+(must-fail
+ (defcolumns fn2-unjustified-bounded ((value :u8))
+   :extra-fields ((fn2-unjustified-count :type (unsigned-byte 8) :initially 0)))
+ :expected :soft :with-output-off nil :check-expansion t)
+(assert-event (and (fn2-columns-extra-okp '((raw :type (unsigned-byte 63) :why "Unit-only bounded scalar.")))
+                   (fn2-columns-extra-okp '((raw :type (integer 0 9223372036854775807) :why "Unit-only bounded scalar.")))))
 (assert-event (and (not (fn2-columns-extra-okp '((raw :type (integer 0 9223372036854775808)))))
                    (not (fn2-columns-extra-okp '((raw :type (unsigned-byte 64)))))
                    (not (fn2-columns-extra-okp '((raw :type (integer 0 18446744073709551615)))))))
@@ -102,3 +93,82 @@
    answer)))
 (assert-event (fn2-wide-unit))
 (value-triple (cw "COLUMN WIDTH UNIT: native u64 roundtrip/reason; pair comparison/carry/exhaustion PASS~%"))
+
+; A small local instance exercises all kinds, enums and extra raw fields.
+; No example storage or exported names are imposed on includers.
+(local
+ (defcolumns fn2-columns-example
+   ((byte :u8) (short :u16) (word :u32) (gen :u60) (flag :bool)
+    (phase (:enum fn2-columns-example-phase (:free :busy))))
+   :rows-bound 32
+   :extra-fields
+   ((fn2-columns-example-bytes :type (array (unsigned-byte 8) (0))
+                               :initially 0 :resizable t :why "Unit fixture exercises resizable extra arrays.")
+    (fn2-columns-example-count :type (integer 0 16) :initially 0 :why "Unit fixture exercises bounded scalar extras.")
+    (fn2-columns-example-heads :initially 0 :type (array (unsigned-byte 32) (16)) :why "Unit fixture exercises fixed extra arrays.")
+    (fn2-columns-example-metadata :initially nil :type t
+     :why "Local DSL test: unrestricted metadata is never served.")
+    (fn2-columns-example-objects :initially nil :type (array t (3))
+     :why "Local DSL test: exercises object arrays, never served.")
+    (fn2-columns-example-cache :type (hash-table equal) :initially nil
+     :why "Local DSL test: exercises hash-table fields, never served.")
+    (fn2-columns-example-bare :why "Local DSL test: exercises the default t field type, never served."))))
+
+(local
+ (defun fn2-columns-example-extra-reader (i fn2-columns-example)
+   (declare (xargs :stobjs fn2-columns-example :guard (and (natp i) (< i 16))))
+   (+ 1 (fn2-columns-example-headsi i fn2-columns-example))))
+
+(local
+ (defun fn2-columns-example-row-arithmetic (i fn2-columns-example)
+   (declare (xargs :stobjs fn2-columns-example
+                   :guard (and (fn2-columns-example-wfp fn2-columns-example)
+                               (natp i) (< i (fn2-columns-example-rows fn2-columns-example)))))
+   (+ (fn2-columns-example-rows fn2-columns-example)
+      (fn2-columns-example-word i fn2-columns-example))))
+
+(local
+ (defun fn2-columns-example-test ()
+   (declare (xargs :guard t))
+   (with-local-stobj fn2-columns-example
+     (mv-let (answer fn2-columns-example)
+       (let* ((fn2-columns-example (fn2-columns-example-init 3 fn2-columns-example))
+              (fn2-columns-example (fn2-columns-example-set-word 2 42 fn2-columns-example))
+              (fn2-columns-example (fn2-columns-example-set-flag 1 1 fn2-columns-example))
+              (fn2-columns-example (fn2-columns-example-set-phase 2
+                (- *fn2-columns-example-phase-count* 1) fn2-columns-example)))
+         (mv (and (equal (fn2-columns-example-word 2 fn2-columns-example) 42)
+                  (equal (fn2-columns-example-flag 1 fn2-columns-example) 1)
+                  (equal (fn2-columns-example-rows fn2-columns-example) 3)
+                  (equal (fn2-columns-example-row-snapshot 2 fn2-columns-example) '(0 0 42 0 0 1)))
+             fn2-columns-example))
+       answer))))
+
+(local (assert-event (fn2-columns-example-test)))
+(local (assert-event (equal (fn2-columns-example-phase-code->keyword 1) :busy)))
+(local (assert-event (equal (fn2-columns-example-phase-keyword->code :free) 0)))
+(local (assert-event (assoc-eq 'fn2-columns-example (reverse (fn2-decl-rows :columns (w state))))))
+
+(assert-event
+ (equal (fn2-columns-copy-bindings 'scratch 'scratch-ref
+          '((octets :type (array (unsigned-byte 8) (0)) :resizable t)
+            (sample-counter :type (unsigned-byte 32))))
+        '((scratch-ref (resize-octets (octets-length scratch) scratch-ref))
+          (scratch-ref (octets-copy (octets-length scratch) 0 scratch scratch-ref))
+          (scratch-ref (update-sample-counter (sample-counter scratch) scratch-ref)))))
+(assert-event
+ (equal (fn2-columns-diff-terms 'scratch 'scratch-ref
+          '((octets :type (array (unsigned-byte 8) (0)))
+            (sample-counter :type (unsigned-byte 32))) '(octets))
+        '((if (equal (octets-length scratch) (octets-length scratch-ref)) nil
+              (list 'octets-length))
+          (and (not (equal (sample-counter scratch) (sample-counter scratch-ref))) (list 'sample-counter)))))
+(local (assert-event (= *fn2-columns-example-phase-count* 2)))
+(local
+ (must-fail
+  (defun fn2-columns-example-unnamed-phase (fn2-columns-example)
+    (declare (xargs :stobjs fn2-columns-example
+                    :guard (and (fn2-columns-example-wfp fn2-columns-example)
+                                (< 0 (fn2-columns-example-rows fn2-columns-example)))))
+    (fn2-columns-example-set-phase 0 *fn2-columns-example-phase-count* fn2-columns-example))
+  :with-output-off nil :check-expansion t))

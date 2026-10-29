@@ -912,30 +912,13 @@
 (assert-event (fn2-pool-test-stale-teeth nil))
 
 ; Check the imported certified executable interface in this world.
-(assert-event (eq (symbol-class 'fn2-pool-init (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-class-for (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-reserve (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-release (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-lease-in (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-adapter-write (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-complete-in (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-lease-out (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-release-out (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-hand (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-accept-hand (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-read (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-write (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-reset (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-state (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-gen (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-fill (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-base (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-cap (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-out-count (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-lease-range (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-free-count (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-nslots (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-capacity-bytes (w state)) :common-lisp-compliant))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-pool-init fn2-pool-class-for fn2-pool-reserve fn2-pool-release
+    fn2-pool-lease-in fn2-pool-adapter-write fn2-pool-complete-in fn2-pool-lease-out
+    fn2-pool-release-out fn2-pool-hand fn2-pool-accept-hand fn2-pool-read
+    fn2-pool-write fn2-pool-reset fn2-pool-slot-state fn2-pool-slot-gen
+    fn2-pool-slot-fill fn2-pool-slot-base fn2-pool-slot-cap fn2-pool-slot-out-count
+    fn2-pool-lease-range fn2-pool-free-count fn2-pool-nslots fn2-pool-capacity-bytes) (w state)))
 
 ; Registry teeth run the existing full positive and negative fixtures.
 (defun fn2-pool-stale-teeth ()

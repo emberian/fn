@@ -8,20 +8,10 @@
   ((kind :u8) (machine :u32) (principal :u16) (position :u32) (bytes :u32) (steps :u32) (actions :u8) (runnable :bool) (wake-id :u32) (wake-principal :u16) (action-start :u32) (action-0-slot :u32) (action-0-gen :u60) (action-1-slot :u32) (action-1-gen :u60) (action-2-slot :u32) (action-2-gen :u60) (action-3-slot :u32) (action-3-gen :u60))
   :init-name fn2-trace-columns-init
   :extra-fields
-  ((fn2-trace-enabled :type (unsigned-byte 1) :initially 0)
-   (fn2-trace-head :type (unsigned-byte 32) :initially 0)
-   (fn2-trace-count :type (unsigned-byte 32) :initially 0)
-   (fn2-trace-lost :type (unsigned-byte 60) :initially 0)))
-
-(defmacro fn2-trace-preserves (name args)
-  `(progn
-     (defthm ,(fn2-columns-sym name "-TYPE")
-       (implies (and (fn2-tracep fn2-trace) (fn2-trace-wfp fn2-trace))
-                (fn2-tracep (,name ,@args fn2-trace))))
-     (defthm ,(fn2-columns-sym name "-WFP")
-       (implies (fn2-trace-wfp fn2-trace)
-                (fn2-trace-wfp (,name ,@args fn2-trace))))
-     (in-theory (disable ,name))))
+  ((fn2-trace-enabled :type (unsigned-byte 1) :initially 0 :why "Ring-wide diagnostic control, independent of record rows.")
+   (fn2-trace-head :type (unsigned-byte 32) :initially 0 :why "Ring-wide diagnostic control, independent of record rows.")
+   (fn2-trace-count :type (unsigned-byte 32) :initially 0 :why "Ring-wide diagnostic control, independent of record rows.")
+   (fn2-trace-lost :type (unsigned-byte 60) :initially 0 :why "Ring-wide diagnostic control, independent of record rows.")))
 
 (defun fn2-trace-clear (fn2-trace)
   (declare (xargs :stobjs fn2-trace :guard (fn2-trace-wfp fn2-trace)))
@@ -29,7 +19,7 @@
          (fn2-trace (update-fn2-trace-count 0 fn2-trace))
          (fn2-trace (update-fn2-trace-lost 0 fn2-trace)))
     fn2-trace))
-(fn2-trace-preserves fn2-trace-clear ())
+(fn2-trace-preserves fn2-trace-clear (fn2-trace) :rows nil :prefix "" :wfp-type nil)
 
 (defun fn2-trace-init (capacity enabled fn2-trace)
   (declare (xargs :stobjs fn2-trace
@@ -91,8 +81,7 @@
                        (if (and (>= count rows) (< lost 1152921504606846975))
                            (+ 1 lost) lost) fn2-trace)))
       fn2-trace)))
-(fn2-trace-preserves fn2-trace-append
-  (kind machine principal position bytes steps actions runnable-after wake-id wake-principal action-start))
+(fn2-trace-preserves fn2-trace-append (kind machine principal position bytes steps actions runnable-after wake-id wake-principal action-start fn2-trace) :rows nil :prefix "" :wfp-type nil)
 
 ; Fill the most recently appended record from actual outbox OpRefs. Four is
 ; the declared descriptor quantum, never a traversal of an outstanding table.
@@ -115,7 +104,7 @@
         (3 (let ((fn2-trace (fn2-trace-set-action-3-slot i opslot fn2-trace)))
              (fn2-trace-set-action-3-gen i opgen fn2-trace)))
         (otherwise fn2-trace)))))
-(fn2-trace-preserves fn2-trace-action (ordinal opslot opgen))
+(fn2-trace-preserves fn2-trace-action (ordinal opslot opgen fn2-trace) :rows nil :prefix "" :wfp-type nil)
 
 ; Fixed record order shared with the test-only readers, not with the scheduler.
 ; 0 kind, 1 machine, 2 principal, 3 calendar position, 4 bytes, 5 steps,
@@ -161,28 +150,3 @@
  (fn2-profile-exports-compliant-p
   '(fn2-trace-init fn2-trace-clear fn2-trace-append fn2-trace-action
     fn2-trace-record fn2-trace-records) (w state)))
-
-; The ring is exercised through the same concrete writers used by the core.
-; Two rows retain only the latest two of three records and report one lost.
-(defun fn2-trace-test-ring-run (fn2-trace)
-  (declare (xargs :stobjs fn2-trace :verify-guards nil))
-  (let* ((fn2-trace (fn2-trace-init 2 t fn2-trace))
-         (fn2-trace (fn2-trace-append 1 10 0 0 0 1 0 nil 4294967295 0 0 fn2-trace))
-         (fn2-trace (fn2-trace-append 1 11 1 1 0 1 0 nil 4294967295 0 0 fn2-trace))
-         (fn2-trace (fn2-trace-append 1 12 2 2 0 1 1 nil 4294967295 0 0 fn2-trace))
-         (fn2-trace (fn2-trace-action 0 5 9 fn2-trace))
-         (records (fn2-trace-records fn2-trace))
-         (ok (and (equal (fn2-trace-lost fn2-trace) 1)
-                  (equal (len records) 2)
-                  (equal (nth 1 (car records)) 11)
-                  (equal (nth 1 (cadr records)) 12)
-                  (equal (nth 11 (cadr records)) 5)
-                  (equal (nth 12 (cadr records)) 9)))
-         (fn2-trace (fn2-trace-init 2 nil fn2-trace))
-         (fn2-trace (fn2-trace-append 1 10 0 0 0 1 0 nil 4294967295 0 0 fn2-trace)))
-    (mv (and ok (equal (fn2-trace-records fn2-trace) nil)) fn2-trace)))
-(defun fn2-trace-test-ring ()
-  (declare (xargs :verify-guards nil))
-  (with-local-stobj fn2-trace
-    (mv-let (answer fn2-trace) (fn2-trace-test-ring-run fn2-trace) answer)))
-(assert-event (fn2-trace-test-ring))

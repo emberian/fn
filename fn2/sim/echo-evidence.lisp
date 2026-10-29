@@ -83,7 +83,7 @@
 (defun fn2-echo-observed-advance (allow stats fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
   (mv-let (completed fn2-core fn2-sim fn2-own)
-    (fn2-sim-echo-advance allow fn2-core fn2-sim fn2-own)
+    (fn2-sim-advance-with-clients nil allow fn2-core fn2-sim fn2-own)
     (declare (ignore completed))
     (mv stats fn2-core fn2-sim fn2-own)))
 (in-theory (disable fn2-echo-observed-advance))

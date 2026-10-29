@@ -12,14 +12,14 @@
   ((principal :u16) (in-queue :bool) (prev :u32) (next :u32))
   :init-name fn2-sched-columns-init
   :extra-fields
-  ((fn2-sched-heads :type (array (unsigned-byte 32) (0)) :initially 4294967295 :resizable t)
-   (fn2-sched-tails :type (array (unsigned-byte 32) (0)) :initially 4294967295 :resizable t)
-   (fn2-sched-counts :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t)
-   (fn2-sched-calendar :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t)
-   (fn2-sched-services :type (array (unsigned-byte 1) (4)) :initially 0)
-   (fn2-sched-nprincipals :type (unsigned-byte 32) :initially 0)
-   (fn2-sched-cursor :type (unsigned-byte 32) :initially 0)
-   (fn2-sched-queued :type (unsigned-byte 32) :initially 0)))
+  ((fn2-sched-heads :type (array (unsigned-byte 32) (0)) :initially 4294967295 :resizable t :why "Principal queue and calendar metadata, independent of machine rows.")
+   (fn2-sched-tails :type (array (unsigned-byte 32) (0)) :initially 4294967295 :resizable t :why "Principal queue and calendar metadata, independent of machine rows.")
+   (fn2-sched-counts :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t :why "Principal queue and calendar metadata, independent of machine rows.")
+   (fn2-sched-calendar :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t :why "Principal queue and calendar metadata, independent of machine rows.")
+   (fn2-sched-services :type (array (unsigned-byte 1) (4)) :initially 0 :why "Principal queue and calendar metadata, independent of machine rows.")
+   (fn2-sched-nprincipals :type (unsigned-byte 32) :initially 0 :why "Principal queue and calendar metadata, independent of machine rows.")
+   (fn2-sched-cursor :type (unsigned-byte 32) :initially 0 :why "Principal queue and calendar metadata, independent of machine rows.")
+   (fn2-sched-queued :type (unsigned-byte 32) :initially 0 :why "Principal queue and calendar metadata, independent of machine rows.")))
 
 ; Init accepts precisely the declared calendar geometry.  Each group has up
 ; to sixteen principal slots and all four protected services, in that order.

@@ -66,7 +66,9 @@
         (let ((fn2-sim (fn2-sim-force-fault 15 fn2-sim)))
           (fn2-sim-choose-fault fn2-sim))
       (mv 26 fn2-sim))))
-(fn2-sim-shape fn2-sim-recovery-choice (fn2-sim) 1)
+(fn2-sim-preserves fn2-sim-recovery-choice (fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp 1) ("-READY" fn2-sim-ready 1) ("-WFP" fn2-sim-wfp 1)))
 
  ; Keep readiness opaque across composed and recursive transitions. Their
 ; exported preservation lemmas carry it; opening it loses the induction key.
@@ -102,26 +104,14 @@
               (declare (ignore done valid bad misplaced))
               (mv :ok next bad-tail damaged never fn2-core fn2-sim fn2-own fn2-recovery-image)))))))))
 
-(defmacro fn2-sim-recovery-shape (name args corepos simpos ownpos imagepos extra)
-  (let ((call `(,name ,@args fn2-core fn2-sim fn2-own fn2-recovery-image)))
-    `(progn
-       (defthm ,(fn2-columns-sym name "-SHAPE")
-         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
-                       (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
-                       (fn2-ownp fn2-own) (fn2-own-wfp fn2-own)
-                       (fn2-recovery-imagep fn2-recovery-image) ,extra)
-                  (and (fn2-corep (mv-nth ,corepos ,call))
-                       (fn2-core-wfp (mv-nth ,corepos ,call))
-                       (fn2-simp (mv-nth ,simpos ,call))
-                       (fn2-sim-ready (mv-nth ,simpos ,call))
-                       (fn2-ownp (mv-nth ,ownpos ,call))
-                       (fn2-own-wfp (mv-nth ,ownpos ,call))
-                       (fn2-recovery-imagep (mv-nth ,imagepos ,call)))))
-       (defthm ,(fn2-columns-sym name "-LENGTH")
-         (equal (fn2-recovery-bytes-length (mv-nth ,imagepos ,call))
-                (fn2-recovery-bytes-length fn2-recovery-image))))))
-(fn2-sim-recovery-shape fn2-sim-recovery-step (i n ack-seq bad-tail damaged never profile) 5 6 7 8
-  (and (natp i) (unsigned-byte-p 32 n) (unsigned-byte-p 32 ack-seq) (natp never)))
+(fn2-sim-preserves fn2-sim-recovery-step (i n ack-seq bad-tail damaged never profile fn2-core fn2-sim fn2-own fn2-recovery-image) :disable nil
+  :hyps ((fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
+         (fn2-ownp fn2-own) (fn2-own-wfp fn2-own) (fn2-recovery-imagep fn2-recovery-image) (and (natp i) (unsigned-byte-p 32 n) (unsigned-byte-p 32 ack-seq) (natp never)))
+  :specs (("-CORE-TYPE" fn2-corep 5) ("-CORE-WFP" fn2-core-wfp 5)
+          ("-SIM-TYPE" fn2-simp 6) ("-SIM-READY" fn2-sim-ready 6)
+          ("-OWN-TYPE" fn2-ownp 7) ("-OWN-WFP" fn2-own-wfp 7)
+          ("-IMAGE-TYPE" fn2-recovery-imagep 8)
+          ("-LENGTH" fn2-recovery-bytes-length 8 :frame fn2-recovery-image)))
 (defthm fn2-sim-recovery-step-cursor-type
   (implies (natp i)
            (natp (mv-nth 1 (fn2-sim-recovery-step i n ack-seq bad-tail damaged never profile
@@ -153,10 +143,14 @@
                  (mv :unknown fn2-core fn2-sim fn2-own fn2-recovery-image)
                (fn2-sim-recover-loop (- fuel 1) next n ack-seq crash-only bad-tail damaged never profile
                                       fn2-core fn2-sim fn2-own fn2-recovery-image))))))
-(fn2-sim-recovery-shape fn2-sim-recover-loop
-  (fuel i n ack-seq crash-only bad-tail damaged never profile) 1 2 3 4
-  (and (natp fuel) (natp i) (unsigned-byte-p 32 n) (unsigned-byte-p 32 ack-seq)
-       (booleanp crash-only) (natp never)))
+(fn2-sim-preserves fn2-sim-recover-loop (fuel i n ack-seq crash-only bad-tail damaged never profile fn2-core fn2-sim fn2-own fn2-recovery-image) :disable nil
+  :hyps ((fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
+         (fn2-ownp fn2-own) (fn2-own-wfp fn2-own) (fn2-recovery-imagep fn2-recovery-image) (and (natp fuel) (natp i) (unsigned-byte-p 32 n) (unsigned-byte-p 32 ack-seq) (booleanp crash-only) (natp never)))
+  :specs (("-CORE-TYPE" fn2-corep 1) ("-CORE-WFP" fn2-core-wfp 1)
+          ("-SIM-TYPE" fn2-simp 2) ("-SIM-READY" fn2-sim-ready 2)
+          ("-OWN-TYPE" fn2-ownp 3) ("-OWN-WFP" fn2-own-wfp 3)
+          ("-IMAGE-TYPE" fn2-recovery-imagep 4)
+          ("-LENGTH" fn2-recovery-bytes-length 4 :frame fn2-recovery-image)))
 (in-theory (disable fn2-sim-recover-loop))
 
 (defun fn2-sim-recover-run
@@ -173,8 +167,14 @@
         (if (not (eq code :ok)) (mv :unknown fn2-core fn2-sim fn2-own fn2-recovery-image)
           (fn2-sim-recover-loop fuel 0 n ack-seq crash-only bad-tail damaged 0 profile
                                  fn2-core fn2-sim fn2-own fn2-recovery-image))))))
-(fn2-sim-recovery-shape fn2-sim-recover-run (fuel ack-seq crash-only profile) 1 2 3 4
-  (and (natp fuel) (unsigned-byte-p 32 ack-seq) (booleanp crash-only)))
+(fn2-sim-preserves fn2-sim-recover-run (fuel ack-seq crash-only profile fn2-core fn2-sim fn2-own fn2-recovery-image) :disable nil
+  :hyps ((fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
+         (fn2-ownp fn2-own) (fn2-own-wfp fn2-own) (fn2-recovery-imagep fn2-recovery-image) (and (natp fuel) (unsigned-byte-p 32 ack-seq) (booleanp crash-only)))
+  :specs (("-CORE-TYPE" fn2-corep 1) ("-CORE-WFP" fn2-core-wfp 1)
+          ("-SIM-TYPE" fn2-simp 2) ("-SIM-READY" fn2-sim-ready 2)
+          ("-OWN-TYPE" fn2-ownp 3) ("-OWN-WFP" fn2-own-wfp 3)
+          ("-IMAGE-TYPE" fn2-recovery-imagep 4)
+          ("-LENGTH" fn2-recovery-bytes-length 4 :frame fn2-recovery-image)))
 (in-theory (disable fn2-sim-recover-run))
 
 (assert-event

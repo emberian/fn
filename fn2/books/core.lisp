@@ -15,7 +15,8 @@
  (value (cons 'progn (fn2-core-register-machine-children (fn2-machine-names (w state)) (w state) 0))))
 (fn2-seal :children :core :core-child)
 (fn2-resolve :core)
-(make-event (value (fn2-declare '(:operation-set fn2-core-issue) nil nil nil)))
+(make-event (value (fn2-declare '(:operation-set fn2-core-issue) nil nil
+                      (list (fn2-columns-preserves-macro 'fn2-core)))))
 (make-event (value (fn2-declare '(:operation-set fn2-core-harvest) nil nil nil)))
 (make-event
  (value `(defconst *fn2-core-children*
@@ -121,18 +122,6 @@
   :hints (("Goal" :in-theory (enable fn2-machines-profilep))))
 (in-theory (disable fn2-core-init fn2-core-profilep))
 
-
-(defmacro fn2-core-shape-lemmas (name args position)
-  (let ((call `(,name ,@args fn2-core)))
-    `(progn
-       (defthm ,(fn2-columns-sym name "-PRESERVES-TYPE")
-         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                  (fn2-corep (mv-nth ,position ,call))))
-       (defthm ,(fn2-columns-sym name "-PRESERVES-WFP")
-         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                  (fn2-core-wfp (mv-nth ,position ,call))))
-       (in-theory (disable ,name)))))
-
 ; First corruption wins: later cleanup cannot erase the diagnostic.
 (in-theory (disable fn2-control-rows fn2-control-stop fn2-control-stop-reason
                     fn2-stop-reason-code->keyword))
@@ -175,7 +164,7 @@
     '(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     `((stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
         (,@results fn2-pool) (,target ,@args fn2-pool) (mv ,@results fn2-core)))
-    `((fn2-core-shape-lemmas ,name ,args ,(len results))) nil))
+    `((fn2-core-preserves ,name ,(append args '(fn2-core)) :position ,(len results) :rows nil)) nil))
 (fn2-core-pool-wrapper fn2-core-reserve fn2-pool-reserve
   (class okind oslot ogen) (code slot gen) 3)
 (fn2-defoperation (:operation-set fn2-core-issue) :core :infer
@@ -189,7 +178,7 @@
     (let ((fn2-core (if (or (eq code :ok) (eq code :retired)) fn2-core
                      (fn2-core-stop *fn2-stop-reason-pool-release* fn2-core))))
       (mv code fn2-core)))))
-(fn2-core-shape-lemmas fn2-core-release (slot gen okind oslot ogen) 1)
+(fn2-core-preserves fn2-core-release (slot gen okind oslot ogen fn2-core) :position 1 :rows nil)
 (fn2-core-pool-wrapper fn2-core-reset fn2-pool-reset
   (slot gen okind oslot ogen) (code) 1)
 (fn2-core-pool-wrapper fn2-core-write fn2-pool-write
@@ -220,8 +209,7 @@
            (fn2-pool-lease-out slot gen off len okind oslot ogen fn2-pool)
            (mv code off fn2-pool)))
         (t (mv :ok 0 fn2-pool))))
-(fn2-pool-shape-lemmas fn2-core-lease
-  (kind slot gen off len opslot opgen okind oslot ogen) 2)
+(fn2-pool-preserves fn2-core-lease (kind slot gen off len opslot opgen okind oslot ogen fn2-pool) :position 2 :disable nil)
 (in-theory (disable fn2-core-lease))
 
 ; Shared issue implementation. The public wrappers supply only their own
@@ -271,9 +259,8 @@
                      (fn2-core-stop stop-reason fn2-core))))
       (mv code opslot opgen fn2-core)))))
 
-(fn2-core-shape-lemmas fn2-core-issue
-  (kind cap-index cap-nonce offset fua slot gen off len may-release
-        target-slot target-gen okind oslot ogen principal) 3)
+(fn2-core-preserves fn2-core-issue (kind cap-index cap-nonce offset fua slot gen off len may-release
+        target-slot target-gen okind oslot ogen principal fn2-core) :position 3 :rows nil)
 
 (defmacro fn2-core-issue-wrapper (name args kind cap-index cap-nonce offset fua
                                       slot gen off len may-release target-slot target-gen)
@@ -282,7 +269,7 @@
     '(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     `((fn2-core-issue ,kind ,cap-index ,cap-nonce ,offset ,fua ,slot ,gen ,off ,len
                      ,may-release ,target-slot ,target-gen okind oslot ogen principal fn2-core))
-    `((fn2-core-shape-lemmas ,name (,@args okind oslot ogen principal) 3))
+    `((fn2-core-preserves ,name (,@args okind oslot ogen principal fn2-core) :position 3 :rows nil))
     (list :refusal (list :square (fn2-columns-sym name "-REFUSAL")))))
 (fn2-core-issue-wrapper fn2-issue-receive (cap-index cap-nonce slot gen len)
   *fn2-action-receive* cap-index cap-nonce 0 0 slot gen 0 len 0 0 0)
@@ -327,33 +314,10 @@
     (let ((fn2-core (if (= stop-reason *fn2-stop-reason-none*) fn2-core
                      (fn2-core-stop stop-reason fn2-core))))
       (mv code opslot opgen fn2-core)))))
-(fn2-core-shape-lemmas fn2-issue-arm-wake (deadline observation-gen) 3)
+(fn2-core-preserves fn2-issue-arm-wake (deadline observation-gen fn2-core) :position 3 :rows nil)
 
 ; Peek before harvest finishes/recycles a row, preserving its machine identity
 ; for observation routing. This is bounded scalar work, not a FIFO traversal.
-(defun fn2-ops-next-owner (fn2-ops)
-  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)
-                  :guard-hints (("Goal" :in-theory (disable (tau-system))))))
-  (let ((head (fn2-ops-post-head fn2-ops))
-          (count (fn2-ops-post-count fn2-ops))
-          (capacity (fn2-ops-posted-fifo-length fn2-ops)))
-      (if (or (zp count) (>= head capacity)
-              (>= capacity 1152921504606846976))
-          (mv nil 0 0 0 0)
-        (let* ((index (fn2-ops-posted-fifoi head fn2-ops))
-               (slot (floor index 2)) (cell (mod index 2)))
-          (if (and (unsigned-byte-p 1 cell) (fn2-op-slotp slot fn2-ops)
-                   (if (= cell 0)
-                       (and (= (fn2-ops-c0-posted slot fn2-ops) 1)
-                            (= (fn2-ops-c0-harvested slot fn2-ops) 0))
-                     (and (= (fn2-ops-c1-posted slot fn2-ops) 1)
-                          (= (fn2-ops-c1-harvested slot fn2-ops) 0))))
-              (mv t (fn2-ops-owner-kind slot fn2-ops)
-                  (fn2-ops-owner-slot slot fn2-ops)
-                  (fn2-ops-owner-gen slot fn2-ops)
-                  (fn2-ops-principal slot fn2-ops))
-            (mv nil 0 0 0 0))))))
-(in-theory (disable fn2-ops-next-owner))
 (in-theory (disable fn2-ops-post-count))
 (defun fn2-core-posted-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -410,7 +374,7 @@
     (let ((fn2-core (if (= stop-reason *fn2-stop-reason-none*) fn2-core
                      (fn2-core-stop stop-reason fn2-core))))
       (mv found opslot opgen cell evkind outcome reason count aux0 aux1 fn2-core)))))
-(fn2-core-shape-lemmas fn2-harvest-one () 10)
+(fn2-core-preserves fn2-harvest-one (fn2-core) :position 10 :rows nil)
 
 (assert-event
  (fn2-profile-exports-compliant-p
@@ -424,17 +388,22 @@
 ; Test-only evidence traversals. Free rows are canonical: their only nonzero
 ; fields may be generation and next-free. This is established by init/finish
 ; and is the exact premise required by constant-work reservation rollback.
-(defun fn2-core-canonical-freep (n fn2-ops)
-  (declare (xargs :stobjs fn2-ops :verify-guards nil :measure (nfix n)))
-  (if (zp n) t
-    (let ((slot (- n 1)))
-      (and (or (not (equal (fn2-op-phase slot fn2-ops) *fn2-op-phase-free*))
-               (and (equal (take 34 (cdr (fn2-ops-row-snapshot slot fn2-ops)))
-                           '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-                             0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-                    (equal (fn2-ops-wake-deadline slot fn2-ops) 0)
-                    (equal (fn2-ops-wake-observation-gen slot fn2-ops) 0)))
-           (fn2-core-canonical-freep slot fn2-ops)))))
+(defun fn2-core-canonical-tests (cols)
+  (declare (xargs :verify-guards nil))
+  (if (atom cols) nil
+    (append (if (member-eq (caar cols) '(gen next-free)) nil
+              (list `(equal (,(fn2-columns-col-name 'fn2-ops (caar cols)) slot fn2-ops) 0)))
+            (fn2-core-canonical-tests (cdr cols)))))
+(make-event
+ (value `(fn2-defoperation (:operation-set fn2-core-issue) :reference :infer
+   (defun fn2-core-canonical-freep (n fn2-ops)
+     (declare (xargs :stobjs fn2-ops :verify-guards nil :measure (nfix n)))
+     (if (zp n) t
+       (let ((slot (- n 1)))
+         (and (or (not (equal (fn2-op-phase slot fn2-ops) *fn2-op-phase-free*))
+                  (and ,@(fn2-core-canonical-tests
+                           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-ops) (w state))))))
+              (fn2-core-canonical-freep slot fn2-ops))))))))
 (defun fn2-core-refusal-hyps (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))

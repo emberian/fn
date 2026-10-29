@@ -53,8 +53,8 @@
        answer))))
 (local
  (assert-event
-  (and (eq (symbol-class 'fn2-network-backpressure-run (w state)) :common-lisp-compliant)
-       (eq (symbol-class 'fn2-network-backpressure-test (w state)) :common-lisp-compliant))))
+  (fn2-profile-exports-compliant-p
+   '(fn2-network-backpressure-run fn2-network-backpressure-test) (w state))))
 (local (assert-event (eq (fn2-network-backpressure-test) :pass)))
 
 ; A half-open peer disappears without FIN. Buffered input may be consumed,
@@ -101,6 +101,6 @@
        answer))))
 (local
  (assert-event
-  (and (eq (symbol-class 'fn2-network-half-open-run (w state)) :common-lisp-compliant)
-       (eq (symbol-class 'fn2-network-half-open-test (w state)) :common-lisp-compliant))))
+  (fn2-profile-exports-compliant-p
+   '(fn2-network-half-open-run fn2-network-half-open-test) (w state))))
 (local (assert-event (eq (fn2-network-half-open-test) :pass)))

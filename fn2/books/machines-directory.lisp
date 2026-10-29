@@ -4,20 +4,20 @@
 (defcolumns fn2-machines ((kind :u8) (slot :u32))
  :init-name fn2-machines-columns-init
  :extra-fields
-  ((fn2-machines-accept-count :type (unsigned-byte 32) :initially 0)
-   (fn2-machines-connection-count :type (unsigned-byte 32) :initially 0)
-   (fn2-machines-free-head :type (unsigned-byte 32) :initially 4294967295)
-   (fn2-machines-gen-limit :type (unsigned-byte 60) :initially 0)
-   (fn2-machines-kind-bases :type (array (unsigned-byte 32) (256)) :initially 4294967295)
-   (fn2-machines-wake-id :type (unsigned-byte 32) :initially 4294967295)
-   (fn2-machines-pool-wait-id :type (unsigned-byte 32) :initially 4294967295)
-   (fn2-machines-wait-head :type (unsigned-byte 32) :initially 4294967295)
-   (fn2-machines-wait-tail :type (unsigned-byte 32) :initially 4294967295)
-   (fn2-machines-refusals :type (unsigned-byte 60) :initially 0)
-   (fn2-machines-admission-head :type (unsigned-byte 32) :initially 4294967295)
-   (fn2-machines-admission-tail :type (unsigned-byte 32) :initially 4294967295)
-   (fn2-machines-admission-credits :type (unsigned-byte 32) :initially 0)
-   (fn2-machines-active-count :type (unsigned-byte 32) :initially 0)))
+  ((fn2-machines-accept-count :type (unsigned-byte 32) :initially 0 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-connection-count :type (unsigned-byte 32) :initially 0 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-free-head :type (unsigned-byte 32) :initially 4294967295 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-gen-limit :type (unsigned-byte 60) :initially 0 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-kind-bases :type (array (unsigned-byte 32) (256)) :initially 4294967295 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-wake-id :type (unsigned-byte 32) :initially 4294967295 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-pool-wait-id :type (unsigned-byte 32) :initially 4294967295 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-wait-head :type (unsigned-byte 32) :initially 4294967295 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-wait-tail :type (unsigned-byte 32) :initially 4294967295 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-refusals :type (unsigned-byte 60) :initially 0 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-admission-head :type (unsigned-byte 32) :initially 4294967295 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-admission-tail :type (unsigned-byte 32) :initially 4294967295 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-admission-credits :type (unsigned-byte 32) :initially 0 :why "Directory-wide admission and resource queue metadata.")
+   (fn2-machines-active-count :type (unsigned-byte 32) :initially 0 :why "Directory-wide admission and resource queue metadata.")))
 
 (defmacro fn2-machine-directory-events ()
  '(progn
@@ -29,7 +29,7 @@
            (fn2-machines (update-fn2-machines-kind-basesi kind
                           (if (unsigned-byte-p 32 id) id 4294967295) fn2-machines)))
       (fn2-machines-init-bases kind profile fn2-machines))))
-(fn2-machines-shape fn2-machines-init-bases (left profile))
+(fn2-machines-preserves fn2-machines-init-bases (left profile fn2-machines) :prefix "" :wfp-type nil :raw-rows t)
 
 (defun fn2-machines-init-rows (left profile fn2-machines)
   (declare (xargs :stobjs fn2-machines :measure (nfix left)
@@ -40,7 +40,7 @@
       (let* ((fn2-machines (fn2-machines-set-kind (- left 1) (if (unsigned-byte-p 8 kind) kind 255) fn2-machines))
              (fn2-machines (fn2-machines-set-slot (- left 1) (if (unsigned-byte-p 32 slot) slot 0) fn2-machines)))
         (fn2-machines-init-rows (- left 1) profile fn2-machines)))))
-(fn2-machines-shape fn2-machines-init-rows (left profile))
+(fn2-machines-preserves fn2-machines-init-rows (left profile fn2-machines) :prefix "" :wfp-type nil :raw-rows t)
 
 (defun fn2-machines-profilep (profile)
   (declare (xargs :guard t))

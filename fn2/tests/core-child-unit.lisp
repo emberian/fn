@@ -13,7 +13,7 @@
     (if (and (natp id) (< id (fn2-test-child-rows fn2-test-child)))
         (fn2-test-child-set-value id 42 fn2-test-child) fn2-test-child)
     fn2-core))
-(fn2-machine-core-shape fn2-test-child-step (id))
+(fn2-core-preserves fn2-test-child-step (id fn2-core) :rows nil :prefix "")
 (in-theory (disable fn2-core-wfp))
 (defun fn2-test-child-check (fn2-core fn2-ref-core)
   (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))

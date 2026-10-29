@@ -95,19 +95,9 @@
 (make-event
  (value (cons 'progn (fn2-machine-all-snapshots (fn2-machine-names (w state)) (w state)))))
 
-(defmacro fn2-machine-core-shape (name args)
-  `(progn
-     (defthm ,(fn2-columns-sym name "-TYPE")
-       (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                (fn2-corep (,name ,@args fn2-core))))
-     (defthm ,(fn2-columns-sym name "-WFP")
-       (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                (fn2-core-wfp (,name ,@args fn2-core))))
-     (in-theory (disable ,name))))
-
 (make-event (value (fn2-declare '(:operation-set fn2-machine-resources) nil nil nil)))
 
- ; Both resource queues use the dormant row's ready links. Separate FIFO
+; Both resource queues use the dormant row's ready links. Separate FIFO
 ; heads prevent a row waiter from hiding an operation needed for reclamation.
 (defmacro fn2-machine-wait-queue (park grant head tail reason)
   (let ((get-head (fn2-columns-sym 'fn2-machine- (symbol-name head)))
@@ -126,7 +116,7 @@
                   (fn2-core (if (equal tail 4294967295) (,set-head id fn2-core)
                               (fn2-machine-write-ready-next tail id fn2-core))))
              (,set-tail id fn2-core)))))
-       (fn2-machine-core-shape ,park (id))
+       (fn2-core-preserves ,park (id fn2-core) :rows nil :prefix "")
        (fn2-defoperation (:operation-set fn2-machine-resources) :access (id fn2-core)
        (defun ,grant (fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -139,7 +129,7 @@
                     (fn2-core (fn2-machine-put id
                                 (wait-reason 0) (ready-prev 4294967295) (ready-next 4294967295))))
                (mv id fn2-core))))))
-       (fn2-core-shape-lemmas ,grant () 1))))
+       (fn2-core-preserves ,grant (fn2-core) :position 1 :rows nil))))
 (fn2-machine-wait-queue fn2-machine-park fn2-machine-grant-op wait-head wait-tail 2)
 (fn2-machine-wait-queue fn2-machine-park-admission fn2-machine-grant-admission admission-head admission-tail 4)
 
@@ -159,7 +149,7 @@
   (if (not (fn2-machine-idp id fn2-core)) fn2-core
     (let ((fn2-core (fn2-machine-put id (wait-reason 3) (cursor class))))
       (fn2-machine-set-pool-wait-id id fn2-core))))
-(fn2-machine-core-shape fn2-machine-park-pool (id class))
+(fn2-core-preserves fn2-machine-park-pool (id class fn2-core) :rows nil :prefix "")
 
 (defun fn2-machine-op-credit-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -199,7 +189,7 @@
            (mv id fn2-core)))
         ((fn2-machine-admission-ready-p fn2-core) (fn2-machine-grant-admission fn2-core))
         (t (mv 4294967295 fn2-core))))
-(fn2-core-shape-lemmas fn2-machine-grant-one () 1)
+(fn2-core-preserves fn2-machine-grant-one (fn2-core) :position 1 :rows nil)
 
 (defun fn2-machine-pool-capacity (slot fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -242,7 +232,7 @@
   (let* ((id (fn2-machine-wake-id fn2-core))
          (fn2-core (fn2-machine-set-wake-id 4294967295 fn2-core)))
     (mv id fn2-core)))
-(fn2-core-shape-lemmas fn2-machine-take-wake () 1)
+(fn2-core-preserves fn2-machine-take-wake (fn2-core) :position 1 :rows nil)
 (assert-event
  (fn2-profile-exports-compliant-p
   '(fn2-machine-idp fn2-machine-park fn2-machine-park-pool
@@ -327,23 +317,23 @@
                (fn2-machine-refuse-charge)
                (let ((fn2-core (fn2-machine-refuse-write fn2-core)))
                  (mv used-bytes used-steps used-descriptors nil fn2-core)))))))
-(fn2-core-shape-lemmas fn2-machine-finish (id bytes steps descriptors runnable) 4)
+(fn2-core-preserves fn2-machine-finish (id bytes steps descriptors runnable fn2-core) :position 4 :rows nil)
 (in-theory (disable fn2-machine-charge-kindp))
 
 (defun fn2-machine-idle (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-machine-result 0 1 0 nil fn2-core))
-(fn2-core-shape-lemmas fn2-machine-idle (id) 4)
+(fn2-core-preserves fn2-machine-idle (id fn2-core) :position 4 :rows nil)
 (defun fn2-machine-yield (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-machine-result 0 1 0 t fn2-core))
-(fn2-core-shape-lemmas fn2-machine-yield (id) 4)
+(fn2-core-preserves fn2-machine-yield (id fn2-core) :position 4 :rows nil)
 (defun fn2-machine-refuse-phase (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   ; Named invalid-phase refusal; retained stopped evidence, never an idle arm.
   (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core)))
     (fn2-machine-result 0 1 0 nil fn2-core)))
-(fn2-core-shape-lemmas fn2-machine-refuse-phase (id) 4)
+(fn2-core-preserves fn2-machine-refuse-phase (id fn2-core) :position 4 :rows nil)
 (in-theory (disable fn2-machines-kind-basesi))
 (defun fn2-machine-kind-base (kind fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

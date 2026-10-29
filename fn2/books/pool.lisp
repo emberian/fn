@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "columns")
 (include-book "owed")
+(include-book "profile")
 
 ; A range is slot-relative u32/u32.  Bases are u60 so the shared region is
 ; not artificially limited to 4 GiB.  All resident arithmetic stays fixnum.
@@ -16,27 +17,15 @@
   :rows-bound 4294967296
   :init-name fn2-pool-columns-init
   :extra-fields
-  ((fn2-pool-data :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t)
-   (fn2-pool-class-heads :type (array (unsigned-byte 32) (16)) :initially 4294967295)
-   (fn2-pool-class-counts :type (array (unsigned-byte 32) (16)) :initially 0)
-   (fn2-pool-class-sizes :type (array (unsigned-byte 32) (16)) :initially 0)
-   (fn2-pool-nclasses :type (integer 0 16) :initially 0)
-   (fn2-pool-gen-limit :type (unsigned-byte 60) :initially 0)
-   (fn2-pool-retired-count :type (unsigned-byte 32) :initially 0)))
+  ((fn2-pool-data :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Byte backing store, addressed by each slot base and capacity.")
+   (fn2-pool-class-heads :type (array (unsigned-byte 32) (16)) :initially 4294967295 :why "Pool-wide allocation metadata, independent of slot rows.")
+   (fn2-pool-class-counts :type (array (unsigned-byte 32) (16)) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")
+   (fn2-pool-class-sizes :type (array (unsigned-byte 32) (16)) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")
+   (fn2-pool-nclasses :type (integer 0 16) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")
+   (fn2-pool-gen-limit :type (unsigned-byte 60) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")
+   (fn2-pool-retired-count :type (unsigned-byte 32) :initially 0 :why "Pool-wide allocation metadata, independent of slot rows.")))
 
 ; Expansion only: runtime is a straight let* of scalar column writes.
-(defun fn2-pool-put-bindings (fields)
-  (if (consp fields)
-      (cons `(fn2-pool
-              (,(intern-in-package-of-symbol
-                  (concatenate 'string "FN2-POOL-SET-" (symbol-name (caar fields)))
-                  'fn2-pool)
-               slot ,(cadar fields) fn2-pool))
-            (fn2-pool-put-bindings (cdr fields)))
-    nil))
-
-(defmacro fn2-pool-put (&rest fields)
-  `(let* ,(fn2-pool-put-bindings fields) fn2-pool))
 
 (defun fn2-pool-mrefp (kind slot gen)
   (declare (xargs :guard t))
@@ -69,31 +58,13 @@
 ; Init-only traversals.  Profile widths are admission limits on resident
 ; execution state, not ceilings on stored data.  Invalid init profiles violate
 ; init's guard; all handle-bearing exports below validate handles at runtime.
-(defun fn2-pool-classes-shapep (classes)
-  (declare (xargs :guard t))
-  (if (atom classes)
-      (null classes)
-    (and (consp (car classes))
-         (unsigned-byte-p 32 (caar classes))
-         (posp (cdar classes)) (unsigned-byte-p 32 (cdar classes))
-         (fn2-pool-classes-shapep (cdr classes)))))
 
-(defun fn2-pool-total-slots (classes)
-  (declare (xargs :guard (fn2-pool-classes-shapep classes)))
-  (if (consp classes)
-      (+ (caar classes) (fn2-pool-total-slots (cdr classes)))
-    0))
-(defun fn2-pool-total-bytes (classes)
-  (declare (xargs :guard (fn2-pool-classes-shapep classes)))
-  (if (consp classes)
-      (+ (* (caar classes) (cdar classes)) (fn2-pool-total-bytes (cdr classes)))
-    0))
 (defun fn2-pool-profilep (classes)
   (declare (xargs :guard t))
-  (and (fn2-pool-classes-shapep classes)
+  (and (fn2-profile-classes-p classes)
        (<= (len classes) 16)
-       (unsigned-byte-p 32 (fn2-pool-total-slots classes))
-       (unsigned-byte-p 60 (fn2-pool-total-bytes classes))))
+       (unsigned-byte-p 32 (fn2-profile-pool-slots classes))
+       (unsigned-byte-p 60 (fn2-profile-pool-bytes classes))))
 
 (defun fn2-pool-carve-slots (left slot base cap class gen fn2-pool)
   (declare (xargs :stobjs fn2-pool :measure (nfix left)
@@ -104,7 +75,7 @@
           (not (unsigned-byte-p 60 base)))
       fn2-pool
     (let* ((fn2-pool
-             (fn2-pool-put (gen gen) (base base) (cap cap)
+             (fn2-pool-put slot (gen gen) (base base) (cap cap)
                            (state *fn2-pool-state-free*)
                            (owner-kind 0) (owner-slot 0) (owner-gen 0)
                            (lease-op-slot 0) (lease-op-gen 0) (lease-off 0) (lease-len 0)
@@ -132,7 +103,7 @@
 (defun fn2-pool-carve-classes (classes class slot base gen fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool)
-                              (fn2-pool-classes-shapep classes)
+                              (fn2-profile-classes-p classes)
                               (natp class) (natp slot) (natp base)
                               (unsigned-byte-p 60 gen))))
   (if (or (atom classes) (>= class 16))
@@ -150,11 +121,11 @@
 
 (defthm fn2-pool-carve-classes-wfp
   (implies (and (fn2-pool-wfp fn2-pool) (natp class) (natp slot)
-                (fn2-pool-classes-shapep classes))
+                (fn2-profile-classes-p classes))
            (fn2-pool-wfp (fn2-pool-carve-classes classes class slot base gen fn2-pool))))
 (defthm fn2-pool-carve-classes-type
   (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
-                (fn2-pool-classes-shapep classes)
+                (fn2-profile-classes-p classes)
                 (natp class) (natp slot) (natp base) (unsigned-byte-p 60 gen))
            (fn2-poolp (fn2-pool-carve-classes classes class slot base gen fn2-pool))))
 (in-theory (disable fn2-pool-carve-classes))
@@ -164,8 +135,8 @@
                   :guard (and (fn2-pool-profilep classes)
                               (unsigned-byte-p 60 gen-start)
                               (unsigned-byte-p 60 gen-limit) (<= gen-start gen-limit))))
-  (let* ((fn2-pool (fn2-pool-columns-init (fn2-pool-total-slots classes) fn2-pool))
-         (fn2-pool (resize-fn2-pool-data (fn2-pool-total-bytes classes) fn2-pool))
+  (let* ((fn2-pool (fn2-pool-columns-init (fn2-profile-pool-slots classes) fn2-pool))
+         (fn2-pool (resize-fn2-pool-data (fn2-profile-pool-bytes classes) fn2-pool))
          (fn2-pool (update-fn2-pool-nclasses (len classes) fn2-pool))
          (fn2-pool (update-fn2-pool-gen-limit gen-limit fn2-pool))
          (fn2-pool (update-fn2-pool-retired-count 0 fn2-pool)))
@@ -203,7 +174,7 @@
                       (next (fn2-pool-next-free slot fn2-pool))
                       (fn2-pool (update-fn2-pool-class-headsi class next fn2-pool))
                       (fn2-pool (update-fn2-pool-class-countsi class (- count 1) fn2-pool))
-                      (fn2-pool (fn2-pool-put (state *fn2-pool-state-workspace*)
+                      (fn2-pool (fn2-pool-put slot (state *fn2-pool-state-workspace*)
                                             (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
                                             (out-count 0) (fill 0))))
                  (mv :ok slot gen fn2-pool)))))))
@@ -233,7 +204,7 @@
             ((not (= (fn2-pool-out-count slot fn2-pool) 0)) (mv :state fn2-pool))
             ((>= (fn2-pool-gen slot fn2-pool) (fn2-pool-gen-limit fn2-pool))
              (let* ((count (fn2-pool-retired-count fn2-pool))
-                    (fn2-pool (fn2-pool-put (state *fn2-pool-state-retired*)))
+                    (fn2-pool (fn2-pool-put slot (state *fn2-pool-state-retired*)))
                     (fn2-pool (update-fn2-pool-retired-count (+ count 1) fn2-pool)))
                (mv :retired fn2-pool)))
             (t (let ((class (fn2-pool-class slot fn2-pool)))
@@ -242,7 +213,7 @@
                    (let* ((count (fn2-pool-class-countsi class fn2-pool))
                           (next (fn2-pool-class-headsi class fn2-pool))
                           (new-gen (+ 1 (fn2-pool-gen slot fn2-pool)))
-                          (fn2-pool (fn2-pool-put (gen new-gen) (state *fn2-pool-state-free*)
+                          (fn2-pool (fn2-pool-put slot (gen new-gen) (state *fn2-pool-state-free*)
                                                 (next-free next) (fill 0)))
                           (fn2-pool (update-fn2-pool-class-headsi class slot fn2-pool))
                           (fn2-pool (update-fn2-pool-class-countsi class (+ 1 count) fn2-pool)))
@@ -257,7 +228,7 @@
                      (<= (+ (fn2-pool-fill slot fn2-pool) len) (fn2-pool-cap slot fn2-pool))))
            (mv :bounds 0 fn2-pool))
           (t (let* ((off (fn2-pool-fill slot fn2-pool))
-                    (fn2-pool (fn2-pool-put (state *fn2-pool-state-leased-in*)
+                    (fn2-pool (fn2-pool-put slot (state *fn2-pool-state-leased-in*)
                                           (lease-op-slot opslot) (lease-op-gen opgen)
                                           (lease-off off) (lease-len len))))
                (mv :ok off fn2-pool))))))
@@ -294,7 +265,7 @@
                      (<= (+ (fn2-pool-lease-off slot fn2-pool) n) (fn2-pool-cap slot fn2-pool))))
            (mv :bounds fn2-pool))
           (t (let* ((new-fill (+ (fn2-pool-lease-off slot fn2-pool) n))
-                    (fn2-pool (fn2-pool-put (state *fn2-pool-state-workspace*) (fill new-fill))))
+                    (fn2-pool (fn2-pool-put slot (state *fn2-pool-state-workspace*) (fill new-fill))))
                (mv :ok fn2-pool))))))
 
 (defun fn2-pool-readable-code (slot gen okind oslot ogen fn2-pool)
@@ -314,7 +285,7 @@
            (mv :bounds fn2-pool))
           ((= (fn2-pool-out-count slot fn2-pool) 4294967295) (mv :exhausted fn2-pool))
           (t (let* ((count (+ 1 (fn2-pool-out-count slot fn2-pool)))
-                    (fn2-pool (fn2-pool-put (state *fn2-pool-state-leased-out*) (out-count count))))
+                    (fn2-pool (fn2-pool-put slot (state *fn2-pool-state-leased-out*) (out-count count))))
                (mv :ok fn2-pool))))))
 
 ; Caller has matched the terminal OpRef in the outstanding table (quest A2).
@@ -327,7 +298,7 @@
           ((or (not (equal (fn2-pool-state slot fn2-pool) *fn2-pool-state-leased-out*))
                (= (fn2-pool-out-count slot fn2-pool) 0)) (mv :state fn2-pool))
           (t (let* ((count (- (fn2-pool-out-count slot fn2-pool) 1))
-                    (fn2-pool (fn2-pool-put
+                    (fn2-pool (fn2-pool-put slot
                                (state (if (= count 0) *fn2-pool-state-workspace* *fn2-pool-state-leased-out*))
                                (out-count count))))
                (mv :ok fn2-pool))))))
@@ -337,7 +308,7 @@
   (let ((code (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool)))
     (cond ((not (eq code :ok)) (mv code fn2-pool))
           ((not (fn2-pool-mrefp tkind tslot tgen)) (mv :bounds fn2-pool))
-          (t (let ((fn2-pool (fn2-pool-put (state *fn2-pool-state-handed*)
+          (t (let ((fn2-pool (fn2-pool-put slot (state *fn2-pool-state-handed*)
                                          (hand-to-kind tkind) (hand-to-slot tslot) (hand-to-gen tgen))))
                (mv :ok fn2-pool))))))
 
@@ -349,7 +320,7 @@
           ((not (and (equal tkind (fn2-pool-hand-to-kind slot fn2-pool))
                      (equal tslot (fn2-pool-hand-to-slot slot fn2-pool))
                      (equal tgen (fn2-pool-hand-to-gen slot fn2-pool)))) (mv :owner fn2-pool))
-          (t (let ((fn2-pool (fn2-pool-put (state *fn2-pool-state-workspace*)
+          (t (let ((fn2-pool (fn2-pool-put slot (state *fn2-pool-state-workspace*)
                                          (owner-kind (fn2-pool-hand-to-kind slot fn2-pool))
                                          (owner-slot (fn2-pool-hand-to-slot slot fn2-pool))
                                          (owner-gen (fn2-pool-hand-to-gen slot fn2-pool)))))
@@ -449,21 +420,6 @@
                        (fn2-pool-fill slot fn2-pool) fn2-pool))
 
 ; Shape-only support for composed callers; the semantic keystones below remain owed.
-(defmacro fn2-pool-shape-lemmas (name args pool-position)
-  (let ((call `(,name ,@args fn2-pool)))
-    `(progn
-       (defthm ,(intern-in-package-of-symbol
-                  (concatenate 'string (symbol-name name) "-PRESERVES-TYPE") name)
-         (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
-                  (fn2-poolp (mv-nth ,pool-position ,call))))
-       (defthm ,(intern-in-package-of-symbol
-                  (concatenate 'string (symbol-name name) "-PRESERVES-WFP") name)
-         (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
-                  (fn2-pool-wfp (mv-nth ,pool-position ,call))))
-       (defthm ,(intern-in-package-of-symbol
-                  (concatenate 'string (symbol-name name) "-PRESERVES-ROWS") name)
-         (equal (fn2-pool-rows (mv-nth ,pool-position ,call))
-                (fn2-pool-rows fn2-pool))))))
 
 (defthm fn2-pool-init-wfp
   (implies (fn2-pool-profilep classes)
@@ -475,43 +431,30 @@
                 (<= gen-start gen-limit))
            (fn2-poolp (fn2-pool-init classes gen-start gen-limit fn2-pool))))
 
-(fn2-pool-shape-lemmas fn2-pool-reserve (class okind oslot ogen) 3)
-(fn2-pool-shape-lemmas fn2-pool-release (slot gen okind oslot ogen) 1)
-(fn2-pool-shape-lemmas fn2-pool-lease-in (slot gen len opslot opgen okind oslot ogen) 2)
-(fn2-pool-shape-lemmas fn2-pool-adapter-write (slot gen opslot opgen idx byte) 1)
-(fn2-pool-shape-lemmas fn2-pool-complete-in (slot gen opslot opgen n) 1)
-(fn2-pool-shape-lemmas fn2-pool-lease-out (slot gen off len okind oslot ogen) 1)
-(fn2-pool-shape-lemmas fn2-pool-release-out (slot gen) 1)
-(fn2-pool-shape-lemmas fn2-pool-hand (slot gen okind oslot ogen tkind tslot tgen) 1)
-(fn2-pool-shape-lemmas fn2-pool-accept-hand (slot gen tkind tslot tgen) 1)
-(fn2-pool-shape-lemmas fn2-pool-write (slot gen idx byte okind oslot ogen) 1)
-(fn2-pool-shape-lemmas fn2-pool-reset (slot gen okind oslot ogen) 1)
+(fn2-pool-preserves fn2-pool-reserve (class okind oslot ogen fn2-pool) :position 3 :disable nil)
+(fn2-pool-preserves fn2-pool-release (slot gen okind oslot ogen fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-lease-in (slot gen len opslot opgen okind oslot ogen fn2-pool) :position 2 :disable nil)
+(fn2-pool-preserves fn2-pool-adapter-write (slot gen opslot opgen idx byte fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-complete-in (slot gen opslot opgen n fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-lease-out (slot gen off len okind oslot ogen fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-release-out (slot gen fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-hand (slot gen okind oslot ogen tkind tslot tgen fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-accept-hand (slot gen tkind tslot tgen fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-write (slot gen idx byte okind oslot ogen fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-reset (slot gen okind oslot ogen fn2-pool) :position 1 :disable nil)
 
 ; Guard class, queried from ACL2's world, is an executable-path acceptance gate.
-(assert-event (eq (symbol-class 'fn2-pool-init (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-class-for (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-reserve (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-release (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-lease-in (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-adapter-write (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-complete-in (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-lease-out (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-release-out (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-hand (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-accept-hand (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-read (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-write (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-reset (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-state (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-gen (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-fill (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-base (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-cap (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-slot-out-count (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-lease-range (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-free-count (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-nslots (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-pool-capacity-bytes (w state)) :common-lisp-compliant))
+(assert-event
+ (fn2-profile-exports-compliant-p
+  '(fn2-pool-init fn2-pool-class-for fn2-pool-reserve
+    fn2-pool-release fn2-pool-lease-in fn2-pool-adapter-write
+    fn2-pool-complete-in fn2-pool-lease-out fn2-pool-release-out
+    fn2-pool-hand fn2-pool-accept-hand fn2-pool-read
+    fn2-pool-write fn2-pool-reset fn2-pool-slot-state
+    fn2-pool-slot-gen fn2-pool-slot-fill fn2-pool-slot-base
+    fn2-pool-slot-cap fn2-pool-slot-out-count fn2-pool-lease-range
+    fn2-pool-free-count fn2-pool-nslots fn2-pool-capacity-bytes)
+  (w state)))
 
 ; Logical obligations and executable evidence predicates.  These traversals
 ; are never on a served path or guards of runtime operations.  Pure scalar

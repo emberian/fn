@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "core")
 
- ; Array traversal termination depends only on fuel, not the wide stobj
+; Array traversal termination depends only on fuel, not the wide stobj
 ; recognizers. Keep the prover out of their generated column definitions.
 (defmacro fn2-reference-state-events ()
  '(progn
@@ -11,90 +11,18 @@
          :rule-classes nil))
 (local (defthm fn2-ref-count-op (o-p (nfix left)) :rule-classes nil))
 
-; Congruent children allow simultaneous access to the two nested cores.
-(defun fn2-ref-renamed-fields (fields)
-  (if (atom fields) nil
-    (cons (cons (fn2-columns-sym (caar fields) "-REF") (cdar fields))
-          (fn2-ref-renamed-fields (cdr fields)))))
-(defun fn2-ref-field-events (name ref fields)
-  (declare (xargs :verify-guards nil))
-  (if (atom fields) nil
-    (let* ((field (caar fields))
-           (arrayp (fn2-columns-arrayp (car fields)))
-           (reader (if arrayp (fn2-columns-sym field "I") field))
-           (writer (fn2-columns-pre "UPDATE-" reader))
-           (copy (fn2-columns-sym field "-REF-COPY"))
-           (diff (fn2-columns-sym field "-REF-DIFF")))
-      (append
-       (if arrayp
-           `((defun ,copy (left i ,name ,ref)
-               (declare (xargs :stobjs (,name ,ref) :verify-guards nil :measure (nfix left)
-                  :hints (("Goal" :use (fn2-ref-countdown fn2-ref-count-op) :in-theory nil))))
-               (if (zp left) ,ref
-                 (let ((,ref (,writer i (,reader i ,name) ,ref)))
-                   (,copy (- left 1) (+ 1 (nfix i)) ,name ,ref))))
-             (defun ,diff (left i ,name ,ref)
-               (declare (xargs :stobjs (,name ,ref) :verify-guards nil :measure (nfix left)
-                  :hints (("Goal" :use (fn2-ref-countdown fn2-ref-count-op) :in-theory nil))))
-               (if (zp left) nil
-                 (if (equal (,reader i ,name) (,reader i ,ref))
-                     (,diff (- left 1) (+ 1 (nfix i)) ,name ,ref)
-                   (list ',field i (,reader i ,name) (,reader i ,ref)))))
-             (in-theory (disable ,copy ,diff))) nil)
-       (fn2-ref-field-events name ref (cdr fields))))))
-(defun fn2-ref-copy-bindings (name ref fields)
-  (declare (xargs :verify-guards nil))
-  (if (atom fields) nil
-    (let* ((field (caar fields)) (arrayp (fn2-columns-arrayp (car fields)))
-           (length (fn2-columns-sym field "-LENGTH")))
-      (append
-       (if (and arrayp (cadr (member-eq :resizable (cdar fields))))
-           `((,ref (,(fn2-columns-pre "RESIZE-" field) (,length ,name) ,ref))) nil)
-       `((,ref ,(if arrayp
-                       `(,(fn2-columns-sym field "-REF-COPY") (,length ,name) 0 ,name ,ref)
-                     `(,(fn2-columns-pre "UPDATE-" field) (,field ,name) ,ref))))
-       (fn2-ref-copy-bindings name ref (cdr fields))))))
-(defun fn2-ref-diff-terms (name ref fields)
-  (declare (xargs :verify-guards nil))
-  (if (atom fields) nil
-    (let* ((field (caar fields)) (arrayp (fn2-columns-arrayp (car fields)))
-           (length (fn2-columns-sym field "-LENGTH")))
-      (cons
-       (if arrayp
-           `(if (equal (,length ,name) (,length ,ref))
-                ,(if (eq field 'fn2-pool-data) nil
-                   `(,(fn2-columns-sym field "-REF-DIFF") (,length ,name) 0 ,name ,ref))
-              (list ',length))
-         `(and (not (equal (,field ,name) (,field ,ref))) (list ',field)))
-       (fn2-ref-diff-terms name ref (cdr fields))))))
+; The columns declaration owns copy/diff; this stage supplies congruent children.
 (defun fn2-ref-state-events (names registry)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
     (let* ((name (car names)) (ref (fn2-columns-sym name "-REF"))
            (schema (cdr (assoc-eq name registry)))
-           (fields (append (fn2-columns-fields name (cadr (member-eq :columns schema)))
+           (fields (append (fn2-columns-fields name (fn2-decl-get :columns schema))
                       `((,(fn2-columns-sym name "-ROWS") :type
-                         (integer 0 ,(- (cadr (member-eq :rows-bound schema)) 1)) :initially 0))
-                      (cadr (member-eq :extra-fields schema))))
-           (copy (fn2-columns-sym name "-REF-COPY"))
-           (diff (fn2-columns-sym name "-REF-DIFF")))
-      (append
-       `((defstobj ,ref ,@(fn2-ref-renamed-fields fields) :congruent-to ,name))
-       (fn2-ref-field-events name ref fields)
-       `((defun ,copy (,name ,ref)
-           (declare (xargs :stobjs (,name ,ref) :verify-guards nil))
-           (let* ,(fn2-ref-copy-bindings name ref fields) ,ref))
-         (defun ,diff (,name ,ref)
-           (declare (xargs :stobjs (,name ,ref) :verify-guards nil))
-           (or ,@(fn2-ref-diff-terms name ref fields)))
-         (in-theory (disable ,copy ,diff)))
-       (fn2-ref-state-events (cdr names) registry)))))
-(assert-event
- (equal (fn2-ref-copy-bindings 'x 'y '((sample-counter :type (unsigned-byte 32))))
-        '((y (update-sample-counter (sample-counter x) y)))))
-(assert-event
- (equal (fn2-ref-diff-terms 'x 'y '((sample-counter :type (unsigned-byte 32))))
-        '((and (not (equal (sample-counter x) (sample-counter y))) (list 'sample-counter)))))
+                         (integer 0 ,(- (fn2-decl-get :rows-bound schema) 1)) :initially 0))
+                      (fn2-decl-get :extra-fields schema))))
+      (append (fn2-columns-reference-events name ref fields)
+              (fn2-ref-state-events (cdr names) registry)))))
 (local (deftheory fn2-ref-base-theory (current-theory :here)))
 (local (in-theory nil))
 (make-event
@@ -106,8 +34,13 @@
   (if (atom children) nil
     (cons (list (fn2-columns-sym (caar children) "-REF") :type (cadar children))
           (fn2-ref-core-fields (cdr children)))))
-(make-event (value `(defstobj fn2-ref-core ,@(fn2-ref-core-fields *fn2-core-children*)
-                     :congruent-to fn2-core)))
+(make-event
+ (value (fn2-declare '(:operation-set fn2-ref-core) '(:role :reference)
+          '((:declaration (:operation-set fn2-core-issue))
+            (:function fn2-ref-copy-core :at :reference)
+            (:function fn2-ref-core-difference :at :reference))
+          `((defstobj fn2-ref-core ,@(fn2-ref-core-fields *fn2-core-children*)
+                         :congruent-to fn2-core)))))
 (make-event
  (value `(defconst *fn2-core-reference-children*
            ',(fn2-core-registered-pairs
@@ -123,23 +56,25 @@
   (if (atom children) nil
     (let ((name (cadar children)))
       (cons `(,(fn2-columns-sym name "-REF")
-               (,(fn2-columns-sym name "-REF-COPY") ,name ,(fn2-columns-sym name "-REF")))
+               (,(fn2-columns-sym name "-COPY") ,name ,(fn2-columns-sym name "-REF")))
             (fn2-ref-child-copies (cdr children))))))
 (defun fn2-ref-child-diffs (children)
   (if (atom children) nil
     (let ((name (cadar children)))
-      (cons `(,(fn2-columns-sym name "-REF-DIFF") ,name ,(fn2-columns-sym name "-REF"))
+      (cons `(,(fn2-columns-sym name "-DIFF") ,name ,(fn2-columns-sym name "-REF")
+              :skip (fn2-pool-data))
             (fn2-ref-child-diffs (cdr children))))))
 
 (make-event
  (let* ((children *fn2-core-children*)
         (bindings (fn2-ref-child-bindings children t)) (refs (strip-cars bindings)))
-   (value `(defun fn2-ref-copy-core (fn2-core fn2-ref-core)
+   (value `(fn2-defoperation (:operation-set fn2-ref-core) :reference :infer
+            (defun fn2-ref-copy-core (fn2-core fn2-ref-core)
              (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
              (stobj-let ,(fn2-ref-child-bindings children nil) (fn2-ref-core)
                (stobj-let ,bindings ,refs
                  (let* ,(fn2-ref-child-copies children) (mv ,@refs)) fn2-ref-core)
-               fn2-ref-core)))))
+               fn2-ref-core))))))
 (in-theory (disable fn2-ref-copy-core))
 
 (defun fn2-ref-reset (profile fn2-core fn2-ref-core)
@@ -148,7 +83,7 @@
     (fn2-ref-copy-core fn2-core fn2-ref-core)))
 (in-theory (disable fn2-ref-reset))
 
- ; Host boundary updates only ops (submission acknowledgments, posted results,
+; Host boundary updates only ops (submission acknowledgments, posted results,
 ; mailboxes) and physical input loans. Never replace reference machine state,
 ; pool ownership/fills or control state with the concrete turn's results.
 (defun fn2-ref-input-bytes (left fn2-pool fn2-pool-ref)
@@ -158,7 +93,7 @@
     (let* ((i (- left 1))
            (fn2-pool-ref
             (if (= (fn2-pool-state i fn2-pool) *fn2-pool-state-leased-in*)
-                (fn2-pool-data-ref-copy (fn2-pool-lease-len i fn2-pool)
+                (fn2-pool-data-copy (fn2-pool-lease-len i fn2-pool)
                   (+ (fn2-pool-base i fn2-pool) (fn2-pool-lease-off i fn2-pool)) fn2-pool fn2-pool-ref)
               fn2-pool-ref)))
       (fn2-ref-input-bytes (- left 1) fn2-pool fn2-pool-ref))))
@@ -170,7 +105,7 @@
                 (fn2-ops-ref (fn2-core-ops-ref fn2-ref-core)))
       (fn2-pool-ref fn2-ops-ref)
       (let* ((fn2-pool-ref (fn2-ref-input-bytes (fn2-pool-rows fn2-pool) fn2-pool fn2-pool-ref))
-             (fn2-ops-ref (fn2-ops-ref-copy fn2-ops fn2-ops-ref)))
+             (fn2-ops-ref (fn2-ops-copy fn2-ops fn2-ops-ref)))
         (mv fn2-pool-ref fn2-ops-ref)) fn2-ref-core)
     fn2-ref-core))
 (in-theory (disable fn2-ref-import-boundary fn2-ref-input-bytes))
@@ -191,7 +126,7 @@
                          (member-equal (fn2-ops-c0-outcome op fn2-ops)
                                        (list *fn2-outcome-done* *fn2-outcome-short*)))
                     (+ (fn2-pool-lease-off i fn2-pool) (fn2-ops-c0-count op fn2-ops)) 0))))
-      (or (fn2-pool-data-ref-diff end (fn2-pool-base i fn2-pool) fn2-pool fn2-pool-ref)
+      (or (fn2-pool-data-diff end (fn2-pool-base i fn2-pool) fn2-pool fn2-pool-ref)
           (fn2-ref-live-bytes-difference (- left 1) fn2-pool fn2-pool-ref fn2-ops)))))
 (in-theory (disable fn2-ref-live-bytes-difference))
 
@@ -200,13 +135,14 @@
 ; Trace diagnostics and the reference's unused intrusive scheduler are absent.
 (make-event
  (let ((children *fn2-core-reference-children*))
-   (value `(defun fn2-ref-core-difference (fn2-core fn2-ref-core)
+   (value `(fn2-defoperation (:operation-set fn2-ref-core) :reference :infer
+            (defun fn2-ref-core-difference (fn2-core fn2-ref-core)
              (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
              (stobj-let ,(fn2-ref-child-bindings children nil) (difference)
                (stobj-let ,(fn2-ref-child-bindings children t) (difference)
                  (or ,@(fn2-ref-child-diffs children)
                      (fn2-ref-live-bytes-difference (fn2-pool-rows fn2-pool)
-                       fn2-pool fn2-pool-ref fn2-ops)) difference) difference)))))
+                       fn2-pool fn2-pool-ref fn2-ops)) difference) difference))))))
 (in-theory (disable fn2-ref-core-difference))
 
 

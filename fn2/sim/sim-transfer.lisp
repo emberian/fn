@@ -8,14 +8,6 @@
 (include-book "prng")
 (include-book "check")
 
-(defun fn2-sim-input-kindp (kind)
-  (declare (xargs :guard t))
-  (or (equal kind *fn2-action-receive*) (equal kind *fn2-action-read*)
-      (equal kind *fn2-action-entropy*)))
-(defun fn2-sim-output-kindp (kind)
-  (declare (xargs :guard t))
-  (or (equal kind *fn2-action-send*) (equal kind *fn2-action-write*)))
-
 (defthm fn2-sim-pool-read-byte-u8
   (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
            (unsigned-byte-p 8 (mv-nth 1 (fn2-pool-read slot gen i kind owner ogen fn2-pool))))
@@ -85,7 +77,7 @@
           (mv code i fn2-pool fn2-sim-network fn2-sim-storage fn2-own))
          ((mv code fn2-pool fn2-sim-network fn2-sim-storage fn2-own)
           (cond
-           ((fn2-sim-input-kindp kind)
+           ((fn2-op-input-kindp kind)
             (let ((fn2-own (fn2-own-record-input-byte-parts
                            rslot rgen (+ off i) byte fn2-pool fn2-own)))
               (mv-let (code fn2-pool)
@@ -108,31 +100,19 @@
 
 ; Shape-only helper facts. The state represented by a byte image is not a
 ; refinement claim; no simulator keystone is asserted by these facts.
-(defmacro fn2-sim-transfer-shape (state p wfp position typep)
-  (let ((hyps '(and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
-                    (fn2-sim-networkp fn2-sim-network) (fn2-sim-network-wfp fn2-sim-network)
-                    (fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage)
-                    (fn2-ownp fn2-own) (fn2-own-wfp fn2-own)
-                    (natp len) (natp i) (natp off) (natp offset) (natp redirect)
-                    (unsigned-byte-p 60 stamp) (unsigned-byte-p 60 rgen)
-                    (unsigned-byte-p 32 salt)))
-        (call `(mv-nth ,position
-                 (fn2-sim-transfer kind cap nonce rslot rgen off len okind oslot ogen
-                   opslot opgen offset redirect stamp fua fault salt i
-                   fn2-pool fn2-sim-network fn2-sim-storage fn2-own))))
-    `(defthm ,(fn2-columns-sym state (if typep "-TRANSFER-TYPE" "-TRANSFER-WFP"))
-       (implies ,hyps (,(if typep p wfp) ,call)))))
-(fn2-sim-transfer-shape fn2-pool fn2-poolp fn2-pool-wfp 2 t)
-(fn2-sim-transfer-shape fn2-pool fn2-poolp fn2-pool-wfp 2 nil)
-(fn2-sim-transfer-shape fn2-sim-network fn2-sim-networkp fn2-sim-network-wfp 3 t)
-(fn2-sim-transfer-shape fn2-sim-network fn2-sim-networkp fn2-sim-network-wfp 3 nil)
-(fn2-sim-transfer-shape fn2-sim-storage fn2-sim-storagep fn2-sim-storage-wfp 4 t)
-(fn2-sim-transfer-shape fn2-sim-storage fn2-sim-storagep fn2-sim-storage-wfp 4 nil)
-(fn2-sim-transfer-shape fn2-own fn2-ownp fn2-own-wfp 5 t)
-(fn2-sim-transfer-shape fn2-own fn2-ownp fn2-own-wfp 5 nil)
-(in-theory (disable fn2-sim-transfer))
 
+(fn2-sim-storage-preserves fn2-sim-transfer
+  (kind cap nonce rslot rgen off len okind oslot ogen opslot opgen offset redirect stamp fua fault salt i
+        fn2-pool fn2-sim-network fn2-sim-storage fn2-own)
+  :hyps ((fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+         (fn2-sim-networkp fn2-sim-network) (fn2-sim-network-wfp fn2-sim-network)
+         (fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage)
+         (fn2-ownp fn2-own) (fn2-own-wfp fn2-own)
+         (natp len) (natp i) (natp off) (natp offset) (natp redirect)
+         (unsigned-byte-p 60 stamp) (unsigned-byte-p 60 rgen) (unsigned-byte-p 32 salt))
+  :carriers ((fn2-pool 2 :prefix "-POOL") (fn2-sim-network 3 :prefix "-NETWORK")
+             (fn2-sim-storage 4 :prefix "-STORAGE") (fn2-own 5 :prefix "-OWN")))
 
 (assert-event
  (fn2-profile-exports-compliant-p
-  '(fn2-sim-input-kindp fn2-sim-output-kindp fn2-sim-transfer) (w state)))
+  '(fn2-op-input-kindp fn2-op-output-kindp fn2-sim-transfer) (w state)))

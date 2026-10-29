@@ -702,40 +702,16 @@
 
 (assert-event (equal (fn2-vocab-test-result-capacity) t))
 
-(assert-event (eq (symbol-class 'fn2-ops-init (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-reserve (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-set-range (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-set-capability (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-set-storage (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-set-cancel-target (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-unreserve (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-enqueue (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-outbox-queued (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-outbox-peek (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-outbox-ack (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-post-result (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-harvest-next (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-finish (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-request-cancel (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-post-clock (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-take-clock (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-post-signal (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-take-signal (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-kind (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-phase (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-gen (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-principal (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-may-release (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-cancel-target (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-cancel-requested (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-owner (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-range (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-capability (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-storage (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-cell (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-ops-stray (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-ops-free-count (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-ops-outbox-credits (w state)) :common-lisp-compliant))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-ops-init fn2-op-reserve fn2-op-set-range fn2-op-set-capability
+    fn2-op-set-storage fn2-op-set-cancel-target fn2-op-unreserve fn2-op-enqueue
+    fn2-outbox-queued fn2-outbox-peek fn2-outbox-ack fn2-post-result
+    fn2-harvest-next fn2-op-finish fn2-op-request-cancel fn2-post-clock
+    fn2-take-clock fn2-post-signal fn2-take-signal fn2-op-kind
+    fn2-op-phase fn2-op-gen fn2-op-principal fn2-op-may-release
+    fn2-op-cancel-target fn2-op-cancel-requested fn2-op-owner fn2-op-range
+    fn2-op-capability fn2-op-storage fn2-op-cell fn2-ops-stray
+    fn2-ops-free-count fn2-ops-outbox-credits) (w state)))
 (defun fn2-vocab-test-runtime-bounds-run (fn2-ops)
   (declare (xargs :stobjs fn2-ops :verify-guards nil))
   (b* ((fn2-ops (fn2-ops-init *fn2-profile-tiny* fn2-ops))
@@ -1280,8 +1256,8 @@
         (time$ (fn2-vocab-audit-loop 100000 fn2-ops)
                :msg "VOCAB HOT LOOP: ~sa bytes, ~st seconds~%"))
       ok)))
-(assert-event (eq (symbol-class 'fn2-vocab-audit-loop (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-vocab-allocation-audit (w state)) :common-lisp-compliant))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-vocab-audit-loop fn2-vocab-allocation-audit) (w state)))
 (assert-event (equal (fn2-vocab-allocation-audit) t))
 
 ; ArmWake keeps the requested deadline and clock-view token through outbox
@@ -1334,8 +1310,8 @@
   (with-local-stobj fn2-ops
     (mv-let (result fn2-ops) (fn2-vocab-test-wake-run fn2-ops) result)))
 (assert-event (equal (fn2-vocab-test-wake) t))
-(assert-event (eq (symbol-class 'fn2-op-set-wake (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-op-wake (w state)) :common-lisp-compliant))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-op-set-wake fn2-op-wake) (w state)))
 
 ; Registry teeth run the existing full positive and negative fixtures.
 (defun fn2-vocab-conservation-teeth ()

@@ -1,8 +1,9 @@
 (in-package "ACL2")
 (include-book "sim-state-data")
 (include-book "prng")
+(include-book "../books/fnv")
 
- ; These raw projection facts seed type reasoning after a child accessor
+; These raw projection facts seed type reasoning after a child accessor
 ; unfolds; scalar updates can therefore keep their generated NTH facts.
 (defthm fn2-sim-net-nth-type-forward
   (implies (fn2-simp fn2-sim)
@@ -40,15 +41,6 @@
 (fn2-sim-metadata-raw fn2-sim-revision *fn2-sim-revision*)
 (fn2-sim-metadata-raw fn2-sim-initial-seed *fn2-sim-initial-seed*)
 
-(defmacro fn2-sim-child-frame (name args)
-  `(progn
-     (defthm ,(fn2-columns-sym name "-NET-FRAME")
-       (equal (nth *fn2-sim-net* (,name ,@args)) (nth *fn2-sim-net* fn2-sim))
-       :hints (("Goal" :in-theory (enable ,name))))
-     (defthm ,(fn2-columns-sym name "-DISK-FRAME")
-       (equal (nth *fn2-sim-disk* (,name ,@args)) (nth *fn2-sim-disk* fn2-sim))
-       :hints (("Goal" :in-theory (enable ,name))))))
-
 (defun fn2-sim-random (fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
   (mv-let (word s0 s1 s2 s3)
@@ -62,14 +54,16 @@
 (defthm fn2-sim-random-word-type
   (unsigned-byte-p 32 (mv-nth 0 (fn2-sim-random fn2-sim))))
 (fn2-word-facts fn2-sim-random-word (car (fn2-sim-random fn2-sim)) fn2-sim-random-word-type)
-(fn2-sim-shape fn2-sim-random (fn2-sim) 1)
+(fn2-sim-preserves fn2-sim-random (fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp 1) ("-READY" fn2-sim-ready 1) ("-WFP" fn2-sim-wfp 1)))
 (defthm fn2-sim-random-state-type
   (implies (fn2-simp fn2-sim)
            (fn2-simp (mv-nth 1 (fn2-sim-random fn2-sim))))
   :rule-classes (:rewrite (:forward-chaining :trigger-terms ((fn2-sim-random fn2-sim))))
   :hints (("Goal" :in-theory (enable fn2-sim-random))))
 
- ; A random draw changes only its four state words. This frame fact keeps
+; A random draw changes only its four state words. This frame fact keeps
 ; nested and fixed-array metadata readable in composed guard proofs.
 (defthm fn2-sim-random-frame
   (implies (and (not (equal (nfix i) *fn2-sim-s0*))
@@ -83,15 +77,17 @@
 (defun fn2-sim-force-fault (fault fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
   (update-fn2-sim-forced-fault (if (and (natp fault) (< fault 26)) fault 26) fn2-sim))
-(fn2-sim-shape fn2-sim-force-fault (fault fn2-sim) nil)
+(fn2-sim-preserves fn2-sim-force-fault (fault fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
 
 ; FNV-1a-like word folding. A u60 payload is represented by two u32
 ; fragments, so shifts and multiplication never form a bignum at runtime.
 (defun fn2-sim-fold (hash word)
   (declare (xargs :guard (and (unsigned-byte-p 32 hash) (unsigned-byte-p 60 word))))
   (let* ((lo (fn2-u32 word)) (hi (floor word 4294967296))
-         (hash (fn2-u32-mul (fn2-u32 (logxor hash lo)) 16777619)))
-    (fn2-u32-mul (fn2-u32 (logxor hash hi)) 16777619)))
+         (hash (fn2-fnv-step hash lo)))
+    (fn2-fnv-step hash hi)))
 (defthm fn2-sim-fold-type (unsigned-byte-p 32 (fn2-sim-fold hash word))
   :hints (("Goal" :in-theory (disable unsigned-byte-p logxor))))
 (fn2-word-facts fn2-sim-fold (fn2-sim-fold hash word) fn2-sim-fold-type)
@@ -138,8 +134,13 @@
   (if (and (natp fault) (< fault 26))
       (update-fn2-sim-hitsi fault (min #xffffffff (+ 1 (fn2-sim-hitsi fault fn2-sim))) fn2-sim)
     fn2-sim))
-(fn2-sim-shape fn2-sim-land (fault fn2-sim) nil)
-(fn2-sim-child-frame fn2-sim-land (fault fn2-sim))
+(fn2-sim-preserves fn2-sim-land (fault fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
+(fn2-sim-preserves fn2-sim-land (fault fn2-sim) :disable nil
+  :specs (("-NET-FRAME" (lambda (s) (nth *fn2-sim-net* s)) nil :frame fn2-sim)
+          ("-DISK-FRAME" (lambda (s) (nth *fn2-sim-disk* s)) nil :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-land))))
 (defthm fn2-sim-land-rows
   (equal (fn2-sim-rows (fn2-sim-land fault fn2-sim)) (fn2-sim-rows fn2-sim))
   :hints (("Goal" :in-theory (enable fn2-sim-land fn2-sim-rows))))
@@ -147,7 +148,9 @@
   (implies (fn2-simp fn2-sim)
            (and (natp (mv-nth 0 (fn2-sim-choose-fault fn2-sim)))
                 (<= (mv-nth 0 (fn2-sim-choose-fault fn2-sim)) 26))))
-(fn2-sim-shape fn2-sim-choose-fault (fn2-sim) 1)
+(fn2-sim-preserves fn2-sim-choose-fault (fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp 1) ("-READY" fn2-sim-ready 1) ("-WFP" fn2-sim-wfp 1)))
 
 (defun fn2-sim-record (op gen cell evkind outcome reason count aux0 aux1 fault fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
@@ -184,7 +187,9 @@
            (fn2-sim (update-fn2-sim-observations
                        (min #xfffffffffffffff (+ 1 (fn2-sim-observations fn2-sim))) fn2-sim)))
       fn2-sim)))
-(fn2-sim-shape fn2-sim-record (op gen cell evkind outcome reason count aux0 aux1 fault fn2-sim) nil)
+(fn2-sim-preserves fn2-sim-record (op gen cell evkind outcome reason count aux0 aux1 fault fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
 
 (defun fn2-sim-clock (target fault fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
@@ -198,9 +203,11 @@
          (fn2-sim (update-fn2-sim-now now fn2-sim))
          (fn2-sim (update-fn2-sim-real real fn2-sim)))
     fn2-sim))
-(fn2-sim-shape fn2-sim-clock (target fault fn2-sim) nil)
+(fn2-sim-preserves fn2-sim-clock (target fault fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
 
- ; One replaceable ArmWake request survives recycling its descriptor row.
+; One replaceable ArmWake request survives recycling its descriptor row.
 ; New clock views may replace an obsolete deadline; repeated requests from
 ; the same view retain the earliest deadline. Older views cannot postpone it.
 (defun fn2-sim-arm-wake (deadline observation-gen fn2-sim)
@@ -217,8 +224,13 @@
                (fn2-sim (update-fn2-sim-wake-deadline deadline fn2-sim))
                (fn2-sim (update-fn2-sim-wake-observation-gen observation-gen fn2-sim)))
           fn2-sim)))))
-(fn2-sim-shape fn2-sim-arm-wake (deadline observation-gen fn2-sim) nil)
-(fn2-sim-child-frame fn2-sim-arm-wake (deadline observation-gen fn2-sim))
+(fn2-sim-preserves fn2-sim-arm-wake (deadline observation-gen fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
+(fn2-sim-preserves fn2-sim-arm-wake (deadline observation-gen fn2-sim) :disable nil
+  :specs (("-NET-FRAME" (lambda (s) (nth *fn2-sim-net* s)) nil :frame fn2-sim)
+          ("-DISK-FRAME" (lambda (s) (nth *fn2-sim-disk* s)) nil :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-arm-wake))))
 (defthm fn2-sim-arm-wake-rows
   (equal (fn2-sim-rows (fn2-sim-arm-wake deadline observation-gen fn2-sim))
          (fn2-sim-rows fn2-sim))
@@ -311,8 +323,13 @@
            (fn2-sim (fn2-sim-set-terminal-aux1 slot 0 fn2-sim))
            )
       (fn2-sim-clear-flights (+ 1 slot) fn2-sim))))
-(fn2-sim-shape fn2-sim-clear-flights (slot fn2-sim) nil)
-(fn2-sim-child-frame fn2-sim-clear-flights (slot fn2-sim))
+(fn2-sim-preserves fn2-sim-clear-flights (slot fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
+(fn2-sim-preserves fn2-sim-clear-flights (slot fn2-sim) :disable nil
+  :specs (("-NET-FRAME" (lambda (s) (nth *fn2-sim-net* s)) nil :frame fn2-sim)
+          ("-DISK-FRAME" (lambda (s) (nth *fn2-sim-disk* s)) nil :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-clear-flights))))
 
 (defun fn2-sim-init-faults (i profile-name fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (and (fn2-sim-ready fn2-sim) (natp i))
@@ -328,8 +345,13 @@
              (fn2-sim (update-fn2-sim-probabilitiesi i (if enabled (+ 1 (mod word 64)) 0) fn2-sim))
              (fn2-sim (update-fn2-sim-hitsi i 0 fn2-sim)))
         (fn2-sim-init-faults (+ 1 i) profile-name fn2-sim)))))
-(fn2-sim-shape fn2-sim-init-faults (i profile-name fn2-sim) nil)
-(fn2-sim-child-frame fn2-sim-init-faults (i profile-name fn2-sim))
+(fn2-sim-preserves fn2-sim-init-faults (i profile-name fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
+(fn2-sim-preserves fn2-sim-init-faults (i profile-name fn2-sim) :disable nil
+  :specs (("-NET-FRAME" (lambda (s) (nth *fn2-sim-net* s)) nil :frame fn2-sim)
+          ("-DISK-FRAME" (lambda (s) (nth *fn2-sim-disk* s)) nil :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-init-faults))))
 
 (defun fn2-sim-client-seed (left byte fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :measure (nfix left)
@@ -364,10 +386,15 @@
            (fn2-sim (update-fn2-sim-ring-faulti i 0 fn2-sim))
            (fn2-sim (if (< i 14) (update-fn2-sim-action-countsi i 0 fn2-sim) fn2-sim)))
       (fn2-sim-init-counters (+ 1 i) fn2-sim))))
-(fn2-sim-shape fn2-sim-init-counters (i fn2-sim) nil)
-(fn2-sim-child-frame fn2-sim-init-counters (i fn2-sim))
+(fn2-sim-preserves fn2-sim-init-counters (i fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
+(fn2-sim-preserves fn2-sim-init-counters (i fn2-sim) :disable nil
+  :specs (("-NET-FRAME" (lambda (s) (nth *fn2-sim-net* s)) nil :frame fn2-sim)
+          ("-DISK-FRAME" (lambda (s) (nth *fn2-sim-disk* s)) nil :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-init-counters))))
 
- ; The finite simulated device is an environment setting, independent of the
+; The finite simulated device is an environment setting, independent of the
 ; implementation's durable namespace. Tiny runs default to four sectors;
 ; larger connection profiles default to sixteen. :sim-sectors overrides it.
 (defun fn2-sim-sectors (profile)
@@ -434,7 +461,7 @@
 (in-theory (disable fn2-sim-init fn2-sim-configp))
 (assert-event (fn2-profile-exports-compliant-p
                '(fn2-sim-ready fn2-sim-random fn2-sim-force-fault fn2-sim-choose-fault
-                 fn2-sim-fold fn2-sim-record fn2-sim-clock fn2-sim-earliest
+                 fn2-sim-fold fn2-sim-record fn2-sim-clock fn2-sim-earliest fn2-sim-arm-wake fn2-sim-land
                  fn2-sim-next-flight fn2-sim-cap fn2-sim-clear-flights
                  fn2-sim-init-faults fn2-sim-client-seed fn2-sim-init-counters
                  fn2-sim-sectors fn2-sim-configp fn2-sim-init)

@@ -31,7 +31,7 @@
        (fn2-core (fn2-exec-wake wake fn2-core))
        (fn2-core (fn2-exec-record 0 wake principal 0 bytes 24 0 nil 4294967295 start fn2-core)))
     (mv 1 0 0 bytes 24 fn2-core)))
-(fn2-core-shape-lemmas fn2-exec-harvest () 5)
+(fn2-core-preserves fn2-exec-harvest (fn2-core) :position 5 :rows nil)
 
 (defun fn2-exec-mailbox (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
@@ -52,7 +52,7 @@
        (fn2-core (fn2-exec-record (if clockp 3 4) 4294967295 0 0 0 8 0
                                  nil 4294967295 start fn2-core)))
     (mv 1 0 0 0 8 fn2-core)))
-(fn2-exec-direct-shape fn2-exec-mailbox () 5)
+(fn2-core-preserves fn2-exec-mailbox (fn2-core) :position 5 :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
 (defun fn2-exec-principal (principal position budget fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -71,7 +71,7 @@
        (fn2-core (fn2-exec-record 1 id principal position bytes steps actions
                                  runnable wake start fn2-core)))
     (mv 0 1 actions bytes steps fn2-core)))
-(fn2-core-shape-lemmas fn2-exec-principal (principal position budget) 5)
+(fn2-core-preserves fn2-exec-principal (principal position budget fn2-core) :position 5 :rows nil)
 
 (defun fn2-exec-service (service position budget fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -87,7 +87,7 @@
        (fn2-core (fn2-exec-record 2 4294967295 service position 0
                     (if (and (equal wake 4294967295) (equal actions 0)) 1 24) actions nil wake start fn2-core)))
     (mv 0 1 actions 0 (if (and (equal wake 4294967295) (equal actions 0)) 1 24) fn2-core)))
-(fn2-core-shape-lemmas fn2-exec-service (service position budget) 5)
+(fn2-core-preserves fn2-exec-service (service position budget fn2-core) :position 5 :rows nil)
 
 ; Observation order is the posted FIFO, then the coalesced clock mailbox,
 ; then sticky signals. Each turn stops at the first exhausted budget.
@@ -104,7 +104,7 @@
           (fn2-exec-principal principal position action-budget fn2-core)
         (fn2-exec-service (nfix (- (nfix kind) 1)) position action-budget fn2-core))))
    (t (mv 0 0 0 0 0 fn2-core))))
-(fn2-core-shape-lemmas fn2-transition (allow-observation action-budget) 5)
+(fn2-core-preserves fn2-transition (allow-observation action-budget fn2-core) :position 5 :rows nil)
 
 (defun fn2-exec-account-work (bytes steps fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -114,7 +114,7 @@
         (let* ((fn2-core (fn2-exec-set-turn-bytes b fn2-core))
                (fn2-core (fn2-exec-set-turn-steps s fn2-core))) fn2-core)
       (fn2-core-stop *fn2-stop-reason-work-overflow* fn2-core))))
-(fn2-machine-core-shape fn2-exec-account-work (bytes steps))
+(fn2-core-preserves fn2-exec-account-work (bytes steps fn2-core) :rows nil :prefix "")
 
 (in-theory (disable fn2-turn-status fn2-exec-eligible-p
                     fn2-exec-observation-p fn2-exec-runnable-p))
@@ -147,7 +147,7 @@
          (fn2-core (fn2-exec-account-work bytes steps fn2-core)))
       (fn2-concrete-loop (- fuel 1) h k a (+ nobs (nfix obs))
                            (+ nvisits (nfix visits)) (+ nactions (nfix actions)) fn2-core)))))
-(fn2-core-shape-lemmas fn2-concrete-loop (fuel h k a nobs nvisits nactions) 4)
+(fn2-core-preserves fn2-concrete-loop (fuel h k a nobs nvisits nactions fn2-core) :position 4 :rows nil)
 
 (defun fn2-concrete-turn (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -156,12 +156,12 @@
          (fn2-core (fn2-exec-set-turn-bytes 0 fn2-core))
          (fn2-core (fn2-exec-set-turn-steps 0 fn2-core)))
     (fn2-concrete-loop (+ h k) h k a 0 0 0 fn2-core)))
-(fn2-core-shape-lemmas fn2-concrete-turn () 4)
+(fn2-core-preserves fn2-concrete-turn (fn2-core) :position 4 :rows nil)
 
 (defun fn2-turn (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-concrete-turn fn2-core))
-(fn2-core-shape-lemmas fn2-turn () 4)
+(fn2-core-preserves fn2-turn (fn2-core) :position 4 :rows nil)
 
 (defun fn2-exec-start-listeners (left id fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix left)
@@ -169,7 +169,7 @@
   (if (zp left) fn2-core
     (let ((fn2-core (fn2-exec-wake id fn2-core)))
       (fn2-exec-start-listeners (- left 1) (+ id 1) fn2-core))))
-(fn2-machine-core-shape fn2-exec-start-listeners (left id))
+(fn2-core-preserves fn2-exec-start-listeners (left id fn2-core) :rows nil :prefix "")
 
 (defun fn2-init-executor (profile mode scribe-p fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)))

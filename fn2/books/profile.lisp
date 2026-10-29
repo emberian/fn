@@ -1,6 +1,7 @@
 ; Init-time resident execution profiles.  These values size arrays; they do
 ; not bound durable namespaces.  All post-init capacities are read from state.
 (in-package "ACL2")
+(include-book "operations")
 
 (defun fn2-profile-get (key profile)
   (declare (xargs :guard t))
@@ -177,11 +178,7 @@
             (put-assoc-equal :generation-start 1152921504606846976
                              *fn2-profile-tiny*)))))
 
-(defun fn2-profile-exports-compliant-p (names world)
-  (declare (xargs :guard (and (symbol-listp names) (plist-worldp world))))
-  (if (endp names) t
-    (and (eq (symbol-class (car names) world) :common-lisp-compliant)
-         (fn2-profile-exports-compliant-p (cdr names) world))))
+
 
 (assert-event
  (fn2-profile-exports-compliant-p

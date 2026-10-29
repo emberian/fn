@@ -28,36 +28,36 @@
     :why "Simulator-only diagnostic source revision retained for replay.")
    (fn2-sim-initial-seed :type t :initially 0
     :why "Simulator-only original seed retained for replay; runtime PRNG uses bounded u32 state.")
-   (fn2-sim-seed :type (unsigned-byte 32) :initially 0)
-   (fn2-sim-s0 :type (unsigned-byte 32) :initially 0)
-   (fn2-sim-s1 :type (unsigned-byte 32) :initially 0)
-   (fn2-sim-s2 :type (unsigned-byte 32) :initially 0)
-   (fn2-sim-s3 :type (unsigned-byte 32) :initially 0)
-   (fn2-sim-now :type (unsigned-byte 60) :initially 0)
-   (fn2-sim-real :type (unsigned-byte 60) :initially 0)
-   (fn2-sim-deaths :type (unsigned-byte 32) :initially 0)
-   (fn2-sim-stamp :type (unsigned-byte 60) :initially 0)
-   (fn2-sim-fault-budget :type (unsigned-byte 32) :initially 0)
-   (fn2-sim-forced-fault :type (unsigned-byte 8) :initially 26)
-   (fn2-sim-digest :type (unsigned-byte 32) :initially 0)
-   (fn2-sim-ring-head :type (unsigned-byte 8) :initially 0)
-   (fn2-sim-observations :type (unsigned-byte 60) :initially 0)
-   (fn2-sim-probabilities :type (array (unsigned-byte 8) (26)) :initially 0)
-   (fn2-sim-hits :type (array (unsigned-byte 32) (26)) :initially 0)
-   (fn2-sim-action-counts :type (array (unsigned-byte 32) (14)) :initially 0)
-   (fn2-sim-ring-op :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-gen :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-cell :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-event :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-outcome :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-reason :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-count :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-aux0 :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-aux1 :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-ring-fault :type (array (unsigned-byte 60) (64)) :initially 0)
-   (fn2-sim-wake-pending :type (unsigned-byte 1) :initially 0)
-   (fn2-sim-wake-deadline :type (unsigned-byte 60) :initially 0)
-   (fn2-sim-wake-observation-gen :type (unsigned-byte 60) :initially 0)))
+   (fn2-sim-seed :type (unsigned-byte 32) :initially 0 :why "Simulator-wide random state, independent of flight rows.")
+   (fn2-sim-s0 :type (unsigned-byte 32) :initially 0 :why "Simulator-wide random state, independent of flight rows.")
+   (fn2-sim-s1 :type (unsigned-byte 32) :initially 0 :why "Simulator-wide random state, independent of flight rows.")
+   (fn2-sim-s2 :type (unsigned-byte 32) :initially 0 :why "Simulator-wide random state, independent of flight rows.")
+   (fn2-sim-s3 :type (unsigned-byte 32) :initially 0 :why "Simulator-wide random state, independent of flight rows.")
+   (fn2-sim-now :type (unsigned-byte 60) :initially 0 :why "Simulator-wide clock, independent of flight rows.")
+   (fn2-sim-real :type (unsigned-byte 60) :initially 0 :why "Simulator-wide clock, independent of flight rows.")
+   (fn2-sim-deaths :type (unsigned-byte 32) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-stamp :type (unsigned-byte 60) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-fault-budget :type (unsigned-byte 32) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-forced-fault :type (unsigned-byte 8) :initially 26 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-digest :type (unsigned-byte 32) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-ring-head :type (unsigned-byte 8) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-observations :type (unsigned-byte 60) :initially 0 :why "Simulator-wide control or accumulated evidence, independent of flight rows.")
+   (fn2-sim-probabilities :type (array (unsigned-byte 8) (26)) :initially 0 :why "Counters or policy indexed by fault/action kind, not flight rows.")
+   (fn2-sim-hits :type (array (unsigned-byte 32) (26)) :initially 0 :why "Counters or policy indexed by fault/action kind, not flight rows.")
+   (fn2-sim-action-counts :type (array (unsigned-byte 32) (14)) :initially 0 :why "Counters or policy indexed by fault/action kind, not flight rows.")
+   (fn2-sim-ring-op :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-gen :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-cell :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-event :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-outcome :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-reason :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-count :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-aux0 :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-aux1 :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-ring-fault :type (array (unsigned-byte 60) (64)) :initially 0 :why "Bounded diagnostic ring indexed independently of flight rows.")
+   (fn2-sim-wake-pending :type (unsigned-byte 1) :initially 0 :why "One adapter wake reservation shared by all flights.")
+   (fn2-sim-wake-deadline :type (unsigned-byte 60) :initially 0 :why "One adapter wake reservation shared by all flights.")
+   (fn2-sim-wake-observation-gen :type (unsigned-byte 60) :initially 0 :why "One adapter wake reservation shared by all flights.")))
 
 (defthm fn2-sim-net-type
   (implies (fn2-simp fn2-sim) (fn2-sim-networkp (fn2-sim-net fn2-sim)))
@@ -80,24 +80,18 @@
   (equal (fn2-sim-wfp (update-fn2-sim-disk child fn2-sim)) (fn2-sim-wfp fn2-sim))
   :hints (("Goal" :in-theory (enable fn2-sim-wfp))))
 
-(defmacro fn2-sim-metadata-facts (field)
-  (let* ((write (intern-in-package-of-symbol
-                 (concatenate 'string "UPDATE-" (symbol-name field)) field))
-         (type (intern-in-package-of-symbol
-                (concatenate 'string (symbol-name write) "-TYPE") field))
-         (wfp (intern-in-package-of-symbol
-               (concatenate 'string (symbol-name write) "-WFP") field)))
-    `(progn
-       (defthm ,type
-         (implies (fn2-simp fn2-sim) (fn2-simp (,write v fn2-sim)))
-         :hints (("Goal" :in-theory (enable fn2-simp))))
-       (defthm ,wfp
-         (equal (fn2-sim-wfp (,write v fn2-sim)) (fn2-sim-wfp fn2-sim))
-         :hints (("Goal" :in-theory (enable fn2-sim-wfp)))))))
-(fn2-sim-metadata-facts fn2-sim-profile)
-(fn2-sim-metadata-facts fn2-sim-profile-name)
-(fn2-sim-metadata-facts fn2-sim-revision)
-(fn2-sim-metadata-facts fn2-sim-initial-seed)
+(fn2-sim-preserves update-fn2-sim-profile (v fn2-sim) :disable nil
+  :specs (("-TYPE" fn2-simp nil :hyps ((fn2-simp fn2-sim)) :hints (("Goal" :in-theory (enable fn2-simp))))
+          ("-WFP" fn2-sim-wfp nil :frame fn2-sim :hints (("Goal" :in-theory (enable fn2-sim-wfp))))))
+(fn2-sim-preserves update-fn2-sim-profile-name (v fn2-sim) :disable nil
+  :specs (("-TYPE" fn2-simp nil :hyps ((fn2-simp fn2-sim)) :hints (("Goal" :in-theory (enable fn2-simp))))
+          ("-WFP" fn2-sim-wfp nil :frame fn2-sim :hints (("Goal" :in-theory (enable fn2-sim-wfp))))))
+(fn2-sim-preserves update-fn2-sim-revision (v fn2-sim) :disable nil
+  :specs (("-TYPE" fn2-simp nil :hyps ((fn2-simp fn2-sim)) :hints (("Goal" :in-theory (enable fn2-simp))))
+          ("-WFP" fn2-sim-wfp nil :frame fn2-sim :hints (("Goal" :in-theory (enable fn2-sim-wfp))))))
+(fn2-sim-preserves update-fn2-sim-initial-seed (v fn2-sim) :disable nil
+  :specs (("-TYPE" fn2-simp nil :hyps ((fn2-simp fn2-sim)) :hints (("Goal" :in-theory (enable fn2-simp))))
+          ("-WFP" fn2-sim-wfp nil :frame fn2-sim :hints (("Goal" :in-theory (enable fn2-sim-wfp))))))
 
 (defthm fn2-sim-parent-consp
   (implies (fn2-simp fn2-sim) (consp fn2-sim))
@@ -114,25 +108,5 @@
            (fn2-sim-storage-wfp fn2-sim-storage))
       ok)))
 
-(defmacro fn2-sim-shape (name args result)
-  (let ((term (if result `(mv-nth ,result (,name ,@args)) `(,name ,@args))))
-    `(progn
-       (defthm ,(intern-in-package-of-symbol
-                  (concatenate 'string (symbol-name name) "-TYPE") name)
-         (implies (and (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
-                  (fn2-simp ,term))
-         :rule-classes (:rewrite (:forward-chaining :trigger-terms ((,name ,@args)))))
-       (defthm ,(intern-in-package-of-symbol
-                  (concatenate 'string (symbol-name name) "-READY") name)
-         (implies (and (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
-                  (fn2-sim-ready ,term))
-         :rule-classes (:rewrite (:forward-chaining :trigger-terms ((,name ,@args)))))
-       (defthm ,(intern-in-package-of-symbol
-                  (concatenate 'string (symbol-name name) "-WFP") name)
-         (implies (and (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
-                  (fn2-sim-wfp ,term))
-         :rule-classes (:rewrite (:forward-chaining :trigger-terms ((,name ,@args)))))
-       (in-theory (disable ,name))
-       (assert-event (eq (symbol-class ',name (w state)) :common-lisp-compliant)))))
-
-(assert-event (eq (symbol-class 'fn2-sim-ready (w state)) :common-lisp-compliant))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-sim-ready) (w state)))

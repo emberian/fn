@@ -9,7 +9,7 @@
            (< deadline (fn2-exec-idle-deadline fn2-core)))
       (fn2-exec-set-idle-deadline deadline fn2-core)
     fn2-core))
-(fn2-machine-core-shape fn2-request-wake (deadline))
+(fn2-core-preserves fn2-request-wake (deadline fn2-core) :rows nil :prefix "")
 
 (defun fn2-exec-wake-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -30,7 +30,7 @@
             (let ((fn2-core (fn2-exec-set-armed-deadline deadline fn2-core)))
               (mv 1 fn2-core))
           (mv 0 fn2-core))))))
-(fn2-core-shape-lemmas fn2-exec-arm () 1)
+(fn2-core-preserves fn2-exec-arm (fn2-core) :position 1 :rows nil)
 (defthm fn2-exec-arm-count-natp
   (natp (mv-nth 0 (fn2-exec-arm fn2-core)))
   :rule-classes :type-prescription
@@ -56,7 +56,7 @@
       (if (= generation #xfffffffffffffff)
           (fn2-core-stop *fn2-stop-reason-clock-exhausted* fn2-core)
         (fn2-exec-set-wake-generation (+ generation 1) fn2-core)))))
-(fn2-machine-core-shape fn2-exec-clock (mono))
+(fn2-core-preserves fn2-exec-clock (mono fn2-core) :rows nil :prefix "")
 
 (assert-event
  (fn2-profile-exports-compliant-p

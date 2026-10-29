@@ -14,7 +14,7 @@
                        *fn2-outcome-done* *fn2-reason-none* count 0 0 fn2-ops)))
         (mv code fn2-ops)))
     (mv code fn2-core)))
-(fn2-core-shape-lemmas fn2-audit-post (slot gen kind count) 1)
+(fn2-core-preserves fn2-audit-post (slot gen kind count fn2-core) :position 1 :rows nil)
 
 (defun fn2-audit-input-byte (slot gen op ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -22,7 +22,7 @@
     (code fn2-pool)
     (fn2-pool-adapter-write slot gen op ogen 0 65 fn2-pool)
     (mv code fn2-core)))
-(fn2-core-shape-lemmas fn2-audit-input-byte (slot gen op ogen) 1)
+(fn2-core-preserves fn2-audit-input-byte (slot gen op ogen fn2-core) :position 1 :rows nil)
 
 (in-theory (disable fn2-core-wfp fn2-terminal-event))
 
@@ -34,7 +34,7 @@
         (fn2-harvest-one fn2-core))
        (- ev outcome reason n a b))
     (mv (and found (equal hslot slot) (equal hgen gen) (equal cell 0)) fn2-core)))
-(fn2-core-shape-lemmas fn2-audit-complete (slot gen kind count) 1)
+(fn2-core-preserves fn2-audit-complete (slot gen kind count fn2-core) :position 1 :rows nil)
 
 (defun fn2-audit-call (kind slot gen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -48,7 +48,7 @@
     (0 (fn2-issue-accept 0 1 1 0 1 0 fn2-core))
     (4 (fn2-issue-close 0 1 1 0 1 0 fn2-core))
     (otherwise (fn2-issue-cancel 0 0 1 0 1 0 fn2-core))))
-(fn2-core-shape-lemmas fn2-audit-call (kind slot gen) 3)
+(fn2-core-preserves fn2-audit-call (kind slot gen fn2-core) :position 3 :rows nil)
 
 (defun fn2-audit-one (kind slot gen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -63,7 +63,7 @@
        ((unless (eq code :ok)) (mv nil fn2-core)))
     (fn2-audit-complete op ogen kind
       (if (or input (equal kind 3) (equal kind 6)) 1 0) fn2-core)))
-(fn2-core-shape-lemmas fn2-audit-one (kind slot gen) 1)
+(fn2-core-preserves fn2-audit-one (kind slot gen fn2-core) :position 1 :rows nil)
 
 ; Each operation has a closed shape boundary. An unsuccessful call marks the
 ; cycle false; the remaining calls still execute, so no proof has nine nested
@@ -80,7 +80,7 @@
        ((mv h fn2-core) (fn2-audit-one 8 slot gen fn2-core))
        ((mv i fn2-core) (fn2-audit-one 10 slot gen fn2-core)))
     (mv (and a b c d e f g h i) fn2-core)))
-(fn2-core-shape-lemmas fn2-core-audit-cycle (slot gen) 1)
+(fn2-core-preserves fn2-core-audit-cycle (slot gen fn2-core) :position 1 :rows nil)
 
 (defun fn2-core-audit-loop (n slot gen fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix n)
@@ -90,7 +90,7 @@
       (if ok (fn2-core-audit-loop (- n 1) slot gen fn2-core)
         (mv nil fn2-core)))))
 
-(fn2-core-shape-lemmas fn2-core-audit-loop (n slot gen) 1)
+(fn2-core-preserves fn2-core-audit-loop (n slot gen fn2-core) :position 1 :rows nil)
 
 (defun fn2-core-allocation-audit ()
   (declare (xargs :guard t
@@ -105,6 +105,6 @@
         (time$ (fn2-core-audit-loop 100000 slot gen fn2-core)
                :msg "CORE HOT LOOP: 100000 cycles, ~sa bytes, ~st seconds~%"))
       ok)))
-(assert-event (eq (symbol-class 'fn2-core-audit-loop (w state)) :common-lisp-compliant))
-(assert-event (eq (symbol-class 'fn2-core-allocation-audit (w state)) :common-lisp-compliant))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-core-audit-loop fn2-core-allocation-audit) (w state)))
 (assert-event (fn2-core-allocation-audit))

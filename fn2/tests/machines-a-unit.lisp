@@ -206,7 +206,10 @@
   (with-local-stobj fn2-core
     (mv-let (answer fn2-core)
       (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
-           (fn2-core (fn2-machine-set-phase 0 255 fn2-core))
+           ; Corrupt the storage encoding directly: the semantic setter rejects unnamed enum tags.
+           (fn2-core
+            (stobj-let ((fn2-listener (fn2-listener-table fn2-core)))
+              (fn2-listener) (update-fn2-listener-phase$ai 0 255 fn2-listener) fn2-core))
            ((mv bytes steps actions runnable fn2-core) (fn2-machine-run 0 4 fn2-core)))
         (mv (and (= (fn2-core-stop-reason fn2-core) *fn2-stop-reason-machine-phase*)
                  (= (fn2-machine-phase 0 fn2-core) 255)
@@ -305,7 +308,6 @@
                                     (* 10 row-cursor)))))))
     (mv id fn2-core)))
 
-
 (encapsulate ()
  (local (table fn2-machine-kinds 'fn2-scribe
           (list* :observes
@@ -363,7 +365,6 @@
 (assert-event (equal (fn2-machine-two-completions-control) :ok))
 (value-triple (cw "R5a OBSERVE: two harvested writes counted before run; reason order, pre-decrement pending 2/1, no cell overwrite PASS~%"))
 
-
 (must-fail
  (defmachine fn2-control-code-continuation :states (:ready)
    :budget (:bytes 1 :steps 1 :descriptors 1)
@@ -414,3 +415,9 @@
 (assert-event
  (equal (fn2-machine-write-values '((id caller-id) (slot caller-slot)))
         '((fn2-write-value-id caller-id) (fn2-write-value-slot caller-slot))))
+
+(assert-event
+ (let ((columns (fn2-decl-get :generated (fn2-decl-row '(:columns fn2-echo) (w state))))
+       (machine (fn2-decl-get :generated (fn2-decl-row '(:machine fn2-echo) (w state)))))
+   (and (fn2-decl-find-artifact 'fn2-echo-put columns)
+        (not (fn2-decl-find-artifact 'fn2-echo-put machine)))))

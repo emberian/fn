@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "../books/profile")
 (include-book "../books/columns")
 
 ; A connection owns two bounded pipes. A full pipe returns :would-block;
@@ -14,36 +15,10 @@
    (reset-armed :bool) (reset-left :u60))
   :init-name fn2-network-columns-init
   :extra-fields
-  ((fn2-network-rx :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t)
-   (fn2-network-tx :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t)))
-
-(defun fn2-network-put-bindings (fields)
-  (if (consp fields)
-      (cons `(fn2-sim-network
-               (,(intern-in-package-of-symbol
-                   (concatenate 'string "FN2-SIM-NETWORK-SET-"
-                                (symbol-name (caar fields))) 'fn2-sim-network)
-                slot ,(cadar fields) fn2-sim-network))
-            (fn2-network-put-bindings (cdr fields)))
-    nil))
-(defmacro fn2-network-put (&rest fields)
-  `(let* ,(fn2-network-put-bindings fields) fn2-sim-network))
+  ((fn2-network-rx :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Connection receive pipes have byte capacity independent of row count.")
+   (fn2-network-tx :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Connection transmit pipes have byte capacity independent of row count.")))
 
 ; Generated composition facts keep the concrete recognizer closed in users.
-(defmacro fn2-network-shape (name args result)
-  (let ((term (if result `(mv-nth ,result (,name ,@args)) `(,name ,@args))))
-    `(progn
-       (defthm ,(intern-in-package-of-symbol
-                  (concatenate 'string (symbol-name name) "-TYPE") name)
-         (implies (and (fn2-sim-networkp fn2-sim-network)
-                       (fn2-sim-network-wfp fn2-sim-network))
-                  (fn2-sim-networkp ,term)))
-       (defthm ,(intern-in-package-of-symbol
-                  (concatenate 'string (symbol-name name) "-WFP") name)
-         (implies (fn2-sim-network-wfp fn2-sim-network)
-                  (fn2-sim-network-wfp ,term)))
-       (in-theory (disable ,name))
-       (assert-event (eq (symbol-class ',name (w state)) :common-lisp-compliant)))))
 
 (defun fn2-network-init-rows (slot window fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network
@@ -56,7 +31,7 @@
       fn2-sim-network
     (let* ((base (* slot window))
            (fn2-sim-network
-            (fn2-network-put (nonce 0) (base (if (unsigned-byte-p 60 base) base 0))
+            (fn2-sim-network-put slot (nonce 0) (base (if (unsigned-byte-p 60 base) base 0))
                              (cap window) (phase *fn2-network-phase-closed*)
                              (rx-head 0) (rx-count 0) (tx-head 0) (tx-count 0)
                              (half-open 0) (nonreading 0) (reset-armed 0) (reset-left 0))))
@@ -108,11 +83,11 @@
          (mv :exhausted 0 fn2-sim-network))
         (t (let* ((nonce (+ 1 (fn2-sim-network-nonce slot fn2-sim-network)))
                   (fn2-sim-network
-                   (fn2-network-put (nonce nonce) (phase *fn2-network-phase-open*)
+                   (fn2-sim-network-put slot (nonce nonce) (phase *fn2-network-phase-open*)
                                     (rx-head 0) (rx-count 0) (tx-head 0) (tx-count 0)
                                     (half-open 0) (nonreading 0) (reset-armed 0) (reset-left 0))))
              (mv :ok nonce fn2-sim-network)))))
-(fn2-network-shape fn2-network-accept (slot fn2-sim-network) 2)
+(fn2-sim-network-preserves fn2-network-accept (slot fn2-sim-network) :position 2 :prefix "" :rows nil :wfp-type nil)
 
 (defun fn2-network-close (slot nonce fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
@@ -121,9 +96,9 @@
       (mv :stale fn2-sim-network)
     (let ((fn2-sim-network (fn2-sim-network-set-phase slot *fn2-network-phase-closed* fn2-sim-network)))
       (mv :ok fn2-sim-network))))
-(fn2-network-shape fn2-network-close (slot nonce fn2-sim-network) 1)
+(fn2-sim-network-preserves fn2-network-close (slot nonce fn2-sim-network) :position 1 :prefix "" :rows nil :wfp-type nil)
 
- ; A listener Close is an executed admission refusal, attached to this nonce.
+; A listener Close is an executed admission refusal, attached to this nonce.
 ; Ordinary closes remain unexplained to the oracle unless another cause exists.
 (defun fn2-network-refuse (slot nonce fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
@@ -133,7 +108,7 @@
     (let ((fn2-sim-network
            (fn2-sim-network-set-phase slot *fn2-network-phase-admission-refused* fn2-sim-network)))
       (mv :ok fn2-sim-network))))
-(fn2-network-shape fn2-network-refuse (slot nonce fn2-sim-network) 1)
+(fn2-sim-network-preserves fn2-network-refuse (slot nonce fn2-sim-network) :position 1 :prefix "" :rows nil :wfp-type nil)
 
 ; Set half-open (= peer stops providing input without sending a FIN),
 ; non-reading client, and reset after exactly LEFT physical byte transfers.
@@ -148,11 +123,10 @@
                      (unsigned-byte-p 1 armed) (unsigned-byte-p 60 left)))
            (mv :bounds fn2-sim-network))
           (t (let ((fn2-sim-network
-                    (fn2-network-put (half-open half-open) (nonreading nonreading)
+                    (fn2-sim-network-put slot (half-open half-open) (nonreading nonreading)
                                      (reset-armed armed) (reset-left left))))
                (mv :ok fn2-sim-network))))))
-(fn2-network-shape fn2-network-faults
-  (slot nonce half-open nonreading armed left fn2-sim-network) 1)
+(fn2-sim-network-preserves fn2-network-faults (slot nonce half-open nonreading armed left fn2-sim-network) :position 1 :prefix "" :rows nil :wfp-type nil)
 
 (defun fn2-network-transfer-tick (slot fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
@@ -163,7 +137,7 @@
         (fn2-sim-network-set-reset-left slot
           (- (fn2-sim-network-reset-left slot fn2-sim-network) 1) fn2-sim-network)
       fn2-sim-network)))
-(fn2-network-shape fn2-network-transfer-tick (slot fn2-sim-network) nil)
+(fn2-sim-network-preserves fn2-network-transfer-tick (slot fn2-sim-network) :position nil :prefix "" :rows nil :wfp-type nil)
 
 ; These two pipe primitives have explicit bounds even for a malformed logical
 ; state. All positions are sums of u60 base and u32 offsets (fixnums). No
@@ -192,7 +166,7 @@
             (t (let* ((fn2-sim-network (update-fn2-network-txi pos byte fn2-sim-network))
                       (fn2-sim-network (fn2-sim-network-set-tx-count slot (+ 1 count) fn2-sim-network)))
                  (mv :ok fn2-sim-network)))))))
-(fn2-network-shape fn2-network-queue-put (rx slot byte fn2-sim-network) 1)
+(fn2-sim-network-preserves fn2-network-queue-put (rx slot byte fn2-sim-network) :position 1 :prefix "" :rows nil :wfp-type nil)
 
 (defun fn2-network-queue-get (rx slot fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
@@ -210,12 +184,12 @@
                                        (fn2-network-tx-length fn2-sim-network))))
              (mv :bounds 0 fn2-sim-network))
             (rx (let* ((byte (fn2-network-rxi pos fn2-sim-network))
-                       (fn2-sim-network (fn2-network-put (rx-head next) (rx-count (- count 1)))))
+                       (fn2-sim-network (fn2-sim-network-put slot (rx-head next) (rx-count (- count 1)))))
                   (mv :ok byte fn2-sim-network)))
             (t (let* ((byte (fn2-network-txi pos fn2-sim-network))
-                      (fn2-sim-network (fn2-network-put (tx-head next) (tx-count (- count 1)))))
+                      (fn2-sim-network (fn2-sim-network-put slot (tx-head next) (tx-count (- count 1)))))
                  (mv :ok byte fn2-sim-network)))))))
-(fn2-network-shape fn2-network-queue-get (rx slot fn2-sim-network) 2)
+(fn2-sim-network-preserves fn2-network-queue-get (rx slot fn2-sim-network) :position 2 :prefix "" :rows nil :wfp-type nil)
 
 (defun fn2-network-client-byte (slot nonce byte fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
@@ -223,7 +197,7 @@
     (cond ((not (eq code :ok)) (mv code fn2-sim-network))
           ((= (fn2-sim-network-half-open slot fn2-sim-network) 1) (mv :would-block fn2-sim-network))
           (t (fn2-network-queue-put t slot byte fn2-sim-network)))))
-(fn2-network-shape fn2-network-client-byte (slot nonce byte fn2-sim-network) 1)
+(fn2-sim-network-preserves fn2-network-client-byte (slot nonce byte fn2-sim-network) :position 1 :prefix "" :rows nil :wfp-type nil)
 
 (defun fn2-network-client-read (slot nonce fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
@@ -231,7 +205,7 @@
     (cond ((not (eq code :ok)) (mv code 0 fn2-sim-network))
           ((= (fn2-sim-network-nonreading slot fn2-sim-network) 1) (mv :would-block 0 fn2-sim-network))
           (t (fn2-network-queue-get nil slot fn2-sim-network)))))
-(fn2-network-shape fn2-network-client-read (slot nonce fn2-sim-network) 2)
+(fn2-sim-network-preserves fn2-network-client-read (slot nonce fn2-sim-network) :position 2 :prefix "" :rows nil :wfp-type nil)
 
 (defun fn2-network-receive-byte (slot nonce fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
@@ -250,7 +224,7 @@
                                        (fn2-network-transfer-tick slot fn2-sim-network)
                                        fn2-sim-network)))
                  (mv code byte fn2-sim-network)))))))
-(fn2-network-shape fn2-network-receive-byte (slot nonce fn2-sim-network) 2)
+(fn2-sim-network-preserves fn2-network-receive-byte (slot nonce fn2-sim-network) :position 2 :prefix "" :rows nil :wfp-type nil)
 
 (defun fn2-network-send-byte (slot nonce byte fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
@@ -266,9 +240,7 @@
                                        (fn2-network-transfer-tick slot fn2-sim-network)
                                        fn2-sim-network)))
                  (mv code fn2-sim-network)))))))
-(fn2-network-shape fn2-network-send-byte (slot nonce byte fn2-sim-network) 1)
-
-(assert-event (eq (symbol-class 'fn2-network-init (w state)) :common-lisp-compliant))
+(fn2-sim-network-preserves fn2-network-send-byte (slot nonce byte fn2-sim-network) :position 1 :prefix "" :rows nil :wfp-type nil)
 
 ; Independent boundary exercise: the third write is refused at a two-byte
 ; window; drain one, wrap, and obtain all accepted bytes in original order.
@@ -407,12 +379,18 @@
           (>= slot (fn2-sim-network-rows fn2-sim-network)))
       fn2-sim-network
     (let ((fn2-sim-network
-            (fn2-network-put (phase *fn2-network-phase-closed*)
+            (fn2-sim-network-put slot (phase *fn2-network-phase-closed*)
                              (rx-head 0) (rx-count 0) (tx-head 0) (tx-count 0)
                              (half-open 0) (nonreading 0) (reset-armed 0) (reset-left 0))))
       (fn2-network-drop-all (+ 1 slot) fn2-sim-network))))
-(fn2-network-shape fn2-network-drop-all (slot fn2-sim-network) nil)
+(fn2-sim-network-preserves fn2-network-drop-all (slot fn2-sim-network) :position nil :prefix "" :rows nil :wfp-type nil)
 (defun fn2-network-restart (fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
   (fn2-network-drop-all 0 fn2-sim-network))
-(fn2-network-shape fn2-network-restart (fn2-sim-network) nil)
+(fn2-sim-network-preserves fn2-network-restart (fn2-sim-network) :position nil :prefix "" :rows nil :wfp-type nil)
+
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-network-init fn2-network-accept fn2-network-close fn2-network-refuse
+    fn2-network-faults fn2-network-transfer-tick fn2-network-queue-put fn2-network-queue-get
+    fn2-network-client-byte fn2-network-client-read fn2-network-receive-byte fn2-network-send-byte
+    fn2-network-drop-all fn2-network-restart) (w state)))

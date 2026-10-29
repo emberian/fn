@@ -15,7 +15,7 @@
              (case (fn2-machine-kind id fn2-core)
                ,@(fn2-machine-run-arms (fn2-machine-names (w state)) 0)
                (otherwise (fn2-machine-refuse-phase id fn2-core)))))))
-(fn2-core-shape-lemmas fn2-machine-run (id budget) 4)
+(fn2-core-preserves fn2-machine-run (id budget fn2-core) :position 4 :rows nil)
 
 (assert-event
  (fn2-profile-exports-compliant-p

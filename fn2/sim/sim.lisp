@@ -2,11 +2,12 @@
 (in-package "ACL2")
 (include-book "sim-adapter-base")
 
+(in-theory (disable fn2-core-wfp fn2-sim-ready))
+
 ; The generated scalar/type facts already discharge these guards.  Avoid
 ; repeatedly running tau over the nested core/simulator shape vocabulary.
 (local (in-theory (disable (tau-system))))
-; Shape calls below pass open-core=nil: the composed adapter contracts
-; already preserve the core invariant without reopening its children.
+; Composed adapter contracts preserve the core invariant without reopening children.
 
 ; A submitted write can reach the device before its completion is observed.
 ; Repeated random selection among remaining flights admits every permutation;
@@ -14,12 +15,12 @@
 ; these bytes remain pending and may tear with the rest of the volatile cache.
 (defthm fn2-sim-set-fua-ready
   (implies (and (fn2-sim-ready fn2-sim) (natp slot) (< slot (fn2-sim-rows fn2-sim)))
-           (fn2-sim-ready (fn2-sim-set-fua slot value fn2-sim))))
+           (fn2-sim-ready (fn2-sim-set-fua slot value fn2-sim)))
+                  :hints (("Goal" :in-theory (enable fn2-sim-ready))))
 (defthm fn2-sim-set-active-ready
   (implies (and (fn2-sim-ready fn2-sim) (natp slot) (< slot (fn2-sim-rows fn2-sim)))
-           (fn2-sim-ready (fn2-sim-set-active slot value fn2-sim))))
-
-(in-theory (disable fn2-sim-ready fn2-core-wfp))
+           (fn2-sim-ready (fn2-sim-set-active slot value fn2-sim)))
+                  :hints (("Goal" :in-theory (enable fn2-sim-ready))))
 
 (defun fn2-sim-crash-flight-one (fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
@@ -36,13 +37,20 @@
           (mv :ok 0 0 fn2-core fn2-sim fn2-own)))
        (fn2-sim (fn2-sim-set-active slot 0 fn2-sim)))
     (mv t fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 1 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 2 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 3 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 4 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 5 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 6 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 7 nil)
+(fn2-sim-preserves fn2-sim-crash-flight-one (fn2-core fn2-sim fn2-own) :part 1
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-one (fn2-core fn2-sim fn2-own) :part 2
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-one (fn2-core fn2-sim fn2-own) :part 3
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-one (fn2-core fn2-sim fn2-own) :part 4
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-one (fn2-core fn2-sim fn2-own) :part 5
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-one (fn2-core fn2-sim fn2-own) :part 6
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-one (fn2-core fn2-sim fn2-own) :part 7
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
 (defun fn2-sim-crash-flight-writes (left fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :measure (nfix left)
@@ -54,13 +62,20 @@
       (if found
           (fn2-sim-crash-flight-writes (- left 1) fn2-core fn2-sim fn2-own)
         (mv fn2-core fn2-sim fn2-own)))))
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 1 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 2 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 3 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 4 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 5 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 6 nil)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 7 nil)
+(fn2-sim-preserves fn2-sim-crash-flight-writes (left fn2-core fn2-sim fn2-own) :part 1
+  :carriers ((fn2-core 0 :prefix "-CORE") (fn2-sim 1 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 2 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-writes (left fn2-core fn2-sim fn2-own) :part 2
+  :carriers ((fn2-core 0 :prefix "-CORE") (fn2-sim 1 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 2 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-writes (left fn2-core fn2-sim fn2-own) :part 3
+  :carriers ((fn2-core 0 :prefix "-CORE") (fn2-sim 1 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 2 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-writes (left fn2-core fn2-sim fn2-own) :part 4
+  :carriers ((fn2-core 0 :prefix "-CORE") (fn2-sim 1 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 2 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-writes (left fn2-core fn2-sim fn2-own) :part 5
+  :carriers ((fn2-core 0 :prefix "-CORE") (fn2-sim 1 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 2 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-writes (left fn2-core fn2-sim fn2-own) :part 6
+  :carriers ((fn2-core 0 :prefix "-CORE") (fn2-sim 1 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 2 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-crash-flight-writes (left fn2-core fn2-sim fn2-own) :part 7
+  :carriers ((fn2-core 0 :prefix "-CORE") (fn2-sim 1 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 2 :prefix "-OWN")))
 
 (defthm fn2-sim-ready-disk-projection
  (implies (fn2-sim-ready fn2-sim)
@@ -107,8 +122,9 @@
        (fn2-sim (update-fn2-sim-wake-observation-gen 0 fn2-sim))
        (fn2-sim (update-fn2-sim-deaths (min #xffffffff (+ 1 deaths)) fn2-sim)))
     fn2-sim))
-(fn2-sim-shape fn2-sim-crash-state (fn2-sim) nil)
-(in-theory (disable fn2-sim-ready fn2-core-wfp))
+(fn2-sim-preserves fn2-sim-crash-state (fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
 
 (defthm fn2-sim-crash-flight-writes-core-car-type
  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
@@ -129,8 +145,8 @@
          (fn2-own (fn2-own-restart fn2-own))
          (fn2-core (fn2-core-init profile fn2-core)))
       (mv fn2-core fn2-sim fn2-own))))
-(fn2-sim-adapter-shape fn2-sim-crash (profile) 0 1 2 nil nil)
-
+(fn2-sim-preserves fn2-sim-crash (profile fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 0 :prefix "-CORE") (fn2-sim 1 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 2 :prefix "-OWN")))
 
 ; ACL2 normalizes the first result of a multiple-value call to CAR.
 (defthm fn2-sim-crash-core-car-shape
@@ -142,9 +158,8 @@
   :hints (("Goal" :use (fn2-sim-crash-core-type fn2-sim-crash-core-wfp)
                    :in-theory (disable fn2-sim-crash-core-type fn2-sim-crash-core-wfp))))
 
-(assert-event (eq (symbol-class 'fn2-sim-crash (w state)) :common-lisp-compliant))
-
-(in-theory (enable fn2-sim-ready fn2-core-wfp))
+(assert-event (fn2-profile-exports-compliant-p
+  '(fn2-sim-crash) (w state)))
 
 (defun fn2-sim-result-outcome (kind code count len)
   (declare (xargs :guard (and (natp count) (natp len))))
@@ -177,7 +192,8 @@
 (in-theory (disable fn2-sim-result-reason))
 
 (defun fn2-sim-save-terminal (slot outcome reason count aux0 aux1 fn2-sim)
-  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
+  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)
+                  :guard-hints (("Goal" :in-theory (enable fn2-sim-ready)))))
   (if (not (and (natp slot) (< slot (fn2-sim-rows fn2-sim))
                 (unsigned-byte-p 8 outcome) (unsigned-byte-p 8 reason)
                 (unsigned-byte-p 32 count) (unsigned-byte-p 32 aux0)
@@ -188,10 +204,13 @@
            (fn2-sim (fn2-sim-set-terminal-count slot count fn2-sim))
            (fn2-sim (fn2-sim-set-terminal-aux0 slot aux0 fn2-sim)))
       (fn2-sim-set-terminal-aux1 slot aux1 fn2-sim))))
-(fn2-sim-shape fn2-sim-save-terminal (slot outcome reason count aux0 aux1 fn2-sim) nil)
-(fn2-sim-rows-frame fn2-sim-save-terminal (slot outcome reason count aux0 aux1 fn2-sim) nil)
-
-(in-theory (disable fn2-sim-ready fn2-core-wfp))
+(fn2-sim-preserves fn2-sim-save-terminal (slot outcome reason count aux0 aux1 fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil))
+  :hints (("Goal" :in-theory (enable fn2-sim-ready))))
+(fn2-sim-preserves fn2-sim-save-terminal (slot outcome reason count aux0 aux1 fn2-sim) :disable nil
+  :specs (("-RAW-ROWS" (lambda (s) (nth *fn2-sim-rows* s)) nil :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-save-terminal))))
 
 (defthm fn2-sim-set-last-gen-ready
   (implies (and (fn2-sim-ready fn2-sim) (natp slot) (< slot (fn2-sim-rows fn2-sim)))
@@ -239,8 +258,8 @@
          (fn2-sim (fn2-sim-set-due slot
                       (min #xfffffffffffffff (+ 1 (mod word 100) now)) fn2-sim)))
       (mv t fn2-core fn2-sim fn2-own))))
-(fn2-sim-adapter-shape fn2-sim-terminal-post
- (slot gen event outcome reason count aux0 aux1 fault word now release early) 1 2 3 nil nil)
+(fn2-sim-preserves fn2-sim-terminal-post (slot gen event outcome reason count aux0 aux1 fault word now release early fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
 ; Scalar interpretation stays opaque in the state-preservation proofs.
 (defun fn2-sim-terminal-values (kind code physical-count aux len release cancelled)
@@ -252,7 +271,7 @@
                     (if cancelled *fn2-outcome-done* *fn2-outcome-not-found*) outcome))
        (reason (fn2-sim-result-reason kind code outcome))
        (count (if (or (equal kind *fn2-action-accept*) (equal kind *fn2-action-connect*)
-                      (and (fn2-sim-input-kindp kind)
+                      (and (fn2-op-input-kindp kind)
                            (or (= outcome *fn2-outcome-failed*) (= outcome *fn2-outcome-cancelled*))))
                   0 count))
        (aux0 (cond ((or (equal kind *fn2-action-accept*) (equal kind *fn2-action-connect*))
@@ -283,7 +302,6 @@
     (mv-nth 4 (fn2-sim-terminal-values kind code physical-count aux len release cancelled)))
   :hints (("Goal" :in-theory (e/d (fn2-sim-terminal-values) (unsigned-byte-p)))))
 
-
 ; Interpret one physical result after the byte effects have completed.
 (defun fn2-sim-complete-result
   (slot gen kind event len code physical-count aux fault word now release
@@ -303,8 +321,8 @@
        (early (and release (equal fault 25))))
     (fn2-sim-terminal-post slot gen event outcome reason count aux0 aux1
       fault word now release early fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-complete-result
- (slot gen kind event len code physical-count aux fault word now release) 1 2 3 nil nil)
+(fn2-sim-preserves fn2-sim-complete-result (slot gen kind event len code physical-count aux fault word now release fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
 (defun fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
@@ -353,18 +371,25 @@
               (fn2-sim-complete-result slot gen kind event len code physical-count aux
                 fault word now release fn2-core fn2-sim fn2-own)))
           (mv found fn2-core fn2-sim fn2-own)))))))
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 1 nil)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 2 nil)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 3 nil)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 4 nil)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 5 nil)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 6 nil)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 7 nil)
-(in-theory (enable fn2-sim-ready fn2-core-wfp))
+(fn2-sim-preserves fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own) :part 1
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own) :part 2
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own) :part 3
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own) :part 4
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own) :part 5
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own) :part 6
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+(fn2-sim-preserves fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own) :part 7
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
 (defun fn2-sim-client-drain (left cap nonce fn2-sim)
   (declare (xargs :stobjs fn2-sim :measure (nfix left)
-                  :guard (and (fn2-sim-ready fn2-sim) (natp left))))
+                  :guard (and (fn2-sim-ready fn2-sim) (natp left))
+                  :guard-hints (("Goal" :in-theory (enable fn2-sim-ready)))))
   (if (zp left) fn2-sim
     (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim)))
       (code byte fn2-sim-network)
@@ -373,16 +398,25 @@
         (let ((fn2-sim (fn2-sim-record cap nonce 0 258 0 0 byte
                                       (fn2-sim-now fn2-sim) 0 26 fn2-sim)))
           (fn2-sim-client-drain (- left 1) cap nonce fn2-sim))))))
-(in-theory (disable fn2-sim-ready))
-(fn2-sim-shape fn2-sim-client-drain (left cap nonce fn2-sim) nil)
-(fn2-sim-rows-frame fn2-sim-client-drain (left cap nonce fn2-sim) nil)
-(in-theory (enable fn2-sim-ready))
+
+(fn2-sim-preserves fn2-sim-client-drain (left cap nonce fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
+(fn2-sim-preserves fn2-sim-client-drain (left cap nonce fn2-sim) :disable nil
+  :specs (("-RAW-ROWS" (lambda (s) (nth *fn2-sim-rows* s)) nil :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-client-drain))))
 
 ; Raw frames match generated projections after their accessors unfold.
-(fn2-sim-rows-frame fn2-sim-clock (target fault fn2-sim) nil)
-(fn2-sim-rows-frame fn2-sim-choose-fault (fn2-sim) 1)
-(fn2-sim-rows-frame fn2-sim-environment (slot fault word fn2-sim) nil)
-(in-theory (disable fn2-sim-ready fn2-profile-run-bytes))
+(fn2-sim-preserves fn2-sim-clock (target fault fn2-sim) :disable nil
+  :specs (("-RAW-ROWS" (lambda (s) (nth *fn2-sim-rows* s)) nil :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-clock))))
+(fn2-sim-preserves fn2-sim-choose-fault (fn2-sim) :disable nil
+  :specs (("-RAW-ROWS" (lambda (s) (nth *fn2-sim-rows* s)) 1 :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-choose-fault))))
+(fn2-sim-preserves fn2-sim-environment (slot fault word fn2-sim) :disable nil
+  :specs (("-RAW-ROWS" (lambda (s) (nth *fn2-sim-rows* s)) nil :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-environment))))
+(in-theory (disable fn2-profile-run-bytes))
 
 (defun fn2-sim-delay-flight (slot fault word fn2-sim)
  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
@@ -395,22 +429,27 @@
            (fn2-sim (if (and (member-equal fault '(2 14)) (< (fn2-sim-due slot fn2-sim) due))
                         (fn2-sim-land fault fn2-sim) fn2-sim)))
       (fn2-sim-set-due slot due fn2-sim)))))
-(in-theory (enable fn2-sim-ready))
-(fn2-sim-shape fn2-sim-delay-flight (slot fault word fn2-sim) nil)
-(in-theory (disable fn2-sim-ready))
+
+(fn2-sim-preserves fn2-sim-delay-flight (slot fault word fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil))
+  :hints (("Goal" :in-theory (enable fn2-sim-ready))))
 
 ; Posting the clock preserves the parent core without reopening its children.
 (defun fn2-sim-post-clock (mono real fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
     (fn2-ops) (fn2-post-clock mono real 1 fn2-ops) fn2-core))
 (defthm fn2-sim-post-clock-type
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-corep (fn2-sim-post-clock mono real fn2-core))))
+           (fn2-corep (fn2-sim-post-clock mono real fn2-core)))
+                  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (defthm fn2-sim-post-clock-wfp
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-core-wfp (fn2-sim-post-clock mono real fn2-core))))
-(in-theory (disable fn2-sim-post-clock fn2-core-wfp))
+           (fn2-core-wfp (fn2-sim-post-clock mono real fn2-core)))
+                  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-sim-post-clock))
 
 ; Keep the generated typed reader intact for arithmetic in wake selection.
 ; Opening it here hides its type behind the composed simulator updates.
@@ -426,17 +465,51 @@
                            (fn2-sim-due slot fn2-sim)))))
 (in-theory (disable fn2-sim-wake-first-p))
 
+(defun fn2-sim-echo-accept (slot fault word allow fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
+                              (fn2-own-wfp fn2-own))
+                  :guard-hints (("Goal" :in-theory (e/d (fn2-sim-ready)
+                                                        (fn2-sim-network-rows))))))
+  (if (not (and (natp slot) (< slot (fn2-sim-rows fn2-sim))
+                (unsigned-byte-p 32 word)))
+      (mv nil fn2-core fn2-sim fn2-own)
+    (if (not allow)
+        (let ((fn2-sim (fn2-sim-delay-flight slot 26 word fn2-sim)))
+          (mv t fn2-core fn2-sim fn2-own))
+    (b* ((gen (fn2-sim-gen slot fn2-sim))
+         (now (fn2-sim-now fn2-sim))
+         ((mv code cap nonce fn2-sim)
+          (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim)))
+            (code cap nonce fn2-sim-network)
+            (let ((cap (if (< 0 (fn2-sim-network-rows fn2-sim-network))
+                           (mod word (fn2-sim-network-rows fn2-sim-network)) 0)))
+              (mv-let (code nonce fn2-sim-network)
+                (fn2-network-accept cap fn2-sim-network)
+                (mv code cap nonce fn2-sim-network)))
+            (mv code cap nonce fn2-sim)))
+         ((mv & fn2-core fn2-sim fn2-own)
+          (fn2-sim-inject slot fault fn2-core fn2-sim fn2-own))
+         ((when (eq code :would-block))
+          (let ((fn2-sim (fn2-sim-set-due slot (min #xfffffffffffffff (+ 100 now)) fn2-sim)))
+            (mv t fn2-core fn2-sim fn2-own))))
+      (fn2-sim-complete-result slot gen *fn2-action-accept* *fn2-event-accept-result*
+                               0 code cap nonce fault word now nil
+                               fn2-core fn2-sim fn2-own)))))
+(fn2-sim-preserves fn2-sim-echo-accept (slot fault word allow fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+
 ; Each stage carries the existing shape contracts, so composition does not
 ; repeatedly expand nested simulator states in all six projection proofs.
-(defun fn2-sim-advance-flight (found slot fault word fn2-core fn2-sim fn2-own)
+(defun fn2-sim-advance-flight (automatic allow-accept found slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
                               (fn2-own-wfp fn2-own)
                               (or (not found)
                                   (and (natp slot) (< slot (fn2-sim-rows fn2-sim)))))))
-  (b* ((fn2-sim (fn2-sim-environment slot fault word fn2-sim))
+  (b* ((fn2-sim (if (or automatic found) (fn2-sim-environment slot fault word fn2-sim) fn2-sim))
        (quantum (fn2-profile-run-bytes (fn2-sim-profile fn2-sim)))
-       (fn2-sim (if found
+       (fn2-sim (if (and automatic found)
                     (fn2-sim-client-drain (if (unsigned-byte-p 32 quantum) quantum 0)
                                           (fn2-sim-cap-index slot fn2-sim)
                                           (fn2-sim-cap-nonce slot fn2-sim) fn2-sim)
@@ -445,10 +518,14 @@
        ((when (or (equal fault 2) (equal fault 14)))
         (let ((fn2-sim (fn2-sim-delay-flight slot fault word fn2-sim)))
           (mv t fn2-core fn2-sim fn2-own))))
-    (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-advance-flight (found slot fault word) 1 2 3 nil nil)
+    (if (and (not automatic) (equal (fn2-sim-active slot fn2-sim) 1)
+             (equal (fn2-sim-kind slot fn2-sim) *fn2-action-accept*))
+        (fn2-sim-echo-accept slot fault word allow-accept fn2-core fn2-sim fn2-own)
+      (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))))
+(fn2-sim-preserves fn2-sim-advance-flight (automatic allow-accept found slot fault word fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
-(defun fn2-sim-advance-selected (found slot fault word fn2-core fn2-sim fn2-own)
+(defun fn2-sim-advance-selected (automatic allow-accept found slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
                               (fn2-own-wfp fn2-own)
@@ -466,13 +543,16 @@
                (fn2-sim (update-fn2-sim-wake-pending 0 fn2-sim))
                (fn2-sim (fn2-sim-record 0 token 0 259 0 0 deadline mono 0 fault fn2-sim)))
           (mv t fn2-core fn2-sim fn2-own))))
-    (fn2-sim-advance-flight found slot fault word fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-advance-selected (found slot fault word) 1 2 3 nil nil)
+    (fn2-sim-advance-flight automatic allow-accept found slot fault word fn2-core fn2-sim fn2-own)))
+(fn2-sim-preserves fn2-sim-advance-selected (automatic allow-accept found slot fault word fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
 ; Flight selection stays valid across the fault draw.
-(fn2-sim-rows-frame fn2-sim-choose-flight-fault (slot fn2-sim) 1)
+(fn2-sim-preserves fn2-sim-choose-flight-fault (slot fn2-sim) :disable nil
+  :specs (("-RAW-ROWS" (lambda (s) (nth *fn2-sim-rows* s)) 1 :frame fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-choose-flight-fault))))
 
-(defun fn2-sim-advance (fn2-core fn2-sim fn2-own)
+(defun fn2-sim-advance-with-clients (automatic allow-accept fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
                               (fn2-own-wfp fn2-own))))
@@ -484,18 +564,28 @@
         (let ((profile (fn2-sim-profile fn2-sim)))
           (mv-let (fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own)
             (mv t fn2-core fn2-sim fn2-own)))))
-    (fn2-sim-advance-selected found slot fault word fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-advance () 1 2 3 nil nil)
+    (fn2-sim-advance-selected automatic allow-accept found slot fault word fn2-core fn2-sim fn2-own)))
+(fn2-sim-preserves fn2-sim-advance-with-clients (automatic allow-accept fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+
+(defun fn2-sim-advance (fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
+                              (fn2-own-wfp fn2-own))))
+  (fn2-sim-advance-with-clients t t fn2-core fn2-sim fn2-own))
+(fn2-sim-preserves fn2-sim-advance (fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
 (assert-event
  (fn2-profile-exports-compliant-p
   '(fn2-sim-amount fn2-sim-redirect fn2-sim-client-feed fn2-sim-client-drain
-    fn2-sim-unused-op fn2-sim-find-write fn2-sim-crash-flight-writes
+    fn2-sim-unused-op fn2-sim-find-write fn2-sim-crash-flight-writes fn2-sim-choose-flight-fault
     fn2-sim-transfer fn2-sim-post fn2-sim-register fn2-sim-take-one
     fn2-sim-take-prefix fn2-sim-take fn2-sim-physical fn2-sim-cancel-target
     fn2-sim-inject fn2-sim-environment fn2-sim-crash-units fn2-sim-crash
     fn2-sim-crash-flight-one fn2-sim-crash-state fn2-sim-save-terminal
     fn2-sim-terminal-values fn2-sim-terminal-post fn2-sim-complete-result fn2-sim-delay-flight fn2-sim-post-clock
     fn2-sim-result-outcome fn2-sim-result-reason fn2-sim-complete fn2-sim-wake-first-p
-    fn2-sim-advance-flight fn2-sim-advance-selected fn2-sim-advance)
+    fn2-sim-echo-accept fn2-sim-advance-flight fn2-sim-advance-selected
+    fn2-sim-advance-with-clients fn2-sim-advance)
   (w state)))
