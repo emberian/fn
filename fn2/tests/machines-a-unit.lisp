@@ -308,12 +308,26 @@
 ; Two issued writes complete before any machine run. The test declaration
 ; chooses accumulation instead of scribe's one-cell policy; routing is the
 ; same generator, and completions pass through the real FIFO and harvest.
+; The saturation is one opaque function with its range proved once, so the
+; callback's preservation proofs do not split on four MINs.
+(defun fn2-machine-test-saturate (x)
+  (declare (xargs :guard (natp x)))
+  (min *fn2-none* x))
+(defthm fn2-machine-test-saturate-range
+  (<= (fn2-machine-test-saturate x) *fn2-none*)
+  :hints (("Goal" :in-theory (enable fn2-machine-test-saturate)))
+  :rule-classes :linear)
+(defthm fn2-machine-test-saturate-natp
+  (implies (natp x) (natp (fn2-machine-test-saturate x)))
+  :hints (("Goal" :in-theory (enable fn2-machine-test-saturate)))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-machine-test-saturate))
 (defmachine-callback fn2-machine-test-accumulate fn2-scribe (id event outcome reason count aux0 aux1) 1
   (let ((fn2-core (fn2-scribe-put-core id
-          (completed (min *fn2-none* (+ 1 row-completed)))
-          (verified (min *fn2-none* (+ (nfix count) row-verified)))
-          (checksum (min *fn2-none* (+ (nfix reason) (* 16 row-checksum))))
-          (cursor (min *fn2-none* (+ row-pending
+          (completed (fn2-machine-test-saturate (+ 1 row-completed)))
+          (verified (fn2-machine-test-saturate (+ (nfix count) row-verified)))
+          (checksum (fn2-machine-test-saturate (+ (nfix reason) (* 16 row-checksum))))
+          (cursor (fn2-machine-test-saturate (+ row-pending
                                     (* 10 row-cursor)))))))
     (mv id fn2-core)))
 
