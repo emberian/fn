@@ -757,15 +757,21 @@ cursor becomes the seal offset after record packing finishes; the old saved
 record offset was unused. Named checked-update helpers retain `put-core`'s
 commit-kind and atomic width validation while exporting shape contracts. This
 keeps the observer proof from repeatedly expanding nested update branches.
-The exported proof boundary names the complete assembled `fn2-core-wfp` as
-`fn2-commit-core-invariant`, with all child invariants and the control-row
-constraint proved as demand-driven projections, plus a type-reasoning bridge
-to the original predicate. It preserves the exact
-invariant while keeping unrelated extension columns out of A’s simulator proof
-hypotheses. The broad `fn2-layoutp-head` rewrite is disabled at this boundary:
-it otherwise attempts layout recognition on unrelated simulator lists. Codec
-proofs use it explicitly. These changes affect proof rewriting only, not machine
-execution.
+The exported proof boundary names the **complete** assembled invariant as
+`fn2-commit-core-invariant`. Its exact projection, variable-input rewrite,
+constructed-output bridge and forward type bridge are a temporary implementation
+of A's DSL-METATHEORY §4 projection kit, not a weaker invariant. Child type,
+WFP and update facts are generated from the registry's B-layer children plus
+pool/scheduler/control; their type/WFP forwarding is disabled after B's proofs.
+B globally disables `fn2-layoutp-head`: a current-base full echo certification
+with this setting local took 65.841 s. Outbox opacity is local. B's redundant
+`fn2-core-wfp` disable is removed; A already disables it in assembly-access.
+All thirty child row/reader disables are local: the enabled-reader core-init
+probe completed in 49.149 s including loading. The eighteen redundant child
+P/WFP disables were removed from the declaration book. The remaining global
+cross-book layout rule disable is `fn2-layoutp-head`; B also exports the exact invariant
+interface above and disables its own generated type/WFP forwarding after its
+guard proofs. Full ablation scopes and times are in `build/REPORT.md`.
 
 ### Phases and resources
 
@@ -902,20 +908,96 @@ existing write fault kills the device permanently. The driver prints measured
 bytes per acknowledgement and encoded record payload per journal byte, and
 requires every named fault class and the fence-count control to be exercised.
 
+### Resource threads and notification debt (B3c)
+
+R7 `:holds` is absent on this base. `*fn2-commit-holds*` beside `defmachine`
+is the phase-entry potential; the registry checks its state coverage.
+`*fn2-commit-transitions*` names the graph. Phase alone is insufficient: operation
+lifecycle, drain cursor and retained failure state refine the potential.
+
+| Phase entries | Batch / pool | Allocation and edges |
+|---|---|---|
+| free | 0 / 0 | Previously installed ownership remains with roots |
+| collect | 1 / 4 | One extent and root/member-record reservation |
+| seal, dependencies, log-write, fence, durable, install | 1 / 4 | Same reservation plus prepared-successor edge |
+| publish, notify | 1 / 4 | Installed-root edge replaces prepared edge; extent stays allocated |
+| draining | 1 / `4 - cb-stage` | Root ownership is retained while workspaces leave |
+| uncertain | Retained actual inventory | No new acquisitions; completion can discharge IO; recovery owns resolution |
+
+Each write adds an op, queued action credit and an operation-owned IO edge.
+Adapter take releases the queued credit; harvest releases the op. Both log ops
+can overlap, and their allocator edges can remain until the completed class is
+harvested. A commit gate G (capacity 1, between partners) spans fence issue to
+harvest. Physical F (profile `:fence-slots`) is acquired by adapter take **before**
+outbox release and released by physical completion, independently of outbox or
+op availability. The scribe uses F, not G. A scribe fence can therefore cause
+head-of-line blocking of a queued commit fence; it does not prevent the active
+fence's completion. The scenario's max-fences control counts all outstanding
+commit fences; it is not a claim that the scribe shares the commit-only gate.
+
+`commit-resources.lisp` generates P/V words from differences of refined
+potentials. A word acquires batch/pool/extent/root reservations, prepares,
+performs dependency, overlapping log and barrier lifecycles in the selected
+mode, installs, publishes, notifies and drains. Acquisition precedes release
+when a transition does both. The installed extent, root descriptor and edge
+remain explicit terminal holdings: **no fictitious retirement V** is inserted.
+The scribe likewise retains its workspace. Capacity is batch=2, pool=the chosen
+4 KiB class, O=`:o`, Q=`:qa`, IO=6, prepared=2, G=1, F=`:fence-slots`;
+extent/root/installed capacities subtract `:commit-existing-roots` (default 0).
+Root reservations include this test kind's bounded member records and
+notification source. Private layout/hash arrays have no competing acquire.
+
+There are two commit words, one scribe iteration, `:c + :accept-credits`
+outbox-only A projections, and `:c` abstract recipients. Recipient send capacity
+is B's `:recipient-send-slots` (default one) per recipient. This deliberately
+models the requested A outbox projection, not full echo buffer ownership.
+Admission must have reserved the two batches' buffers first; failed admission
+unwinds rather than becoming a blocking PV acquire. Predecessor seal/publication
+waits are separately acyclic: the predecessor seals with reserved workspaces,
+and publication waits hold no op or fence resource. Bounded device completion
+and fair harvesting are assumptions of this finite healthy-wave model.
+
+`fn2-commit-notification-range(batch,cursor,core)` reads the immutable published
+key interval, clamping a recipient-owned cursor. Notification debt therefore
+leaves the batch through its published root; `notify` never waits for Send.
+Both rows can drain and be reused while two recipients remain at cursor zero.
+The reuse control checks those old intervals after four actual commits, plus an
+empty interval at a caught-up cursor. Actual transport, durable recipient
+cursors, exactly-once delivery and B6's root-retention policy are separate
+integration work; this is a replayable notification source, not implemented Send.
+
+The unit audit follows actual callback/helper phase writes, rejecting a
+counterfactual notify→free arm. Shared callbacks are audited against their source
+union; scenarios check the exact source/destination edge on **every** microstep.
+Independent pool/operation/allocator reads check phase holdings, issuance,
+adapter credit release, completion, edge transfer, draining and non-acquisition
+in uncertainty. Generic potential telescoping proves every closed potential
+path has zero delta. An independent P/V prefix inventory checks the generated
+words against their retained root holdings; a missing pool release is refused
+with cycle name `:baseline-missing-vpool`. This is tested implementation
+correspondence, not a universal machine-to-PV refinement theorem.
+
+`check-deadlock.lisp` implements the finite Algorithm 5.13 boundary test: capacity
+violations become open rectangles; candidate lower-face coordinates plus
+finished coordinates are checked for feasibility and blockage in every active
+direction. Maximum-demand pruning removes only resources that cannot overflow.
+Explicit terminal holdings remain inside rectangles. There is no schedule
+sampling, silent search cap, or topology. A geometric witness need not be
+reachable; zero geometric deadlocks is the conservative result used here.
+Both modes report tiny 13 threads / 2,066 rectangles / 24,576 candidates / 0
+deadlocks and concrete 523 / 4 / 18 / 0. The reversed fence/batch and held-send
+controls each report three threads, four rectangles, one deadlock, witness
+`((2 2 2))`. Exhaustive independent prefix/BFS comparisons cover 8,568 small
+program/capacity cases. Persistent uncertainty and absent recovery are named
+terminal obligations, not normal successful releases; the zero result is not
+fault liveness, starvation freedom, or a B5 recovery result.
+
 ### Validation scope
 
-The twelve existing execution controls are named zero-argument evaluators in
-the two `defthm-owed` registrations, checked by `fn2-assert-owed-teeth`.
-`OWED.md` is generated from the admitted unit-book world. On the current base,
-the 90-book closure certifies below 60 seconds per book (maximum 55.078 seconds).
-A4, all twelve teeth, and 39 format controls per barrier mode pass. Scenarios
-13/14 pass 316/1882 tiny exhaustive cuts and 10,000 concrete seeds each; every
-required fault class is hit and maximum fences in flight is one. The full timing
-table and verbatim acceptance are in `build/REPORT.md`. One unchanged A unit
-remains red because it asserts a closed three-kind registry; only the two
-assembly edits are authorized here. The controls execute four batches, retain
-the follower while the leader drains, check stale generations and reservation
-refusals, and count all outstanding fences independently. The proof and acceptance status, including
-any failed composed gates, is recorded in `build/REPORT.md`; source presence
-alone is not a scenario or durability claim. B5 disk discovery and B6 reclamation
-remain separate quests.
+The twelve durability teeth remain executed zero-argument evaluators. The B
+scenario driver includes the resource unit and runs real and counterfactual PV
+checks before scenarios 13/14. Tiny exhausts 316/1882 cuts of the stated schedules;
+concrete runs 10,000 seeds per scenario. Every fault class must be hit. Final
+current-closure certification times, verbatim acceptance and any remaining red
+are recorded in `build/REPORT.md`; an earlier checkpoint's green is not current
+acceptance. B5 discovery and B6 reclamation remain separate quests.

@@ -3,6 +3,7 @@
 (include-book "machines")
 (include-book "core-children")
 (include-book "profile")
+(include-book "sched")
 (include-book "commit-alloc")
 (include-book "format-check")
 (fn2-book-layer :b)
@@ -91,9 +92,40 @@
  :profilep (and (unsigned-byte-p 32 (+ 1 (nfix (fn2-b-capacity :extent-slots 16 profile))))
                 (unsigned-byte-p 1 (fn2-b-barrier-mode profile)))
  :why "Root handles are swapped only after durability; profile mode is authoritative.")
-(defconst *fn2-commit-reason-stray* 255)
+; Names come from one code list; diagnostic values stay fixed.
+(defconst *fn2-commit-reasons* '((:none 0) (:timeout 1) (:seal 3) (:predecessor 4)
+                               (:durable 5) (:issue 6) (:stray 255)))
+(defun fn2-commit-reason-events (codes)
+ (declare (xargs :verify-guards nil))
+ (if (atom codes) nil
+  (append (fn2-columns-enum-constants 'fn2-commit-reason (list (caar codes)) (cadar codes))
+          (fn2-commit-reason-events (cdr codes)))))
+(make-event (value (cons 'progn (fn2-commit-reason-events *fn2-commit-reasons*))))
+(defconst *fn2-commit-seal-stages*
+ '(:zero-dependency :zero-records :zero-seal :zero-scratch :page-header :manifest
+   :hash-init :hash-page :save-page-hash :records-header :records :hash-records
+   :save-records-hash :previous-seal :seal-header :seal-body :check-seal :save-seal :hash-seal-frame))
+(make-event (value (cons 'progn (fn2-columns-enum-constants
+ 'fn2-commit-seal-stage *fn2-commit-seal-stages* 0))))
 (defun fn2-commit-initial-generation (slot base n gen)
  (declare (xargs :guard t) (ignore slot base n)) gen)
+; Phase-entry holdings. IO lifecycle, drain cursor and quarantine refine these
+; potentials in commit-resources; installed ownership survives batch-row reuse.
+(defconst *fn2-commit-holds*
+ (let* ((base '((:batch . 1) (:pool . 4) (:extent . 1) (:root . 1)))
+        (prepared (append base '((:prepared . 1))))
+        (installed (append base '((:installed . 1)))))
+  (list (cons :free nil) (cons :collect base) (cons :seal prepared)
+   (cons :dependencies prepared) (cons :log-write prepared) (cons :fence prepared)
+   (cons :durable prepared) (cons :install prepared) (cons :publish installed)
+   (cons :notify installed) (cons :draining installed) (cons :uncertain :retained))))
+; Self transitions are implicit; recovery replaces the whole core, not a row.
+(defconst *fn2-commit-transitions*
+ '((:free :collect) (:collect :seal :uncertain) (:seal :dependencies :uncertain)
+   (:dependencies :log-write :fence :uncertain) (:log-write :fence :durable :uncertain)
+   (:fence :log-write :durable :uncertain) (:durable :install :uncertain)
+   (:install :publish :uncertain) (:publish :notify :uncertain)
+   (:notify :draining :uncertain) (:draining :free :uncertain) (:uncertain)))
 (defmachine fn2-commit
  :states (:free :collect :seal :dependencies :log-write :fence :durable
           :install :publish :notify :draining :uncertain)
@@ -108,7 +140,7 @@
  :accounts (:operations :bytes :row)
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity 2
- :initial ((generation fn2-commit-initial-generation) (ready-prev 4294967295) (ready-next 4294967295))
+ :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-sched-none*) (ready-next *fn2-sched-none*))
  :observes ((:write-result fn2-commit-observe)
             (:fence-result fn2-commit-observe))
  :continuations
@@ -124,17 +156,20 @@
   (:notify fn2-commit-notify)
   (:draining fn2-commit-drain)
   (:uncertain fn2-commit-drain)))
+(make-event (value `(assert-event
+ (equal ',(strip-cars *fn2-commit-holds*)
+        ',(fn2-machine-property 'fn2-commit :states (w state))))))
 (include-book "commit")
 
-; Export child boundaries: downstream A proofs need shapes, not B array bodies.
-(in-theory (disable fn2-extentsp fn2-extents-wfp fn2-extents-rows
- fn2-alloc-edgesp fn2-alloc-edges-wfp fn2-alloc-edges-rows
- fn2-fcp fn2-fc-wfp fn2-fc-rows fn2-fc-contextp fn2-fc-context-wfp fn2-fc-context-rows
- fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-fieldsp fn2-fields-wfp fn2-fields-rows
- fn2-commit-iop fn2-commit-io-wfp fn2-commit-io-rows
+; Keep child array bodies opaque only while admitting this declaration book.
+(local (in-theory (disable fn2-extents-rows
+ fn2-alloc-edges-rows
+ fn2-fc-rows fn2-fc-context-rows
+ fn2-b3-rows fn2-fields-rows
+ fn2-commit-io-rows
  fn2-commit-io-extent fn2-commit-io-epoch fn2-commit-io-counter fn2-commit-io-pool-slot fn2-commit-io-pool-gen fn2-commit-io-op-slot fn2-commit-io-op-gen fn2-commit-io-ready fn2-commit-io-lent
- fn2-commit-rootp fn2-commit-root-wfp fn2-commit-root-rows
+ fn2-commit-root-rows
  fn2-commit-root-installed fn2-commit-root-published
  fn2-commit-root-proposed fn2-commit-root-parent fn2-commit-root-extent fn2-commit-root-first-key fn2-commit-root-members fn2-commit-root-seal-ready fn2-commit-root-barrier-mode
- fn2-digestsp fn2-digests-wfp fn2-digests-rows
- fn2-fc-context-hash fn2-fc-context-geometry fn2-fc-context-previous-seal))
+ fn2-digests-rows
+ fn2-fc-context-hash fn2-fc-context-geometry fn2-fc-context-previous-seal)))

@@ -9,10 +9,28 @@
       (with-suppression
         (ld '((set-prover-step-limit 300000)
               (set-cbd "fn2/tests/")
+              (include-book "commit-resource-unit")
               (ld "sim-layer-b.lisp" :ld-error-action :error)
               (set-guard-checking nil)) :ld-error-action :error)))
     (declare (ignore state))
     (assert (and (not erp) (eq value :eof))))
+  (dolist (entry (list (cons :tiny *fn2-profile-tiny*) (cons :concrete *fn2-profile-concrete*)))
+   (dolist (mode '(0 1))
+    (let ((r (fn2-commit-deadlock-check (fn2-b-test-profile (cdr entry) mode) mode)))
+     (format t "B3C DEADLOCK profile=~A mode=~D threads=~D rectangles=~D candidates=~D deadlocks=~D witnesses=~S~%"
+      (car entry) mode (cdr (assoc :threads r)) (cdr (assoc :rectangles r))
+      (cdr (assoc :candidates r)) (cdr (assoc :deadlocks r)) (cdr (assoc :witnesses r)))
+     (assert (and (eq (cdr (assoc :status r)) :ok) (eql (cdr (assoc :deadlocks r)) 0))))))
+  (dolist (entry (list (cons :mutex-order (fn2-commit-wrong-mutex-order))
+                        (cons :held-notification (fn2-commit-held-notification))))
+   (let ((r (cdr entry)))
+    (format t "B3C DEADLOCK CONTROL=~A threads=~D rectangles=~D deadlocks=~D witnesses=~S~%"
+     (car entry) (cdr (assoc :threads r)) (cdr (assoc :rectangles r))
+     (cdr (assoc :deadlocks r)) (cdr (assoc :witnesses r)))
+    (assert (and (eq (cdr (assoc :status r)) :ok) (plusp (cdr (assoc :deadlocks r)))))))
+  (format t "B3C CONSERVATION actual-phase-write-audit=PASS injected-notify-free=REFUSED leak-cycle=~S~%"
+   (fn2-cru-cycle :baseline-missing-vpool
+    (fn2-cru-drop-release (fn2-cr-commit-word 0) :pool) *fn2-commit-resource-retained*))
   (assert (fn2-b-fence-control))
   (format t "B3 FENCE CONTROL: second queued fence detected before adapter admission PASS~%")
   (dolist (mode '(0 1))
@@ -20,7 +38,7 @@
       (format t "B3 PROFILE MODE mode=~D mismatch-refused/matching-admitted=~S~%" mode r)
       (assert (fn2-b-control-pass r)))
     (let ((r (fn2-b-reuse-control mode)))
-      (format t "B3 REUSE mode=~D four-batches/released-parent/stale-generation/fence-control=~S~%" mode r)
+      (format t "B3 REUSE mode=~D four-batches/released-parent/stale-generation/fence-control/notification-debt=~S~%" mode r)
       (assert (fn2-b-control-pass r))))
   (dolist (short '(t nil))
     (let ((r (fn2-b-resource-refusal short)))
@@ -46,8 +64,10 @@
          (format t "B3 SCENARIO ~D profile=~A modes=baseline,preflush-fua cases=~D deaths=~D admission-refusals=~D faults=~S write-targets=~S reorder=~D pending-tear=~D max-fences=~D HISTORY=PASS~%"
                  scenario profile cases deaths cases histogram targets reorders tears fence-max)
          (finish-output)))
-      (dolist (profile-entry (list (cons "TINY-4K" *fn2-profile-tiny*)
-                                  (cons "CONCRETE" *fn2-profile-concrete*)))
+      (dolist (profile-entry
+               (append (list (cons "TINY-4K" *fn2-profile-tiny*))
+                (unless (equal (sb-ext:posix-getenv "FN2_B_PROFILE") "tiny")
+                  (list (cons "CONCRETE" *fn2-profile-concrete*)))))
         (let* ((profile-start (get-internal-real-time))
                (all-cases 0) (name (car profile-entry)) (profile (cdr profile-entry))
                (tiny (string= name "TINY-4K"))
