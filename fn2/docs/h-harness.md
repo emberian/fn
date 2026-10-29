@@ -324,3 +324,55 @@ web_model's SPEC-MAP). The fixed witnesses (138 requests) agree with fn1 on ever
   GROUP/LISTGROUP (specs/nntp.md:1938-1945), so both halves deviate. Evidence:
   `h-quests/w01-micro.py` (NNTP) and the first `webwit.py` run (the web session). The S form tests
   access rules in sessions that begin after the rule; layer D's served path owes the pinned rule.
+
+## HZ4: the peering and bp S forms (live on fn1)
+
+Every family now has its S form. Both new ones were written from the docs and specs, run first through
+the recording probe against fn1 (`h-quests/peerprobe.py` and `bpprobe.py` for the raw replies,
+`pp.json`/`bpp.json`; then `witprobe2.py peering|bp` over the fixed witnesses, `wp2-peering.json` with 50
+CLI calls and `wp2-bp.json` with 219), corrected, and then run live at the laptop cadence on hbox (image
+c14e9e8e): peering 5 examples in 84 s, bp 5 examples in 322 s (per-step reads trimmed after that run).
+
+- **Peering** (`peering_model`): the peer table (add, remove, list, set, feed pause/resume,
+  distributions, budget, pull, pull-login, catch-up, login) composed with the one NNTP model. The wire
+  effects are checked where they show: a source-address loopback record with an inbound half makes the
+  test's own connection the peer (IHAVE/CHECK/TAKETHIS, scope = accept-groups and live: the new
+  NntpModel seam `peer_accept`, specs/peering.md:146-153,756-765; fn1 agrees, a crosspost is filed in its
+  in-scope group only); three scripted peers observe the outbound feed (CHECK/TAKETHIS after 203, IHAVE
+  after a 500 or on a non-streaming record, on connections opened after the record's last edit; nothing
+  posted during a pause reaches the peer before the resume was asked; distributions per RFC 5537 §3.6)
+  and one NEWNEWS pull (only the listed articles with a name in accept-groups enter). The peer list is
+  compared as a set (its order is unspecified). Tags where the docs name only the class are fn1's: the
+  usage tags per verb (syntax, feed, distributions, budget, pull, pull-login, catch-up), `port`
+  (`peer set --port 0`, refused) and `passwords-differ`; the universal argv preflight renders its tagged
+  line with the subject `request`.
+- **P01, fn1-bug (an effect row).** fn1 feeds a transferred article by its Newsgroups names, not by
+  its local memberships: a pulled article with Newsgroups hz.peer,hz.test, filed in hz.peer only, was
+  offered to both scripted peers whose feed-groups are hz.test,hz.other. specs/peering.md:150-152 says an
+  article is fed when one of its *accepted local groups* matches feed-groups. For fn1 only the model
+  queues such an article by its names (so a fixed fn1 fails the next feed check); fn2 and the fake get
+  the specified rule.
+- **Observed, outside the peering profile (cross-family: nntp).** A transit IHAVE of an article with two
+  Path fields was accepted (235) by fn1; nntp_model refuses duplicated Path/Message-ID/Date fields
+  (RFC 5536 §3.1). Not adjudicated here: the peering S form sends single-field articles; the nntp
+  family's differential owns the question.
+- **BP** (`bp_model`): `carry` list/inspect/pause/resume/drop/drop --abandon over one FNWF journal with
+  no node running, `bp-obligation` undertake/status/request/receipt, `bp-boundary add` and `bp-route
+  add|remove`. The invariant is read after every step: a Store pin moves only at undertake (no to yes)
+  and at an accepted waiver (yes to no); a plain drop, an unsigned receipt, a refused request or a
+  re-undertake of a waived work moves nothing. A request is refused before any attempt while paused,
+  dropped or waived (`carry-dropped`) or unpinned (`forward-pin-not-durable`); otherwise its outcome
+  follows the route table (`decision=no-route`, exit 1; a route to a current boundary queues the job and
+  the contact that never connects is exit 7). `drop --abandon` on a work never dropped takes the waiver's
+  words as its drop reason too (fn1 shows both; docs/operator.md:754 "also gives up the obligation").
+  The producer's enqueues all come first: an enqueue needs no pending journal transaction and a fresh
+  transaction id (books/bp-workflow.lisp `fn-bp-prepare-enqueue`).
+- **Unit controls.** Each family has an independent fake node with mutation plants, every one caught by
+  the fixed witnesses: peering 9 (pause ignored, scope ignored, distributions ignored, remove keeps the
+  record, budget unrounded, pull out of scope, refused add applied, streaming peer offered by IHAVE,
+  feed to the wrong groups); bp 9 (drop releases the pin, a second waiver accepted, a paused request
+  attempted, resume of a dropped work, route ignored, an unsigned receipt releasing, the waiver hidden,
+  a waived work re-pinned, an unshaped EID accepted).
+- **Harness note.** A whole-suite surface.json at the hbox cadence is large (run-h5b's was 1.7 GB: the
+  S forms' traces of every example); read it on hbox (`python3 -m fn2.tests.surface.nightly OUT`), never
+  copy it to the laptop.

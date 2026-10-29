@@ -1,0 +1,67 @@
+[
+ {
+  "match": "test_native_agent_wait",
+  "class": "known fn1 red",
+  "note": "fn1 red (H1 final evidence)"
+ },
+ {
+  "match": "test_native_control",
+  "class": "known fn1 red",
+  "note": "source-text asserts against books/ (H1)"
+ },
+ {
+  "match": "test_native_bounds_join",
+  "class": "known fn1 red",
+  "note": "fn1 red (H1)"
+ },
+ {
+  "match": "test_native_conformance",
+  "class": "known fn1 red",
+  "note": "wildcard listener (H1)"
+ },
+ {
+  "match": "test_native_decoded_custody",
+  "class": "known fn1 red",
+  "note": "fn1 red (H1)"
+ },
+ {
+  "match": "test_native_live_reconfiguration",
+  "class": "known fn1 red",
+  "note": "fn1 red (H1)"
+ },
+ {
+  "match": "test_native_mux",
+  "class": "known fn1 red",
+  "note": "fn1 red, two tests (H1)"
+ },
+ {
+  "match": "test_native_owner",
+  "class": "known fn1 red",
+  "note": "fn1 red, two tests (H1)"
+ },
+ {
+  "match": "test_native_public_limits",
+  "class": "known fn1 red",
+  "note": "fn1 red, two tests (H1)"
+ },
+ {
+  "match": "test_native_served_crash_model",
+  "class": "known fn1 red",
+  "note": "fn1 red (H1)"
+ },
+ {
+  "match": "test_native_visibility_join",
+  "class": "known fn1 red",
+  "note": "fn_client import (H1)"
+ },
+ {
+  "match": "test_native_status_live_posts",
+  "class": "known fn1 red",
+  "note": "times out run directly too (H1)"
+ },
+ {
+  "match": "test_native_store_identity",
+  "class": "unprovisioned",
+  "note": "box-step build/box/wire-grammar.json absent"
+ }
+]

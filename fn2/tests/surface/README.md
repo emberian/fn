@@ -56,8 +56,14 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   recorded fn1 replies. Measured on fn1 at the laptop cadence (hbox): operator
   173 s, store_ops 46 s, web 15 s for 5 examples; the child supervisor remains
   the hard bound.
-  The remaining S forms are `owed` in the manifest, with their required model module.
-  They appear in reports but generate no test and are not counted as run.
+  Peering drives the peer table on one live node with three scripted loopback peers
+  observing the feed and serving a pull, and checks transit on the loopback peer
+  connection through the single NNTP model; bp drives carry, bp-obligation,
+  bp-boundary and bp-route over one store and journal (the developer image) and reads
+  every work's Store pin after every step. Measured on fn1 at the laptop cadence:
+  peering 84 s, bp about 3 minutes, for 5 examples. Every family's S form is now
+  implemented; a form marked `owed` in the manifest would appear in reports but
+  generate no test and not be counted as run.
 - **F** uses H2b through its public CLI for NNTP, without importing driver
   internals: `python3 -m fn2.tests.model.differential --target fn1 --seeds 0..199
   --mode reader,node,peer --steps 50 --seconds SHARE_MINUS_MARGIN

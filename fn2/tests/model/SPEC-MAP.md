@@ -217,6 +217,8 @@ Accounts are `{login: {password, read, post, posting}}`; a string value is short
 for password. `read_wildmats`/`post_wildmats` are accepted aliases; lists join with
 commas in their given order. Policies: `required`, `protected_only`, `posting`,
 `anonymous`, `anonymous_access`, `server`, `peer` or `peers` (source addresses),
+`peer_accept` (the peer record's accept-groups wildmat: a transfer's local memberships are its
+Newsgroups names that match it and are live, none is 437/439; specs/peering.md:146-153,756-765),
 `max_inflight`, `connections`, `per_address`, `trusted` (CIDRs), `article_limit`,
 `inbound_max_octets`, `clock`, `stamps`, `subscriptions`, `motd`, `metadata`,
 `starttls`, `sasl_mechanisms`, and the projection inputs below. Policy observations
