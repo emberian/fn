@@ -9,6 +9,7 @@
 (include-book "../sim/sim")
 (include-book "../sim/commit-history")
 (include-book "owed")
+(fn2-book-layer :b)
 
 (fn2-cm-defreaders fn2-commit-proof-admitted fn2-commit-proof-events
  fn2-commit-proof-recovered fn2-commit-proof-classification

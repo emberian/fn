@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "blake3")
 (include-book "assumptions-integrity")
+(fn2-book-layer :b)
 (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 (defcolumns fn2-mk
  ((size :u60) (phase :u8) (pf :u60) (ps :u60) (next :u32)

@@ -1,6 +1,7 @@
 ; Independent declaration family; format.lisp exports the complete catalog.
 (in-package "ACL2")
 (include-book "format-base")
+(fn2-book-layer :b)
 
 (deflayout fn2-format-bootstrap
   `((magic :u32) (version :u8) (sector-size :varint) (page-size :varint) (anchor-0 (:id physical-unit)) (anchor-1 (:id physical-unit)) (anchor-2 (:id physical-unit)) (anchor-3 (:id physical-unit)) (storage-domain (:id storage-domain)) (geometry-hash :digest)))

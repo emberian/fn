@@ -3,6 +3,7 @@
 (include-book "columns")
 (include-book "owed")
 (include-book "tuple")
+(fn2-book-layer :b)
 (fn2-cm-defreaders fn2-alloc-edge-request-slot fn2-alloc-edge-request-holder
                   fn2-alloc-edge-request-kind)
 (fn2-cm-defreaders fn2-alloc-view-row-slot fn2-alloc-view-row-state

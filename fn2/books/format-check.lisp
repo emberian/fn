@@ -4,6 +4,7 @@
 (include-book "blake3")
 (include-book "format-context")
 (include-book "assumptions-native-span")
+(fn2-book-layer :b)
 (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 ; Shared caller invariant; expanded only in guards and shape statements.
 (defmacro fn2-fc-guard ()
