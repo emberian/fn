@@ -47,3 +47,27 @@ by a `:use` of the per-field `*-FIELD-TYPE` facts instead of enabling `p` and `c
 about 0.5 s together) only for fields some proof uses. The most this can buy is about 1.5 s of 14 s, below the
 2 s noise floor of the laptop, so I would not prioritise it: sim-state-data is already under 15 s. Re-measure on
 dregg-forge before touching the generator.
+
+## On dregg-forge after the physical-dispatch commit (2026-10-29, `-j 8`, quiet box, cert.pl wall = CPU)
+
+Runs vary by about 1.5 s between repeats (sim-adapter-base 18.8, 19.1, 20.0, 20.7), so read these as +-1.5 s.
+
+| book | forge s | status |
+|---|---|---|
+| sim-adapter-base | ~19 | over 15: flat spread, see below |
+| sim | ~16 | over 15: 2.1 s of it is including sim-adapter-base |
+| sim-state-data | ~12 | one defcolumns encapsulate (DSL seat section above) |
+| sim-state | ~10 | `fn2-sim-earliest-result` 4.4 s under load is the one big event |
+| sim-transfer | 5.5 | |
+| sim-recovery | 4.1 | |
+| check-own | 3.4 | |
+| echo, check, check-work, check-trace, network | 1.8-2.3 | |
+| recover-stub, prng, storage | under 1.5 | |
+
+What did not move the two over-15 books (each tried on forge or in an ld session, then reverted):
+- Splitting `fn2-sim-terminal-post`'s two post calls into a helper (sim 16.5 -> 16.6 s): its branch product is not the cost.
+- `(local (in-theory (disable (tau-system))))` in sim-adapter-base, sim-state, sim-transfer (sim 16.5 -> 17.6 s, no gain).
+- Disabling all 307 `*-nth-natp` type-prescription rules (no change).
+- Removing the `(enable fn2-sim-ready)` hint from `fn2-sim-register-type`: the proof then does not finish (192 s, cut off), so the hint is load-bearing.
+
+What is left in sim-adapter-base after the physical fix is a flat spread: register family 3.4 s (a 13-setter chain, each fact re-walks it), take-one 2.5 s, inject 1.2 s, environment 0.7 s, then 100+ events under 0.5 s. Getting under 15 s needs a structural change (for example a generated setter-chain lemma for `register`, or splitting the book at the register/take-one boundary), not a hint.
