@@ -245,9 +245,8 @@
                 (:reset :storage-job :storage-window) (:read :storage-job :storage-window)
                 (:read-result :storage-job :storage-window) (:verify :storage-job :storage-window)
                 (:next :storage-job :storage-window) (:stopped :storage-job :storage-window))))
-(defconst *fn2-resource-a-wait-reasons*
-  '((:none . nil) (:issued . nil) (:op-credit . :operation) (:pool . :storage-window)
-    (:admission . :connection-row)))
+; A's wait reasons are no longer integers mapped here: defmachine's common
+; wait-reason enum is (:none :completion . the kinds of *fn2-resource-order*).
 
 ;; Declared resource effects of an operation that moves resources between
 ;; rows (the form both seats use; R7 declares these on its allocator
@@ -523,7 +522,6 @@
 (assert-event (fn2-resource-kinds-known-p *fn2-resource-per-recipient* *fn2-resource-order*))
 (assert-event (fn2-resource-machine-holds-p *fn2-resource-a-holds* *fn2-resource-order*))
 (assert-event (fn2-resource-effects-p *fn2-resource-effects* *fn2-resource-order*))
-(assert-event (fn2-resource-wait-reasons-p *fn2-resource-a-wait-reasons* *fn2-resource-order*))
 
 ; ------------------------------------------------------------------------
 ; (g) Why no cycle, proved over the abstract wait-for structure. A waiter is

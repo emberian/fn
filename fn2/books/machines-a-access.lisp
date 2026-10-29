@@ -138,8 +138,8 @@
                                 (wait-reason *fn2-wait-none*) (ready-prev *fn2-none*) (ready-next *fn2-none*))))
                (mv id fn2-core)))))))
        (fn2-core-preserves ,grant (fn2-core) :position 1 :rows nil))))
-(fn2-machine-wait-queue fn2-machine-park fn2-machine-grant-op wait-head wait-tail *fn2-wait-op-credit*)
-(fn2-machine-wait-queue fn2-machine-park-admission fn2-machine-grant-admission admission-head admission-tail *fn2-wait-admission*)
+(fn2-machine-wait-queue fn2-machine-park fn2-machine-grant-op wait-head wait-tail *fn2-wait-operation*)
+(fn2-machine-wait-queue fn2-machine-park-admission fn2-machine-grant-admission admission-head admission-tail *fn2-wait-connection-row*)
 
 (defun fn2-machine-waiting-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -155,7 +155,7 @@
 (defun fn2-machine-park-pool (id class fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (not (fn2-machine-idp id fn2-core)) fn2-core
-    (let ((fn2-core (fn2-machine-put id (wait-reason *fn2-wait-pool*) (cursor class))))
+    (let ((fn2-core (fn2-machine-put id (wait-reason *fn2-wait-storage-window*) (cursor class))))
       (fn2-machine-set-pool-wait-id id fn2-core))))
 (fn2-core-preserves fn2-machine-park-pool (id class fn2-core) :rows nil :prefix "")
 

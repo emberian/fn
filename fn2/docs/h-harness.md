@@ -299,3 +299,28 @@ fixed what it found.
   recorded effect for fn1 only, so every later wire read checks it; the fake and
   fn2 get the documented retirement (the `retire-visible` mutation control still
   fails), and a fixed fn1 fails the next observation, so a stale row cannot hide.
+
+## HZ3: the web S form (live on fn1)
+
+The web face is checked as a translator of the one NNTP model (WEB-003/005: it decides nothing). A
+browser session is an NntpModel connection opened by the sign-in's AUTHINFO; it pins its view and
+listing and re-pins where the face selects a group (a group or article page, GROUP), or where its own
+POST lands, as specs/nntp.md:465-475 and 1938-1945 state for any connection. The groups page is
+LIST ACTIVE on the pinned view, so another session's post reaches it only after a selection; fn1 agrees.
+A post's outcome is the model's POST decision, and the page names which one the node gave (Posted! / The
+server said no, with the node's 441 line, which is committed as the observed reply); a removal is the
+cancel (always filed in control.cancel) and STAT (Removed only for the author, SEC-006).
+
+Where the docs name no status, the model carries fn1's (the crawl probe
+`build/coordinator/fn2/lanes/h-quests/webprobe.py`, 153 requests, `webprobe.json`; listed in
+web_model's SPEC-MAP). The fixed witnesses (138 requests) agree with fn1 on every reply
+(`webwit.py`), and the live S run passes: 5 examples in 15 s at the laptop cadence.
+
+- **W01, fn1-bug, outside the S profile (cross-family: nntp).** On a connection open across an
+  `account access` change that narrows the login, fn1 applies the new rule to LIST ACTIVE at once
+  (before any re-pin) but posts under the old one, even after GROUP re-pins: POST to the now-excluded
+  group is 240, and the article is stored and served to other readers (GROUP 211, STAT 223); a fresh
+  connection gets 441. The spec pins the rule with the listing each connection holds and re-pins it at
+  GROUP/LISTGROUP (specs/nntp.md:1938-1945), so both halves deviate. Evidence:
+  `h-quests/w01-micro.py` (NNTP) and the first `webwit.py` run (the web session). The S form tests
+  access rules in sessions that begin after the rule; layer D's served path owes the pinned rule.

@@ -903,9 +903,9 @@
         },
         "S": {
           "applicable": true,
-          "module": null,
+          "module": "fn2.tests.surface.web.test_model_web",
           "reason": "RELEASE-PLAN §2.2",
-          "status": "owed",
+          "status": "implemented",
           "model": "fn2.tests.model.web_model"
         },
         "F": {
@@ -946,7 +946,7 @@
       },
       "native_assignment": "Primary family by exercised obligation; cross-family §1 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
       "model": "fn2.tests.model.web_model",
-      "model_scope": "model and live Target adapter owed",
+      "model_scope": "HZ3: rows 92-97: every path x method (404, 405 with Allow, 501), /health and /style.css, the signed-out redirects, redeem (XREDEEM), sign-in (AUTHINFO 281/481) and sign-out, CSRF and fnr_pre refusals, the groups, group and article pages read from the session's own pinned connection, POST (Posted! / The server said no) and removal (Removed / Still there), composed onto NntpModel. Two browsers, plain HTTP, the developer image (FN_NATIVE_DEVELOPER_HOST). Outside: TLS face, proxied, idle_seconds and max_sessions, uncertain submissions (503), threads/search (row 98), access changes under an open session (W01).",
       "fuzz": {
         "driver": "fn2.tests.surface.web:fuzz (owed)",
         "grammar": "http",
@@ -975,8 +975,8 @@
             "S",
             "F"
           ],
-          "model_examples": 200,
-          "steps": 50,
+          "model_examples": 5,
+          "steps": 30,
           "natives": "selected families",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
@@ -987,8 +987,8 @@
             "F",
             "R"
           ],
-          "model_examples": 5000,
-          "steps": 50,
+          "model_examples": 50,
+          "steps": 30,
           "natives": "all natives in selected families; --all selects all 120",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"

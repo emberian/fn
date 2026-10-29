@@ -238,16 +238,16 @@ class SurfaceRunnerTests(unittest.TestCase):
 
     def test_owed_forms_are_listed_but_not_generated(self):
         for family, entry in surface.FAMILIES.items():
-            if family in ('nntp', 'consumer', 'tls_auth', 'config_limits', 'operator', 'store_ops'):
+            if family in ('nntp', 'consumer', 'tls_auth', 'config_limits', 'operator', 'store_ops', 'web'):
                 continue
             self.assertEqual(entry['forms']['S']['status'], 'owed')
             self.assertEqual(entry['forms']['S']['model'], entry['model'])
             self.assertEqual(surface.form_suite(family, 'S').countTestCases(), 0)
         with mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn2'}):
-            report = run_surface.run_family('web', 'laptop')
+            report = run_surface.run_family('peering', 'laptop')
         self.assertEqual(report['forms']['S']['status'], 'OWED')
         self.assertFalse(report['forms']['S']['selected'])
-        self.assertEqual(report['owed_forms'], [{'form': 'S', 'model': surface.FAMILIES['web']['model']}])
+        self.assertEqual(report['owed_forms'], [{'form': 'S', 'model': surface.FAMILIES['peering']['model']}])
 
     def test_consumer_s_loads_implemented_module_and_skips_unserved(self):
         with mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn2'}):
@@ -259,7 +259,7 @@ class SurfaceRunnerTests(unittest.TestCase):
         self.assertEqual(surface.FAMILIES['consumer']['forms']['S']['status'], 'implemented')
 
     def test_hz_s_modules_cadence_and_unserved_gate(self):
-        for family, steps in (('operator', 30), ('store_ops', 20)):
+        for family, steps in (('operator', 30), ('store_ops', 20), ('web', 30)):
             with self.subTest(family=family):
                 entry = surface.FAMILIES[family]
                 self.assertEqual(entry['forms']['S']['status'], 'implemented')
@@ -283,7 +283,7 @@ class SurfaceRunnerTests(unittest.TestCase):
         ids = [test.id() for test in run_surface.run_natives.flatten(suite)]
         self.assertIn('fn2.tests.surface.nntp.test_model_nntp.TestSurface.test_live_state_machine', ids)
         self.assertIn('fn2.tests.surface.nntp.test_examples_nntp.TestSurface.test_native_article_quiet', ids)
-        suite = unittest.defaultTestLoader.loadTestsFromName('fn2.tests.surface.web')
+        suite = unittest.defaultTestLoader.loadTestsFromName('fn2.tests.surface.peering')
         self.assertFalse(any('.test_model_' in test.id() for test in run_surface.run_natives.flatten(suite)))
 
     def test_fn1_nntp_s_runs_live_machine_with_fake_target(self):
@@ -661,6 +661,18 @@ class DescriptorLifecycleTests(unittest.TestCase):
                 super().__init__(case)
         self.examples('operator', lambda: machine(self, target_factory=FakeTarget)(),
                       lambda m: m.transition(('motd set', 'Lifecycle witness'), False))
+
+    def test_web_descriptor_lifecycle(self):
+        from fn2.tests.model.test_web_model import FakeFace as Base
+        from fn2.tests.surface.web.test_model_web import machine
+        owner = self
+        class FakeTarget(Base):
+            @surface.owned_ports
+            def __init__(self, case):
+                self.node = owner.reserve_node(case)
+                super().__init__(case)
+        self.examples('web', lambda: machine(self, target_factory=FakeTarget)(),
+                      lambda m: m.read('a', '/health', False))
 
     def test_store_ops_descriptor_lifecycle(self):
         from fn2.tests.model.test_store_ops_model import FakeTarget as Base

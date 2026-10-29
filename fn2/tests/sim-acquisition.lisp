@@ -117,7 +117,7 @@
        ((mv & op gen fn2-core) (fn2-acq-take fn2-core))
        (c0 (fn2-acq-census fn2-core))
        ((mv a1 fn2-core) (fn2-acq-run 1 fn2-core))
-       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-admission* a1 1 fn2-core))
+       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-connection-row* a1 1 fn2-core))
        ; Lift: the first Accept fails, its reservation comes back, the grant
        ; wakes listener 1, which acquires the bundle whole.
        (fn2-core (fn2-acq-post 0 op gen *fn2-event-accept-result* *fn2-outcome-failed*
@@ -148,7 +148,7 @@
        ((mv & op gen fn2-core) (fn2-acq-take fn2-core))
        (c0 (fn2-acq-census fn2-core))
        ((mv a1 fn2-core) (fn2-acq-run 1 fn2-core))
-       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-op-credit* a1 1 fn2-core))
+       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-operation* a1 1 fn2-core))
        (fn2-core (fn2-acq-post 0 op gen *fn2-event-accept-result* *fn2-outcome-failed*
                    *fn2-reason-exhausted* 0 0 fn2-core))
        ((mv & fn2-core) (fn2-acq-deliver fn2-core))
@@ -175,7 +175,7 @@
        (fn2-core (fn2-acq-occupy 8 0 fn2-core))
        (c0 (fn2-acq-census fn2-core))
        ((mv a0 fn2-core) (fn2-acq-run 0 fn2-core))
-       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-pool* a0 0 fn2-core))
+       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-storage-window* a0 0 fn2-core))
        ; Today: the Accept was issued. Complete it and admit.
        ((mv & op gen fn2-core) (fn2-acq-take fn2-core))
        (fn2-core (fn2-acq-post 0 op gen *fn2-event-accept-result* *fn2-outcome-done* 0 0 4 fn2-core))
@@ -223,7 +223,7 @@
   (b* (((mv op gen fn2-core) (fn2-acq-hold-op fn2-core))
        (c0 (fn2-acq-census fn2-core))
        ((mv a fn2-core) (fn2-acq-run id fn2-core))
-       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-op-credit* a id fn2-core))
+       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-operation* a id fn2-core))
        (fn2-core (fn2-acq-free-op op gen fn2-core))
        (c1 (fn2-acq-census fn2-core))
        ((mv granted fn2-core) (fn2-machine-grant-one fn2-core))
@@ -297,7 +297,7 @@
   (b* (((mv op gen fn2-core) (fn2-acq-hold-op fn2-core))
        (c0 (fn2-acq-census fn2-core))
        ((mv a fn2-core) (fn2-acq-run id fn2-core))
-       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-op-credit* a id fn2-core))
+       (refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-operation* a id fn2-core))
        (fn2-core (fn2-acq-free-op op gen fn2-core))
        (c1 (fn2-acq-census fn2-core))
        ((mv granted fn2-core) (fn2-machine-grant-one fn2-core))
@@ -316,7 +316,7 @@
        ((mv & tslot tgen fn2-core) (fn2-core-reserve 1 *fn2-listener-kind* 1 1 fn2-core))
        (c0 (fn2-acq-census fn2-core))
        ((mv a fn2-core) (fn2-acq-run id fn2-core))
-       (w-refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-pool* a id fn2-core))
+       (w-refused (fn2-acq-refused c0 (fn2-acq-census fn2-core) *fn2-wait-storage-window* a id fn2-core))
        ((mv & fn2-core) (fn2-core-release tslot tgen *fn2-listener-kind* 1 1 fn2-core))
        (c1 (fn2-acq-census fn2-core))
        ((mv granted fn2-core) (fn2-machine-grant-one fn2-core))
@@ -456,7 +456,7 @@
 (defun fn2-resource-test-no-deadlock-negative-run (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* (((mv id & fn2-core) (fn2-acq-echo-open fn2-core))
-       (fn2-core (fn2-machine-put id (wait-reason *fn2-wait-admission*)))
+       (fn2-core (fn2-machine-put id (wait-reason *fn2-wait-connection-row*)))
        (w (fn2-resource-waiters fn2-core)))
     (mv (and (equal w '(((:connection-row :rx-range) . :connection-row)))
              (not (fn2-resource-core-ranked-p fn2-core)))

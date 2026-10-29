@@ -22,10 +22,11 @@
            ',(fn2-resource-kind-states (fn2-machine-names (w state)) (w state)))))
 (defconst *fn2-resource-wait-names*
   (caddr (cadr (assoc-eq 'wait-reason *fn2-machine-common-fields*))))
-(assert-event (equal *fn2-resource-wait-names* '(:none :issued :op-credit :pool :admission)))
+(assert-event (equal *fn2-resource-wait-names*
+                     (list* :none :completion (strip-cars *fn2-resource-order*))))
 
 ; Coverage: every assembled kind has a holds entry for every phase it
-; declares, and every wait reason maps to a kind or to "not a resource".
+; declares; a wait reason is a kind by name, or :none / :completion.
 ; A kind added to the assembly without its holds (R7 moves them into
 ; defmachine) is refused here by name.
 (defun fn2-resource-holds-cover-p (kinds table)
@@ -36,7 +37,6 @@
            (fn2-resource-holds-cover-p (cdr kinds) table)))))
 (assert-event (fn2-resource-holds-cover-p *fn2-resource-machine-states* *fn2-resource-a-holds*)
               :msg (msg "A machine kind or phase lacks its D0 holds: ~x0" *fn2-resource-machine-states*))
-(assert-event (fn2-resource-subsetp *fn2-resource-wait-names* (strip-cars *fn2-resource-a-wait-reasons*)))
 
 ; The wait-for projection of one row: (held . awaited) when the row waits
 ; for a resource kind, nil otherwise (free, running, or waiting for an
@@ -46,7 +46,8 @@
   (let* ((entry (nth kind *fn2-resource-machine-states*))
          (phase-name (nth phase (cdr entry)))
          (held (cdr (assoc-eq phase-name (cdr (assoc-eq (car entry) *fn2-resource-a-holds*)))))
-         (awaited (cdr (assoc-eq (nth reason *fn2-resource-wait-names*) *fn2-resource-a-wait-reasons*))))
+         (name (nth reason *fn2-resource-wait-names*))
+         (awaited (and (fn2-resource-kindp name *fn2-resource-order*) name)))
     (and awaited (cons held awaited))))
 
 (defun fn2-resource-waiters-from (id n fn2-core)

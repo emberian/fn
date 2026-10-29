@@ -86,7 +86,7 @@
 (defun fn2-machine-issue-result (id code bytes fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp bytes) (<= bytes *fn2-echo-run-bytes*))))
   (if (eq code :ok)
-      (let ((fn2-core (fn2-machine-put id (pending 1) (wait-reason *fn2-wait-issued*))))
+      (let ((fn2-core (fn2-machine-put id (pending 1) (wait-reason *fn2-wait-completion*))))
         (fn2-machine-result bytes *fn2-work-mailbox* 1 nil fn2-core))
     (if (eq code :exhausted)
         (let ((fn2-core (fn2-machine-park id fn2-core)))

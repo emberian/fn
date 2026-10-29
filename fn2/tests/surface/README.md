@@ -29,7 +29,7 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   does not emulate those machines. There is no P test module.
 - **S** takes live counts from each family’s per-box `model_examples`: NNTP
   200/5,000 (laptop/hbox), consumer 5/50, with 50 steps each; TLS/auth and
-  config/limits and operator use 5/50 examples with 30 generated steps plus fixed
+  config/limits, operator and web use 5/50 examples with 30 generated steps plus fixed
   witnesses; store_ops uses 5/50 with 20 generated steps plus fixed witnesses. H5a measured
   NNTP’s 200 examples at 96.016 seconds; consumer measured about 30 seconds
   per example. Fake model unit tests retain 200 examples. `live_model_settings`
@@ -41,17 +41,21 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   selection, absent articles, reader/cursor commands and reconnects, comparing
   replies before applying model updates. Accepted POST projection, cancellation
   and nonempty pinned-view schedules are extensions, not covered by this machine.
-  Consumer, TLS/auth, config/limits, operator and store_ops also have implemented
+  Consumer, TLS/auth, config/limits, operator, store_ops and web also have implemented
   live S machines. Operator covers the row 76 group/moderation/MOTD/capacity/
   retention verbs and row 77 account/principal login management; authority,
   subscribe-default, hashes and bindings remain outside this slice. Store_ops
   covers export/import, stopped-copy blessing, compact/checkpoint, inspect,
   recover and status, preserving Message-IDs, group numbers and bodies through
   the single NNTP model. Reclaim and its RSS measurement remain outside this slice.
-  Both HZ machines use independent fake targets and mutation controls, record
-  mismatches before asserting, and leave their adjudication tables empty until
-  the seat records fn1 replies. Each example targets roughly 30 seconds nominal;
-  live timing is unmeasured here, and the child supervisor remains the hard bound.
+  Web drives the node's own web face (the developer image, FN_NATIVE_DEVELOPER_HOST)
+  as two browsers over every route and method and the redeem/sign-in/post/remove/
+  sign-out flows, each page checked against the session's own pinned NntpModel
+  connection. The HZ machines use independent fake targets and mutation controls,
+  record mismatches before asserting, and carry only adjudication rows backed by
+  recorded fn1 replies. Measured on fn1 at the laptop cadence (hbox): operator
+  173 s, store_ops 46 s, web 15 s for 5 examples; the child supervisor remains
+  the hard bound.
   The remaining S forms are `owed` in the manifest, with their required model module.
   They appear in reports but generate no test and are not counted as run.
 - **F** uses H2b through its public CLI for NNTP, without importing driver

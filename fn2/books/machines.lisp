@@ -2,10 +2,16 @@
 ; Continuation calls are finite tags, never function-valued resident fields.
 (in-package "ACL2")
 (include-book "vocab")
+(include-book "resources")
 
+; A wait reason names what the row waits for: nothing, an operation's
+; completion (not a resource: its result cells were reserved at issue), or
+; the D0 resource kind that was exhausted (fn2/books/resources.lisp).
 (defconst *fn2-machine-common-fields*
-  '((generation :u60) (principal-slot :u16) (account-ref :u32)
-    (ready-prev :link) (ready-next :link) (wait-reason (:enum fn2-wait (:none :issued :op-credit :pool :admission))) (deadline :u60)))
+  `((generation :u60) (principal-slot :u16) (account-ref :u32)
+    (ready-prev :link) (ready-next :link)
+    (wait-reason (:enum fn2-wait (:none :completion ,@(strip-cars *fn2-resource-order*))))
+    (deadline :u60)))
 
 (defun fn2-machine-packed-layout (fields offset)
   (declare (xargs :verify-guards nil))
@@ -513,9 +519,9 @@
                (if (not (and (eq (fn2-machine-wait-reason-read-code id fn2-core) :ok)
                              (eq (fn2-machine-stopped-read-code id fn2-core) :ok)))
                    (fn2-machine-refuse-observation fn2-core)
-               (mv (if (or (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-op-credit*)
-                           (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-pool*)
-                           (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-admission*)
+               (mv (if (or (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-operation*)
+                           (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-storage-window*)
+                           (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-connection-row*)
                            (equal (fn2-machine-stopped id fn2-core) 1)) *fn2-none* wake)
                    fn2-core))))))
        (fn2-core-preserves ,router (okind id gen event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil)))))
