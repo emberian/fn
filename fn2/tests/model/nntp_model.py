@@ -1161,6 +1161,13 @@ class Conn:
         ident = fields.get("message-id", b"").decode("ascii", "replace").strip()
         groups = fields.get("newsgroups", b"").decode("ascii", "replace").replace(" ", "").split(",")
         limit = min(self.policy.get("article_limit", float("inf")), self.policy.get("inbound_max_octets", float("inf"))) if transit else self.policy.get("article_limit", float("inf"))
+        # Peering S, specs/peering.md:146-153,756-765: a transfer's local
+        # memberships are its Newsgroups names that match the peer record's
+        # accept-groups and are live; none in scope is :out-of-scope (437).
+        accept = self.policy.get("peer_accept") if transit else None
+        def in_scope(g):
+            return (g in self.model.groups and not self.model.flags[g].get("retired")
+                    and (accept is None or wildmat(accept, g)))
         reason, definite = None, False
         if len(data) > limit:
             reason, definite = "too large|bound|limit|size", True
@@ -1183,7 +1190,7 @@ class Conn:
         elif ident in self.model.articles:
             reason, definite = ("this article is already stored here" if self.model.sources[ident] == data else
                                 "a different article with this Message-ID is stored here"), True
-        elif not any(g in self.model.groups and not self.model.flags[g].get("retired") for g in groups):
+        elif not any(in_scope(g) for g in groups):
             reason, definite = "group|newsgroup", True
         elif not transit and any(not self._access(g, "post") or self._status(g) == "n"
                                  for g in groups if g in self.view_flags):
@@ -1216,7 +1223,7 @@ class Conn:
                     accepted_id = found[0].decode() if found else self.policy.get("generated_id")
                     if not accepted_id:
                         raise ValueError("accepted POST omitted Message-ID: supply policy.generated_id for read-back")
-                target = [g for g in groups if g in self.model.groups and not self.model.flags[g].get("retired")]
+                target = [g for g in groups if in_scope(g)]
                 if not transit and moderated and "approved" not in fields:
                     target = [self.view_flags[moderated[0]].get("queue", moderated[0] + ".moderation")]
                     accepted_id = "<fn-moderate." + accepted_id[1:]

@@ -373,6 +373,81 @@
 
 (in-theory (disable fn2-sim-land-type fn2-sim-land-wfp))))
 
+(defun fn2-sim-physical-act (kind cap nonce rslot rgen off len n okind oslot ogen slot gen offset stamp fua fault word lying
+                                  fn2-core fn2-sim-network fn2-sim-storage fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim-network fn2-sim-storage fn2-own)
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-sim-network-wfp fn2-sim-network)
+                              (fn2-sim-storage-wfp fn2-sim-storage) (fn2-own-wfp fn2-own)
+                              (natp len) (natp n) (natp off) (natp offset) (natp word)
+                              (unsigned-byte-p 60 stamp) (unsigned-byte-p 60 rgen)
+                              (unsigned-byte-p 32 word))
+                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+  (cond
+   ((or (fn2-op-input-kindp kind) (fn2-op-output-kindp kind))
+    (let* ((nbytes (fn2-sim-storage-rows fn2-sim-storage))
+           (redirect (fn2-sim-redirect offset nbytes kind fault)))
+      (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
+                  (fn2-ops (fn2-core-ops fn2-core)))
+        (code count fn2-pool fn2-sim-network fn2-sim-storage fn2-own)
+        (let ((fn2-own (if (fn2-op-output-kindp kind)
+                          (fn2-own-observe-output-range-parts slot gen rslot rgen off len
+                            fn2-pool fn2-ops fn2-own)
+                        fn2-own)))
+          (fn2-sim-transfer kind cap nonce rslot rgen off n okind oslot ogen slot gen
+                            offset redirect stamp fua fault word 0
+                            fn2-pool fn2-sim-network fn2-sim-storage fn2-own))
+        (mv code count 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
+   ((or (equal kind *fn2-action-accept*) (equal kind *fn2-action-connect*))
+    (let ((index (if (< 0 (fn2-sim-network-rows fn2-sim-network))
+                     (mod word (fn2-sim-network-rows fn2-sim-network)) 0)))
+      (mv-let (code nonce fn2-sim-network) (fn2-network-accept index fn2-sim-network)
+        (let ((fn2-sim-network
+               (if (eq code :ok) (fn2-sim-client-feed index nonce 256 (mod word 256) fn2-sim-network)
+                 fn2-sim-network)))
+          (mv code index nonce fn2-core fn2-sim-network fn2-sim-storage fn2-own)))))
+   ((equal kind *fn2-action-close*)
+    (mv-let (code fn2-sim-network)
+      (if (equal okind *fn2-listener-kind*)
+          (fn2-network-refuse cap nonce fn2-sim-network)
+        (fn2-network-close cap nonce fn2-sim-network))
+      (declare (ignore code))
+      (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
+   ((equal kind *fn2-action-fence*)
+    (mv-let (code fn2-sim-storage)
+      (fn2-storage-fence-complete slot (equal fault *fn2-fault-flush-io*) lying fn2-sim-storage)
+      (mv code 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
+   ((and (equal kind *fn2-action-tls-start*) (equal fault *fn2-fault-reset*))
+    (mv :handshake 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))
+   (t (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
+
+
+; Shape facts of the physical dispatch, stated once; the physical proofs
+; below see only these and never expand the six dispatch branches.
+(local (in-theory (enable fn2-core-wfp)))
+(local
+ (defmacro fn2-sim-physical-act-fact (name pred position)
+   `(defthm ,name
+      (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                    (fn2-sim-networkp fn2-sim-network) (fn2-sim-network-wfp fn2-sim-network)
+                    (fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage)
+                    (fn2-ownp fn2-own) (fn2-own-wfp fn2-own)
+                    (natp len) (natp n) (natp off) (natp offset) (natp word)
+                    (unsigned-byte-p 60 stamp) (unsigned-byte-p 60 rgen) (unsigned-byte-p 32 word))
+               (,pred (mv-nth ,position
+                       (fn2-sim-physical-act kind cap nonce rslot rgen off len n okind oslot ogen slot gen
+                                             offset stamp fua fault word lying
+                                             fn2-core fn2-sim-network fn2-sim-storage fn2-own)))))))
+(local (fn2-sim-physical-act-fact fn2-sim-physical-act-core-type fn2-corep 3))
+(local (fn2-sim-physical-act-fact fn2-sim-physical-act-core-wfp fn2-core-wfp 3))
+(local (fn2-sim-physical-act-fact fn2-sim-physical-act-network-type fn2-sim-networkp 4))
+(local (fn2-sim-physical-act-fact fn2-sim-physical-act-network-wfp fn2-sim-network-wfp 4))
+(local (fn2-sim-physical-act-fact fn2-sim-physical-act-storage-type fn2-sim-storagep 5))
+(local (fn2-sim-physical-act-fact fn2-sim-physical-act-storage-wfp fn2-sim-storage-wfp 5))
+(local (fn2-sim-physical-act-fact fn2-sim-physical-act-own-type fn2-ownp 6))
+(local (fn2-sim-physical-act-fact fn2-sim-physical-act-own-wfp fn2-own-wfp 6))
+(local (fn2-sim-physical-act-fact fn2-sim-physical-act-count-natp natp 1))
+(local (in-theory (disable fn2-core-wfp)))
+(in-theory (disable fn2-sim-physical-act))
 (defun fn2-sim-physical (slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
@@ -402,43 +477,8 @@
       (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim))
                   (fn2-sim-storage (fn2-sim-disk fn2-sim)))
         (code count aux fn2-core fn2-sim-network fn2-sim-storage fn2-own)
-        (cond
-         ((or (fn2-op-input-kindp kind) (fn2-op-output-kindp kind))
-          (let* ((nbytes (fn2-sim-storage-rows fn2-sim-storage))
-                 (redirect (fn2-sim-redirect offset nbytes kind fault)))
-            (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
-                        (fn2-ops (fn2-core-ops fn2-core)))
-              (code count fn2-pool fn2-sim-network fn2-sim-storage fn2-own)
-              (let ((fn2-own (if (fn2-op-output-kindp kind)
-                                (fn2-own-observe-output-range-parts slot gen rslot rgen off len
-                                  fn2-pool fn2-ops fn2-own)
-                              fn2-own)))
-                (fn2-sim-transfer kind cap nonce rslot rgen off n okind oslot ogen slot gen
-                                  offset redirect stamp fua fault word 0
-                                  fn2-pool fn2-sim-network fn2-sim-storage fn2-own))
-              (mv code count 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
-         ((or (equal kind *fn2-action-accept*) (equal kind *fn2-action-connect*))
-          (let ((index (if (< 0 (fn2-sim-network-rows fn2-sim-network))
-                           (mod word (fn2-sim-network-rows fn2-sim-network)) 0)))
-            (mv-let (code nonce fn2-sim-network) (fn2-network-accept index fn2-sim-network)
-              (let ((fn2-sim-network
-                     (if (eq code :ok) (fn2-sim-client-feed index nonce 256 (mod word 256) fn2-sim-network)
-                       fn2-sim-network)))
-                (mv code index nonce fn2-core fn2-sim-network fn2-sim-storage fn2-own)))))
-         ((equal kind *fn2-action-close*)
-          (mv-let (code fn2-sim-network)
-            (if (equal okind *fn2-listener-kind*)
-                (fn2-network-refuse cap nonce fn2-sim-network)
-              (fn2-network-close cap nonce fn2-sim-network))
-            (declare (ignore code))
-            (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
-         ((equal kind *fn2-action-fence*)
-          (mv-let (code fn2-sim-storage)
-            (fn2-storage-fence-complete slot (equal fault *fn2-fault-flush-io*) lying fn2-sim-storage)
-            (mv code 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
-         ((and (equal kind *fn2-action-tls-start*) (equal fault *fn2-fault-reset*))
-          (mv :handshake 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))
-         (t (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
+        (fn2-sim-physical-act kind cap nonce rslot rgen off len n okind oslot ogen slot gen offset stamp fua fault word lying
+                              fn2-core fn2-sim-network fn2-sim-storage fn2-own)
         (let ((fn2-sim
                (if (fn2-sim-physical-landed-p kind fault code count len offset disk-bytes disk-alive dirty-fence lying)
                    (fn2-sim-land fault fn2-sim) fn2-sim)))

@@ -1,8 +1,7 @@
-; Materialize layer A machine continuations after their access seam.
+; Other layers' continuations follow layer A's section, before final dispatch.
 (in-package "ACL2")
-(include-book "assembly-access")
-(fn2-scribe-events)
-(fn2-machine-a-events)
+(include-book "assembly-callbacks-a")
 ; Other layers' continuation event macros go HERE, before final dispatch.
+(fn2-commit-events)
 
 (fn2-resolve :callbacks)

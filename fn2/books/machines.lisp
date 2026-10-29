@@ -426,7 +426,8 @@
      ((fn2-machine-unresolved-use name uses world)
       (msg "~x0: arm ~x1 uses ~x2, which is neither a defcost nor a callback of ~x0."
            name tag (fn2-machine-unresolved-use name uses world)))
-     ((fn2-arm-resource-problem sources (fn2-arm-get :next c) holds uses world)
+     ((and (not (eq (fn2-arm-get :language c) :unchecked))
+           (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds uses world))
       (msg "~x0: arm ~x1 ~@2" name tag (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds uses world)))
      ((not (fn2-resource-effects-p (remove-duplicates-equal (fn2-arm-effect-rows name sources uses holds world))
                                    *fn2-resource-order*))
@@ -507,7 +508,8 @@
            (charge (fn2-columns-sym name "-ARM-CHARGE-OK-P"))
            (next (fn2-columns-sym name "-ARM-NEXT-OK-P"))
            (stem (fn2-columns-sym (fn2-columns-col-name name tag) "")))
-      (list*
+      (append
+       (list
        `(defthm-owed ,(fn2-columns-sym stem "-BOUND") (id budget fn2-core)
           (implies ,(fn2-machine-arm-pre name phase)
                    (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
@@ -517,7 +519,10 @@
           :schema :bound :from (:machine ,name)
           :teeth (,(fn2-columns-sym name "-ARM-CERTIFICATE-POSITIVE") ,(fn2-columns-sym name "-ARM-CERTIFICATE-NEGATIVE"))
           :doc ,(concatenate 'string "Arm " (symbol-name tag) " of " (symbol-name name)
-                             " charges within its declared cost (the scalar-work certificate)."))
+                             " charges within its declared cost (the scalar-work certificate).")))
+       ; An arm declared :language :unchecked states no frame: its body was not
+       ; checked against :writes and :tables.
+       (and (not (eq (fn2-arm-get :language c) :unchecked)) (list
        `(defthm-owed ,(fn2-columns-sym stem "-FRAME") (id budget fn2-core)
           (implies ,(fn2-machine-arm-pre name phase)
                    (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
@@ -530,7 +535,7 @@
           :teeth (,(fn2-columns-sym name "-ARM-NEXT-POSITIVE") ,(fn2-columns-sym name "-ARM-NEXT-NEGATIVE")
                   fn2-arm-frame-positive fn2-arm-frame-negative)
           :doc ,(concatenate 'string "Arm " (symbol-name tag) " of " (symbol-name name)
-                             " changes only its declared fields and children and moves only to a declared phase."))
+                             " changes only its declared fields and children and moves only to a declared phase."))))
        (fn2-machine-arm-rows name (cdr arms) world)))))
 (defun fn2-machine-observe-rows (name observes world)
   (declare (xargs :verify-guards nil))
@@ -543,7 +548,7 @@
            (children (fn2-machine-child-indices (append (fn2-arm-get :tables c) *fn2-arm-implicit-tables*) world))
            (event (fn2-event-keyword->code tag))
            (stem (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym name "-OBSERVE") tag) "")))
-      (cons
+      (append (and (not (eq (fn2-arm-get :language c) :unchecked)) (list
        `(defthm-owed ,(fn2-columns-sym stem "-FRAME") (id outcome reason count aux0 aux1 fn2-core)
           (implies ,(fn2-machine-arm-pre name nil)
                    (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
@@ -556,7 +561,7 @@
           :schema :invariant :from (:machine ,name)
           :teeth (fn2-arm-frame-positive fn2-arm-frame-negative)
           :doc ,(concatenate 'string "Handler " (symbol-name tag) " of " (symbol-name name)
-                             " changes only its declared fields and children and moves only to a declared phase."))
+                             " changes only its declared fields and children and moves only to a declared phase."))))
        (fn2-machine-observe-rows name (cdr observes) world)))))
 
 ; Teeth: the certificates accept every declared bound and successor and

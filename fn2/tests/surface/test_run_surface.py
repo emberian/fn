@@ -237,14 +237,17 @@ class SurfaceRunnerTests(unittest.TestCase):
         self.assertIn('TestCase-call count', markdown)
 
     def test_owed_forms_are_listed_but_not_generated(self):
+        # Every family's S form is implemented (peering and bp since HZ4); an owed form is still
+        # reported and never generated, which a synthetic owed entry shows.
         for family, entry in surface.FAMILIES.items():
-            if family in ('nntp', 'consumer', 'tls_auth', 'config_limits', 'operator', 'store_ops', 'web'):
-                continue
-            self.assertEqual(entry['forms']['S']['status'], 'owed')
+            self.assertEqual(entry['forms']['S']['status'], 'implemented', family)
             self.assertEqual(entry['forms']['S']['model'], entry['model'])
-            self.assertEqual(surface.form_suite(family, 'S').countTestCases(), 0)
-        with mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn2'}):
-            report = run_surface.run_family('peering', 'laptop')
+        owed = dict(surface.FAMILIES['peering']['forms']['S'], status='owed', module=None)
+        forms = dict(surface.FAMILIES['peering']['forms'], S=owed)
+        with mock.patch.dict(surface.FAMILIES, peering=dict(surface.FAMILIES['peering'], forms=forms)):
+            self.assertEqual(surface.form_suite('peering', 'S').countTestCases(), 0)
+            with mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn2'}):
+                report = run_surface.run_family('peering', 'laptop')
         self.assertEqual(report['forms']['S']['status'], 'OWED')
         self.assertFalse(report['forms']['S']['selected'])
         self.assertEqual(report['owed_forms'], [{'form': 'S', 'model': surface.FAMILIES['peering']['model']}])
@@ -259,7 +262,7 @@ class SurfaceRunnerTests(unittest.TestCase):
         self.assertEqual(surface.FAMILIES['consumer']['forms']['S']['status'], 'implemented')
 
     def test_hz_s_modules_cadence_and_unserved_gate(self):
-        for family, steps in (('operator', 30), ('store_ops', 20), ('web', 30)):
+        for family, steps in (('operator', 30), ('store_ops', 20), ('web', 30), ('peering', 30), ('bp', 30)):
             with self.subTest(family=family):
                 entry = surface.FAMILIES[family]
                 self.assertEqual(entry['forms']['S']['status'], 'implemented')
@@ -284,7 +287,8 @@ class SurfaceRunnerTests(unittest.TestCase):
         self.assertIn('fn2.tests.surface.nntp.test_model_nntp.TestSurface.test_live_state_machine', ids)
         self.assertIn('fn2.tests.surface.nntp.test_examples_nntp.TestSurface.test_native_article_quiet', ids)
         suite = unittest.defaultTestLoader.loadTestsFromName('fn2.tests.surface.peering')
-        self.assertFalse(any('.test_model_' in test.id() for test in run_surface.run_natives.flatten(suite)))
+        ids = [test.id() for test in run_surface.run_natives.flatten(suite)]
+        self.assertIn('fn2.tests.surface.peering.test_model_peering.TestSurface.test_live_state_machine', ids)
 
     def test_fn1_nntp_s_runs_live_machine_with_fake_target(self):
         from fn2.tests.surface.nntp import test_model_nntp
@@ -522,6 +526,26 @@ class IsolationTests(unittest.TestCase):
         self.assertEqual([call.args[1] for call in isolated.call_args_list], ['E', 'S', 'F', 'H'])
 
 
+class NightlyReportTests(unittest.TestCase):
+    def test_table_and_anchored_classes(self):
+        from fn2.tests.surface import nightly
+        row = lambda test, outcome, exception='': dict(test=test, outcome=outcome, exception=exception)
+        form = lambda *records: dict(selected=True, status='FAIL', ok=1, executed=len(records), records=list(records))
+        family = dict(status='FAIL', tests=3, executed=3, ok=1, fail=2, skip=0, not_run=0, performance=[],
+                      forms=dict(E=form(row('a.b.TestSurface.test_native_owner', 'fail', 'boom\nmore'),
+                                        row('a.b.TestSurface.test_native_owner_offlock', 'error', 'x'),
+                                        row('a.b.TestSurface.test_native_ok', 'ok'))))
+        data = dict(target='fn1', box='hbox', exit_status=1, errors=[], families=dict(operator=family),
+                    totals=dict(tests=3, executed=3, ok=1, fail=2, skip=0, not_run=0, testcase_calls=7))
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, 'surface.json').write_text(json.dumps(data))
+            text = nightly.report(directory, [dict(match='test_native_owner', note='n', **{'class': 'known fn1 red'})])
+        self.assertIn('| operator | FAIL | 3 | 3 | 1 | 2 |', text)
+        self.assertIn('test_native_owner | fail | known fn1 red | boom |', text)
+        self.assertIn('test_native_owner_offlock | error | unclassified | x |', text)
+        self.assertNotIn('test_native_ok |', text)
+
+
 class DescriptorLifecycleTests(unittest.TestCase):
     @staticmethod
     def fd_count():
@@ -685,6 +709,23 @@ class DescriptorLifecycleTests(unittest.TestCase):
                 super().__init__(case)
         self.examples('store_ops', lambda: machine(self, target_factory=FakeTarget)(),
                       lambda m: m.maintenance('checkpoint', False))
+
+    def test_peering_descriptor_lifecycle(self):
+        # The live target's three scripted peers are real loopback listeners closed by the example's
+        # cleanup; the fake node delivers to its own instruments.
+        from fn2.tests.model.test_peering_model import FakeTarget as Base
+        from fn2.tests.surface.peering.test_model_peering import ScriptedPeer, machine
+        owner = self
+        class FakeTarget(Base):
+            @surface.owned_ports
+            def __init__(self, case):
+                self.node = owner.reserve_node(case)
+                super().__init__(case)
+                for _ in range(3):
+                    case.addCleanup(ScriptedPeer().close)
+        with mock.patch('fn2.tests.surface.peering.test_model_peering.SETTLE', 0.05):
+            self.examples('peering', lambda: machine(self, target_factory=FakeTarget)(),
+                          lambda m: m.transition(('peer list',), False))
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 ; Q1 controls: the assembled catalogue is E1's 39 labels plus the listener's
-; :admitting phase (R7's split, agreed with layer D; a pinned regression
+; :admitting phase (R7's split, agreed with layer D) plus B's 14 commit labels
+; (a pinned regression
 ; control, DSL-METATHEORY 5.8), every label is bound, the composition row is
 ; the unchanged fn2-turn-refinement, and a declared role that does not occur in
 ; the generated statement is refused (E2's role-divergence control).
@@ -21,19 +22,24 @@
     (:run fn2-scribe :next) (:run fn2-scribe :stopped)
     (:observe fn2-scribe :write-result) (:observe fn2-scribe :fence-result)
     (:observe fn2-scribe :read-result)
+    (:run fn2-commit :free) (:run fn2-commit :collect) (:run fn2-commit :seal)
+    (:run fn2-commit :dependencies) (:run fn2-commit :log-write) (:run fn2-commit :fence)
+    (:run fn2-commit :durable) (:run fn2-commit :install) (:run fn2-commit :publish)
+    (:run fn2-commit :notify) (:run fn2-commit :draining) (:run fn2-commit :uncertain)
+    (:observe fn2-commit :write-result) (:observe fn2-commit :fence-result)
     (:router :fallback) (:executor :clock) (:executor :signal)
     (:executor :service 0) (:executor :service 1) (:executor :service 2)
     (:executor :service 3) (:executor :empty-principal)))
 (assert-event (equal (fn2-case-catalogue (w state)) *fn2-q1-pinned-catalogue*))
-(assert-event (equal (len *fn2-q1-pinned-catalogue*) 40))
+(assert-event (equal (len *fn2-q1-pinned-catalogue*) 54))
 (assert-event
  (equal (fn2-square-coverage 'fn2-q1 (w state))
-        '(:required 40 :bound 40 :unmatched nil
+        '(:required 54 :bound 54 :unmatched nil
           :unresolved-depends (fn2-q1-entry fn2-q1-exit fn2-q1-partition))))
 (assert-event
  (equal (fn2-decl-get :owner (fn2-decl-row '(:square fn2-turn-refinement) (w state)))
         '(:correspondence fn2-q1)))
-(value-triple (cw "Q1 CATALOGUE: 40 labels = E1's 39 + listener :admitting (32 machine, 1 router, 7 executor); 40 bound, 0 unmatched PASS~%"))
+(value-triple (cw "Q1 CATALOGUE: 54 labels = E1's 39 + listener :admitting + 14 B commit (46 machine, 1 router, 7 executor); 54 bound, 0 unmatched PASS~%"))
 
 ; E2's divergence control: the generated statement kept, the relation role
 ; declared as the nested pure relation instead of the full invariant.
