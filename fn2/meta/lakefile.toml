@@ -1,0 +1,11 @@
+name = "fn2meta"
+defaultTargets = ["Fn2"]
+
+# Mathlib pinned to the revision minidregg uses (minidregg lakefile.toml, lean-toolchain v4.30.0).
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4"
+rev = "1c2b90b13009c65b090d95a83c98e248deafb6f1"
+
+[[lean_lib]]
+name = "Fn2"
