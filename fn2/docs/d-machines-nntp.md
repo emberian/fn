@@ -22,10 +22,10 @@ is attributed to layer D. Package `"ACL2"`, prefix `fn2-`; no `skip-proofs`, `de
 | acquisition and cancellation scenarios, per bundle | `fn2/tests/sim-acquisition.lisp`, `fn2/tests/sim-acquisition-driver.lsp` | D0 | D |
 | machine DSL arm contracts (`:cost :writes :tables :next :uses :holds`, `defcost`) | `fn2/books/machines.lisp` | R7 (A's quest; D1's requirements are its seam request, §4) | **A** |
 | T10, resident state bounded by the profile | `fn2/books/owed-d.lisp`, `fn2/tests/owed-d-unit.lisp` | D1a | D |
-| the command-grammar DSL `defgrammar` | `fn2/books/grammar.lisp` | D2a | D |
+| the command-grammar DSL `defgrammar` (framer, block framer, validators, renderer, runner) | `fn2/books/grammar.lisp`, evidence `fn2/tests/grammar-unit.lisp` | D2a | D |
 | the NNTP command and reply table | `fn2/books/nntp-grammar.lisp` | D2a | D |
 | generator, mutator, fuzzer and its three mutation controls | `fn2/books/grammar-gen.lisp`, `fn2/tests/grammar-fuzz.lisp` | D2b | D |
-| table check against H's model | `fn2/tests/grammar-oracle.py` (reads `fn2/tests/model/nntp_model.py` from `fn2/h-harness`) | D2a | D |
+| table check against H's model | `fn2/tests/grammar-export.lsp` (writes the table), `fn2/tests/grammar-oracle.py` (reads `fn2/tests/model/nntp_model.py`) | D2a | D |
 | listener/connection machine | `fn2/books/conn.lisp` | D3 | D |
 | upload, transaction, cursor, TLS admission, wait | `fn2/books/{upload,txn,cursor,tls-admit,wait}.lisp` | D4-D8 | D |
 | scheduler over principals, accounts | `fn2/books/sched.lisp` (extended through A's seam), `fn2/books/accounts.lisp` | D7 | D (sched.lisp changes go to A as a seam request) |
@@ -49,7 +49,7 @@ by building both (seat-common "two additions that are one construction are merge
 |---|---|---|
 | D0 the acquisition protocol | R6b item 1 (`fn2/docs/resources.md`: "a single global acquisition order, the admission bundle, protected reserves, release points, the deadlock-freedom argument") | **One protocol, D0's.** `fn2/books/resources.lisp` is the source; this file's §3 is its printed form. R6b item 1 is re-cut to "make A's code follow D0's order and bundles", and D0's per-bundle scenarios for A's bundles become R6b's acceptance. Seam request through main (§10). |
 | D1 the machine DSL | R7 (arm contracts, restricted arm language, `defcost`, `:holds`, A4's three kinds ported) | **A owns `defmachine` (seat-common "one DSL owner").** D1's DSL content is a seam request with the exact forms D's machines need (§4); R7 builds it, and R7 item 2 *is* D1's "A4's three machines re-declared through the result". What D1 builds itself is the ownership matrix (§5) and T10 (§7), quest D1a. |
-| D2 parser over pool ranges | R6a1 (`fn2-pool-scan`, `fn2-pool-drop-prefix`, `fn2-pool-compare` with two owners) | D2a builds the DSL, table, parser and renderer over A's existing checked scalar exports (`fn2-core-read`, `fn2-core-write`), bounded by the 4 KiB run quantum; D2c ports line finding and prefix retention to R6a1's primitives once they land and deletes the scalar inner loop (the derived path only). |
+| D2 parser over pool ranges | R6a1 (`fn2-pool-scan`, `fn2-pool-drop-prefix`, `fn2-pool-compare` with two owners) | D2a builds the DSL, table, parser and renderer over the pool library's checked scalar exports (`fn2-pool-read`, `fn2-pool-write`), bounded by the 4 KiB run quantum; D2c ports line finding and prefix retention to R6a1's primitives once they land and deletes the scalar inner loop (the derived path only). |
 
 C's identity and ordered schemas (C2/C3) gate D3 onward (brief). B's commit batch (B3b, on
 `fn2/b-durability`) is the subject of D5's batch reference.
@@ -191,15 +191,16 @@ which a service acquires and is never awaited).
 | `fn2-listener :admit-refused` | `:accept-credit :connection-row` | `(:release (:connection-row))` |
 | `fn2-echo :reclaim` | `:connection-row :rx-range` | `(:release (:rx-range :connection-row))` |
 
-**Interim, layer A only.** `*fn2-resource-a-holds*` (the kinds each phase of `fn2-listener`,
-`fn2-echo`, `fn2-scribe` may hold; pending operations are the outstanding table's, and waiting for a
-completion is not a resource wait) and `*fn2-resource-a-wait-reasons*` (A's `fn2-wait` enum by the
-kind it awaits: `:issued` none, `:op-credit` → `:operation`, `:pool` → `:storage-window`,
-`:admission` → `:connection-row`) are R7's to move into each `defmachine`'s `:holds`; then they are
-deleted here, like `*fn2-resource-effects*` once R7 declares the effects on its allocator operations.
-R7 splits the listener into `:accepting` (`:accept-credit`) and `:admitting` (`:accept-credit
-:connection-row`), the case per-phase holds cannot state while one phase spans both (A/D DSL seat,
-2026-10-29).
+**Interim, layer A only.** `*fn2-resource-a-holds*` lists the kinds each phase of `fn2-listener`,
+`fn2-echo` and `fn2-scribe` may hold. Pending operations are not listed there, because they belong to
+the outstanding table, and waiting for a completion is not a resource wait. R7 moves this table into
+each `defmachine`'s `:holds` and then deletes it here, as it will `*fn2-resource-effects*` once R7
+declares those effects on its allocator operations. The wait-reason enum is now `(:none :completion`
+followed by the 22 kinds by name, read from `*fn2-resource-order*` (R7 2/n, 80458ea94). The wait
+projection therefore reads the awaited kind directly, and no translation table remains. R7 also
+splits the listener into `:accepting` (`:accept-credit`) and `:admitting` (`:accept-credit
+:connection-row`): with one phase spanning both states, per-phase holds could not state the
+difference (A/D DSL seat, 2026-10-29).
 
 **What the certification checks enforce.** The order has ranks exactly 1..22 in listed order with
 distinct keywords; every bundle acquires in strictly ascending rank and names only known kinds; its
@@ -293,25 +294,88 @@ per-run budget (§B.3; work stops at any limit). All are declared through A's `d
 | commit batch | **B** (B3b), migrated into the arm contracts by B after R7 | `collect seal dependencies log-write fence durable install publish notify uncertain draining` | batch identity; predecessor head; members; dependency cursor/count; outstanding counts; packed ranges; proposed root; fence OpRef; publication cursor | `B` 2 | 32 members/dependencies or 4 KiB, 4 descriptors |
 | cleaner, checkpoint, recovery | **B** | per §B.2 | per §B.2 | one each | 32 entries or 4 KiB |
 
-## 6. The grammar DSL *(design; D2a rewrites)*
+## 6. The grammar DSL (D2a; `fn2/books/grammar.lisp`, `fn2/books/nntp-grammar.lisp`)
 
-`defgrammar NAME` declares a wire grammar once; it is D's DSL (the third of EXECUTION-MODEL §5), and
-its entries are DSL-METATHEORY's `command` kind, registered through `fn2-declare`. A command entry:
-keyword, typed arguments (number, range `n-m`/`n-`, Message-ID, wildmat, keyword, token), the protocol
-states that admit it, whether it opens a multi-line input block, and its reply codes. The grammar
-level declares the framing: CRLF lines, the 512-octet initial-line cap (RFC 3977 §3.1, with the
-`specs/nntp.md` lines the table cites), pipelining, dot-stuffed blocks with the header-line limit,
-discard-to-terminator after a refusal, and the two hand-off boundaries (STARTTLS: nothing framed
-during the handshake; COMPRESS: E's, and per H's ruling of 2026-10-29 advertised and accepted only
-after authentication, NNT-054).
+`defgrammar NAME` declares a wire grammar once. It is D's DSL, the third of EXECUTION-MODEL §5. Each
+of its entries is DSL-METATHEORY's `command` kind, registered as a `(:command NAME-CMD)` row through
+`fn2-declare` (table `fn2-commands`, the one `declare.lisp` clause, carried into dev by the DSL seat
+in 5d809cb94). The row's payload is `:grammar :keyword :syntax :protocol-states :state-refusal :block
+:hand-off :help :spec :replies`, and its `:generated` manifest is the command's argument parser.
 
-Generated: the incremental parser as a continuation over `[parser-offset, fill)` of the connection's
-RX range under a byte budget (at most 4 KiB per run), its state retained as row scalars (never a
-list); the reply renderer into the TX range; the generator and mutator (D2b); and five obligation
-stubs with teeth: totality under the connection row's guard over arbitrary octets, linear
-consumption, fragmentation invariance, bounded retained input, reply typing. The table is checked
-against H's model (`nntp_model.py`: `HELP`, `KEYWORDS`, `SPECS`) and the fn1 evidence
-(`books/nntp-help.lisp:52-59`'s keywords, `books/protocol-table.lisp`).
+**The declaration.** It gives `:line-cap 512 :args-cap 497 :block-line-cap 1000` (RFC 3977 §3.1;
+RFC 5322 §2.1.1) and `:states (:reader :peer :authenticated)`, where each state is one bit of the
+connection's state mask. It also gives `:layers`, which says which state a reply's layer needs
+(`:peer` replies need `:peer`). Then come `:fields`, the template field words of the reply texts
+(`NUMBER`, `MESSAGE-ID`, `COUNT LOW HIGH GROUP`, `REASON`, `YYYYMMDDhhmmss`, ...); `:general`, the
+replies of no command (500, 501, the greetings, the 400s, the 403); and `:commands`. A command entry
+has a keyword, typed arguments, admitting states, the reply that refuses it in another state, a block
+opening (`(:after 340)`, `(:after 335)` or `(:immediate)`), a hand-off (`(:tls 382)` or `(:compress
+206)`), its HELP row, its spec citation and its replies `(KEY :code :class :layer :text)`.
+Argument kinds are `:number` (an article number, 1..2^31-1), `:digits`, `:range` (`n`, `n-`, `n-m`,
+with the open end `*fn2-none*`), `:msgid`, `:ref` and `:ref-range` (a Message-ID when the token opens
+with `<`), `:wildmat`, `:label`, `:date`, `:time`, `:gmt`, `:token`, `:rest` and `(:keyword W ...)`,
+each optional under `(:opt K)`, with at most four per command.
+
+**Generated, scalar, over pool slots.**
+- The command-tag and reply-tag enums and the state bits, all as named constants.
+- The keyword matcher, which is case-insensitive.
+- Per-command argument parsers, plus the state, block and hand-off tables.
+- `NAME-parse-line`. It takes one complete line `[s, e)` and returns `(mv code tag nargs f0 a0 b0 ...
+  f3 a3 b3)`, where CODE is `:ok`, `:malformed` (empty line, bare LF or CR, NUL, ill-formed UTF-8:
+  reply 501 and close), `:syntax` (501), `:unknown` (500) or `:state` (the command's state refusal).
+  Each argument is a descriptor: a value, a range, a keyword index or an `(offset, length)` span in
+  the RX slot, never copied.
+- `NAME-render`. It is typed: a reply is written only for its own command, in a state its layer
+  admits. It appends `NNN text CRLF` to a TX slot from the compiled template, with numbers and one
+  span.
+- The generic framer `fn2-gram-frame`, a bounded continuation over `[pos, fill)` whose whole state
+  is `(start pos overflow)`. A line over the cap stops being retained, so retention never exceeds
+  the cap. The framer is shared by command lines and by `fn2-gram-block-step` (dot-unstuffing, the
+  terminator, a bare LF / NUL / unescaped leading dot as `:bad-line`, discard to the terminator by
+  the caller).
+- The two hand-offs. After 382 (STARTTLS) or 206 (COMPRESS, which is admitted only in
+  `:authenticated`, per NNT-054 and H's ruling) the grammar frames nothing more.
+
+Bytes are read and written only through `fn2-pool-read` / `fn2-pool-write`. No served path builds a
+list of octets.
+
+**Obligations** (`defthm-owed`, teeth in `fn2/tests/grammar-unit.lisp`). The five grammar
+obligations are covered by four rows:
+
+| row | covers | teeth |
+|---|---|---|
+| `fn2-gram-frame-total-linear` | framer totality, linear consumption, bounded retention | every `(start, pos)` of six transcripts (one holds all 256 octet values) at budgets 1 and 4096 and caps 512 and 4; negative: four wrong outcomes |
+| `fn2-nntp-parse-total` | parse totality over arbitrary octets (guard only) | the same probe; negative: shapes a wrong parser would produce |
+| `fn2-nntp-fragmentation` | fragmentation invariance | 29 transcripts × 3 state masks, every split point, every pair for those of at most 64 octets, and bytewise arrival, equal on events and on rendered reply bytes; negative: a chunker that forgets the retained line |
+| `fn2-nntp-reply-typing` | reply typing | every reply × every command tag × 3 masks; negative: an untyped renderer |
+
+The fragmentation statement is about the transcript runner `fn2-nntp-run`, a logical view over an
+octet list. It drives the real framer, parser and renderer over a local pool, assuming each
+block-opening reply is granted. Twenty-five transcripts have independently written expected outcome
+codes, so a parser that is split-invariant but wrong still fails them.
+
+**Checked against H's model.** `fn2/tests/grammar-export.lsp` writes the declared table and the
+validators' verdicts on a 90-string seeded sample. `fn2/tests/grammar-oracle.py` checks four things:
+the keyword set equals `KEYWORDS`; the HELP text equals `HELP`; every citation is the model's
+`SPECS` entry; and every Message-ID, range and wildmat verdict agrees with `msgid`, `number_range`
+and `wildmat`. Result: 0 disagreements. The oracle catches a mutated row or verdict.
+
+**Resolved disagreements and departures.**
+- HELP is the six rows of `specs/nntp.md:51-93` and of H's `HELP`. XFNCATCHUP and XFN-ZARTICLE are
+  recognized but have no HELP row (`:help nil`). fn1's served table has a seventh row with them,
+  which contradicts the spec text, and the spec text wins.
+- Overlength is checked in two places, as RFC 3977 §3.1 has it. A line of 513 octets or more is
+  `:overflow`: reply 501 and close (H's `_malformed(overlong=True)`). Within the cap, arguments
+  longer than 497 octets get 501 and the connection stays.
+- fn1's "done|more" XFNCATCHUP reply becomes two replies.
+- The parser reads through the pool library's `fn2-pool-read`, not `fn2-core-read`. The grammar is a
+  library over `fn2-pool` and needs no core instance. OWN's read hook must cover `fn2-pool-read` (or
+  the range primitives of D2c) when D3 serves it; R5b's rule.
+- Arity per sub-form (for example, AUTHINFO USER needs exactly one more argument) is left to D3's
+  decision code. The grammar bounds it: three arguments at most for AUTHINFO.
+- The parser scans line ends byte by byte through the scalar export; D2c moves it onto R6a1's
+  `fn2-pool-scan` / `fn2-pool-drop-prefix` and deletes that loop.
+- Generator, mutator and the fuzzer's three mutation controls are D2b.
 
 ## 7. Keystones, phased
 
@@ -359,7 +423,7 @@ them.
 |---|---|---|---|
 | D0 | resources.lisp, the tables of §3 as data with certification checks, the owed deadlock-freedom keystone, per-bundle exhaustion and cancellation scenarios for A's existing bundles | A only | done |
 | D1a | T10 in owed-d.lisp with teeth | A only | next after D2a |
-| D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | parallel with D0 (second worktree) |
+| D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | done |
 | D2b | generator, mutator, fuzzer, the three mutation controls | D2a | |
 | D2c | parser onto R6a1's scan and drop-prefix | R6a1 | |
 | D3 | connection machine, greeting/HELP/QUIT/MODE/DATE/CAPABILITIES, timers, 400 refusals, ABI reconciled, T1 and T8 | R7, C2/C3, D0, D2 | |
