@@ -338,7 +338,7 @@
                      (= (fn2-machine-cb-fence-live id fn2-core) 0)))
          (fn2-core (fn2-commit-uncertain id *fn2-commit-reason-predecessor* fn2-core))
          (fn2-core (if quiet (fn2-commit-put-core id (stopped 1)) fn2-core)))
-   (fn2-machine-result 0 8 0 nil fn2-core))))
+   (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))))
 (fn2-core-preserves fn2-commit-stop-follower (id fn2-core) :position 4 :rows nil)
 (defmachine-callback fn2-commit-collect fn2-commit (id budget) 4
  (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
@@ -348,7 +348,7 @@
  (mv-let (code fn2-core) (fn2-commit-root-edge id nil fn2-core)
   (let* ((fn2-core (assert$? (eq code :ok) fn2-core))
          (fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-seal*))))
-   (fn2-machine-result 0 32 0 t fn2-core)))))))
+   (fn2-machine-result 0 *fn2-work-stage* 0 t fn2-core)))))))
 
 (defun fn2-commit-zero (left at slot gen id ogen fn2-core)
  (declare (xargs :stobjs fn2-core :measure (nfix left)
@@ -426,19 +426,6 @@
                     fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
    (assert$? nil (mv :bounds fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests))) (mv code fn2-core)))))
 (fn2-core-preserves fn2-commit-format-core (id kind role off len fn2-core) :position 1 :rows nil)
-(defun fn2-commit-digest-copy (left row slot gen off id ogen fn2-digests fn2-pool)
- (declare (xargs :stobjs (fn2-digests fn2-pool) :measure (nfix left)
-  :guard (and (fn2-digest-rowp row fn2-digests) (fn2-pool-wfp fn2-pool)
-              (natp left) (<= left 32) (natp off))))
- (if (zp left) (mv :ok fn2-pool)
-  (mv-let (code fn2-pool)
-   (fn2-pool-write slot gen (+ off (- 32 left))
-    (fn2-fc-word-byte (fn2-digest-word row (floor (- 32 left) 4) fn2-digests) (mod (- 32 left) 4))
-    *fn2-commit-kind* id ogen fn2-pool)
-   (if (eq code :ok) (fn2-commit-digest-copy (- left 1) row slot gen off id ogen fn2-digests fn2-pool)
-    (mv code fn2-pool)))))
-(fn2-pool-preserves fn2-commit-digest-copy (left row slot gen off id ogen fn2-digests fn2-pool) :position 1 :disable nil)
-(in-theory (disable fn2-commit-digest-copy))
 (defun fn2-commit-page-hash (id stage fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)
@@ -460,7 +447,7 @@
         (declare (ignore ignored)) (mv code fn2-digests fn2-b3 fn2-pool)))
     (t (let ((fn2-digests (fn2-b3-finalize (fn2-digest-slot row *fn2-fc-result*) row fn2-digests fn2-b3)))
         (mv-let (code fn2-pool)
-         (fn2-commit-digest-copy *fn2-commit-digest-bytes* (fn2-digest-slot row *fn2-fc-result*) scratch sg *fn2-commit-scratch-page* id ogen fn2-digests fn2-pool)
+         (fn2-digest-store *fn2-commit-digest-bytes* (fn2-digest-slot row *fn2-fc-result*) scratch sg *fn2-commit-scratch-page* *fn2-commit-kind* id ogen fn2-digests fn2-pool)
          (mv code fn2-digests fn2-b3 fn2-pool)))))) (mv code fn2-core)))))
 (fn2-core-preserves fn2-commit-page-hash (id stage fn2-core) :position 1 :rows nil)
 (defun fn2-commit-seal-context (id previous fn2-core)
@@ -487,7 +474,7 @@
          (mv :more fn2-fc-context fn2-digests fn2-commit-root fn2-pool)
       (let ((fn2-fc-context (fn2-fc-context-set-previous-seal row (+ base (- batch 1)) fn2-fc-context)))
        (mv-let (code fn2-pool)
-        (fn2-commit-digest-copy *fn2-commit-digest-bytes* (+ base (- batch 1)) slot gen *fn2-commit-scratch-parent* id ogen fn2-digests fn2-pool)
+        (fn2-digest-store *fn2-commit-digest-bytes* (+ base (- batch 1)) slot gen *fn2-commit-scratch-parent* *fn2-commit-kind* id ogen fn2-digests fn2-pool)
         (mv code fn2-fc-context fn2-digests fn2-commit-root fn2-pool))))
      (let* ((fn2-digests (fn2-digest-copy (+ base batch) (fn2-digest-slot row *fn2-fc-result*) fn2-digests))
             (fn2-commit-root (fn2-commit-root-set-seal-ready batch 1 fn2-commit-root)))
@@ -598,7 +585,7 @@
          ((eq code :ok) (fn2-commit-seal-advance id (+ 1 stage)
             (= stage *fn2-commit-seal-stage-hash-seal-frame*) fn2-core))
          (t (fn2-commit-uncertain id *fn2-commit-reason-seal* fn2-core)))))
-   (fn2-machine-result 4096 32 0 (member-eq code '(:ok :more)) fn2-core))))))))
+   (fn2-machine-result 4096 *fn2-work-stage* 0 (member-eq code '(:ok :more)) fn2-core))))))))
 
 ; Edge row is the resource index; its holder is the exact issuing op generation.
 ; Keep both log edges until all results in that class are harvested: the router
@@ -679,12 +666,12 @@
    (cond
     ((equal (fn2-machine-phase row-partner fn2-core) *fn2-commit-state-uncertain*)
      (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-predecessor* fn2-core)))
-      (fn2-machine-result 0 8 0 t fn2-core)))
+      (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core)))
     ((= issued target)
-     (if (< row-cb-done issued) (fn2-machine-result 0 8 0 nil fn2-core)
+     (if (< row-cb-done issued) (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)
       (let ((fn2-core (fn2-commit-writes-finished id (if dep 1 row-cb-deps-ok)
                        (if dep 0 1) dep row-cb-mode fn2-core)))
-       (fn2-machine-result 0 16 0 t fn2-core))))
+       (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))
     ((not (and (natp budget) (< 0 budget) (< issued target)))
      (fn2-machine-yield id fn2-core))
     (t
@@ -692,7 +679,7 @@
       (mv-let (e epoch counter slot gen) (fn2-commit-resource id role fn2-core)
        (declare (ignore epoch counter))
        (if (not (unsigned-byte-p 32 e))
-        (assert$? nil (fn2-machine-result 0 8 0 nil fn2-core))
+        (assert$? nil (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
         (mv-let (code opslot opgen fn2-core)
           (fn2-issue-write (+ (* e *fn2-commit-extent-bytes*) (* role *fn2-commit-unit-bytes*))
             slot gen 0 *fn2-commit-unit-bytes* (if dep 0 row-cb-mode)
@@ -701,12 +688,12 @@
           ((eq code :exhausted) (fn2-machine-yield id fn2-core))
           ((not (eq code :ok))
            (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-issue* fn2-core)))
-            (fn2-machine-result 0 8 0 nil fn2-core)))
+            (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
           (t
            (mv-let (code fn2-core) (fn2-commit-io-edge id role t opslot opgen fn2-core)
             (let* ((fn2-core (assert$? (eq code :ok) fn2-core))
                    (fn2-core (fn2-commit-write-issued id (+ issued 1) (+ 1 row-pending) fn2-core)))
-             (fn2-machine-result 4096 32 1 t fn2-core))))))))))))))))
+             (fn2-machine-result 4096 *fn2-work-stage* 1 t fn2-core))))))))))))))))
 
 (defmachine-callback fn2-commit-fence fn2-commit (id budget) 4
  (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
@@ -717,21 +704,21 @@
    (cond
     ((and (= row-cb-fence-live 1) (<= row-deadline now))
      (let ((fn2-core (fn2-commit-timeout id fn2-core)))
-      (fn2-machine-result 0 8 0 nil fn2-core)))
+      (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
     ((= row-cb-fence-ok 1)
      (let ((fn2-core (fn2-commit-put-core id
                        (phase (if (= row-cb-mode 1) *fn2-commit-state-log-write*
                                 *fn2-commit-state-durable*)))))
-      (fn2-machine-result 0 8 0 t fn2-core)))
+      (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core)))
     ((= (fn2-machine-phase peer fn2-core) *fn2-commit-state-uncertain*)
      (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-predecessor* fn2-core)))
-      (fn2-machine-result 0 8 0 nil fn2-core)))
+      (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
     ((or (= row-cb-fence-live 1) (= (fn2-machine-cb-fence-live peer fn2-core) 1))
-     (fn2-machine-result 0 8 0 t fn2-core))
+     (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core))
     ((not (and (natp budget) (< 0 budget))) (fn2-machine-yield id fn2-core))
     ((not (and (natp now) (unsigned-byte-p 60 (+ now 1024))))
      (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-timeout* fn2-core)))
-      (fn2-machine-result 0 8 0 nil fn2-core)))
+      (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
     (t
      (mv-let (code opslot opgen fn2-core)
        (fn2-issue-fence *fn2-commit-kind* id row-generation 0 fn2-core)
@@ -740,11 +727,11 @@
        ((eq code :exhausted) (fn2-machine-yield id fn2-core))
        ((not (eq code :ok))
         (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-issue* fn2-core)))
-         (fn2-machine-result 0 8 0 nil fn2-core)))
+         (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
        (t
         (let ((fn2-core (fn2-commit-put-core id (cb-fence-live 1)
                           (deadline (+ now 1024)) (pending (+ 1 row-pending)))))
-         (fn2-machine-result 0 24 1 t fn2-core))))))))))))
+         (fn2-machine-result 0 *fn2-work-transition* 1 t fn2-core))))))))))))
 
 (defmachine-callback fn2-commit-durable fn2-commit (id budget) 4
  (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
@@ -754,7 +741,7 @@
   (if (not (and (unsigned-byte-p 60 row-batch-no) (= row-cb-deps-ok 1)
                 (= row-cb-log-ok 1) (= row-cb-fence-ok 1) (= row-cb-failed 0)))
    (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-durable* fn2-core)))
-    (fn2-machine-result 0 8 0 nil fn2-core))
+    (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
    (mv-let (e epoch counter slot gen) (fn2-commit-resource id 0 fn2-core)
     (declare (ignore slot gen))
     (let ((batch row-batch-no))
@@ -763,7 +750,7 @@
        (let ((fn2-core (if (eq code :ok)
                          (fn2-commit-put-core id (phase *fn2-commit-state-install*))
                         (fn2-commit-uncertain id *fn2-commit-reason-durable* fn2-core))))
-        (fn2-machine-result 0 24 0 t fn2-core))))))))))
+        (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))))))))))
 
 (defun fn2-commit-root-swap (id publish fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -796,11 +783,11 @@
        ((eq partner :failed) (fn2-commit-stop-follower id fn2-core))
        (t
  (mv-let (ok fn2-core) (fn2-commit-root-swap id nil fn2-core)
-  (if (not ok) (fn2-machine-result 0 8 0 t fn2-core)
+  (if (not ok) (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core)
    (mv-let (code fn2-core) (fn2-commit-root-edge id t fn2-core)
     (let* ((fn2-core (assert$? (eq code :ok) fn2-core))
            (fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-publish*))))
-     (fn2-machine-result 0 32 0 t fn2-core)))))))))
+     (fn2-machine-result 0 *fn2-work-stage* 0 t fn2-core)))))))))
 
 (defmachine-callback fn2-commit-publish fn2-commit (id budget) 4
  (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
@@ -810,7 +797,7 @@
  (mv-let (ok fn2-core) (fn2-commit-root-swap id t fn2-core)
   (let ((fn2-core (if ok (fn2-commit-put-core id (cb-published 1) (phase *fn2-commit-state-notify*))
                    (fn2-commit-uncertain id *fn2-commit-reason-durable* fn2-core))))
-   (fn2-machine-result 0 16 0 t fn2-core)))))))
+   (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))))))
 
 (defmachine-callback fn2-commit-notify fn2-commit (id budget) 4
  (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
@@ -822,7 +809,7 @@
         (fn2-core (fn2-commit-put-core id (cb-acks (if more (+ 1 n) n))
                     (phase (if more *fn2-commit-state-notify* *fn2-commit-state-draining*))
                     (cb-stage (if more row-cb-stage 0)))))
-  (fn2-machine-result 0 16 0 t fn2-core))))))
+  (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))))
 
 (defmachine-callback fn2-commit-drain fn2-commit (id budget) 4
  (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
@@ -831,19 +818,19 @@
        (t
   (cond
    ((not (and (= row-pending 0) (= row-cb-fence-live 0)))
-    (fn2-machine-result 0 8 0 nil fn2-core))
+    (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
    ((= row-phase *fn2-commit-state-uncertain*)
     (let ((fn2-core (fn2-commit-put-core id (stopped 1))))
-     (fn2-machine-result 0 8 0 nil fn2-core)))
+     (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
    (t
     (let ((cursor row-cb-stage))
      (if (>= cursor 4)
       (let ((fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-free*) (stopped 1))))
-       (fn2-machine-result 0 8 0 nil fn2-core))
+       (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
       (mv-let (code fn2-core) (fn2-commit-release-pool id cursor row-generation fn2-core)
        (let* ((fn2-core (assert$? (member-eq code '(:ok :retired)) fn2-core))
               (fn2-core (fn2-commit-put-core id (cb-stage (+ 1 cursor)))))
-        (fn2-machine-result 0 16 0 t fn2-core)))))))))))
+        (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))))))))))
 
 (defmachine-callback fn2-commit-idle fn2-commit (id budget) 4
  (fn2-machine-idle id fn2-core))
