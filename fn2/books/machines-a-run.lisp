@@ -79,6 +79,7 @@
 (fn2-core-shape-lemmas fn2-machine-issue-result (id code bytes) 4)
 
 (defmachine-callback fn2-listener-admit fn2-listener (id budget) 4
+  (fn2-machine-with-work 0 24 0
   (b* ((target (fn2-machine-free-head fn2-core))
        ((mv gen next) (fn2-echo-free-fields target fn2-core))
        (kind *fn2-echo-kind*))
@@ -103,10 +104,11 @@
                              (mode row-mode)))
                  (fn2-core (fn2-listener-put-core id (event-ready 0)))
                  (fn2-core (fn2-machine-set-wake-id target fn2-core)))
-            (fn2-machine-result 0 24 0 t fn2-core)))))))
+            (fn2-machine-result 0 24 0 t fn2-core))))))))
 
 
 (defmachine-callback fn2-listener-step fn2-listener (id budget) 4
+  (fn2-machine-with-work 0 24 1
   (cond ((not (equal row-pending 0))
          (fn2-machine-result 0 1 0 nil fn2-core))
         ((and (equal row-phase *fn2-listener-state-accepting*) (equal row-event-ready 1))
@@ -120,7 +122,7 @@
                row-cap-nonce *fn2-listener-kind* id
                row-generation 0 fn2-core))
            (declare (ignore op opgen))
-           (fn2-machine-issue-result id code 0 fn2-core)))))
+           (fn2-machine-issue-result id code 0 fn2-core))))))
 
 
 (defmachine-callback fn2-connection-release fn2-echo (id budget) 4
@@ -157,6 +159,7 @@
 
 
 (defmachine-callback fn2-connection-issue fn2-echo (id budget) 4
+  (fn2-machine-with-work 4096 8 1
   (let* ((kind *fn2-echo-kind*)
          (gen row-generation)
          (principal row-principal-slot)
@@ -183,7 +186,7 @@
                  (min 4096 (fn2-machine-pool-capacity slot fn2-core)))
                 ((equal row-phase *fn2-echo-state-reply*)
                  (min 4096 (nfix (- row-length
-                                   row-off)))) (t 0)) fn2-core)))))
+                                   row-off)))) (t 0)) fn2-core))))))
 
 
 (defmachine-callback fn2-connection-submit fn2-echo (id budget) 4

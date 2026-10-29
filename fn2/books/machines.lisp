@@ -217,12 +217,13 @@
          (fn2-machine-core-put-expansion ',name ',cols ',states id fields t))
        (defconst ,(fn2-columns-pre "*" (fn2-columns-sym name "-BUDGET*")) ',budget)
        ; Scalar multiple values are the runtime budget record: no consing.
-       ; A call's guard establishes all three simultaneous bounds.
+       ; Preflight and finish use the same simultaneous caps. A refused
+       ; preflight yields before mutation; valid calls retain the scalar API.
        (defun ,charge (bytes steps descriptors)
-         (declare (xargs :guard (and (natp bytes) (<= bytes ,bytes)
-                                     (natp steps) (<= steps ,steps)
-                                     (natp descriptors) (<= descriptors ,descriptors))))
-         (mv bytes steps descriptors))
+         (declare (xargs :guard (and (natp bytes) (natp steps) (natp descriptors))))
+         (if (and (<= bytes ,bytes) (<= steps ,steps) (<= descriptors ,descriptors))
+             (mv bytes steps descriptors)
+           (mv nil nil nil)))
 
        (defun ,(fn2-columns-sym name "-OBSERVES-P") (phase event)
          (declare (xargs :guard t) ,@(if (or (member-eq :free states) (member-eq :retired states)) nil '((ignore phase))))

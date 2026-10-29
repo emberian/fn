@@ -21,8 +21,9 @@
          (<= bytes (nfix (fn2-profile-run-bytes profile)))
          (<= steps (nfix (fn2-profile-run-steps profile)))
          (<= actions (nfix (fn2-profile-run-descriptors profile)))
-         ; Payload work belongs to scheduled continuations, never ingress.
-         (or (member-equal kind '(1 2)) (and (= bytes 0) (= actions 0))))))
+         ; Harvest charges exposed input; mailboxes cannot expose byte ranges.
+         (or (member-equal kind '(1 2))
+             (and (= actions 0) (or (equal kind 0) (= bytes 0)))))))
 
 (defun fn2-work-certificate (records)
   (declare (xargs :guard t))
@@ -73,6 +74,11 @@
                (> nvisits (nfix (fn2-profile-k profile)))
                (> nactions (nfix (fn2-profile-aturn profile))))
            '(:fail :turn-work-cap))
+          ((> (+ nvisits (nfix (fn2-check-field 3 certificate))
+                         (nfix (fn2-check-field 4 certificate)))
+              (+ (* (nfix (fn2-profile-h profile)) 24)
+                 (* (nfix (fn2-profile-k profile)) 4129)))
+           '(:fail :turn-work-cost))
           (t :pass))))
 
 (assert-event
@@ -106,3 +112,105 @@
                '((1 1 4 7 2) 3 2 14))
         (equal (fn2-work-cost-certificate (list run event) 1 1)
                '((1 1 4 7 2) 1 1 11)))))
+
+; The monitor snapshots the posted FIFO before the turn, because harvested
+; operation rows may be recycled. No executor counters or trace fields supply
+; these measurements. Mailboxes count as observations beside FIFO entries.
+(include-book "../books/assembly")
+(defun fn2-work-posted-bytes (left offset fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil :measure (nfix left)))
+  (if (zp left) nil
+    (let* ((index (fn2-ops-posted-fifoi
+                   (mod (+ (fn2-ops-post-head fn2-ops) (nfix offset))
+                        (fn2-ops-posted-fifo-length fn2-ops)) fn2-ops))
+           (slot (floor index 2)) (cell (mod index 2)))
+      (mv-let (posted harvested event outcome reason count aux0 aux1)
+        (fn2-op-cell cell slot fn2-ops)
+        (declare (ignore posted harvested reason aux0 aux1))
+        (cons (if (and (member-equal event (list *fn2-event-receive-result* *fn2-event-read-result*))
+                       (member-equal outcome (list *fn2-outcome-done* *fn2-outcome-short*)))
+                  (nfix count) 0)
+              (fn2-work-posted-bytes (- left 1) (+ 1 (nfix offset)) fn2-ops))))))
+(in-theory (disable fn2-work-posted-bytes))
+(defun fn2-work-visible-before (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+    (snapshot)
+    (list (fn2-ops-queued fn2-ops)
+          (fn2-work-posted-bytes (fn2-ops-post-count fn2-ops) 0 fn2-ops)
+          (fn2-ops-clock-posted fn2-ops)
+          (if (zp (fn2-ops-signals fn2-ops)) 0 1))
+    snapshot))
+(in-theory (disable fn2-work-visible-before))
+(defun fn2-work-prefix-bytes (left entries)
+  (declare (xargs :guard (natp left) :measure (nfix left)))
+  (if (or (zp left) (atom entries)) 0
+    (+ (nfix (car entries)) (fn2-work-prefix-bytes (- left 1) (cdr entries)))))
+(defun fn2-work-outbox-bytes (left offset fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil :measure (nfix left)))
+  (if (zp left) 0
+    (mv-let (code slot gen) (fn2-outbox-peek offset fn2-ops)
+      (declare (ignore gen))
+      (if (not (eq code :ok)) 0
+        (+ (fn2-ops-range-len slot fn2-ops)
+           (fn2-work-outbox-bytes (- left 1) (+ 1 (nfix offset)) fn2-ops))))))
+(in-theory (disable fn2-work-outbox-bytes))
+(defun fn2-work-visible-after (before fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+    (visible)
+    (let* ((growth (nfix (- (fn2-ops-queued fn2-ops) (nfix (nth 0 before)))))
+           (harvested (nfix (- (len (nth 1 before)) (fn2-ops-post-count fn2-ops))))
+           (clock (nfix (- (nfix (nth 2 before)) (fn2-ops-clock-posted fn2-ops))))
+           (signal (if (zp (fn2-ops-signals fn2-ops)) (nfix (nth 3 before)) 0)))
+      (list (fn2-work-outbox-bytes growth (nfix (nth 0 before)) fn2-ops)
+            (fn2-work-prefix-bytes harvested (nth 1 before))
+            growth (+ harvested clock signal)))
+    visible))
+(in-theory (disable fn2-work-visible-after))
+
+(defun fn2-work-byte-charge (records observationp)
+  (declare (xargs :guard t))
+  (if (atom records) 0
+    (+ (if (if observationp
+               (equal (fn2-check-field 0 (car records)) 0)
+             (member-equal (fn2-check-field 0 (car records)) '(1 2)))
+           (nfix (fn2-check-field 4 (car records))) 0)
+       (fn2-work-byte-charge (cdr records) observationp))))
+
+(defun fn2-check-work-visible (records lost nobs nvisits nactions profile visible)
+  (declare (xargs :guard t))
+  (let ((caps (fn2-check-work records lost nobs nvisits nactions profile))
+        (charged (fn2-work-certificate records)))
+    (cond ((not (eq caps :pass)) caps)
+          ((or (< (fn2-work-byte-charge records nil) (nfix (fn2-check-field 0 visible)))
+               (< (fn2-work-byte-charge records t) (nfix (fn2-check-field 1 visible))))
+           '(:fail :work-byte-undercharge))
+          ((< (nfix (fn2-check-field 3 charged)) (+ (nfix (fn2-check-field 0 visible)) (nfix (fn2-check-field 1 visible))))
+           '(:fail :work-byte-undercharge))
+          ((not (equal (fn2-check-field 2 charged) (fn2-check-field 2 visible))) '(:fail :work-descriptor-undercharge))
+          ((not (equal (fn2-check-field 0 charged) (fn2-check-field 3 visible))) '(:fail :work-observation-undercharge))
+          (t :pass))))
+(defun fn2-work-visible-certificate (records visible)
+  (declare (xargs :guard t))
+  (append (fn2-work-certificate records)
+          (list (nfix (fn2-check-field 0 visible)) (nfix (fn2-check-field 1 visible)))))
+
+; Mutation controls keep all self-reported counters consistent: only the
+; independently observed evidence distinguishes each wrong implementation.
+(assert-event
+ (let ((r '(1 0 0 0 4096 24 1 0 4294967295 0 0 0 1 1 1 2 1 3 1))
+       (h '(0 0 0 0 4096 24 0 0 4294967295 0 0 0 0 0 0 0 0 0 0)))
+   (and (equal (fn2-check-work-visible (list r h) 0 1 1 1 *fn2-profile-tiny* '(4096 4096 1 1)) :pass)
+        (equal (fn2-check-work-visible (list (update-nth 4 0 r)) 0 0 1 1 *fn2-profile-tiny* '(4096 0 1 0))
+               '(:fail :work-byte-undercharge))
+        (equal (fn2-check-work-visible (list (update-nth 4 0 h)) 0 1 0 0 *fn2-profile-tiny* '(0 4096 0 1))
+               '(:fail :work-byte-undercharge))
+        ; Local fill/verify work cannot pay for an uncharged harvest.
+        (equal (fn2-check-work-visible (list (update-nth 6 0 r) (update-nth 4 0 h))
+                                      0 1 1 0 *fn2-profile-tiny* '(0 4096 0 1))
+               '(:fail :work-byte-undercharge))
+        (equal (fn2-check-work-visible (list (update-nth 6 0 r)) 0 0 1 0 *fn2-profile-tiny* '(4096 0 1 0))
+               '(:fail :work-descriptor-undercharge))
+        (equal (fn2-check-work-visible nil 0 0 0 0 *fn2-profile-tiny* '(0 0 0 1))
+               '(:fail :work-observation-undercharge)))))

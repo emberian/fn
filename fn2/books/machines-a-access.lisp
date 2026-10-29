@@ -235,12 +235,55 @@
               (fn2-machine-charge-arms (fn2-machine-names (w state)) 0))))))
 (make-event
  (value `(defun fn2-machine-charge (kind bytes steps descriptors)
-           (declare (xargs :guard
-                      (case kind ,@(fn2-machine-charge-guards (fn2-machine-names (w state)) (w state) 0)
-                        (otherwise nil))))
+           (declare (xargs :guard (and (fn2-machine-charge-kindp kind)
+                                      (natp bytes) (natp steps) (natp descriptors))))
            (case kind ,@(fn2-machine-charge-arms (fn2-machine-names (w state)) 0)
              (otherwise (fn2-machine-refuse-charge))))))
 (in-theory (disable fn2-machine-charge))
+
+(defun fn2-machine-work-fits-p (kind bytes steps descriptors)
+  (declare (xargs :guard (and (natp bytes) (natp steps) (natp descriptors))))
+  (if (not (fn2-machine-charge-kindp kind)) nil
+    (mv-let (b s d) (fn2-machine-charge kind bytes steps descriptors)
+      (and (equal b bytes) (equal s steps) (equal d descriptors)))))
+(in-theory (disable fn2-machine-work-fits-p))
+
+; One preflight form for all payload/descriptor continuations. Refusal keeps
+; the row, pool, and outbox unchanged, and requeues the same continuation.
+(defmacro fn2-machine-with-work (bytes steps descriptors body)
+  `(if (fn2-machine-work-fits-p (fn2-machine-kind id fn2-core)
+                               ,bytes ,steps ,descriptors)
+       ,body
+     (fn2-machine-yield id fn2-core)))
+
+; Input becomes machine-readable at harvest, separately from the issue's
+; reserved range and any later verification scan. Peek before recycling.
+(defun fn2-machine-next-input-bytes (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :use ((:instance fn2-core-ops-type))
+                    :in-theory (disable fn2-opsp fn2-ops-post-head
+                                        fn2-ops-posted-fifoi fn2-ops-posted-fifo-length)))))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+    (bytes)
+    (let ((head (fn2-ops-post-head fn2-ops)))
+      (if (or (zp (fn2-ops-post-count fn2-ops))
+              (>= head (fn2-ops-posted-fifo-length fn2-ops))) 0
+        (let* ((index (fn2-ops-posted-fifoi head fn2-ops))
+               (slot (floor index 2)) (cell (mod index 2)))
+          (mv-let (posted harvested event outcome reason count aux0 aux1)
+            (fn2-op-cell cell slot fn2-ops)
+            (declare (ignore reason aux0 aux1))
+            (if (and (equal posted 1) (equal harvested 0)
+                     (or (equal event *fn2-event-receive-result*)
+                         (equal event *fn2-event-read-result*))
+                     (or (equal outcome *fn2-outcome-done*)
+                         (equal outcome *fn2-outcome-short*)))
+                (nfix count) 0)))))
+    bytes))
+(defthm fn2-machine-next-input-bytes-natp
+  (natp (fn2-machine-next-input-bytes fn2-core))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-machine-next-input-bytes))
 
 ; Package the charge once behind shape lemmas. Inlining this kind test in
 ; every continuation multiplies preservation branches by the number of kinds.

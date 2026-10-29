@@ -184,7 +184,21 @@ to each admitted connection; the shared directory has no echo-mode flag. These d
 ranges and their inverse are generated from the `defmachine` declarations.
 Each kind has its own nested table. A4 implements the declared per-run caps 4,096 bytes, 32
 structural steps and four descriptors. Every continuation returns through a
-guard-checked charge against those declared simultaneous caps. The machine
+guard-checked `fn2-machine-finish` against those declared simultaneous caps.
+`fn2-machine-with-work` preflights payload and descriptor callbacks through the
+same generated `NAME-charge`; an overcap proposal yields before its mutation
+body, preserving the continuation. Successful receive/read harvests charge the
+exposed count before observation delivery. Every descriptor charges its range
+length; scribe additionally charges its bounded fill, checksum patch and verify
+chunks. A read/receive thus charges the requested descriptor span and, when it
+completes, the bytes exposed. Internal chunks conservatively charge attempted
+work on an early refusal. Structural units cover bounded scalar/queue updates
+and checksum iterations; they are abstract cost units, not CPU instructions.
+The independent checker measures visible I/O and observation work; internal
+scalar operations and hashing remain code-reviewed bounds. Both loops reserve
+one maximum transition before executing another, retaining the existing
+`H*24 + K*4129 + 1` turn cost bound as harvest bytes consume that allowance.
+Exhaustion returns `:more` with pending work retained. The machine
 initializer requires those execution-quanta profile values. Resident capacities
 remain profile parameters.
 
@@ -300,9 +314,10 @@ one calendar entry and runs its selected continuation or service. Empty
 visits advance the cursor. Wakes returned by observation/run semantics append
 at the tail, followed by the running machine's requeue; repeated wakes retain
 position. It never reads the concrete scheduler's links or trace records.
-`fn2-ref-turn` independently accumulates work and stops at H/K/Aturn or no
-eligible work. Machine observation, bounded runs, grants and clock/ArmWake
-semantics are shared; selection, ordering, bookkeeping and budgets are not.
+`fn2-ref-turn` independently accumulates work and stops at H/K/Aturn, the turn
+work allowance, or no eligible work. Machine observation, bounded runs, grants,
+clock/ArmWake semantics and the scalar cost-ceiling predicate are shared.
+Selection, ordering, bookkeeping and budget counters remain independent.
 
 `fn2-ref-core` is congruent to `fn2-core`, including its nested children.
 `reference-state.lisp` derives copy/comparison access from the column registry.
@@ -327,9 +342,14 @@ bytes beyond those semantic prefixes, diagnostic trace records and the unused
 reference intrusive scheduler are excluded. The refinement keystone is owed,
 not proved; evaluated teeth compare real turns and swap one reference FIFO.
 
-The fixed-width trace ring remains WORK evidence: it counts declared byte and
-structural work and records selection. WORK sums those declarations; measured
-CPU is separate. TRACE no longer treats these records as its scheduling oracle.
+The fixed-width trace ring records per-run charges and selection. WORK checks
+its cap/accumulator arithmetic and independently measures visible work (R5b):
+outbox growth and the sum of newly emitted descriptor range lengths, plus the
+successful receive/read ranges removed from the pre-turn posted FIFO. FIFO and
+mailbox consumption supply the observation count. Scheduled and harvested byte
+charges are checked separately, so fill work cannot mask an uncharged harvest.
+The certificate is `(observations visits descriptors charged-bytes steps
+outbox-bytes harvested-bytes)`. TRACE uses the independent reference scheduler.
 
 ## 6. Simulator and checkers (contract item 4)
 Seeded xoshiro128** PRNG; profile, seed, observation order, fault choices
@@ -340,11 +360,24 @@ magic, its own address, a sequence number and a checksum; the stub classifies ea
 never-written, valid, torn/corrupt or misdirected and the file as `intact / torn tail / damaged /
 unknown` by ROUND2 §E.4's rules restricted to that format. Layer B replaces it.
 Checkers implemented at bed9edc28: 3 of 11. OWN is an independent monitor. TRACE compares each concrete turn against the independent
-list-scheduled reference transition system (repair R3). WORK sums the machines' self-declared
-per-run counts (not yet recomputed from the outbox: repair R5). ACCOUNT is not implemented
+list-scheduled reference transition system (repair R3). WORK compares per-run
+charges against independent outbox/FIFO evidence (repair R5b), retaining all caps.
+ACCOUNT is not implemented
 (`fn2-check` returns `:not-yet`); it is owed in A6 before layer D. The other seven report
 `:not-yet` until their layers. (Corrected 2026-10-28 after the Fable review, REVIEW-20261028.md
 finding 2: an earlier revision of this paragraph claimed ACCOUNT was implemented.)
+
+**Real read monitoring (R5b).** Acceptance installs `tests/own-read-hook.lsp`
+around `fn2-core-read` and `fn2-core-write`. Each scenario binds its concrete core
+and OWN monitor; reference-model reads are excluded. The hook checks scribe
+verification reads against OWN's initialized-byte and loan provenance, and
+records reads by machine kind. Listener and echo/null currently perform no core
+reads. Controls first require the real reader to refuse past-fill and leased-in
+reads safely, then mutate its result to `:ok`; OWN must reject both mutations.
+A legal-read control and a separate-core control check the hook itself. This is
+test instrumentation only; the served path has no hook. CPU figures printed
+with `own-hook=ON` include its cost. **R6 must hook every new range-read primitive
+and report its entire examined range to OWN.**
 
 **Storage stamps and fence slots (S1).** `stamp` identifies the cached
 completed-write version; `snapshot-stamp` freezes it at fence submission.
@@ -410,6 +443,20 @@ device cannot starve later classes. Pending storage bytes permit actual tears;
 queued network bytes permit a receive to reach its fragmentation limit. Broad
 coverage sums echo and device landings; matched fault controls do not contribute.
 
+Run the full fixed acceptance, including R1 coverage/liveness, R3 differential
+checks and R5b WORK/OWN controls, from the repository root:
+```sh
+nohup env FN_ACL2_SLOT_DIR=/tmp/fn2-a4-acl2-slots FN_ACL2_SLOTS=6 timeout 3600 tools/acl2 < fn2/tests/sim-layer-a-a4-driver.lsp > build/r5b-acceptance.log 2>&1 &
+echo $! > build/r5b-acceptance.pid
+```
+Keep `FN2_SWARM` and `FN2_SWARM_SEED` unset for this fixed gate. The liveness
+bound applies to this driver's at most 1,024-byte clients and one round-robin
+adapter service per turn. Its at most one receive exposure plus three
+observations fits concrete's `H*24 = 3072` allowance, leaving all 64 visits
+available; larger or more concurrent input needs a new bound. R4's machine
+port and late-child composition controls are in `tests/machines-a-unit.lisp`
+and `tests/core-child-unit.lisp`; certify those alongside `tests/work-controls.lisp`.
+
 Run swarm mode from the repository root:
 ```sh
 nohup env FN2_SWARM=1 FN_ACL2_SLOT_DIR=/tmp/fn2-a4-acl2-slots FN_ACL2_SLOTS=6 timeout 3600 tools/acl2 < fn2/tests/sim-layer-a-a4-driver.lsp > build/r5d-swarm.log 2>&1 &
@@ -448,10 +495,10 @@ no-reuse-while-borrowed, conservation; outstanding-table result reservation; tur
 the refinement obligation of EXECUTION-MODEL §4 over `fn2-turn` and `fn2-ref-turn`.
 
 ## 9. Departures and open items
-W1: no one-minute certification reds remain in the measured layer-A closure.
-All 72 books certify below 60 s on the laptop with two jobs; the maximum is
-`sim/sim-adapter-base` at 46.84 s. Per-book before/after times and evidence are
-in `build/REPORT.md`.
+R5b retains W1's one-minute limit: all 73 books in the measured layer-A closure
+certify below 60 s on the laptop with two jobs, including the new WORK controls.
+The maximum is `sim/sim-adapter-base` at 48.16 s. `build/REPORT.md` lists every
+book before and after; the 72-book before column is W1's source-identical baseline.
 
 - Current pool generations use `:u60`; widths are chosen per column (§2).
 - A send carries one range in layer A (ROUND2 D.3 allows four); the descriptor reserves the field

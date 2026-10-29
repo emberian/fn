@@ -17,9 +17,16 @@
                     (set-guard-checking nil)) :ld-error-action :error)))
         (declare (ignore state))
         (assert (and (not erp) (eq value :eof))))
+      (load "fn2/tests/own-read-hook.lsp")
+      (fn2-own-hook-install)
+      (unwind-protect
+          (progn
+      (fn2-own-hook-control)
       (assert (fn2-client-oracle-control))
       (assert (eq (car (fn2-sim-run-echo 1234 10 *fn2-echo-profile*)) :pass))
       (assert (eq (car (fn2-sim-run-scribe)) :pass))
+      (fn2-own-hook-report "SMOKE" t))
+        (fn2-own-hook-restore))
       (sb-ext:exit :code 0))
   (cl:error (condition)
     (format *error-output* "A4 SMOKE FAILED: ~A~%" condition)

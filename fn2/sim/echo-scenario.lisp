@@ -179,21 +179,33 @@
       (mv (cons (list slot gen) rest) fn2-own))))
 (in-theory (disable fn2-echo-outbox-refs))
 
+; The raw test hook binds this scenario's actual core and provenance monitor.
+; Thread OWN explicitly so the hook cannot accidentally observe the reference
+; execution or retain a monitor from a previous locally allocated scenario.
+(defun fn2-own-check-trace-turn (profile cursor queues fn2-core fn2-own fn2-ref-core)
+  (declare (xargs :stobjs (fn2-core fn2-own fn2-ref-core) :verify-guards nil))
+  (mv-let (trace status nobs nvisits nactions cursor queues fn2-core fn2-ref-core)
+    (fn2-check-trace-turn profile cursor queues fn2-core fn2-ref-core)
+    (mv trace status nobs nvisits nactions cursor queues fn2-core fn2-own fn2-ref-core)))
+(in-theory (disable fn2-own-check-trace-turn))
+
 (defun fn2-echo-check-turn (profile before trace nobs nvisits nactions fn2-core fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-own) :verify-guards nil))
-  (b* (((mv & fn2-own)
-        (fn2-echo-outbox-refs nactions before fn2-core fn2-own))
+  (b* ((queued-before (nfix (nth 0 before)))
+       (visible (fn2-work-visible-after before fn2-core))
+       ((mv & fn2-own)
+        (fn2-echo-outbox-refs nactions queued-before fn2-core fn2-own))
        (own (fn2-check-own fn2-core fn2-own))
        (counted-bytes (fn2-exec-turn-bytes fn2-core))
        (counted-steps (fn2-exec-turn-steps fn2-core))
-       (outbox-exact (equal (fn2-echo-outbox-count fn2-core) (+ (nfix before) (nfix nactions))))
+       (outbox-exact (equal (fn2-echo-outbox-count fn2-core) (+ queued-before (nfix nactions))))
        ((mv work certificate fn2-core)
         (stobj-let ((fn2-trace (fn2-core-trace fn2-core)))
           (work certificate fn2-trace)
           (b* ((records (fn2-trace-records fn2-trace))
                (lost (fn2-trace-lost fn2-trace))
-               (work (fn2-check-work records lost nobs nvisits nactions profile))
-               (certificate (fn2-work-certificate records))
+               (work (fn2-check-work-visible records lost nobs nvisits nactions profile visible))
+               (certificate (fn2-work-visible-certificate records visible))
                (fn2-trace (if (and (eq trace :pass) (eq work :pass) (eq own :pass)
                                    outbox-exact
                                    (equal (nth 3 certificate) counted-bytes)
@@ -226,7 +238,9 @@
         (+ (nfix (nth 1 a)) (nfix (nth 1 b)))
         (+ (nfix (nth 2 a)) (nfix (nth 2 b)))
         (+ (nfix (nth 3 a)) (nfix (nth 3 b)))
-        (+ (nfix (nth 4 a)) (nfix (nth 4 b)))))
+        (+ (nfix (nth 4 a)) (nfix (nth 4 b)))
+        (+ (nfix (nth 5 a)) (nfix (nth 5 b)))
+        (+ (nfix (nth 6 a)) (nfix (nth 6 b)))))
 (in-theory (disable fn2-echo-sum-certificate))
 
 ; Scenario-only policy: refresh 128 fault events per accepted connection.
@@ -342,9 +356,9 @@
              (fn2-ref-reset profile fn2-core fn2-ref-core) fn2-ref-core))
          (cursor (if restart 0 cursor))
          (queues (if restart (fn2-echo-initial-queues profile) queues))
-         (before (fn2-echo-outbox-count fn2-core))
-         ((mv trace status nobs nvisits nactions cursor queues fn2-core fn2-ref-core)
-          (fn2-check-trace-turn profile cursor queues fn2-core fn2-ref-core))
+         (before (fn2-work-visible-before fn2-core))
+         ((mv trace status nobs nvisits nactions cursor queues fn2-core fn2-own fn2-ref-core)
+          (fn2-own-check-trace-turn profile cursor queues fn2-core fn2-own fn2-ref-core))
          ((mv verdict cert fn2-core fn2-own)
           (fn2-echo-check-turn profile before trace nobs nvisits nactions fn2-core fn2-own))
          (certificate (fn2-echo-sum-certificate certificate cert))
@@ -438,6 +452,8 @@
                      *fn2-scenario-revision* hits)
                  (cw "ECHO STOP reason=~x0~%" (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))
                  (cw "ECHO DENSITY hits-per-1000-turns=~x0~%" (fn2-echo-density samples turns))
+                 (cw "WORK BYTES ECHO charged=~x0 outbox=~x1 harvested=~x2~%"
+                     (nth 3 certificate) (nth 5 certificate) (nth 6 certificate))
                  (cw "ECHO SCENARIO profile=CONCRETE-TRACE seed=~x0 accepted=~x1 echoed=~x2 dropped=~x3 checked-bytes=~x4 turns=~x5 deaths=~x6 WORK/TRACE/OWN=~x7 certificate=~x8 faults=~x9~%"
                      seed accepted echoed dropped checked turns (fn2-sim-deaths fn2-sim) verdict certificate fault-profile)
                  (cw "ECHO DROPS causes=~x0~%" (fn2-echo-histogram *fn2-echo-drop-causes* stats))
@@ -453,6 +469,8 @@
                          (mv :not-run 0 0 0 0 0 nil nil nil clients cursor queues fn2-core fn2-sim fn2-own fn2-ref-core))))
                    (progn$
                     (cw "ECHO LIVENESS ENV terminal-and-release-latency-each<=O=~x0 turns; B(n)=2*S+2+ceil(n/Q)*(3*S+3*O+1); S=1+ceil(L*(C+accept-credits+1)/min(K,Aturn)); Q=min(4096,run-bytes,RX-capacity)~%" (fn2-profile-o profile))
+                    (cw "WORK BYTES LIVENESS charged=~x0 outbox=~x1 harvested=~x2~%"
+                        (nth 3 cert) (nth 5 cert) (nth 6 cert))
                     (cw "ECHO LIVENESS accepted=~x0 echoed=~x1 dropped=~x2 checked-bytes=~x3 turns=~x4 WORK/TRACE/OWN=~x5 adapter-latency-turns=~x6 bound-max=~x7 observed-max=~x8 certificate=~x9~%"
                         la le ld lc lt lv (fn2-profile-o profile) (fn2-echo-stat :max-bound ls)
                         (fn2-echo-stat :max-age ls) cert)

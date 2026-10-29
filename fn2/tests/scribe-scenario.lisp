@@ -49,9 +49,9 @@
         (fn2-sim-take-prefix 1 0 fn2-core fn2-sim fn2-own))
        ((when (<= (nfix cut) (fn2-scribe-action-total fn2-sim)))
         (mv :cut certificate fn2-core fn2-sim fn2-own fn2-ref-core))
-       (before (fn2-echo-outbox-count fn2-core))
-       ((mv trace status nobs nvisits nactions cursor queues fn2-core fn2-ref-core)
-        (fn2-check-trace-turn *fn2-scribe-profile* cursor queues fn2-core fn2-ref-core))
+       (before (fn2-work-visible-before fn2-core))
+       ((mv trace status nobs nvisits nactions cursor queues fn2-core fn2-own fn2-ref-core)
+        (fn2-own-check-trace-turn *fn2-scribe-profile* cursor queues fn2-core fn2-own fn2-ref-core))
        ((mv verdict cert fn2-core fn2-own)
         (fn2-echo-check-turn *fn2-scribe-profile* before trace nobs nvisits nactions
                               fn2-core fn2-own))
@@ -180,6 +180,8 @@
                    1000 nil nil fn2-core fn2-sim fn2-own fn2-recovery-image fn2-ref-core)
                   (progn$
                    (if (eq status :pass) nil (fn2-echo-failure-trace fn2-core))
+                   (cw "WORK BYTES SCRIBE charged=~x0 outbox=~x1 harvested=~x2~%"
+                       (nth 3 certificate) (nth 5 certificate) (nth 6 certificate))
                    (cw "SCRIBE SCENARIO profile=TINY-4K cases=~x0 WORK/TRACE/OWN=~x1 certificate=~x2 classifications=~x3~%"
                        (len results) status certificate results)
                    (mv (list status results certificate) fn2-core fn2-sim fn2-own fn2-ref-core))))

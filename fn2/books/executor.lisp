@@ -17,14 +17,20 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((mv & kind id gen principal) (fn2-core-next-owner fn2-core))
        (start (fn2-exec-queued fn2-core))
+       (bytes (if (fn2-machine-charge-kindp kind)
+                  (fn2-machine-next-input-bytes fn2-core) 0))
+       ; Leave an over-budget observation posted, without exposing its range.
+       ((unless (or (not (fn2-machine-charge-kindp kind))
+                    (fn2-machine-work-fits-p kind bytes 24 0)))
+        (mv 0 0 0 0 0 fn2-core))
        ((mv delivered & & & event outcome reason count aux0 aux1 fn2-core)
         (fn2-harvest-one fn2-core))
        ((unless delivered) (mv 1 0 0 0 24 fn2-core))
        ((mv wake fn2-core)
         (fn2-machine-observe kind id gen event outcome reason count aux0 aux1 fn2-core))
        (fn2-core (fn2-exec-wake wake fn2-core))
-       (fn2-core (fn2-exec-record 0 wake principal 0 0 24 0 nil 4294967295 start fn2-core)))
-    (mv 1 0 0 0 24 fn2-core)))
+       (fn2-core (fn2-exec-record 0 wake principal 0 bytes 24 0 nil 4294967295 start fn2-core)))
+    (mv 1 0 0 bytes 24 fn2-core)))
 (fn2-core-shape-lemmas fn2-exec-harvest () 5)
 
 (defun fn2-exec-mailbox (fn2-core)
@@ -113,6 +119,15 @@
 (in-theory (disable fn2-turn-status fn2-exec-eligible-p
                     fn2-exec-observation-p fn2-exec-runnable-p))
 
+; Preserve the existing refinement cost bound when harvest exposes payload.
+; Reserve one maximum transition (4096 bytes + 32 steps + one visit) before
+; executing it. Insufficient room yields with all pending work retained.
+(defun fn2-turn-work-room-p (h k visits bytes steps)
+  (declare (xargs :guard t))
+  (<= (+ (nfix visits) (nfix bytes) (nfix steps) 4129)
+      (+ (* (nfix h) 24) (* (nfix k) 4129))))
+(in-theory (disable fn2-turn-work-room-p))
+
 (defun fn2-concrete-loop (fuel h k a nobs nvisits nactions fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix fuel)
                   :guard (and (fn2-core-wfp fn2-core) (natp fuel)
@@ -121,6 +136,8 @@
   (cond
    ((or (zp fuel) (>= nobs h) (>= nvisits k) (>= nactions a)
         (= 1 (fn2-exec-stop fn2-core))
+        (not (fn2-turn-work-room-p h k nvisits
+               (fn2-exec-turn-bytes fn2-core) (fn2-exec-turn-steps fn2-core)))
         (and (or (>= nobs h) (not (fn2-exec-observation-p fn2-core)))
              (not (fn2-exec-eligible-p fn2-core))))
     (mv (fn2-turn-status fn2-core) nobs nvisits nactions fn2-core))
