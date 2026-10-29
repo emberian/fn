@@ -4,6 +4,10 @@
 (in-package "ACL2")
 (include-book "sim")
 
+; Shape contracts already describe every adapter boundary; tau would repeat
+; compound type propagation across every nested state in all six projections.
+(local (in-theory (disable (tau-system))))
+
 (defun fn2-sim-echo-accept (slot fault word allow fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
@@ -35,7 +39,7 @@
       (fn2-sim-complete-result slot gen *fn2-action-accept* *fn2-event-accept-result*
                                0 code cap nonce fault word now nil
                                fn2-core fn2-sim fn2-own)))))
-(fn2-sim-adapter-shape fn2-sim-echo-accept (slot fault word allow) 1 2 3)
+(fn2-sim-adapter-shape fn2-sim-echo-accept (slot fault word allow) 1 2 3 nil nil)
 
 ; Only called after :idle. An ArmWake deadline can precede the next physical
 ; completion. Existing A3 fault selection, posting and physical-byte paths
@@ -75,7 +79,7 @@
              (equal (fn2-sim-kind slot fn2-sim) *fn2-action-accept*))
         (fn2-sim-echo-accept slot fault word allow-accept fn2-core fn2-sim fn2-own)
       (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))))
-(fn2-sim-adapter-shape fn2-sim-echo-advance (allow-accept) 1 2 3)
+(fn2-sim-adapter-shape fn2-sim-echo-advance (allow-accept) 1 2 3 nil nil)
 
 (defun fn2-sim-echo-network-reset (fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))

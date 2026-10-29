@@ -220,6 +220,23 @@
                 (fn2-columns-array-facts (car fields)) nil)
             (fn2-columns-all-array-facts (cdr fields)))))
 
+; These array-predicate facts match every NTH, independent of its field.
+; Use them while deriving the typed accessor API, then keep them available
+; only by explicit hint. The field-specific RAW-NTH facts remain enabled.
+(defun fn2-columns-array-nth-runes (fields)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom fields) nil
+    (append
+     (if (and (fn2-columns-arrayp (car fields))
+              (fn2-columns-numeric-fieldp (car fields)))
+         (let ((p (fn2-columns-sym (caar fields) "P")))
+           (append
+            `((:type-prescription ,(fn2-columns-sym p "-NTH-NATP")))
+            (and (fn2-columns-type-limit (fn2-columns-field-type (car fields)))
+                 `((:linear ,(fn2-columns-sym p "-NTH-BOUND"))))))
+       nil)
+     (fn2-columns-array-nth-runes (cdr fields)))))
+
 (defun fn2-columns-slot-cases (fields index)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom fields) nil
@@ -597,7 +614,7 @@
            (cons (,row-view i ,name) (,view-aux (+ 1 i) n ,name))))
        (defun-nx ,(fn2-columns-sym name "-VIEW") (,name)
          (,view-aux 0 (,rows ,name) ,name))
-       (in-theory (disable ,wfp ,init))
+       (in-theory (disable ,wfp ,init ,@(fn2-columns-array-nth-runes fields)))
        (assert-event (eq (symbol-class ',init (w state)) :common-lisp-compliant))
        (table fn2-columns ',name
               '(:columns ,(fn2-columns-specs cols)

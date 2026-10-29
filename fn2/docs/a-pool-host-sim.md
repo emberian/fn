@@ -229,18 +229,19 @@ every state child. Only an explicit `:reference :environment` with `:why` opts a
 child out: scheduler has an independent list relation, and trace is diagnostic
 output checked separately. Pool byte comparison retains its live-byte domain.
 B registers its existing `defcolumns` tables in a registration book that includes
-`core-children`, then adds that book to assembly's registration includes before
+`core-children`, then adds that book to `assembly-index`'s registration includes before
 `fn2-machine-index-events`. For example, extents can use
 `(defcorechild fn2-core-extents fn2-extents :init (fn2-extents-init-for profile
 fn2-extents) :profilep (fn2-extents-profilep profile) :why "Persistent allocator
 state across commit yields.")`; B owns those profile/init adapters and replaces assembly's A-only profile
 smoke assertions with the node profiles when it requires new keys.
 
-`machines-all.lisp` includes A's kind declarations; assembly includes B's
+`machines-all.lisp` includes A's kind declarations; `assembly-index` includes B's
 `machines-b.lisp`, and later D's kind and child books, after it. That ordered
 include list determines kind tags and global-ID ranges. Index generation runs
-only after all registrations. Other layers' continuation event macros run after
-the core/access events and before `fn2-machine-dispatch-events`. Its run,
+only after all registrations. Other layers' continuation event macros go in
+`assembly-callbacks`, after the core/access events and before
+`fn2-machine-dispatch-events`. Its run,
 charge and observe arms, including `fn2-machine-refuse-phase`, receive the same
 `fn2-core`; D continuations borrow D's registered children with `stobj-let`,
 without extra stobj arguments or per-call allocation.
@@ -248,7 +249,11 @@ without extra stobj arguments or per-call allocation.
 Pool, vocab, sched, machines, machines-a and machines-directory are library
 books. Core, machine access, scribe/run, dispatch and reference-state provide
 instance event macros; including them creates no core instance. Assembly expands
-those macros once. Executor-access/executor and reference include assembly
+those macros once, through `assembly-index`, `assembly-core`, `assembly-access`,
+`assembly-callbacks`, `assembly-dispatch`, and `assembly-reference` in that order.
+`assembly.lisp` retains the public include and profile assertions. The separate
+test instance uses the same six boundaries in `core-child-assembly-*` books.
+Executor-access/executor and reference include assembly
 (the reference through executor); simulator consumers follow those instance
 books. Adding a D registration changes assembly and its consumers, without
 recertifying the A library books. `tests/core-child-assembly.lisp` certifies a
@@ -443,6 +448,11 @@ no-reuse-while-borrowed, conservation; outstanding-table result reservation; tur
 the refinement obligation of EXECUTION-MODEL §4 over `fn2-turn` and `fn2-ref-turn`.
 
 ## 9. Departures and open items
+W1: no one-minute certification reds remain in the measured layer-A closure.
+All 72 books certify below 60 s on the laptop with two jobs; the maximum is
+`sim/sim-adapter-base` at 46.84 s. Per-book before/after times and evidence are
+in `build/REPORT.md`.
+
 - Current pool generations use `:u60`; widths are chosen per column (§2).
 - A send carries one range in layer A (ROUND2 D.3 allows four); the descriptor reserves the field
   width for four.

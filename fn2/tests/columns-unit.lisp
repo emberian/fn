@@ -2,6 +2,19 @@
 (include-book "../books/columns")
 (include-book "std/testing/must-fail" :dir :system)
 
+; A scalar named STAMP must not be mistaken for an array predicate ending
+; in P. Unbounded numeric arrays have no bound rule; metadata has neither.
+(assert-event
+ (equal
+  (fn2-columns-array-nth-runes
+   '((stamp :type (unsigned-byte 60))
+     (bytes :type (array (unsigned-byte 8) (0)))
+     (naturals :type (array (integer 0 *) (0)))
+     (metadata :type t)))
+  '((:type-prescription bytesp-nth-natp)
+    (:linear bytesp-nth-bound)
+    (:type-prescription naturalsp-nth-natp))))
+
 (must-fail
  (defcolumns fn2-unjustified ((value :u8))
    :extra-fields ((fn2-unjustified-metadata :type t)))

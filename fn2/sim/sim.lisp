@@ -2,6 +2,12 @@
 (in-package "ACL2")
 (include-book "sim-adapter-base")
 
+; The generated scalar/type facts already discharge these guards.  Avoid
+; repeatedly running tau over the nested core/simulator shape vocabulary.
+(local (in-theory (disable (tau-system))))
+; Shape calls below pass open-core=nil: the composed adapter contracts
+; already preserve the core invariant without reopening its children.
+
 ; A submitted write can reach the device before its completion is observed.
 ; Repeated random selection among remaining flights admits every permutation;
 ; the independent keep bit admits every subset. FUA has no success yet, so
@@ -30,13 +36,13 @@
           (mv :ok 0 0 fn2-core fn2-sim fn2-own)))
        (fn2-sim (fn2-sim-set-active slot 0 fn2-sim)))
     (mv t fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 1)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 2)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 3)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 4)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 5)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 6)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 7)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 1 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 2 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 3 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 4 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 5 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 6 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-one () 1 2 3 7 nil)
 
 (defun fn2-sim-crash-flight-writes (left fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :measure (nfix left)
@@ -48,13 +54,13 @@
       (if found
           (fn2-sim-crash-flight-writes (- left 1) fn2-core fn2-sim fn2-own)
         (mv fn2-core fn2-sim fn2-own)))))
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 1)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 2)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 3)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 4)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 5)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 6)
-(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 7)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 1 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 2 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 3 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 4 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 5 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 6 nil)
+(fn2-sim-adapter-shape fn2-sim-crash-flight-writes (left) 0 1 2 7 nil)
 
 (defthm fn2-sim-ready-disk-projection
  (implies (fn2-sim-ready fn2-sim)
@@ -123,7 +129,7 @@
          (fn2-own (fn2-own-restart fn2-own))
          (fn2-core (fn2-core-init profile fn2-core)))
       (mv fn2-core fn2-sim fn2-own))))
-(fn2-sim-adapter-shape fn2-sim-crash (profile) 0 1 2)
+(fn2-sim-adapter-shape fn2-sim-crash (profile) 0 1 2 nil nil)
 
 
 ; ACL2 normalizes the first result of a multiple-value call to CAR.
@@ -234,7 +240,7 @@
                       (min #xfffffffffffffff (+ 1 (mod word 100) now)) fn2-sim)))
       (mv t fn2-core fn2-sim fn2-own))))
 (fn2-sim-adapter-shape fn2-sim-terminal-post
- (slot gen event outcome reason count aux0 aux1 fault word now release early) 1 2 3)
+ (slot gen event outcome reason count aux0 aux1 fault word now release early) 1 2 3 nil nil)
 
 ; Scalar interpretation stays opaque in the state-preservation proofs.
 (defun fn2-sim-terminal-values (kind code physical-count aux len release cancelled)
@@ -298,7 +304,7 @@
     (fn2-sim-terminal-post slot gen event outcome reason count aux0 aux1
       fault word now release early fn2-core fn2-sim fn2-own)))
 (fn2-sim-adapter-shape fn2-sim-complete-result
- (slot gen kind event len code physical-count aux fault word now release) 1 2 3)
+ (slot gen kind event len code physical-count aux fault word now release) 1 2 3 nil nil)
 
 (defun fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
@@ -347,13 +353,13 @@
               (fn2-sim-complete-result slot gen kind event len code physical-count aux
                 fault word now release fn2-core fn2-sim fn2-own)))
           (mv found fn2-core fn2-sim fn2-own)))))))
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 1)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 2)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 3)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 4)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 5)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 6)
-(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 7)
+(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 1 nil)
+(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 2 nil)
+(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 3 nil)
+(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 4 nil)
+(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 5 nil)
+(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 6 nil)
+(fn2-sim-adapter-shape fn2-sim-complete (slot fault word) 1 2 3 7 nil)
 (in-theory (enable fn2-sim-ready fn2-core-wfp))
 
 (defun fn2-sim-client-drain (left cap nonce fn2-sim)
@@ -440,7 +446,7 @@
         (let ((fn2-sim (fn2-sim-delay-flight slot fault word fn2-sim)))
           (mv t fn2-core fn2-sim fn2-own))))
     (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-advance-flight (found slot fault word) 1 2 3)
+(fn2-sim-adapter-shape fn2-sim-advance-flight (found slot fault word) 1 2 3 nil nil)
 
 (defun fn2-sim-advance-selected (found slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
@@ -461,7 +467,7 @@
                (fn2-sim (fn2-sim-record 0 token 0 259 0 0 deadline mono 0 fault fn2-sim)))
           (mv t fn2-core fn2-sim fn2-own))))
     (fn2-sim-advance-flight found slot fault word fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-advance-selected (found slot fault word) 1 2 3)
+(fn2-sim-adapter-shape fn2-sim-advance-selected (found slot fault word) 1 2 3 nil nil)
 
 ; Flight selection stays valid across the fault draw.
 (fn2-sim-rows-frame fn2-sim-choose-flight-fault (slot fn2-sim) 1)
@@ -479,7 +485,7 @@
           (mv-let (fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own)
             (mv t fn2-core fn2-sim fn2-own)))))
     (fn2-sim-advance-selected found slot fault word fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-advance () 1 2 3)
+(fn2-sim-adapter-shape fn2-sim-advance () 1 2 3 nil nil)
 
 (assert-event
  (fn2-profile-exports-compliant-p

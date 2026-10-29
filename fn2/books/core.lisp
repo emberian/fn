@@ -93,6 +93,7 @@
                 ,@(fn2-core-registered-forms (fn2-core-child-registry (w state)) :profilep)))))
 
 (in-theory (disable fn2-pool-init fn2-pool-reserve fn2-pool-release
+                    fn2-pool-release-countp
                     fn2-pool-lease-in fn2-pool-lease-out fn2-pool-complete-in
                     fn2-pool-release-out fn2-pool-adapter-write
                     fn2-pool-write fn2-pool-reset fn2-pool-read fn2-pool-rows
@@ -325,7 +326,8 @@
 ; Peek before harvest finishes/recycles a row, preserving its machine identity
 ; for observation routing. This is bounded scalar work, not a FIFO traversal.
 (defun fn2-ops-next-owner (fn2-ops)
-  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
+  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)
+                  :guard-hints (("Goal" :in-theory (disable (tau-system))))))
   (let ((head (fn2-ops-post-head fn2-ops))
           (count (fn2-ops-post-count fn2-ops))
           (capacity (fn2-ops-posted-fifo-length fn2-ops)))

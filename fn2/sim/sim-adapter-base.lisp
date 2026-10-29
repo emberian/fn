@@ -163,7 +163,8 @@
                     (fn2-sim-land fault fn2-sim) fn2-sim)))
     (mv code fn2-core fn2-sim fn2-own)))
 
-(defmacro fn2-sim-adapter-shape (name args corepos simpos ownpos &optional part)
+(defmacro fn2-sim-adapter-shape (name args corepos simpos ownpos
+                              &optional part (open-core 't))
   (let ((forms `(progn
      (defthm ,(fn2-columns-sym name "-CORE-TYPE")
        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
@@ -175,7 +176,7 @@
                      (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
                      (fn2-ownp fn2-own) (fn2-own-wfp fn2-own))
                 (fn2-core-wfp (mv-nth ,corepos (,name ,@args fn2-core fn2-sim fn2-own))))
-       :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+       ,@(if open-core '(:hints (("Goal" :in-theory (enable fn2-core-wfp)))) nil))
      (defthm ,(fn2-columns-sym name "-SIM-TYPE")
        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
                      (fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
