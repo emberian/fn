@@ -10,7 +10,8 @@ Nominal waiting is <=5.15 s plus local CLI/startup cost, targeting ~20 s/example
 this is not a measured hbox duration. Each CLI call has a 3 s timeout; init/start
 have 10 s. No TCP-write == host-read assumption for the step-rate work quantum.
 The 10 s send-stalled witness remains in E: forcing kernel send-buffer exhaustion
-is outside this short S profile. No fn1 reply has been recorded for HW.
+is outside this short S profile. HY records the seat's fn1 replies separately
+from the spec oracle; fake targets permit none of those differences.
 
 Set outcomes use their exit status and named refusal, with any success line
 accepted where no literal is specified. Effects are observed on the NNTP wire;
@@ -21,18 +22,26 @@ from H >= R. I prefer this to raising history to a number copied from a failed
 fn1 init: preset changes cannot invalidate that relation, and the H=R-1 witness
 tests its refusal explicitly. Listener witnesses require the spec's named
 usage refusal, rather than accepting a broad substring such as ``host``.
+
+HY design note for Astra: keep generic malformed-value exits provisional.
+The broad usage definition does not override the explicit named-refusal rules;
+in particular override-address is a fn1 bug, not a model correction. The Path
+switch has a plausible enum reading, so its count-versus-usage split is an
+ambiguity. Match recorded reasons exactly and commit only unchanged refusal
+state / the observed greeting close, retaining original replies in evidence.
 """
 from contextlib import ExitStack
 import json
+import os
 import select
 import time
 import unittest
 
 from fn2.tests.model.limits_model import (INIT_FIXED, KEYS, LimitsModel, OperatorExpectation,
-    STORE_DEFAULTS, STORE_INIT, TOML_KEYS, U32, init_history_expectation)
+    STORE_DEFAULTS, STORE_INIT, TOML_KEYS, U32, init_history_expectation, recorded_greeting)
 from fn2.tests.model.nntp_model import NntpModel
 from fn2.tests.surface import SurfaceCase, serving
-from fn2.tests.surface.live_evidence import capture_step, record_failure, run_live_machine
+from fn2.tests.surface.live_evidence import capture_step, json_value, record_failure, run_live_machine
 from fn2.tests.surface import owned_ports
 
 GROUP = 'surface.test'
@@ -98,6 +107,7 @@ class Wire:
 class LimitsTarget:
     @owned_ports
     def __init__(self, case):
+        self.adjudication_target = os.environ.get('FN2_SURFACE_TARGET', 'fn2')
         from tests.native_harness import Node, native_image
         self.node = Node(case, native_image('FN_NATIVE_HOST'))
         init_store(case, self.node)
@@ -133,27 +143,39 @@ class Exercise:
             {'posting': True, 'stored_articles': {IDENT: ARTICLE}}, limits=self.policy)
         self.sessions = []
 
+    def record_difference(self, recorded):
+        if recorded is not None and hasattr(self.case, 'evidence'):
+            self.case.evidence.setdefault('recorded_differences', []).append(
+                json_value(dict(recorded, step=len(self.trace))))
+
     @capture_step(None, 'config_limits', request=lambda self, key, value: dict(key=key, value=str(value)))
     def set(self, key, value):
         expected = self.policy.set(key, str(value))
         result = self.target.set(key, str(value))
         row = dict(key=key, value=str(value), result=result)
         self.trace.append(row)
+        target = getattr(self.target, 'adjudication_target', 'fake')
+        recorded = expected.recorded_difference(result, target)
         verdict = expected.check(result)
-        if verdict is not None:
+        if recorded is None and verdict is not None:
             record_failure(self.case, 'config_limits', rule='set', request=dict(key=key, value=str(value)),
                            reply=result, verdict=dict(ok=False, detail=verdict), trace=self.trace)
-        self.case.assertIsNone(verdict, (verdict, key, value, result))
-        expected.update(result)
+        if recorded is None:
+            self.case.assertIsNone(verdict, (verdict, key, value, result))
+        expected.update(result, target)
+        self.record_difference(recorded)
 
     def check(self, expected, status, *, eof=False, request=None):
         verdict = expected.check(status, None, eof=eof)
         self.trace.append(dict(rule=verdict.rule, spec=verdict.spec, status=status.hex(), eof=eof,
                                detail=verdict.detail))
-        if not verdict.ok:
+        recorded = recorded_greeting(expected, status, eof=eof, request=request,
+            target=getattr(self.target, 'adjudication_target', 'fake'))
+        if recorded is None and not verdict.ok:
             record_failure(self.case, 'config_limits', rule=verdict.rule, request=request,
                            reply=dict(status=status, eof=eof), verdict=verdict, trace=self.trace)
-        self.case.assertTrue(verdict.ok, (verdict, status))
+        if recorded is None:
+            self.case.assertTrue(verdict.ok, (verdict, status))
         # Expect permits an optional close for some NNTP branches. HW's capacity
         # and deadline witnesses REQUIRE it, so check this independently too.
         if expected.close_after_reply or expected.close_without_reply:
@@ -162,7 +184,8 @@ class Exercise:
                                reply=dict(status=status, eof=eof),
                                verdict=dict(ok=False, detail='mandatory EOF not observed'), trace=self.trace)
             self.case.assertTrue(eof, 'mandatory EOF not observed')
-        expected.update(status, None, eof=eof)
+        expected.update(recorded['spec_status'] if recorded else status, None, eof=eof)
+        self.record_difference(recorded)
 
     @capture_step(None, 'config_limits')
     def open(self):

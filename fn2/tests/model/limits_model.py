@@ -45,22 +45,94 @@ init-only fields / accepted TOML keys    specs/storage.md:46-64,83-85,113-128;
                                         specs/native-config.md:6-45,109-122,
                                         218-250; fn2/docs/design/RELEASE-PLAN.md:88-90.
 
-Contract gaps are explicit, not fn1 adjudications: the cited specs do not
-specify generic invalid-range reason words, every text grammar, or all count
-lower bounds. Generic range/text refusal `policy`, positive batch / TLS counts
-and zero-off compression are provisional profile choices. They must NOT be
-called observed fn1 behavior. No implementation module is imported.
-All mismatches fail; ADJUDICATIONS starts empty pending recorded seat replies.
+The cited specs do not specify generic invalid-range reason words, every text
+grammar, or all count lower bounds. Generic range/text refusal `policy` with
+exit 1, positive batch / TLS counts and zero-off compression remain provisional
+profile choices. docs/operator.md:1236,1239 distinguishes refused from usage
+but does not assign every malformed policy value to one: HY records those
+exit-5 replies as ambiguities, not model corrections. Named count refusals
+(specs/host.md:1779) and override-address (docs/operator.md:657-662) remain
+exit 1. ADJUDICATIONS separates recorded fn1 bugs from these ambiguities;
+fn2 permits only ambiguities, fake targets none. No implementation is imported.
 Store defaults are explicit fixture inputs. Accepted sets require exit 0 and
 accept any line; no literal success text is specified. Refusals require exit 1
 and the reason word, without assuming an otherwise unspecified line format.
 """
+from copy import deepcopy
 from dataclasses import dataclass
 import ipaddress
 import re
 
 U32 = (1 << 32) - 1
-ADJUDICATIONS = ()
+# HY, recorded on fn1 image c14e9e8e / TREE_SHA d377d4559. Full witnesses
+# are data; matching never depends on the variable explanatory key-list prose.
+_FN1_USAGE = (
+    'usage: fn operator CONFIG policy set KEY VALUE, KEY one of: path-identity IDENTITY | '
+    'posting-policy bound-logins|open | complaints-to ADDR | anonymous none|open | '
+    'exposure-connections N | exposure-per-address N | exposure-steps-per-second N | '
+    'exposure-idle-seconds N | exposure-first-seconds N | exposure-auth-failures N | '
+    'exposure-posts-per-minute N | exposure-trusted CIDR[,CIDR...]|none | '
+    'relay-date-skew SECONDS | refused-offer-capacity N | relay-require-path 0|1 | '
+    'log-batch-records N | log-batch-octets N | barrier-deadline-ms N | barrier-stall-ms N | '
+    'clock-event-ms N | compress-min-octets N | disk-reserve-octets N | max-transactions N | '
+    'max-history-octets N | max-article-octets N (each applies to a running node at once, '
+    'the three store limits as their answer says: now, at the next start, or refused by name)\n')
+ADJUDICATIONS = (
+    {
+        'group': 'L01', 'seat_group': 'G0', 'class': 'fn1-bug',
+        'command': 'greeting', 'spec_lines': 'specs/nntp.md:2315-2320',
+        'spec_status': b'400 too many authentication failures from this address\r\n',
+        'fn1_status': b'400 too many authentication failures from this address; try again later\r\n',
+        'eof': True,
+        'reasoning': 'The auth-failure line lacks the suffix that the two capacity lines specify.',
+    },
+    {
+        'group': 'L02', 'seat_group': 'G1', 'class': 'fn1-bug',
+        'spec_lines': 'specs/host.md:1779; docs/operator.md:612-615,1236',
+        'keys': ('tls-handshakes-per-source-per-minute', 'tls-handshakes-in-flight',
+                 'tls-handshake-ms', 'log-batch-records', 'log-batch-octets',
+                 'barrier-deadline-ms', 'barrier-stall-ms', 'clock-event-ms',
+                 'disk-reserve-octets'),
+        'value_classes': ('non-number', 'negative'),
+        'exit': 1, 'reason': 'UNKNOWN-POLICY-KEY',
+        'witness': 'policy set: no key by that name; the keys are path-identity, posting-policy, exposure-connections, exposure-per-address, exposure-steps-per-second, exposure-idle-seconds, exposure-first-seconds, exposure-auth-failures, exposure-posts-per-minute, relay-date-skew, refused-offer-capacity, relay-require-path, max-transactions, max-history-octets, max-article-octets (docs/operator.md)\nrefused operator policy (ADMINISTRATION UNKNOWN-POLICY-KEY)\n',
+        'reasoning': 'Known counted keys accept valid values; non-counts owe policy-value-not-a-number.',
+    },
+    {
+        'group': 'L03', 'seat_group': 'G2', 'class': 'spec-ambiguity',
+        'spec_lines': 'docs/operator.md:1236,1239',
+        'keys': ('exposure-trusted', 'anonymous', 'path-identity', 'posting-policy', 'complaints-to'),
+        'value_classes': ('malformed-text',), 'exit': 5, 'reason': 'POLICY',
+        'witness': _FN1_USAGE + 'usage operator policy (ADMINISTRATION POLICY)\n',
+        'reasoning': 'Wrong command permits a usage reading, but no rule assigns these invalid values to exit 5.',
+    },
+    {
+        'group': 'L04', 'seat_group': 'G3', 'class': 'fn1-bug',
+        'spec_lines': 'docs/operator.md:657-662,1236,1239',
+        'keys': ('tls-handshake-source-overrides',),
+        'value_classes': ('malformed-text',), 'exit': 5, 'reason': 'OVERRIDE-ADDRESS',
+        'witness': _FN1_USAGE + 'usage operator policy (ADMINISTRATION OVERRIDE-ADDRESS)\n',
+        'reasoning': 'An unparseable entry is explicitly refused override-address; refused is exit 1.',
+    },
+    {
+        'group': 'L05', 'seat_group': 'G4', 'class': 'spec-ambiguity',
+        'spec_lines': 'specs/peering.md:1030-1043; specs/host.md:1779; docs/operator.md:1236,1239',
+        'keys': ('relay-require-path',),
+        'value_classes': ('non-number', 'negative', 'above-maximum'),
+        'exit': 5, 'reason': 'POLICY',
+        'witness': _FN1_USAGE + 'usage operator policy (ADMINISTRATION POLICY)\n',
+        'reasoning': 'The 0/1 Path switch can be read as an enum or a count; invalid-value exit is unspecified.',
+        'alternative': 'Non-count inputs are fn1-bug if HST-037 counted-key wording includes this switch.',
+    },
+    {
+        'group': 'L06', 'seat_group': 'G5', 'class': 'spec-ambiguity',
+        'spec_lines': 'specs/peering.md:1033-1036; docs/operator.md:1236,1239',
+        'keys': ('relay-date-skew',), 'value_classes': ('above-maximum',),
+        'exit': 5, 'reason': 'POLICY',
+        'witness': _FN1_USAGE + 'usage operator policy (ADMINISTRATION POLICY)\n',
+        'reasoning': 'The 86400 maximum is specified; the exit for a decimal count above it is not.',
+    },
+)
 # These are fixture choices, not universal defaults. Pin R as well as H so
 # init's profile resolution cannot silently choose an R larger than our H.
 # specs/storage.md:46-128 makes these operator inputs subject to profile
@@ -221,6 +293,44 @@ def parse_value(key, value):
     return (value, None) if good else (None, 'policy')
 
 
+# Named predicates are shared by the table, never a key-only exemption.
+VALUE_CLASSES = {
+    'non-number': lambda key, value: (
+        parse_value(key, value)[1] == 'policy-value-not-a-number'
+        and re.fullmatch(r'-[0-9]+', value) is None),
+    'negative': lambda key, value: re.fullmatch(r'-[0-9]+', value) is not None,
+    'malformed-text': lambda key, value: (
+        KEYS[key].kind not in ('count', 'store')
+        and parse_value(key, value)[1] in ('policy', 'override-address')),
+    'above-maximum': lambda key, value: (
+        re.fullmatch(r'0|[1-9][0-9]*', value) is not None
+        and KEYS[key].maximum < int(value) <= U32),
+}
+
+
+def permitted_adjudications(target):
+    return (row for row in ADJUDICATIONS if target == 'fn1'
+            or target == 'fn2' and row['class'] == 'spec-ambiguity')
+
+
+def recorded_greeting(expected, status, *, eof, target='fake', request=None):
+    """Exact G0 bytes + EOF, only where the spec expects the auth refusal.
+
+    The checked spec reply has the same 400/close effects. It is used only for
+    the commit; the trace and evidence retain the original observed bytes.
+    """
+    if request is not None or expected.check(status, None, eof=eof).ok:
+        return None
+    for row in permitted_adjudications(target):
+        if (row.get('command') == 'greeting' and status == row['fn1_status']
+                and eof is row['eof'] and expected.rule == 'capacity'
+                and expected.close_after_reply
+                and expected.check(row['spec_status'], None, eof=eof).ok):
+            return dict(deepcopy(row), target=target,
+                        observed_reply=dict(status=status, eof=eof))
+    return None
+
+
 class LimitsModel:
     def __init__(self, *, public=False, store_defaults=None):
         self.public = public
@@ -258,14 +368,31 @@ class SetExpectation:
             return 'policy-set: expected accepted'
         return None
 
-    def update(self, result):
+    def recorded_difference(self, result, target='fake'):
+        if not self.reason or self.check(result) is None:
+            return None
+        # Match the parenthesized reason exactly, not a word in explanatory
+        # prose (in particular, "policy" also occurs in the command prefix).
+        reasons = re.findall(r'\(ADMINISTRATION ([A-Z][A-Z0-9-]*)\)', result['text'])
+        for row in permitted_adjudications(target):
+            if (self.key in row.get('keys', ()) and result['exit'] == row['exit']
+                    and reasons == [row['reason']]
+                    and any(VALUE_CLASSES[name](self.key, self.value)
+                            for name in row['value_classes'])):
+                return dict(deepcopy(row), key=self.key, value=self.value,
+                            target=target, observed_reply=dict(result))
+        return None
+
+    def update(self, result, target='fake'):
+        recorded = self.recorded_difference(result, target)
         error = self.check(result)
-        if error:
+        if error and recorded is None:
             raise AssertionError(error)
-        if not self.reason:
+        if result['exit'] == 0:
             self.model.rows[self.key] = self.parsed
             if KEYS[self.key].kind == 'store':
                 # The fixture generates same-value Store sets, plus invalid
                 # values. Other funded decisions need measured resource inputs.
                 if 'applied' in result['text'].lower():
                     self.model.funded[self.key] = self.parsed
+        return recorded

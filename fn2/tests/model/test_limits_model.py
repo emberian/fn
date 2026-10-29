@@ -5,15 +5,53 @@ parse_value, NntpModel or Expect, and owns separate policy/wire dictionaries.
 Literal defaults and wire bytes intentionally duplicate facts as a control.
 This is not live-server evidence. No TCP bind or native image is needed.
 """
+import json
+from pathlib import Path
 import re
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from .limits_model import (ADJUDICATIONS, KEYS, LimitsModel, OperatorExpectation,
-    STORE_DEFAULTS, STORE_INIT, U32, init_history_expectation, parse_value)
+    STORE_DEFAULTS, STORE_INIT, U32, init_history_expectation, parse_value, recorded_greeting)
 from .nntp_model import NntpModel
 from fn2.tests.surface.config_limits.test_model_config_limits import (
     Exercise, LISTENER_REFUSALS, init_store, machine, VALID)
+
+
+# Minimal independent transcription of all 28 mismatches, not derived from the
+# adjudication table. The optional seat file adds its full text and 124 controls.
+HY_PAIRS = (
+    ('exposure-trusted', '???', 5, 'POLICY', 'L03'),
+    ('anonymous', '???', 5, 'POLICY', 'L03'),
+    ('tls-handshakes-per-source-per-minute', 'wrong', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('tls-handshakes-per-source-per-minute', '-1', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('tls-handshakes-in-flight', 'wrong', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('tls-handshakes-in-flight', '-1', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('tls-handshake-ms', 'wrong', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('tls-handshake-ms', '-1', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('tls-handshake-source-overrides', '???', 5, 'OVERRIDE-ADDRESS', 'L04'),
+    ('log-batch-records', 'wrong', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('log-batch-records', '-1', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('log-batch-octets', 'wrong', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('log-batch-octets', '-1', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('barrier-deadline-ms', 'wrong', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('barrier-deadline-ms', '-1', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('barrier-stall-ms', 'wrong', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('barrier-stall-ms', '-1', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('clock-event-ms', 'wrong', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('clock-event-ms', '-1', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('disk-reserve-octets', 'wrong', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('disk-reserve-octets', '-1', 1, 'UNKNOWN-POLICY-KEY', 'L02'),
+    ('relay-date-skew', '86401', 5, 'POLICY', 'L06'),
+    ('relay-require-path', 'wrong', 5, 'POLICY', 'L05'),
+    ('relay-require-path', '-1', 5, 'POLICY', 'L05'),
+    ('relay-require-path', '2', 5, 'POLICY', 'L05'),
+    ('path-identity', '???', 5, 'POLICY', 'L03'),
+    ('posting-policy', '???', 5, 'POLICY', 'L03'),
+    ('complaints-to', '???', 5, 'POLICY', 'L03'),
+)
+HY_GREETING = b'400 too many authentication failures from this address; try again later\r\n'
 
 
 class FakeTarget:
@@ -169,6 +207,145 @@ class FakeWire:
 
 
 class LimitsTests(unittest.TestCase):
+    def test_hy_embedded_pairs_target_scope_and_unchanged_state(self):
+        self.assertEqual(len(HY_PAIRS), 28)
+        for key, value, exit_code, reason, group in HY_PAIRS:
+            for target in ('fn1', 'fn2', 'fake', 'other'):
+                with self.subTest(key=key, value=value, target=target):
+                    model = LimitsModel()
+                    model.set('exposure-connections', '2').update({'exit': 0, 'text': ''})
+                    before = dict(model.rows), dict(model.funded)
+                    expected = model.set(key, value)
+                    # Prose can change; the exact parenthesized reason cannot.
+                    reply = dict(exit=exit_code, text=f'any prose (ADMINISTRATION {reason})\n')
+                    allowed = target == 'fn1' or target == 'fn2' and group in ('L03', 'L05', 'L06')
+                    recorded = expected.recorded_difference(reply, target)
+                    self.assertEqual(recorded is not None, allowed)
+                    self.assertIsNotNone(expected.check(reply))
+                    if allowed:
+                        self.assertEqual(recorded['group'], group)
+                        self.assertEqual(expected.update(reply, target), recorded)
+                    else:
+                        with self.assertRaises(AssertionError):
+                            expected.update(reply, target)
+                    self.assertEqual((model.rows, model.funded), before)
+
+    def test_hy_optional_full_seat_pairs(self):
+        path = Path(__file__).resolve().parents[3] / 'build/hy-evidence/hy-policy-pairs-fn1.json'
+        if not path.exists():
+            self.skipTest('optional full seat file absent; all 28 minimal rows tested independently')
+        rows = json.loads(path.read_text())
+        self.assertEqual(len(rows), 152)
+        mismatches = {(r['key'], r['value']) for r in rows if r['verdict'] is not None}
+        self.assertEqual(mismatches, {(k, v) for k, v, *_ in HY_PAIRS})
+        for row in rows:
+            with self.subTest(key=row['key'], value=row['value']):
+                expected = LimitsModel().set(row['key'], row['value'])
+                reply = {k: row[k] for k in ('exit', 'text')}
+                recorded = expected.recorded_difference(reply, 'fn1')
+                self.assertTrue(expected.check(reply) is None or recorded is not None)
+                if recorded:
+                    self.assertEqual(row['text'], recorded['witness'])
+                else:
+                    self.assertIsNone(row['verdict'])
+                expected.update(reply, 'fn1')
+
+    def test_hy_set_planted_variants_fail_through_live_checks(self):
+        for key, value, exit_code, reason, _ in HY_PAIRS:
+            original = dict(exit=exit_code, text=f'policy set (ADMINISTRATION {reason})\n')
+            outside = 'max-transactions' if exit_code == 5 else 'exposure-connections'
+            # A known valid value with this refusal must fail as well.
+            valid = VALID[key][0]
+            variants = [
+                (key, value, dict(original, exit=4)),
+                (key, value, dict(original, text='policy set (ADMINISTRATION OTHER)\n')),
+                (key, value, dict(original, text=f'policy set (ADMINISTRATION {reason}-SUFFIX)\n')),
+                (key, value, dict(original, text=f'policy set {reason}\n')),
+                (outside, value, original), (key, valid, original),
+            ]
+            for k, v, reply in variants:
+                with self.subTest(key=k, value=v, reply=reply):
+                    expected = LimitsModel().set(k, v)
+                    self.assertIsNone(expected.recorded_difference(reply, 'fn1'))
+                    self.assertIsNotNone(expected.check(reply))
+                    target = SimpleNamespace(adjudication_target='fn1', set=lambda *_: reply)
+                    exercise = Exercise(self, target)
+                    with patch('fn2.tests.surface.config_limits.test_model_config_limits.record_failure') as failure:
+                        with self.assertRaises(AssertionError):
+                            exercise.set(k, v)
+                        self.assertEqual(failure.call_args_list[0].kwargs['reply'], reply)
+                    self.assertEqual(exercise.policy.rows, {})
+
+    def test_hy_live_set_records_step_and_reply(self):
+        for key, value, exit_code, reason, group in HY_PAIRS:
+            with self.subTest(key=key, value=value):
+                case = unittest.TestCase()
+                case.evidence = {}
+                reply = dict(exit=exit_code, text=f'(ADMINISTRATION {reason})\n')
+                target = SimpleNamespace(adjudication_target='fn1', set=lambda *_: reply)
+                exercise = Exercise(case, target)
+                exercise.set(key, value)
+                recorded, = case.evidence['recorded_differences']
+                self.assertEqual((recorded['group'], recorded['step'], recorded['key'], recorded['value']),
+                                 (group, 1, key, value))
+                self.assertEqual(recorded['observed_reply'], reply)
+                self.assertEqual(exercise.policy.rows, {})
+
+    def test_hy_greeting_live_path_closes_and_records_only_on_fn1(self):
+        class SeatTarget(FakeTarget):
+            def open(self):
+                wire = super().open()
+                if wire.greeting == b'400 too many authentication failures from this address\r\n':
+                    wire.greeting = HY_GREETING
+                return wire
+
+        for target in ('fn1', 'fn2', 'fake'):
+            fake = SeatTarget()
+            fake.adjudication_target = target
+            case = unittest.TestCase()
+            exercise = Exercise(case, fake)
+            if target == 'fn1':
+                case.evidence = {}
+                exercise.authentication()
+                row, = case.evidence['recorded_differences']
+                self.assertEqual((row['group'], row['command']), ('L01', 'greeting'))
+                self.assertEqual(row['observed_reply'], dict(status={'hex': HY_GREETING.hex()}, eof=True))
+                self.assertEqual(exercise.trace[row['step'] - 1]['status'], HY_GREETING.hex())
+                self.assertEqual(exercise.wire_model.address_failures['127.0.0.1'], 2)
+                self.assertTrue(all(conn.quit for conn in exercise.wire_model.connections))
+            else:
+                with patch('fn2.tests.surface.config_limits.test_model_config_limits.record_failure') as failure:
+                    with self.assertRaises(AssertionError):
+                        exercise.authentication()
+                    self.assertEqual(failure.call_args_list[0].kwargs['reply'],
+                                     dict(status=HY_GREETING, eof=True))
+
+    def test_hy_greeting_variants_and_wrong_antecedents_fail(self):
+        for status, eof, request, cause in (
+            (HY_GREETING, False, None, 'auth'),
+            (HY_GREETING.replace(b'400', b'502'), True, None, 'auth'),
+            (HY_GREETING.replace(b'later', b'soon'), True, None, 'auth'),
+            (HY_GREETING + b'extra\r\n', True, None, 'auth'),
+            (HY_GREETING, True, b'AUTHINFO PASS wrong', 'auth'),
+            (HY_GREETING, True, None, 'capacity'),
+            (HY_GREETING, True, None, 'open'),
+        ):
+            with self.subTest(status=status, eof=eof, request=request, cause=cause):
+                exercise = Exercise(self, SimpleNamespace(adjudication_target='fn1'))
+                if cause == 'auth':
+                    exercise.policy.rows['exposure-auth-failures'] = 1
+                    exercise.wire_model.address_failures['127.0.0.1'] = 1
+                elif cause == 'capacity':
+                    exercise.policy.rows['exposure-connections'] = 0
+                conn = exercise.wire_model.connect(tls=False, implicit_tls=False)
+                expected = conn.greeting()
+                self.assertIsNone(recorded_greeting(expected, status, eof=eof, target='fn1', request=request))
+                with patch('fn2.tests.surface.config_limits.test_model_config_limits.record_failure') as failure:
+                    with self.assertRaises(AssertionError):
+                        exercise.check(expected, status, eof=eof, request=request)
+                    self.assertEqual(failure.call_args.kwargs['reply'], dict(status=status, eof=eof))
+                self.assertFalse(conn.quit)
+
     def test_init_history_relation_and_named_refusal(self):
         # Vary R: the relation must not be a constant copied from a live reply.
         for record in (196608, 24 * 1024 * 1024, 64 * 1024 * 1024):
@@ -226,7 +403,8 @@ class LimitsTests(unittest.TestCase):
         self.assertEqual(loop.get('exposure-per-address'), 31)
         self.assertEqual(loop.get('exposure-first-seconds'), 0)
         self.assertEqual(LimitsModel(store_defaults={'max-transactions': 999}).get('max-transactions'), 999)
-        self.assertEqual(ADJUDICATIONS, ())
+        self.assertEqual({row['group'] for row in ADJUDICATIONS},
+                         {'L01', 'L02', 'L03', 'L04', 'L05', 'L06'})
         self.assertEqual(set(VALID), set(KEYS))
 
     def test_numeric_boundaries_and_named_type_refusals(self):

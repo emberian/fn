@@ -477,3 +477,30 @@ the causal/transport conditions one at a time. The archived H2d run's 322 rows
 (77, 88, 81, and 76 in shards 0–3) all classify `recorded` on fn1 with their
 original reproducers; none becomes `new`. This is offline adjudication of that
 archive, not a new fn1 conformance run.
+
+## HY: config_limits adjudications (2026-10-29)
+
+The seat's fn1 image `c14e9e8e` / TREE_SHA `d377d4559` supplied 152 policy
+pairs, including 28 disagreements, plus the auth-budget greeting. The actual
+file has 18 G1 rows and five G2 rows (the brief's 14 / six were miscounts).
+`limits_model.ADJUDICATIONS` carries full reply witnesses and exact matching;
+fn1 permits all six groups, fn2 only spec ambiguities, and fake targets none.
+
+| Group | Seat / rows | Class | Decision and source line |
+| --- | --- | --- | --- |
+| L01 | G0 / greeting | fn1-bug | The auth-budget greeting has no retry suffix; the capacity lines do. `specs/nntp.md:2315-2320` (brief's historical 2353). Exact bytes plus EOF only, with the auth-refusal antecedent. |
+| L02 | G1 / 18 | fn1-bug | Nine known counted keys accept valid values; `wrong` / `-1` owe `policy-value-not-a-number`, not `UNKNOWN-POLICY-KEY`. `specs/host.md:1779`; TLS keys explicitly set at `docs/operator.md:612-615`; exit 1 at `docs/operator.md:1236`. |
+| L03 | G2 / 5 | spec-ambiguity | Malformed ranges, enums, identity and mailbox return exit 5 `POLICY`. `docs/operator.md:1236,1239` distinguishes refusal and usage without assigning these values to either. Keep the model's provisional exit 1. |
+| L04 | G3 / 1 | fn1-bug | Malformed overrides explicitly are *refused* `override-address`, changing nothing (`docs/operator.md:657-662`); refusal is exit 1 (`1236`), not observed usage 5 (`1239`). |
+| L05 | G4 / 3 | spec-ambiguity | `relay-require-path` is a 0/1 switch; `specs/peering.md:1030-1043` leaves its invalid-value grammar/exit unspecified. Enum usage 5 is plausible (`docs/operator.md:1239`); the model keeps count refusal 1. Under a universal counted-key reading of `specs/host.md:1779`, its non-count inputs would instead be fn1 bugs. |
+| L06 | G5 / 1 | spec-ambiguity | `relay-date-skew` has maximum 86400 (`specs/peering.md:1033-1036`), but the exit above that maximum is unspecified (`docs/operator.md:1236,1239`). Keep provisional refusal 1; record usage 5 `POLICY`. |
+
+For Astra: I would not turn the generic “command ... is wrong” definition into
+a universal malformed-value = usage rule. It would contradict HST-037's
+explicit counted-key refusal and erase the override paragraph's named refusal.
+This differs from the seat's tentative G3 model-bug/ambiguity recommendation.
+No group establishes a model bug; the provisional paragraph now states the
+remaining gaps and adjudications. The NNTP greeting regex and independent fake
+remain unchanged. Refusals preserve policy/funding; L01 commits the equivalent
+400/close effect while evidence retains the actual suffixed bytes. Unrecorded
+mismatches still capture failure evidence before asserting.
