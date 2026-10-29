@@ -717,7 +717,9 @@
             (fn2-machine-all-snapshots (cdr names) world))))
 ; The submitted spelling check ignores quoted data and shadowed row names.
 (defun fn2-callback-forwarding (form vars world)
-  (declare (xargs :verify-guards nil))
+  ; The registry lookup in a ruler is opaque to the termination proof.
+  (declare (xargs :verify-guards nil :measure (acl2-count form)
+                  :hints (("Goal" :in-theory (disable fn2-operation-row)))))
   (cond ((atom form) nil) ((eq (car form) 'quote) nil)
         ((and (symbolp (car form)) (fn2-decl-get :row-bindings (fn2-operation-row (car form) world))
               (intersection-eq vars (cdr form))) (car form))
