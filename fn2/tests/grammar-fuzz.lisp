@@ -41,17 +41,24 @@
     (:extra-arg :syntax 501 nil "RFC 3977 section 3.2.1: a syntax error in the arguments")
     (:missing-arg :syntax 501 nil "RFC 3977 section 3.2.1: a syntax error in the arguments")
     (:bad-arg :syntax 501 nil "RFC 3977 sections 3.2.1, 3.6 (Message-ID), 4.2 (wildmat), 6 (number, range), 7.3 (date)")
-    (:state :state (("IHAVE" . 502) ("CHECK" . 502) ("TAKETHIS" . 502) ("XFNCATCHUP" . 502) ("COMPRESS" . 480)) nil
-            "RFC 3977 section 3.2.1 (502: not permitted on this connection); NNT-054 and layer H's ruling: COMPRESS only after authentication (480)")
+    (:state :state (("IHAVE" . 502) ("CHECK" . 502) ("TAKETHIS" . 502) ("XFNCATCHUP" . 502) ("COMPRESS" . 480)
+                    ("AUTHINFO" . 502) ("XREDEEM" . 502)) nil
+            "RFC 3977 section 3.2.1 (502: not permitted on this connection); NNT-054 and layer H's ruling: COMPRESS only after authentication (480); RFC 4643 section 2.2: AUTHINFO after authentication is 502, whatever its arguments; specs/nntp.md:1784-1914 (XREDEEM likewise)")
     (:block-unstuffed :bad-line nil nil "RFC 3977 section 3.1.1: a line opening with a dot is dot-stuffed")
     (:block-nul :bad-line nil nil "RFC 3977 section 3.1.1; specs/nntp.md:2495: no NUL in a block")
     (:block-bare-cr :bad-line nil nil "RFC 3977 section 3.1.1: block lines end with CRLF")
     (:block-bare-lf :bad-line nil nil "RFC 3977 section 3.1.1: block lines end with CRLF")
     (:block-overlong :block-overflow nil nil "RFC 5322 section 2.1.1: 998 octets plus CRLF")
-    (:block-no-terminator :open nil nil "RFC 3977 section 3.1.1; specs/nntp.md:513-518: body text stays body text until .CRLF")))
+    (:block-no-terminator :open nil nil "RFC 3977 section 3.1.1; specs/nntp.md:513-518: body text stays body text until .CRLF")
+    ;; A refused TAKETHIS line still carries its article: the server reads it and answers 439
+    ;; after the terminator (the generator applies this where the keyword stands first and the
+    ;; line is framed structurally).
+    (:immediate :discard nil nil "RFC 4644 section 2.5.2; specs/nntp.md:530-537")))
 
+; Reader and peer connections, anonymous, and an authenticated reader.
 (defconst *fn2-gf-masks*
-  (list *fn2-nntp-state-reader* *fn2-nntp-state-peer*
+  (list (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*)
+        (logior *fn2-nntp-state-peer* *fn2-nntp-state-anonymous*)
         (logior *fn2-nntp-state-reader* *fn2-nntp-state-authenticated*)))
 (defconst *fn2-gf-classes*
   (append '(:valid) *fn2-gg-line-classes* *fn2-gg-block-classes* '(:random)))

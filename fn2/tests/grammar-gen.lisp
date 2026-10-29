@@ -220,9 +220,10 @@
 
 ; ------------------------------------------------------------------------
 ; Lines. A row of the generator table is
-;   (tag keyword args mask block hand-off first-code)
-; with MASK the states that admit the command and FIRST-CODE the code of its
-; first declared reply (the transcript runner's responder for a parsed line).
+;   (tag keyword args mask block hand-off first-code block-refusal-code)
+; with MASK the states that admit the command, FIRST-CODE the code of its
+; first declared reply (the transcript runner's responder for a parsed line)
+; and BLOCK-REFUSAL-CODE that of the reply refusing an immediate block.
 (defun fn2-gg-row-tag (row) (declare (xargs :verify-guards nil)) (nth 0 row))
 (defun fn2-gg-row-keyword (row) (declare (xargs :verify-guards nil)) (nth 1 row))
 (defun fn2-gg-row-args (row) (declare (xargs :verify-guards nil)) (nth 2 row))
@@ -230,6 +231,7 @@
 (defun fn2-gg-row-block (row) (declare (xargs :verify-guards nil)) (nth 4 row))
 (defun fn2-gg-row-hand-off (row) (declare (xargs :verify-guards nil)) (nth 5 row))
 (defun fn2-gg-row-first-code (row) (declare (xargs :verify-guards nil)) (nth 6 row))
+(defun fn2-gg-row-block-refusal-code (row) (declare (xargs :verify-guards nil)) (nth 7 row))
 (defun fn2-gg-admitted (row mask)
   (declare (xargs :verify-guards nil))
   (logtest (ifix (fn2-gg-row-mask row)) (ifix mask)))
@@ -537,6 +539,23 @@
        (mv line row rng)))
     (otherwise (mv nil nil rng))))
 
+; Whether a refused line of ROW still carries its block (SPEC's :immediate
+; row; RFC 4644 section 2.5.2): ROW's block follows at once, the line's first
+; token is ROW's keyword, and the line is framed structurally (it ends in
+; CRLF and holds no other NUL, CR or LF).
+(defun fn2-gg-first-token (octets)
+  (declare (xargs :verify-guards nil))
+  (if (or (atom octets) (member (car octets) '(32 9 13 10))) nil (cons (car octets) (fn2-gg-first-token (cdr octets)))))
+(defun fn2-gg-clean (octets)
+  (declare (xargs :verify-guards nil))
+  (or (atom octets) (and (not (member (car octets) '(0 13 10))) (fn2-gg-clean (cdr octets)))))
+(defun fn2-gg-carries-block (octets row spec)
+  (declare (xargs :verify-guards nil))
+  (and row (assoc-eq :immediate spec) (eq (fn2-gg-row-block row) :immediate)
+       (<= 3 (len octets)) (equal (nthcdr (- (len octets) 2) octets) *fn2-gg-crlf*)
+       (fn2-gg-clean (take (- (len octets) 2) octets))
+       (equal (fn2-gg-upcase (fn2-gg-first-token octets)) (fn2-gg-str (fn2-gg-row-keyword row)))))
+
 ; The item of a mutated line under SPEC.
 (defun fn2-gg-line-item (class octets row spec)
   (declare (xargs :verify-guards nil))
@@ -617,7 +636,18 @@
         (if (member-eq class *fn2-gg-block-classes*)
             (fn2-gg-block-item class table caps mask spec rng)
           (mv-let (octets row rng) (fn2-gg-mutated-line class table caps mask rng)
-            (mv (and octets (fn2-gg-line-item class octets row spec)) rng)))
+            (let ((item (and octets (fn2-gg-line-item class octets row spec))))
+              (if (not (and item (member-eq (nth 0 (cdr (assoc-eq class spec))) '(:malformed :syntax))
+                            (fn2-gg-carries-block octets row spec)))
+                  (mv item rng)
+                ;; The refused line's block is framed, discarded, and refused after its terminator.
+                (mv-let (k rng) (fn2-gg-upto 1 4 rng)
+                  (mv-let (body evs rng) (fn2-gg-block-lines k t (len octets) rng)
+                    (mv (fn2-gg-item (append octets body '(46 13 10))
+                                     (append (list (list :refused :discard 0 (len octets))) evs
+                                             (list '(:terminator :ok)))
+                                     (list (fn2-gg-row-block-refusal-code row)) nil nil)
+                        rng)))))))
         (if (not item) nil
           (mv-let (k rng) (fn2-gg-upto 0 3 rng)
             (mv-let (pre rng) (fn2-gg-valid-items k table caps mask :plain
@@ -650,7 +680,8 @@
   (declare (xargs :verify-guards nil))
   (if (eq (car exp) :refused)
       (and (consp obs) (eq (car obs) :command) (eq (nth 1 obs) (nth 1 exp))
-           (equal (nth 16 obs) (nth 2 exp)) (equal (nth 17 obs) (nth 3 exp)) (eq (nth 18 obs) :ok))
+           (equal (nth 16 obs) (nth 2 exp)) (equal (nth 17 obs) (nth 3 exp))
+           (eq (nth 18 obs) (if (eq (nth 1 exp) :discard) :deferred :ok)))
     (equal exp obs)))
 (defun fn2-gg-events-ok (exps obss)
   (declare (xargs :verify-guards nil))
@@ -673,12 +704,13 @@
   (declare (xargs :verify-guards nil))
   (case (car ev)
     (:command (and (equal (len ev) 19) (fn2-gram-parse-shape-p (nth 1 ev) (nth 2 ev) (nth 3 ev) none)
-                   (eq (nth 18 ev) :ok) (natp (nth 16 ev)) (natp (nth 17 ev))
+                   (eq (nth 18 ev) (if (eq (nth 1 ev) :discard) :deferred :ok)) (natp (nth 16 ev)) (natp (nth 17 ev))
                    (< (nth 16 ev) (nth 17 ev)) (<= (nth 17 ev) n)))
     (:data (and (natp (nth 1 ev)) (natp (nth 2 ev)) (<= (nth 1 ev) (nth 2 ev)) (<= (nth 2 ev) n)))
     ((:overflow :long-line) (or (and (equal (len ev) 2) (eq (nth 1 ev) :ok))
                                 (and (eq (car ev) :long-line) (equal (len ev) 1))))
-    ((:terminator :bad-line :block-overflow :fault) t)
+    (:terminator (or (equal (len ev) 1) (and (equal (len ev) 2) (eq (nth 1 ev) :ok))))
+    ((:bad-line :block-overflow :fault) t)
     (otherwise nil)))
 (defun fn2-gg-events-sound (evs none n)
   (declare (xargs :verify-guards nil))
@@ -686,7 +718,9 @@
 (defun fn2-gg-replying (evs)
   (declare (xargs :verify-guards nil))
   (if (atom evs) 0
-    (+ (if (or (eq (car (car evs)) :command) (and (member-eq (car (car evs)) '(:overflow :long-line)) (equal (len (car evs)) 2))) 1 0)
+    (+ (if (or (and (eq (car (car evs)) :command) (not (eq (nth 1 (car evs)) :discard)))
+               (and (member-eq (car (car evs)) '(:overflow :long-line :terminator)) (equal (len (car evs)) 2)))
+           1 0)
        (fn2-gg-replying (cdr evs)))))
 (defun fn2-gg-codes-ok (codes)
   (declare (xargs :verify-guards nil))
@@ -711,7 +745,8 @@
 (defun fn2-gg-sound (observed table none n)
   (declare (xargs :verify-guards nil))
   (let ((evs (nth 3 observed)) (codes (fn2-gg-reply-codes (nth 4 observed) nil)))
-    (cond ((not (member-eq (nth 2 observed) '(:command :block :stopped))) :mode)
+    (cond ((not (or (member-eq (nth 2 observed) '(:command :block :stopped))
+                    (and (consp (nth 2 observed)) (eq (car (nth 2 observed)) :discard)))) :mode)
           ((not (fn2-gg-events-sound evs none n)) :shape)
           ((not (and (fn2-gg-codes-ok codes) (equal (len codes) (fn2-gg-replying evs)))) :typing)
           ((not (fn2-gg-stops-ok evs table (nth 2 observed))) :stop)
@@ -747,7 +782,8 @@
                      (+ 0 ,@(fn2-gg-state-sum g (fn2-decl-get :protocol-states p)))
                      ',(car (fn2-decl-get :block p))
                      ',(car (fn2-decl-get :hand-off p))
-                     ,(fn2-decl-get :code (cdr (car (fn2-decl-get :replies p)))))
+                     ,(fn2-decl-get :code (cdr (car (fn2-decl-get :replies p))))
+                     ,(or (fn2-decl-get :code (cdr (assoc-eq (fn2-decl-get :block-refusal p) (fn2-decl-get :replies p)))) 0))
               (fn2-gg-table-rows g (cdr rows)))))))
 (defun fn2-gg-generator-events (g world)
   (declare (xargs :verify-guards nil))
