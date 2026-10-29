@@ -76,8 +76,7 @@
 
 (defun fn2-machine-refuse-write (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (fn2-machine-set-refusals (min 1152921504606846975
-                            (+ 1 (fn2-machine-refusals fn2-core))) fn2-core))
+  (fn2-core-stop *fn2-stop-reason-machine-write* fn2-core))
 (defthm fn2-machine-refuse-write-type
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
            (fn2-corep (fn2-machine-refuse-write fn2-core))))
@@ -274,7 +273,7 @@
 (defun fn2-machine-refuse-phase (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   ; Named invalid-phase refusal; retained stopped evidence, never an idle arm.
-  (let ((fn2-core (fn2-machine-write-stopped id 1 fn2-core)))
+  (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core)))
     (fn2-machine-result 0 1 0 nil fn2-core)))
 (fn2-core-shape-lemmas fn2-machine-refuse-phase (id) 4)
 (in-theory (disable fn2-machines-kind-basesi))

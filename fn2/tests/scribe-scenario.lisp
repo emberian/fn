@@ -105,6 +105,9 @@
                                      (list id)))))
        ((mv result certificate fn2-core fn2-sim fn2-own fn2-ref-core)
         (fn2-scribe-test-rounds 30000 cut scenario 0 queues nil fn2-core fn2-sim fn2-own fn2-ref-core))
+       (stop (fn2-core-stop-reason fn2-core))
+       (- (cw "SCRIBE STOP scenario=~x0 cut=~x1 reason=~x2~%"
+              scenario cut (fn2-stop-reason-code->keyword stop)))
        ((unless (member-eq result '(:cut :stopped)))
         (mv result nil certificate fn2-core fn2-sim fn2-own fn2-recovery-image fn2-ref-core))
        (ack (fn2-machine-completed id fn2-core))
@@ -125,7 +128,7 @@
        ((mv class valid never bad misplaced)
         (if (eq copy-code :ok) (fn2-recover-stub ack (eq scenario :none) fn2-recovery-image)
           (mv :unknown 0 0 0 0)))
-       (correct (and fault-hit (<= verified ack) (<= ack fences)
+       (correct (and (= stop *fn2-stop-reason-none*) fault-hit (<= verified ack) (<= ack fences)
                      ; With no storage faults, each cycle submits exactly
                      ; Write/Fence/Read. These cut frontiers distinguish
                      ; completed fences from merely submitted fences.

@@ -79,6 +79,17 @@ an incarnation; that is an implementation choice, not a fixed-word ruling.
   `fn2-pool-bytes-view`) are `defun-nx`; nothing on a served path builds a list of bytes.
 
 ## 4. The host/core ABI (contract items 2-3; EXECUTION-MODEL §7a item 3; ROUND2 §D)
+**Boundary validation, internal assertions (R5d).** Validate external scalars at
+`fn2-post-result`, `fn2-post-clock`, `fn2-outbox-ack` and the adapter boundary.
+Inside the core, guards and `mbt` carry established invariants. A residual
+impossibility stops the executor with a named reason; it must never masquerade
+as successful progress or an empty observation. Ordinary resource exhaustion
+before reservation remains backpressure. After reservation, an unsuccessful
+descriptor update or enqueue is corruption. At harvest, a failed input loan
+completion, output borrow release or operation finish stops before the machine
+can observe the result. The retained state is evidence, not a rollback or a
+successfully released resource.
+
 - **Outstanding table** `O` rows (profile). An op row's phase: `free → reserved → queued →
   submitted → resulted → (release-pending →) done → free`. Reserving an op reserves, together: the
   row, one outbox descriptor, its pool range(s), and two result cells (terminal, release): `Qr = 2O`
@@ -146,6 +157,20 @@ nactions fn2-core)`; `fn2-core-idle-deadline` supplies the accompanying sleep
 bound (`2^60-1` means no requested deadline). `:more` preserves runnable work,
 `:idle` permits adapter progress, and `:stop` records a sticky stop.
 
+The control row's `stop-reason` uses the declared `fn2-stop-reason` enum;
+`fn2-core-stop` retains the first reason. `:none` means no stop. The corruption
+reasons are `:issue-unreserve`, `:issue-range`, `:issue-capability`,
+`:issue-storage`, `:issue-cancel-target`, `:issue-wake`, `:issue-enqueue`, `:harvest-fifo`,
+`:harvest-input`, `:harvest-output`, `:harvest-finish`, `:wake-bounds`,
+`:wake-state`, `:machine-write`, `:machine-observation`, `:machine-phase`
+and `:pool-release`. `:signal`, `:clock-exhausted` and `:work-overflow` name
+the other stop paths. Scenarios print the enum keyword and require `:none`
+for a green run; corruption controls require their specific reason. TRACE
+compares this control state and must stop identically. A stopped harvest
+delivers no observation to the machine. A malformed posted-FIFO head stops
+instead of being mistaken for an empty FIFO, and waking an already queued
+machine succeeds while scheduler bounds/state failures stop.
+
 `sched.lisp` stores one intrusive link per global machine index, principal
 FIFO heads/tails/counts, four service flags, the calendar,
 and its cursor. The concrete calendar is exactly four groups of sixteen
@@ -179,7 +204,8 @@ state before invoking the handler, then performs generic pending accounting.
 Handlers see every completion before the pending decrement and own any event-cell
 store; a handler may accumulate several completions before its machine runs.
 Scribe retains its single event cell by storing in its own handler. An unrouted
-event takes the named refusal. Per-kind phase-write macros reject another kind's
+event or a write to a field absent from the target kind stops the executor.
+Per-kind phase-write macros reject another kind's
 constants. Global field setters guard both the declared width and the presence
 of that field in the target kind. Unknown kinds cannot pass the charge guard.
 
@@ -301,7 +327,7 @@ structural work and records selection. WORK sums those declarations; measured
 CPU is separate. TRACE no longer treats these records as its scheduling oracle.
 
 ## 6. Simulator and checkers (contract item 4)
-Seeded PRNG (splitmix64-style over fixnum halves); profile, seed, observation order, fault choices
+Seeded xoshiro128** PRNG; profile, seed, observation order, fault choices
 and revision recorded per run; the fault classes of the brief, each with a per-run probability
 drawn from the seed (swarm testing); death at any action boundary and during the recovery stub.
 **Recovery stub** (layer A only): the data file is sectors; a sector written by scribe carries
@@ -350,19 +376,45 @@ each step reads one sector and writes no storage. A death discards that
 progress and starts again. `fn2-recover-stub` uses the same step to scan the
 whole supplied byte image.
 
-**A3 fault-profile encoding.** The simulator reserves 26 u8 probability
-cells, one per fault class. An enabled class draws a threshold in `1..64`
-at run initialization; a later choice selects a class and compares a
-`0..255` draw with that threshold. A successful choice spends one unit of
-the run's fault budget. `:broad` enables every class, `:none` disables them,
-and `:crash-only` enables fragmentation, short sends, delay, tears, fail-slow,
+**Fault selection and landing coverage (R5d).** The simulator reserves 26 u8
+probability cells, one per fault class. An enabled class draws a threshold in
+`1..64` at initialization. Each advance chooses its flight first, then a class
+applicable to that flight's kind and stage, and compares a `0..255` draw with
+the threshold. A successful choice spends one fault-budget unit; it does not
+increment coverage. `:broad` enables every class, `:none` disables them, and
+`:crash-only` enables fragmentation, short sends, delay, tears, fail-slow,
 process death and release ordering. IDs `0..25`, in order, are fragment,
 short-send, delay, reset, half-open, nonreading, read-io, bitrot, misread,
-miswrite, lying-flush, tear, no-space, dead, fail-slow, crash,
-monotonic-jump, realtime-back, duplicate, stale, forged, overcount,
-malformed, flush-io, short-write and release-order; `26` means no fault.
-Fault-choice counters count selections, which may be inapplicable to the
-selected operation; they are not physical-effect coverage claims.
+miswrite, lying-flush, tear, no-space, dead, fail-slow, crash, monotonic-jump,
+realtime-back, duplicate, stale, forged, overcount, malformed, flush-io,
+short-write and release-order; `26` means no fault.
+
+`fn2-sim-land` increments a class only at its effect: a shortened transfer,
+changed network/storage state, delayed flight, changed clock, process death,
+or injected observation. A full-length transfer selected as short, a cancelled
+physical operation, an invalid capability or a wake that preempts the flight
+does not earn the flight's physical-effect count. Broad acceptance prints and
+requires at least one landing for each class, including storage classes;
+matched fault controls separately test the counter's positive and negative
+cases. Repeated fixed seeds remain the regression gate; swarm mode prints a
+run-time seed for replay and runs additional pool scenarios and a short echo.
+The fixed driver keeps 10,000 tiny and 1,000 near-limit pool runs and the
+1,000-connection echo seed `20261028`. Its device phase runs 16,384 seeded
+read/write/fence/receive trials, restarting devices between trials so a dead
+device cannot starve later classes. Pending storage bytes permit actual tears;
+queued network bytes permit a receive to reach its fragmentation limit. Broad
+coverage sums echo and device landings; matched fault controls do not contribute.
+
+Run swarm mode from the repository root:
+```sh
+nohup env FN2_SWARM=1 FN_ACL2_SLOT_DIR=/tmp/fn2-a4-acl2-slots FN_ACL2_SLOTS=6 timeout 3600 tools/acl2 < fn2/tests/sim-layer-a-a4-driver.lsp > build/r5d-swarm.log 2>&1 &
+echo $! > build/r5d-swarm.pid
+```
+It prints a clock-derived seed before loading scenarios, then runs the common
+controls, 100 tiny and 20 near-limit pool scenarios, and a 20-connection echo
+with the existing 200-connection liveness phase. Set `FN2_SWARM_SEED=<decimal>`
+to replay that seed. Omit both swarm variables for fixed acceptance.
+
 The 64-entry observation ring uses event tags `256` for clock observations
 `257` for fault choices, and `258` for bytes drained by simulated clients;
 operation results retain A2's event codes. Client-byte records put the connection

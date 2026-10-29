@@ -54,7 +54,7 @@
                        fn2-core)))
       ; A token never wraps: stop before another observation could reuse it.
       (if (= generation #xfffffffffffffff)
-          (fn2-exec-set-stop 1 fn2-core)
+          (fn2-core-stop *fn2-stop-reason-clock-exhausted* fn2-core)
         (fn2-exec-set-wake-generation (+ generation 1) fn2-core)))))
 (fn2-machine-core-shape fn2-exec-clock (mono))
 

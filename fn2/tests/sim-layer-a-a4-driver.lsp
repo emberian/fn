@@ -2,6 +2,13 @@
 :q
 (handler-case
     (progn
+      (defparameter *fn2-swarm-seed*
+        (when (or (sb-ext:posix-getenv "FN2_SWARM") (sb-ext:posix-getenv "FN2_SWARM_SEED"))
+          (mod (if (sb-ext:posix-getenv "FN2_SWARM_SEED")
+                   (parse-integer (sb-ext:posix-getenv "FN2_SWARM_SEED") :junk-allowed nil)
+                 (logxor (get-universal-time) (get-internal-real-time))) (expt 2 32))))
+      (format t "A4 MODE=~A SEED=~D~%" (if *fn2-swarm-seed* :swarm :fixed) (or *fn2-swarm-seed* 20261028))
+      (finish-output)
       ; Generate this run's revision before any scenario is loaded.
       (let ((process (sb-ext:run-program "python3" '("fn2/tests/scenario-revision.py")
                        :search t :output "build/scenario-revision.lsp"
@@ -16,6 +23,7 @@
                     (ld "sim-layer-a.lisp" :ld-error-action :error)
                     (ld "sim-fault-controls.lisp" :ld-error-action :error)
                     (ld "sim-replay-controls.lisp" :ld-error-action :error)
+                    (ld "sim-device-broad.lisp" :ld-error-action :error)
                     (set-guard-checking nil)) :ld-error-action :error)))
         (declare (ignore state))
         (assert (and (not erp) (eq value :eof))))
@@ -35,6 +43,19 @@
       (assert (eq (fn2-sim-fault-controls) :pass))
       (assert (eq (fn2-sim-recovery-controls) :pass))
       (assert (fn2-sim-replay-control))
+      (if *fn2-swarm-seed*
+          (progn
+            (multiple-value-bind (passes failure)
+                (fn2-sim-run-pool-scenarios *fn2-swarm-seed* 100 *fn2-profile-tiny*)
+              (assert (and (= passes 100) (null failure))))
+            (multiple-value-bind (passes failure)
+                (fn2-sim-run-pool-scenarios *fn2-swarm-seed* 20 *fn2-profile-tiny-near-limit*)
+              (assert (and (= passes 20) (null failure))))
+            (let ((result (fn2-sim-run-echo *fn2-swarm-seed* 20 *fn2-echo-profile*)))
+              (assert (eq (car result) :pass))
+              (assert (= (+ (third result) (fourth result)) 20))
+              (format t "SWARM seed=~D pools=120 echo=~S PASS~%" *fn2-swarm-seed* (subseq result 0 6))))
+        (progn
       (multiple-value-bind (passes failure)
           (fn2-sim-run-pool-scenarios 0 10000 *fn2-profile-tiny*)
         (assert (and (= passes 10000) (null failure))))
@@ -42,6 +63,8 @@
           (fn2-sim-run-pool-scenarios 0 1000 *fn2-profile-tiny-near-limit*)
         (assert (and (= passes 1000) (null failure))))
       (assert (eq (car (fn2-sim-run-scribe)) :pass))
+      (defparameter *fn2-device-landings* (fn2-sim-run-device-broad 20261028 16384))
+      (assert (eq (car *fn2-device-landings*) :pass))
       (fn2-meter-install)
       (unwind-protect
           (progn
@@ -49,7 +72,10 @@
             (let ((result (fn2-sim-run-echo 20261028 1000 *fn2-echo-profile*)))
               (assert (eq (car result) :pass))
               (assert (= (length (nth 8 result)) 26))
-              (assert (every (lambda (entry) (>= (cdr entry) 1)) (nth 8 result)))
+              (let ((landings (fn2-echo-merge-stats (second *fn2-device-landings*) (nth 8 result))))
+                (format t "BROAD APPLIED echo+device=~S~%" landings)
+                (assert (= (length landings) 26))
+                (assert (every (lambda (entry) (>= (cdr entry) 1)) landings)))
               (assert (= (second result) 1000))
               (assert (= *fn2-meter-calls* (+ (sixth result) (sixth (nth 9 result)))))
               (assert (= (+ (third result) (fourth result)) 1000))
@@ -64,7 +90,7 @@
                 (assert (<= (fn2-echo-stat :max-age (nth 6 live))
                             (fn2-echo-stat :max-bound (nth 6 live))))))
             (fn2-meter-report "ECHO TURN CPU profile=CONCRETE-TRACE adapter-faults=BROAD"))
-        (fn2-meter-restore))
+        (fn2-meter-restore))))
       (sb-ext:exit :code 0))
   (cl:error (condition)
     (format *error-output* "ECHO MEASUREMENT FAILED: ~A~%" condition)

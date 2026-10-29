@@ -129,10 +129,20 @@
                        (fn2-sim-fold (fn2-sim-digest fn2-sim)
                                       (+ 61440 (if hit candidate 26))) fn2-sim)))
       (if (not hit) (mv 26 fn2-sim)
-        (let* ((fn2-sim (update-fn2-sim-fault-budget (- (fn2-sim-fault-budget fn2-sim) 1) fn2-sim))
-               (fn2-sim (update-fn2-sim-hitsi candidate
-                           (min #xffffffff (+ 1 (fn2-sim-hitsi candidate fn2-sim))) fn2-sim)))
+        (let ((fn2-sim (update-fn2-sim-fault-budget (- (fn2-sim-fault-budget fn2-sim) 1) fn2-sim)))
           (mv candidate fn2-sim))))))
+
+; Coverage is recorded at the effect, never at random selection.
+(defun fn2-sim-land (fault fn2-sim)
+  (declare (xargs :stobjs fn2-sim :guard t))
+  (if (and (natp fault) (< fault 26))
+      (update-fn2-sim-hitsi fault (min #xffffffff (+ 1 (fn2-sim-hitsi fault fn2-sim))) fn2-sim)
+    fn2-sim))
+(fn2-sim-shape fn2-sim-land (fault fn2-sim) nil)
+(fn2-sim-child-frame fn2-sim-land (fault fn2-sim))
+(defthm fn2-sim-land-rows
+  (equal (fn2-sim-rows (fn2-sim-land fault fn2-sim)) (fn2-sim-rows fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-land fn2-sim-rows))))
 (defthm fn2-sim-choose-fault-result
   (implies (fn2-simp fn2-sim)
            (and (natp (mv-nth 0 (fn2-sim-choose-fault fn2-sim)))
@@ -182,6 +192,9 @@
          (now (max target (fn2-sim-now fn2-sim)))
          (now (if (equal fault 16) (min #xfffffffffffffff (+ now 1000000)) now))
          (real (if (equal fault 17) (max 0 (- (fn2-sim-real fn2-sim) 1000000)) now))
+         (fn2-sim (if (or (and (equal fault 16) (< (max target (fn2-sim-now fn2-sim)) now))
+                          (and (equal fault 17) (< real (fn2-sim-real fn2-sim))))
+                       (fn2-sim-land fault fn2-sim) fn2-sim))
          (fn2-sim (update-fn2-sim-now now fn2-sim))
          (fn2-sim (update-fn2-sim-real real fn2-sim)))
     fn2-sim))
@@ -439,7 +452,7 @@
               (fn2-sim (fn2-sim-force-fault 19 fn2-sim)))
          (mv-let (fault fn2-sim) (fn2-sim-choose-fault fn2-sim)
            (let* ((chosen (and (equal fault 19) (equal (fn2-sim-fault-budget fn2-sim) 127)
-                               (equal (fn2-sim-hitsi 19 fn2-sim) 1)))
+                               (equal (fn2-sim-hitsi 19 fn2-sim) 0)))
                   (fn2-sim (fn2-sim-record 1 2 0 3 0 0 4 0 0 fault fn2-sim))
                   (digest (fn2-sim-digest fn2-sim))
                   (recorded (and (equal (fn2-sim-observations fn2-sim) 1)

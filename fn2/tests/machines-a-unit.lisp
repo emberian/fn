@@ -207,10 +207,11 @@
       (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
            (fn2-core (fn2-machine-set-phase 0 255 fn2-core))
            ((mv bytes steps actions runnable fn2-core) (fn2-machine-run 0 4 fn2-core)))
-        (mv (and (= (fn2-machine-stopped 0 fn2-core) 1)
+        (mv (and (= (fn2-core-stop-reason fn2-core) *fn2-stop-reason-machine-phase*)
+                 (= (fn2-machine-phase 0 fn2-core) 255)
                  (= bytes 0) (= steps 1) (= actions 0) (not runnable)) fn2-core)) answer)))
 (assert-event (fn2-machine-refusal-control))
-(value-triple (cw "MACHINE UNIT: lifetimes/null/retirement, declaration layout, ID roundtrip, invalid-phase refusal PASS~%"))
+(value-triple (cw "MACHINE UNIT: lifetimes/null/retirement, declaration layout, ID roundtrip, :machine-phase STOP PASS~%"))
 
 (include-book "std/testing/must-fail" :dir :system)
 ; These are rejected programs, not failed theorem searches. Echo COMMAND
@@ -257,38 +258,39 @@
    :observes ((:accept-result nil)))
  :expected :hard :with-output-off nil :check-expansion t)
 
-(defun fn2-machine-checked-write-control ()
+(defun fn2-machine-checked-write-control (control)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (answer fn2-core)
       (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
            (before (fn2-machine-phase 0 fn2-core))
-           ; Own constant but wrong actual row kind: refusal changes its counter.
-           (fn2-core (fn2-echo-put-core 0 (phase *fn2-echo-state-closing*)))
-           (fn2-core (fn2-machine-write-generation 0 1152921504606846976 fn2-core))
-           (fn2-core (fn2-machine-write-checksum 0 0 fn2-core))
-           ((mv wake fn2-core) (fn2-machine-observe *fn2-listener-kind* 0 1
-                                *fn2-event-send-result* 0 0 0 0 0 fn2-core))
-           ; Kind, generation and each kind's inactive states reject before
-           ; any handler or pending decrement (listener phase zero is live).
            (free (fn2-machine-global-id *fn2-echo-kind* 0 *fn2-profile-tiny*))
            (fn2-core (fn2-echo-put-core free (pending 2)))
-           ((mv & fn2-core) (fn2-machine-observe *fn2-echo-kind* free 1
-                             *fn2-event-receive-result* 0 0 1 0 0 fn2-core))
-           ((mv & fn2-core) (fn2-machine-observe *fn2-listener-kind* 0 2
-                             *fn2-event-accept-result* 0 0 0 0 0 fn2-core))
-           ((mv & fn2-core) (fn2-machine-observe *fn2-echo-kind* 0 1
-                             *fn2-event-receive-result* 0 0 1 0 0 fn2-core))
-           (fn2-core (fn2-echo-put-core free (phase *fn2-echo-state-retired*)))
-           ((mv & fn2-core) (fn2-machine-observe *fn2-echo-kind* free 1
-                             *fn2-event-receive-result* 0 0 1 0 0 fn2-core)))
+           (fn2-core (if (eq control :retired)
+                         (fn2-echo-put-core free (phase *fn2-echo-state-retired*)) fn2-core))
+           ((mv wake fn2-core)
+            (case control
+              (:kind (let ((fn2-core (fn2-echo-put-core 0 (phase *fn2-echo-state-closing*))))
+                       (mv 4294967295 fn2-core)))
+              (:width (let ((fn2-core (fn2-machine-write-generation 0 1152921504606846976 fn2-core)))
+                        (mv 4294967295 fn2-core)))
+              (:field (let ((fn2-core (fn2-machine-write-checksum 0 0 fn2-core)))
+                        (mv 4294967295 fn2-core)))
+              (:event (fn2-machine-observe *fn2-listener-kind* 0 1 *fn2-event-send-result* 0 0 0 0 0 fn2-core))
+              (:generation (fn2-machine-observe *fn2-listener-kind* 0 2 *fn2-event-accept-result* 0 0 0 0 0 fn2-core))
+              (:wrong-kind (fn2-machine-observe *fn2-echo-kind* 0 1 *fn2-event-receive-result* 0 0 1 0 0 fn2-core))
+              (otherwise (fn2-machine-observe *fn2-echo-kind* free 1 *fn2-event-receive-result* 0 0 1 0 0 fn2-core)))))
         (mv (and (= before (fn2-machine-phase 0 fn2-core))
                  (= (fn2-machine-generation 0 fn2-core) 1)
-                 (= (fn2-machine-refusals fn2-core) 8)
-                 (= (fn2-machine-pending free fn2-core) 2)
-                 (= wake 4294967295)) fn2-core)) answer)))
-(assert-event (fn2-machine-checked-write-control))
-(value-triple (cw "R5a MACHINE REFUSALS: cross-kind, width, missing-field, unknown-kind charge, unrouted-event; counted runtime refusals PASS~%"))
+                 (= (fn2-core-stop-reason fn2-core)
+                    (if (member-eq control '(:kind :width :field))
+                        *fn2-stop-reason-machine-write* *fn2-stop-reason-machine-observation*))
+                 (= (fn2-machine-pending free fn2-core) 2) (= wake 4294967295)) fn2-core)) answer)))
+(assert-event (and (fn2-machine-checked-write-control :kind) (fn2-machine-checked-write-control :width)
+                   (fn2-machine-checked-write-control :field) (fn2-machine-checked-write-control :event)
+                   (fn2-machine-checked-write-control :free) (fn2-machine-checked-write-control :generation)
+                   (fn2-machine-checked-write-control :wrong-kind) (fn2-machine-checked-write-control :retired)))
+(value-triple (cw "R5d MACHINE CONTROLS: :machine-write and :machine-observation STOP; all eight controls PASS~%"))
 
 ; Two issued writes complete before any machine run. The test declaration
 ; chooses accumulation instead of scribe's one-cell policy; routing is the

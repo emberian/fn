@@ -201,7 +201,9 @@
                               (fn2-trace-clear fn2-trace) fn2-trace)))
             (mv work certificate fn2-trace))
           (mv work certificate fn2-core))))
-    (mv (cond ((not outbox-exact) '(:fail :turn-outbox-extent))
+    (mv (cond ((not (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*))
+               (list :fail :executor-stop (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core))))
+              ((not outbox-exact) '(:fail :turn-outbox-extent))
               ((not (and (equal (nth 3 certificate) (fn2-exec-turn-bytes fn2-core))
                          (equal (nth 4 certificate) (fn2-exec-turn-steps fn2-core))))
                '(:fail :turn-work-accumulator))
@@ -431,15 +433,16 @@
                  (if (eq verdict :pass) nil (fn2-echo-failure-trace fn2-core))
                  (if (eq verdict :pass) nil
                    (fn2-scenario-print-observations (min 64 (fn2-sim-observations fn2-sim)) fn2-sim))
-                 (cw "ECHO COVERAGE action-mask=~x0 fault-choice-mask=~x1 revision=~x2 hits=~x3~%"
+                 (cw "ECHO COVERAGE action-mask=~x0 fault-landing-mask=~x1 revision=~x2 applied=~x3~%"
                      (fn2-scenario-action-mask 14 fn2-sim) (fn2-scenario-fault-mask 26 fn2-sim)
                      *fn2-scenario-revision* hits)
+                 (cw "ECHO STOP reason=~x0~%" (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))
                  (cw "ECHO DENSITY hits-per-1000-turns=~x0~%" (fn2-echo-density samples turns))
                  (cw "ECHO SCENARIO profile=CONCRETE-TRACE seed=~x0 accepted=~x1 echoed=~x2 dropped=~x3 checked-bytes=~x4 turns=~x5 deaths=~x6 WORK/TRACE/OWN=~x7 certificate=~x8 faults=~x9~%"
                      seed accepted echoed dropped checked turns (fn2-sim-deaths fn2-sim) verdict certificate fault-profile)
                  (cw "ECHO DROPS causes=~x0~%" (fn2-echo-histogram *fn2-echo-drop-causes* stats))
-                 (cw "ECHO STORAGE selected/physically-applied=~x0~%"
-                     (fn2-echo-storage-counts '(6 7 8 9 10 11 12 13 14 23 24) *fn2-echo-fault-names* stats fn2-sim))
+                 (cw "ECHO STORAGE physically-applied=~x0~%"
+                     (fn2-echo-storage-counts '(6 7 8 9 10 11 12 13 14 23 24) *fn2-echo-fault-names* fn2-sim))
                  (b* ((safety (list verdict accepted echoed dropped checked turns certificate stats hits))
                       (fn2-sim (update-fn2-sim-fault-budget 0 fn2-sim))
                       (fn2-sim (fn2-sim-force-fault 26 fn2-sim))

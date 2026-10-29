@@ -333,11 +333,14 @@
 (fn2-ops-shape-lemmas fn2-op-set-wake (slot gen deadline observation-gen) 1)
 (in-theory (disable fn2-op-set-wake))
 
-; The caller checks phase. Both recycling paths erase old descriptor/result
+; Recycling checks phase itself; repeated release cannot duplicate a free row.
+; Both recycling paths erase old descriptor/result
 ; payloads; no posted, unharvested cell can be recycled by a valid lifecycle.
 (defun fn2-op-recycle (slot fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
   (if (not (fn2-op-slotp slot fn2-ops)) (mv :bounds fn2-ops)
+    (if (not (= (fn2-ops-phase slot fn2-ops) *fn2-op-phase-done*))
+        (mv :state fn2-ops)
     (let ((gen (fn2-ops-gen slot fn2-ops))
           (limit (fn2-ops-gen-limit fn2-ops))
           (free (fn2-ops-free-count fn2-ops))
@@ -354,6 +357,7 @@
                       (fn2-ops (update-fn2-ops-free-head slot fn2-ops))
                       (fn2-ops (update-fn2-ops-free-count (+ 1 free) fn2-ops)))
                  (mv :ok fn2-ops)))))))
+)
 (fn2-ops-shape-lemmas fn2-op-recycle (slot) 1)
 (in-theory (disable fn2-op-recycle))
 
@@ -681,15 +685,16 @@
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
   (let ((head (fn2-ops-post-head fn2-ops)) (n (fn2-ops-post-count fn2-ops))
         (capacity (fn2-ops-posted-fifo-length fn2-ops)))
-    (if (or (zp n) (>= head capacity) (>= capacity 1152921504606846976))
-        (mv nil 0 0 0 fn2-ops)
+    (if (zp n) (mv nil 0 0 0 fn2-ops)
+      (if (or (>= head capacity) (>= capacity 1152921504606846976))
+        (mv :corrupt 0 0 0 fn2-ops)
       (let* ((index (fn2-ops-posted-fifoi head fn2-ops))
              (slot (floor index 2)) (cell (mod index 2)))
         (if (not (and (unsigned-byte-p 1 cell) (fn2-op-slotp slot fn2-ops)
                       (if (= cell 0)
                           (and (= (fn2-ops-c0-posted slot fn2-ops) 1) (= (fn2-ops-c0-harvested slot fn2-ops) 0))
                         (and (= (fn2-ops-c1-posted slot fn2-ops) 1) (= (fn2-ops-c1-harvested slot fn2-ops) 0)))))
-            (mv nil 0 0 0 fn2-ops)
+            (mv :corrupt 0 0 0 fn2-ops)
           (let* ((gen (fn2-ops-gen slot fn2-ops))
                  (fn2-ops (if (= cell 0) (fn2-ops-put (c0-harvested 1)) (fn2-ops-put (c1-harvested 1))))
                  (phase (fn2-op-harvest-phase slot fn2-ops))
@@ -697,6 +702,7 @@
                  (fn2-ops (update-fn2-ops-post-head (fn2-ring-next head capacity) fn2-ops))
                  (fn2-ops (update-fn2-ops-post-count (- n 1) fn2-ops)))
             (mv t slot gen cell fn2-ops)))))))
+)
 (fn2-ops-shape-lemmas fn2-harvest-next () 4)
 (in-theory (disable fn2-harvest-next))
 

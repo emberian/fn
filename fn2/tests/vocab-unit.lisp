@@ -1352,3 +1352,14 @@
   (and (fn2-vocab-test-reservation-teeth t) (fn2-vocab-test-reservation-teeth nil)))
 
 (fn2-assert-owed-teeth fn2-ops-credit-conservation fn2-ops-stale-or-duplicate-post fn2-ops-outbox-order fn2-ops-result-reservation)
+
+(defun fn2-op-recycle-phase-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-ops
+    (mv-let (answer fn2-ops)
+      (b* ((fn2-ops (fn2-ops-init *fn2-profile-tiny* fn2-ops))
+           (before (fn2-ops-snapshot fn2-ops))
+           ((mv code fn2-ops) (fn2-op-recycle 0 fn2-ops)))
+        (mv (and (eq code :state) (equal before (fn2-ops-snapshot fn2-ops))) fn2-ops)) answer)))
+(assert-event (fn2-op-recycle-phase-control))
+(value-triple (cw "R5d RECYCLE: free-row double recycle refuses :state without mutation PASS~%"))

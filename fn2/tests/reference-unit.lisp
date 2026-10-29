@@ -1,6 +1,7 @@
 ; Executed teeth of the full refinement antecedent and conclusion.
 (in-package "ACL2")
 (include-book "../books/reference")
+(include-book "core-unit")
 
 (defun fn2-ref-test-turn (lists fn2-core fn2-ref-core)
   (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
@@ -83,3 +84,64 @@
   (and (fn2-ref-test nil) (fn2-ref-test t) (fn2-ref-kind-controls)))
 
 (fn2-assert-owed-teeth fn2-turn-refinement)
+
+; Every byte-boundary corruption goes through the actual executor and the
+; independent reference selection loop. Neither may deliver the observation.
+(defun fn2-ref-corruption-run (which fn2-core fn2-ref-core)
+  (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
+  (b* (((mv ready fn2-core) (fn2-core-corruption-setup which t fn2-core))
+       (fn2-core (fn2-machine-write-pending 0 2 fn2-core))
+       (fn2-ref-core (fn2-ref-reset *fn2-profile-tiny* fn2-core fn2-ref-core))
+       (lists (fn2-ref-lists 4 0 nil))
+       (before (fn2-machine-phase 0 fn2-core))
+       ((mv status obs visits actions fn2-core) (fn2-turn fn2-core))
+       ((mv rstatus robs rvisits ractions lists fn2-ref-core) (fn2-ref-turn lists fn2-ref-core)))
+    (mv (and ready (equal (list status obs visits actions) '(:stop 1 0 0))
+             (equal (list status obs visits actions) (list rstatus robs rvisits ractions))
+             (= (fn2-exec-turn-steps fn2-core) 24)
+             (= (fn2-exec-turn-steps fn2-ref-core) 24)
+             (= (fn2-core-stop-reason fn2-core) (fn2-core-corruption-reason which))
+             (= (fn2-core-stop-reason fn2-ref-core) (fn2-core-corruption-reason which))
+             (= before (fn2-machine-phase 0 fn2-core)) (= (fn2-machine-pending 0 fn2-core) 2)
+             (fn2-representation-relation fn2-core fn2-ref-core lists)) fn2-core fn2-ref-core)))
+(defun fn2-ref-corruption-control (which)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (with-local-stobj fn2-ref-core
+        (mv-let (answer fn2-core fn2-ref-core) (fn2-ref-corruption-run which fn2-core fn2-ref-core)
+          (mv answer fn2-core))) answer)))
+(assert-event (and (fn2-ref-corruption-control :input) (fn2-ref-corruption-control :output)
+                   (fn2-ref-corruption-control :finish) (fn2-ref-corruption-control :fifo)))
+(value-triple (cw "R5d TRACE CORRUPTION: :harvest-input :harvest-output :harvest-finish :harvest-fifo identical STOP, 24 steps, no observation delivery PASS~%"))
+
+(defun fn2-ref-wake-control-run (which fn2-core fn2-ref-core)
+  (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
+  (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+       (fn2-ref-core (fn2-ref-reset *fn2-profile-tiny* fn2-core fn2-ref-core))
+       (id (if (eq which :bounds) 999 (if (eq which :none) *fn2-sched-none* 0)))
+       (lists (fn2-ref-lists 4 0 (if (eq which :state) '((0 999)) nil)))
+       (fn2-core (if (eq which :state)
+                     (stobj-let ((fn2-sched (fn2-core-sched fn2-core))) (fn2-sched)
+                       (let* ((fn2-sched (update-fn2-sched-countsi 0 1 fn2-sched))
+                              (fn2-sched (update-fn2-sched-tailsi 0 999 fn2-sched))) fn2-sched) fn2-core)
+                   fn2-core))
+       (fn2-core (fn2-exec-wake id fn2-core))
+       ((mv lists fn2-ref-core) (fn2-ref-wake id lists fn2-ref-core))
+       ; Repeating a successful wake is :already, preserving a clear stop.
+       (fn2-core (fn2-exec-wake id fn2-core))
+       ((mv & fn2-ref-core) (fn2-ref-wake id lists fn2-ref-core))
+       (expected (case which (:bounds *fn2-stop-reason-wake-bounds*)
+                   (:state *fn2-stop-reason-wake-state*) (otherwise *fn2-stop-reason-none*))))
+    (mv (and (= (fn2-core-stop-reason fn2-core) expected)
+             (= (fn2-core-stop-reason fn2-ref-core) expected)) fn2-core fn2-ref-core)))
+(defun fn2-ref-wake-control (which)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (with-local-stobj fn2-ref-core
+        (mv-let (answer fn2-core fn2-ref-core) (fn2-ref-wake-control-run which fn2-core fn2-ref-core)
+          (mv answer fn2-core))) answer)))
+(assert-event (and (fn2-ref-wake-control :bounds) (fn2-ref-wake-control :state)
+                   (fn2-ref-wake-control :already) (fn2-ref-wake-control :none)))
+(value-triple (cw "R5d WAKE: :wake-bounds and :wake-state identical STOP; :already and no-wake remain clear PASS~%"))

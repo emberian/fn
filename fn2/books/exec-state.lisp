@@ -6,7 +6,14 @@
 (defcolumns fn2-control
   ((h :u32) (k :u32) (aturn :u32)
    (run-bytes :u32) (run-steps :u32) (run-descriptors :u32)
-   (stop :bool) (idle-deadline :u60) (wake-generation :u60)
+   (stop :bool)
+   (stop-reason (:enum fn2-stop-reason
+     (:none :issue-unreserve :issue-range :issue-capability :issue-storage
+      :issue-cancel-target :issue-enqueue :harvest-fifo :harvest-input
+      :harvest-output :harvest-finish :wake-bounds :wake-state :machine-write
+      :machine-observation :machine-phase :pool-release :signal
+      :clock-exhausted :work-overflow :issue-wake)))
+   (idle-deadline :u60) (wake-generation :u60)
    (armed-deadline :u60) (now :u60) (timer-cursor :u32)
    (turn-bytes :u60) (turn-steps :u60))
   :init-name fn2-control-columns-init)

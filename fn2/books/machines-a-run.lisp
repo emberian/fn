@@ -49,7 +49,7 @@
 
 (defun fn2-machine-refuse-observation (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let ((fn2-core (fn2-machine-refuse-write fn2-core)))
+  (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-observation* fn2-core)))
     (mv 4294967295 fn2-core)))
 (fn2-core-shape-lemmas fn2-machine-refuse-observation () 1)
 
@@ -130,7 +130,7 @@
       (fn2-core-release row-pool-slot
         row-pool-gen kind id gen fn2-core)
       (if (not (or (eq code :ok) (eq code :retired)))
-          (let ((fn2-core (fn2-echo-put-core id (stopped 1))))
+          (let ((fn2-core (fn2-core-stop *fn2-stop-reason-pool-release* fn2-core)))
             (fn2-machine-result 0 4 0 nil fn2-core))
         (let* ((next (fn2-machine-free-head fn2-core))
                (retire (>= gen (fn2-machine-gen-limit fn2-core)))

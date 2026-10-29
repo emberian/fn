@@ -119,6 +119,7 @@
     (b* (((mv fn2-core fn2-sim fn2-own)
           (fn2-sim-crash-flight-writes (fn2-sim-rows fn2-sim) fn2-core fn2-sim fn2-own))
          (fn2-sim (fn2-sim-crash-state fn2-sim))
+         (fn2-sim (fn2-sim-land 15 fn2-sim))
          (fn2-own (fn2-own-restart fn2-own))
          (fn2-core (fn2-core-init profile fn2-core)))
       (mv fn2-core fn2-sim fn2-own))))
@@ -215,7 +216,7 @@
                 (unsigned-byte-p 32 aux1)))
       (mv nil fn2-core fn2-sim fn2-own)
     (b* ((fn2-sim (fn2-sim-save-terminal slot outcome reason count aux0 aux1 fn2-sim))
-         ((mv & fn2-core fn2-sim fn2-own)
+         ((mv post-code fn2-core fn2-sim fn2-own)
           (if early
               (fn2-sim-post 1 slot gen *fn2-event-borrow-released* *fn2-outcome-done*
                             *fn2-reason-none* 0 0 0 fault nil fn2-core fn2-sim fn2-own)
@@ -226,6 +227,7 @@
               (fn2-sim-post 0 slot gen event outcome reason count aux0 aux1 fault t
                             fn2-core fn2-sim fn2-own)
             (mv :ok fn2-core fn2-sim fn2-own)))
+         (fn2-sim (if (and early (eq post-code :ok)) (fn2-sim-land 25 fn2-sim) fn2-sim))
          (fn2-sim (fn2-sim-set-last-gen slot gen fn2-sim))
          (fn2-sim (fn2-sim-set-active slot (cond (early 3) (release 2) (t 0)) fn2-sim))
          (fn2-sim (fn2-sim-set-due slot
@@ -381,10 +383,12 @@
  (if (not (and (natp slot) (< slot (fn2-sim-rows fn2-sim))
                 (unsigned-byte-p 32 word)))
      fn2-sim
-   (let ((latency (if (equal fault 2) 100
-                   (case (mod word 3) (0 1000) (1 10000) (otherwise 100000)))))
-    (fn2-sim-set-due slot
-      (min #xfffffffffffffff (+ latency (fn2-sim-now fn2-sim))) fn2-sim))))
+   (let ((latency (if (equal fault 14)
+                   (case (mod word 3) (0 1000) (1 10000) (otherwise 100000)) 100)))
+    (let* ((due (min #xfffffffffffffff (+ latency (fn2-sim-now fn2-sim))))
+           (fn2-sim (if (and (member-equal fault '(2 14)) (< (fn2-sim-due slot fn2-sim) due))
+                        (fn2-sim-land fault fn2-sim) fn2-sim)))
+      (fn2-sim-set-due slot due fn2-sim)))))
 (in-theory (enable fn2-sim-ready))
 (fn2-sim-shape fn2-sim-delay-flight (slot fault word fn2-sim) nil)
 (in-theory (disable fn2-sim-ready))
@@ -438,12 +442,12 @@
     (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))
 (fn2-sim-adapter-shape fn2-sim-advance-flight (found slot fault word) 1 2 3)
 
-(defun fn2-sim-advance-selected (fault word fn2-core fn2-sim fn2-own)
+(defun fn2-sim-advance-selected (found slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
-                              (fn2-own-wfp fn2-own))))
-  (b* (((mv found slot) (fn2-sim-next-flight fn2-sim))
-       (wake-first (fn2-sim-wake-first-p found slot fn2-sim))
+                              (fn2-own-wfp fn2-own)
+                              (or (not found) (and (natp slot) (< slot (fn2-sim-rows fn2-sim)))))))
+  (b* ((wake-first (fn2-sim-wake-first-p found slot fn2-sim))
        (target (if wake-first (fn2-sim-wake-deadline fn2-sim)
                  (if found (fn2-sim-due slot fn2-sim) (fn2-sim-now fn2-sim))))
        (fn2-sim (fn2-sim-clock target fault fn2-sim))
@@ -457,20 +461,24 @@
                (fn2-sim (fn2-sim-record 0 token 0 259 0 0 deadline mono 0 fault fn2-sim)))
           (mv t fn2-core fn2-sim fn2-own))))
     (fn2-sim-advance-flight found slot fault word fn2-core fn2-sim fn2-own)))
-(fn2-sim-adapter-shape fn2-sim-advance-selected (fault word) 1 2 3)
+(fn2-sim-adapter-shape fn2-sim-advance-selected (found slot fault word) 1 2 3)
+
+; Flight selection stays valid across the fault draw.
+(fn2-sim-rows-frame fn2-sim-choose-flight-fault (slot fn2-sim) 1)
 
 (defun fn2-sim-advance (fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
                               (fn2-own-wfp fn2-own))))
-  (b* (((mv fault fn2-sim) (fn2-sim-choose-fault fn2-sim))
+  (b* (((mv found slot) (fn2-sim-next-flight fn2-sim))
+       ((mv fault fn2-sim) (if found (fn2-sim-choose-flight-fault slot fn2-sim) (mv 26 fn2-sim)))
        ((mv word fn2-sim) (fn2-sim-random fn2-sim))
        (fn2-sim (fn2-sim-record 0 0 0 257 0 0 word (fn2-sim-now fn2-sim) 0 fault fn2-sim))
        ((when (equal fault 15))
         (let ((profile (fn2-sim-profile fn2-sim)))
           (mv-let (fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own)
             (mv t fn2-core fn2-sim fn2-own)))))
-    (fn2-sim-advance-selected fault word fn2-core fn2-sim fn2-own)))
+    (fn2-sim-advance-selected found slot fault word fn2-core fn2-sim fn2-own)))
 (fn2-sim-adapter-shape fn2-sim-advance () 1 2 3)
 
 (assert-event

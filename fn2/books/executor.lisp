@@ -15,11 +15,11 @@
 
 (defun fn2-exec-harvest (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((mv found kind id gen principal) (fn2-core-next-owner fn2-core))
-       ((unless found) (mv 0 0 0 0 0 fn2-core))
+  (b* (((mv & kind id gen principal) (fn2-core-next-owner fn2-core))
        (start (fn2-exec-queued fn2-core))
-       ((mv & & & & event outcome reason count aux0 aux1 fn2-core)
+       ((mv delivered & & & event outcome reason count aux0 aux1 fn2-core)
         (fn2-harvest-one fn2-core))
+       ((unless delivered) (mv 1 0 0 0 24 fn2-core))
        ((mv wake fn2-core)
         (fn2-machine-observe kind id gen event outcome reason count aux0 aux1 fn2-core))
        (fn2-core (fn2-exec-wake wake fn2-core))
@@ -42,7 +42,7 @@
                 (fn2-exec-clock mono fn2-core)))
           (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
             (bits fn2-ops) (fn2-take-signal fn2-ops)
-            (if (< 0 (nfix bits)) (fn2-exec-set-stop 1 fn2-core) fn2-core))))
+            (if (< 0 (nfix bits)) (fn2-core-stop *fn2-stop-reason-signal* fn2-core) fn2-core))))
        (fn2-core (fn2-exec-record (if clockp 3 4) 4294967295 0 0 0 8 0
                                  nil 4294967295 start fn2-core)))
     (mv 1 0 0 0 8 fn2-core)))
@@ -90,9 +90,8 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (cond
    ((and allow-observation (fn2-exec-observation-p fn2-core))
-    (mv-let (found kind id gen principal) (fn2-core-next-owner fn2-core)
-      (declare (ignore kind id gen principal))
-      (if found (fn2-exec-harvest fn2-core) (fn2-exec-mailbox fn2-core))))
+    (if (fn2-core-posted-p fn2-core)
+        (fn2-exec-harvest fn2-core) (fn2-exec-mailbox fn2-core)))
    ((fn2-exec-eligible-p fn2-core)
     (mv-let (kind principal position fn2-core) (fn2-exec-visit fn2-core)
       (if (equal kind 0)
@@ -108,7 +107,7 @@
     (if (and (unsigned-byte-p 60 b) (unsigned-byte-p 60 s))
         (let* ((fn2-core (fn2-exec-set-turn-bytes b fn2-core))
                (fn2-core (fn2-exec-set-turn-steps s fn2-core))) fn2-core)
-      (fn2-exec-set-stop 1 fn2-core))))
+      (fn2-core-stop *fn2-stop-reason-work-overflow* fn2-core))))
 (fn2-machine-core-shape fn2-exec-account-work (bytes steps))
 
 (in-theory (disable fn2-turn-status fn2-exec-eligible-p

@@ -195,7 +195,9 @@
     (b* (((mv found op gen cell ev outcome reason count a b fn2-core)
           (fn2-harvest-one fn2-core))
          (- op gen cell ev outcome reason count a b)
-         (status (fn2-check-own fn2-core fn2-own))
+         (status (if (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*)
+                     (fn2-check-own fn2-core fn2-own)
+                   (list :fail :executor-stop (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))))
          ((unless (and found (eq status :pass))) (mv status fn2-core fn2-own)))
       (fn2-scenario-harvest (- left 1) fn2-core fn2-own))))
 (in-theory (disable fn2-scenario-harvest))
@@ -210,6 +212,8 @@
       (mv (fn2-check-own fn2-core fn2-own) mask fn2-core fn2-sim fn2-own)
     (b* (((mv status mask fn2-core fn2-own)
           (fn2-scenario-machine step (fn2-sim-cap 0 fn2-sim) mask fn2-core fn2-own))
+         (status (if (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*) status
+                   (list :fail :executor-stop (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))))
          ((unless (eq status :pass)) (mv status mask fn2-core fn2-sim fn2-own))
          (fn2-own (fn2-scenario-probe-reads (fn2-scenario-nslots fn2-core) fn2-core fn2-own))
          (status (fn2-check-own fn2-core fn2-own))
@@ -332,6 +336,8 @@
          ((mv status run-mask fn2-core fn2-sim fn2-own)
           (fn2-scenario-one-run profile fn2-core fn2-sim fn2-own))
          (- run-mask)
+         (status (if (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*) status
+                   (list :fail :executor-stop (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))))
          (mask (logior (nfix mask) (fn2-scenario-action-mask 14 fn2-sim)
                        (ash (fn2-scenario-fault-mask 26 fn2-sim) 14))))
       (if (eq status :pass)
@@ -355,9 +361,10 @@
             (mv-let (passes failure mask fn2-core fn2-sim fn2-own)
               (fn2-scenario-runs first-seed nruns profile 0 0 fn2-core fn2-sim fn2-own)
               (mv passes failure mask fn2-core fn2-sim)))
-          (mv passes failure mask fn2-core)))
+          (progn$ (cw "POOL STOP reason=~x0~%" (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))
+                  (mv passes failure mask fn2-core))))
       (progn$ (cw "POOL REVISION ~x0~%" *fn2-scenario-revision*)
-              (cw "POOL SCENARIOS profile=~x0 first-seed=~x1 runs=~x2 passed=~x3 first-failure=~x4 action-mask=~x5 fault-choice-mask=~x6 OWN=~x7~%"
+              (cw "POOL SCENARIOS profile=~x0 first-seed=~x1 runs=~x2 passed=~x3 first-failure=~x4 action-mask=~x5 fault-landing-mask=~x6 OWN=~x7~%"
                   (if (equal profile *fn2-profile-tiny-near-limit*) :tiny-near-limit :tiny)
                   first-seed nruns passes failure (logand mask 16383)
                   (ash mask -14) (if failure :fail :pass))

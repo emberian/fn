@@ -208,3 +208,83 @@
 (assert-event (equal (fn2-core-unit) t))
 
 (fn2-assert-owed-teeth fn2-issue-receive-refusal fn2-issue-send-refusal fn2-issue-read-refusal fn2-issue-write-refusal fn2-issue-fence-refusal fn2-issue-accept-refusal fn2-issue-close-refusal fn2-issue-cancel-refusal fn2-issue-entropy-refusal fn2-core-harvest-byte-fill)
+
+; Corruption fixtures alter one internal fact after a valid issue/post.
+; The positive control takes the identical path without altering that fact.
+(defun fn2-core-corruption-setup (which corrupt fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+       ((mv code slot gen fn2-core) (fn2-core-reserve 0 1 0 1 fn2-core))
+       ((unless (eq code :ok)) (mv nil fn2-core))
+       ((mv code fn2-core) (fn2-core-write slot gen 0 42 1 0 1 fn2-core))
+       ((unless (eq code :ok)) (mv nil fn2-core))
+       ((mv code op og fn2-core)
+        (case which
+          (:input (fn2-issue-receive 0 1 slot gen 1 1 0 1 0 fn2-core))
+          (:output (fn2-issue-send 0 1 slot gen 0 1 0 1 0 1 0 fn2-core))
+          (otherwise (fn2-issue-fence 1 0 1 0 fn2-core))))
+       ((unless (eq code :ok)) (mv nil fn2-core))
+       (fn2-core (fn2-core-test-post 1 0 op og
+                   (case which (:input *fn2-event-receive-result*)
+                     (:output *fn2-event-send-result*) (otherwise *fn2-event-fence-result*))
+                   *fn2-outcome-done* *fn2-reason-none*
+                   (if (member-eq which '(:input :output)) 1 0) 0 fn2-core))
+       (fn2-core
+        (if (not corrupt) fn2-core
+          (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
+                      (fn2-ops (fn2-core-ops fn2-core)))
+            (fn2-pool fn2-ops)
+            (case which
+              (:input (let ((fn2-pool (fn2-pool-set-lease-op-gen slot (+ 1 og) fn2-pool)))
+                        (mv fn2-pool fn2-ops)))
+              (:output (mv-let (code fn2-pool) (fn2-pool-release-out slot gen fn2-pool)
+                         (declare (ignore code)) (mv fn2-pool fn2-ops)))
+              (:finish (let ((fn2-ops (update-fn2-ops-free-count 4294967295 fn2-ops)))
+                         (mv fn2-pool fn2-ops)))
+              (otherwise (let ((fn2-ops (update-fn2-ops-posted-fifoi
+                                         (fn2-ops-post-head fn2-ops) 1152921504606846975 fn2-ops)))
+                           (mv fn2-pool fn2-ops))))
+            fn2-core))))
+    (mv t fn2-core)))
+(defun fn2-core-corruption-reason (which)
+  (case which (:input *fn2-stop-reason-harvest-input*)
+    (:output *fn2-stop-reason-harvest-output*) (:finish *fn2-stop-reason-harvest-finish*)
+    (otherwise *fn2-stop-reason-harvest-fifo*)))
+(defun fn2-core-corruption-control (which corrupt)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (b* (((mv ready fn2-core) (fn2-core-corruption-setup which corrupt fn2-core))
+           ((mv delivered & & & & & & & & & fn2-core) (fn2-harvest-one fn2-core)))
+        (mv (and ready (equal delivered (not corrupt))
+                 (= (fn2-core-stop-reason fn2-core)
+                    (if corrupt (fn2-core-corruption-reason which) *fn2-stop-reason-none*)))
+            fn2-core)) answer)))
+(assert-event (and (fn2-core-corruption-control :input nil) (fn2-core-corruption-control :input t)
+                   (fn2-core-corruption-control :output nil) (fn2-core-corruption-control :output t)
+                   (fn2-core-corruption-control :finish nil) (fn2-core-corruption-control :finish t)
+                   (fn2-core-corruption-control :fifo nil) (fn2-core-corruption-control :fifo t)))
+
+(defun fn2-core-release-corruption-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+           ((mv code slot gen fn2-core) (fn2-core-reserve 0 1 0 1 fn2-core))
+           ((unless (eq code :ok)) (mv nil fn2-core))
+           (fn2-core (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (fn2-pool)
+                       (update-fn2-pool-class-countsi 0 (fn2-pool-rows fn2-pool) fn2-pool) fn2-core))
+           ((mv code fn2-core) (fn2-core-release slot gen 1 0 1 fn2-core)))
+        (mv (and (eq code :corrupt)
+                 (= (fn2-core-stop-reason fn2-core) *fn2-stop-reason-pool-release*)) fn2-core)) answer)))
+(assert-event (fn2-core-release-corruption-control))
+(value-triple (cw "R5d CORRUPTION: :harvest-input :harvest-output :harvest-finish :harvest-fifo :pool-release STOP; paired healthy harvests PASS~%"))
+(defun fn2-core-first-stop-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (let* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+             (fn2-core (fn2-core-stop *fn2-stop-reason-machine-write* fn2-core))
+             (fn2-core (fn2-core-stop *fn2-stop-reason-machine-observation* fn2-core)))
+        (mv (= (fn2-core-stop-reason fn2-core) *fn2-stop-reason-machine-write*) fn2-core)) answer)))
+(assert-event (fn2-core-first-stop-control))

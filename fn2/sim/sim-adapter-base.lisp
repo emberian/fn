@@ -4,6 +4,73 @@
 (include-book "sim-state")
 (include-book "sim-transfer")
 
+ ; Select from the chosen flight's classes, not the world's entire menu.
+(defun fn2-sim-flight-classes (kind active release)
+  (declare (xargs :guard t))
+  (cond ((not (equal active 1)) '(2 15 16 17))
+        ((equal kind *fn2-action-receive*) '(2 15 16 17 18 19 20 21 22 0 3 4))
+        ((equal kind *fn2-action-send*)
+         (if (equal release 1) '(2 15 16 17 18 19 20 21 22 1 3 5 25) '(2 15 16 17 18 19 20 21 22 1 3 5)))
+        ((equal kind *fn2-action-read*) '(2 15 16 17 18 19 20 21 22 6 7 8 13 14))
+        ((equal kind *fn2-action-write*) '(2 15 16 17 18 19 20 21 22 7 9 11 12 13 14 24))
+        ((equal kind *fn2-action-fence*) '(2 15 16 17 18 19 20 21 22 7 10 11 13 14 23))
+        (t '(2 15 16 17 18 19 20 21 22))))
+(defun fn2-sim-flight-candidate (kind active release word)
+  (declare (xargs :guard (natp word)))
+  (let ((classes (fn2-sim-flight-classes kind active release)))
+    (nfix (nth (mod word (len classes)) classes))))
+(local (defthm fn2-sim-nth-cons
+  (equal (nth n (cons a b)) (if (zp n) a (nth (- n 1) b)))
+  :hints (("Goal" :expand ((nth n (cons a b)))))))
+(defthm fn2-sim-flight-candidate-bound
+  (< (fn2-sim-flight-candidate kind active release word) 26)
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn2-sim-flight-candidate fn2-sim-flight-classes nth))))
+(in-theory (disable fn2-sim-flight-candidate fn2-sim-flight-classes))
+(local (in-theory (disable fn2-sim-nth-cons)))
+(defthm fn2-sim-probability-candidate-type
+  (implies (fn2-simp fn2-sim)
+    (natp (nth (fn2-sim-flight-candidate kind active release word)
+               (nth *fn2-sim-probabilitiesi* fn2-sim))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use ((:instance fn2-sim-probabilitiesi-natp
+                            (i (fn2-sim-flight-candidate kind active release word)))))))
+(defun fn2-sim-choose-flight-fault (slot fn2-sim)
+  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)
+                  :guard-hints (("Goal" :use ((:instance fn2-sim-random-state-type)
+                                               (:instance fn2-sim-random-ready))
+                                        :in-theory (disable fn2-sim-random-state-type fn2-sim-random-ready)))))
+  (if (not (and (natp slot) (< slot (fn2-sim-rows fn2-sim)))) (mv 26 fn2-sim)
+    (b* ((kind (fn2-sim-kind slot fn2-sim))
+         (active (fn2-sim-active slot fn2-sim))
+         (release (fn2-sim-may-release slot fn2-sim))
+         ((mv word fn2-sim) (fn2-sim-random fn2-sim))
+         (forced (fn2-sim-forced-fault fn2-sim))
+         (candidate (if (< forced 26) forced
+                      (fn2-sim-flight-candidate kind active release word)))
+         (hit (and (< 0 (fn2-sim-fault-budget fn2-sim))
+                   (or (< forced 26)
+                       (< (mod (floor word 26) 256) (fn2-sim-probabilitiesi candidate fn2-sim)))))
+         (fn2-sim (update-fn2-sim-forced-fault 26 fn2-sim))
+         (fn2-sim (update-fn2-sim-digest
+                    (fn2-sim-fold (fn2-sim-digest fn2-sim) (+ 61440 (if hit candidate 26))) fn2-sim))
+         (fn2-sim (if hit (update-fn2-sim-fault-budget (- (fn2-sim-fault-budget fn2-sim) 1) fn2-sim) fn2-sim)))
+      (mv (if hit candidate 26) fn2-sim))))
+(fn2-sim-shape fn2-sim-choose-flight-fault (slot fn2-sim) 1)
+(defthm fn2-sim-choose-flight-fault-result
+  (implies (fn2-simp fn2-sim)
+    (and (natp (mv-nth 0 (fn2-sim-choose-flight-fault slot fn2-sim)))
+         (<= (mv-nth 0 (fn2-sim-choose-flight-fault slot fn2-sim)) 26)))
+  :hints (("Goal" :in-theory (enable fn2-sim-choose-flight-fault))))
+(defthm fn2-sim-choose-flight-fault-rows
+  (equal (fn2-sim-rows (mv-nth 1 (fn2-sim-choose-flight-fault slot fn2-sim)))
+         (fn2-sim-rows fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-choose-flight-fault fn2-sim-rows fn2-sim-random))))
+
+(defthm fn2-sim-land-raw-rows
+  (equal (nth *fn2-sim-rows* (fn2-sim-land fault fn2-sim)) (nth *fn2-sim-rows* fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-land))))
+
 ; Peek is read-only: frame proofs need its result, not its queue branches.
 ; Keep composition on the child boundary, independent of included theories.
 (local
@@ -59,6 +126,11 @@
  (implies (and (fn2-sim-ready fn2-sim) (fn2-sim-network-wfp child))
           (fn2-sim-ready (update-fn2-sim-net child fn2-sim)))
  :hints (("Goal" :in-theory (enable fn2-sim-ready))))
+(defthm fn2-sim-ready-storage-projection
+ (implies (fn2-sim-ready fn2-sim)
+          (fn2-sim-storage-wfp (nth *fn2-sim-disk* fn2-sim)))
+ :rule-classes (:rewrite :forward-chaining)
+ :hints (("Goal" :in-theory (enable fn2-sim-ready))))
 (defthm fn2-sim-ready-root-projection
  (implies (fn2-sim-ready fn2-sim) (fn2-sim-wfp fn2-sim))
  :rule-classes (:rewrite :forward-chaining)
@@ -86,7 +158,9 @@
           (fn2-own-post-result cell slot gen evkind outcome reason count aux0 aux1
                                expected-stray fn2-ops fn2-own)
           (mv code fn2-core fn2-own)))
-       (fn2-sim (fn2-sim-record slot gen cell evkind outcome reason count aux0 aux1 fault fn2-sim)))
+       (fn2-sim (fn2-sim-record slot gen cell evkind outcome reason count aux0 aux1 fault fn2-sim))
+       (fn2-sim (if (and expected-stray (eq code :ok) (member-equal fault '(18 19 20 21 22)))
+                    (fn2-sim-land fault fn2-sim) fn2-sim)))
     (mv code fn2-core fn2-sim fn2-own)))
 
 (defmacro fn2-sim-adapter-shape (name args corepos simpos ownpos &optional part)
@@ -271,10 +345,63 @@
 
 (in-theory (disable fn2-sim-input-kindp fn2-sim-output-kindp))
 
+ ; Does this fence's captured image contain a version it would persist?
+(defun fn2-sim-fence-dirty-p (i fence fn2-sim-storage)
+  (declare (xargs :stobjs fn2-sim-storage
+                  :guard (and (fn2-sim-storage-wfp fn2-sim-storage) (natp i))
+                  :guard-hints (("Goal" :in-theory (enable fn2-sim-storage-rows)))
+                  :measure (nfix (- (fn2-sim-storage-rows fn2-sim-storage) (nfix i)))))
+  (let ((slot (fn2-storage-fence-roomp fence fn2-sim-storage)))
+    (if (or (not slot) (not (natp i)) (not (natp (fn2-sim-storage-rows fn2-sim-storage)))
+            (>= i (fn2-sim-storage-rows fn2-sim-storage))) nil
+      (let ((j (+ (* slot (fn2-sim-storage-rows fn2-sim-storage)) i)))
+        (and (< j (fn2-storage-snapshot-stamp-length fn2-sim-storage))
+             (or (< (fn2-sim-storage-durable-stamp i fn2-sim-storage)
+                    (fn2-storage-snapshot-stampi j fn2-sim-storage))
+                 (fn2-sim-fence-dirty-p (+ i 1) fence fn2-sim-storage)))))))
+(in-theory (disable fn2-sim-fence-dirty-p))
+
+(defthm fn2-sim-transfer-count-natural
+  (natp (mv-nth 1 (fn2-sim-transfer kind cap nonce rslot rgen off len okind oslot ogen opslot opgen
+                    offset redirect stamp fua fault salt i fn2-pool fn2-sim-network fn2-sim-storage fn2-own)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-sim-transfer))))
+
+(defun fn2-sim-physical-landed-p (kind fault code count len offset disk-bytes disk-alive dirty-fence lying)
+  (declare (xargs :guard (and (acl2-numberp kind) (acl2-numberp fault)
+                              (natp count) (natp len) (natp offset) (natp disk-bytes))))
+  (cond ((member-equal fault '(0 1 24))
+                          (and (eq code :ok) (< count len)
+                               (or (and (= fault 0) (= kind *fn2-action-receive*))
+                                   (and (= fault 1) (= kind *fn2-action-send*))
+                                   (and (= fault 24) (= kind *fn2-action-write*)))))
+                         ((member-equal fault '(8 9)) (and (< 0 count) (not (= offset (fn2-sim-redirect offset disk-bytes kind fault)))))
+                         ((equal fault 3) (eq code :reset))
+                         ((equal fault 6) (and disk-alive (= kind *fn2-action-read*) (eq code :io)))
+                         ((equal fault 12) (and (= kind *fn2-action-write*) (eq code :no-space)))
+                         ((equal fault 10) (and (= kind *fn2-action-fence*) dirty-fence lying (eq code :ok)))
+                         ((equal fault 23) (and disk-alive (= kind *fn2-action-fence*) (eq code :io)))
+                         (t nil)))
+(in-theory (disable fn2-sim-physical-landed-p))
+
+; The landing counter changes only parent scalars, independent of child readiness.
+(local
+ (progn
+(defthm fn2-sim-land-parent-type
+ (implies (fn2-simp fn2-sim) (fn2-simp (fn2-sim-land fault fn2-sim)))
+ :hints (("Goal" :in-theory (enable fn2-sim-land))))
+(defthm fn2-sim-land-parent-wfp
+ (implies (and (fn2-simp fn2-sim) (fn2-sim-wfp fn2-sim))
+  (fn2-sim-wfp (fn2-sim-land fault fn2-sim)))
+ :hints (("Goal" :in-theory (enable fn2-sim-land))))
+
+(in-theory (disable fn2-sim-land-type fn2-sim-land-wfp))))
+
 (defun fn2-sim-physical (slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
-                              (fn2-own-wfp fn2-own))))
+                              (fn2-own-wfp fn2-own))
+                  :guard-hints (("Goal" :in-theory (e/d (fn2-sim-storage-rows) (fn2-sim-ready))))))
   (if (not (and (natp slot) (< slot (fn2-sim-rows fn2-sim))
                 (unsigned-byte-p 32 word) (natp fault)))
       (mv :invalid 0 0 fn2-core fn2-sim fn2-own)
@@ -286,6 +413,12 @@
            (ogen (fn2-sim-owner-gen slot fn2-sim)) (gen (fn2-sim-gen slot fn2-sim))
            (offset (fn2-sim-storage-offset slot fn2-sim))
            (stamp (min #xfffffffffffffff (+ 1 (fn2-sim-stamp fn2-sim))))
+           (disk-bytes (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
+                         (n) (fn2-sim-storage-rows fn2-sim-storage) n))
+           (disk-alive (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
+                         (alive) (= (fn2-storage-dead fn2-sim-storage) 0) alive))
+           (dirty-fence (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
+                          (dirty) (and (= fault 10) (= kind *fn2-action-fence*) (fn2-sim-fence-dirty-p 0 slot fn2-sim-storage)) dirty))
            (fua (= (fn2-sim-fua slot fn2-sim) 1))
            (lying (and (equal fault 10) (eq (fn2-sim-profile-name fn2-sim) :broad)))
            (n (fn2-sim-amount kind len fault word))
@@ -327,7 +460,10 @@
          ((and (equal kind *fn2-action-tls-start*) (equal fault 3))
           (mv :handshake 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))
          (t (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
-        (mv code count aux fn2-core fn2-sim fn2-own)))))
+        (let ((fn2-sim
+               (if (fn2-sim-physical-landed-p kind fault code count len offset disk-bytes disk-alive dirty-fence lying)
+                   (fn2-sim-land fault fn2-sim) fn2-sim)))
+          (mv code count aux fn2-core fn2-sim fn2-own))))))
 (fn2-sim-adapter-shape fn2-sim-physical (slot fault word) 3 4 5 1)
 (fn2-sim-adapter-shape fn2-sim-physical (slot fault word) 3 4 5 2)
 (fn2-sim-adapter-shape fn2-sim-physical (slot fault word) 3 4 5 3)
@@ -417,17 +553,58 @@
 
 (in-theory (disable logxor))
 
+ ; A tear lands only if the selected unit actually changes durable bytes.
+(defun fn2-sim-tear-changes-p (i end byte fn2-sim-storage)
+  (declare (xargs :stobjs fn2-sim-storage
+                  :guard (and (fn2-sim-storage-wfp fn2-sim-storage) (natp i) (natp end))
+                  :guard-hints (("Goal" :in-theory (enable fn2-sim-storage-rows)))
+                  :measure (nfix (- (nfix end) (nfix i)))))
+  (if (or (not (natp i)) (not (natp end)) (>= i end)
+          (>= i (fn2-sim-storage-rows fn2-sim-storage))) nil
+    (or (and (<= (fn2-sim-storage-durable-stamp i fn2-sim-storage)
+                 (fn2-sim-storage-stamp i fn2-sim-storage))
+             (not (equal byte (fn2-sim-storage-durable i fn2-sim-storage))))
+        (fn2-sim-tear-changes-p (+ i 1) end byte fn2-sim-storage))))
+(in-theory (disable fn2-sim-tear-changes-p))
+
+(defun fn2-sim-environment-landed-p (slot fault word fn2-sim)
+  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)
+                  :guard-hints (("Goal" :in-theory (enable fn2-sim-storage-rows)))))
+  (if (not (and (natp slot) (< slot (fn2-sim-rows fn2-sim))
+                (unsigned-byte-p 32 word))) nil
+    (let ((cap (fn2-sim-cap-index slot fn2-sim)) (nonce (fn2-sim-cap-nonce slot fn2-sim)))
+      (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim))
+                  (fn2-sim-storage (fn2-sim-disk fn2-sim)))
+        (landed)
+        (cond ((member-equal fault '(4 5))
+                       (and (eq (fn2-network-cap-code cap nonce fn2-sim-network) :ok)
+                            (if (= fault 4) (= (fn2-sim-network-half-open cap fn2-sim-network) 0)
+                              (= (fn2-sim-network-nonreading cap fn2-sim-network) 0))))
+                      ((equal fault 13) (= (fn2-storage-dead fn2-sim-storage) 0))
+                      ((equal fault 7) (< 0 (fn2-sim-storage-rows fn2-sim-storage)))
+                      ((equal fault 11)
+                       (and (<= 512 (fn2-sim-storage-rows fn2-sim-storage))
+                            (fn2-storage-unit-pendingp (mod word (floor (fn2-sim-storage-rows fn2-sim-storage) 512)) fn2-sim-storage)
+                            (let ((start (* 512 (mod word (floor (fn2-sim-storage-rows fn2-sim-storage) 512)))))
+                              (fn2-sim-tear-changes-p start (+ start 512)
+                                (if (= (mod word 2) 0) 0 (mod word 256)) fn2-sim-storage))))
+                      (t nil))
+        landed))))
+(in-theory (disable fn2-sim-environment-landed-p))
+
 (defun fn2-sim-environment (slot fault word fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)
                   :guard-hints (("Goal" :in-theory (enable fn2-sim-storage-rows)))))
   (if (not (and (natp slot) (< slot (fn2-sim-rows fn2-sim))
                 (unsigned-byte-p 32 word))) fn2-sim
-    (let ((cap (fn2-sim-cap-index slot fn2-sim)) (nonce (fn2-sim-cap-nonce slot fn2-sim))
+    (let ((landed (fn2-sim-environment-landed-p slot fault word fn2-sim))
+          (cap (fn2-sim-cap-index slot fn2-sim)) (nonce (fn2-sim-cap-nonce slot fn2-sim))
           (reset-range (+ 1 (fn2-sim-range-len slot fn2-sim))))
       (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim))
                   (fn2-sim-storage (fn2-sim-disk fn2-sim)))
         (fn2-sim-network fn2-sim-storage)
-        (let* ((fn2-sim-network
+        (let* (
+               (fn2-sim-network
                  (if (member-equal fault '(3 4 5))
                      (mv-let (ignored fn2-sim-network)
                        (fn2-network-faults cap nonce (if (equal fault 4) 1 0) (if (equal fault 5) 1 0)
@@ -446,7 +623,7 @@
                                                (+ 2 (mod word 2)) (mod word 256) fn2-sim-storage))
                       (t fn2-sim-storage))))
           (mv fn2-sim-network fn2-sim-storage))
-        fn2-sim))))
+        (if landed (fn2-sim-land fault fn2-sim) fn2-sim)))))
 (fn2-sim-shape fn2-sim-environment (slot fault word fn2-sim) nil)
 (defthm fn2-sim-environment-rows
  (equal (fn2-sim-rows (fn2-sim-environment slot fault word fn2-sim)) (fn2-sim-rows fn2-sim))
