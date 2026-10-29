@@ -632,6 +632,28 @@ class H2dRecordedReplyTests(unittest.TestCase):
         self.assertTrue(e.check(b"", None).ok)
         self.assertFalse(e.check(b"", None, eof=True).ok)
 
+    def test_malformed_takethis_consumes_body_before_refusal(self):
+        commands = (b"TAKETHIS <a@b@c\r\n", b"TAKETHIS <a@b\r\n",
+                    b"TAKETHIS <a@b>junk\r\n", b"TAKETHIS\r\n",
+                    b"TAKETHIS <bad\xca@test>Path: a\r\n")
+        for command in commands:
+            for echo in (command.split()[1] if len(command.split()) > 1 else b"-", b"-"):
+                with self.subTest(command=command, echo=echo):
+                    c = connect(model(peer=True))
+                    initial = c.send(command)
+                    self.assertFalse(initial.check(b"439 - refused\r\n", None).ok)
+                    accept(initial, b"")
+                    self.assertIsNotNone(c.pending)
+                    with self.assertRaisesRegex(ValueError, "article body owed"):
+                        c._dispatch(b"DATE\r\n")
+                    block = c.send_block(encode_block(article()))
+                    self.assertFalse(block.check(b"239 - accepted\r\n", None).ok)
+                    self.assertFalse(block.check(b"439 unrelated refused\r\n", None).ok)
+                    accept(block, b"439 " + echo + b" rejected\r\n")
+                    self.assertIsNone(c.pending)
+                    self.assertFalse(c.model.articles)
+                    send(c, "DATE", "111 20261029120000")
+
     def test_rejected_dot_terminated_body_can_continue(self):
         # Reduced NUL-body witnesses for all fourteen H2d closed rows; literal
         # responses match seed8 TAKETHIS, seed601 IHAVE, seed602 POST.

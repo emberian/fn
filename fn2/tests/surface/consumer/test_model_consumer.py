@@ -9,11 +9,12 @@ the fake semantic target and is explicitly unavailable on the local CLI.
 from contextlib import ExitStack
 from dataclasses import replace
 import json
+import os
 import time
 import unittest
 
 from fn2.tests.model.consumer_model import ConsumerModel, Cursor, Event, Request
-from fn2.tests.surface import RUN, SurfaceCase, Target, serving
+from fn2.tests.surface import SurfaceCase, Target, serving
 
 
 class ConsumerTarget:
@@ -21,7 +22,9 @@ class ConsumerTarget:
 
     def __init__(self, case):
         from tests.native_harness import article
-        self.case, self.live = case, Target(case)
+        self.adjudication_target = os.environ.get('FN2_SURFACE_TARGET', 'fn2')
+        # Withdrawal files its cause in control.cancel (specs/peering.md:2023-2026).
+        self.case, self.live = case, Target(case, groups=('surface.test', 'control.cancel'))
         self.node, self.serial = self.live.node, 0
         self.observer = self.call(Request('register', 'hs-locator'))['cursor']
         self.history, self.incarnation = self.observer.history, self.observer.incarnation
@@ -122,7 +125,7 @@ class ConsumerTarget:
         return reply
 
 
-def machine(case, target_factory=ConsumerTarget, traces=None):
+def machine(case, target_factory=ConsumerTarget, traces=None, recorded_differences=None):
     from hypothesis import strategies as st
     from hypothesis.stateful import Bundle, RuleBasedStateMachine, invariant, precondition, rule
 
@@ -152,8 +155,16 @@ def machine(case, target_factory=ConsumerTarget, traces=None):
             reply = self.target.call(expected.request)
             reply['_frontier_after'] = self.target.sync_frontier()
             self.trace.append((expected.request, context, reply))
-            case.assertIsNone(expected.check(reply), (expected.check(reply), expected.request, reply))
-            expected.update(reply)
+            target = getattr(self.target, 'adjudication_target', 'fake')
+            recorded = expected.recorded_difference(reply, target)
+            if recorded is None:
+                case.assertIsNone(expected.check(reply), (expected.check(reply), expected.request, reply))
+            expected.update(reply, target)
+            if recorded is not None:
+                recorded['step'] = len(self.trace)
+                if recorded_differences is not None:
+                    recorded_differences.append(recorded)
+                print('consumer recorded difference: ' + json.dumps(recorded, sort_keys=True), flush=True)
             return reply.get('cursor')
 
         @rule(target=consumers, name=st.sampled_from(['hs-a', 'hs-b', 'hs-c']))
@@ -237,7 +248,8 @@ class TestSurface(SurfaceCase):
 
     @serving('consumer')
     def test_live_state_machine(self):
-        from hypothesis import settings
         from hypothesis.stateful import run_state_machine_as_test
-        run_state_machine_as_test(machine(self), settings=settings(max_examples=RUN.get('examples', 200),
-            stateful_step_count=50, deadline=None, database=None, derandomize=True))
+        from fn2.tests.surface import live_model_settings
+        recorded = self.evidence['recorded_differences'] = []
+        run_state_machine_as_test(machine(self, recorded_differences=recorded),
+                                  settings=live_model_settings('consumer'))

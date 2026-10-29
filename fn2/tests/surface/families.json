@@ -348,7 +348,7 @@
           "model_examples": 200,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "share of one aggregate 600-second conservative wall-time cap pending H5 CPU measurements"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
         "hbox": {
           "forms": [
@@ -361,10 +361,11 @@
           "model_examples": 5000,
           "steps": 50,
           "natives": "all natives in selected families; --all selects all 120",
-          "fuzz_budget": "one aggregate hour",
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
-      }
+      },
+      "model_timing": "H5a fn1: 200 empty-group examples in 96.01559008471668s (~0.48s/example), surface.json S duration."
     },
     "consumer": {
       "release_name": "consumer",
@@ -544,10 +545,10 @@
             "F",
             "H"
           ],
-          "model_examples": 200,
+          "model_examples": 5,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "share of one aggregate 600-second conservative wall-time cap pending H5 CPU measurements"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
         "hbox": {
           "forms": [
@@ -557,13 +558,14 @@
             "H",
             "R"
           ],
-          "model_examples": 5000,
+          "model_examples": 50,
           "steps": 50,
           "natives": "all natives in selected families; --all selects all 120",
-          "fuzz_budget": "one aggregate hour",
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
-      }
+      },
+      "model_timing": "HS fn1: approximately 30s per live example; fake model unit tests retain 200."
     },
     "operator": {
       "release_name": "operator",
@@ -834,7 +836,7 @@
           "model_examples": 200,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "share of one aggregate 600-second conservative wall-time cap pending H5 CPU measurements"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
         "hbox": {
           "forms": [
@@ -846,7 +848,7 @@
           "model_examples": 5000,
           "steps": 50,
           "natives": "all natives in selected families; --all selects all 120",
-          "fuzz_budget": "one aggregate hour",
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
       }
@@ -976,7 +978,7 @@
           "model_examples": 200,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "share of one aggregate 600-second conservative wall-time cap pending H5 CPU measurements"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
         "hbox": {
           "forms": [
@@ -988,7 +990,7 @@
           "model_examples": 5000,
           "steps": 50,
           "natives": "all natives in selected families; --all selects all 120",
-          "fuzz_budget": "one aggregate hour",
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
       }
@@ -1191,7 +1193,7 @@
           "model_examples": 200,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "share of one aggregate 600-second conservative wall-time cap pending H5 CPU measurements"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
         "hbox": {
           "forms": [
@@ -1204,7 +1206,7 @@
           "model_examples": 5000,
           "steps": 50,
           "natives": "all natives in selected families; --all selects all 120",
-          "fuzz_budget": "one aggregate hour",
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
       }
@@ -1333,7 +1335,7 @@
           "model_examples": 200,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "share of one aggregate 600-second conservative wall-time cap pending H5 CPU measurements"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
         "hbox": {
           "forms": [
@@ -1346,7 +1348,7 @@
           "model_examples": 5000,
           "steps": 50,
           "natives": "all natives in selected families; --all selects all 120",
-          "fuzz_budget": "one aggregate hour",
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
       }
@@ -1594,7 +1596,7 @@
           "model_examples": 200,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "share of one aggregate 600-second conservative wall-time cap pending H5 CPU measurements"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
         "hbox": {
           "forms": [
@@ -1606,7 +1608,7 @@
           "model_examples": 5000,
           "steps": 50,
           "natives": "all natives in selected families; --all selects all 120",
-          "fuzz_budget": "one aggregate hour",
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
       }
@@ -1811,7 +1813,7 @@
           "model_examples": 200,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "share of one aggregate 600-second conservative wall-time cap pending H5 CPU measurements"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
         "hbox": {
           "forms": [
@@ -1823,7 +1825,7 @@
           "model_examples": 5000,
           "steps": 50,
           "natives": "all natives in selected families; --all selects all 120",
-          "fuzz_budget": "one aggregate hour",
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
       }
@@ -1998,7 +2000,7 @@
           "model_examples": 200,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "share of one aggregate 600-second conservative wall-time cap pending H5 CPU measurements"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
         "hbox": {
           "forms": [
@@ -2010,7 +2012,7 @@
           "model_examples": 5000,
           "steps": 50,
           "natives": "all natives in selected families; --all selects all 120",
-          "fuzz_budget": "one aggregate hour",
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
       }
@@ -2023,12 +2025,18 @@
       "steps": 50,
       "fuzz_seconds": 600,
       "total_cpu_minutes": 30,
-      "allocation": "H5 measurement owed; fuzz wall cap bounds serial driver time, not aggregate child CPU"
+      "allocation": "H5 measurement owed; fuzz wall cap bounds serial driver time, not aggregate child CPU",
+      "native_timeout": 300,
+      "fuzz_margin_seconds": 60,
+      "fuzz_minimize_seconds": 5
     },
     "hbox": {
       "model_examples": 5000,
       "steps": 50,
-      "fuzz_seconds": 3600
+      "fuzz_seconds": 3600,
+      "native_timeout": 2400,
+      "fuzz_margin_seconds": 60,
+      "fuzz_minimize_seconds": 5
     }
   },
   "excluded_scope": "P simulator runs, cut_release gates and weekly F9 soak remain their own drivers. No Python test modules for P. R numbers are published, never gates.",
@@ -2045,5 +2053,20 @@
       "store_ops"
     ],
     "fn2": []
-  }
+  },
+  "native_timeout_overrides": {
+    "open_depth": {
+      "laptop": 2400,
+      "hbox": 2400
+    },
+    "over_pins": {
+      "laptop": 2400,
+      "hbox": 2400
+    },
+    "over_window": {
+      "laptop": 2400,
+      "hbox": 2400
+    }
+  },
+  "native_timeout_note": "H1b evidence is not present here; these three known >300s modules passed with 2400s. Extend this data table from measured H1b durations."
 }

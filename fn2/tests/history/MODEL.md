@@ -125,6 +125,8 @@ This document precedes the checker implementation. The contract is:
     Only ok recover with posture `ready` enables recovered-read checks.
     Extra `withdraw` operations carry message_id and `authorized: true` on ok;
     observing a withdrawal report alone does not establish authorization.
+    Native cancel adaptation requires the observed authentication or Cancel-Key
+    authority described below; acceptance of the cause alone is insufficient.
 
 11. **D1.** For each post ok/240 completed before a crash, every completed read
     invoked after a subsequent ready recovery returns presence and the posted
@@ -204,6 +206,48 @@ and `sent_len`. Complete POST sends supply Message-ID and the definition-10 body
 dot-unstuffing and terminator removal. A truncated send's wire checksum is NOT a body digest.
 Received ARTICLE blocks supply body digests; HEAD/STAT supply presence only. POST refusals before
 sending an article still lack its identity. Incomplete exchanges remain info.
+
+**Cancel authority (SEC-006).** A complete POST body with exactly one
+`Control: cancel <id>` and final 240 is an accepted cause article. It produces an `ok`
+withdrawal of `<id>` locally only when both the target's accepted POST connection and the
+cancel connection were observed authenticated as the same account on that node
+(specs/nntp.md SEC-006, L1325-1336). Different observed accounts produce a failed withdrawal;
+unknown authentication on either side produces `info`. Neither exempts later absence from D1.
+The target's original poster binding is retained across duplicate submissions.
+
+Authentication evidence is scoped to the observed connection: AUTHINFO USER followed by PASS
+281, or SASL 281/283 with an observed identity. PLAIN and SCRAM-SHA-256[/PLUS] identities are
+read from initial responses or continuations, including send/line transport. Success without
+an identifiable account, an unsupported mechanism, or missing connection identity is unknown.
+Connect, close and STARTTLS reset tracked authentication. No account is inferred from From,
+Message-ID, credential filenames, or an unobserved login; distinct login names are not assumed
+to be aliases of the same principal.
+
+A peer withdrawal requires observation of the cause on that peer: an accepted IHAVE body or
+successful ARTICLE/HEAD/STAT observation. It is `ok` only when the cause has proven local
+origin authority as above, or its observed Cancel-Key opens an observed Cancel-Lock of the
+target on the peer. RFC 8315 sections 3-4 specify `sha256:base64(SHA256(c-key-string))`:
+the hashed bytes are the ASCII encoded key string, not the decoded secret. Any matching
+SHA-256 key/lock pair suffices; folded fields, multiple tokens, and comments are handled.
+A known mismatch is fail; missing header evidence or no supported pair is info. Merely
+observing target absence never creates authority. Peer withdrawals occur at that peer's
+cause observation, not at origin acceptance. A locally posted cause's known lack of authority
+cannot be upgraded by rereading the cause locally.
+
+Refused cancels remain fail and uncertain submissions remain info. Withdrawal records retain
+`cause_call` and `cause_message_id`. `operator CONFIG article withdraw <id>` is observed as
+words `article withdraw <id>`: exit 0 is always authorized (specs/nntp.md PKT-575, L1204-1214),
+nonzero is fail, and uncertain completion is info.
+
+The fixtures minimize H5a's `test_a_login_cancels_its_own_post_here_and_on_peers`, preserving
+call IDs and times, renaming the node `origin`, and omitting only the PASS credential text.
+`own-cancel.jsonl` (26 records, 7,072 bytes) retains Alice's two authentications, target and
+cancel POSTs, crash, recovery, and absent read. It has no anomaly; removing withdrawal evidence
+produces D1. `ineffective-cancel.jsonl` (24 records, 7,782 bytes) retains Alice's target, Bob's
+authenticated 240-accepted cancel, and the still-present target: no anomaly. Appending the
+captured crash/recovery/absence without Alice's later authorized cancel produces D1.
+Missing/failed authentication, refused and uncertain-cancel controls preserve D1. The peer
+key test uses RFC 8315 section 5.1's fixed SHA-256 vector and rejects a wrong key.
 
 Node invoke/operator/store capture existing file arguments immediately before and after calls: hex
 through 64 KiB, otherwise `{sha256, length}`. The adapter uses `files_after` for output

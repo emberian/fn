@@ -21,6 +21,24 @@ from dataclasses import asdict, dataclass, replace
 import struct
 
 
+# Command-specific adjudication, separate from the spec oracle. The glossary
+# suggests unknown-consumer, but does not explicitly assign a reason to repeated
+# unregister; :no-op is also mentioned without specifying this case. Calling
+# this fn1-bug is defensible if the glossary is read as a universal requirement.
+# Layer D chooses the narrower, consistent unknown-consumer refusal below.
+ADJUDICATIONS = ({
+    'group': 'C01', 'verb': 'unregister',
+    'precondition': 'previously unregistered by an accepted request; still absent',
+    'spec_reply': {'outcome': 'refused', 'reason': 'unknown-consumer'},
+    'fn1_reply': {'outcome': 'refused', 'reason': 'scope'},
+    'class': 'spec-ambiguity',
+    'spec_lines': 'specs/consumer-progress.md:113-117,435-446,519-520',
+    'decision': 'Layer D: refuse repeated unregister with unknown-consumer; no mutation.',
+    'reasoning': 'The reason glossary names absence, but repeated unregister has no explicit reason rule.',
+    'alternative': 'fn1-bug if unknown-consumer (no consumer of that name) is universally normative.',
+},)
+
+
 @dataclass(frozen=True)
 class Cursor:
     history: str
@@ -150,18 +168,46 @@ class Expect:
             return 'position: mutation without accepted ack (including refusal/poll)'
         return None
 
-    def update(self, reply):
-        problem = self.check(reply)
+    def recorded_difference(self, reply, target='fake'):
+        """Match a recorded reply without relaxing command or effect predicates.
+
+        Fake targets never use adjudications. fn2 permits only ambiguity rows;
+        fn1 also permits its recorded bugs. A new reason remains a failure.
+        """
+        if target not in ('fn1', 'fn2') or self.check(reply) is None:
+            return None
+        for row in ADJUDICATIONS:
+            if target == 'fn2' and row['class'] != 'spec-ambiguity':
+                continue
+            if (self.request.verb != row['verb'] or self.before is not None or
+                    self.request.consumer not in self.model.unregistered or
+                    self.reasons != {'unknown-consumer'}):
+                continue
+            if not all(reply.get(key) == value for key, value in row['fn1_reply'].items()):
+                continue
+            if self.check(dict(reply, **row['spec_reply'])) is None:
+                return dict(deepcopy(row), consumer=self.request.consumer,
+                            target=target, observed_reply={key: reply[key] for key in row['fn1_reply']})
+        return None
+
+    def update(self, reply, target='fake'):
+        """Apply the spec update, returning evidence for an adjudicated reply."""
+        recorded = self.recorded_difference(reply, target)
+        checked_reply = dict(reply, **recorded['spec_reply']) if recorded else reply
+        problem = self.check(checked_reply)
         if problem:
             raise AssertionError(problem)
         r, m = self.request, self.model
         if self.reasons:
-            return
+            return recorded
         if r.verb in ('register', 'rebase', 'ack', 'bound-ack'):
             m.consumers[r.consumer] = reply['cursor']
             m.epochs.add(reply['cursor'].epoch)
+            m.unregistered.discard(r.consumer)
         elif r.verb == 'unregister':
             del m.consumers[r.consumer]
+            m.unregistered.add(r.consumer)
+        return recorded
 
 
 class ConsumerModel:
@@ -174,6 +220,7 @@ class ConsumerModel:
         self.events, self.frontier, self.groups = list(events), frontier, set(groups)
         self.consumers, self.bindings, self.waiters = {}, {}, set()
         self.withdrawn, self.epochs = set(), set()
+        self.unregistered = set()
 
     def rule(self, verb, consumer, **kwargs):
         if verb not in self.VERBS:
@@ -194,8 +241,8 @@ class ConsumerModel:
                     r.query, r.query_version, r.view_version):
                 reasons.add('scope')
             return reasons
-        if old is None:
-            return reasons | {'unknown-consumer'}
+        # A binding is configuration, independent of registration (spec 334-338):
+        # it survives unregister, so `bound` and friends apply to an absent name too.
         if r.verb in ('poll', 'ack', 'wait', 'bound-poll', 'bound-ack', 'bound-wait'):
             binding = self.bindings.get(r.consumer)
             if r.verb.startswith('bound-'):
@@ -209,6 +256,8 @@ class ConsumerModel:
                         reasons.add('access')
             elif binding is not None:
                 reasons.add('bound')
+        if old is None:
+            return reasons | {'unknown-consumer'}
         if r.verb.endswith('ack'):
             if r.cursor is None or replace(r.cursor, position=old.position) != old or not (
                     old.position <= r.cursor.position <= self.frontier):

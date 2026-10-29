@@ -27,7 +27,13 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
 - **P** names the simulator workloads, seeded faults and process-death schedules
   in the manifest. The layer A–E simulator runs remain separate drivers; Python
   does not emulate those machines. There is no P test module.
-- **S** runs Hypothesis at 200 examples on laptop, 5,000 on hbox, 50 steps each.
+- **S** takes live counts from each family’s per-box `model_examples`: NNTP
+  200/5,000 (laptop/hbox), consumer 5/50, with 50 steps each. H5a measured
+  NNTP’s 200 examples at 96.016 seconds; consumer measured about 30 seconds
+  per example. Fake model unit tests retain 200 examples. `live_model_settings`
+  disables Hypothesis’s shrink phase: zero shrink executions. Failure replay
+  and the failing example itself still take time; this is no wall-time promise.
+  The helper uses `RUN['box']`, or `FN2_SURFACE_BOX` for direct discovery.
   `nntp/test_model_nntp.py` defines a live `RuleBasedStateMachine` using H2's
   `NntpModel` and the selected `Target`. It currently exercises empty-group
   selection, absent articles, reader/cursor commands and reconnects, comparing
@@ -37,7 +43,8 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   They appear in reports but generate no test and are not counted as run.
 - **F** uses H2b through its public CLI for NNTP, without importing driver
   internals: `python3 -m fn2.tests.model.differential --target fn1 --seeds 0..199
-  --mode reader,node,peer --steps 50 --out DIR`. Its independent model comparison
+  --mode reader,node,peer --steps 50 --seconds SHARE_MINUS_MARGIN
+  --minimize-seconds 5 --out DIR`. Its independent model comparison
   is a carried seed driver; D2's grammar generators and mutation controls remain
   owed. Other families expose argv-producing driver hooks below.
 - **H** runs H3's `from_observe.adapt` and consumer/durable checkers on per-test
@@ -50,7 +57,11 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   config/limits family's F module is specifically for config parsing.
 - **E** creates one test per carried native. Each runs an isolated
   `run_natives.child`, with its backend set to fn1 after the shared fn2 gate,
-  and checks every collected outcome. Native skips remain skips in the surface
+  and checks every collected outcome. Manifest `budget.native_timeout` is 300
+  seconds on laptop and 2,400 on hbox. `native_timeout_overrides` gives
+  `open_depth`, `over_pins`, `over_window` 2,400 seconds on both boxes; H1b
+  durations for other modules are unavailable here and must extend that table
+  when supplied. Native skips remain skips in the surface
   report: inventoried retirements and `harness/intended-skips.json` entries are
   permitted; other skips make the run NOT RUN. Empty results and timeouts fail.
   Fixture hooks name concrete
@@ -66,12 +77,30 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
 
 The laptop selects E/S/F/H of the requested families; hbox adds R. Hbox `--all`
 selects all 120 natives. NNTP H2b seeds are `0..199` / `0..4999`. The serial fuzz
-hooks share one 600-second laptop wall budget or one 3,600-second hbox budget;
-each child gets the remaining allowance and its own PID file. An over-budget
-child is an error and its recorded process group is reaped. H5 still owes the
+hooks reserve equal shares of a 600-second laptop or 3,600-second hbox wall
+budget among the selected applicable F forms, before any family executes.
+Missing drivers keep their reserved share; execution order cannot starve later
+families. Every command receives `--seconds` with its share minus a margin of
+60 seconds or half the share, whichever is smaller. NNTP minimization receives
+at most 5 seconds (also bounded to a quarter of the margin). Budget exhaustion
+reported by a self-stopping driver is completion. Exceeding the supervisor’s
+full share remains an error; it reaps only the recorded process group. H5 still owes the
 CPU allocation within §2.5's aggregate 30 CPU-minute per-commit budget: a wall
 cap is not a measurement of total child CPU. The runner does not claim the
 simulator, layer READY gates or weekly soak ran.
+
+NNTP mismatches use [`../model/adjudications.json`](../model/adjudications.json),
+the source of truth generated once from the H2c/H2d markdown groups and their
+original observed bytes. Schema 1 has one record per group: exact `rule`,
+`detail`, hex `command_pattern`, observed hex `reply_patterns`, `primary_class`,
+source and decision. These patterns are exact literals, not regex wildcards:
+a changed reply is new evidence even when its rule and command match. H2d takes
+precedence over overlapping H2c groups. fn1 accepts recorded observations of
+all adjudicated classes; fn2 accepts only `spec-ambiguity`. Fake targets accept
+none. Reports list each mismatch’s group/class and count recorded versus new;
+new mismatches fail. Driver setup errors, interruption, missing/inconsistent
+summary evidence, unexpected exit status and supervisor timeouts still fail.
+Use fresh output directories so an old mismatch file cannot excuse a new run.
 
 ## Provisioning and driver hooks
 
@@ -89,7 +118,7 @@ The callable receives keyword arguments `case`, `target`, `family`, `out`, plus:
 
 | form | inputs | result / responsibility |
 |---|---|---|
-| FUZZ | `seconds`, `corpus` | Return a nonempty argv list. The runner launches it in a recorded session with the remaining aggregate timeout and asserts exit 0. It must implement the grammar oracle and mutation controls. |
+| FUZZ | `seconds`, `corpus` | Return a nonempty argv list. The runner launches it in a recorded session with its reserved share as timeout, supplies `--seconds`, and asserts exit 0 (NNTP mismatches use the ledger below). It must implement the grammar oracle and mutation controls. |
 | FIXTURE | `path`, `contract` | Replay the fixture against the live target and assert the contract using `case`. |
 | HISTORY | `checkers` | Generate/check eligible histories, record observation gaps, and assert findings using `case`. |
 | PERF | `row` | Return `{value, unit, profile}`; extra metadata is retained. Never assert a numeric threshold. |
@@ -97,7 +126,8 @@ The callable receives keyword arguments `case`, `target`, `family`, `out`, plus:
 Missing hooks raise named skips under fn1. Drivers should put their detailed
 results in `out`; successful invocation alone is not evidence for unimplemented
 assertions. To try H2b's independent smoke target separately:
-`python3 -m fn2.tests.model.differential --target fake --seeds 0..199 --mode reader,node,peer --steps 50 --out DIR`.
+`python3 -m fn2.tests.model.differential --target fake --seeds 0..199 --mode reader,node,peer --steps 50 --seconds SHARE_MINUS_MARGIN
+  --minimize-seconds 5 --out DIR`.
 The surface runner itself accepts only fn1/fn2.
 
 Each family package has one `load_tests` hook backed by the shared form generator.

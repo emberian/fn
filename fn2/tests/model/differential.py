@@ -528,36 +528,32 @@ def pieces(items, start, end, cut):
 
 
 def probe_verdict(c, command, status, response, evidence):
-    words = command.decode('utf-8', 'replace').split()
-    offered = words[1] if len(words) > 1 else ''
-    evidence['offered_id'] = offered
-    if status:
-        if msgid(offered):
-            diagnostic = connection(c.model, 'peer', 'plain')
-            diagnostic.pending = ('TAKETHIS', offered)
-            article = diagnostic.send_block(bytes.fromhex(evidence['body_hex']))
-        else:
-            # Missing mandatory article headers requires refusal regardless of
-            # the unresolved echo binding for the malformed offered identifier.
-            article = Expect([439], rule='TAKETHIS', spec='specs/nntp.md:2412-2435')
-        verdict = reply_verdict(article, status, response, eof=evidence['wire_eof'],
-                                reset=evidence['wire_reset'], timeout=evidence['wire_timeout'])
-        evidence['article_verdict'] = dict(ok=verdict.ok, rule=verdict.rule, detail=verdict.detail,
-                                           echo_binding='specified' if msgid(offered) else 'unspecified')
-        if msgid(offered) or not verdict.ok:
-            return verdict
-    return Verdict(False, 'A14', 'specs/nntp.md:513-518,2412-2435',
-                   evidence['observation'] + '; malformed TAKETHIS rejection timing/echo binding remains unspecified')
+    """Check the recorded command/body phases against the same model as live I/O."""
+    diagnostic = connection(c.model, 'peer', 'plain')
+    initial = diagnostic.send(command)
+    original = evidence.get('command_reply', {})
+    initial_status = bytes.fromhex(original.get('status_hex', ''))
+    initial_body = original.get('body_hex')
+    initial_body = None if initial_body is None else bytes.fromhex(initial_body)
+    verdict = initial.check(initial_status, initial_body)
+    if not verdict.ok:
+        return verdict
+    initial.update(initial_status, initial_body)
+    if not diagnostic.pending:
+        return Verdict(False, 'TAKETHIS', initial.spec, 'probe command did not enter article mode')
+    offered = diagnostic.pending[1]
+    evidence['offered_id'] = (offered.decode('utf-8', 'replace')
+                              if isinstance(offered, bytes) else offered)
+    article = diagnostic.send_block(bytes.fromhex(evidence['body_hex']))
+    verdict = reply_verdict(article, status, response, eof=evidence['wire_eof'],
+                            reset=evidence['wire_reset'], timeout=evidence['wire_timeout'])
+    evidence['article_verdict'] = dict(ok=verdict.ok, rule=verdict.rule, detail=verdict.detail,
+                                     echo_binding='specified' if msgid(evidence['offered_id']) else 'token-or-dash')
+    return verdict
 
 
 def probe_takethis(wire, command, c):
-    """Observe a timed-out malformed command without committing invented state.
-
-    NNT-003 does not require immediate rejection. A body response can be judged
-    by the existing article rule only if the offered Message-ID is well-formed;
-    malformed/missing identifiers leave that rule's binding unspecified (A14).
-    Stop the session after this diagnostic; no speculative transition escapes.
-    """
+    """Complete a malformed TAKETHIS diagnostic with a bounded article body."""
     body = b'\r\n.\r\n'  # Five octets; missing required article fields => 439.
     wire.timed_out = False
     wire.send([body])
@@ -566,7 +562,7 @@ def probe_takethis(wire, command, c):
     evidence = dict(observation=observation, body_hex=body.hex(),
                     status_hex=status.hex(), body_response_hex=None if response is None else response.hex(),
                     wire_timeout=wire.timed_out, wire_eof=wire.eof,
-                    wire_reset=wire.reset, ambiguity='A14', initial_reply_timeout=True)
+                    wire_reset=wire.reset, initial_reply_timeout=False)
     verdict = probe_verdict(c, command, status, response, evidence)
     return status, response, verdict, evidence
 
@@ -625,9 +621,9 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
             nonlocal previous
             wire.failed_auth = c.failed_auth_count
             status, body = wire.reply(exp)
-            if (takethis_probe and wire.timed_out and not status and not wire.eof
+            if (takethis_probe and not status and not wire.eof
                     and command.split() and command.split()[0].upper() == b'TAKETHIS'
-                    and exp._get().rule == 'syntax'):
+                    and getattr(exp._get(), 'malformed_takethis', False)):
                 original = exp.check(status, body)
                 command_reply = dict(status_hex=status.hex(), body_hex=None if body is None else body.hex())
                 status, body, verdict, evidence = probe_takethis(wire, command, c)
@@ -895,14 +891,19 @@ class SessionRunner:
 
 def minimize(items, failing, run, seconds=30):
     # Preserve body exchanges as single commands; never split an article into headers.
+    deadline = time.monotonic() + seconds
+    if seconds <= 0:
+        return list(items)
     initial = run(items)
     units = initial.commands or list(items)
     key = failing['rule']
-    predicate = lambda xs: any(r['rule'] == key and r['detail'] == failing['detail']
-                               for r in run(xs).rows)
+    def predicate(xs):
+        # An in-flight session may finish after its budget; never start another.
+        return time.monotonic() < deadline and any(
+            r['rule'] == key and r['detail'] == failing['detail'] for r in run(xs).rows)
     if not predicate(units):
         units = list(items)
-    return fz.ddmin(units, predicate, time.monotonic() + seconds)
+    return fz.ddmin(units, predicate, deadline)
 
 
 def replay_fixture(path, **kwargs):
@@ -1081,9 +1082,15 @@ def main(argv=None):
                         stats['matches'] += result.matches
                         for row in result.rows:
                             counts[row['rule'] + '/' + row['class']] += 1
-                            reduced = (list(items) if row['rule'] == 'driver-environment' else
-                                       minimize(items, row, lambda xs: run(xs, **kw), args.minimize_seconds))
-                            reduced_result = (result if row['rule'] == 'driver-environment' else run(reduced, **kw))
+                            reduced, reduced_result = list(items), result
+                            remaining = min(args.minimize_seconds, deadline - time.monotonic())
+                            if row['rule'] != 'driver-environment' and remaining > 0:
+                                candidate = minimize(items, row, lambda xs: run(xs, **kw), remaining)
+                                if time.monotonic() < deadline:
+                                    reduced = candidate
+                                    reduced_result = run(reduced, **kw)
+                            # Keep original evidence when time runs out. Labeling a
+                            # candidate with the original exchange would forge a replay.
                             name = f"repro-{seed}-{mode}-{cut}-{stats['minimized_reproducers']:05d}.json"
                             repro = dict(row, campaign='node', role=mode, tls=transport == 'implicit',
                                          node_tls=True, plants=plants, target=args.target,

@@ -154,29 +154,49 @@ class DifferentialTests(unittest.TestCase):
             evidence = result.exchanges[-1]['takethis_probe']
             self.assertEqual(evidence['observation'], 'awaited-body' if reply else 'no-reply-after-body')
             self.assertLessEqual(len(bytes.fromhex(evidence['body_hex'])), 512)
-            self.assertFalse(evidence['command_verdict']['ok'])
+            self.assertTrue(evidence['command_verdict']['ok'])
             self.assertEqual(result.rows == [], reply.startswith(b'439'))
             replay = d.replay_recorded(dict(mode='peer', exchanges=result.exchanges, wire=result.wire))
             self.assertEqual(replay['matched'], reply.startswith(b'439'))
             if reply:
                 self.assertEqual(evidence['article_verdict']['ok'], reply.startswith(b'439'))
             else:
-                self.assertEqual(result.rows[0]['rule'], 'A14')
+                self.assertEqual(result.rows[0]['rule'], 'TAKETHIS')
             with patch.object(d.Fake, 'sendall', respond):
                 sent.clear()
                 control = d.compare([command], mode='peer')
-            self.assertTrue(control.rows)
+            self.assertTrue(control.rows)  # EOF without an article still fails.
             self.assertNotIn(b'\r\n.\r\n', sent)
         command = b'TAKETHIS <a@b\r\n'
         reply = b'439 <a@b malformed article\r\n'
         with patch.object(d.Fake, 'sendall', respond):
             result = d.compare([command], mode='peer', takethis_probe=True)
-        self.assertEqual(result.rows[0]['rule'], 'A14')
-        self.assertEqual(result.exchanges[-1]['takethis_probe']['article_verdict']['echo_binding'], 'unspecified')
+        self.assertFalse(result.rows)
+        self.assertEqual(result.exchanges[-1]['takethis_probe']['article_verdict']['echo_binding'], 'token-or-dash')
         command = b'takethis <probe@test> \r\n'
         reply = b'439 <probe@test> malformed article\r\n'
         with patch.object(d.Fake, 'sendall', respond):
             self.assertEqual(d.compare([command], mode='peer', takethis_probe=True).rows, [])
+
+    def test_malformed_takethis_early_reply_and_body_as_commands_is_caught(self):
+        original = d.Fake.sendall
+        command = b'TAKETHIS <a@b\r\n'
+        def premature(server, data):
+            if data == command:
+                server.output.extend(b'439 <a@b refused\r\n')
+                return  # Mutation: never enter body mode; subsequent lines are commands.
+            original(server, data)
+        for probe in (False, True):
+            with self.subTest(probe=probe), patch.object(d.Fake, 'sendall', premature):
+                result = d.compare([command, b'Subject: article\r\n\r\n.\r\n',
+                                    b'DATE\r\n'], mode='peer', takethis_probe=probe)
+            self.assertTrue(result.rows)
+        self.assertFalse(d.replay_recorded(dict(mode='peer', exchanges=[
+            dict(command_index=0, command_hex=command.hex(), status_hex=b'439 <a@b refused\r\n'.hex(),
+                 body_hex=None, takethis_probe=dict(command_reply=dict(
+                     status_hex=b'439 <a@b refused\r\n'.hex(), body_hex=None),
+                     body_hex=b'\r\n.\r\n'.hex(), wire_eof=False,
+                     wire_reset=None, wire_timeout=False))]))['matched'])
 
     def test_200_seeds_each_mode_every_cut(self):
         summary = dict(seeds_run=200, sessions=0, commands_compared=0, matches=0,
@@ -595,6 +615,41 @@ class DifferentialTests(unittest.TestCase):
             self.assertEqual(len(rows), 3)
             self.assertTrue(all(r['rule'] == 'driver-environment' for r in rows))
             minimize.assert_not_called()
+
+    def test_minimize_deadline_includes_initial_session(self):
+        clock, calls = [0.0], []
+        items = [b'DATE\r\n', b'HELP\r\n']
+        def run(candidate):
+            calls.append(candidate)
+            clock[0] += 2
+            return d.Result(commands=items, rows=[dict(rule='DATE', detail='planted')])
+        with patch.object(d.time, 'monotonic', side_effect=lambda: clock[0]):
+            self.assertEqual(d.minimize(items, dict(rule='DATE', detail='planted'), run, 1), items)
+        self.assertEqual(len(calls), 1)
+
+    def test_cli_budget_expiry_preserves_unminimized_evidence(self):
+        clock, calls = [0.0], []
+        row = dict(rule='DATE', detail='planted', **{'class': 'unclassified'})
+        exchange = dict(command_hex=b'DATE\r\n'.hex(), status_hex=b'500 bad\r\n'.hex())
+        def run(items, **kwargs):
+            calls.append(items)
+            clock[0] += 2
+            return d.Result(rows=[row], exchanges=[exchange], compared=1)
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(d.time, 'monotonic', side_effect=lambda: clock[0]), \
+                patch.object(d, 'SessionRunner', return_value=nullcontext(run)), \
+                patch.object(d, 'minimize') as minimize:
+            rc = d.main(['--target', 'fake', '--seeds', '0..9', '--mode', 'reader',
+                         '--steps', '1', '--seconds', '1', '--out', tmp])
+            self.assertEqual(rc, 1)  # A completed budget does not erase a mismatch.
+            summary = json.loads((Path(tmp) / 'summary.json').read_text())
+            self.assertTrue(summary['budget_exhausted'])
+            self.assertEqual(summary['sessions'], 1)
+            repro = json.loads(next(Path(tmp).glob('repro-*.json')).read_text())
+            self.assertEqual(repro['minimized_commands_hex'], repro['chunks_hex'])
+            self.assertEqual(repro['minimized_exchanges'], repro['exchanges'])
+            minimize.assert_not_called()
+        self.assertEqual(len(calls), 1)
 
     def test_cli_reproducer_compatible_hex_schema(self):
         with tempfile.TemporaryDirectory(prefix='h2b-cli-') as out:

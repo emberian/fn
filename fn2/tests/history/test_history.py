@@ -1,6 +1,7 @@
 """Spec-derived controls, golden observations, and seeded property histories."""
 from copy import deepcopy
 from dataclasses import replace
+import base64
 import io
 import json
 from pathlib import Path
@@ -269,6 +270,194 @@ class HistoryTests(unittest.TestCase):
         result = adapt(source)
         self.assertEqual(pair(result.history)[0].type, 'info')
         self.assertEqual(result.counts, {})
+
+    def test_own_cancel_observation_regression_and_refusal_control(self):
+        source = [json.loads(line) for line in (FIXTURES / 'own-cancel.jsonl').read_text().splitlines()]
+        actual = adapt(source)
+        self.assertEqual(actual.unmapped, [])
+        self.assertEqual(kinds(actual.history), [])
+        before = [r for r in actual.history if r.f != 'withdraw']
+        self.assertEqual(kinds(before), ['D1'])
+        withdrawal = next(o for o in pair(actual.history) if o.f == 'withdraw')
+        self.assertEqual(withdrawal.value['cause_call'], '575195:111')
+        self.assertEqual(withdrawal.value['message_id'], '<own-target@example.invalid>')
+        for reply, phase in [(b'441 unauthorized\r\n', 'fail'),
+                             (b'441 outcome uncertain\r\n', 'info')]:
+            refused = deepcopy(source)
+            next(r for r in refused if r['call'] == '575195:115' and r['phase'] == 'ok')['reply_hex'] = reply.hex()
+            h = adapt(refused).history
+            self.assertEqual(kinds(h), ['D1'])
+            self.assertEqual(next(o.type for o in pair(h) if o.f == 'withdraw'), phase)
+        present = deepcopy(source)
+        present[-1]['reply_hex'] = b'223 1 <own-target@example.invalid> present\r\n'.hex()
+        self.assertEqual(kinds(adapt(present).history), [])
+
+    def test_cancel_observed_on_peer_not_before(self):
+        source = [json.loads(line) for line in (FIXTURES / 'own-cancel.jsonl').read_text().splitlines()]
+        # Keep only target and accepted cancel submission; add a separate node.
+        source = [r for r in source if int(r['call'].split(':')[1]) <= 115]
+        end = source[-1]['t']
+        def read(call, command, code):
+            for phase in ('invoke', 'ok'):
+                r = dict(t=end + len(source), kind='client.command', phase=phase,
+                         call=call, conn='peer-connection', node='peer', command_hex=command.encode().hex())
+                if phase == 'ok':
+                    r['reply_hex'] = f'{code} result\r\n'.encode().hex()
+                source.append(r)
+        read('before', 'STAT <own-target@example.invalid>', 430)
+        read('cause', 'STAT <own-cancel-alice@example.invalid>', 223)
+        read('after', 'STAT <own-target@example.invalid>', 430)
+        ops = pair(adapt(source).history)
+        peer_withdrawals = [o for o in ops if o.f == 'withdraw' and o.node == 'peer']
+        self.assertEqual(len(peer_withdrawals), 1)
+        peer = peer_withdrawals[0]
+        self.assertEqual(peer.value['cause_call'], '575195:111')
+        self.assertEqual(peer.invoke.time, source[-3]['t'])
+        self.assertLess(next(o.completion.index for o in ops if o.f == 'read' and o.value['code'] == 430), peer.invoke.index)
+
+    def test_operator_withdraw_requires_success(self):
+        for exit_code, outcome, expected in [(0, 'ok', 'ok'), (1, 'fail', 'fail'),
+                                              (None, 'info', 'info')]:
+            source = [dict(t=1, kind='operator', phase='invoke', call='op', node='N',
+                           words=['article', 'withdraw', '<x>'])]
+            source.append(source[0] | dict(t=2, phase=outcome, exit_code=exit_code))
+            operation = pair(adapt(source).history)[0]
+            self.assertEqual(operation.f, 'withdraw')
+            self.assertEqual(operation.type, expected)
+            self.assertEqual(operation.value.get('authorized', False), expected == 'ok')
+
+    def test_peer_cancel_transfer_outcome_is_local(self):
+        source = [json.loads(line) for line in (FIXTURES / 'own-cancel.jsonl').read_text().splitlines()
+                  if json.loads(line)['call'] in {'575195:111', '575195:114', '575195:115'}]
+        for r in source:
+            r['node'] = 'peer'
+            if r['kind'] == 'client.command':
+                r['command_hex'] = b'IHAVE <own-cancel-alice@example.invalid>'.hex()
+                if r['phase'] == 'ok':
+                    r['reply_hex'] = b'335 send article\r\n'.hex()
+        for reply, phase in [(b'235 transferred\r\n', 'info'), (b'437 refused\r\n', 'fail'),
+                             (b'436 outcome uncertain\r\n', 'info')]:
+            source[-1]['reply_hex'] = reply.hex()
+            result = adapt(source)
+            self.assertEqual(result.unmapped, [])
+            ops = pair(result.history)
+            self.assertEqual(len(ops), 1)
+            self.assertEqual((ops[0].f, ops[0].type, ops[0].node), ('withdraw', phase, 'peer'))
+            self.assertEqual(ops[0].value['cause_call'], '575195:111')
+
+    def test_accepted_bob_cancel_cannot_excuse_lost_alice_post(self):
+        source = [json.loads(line) for line in (FIXTURES / 'ineffective-cancel.jsonl').read_text().splitlines()]
+        ops = pair(adapt(source).history)
+        self.assertEqual(kinds(adapt(source).history), [])
+        cancel = next(o for o in ops if o.f == 'withdraw')
+        self.assertEqual(cancel.type, 'fail')
+        self.assertNotIn('authorized', cancel.value)
+        self.assertTrue(any(o.f == 'post' and o.type == 'ok' and
+                            o.value['message_id'] == '<own-cancel-bob@example.invalid>' for o in ops))
+        # Remove Alice's later cancel, retain the captured crash/recovery/absence.
+        after = [json.loads(line) for line in (FIXTURES / 'own-cancel.jsonl').read_text().splitlines()
+                 if int(json.loads(line)['call'].split(':')[1]) >= 204]
+        self.assertEqual(kinds(adapt(source + after).history), ['D1'])
+
+    def test_missing_or_failed_authentication_never_authorizes_local_cancel(self):
+        source = [json.loads(line) for line in (FIXTURES / 'own-cancel.jsonl').read_text().splitlines()]
+        for conn in ('575195:17', '575195:101'):
+            for failed in (False, True):
+                changed = deepcopy(source)
+                if failed:
+                    for row in changed:
+                        if row.get('conn') == conn and bytes.fromhex(row.get('reply_hex', ''))[:3] == b'281':
+                            row['reply_hex'] = b'481 authentication failed\r\n'.hex()
+                else:
+                    changed = [r for r in changed if not (r.get('conn') == conn and
+                               bytes.fromhex(r.get('command_hex', '')).startswith(b'AUTHINFO'))]
+                result = adapt(changed)
+                self.assertEqual(next(o.type for o in pair(result.history) if o.f == 'withdraw'), 'info')
+                self.assertEqual(kinds(result.history), ['D1'])
+
+    def test_sasl_success_requires_observed_identity_on_that_connection(self):
+        source = [json.loads(line) for line in (FIXTURES / 'own-cancel.jsonl').read_text().splitlines()]
+        for mechanism, identity in [('PLAIN', b'\0alice\0password'),
+                                    ('SCRAM-SHA-256', b'n,,n=alice,r=nonce')]:
+            for code in (281, 283):
+                changed = [deepcopy(r) for r in source if r['call'] not in {'575195:20', '575195:104'}]
+                for row in changed:
+                    if row['call'] in {'575195:23', '575195:107'}:
+                        row['command_hex'] = (b'AUTHINFO SASL ' + mechanism.encode() + b' ' +
+                                              base64.b64encode(identity)).hex()
+                        if row['phase'] == 'ok':
+                            row['reply_hex'] = f'{code} success\r\n'.encode().hex()
+                self.assertEqual(kinds(adapt(changed).history), [])
+                self.assertEqual(next(o.type for o in pair(adapt(changed).history) if o.f == 'withdraw'), 'ok')
+        # A successful unsupported SASL mechanism does not reveal its account.
+        for row in changed:
+            if row['call'] == '575195:107':
+                row['command_hex'] = b'AUTHINFO SASL UNKNOWN'.hex()
+        self.assertEqual(next(o.type for o in pair(adapt(changed).history) if o.f == 'withdraw'), 'info')
+
+    def test_peer_cancel_key_hashes_encoded_key_string_and_requires_headers(self):
+        # RFC 8315 section 5.1 vector, independent of the adapter implementation.
+        key = b'qv1VXHYiCGjkX/N1nhfYKcAeUn8bCVhrWhoKuBSnpMA='
+        lock = b's/pmK/3grrz++29ce2/mQydzJuc7iqHn1nqcJiQTPMc='
+        source = [json.loads(line) for line in (FIXTURES / 'own-cancel.jsonl').read_text().splitlines()
+                  if json.loads(line)['call'] in {'575195:27', '575195:30', '575195:31',
+                                                 '575195:111', '575195:114', '575195:115'}]
+        import re
+        for r in source:
+            r['node'] = 'peer'
+            if r['kind'] == 'client.command':
+                r['command_hex'] = b'IHAVE <fixture@example.invalid>'.hex()
+                if r['phase'] == 'ok':
+                    r['reply_hex'] = b'335 send article\r\n'.hex()
+            elif r['kind'] == 'client.line' and r['phase'] == 'ok':
+                r['reply_hex'] = b'235 transferred\r\n'.hex()
+            elif 'sent_hex' in r:
+                data = bytes.fromhex(r['sent_hex'])
+                data = re.sub(rb'Cancel-Lock: [^\r]+', b'Cancel-Lock: sha256:' + lock, data)
+                data = re.sub(rb'Cancel-Key: [^\r]+', b'Cancel-Key: sha256:' + key, data)
+                r['sent_hex'] = data.hex()
+        self.assertEqual(next(o.type for o in pair(adapt(source).history) if o.f == 'withdraw'), 'ok')
+        for replacement, outcome in [(b'c29tZS1vdGhlci1rZXk=', 'fail'), (None, 'info'),
+                                     (b'(sha256:' + key + b')', 'info')]:
+            changed = deepcopy(source)
+            for r in changed:
+                if 'sent_hex' in r:
+                    data = bytes.fromhex(r['sent_hex'])
+                    field = b'' if replacement is None else (b'Cancel-Key: ' +
+                            (replacement if replacement.startswith(b'(') else b'sha256:' + replacement))
+                    r['sent_hex'] = re.sub(rb'Cancel-Key: [^\r]+', field, data).hex()
+            self.assertEqual(next(o.type for o in pair(adapt(changed).history) if o.f == 'withdraw'), outcome)
+
+    def test_sasl_continuation_and_connection_reset(self):
+        source = [json.loads(line) for line in (FIXTURES / 'own-cancel.jsonl').read_text().splitlines()]
+        for raw_transport in (False, True):
+            changed = deepcopy(source)
+            for row in changed:
+                if row['call'] == '575195:104':
+                    row['command_hex'] = b'AUTHINFO SASL PLAIN'.hex()
+                    if row['phase'] == 'ok':
+                        row['reply_hex'] = b'383 continue\r\n'.hex()
+                if row['call'] == '575195:107':
+                    row['command_hex'] = base64.b64encode(b'\0alice\0password').hex()
+            if raw_transport:
+                start = next(r for r in changed if r['call'] == '575195:107' and r['phase'] == 'invoke')
+                end = next(r for r in changed if r['call'] == '575195:107' and r['phase'] == 'ok')
+                changed = [r for r in changed if r['call'] != '575195:107']
+                send = dict(start, kind='client.send', sent_hex=start['command_hex'])
+                send.pop('command_hex')
+                line = dict(end, kind='client.line', call='sasl-result')
+                line.pop('command_hex')
+                changed += [send, dict(send, phase='ok', t=send['t']+1),
+                            dict(line, phase='invoke', t=line['t']-1), line]
+                changed.sort(key=lambda r: r['t'])
+            self.assertEqual(next(o.type for o in pair(adapt(changed).history) if o.f == 'withdraw'), 'ok')
+        before = next(r for r in source if r['call'] == '575195:111')
+        for kind in ('client.connect', 'client.close', 'client.starttls'):
+            reset = dict(node='origin', conn=before['conn'], kind=kind, call='reset')
+            changed = source + [dict(reset, t=before['t']-2, phase='invoke'),
+                                dict(reset, t=before['t']-1, phase='ok')]
+            changed.sort(key=lambda r: r['t'])
+            self.assertEqual(next(o.type for o in pair(adapt(changed).history) if o.f == 'withdraw'), 'info')
 
     def test_adapter_ambiguous_calls_and_cursor_bounds(self):
         invoke = dict(t=1, test='x', kind='invoke', phase='invoke', words=['consumer', 'ack', '/ctl', '/cursor'])

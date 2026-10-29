@@ -1,6 +1,8 @@
 """Translate native observer evidence, retaining explicit coverage failures."""
 from collections import Counter, defaultdict, deque
 from dataclasses import dataclass
+import base64
+import binascii
 import hashlib
 import json
 from pathlib import Path
@@ -48,6 +50,76 @@ def _body_digest(block):
     if b'\r\n\r\n' not in block:
         raise ValueError('ARTICLE has no header/body separator')
     return hashlib.sha256(block.split(b'\r\n\r\n', 1)[1]).hexdigest()
+
+
+def _cancel_target(headers):
+    """Only an unambiguous Control field names a cancellation target."""
+    fields = headers.get_all('Control', [])
+    if len(fields) != 1:
+        return None
+    match = re.fullmatch(r'cancel\s+(<[^<>\s]+>)', fields[0].strip(), re.I)
+    return match[1] if match else None
+
+
+def _sasl_account(mechanism, token):
+    """Recover an observed SASL identity, never infer one from success alone."""
+    try:
+        data = base64.b64decode(token, validate=True).decode('utf-8')
+        if mechanism == 'PLAIN':
+            authorization, authentication, _ = data.split('\0')
+            return authorization or authentication or None
+        if mechanism in {'SCRAM-SHA-256', 'SCRAM-SHA-256-PLUS'}:
+            flag, authorization, first = data.split(',', 2)
+            if flag not in {'n', 'y', 'p=tls-exporter', 'p=tls-unique'}:
+                return None
+            account = authorization[2:] if authorization.startswith('a=') else next(
+                (field[2:] for field in first.split(',') if field.startswith('n=')), '')
+            return account.replace('=2C', ',').replace('=3D', '=') or None
+    except (ValueError, UnicodeError, binascii.Error):
+        pass
+    return None
+
+
+def _key_authority(cause_headers, target_headers):
+    """RFC 8315: hash the base64 key STRING, not the decoded secret bytes."""
+    if cause_headers is None or target_headers is None:
+        return None
+    def tokens(headers, name):
+        values = []
+        for field in headers.get_all(name, []):
+            text, depth, escaped = [], 0, False
+            for char in str(field):
+                if depth:
+                    if escaped:
+                        escaped = False
+                    elif char == '\\':
+                        escaped = True
+                    elif char == '(':
+                        depth += 1
+                    elif char == ')':
+                        depth -= 1
+                elif char == '(':
+                    depth = 1
+                    text.append(' ')
+                else:
+                    text.append(char)
+            if depth:
+                continue
+            for token in ''.join(text).split():
+                if re.fullmatch(r'sha256:[A-Za-z0-9+/]+={0,2}', token, re.I):
+                    values.append(token.split(':', 1)[1])
+        return values
+    keys, locks = tokens(cause_headers, 'Cancel-Key'), tokens(target_headers, 'Cancel-Lock')
+    if not keys or not locks:
+        return None
+    for key in keys:
+        try:
+            digest = base64.b64encode(hashlib.sha256(key.encode('ascii')).digest()).decode('ascii')
+        except UnicodeError:
+            continue
+        if digest in locks:
+            return True
+    return False
 
 
 def adapt(records):
@@ -98,9 +170,9 @@ def adapt(records):
     calls.sort()
     events, claimed = [], set()
 
-    def emit(start, end, f, value, outcome='ok', response=None):
+    def emit(start, end, f, value, outcome='ok', response=None, suffix=''):
         a, b = raw[start], raw[end]
-        process = f"native:{a.get('test', 'fixture')}:{start}"
+        process = f"native:{a.get('test', 'fixture')}:{start}{suffix}"
         # Per-call observer IDs represent independent CLI/connection operations.
         request = {k: v for k, v in value.items() if k not in
                    {'code', 'reason', 'events', 'more', 'report', 'posture'}
@@ -111,10 +183,32 @@ def adapt(records):
         used.update((start, end))
         claimed.add(start)
 
-    state, exits, cuts = {}, set(), {}
+    state, exits, cuts, cancels = {}, set(), {}, {}
+    accounts, users, sasl, posters, article_headers = {}, {}, {}, {}, {}
+
+    def withdraw(start, end, node, target, cause_call, cause_mid=None, phase='ok'):
+        value = dict(node=node, message_id=target, cause_call=cause_call)
+        if cause_mid:
+            value['cause_message_id'] = cause_mid
+        if phase == 'ok':
+            value['authorized'] = True
+        emit(start, end, 'withdraw', value, phase, suffix=':withdraw')
 
     def stream(r):
         return (r.get('test'), r.get('node'), r.get('conn', r.get('process')))
+
+    def authority(cause, node):
+        if node == cause['origin']:
+            return cause['authorized']
+        if cause['authorized'] is True:
+            return True
+        return _key_authority(cause['headers'], article_headers.get((node, cause['target'])))
+
+    def observed_cancel(start, end, node, cause, phase='ok'):
+        allowed = authority(cause, node)
+        outcome = phase if phase != 'ok' else ('ok' if allowed is True else
+                                             'fail' if allowed is False else 'info')
+        withdraw(start, end, node, cause['target'], cause['call'], cause['mid'], outcome)
 
     def transport(start, end):
         # Only positively correlated new-format nested transport is redundant.
@@ -133,6 +227,11 @@ def adapt(records):
         extra = a.get('history_value', {}) | b.get('history_value', {})
         node = a.get('node', b.get('node', 'default'))
         value = {'node': node} | extra
+        if kind == 'operator' and words[:2] == ['article', 'withdraw'] and len(words) >= 3:
+            phase = ('info' if b['phase'] == 'info' or b.get('exit_code') is None else
+                     'ok' if b.get('exit_code') == 0 else 'fail')
+            withdraw(start, end, node, words[2], a.get('call', start), phase=phase)
+            continue
         if kind == 'node.signal':
             used.update((start, end))  # signal request alone does not establish death
             continue
@@ -257,11 +356,30 @@ def adapt(records):
             emit(start, end, f, value, phase)
             continue
         if kind in {'client.connect', 'client.close', 'client.starttls'} and 'conn' in a:
+            for table in (accounts, users, sasl):
+                table.pop(stream(a), None)
             used.update((start, end))
             transport(start, end)
             if kind == 'client.starttls':
                 used.update(i for s, e in calls if start < s < e < end
                             and stream(raw[s]) == stream(a) for i in (s, e))
+            continue
+        # Some clients send SASL continuations with send/line, not command.
+        connection = stream(a)
+        if connection in sasl and kind in {'client.send', 'client.line'}:
+            negotiation = sasl[connection]
+            if kind == 'client.send':
+                token = bytes.fromhex(a.get('sent_hex', '')).strip()
+                account = _sasl_account(negotiation['mechanism'], token)
+                if account is not None:
+                    negotiation['account'] = account
+            else:
+                status = bytes.fromhex(b.get('reply_hex', ''))[:3]
+                if status in {b'281', b'283'} and b['phase'] == 'ok':
+                    accounts[connection] = negotiation['account']
+                if status != b'383':
+                    sasl.pop(connection)
+            used.update((start, end))
             continue
         if kind != 'client.command':
             continue
@@ -271,25 +389,50 @@ def adapt(records):
         verb = command[0].upper()
         reply = bytes.fromhex(b.get('reply_hex', '')).decode('ascii', 'replace')
         code = int(reply[:3]) if reply[:3].isdigit() else None
+        if verb == 'AUTHINFO' or connection in sasl:
+            if verb == 'AUTHINFO' and len(command) >= 2:
+                method = command[1].upper()
+                if method == 'USER' and len(command) == 3 and code == 381 and b['phase'] == 'ok':
+                    users[connection] = command[2] if '\ufffd' not in command[2] else None
+                elif method == 'PASS' and code == 281 and b['phase'] == 'ok':
+                    accounts[connection] = users.pop(connection, None)
+                elif method == 'SASL' and len(command) >= 3:
+                    mechanism = command[2].upper()
+                    sasl[connection] = dict(mechanism=mechanism, account=_sasl_account(
+                        mechanism, command[3].encode() if len(command) > 3 else b''))
+            elif connection in sasl:
+                account = _sasl_account(sasl[connection]['mechanism'], command[0].encode())
+                if account is not None:
+                    sasl[connection]['account'] = account
+            if connection in sasl:
+                if code in {281, 283} and b['phase'] == 'ok':
+                    accounts[connection] = sasl[connection]['account']
+                if code != 383:
+                    sasl.pop(connection)
+            used.update((start, end))
+            transport(start, end)
+            continue
         following = [(s, e) for s, e in calls if s > end and
                      stream(raw[s]) == stream(a)]
         stop = next((s for s, e in following if raw[s]['kind'] == 'client.command'), len(raw))
-        if verb == 'POST':
+        if verb in {'POST', 'IHAVE'}:
             final_end = end
-            if code == 340:
+            if code == (340 if verb == 'POST' else 335):
                 final = next(((s, e) for s, e in following if s < stop
                               and raw[s]['kind'] == 'client.line'
                               and (raw[e]['phase'] == 'info' or
                                    bytes.fromhex(raw[e].get('reply_hex', ''))[:3] in
-                                   {b'240', b'441', b'440', b'480'})), None)
+                                   {b'240', b'441', b'440', b'480', b'235', b'436', b'437'})), None)
                 if final:
                     s, final_end = final
                     reply = bytes.fromhex(raw[final_end].get('reply_hex', '')).decode('ascii', 'replace')
                     code = int(reply[:3]) if reply[:3].isdigit() else None
                     used.update((s, final_end))
                     claimed.add(s)
-            phase = 'ok' if code == 240 else 'fail' if code in {440, 480, 441} else 'info'
-            if 'uncertain' in reply.lower() or b['phase'] == 'info':
+            phase = ('ok' if code == (240 if verb == 'POST' else 235) else
+                     'fail' if code in {440, 480, 441, 435, 436, 437} else 'info')
+            if ('uncertain' in reply.lower() or b['phase'] == 'info'
+                    or raw[final_end]['phase'] == 'info'):
                 phase = 'info'
             reason = reply[4:].strip()
             if 'already stored' in reason:
@@ -297,6 +440,7 @@ def adapt(records):
             elif 'different article with this Message-ID' in reason:
                 reason = 'conflict'
             value.update(code=code, reason=reason)
+            target, headers = None, None
             sends = [raw[s] for s, e in following if e <= final_end and raw[s]['kind'] == 'client.send']
             if sends and not any('sent_sha256' in r for r in sends):
                 wire = b''.join(bytes.fromhex(r.get('sent_hex', '')) for r in sends)
@@ -304,16 +448,47 @@ def adapt(records):
                     article = b'\r\n'.join(line[1:] if line.startswith(b'..') else line
                                             for line in wire[:-3].split(b'\r\n'))
                     headers = BytesHeaderParser().parsebytes(article)
+                    target = _cancel_target(headers)
                     mid = headers.get('Message-ID')
                     if mid:
                         try:
                             value.update(message_id=mid.strip(), digest=_body_digest(article))
                         except ValueError:
                             pass
+            mid = value.get('message_id')
+            if phase == 'ok' and mid and headers is not None:
+                article_headers.setdefault((node, mid), headers)
+                if verb == 'POST':
+                    posters.setdefault((node, mid), accounts.get(connection) if 'conn' in a else None)
+            cause = None
+            if target:
+                poster = posters.get((node, target))
+                author = accounts.get(connection) if 'conn' in a else None
+                local = poster == author if poster is not None and author is not None else None
+                prior = cancels.get(mid)
+                cause = (prior if verb == 'IHAVE' and prior else
+                         dict(target=target, call=a.get('call', start), mid=mid,
+                              origin=node if verb == 'POST' else None,
+                              authorized=local if verb == 'POST' else None, headers=headers))
+            if verb == 'IHAVE':
+                # A transfer is observation on this peer, never evidence of
+                # simultaneous delivery on any other node. Other transfers
+                # remain outside this adapter's POST durability vocabulary.
+                if target:
+                    observed_cancel(start, final_end, node, cause, phase)
+                    if phase == 'ok' and mid:
+                        cancels.setdefault(mid, cause)
+                    used.add(end)
+                    transport(start, final_end)
+                continue
             if not {'message_id', 'digest'} <= value.keys():
                 value['observed_only'] = True
                 miss(end, 'POST send/body/Message-ID not observed')
             emit(start, final_end, 'post', value, phase)
+            if target:
+                observed_cancel(start, final_end, node, cause, phase)
+                if phase == 'ok' and mid:
+                    cancels.setdefault(mid, cause)
             used.add(end)
             transport(start, final_end)
         elif verb in {'ARTICLE', 'HEAD', 'STAT'} and len(command) == 2 and command[1].startswith('<'):
@@ -328,6 +503,15 @@ def adapt(records):
                     claimed.add(s)
                     if raw[final_end]['phase'] != 'ok':
                         read_phase = 'info'
+                    elif 'reply_hex' in raw[final_end]:
+                        headers = BytesHeaderParser().parsebytes(bytes.fromhex(raw[final_end]['reply_hex']))
+                        article_headers[(node, command[1])] = headers
+                        target = _cancel_target(headers)
+                        if target:
+                            cancels.setdefault(command[1], dict(target=target, call=a.get('call', start),
+                                mid=command[1], origin=None, authorized=None, headers=headers))
+                        if command[1] in cancels:
+                            cancels[command[1]]['headers'] = headers
                     if verb == 'ARTICLE':
                         try:
                             value['digest'] = _body_digest(bytes.fromhex(raw[final_end]['reply_hex']))
@@ -339,6 +523,11 @@ def adapt(records):
             if 'digest' not in value and code in {220, 221, 223}:
                 miss(end, 'read presence only; no payload digest')
             emit(start, final_end, 'read', value, read_phase)
+            cause = cancels.get(command[1])
+            if (cause and read_phase == 'ok'
+                    and code in {220, 221, 223}):
+                # The cause first becomes observed here at read completion.
+                observed_cancel(final_end, final_end, node, cause)
             used.add(end)
             transport(start, final_end)
     for start, end in calls:

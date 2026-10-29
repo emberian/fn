@@ -237,6 +237,75 @@ class ModelTests(unittest.TestCase):
         expected, reply = self.call('position', 'absent')
         self.assertIsNotNone(expected.check(dict(reply, reason='credential')))
 
+    def test_recorded_unregister_is_narrow_and_preserves_spec_state(self):
+        self.call('register'); self.call('unregister')
+        expected, reply = self.call('unregister')
+        observed = dict(reply, reason='scope')
+        self.assertIsNotNone(expected.check(observed))  # Spec oracle stays strict.
+        self.assertIsNone(expected.recorded_difference(observed))  # Fake targets.
+        for target in ('fn1', 'fn2'):
+            evidence = expected.update(observed, target)
+            self.assertEqual((evidence['group'], evidence['class']), ('C01', 'spec-ambiguity'))
+            self.assertEqual(evidence['observed_reply']['reason'], 'scope')
+            self.assertEqual(evidence['spec_reply']['reason'], 'unknown-consumer')
+            self.assertNotIn('c', self.model.consumers)
+        for wrong in (dict(observed, reason='credential'), dict(observed, outcome='uncertain'),
+                      dict(observed, command='position'),
+                      dict(observed, _frontier_after=self.model.frontier+1)):
+            with self.subTest(reply=wrong), self.assertRaises(AssertionError):
+                expected.update(wrong, 'fn1')
+        with self.assertRaises(AssertionError):
+            self.model.rule('unregister', 'never-registered').update(observed, 'fn1')
+        self.call('register')
+        with self.assertRaises(AssertionError):
+            self.model.rule('unregister', 'c').update(observed, 'fn1')
+
+    def test_live_machine_collects_known_difference_and_continues(self):
+        from contextlib import redirect_stdout
+        import io
+        from fn2.tests.surface.consumer.test_model_consumer import machine
+
+        class RecordedTarget(FakeTarget):
+            # Explicit live-target simulation; ordinary FakeTarget has no rows.
+            adjudication_target = 'fn1'
+
+            def call(self, request):
+                reply = super().call(request)
+                if request.verb == 'unregister' and reply.get('reason') == 'unknown-consumer':
+                    reply['reason'] = 'scope'
+                return reply
+
+        recorded, traces, output = [], [], io.StringIO()
+        live = machine(self, RecordedTarget, traces, recorded)()
+        try:
+            with redirect_stdout(output):
+                live.step('register', 'c'); live.step('unregister', 'c')
+                live.step('unregister', 'c'); live.step('register', 'c')
+                live.step('position', 'c')
+            self.assertEqual(len(recorded), 1)
+            self.assertEqual(recorded[0]['group'], 'C01')
+            self.assertIn('consumer recorded difference:', output.getvalue())
+            self.assertEqual(live.trace[2][2]['reason'], 'scope')  # Raw H evidence retained.
+            live.target.adjudication_target = 'fake'
+            live.step('unregister', 'c')
+            with self.assertRaises(AssertionError):
+                live.step('unregister', 'c')
+        finally:
+            live.teardown()
+        self.assertEqual(len(traces), 1)
+
+    def test_binding_configuration_survives_unregister(self):
+        self.call('register')
+        self.model.bindings['c'] = ('hs-secret', True)
+        self.call('unregister')
+        expected = self.model.rule('poll', 'c')
+        self.assertEqual(expected.reasons, {'bound', 'unknown-consumer'})
+        reply = dict(command='poll', outcome='refused', reason='bound',
+                     _frontier_after=self.target.frontier)
+        self.model.frontier = self.target.frontier
+        expected.update(reply)
+        self.assertEqual(self.model.bindings['c'], ('hs-secret', True))
+
     def test_codec_all_fields_and_invalid_encodings(self):
         cursor = Cursor('h'*64, 'i'*64, 'c'*64, 0xffffffff, 'p'*64, 'q'*64, 3, 4, 123)
         self.assertEqual(len(cursor.encode()), 346)

@@ -65,7 +65,7 @@ name and citation, so a HEAD failure is reported as HEAD, not ARTICLE.
 | POST policy / outcomes | specs/nntp.md:1061-1202,1600-1605,1985-2010 | Closed and unauthorized groups refused, forged approval refused, unapproved moderated post may queue; accepted/refused/uncertain recorded distinctly; uncertainty does not assert a durable acceptance (E4). |
 | IHAVE | specs/nntp.md:530-537,2412-2443; RFC 3977 §6.3.2 | Reader 502; held ID 435; unknown offer {335,435,436}; 335 enters body mode; transfer {235,437,436}; duplicate 437. |
 | CHECK | specs/nntp.md:2412-2443; RFC 4644 §2.4 as cited there | Echo ID; held 438; unknown {238,431,438}; 238 records promise; full max-inflight gives 431. |
-| TAKETHIS | specs/nntp.md:530-537,2412-2443; RFC 4644 §2.5 as cited there | No initial reply; block settles {239,439,436} with ID; retire promise; excessive body 439 then closed. |
+| TAKETHIS | specs/nntp.md:530-537,2412-2443; RFC 4644 §2.5 as cited there | No initial reply; valid-ID block settles {239,439,436} with ID; malformed/missing-ID command still consumes a block, then 439 with sent token or `-`; retire promise; excessive body 439 then closed. |
 | AUTHINFO USER/PASS | specs/nntp.md:1482-1509,1661-1696; RFC 4643 §2.3 | 381 caches latest username; missing USER 482; known credential 281; wrong 481; protected-only 483; after authentication/compression 502. |
 | AUTHINFO failure budget | specs/nntp.md:1661-1696; RFC 4643 §6 | Third failed PASS/SASL is 481 plus 400 then closed; cancellation/syntax/483/503/504 do not increment; STARTTLS preserves count. |
 | AUTHINFO SASL | specs/nntp.md:1698-1774; RFC 4643 §2.4 | Mechanism offer rules; PLAIN TLS-only; 383/canonical challenge, 281 PLAIN or 283 canonical final; 481/503/504; cancellation; response state consumes command-looking lines. Cryptographic exchange outcome is abstract, per H2b boundary. |
@@ -154,15 +154,20 @@ name and citation, so a HEAD failure is reported as HEAD, not ARTICLE.
   closing; the 14 `closed` rows were an incorrect mandatory-close model effect.
   Neither timeout nor TLS reset is evidence of a permitted clean server close.
 
-  **A14 timing remainder:** 15 run-2 rows are malformed TAKETHIS lines with
-  `reply_timeout=True`, not server EOF; final EOF follows driver shutdown.
-  RFC 4644 §2.5.2 (`rfc4644.txt:375-387`) sends the article immediately and
-  specs/nntp.md:2421-2422 says TAKETHIS has no command formal. The driver waits
-  for 501 because the model rejects the malformed argument before entering body
-  mode. These sources do not fix immediate-501 versus drain-before-reject timing
-  for invalid TAKETHIS syntax. Retain these as evidence-open ambiguity; a future
-  paired probe must send a bounded dot-terminated body immediately and record the
-  original wire before shutdown. No timeout is turned into a model match.
+  **A14 TAKETHIS timing resolved (HT):** RFC 4644 §2.5.2
+  (`rfc4644.txt:375-387`) says “The article is sent immediately following
+  the CRLF at the end of the TAKETHIS command line.” The model consumes the
+  block before replying even when the peer's offered identifier is malformed
+  or absent, then requires 439. RFC 4644 §2.5.1 (`rfc4644.txt:370-371`) binds
+  the reply to the offered Message-ID; it defines no binding for an invalid or
+  absent identifier. The model accepts the sent token or `-` in that case,
+  while a valid offered ID retains its exact echo requirement. Structural line
+  framing/length bounds and reader-side A15 precedence remain separate.
+  All 15 original run-2 A14 rows now match the observed command prefix: their
+  timeout contains no reply before the article, exactly what the model expects;
+  this proves no body acceptance, body refusal, or EOF. The 15 corresponding HS
+  probes all observed `awaited-body`, then 439, and now match both phases.
+  The mutation control rejects early 439 and subsequent body-as-command parsing.
 - **A15 — permission versus malformed argument precedence.**
   specs/nntp.md:78-80 specifies reader 502 for the three transit verbs; RFC 3977
   §3.2.1 (`rfc3977.txt:547-555,579-603`) specifies syntax and authorization

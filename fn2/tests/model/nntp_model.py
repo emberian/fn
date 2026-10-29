@@ -474,6 +474,21 @@ class Conn:
             return self._sasl_response(line)
         try:
             raw = framing.command_line(line)
+            # Streaming has no command reply: consume the article even when
+            # the offered identifier is malformed (RFC 4644 section 2.5.2).
+            # Preserve raw token octets, including invalid UTF-8, for echo checks.
+            streaming = re.split(rb"[ \t]+", raw)
+            if self.peer and streaming[0].upper() == b"TAKETHIS":
+                offered = streaming[1] if len(streaming) > 1 else b"-"
+                try:
+                    valid = len(streaming) == 2 and msgid(offered.decode("utf-8"))
+                except UnicodeError:
+                    valid = False
+                if not valid:
+                    result = Expect.none("TAKETHIS", SPECS["TAKETHIS"])
+                    result.malformed_takethis = True  # Optional bounded diagnostic.
+                    result.effect = lambda *_: setattr(self, "pending", ("TAKETHIS", offered))
+                    return result
             if raw[:1] in b" \t" or raw[-1:] in b" \t":
                 return self._error()
             words = re.split(r"[ \t]+", raw.decode("utf-8"))
@@ -1056,6 +1071,20 @@ class Conn:
             raise ValueError("no POST/IHAVE/TAKETHIS body requested")
         rule, offered = self.pending
         transit = rule != "POST"
+        if rule == "TAKETHIS" and isinstance(offered, bytes):
+            # Invalid/missing ID binding is unspecified: retain the sent token
+            # or the conventional absent-ID marker, never permit success.
+            terminated = block == b".\r\n" or block.endswith(b"\r\n.\r\n")
+            try:
+                valid_id = msgid(offered.decode("utf-8"))
+            except UnicodeError:
+                valid_id = False
+            echo = re.escape(offered) if valid_id else rb"(?:" + re.escape(offered) + rb"|-)"
+            pattern = rb"439 " + echo + rb"(?: .*)?"
+            return self._reply(rule, 439, pattern=pattern,
+                               effect=lambda *_: self._finish_body(close=not terminated),
+                               close_after_reply=not terminated,
+                               close_effect=lambda: self._finish_body(close=True))
         try:
             data = framing.decode_block(block)
         except framing.FramingError:

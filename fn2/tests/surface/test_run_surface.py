@@ -5,6 +5,8 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import sys
+import subprocess
 import unittest
 from unittest import mock
 
@@ -263,6 +265,149 @@ class SurfaceRunnerTests(unittest.TestCase):
         self.assertEqual(result.records[0]['outcome'], 'ok')
         self.assertGreater(FakeTarget.connections, 0)
         self.assertGreater(FakeClient.commands, 0)
+
+
+class SurfaceBudgetTests(unittest.TestCase):
+    def test_native_timeouts_are_per_box_and_module(self):
+        for box, expected in [('laptop', 300), ('hbox', 2400)]:
+            with mock.patch.dict(surface.RUN, {'box': box}, clear=True):
+                self.assertEqual(surface.native_timeout('article_quiet'), expected)
+                for name in ('open_depth', 'over_pins', 'over_window'):
+                    self.assertEqual(surface.native_timeout(name), 2400)
+                case = surface.SurfaceCase()
+                case.setUp()
+                with mock.patch.object(surface.run_natives, 'provision', return_value={'article_quiet': {}}), \
+                        mock.patch.object(surface.run_natives, 'child', return_value={
+                            'status': 'timeout', 'tests': []}) as child:
+                    with self.assertRaisesRegex(AssertionError, 'timeout'):
+                        case.native('nntp', 'article_quiet')
+                    self.assertEqual(child.call_args.args[1].timeout, expected)
+
+    def test_equal_fuzz_shares_ignore_execution_order(self):
+        self.assertEqual(surface.fuzz_allocations(['nntp', 'consumer'], 'laptop'),
+                         {'nntp': 300, 'consumer': 300})
+        self.assertEqual(surface.fuzz_allocations(['consumer', 'nntp'], 'laptop'),
+                         {'nntp': 300, 'consumer': 300})
+        self.assertEqual(surface.fuzz_allocations(['nntp'], 'hbox'), {'nntp': 3600})
+        with mock.patch.dict(surface.FAMILIES['consumer']['forms']['F'], {'applicable': False}):
+            self.assertEqual(surface.fuzz_allocations(['nntp', 'consumer'], 'laptop'), {'nntp': 600})
+
+    def test_live_examples_and_zero_shrink_work(self):
+        from hypothesis import Phase
+        for box, counts in [('laptop', (5, 200)), ('hbox', (50, 5000))]:
+            with mock.patch.dict(surface.RUN, {'box': box}, clear=True):
+                for family, count in zip(('consumer', 'nntp'), counts):
+                    settings = surface.live_model_settings(family)
+                    self.assertEqual(settings.max_examples, count)
+                    self.assertNotIn(Phase.shrink, settings.phases)
+                    self.assertEqual(settings.stateful_step_count, 50)
+
+    @staticmethod
+    def known_difference():
+        ledger = json.loads((surface.ROOT / 'fn2/tests/model/adjudications.json').read_text())
+        group = next(g for g in ledger['groups'] if g['group'] == 'H2d-09')
+        return dict(rule=group['rule'], detail=group['detail'],
+                    command_hex=group['command_pattern'], reply_hex=group['reply_patterns'][0],
+                    **{'class': 'unclassified'})
+
+    def test_recorded_observation_is_target_scoped_and_reply_specific(self):
+        row = self.known_difference()
+        self.assertEqual(surface.adjudicate_differences([row], 'fn1')[0]['disposition'], 'recorded')
+        self.assertEqual(surface.adjudicate_differences([row], 'fn2')[0]['disposition'], 'new')
+        self.assertEqual(surface.adjudicate_differences([row], 'fake')[0]['disposition'], 'new')
+        self.assertEqual(surface.adjudicate_differences([dict(row, reply_hex='3530300d0a')], 'fn1')[0]['disposition'], 'new')
+        ledger = json.loads((surface.ROOT / 'fn2/tests/model/adjudications.json').read_text())
+        group = next(g for g in ledger['groups'] if g['primary_class'] == 'spec-ambiguity')
+        ambiguous = dict(rule=group['rule'], detail=group['detail'], command_hex=group['command_pattern'],
+                         reply_hex=group['reply_patterns'][0])
+        self.assertEqual(surface.adjudicate_differences([ambiguous], 'fn2')[0]['disposition'], 'recorded')
+
+    def test_latest_adjudication_cannot_fall_back_to_old_ambiguity(self):
+        ledger = json.loads((surface.ROOT / 'fn2/tests/model/adjudications.json').read_text())
+        group = next(g for g in ledger['groups'] if g['group'] == 'H2d-02')
+        row = dict(rule=group['rule'], detail=group['detail'], command_hex=group['command_pattern'],
+                   reply_hex=group['reply_patterns'][0])
+        fn1 = surface.adjudicate_differences([row], 'fn1')[0]
+        fn2 = surface.adjudicate_differences([row], 'fn2')[0]
+        self.assertEqual((fn1['disposition'], fn1['group']), ('recorded', 'H2d-02'))
+        self.assertEqual((fn2['disposition'], fn2['group']), ('new', 'H2d-02'))
+        self.assertEqual(fn2['primary_class'], 'model-bug')
+
+    def test_markdown_reports_fuzz_and_consumer_differences(self):
+        evidence = {'differences': [dict(disposition='new', group=None,
+                                        primary_class='unclassified', detail='planted')],
+                    'recorded_difference_count': 0, 'new_difference_count': 1}
+        rows = {}
+        for form, data in [('F', evidence), ('S', {'recorded_differences': [
+                dict(group='consumer-01', **{'class': 'spec-ambiguity'}, observed_reply='scope') ]})]:
+            rows[form] = dict(selected=True, selection_reason='', status='PASS', tests=1,
+                executed=1, ok=1, fail=0, skips={}, testcase_calls=1,
+                records=[{'evidence': data}])
+        markdown = run_surface.markdown('consumer', dict(status='PASS', forms=rows,
+            owed_forms=[], served_empty=False, performance=[]))
+        self.assertIn('F differences: recorded=0; new=1', markdown)
+        self.assertIn('S differences: recorded=1; new=0', markdown)
+        self.assertIn('| recorded | consumer-01 | spec-ambiguity | scope |', markdown)
+
+    def fake_fuzz(self, rows, status=None):
+        case = surface.SurfaceCase()
+        case.setUp()
+        def driver(command, directory, seconds):
+            directory.mkdir(parents=True)
+            self.assertEqual(seconds, 300)
+            self.assertEqual(command[command.index('--seconds') + 1], '240')
+            (directory / 'summary.json').write_text(json.dumps(dict(
+                mismatches={'fixture': len(rows)} if rows else {}, budget_exhausted=True)))
+            (directory / 'differences.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows))
+            return int(bool(rows)) if status is None else status
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.dict(surface.RUN, {'out': directory, 'box': 'laptop',
+                                            'fuzz_allocations': {'nntp': 300, 'consumer': 300}}, clear=True), \
+                mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn1'}), \
+                mock.patch.object(surface, 'driver', side_effect=driver):
+            case.fuzz('nntp')
+            self.assertEqual(surface.RUN['fuzz_allocations']['consumer'], 300)
+        return case.evidence
+
+    def test_fake_driver_recorded_mismatch_completes(self):
+        evidence = self.fake_fuzz([self.known_difference()])
+        self.assertEqual(evidence['recorded_difference_count'], 1)
+        self.assertEqual(evidence['new_difference_count'], 0)
+        self.assertEqual(evidence['differences'][0]['group'], 'H2d-09')
+
+    def test_fake_driver_new_mismatch_fails(self):
+        row = dict(self.known_difference(), detail='planted new mismatch')
+        with self.assertRaisesRegex(AssertionError, 'new wire mismatches'):
+            self.fake_fuzz([row])
+        with self.assertRaisesRegex(AssertionError, 'wire fuzz driver failed'):
+            self.fake_fuzz([], status=2)
+
+    def test_self_stopping_driver_is_completed(self):
+        case = surface.SurfaceCase()
+        case.setUp()
+        script = ("import argparse,time,json,pathlib; "
+                  "p=argparse.ArgumentParser();p.add_argument('--seconds',type=float); "
+                  "a=p.parse_args();time.sleep(a.seconds); "
+                  "pathlib.Path(%r).write_text(json.dumps({'mismatches':{},'budget_exhausted':True}))")
+        with tempfile.TemporaryDirectory() as directory:
+            summary = str(Path(directory) / 'nntp/fuzz/summary.json')
+            with mock.patch.dict(surface.RUN, {'out': directory, 'box': 'laptop',
+                                             'fuzz_allocations': {'nntp': 1.0}}, clear=True), \
+                    mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn1',
+                                                 'FN2_SURFACE_FUZZ_NNTP': 'fixture:driver'}), \
+                    mock.patch.object(surface, 'hook', return_value=[sys.executable, '-c', script % summary]):
+                case.fuzz('nntp')
+            self.assertTrue(case.evidence['fuzz_summary']['budget_exhausted'])
+            self.assertFalse((Path(directory) / 'nntp/fuzz/driver.pid').exists())
+
+    def test_supervisor_timeout_is_still_failure(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.dict(surface.RUN, {'out': directory, 'box': 'laptop'}, clear=True), \
+                mock.patch.object(surface, 'driver', side_effect=subprocess.TimeoutExpired('fake', 600)):
+            case = surface.SurfaceCase()
+            case.setUp()
+            with self.assertRaises(subprocess.TimeoutExpired):
+                case.fuzz('nntp')
 
 
 if __name__ == '__main__':

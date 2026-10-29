@@ -9,7 +9,6 @@ import re
 import signal
 import subprocess
 import sys
-import time
 import unittest
 
 from fn2.tests.harness import run_natives
@@ -31,6 +30,59 @@ REQUIREMENTS = {
     'store_ops': 'store needs store STORE ...',
 }
 RUN = {}
+
+
+def box_budget():
+    return MANIFEST['budget'][RUN.get('box', os.environ.get('FN2_SURFACE_BOX', 'laptop'))]
+
+
+def native_timeout(name):
+    box = RUN.get('box', os.environ.get('FN2_SURFACE_BOX', 'laptop'))
+    return MANIFEST['native_timeout_overrides'].get(name, {}).get(box,
+        MANIFEST['budget'][box]['native_timeout'])
+
+
+def live_model_settings(family):
+    """Live generation only: zero shrink executions, not a wall-clock deadline.
+
+    Hypothesis has no public shrink-time setting. Disabling Phase.shrink bounds
+    that expensive work to zero; a failing example may still be replayed once.
+    Fake-target model unit tests keep their own 200-example shrinking settings.
+    """
+    from hypothesis import Phase, settings
+    box = RUN.get('box', os.environ.get('FN2_SURFACE_BOX', 'laptop'))
+    cadence = FAMILIES[family]['cadence'][box]
+    return settings(max_examples=cadence['model_examples'],
+                    stateful_step_count=cadence['steps'], deadline=None,
+                    database=None, derandomize=True, phases=(Phase.generate,),
+                    report_multiple_bugs=False)
+
+
+def fuzz_allocations(families, box):
+    eligible = [name for name in families if 'F' in FAMILIES[name]['cadence'][box]['forms']
+                and FAMILIES[name]['forms']['F']['applicable']
+                and FAMILIES[name]['forms']['F'].get('status') != 'owed']
+    share = MANIFEST['budget'][box]['fuzz_seconds'] / len(eligible) if eligible else 0
+    return dict.fromkeys(eligible, share)
+
+
+def adjudicate_differences(rows, target):
+    """Only exact recorded observations are exemptions; fresh values stay new."""
+    ledger = json.loads((ROOT / 'fn2/tests/model/adjudications.json').read_text())
+    if ledger['schema_version'] != 1:
+        raise ValueError('unsupported differential adjudication schema')
+    groups = list(reversed(ledger['groups']))  # H2d supersedes overlapping H2c evidence.
+    result = []
+    for row in rows:
+        group = next((g for g in groups if row.get('rule') == g['rule'] and row.get('detail') == g['detail']
+            and row.get('command_hex') == g['command_pattern']
+            and row.get('reply_hex') in g['reply_patterns']), None)
+        recorded = group is not None and (target == 'fn1' or
+            (target == 'fn2' and group['primary_class'] == 'spec-ambiguity'))
+        result.append(dict(row, disposition='recorded' if recorded else 'new',
+                           group=group['group'] if group else None,
+                           primary_class=group['primary_class'] if group else row.get('class', 'unclassified')))
+    return result
 
 
 def serving(family):
@@ -86,11 +138,11 @@ def driver(command, directory, seconds, env=None):
 
 class Target:
     """The selected live backend; the model owns expected replies, never this class."""
-    def __init__(self, case):
+    def __init__(self, case, groups=('surface.test',)):
         import tests.native_harness as native_harness
         image = native_harness.native_image('FN_NATIVE_HOST')
         self.node = native_harness.Node(case, image)
-        self.node.init('surface.test')
+        self.node.init(*groups)
         self.node.start()
 
     def connect(self):
@@ -104,7 +156,7 @@ class SurfaceCase(unittest.TestCase):
     def native(self, family, name):
         out = output(family) / 'natives'; out.mkdir(exist_ok=True)
         args = argparse.Namespace(out=str(out), backend=os.environ.get('FN2_SURFACE_TARGET', 'fn2'), retired_skip=True,
-                                  timeout=300, env_plan=os.environ.get('FN2_SURFACE_IMAGES',
+                                  timeout=native_timeout(name), env_plan=os.environ.get('FN2_SURFACE_IMAGES',
                                   'developer,production,dtn,dtn-developer,reference,developer-stripped'),
                                   identity=os.environ.get('FN2_SURFACE_IDENTITY'),
                                   source=os.environ.get('FN2_SURFACE_SOURCE'))
@@ -127,27 +179,49 @@ class SurfaceCase(unittest.TestCase):
         raise ValueError('no implemented model adapter: ' + FAMILIES[family]['model'])
 
     def fuzz(self, family):
-        budget = RUN.get('fuzz_remaining', 600)
-        if budget <= 0:
-            self.skipTest('aggregate fuzz budget exhausted')
-        start = time.monotonic()
-        try:
-            if family != 'nntp' or os.environ.get('FN2_SURFACE_FUZZ_NNTP'):
-                command = hook(family, 'FUZZ', self, seconds=budget,
-                               corpus=FAMILIES[family]['fuzz']['corpus'])
-            else:
-                # Public H2b CLI only; no dependency on its changing internals.
-                command = [sys.executable, '-m', 'fn2.tests.model.differential', '--target',
-                           os.environ.get('FN2_SURFACE_TARGET', 'fn2'),
-                           '--seeds', f"0..{RUN.get('examples', 200)-1}", '--mode', 'reader,node,peer',
-                           '--steps', '50', '--out', str(output(family) / 'fuzz')]
-            if not isinstance(command, list) or not command or not all(isinstance(s, str) for s in command):
-                raise ValueError('fuzz hook must return a nonempty argv list')
-            status = driver(command, output(family) / 'fuzz', budget)
-            self.evidence['fuzz_report'] = str(output(family) / 'fuzz')
+        budget = RUN.get('fuzz_allocations', {}).get(family, box_budget()['fuzz_seconds'])
+        margin = min(box_budget()['fuzz_margin_seconds'], budget / 2)
+        seconds = budget - margin
+        directory = output(family) / 'fuzz'
+        if family != 'nntp' or os.environ.get('FN2_SURFACE_FUZZ_NNTP'):
+            command = hook(family, 'FUZZ', self, seconds=seconds,
+                           corpus=FAMILIES[family]['fuzz']['corpus'])
+        else:
+            command = [sys.executable, '-m', 'fn2.tests.model.differential', '--target',
+                       os.environ.get('FN2_SURFACE_TARGET', 'fn2'),
+                       '--seeds', f"0..{RUN.get('examples', 200)-1}", '--mode', 'reader,node,peer',
+                       '--steps', '50', '--minimize-seconds',
+                       str(min(box_budget()['fuzz_minimize_seconds'], margin / 4)),
+                       '--out', str(directory)]
+        if not isinstance(command, list) or not command or not all(isinstance(s, str) for s in command):
+            raise ValueError('fuzz hook must return a nonempty argv list')
+        command = list(command)
+        if '--seconds' in command:
+            command[command.index('--seconds') + 1] = str(seconds)
+        else:
+            command += ['--seconds', str(seconds)]
+        # Each invocation owns fresh artifacts: never adjudicate stale prior output.
+        if any((directory / name).exists() for name in ('summary.json', 'differences.jsonl')):
+            raise ValueError('fuzz output already contains results; choose a fresh --out directory')
+        self.evidence.update(fuzz_report=str(directory), fuzz_budget_seconds=budget,
+                             fuzz_driver_seconds=seconds)
+        status = driver(command, directory, budget)
+        if family == 'nntp':
+            summary = json.loads((directory / 'summary.json').read_text())
+            path = directory / 'differences.jsonl'
+            rows = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+            judged = adjudicate_differences(rows, os.environ.get('FN2_SURFACE_TARGET', 'fn2'))
+            self.evidence['differences'] = judged
+            self.evidence['recorded_difference_count'] = sum(r['disposition'] == 'recorded' for r in judged)
+            self.evidence['new_difference_count'] = sum(r['disposition'] == 'new' for r in judged)
+            self.evidence['fuzz_summary'] = summary
+            self.assertFalse(summary.get('setup_error') or summary.get('interrupted'), str(summary))
+            self.assertEqual(sum(summary.get('mismatches', {}).values()), len(rows),
+                             'differential summary and mismatch records disagree')
+            self.assertEqual(status, int(bool(rows)), 'wire fuzz driver failed; see driver.log')
+            self.assertEqual(self.evidence['new_difference_count'], 0, 'new wire mismatches; see differences evidence')
+        else:
             self.assertEqual(status, 0, 'wire fuzz driver failed; see driver.log')
-        finally:
-            RUN['fuzz_remaining'] = max(0, budget - (time.monotonic() - start))
 
     def history(self, family):
         if family not in ('nntp', 'consumer'):

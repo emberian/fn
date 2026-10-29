@@ -3,7 +3,7 @@
 H2b's differential CLI supplies the wider generated command/transport hook;
 accepted POST projection, cancellation and nonempty pinned views remain extensions.
 """
-from fn2.tests.surface import RUN, SurfaceCase, Target, serving
+from fn2.tests.surface import live_model_settings, SurfaceCase, Target, serving
 
 
 def machine(case):
@@ -93,8 +93,5 @@ class TestSurface(SurfaceCase):
 
     @serving('nntp')
     def test_live_state_machine(self):
-        from hypothesis import settings
         from hypothesis.stateful import run_state_machine_as_test
-        run_state_machine_as_test(machine(self), settings=settings(
-            max_examples=RUN.get('examples', 200), stateful_step_count=50,
-            deadline=None, database=None, derandomize=True))
+        run_state_machine_as_test(machine(self), settings=live_model_settings('nntp'))

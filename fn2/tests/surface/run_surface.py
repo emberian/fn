@@ -8,7 +8,7 @@ import sys
 import unittest
 
 from fn2.tests.harness import run_natives, shim
-from . import FAMILIES, MANIFEST, RUN, form_suite
+from . import FAMILIES, MANIFEST, RUN, form_suite, fuzz_allocations
 
 
 def intended_skip(record, module=None):
@@ -143,6 +143,17 @@ def markdown(family, result):
         label = form + ('' if row['selected'] else ' (' + row['selection_reason'] + ')')
         lines.append('| ' + ' | '.join(map(cell, [label, row['status'], row['tests'], row['executed'],
                      row['ok'], row['fail'], skipped or row['selection_reason'] or '0', row['testcase_calls']])) + ' |')
+    for form, row in result['forms'].items():
+        for record in row['records']:
+            evidence = record.get('evidence', {})
+            differences = evidence.get('differences', []) + evidence.get('recorded_differences', [])
+            if differences or 'recorded_difference_count' in evidence:
+                lines += ['', f"{form} differences: recorded={evidence.get('recorded_difference_count', len(differences))}; new={evidence.get('new_difference_count', 0)}",
+                          '', '| disposition | group | class | detail |', '|---|---|---|---|']
+                for difference in differences:
+                    lines.append('| ' + ' | '.join(map(cell, [difference.get('disposition', 'recorded'),
+                        difference.get('group', ''), difference.get('primary_class', difference.get('class', '')),
+                        difference.get('detail', difference.get('observed_reply', ''))])) + ' |')
     if result['owed_forms']:
         lines += ['', 'Owed forms: ' + '; '.join(f"{row['form']}: {row['model']}" for row in result['owed_forms'])]
     if result['served_empty']:
@@ -213,7 +224,8 @@ def main(argv=None):
     os.environ['FN2_SURFACE_TARGET'] = args.target
     budget = MANIFEST['budget'][args.box]
     RUN.clear()
-    RUN.update(out=args.out, examples=budget['model_examples'], fuzz_remaining=budget['fuzz_seconds'])
+    RUN.update(out=args.out, box=args.box, examples=budget['model_examples'],
+               fuzz_allocations=fuzz_allocations(families, args.box))
     report = dict(schema_version=2, target=args.target, box=args.box, profile=os.environ.get('FN2_SURFACE_PROFILE',
                   'harness fixture profile; each measurement must name its own'), budget=budget,
                   assertion_metric='TestCase-call count: assert*/fail* calls (including delegation), plus native subprocess counts; excludes Python assert and external driver internals',
@@ -242,7 +254,7 @@ def main(argv=None):
         report['errors'].append(f'{type(error).__name__}: {error}')
     finally:
         shim.uninstall()
-        report['fuzz_seconds_remaining'] = RUN['fuzz_remaining']
+        report['fuzz_allocations'] = RUN['fuzz_allocations']
         report['totals'] = totals([r for family in report['families'].values()
                                   for form in family['forms'].values() for r in form['records']])
         report['exit_status'] = exit_status(report)
