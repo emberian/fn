@@ -17,7 +17,8 @@ is attributed to layer D. Package `"ACL2"`, prefix `fn2-`; no `skip-proofs`, `de
 
 | piece | file(s) | quest | owner |
 |---|---|---|---|
-| resource order, admission bundles, protected reserves (data + checks) | `fn2/books/resources.lisp` | D0 | D (a library: includes only declaration machinery, so A's `defmachine` `:holds` can read it) |
+| resource order, admission bundles, protected reserves, effects (data + checks; the acyclicity lemma, proved) | `fn2/books/resources.lisp`, negative fixtures `fn2/tests/resources-unit.lisp` | D0 | D (a library: includes only declaration machinery, so A's `defmachine` `:holds` can read it) |
+| the owed deadlock keystone over the assembled core | `fn2/books/resources-owed.lisp` | D0 | D |
 | acquisition and cancellation scenarios, per bundle | `fn2/tests/sim-acquisition.lisp`, `fn2/tests/sim-acquisition-driver.lsp` | D0 | D |
 | machine DSL arm contracts (`:cost :writes :tables :next :uses :holds`, `defcost`) | `fn2/books/machines.lisp` | R7 (A's quest; D1's requirements are its seam request, §4) | **A** |
 | T10, resident state bounded by the profile | `fn2/books/owed-d.lisp`, `fn2/tests/owed-d-unit.lisp` | D1a | D |
@@ -53,75 +54,196 @@ by building both (seat-common "two additions that are one construction are merge
 C's identity and ordered schemas (C2/C3) gate D3 onward (brief). B's commit batch (B3b, on
 `fn2/b-durability`) is the subject of D5's batch reference.
 
-## 3. Acquisition *(design; D0 makes `fn2/books/resources.lisp` authoritative and rewrites this section as its printed form)*
+## 3. Acquisition (D0; `fn2/books/resources.lisp` is authoritative, this section is its printed form)
 
-EXECUTION-MODEL §7a item 2. Seven tables (a)-(g), as the brief requires. The order principle: **a
-resource is ranked by how long it is held**: what a machine holds across many runs and external waits
-comes first, what it holds only for one issue comes last. Every bundle acquires in ascending rank, so a
-holder of rank `r` only ever waits for ranks above `r`.
+EXECUTION-MODEL §7a item 2, contract item 0 of the brief. The tables are data in
+`fn2/books/resources.lisp` (a library: it includes only `owed`/`declare`, so `machines.lisp` can
+include it for `:holds`), checked at certification by guard-verified predicates, each with a named
+negative fixture in `fn2/tests/resources-unit.lisp`. The text below is printed by
+`fn2/tests/sim-acquisition-driver.lsp` from those constants and pasted; regenerate it rather than
+edit it.
 
-**(a) The total order** (draft ranks; D0 may reorder with a recorded reason):
+**The order principle.** A resource is ranked by how long it is held: what a machine keeps across
+many runs and external waits comes first, what it holds for one issue comes last. Every bundle
+acquires in strictly ascending rank, and a holder waits only for a kind ranked above every kind it
+holds. Changes from the draft of this section, each for a reason: RX and TX get separate ranks (one
+total order, no ties); the principal reservation moves after RX/TX (a connection holds its windows
+for its lifetime while a request waits for its charge, so the charge must rank above them; a machine
+holds at most one request's charge); the storage job and the read/write slot are one kind (ROUND2
+§B.1 gives them the same capacities `Jread`/`Jwrite`); `:storage-window` (a job's pool range) and
+`:cancel-credit` (`Ncancel`) are added; `:service-work` goes first (a calendar visit is the frame in
+which a service acquires and is never awaited).
 
-| rank | resource kind | unit | capacity (ROUND2 §B.1, initial) | protected reserve |
-|---:|---|---|---|---|
-| 1 | listener accept credit | credit | 8 | none |
-| 2 | connection row (admission credit) | row | `C` = 256 | none |
-| 3 | principal reservation (per account dimension) | quantity | per principal limits | system reserve for recovery/control |
-| 4 | connection RX range, TX range | pool slot by class | per profile classes | none |
-| 5 | TLS handshake slot | slot | `Ltls` = 16 | none |
-| 6 | upload row | row | `U` = 128 | none |
-| 7 | large-upload chunk window | window (two 256 KiB ranges) | 16 | none |
-| 8 | transaction row | row | `T` = 128 | none |
-| 9 | identity reservation | reservation | per transaction | none |
-| 10 | query cursor row | row | `X` = 256 | none |
-| 11 | consumer wait row | row | `W` = 256 | none |
-| 12 | subscription edges | edge | `Esub` = 4,096 | none |
-| 13 | control-output reservation (reply window for wakes and control replies) | bytes in TX | per wait row | reserved at registration |
-| 14 | cache pin / object lease | pin | per cache profile | recovery reserve |
-| 15 | cache/storage job row | row | per profile | recovery reserve |
-| 16 | batch membership (record count and packed bytes) | records, bytes | 1,024 and 4 MiB per batch | none |
-| 17 | read slot, write slot | slot | `Jread` 64, `Jwrite` 16 | recovery reserve |
-| 18 | fence slot | slot | 1 per storage domain | **fence reserve** |
-| 19 | operation reservation: op row + outbox descriptor + two result cells (one atomic kind in A, `fn2-op-reserve`) | op | `O` = 1,024, `Qa` = 1,024, `Qr` = 2,048 | **close, cancel, ArmWake, fence reserves** (A30) |
-| 20 | service work (one bounded run of a scheduled service) | visit | calendar | the four protected service classes |
+**(a) The order** (`*fn2-resource-order*`).
 
-**(b) Admission bundles.** Every transition that acquires names its bundle as an ordered list of
-kinds; it acquires the whole bundle or nothing, and on refusal it keeps its continuation with a wait
-reason naming the first exhausted kind. The first bundles: listener Accept `{1, 2, 4(RX), 19}`;
-connection Receive `{19}` (RX already held); Send `{19}` (TX held); Close `{19 from the close
-reserve}`; scribe Write `{17, 19}`, Fence `{18, 19 from the fence reserve}`, Read `{17, 19}`;
-STARTTLS `{5, 19}`; POST/IHAVE/TAKETHIS admission `{3, 6, 7, 8}` then identity `{9}` then batch
-`{16}`; ARTICLE/BODY `{3, 10, 14}` then reads `{15, 17, 19}`; consumer wait `{3, 11, 12, 13}`.
+| rank | kind | unit | bound | reserve | why |
+|---:|---|---|---|---|---|
+| 1 | `:service-work` | :visit | `(:calendar)` | :service-classes | One bounded run of a scheduled service; a visit is the frame in which a service acquires and is never awaited. |
+| 2 | `:accept-credit` | :credit | `(:profile :accept-credits)` | none | A listener row: at most one pending Accept each, held for the listener's lifetime. |
+| 3 | `:connection-row` | :row | `(:profile :c)` | none | Reserved as an admission credit at Accept issue, held for the connection's lifetime. |
+| 4 | `:rx-range` | :pool-slot | `(:profile :pool-classes)` | none | The connection's receive window, held for its lifetime. |
+| 5 | `:tx-range` | :pool-slot | `(:profile :pool-classes)` | none | The connection's reply window, held for its lifetime. |
+| 6 | `:principal-reservation` | :quantity | `(:profile :p)` | :system | One request's charge on its principal account, held from request admission to its reply; a machine holds at most one. |
+| 7 | `:tls-slot` | :slot | `(:round2 :ltls 16)` | none | A handshake job, held for the handshake only. |
+| 8 | `:upload-row` | :row | `(:profile :u)` | none | An article input in progress, held while its bytes arrive. |
+| 9 | `:chunk-window` | :window | `(:round2 :large-upload-windows 16)` | none | Two 256 KiB chunk ranges of a large upload, held while it streams. |
+| 10 | `:transaction-row` | :row | `(:profile :t)` | none | A posting transaction from admission to its outcome. |
+| 11 | `:identity-reservation` | :reservation | `(:profile :t)` | none | The Message-ID and operation identity claim of one transaction. |
+| 12 | `:cursor-row` | :row | `(:profile :x)` | none | A query cursor from its command to its last reply byte. |
+| 13 | `:wait-row` | :row | `(:profile :w)` | none | A parked consumer wait from registration to its reply or cancellation. |
+| 14 | `:subscription-edge` | :edge | `(:round2 :esub 4096)` | none | One wait row's edge to a stream, reserved at registration. |
+| 15 | `:control-output` | :bytes | `(:profile :w)` | none | The reply window a wake or control reply needs, reserved at registration so delivery never waits. |
+| 16 | `:cache-pin` | :pin | `(:round2 :cache-profile)` | :recovery | An object lease under a pinned view, held while a reply streams it. |
+| 17 | `:batch-membership` | :records-and-bytes | `(:round2 :batch 1024 4194304)` | none | A transaction's records in a commit batch until publish. |
+| 18 | `:storage-job` | :job | `(:profile :jread :jwrite)` | :recovery | A read or write slot: a storage job row, held across its issue, completion and verification. |
+| 19 | `:storage-window` | :pool-slot | `(:profile :pool-classes)` | :recovery | The pool range a storage job reads into or writes from. |
+| 20 | `:fence-slot` | :slot | `(:profile :fence-slots)` | :fence | One fence in flight per storage domain. |
+| 21 | `:cancel-credit` | :credit | `(:profile :ncancel)` | :cancel | One outstanding cancellation request. |
+| 22 | `:operation` | :op | `(:profile :o :qa)` | (:close :cancel :arm-wake :fence) | One op row with its outbox descriptor and two result cells, reserved together (fn2-op-reserve); held for one issue. |
 
-**(c) Held-while-waiting restriction.** A machine waiting for kind `k` holds only kinds of rank
-below `k` (and its own row). Waiting for an adapter completion is not waiting for a resource: its
-result cells were reserved at issue (§D.1), so it completes under the environment progress assumption.
+**(b, c) Bundles and held-while-waiting** (`*fn2-resource-bundles*`).
 
-**(d) Release and rollback.** On refusal nothing was acquired, so nothing is released. On
-cancellation, close and a failed result, release runs in **descending** rank: op reservation
-(after the terminal and any release result), job and slot, pins, membership not yet sealed, rows,
-pool ranges, principal reservation (settled, never refunded past what was charged: disconnect erases
-no charge, rule 5), admission credit, accept credit. A range still externally borrowed is released
-only on `BorrowReleased`.
+| transition | acquires (in order) | holds while waiting | reserve | status | why |
+|---|---|---|---|---|---|
+| `fn2-listener :accept` | `:connection-row :rx-range :operation` | `:accept-credit` | none | exists, owed-by :r6b | A takes the row credit and op at issue and the RX slot only at admission; an accepted capability without an RX slot is closed. |
+| `fn2-listener :close` | `:operation` | `:accept-credit` | :close | exists, owed-by :r6b | A has no close reserve: the Close draws an ordinary op reservation. |
+| `fn2-echo :receive` | `:operation` | `:connection-row :rx-range` | none | exists | Receive into the RX slot the connection already holds. |
+| `fn2-echo :send` | `:operation` | `:connection-row :rx-range` | none | exists | Echo sends from its RX slot; D3's connection adds its TX range. |
+| `fn2-echo :close` | `:operation` | `:connection-row :rx-range` | :close | exists, owed-by :r6b | A has no close reserve: the Close draws an ordinary op reservation. |
+| `fn2-scribe :reserve` | `:storage-window` | `:storage-job` | none | exists | The probe's row is its storage job; it reserves its 4 KiB window. |
+| `fn2-scribe :write` | `:operation` | `:storage-job :storage-window` | none | exists | Write from the held window. |
+| `fn2-scribe :fence` | `:fence-slot :operation` | `:storage-job :storage-window` | :fence | exists, owed-by :r6b | A takes the fence slot adapter-side at take, after the op, and has no fence reserve. |
+| `fn2-scribe :read` | `:operation` | `:storage-job :storage-window` | none | exists | Read back into the held window. |
+| `:timer :arm-wake` | `:operation` | `:service-work` | :arm-wake | exists, owed-by :r6b | A has no ArmWake reserve: the wake draws an ordinary op reservation. |
+| `:connection :accept` | `:connection-row :rx-range :tx-range :operation` | `:accept-credit` | none | planned :d3 | The connection machine's admission, whole at Accept issue. |
+| `:connection :receive` | `:operation` | `:connection-row :rx-range :tx-range` | none | planned :d3 | Single-shot receive into the held RX range. |
+| `:connection :send` | `:operation` | `:connection-row :rx-range :tx-range` | none | planned :d3 | Single-shot send from the held TX range. |
+| `:connection :close` | `:operation` | `:connection-row :rx-range :tx-range` | :close | planned :d3 | Close from the close reserve. |
+| `:connection :request` | `:principal-reservation` | `:connection-row :rx-range :tx-range` | none | planned :d7 | A command's charge on its principal, before any request row. |
+| `:tls-admission :start` | `:tls-slot :operation` | `:connection-row :rx-range :tx-range :principal-reservation` | none | planned :d7 | STARTTLS: a handshake slot and the TlsStart op. |
+| `:upload :admit` | `:upload-row :chunk-window` | `:connection-row :rx-range :tx-range :principal-reservation` | none | planned :d4 | POST/IHAVE/TAKETHIS article input. |
+| `:transaction :admit` | `:transaction-row :identity-reservation` | `:connection-row :rx-range :tx-range :principal-reservation :upload-row :chunk-window` | none | planned :d5 | The transaction and its identity claim. |
+| `:transaction :batch` | `:batch-membership` | `:connection-row :rx-range :tx-range :principal-reservation :upload-row :chunk-window :transaction-row :identity-reservation` | none | planned :d5 | Joining a commit batch. |
+| `:cursor :select` | `:cursor-row :cache-pin` | `:connection-row :rx-range :tx-range :principal-reservation` | none | planned :d6 | ARTICLE/BODY and the other queries pin their view before the success line. |
+| `:storage-job :read` | `:storage-job :storage-window :operation` | `:connection-row :rx-range :tx-range :principal-reservation :cursor-row :cache-pin` | none | planned :d6 | A cursor's page read. |
+| `:storage-job :write` | `:storage-job :storage-window :operation` | `:connection-row :rx-range :tx-range :principal-reservation :upload-row :chunk-window` | none | planned :d4 | An upload's extent write. |
+| `:wait :register` | `:wait-row :subscription-edge :control-output` | `:connection-row :rx-range :tx-range :principal-reservation` | none | planned :d8 | A consumer wait reserves its edges and its wake reply before it parks. |
+| `:any :cancel` | `:cancel-credit :operation` | `:connection-row :rx-range :tx-range` | :cancel | planned :d7 | Cancel from the cancel reserve. |
+| `:commit-batch :log-write` | `:storage-job :storage-window :operation` | `:batch-membership` | none | planned :b | B's batch writes its packed records. |
+| `:commit-batch :fence` | `:fence-slot :operation` | `:batch-membership :storage-job :storage-window` | :fence | planned :b | B's batch fences from the fence reserve. |
+| `:recovery :start` | `:cache-pin :storage-job :storage-window :operation` | none | :recovery | planned :b | Recovery takes its whole bundle from the recovery reserve. |
 
-**(e) Protected reserves.** Close, Cancel, ArmWake and Fence draw from op reservations set aside at
-init and never lent to ordinary issue, so a table full of idle receives can still time out and close
-(A30; R6b item 3). Recovery and control draw on the system reserve of every account dimension.
+**(d) Release, descending** (`*fn2-resource-releases*`).
 
-**(f) Notification debt leaves a committed batch.** A batch owes nothing per recipient after
-`publish`: each request outcome is a state bit on its own transaction row (the connection reads it
-when it next runs, its reply window was reserved at command admission); each affected subscription is
-reached by the wake service's dirty-subscription cursor over the published frontier, and a waiter
-registering late compares its cursor with the frontier (ROUND2 §E.2). So two slow recipients hold
-their own rows and windows, never a batch slot; the batch drains once its own writes' borrows are
-released.
+| holder, cause | releases |
+|---|---|
+| `fn2-listener :refusal` | none |
+| `fn2-listener :failed-result` | `:operation :connection-row` |
+| `fn2-listener :close` | `:operation :connection-row` |
+| `fn2-echo :refusal` | none |
+| `fn2-echo :failed-result` | `:operation` |
+| `fn2-echo :close` | `:operation :rx-range :connection-row` |
+| `fn2-scribe :refusal` | none |
+| `fn2-scribe :failed-result` | `:operation` |
+| `fn2-scribe :cancellation` | `:operation :storage-window` |
+| `:connection :refusal` | none |
+| `:connection :close` | `:operation :control-output :subscription-edge :wait-row :cursor-row :principal-reservation :tx-range :rx-range :connection-row` |
+| `:request :cancellation` | `:operation :storage-window :storage-job :cache-pin :cursor-row :identity-reservation :transaction-row :chunk-window :upload-row :principal-reservation` |
+| `:request :failed-result` | `:operation :storage-window :storage-job :cache-pin :cursor-row :chunk-window :upload-row :principal-reservation` |
+| `:wait :cancellation` | `:operation :control-output :subscription-edge :wait-row` |
+| `:commit-batch :publish` | `:batch-membership` |
+| `:commit-batch :failed-result` | `:operation :fence-slot :storage-window :storage-job` |
+
+**(e) Protected reserves** (`*fn2-resource-reserves*`).
+
+| reserve | covers | drawn as | why |
+|---|---|---|---|
+| `:close` | `:operation` | issue | Close always issues: a connection or listener full of idle receives can still time out and close. |
+| `:cancel` | `:cancel-credit :operation` | issue | Cancellation of an outstanding operation never waits for the operations it cancels. |
+| `:arm-wake` | `:operation` | issue | The timer service can always arm the earliest deadline. |
+| `:fence` | `:fence-slot :operation` | issue | A batch or probe holding its writes can always fence them. |
+| `:recovery` | `:cache-pin :storage-job :storage-window :operation` | whole bundle | Recovery acquires its whole bundle from this reserve at start and never waits for ordinary holders. |
+| `:system` | `:principal-reservation` | whole bundle | Recovery and control are charged to the system reserve of every account dimension. |
+| `:service-classes` | `:service-work` | whole bundle | The four protected service classes of the calendar (ROUND2 section C.2). |
+
+**(f) Commit-batch phases** (`*fn2-resource-batch-phases*`; per-recipient kinds `:connection-row :rx-range :tx-range :principal-reservation :transaction-row :wait-row :subscription-edge :control-output :batch-membership`).
+
+| phase | holds |
+|---|---|
+| `:collect` | `:batch-membership` |
+| `:seal` | `:batch-membership` |
+| `:dependencies` | `:batch-membership` |
+| `:log-write` | `:batch-membership :storage-job :storage-window` |
+| `:fence` | `:batch-membership :storage-job :storage-window :fence-slot` |
+| `:durable` | `:batch-membership :storage-job :storage-window` |
+| `:install` | `:batch-membership :storage-window` |
+| `:publish` | `:storage-window` |
+| `:notify` | none |
+| `:uncertain` | `:batch-membership :storage-window` |
+| `:draining` | none |
+
+**Effects across rows** (`*fn2-resource-effects*`).
+
+| operation | holds before | effects |
+|---|---|---|
+| `fn2-listener :accept-issue` | `:accept-credit` | `(:acquire (:connection-row :operation))` |
+| `fn2-listener :admit` | `:accept-credit :connection-row` | `(:transfer (:connection-row) :to fn2-echo) (:acquire (:rx-range) :for fn2-echo)` |
+| `fn2-listener :admit-refused` | `:accept-credit :connection-row` | `(:release (:connection-row))` |
+| `fn2-echo :reclaim` | `:connection-row :rx-range` | `(:release (:rx-range :connection-row))` |
+
+**Interim, layer A only.** `*fn2-resource-a-holds*` (the kinds each phase of `fn2-listener`,
+`fn2-echo`, `fn2-scribe` may hold; pending operations are the outstanding table's, and waiting for a
+completion is not a resource wait) and `*fn2-resource-a-wait-reasons*` (A's `fn2-wait` enum by the
+kind it awaits: `:issued` none, `:op-credit` → `:operation`, `:pool` → `:storage-window`,
+`:admission` → `:connection-row`) are R7's to move into each `defmachine`'s `:holds`; then they are
+deleted here, like `*fn2-resource-effects*` once R7 declares the effects on its allocator operations.
+R7 splits the listener into `:accepting` (`:accept-credit`) and `:admitting` (`:accept-credit
+:connection-row`), the case per-phase holds cannot state while one phase spans both (A/D DSL seat,
+2026-10-29).
+
+**What the certification checks enforce.** The order has ranks exactly 1..22 in listed order with
+distinct keywords; every bundle acquires in strictly ascending rank and names only known kinds; its
+held-while-waiting set ranks strictly below its first kind (rule (c)); a `:close`, `:cancel`,
+`:fence` or `:arm-wake` transition names a reserve that covers its whole bundle; no kind an issue
+reserve covers (`:operation`, `:cancel-credit`, `:fence-slot`) appears in any held-while-waiting set;
+every release list descends and a refusal releases nothing; no commit-batch phase holds a
+per-recipient kind, and from `:publish` on none holds batch membership; an effect acquires above
+everything its row still holds and releases or transfers only what it holds.
 
 **(g) Why no cycle.** A wait-for edge `m → n` exists only when `m` waits for a kind `k` that `n`
-holds. By (c) every kind `m` holds ranks below `k`; `n` holds `k`, and if `n` waits it waits for a
-kind above `k`. Ranks strictly increase along every path, so no path returns to `m`. Protected
-reserves are never held while waiting, so release paths add no edge. D0 checks (b) and (c) over the
-tables at certification and states the owed keystone (no reachable state where every holder waits on
-another holder) with teeth.
+holds. By rule (c) every kind `m` holds ranks below `k`; `n` holds `k`, so if `n` waits, it waits for
+a kind above `k`. Ranks of awaited kinds strictly increase along every path, so no path returns to
+`m`. This is **proved**, not owed: `fn2-resource-ranked-no-cycle` (resources.lisp) says that a list
+of waiters `(held . awaited)` in which every waiter's held kinds rank below its awaited kind is never
+a cycle (a chain whose last awaited kind is held by its first waiter). Reserve-drawn units are never
+held while waiting (checked above), so release paths add no edge; a transfer between rows adds none
+(neither row waits during it, the target is a free row). The keystone over the real core is owed:
+`fn2-resource-no-deadlock` (`fn2/books/resources-owed.lisp`, `:schema :invariant`, `:from
+(:operation-set fn2-resources)`): initialization establishes, and every `fn2-turn` preserves, that
+the core's wait projection `fn2-resource-waiters` (per row: kind, phase and wait reason through the
+tables above) is ranked. Teeth (`tests/sim-acquisition.lisp`): positive, real reached cores with a
+listener parked on admission and a scribe parked on its window, nonempty and ranked, still ranked
+after a real turn; negative, a connection holding its row and RX slot made to wait for a connection
+row, refused. Its step is stated over `fn2-core-wfp` plus the ranked projection; a proof may need
+A's conservation invariants as further hypotheses, recorded here when it is attempted.
+
+**Scenarios.** `fn2/tests/sim-acquisition.lisp` (certified) drives every `:exists` bundle through
+the real assembled core at the adapter boundary the simulator drives (`fn2-outbox-ack`,
+`fn2-post-result`, harvest and observation routing, `fn2-machine-run`, the grant service), in tiny
+profiles, exhausting each kind of the bundle in turn by profile capacity (`:c 1`, `:o 1`) or by
+pre-occupying its units through the pool's reserve export; each boundary checks that nothing was
+acquired (every core free count unchanged, the holder waiting with the reason naming the kind), then
+lifts it and checks the bundle is acquired whole, then completes or closes and checks every count
+comes back. The random simulator is not used: these are deterministic schedules at the boundary it
+calls, and they add a boundary per kind it would only reach by chance. Today's verdicts: the echo
+Receive/Send and scribe Reserve/Write/Read bundles pass; the five bundles owed by R6b fail exactly
+on their owed checks (listener Accept: the RX slot is taken at admission, not at issue; listener and
+echo Close, scribe Fence and ArmWake: no protected reserve, so with the operations exhausted they
+cannot issue). The driver and the book fail if an owed bundle passes (the marking must then go), if
+an un-owed bundle fails, or if an `:exists` bundle has no scenario; three controls on the verdict
+rule check all three. Planned bundles print `pending` with their quest. Not covered by a scenario:
+the fence slot is adapter-side in A (no core count to observe), and scribe has no cancellation in A
+(its release row is R6b item 2's posture).
 
 ## 4. The machine DSL: what D needs from R7 *(seam request; A builds it)*
 
@@ -235,8 +357,8 @@ them.
 
 | quest | contents | waits on | state |
 |---|---|---|---|
-| D0 | resources.lisp, the tables of §3 as data with certification checks, the owed deadlock-freedom keystone, per-bundle exhaustion and cancellation scenarios for A's existing bundles | A only | next |
-| D1a | T10 in owed-d.lisp with teeth | A only | after D0 |
+| D0 | resources.lisp, the tables of §3 as data with certification checks, the owed deadlock-freedom keystone, per-bundle exhaustion and cancellation scenarios for A's existing bundles | A only | done |
+| D1a | T10 in owed-d.lisp with teeth | A only | next after D2a |
 | D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | parallel with D0 (second worktree) |
 | D2b | generator, mutator, fuzzer, the three mutation controls | D2a | |
 | D2c | parser onto R6a1's scan and drop-prefix | R6a1 | |
