@@ -1,4 +1,4 @@
-; Independent baseline-barrier checker. Lists here are test evidence, never a
+; Independent baseline and preflush/FUA barrier checker. Lists here are test evidence, never a
 ; served representation. The producer must project actual issue/harvest/reply
 ; events and physical recovery observations; this book does not authenticate
 ; that producer or replace the pending B5 image reader.
@@ -8,8 +8,13 @@
 ; State: batch alist, operation alist, active fence token, refused records,
 ; all member records, all write identities, B1 state, reverse B1 trace.
 ; Batch row: batch, log identities, issued identities, done identities,
-; uncertain, fence issued, durable, published, acknowledged.
-; Operation row: batch number, role, identity, length, terminal.
+; uncertain, fence issued, durable, published, acknowledged, mode, preflushed.
+; Operation row: batch number, role, identity, length, terminal, FUA bit.
+; Preflush/FUA requires every log write AFTER successful dependency preflush
+; and every log write issued with FUA=1. This is intentionally stronger than
+; a contract that flushes earlier log frames and uses FUA only for a final seal.
+; B1 :fence-ok denotes the composed persistence boundary, not an invented
+; device Fence action: it is emitted after the final exact FUA log completion.
 (fn2-cm-defreaders fn2-history-state-batches
                    fn2-history-state-operations
                    fn2-history-state-fence
@@ -17,7 +22,7 @@
                    fn2-history-state-members
                    fn2-history-state-identities
                    fn2-history-state-log-state
-                   fn2-history-state-trace)
+                   fn2-history-state-trace fn2-history-state-requests)
 (fn2-cm-defreaders fn2-history-row-batch
                    fn2-history-row-logs
                    fn2-history-row-issued
@@ -26,22 +31,27 @@
                    fn2-history-row-fence-issued
                    fn2-history-row-durable
                    fn2-history-row-published
-                   fn2-history-row-acknowledged)
+                   fn2-history-row-acknowledged
+                   fn2-history-row-mode
+                   fn2-history-row-preflushed)
 (fn2-cm-defreaders fn2-history-operation-batch-number
                    fn2-history-operation-role
                    fn2-history-operation-identity
                    fn2-history-operation-length
-                   fn2-history-operation-terminal)
+                   fn2-history-operation-terminal
+                   fn2-history-operation-fua)
 
 (fn2-cm-defreaders fn2-history-batch-event-tag
                    fn2-history-batch-event-batch
-                   fn2-history-batch-event-logs)
+                   fn2-history-batch-event-logs
+                   fn2-history-batch-event-mode fn2-history-batch-event-members)
 (fn2-cm-defreaders fn2-history-write-event-tag
                    fn2-history-write-event-operation
                    fn2-history-write-event-batch
                    fn2-history-write-event-role
                    fn2-history-write-event-identity
-                   fn2-history-write-event-length)
+                   fn2-history-write-event-length
+                   fn2-history-write-event-fua)
 (fn2-cm-defreaders fn2-history-write-result-event-tag
                    fn2-history-write-result-event-operation
                    fn2-history-write-result-event-outcome
@@ -51,7 +61,11 @@
                    fn2-history-fence-event-batch)
 (fn2-cm-defreaders fn2-history-fence-result-event-tag
                    fn2-history-fence-result-event-operation
-                   fn2-history-fence-result-event-outcome)
+                   fn2-history-fence-result-event-outcome fn2-history-fence-result-event-count)
+
+(fn2-cm-defreaders fn2-history-request-event-tag fn2-history-request-event-batch
+ fn2-history-request-event-members fn2-history-request-event-mode)
+(fn2-cm-defreaders fn2-history-request-row-members fn2-history-request-row-mode)
 
 (defun fn2-history-get (key alist)
   (declare (xargs :guard t :verify-guards nil))
@@ -79,24 +93,53 @@
            (fn2-history-disjointp (cdr a) b))
     (null a)))
 
+(defun fn2-history-request-identities (requests)
+ (declare (xargs :verify-guards nil))
+ (if (atom requests) nil
+  (append (fn2-history-request-row-members (cdar requests))
+          (fn2-history-request-identities (cdr requests)))))
+(defun fn2-history-request (event s)
+ (declare (xargs :verify-guards nil))
+ (let ((n (fn2-history-request-event-batch event))
+       (members (fn2-history-request-event-members event))
+       (mode (fn2-history-request-event-mode event)))
+  (if (and (equal (len event) 4) (posp n) (consp members) (true-listp members)
+           (no-duplicatesp-equal members) (member-eq mode '(:baseline :preflush-fua))
+           (not (assoc-equal n (fn2-history-state-requests s)))
+           (fn2-history-disjointp members (fn2-history-state-refused s))
+           (fn2-history-disjointp members (fn2-history-state-members s))
+           (fn2-history-disjointp members (fn2-history-request-identities (fn2-history-state-requests s))))
+      (mv :ok (update-fn2-history-state-requests
+                (put-assoc-equal n (list members mode) (fn2-history-state-requests s)) s))
+    (mv :bad-request s))))
+
 (defun fn2-history-batch (event s)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((batch (fn2-history-batch-event-batch event)) (logs (fn2-history-batch-event-logs event))
+         (mode (if (equal (len event) 3) :baseline (fn2-history-batch-event-mode event)))
          (n (fn2-lm-batch-number batch)) (records (fn2-lm-batch-records batch))
+         (members (if (equal (len event) 5) (fn2-history-batch-event-members event) records))
+         (request (fn2-history-get n (fn2-history-state-requests s)))
          (deps (fn2-lm-batch-dependencies batch))
          (ids (append (if (true-listp deps) deps nil)
                       (if (true-listp logs) logs nil))))
-    (if (and (equal (len event) 3) (fn2-lm-batchp batch)
+    (if (and (member-equal (len event) '(3 4 5))
+             (member-eq mode '(:baseline :preflush-fua)) (fn2-lm-batchp batch)
              (consp records) (no-duplicatesp-equal records)
+             (true-listp members) (equal (len members) (len records)) (no-duplicatesp-equal members)
+             (if (equal (len event) 5)
+                 (and request (equal members (fn2-history-request-row-members request))
+                      (equal mode (fn2-history-request-row-mode request)))
+               (not request))
              (true-listp logs) (consp logs) (no-duplicatesp-equal ids)
              (fn2-history-disjointp ids (fn2-history-state-identities s))
-             (fn2-history-disjointp records (fn2-history-state-members s))
-             (fn2-history-disjointp records (fn2-history-state-refused s)))
+             (fn2-history-disjointp members (fn2-history-state-members s))
+             (fn2-history-disjointp members (fn2-history-state-refused s)))
         (fn2-history-emit
          (list :submit-batch batch)
          (fn2-history-save
-          n (list batch logs nil nil nil nil nil nil nil)
-          (update-fn2-history-state-members (append records (fn2-history-state-members s))
+          n (list batch logs nil nil nil nil nil nil nil mode nil)
+          (update-fn2-history-state-members (append members (fn2-history-state-members s))
                       (update-fn2-history-state-identities (append ids (fn2-history-state-identities s)) s))))
       (mv :bad-manifest s))))
 
@@ -110,23 +153,28 @@
   (declare (xargs :guard t :verify-guards nil))
   (let* ((op (fn2-history-write-event-operation event)) (n (fn2-history-write-event-batch event))
          (role (fn2-history-write-event-role event)) (identity (fn2-history-write-event-identity event))
+         (fua (if (equal (len event) 6) 0 (fn2-history-write-event-fua event)))
          (length (fn2-history-write-event-length event)) (row (fn2-history-row n s))
          (deps (fn2-lm-batch-dependencies (fn2-history-row-batch row))))
-    (if (and (equal (len event) 6) op row (posp length)
+    (if (and (member-equal (len event) '(6 7)) (member-equal fua '(0 1))
+             op row (posp length)
              (not (assoc-equal op (fn2-history-state-operations s)))
              (not (fn2-history-uncertainp (fn2-history-state-batches s)))
-             (not (fn2-history-row-fence-issued row))
              (not (member-equal identity (fn2-history-row-issued row)))
              (case role
-               (:dependency (member-equal identity deps))
+               (:dependency (and (not (fn2-history-row-fence-issued row))
+                                 (member-equal identity deps)))
                (:log (and (member-equal identity (fn2-history-row-logs row))
-                          (subsetp-equal deps (fn2-history-row-done row))))
+                          (subsetp-equal deps (fn2-history-row-done row))
+                          (if (eq (fn2-history-row-mode row) :preflush-fua)
+                              (and (fn2-history-row-preflushed row) (equal fua 1))
+                            (not (fn2-history-row-fence-issued row)))))
                (otherwise nil)))
         (mv :ok
             (fn2-history-save
              n (update-fn2-history-row-issued (cons identity (fn2-history-row-issued row)) row)
              (update-fn2-history-state-operations
-                         (put-assoc-equal op (list n role identity length nil)
+                         (put-assoc-equal op (list n role identity length nil fua)
                                           (fn2-history-state-operations s)) s)))
       (mv :bad-write s))))
 
@@ -156,49 +204,65 @@
         (if (and success
                  (subsetp-equal (append deps (fn2-history-row-logs row))
                                 (fn2-history-row-done row)))
-            (fn2-history-emit (list :batch-writes-complete n deps) s)
+            (mv-let (code s) (fn2-history-emit (list :batch-writes-complete n deps) s)
+              (if (and (eq code :ok) (eq (fn2-history-row-mode row) :preflush-fua))
+                  (fn2-history-emit
+                   (list :fence-ok n)
+                   (fn2-history-save n (update-fn2-history-row-durable t row) s))
+                (mv code s)))
           (mv :ok s))))))
 
 (defun fn2-history-fence (event s)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((op (fn2-history-fence-event-operation event)) (n (fn2-history-fence-event-batch event))
+         (preflushp (eq (fn2-history-fence-event-tag event) :preflush))
          (row (fn2-history-row n s)))
     (if (and (equal (len event) 3) op row
              (not (assoc-equal op (fn2-history-state-operations s)))
              (not (fn2-history-state-fence s))
              (not (fn2-history-uncertainp (fn2-history-state-batches s)))
              (not (fn2-history-row-fence-issued row))
-             (member-equal n (fn2-lm-state-completed (fn2-history-state-log-state s))))
+             (if preflushp
+                 (and (eq (fn2-history-row-mode row) :preflush-fua)
+                      (subsetp-equal (fn2-lm-batch-dependencies (fn2-history-row-batch row))
+                                     (fn2-history-row-done row)))
+               (and (eq (fn2-history-row-mode row) :baseline)
+                    (member-equal n (fn2-lm-state-completed (fn2-history-state-log-state s))))))
         (mv :ok
             (fn2-history-save
              n (update-fn2-history-row-fence-issued t row)
              (update-fn2-history-state-fence op
                          (update-fn2-history-state-operations
-                                     (put-assoc-equal op (list n :fence nil 0 nil)
+                                     (put-assoc-equal op (list n (if preflushp :preflush :fence) nil 0 nil 0)
                                                       (fn2-history-state-operations s)) s))))
       (mv :bad-fence s))))
 
 (defun fn2-history-fence-result (event s)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((op (fn2-history-fence-result-event-operation event)) (outcome (fn2-history-fence-result-event-outcome event))
+         (count (if (equal (len event) 3) 0 (fn2-history-fence-result-event-count event)))
          (operation (fn2-history-get op (fn2-history-state-operations s)))
          (n (fn2-history-operation-batch-number operation)) (row (fn2-history-row n s)))
-    (if (not (and (equal (len event) 3) operation
-                  (eq (fn2-history-operation-role operation) :fence)
+    (if (not (and (member-equal (len event) '(3 4)) (equal count 0) operation
+                  (member-eq (fn2-history-operation-role operation) '(:fence :preflush))
                   (not (fn2-history-operation-terminal operation))
                   (equal op (fn2-history-state-fence s))
                   (member-eq outcome '(:done :failed :cancelled :eio :enospc))))
         (mv :stray-fence-result s)
       (let* ((success (eq outcome :done))
+             (preflushp (eq (fn2-history-operation-role operation) :preflush))
              ; A late physical success does not clear the uncertainty bit.
-             (row (if success (update-fn2-history-row-durable t row) (update-fn2-history-row-uncertain t row)))
+             (row (if success
+                      (if preflushp (update-fn2-history-row-preflushed t row)
+                        (update-fn2-history-row-durable t row))
+                    (update-fn2-history-row-uncertain t row)))
              (s (fn2-history-save
                  n row (update-fn2-history-state-fence nil
                                    (update-fn2-history-state-operations
                                                (put-assoc-equal op
                                                                 (update-fn2-history-operation-terminal t operation)
                                                                 (fn2-history-state-operations s)) s)))))
-        (if success (fn2-history-emit (list :fence-ok n) s)
+        (if (and success (not preflushp)) (fn2-history-emit (list :fence-ok n) s)
           (mv :ok s))))))
 
 (defun fn2-history-visible (tag n s)
@@ -234,10 +298,11 @@
           (fn2-history-emit arg s)
         (mv :bad-evidence s)))
      (crashed (mv :after-crash s))
+     ((eq tag :request) (fn2-history-request event s))
      ((eq tag :batch) (fn2-history-batch event s))
      ((eq tag :write) (fn2-history-write event s))
      ((eq tag :write-result) (fn2-history-write-result event s))
-     ((eq tag :fence) (fn2-history-fence event s))
+     ((member-eq tag '(:fence :preflush)) (fn2-history-fence event s))
      ((eq tag :fence-result) (fn2-history-fence-result event s))
      ((member-eq tag '(:publish :ack))
       (if (equal (len event) 2) (fn2-history-visible tag arg s) (mv :malformed s)))
@@ -249,6 +314,7 @@
      ((eq tag :refuse)
       (if (and (equal (len event) 2)
                (not (member-equal arg (fn2-history-state-members s)))
+               (not (member-equal arg (fn2-history-request-identities (fn2-history-state-requests s))))
                (not (member-equal arg (fn2-history-state-refused s))))
           (mv :ok (update-fn2-history-state-refused (cons arg (fn2-history-state-refused s)) s))
         (mv :refused-member s)))
@@ -266,7 +332,7 @@
 (defun fn2-history-translate (events)
   (declare (xargs :guard t :verify-guards nil))
   (fn2-history-translate-loop
-   events (list nil nil nil nil nil nil (fn2-lm-initial) nil)))
+   events (list nil nil nil nil nil nil (fn2-lm-initial) nil nil)))
 
 (defun fn2-check-history (events profile classification recovered-history)
   (declare (xargs :guard t :verify-guards nil))

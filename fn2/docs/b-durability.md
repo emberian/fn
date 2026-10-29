@@ -720,79 +720,202 @@ and recovery composition remain later work.
 
 ## 10. Commit batch
 
-B3 is not yet a composed machine. The R4 declaration seam admits a new kind,
-its scalar columns, dispatch and core accessors, but not the existing persistent
-B2/B4 workspaces needed by its continuations. `fn2-format-seal-frame` and
-`fn2-format-seal-batch` require `fn2-fc`, `fn2-b3` and `fn2-fields` alongside
-the pool; `fn2-alloc-reserve` requires `fn2-extents`. None is a child of
-`fn2-core`. Recreating them with `with-local-stobj` at each yield would discard
-hashing/allocation state and allocate on the served path. Implementing copies
-inside the commit columns would duplicate the existing B2/B4 implementations.
+`machines-b.lisp` declares `fn2-commit` with two rows, the 4096-byte / 32-step /
+4-descriptor run budget and `:observes` handlers for write and fence results.
+`commit.lisp` supplies `fn2-commit-events`; its continuations and observer are
+`defmachine-callback` functions over A’s scalar row snapshot. `defmachine-run`
+generates dispatch. Initial generation is a named initializer; declarations
+contain function names rather than executable forms. `commit-format.lisp` packs
+using the B2 generated layout encoders. The test transaction is a keyed mutation: a
+consecutive range of distinct object/operation/event keys names one immutable
+manifest node. Its generated 73-byte layout binds the predecessor seal and
+batch, first key, member count, extent, writer epoch and allocation counter.
+The keyed value is this immutable structured node. Admission requires a fresh
+monotonically increasing key range; the frontier survives row reuse. The fixture's
+ready-transaction contract also requires fresh operation IDs after a terminal
+refusal. Capacity/profile backpressure may be retried. B3 has no persistent
+refused-operation/idempotency ledger. Enforcing that input contract at layer C
+is an outstanding integration requirement, not an implemented seam.
 
-**B-MACHINE-SEAM, prerequisite.** A must expose persistent auxiliary-table
-registration, initialization and reference copy/comparison before B can compose
-these APIs through `(id budget fn2-core)`. Core child registration alone is
-insufficient: `reference-state.lisp` enumerates the fixed tables and machine
-kinds separately when generating congruent copy/difference functions. The
-observation router must dispatch the B observer's `(mv wake fn2-core)` after
-kind/generation validation and before A's generic pending decrement; its
-current single-value `cond` arm and `ignore reason` declaration do not match
-that interface. No A seam has been changed by B3.
+**B-MACHINE-SEAM.** The only A edits are `(include-book "machines-b")` before
+registry consumption in `assembly-index.lisp` and `(fn2-commit-events)` in
+`assembly-callbacks.lisp` before final dispatch. The remaining assembly sections
+are A-owned. B registers allocator extents and holder edges, checker/context,
+BLAKE3, digest rows, layout fields, resource rows and root descriptors through
+`defcorechild`.
+The reference model includes these children automatically. The streaming codec's
+saved reference cursor is named `fn2-fields-resume-ref`; this avoids a collision
+with A's generated congruent `fn2-fields-ref` stobj. Profile readers
+with defaults live in B: 16 extent rows, 38 edge rows, two checker/hash rows,
+256 layout-field rows, 289 digest rows, baseline barrier mode. Digest capacity
+defaults to `136 * format-slots + extent-slots + 1`; an explicit `:digest-slots`
+must cover that minimum. A's original profiles remain valid. Scheduling uses principal 0; A still owns protected service 0.
 
-The intended transition conditions remain those of ROUND2 §E.2:
+The kind has 24 declared fields plus A's eight common/phase fields, exactly the
+32 scalar values allowed by ACL2's snapshot return convention. The packing
+cursor becomes the seal offset after record packing finishes; the old saved
+record offset was unused. Named checked-update helpers retain `put-core`'s
+commit-kind and atomic width validation while exporting shape contracts. This
+keeps the observer proof from repeatedly expanding nested update branches.
+The exported proof boundary names the complete assembled `fn2-core-wfp` as
+`fn2-commit-core-invariant`, with all child invariants and the control-row
+constraint proved as demand-driven projections, plus a type-reasoning bridge
+to the original predicate. It preserves the exact
+invariant while keeping unrelated extension columns out of A’s simulator proof
+hypotheses. The broad `fn2-layoutp-head` rewrite is disabled at this boundary:
+it otherwise attempts layout recognition on unrelated simulator lists. Codec
+proofs use it explicitly. These changes affect proof rewriting only, not machine
+execution.
 
-| Phase | Completion required before leaving |
+### Phases and resources
+
+| Phase | Work and condition for advancing |
 |---|---|
-| collect | Ready members and their reserved resources captured; unfinished uploads excluded |
-| seal | Immutable membership, dependency manifest, B2 seal and complete successor root prepared within resumable budgets |
-| dependencies | Every expected dependency write completed with its exact issued length |
-| log-write | Every batch frame write completed with its exact issued length |
-| fence | Successful covering barrier, or preflush completion followed by successful final FUA sealing write |
-| durable | Exact dependency-set durability evidence retained |
-| install / publish | Prepared root handle installed and published in bounded transitions, without passing an unresolved predecessor |
-| notify | Incremental outcomes; one client's success does not wait for other replies |
-| draining | Notification and borrow obligations transferred or discharged |
-| uncertain | Recovery alone resolves the row; a late generic success does not leave this state |
+| collect | Attach the prepared-successor edge to the extent reserved at admission |
+| seal | Resume fills, generated codecs and BLAKE3/checker work; construct the immutable successor descriptor before any I/O |
+| dependencies | Issue the dependency page; require an exact successful harvested 4096-byte result |
+| log-write | Issue records and seal frames, allowing both in flight; require both exact successful harvested results |
+| fence | Baseline: successful covering fence after all writes. Alternate: successful dependency preflush before FUA log writes |
+| durable | Require retained dependency, log and barrier evidence; commit the allocation |
+| install | Swap the prepared root handle, only after its predecessor is published |
+| publish | One bounded publication transition |
+| notify | Expose one member acknowledgement per run |
+| draining | After all pending operations and the fence leave, release one workspace per run; return the slot to free |
+| uncertain | Persistent failure state, including fence timeout; only recovery may replace it |
 
-Two slots prepare successive roots `RA = Apply(R0,A)` and `RB = Apply(RA,B)`.
-The follower cannot decide against `R0`. A fence-in-flight flag must remain
-set through timeout until the outstanding fence completion is harvested;
-checking only whether the partner's phase equals `fence` would incorrectly
-allow a second fence after the partner enters `uncertain`. Uncertainty fences
-new mutation across the storage domain. The simulator control must count
-actual outstanding fences and reject a count above one, independent of the
-adapter's fence-slot backpressure.
+Admission reserves all four workspaces, then an extent, before assigning a batch
+number or publishing a proposed root. A failed reservation unwinds its workspaces
+and consumes no sequence number. The test kind admits 1–16 members per batch.
+An extent spans three 4 KiB units: dependency page, records frame, seal frame. The two journal
+frames have 3900-byte payload areas; unused payload bytes are zero and the
+stand-in parser checks them. The seal binds the actual record-frame digest,
+dependency digest/allocation, predecessor seal and output root recipe. The input
+root is the predecessor seal; the genesis checkpoint plus suffix 1..batch retains
+all preceding mutations. The node supplies the physical manifest, metadata,
+allocation-change and event-frontier references. Configuration and checkpoint
+references remain genesis values because this fixture changes neither. These
+references describe this test kind's suffix-derived state; the node does not
+implement a production event-Merkle frontier. Checker
+contexts and layout ranges are disjoint between batch rows. No runtime byte
+lists or per-run allocation of local checker stobjs are used.
 
-Baseline mode completes dependency and log writes before submitting Fence.
-A separate Fence followed by the final FUA write can expose the preflush/FUA
-sequence using A's existing actions; FUA alone persists only its own bytes.
-Death between these stages remains a crash cut. Neither mode is implemented
-by B3 yet. Scheduling is also unconnected: protected service 0 would require
-matching semantics in the independent reference service runner; principal-0
-scheduling is the currently authorized fallback that already shares machine
-dispatch on both sides. The choice will be recorded when the machine is wired.
+The follower's successor names the leader's proposed root. It waits for the
+leader's final seal before encoding its predecessor link, but need not wait
+for the leader's fence to prepare or write. Root descriptors retain predecessor,
+extent and member range; each batch’s seal occupies digest row
+`136 * format-slots + batch`. The preceding row is the immutable predecessor,
+with batch zero reserved for genesis. Stage 17 copies the inner-seal result into
+that directory before stage 18 hashes the outer frame. `install` changes a handle.
+The directory lies beyond every checker/hash workspace stripe, so a successor
+can link after its predecessor drains without retaining eight hash limbs in its
+root descriptor.
 
-### HISTORY translation boundary
+A directory row is indexed by batch number and capacity is extent capacity plus
+one. Each admitted batch consumes one unreclaimed extent, so this capacity is
+resource-derived. Installation adds the installed-root edge before dropping the
+prepared-successor edge; ancestors remain protected by their root edges. B6 must
+provide directory reclamation when it introduces extent reuse. A drained machine
+row can be admitted again with a fresh generation; generation exhaustion refuses
+admission. Uncertain rows cannot rearm. The begun allocator writer epoch is the
+incarnation of the batch sequence.
 
-The independent checker API is `fn2-history-translate(events)` returning
-`(mv code log-trace)`, and `fn2-check-history(events, profile, classification,
-recovered-history)` calling B1's exact `fn2-lm-recovery-allowedp` interface.
-Its input contract requires test/checker data projected from real issue, harvest,
-publication, reply, fault and crash boundaries; it is not executable machine state.
-Baseline event records name the batch's exact dependency/log manifest, each
-issued op token and length, terminal results, fence issue/result, timeout,
-publication, acknowledgement, refusal and crash. Successful exact write-set
-completion yields `:batch-writes-complete`; actual successful fence completion
-yields `:fence-ok`; acknowledgement yields `:acknowledge`. Physical recovery
-evidence has a separate allowlist and cannot inject a synthetic fence or ack.
-Member/refusal records are opaque identities compared by exact equality; the
-producer must use stable operation identities, not arbitrary request bodies.
-This translator does not establish semantic request binding or IDENTITY.
-It currently requires globally distinct write identities rather than shared
-dependencies, and uses B1's deferred guard-verification convention.
+Completion routing is generated by A. B additionally checks the expected phase
+and event class, exact write length, and completed count below issued count.
+It accumulates completed counts/bytes and a sticky failure outcome/reason.
+Wrong-class or excess results enter uncertainty. A successful late fence clears
+only its in-flight flag; it cannot leave uncertainty or publish an outcome.
 
-The simulator projection and recovery stand-in are outstanding. The stand-in
-must read the simulator's durable image through B2d frame/seal checkers and
-validate the required dependency prefix. A supplied expected history or a
-machine's completed counter cannot substitute for that readback. Checker unit
-fixtures alone establish neither scenario 13/14 nor HISTORY on simulator runs.
+Each resource row records the issuing operation slot and generation. Its B4
+`:outstanding-io` edge has a distinct edge row and the op generation as holder.
+Because A's callback omits operation identity, log edges are conservatively
+retained until all issued results of their class are harvested; no edge is
+assigned to an arbitrary completion. Exact per-operation immediate release
+would require A to expose the harvested token. Pool loans remain A-owned until
+harvest.
+
+### Barrier contract
+
+A fence-in-flight flag is set on successful issue and cleared only by its
+matched harvested completion, including after timeout. The fence continuation
+checks both batch rows before issuing. The simulator independently counts
+queued, submitted and posted-but-unharvested fence operations and rejects a
+count above one; a deliberate double-issue control tests that counter. A fence
+issue installs a deadline 1024 monotonic ticks after the core's current clock.
+While waiting, the row remains runnable and checks clock observations harvested
+through A's mailbox. Expiry enters uncertainty without clearing the flag; the
+late success scenario uses that actual clock/dispatch path. A deadline that
+cannot fit the declared width enters uncertainty before issuing, without wrap.
+
+Baseline mode writes the dependency and both frames, harvests every exact
+result, then issues Fence. `:commit-barrier-mode 1` selects the stronger
+preflush/FUA contract: complete the dependency, harvest a successful preflush,
+then issue **both** journal frames with FUA. Their exact successful completions
+constitute the composed persistence boundary. This does not assume that an
+ordinary earlier write is covered by a later FUA write. An unresolved predecessor
+fences the follower.
+
+### HISTORY and recovery stand-in
+
+`fn2-history-translate` consumes projected manifest, issue, completion,
+publication, acknowledgement, timeout and crash events. Successful admission
+requests retain their key ranges independently of mutable machine rows; actual
+busy-row `:admission` results are projected as terminal refusals with their
+requested identities. Profile/capacity
+backpressure is not projected as a terminal client reply. Operations carry their
+actual slot/generation tokens; FUA bits come from descriptors. Reply counts
+are bounded by immutable admitted membership; an extra reply or same-batch
+counter regression is a named projection error. The scenario
+runner snapshots the outbox before adapter admission and the posted FIFO before
+`fn2-exec-harvest`, then executes the real scheduler continuation and router.
+For baseline, exact dependency/log completion emits B1's
+`:batch-writes-complete`, and successful FenceResult emits `:fence-ok`. For the
+alternate mode, dependency preflush followed by all exact FUA log completions
+emits that same abstract persistence boundary. Neither uncertainty nor an
+acknowledgement is inferred from readable cached bytes. Full HISTORY assumes
+that a terminal-refused operation identity is never reused. A retained real
+busy-refusal/retry counterexample violates refusal consistency even though all
+three acknowledged batches recover. This is separate from physical durability;
+the durability obligation checks writes, completions, barriers and recovery
+without adding that freshness premise.
+
+`fn2/sim/commit-history.lisp` is explicitly a **recovery stand-in until B5**.
+It knows allocation locations/identities captured before death; it does not
+implement disk discovery. It independently reads durable sectors, decodes
+records, checks dependency pages, both frames and the inner seal through
+`fn2-format-run`'s B2 test adapter, and follows the actual predecessor-seal chain.
+Recovered history comes from those bytes. The fixture compares complete keyed
+mutation records, including their effects and references, rather than only IDs.
+Malformed final bytes may supply bad-tail evidence; an unreadable device does
+not manufacture corruption evidence.
+
+Scenarios 13/14 enumerate every microstep death cut of their tiny-profile
+pilot schedules: one schedule per barrier mode for 13, and five fault classes
+per mode for 14, with dependency and journal targets for write failures.
+This exhausts those schedules' cuts, not every interleaving.
+Concrete 13 samples one cut per seeded schedule; concrete 14 completes each
+seeded fault schedule and then crashes. B's tiny profile adds eight 4 KiB buffers. The two-batch sweeps supply eight
+simulated 4 KiB units; reuse controls use the fixture's sixteen-unit default.
+Extent capacity follows this geometry. Explicit resource-exhaustion controls
+override the relevant capacity.
+The transient write-EIO injection uses A's terminal-result adapter because A's
+existing write fault kills the device permanently. The driver prints measured
+bytes per acknowledgement and encoded record payload per journal byte, and
+requires every named fault class and the fence-count control to be exercised.
+
+### Validation scope
+
+The twelve existing execution controls are named zero-argument evaluators in
+the two `defthm-owed` registrations, checked by `fn2-assert-owed-teeth`.
+`OWED.md` is generated from the admitted unit-book world. On the current base,
+the 90-book closure certifies below 60 seconds per book (maximum 55.078 seconds).
+A4, all twelve teeth, and 39 format controls per barrier mode pass. Scenarios
+13/14 pass 316/1882 tiny exhaustive cuts and 10,000 concrete seeds each; every
+required fault class is hit and maximum fences in flight is one. The full timing
+table and verbatim acceptance are in `build/REPORT.md`. One unchanged A unit
+remains red because it asserts a closed three-kind registry; only the two
+assembly edits are authorized here. The controls execute four batches, retain
+the follower while the leader drains, check stale generations and reservation
+refusals, and count all outstanding fences independently. The proof and acceptance status, including
+any failed composed gates, is recorded in `build/REPORT.md`; source presence
+alone is not a scenario or durability claim. B5 disk discovery and B6 reclamation
+remain separate quests.
