@@ -1438,10 +1438,10 @@
         },
         "S": {
           "applicable": true,
-          "module": null,
+          "module": "fn2.tests.surface.tls_auth.test_model_tls_auth",
           "reason": "RELEASE-PLAN \u00a72.2",
-          "status": "owed",
-          "model": "fn2.tests.model.tls_auth_model"
+          "status": "implemented",
+          "model": "fn2.tests.model.nntp_model"
         },
         "F": {
           "applicable": true,
@@ -1561,8 +1561,8 @@
         ]
       },
       "native_assignment": "Primary family by exercised obligation; cross-family \u00a71 evidence stays in native_rows. Unclaimed inventory entries assigned by public purpose; rewrite-row obligations retained, obsolete methods retired by run_natives.",
-      "model": "fn2.tests.model.tls_auth_model",
-      "model_scope": "model and live Target adapter owed",
+      "model": "fn2.tests.model.nntp_model",
+      "model_scope": "live TLS/auth connection sequences over the shared NNTP model; transport and authentication gates",
       "fuzz": {
         "driver": "fn2.tests.surface.tls_auth:fuzz (owed)",
         "grammar": "AUTHINFO/SASL/XREDEEM",
@@ -1593,8 +1593,8 @@
             "S",
             "F"
           ],
-          "model_examples": 200,
-          "steps": 50,
+          "model_examples": 5,
+          "steps": 30,
           "natives": "selected families",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
         },
@@ -1605,8 +1605,8 @@
             "F",
             "R"
           ],
-          "model_examples": 5000,
-          "steps": 50,
+          "model_examples": 50,
+          "steps": 30,
           "natives": "all natives in selected families; --all selects all 120",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"

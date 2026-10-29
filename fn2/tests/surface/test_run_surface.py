@@ -189,7 +189,7 @@ class SurfaceRunnerTests(unittest.TestCase):
 
     def test_owed_forms_are_listed_but_not_generated(self):
         for family, entry in surface.FAMILIES.items():
-            if family in ('nntp', 'consumer'):
+            if family in ('nntp', 'consumer', 'tls_auth'):
                 continue
             self.assertEqual(entry['forms']['S']['status'], 'owed')
             self.assertEqual(entry['forms']['S']['model'], entry['model'])
