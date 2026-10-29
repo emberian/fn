@@ -104,6 +104,20 @@
 (defthm fn2-fc-word-byte-natp (natp (fn2-fc-word-byte v i)) :rule-classes :type-prescription)
 (defthm fn2-fc-word-byte-bound (< (fn2-fc-word-byte v i) 256) :rule-classes :linear)
 (in-theory (disable fn2-fc-word-byte))
+;; Copy a digest row's 32 bytes into a pool slot, owner by owner (C's index
+;; pages and B's commit seal both store hashes this way; one copy).
+(defun fn2-digest-store (left row slot gen off okind oslot ogen fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-digests fn2-pool) :measure (nfix left)
+  :guard (and (fn2-digest-rowp row fn2-digests) (fn2-pool-wfp fn2-pool)
+              (natp left) (<= left 32) (natp off))))
+ (if (zp left) (mv :ok fn2-pool)
+  (mv-let (code fn2-pool)
+   (fn2-pool-write slot gen (+ off (- 32 left))
+    (fn2-fc-word-byte (fn2-digest-word row (floor (- 32 left) 4) fn2-digests) (mod (- 32 left) 4))
+    okind oslot ogen fn2-pool)
+   (if (eq code :ok) (fn2-digest-store (- left 1) row slot gen off okind oslot ogen fn2-digests fn2-pool)
+    (mv code fn2-pool)))))
+(fn2-pool-preserves fn2-digest-store (left row slot gen off okind oslot ogen fn2-digests fn2-pool) :position 1)
 (defun fn2-fc-identity (row kind base len fn2-fc-context fn2-fields)
  (declare (xargs :stobjs (fn2-fc-context fn2-fields) :guard (and (and (fn2-fc-context-wfp fn2-fc-context) (natp row) (< row (fn2-fc-context-rows fn2-fc-context))) (and (fn2-fields-wfp fn2-fields) (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))))))
  (case kind

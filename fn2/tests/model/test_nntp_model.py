@@ -633,6 +633,19 @@ class H2dRecordedReplyTests(unittest.TestCase):
         e.update(b"439 <one@example.test> rejected\r\n", None, eof=True)
         self.assertTrue(c.quit)
 
+    def test_invalid_utf8_is_malformed_before_whitespace(self):
+        # H6 pin with layer D (specs/nntp.md:513-518): decode first, so a bad-UTF-8 line with
+        # surrounding whitespace is malformed (501, the connection may close), never a kept 501.
+        for command in (b"GROUP fn.\xff \r\n", b" GROUP fn.\xff\r\n", b"GROUP fn.\xff\t\r\n"):
+            with self.subTest(command=command):
+                e = connect(model()).send(command)
+                self.assertTrue(e.close_after_reply)
+                self.assertIn("513-518", e.close_spec)
+                accept(e, b"501 syntax error\r\n")
+        e = connect(model()).send(b"GROUP fn.test \r\n")  # valid UTF-8: plain 501, connection kept
+        self.assertFalse(e.close_after_reply)
+        accept(e, b"501 syntax error\r\n")
+
     def test_malformed_eof_is_optional_and_requires_observed_eof(self):
         for command in (b"HEAD <a@b\r>\r\n", b"GROUP fn.\xff\r\n"):
             with self.subTest(command=command):

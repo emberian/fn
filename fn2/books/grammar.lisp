@@ -375,6 +375,23 @@
                        (mv :bad-line s p o 0 0)))
                     (t (mv :data s p o s (- p 2)))))))))))
 
+; A line framed structurally: [s, e) ends in CRLF and holds no other NUL,
+; CR or LF (its UTF-8 and its control octets may still be refused). A
+; refused command whose block follows at once is told apart by this.
+(defun fn2-gram-clean-scan (left i slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix left)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i))))
+  (if (zp left) t
+    (mv-let (ok b) (fn2-gram-read slot gen i okind oslot ogen fn2-pool)
+      (and ok (not (= b 0)) (not (= b *fn2-gram-cr*)) (not (= b *fn2-gram-lf*))
+           (fn2-gram-clean-scan (- left 1) (+ 1 i) slot gen okind oslot ogen fn2-pool)))))
+(defun fn2-gram-structural-p (s e slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp s) (natp e))))
+  (and (<= (+ s 3) e)
+       (mv-let (ok cr) (fn2-gram-read slot gen (- e 2) okind oslot ogen fn2-pool)
+         (and ok (= cr *fn2-gram-cr*)))
+       (fn2-gram-clean-scan (- (- e 2) s) s slot gen okind oslot ogen fn2-pool)))
+
 ; ------------------------------------------------------------------------
 ; Rendering into a TX slot, appended at its fill through fn2-pool-write.
 (defun fn2-gram-put (byte slot gen okind oslot ogen fn2-pool)
@@ -515,11 +532,17 @@
 ;     :fields ((WORD :number|:span|:digits14) ...)   ; template field words
 ;     :general ((KEY :code N :text T :layer L :class C) ...)   ; replies of no command
 ;     :commands ((CMD :keyword K :args (ARG ...) :states (S ...) :state-refusal KEY
-;                     :block nil|(:after CODE)|(:immediate) :hand-off nil|(:tls CODE)|(:compress CODE)
+;                     :block nil|(:after CODE)|(:immediate) :block-refusal KEY
+;                     :hand-off nil|(:tls CODE)|(:compress CODE)
 ;                     :help ROW-or-nil :spec "citation"
 ;                     :replies ((KEY :code N :text T :layer L :class C) ...)) ...))
 ; An ARG is a kind of *fn2-gram-arg-kinds* but :keyword, (:keyword W ...),
 ; or (:opt ARG); :rest takes the line from its token and must be last.
+; An (:immediate) block follows its command line without waiting for a
+; reply (TAKETHIS, RFC 4644 section 2.5): a refused line of such a command
+; whose keyword stands first, in a state that admits it and with structural
+; framing, parses to :discard; its block is framed and discarded, and its
+; :block-refusal reply is due after the terminator.
 ; Expansion helpers run at macro time only (lists live there, never at run time).
 
 (defun fn2-gram-cat (parts)
@@ -657,6 +680,8 @@
                     (:states (fn2-gram-state-mask (fn2-decl-get :states p) declared))
                     (:refusal (let ((r (fn2-decl-get :state-refusal p)))
                                 (if r (fn2-gram-const g "-reply-" (caar commands) "-" r) (fn2-gram-const g "-reply-none"))))
+                    (:block-refusal (let ((r (fn2-decl-get :block-refusal p)))
+                                      (if r (fn2-gram-const g "-reply-" (caar commands) "-" r) (fn2-gram-const g "-reply-none"))))
                     (:block (list 'quote (car (fn2-decl-get :block p))))
                     (:block-code (or (cadr (fn2-decl-get :block p)) 0))
                     (:hand-off (list 'quote (car (fn2-decl-get :hand-off p))))
@@ -732,7 +757,8 @@
       (cons (fn2-declare (list :command (fn2-gram-sym g "-" (caar commands)))
               (list :grammar g :keyword (fn2-decl-get :keyword p) :syntax (fn2-decl-get :args p)
                     :protocol-states (fn2-decl-get :states p) :state-refusal (fn2-decl-get :state-refusal p)
-                    :block (fn2-decl-get :block p) :hand-off (fn2-decl-get :hand-off p)
+                    :block (fn2-decl-get :block p) :block-refusal (fn2-decl-get :block-refusal p)
+                    :hand-off (fn2-decl-get :hand-off p)
                     :help (fn2-decl-get :help p) :spec (fn2-decl-get :spec p)
                     :replies (fn2-decl-get :replies p))
               nil
@@ -752,6 +778,10 @@
            (fn2-gram-replies-p (fn2-decl-get :replies p))
            (or (null (fn2-decl-get :state-refusal p))
                (assoc-eq (fn2-decl-get :state-refusal p) (fn2-decl-get :replies p)))
+           ; An immediate block names the reply that refuses it after the terminator.
+           (iff (equal (fn2-decl-get :block p) '(:immediate)) (fn2-decl-get :block-refusal p))
+           (or (null (fn2-decl-get :block-refusal p))
+               (assoc-eq (fn2-decl-get :block-refusal p) (fn2-decl-get :replies p)))
            (not (assoc-eq (caar commands) (cdr commands)))
            (fn2-gram-commands-p (cdr commands) states)))))
 
@@ -759,14 +789,29 @@
 ;; tag only for refusals before a keyword is known), at most four arguments.
 (defun fn2-gram-parse-shape-p (code tag nargs none)
   (declare (xargs :guard t))
-  (and (member-eq code '(:ok :malformed :syntax :unknown :state))
+  (and (member-eq code '(:ok :malformed :syntax :unknown :state :discard))
        (natp tag) (natp none) (<= tag none) (natp nargs) (<= nargs 4)
-       (or (not (member-eq code '(:ok :state))) (< tag none))
+       (or (not (member-eq code '(:ok :state :discard))) (< tag none))
        (or (not (eq code :unknown)) (equal tag none))))
 
 (defun fn2-gram-octetsp (x)
   (declare (xargs :guard t))
   (if (atom x) (null x) (and (natp (car x)) (< (car x) 256) (fn2-gram-octetsp (cdr x)))))
+
+;; Mutation controls (D2b, RELEASE-PLAN section 2.4): the logical runner
+;; takes FAULT, which is nil in every statement and every served use. Each
+;; named fault makes the runner a deliberately wrong grammar that the fuzzer
+;; (tests/grammar-fuzz.lisp) must catch: :accept takes an argument the
+;; command's syntax refuses (a wrong acceptance), :reply answers a syntax
+;; refusal with the unknown-command reply (a wrong reply), :drop keeps the
+;; connection open after a malformed line (a dropped effect: the close).
+(defconst *fn2-gram-faults* '(:accept :reply :drop))
+(defun fn2-gram-fault-code (fault code tag none)
+  (declare (xargs :guard t))
+  (if (and (eq fault :accept) (eq code :syntax) (natp tag) (natp none) (< tag none)) :ok code))
+(defun fn2-gram-fault-reply (fault reply rsyntax runknown)
+  (declare (xargs :guard t))
+  (if (and (eq fault :reply) (equal reply rsyntax)) runknown reply))
 
 ;; The first reply row of each command tag, by index.
 (defun fn2-gram-first-reply-arms (rows index last)
@@ -792,7 +837,8 @@
          (runknown (fn2-gram-const g "-reply-unknown"))
          (respond (fn2-gram-sym g "-respond"))
          (drive (fn2-gram-sym g "-drive"))
-         (run (fn2-gram-sym g "-run")))
+         (run (fn2-gram-sym g "-run"))
+         (run-fault (fn2-gram-sym g "-run-fault")))
     `((defun ,(fn2-gram-sym g "-parse-outcome-p") (s e mask slot gen okind oslot ogen fn2-pool)
         (declare (xargs :stobjs fn2-pool :verify-guards nil))
         (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
@@ -813,41 +859,55 @@
           (:unknown (mv ,none ,runknown))
           (:state (mv tag (,(fn2-gram-sym g "-state-refusal") tag)))
           (otherwise (mv ,none ,rsyntax))))
-      (defun ,drive (fuel mode start pos overflow mask events slot gen tslot tgen fn2-pool)
+      (defun ,drive (fuel mode start pos overflow mask fault events slot gen tslot tgen fn2-pool)
         (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix fuel)))
         (if (or (zp fuel) (eq mode :stopped)) (mv mode start pos overflow events fn2-pool)
-          (if (eq mode :block)
+          (if (or (eq mode :block) (consp mode))
               (mv-let (status s p o ds de)
                 (fn2-gram-block-step *fn2-gram-run-bytes* start pos overflow ,bcap slot gen 1 1 1 fn2-pool)
                 (case status
                   ((:need-more) (mv mode s p o events fn2-pool))
-                  ((:budget) (,drive (- fuel 1) mode s p o mask events slot gen tslot tgen fn2-pool))
+                  ((:budget) (,drive (- fuel 1) mode s p o mask fault events slot gen tslot tgen fn2-pool))
                   ((:fault) (mv :stopped s p o (cons (list :fault) events) fn2-pool))
-                  ((:overflow) (,drive (- fuel 1) mode s p o mask (cons (list :block-overflow) events) slot gen tslot tgen fn2-pool))
+                  ((:overflow) (,drive (- fuel 1) mode s p o mask fault (cons (list :block-overflow) events) slot gen tslot tgen fn2-pool))
                   (otherwise
-                   (,drive (- fuel 1) (if (eq status :terminator) :command :block) p p 0 mask
-                           (cons (if (eq status :data) (list :data ds de) (list status)) events)
-                           slot gen tslot tgen fn2-pool))))
+                   (if (and (eq status :terminator) (consp mode))
+                       ;; A discarded block's refusal, due after its terminator.
+                       (mv-let (rcode fn2-pool)
+                         (,render (cadr mode) (,(fn2-gram-sym g "-block-refusal") (cadr mode))
+                                  mask 0 0 0 slot gen s 0 tslot tgen 1 1 1 fn2-pool)
+                         (,drive (- fuel 1) :command p p 0 mask fault (cons (list :terminator rcode) events)
+                                 slot gen tslot tgen fn2-pool))
+                     (,drive (- fuel 1) (if (eq status :terminator) :command mode) p p 0 mask fault
+                             (cons (if (eq status :data) (list :data ds de) (list status)) events)
+                             slot gen tslot tgen fn2-pool)))))
             (mv-let (status s p o)
               (fn2-gram-frame *fn2-gram-run-bytes* start pos overflow ,cap slot gen 1 1 1 fn2-pool)
               (case status
                 ((:need-more) (mv mode s p o events fn2-pool))
-                ((:budget) (,drive (- fuel 1) mode s p o mask events slot gen tslot tgen fn2-pool))
+                ((:budget) (,drive (- fuel 1) mode s p o mask fault events slot gen tslot tgen fn2-pool))
                 ((:line)
-                 (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
+                 (mv-let (code0 tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
                    (,parse s p mask slot gen 1 1 1 fn2-pool)
-                   (mv-let (cmd reply) (,respond code tag)
-                     (mv-let (rcode fn2-pool)
-                       (,render cmd reply mask 0 0 0 slot gen s 0 tslot tgen 1 1 1 fn2-pool)
-                       (let ((next (cond ((eq code :malformed) :stopped)
-                                         ((not (eq code :ok)) :command)
-                                         ((,(fn2-gram-sym g "-hand-off") tag) :stopped)
-                                         ((,(fn2-gram-sym g "-block") tag) :block)
-                                         (t :command))))
-                         (,drive (- fuel 1) next p p 0 mask
-                                 (cons (list :command code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3 s p rcode)
-                                       events)
-                                 slot gen tslot tgen fn2-pool))))))
+                   (let ((code (fn2-gram-fault-code fault code0 tag ,none)))
+                    (if (eq code :discard)
+                        (,drive (- fuel 1) (list :discard tag) p p 0 mask fault
+                                (cons (list :command code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3 s p :deferred)
+                                      events)
+                                slot gen tslot tgen fn2-pool)
+                     (mv-let (cmd reply0) (,respond code tag)
+                       (mv-let (rcode fn2-pool)
+                         (,render cmd (fn2-gram-fault-reply fault reply0 ,rsyntax ,runknown)
+                                  mask 0 0 0 slot gen s 0 tslot tgen 1 1 1 fn2-pool)
+                         (let ((next (cond ((eq code :malformed) (if (eq fault :drop) :command :stopped))
+                                           ((not (eq code :ok)) :command)
+                                           ((,(fn2-gram-sym g "-hand-off") tag) :stopped)
+                                           ((,(fn2-gram-sym g "-block") tag) :block)
+                                           (t :command))))
+                           (,drive (- fuel 1) next p p 0 mask fault
+                                   (cons (list :command code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3 s p rcode)
+                                         events)
+                                   slot gen tslot tgen fn2-pool))))))))
                 (otherwise
                  (mv-let (rcode fn2-pool)
                    (,render ,none ,rsyntax mask 0 0 0 slot gen 0 0 tslot tgen 1 1 1 fn2-pool)
@@ -863,19 +923,20 @@
         (if (>= (nfix k) (nfix n)) nil
           (mv-let (ok b) (fn2-gram-read slot gen (nfix k) 1 1 1 fn2-pool)
             (cons (if ok b :unreadable) (,(fn2-gram-sym g "-slot-bytes") (+ 1 (nfix k)) n slot gen fn2-pool)))))
-      (defun ,(fn2-gram-sym g "-chunks") (sizes octets mode start pos overflow mask events slot gen tslot tgen fn2-pool)
+      (defun ,(fn2-gram-sym g "-chunks") (sizes octets mode start pos overflow mask fault events slot gen tslot tgen fn2-pool)
         (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (len octets)))
         (if (atom octets) (mv mode events fn2-pool)
           (let ((k (if (and (consp sizes) (posp (car sizes))) (car sizes) (len octets))))
             (mv-let (rest fn2-pool) (,(fn2-gram-sym g "-feed") k octets slot gen fn2-pool)
               (mv-let (mode start pos overflow events fn2-pool)
-                (,drive (+ 8 (* 4 (len octets))) mode start pos overflow mask events slot gen tslot tgen fn2-pool)
+                (,drive (+ 8 (* 4 (len octets))) mode start pos overflow mask fault events slot gen tslot tgen fn2-pool)
                 (if (>= (len rest) (len octets)) (mv mode events fn2-pool)
                   (,(fn2-gram-sym g "-chunks") (if (consp sizes) (cdr sizes) nil) rest mode start pos overflow
-                                               mask events slot gen tslot tgen fn2-pool)))))))
+                                               mask fault events slot gen tslot tgen fn2-pool)))))))
       ;; Events in order, and the rendered reply bytes, for octets arriving in
-      ;; chunks of the given sizes (the remainder as one chunk).
-      (defun ,run (octets sizes mask)
+      ;; chunks of the given sizes (the remainder as one chunk), under FAULT
+      ;; (nil, or a mutation control of *fn2-gram-faults*).
+      (defun ,run-fault (octets sizes mask fault)
         (declare (xargs :verify-guards nil))
         (with-local-stobj fn2-pool
           (mv-let (result fn2-pool)
@@ -883,11 +944,14 @@
               (mv-let (c1 slot gen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
                 (mv-let (c2 tslot tgen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
                   (mv-let (mode events fn2-pool)
-                    (,(fn2-gram-sym g "-chunks") sizes octets :command 0 0 0 mask nil slot gen tslot tgen fn2-pool)
+                    (,(fn2-gram-sym g "-chunks") sizes octets :command 0 0 0 mask fault nil slot gen tslot tgen fn2-pool)
                     (mv (list c1 c2 mode (reverse events)
                               (,(fn2-gram-sym g "-slot-bytes") 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool))
                         fn2-pool)))))
             result)))
+      (defun ,run (octets sizes mask)
+        (declare (xargs :verify-guards nil))
+        (,run-fault octets sizes mask nil))
       (make-event (value (fn2-declare '(:operation-set ,g) nil nil nil)))
       (defthm-owed ,(fn2-gram-sym g "-parse-total") (s e mask slot gen okind oslot ogen pool)
         (implies (and (fn2-poolp pool) (fn2-pool-wfp pool) (natp s) (natp e))
@@ -913,6 +977,58 @@
   (if (atom states) nil
     (cons `(defconst ,(fn2-gram-const g "-state-" (car states)) ,(expt 2 bit))
           (fn2-gram-state-consts g (cdr states) (+ 1 bit)))))
+
+; The line parser and the typed renderer of grammar G (split from
+; FN2-GRAM-EVENTS, whose admission grows with the size of its body).
+(defun fn2-gram-parse-events (g none absent std guard)
+  (declare (xargs :verify-guards nil))
+  `(
+       ; One complete command line [s, e) (its LF at e-1):
+       ; (mv code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3), CODE one of
+       ; :ok :malformed :syntax :unknown :state.
+       (defun ,(fn2-gram-sym g "-parse-line-0") (s e mask ,@std)
+         (declare (xargs :stobjs fn2-pool :guard (and ,guard (natp s) (natp e))))
+         (let ((code (fn2-gram-check-line s e ,@std)))
+           (if (not (eq code :ok)) (mv code ,none 0 ,@absent)
+             (let* ((end (nfix (- e 2)))
+                    (te (fn2-gram-skip (nfix (- end s)) s end nil ,@std))
+                    (as (fn2-gram-skip (nfix (- end te)) te end t ,@std)))
+               (if (and (< as end) (> (- end as) ,(fn2-gram-const g "-args-cap")))
+                   (mv :syntax ,none 0 ,@absent)
+                 (let ((tag (,(fn2-gram-sym g "-keyword-tag") s (nfix (- te s)) ,@std)))
+                   (cond ((equal tag ,none) (mv :unknown tag 0 ,@absent))
+                         ((not (and (integerp mask) (logtest mask (,(fn2-gram-sym g "-command-states") tag))))
+                          (mv :state tag 0 ,@absent))
+                         (t (mv-let (code nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
+                              (,(fn2-gram-sym g "-args") tag s end ,@std)
+                              (mv code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3))))))))))
+       ; A malformed or syntax-refused line of an immediate-block command
+       ; whose keyword stands first, admitted in this state, framed
+       ; structurally: :discard (its block follows and is discarded).
+       (defun ,(fn2-gram-sym g "-parse-line") (s e mask ,@std)
+         (declare (xargs :stobjs fn2-pool :guard (and ,guard (natp s) (natp e))))
+         (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3) (,(fn2-gram-sym g "-parse-line-0") s e mask ,@std)
+           (if (not (member-eq code '(:malformed :syntax))) (mv code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
+             (let* ((end (nfix (- e 2)))
+                    (te (fn2-gram-skip (nfix (- end s)) s end nil ,@std))
+                    (itag (,(fn2-gram-sym g "-keyword-tag") s (nfix (- te s)) ,@std)))
+               (if (and (eq (,(fn2-gram-sym g "-block") itag) :immediate)
+                        (integerp mask) (logtest mask (,(fn2-gram-sym g "-command-states") itag))
+                        (fn2-gram-structural-p s e ,@std))
+                   (mv :discard itag 0 ,@absent)
+                 (mv code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3))))))
+       ; Typed rendering: a reply is written only for its own command, in a
+       ; state its layer admits; its status code is the declared one.
+       (defun ,(fn2-gram-sym g "-render") (cmd reply mask n0 n1 n2 sslot sgen soff slen ,@std)
+         (declare (xargs :stobjs fn2-pool
+                         :guard (and ,guard (natp n0) (natp n1) (natp n2) (natp soff) (natp slen))))
+         (if (not (and (equal (,(fn2-gram-sym g "-reply-command") reply) cmd)
+                       (,(fn2-gram-sym g "-reply-admitted") reply mask)))
+             (mv :untyped fn2-pool)
+           (mv-let (code fn2-pool)
+             (fn2-gram-put-template 0 (,(fn2-gram-sym g "-reply-template") reply) 0 n0 n1 n2
+                                    sslot sgen soff slen ,@std)
+             (if (not (eq code :ok)) (mv code fn2-pool) (fn2-gram-put-crlf ,@std)))))))
 
 (defun fn2-gram-events (g line-cap args-cap block-line-cap states layers fields general commands)
   (declare (xargs :verify-guards nil))
@@ -949,6 +1065,9 @@
        (defun ,(fn2-gram-sym g "-block-code") (tag)
          (declare (xargs :guard t))
          (case tag ,@(fn2-gram-command-arms g commands 0 :block-code states) (otherwise 0)))
+       (defun ,(fn2-gram-sym g "-block-refusal") (tag)
+         (declare (xargs :guard t))
+         (case tag ,@(fn2-gram-command-arms g commands 0 :block-refusal states) (otherwise ,(fn2-gram-const g "-reply-none"))))
        (defun ,(fn2-gram-sym g "-hand-off") (tag)
          (declare (xargs :guard t))
          (case tag ,@(fn2-gram-command-arms g commands 0 :hand-off states) (otherwise nil)))
@@ -981,37 +1100,7 @@
          (declare (xargs :stobjs fn2-pool :guard (and ,guard (natp s) (natp end))))
          (case tag ,@(fn2-gram-command-arms g commands 0 :args states)
            (otherwise (mv :syntax 0 ,@absent))))
-       ; One complete command line [s, e) (its LF at e-1):
-       ; (mv code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3), CODE one of
-       ; :ok :malformed :syntax :unknown :state.
-       (defun ,(fn2-gram-sym g "-parse-line") (s e mask ,@std)
-         (declare (xargs :stobjs fn2-pool :guard (and ,guard (natp s) (natp e))))
-         (let ((code (fn2-gram-check-line s e ,@std)))
-           (if (not (eq code :ok)) (mv code ,none 0 ,@absent)
-             (let* ((end (nfix (- e 2)))
-                    (te (fn2-gram-skip (nfix (- end s)) s end nil ,@std))
-                    (as (fn2-gram-skip (nfix (- end te)) te end t ,@std)))
-               (if (and (< as end) (> (- end as) ,(fn2-gram-const g "-args-cap")))
-                   (mv :syntax ,none 0 ,@absent)
-                 (let ((tag (,(fn2-gram-sym g "-keyword-tag") s (nfix (- te s)) ,@std)))
-                   (cond ((equal tag ,none) (mv :unknown tag 0 ,@absent))
-                         ((not (and (integerp mask) (logtest mask (,(fn2-gram-sym g "-command-states") tag))))
-                          (mv :state tag 0 ,@absent))
-                         (t (mv-let (code nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
-                              (,(fn2-gram-sym g "-args") tag s end ,@std)
-                              (mv code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3))))))))))
-       ; Typed rendering: a reply is written only for its own command, in a
-       ; state its layer admits; its status code is the declared one.
-       (defun ,(fn2-gram-sym g "-render") (cmd reply mask n0 n1 n2 sslot sgen soff slen ,@std)
-         (declare (xargs :stobjs fn2-pool
-                         :guard (and ,guard (natp n0) (natp n1) (natp n2) (natp soff) (natp slen))))
-         (if (not (and (equal (,(fn2-gram-sym g "-reply-command") reply) cmd)
-                       (,(fn2-gram-sym g "-reply-admitted") reply mask)))
-             (mv :untyped fn2-pool)
-           (mv-let (code fn2-pool)
-             (fn2-gram-put-template 0 (,(fn2-gram-sym g "-reply-template") reply) 0 n0 n1 n2
-                                    sslot sgen soff slen ,@std)
-             (if (not (eq code :ok)) (mv code fn2-pool) (fn2-gram-put-crlf ,@std)))))
+       ,@(fn2-gram-parse-events g none absent std guard)
        (defconst ,(fn2-gram-const g "-help-text") ,(fn2-gram-help-text commands 0))
        (defun ,(fn2-gram-sym g "-first-reply") (tag)
          (declare (xargs :guard t))

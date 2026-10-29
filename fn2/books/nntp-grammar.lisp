@@ -5,7 +5,10 @@
 ;; lifted once and polished (XFNCATCHUP's "done|more" reply is two replies);
 ;; the argument forms follow the model's validators and RFC 3977 section 3.1.
 ;; COMPRESS is admitted only after authentication (NNT-054; layer H's ruling
-;; of 2026-10-29). tests/grammar-oracle.py checks this table against the model.
+;; of 2026-10-29); AUTHINFO and XREDEEM only before it (RFC 4643 section 2.2:
+;; 502 once authenticated, whatever the arguments), so a connection's mask
+;; carries :anonymous or :authenticated. tests/grammar-oracle.py checks this
+;; table against the model, tests/grammar-fuzz-oracle.py the fuzz cases.
 (in-package "ACL2")
 (include-book "grammar")
 (fn2-book-layer :d)
@@ -14,7 +17,7 @@
   ;; RFC 3977 section 3.1: 512 octets with CRLF, arguments at most 497;
   ;; RFC 5322 section 2.1.1: a block line of 998 octets plus CRLF.
   :line-cap 512 :args-cap 497 :block-line-cap 1000
-  :states (:reader :peer :authenticated)
+  :states (:reader :peer :authenticated :anonymous)
   :layers ((:reader nil) (:auth nil) (:post nil) (:owner nil) (:connection nil) (:peer :peer))
   :fields (("NUMBER" :number) ("COUNT" :number) ("LOW" :number) ("HIGH" :number) ("N" :number)
            ("CLEN" :number) ("NEXT" :number) ("END" :number) ("YYYYMMDDhhmmss" :digits14)
@@ -127,7 +130,7 @@
      (:shed :code 441 :class :refused :layer :owner :text "441 posting failed; REASON")))
   (authinfo :keyword "AUTHINFO"
    :spec "specs/nntp.md:1482-1736; RFC 4643 sections 2.3,2.4"
-   :args ((:keyword "USER" "PASS" "SASL") (:opt :token) (:opt :token)) :states (:reader :peer) :state-refusal nil
+   :args ((:keyword "USER" "PASS" "SASL") (:opt :token) (:opt :token)) :states (:anonymous) :state-refusal :already
    :block nil :hand-off nil :help 1
    :replies (
      (:password :code 381 :class :accepted :layer :auth :text "381 password required")
@@ -153,7 +156,7 @@
      (:cannot :code 580 :class :refused :layer :auth :text "580 can not initiate TLS negotiation")))
   (xredeem :keyword "XREDEEM"
    :spec "specs/nntp.md:1784-1914"
-   :args (:token :token) :states (:reader :peer) :state-refusal nil
+   :args (:token :token) :states (:anonymous) :state-refusal :already
    :block nil :hand-off nil :help 1
    :replies (
      (:password :code 381 :class :accepted :layer :auth :text "381 send the password with XREDEEM PASS")
@@ -354,7 +357,7 @@
      (:auth-required :code 480 :class :refused :layer :auth :text "480 authentication required")))
   (xover :keyword "XOVER"
    :spec "specs/nntp.md:136-159; RFC 2980 section 2.8"
-   :args ((:opt :ref-range)) :states (:reader :peer) :state-refusal nil
+   :args ((:opt :range)) :states (:reader :peer) :state-refusal nil
    :block nil :hand-off nil :help 4
    :replies (
      (:overview :code 224 :class :accepted :layer :reader :text "224 overview information follows")
@@ -447,7 +450,7 @@
   (takethis :keyword "TAKETHIS"
    :spec "specs/nntp.md:530-537,2412-2443; RFC 4644 section 2.5"
    :args (:msgid) :states (:peer) :state-refusal :transit
-   :block (:immediate) :hand-off nil :help 5
+   :block (:immediate) :block-refusal :rejected :hand-off nil :help 5
    :replies (
      (:transit :code 502 :class :refused :layer :reader :text "502 transit is not permitted on this connection")
      (:transferred :code 239 :class :accepted :layer :peer :text "239 MESSAGE-ID")

@@ -89,7 +89,7 @@
         '((fn2-trace-kind (:mailbox 0) (:machine 1) (:service 2) (:clock 3) (:signal 4) (:count 5))
           (fn2-visit (:principal 0) (:commit 1) (:timer 2) (:notification 3) (:maintenance 4) (:none 255))
           (fn2-clock-flag (:realtime-valid 1) (:realtime-negative 2) (:backward 4) (:malformed 8) (:input-mask 3) (:error-mask 12))
-          (fn2-work (:empty 1) (:poll 2) (:state 4) (:refusal 6) (:mailbox 8) (:small 12) (:release 20) (:transition 24))
+          (fn2-work (:empty 1) (:poll 2) (:state 4) (:refusal 6) (:mailbox 8) (:small 12) (:advance 16) (:release 20) (:transition 24) (:stage 32))
           (fn2-calendar (:principals-per-group 16) (:services 4) (:group-size 20))
           (fn2-format (:sector-bytes 4096) (:magic 843990611) (:version-offset 4) (:address-offset 8)
             (:sequence-offset 12) (:checksum-offset 16) (:payload-offset 20) (:word-bytes 4))

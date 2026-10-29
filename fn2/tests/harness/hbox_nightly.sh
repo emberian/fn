@@ -18,6 +18,7 @@
 #   FN2_NIGHTLY_OPT_INS  space list of NAME=VALUE native opt-ins (default FN_RUN_SLOW=1 FN_RUN_RELOCATION_E2E=1)
 #   FN2_NIGHTLY_KNOWN    JSON list classifying known rows for the report (default fn2/tests/surface/known-fn1.json)
 #   FN2_NIGHTLY_MIN_GIB  free GiB the output filesystem must keep (default 60)
+#   FN2_NIGHTLY_MIN_MEM_GIB least memory ceiling (physical, cgroup memory.max) the run needs (default 32)
 set -u
 OUT=${1:?usage: hbox_nightly.sh OUT}
 T=$(pwd)
@@ -36,15 +37,34 @@ if [ "$free" -lt "${FN2_NIGHTLY_MIN_GIB:-60}" ]; then
   echo DONE
   exit 3
 fi
+# fn1 sizes each node's connection capacity from the least memory ceiling it observes (physical
+# memory, the cgroup's memory.max up the hierarchy; books/admission-memory.lisp): under a 16 GiB
+# ceiling a node holds 22 connections, not 31, and control_across_peers, which holds 31 on each node,
+# meets the spec's 400 (H6). Refuse a ceiling under FN2_NIGHTLY_MIN_MEM_GIB (default 32).
+ceiling=$(awk '/MemTotal/ {print int($2 / 1048576)}' /proc/meminfo)
+cg=$(sed -n 's/^0:://p' /proc/self/cgroup)
+while [ -n "$cg" ] && [ "$cg" != / ]; do
+  if [ -f "/sys/fs/cgroup$cg/memory.max" ]; then
+    m=$(cat "/sys/fs/cgroup$cg/memory.max")
+    [ "$m" != max ] && [ $((m / 1073741824)) -lt "$ceiling" ] && ceiling=$((m / 1073741824))
+  fi
+  cg=$(dirname "$cg")
+done
+echo "nightly: memory ceiling $ceiling GiB (least of physical and cgroup memory.max)"
+if [ "$ceiling" -lt "${FN2_NIGHTLY_MIN_MEM_GIB:-32}" ]; then
+  echo "nightly: BLOCKED: memory ceiling $ceiling GiB under ${FN2_NIGHTLY_MIN_MEM_GIB:-32}; launch with SWARM_MEM_MAX=64G; nothing run"
+  echo DONE
+  exit 3
+fi
 echo $$ > "$OUT/nightly.pid"
 stop() {
   [ -f "$OUT/out/surface.pid" ] && kill "$(cat "$OUT/out/surface.pid")" 2>/dev/null
 }
 trap 'stop; rm -f "$OUT/nightly.pid"; echo "nightly: stopped"; echo DONE; exit 130' TERM INT
-for f in fn-host fn-host.core fn-host-developer fn-host-developer.core fn-host-developer-stripped \
-  fn-host-developer-stripped.core fn-host-dtn fn-host-dtn.core fn-host-dtn-developer fn-host-dtn-developer.core \
-  fn-host-reference fn-host-reference.core lib; do
-  [ -e "$IMG/$f" ] && ln -sfn "$IMG/$f" "$T/build/$f"
+# Every image file of the set (launchers, cores, *.world-deps: H5c's image_differential failed for
+# want of fn-host.world-deps when this was a fixed list) and its lib.
+for f in "$IMG"/fn-host* "$IMG"/lib; do
+  [ -e "$f" ] && ln -sfn "$f" "$T/build/$(basename "$f")"
 done
 printf '%s\n' '#!/bin/sh' "LD_LIBRARY_PATH=$SSL/lib exec $SSL/bin/openssl \"\$@\"" > "$OUT/bin/openssl-test"
 chmod 0755 "$OUT/bin/openssl-test"
@@ -59,6 +79,9 @@ eval "$($PY tools/native_env.py identity --image "$T/build/fn-host" --source "$S
 eval "$($PY tools/native_env.py identity --image "$T/build/fn-host-developer" --source "$SOURCE" \
   --prefix FN_NATIVE_DEVELOPER_ --export)"
 export FN2_SURFACE_IDENTITY="$T/build/fn-host" FN2_SURFACE_SOURCE="$SOURCE"
+# The E fixture drivers (fn2/tests/surface/fixtures.py; the bp golden row runs the DTN image's bp verbs).
+export FN_NATIVE_DTN_HOST="$T/build/fn-host-dtn"
+for F in NNTP CONSUMER BP TLS_AUTH WEB; do export "FN2_SURFACE_FIXTURE_$F=fn2.tests.surface.fixtures:fixture"; done
 for opt in ${FN2_NIGHTLY_OPT_INS-FN_RUN_SLOW=1 FN_RUN_RELOCATION_E2E=1}; do export "$opt"; done
 FAMILY=${FN2_NIGHTLY_FAMILIES:+--family $FN2_NIGHTLY_FAMILIES}
 [ -n "$FAMILY" ] || FAMILY=--all

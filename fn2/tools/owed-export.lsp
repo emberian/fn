@@ -19,8 +19,11 @@
 (include-book "fn2/tests/merkle-unit")
 (include-book "fn2/tests/format-check-unit")
 (include-book "fn2/tests/layout-teeth-unit")
+(include-book "fn2/tests/commit-proof-unit")
 (include-book "fn2/tests/grammar-unit")
 (include-book "fn2/tests/owed-d-unit")
+; Layer C's unit books (registered by the C seat; include-only).
+(include-book "fn2/tests/runs-unit")
 ; Other layers' unit and checker books are included above this line.
 ; The obligation input closes here, at the top of the world, never inside a
 ; library book (DSL-METATHEORY section 2.4): include order cannot refuse a row.

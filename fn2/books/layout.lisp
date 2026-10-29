@@ -34,7 +34,7 @@
       (and (true-listp k)
            (or (and (equal (len k) 2)
                     (case (car k)
-                      (:id (member-eq (cadr k) '(history incarnation writer-epoch commit event article group-number checkpoint allocation storage-domain physical-unit anchor-slot principal operation table object extent group obligation registration configuration schema key owner)))
+                      (:id (member-eq (cadr k) '(history incarnation writer-epoch commit event article group-number checkpoint allocation storage-domain physical-unit anchor-slot principal operation table object extent group obligation registration configuration schema key owner run stream position consumer version)))
                       ((:octets :zero) (unsigned-byte-p 32 (cadr k)))
                       (otherwise nil)))
                (and (equal (len k) 3) (eq (car k) :enum)

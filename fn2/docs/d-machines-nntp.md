@@ -24,8 +24,9 @@ is attributed to layer D. Package `"ACL2"`, prefix `fn2-`; no `skip-proofs`, `de
 | T10, resident state bounded by the profile | `fn2/books/resident.lisp` (generator), `fn2/books/owed-d.lisp`, `fn2/tests/owed-d-unit.lisp`, `fn2/tests/owed-d-coverage.lisp` | D1a | D |
 | the command-grammar DSL `defgrammar` (framer, block framer, validators, renderer, runner) | `fn2/books/grammar.lisp`, evidence `fn2/tests/grammar-unit.lisp` | D2a | D |
 | the NNTP command and reply table | `fn2/books/nntp-grammar.lisp` | D2a | D |
-| generator, mutator, fuzzer and its three mutation controls | `fn2/books/grammar-gen.lisp`, `fn2/tests/grammar-fuzz.lisp` | D2b | D |
+| generator, mutator, fuzzer and its three mutation controls | `fn2/tests/grammar-gen.lisp` (a test library: it uses the simulator's PRNG, and nothing served includes it), `fn2/tests/grammar-fuzz.lisp`; the mutation controls are `*fn2-gram-faults*` in the grammar's logical runner | D2b | D |
 | table check against H's model | `fn2/tests/grammar-export.lsp` (writes the table), `fn2/tests/grammar-oracle.py` (reads `fn2/tests/model/nntp_model.py`) | D2a | D |
+| fuzz cases checked against H's model | `fn2/tests/grammar-fuzz-export.lsp` (writes the cases and the grammar's verdicts), `fn2/tests/grammar-fuzz-oracle.py` | D2b | D |
 | listener/connection machine | `fn2/books/conn.lisp` | D3 | D |
 | upload, transaction, cursor, TLS admission, wait | `fn2/books/{upload,txn,cursor,tls-admit,wait}.lisp` | D4-D8 | D |
 | scheduler over principals, accounts | `fn2/books/sched.lisp` (extended through A's seam), `fn2/books/accounts.lisp` | D7 | D (sched.lisp changes go to A as a seam request) |
@@ -300,16 +301,20 @@ per-run budget (§B.3; work stops at any limit). All are declared through A's `d
 of its entries is DSL-METATHEORY's `command` kind, registered as a `(:command NAME-CMD)` row through
 `fn2-declare` (table `fn2-commands`, the one `declare.lisp` clause, carried into dev by the DSL seat
 in 5d809cb94). The row's payload is `:grammar :keyword :syntax :protocol-states :state-refusal :block
-:hand-off :help :spec :replies`, and its `:generated` manifest is the command's argument parser.
+:block-refusal :hand-off :help :spec :replies`, and its `:generated` manifest is the command's argument parser.
 
 **The declaration.** It gives `:line-cap 512 :args-cap 497 :block-line-cap 1000` (RFC 3977 §3.1;
-RFC 5322 §2.1.1) and `:states (:reader :peer :authenticated)`, where each state is one bit of the
-connection's state mask. It also gives `:layers`, which says which state a reply's layer needs
+RFC 5322 §2.1.1) and `:states (:reader :peer :authenticated :anonymous)`, where each state is one bit
+of the connection's state mask. A connection is reader or peer, and anonymous or authenticated.
+AUTHINFO and XREDEEM are admitted only in `:anonymous`; once a connection is authenticated, the
+state refusal answers them 502 whatever their arguments (RFC 4643 §2.2). COMPRESS is admitted only
+in `:authenticated`. It also gives `:layers`, which says which state a reply's layer needs
 (`:peer` replies need `:peer`). Then come `:fields`, the template field words of the reply texts
 (`NUMBER`, `MESSAGE-ID`, `COUNT LOW HIGH GROUP`, `REASON`, `YYYYMMDDhhmmss`, ...); `:general`, the
 replies of no command (500, 501, the greetings, the 400s, the 403); and `:commands`. A command entry
 has a keyword, typed arguments, admitting states, the reply that refuses it in another state, a block
-opening (`(:after 340)`, `(:after 335)` or `(:immediate)`), a hand-off (`(:tls 382)` or `(:compress
+opening (`(:after 340)`, `(:after 335)` or `(:immediate)`; an immediate block names its
+`:block-refusal`, TAKETHIS's 439), a hand-off (`(:tls 382)` or `(:compress
 206)`), its HELP row, its spec citation and its replies `(KEY :code :class :layer :text)`.
 Argument kinds are `:number` (an article number, 1..2^31-1), `:digits`, `:range` (`n`, `n-`, `n-m`,
 with the open end `*fn2-none*`), `:msgid`, `:ref` and `:ref-range` (a Message-ID when the token opens
@@ -322,7 +327,14 @@ each optional under `(:opt K)`, with at most four per command.
 - Per-command argument parsers, plus the state, block and hand-off tables.
 - `NAME-parse-line`. It takes one complete line `[s, e)` and returns `(mv code tag nargs f0 a0 b0 ...
   f3 a3 b3)`, where CODE is `:ok`, `:malformed` (empty line, bare LF or CR, NUL, ill-formed UTF-8:
-  reply 501 and close), `:syntax` (501), `:unknown` (500) or `:state` (the command's state refusal).
+  reply 501 and close), `:syntax` (501), `:unknown` (500), `:state` (the command's state refusal),
+  or `:discard`. `:discard` applies to a command whose block follows at once (TAKETHIS, RFC 4644
+  §2.5.2) and whose line would otherwise be malformed or a syntax error. It applies only when the
+  keyword stands first, a state admits the command, and the line is framed structurally (it ends
+  in CRLF and holds no other NUL, CR or LF). There is no reply to the line. The block that follows
+  is framed and discarded, and the `:block-refusal` reply is due after its terminator. The rule
+  exists because without it a malformed TAKETHIS would have its article read back as commands
+  (NNT-003). H's model over the fuzz cases found it.
   Each argument is a descriptor: a value, a range, a keyword index or an `(offset, length)` span in
   the RX slot, never copied.
 - `NAME-render`. It is typed: a reply is written only for its own command, in a state its layer
@@ -371,11 +383,94 @@ and `wildmat`. Result: 0 disagreements. The oracle catches a mutated row or verd
 - The parser reads through the pool library's `fn2-pool-read`, not `fn2-core-read`. The grammar is a
   library over `fn2-pool` and needs no core instance. OWN's read hook must cover `fn2-pool-read` (or
   the range primitives of D2c) when D3 serves it; R5b's rule.
-- Arity per sub-form (for example, AUTHINFO USER needs exactly one more argument) is left to D3's
-  decision code. The grammar bounds it: three arguments at most for AUTHINFO.
+- What depends on a sub-form or on the connection kind is left to D3's decision code. The grammar
+  declares one entry per keyword, and D3 answers with that command's declared 501. H's model over
+  the fuzz cases names each case (`DEFERRED` in `tests/grammar-fuzz-oracle.py`):
+  - AUTHINFO and XREDEEM sub-form arity;
+  - XFN-ZARTICLE's 64-hex digests;
+  - XFNCATCHUP's field values;
+  - MODE STREAM on a reader connection (501, RFC 4644 §2.3);
+  - LIST variant arguments: none for MOTD, DISTRIB.PATS, DISTRIBUTIONS and OVERVIEW.FMT, MSGID or
+    RANGE for HEADERS, and a wildmat for the others;
+  - XPAT's patterns as wildmats;
+  - HDR and XHDR field-name syntax.
+
+  These become D3 checks, each with a fixture.
+- XOVER takes a range only (RFC 2980 §2.8). The table had `:ref-range`, copied from OVER; H's model
+  over the fuzz cases found the difference.
+- A note for H, recorded rather than resolved: H's model checks the whitespace around a line before
+  it checks UTF-8, so it expects an ill-formed UTF-8 line that ends in whitespace to get 501 with the
+  connection kept open. The grammar answers 501 and closes. `specs/nntp.md:513-518` permits either
+  (drain or close). The oracle counts these cases separately; one in 4,416.
 - The parser scans line ends byte by byte through the scalar export; D2c moves it onto R6a1's
   `fn2-pool-scan` / `fn2-pool-drop-prefix` and deletes that loop.
-- Generator, mutator and the fuzzer's three mutation controls are D2b.
+
+**The fuzzer (D2b; form F of RELEASE-PLAN §2.4).** `defgrammar-generator NAME`
+(`fn2/tests/grammar-gen.lisp`) reads NAME's `(:command ...)` rows from the declaration table, so
+the generator works from the same declared table as the parser. It emits `NAME-generate seed mask
+budget` and `NAME-mutate seed class mask budget spec`. A case is `(octets events replies mode)`: the
+transcript, the events the transcript runner must report, the reply codes it must render, and the
+mode it must end in. Randomness comes from the simulator's PRNG (`sim/prng`), so every case replays
+from `(seed, class, mask, budget)`.
+
+- **Generated.** A generated transcript holds one to six pipelined command lines, all admitted by
+  the mask. Keywords come in random case, and separators are runs of SP/TAB. Every argument kind has
+  its own generator: numbers at their edges, `n`, `n-` and `n-m` ranges, Message-IDs over RFC 3977
+  §3.6's octets, wildmats with negated alternatives, labels, calendar dates of six or eight digits,
+  times, GMT, tokens and rests. Block commands carry a dot-stuffed block that contains empty lines,
+  dot-led lines, 8-bit octets and long lines of up to 998 octets. A hand-off command (STARTTLS, or
+  COMPRESS when authenticated) ends the transcript. The expected event of each line is exact: its
+  tag, its argument count, and every argument descriptor, spans included.
+- **Mutated.** Twenty-one operators each change one line or one block line inside a transcript that
+  has valid commands before and after it, so the case also observes what follows a refusal. The
+  line operators are NUL, bare CR, bare LF, ill-formed UTF-8, the empty line, a control octet,
+  leading or trailing whitespace, a line over 512 octets, arguments over 497 octets, an unknown
+  keyword, an extra argument, a missing argument, an argument invalid for its kind, and a command in
+  a state that refuses it. The block operators are an unstuffed leading dot, NUL, bare CR, bare LF,
+  a line over 1,000 octets, and a missing terminator. The reply that each mutation must receive
+  comes from the spec table `*fn2-gf-spec*` (`tests/grammar-fuzz.lisp`). That table is written from
+  RFC 3977 §§3.1, 3.1.1, 3.2.1, RFC 5322 §2.1.1, `specs/nntp.md` and H's COMPRESS ruling, one
+  citation per row, and is never read from the grammar. For example: 501 and close for a malformed
+  line, 501 for a syntax error, 500 for an unknown keyword, 502 for transit commands on a reader
+  connection, 480 for COMPRESS before authentication, and a `:bad-line` event for a block line.
+- **Random.** One to three byte operations are applied to a valid transcript: a flip, an insertion
+  of CR, LF, NUL, `.`, SP, TAB or an 8-bit octet, a deletion, or a truncation. A random case has no
+  expectation of its own.
+- **Checked on every case.** Every case runs through the real framer, parser and renderer, both
+  unsplit and in a seeded chunking whose deliveries are bounded by the simulator's network capacity
+  (`*fn2-sim-network-capacity*`, 4,096). Each framer call runs within the 4 KiB run quantum. A case
+  must match its expectation if it has one. It must also be sound: every event is declared and
+  well formed, every reply passes its type check, there is one reply line per command or overflow,
+  and the run stops exactly where the grammar stops. And it must be invariant under fragmentation:
+  the chunked run equals the unsplit run, and for the first four seeds every split point is checked.
+- **Result.** 256 seeds × 3 masks (anonymous reader, anonymous peer, authenticated reader) × 23 classes (valid, 21
+  operators, random) give 17,664 cases. None fails and no class is skipped. The run is
+  `tests/grammar-fuzz.lisp`, certified in 12.2 s; its tallies are in the `.cert.out`.
+- **Mutation controls.** The grammar's logical runner takes `fault`, which is nil in every statement
+  (`NAME-run` is `NAME-run-fault` with no fault). Each of the three faults makes the runner a
+  deliberately wrong grammar:
+  - `:accept` takes an argument that its syntax refuses (a wrong acceptance);
+  - `:reply` answers a syntax refusal with 500 (a wrong reply);
+  - `:drop` keeps the connection open after a malformed line (a dropped effect: the close).
+
+  The same campaign (16 seeds) catches all three, and the book asserts which classes catch each one.
+  `:accept` is caught by extra-arg, missing-arg and bad-arg. `:reply` is caught by every class whose
+  spec reply is 501. `:drop` is caught by the five malformed classes, and by random mutations.
+- **Not yet covered.** D2b exercises the grammar layer only: the framer, the parser, the typed
+  refusals and the hand-offs, through the transcript runner and its test responder (a line that
+  parses gets the command's first declared reply). The served replies, the WIRE and WORK checkers,
+  and the scenario `fuzz-nntp` under the simulator wait for D3's connection machine. Running against
+  a live node (`tests/test_fuzz_nntp.py` with fn1's nine reproducer sets) waits for D9.
+- **H's model as the second oracle.** `tests/grammar-fuzz-export.lsp` writes the cases of 64 seeds,
+  4,416 in all, together with the grammar's verdict on every framed command line.
+  `tests/grammar-fuzz-oracle.py` sends each line alone to a fresh model connection in the case's
+  state and compares the two on the syntax layer: malformed means 501 and close; syntax means 501;
+  unknown means 500; state means 480 or 502; discard means no reply and the article read; and a
+  line that parses must not get 500, or 501 alone. On its first run the oracle reported 382
+  disagreements. Three of them were grammar defects, all now fixed: TAKETHIS's refused line (the
+  `:discard` rule), AUTHINFO and XREDEEM after authentication (the `:anonymous` state), and XOVER's
+  Message-ID. The rest were sub-form checks that belong to D3, which are now named. Result: 13,501
+  lines, 0 disagreements.
 
 ## 7. Keystones, phased
 
@@ -445,13 +540,33 @@ The sprint (`origin/fn2/sprint-cd` 8e3488fcb) is compost; its gaps are the seams
 
 - Seam request to A (via main): R6b item 1 re-cut onto D0 (§2); R7 carries §4's forms.
 - `declare.lisp` gains the `command` kind's table entry (D2a), purely additive.
+- D3 owes the sub-form checks listed in §6 (from the fuzz oracle's `DEFERRED`), each with a fixture.
 
 ## 11. Deferred assertions E must restore
 
-Everything that needs authentication, access rules, the TLS adapter or the CLI: AUTHINFO/SASL,
-XREDEEM, STARTTLS completion (D7 has the admission half), COMPRESS (after authentication only),
-posting permissions, access-rule refusals, the natives needing them. Listed per command as D3-D9 meet
-them.
+D gates only what it can execute without authentication, access rules, the TLS adapter or the CLI
+(brief, "Acceptance"). Every assertion it cannot gate is listed here, per command or behaviour. Each
+row gives the D quest that builds the half D owns, the reason D cannot assert the rest, and the E
+quest that restores it, with its test (RELEASE-PLAN §1.1). Until E restores a row, D's simulator
+scenarios run with an anonymous principal under `anonymous open` on a plaintext listener, and its
+natives skip the row by name. A row leaves this table only when E's test is green.
+
+| command or behaviour | D builds (quest) | what D cannot assert | E restores (quest): test |
+|---|---|---|---|
+| every reader and posting command under `anonymous none` / `auth required`: 480 | D2 (480 replies declared; COMPRESS's 480 is grammar-level), D3 (the connection carries its auth reference, anonymous until set) | that an unauthenticated session gets 480 for every command but the public set (`specs/nntp.md:2322`), and that the pinned configuration decides it | E2: `auth`, `public_exposure`; the H model's `_requires_auth` |
+| the pinned access rule (H ruling HZ3, fn1 bug W01) | D3 (one access-rule reference per connection, pinned at authentication and re-read only at re-authentication; every command reads that one reference) | that LIST ACTIVE, GROUP, ARTICLE and POST apply the same pinned rule after an `account access` change on an open connection | E2: `group_access`; a W01 differential row in H |
+| GROUP/LISTGROUP/ARTICLE/... on a group the login cannot read: "no such newsgroup" (411/430), never a distinguishing refusal | D6 (the cursor answers from the visibility the connection's view grants) | the visibility itself: read wildmats, private groups, moderation queues | E2: `group_access`, `visibility_join` |
+| POST 440 (`:principal`, `:not-permitted`), read-only and moderated groups, `Approved` from a moderator only, signed-post bindings | D5 (the transaction's typed refusals, each a fixture) | which principal may post where, who moderates, the hybrid-signature binding | E2, E6: `moderation`, `hybrid_author`, `key_statements` |
+| CAPABILITIES conditional labels (POST, IHAVE, STREAMING, STARTTLS, AUTHINFO, SASL, COMPRESS, XFN-DICT) | D3 (the always-on labels; the slots for the conditional ones) | the conditions: TLS state, the auth profile, the peer record, the shipped dictionaries | E1, E2, E4: `conformance`, `auth`, `sasl`, `compress`, `implicit_tls` |
+| AUTHINFO USER/PASS, SASL PLAIN/SCRAM/SCRAM-PLUS (381/281/481/482/483/383/283/503/504) | D2 (the grammar; 502 once authenticated, fuzz-checked against H's model), D3 (sub-form arity, the auth reference, the 483 slot) | the credential check, the verifier `:fn-authsec-v2`, SCRAM, channel binding, the third failure's 481 + 400 + close (NNT-1002) | E2: `auth`, `sasl`, the RFC 7677 vectors |
+| XREDEEM (381/281/482/483) | D2 (the grammar; 502 once authenticated), D3 (arity) | invitation codes and account binding | E2: `friends_accounts`, `consumer_identity` |
+| STARTTLS (382; nothing framed during the handshake; 502 after auth, twice, or after COMPRESS; 580) | D2 (the hand-off), D7 (the admission machine, `Ltls` 16, the simulator's TLS stub; scenario 18's admission half) | the handshake, the reset of group and cursor after it, key exchange, certificate reload | E1: `starttls`, `tls_handshake_budget`, `tls_key_exchange`, `tls_reload` |
+| implicit TLS listener, protected-only (483 before TLS), the PROXY header | D3 (a listener kind field) | everything: E's listener and adapter | E1: `implicit_tls`, `tls_transport`, `tls_proxy` |
+| COMPRESS DEFLATE (206; the bomb and BFINAL close rules) and XFN-DICT / XFN-ZARTICLE (229) | D2 (the grammar: 480 before authentication, the hand-off after 206; XFN-ZARTICLE's line), D3 (the digest syntax) | the inflate and deflate streams, the dictionaries, the stored-payload carriage | E2: `compress`, new native `compress_dict` |
+| IHAVE/CHECK/TAKETHIS identity of the peer; transit body bound from the peer record's `inbound-max-octets` | D3 (the peer bit of the connection), D4 (the bound as a parameter; 437/439 then close; scenario 4), D5 (offer/transfer decisions; scenario 5) | which addresses are peers and their records' limits and max-inflight | E4: `peering`, `peer_misbehaving`, `peer_hostile_feed` |
+| XFNCATCHUP (291/423/501) | D2 (the grammar; 502 on a reader connection), D3 (field values) | the catch-up log and its chain | E4: `peer_catchup` |
+| live limits and `policy set` (capacity 400s, pacing, posts per minute, timers) | D7 (the limits as configuration generations in the simulator; scenarios 10, 11, 18) | the operator verbs that change them on a live node | E6: `limits_live`, `live_reconfiguration`, `public_limits` |
+| the Qc control inbox's operator sources (shutdown, reload) | D9 (Qc delivered by the simulator and the adapter) | the CLI and signals that write it | E6: `operator_verbs`, `operator_cli` |
 
 ## 12. Quests
 
@@ -460,7 +575,7 @@ them.
 | D0 | resources.lisp, the tables of §3 as data with certification checks, the owed deadlock-freedom keystone, per-bundle exhaustion and cancellation scenarios for A's existing bundles | A only | done |
 | D1a | T10 in owed-d.lisp with teeth | A only | done |
 | D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | done |
-| D2b | generator, mutator, fuzzer, the three mutation controls | D2a | |
+| D2b | generator, mutator, fuzzer, the three mutation controls, H's model over the cases | D2a | done |
 | D2c | parser onto R6a1's scan and drop-prefix | R6a1 | |
 | D3 | connection machine, greeting/HELP/QUIT/MODE/DATE/CAPABILITIES, timers, 400 refusals, ABI reconciled, T1 and T8 | R7, C2/C3, D0, D2 | |
 | D4-D9 | per the brief | per the brief | |

@@ -320,11 +320,7 @@
       "fixtures": [
         {
           "path": "fn2/tests/model/fixtures/rfc3977",
-          "reason": "RFC 3977 transcripts; live fixture setup adapter owed"
-        },
-        {
-          "path": "tests/fixtures/source-corpus",
-          "reason": "eight carried source articles; exercised by source_corpus native"
+          "reason": "RFC 3977 transcripts replayed live with their setup built (fn2.tests.surface.fixtures rfc3977)"
         }
       ],
       "performance_rows": [
@@ -360,12 +356,13 @@
           ],
           "model_examples": 5000,
           "steps": 50,
+          "s_timeout": 7200,
           "natives": "all natives in selected families; --all selects all 120",
           "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
           "execution": "swarm-build; launched by seat"
         }
       },
-      "model_timing": "H5a fn1: 200 empty-group examples in 96.01559008471668s (~0.48s/example), surface.json S duration."
+      "model_timing": "H5a fn1: 200 empty-group examples in 96.01559008471668s (~0.48s/example), surface.json S duration. H5c: 5000 examples did not finish inside the default 2400 s TestCase limit (0.48 s x 5000 = 2400 s), so hbox's s_timeout is 7200 s."
     },
     "consumer": {
       "release_name": "consumer",
@@ -526,7 +523,7 @@
       "fixtures": [
         {
           "path": "tests/fixtures/consumer-position",
-          "reason": "CNS cursor vectors; live E3 decoder adapter owed"
+          "reason": "CNS cursor vectors through consumer-inspect, asserted by tests.test_native_consumer_inspect (developer image)"
         },
         {
           "path": "share/fn/wire-grammar.json",
@@ -1170,12 +1167,7 @@
         ],
         "schedule": "workload, faults, process death at action boundaries; replay and shrink choices; A-E workload drivers owed"
       },
-      "fixtures": [
-        {
-          "path": "tests/test_native_peer_pull.py",
-          "reason": "NativePeerPullTests.test_pull_from_inn; INN 2.7.4 hbox nightly, already carried in peer_pull"
-        }
-      ],
+      "fixtures": [],
       "performance_rows": [
         "L-CATCHUP",
         "W6a",
@@ -1318,7 +1310,7 @@
       "fixtures": [
         {
           "path": "tests/bp-dtn7/golden",
-          "reason": "dtn7-rs 0.21.0 golden bundles; live E4 replay adapter owed"
+          "reason": "dtn7-rs-authored bundle through bp decode; fn-authored capture re-authored octet-equal by bp send"
         }
       ],
       "performance_rows": [
@@ -1580,7 +1572,7 @@
       "fixtures": [
         {
           "path": "fn2/tests/fixtures/scram",
-          "reason": "E2 RFC 7677 vector fixtures owed"
+          "reason": "RFC 7677 section 3 vector through tests/sasl_client.py, then a live SCRAM exchange it verifies"
         }
       ],
       "performance_rows": [
@@ -2068,5 +2060,9 @@
       "hbox": 2400
     }
   },
-  "native_timeout_note": "H1b evidence is not present here; these three known >300s modules passed with 2400s. Extend this data table from measured H1b durations."
+  "native_timeout_note": "H1b evidence is not present here; these three known >300s modules passed with 2400s. Extend this data table from measured H1b durations.",
+  "fixture_rows_merged": {
+    "tests/fixtures/source-corpus": "exercised whole by the carried source_corpus native (nntp E); a fixture row beside it was the same construction twice (H7)",
+    "tests/test_native_peer_pull.py": "NativePeerPullTests.test_pull_from_inn runs inside the carried peer_pull native (peering E) (H7)"
+  }
 }

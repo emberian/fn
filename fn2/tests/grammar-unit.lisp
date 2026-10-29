@@ -65,8 +65,11 @@
    (append (fn2-gu-group-line 505) (fn2-gu-text (fn2-gu-lines '("HELP"))))
    (append (fn2-gu-group-line 506) (fn2-gu-text (fn2-gu-lines '("HELP"))))))
 
+; A connection is anonymous or authenticated.
+(defconst *fn2-gu-reader* (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*))
+(defconst *fn2-gu-peer* (logior *fn2-nntp-state-peer* *fn2-nntp-state-anonymous*))
 (defconst *fn2-gu-masks*
-  (list *fn2-nntp-state-reader* *fn2-nntp-state-peer*
+  (list *fn2-gu-reader* *fn2-gu-peer*
         (logior *fn2-nntp-state-reader* *fn2-nntp-state-authenticated*)))
 
 ; ------------------------------------------------------------------------
@@ -127,33 +130,33 @@
 (in-theory (disable fn2-gu-reply-text))
 (defmacro fn2-gu-expect (x y)
   `(assert-event (equal ,x ,y) :msg (msg "~x0 gives ~x1, expected ~x2" ',x ,x ,y)))
-(fn2-gu-expect (fn2-gu-outcome 0 *fn2-nntp-state-reader*) '(:ok :ok :ok))
-(fn2-gu-expect (fn2-gu-outcome 8 *fn2-nntp-state-reader*) '(:unknown :syntax :syntax :syntax :syntax))
-(fn2-gu-expect (fn2-gu-outcome 9 *fn2-nntp-state-reader*) '(:state :state :state :state))
-(fn2-gu-expect (fn2-gu-outcome 9 *fn2-nntp-state-peer*) '(:ok :data :data :data))
-(fn2-gu-expect (fn2-gu-outcome 10 *fn2-nntp-state-reader*) '(:state :ok :ok))
-(fn2-gu-expect (fn2-gu-outcome 11 *fn2-nntp-state-reader*) '(:ok :data :data :data :data :terminator :ok))
-(fn2-gu-expect (fn2-gu-outcome 12 *fn2-nntp-state-reader*) '(:ok :data :bad-line :data :terminator :ok))
-(fn2-gu-expect (fn2-gu-outcome 13 *fn2-nntp-state-reader*) '(:ok))
-(fn2-gu-expect (fn2-gu-outcome 14 *fn2-nntp-state-reader*) '(:syntax :syntax :ok))
-(fn2-gu-expect (fn2-gu-outcome 15 *fn2-nntp-state-reader*) '(:malformed))
-(fn2-gu-expect (fn2-gu-outcome 16 *fn2-nntp-state-reader*) '(:malformed))
-(fn2-gu-expect (fn2-gu-outcome 17 *fn2-nntp-state-reader*) '(:malformed))
-(fn2-gu-expect (fn2-gu-outcome 18 *fn2-nntp-state-reader*) '(:ok :ok))
-(fn2-gu-expect (fn2-gu-outcome 19 *fn2-nntp-state-reader*) '(:malformed))
-(fn2-gu-expect (fn2-gu-outcome 20 *fn2-nntp-state-reader*) '(:syntax :ok))
-(fn2-gu-expect (fn2-gu-outcome 21 *fn2-nntp-state-reader*) '(:ok :ok))
-(fn2-gu-expect (fn2-gu-outcome 22 *fn2-nntp-state-reader*) '(:syntax :ok))
-(fn2-gu-expect (fn2-gu-outcome 23 *fn2-nntp-state-reader*) '(:syntax :ok))
-(fn2-gu-expect (fn2-gu-outcome 24 *fn2-nntp-state-reader*) '(:overflow))
-(fn2-gu-expect (fn2-gu-outcome 25 *fn2-nntp-state-reader*) '(:malformed))
-(fn2-gu-expect (fn2-gu-outcome 27 *fn2-nntp-state-reader*) '(:ok :ok))
-(fn2-gu-expect (fn2-gu-outcome 28 *fn2-nntp-state-reader*) '(:syntax :ok))
-(fn2-gu-expect (fn2-gu-outcome 26 *fn2-nntp-state-reader*) '(:ok :syntax :ok))
-(assert-event (equal (fn2-gu-reply-text 0 *fn2-nntp-state-reader*)
+(fn2-gu-expect (fn2-gu-outcome 0 *fn2-gu-reader*) '(:ok :ok :ok))
+(fn2-gu-expect (fn2-gu-outcome 8 *fn2-gu-reader*) '(:unknown :syntax :syntax :syntax :syntax))
+(fn2-gu-expect (fn2-gu-outcome 9 *fn2-gu-reader*) '(:state :state :state :state))
+(fn2-gu-expect (fn2-gu-outcome 9 *fn2-gu-peer*) '(:ok :data :data :data))
+(fn2-gu-expect (fn2-gu-outcome 10 *fn2-gu-reader*) '(:state :ok :ok))
+(fn2-gu-expect (fn2-gu-outcome 11 *fn2-gu-reader*) '(:ok :data :data :data :data :terminator :ok))
+(fn2-gu-expect (fn2-gu-outcome 12 *fn2-gu-reader*) '(:ok :data :bad-line :data :terminator :ok))
+(fn2-gu-expect (fn2-gu-outcome 13 *fn2-gu-reader*) '(:ok))
+(fn2-gu-expect (fn2-gu-outcome 14 *fn2-gu-reader*) '(:syntax :syntax :ok))
+(fn2-gu-expect (fn2-gu-outcome 15 *fn2-gu-reader*) '(:malformed))
+(fn2-gu-expect (fn2-gu-outcome 16 *fn2-gu-reader*) '(:malformed))
+(fn2-gu-expect (fn2-gu-outcome 17 *fn2-gu-reader*) '(:malformed))
+(fn2-gu-expect (fn2-gu-outcome 18 *fn2-gu-reader*) '(:ok :ok))
+(fn2-gu-expect (fn2-gu-outcome 19 *fn2-gu-reader*) '(:malformed))
+(fn2-gu-expect (fn2-gu-outcome 20 *fn2-gu-reader*) '(:syntax :ok))
+(fn2-gu-expect (fn2-gu-outcome 21 *fn2-gu-reader*) '(:ok :ok))
+(fn2-gu-expect (fn2-gu-outcome 22 *fn2-gu-reader*) '(:syntax :ok))
+(fn2-gu-expect (fn2-gu-outcome 23 *fn2-gu-reader*) '(:syntax :ok))
+(fn2-gu-expect (fn2-gu-outcome 24 *fn2-gu-reader*) '(:overflow))
+(fn2-gu-expect (fn2-gu-outcome 25 *fn2-gu-reader*) '(:malformed))
+(fn2-gu-expect (fn2-gu-outcome 27 *fn2-gu-reader*) '(:ok :ok))
+(fn2-gu-expect (fn2-gu-outcome 28 *fn2-gu-reader*) '(:syntax :ok))
+(fn2-gu-expect (fn2-gu-outcome 26 *fn2-gu-reader*) '(:ok :syntax :ok))
+(assert-event (equal (fn2-gu-reply-text 0 *fn2-gu-reader*)
                      (fn2-gu-text (fn2-gu-lines '("101 capability list follows" "100 help text follows"
                                                   "205 closing connection")))))
-(assert-event (equal (fn2-gu-reply-text 8 *fn2-nntp-state-reader*)
+(assert-event (equal (fn2-gu-reply-text 8 *fn2-gu-reader*)
                      (fn2-gu-text (fn2-gu-lines '("500 command not recognized" "501 syntax error" "501 syntax error"
                                                   "501 syntax error" "501 syntax error")))))
 
@@ -171,7 +174,7 @@
     (let ((k (if (and (consp sizes) (posp (car sizes))) (car sizes) (len octets))))
       (mv-let (rest fn2-pool) (fn2-nntp-feed k octets slot gen fn2-pool)
         (mv-let (mode start pos overflow events fn2-pool)
-          (fn2-nntp-drive (+ 8 (* 4 (len octets))) mode pos pos 0 mask events slot gen tslot tgen fn2-pool)
+          (fn2-nntp-drive (+ 8 (* 4 (len octets))) mode pos pos 0 mask nil events slot gen tslot tgen fn2-pool)
           (declare (ignore start overflow))
           (if (>= (len rest) (len octets)) (mv events fn2-pool)
             (fn2-gu-wrong-chunks (if (consp sizes) (cdr sizes) nil) rest mode pos mask events slot gen tslot tgen fn2-pool)))))))
@@ -193,8 +196,8 @@
 (defun fn2-nntp-test-fragmentation-negative ()
   (declare (xargs :verify-guards nil))
   (let ((octets (nth 1 *fn2-gu-transcripts*)))
-    (not (equal (fn2-gu-wrong-run octets '(3) *fn2-nntp-state-reader*)
-                (fn2-gu-wrong-run octets nil *fn2-nntp-state-reader*)))))
+    (not (equal (fn2-gu-wrong-run octets '(3) *fn2-gu-reader*)
+                (fn2-gu-wrong-run octets nil *fn2-gu-reader*)))))
 
 ; ------------------------------------------------------------------------
 ; A local pool with OCTETS in one slot, for direct framer and parser checks.
@@ -204,7 +207,7 @@
   (and (fn2-gram-frame-outcome-p 1 start pos 0 *fn2-nntp-line-cap* slot gen 1 1 1 fn2-pool)
        (fn2-gram-frame-outcome-p 4096 start pos 0 *fn2-nntp-line-cap* slot gen 1 1 1 fn2-pool)
        (or (> (- pos start) 4) (fn2-gram-frame-outcome-p 4096 start pos 1 4 slot gen 1 1 1 fn2-pool))
-       (fn2-nntp-parse-outcome-p start pos *fn2-nntp-state-reader* slot gen 1 1 1 fn2-pool)))
+       (fn2-nntp-parse-outcome-p start pos *fn2-gu-reader* slot gen 1 1 1 fn2-pool)))
 (in-theory (disable fn2-gu-frame-at))
 (defun fn2-gu-frames-pos (left start pos slot gen fn2-pool)
   (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix left)))
@@ -319,7 +322,7 @@
        ; Peer-layer replies are refused on a reader connection and written on a peer one.
        (with-local-stobj fn2-pool
          (mv-let (ok fn2-pool) (fn2-gu-render-check *fn2-nntp-command-check* *fn2-nntp-reply-check-wanted*
-                                                    *fn2-nntp-state-peer* fn2-pool) ok))))
+                                                    *fn2-gu-peer* fn2-pool) ok))))
 ; A renderer without the type check writes another command's reply: the
 ; typing condition refuses that outcome.
 (in-theory (disable fn2-nntp-test-reply-typing))
@@ -337,7 +340,7 @@
          (code (with-local-stobj fn2-pool (mv-let (code fn2-pool) (fn2-gu-untyped-render reply fn2-pool) code))))
     (and (eq code :ok)
          (not (and (equal (fn2-nntp-reply-command reply) cmd)
-                   (fn2-nntp-reply-admitted reply *fn2-nntp-state-reader*))))))
+                   (fn2-nntp-reply-admitted reply *fn2-gu-reader*))))))
 
 (in-theory (disable fn2-nntp-test-reply-typing-negative))
 (fn2-assert-owed-teeth fn2-gram-frame-total-linear fn2-nntp-parse-total fn2-nntp-fragmentation

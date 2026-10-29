@@ -1092,3 +1092,10 @@ to the whole. B3b's historic state alone would need each conversion done twice.
 `fn2/sim/commit-proof-step.lisp` is the real stepper, carved out of commit-proof.
 The scenario driver includes the stepper, not the keystone book, so the tiny
 exhaustive sweep gates B3b-1 without commit-proof.
+
+**B3b-2.** The keystone book `commit-proof.lisp` (fn2-commit-ack-implies-durable and
+fn2-commit-uncertain-persists, OWED with 12 executed teeth) and `commit-proof-unit` now sit
+on top of the stepper, and owed-export includes the unit. The concrete sweep (scenarios 13
+and 14, 10,000 cases each) is a nightly row on dregg-forge: `SECS=7200 sh
+fn2/tools/forge-driver.sh sim-layer-b`. It is not a per-commit gate; the tiny exhaustive sweep
+(`FN2_B_PROFILE=tiny`) is.
