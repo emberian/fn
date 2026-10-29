@@ -6,7 +6,7 @@ Read against: `DSL-METATHEORY.md` §1-3, §5, §9; `COHERENCE.md` §2-4; `HIGHER
 
 The project: `fn2/meta/` on branch `fn2/lean-meta` (worktree `/Users/ember/dev/fn/build/lanes/fn2/lean-meta`). Astra's three sessions: `fn2/lean-meta-astra-1.md` (sections A-E of this note, drafted as co-author; adopted where marked **(A1)**), `fn2/lean-meta-astra-2.md` (a line-by-line elaboration review of the Lean against the 4.30 and Mathlib sources, with statement corrections and stronger witnesses, all applied; marked **(A2)**) and `fn2/lean-meta-astra-3.md` (a review of the additions, §9).
 
-**Scope of what this note claims, in one sentence.** Every Lean theorem named below as proved is written and reviewed but **has not been typechecked**: the build box the brief names, `dregg-build`, and the lanes' second box, `dregg-ref`, no longer exist in the hcloud project (`hcloud server list`, 2026-10-28 23:0x EDT: only `dregg-anchor-fsn1`, `dregg-workhorse-fsn1`, `dregg-demo`), and the rules forbid a Lean build on the Mac and anything on hbox; so "proved" in this note means "a proof is written, with no `sorry`, awaiting its first `lake build`" until §7's command has run.
+**Scope of what this note claims, in one sentence.** Every Lean theorem named below as proved **elaborates**: `lake build` of `fn2/meta` on the Mac completed (618 jobs, Lean 4.30.0, Mathlib from `lake exe cache get`) on 2026-10-29, and `AxiomCensus.lean` shows all 62 theorems depend only on `propext`, `Quot.sound` and `Classical.choice`, none on `sorryAx`; the ACL2 half ran on the same Mac.
 
 ## Contents
 0. The answer in one page
@@ -25,11 +25,13 @@ The project: `fn2/meta/` on branch `fn2/lean-meta` (worktree `/Users/ember/dev/f
 **ACL2 is the right home for the instances and the wrong engineering home for the frame.** Every generated square, every kit instance, every functional instantiation (the theory morphism of fn2's kits), APT's `propagate-iso`, SOFT where it qualifies, and ATC's lowering are statements about named functions of one world, and ACL2 proves them where the code is. The frame-level theorems quantify over declarations, over theories as objects and over diagrams built from squares; ACL2's first-order logic can encode those as data, but fn2 would have to build and maintain the encoding, its induction principles and its categorical vocabulary itself (A1 amends the coordinator's "ACL2 is wrong for the frame" to exactly this: wrong as an engineering home, not wrong in logic). Lean with Mathlib holds them, and the DSL emits each declaration's Lean presentation from the same registry, so the Lean model is generated data, never a transcription.
 
 **What exists after this lane** (counts at `137695dfc`):
-- a Lean project `fn2/meta` (Lean 4.30.0, Mathlib at minidregg's pin) with the fourteen declaration kinds and the registry as structures (`Fn2.Decl`), the thin double category of squares with Mathlib's `RelCat` as its tight category (`Fn2.Square`), the coherence theorem for a toy frame with its satisfiable instance and Astra's accept/close false diamond as its teeth (`Fn2.Coherence`), conservativity of an `ext`-grade revision with a faulty revision as teeth (`Fn2.Conservative`), and representation independence for clients that never inspect the representation with a peeking client and a dropped premise as teeth (`Fn2.Param`); 62 theorems in 1,379 hand-written lines, none with `sorry` or an axiom, none yet typechecked (§7);
+- a Lean project `fn2/meta` (Lean 4.30.0, Mathlib at minidregg's pin) with the fourteen declaration kinds and the registry as structures (`Fn2.Decl`), the thin double category of squares with Mathlib's `RelCat` as its tight category (`Fn2.Square`), the coherence theorem for a toy frame with its satisfiable instance and Astra's accept/close false diamond as its teeth (`Fn2.Coherence`), conservativity of an `ext`-grade revision with a faulty revision as teeth (`Fn2.Conservative`), and representation independence for clients that never inspect the representation with a peeking client and a dropped premise as teeth (`Fn2.Param`); 62 theorems in 1,379 hand-written lines, all elaborated, with no `sorry` and only Lean's standard axioms (§7);
 - the emission experiment: `fn2/meta/emit/print-registry.lsp` prints layer A's four world tables from ACL2, `emit_lean.py` emits `Fn2/Instances/LayerA.lean`: **43 declarations** (3 machines, 9 columns tables, 9 core children, 22 owed rows) over a 376-symbol alphabet, and **31 machine-owned Q1 cases** (22 continuation phases + 9 observed events); the other 8 of Q1's 39 labels (router fallback, the executor's seven) are not in the registry today and are declared by hand in the facts file, flagged (§3.4);
 - three mutation controls on `defmachine` (§5): a row-only mutation (the row drops each kind's first observed event) changes the emitted model in 17 lines, 31 cases to 28, breaks the pinned case counts, and is also refused by ACL2 itself at `assembly.lisp`; a field-width mutation (`deadline` u60 to u32) changes exactly the 6 rows that carry it and breaks no control; a behaviour-only mutation (`NAME-OBSERVES-P` stops excluding `:retired`) leaves the printed registry byte-identical, which is the measured limit of a table-only exporter (A1's prediction).
 
 **What the Lean side licenses.** "If the generators commute then every route agrees" becomes `Fn2.Coherence.coherence` and `Fn2.Instances.LayerA.q1_licensed`: ACL2 owes one G1 square per catalogue case and one diamond per declared-independent pair; Lean proves that those, with a G0-related start, give equal observations along every schedule and every trace-equivalent schedule of the reference. The licence is an implication; it discharges nothing on the ACL2 side, and a checked-but-unproved ACL2 row stays owed (§4).
+
+**Status.** `lake build` of `fn2/meta` is green on the Mac (2026-10-29) and all 62 theorems elaborate (§7).
 
 **What it does not do.** It does not prove the frame completeness conjecture (COHERENCE §3.2's second statement); it does not interpret any ACL2 formula; and it is not a gate (§8 decision 1).
 
@@ -56,7 +58,7 @@ A seat classifies a new obligation by its **subject**, without asking:
 
 ## 2. What `fn2/meta` states and proves
 
-Statement-first, per nanodregg's `Spec/README.md` and ATLAS §6 law 2: each top-level statement below has a satisfiable witness (its premises inhabited by a non-trivial instance) and teeth (a broken sibling where the conclusion fails), both as theorems. Lemmas under a top statement are not separately audited. "Proved" carries §0's scope sentence: written, reviewed, not yet typechecked.
+Statement-first, per nanodregg's `Spec/README.md` and ATLAS §6 law 2: each top-level statement below has a satisfiable witness (its premises inhabited by a non-trivial instance) and teeth (a broken sibling where the conclusion fails), both as theorems. Lemmas under a top statement are not separately audited. "Proved" means elaborated by `lake build` on 2026-10-29.
 
 | file | top-level statement | status | satisfiable witness | teeth |
 |---|---|---|---|---|
@@ -72,7 +74,7 @@ Statement-first, per nanodregg's `Spec/README.md` and ATLAS §6 law 2: each top-
 | `Fn2.Instances.LayerAFacts` | `q1_licensed`: the Lean side of Q1 | proved (a specialisation of `Sq.paste_cover`; conditional on the correspondence's transitions, relation, interpretation and per-case squares) | — | `uncovered_case_fails` |
 | (not stated) | the frame completeness conjecture (COHERENCE §3.2) | **not stated in Lean**; §6 says why | | |
 
-Counts: 62 theorems (Square 15, Coherence 25, Conservative 8, Param 6, LayerAFacts 6, Decl 2), by `grep -c '^theorem'`; 0 `sorry`; 0 axioms; 1,379 hand-written lines and the 1,340-line generated `LayerA.lean`.
+Counts: 62 theorems (Square 15, Coherence 25, Conservative 8, Param 6, LayerAFacts 6, Decl 2), all elaborated; 0 `sorry`; no declared axioms; the census (`fn2/meta/AxiomCensus.lean`) finds `propext` in 34, `Quot.sound` in 26 and `Classical.choice` in 6 (the footprint theorems and their instances, through `by_cases` on footprint predicates, which are `Prop`-valued and undecidable in general), and 20 depending on no axiom; 1,379 hand-written lines and the 1,340-line generated `LayerA.lean`.
 
 **The toy, concretely.** One domain of scalar positions `P → V`; an action declares `reads` and `writes`, a guard and an update; `Respects` is the frame condition (enabledness and written values depend only on reads; nothing outside writes changes); independence is `footIndep` (neither writes what the other reads or writes). Astra's witness is three positions: the allocator's free count, one echo row with an outstanding close, the admissions the client sees. `accept` reads and writes the free count and the admissions; `close` reads and writes the occupied row and the free count. Declared independent "because different machines", the diamond fails: accept-then-close refuses the connection (admitted 0), close-then-accept admits it (admitted 1). Declared by footprints, the pair is dependent at the free count, and the theorem never claims it. `Diamonds` alone (equal two-step partial runs) does not say that neither label enables or disables the other, since two labels that each disable the other satisfy it vacuously (A2); `IndependentDiamonds` adds that clause, and the footprint theorem establishes both.
 
@@ -184,21 +186,25 @@ Soundness of ACL2 or of its implementation; the truth of an opaque formula; that
 - **Mixed pasting with a relation on both sides (HM) and honest loss (HQ)**: `coherence` uses G2 on the implementation side only, which needs neither; the general schema with `≈_A`, `≈_B` and `R ; ≈_B ⊆ ≈_A ; R` is the next statement (about a day).
 - **Nondeterministic specifications** (Q15, Q16): frames here are deterministic; refinement into a set is containment, not equality (COHERENCE §3.2), and is not modelled.
 
-## 7. Where it runs, and what is blocked
+## 7. Where it runs
 
-The rules: Lean builds on `dregg-build` under `swarm-build` as a lane under `/build/lanes/fn2-lean-meta`, never on the Mac (its `.lake` is stale), nothing on hbox. **`dregg-build` and `dregg-ref` time out on port 22, and `hcloud server list` no longer lists them**: both were torn down. So nothing in `fn2/meta` has been elaborated. The ACL2 half (certification, printing, emission, the three mutation controls) ran on the laptop, where fn2's ACL2 always runs.
+**Builds run on the Mac and on hbox; no cloud build box exists.** Ember, 2026-10-29, through the coordinator: "we can build on this mac! we should lift whatever block on build rules. we are permitted to use hbox & local mac to their absolute utmost for our present project." `dregg-build` and `dregg-ref` were torn down (gone from `hcloud server list`); nothing replaces them. hbox is available under `swarm-build` when the Mac is short of anything; this project has not needed it.
 
-In place of the elaborator, Astra's session 2 read every Lean line against Lean 4.30's and the pinned Mathlib's sources (`lean-meta-astra-2.md`) and found **no definite elaboration or proof-script failure**, citing the sources for each point that worried the author: `decide +kernel` exists in 4.30 (`Init/Tactics.lean:1315`) and is kernel reduction, not `native_decide`; the derived `DecidableEq` of a 376-constructor enum compares constructor indices (`Elab/Deriving/DecEq.lean:264`); `Tight.toRelCat_comp` is `Iff.rfl` against Mathlib's composition order (`RelCat.lean:49`, `Data/Rel.lean:148`); `subst` eliminates the right-hand variable first (`Meta/Tactic/Subst.lean:173`); it regenerated `LayerA.lean` in memory and matched the file byte for byte. A reading is not a build: execution cost (the kernel's evaluation of `registry_wf`) and resource limits are untested. Session 3 reviewed the additions made after session 2 (§9).
-
-The command for the first box that exists (the lane's whole build; Mathlib comes from the cache):
+The build, on the Mac (a fresh project; Mathlib's oleans from the cache, so only `Fn2` compiles):
 
 ```sh
-ssh <box>; cd /build/lanes/fn2-lean-meta && git fetch origin && git checkout fn2/lean-meta
-cd fn2/meta && lake exe cache get && nohup swarm-build lake build > build.log 2>&1 < /dev/null & echo $! > build.pid
-grep -n "error\|sorry" build.log; grep -c "^theorem" Fn2/*.lean Fn2/Instances/*.lean
+cd fn2/meta && lake exe cache get && lake build      # with a PID file and a tee'd log
+lake env lean AxiomCensus.lean                       # 62 lines; any sorryAx is a red
 ```
 
-A red there is fixed forward on `fn2/lean-meta`; nothing here should be cited as proved before that build is green.
+Measured 2026-10-29: the cache fetch and the first build in under three minutes wall, each `Fn2` module in 0.5-10 s (`Coherence` the slowest at 9.7 s; `LayerA.lean`, the 1,340-line generated file with its 376-constructor enum, 4.3 s; `registry_wf` by `decide +kernel` inside `LayerAFacts`' 4.4 s). The first build had three reds, fixed forward on `fn2/lean-meta`:
+- `Fn2.Param`: instance search could not see through `counter.σ` (`HMul Nat counter.σ doubled.σ`): `counter`, `doubled` and `fast` became `abbrev`s;
+- `Fn2.Param`: `omega` ignored hypotheses typed over `counter.σ`: the binders of `counter_doubled_related` are typed `Nat`;
+- `Fn2.Coherence` (`acIdCorr.step`): `simp` unfolded `acFrame.step` before using `ha`: `rw [ha] <;> rfl`.
+
+Astra's sessions 2 and 3, which read every line against the sources before any build was possible, had predicted none of the three: a reading is not a build. Three linter warnings remain (`unnecessarySeqFocus` twice in `sumCorr`, an unused `simp` argument), harmless.
+
+The ACL2 half (certification, printing, emission, the three mutation controls) ran on the Mac, where fn2's ACL2 always runs.
 
 ## 8. Five decisions for ember
 
@@ -210,7 +216,7 @@ A red there is fixed forward on `fn2/lean-meta`; nothing here should be cited as
 | 2 | **What is the Lean foundation's scope?** | Presentations, the square double category, generated-diagram soundness, one `ext` revision, restricted-client parametricity (this lane's content), then the general mixed-pasting schema and the toy completeness theorem (§6) | 8 engineer-days for the foundation qualified on a box (A1), of which this lane wrote the first draft in one; forecloses using Lean for instance proofs, which stay ACL2's |
 | 3 | **How strong is the bridge before an ACL2 theorem is reported as realising a Lean premise?** | Exact translated-statement binding and generated-artifact provenance (the `:generated` manifest with admitted bodies as opaque text and fingerprints); an unbound row stays visible; no axioms from proof-status rows | 7 engineer-days (A1), inside or beside DM0a/DM1; without it, control 2 shows a behaviour change passing unseen |
 | 4 | **What does the emitter cover next?** | The four implemented families now (done), `fn2-layouts` when B merges, `fn2-squares` with DM1, the executor's case source with DM2; each kind's structure with its first consumer | 5 engineer-days (A1) for the B tables, identity and order checks and deterministic serialisation; forecloses emitting planned kinds before their tables exist |
-| 5 | **Where do lanes build Lean now that `dregg-build` and `dregg-ref` are gone?** | Ember's call (money): reuse an existing box, or allow `fn2/meta` on the Mac (a fresh project, Mathlib from `lake exe cache get`, no stale `.lake`; its whole build is five small files and one 1,340-line generated file) | a new ccx33 is about €50/month (spend rule); the Mac exception costs nothing but breaks a standing rule; until then, every theorem here is unchecked |
+| 5 | **Where do lanes build Lean now that `dregg-build` and `dregg-ref` are gone?** | **Answered by ember (2026-10-29): no cloud box; the Mac, and hbox under `swarm-build`, to their utmost** | nothing new is spent; `fn2/meta` builds on the Mac in minutes |
 
 ## 9. The Astra sessions, and where the two authors differ
 

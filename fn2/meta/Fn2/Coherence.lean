@@ -459,7 +459,7 @@ def acIdCorr : Correspondence acFrame acFrame Nat where
     subst e
     refine ⟨a', ?_, rfl⟩
     show (acFrame.step t a).bind (Loose.ident _) = some a'
-    simp [ha, Loose.ident]
+    rw [ha] <;> rfl
   edge a b h := by
     have e : a = b := h
     subst e

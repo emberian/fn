@@ -70,13 +70,13 @@ theorem independent {Cmd Obs R' : Type} {I J : Impl Cmd Obs} {R : I.σ → J.σ 
 
 /-! ## Witnesses -/
 
-def counter : Impl Unit Nat where
+abbrev counter : Impl Unit Nat where
   σ := Nat
   init := 0
   exec _ n := n + 1
   obs n := n
 
-def doubled : Impl Unit Nat where
+abbrev doubled : Impl Unit Nat where
   σ := Nat
   init := 0
   exec _ n := n + 2
@@ -84,11 +84,11 @@ def doubled : Impl Unit Nat where
 
 theorem counter_doubled_related : Related counter doubled (fun (a b : Nat) => b = 2 * a) :=
   { init := rfl
-    exec := fun _ s t h => by
+    exec := fun _ (s t : Nat) h => by
       have h' : t = 2 * s := h
       show t + 2 = 2 * (s + 1)
       omega
-    obs := fun s t h => by
+    obs := fun (s t : Nat) h => by
       have h' : t = 2 * s := h
       show s = t / 2
       omega }
@@ -100,7 +100,7 @@ theorem counter_doubled_clients {R' : Type} (p : Client Unit Nat R') :
 
 /-- Teeth for the premise: keep the initial states and the observation related and drop command
 preservation, and a permitted client (one command, then observe) separates the two. -/
-def fast : Impl Unit Nat where
+abbrev fast : Impl Unit Nat where
   σ := Nat
   init := 0
   exec _ n := n + 2
