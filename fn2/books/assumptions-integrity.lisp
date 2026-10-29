@@ -14,3 +14,13 @@
             (equal expected observed))
    :rule-classes nil))
 
+
+; A-CRYPTO-NATIVE: the installed C primitive computes the ACL2 BLAKE3 result.
+; Official vectors and a differential qualify each process start; finite tests
+; do not prove this assumption. This is distinct from accidental-fault integrity.
+(encapsulate
+ (((fn2-a-crypto-native * *) => *))
+ (local (defun fn2-a-crypto-native (reference native) (equal reference native)))
+ (defthm fn2-a-crypto-native-correspondence
+  (implies (fn2-a-crypto-native reference native) (equal reference native))
+  :rule-classes nil))

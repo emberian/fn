@@ -11,6 +11,14 @@
 (include-book "fn2/tests/reference-unit")
 (include-book "fn2/tests/q1-unit")
 (include-book "fn2/tests/sim-acquisition")
+; Layer B's unit books (registered by the B seat; include-only).
+(include-book "fn2/tests/alloc-unit")
+(include-book "fn2/tests/crash-model-unit")
+(include-book "fn2/tests/log-model-unit")
+(include-book "fn2/tests/blake3-unit")
+(include-book "fn2/tests/merkle-unit")
+(include-book "fn2/tests/format-check-unit")
+(include-book "fn2/tests/layout-teeth-unit")
 ; Other layers' unit and checker books are included above this line.
 ; The obligation input closes here, at the top of the world, never inside a
 ; library book (DSL-METATHEORY section 2.4): include order cannot refuse a row.
