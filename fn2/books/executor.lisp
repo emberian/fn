@@ -201,6 +201,45 @@
   :teeth (fn2-executor-bounds-teeth fn2-executor-bounds-negative)
   :doc "Owed simultaneous observation, calendar-visit and descriptor bounds over fn2-turn.")
 
+; The turn bound as composition (HIGHER-STRUCTURES entry 9): a word of
+; machine runs, each charged within its arm's certificate, costs at most the
+; sum of the arms' declared bounds; T3's bound is this lemma's instance with
+; at most K runs. Its partner is the residual budget: a run handed the turn's
+; remaining descriptor budget never spends more than it (Lawvere's
+; spent + c <= A iff c <= A - spent, with truncated subtraction covering
+; exhaustion: an exhausted budget admits only zero-descriptor runs).
+; A word element is (kind phase bytes steps descriptors).
+(defun fn2-arm-word-certified-p (word)
+  (declare (xargs :verify-guards nil))
+  (if (atom word) t
+    (and (true-listp (car word)) (equal (len (car word)) 5)
+         (fn2-machine-arm-charge-ok-p (nth 0 (car word)) (nth 1 (car word))
+                                      (nth 2 (car word)) (nth 3 (car word)) (nth 4 (car word)))
+         (fn2-arm-word-certified-p (cdr word)))))
+(defun fn2-arm-word-charge (word)
+  (declare (xargs :verify-guards nil))
+  (if (atom word) 0
+    (+ (nfix (and (consp (car word)) (nth 2 (car word))))
+       (nfix (and (consp (car word)) (nth 3 (car word))))
+       (fn2-arm-word-charge (cdr word)))))
+(defun fn2-arm-word-bound (word)
+  (declare (xargs :verify-guards nil))
+  (if (atom word) 0
+    (+ (nfix (and (consp (car word)) (fn2-machine-arm-bound (nth 0 (car word)) (nth 1 (car word)))))
+       (fn2-arm-word-bound (cdr word)))))
+(defthm-owed fn2-arm-cost-composition (word)
+  (implies (fn2-arm-word-certified-p word)
+           (<= (fn2-arm-word-charge word) (fn2-arm-word-bound word)))
+  :schema :bound :from (:operation fn2-turn)
+  :teeth (fn2-arm-composition-positive fn2-arm-composition-negative)
+  :doc "Runs charged within their arm certificates compose: the word's bytes and steps are at most the sum of its arms' declared bounds.")
+(defthm-owed fn2-arm-residual-budget (id budget core)
+  (implies (and (fn2-corep core) (fn2-core-wfp core) (natp budget))
+           (<= (mv-nth 2 (fn2-machine-run id budget core)) budget))
+  :schema :bound :from (:operation fn2-turn)
+  :teeth (fn2-arm-residual-positive fn2-arm-residual-negative)
+  :doc "A machine run handed the turn's residual descriptor budget spends at most that budget; an exhausted budget admits no descriptor.")
+
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-transition fn2-concrete-loop fn2-concrete-turn fn2-turn fn2-init-executor

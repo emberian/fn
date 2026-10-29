@@ -244,3 +244,49 @@
   (with-local-stobj fn2-trace
     (mv-let (answer fn2-trace) (fn2-trace-test-ring-run fn2-trace) answer)))
 (assert-event (fn2-trace-test-ring))
+
+; R7: teeth of the cost-composition and residual-budget obligations, and the
+; evaluated teeth of every generated arm row (:from (:machine K)).
+(defun fn2-arm-composition-positive ()
+  (declare (xargs :verify-guards nil))
+  (let ((word (list (list *fn2-echo-kind* *fn2-echo-state-command* 4096 8 1)
+                    (list *fn2-listener-kind* *fn2-listener-state-accepting* 0 24 1))))
+    (and (fn2-arm-word-certified-p word)
+         (<= (fn2-arm-word-charge word) (fn2-arm-word-bound word)))))
+(defun fn2-arm-composition-negative ()
+  ; An over-charged run leaves the word uncertified, and the bound fails:
+  ; the premise is what carries the conclusion.
+  (declare (xargs :verify-guards nil))
+  (let ((word (list (list *fn2-echo-kind* *fn2-echo-state-command* 5000 8 1))))
+    (and (not (fn2-arm-word-certified-p word))
+         (not (<= (fn2-arm-word-charge word) (fn2-arm-word-bound word))))))
+(defun fn2-arm-residual-run (budget fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core)))
+    (mv-let (bytes steps descriptors runnable fn2-core) (fn2-machine-run 0 budget fn2-core)
+      (declare (ignore bytes steps runnable))
+      (mv descriptors fn2-core))))
+(defun fn2-arm-residual-positive ()
+  (declare (xargs :verify-guards nil))
+  (and (with-local-stobj fn2-core
+         (mv-let (d fn2-core) (fn2-arm-residual-run 1 fn2-core) (<= d 1)))
+       (with-local-stobj fn2-core
+         (mv-let (d fn2-core) (fn2-arm-residual-run 0 fn2-core) (<= d 0)))))
+(defun fn2-arm-residual-negative ()
+  ; The bound is attained: an Accept spends the one descriptor it is handed.
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (d fn2-core) (fn2-arm-residual-run 1 fn2-core) (not (<= d 0)))))
+(fn2-assert-owed-teeth fn2-arm-cost-composition fn2-arm-residual-budget)
+(defun fn2-arm-row-names (rows)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) nil
+    (if (eq (car (fn2-decl-get :owner (cdar rows))) :machine)
+        (cons (caar rows) (fn2-arm-row-names (cdr rows)))
+      (fn2-arm-row-names (cdr rows)))))
+(make-event
+ (value `(fn2-assert-owed-teeth ,@(fn2-arm-row-names (fn2-decl-rows :square (w state))))))
+(assert-event (> (len (fn2-arm-row-names (fn2-decl-rows :square (w state)))) 50))
+(make-event
+ (value `(value-triple (cw "R7 ARM ROWS: composition, residual budget and ~x0 per-arm rows' teeth evaluate PASS~%"
+                           ,(len (fn2-arm-row-names (fn2-decl-rows :square (w state))))))))

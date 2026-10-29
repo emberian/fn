@@ -26,11 +26,17 @@
       (fn2-operation-row 'fn2-machine-grant-admission (w state))))
 
 ; A real forwarding callback succeeds, the old positional spelling is refused.
+; These DM0b controls exercise the emitter's snapshot refresh, which reads a
+; row after writing it: the restricted arm language refuses that (a stale
+; read), so they are declared :language :unchecked, the declared escape.
 (defmachine-callback fn2-dm-forward fn2-listener (id budget) 4
+  :contract (:cost (:steps *fn2-work-transition*) :writes (event-ready) :next (:accepting :closing)
+             :tables (fn2-core-machines fn2-core-pool fn2-echo-table)
+             :uses (fn2-listener-admit) :language :unchecked)
   (fn2-call fn2-listener-admit id budget))
 (must-fail
  (make-event
-  (value (fn2-machine-callback-event 'fn2-dm-positional 'fn2-listener '(id budget) 4
+  (value (fn2-machine-callback-event 'fn2-dm-positional 'fn2-listener '(id budget) 4 nil
            (list (cons 'fn2-listener-admit
                        (fn2-decl-get :calling-convention
                          (fn2-operation-row 'fn2-listener-admit (w state))))) (w state))))
@@ -49,11 +55,17 @@
 (must-fail (defmachine-callback fn2-dm-binder fn2-listener (id budget) 1
              (b* (((when t) (mv id fn2-core))) (mv id fn2-core))) :expected :soft)
 (defmachine-callback fn2-dm-bstar fn2-listener (id budget) 1
+  :contract (:cost (:steps *fn2-work-transition*) :writes (event-ready) :next (:accepting :closing)
+             :tables (fn2-core-machines fn2-core-pool fn2-echo-table)
+             :uses (fn2-listener-admit) :language :unchecked)
   (b* ((fn2-core (fn2-listener-put-core id (event-ready 1))))
     (mv row-event-ready fn2-core)))
 
 ; Read the result of a successful write AND a refused write, not proposed data.
 (defmachine-callback fn2-dm-refresh fn2-listener (id budget) 1
+  :contract (:cost (:steps *fn2-work-transition*) :writes (event-ready) :next (:accepting :closing)
+             :tables (fn2-core-machines fn2-core-pool fn2-echo-table)
+             :uses (fn2-listener-admit) :language :unchecked)
   (let* ((fn2-core (fn2-listener-put-core id (event-ready 1)))
          (fresh row-event-ready)
          (fn2-core (fn2-listener-put-core id (event-ready 256))))
@@ -72,8 +84,8 @@
 
 ; Machine/child inputs are closed; evidence is a separate, still-open input.
 (must-fail
- (defmachine fn2-dm-late :states (:idle) :fields nil :accounts nil
-   :budget (:bytes 0 :steps 1 :descriptors 0) :continuations ((:idle fn2-dm-idle)))
+ (defmachine fn2-dm-late :states (:idle) :fields nil 
+   :budget (:bytes 0 :steps 1 :descriptors 0) :continuations ((:idle fn2-dm-idle :cost (:steps 0) :writes () :next (:idle) :uses ())))
  :expected :soft)
 (defcolumns fn2-dm-child ((value :u8)))
 (must-fail (defcorechild fn2-dm-child-table fn2-dm-child :init fn2-dm-child

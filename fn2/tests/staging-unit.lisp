@@ -12,9 +12,9 @@
 (assert-event (fn2-decl-get :reuse (fn2-decl-row '(:columns fn2-dm-layout-b) (w state))))
 (must-fail (fn2-dm-layout fn2-dm-layout-c (:plain :different)) :expected :soft)
 
-(defmachine fn2-dm-staged :states (:idle) :fields nil :accounts nil
- :budget (:bytes 0 :steps 1 :descriptors 0) :continuations ((:idle fn2-dm-idle))
- :observes ((:read-result fn2-dm-idle)))
+(defmachine fn2-dm-staged :states (:idle) :fields nil 
+ :budget (:bytes 0 :steps 1 :descriptors 0) :continuations ((:idle fn2-dm-idle :cost (:steps 0) :writes () :next (:idle) :uses ()))
+ :observes ((:read-result fn2-dm-idle :cost (:steps 0) :writes () :next () :uses ())))
 (fn2-resolve :index)
 (must-fail (fn2-resolve :callbacks) :expected :soft)
 (assert-event (equal (fn2-decl-unresolved (fn2-decl-all-rows (w state)) :callbacks (w state))

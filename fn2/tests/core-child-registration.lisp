@@ -12,11 +12,14 @@
 (defun fn2-test-machine-initial-generation (slot base n gen)
   (declare (xargs :guard t) (ignore slot base n)) gen)
 (defmachine fn2-test-machine
- :states (:step) :fields ((stopped :bool)) :accounts (:row)
+ :states (:step) :fields ((stopped :bool)) 
  :budget (:bytes 4096 :steps 32 :descriptors 4) :capacity 1
  :initial ((generation fn2-test-machine-initial-generation))
- :observes ((:fence-result fn2-test-machine-observe))
- :continuations ((:step fn2-test-machine-step)))
+ :observes ((:fence-result fn2-test-machine-observe :cost (:steps 0) :writes () :next () :uses ()))
+ ; The step reaches its own child table through stobj-let, outside the
+ ; restricted arm language: declared :language :unchecked (the escape).
+ :continuations ((:step fn2-test-machine-step :cost (:steps 1) :writes () :tables (fn2-core-test-child)
+                  :next (:step) :uses () :language :unchecked)))
 (defmacro fn2-test-machine-events ()
  '(progn
     (defmachine-callback fn2-test-machine-observe fn2-test-machine

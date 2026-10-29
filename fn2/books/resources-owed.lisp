@@ -20,6 +20,45 @@
 (make-event
  (value `(defconst *fn2-resource-machine-states*
            ',(fn2-resource-kind-states (fn2-machine-names (w state)) (w state)))))
+; Each kind's holds per phase, read from its defmachine :holds (R7); every
+; declared phase listed, () when it holds nothing.
+(defun fn2-resource-phase-holds (states holds)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (cons (cons (car states) (fn2-arm-holds-of (car states) holds))
+          (fn2-resource-phase-holds (cdr states) holds))))
+(defun fn2-resource-kind-holds (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (cons (cons (car names) (fn2-resource-phase-holds (fn2-machine-property (car names) :states world)
+                                                      (fn2-machine-property (car names) :holds world)))
+          (fn2-resource-kind-holds (cdr names) world))))
+(make-event
+ (value `(defconst *fn2-resource-machine-holds*
+           ',(fn2-resource-kind-holds (fn2-machine-names (w state)) (w state)))))
+(assert-event (fn2-resource-machine-holds-p *fn2-resource-machine-holds* *fn2-resource-order*))
+; Every arm's resource effect rows (one per operation reached from a source
+; phase), the same rows defmachine-run checked per arm.
+(defun fn2-resource-arms-rows (name arms observationp world)
+  (declare (xargs :verify-guards nil))
+  (if (atom arms) nil
+    (let* ((c (cddar arms))
+           (states (fn2-machine-property name :states world))
+           (sources (if observationp (or (fn2-arm-get :from c) (fn2-machine-observe-default-from states))
+                      (list (caar arms)))))
+      (append (fn2-arm-effect-rows name sources (fn2-arm-get :uses c)
+                                   (fn2-machine-property name :holds world) world)
+              (fn2-resource-arms-rows name (cdr arms) observationp world)))))
+(defun fn2-resource-all-arm-rows (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (append (fn2-resource-arms-rows (car names) (fn2-machine-property (car names) :continuations world) nil world)
+            (fn2-resource-arms-rows (car names) (fn2-machine-property (car names) :observes world) t world)
+            (fn2-resource-all-arm-rows (cdr names) world))))
+(make-event
+ (value `(defconst *fn2-resource-arm-effects*
+           ',(remove-duplicates-equal (fn2-resource-all-arm-rows (fn2-machine-names (w state)) (w state))))))
+(assert-event (fn2-resource-effects-p *fn2-resource-arm-effects* *fn2-resource-order*))
 (defconst *fn2-resource-wait-names*
   (caddr (cadr (assoc-eq 'wait-reason *fn2-machine-common-fields*))))
 (assert-event (equal *fn2-resource-wait-names*
@@ -35,7 +74,7 @@
     (let ((phases (cdr (assoc-eq (caar kinds) table))))
       (and (fn2-resource-subsetp (cdar kinds) (strip-cars phases))
            (fn2-resource-holds-cover-p (cdr kinds) table)))))
-(assert-event (fn2-resource-holds-cover-p *fn2-resource-machine-states* *fn2-resource-a-holds*)
+(assert-event (fn2-resource-holds-cover-p *fn2-resource-machine-states* *fn2-resource-machine-holds*)
               :msg (msg "A machine kind or phase lacks its D0 holds: ~x0" *fn2-resource-machine-states*))
 
 ; The wait-for projection of one row: (held . awaited) when the row waits
@@ -45,7 +84,7 @@
   (declare (xargs :verify-guards nil))
   (let* ((entry (nth kind *fn2-resource-machine-states*))
          (phase-name (nth phase (cdr entry)))
-         (held (cdr (assoc-eq phase-name (cdr (assoc-eq (car entry) *fn2-resource-a-holds*)))))
+         (held (cdr (assoc-eq phase-name (cdr (assoc-eq (car entry) *fn2-resource-machine-holds*)))))
          (name (nth reason *fn2-resource-wait-names*))
          (awaited (and (fn2-resource-kindp name *fn2-resource-order*) name)))
     (and awaited (cons held awaited))))
