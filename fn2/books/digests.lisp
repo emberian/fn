@@ -1,6 +1,7 @@
 ; B-owned digest rows. Capacity is chosen by the profile at initialization.
 (in-package "ACL2")
 (include-book "columns")
+(fn2-book-layer :b)
 (defcolumns fn2-digests ((w0 :u32) (w1 :u32) (w2 :u32) (w3 :u32) (w4 :u32) (w5 :u32) (w6 :u32) (w7 :u32)))
 
 (defconst *fn2-b3-iv* '(1779033703 3144134277 1013904242 2773480762

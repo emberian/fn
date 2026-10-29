@@ -6,6 +6,7 @@
 ; cost a Ref (seat review of B2c).
 (in-package "ACL2")
 (include-book "layout")
+(fn2-book-layer :b)
 (defconst *fn2-format-version* 1)
 (defconst *fn2-format-bootstrap-magic* #x44473246) ; F2GD
 (defconst *fn2-format-page-magic* #x47503246) ; F2PG

@@ -5,6 +5,7 @@
 (include-book "profile")
 (include-book "commit-alloc")
 (include-book "format-check")
+(fn2-book-layer :b)
 (defun fn2-b-capacity (key default profile)
  (declare (xargs :guard t))
  (if (and (alistp profile) (assoc-equal key profile)) (fn2-profile-get key profile) default))

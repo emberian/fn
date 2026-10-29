@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "pool")
 (include-book "std/util/bstar" :dir :system)
+(fn2-book-layer :b)
 ; Profile chooses row count at init; only resident ranges have u32 bounds.
 (defcolumns fn2-fields
   ((value :u60) (ref-slot :u32) (ref-gen :u60)

@@ -7,6 +7,7 @@
 (include-book "crash-model")
 (include-book "assumptions-integrity")
 (include-book "owed")
+(fn2-book-layer :b)
 
 ; One trace names one history incarnation. Batch numbers are unbounded logical
 ; naturals, not resident counters. A sealed batch is

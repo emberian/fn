@@ -1,6 +1,7 @@
 ; Independent declaration family; format.lisp exports the complete catalog.
 (in-package "ACL2")
 (include-book "format-base")
+(fn2-book-layer :b)
 
 (deflayout fn2-format-root-recipe
   (append

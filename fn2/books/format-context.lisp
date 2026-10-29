@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "columns")
 (include-book "tuple")
+(fn2-book-layer :b)
 (defcolumns fn2-fc
  ((phase (:enum fn2-fc-phase (:idle :decode :prefix :hash :digest)))
   (pos :u32)

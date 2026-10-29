@@ -1,6 +1,7 @@
 ; Incremental BLAKE3. Digests are rows; only the buffered block is words.
 (in-package "ACL2")
 (include-book "digests")
+(fn2-book-layer :b)
 (defcolumns fn2-b3
  ((pos :u8) (blocks :u8) (counter :u60) (origin :u60) (depth :u8) (flags :u8)
   (verify-phase :u8) (verify-next :u32) (verify-base :u32)

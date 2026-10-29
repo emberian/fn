@@ -1,6 +1,7 @@
 ; B3 bounded packing uses only the generated B2 layout encoders.
 (in-package "ACL2")
 (include-book "format-check")
+(fn2-book-layer :b)
 ; Test keyed mutations install this immutable append-only manifest node. Its
 ; predecessor is a seal identity; the root recipe retains suffix 1..batch.
 (deflayout fn2-commit-manifest-node

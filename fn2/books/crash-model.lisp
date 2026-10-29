@@ -7,6 +7,7 @@
 (include-book "owed")
 (include-book "tuple")
 (include-book "assumptions-integrity")
+(fn2-book-layer :b)
 
 ; Total, cheap, guard-verified list vocabulary, shared by all record readers.
 (defun fn2-cm-at (n x)
