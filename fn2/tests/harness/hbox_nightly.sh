@@ -79,6 +79,9 @@ eval "$($PY tools/native_env.py identity --image "$T/build/fn-host" --source "$S
 eval "$($PY tools/native_env.py identity --image "$T/build/fn-host-developer" --source "$SOURCE" \
   --prefix FN_NATIVE_DEVELOPER_ --export)"
 export FN2_SURFACE_IDENTITY="$T/build/fn-host" FN2_SURFACE_SOURCE="$SOURCE"
+# The E fixture drivers (fn2/tests/surface/fixtures.py; the bp golden row runs the DTN image's bp verbs).
+export FN_NATIVE_DTN_HOST="$T/build/fn-host-dtn"
+for F in NNTP CONSUMER BP TLS_AUTH WEB; do export "FN2_SURFACE_FIXTURE_$F=fn2.tests.surface.fixtures:fixture"; done
 for opt in ${FN2_NIGHTLY_OPT_INS-FN_RUN_SLOW=1 FN_RUN_RELOCATION_E2E=1}; do export "$opt"; done
 FAMILY=${FN2_NIGHTLY_FAMILIES:+--family $FN2_NIGHTLY_FAMILIES}
 [ -n "$FAMILY" ] || FAMILY=--all

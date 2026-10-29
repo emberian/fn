@@ -87,12 +87,18 @@ first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit
   when supplied. Native skips remain skips in the surface
   report: inventoried retirements and `harness/intended-skips.json` entries are
   permitted; other skips make the run NOT RUN. Empty results and timeouts fail.
-  Fixture hooks name concrete
-  corpus paths or explicitly owed paths. Merely finding a fixture is never a pass.
-  RFC fixtures require live setup (e.g. an issued watermark of 3999), so their
-  full live replay adapter remains owed rather than replaying them against the
-  model and calling that server conformance. INN's witness is
-  `NativePeerPullTests.test_pull_from_inn` inside the carried `peer_pull` module.
+  Fixture rows run through one hook, `fn2.tests.surface.fixtures:fixture` (H7), which
+  replays each row against the live target. The RFC 3977 transcripts are replayed with
+  their setup built (the groups and articles they presuppose). A number the setup cannot
+  reproduce is checked by the rule that produced it, such as an empty group's
+  `211 0 L L-1`; every other octet the transcript fixes is compared exactly. The CNS cursor
+  vectors go through `consumer-inspect` against the carried assertions. The dtn7-rs bundle
+  goes through `bp decode`, and fn's captured bundle is re-authored octet-equal by `bp send`.
+  The RFC 7677 vector is checked through `tests/sasl_client.py`, followed by a live SCRAM
+  exchange. An absent fixture is a named skip; merely finding a fixture is never a pass.
+  Rows the carried natives already exercise whole are not repeated as fixtures
+  (`fixture_rows_merged` in the manifest: the source corpus, INN's
+  `test_pull_from_inn` inside `peer_pull`).
 - **R** has one test per named performance row, selected on hbox only. Drivers
   supply measurements with a unit and profile. No comparison to a numeric bar
   occurs in these tests. Existing native assertions retain their original

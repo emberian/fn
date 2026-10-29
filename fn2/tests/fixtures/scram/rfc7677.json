@@ -1,0 +1,10 @@
+{
+ "source": "RFC 7677 section 3 (SCRAM-SHA-256 test vector)",
+ "user": "user",
+ "password": "pencil",
+ "client_nonce": "rOprNGfwEbeRWgbNEkqO",
+ "client_first": "n,,n=user,r=rOprNGfwEbeRWgbNEkqO",
+ "server_first": "r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096",
+ "client_final": "c=biws,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=dHzbZapWIk4jUhN+Ute9ytag9zjfMHgsqmmiz7AndVQ=",
+ "server_final": "v=6rriTRBi23WpRR/wtup+mMhUZUn/dB5nLTJRsjl95G4="
+}

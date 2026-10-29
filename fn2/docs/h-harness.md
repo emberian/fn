@@ -487,3 +487,32 @@ The fix is on the harness side. hbox_nightly.sh now prints the least memory ceil
 `memory ceiling 64 GiB`. Nothing is added to known-fn1.json, because the row passes at every ceiling the nightly
 now accepts. A note for layer D: the carried natives assume a node holds 31 connections, and an fn2 node that
 sizes its capacity from memory the same way needs the same floor.
+
+## H7: the E fixture drivers (live on fn1)
+
+One hook for every family, `FN2_SURFACE_FIXTURE_<FAMILY>=fn2.tests.surface.fixtures:fixture` (the nightly
+exports it). The row's path selects the driver. Each driver builds the setup its fixture presupposes on a
+fresh node and replays the fixture. Every compared row goes to `OUT/<family>/fixtures/<name>.json`, and any
+differing row fails the test. Run on hbox against image set c14e9e8e (h-quests/h7-fix.sh):
+
+| family | fixture | rows | outcome | what is compared |
+|---|---|---|---|---|
+| nntp | RFC 3977 transcripts (17 files) | 19 | ok | Each command is replayed on a node holding the transcripts' groups and articles. Status codes, the Message-ID echo, every transcript header except Path, and the body octets are compared exactly. An empty group must be `211 0 L L-1 NAME`. DATE must give 14 digits within an hour of the harness clock. NEWGROUPS since 1999 must list exactly the setup's groups. NEWNEWS must give exactly the transcript's IDs. After 205 the node must close. |
+| consumer | CNS cursor vectors (3 `.fncu`) | 6 | ok | The vectors go through the developer image's `consumer-inspect`, checked by `tests.test_native_consumer_inspect`'s own assertions (4 tests). The driver also checks that every vector is named by an assertion and that the module exits 0. |
+| consumer | `share/fn/wire-grammar.json` | - | skip | Absent in this tree (E3's generated export). The skip is named; once the file exists, its absent driver is an error. |
+| bp | dtn7-rs golden bundles | 2 | ok | `bp decode` at the bundle's own DTN time accepts the dtn7-rs-authored bundle, and the ADU equals dtn7-rs's payload. With the capture's inputs, `bp send` re-authors fn's captured bundle **octet-equal**: 138 octets, sequence 1, the second bundle a fresh journal authors, journalled before the socket. |
+| tls_auth | RFC 7677 §3 vector (`fn2/tests/fixtures/scram/rfc7677.json`, new) | 4 | ok | The vector's client-first, client-final and server signature go through `tests/sasl_client.py`, the independent client the tls_auth S form uses. Then a live SCRAM-SHA-256 exchange must answer 283 with a server signature that client verifies. |
+| web | `fn2/tests/fixtures/web` | - | skip | Absent (E5's per-page HTML and `/health` fixtures). |
+
+Setup adaptations, all recorded in fixtures.py:
+- The transcript's `example.currently.empty.newsgroup` is created as `fixture.currently.empty.newsgroup`, and
+  the name is rewritten in both the command and the expected reply. RFC 5536 §3.1.4 reserves `example.*`, and
+  fn refuses to create such a group (`RESERVED-GROUP-NAME`). The unknown-group transcript keeps its
+  `example.*` name, because that group is never created.
+- The example article is posted without its Path, since the node writes its own path.
+
+The source-corpus row and peering's INN row were removed as fixtures, because the carried natives
+`source_corpus` and `peer_pull` already run them whole (`fixture_rows_merged` in families.json). A second
+row would have been the same construction twice. Unit tests are in `fn2/tests/surface/test_fixtures.py`:
+transcript parsing, the article, empty-group and listing comparators with five mutation controls, the RFC
+vector plus a wrong-password control, and the named skip.
