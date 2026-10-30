@@ -61,7 +61,7 @@
       (fn2-machines-init-partitions o profile fn2-machines))))
 (fn2-machines-preserves fn2-machines-init-partitions (left profile fn2-machines) :prefix "" :wfp-type nil :raw-rows t)
 (defun fn2-machines-admitted-capacities-p (left profile)
-  (declare (xargs :guard t :measure (nfix left)))
+  (declare (xargs :guard (natp left) :measure (nfix left)))
   (if (zp left) t
     (and (unsigned-byte-p 32 (fn2-machine-admitted-capacity (- left 1) profile))
          (fn2-machines-admitted-capacities-p (- left 1) profile))))
