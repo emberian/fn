@@ -214,6 +214,15 @@ class DifferentialTests(unittest.TestCase):
                         self.assertEqual(r.rows, [])
         (ARTIFACTS / 'fake-summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 
+    def test_reply_window_grows_with_segments_sent(self):
+        # H7-08: a bytewise send of N segments gives the reply N * 0.1 ms more, capped at 60 s, then resets.
+        wire = d.Wire(d.Fake('peer', 'plain'), None, timeout=3)
+        wire.send([b'x'] * 100000)
+        self.assertAlmostEqual(wire.reply_window(), 13.0)
+        self.assertEqual(wire.reply_window(), 3)
+        wire.send([b'x'] * 10 ** 7)
+        self.assertEqual(wire.reply_window(), 63.0)
+
     def test_focus_generators_agree_on_the_fake(self):
         # H7c: tls_auth's and peering's F use these; the unmutated fake must agree on every cut.
         for kind, mode in (('auth', 'reader'), ('feed', 'peer')):

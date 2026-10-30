@@ -205,8 +205,8 @@ The drivers this tree carries (H7; hbox_nightly.sh exports every one):
 | FUZZ operator, store_ops | `fuzz:fuzz` → `argv_fuzz` | the exit table, ARGV-MALFORMED, usage, OperatorModel / StoreOpsModel |
 | FUZZ config_limits | `fuzz:fuzz` → `config_fuzz` | specs/native-config.md through `operator PATH show` |
 | FUZZ web | `fuzz:fuzz` → `http_fuzz` | RFC 9112/9110 and the face's stated policy |
-| FUZZ consumer | `fuzz:fuzz` → `fncu_fuzz` | the `fncu` v1 encoding through `consumer-inspect` (the FNCT frame half owed) |
-| FUZZ bp | `fuzz:fuzz` → `bp_fuzz` | RFC 9171 through `bp decode` (the TCPCL segment half owed) |
+| FUZZ consumer | `fuzz:fuzz` → `fncu_fuzz --with-fnct` | the `fncu` v1 encoding through `consumer-inspect`, then captured FNCT control frames mutated against a live owner |
+| FUZZ bp | `fuzz:fuzz` → `bp_fuzz --with-tcpcl` | RFC 9171 through `bp decode`, then RFC 9174 sessions to `bp receive` |
 | HISTORY peering, bp | `history_drivers:history` | convergence V1-V4 and durability D1-D3 over the E natives' logs (bp: durability; bundle convergence owed to F8) |
 | PERF every family | `perf:perf` | the tools/load cell measuring the row; tools/load's verdicts published, never asserted |
 

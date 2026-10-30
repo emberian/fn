@@ -9,7 +9,7 @@
 (defun fn2-rs-octetsp (kind)
  (declare (xargs :verify-guards nil))
  (or (eq kind :digest)
-     (and (consp kind) (eq (car kind) :octets) (natp (cadr kind)) (<= (cadr kind) *fn2-run-compare-max*))))
+     (and (consp kind) (eq (car kind) :octets) (natp (cadr kind)) (<= (cadr kind) *fn2-run-key-octets-max*))))
 (defun fn2-rs-key-kindp (kind)
  (declare (xargs :verify-guards nil))
  (or (fn2-rs-octetsp kind)
@@ -79,6 +79,7 @@
          ((mv code fn2-run-writers) (fn2-run-add-commit w code end fn2-run-writers)))
      (mv code fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))))))
 
+
 ; Lower bound inside one read page: the first entry whose key is >= the query
 ; at QBASE. Binary search over restarts (LO, HI), then a linear decode inside
 ; one restart interval (IDX, OFF; OFF = 0 means not started). At most STEPS
@@ -128,6 +129,7 @@
                      (,seek (- steps 1) lo hi (+ 1 idx) next qbase rb slot gen pk ps pg qk qs qg fn2-fields fn2-pool)
                    (mv :format lo hi idx off fn2-fields)))))))))
 
+
 (defun fn2-rs-compare-event (name layout key)
  (declare (xargs :verify-guards nil))
  (let ((n (len key)))
@@ -165,7 +167,7 @@
           (fn2-run-open 0 slot gen (fn2-run-meta-schema meta) (fn2-run-meta-version meta) (fn2-run-meta-level meta)
                         (fn2-run-meta-run meta) (fn2-run-meta-ordinal meta) (fn2-run-meta-page-kind meta)
                         (fn2-run-meta-unit meta) (fn2-run-meta-epoch meta) (fn2-run-meta-counter meta)
-                        (fn2-run-meta-history meta) (fn2-run-meta-incarnation meta) 9 0 1 0 fn2-run-writers fn2-pool))
+                        (fn2-run-meta-history meta) (fn2-run-meta-incarnation meta) 9 0 1 0 *fn2-run-page-size* fn2-run-writers fn2-pool))
          ((unless (eq code :ok)) (mv (list (list :open code)) ,@st))
          ((mv add ,@st) (,add-all entries src sgen 0 ,@st))
          ((mv & fn2-run-writers) (fn2-run-close 0 fn2-run-writers))
@@ -230,5 +232,5 @@
                       (fn2-rs-seek-events name entry)
                       (fn2-rs-seek-events name index)))
            ,@(fn2-rs-adapter-events name entry key layout))))))
-(defmacro defrunschema (name &key id key value merge (page-kind ':run-data))
- (fn2-defrunschema name id key value merge page-kind))
+; DEFRUNSCHEMA itself is in runs.lisp: it adds the multi-page build to this page level.
+

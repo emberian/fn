@@ -16,8 +16,8 @@ departure from a decision that is not recorded here is a defect.
 | the `:schema` declaration kind (table `fn2-schemas`) | `fn2/books/declare.lisp` (one additive line pair; foundation edit) | C1 |
 | generic run page: C's page header and restart layouts, writer and reader tables, page writer, sealing, page reader | `fn2/books/runs-page.lisp` | C1 |
 | `defrunschema`: per-schema entry, index-entry and run-descriptor layouts, key comparison, writer/seek entry points, the schema's registration | `fn2/books/runs-schema.lisp` | C1 |
-| run writer over pages (multi-page runs, index levels, run descriptor) and run lookup | `fn2/books/runs.lisp` | C1 |
-| the manifest schema (the engine's own directory is a run) | `fn2/books/runs-manifest.lisp` | C1 |
+| multi-page runs: the build (one writer per level, promotion of sealed pages into index entries), the verified-page cache, resumable lookup cursors, the run-level adapter and keystone | `fn2/books/runs.lisp` | C1b' |
+| the manifest schema (the engine's own directory is a run) | `fn2/books/runs-manifest.lisp` | C1c |
 | identity schema, Binding merge, conflict bound | `fn2/books/identity.lisp` | C2 |
 | active overlay per schema (bounded resident sorted table), InfiniFilter for the identity overlay | `fn2/books/overlay.lisp`, `fn2/books/infinifilter.lisp` | C2 |
 | Ribbon filter per sealed run | `fn2/books/ribbon.lisp` | C2 |
@@ -36,7 +36,7 @@ Every C book starts `(fn2-book-layer :c)` after its includes, so its rows count 
 |---|---|---|---|
 | byte pool, handles, owners | A | `fn2-pool-reserve/read/write/lease-out/release-out/hand`; one 64 KiB class for run pages | on dev |
 | `defcolumns`, `defmachine`, `defcorechild`, assembly sections | A | C's resident tables; C's machines (sealer, compactor) declared through A's `defmachine`; children registered in a C registration book included by `assembly-index` after B's | on dev |
-| range compare with two owners (GC1) | A (R6a1 `fn2-pool-compare`) | exact octet comparison of a stored key against a query in another owner's slot | **owed by A**; C uses an interim bounded compare (§7), deleted when R6a1 lands |
+| range compare with two owners (GC1) | A (R6a1 `fn2-pool-compare`, `pool-ranges.lisp`) | exact octet comparison of a stored key against a query in another owner's slot | **landed** at 09ad4a57f; C's interim compare is deleted (C1b') |
 | native u64 columns (GC4) | A | persistent identifiers | **closed**: `:u64` exists (A-WIDTH-PER-COLUMN); C keeps u60 resident columns per A-WIDTHS and canonical varints on disk |
 | `deflayout` | B | every C page structure, entry, index entry, descriptor | on dev; the codec, never a second one |
 | page header, page kinds, page sealing and checking | B | `fn2-format-page-header`, `:run-data :run-index :partitioned-filter :manifest`, `fn2-format-run :page` (seal and check), parent-held digest rows | on dev |
@@ -137,6 +137,14 @@ never decide.
   header, encodes the B header, and seals the page through `fn2-format-run :page` with `sealp`
   (resumable, 4096 bytes per call) into a digest row; the parent's index entry takes the child's
   ref. Every step is bounded; exhaustion is a continuation.
+- **Build (C1b').** A run build (`fn2-run-builds` row) owns one writer row per level. Its caller
+  drives `fn2-run-build-work` (one bounded unit: close, head, seal of the highest pending level) and
+  acts on what it returns: `(:sealed L)` once per page (the writer row names the page; the caller
+  records it), `(:promote L)` (call `NAME-BUILD-PROMOTE`: the sealed page's first key and
+  parent-held reference become an entry of level L+1), `(:need-page L)` (give level L a fresh
+  C-owned 64 KiB workspace and its physical identity from the allocator), `(:root L)`, or `:idle`
+  (append the next entry with `NAME-BUILD-ADD`, or `fn2-run-build-finish`). The protocol keeps the
+  library free of allocator and device coupling; C1c's sealer machine is its caller.
 - **Overlay (C2).** One bounded active overlay per schema, fed by the commit batch's prepared
   successor (Astra §E: the read-visible successor overlay is built before sealing; installation is
   a handle swap). Sealing an overlay produces a level-0 run through the writer. The identity
@@ -181,10 +189,9 @@ never decide.
 
 ## 7. Interim choices (each replaced, never kept beside its replacement)
 
-- **C-COMPARE-INTERIM (GC1).** Until A's `fn2-pool-compare` lands, `fn2-run-octets-compare` compares
-  two pool ranges with two explicit owners through `fn2-pool-read`, at most 512 byte pairs per call,
-  resumable by position, returning `:lt/:eq/:gt` or the pool's refusal. When R6a1 lands, every call
-  moves to it and this function is deleted.
+- **C-KEY-OCTETS.** An octet key field is at most `*fn2-run-key-octets-max*` = 512 bytes, so one key
+  comparison (A's `fn2-pool-compare` over the common prefix, then the shorter first) stays inside a
+  run's 4096-byte quantum. Message-IDs are at most 250.
 - **C-OWNER.** C's pages are pool workspaces owned by C's engine owner. The generated encoder takes
   one owner for destination and payload sources, so octet values are copied into C-owned storage at
   admission (the overlay) before they are encoded.
@@ -195,6 +202,29 @@ never decide.
   (`fn2-run-add-check`), and its success or failure is committed by another (`fn2-run-add-commit`).
   A first version proved the whole append's arithmetic per schema: 8 minutes and a failed guard.
   The split makes each schema cost about one second of proof.
+
+- **C-GLUE-UNVERIFIED (proof cost; owed remedy).** The per-schema build and lookup glue
+  (`NAME-BUILD-ADD`, `NAME-BUILD-PROMOTE`, `NAME-INDEX-SKIP`, `NAME-INDEX-NTH`,
+  `NAME-LOOKUP-STEP`) is admitted with `:verify-guards nil`; everything it calls is guard-verified
+  (the generic build work, promotion check, child reference, commit, cache, cursor save, and the
+  per-schema page-level append and seek). Measured: verifying the lookup step's guard per schema
+  took over 5 minutes and failed on missing frame lemmas; a schema's whole expansion now costs
+  about 15 s (numeric) and 6 s (identity-shaped). The glue therefore runs through its executable
+  counterpart with guard checks at each call, which is slower but checks every precondition. The
+  remedy, owed before C3 serves: one layout dispatcher generated at the assembly point (as A's
+  machine dispatch is) over all registered schemas, so the build and lookup algorithms are written
+  and guard-verified once against the dispatcher's shape lemmas instead of once per schema.
+- **C-PAGE-FILL.** A writer's fill limit (bytes of header, entries and directory) is a page-fill
+  parameter, like a block size; the encoded page stays 64 KiB. Tests use small fills to reach many
+  pages and levels with few entries.
+- **C-CACHE.** The verified-page cache is direct mapped by physical unit and keyed by the exact
+  (unit, allocation counter) pair, so a reused unit never answers for an old allocation. A page
+  enters only after B's checker accepted it under its parent-held hash (or after its own seal). A
+  lookup that needs an absent page stops with `:miss` and names the reference; its caller (the
+  sealer or reader machine, C1c/C3) loads, verifies and installs it, then steps again.
+- **C-LEVELS.** A build has at most `*fn2-run-max-levels*` = 6 levels, a format parameter: with
+  64 KiB pages and index entries of at most about 350 bytes, six levels address over 10^13 pages.
+  Exhaustion is the named refusal `:levels`.
 
 ## 8. Seam requests (sent to main with the exact form)
 
@@ -230,8 +260,7 @@ never decide.
    by one ordinary entry each; B5 recovery follows such an entry one level (C's second amendment).
 3. **B: identifier namespaces.** Add `run stream position consumer version` to the `(:id NS)` list
    in `fn2-layout-kindp`.
-4. **A: R6a1's `fn2-pool-compare(a-slot a-gen a-off b-slot b-gen b-off len a-owner b-owner)`**
-   (GC1), the exact form in `d-machines-nntp.md` §2; C and D5 are its consumers.
+4. **A: R6a1's `fn2-pool-compare`** (GC1). Landed at 09ad4a57f; C uses it.
 
 ## 9. Keystones (defthm-owed, each with teeth)
 
@@ -239,7 +268,7 @@ never decide.
 |---|---|---|---|
 | `NAME-page-roundtrip` (generated per schema) | for sorted, well-formed entries that fit one page (`fn2-run-page-inputp`), the real append, close, head and seal produce, and B's checker accepts under the parent-held hash, exactly the octets of `fn2-run-page-spec` (B's list codec for the headers and each entry, the restart directory, zero padding) | positive: 40 entries per test schema, inputs checked; negative: unsorted entries (refused `:order` part way) give a different image | C1 |
 | `NAME-seek-lower-bound` (generated per schema) | the real page seek returns `(:found i)` or `(:absent i)` equal to `fn2-run-lower-bound-spec` over the spec key order | positive: queries before, inside, between, after and at restart boundaries, including empty octets and a query held by another owner; negative: the unsorted page disagrees with the spec | C1 |
-| `fn2-run-lookup-exact` | run lookup (through index pages) returns `:found i` only if entry `i`'s key octets equal the query's; `:absent` only if no entry's key equals it | positive: present/absent queries over multi-page runs; negative: a lookup that trusted a filter or a prefix is caught | C1b' |
+| `NAME-run-lookup-exact` (generated per schema) | for at most 64 sorted well-formed entries and a fill at which every page holds two entries (`fn2-run-run-inputp`), a run built through the real build entry points and searched from its root through the real cursor steps answers `(:found entry)` exactly when an entry's key equals the query's, with that entry, and `(:absent nil)` otherwise (`fn2-run-key-lookup-spec`) | positive: present, between, before, after and empty-octet queries over multi-level runs of both test schemas; negative: unsorted entries make the conclusion false | C1b' |
 | `fn2-exact-identity` (RELEASE-PLAN T9) | the identity decision for `(mid, c)` is `duplicate` iff a stored fact `(mid, c)` exists, `conflict` iff a fact `(mid, c')`, `c' ≠ c`, exists, and the answer is unchanged after the body's and the journal placement's reclamation | positive: M3 scenario; negative: a summary that drops the octets fails "re-offer the same Message-ID with different content" | C2 |
 | `fn2-identity-binding-converges` | two nodes with equal validated fact sets have equal Bindings and equal `conflicted` | positive: two delivery orders; negative: a node that refuses a conflict and records nothing diverges | C2 |
 | `fn2-fold-summary-adequate` (per fold) | the summary rule's homomorphism certificate per event kind: `obs(σ s) = obs s` and `σ(δ(s,e)) = δ_Σ(σ s, e)`, hence `Fold(Summary_k, E_{k+1..n})` observes as the full fold | TRANSPORT §9's two teeth: a relation weaker than the observation, an off-by-one summary step | C4 |
@@ -256,8 +285,8 @@ OWED.md is regenerated when the export is green.
 |---|---|---|---|
 | C1a | `:schema` kind in declare.lisp (foundation commit, worktree, export green) | export PASS, unchanged counts plus zero | dev |
 | C1b | runs-page, runs-schema; runs-unit with a numeric-key and an octet-key test schema | **done**: books under 60 s; sealed pages pass B's checker, a flipped byte is refused; seek agrees with the spec; the two page keystones' teeth | C1a |
-| C1b' | runs.lisp (multi-page runs, index levels, run descriptor, run lookup), runs-manifest; `fn2-run-lookup-exact` | seeded multi-page runs against the list oracle | C1b |
-| C1c | sealer machine; run sealing through the commit batch; retirement through the allocator | tiny exhaustive death cuts over one run replacement: recovered manifest is old or new, never mixed | seam 2 |
+| C1b' | runs.lisp: multi-page build, promotion, verified-page cache, resumable lookup cursor; `NAME-run-lookup-exact`; R6a1's compare in place of the interim | **done**: 3,000 entries at a 400-byte fill build 80 pages, height 4, and every query answers right; the teeth | C1b, R6a1 |
+| C1c | sealer machine; run descriptor and manifest schema; run sealing through the commit batch (B's GC2 member); retirement through the allocator; the assembly dispatcher (C-GLUE-UNVERIFIED's remedy) | tiny exhaustive death cuts over one run replacement: recovered manifest is old or new, never mixed | B's GC2 member |
 | C2 | identity schema, overlay, InfiniFilter, Ribbon, IDENTITY checker, M3 | identity correct after bodies and placements reclaimed; filter bits/key and probe time | C1 |
 | C3 | metadata, overview, `addr`, range cursors with resume key and version, positioned seek, M2 | XOVER-shaped reads over cold sparse groups charging directory and overlap reads | C1 |
 | C4 | `deffold`, the folds with their three declarations, summary cut exhaustively in tiny, CONSUMER checker, inbox equivalence | the scholar's chapter-1 scenario exhaustively in tiny | C2, C3 |

@@ -134,18 +134,27 @@
       (+ (* (nfix h) *fn2-work-transition*) (* (nfix k) *fn2-turn-transition-max*))))
 (in-theory (disable fn2-turn-work-room-p))
 
+; The loop's stop condition, named so that a checker stepping the loop one
+; transition at a time (TRACE's per-case mode, sim/check-trace.lisp) asks the
+; loop itself whether it continues. Left enabled: the loop's proofs see it inline.
+(defun fn2-concrete-loop-stop-p (h k a nobs nvisits nactions fn2-core)
+  (declare (xargs :stobjs fn2-core
+                  :guard (and (fn2-core-wfp fn2-core) (natp h) (natp k) (natp a)
+                              (natp nobs) (natp nvisits) (natp nactions))))
+  (or (>= nobs h) (>= nvisits k) (>= nactions a)
+      (= 1 (fn2-exec-stop fn2-core))
+      (not (fn2-turn-work-room-p h k nvisits
+             (fn2-exec-turn-bytes fn2-core) (fn2-exec-turn-steps fn2-core)))
+      (and (or (>= nobs h) (not (fn2-exec-observation-p fn2-core)))
+           (not (fn2-exec-eligible-p fn2-core)))))
+
 (defun fn2-concrete-loop (fuel h k a nobs nvisits nactions fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix fuel)
                   :guard (and (fn2-core-wfp fn2-core) (natp fuel)
                               (natp h) (natp k) (natp a) (natp nobs)
                               (natp nvisits) (natp nactions))))
   (cond
-   ((or (zp fuel) (>= nobs h) (>= nvisits k) (>= nactions a)
-        (= 1 (fn2-exec-stop fn2-core))
-        (not (fn2-turn-work-room-p h k nvisits
-               (fn2-exec-turn-bytes fn2-core) (fn2-exec-turn-steps fn2-core)))
-        (and (or (>= nobs h) (not (fn2-exec-observation-p fn2-core)))
-             (not (fn2-exec-eligible-p fn2-core))))
+   ((or (zp fuel) (fn2-concrete-loop-stop-p h k a nobs nvisits nactions fn2-core))
     (mv (fn2-turn-status fn2-core) nobs nvisits nactions fn2-core))
    (t
     (b* (((mv obs visits actions bytes steps fn2-core)

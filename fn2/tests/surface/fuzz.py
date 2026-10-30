@@ -21,10 +21,12 @@ controls:
   must stay 200. Mutation controls: its plants (fn2/tests/surface/test_http_fuzz.py).
 - consumer: fn2.tests.surface.fncu_fuzz, seeded `fncu` v1 cursor mutation through the developer image's
   `consumer-inspect`, judged by specs/consumer-progress.md's encoding (with the pins P-FNCU-HEADER and
-  P-FNCU-EPOCH). The FNCT frame half is owed (it needs a control-socket client).
+  P-FNCU-EPOCH), then fn2.tests.surface.fnct_fuzz on the remaining time: captured control frames, mutated,
+  against a live owner (integrity: no mutated frame gets the success reply; the owner keeps answering).
 - bp: fn2.tests.surface.bp_fuzz, seeded BPv7 mutation of the captured bundles through the DTN image's
-  `bp decode`, judged by RFC 9171 (CRC, framing, lifetime and the Bundle Age path). The TCPCL segment half is
-  owed (it needs a TCPCL peer). Mutation controls for both: fn2/tests/surface/test_codec_fuzz.py.
+  `bp decode`, judged by RFC 9171 (CRC, framing, lifetime and the Bundle Age path), then
+  fn2.tests.surface.tcpcl_fuzz on the remaining time: RFC 9174 sessions carrying the captured bundle to
+  `bp receive` (with a Store whose boundary admits the peer), one mutation each. Mutation controls for both: fn2/tests/surface/test_codec_fuzz.py.
 """
 import sys
 
@@ -50,8 +52,8 @@ def fuzz(*, case, target, family, out, seconds, corpus):
                 '--out', str(out / 'fuzz')]
     if family == 'consumer':
         return [sys.executable, '-m', 'fn2.tests.surface.fncu_fuzz', '--target', target, '--seeds', '0..999999',
-                '--out', str(out / 'fuzz')]
+                '--out', str(out / 'fuzz'), '--with-fnct']
     if family == 'bp':
         return [sys.executable, '-m', 'fn2.tests.surface.bp_fuzz', '--target', target, '--seeds', '0..999999',
-                '--out', str(out / 'fuzz')]
+                '--out', str(out / 'fuzz'), '--with-tcpcl']
     raise ValueError(f'no fuzz driver for {family}')

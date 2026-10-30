@@ -153,9 +153,23 @@ def main(argv=None):
     p.add_argument('--plant', choices=PLANTS)
     p.add_argument('--image', type=Path)
     p.add_argument('--out', type=Path, required=True)
+    p.add_argument('--with-fnct', action='store_true',
+                   help='then the FNCT frame half (fnct_fuzz) on the remaining time, into OUT/fnct')
     args = p.parse_args(argv)
     if args.plant and args.target != 'fake':
         p.error('plants require --target fake')
+    if args.with_fnct:
+        began, seconds = time.monotonic(), args.seconds
+        rest = [a for a in (argv if argv is not None else sys.argv[1:]) if a != '--with-fnct']
+        if seconds != float('inf'):
+            i = rest.index('--seconds')
+            rest[i + 1] = str(seconds / 2)
+        code = main(rest)
+        left = seconds - (time.monotonic() - began) if seconds != float('inf') else seconds
+        from fn2.tests.surface import fnct_fuzz
+        fnct = ['--target', args.target, '--out', str(args.out / 'fnct')] + \
+            (['--seconds', str(max(1.0, left))] if left != float('inf') else [])
+        return max(code, fnct_fuzz.main(fnct))
     image = args.image or Path(os.environ.get('FN_NATIVE_DEVELOPER_HOST', '/nonexistent'))
     if args.target != 'fake' and not image.is_file():
         p.error('a live target needs --image or FN_NATIVE_DEVELOPER_HOST (consumer-inspect is a developer verb)')

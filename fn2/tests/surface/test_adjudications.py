@@ -64,6 +64,20 @@ class TestAdjudications(unittest.TestCase):
         self.assertEqual(judged('H7-05', b'Path: x\r\n\r\nclean\r\n.\r\n'), 'new')
         self.assertEqual(judged('H7-03', b'TAKETHIS <a@b>\r\n'), 'new')
 
+    def test_H7_07_needs_its_preceding_exchange(self):
+        def row(previous, previous_status, command, reply, rule, detail):
+            exchanges = [self.exchange(0, previous, previous_status), self.exchange(1, command, reply)]
+            return dict(command_index=1, command_hex=command.hex(), reply_hex=reply.hex(), rule=rule,
+                        detail=detail, exchanges=exchanges)
+        r481 = b'481 authentication failed\r\n'
+        xr = row(b'XREDEEM code code\r\n', b'381 send the password with XREDEEM PASS\r\n',
+                 b'AUTHINFO PASS fuzz-password\r\n', r481, 'AUTHINFO', 'code 481; permitted [482]')
+        self.assertEqual(surface.adjudicate_differences([xr], 'fn1')[0]['disposition'], 'recorded')
+        self.assertEqual(surface.adjudicate_differences([xr], 'fn2')[0]['disposition'], 'new')      # fn1-bug
+        user = row(b'AUTHINFO USER fuzz\r\n', b'381 password required\r\n',
+                   b'AUTHINFO PASS fuzz-password\r\n', r481, 'AUTHINFO', 'code 481; permitted [482]')
+        self.assertEqual(surface.adjudicate_differences([user], 'fn1')[0]['disposition'], 'new')
+
     def test_A15_requires_reader_and_malformed_transit_argument(self):
         def row(command, mode):
             return dict(self.row(command, b'502 transit is not permitted on this connection\r\n', mode=mode),

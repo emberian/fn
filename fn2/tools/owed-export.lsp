@@ -10,6 +10,7 @@
 (include-book "fn2/tests/executor-unit")
 (include-book "fn2/tests/reference-unit")
 (include-book "fn2/tests/q1-unit")
+(include-book "fn2/tests/q1-evidence")
 (include-book "fn2/tests/sim-acquisition")
 ; Layer B's unit books (registered by the B seat; include-only).
 (include-book "fn2/tests/alloc-unit")
@@ -98,6 +99,33 @@
 " channel state) state)))
       (fn2-owed-write-groups (cdr groups) rows channel state))))
 
+; A correspondence's cases, split by whether a passing, exercised check
+; record exists: the unexercised ones are listed, never folded into a count.
+(defun fn2-owed-case-split (rows covered)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) nil
+    (let ((case (fn2-decl-get :case (cdar rows))))
+      (append (and case (iff covered (fn2-square-coveredp (fn2-decl-get :checks (cdar rows))))
+                   (list case))
+              (fn2-owed-case-split (cdr rows) covered)))))
+(defun fn2-owed-write-cases (rows channel state)
+  (declare (xargs :stobjs state :verify-guards nil))
+  (let ((exercised (fn2-owed-case-split rows t)) (unexercised (fn2-owed-case-split rows nil)))
+    (if (not (or exercised unexercised)) state
+      (let* ((state (princ$ "Cases with a passing, exercised check (" channel state))
+             (state (prin1$ (len exercised) channel state))
+             (state (princ$ "): `" channel state))
+             (state (fn2-owed-write-term exercised channel state))
+             (state (princ$ "`
+
+Cases without one (" channel state))
+             (state (prin1$ (len unexercised) channel state))
+             (state (princ$ "): `" channel state))
+             (state (fn2-owed-write-term unexercised channel state)))
+        (princ$ "`
+
+" channel state)))))
+
 (defun fn2-owed-owner-rows (owner rows)
   (declare (xargs :verify-guards nil))
   (if (atom rows) nil
@@ -114,6 +142,7 @@
 
 " channel state))
            (state (fn2-owed-write-counts members channel state))
+           (state (fn2-owed-write-cases members channel state))
            (state (fn2-owed-write-groups
                     (remove-duplicates-equal (fn2-square-groups members)) members channel state))
            (state (if (consp (cdr owners)) (princ$ "

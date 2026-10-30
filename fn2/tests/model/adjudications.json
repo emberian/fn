@@ -1336,6 +1336,20 @@
    "original_count": 6,
    "match": "H7-ihave-article-nul-or-bare-lf",
    "command_example": "506174683a200d0a4d6573736167652d49443a203c7840793e0d0a0d0a000d0a610a620d0a2e0d0a"
+  },
+  {
+   "group": "H7-07",
+   "rule": "AUTHINFO",
+   "detail": "code 481; permitted [482]",
+   "reply_patterns": [
+    "3438312061757468656e7469636174696f6e206661696c65640d0a"
+   ],
+   "primary_class": "fn1-bug",
+   "spec": "RFC 4643 2.3.2 (AUTHINFO PASS without a preceding AUTHINFO USER is 482); books/nntp-auth.lisp's one pending slot holds the XREDEEM state, under which PASS finds no credential",
+   "decision": "None for fn1: after `XREDEEM CODE NAME` (381) an AUTHINFO PASS is answered 481, a failed authentication counted toward the address's limit, where the RFC says 482 out of sequence. fn2 answers 482.",
+   "original_count": 3,
+   "match": "H7-pass-after-pending-xredeem",
+   "command_example": "41555448494e464f20504153532066757a7a2d70617373776f72640d0a"
   }
  ]
 }

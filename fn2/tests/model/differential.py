@@ -96,8 +96,11 @@ def generator(seed, mode, focus=None):
 
 
 def fixture(fake=True, config=None):
+    # article_limit: fz.Node makes its store with `store init`, the development profile, whose
+    # max-article-octets is 32768 (`operator CONFIG status`, H7 probe on image c14e9e8e). A transit article past
+    # it is refused by name and the connection closed (specs/nntp.md:530-534; H7-OPEN-1).
     policy = dict(required=False, protected_only=False, posting=True,
-                  peers=['127.0.0.1'], server='.invalid', starttls=True)
+                  peers=['127.0.0.1'], server='.invalid', starttls=True, article_limit=32768)
     if config:
         cfg = tomllib.loads(Path(config).read_text())
         policy.update(required=cfg['auth']['required'],
@@ -433,7 +436,20 @@ class Wire:
         self.enc = self.dec = None
         self.deadline = float('inf')
 
+    # A reply can only follow the server's consumption of what was sent before it: the bytewise cut sends one
+    # segment per octet, and over TLS one record per octet, which a node consumes for seconds (H7-08: a 100 KB
+    # TAKETHIS article's 439 arrived after the flat 3 s window). Each segment since the last reply extends that
+    # reply's window by SEGMENT_SECONDS, at most SEGMENT_CAP_SECONDS.
+    SEGMENT_SECONDS, SEGMENT_CAP_SECONDS = 1e-4, 60.0
+
+    def reply_window(self):
+        window = self.timeout + min(self.SEGMENT_CAP_SECONDS, self.SEGMENT_SECONDS * getattr(self, 'segments', 0))
+        self.segments = 0
+        return window
+
     def send(self, pieces):
+        pieces = list(pieces)
+        self.segments = getattr(self, 'segments', 0) + len(pieces)
         for piece in pieces:
             payload = self.enc.compress(piece) + self.enc.flush(zlib.Z_SYNC_FLUSH) if self.enc else piece
             try:
@@ -458,7 +474,7 @@ class Wire:
             self.reset, self.eof = repr(exc), True
 
     def line(self):
-        deadline = min(self.deadline, time.monotonic() + self.timeout)
+        deadline = min(self.deadline, time.monotonic() + max(self.timeout, getattr(self, 'line_window', 0)))
         while b'\r\n' not in self.buffer and not (self.eof or self.timed_out):
             if time.monotonic() >= deadline:
                 self.timed_out = True
@@ -470,7 +486,8 @@ class Wire:
         return line
 
     def reply(self, exp):
-        self.deadline = time.monotonic() + self.timeout
+        self.line_window = self.reply_window()
+        self.deadline = time.monotonic() + self.line_window
         e = exp._get()
         if not e.codes:
             # TAKETHIS has no immediate reply; closed connections must reach EOF.

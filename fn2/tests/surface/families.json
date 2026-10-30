@@ -503,7 +503,7 @@
       "model": "fn2.tests.model.consumer_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
-        "driver": "fn2.tests.surface.fncu_fuzz (fncu; the FNCT frame half owed)",
+        "driver": "fn2.tests.surface.fncu_fuzz --with-fnct (fncu cursors, then FNCT control frames)",
         "grammar": "fnct/fncu",
         "corpus": null,
         "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"
@@ -1293,7 +1293,7 @@
       "model": "fn2.tests.model.bp_model",
       "model_scope": "carry list/inspect/pause/resume/drop/drop --abandon over one FNWF journal (no node running), bp-obligation undertake/status/request/receipt, bp-boundary add, bp-route add/remove; the invariant that a Store pin moves only at undertake and at a recorded waiver, read back after every step; request routing (no-route, no-live-hop, routed to a contact that never connects). Signed receipts, waiver-cut recovery, TCPCL sessions, bundles and custody remain outside this S slice.",
       "fuzz": {
-        "driver": "fn2.tests.surface.bp_fuzz (BPv7; the TCPCL segment half owed)",
+        "driver": "fn2.tests.surface.bp_fuzz --with-tcpcl (BPv7 bundles, then TCPCL sessions)",
         "grammar": "tcpcl/bpv7",
         "corpus": null,
         "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"

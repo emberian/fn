@@ -240,9 +240,23 @@ def main(argv=None):
     p.add_argument('--plant', choices=PLANTS)
     p.add_argument('--image', type=Path)
     p.add_argument('--out', type=Path, required=True)
+    p.add_argument('--with-tcpcl', action='store_true',
+                   help='then the TCPCL session half (tcpcl_fuzz) on the remaining time, into OUT/tcpcl')
     args = p.parse_args(argv)
     if args.plant and args.target != 'fake':
         p.error('plants require --target fake')
+    if args.with_tcpcl:
+        began, seconds = time.monotonic(), args.seconds
+        rest = [a for a in (argv if argv is not None else sys.argv[1:]) if a != '--with-tcpcl']
+        if seconds != float('inf'):
+            rest[rest.index('--seconds') + 1] = str(seconds / 2)
+        code = main(rest)
+        left = seconds - (time.monotonic() - began) if seconds != float('inf') else seconds
+        from fn2.tests.surface import tcpcl_fuzz
+        session = ['--target', args.target, '--out', str(args.out / 'tcpcl')] + \
+            (['--seconds', str(max(1.0, left))] if left != float('inf') else []) + \
+            (['--image', str(args.image)] if args.image else [])
+        return max(code, tcpcl_fuzz.main(session))
     image = args.image or Path(os.environ.get('FN_NATIVE_DTN_HOST', str(ROOT / 'build' / 'fn-host-dtn')))
     if args.target != 'fake' and not image.is_file():
         p.error('a live target needs --image or FN_NATIVE_DTN_HOST (bp decode)')
