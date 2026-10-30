@@ -78,17 +78,6 @@ class TestAdjudications(unittest.TestCase):
                    b'AUTHINFO PASS fuzz-password\r\n', r481, 'AUTHINFO', 'code 481; permitted [482]')
         self.assertEqual(surface.adjudicate_differences([user], 'fn1')[0]['disposition'], 'new')
 
-    def test_H7_08_bytewise_early_refusal_only(self):
-        article = b'Path: not-for-mail\r\nX-Long: ' + b'v' * 40000 + b'\r\n\r\nx\r\n.\r\n'
-        def row(cut, eof=True, body=article):
-            return dict(command_hex=body.hex(), reply_hex='', rule='TAKETHIS', cut=cut, wire_eof=eof,
-                        detail='wrong number of status lines (including closing 400)')
-        self.assertEqual(surface.adjudicate_differences([row('bytewise')], 'fn1')[0]['disposition'], 'recorded')
-        self.assertEqual(surface.adjudicate_differences([row('bytewise')], 'fn2')[0]['disposition'], 'new')
-        self.assertEqual(surface.adjudicate_differences([row('whole')], 'fn1')[0]['disposition'], 'new')
-        self.assertEqual(surface.adjudicate_differences([row('bytewise', False)], 'fn1')[0]['disposition'], 'new')
-        self.assertEqual(surface.adjudicate_differences([row('bytewise', body=article[:2000])], 'fn1')[0]['disposition'], 'new')
-
     def test_A15_requires_reader_and_malformed_transit_argument(self):
         def row(command, mode):
             return dict(self.row(command, b'502 transit is not permitted on this connection\r\n', mode=mode),

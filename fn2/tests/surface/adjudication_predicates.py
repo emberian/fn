@@ -208,15 +208,7 @@ def pass_after_pending_xredeem(row):
     return False
 
 
-def takethis_oversized_early_reply(row):
-    """An article past the node's 32,768-octet bound whose 439 came before its end, then EOF (H7-08)."""
-    command = _octets(row, 'command_hex')
-    return (_article(command) and len(command) > 32768 and _octets(row, 'reply_hex') == b''
-            and row.get('wire_eof') is True and row.get('cut') == 'bytewise')
-
-
 PREDICATES = {
-    'H7-takethis-oversized-early-reply': takethis_oversized_early_reply,
     'H7-pass-after-pending-xredeem': pass_after_pending_xredeem,
     'H7-group-non-ascii-name': group_non_ascii_name,
     'H7-takethis-article-not-received': takethis_article_not_received,
