@@ -106,5 +106,94 @@
   (and (not (fn2-gram-octetsp '(72 300 10)))
        (not (fn2-q1c-echo-ok '(72 300 10) nil))))
 
-(fn2-assert-owed-teeth fn2-conn-wire-correct fn2-echo-replies-its-input)
-(value-triple (cw "Q1 CONTRACTS: fn2-conn-wire-correct and fn2-echo-replies-its-input teeth PASS~%"))
+; ------------------------------------------------------------------------
+; fn2-listener: admission within the ledger. The listener books a
+; :connection-row on the principal at Accept, transfers it to the admitted
+; row, and unbooks on failure; a refused booking admits the connection
+; unbooked so it can answer 400 and close (machines-a-run.lisp:154). The
+; oracle reads the ledger's rows and the adapter's own view of its clients,
+; never a listener handler: at EVERY round of the run the ledger is
+; conserved and the principal holds at most its limit of rows; at
+; quiescence the hold is exactly the live greeted connections plus the
+; listeners' outstanding bookings, the charges are exactly the octets
+; delivered and sent; at most LIMIT clients are greeted, and every other one
+; got exactly one 400 line and was closed.
+(defun fn2-q1c-ledger-profile (limit)
+  (declare (xargs :verify-guards nil))
+  (put-assoc-equal :accounts
+                   `((0 :state :anonymous :limits ((:connection-row . ,limit) (:principal-reservation . ,limit))))
+                   *fn2-conn-wire-profile*))
+(defun fn2-q1c-within-limit-p (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((d (fn2-account-holding :connection-row)))
+    (and (fn2-account-core-conservedp fn2-core)
+         (<= (fn2-account-core-hold 0 d fn2-core) (fn2-account-core-limit 0 d fn2-core)))))
+(defun fn2-q1c-ledger-loop (fuel idle accepted clients ok fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel) (mv :fuel clients ok fn2-core)
+    (b* (((mv & nobs nvisits nactions fn2-core) (fn2-turn fn2-core))
+         ((mv took accepted clients fn2-core) (fn2-cw-adapter-one accepted clients fn2-core))
+         (ok (and ok (fn2-q1c-within-limit-p fn2-core)))
+         (idle (if (or took (< 0 nobs) (< 0 nvisits) (< 0 nactions)) 0 (+ 1 idle))))
+      (if (or (<= 3 idle) (not (equal (fn2-core-stop-reason fn2-core) 0)))
+          (mv :quiet clients ok fn2-core)
+        (fn2-q1c-ledger-loop (- fuel 1) idle accepted clients ok fn2-core)))))
+(defun fn2-listener-ledger-run (limit transcripts)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (result fn2-core)
+      (let ((fn2-core (fn2-init-executor (fn2-q1c-ledger-profile limit) :echo nil fn2-core)))
+        (mv-let (status clients ok fn2-core)
+          (fn2-q1c-ledger-loop (+ 2000 (* 600 (len transcripts))) 0 0 (fn2-cw-clients transcripts) t fn2-core)
+          (mv (list status ok (fn2-cw-ledger transcripts clients fn2-core) (fn2-cw-results clients)
+                    (fn2-core-stop-reason fn2-core))
+              fn2-core)))
+      result)))
+(defun fn2-q1c-refusals-p (results greeted)
+  ; (mv-like) count greeted clients; every other one's wire is one 400 line, closed.
+  (declare (xargs :verify-guards nil))
+  (if (atom results) (natp greeted)
+    (let ((wire (car (car results))) (closed (cadr (car results))))
+      (if (and (<= 3 (len wire)) (equal (take 2 wire) '(50 48)) (member (nth 2 wire) '(48 49)))
+          (fn2-q1c-refusals-p (cdr results) (+ 1 greeted))
+        (and closed (<= 3 (len wire)) (equal (take 3 wire) '(52 48 48))
+             (fn2-q1c-refusals-p (cdr results) greeted))))))
+(defun fn2-q1c-greeted (results)
+  (declare (xargs :verify-guards nil))
+  (if (atom results) 0
+    (+ (let ((wire (car (car results))))
+         (if (and (<= 3 (len wire)) (equal (take 2 wire) '(50 48)) (member (nth 2 wire) '(48 49))) 1 0))
+       (fn2-q1c-greeted (cdr results)))))
+(defun fn2-q1c-ledger-ok (limit transcripts)
+  (declare (xargs :verify-guards nil))
+  (let ((r (fn2-listener-ledger-run limit transcripts)))
+    (and (equal (nth 0 r) :quiet) (equal (nth 4 r) 0) (nth 1 r)
+         (fn2-conn-ledger-matches-p (nth 2 r))
+         (fn2-q1c-refusals-p (nth 3 r) 0)
+         (<= (fn2-q1c-greeted (nth 3 r)) limit))))
+(defthm-owed fn2-listener-admits-within-ledger (limit transcripts)
+  (implies (and (natp limit) (<= 1 limit) (<= limit 4)
+                (fn2-conn-octets-transcripts-p transcripts) (<= (len transcripts) 4))
+           (fn2-q1c-ledger-ok limit transcripts))
+  :schema :invariant :claim :semantic
+  :teeth (fn2-listener-ledger-positive fn2-listener-ledger-without-client-bound)
+  :doc "Admission within the ledger: at every round the anonymous principal's ledger is conserved and holds at most its connection-row limit; at quiescence it books exactly the live greeted connections and the listeners' bookings and charges exactly the octets moved; at most LIMIT clients are greeted and every other one gets one 400 line and is closed.")
+(defconst *fn2-q1c-ledger-clients*
+  (list (list (nth 1 (nth 1 *fn2-cu-fixtures*)) nil) (list (nth 1 (nth 2 *fn2-cu-fixtures*)) '(3))
+        (list (fn2-cu-random-transcript 5) nil) (list (nth 1 (nth 1 *fn2-cu-fixtures*)) '(2))))
+; Positive: four clients under limits 4, 2 and 1 (none, two and three refused
+; with the 400), and two random clients under limit 1.
+(defun fn2-listener-ledger-positive ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-q1c-ledger-ok 4 *fn2-q1c-ledger-clients*)
+       (fn2-q1c-ledger-ok 2 *fn2-q1c-ledger-clients*)
+       (fn2-q1c-ledger-ok 1 *fn2-q1c-ledger-clients*)
+       (fn2-q1c-ledger-ok 1 (list (list (fn2-cu-random-transcript 9) '(4)) (list (fn2-cu-random-transcript 31) nil)))))
+; Negative: without the bound of C = 4 clients the conclusion is false: a
+; fifth client is never accepted, so it is neither greeted nor refused.
+(defun fn2-listener-ledger-without-client-bound ()
+  (declare (xargs :verify-guards nil))
+  (not (fn2-q1c-ledger-ok 4 (cons (list (nth 1 (nth 1 *fn2-cu-fixtures*)) nil) *fn2-q1c-ledger-clients*))))
+
+(fn2-assert-owed-teeth fn2-conn-wire-correct fn2-echo-replies-its-input fn2-listener-admits-within-ledger)
+(value-triple (cw "Q1 CONTRACTS: conn, echo and listener teeth PASS~%"))

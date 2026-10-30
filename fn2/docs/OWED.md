@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 413; bound statements: 408; admitted proofs: 0; check coverage: 67 rows with a passing, exercised check.
+Requirements: 414; bound statements: 409; admitted proofs: 0; check coverage: 67 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -2622,6 +2622,18 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-ECHO-REPLIES-ITS-INPUT` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-GRAM-OCTETSP INPUT) (NAT-LISTP SIZES) (<= (LEN INPUT) 512)) (LET ((R (FN2-ECHO-SOLO INPUT SIZES))) (AND (EQUAL (CAR R) :QUIET) (EQUAL (NTH 2 R) 0) (EQUAL (CAR (NTH 1 R)) INPUT))))` | `(FN2-ECHO-REPLIES-POSITIVE FN2-ECHO-REPLIES-WITHOUT-OCTETS)` | The served echo, alone, quiesces unstopped and returns exactly its client's octets, in any chunks (up to 512 octets, inside the runner's fuel); the oracle is the client's own input. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-LISTENER-ADMITS-WITHIN-LEDGER)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :INVARIANT)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-LISTENER-ADMITS-WITHIN-LEDGER` | :OWED | :INVARIANT | `(IMPLIES (AND (NATP LIMIT) (<= 1 LIMIT) (<= LIMIT 4) (FN2-CONN-OCTETS-TRANSCRIPTS-P TRANSCRIPTS) (<= (LEN TRANSCRIPTS) 4)) (FN2-Q1C-LEDGER-OK LIMIT TRANSCRIPTS))` | `(FN2-LISTENER-LEDGER-POSITIVE FN2-LISTENER-LEDGER-WITHOUT-CLIENT-BOUND)` | Admission within the ledger: at every round the anonymous principal's ledger is conserved and holds at most its connection-row limit; at quiescence it books exactly the live greeted connections and the listeners' bookings and charges exactly the octets moved; at most LIMIT clients are greeted and every other one gets one 400 line and is closed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:OPERATION-SET FN2-RESOURCES)`
 
