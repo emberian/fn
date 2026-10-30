@@ -50,8 +50,22 @@ No fn2 book certifies in more than 60 s on the laptop. A book over 60 s is a red
 - Report to main (the coordinator) only: READY (a layer milestone: what serves, the simulator scenarios green, the branch sha), RED (a decision you cannot keep), BLOCKED (box, disk, toolchain). Statement first. No status censuses.
 - Park on usability, not token count; when you park, the continuation is current and you say so.
 
+## The method from 2026-10-29 afternoon (ember: "we were getting lost through a layer of codex and we became insulated from the actual ongoings")
+- **dev is the branch.** fn2 work is on `dev` (fn2/main was fast-forwarded into it at 9eb370594 and retired). Every seat commits to dev, by named files, after its own acceptance; main fast-forwards nothing any more because there is one branch. Lane branches that still exist (b-durability, b-commit, h-harness, d-*) merge into dev as soon as their open work is sound and are then deleted.
+- **The shared working tree** is `/Users/ember/dev/fn` on dev. Seats work there with disjoint files; a seat keeps a worktree only while it finishes in-flight work that lives there, then moves. One certify at a time per machine through the slot pool; PID files for anything over a minute.
+- **Shared-index rule.** In the shared tree every commit is `git commit -F <msg> -- <paths>`: the pathspec form, never `git add` followed by a bare commit, because another seat's staged files are in the same index (80458ea94 swept seven of H's staged files into a DSL commit). Seats do not stage; they commit paths.
+- **Foundation edits leave the shared tree.** A change that rewrites what every other seat certifies against (machines.lisp, columns.lisp, declare.lisp, owed.lisp, the assembly books) is developed in a short-lived worktree and lands on dev as one commit with the export green and OWED.md regenerated; the shared tree holds only committed state for those files, so other seats' acceptance runs measure dev, not a work in progress. Everything else is edited in the shared tree and committed small.
+- **Opus writes.** The seat reads the design and the code, writes the quest itself, runs the acceptance, commits, and reports READY per commit (never only at milestones: B's slip finding, b-durability.md §14, was READY-at-milestones plus base churn). Codex (Astra, the second account) is a helper for bounded, well-specified pieces the seat hands it with the real signatures pasted, and the seat reads every line it returns; the seat is never insulated from the code by it.
+- **Waves.** Main organizes the next Codex wave from what the seats learn; a quest brief for Codex is written only after the seat has done one of its kind by hand.
+
+## The design record is tracked (ember, 2026-10-29)
+Every plan document, brief, study, Astra draft, lane continuation and seam note under build/coordinator/fn2/ and build/coordinator/briefs/ (the fn2 ones) is mirrored into fn2/docs/design/ on fn2/main (subdirectories briefs/, widest/, lanes/). Main refreshes the mirror at each merge; seats keep writing to build/coordinator and never edit fn2/docs/design directly. Held back from the public tree: anything quoting ember's private corpus (the model-organisms set).
+
 ## No pricing (ember, 2026-10-29: "pricing isn't something we usually bother to do. it doesn't actually help us complete the project")
 Quests and plans state what they do, what accepts them, and what they wait on; no day or cycle estimates, no cost tables for effort. Order and dependencies are the plan (RELEASE-PLAN §5.5's graph); a quest that does not close in two Codex sessions is investigated, not pushed.
+
+## Boxes (2026-10-30)
+forge (`ssh forge`, user fn) is the quiet measurement box when it is up; hbox is reached off the LAN as `ssh hbox-saas` (user hbox; 24 cpu; the toolchain at /tank/fn; every build under `swarm-build` with a PID file) and is the quiet box whenever forge is down; recipes in fn2/docs/boxes.md on dev.
 
 ## Where builds run (ember, 2026-10-29: "we are permitted to use hbox & local mac to their absolute utmost for our present project")
 The Mac and hbox, both, to their utmost: ACL2 certifies, the simulator, the natives and fresh Lean projects on the Mac; hbox for anything larger or longer, under `swarm-build` with a PID file, lanes in parallel. No cloud build box exists (dregg-build and dregg-ref are gone) and none is created without ember's yes. Research seats may run ACL2 and Lean on the Mac. Disk pressure stays a pause-and-tell condition.
