@@ -51,12 +51,12 @@
                     (fn2-nntp-parse-line 0 (len octets) mask slot gen 1 1 1 fn2-pool)
                     (declare (ignore nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3))
                     (mv-let (cmd reply) (fn2-nntp-respond code tag)
-                      (mv-let (rc fn2-pool) (fn2-conn-say cmd reply mask 0 tslot tgen 1 1 1 fn2-pool)
+                      (mv-let (rc fn2-pool) (fn2-answer-say cmd reply mask 0 tslot tgen 1 1 1 fn2-pool)
                         (mv (list rc (if (eq code :malformed) :closing :command) pending
                                   (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
                             fn2-pool))))
                 (mv-let (code after pending fn2-pool)
-                  (fn2-conn-answer 0 (len octets) mask pending seen flags real slot gen tslot tgen 1 1 1 fn2-pool)
+                  (fn2-answer 0 (len octets) mask pending seen flags real slot gen tslot tgen 1 1 1 fn2-pool)
                   (mv (list code after pending
                             (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
                       fn2-pool)))))))
@@ -214,7 +214,7 @@
       (let ((fn2-pool (fn2-pool-init '((2 . 8192)) 1 1000 fn2-pool)))
         (mv-let (c1 tslot tgen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
           (declare (ignore c1))
-          (mv-let (code after fn2-pool) (fn2-conn-greeting refused *fn2-cau-reader* tslot tgen 1 1 1 fn2-pool)
+          (mv-let (code after fn2-pool) (fn2-answer-greeting refused *fn2-cau-reader* tslot tgen 1 1 1 fn2-pool)
             (mv (list code after (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
                 fn2-pool))))
       result)))
