@@ -245,6 +245,32 @@
                    (fn2-machine-width-control :partition 4294967296) (fn2-machine-width-control :partition 1)))
 (value-triple (cw "MACHINE UNIT: over-width scalar and partition writes STOP :machine-write PASS~%"))
 
+; A reclaim with no active row stops the core with :machine-write and leaves the
+; partition as it was; with one active row it returns the row and its credit.
+(defun fn2-machine-reclaim-control (active)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+           (o *fn2-echo-admission-ordinal*)
+           (fn2-core (fn2-machine-set-active-count o active fn2-core))
+           (credits (fn2-machine-admission-credits o fn2-core))
+           (head (fn2-machine-free-head o fn2-core))
+           (id (fn2-machine-global-id *fn2-echo-kind* 0 *fn2-profile-tiny*))
+           (fn2-core (fn2-machine-reclaim-fn2-echo id nil fn2-core)))
+        (mv (if (zp active)
+                (and (= (fn2-core-stop-reason fn2-core) *fn2-stop-reason-machine-write*)
+                     (= (fn2-machine-active-count o fn2-core) 0)
+                     (= (fn2-machine-admission-credits o fn2-core) credits)
+                     (= (fn2-machine-free-head o fn2-core) head))
+              (and (= (fn2-core-stop-reason fn2-core) 0)
+                   (= (fn2-machine-active-count o fn2-core) (- active 1))
+                   (= (fn2-machine-admission-credits o fn2-core) (+ 1 credits))
+                   (= (fn2-machine-free-head o fn2-core) id)))
+            fn2-core)) answer)))
+(assert-event (and (fn2-machine-reclaim-control 0) (fn2-machine-reclaim-control 1)))
+(value-triple (cw "MACHINE UNIT: reclaim with no active row STOPS :machine-write PASS~%"))
+
 (include-book "std/testing/must-fail" :dir :system)
 ; These are rejected programs, not failed theorem searches. Echo COMMAND
 ; and listener ADMITTING both encode 1: the first control checks provenance.

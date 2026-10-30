@@ -1467,12 +1467,16 @@
       (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
        (defun ,reclaim (id retire fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head ,o id fn2-core)))
-                (fn2-core (if retire fn2-core
-                            (fn2-machine-set-admission-credits ,o (+ 1 (fn2-machine-admission-credits ,o fn2-core))
-                                                               fn2-core)))
-                (active (fn2-machine-active-count ,o fn2-core)))
-           (fn2-machine-set-active-count ,o (if (zp active) 0 (- active 1)) fn2-core))))
+         ;; A reclaim with no active row of the kind is a caller's bug: the core
+         ;; stops (:machine-write) before any partition field changes, never a
+         ;; count clamped at zero (REVIEW-20261030).
+         (let ((active (fn2-machine-active-count ,o fn2-core)))
+           (if (zp active) (fn2-machine-refuse-write fn2-core)
+             (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head ,o id fn2-core)))
+                    (fn2-core (if retire fn2-core
+                                (fn2-machine-set-admission-credits ,o (+ 1 (fn2-machine-admission-credits ,o fn2-core))
+                                                                   fn2-core))))
+               (fn2-machine-set-active-count ,o (- active 1) fn2-core))))))
       (fn2-core-preserves ,reclaim (id retire fn2-core) :rows nil :prefix "")
       (defcost ,admit :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE"))
         :effects ((:transfer (:connection-row) :to ,kind)
@@ -1550,12 +1554,16 @@
       (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
        (defun ,reclaim (id retire fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head ,o id fn2-core)))
-                (fn2-core (if retire fn2-core
-                            (fn2-machine-set-admission-credits ,o (+ 1 (fn2-machine-admission-credits ,o fn2-core))
-                                                               fn2-core)))
-                (active (fn2-machine-active-count ,o fn2-core)))
-           (fn2-machine-set-active-count ,o (if (zp active) 0 (- active 1)) fn2-core))))
+         ;; A reclaim with no active row of the kind is a caller's bug: the core
+         ;; stops (:machine-write) before any partition field changes, never a
+         ;; count clamped at zero (REVIEW-20261030).
+         (let ((active (fn2-machine-active-count ,o fn2-core)))
+           (if (zp active) (fn2-machine-refuse-write fn2-core)
+             (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head ,o id fn2-core)))
+                    (fn2-core (if retire fn2-core
+                                (fn2-machine-set-admission-credits ,o (+ 1 (fn2-machine-admission-credits ,o fn2-core))
+                                                                   fn2-core))))
+               (fn2-machine-set-active-count ,o (- active 1) fn2-core))))))
       (fn2-core-preserves ,reclaim (id retire fn2-core) :rows nil :prefix "")
       (defcost ,take :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE") fn2-core-machine-tables)
         :effects ((:acquire (,rowkind) :for ,kind) (:acquire ,(remove-duplicates-eq (strip-cars specs)) :for ,kind))
