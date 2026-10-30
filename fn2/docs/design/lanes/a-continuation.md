@@ -37,42 +37,73 @@ pretty-prints multi-line (bind *print-pretty* nil). Certify the one touched book
 whole-tree run (`forge-certify.sh sim/check-trace.lisp`, seconds).
 
 ## In flight
-- Nothing uncommitted.
-- Waiting on shas from main:
-  - fn2-upload's contract and control, once D4 2/n lands: add the kind to *fn2-q1-kind-contracts*
-    (q1.lisp), a row with teeth in tests/q1-contracts.lisp, a mutation site in tests/q1-controls.lsp
-    and its CTRL in tests/q1-controls-check.lisp. Then rerun the harness, the judge and the export,
-    in that order:
-    `tools/acl2 < fn2/tests/q1-controls.lsp`; `forge-certify.sh tests/q1-controls-check.lisp`;
-    `certify.sh --export-owed`.
-  - fn2-commit's contract and control, after B5.
-- WIRE gap reported to D: a closed wire cut before its final reply passes.
+- Landed 424f3f9ef (READY sent; re-export on 1b0892045 byte-identical): fn2-upload's contract `fn2-upload-judged-and-hashed` and its control
+  (`fn2-upload-hash-step` fed one octet short per chunk; shared (1 1) TRACE blind, oracle fails;
+  concrete-only TRACE fails). The oracle: H's model's judgement and decoded article per fixture, pinned
+  by `python3 fn2/tests/upload-model-export.py > fn2/tests/evidence/upload-model.lisp` (rerun it when
+  nntp_model.py or the upload's bound changes; the bound is 8159 since D5 1/n); B's `fn-blake3` over
+  the decoded article against hasher row 3's result slot; WIRE's two-phase read. The profile copies
+  upload-unit's (groups, identity arena, 16 x 4 KiB chunks): keep it in step when D changes that one.
+- P-DUP-FIELD done: c16d5d862 (H's eb692d3cf; *fn2-q1c-upload-open* removed, all nine fixtures
+  claimed) and bdeea0a6c (controls evidence at 10e454049). READY sent; parked for B5.
+- Pitfall (2026-10-30): never `git commit --amend` in the shared tree. Another seat had committed on
+  top of mine and pushed; the amend rewrote their commit. Recovered with `git reset --soft origin/dev`
+  plus a separate pathspec commit; nothing wrong reached origin.
+- Harness: an oracle that signals is recorded :error (the judge refuses it). D4 2/n had changed
+  fn2-conn-run-greeting's arity (`posting`), which turned every conn run into an error until fixed.
+- Next, in main's order: on B5's sha, fn2-commit (oracle: B's crash-model differential and HISTORY)
+  and fn2-recovery-machine (the RECOVERY checker and tests/death-unit's death control), each a row
+  with teeth in q1-contracts.lisp, a mutation site in q1-controls.lsp, a CTRL in q1-controls-check.lisp
+  and an entry in q1.lisp's *fn2-q1-kind-contracts*; then fn2-txn (the IDENTITY checker, WIRE's
+  two-phase POST read, the outcome word against the model). The judge refuses all three today.
+- Forge clone for this work: /build/lanes/aq1 (dev at 424f3f9ef's parent plus these files). Scripts:
+  build/combo2.sh NAME (whole gate: closure, D evidence, harness, judge, export, A's seven drivers;
+  results build/acc/NAME/result), build/land.sh then build/land2.sh (moved-tip landing: own books,
+  harness, then the incremental closure and the export, which must show 0 "Uncertified"). Detached as
+  `setsid sh -c "echo \$\$ > build/accept.pid; exec sh build/combo2.sh N"`; A4 compare from the laptop:
+  `python3 build/seat-ad/compare.py <dir with sim-layer-a-a4-driver.log> build/seat-ad/baseline-r5e2-a4.log`.
+  forge resets ssh under many quick connections: retry in an until-loop.
+- WIRE gap reported to D earlier (a closed wire cut before its final reply) is closed: WIRE refuses it,
+  and fn2-conn-wire-correct's negative tooth now asserts that.
 - 46 rows left on :assertion in B's and C's open books: proposals sent through main.
 
 ## A5r, the native adapter redone (seat: A5r Opus; rewritten whole after every commit)
-Design: fn2/docs/a-pool-host-sim.md 4.1 (statement first; Astra's read
-build/coordinator/fn2/lanes/a5r-quests/astra-1.md, corrections taken: latch on every cell,
-listener offer extended, the cell table per the simulator's normalizer, closed-waiting, EAGAIN
-pending, the quiet marker carries the output count, ENVELOPE an execution checker by replay).
-Worktree /Users/ember/dev/fn/build/lanes/fn2/a5r (branch fn2/a5r, rebased on dev 57601292a);
-forge clone /build/lanes/a5r (helpers in the worktree's build/: forge-run.sh NAME CMD..., which
-rsyncs fn2/ and starts CMD detached as a session leader with build/NAME.pid on forge;
-forge-wait.sh NAME; accept-combo.sh on forge = the whole-tree gate, results build/acc/NAME/).
+State: all three commits LANDED on dev and origin/dev. Design and as-built record:
+fn2/docs/a-pool-host-sim.md 4.1 (4.1.7 "As built"); Astra's read
+build/coordinator/fn2/lanes/a5r-quests/astra-1.md.
 
-| commit | what | state |
+| sha | what | gate |
 |---|---|---|
-| aad0c5d2d (1/3) | the peer record: vocab columns + fn2-post-accept-result + harvest latch; fn2-core-observed-peer; listener peer fields; listener offer + fn2-machine-admit +6 args; owed-host.lisp fn2-accept-peer-delivered; tests/host-unit.lisp | on fn2/a5r; whole-tree gate abi1 running on forge |
-| 99be12ffb (2/3) | host-boundary.lisp, host/ffi.lisp, host/adapter.lisp, sim/check-envelope.lisp, owed-native.lisp fn2-native-envelope-refines, tests/native-unit.lisp + evidence trace, tests/native-loop.lsp (NATIVE LOOP PASS on forge: 21 clients, ENVELOPE pass, 7 controls) | on fn2/a5r; lands after 1/3 with its own books + export recertified |
-| (3/3) | the socket session: tests/native-session.lsp, host/native-session-raw.lisp, tests/surface/fn2_native_session.py (hook FN2_SURFACE_SIM_NNTP=fn2.tests.surface.fn2_native_session:session); then H's nntp S form against it (h8-run.py, H's seat on main's word) | written, untested |
+| f6485baea (1/3) | Accept peer record: vocab peer columns, fn2-post-accept-result, harvest latch (in nonstray snapshot); fn2-core-observed-peer (machines-a-access events macro); listener peer fields; *fn2-machine-listener-offer* + fn2-machine-admit +6 args; owed-host.lisp fn2-accept-peer-delivered; tests/host-unit.lisp | whole tree on forge: 113 A4 blocks identical, D evidence, export, books < 60 s (max assembly-reference 51.8) |
+| 03b4a2f41 (2/3) | books/host-boundary.lisp (incl. fn2-host-result = sim normalizer), host/ffi.lisp, host/adapter.lisp, sim/check-envelope.lisp, owed-native.lisp fn2-native-envelope-refines, tests/native-unit.lisp + evidence trace, tests/native-loop.lsp (+ host/native-clients.lisp, host/native-loop-driver.lisp) | own books + export + NATIVE LOOP PASS on the 1/3 tip |
+| 852fd6a02 | darwin record (doc only): native loop + H's run_surface --target fn2-native on the Mac, 1,000 x 50, 16,730 served / 0 disagreements, 17,776 connections judged ok | laptop |
+| 1b0892045 (3/3) | the socket session: tests/native-session.lsp, host/native-session-raw.lisp, tests/surface/fn2_native_session.py (hook fn2.tests.surface.fn2_native_session:session); open-PORT binding to incarnations; ENVELOPE views by incarnation | H's S form 1,000 x 50 on forge: ok, 16,730 served / 0 disagreements; closure + export + native loop on 323c9da1d |
 
-Inner loops: native loop on forge `build/nl.sh` (certify + `tools/acl2 < fn2/tests/native-loop.lsp`,
-~3 min), log build/native-loop.log; a REPL-style debug `tools/acl2 < build/dbg.lsp` (end with
-(good-bye)). Pitfalls hit: a library book cannot define a function over fn2-core (put it inside
-machines-a-access's events macro); put-assoc-equal appends a new key; slots are reused, so map a
-post to its op by the latest take of that slot; a defstruct slot named control clobbers a
-same-named function; mv-let has no & binder.
-Reported/owed to D through main: the conn :copy form for the peer record; the WIRE gap (an
-unterminated 511+ octet line answered 501+close is refused as :unasked-reply under small chunks).
+How to run: forge clone /build/lanes/a5r (certified at 1b0892045; venv build/venv with
+hypothesis). Native loop: `tools/acl2 < fn2/tests/native-loop.lsp` (FN_ACL2 set; ~3 min; prints
+NATIVE LOOP PASS, ENVELOPE CONTROL lines, WIRE-GAP count). S form: build/h8.sh (N=1000 STEPS=50;
+h8-run.py with FN2_SURFACE_SIM_NNTP=the hook; `ulimit -n` raised) or H's run_surface --target
+fn2-native. Detached runs: python setsid launcher writing build/NAME.pid (macOS has no setsid).
+Worktree /Users/ember/dev/fn/build/lanes/fn2/a5r (branch fn2/a5r = dev at 1b0892045) is done
+and can be removed.
+
+Next (main's order): stand by for B-S2's sha, then the storage backend behind the native loop
+(inline pread/pwrite/fdatasync on one preallocated file, the compost's path; ENVELOPE's replay
+as the oracle: storage posts replayed through the core, read bytes written under the loan).
+Mac tree: the worktree is certified at 424f3f9ef (closure for conn-unit + check-envelope);
+`tools/acl2 < fn2/tests/native-loop.lsp` there, detached with build/macnl.pid. As A's file holder:
+D's 4ed6172b1 take fixes read and confirmed; lanes/a-to-d-arm-contracts.md has the peer offer and
+a "Taken kinds" section as landed; the take defcost's :doc nit ("and its ranges") goes in the next
+A-file commit.
+Open (nothing in flight): D's WIRE gap (unterminated 511+ octet line
+answered 501+close refused as :unasked-reply under small chunks; driver counts it by name);
+recommended to C/D: export a liveness constraint for grant sources (ready-p implies a non-none
+grant). D opts into the peer record with six fields + :copy (form sent to main); D's interim row
+stays until D's per-address/peer policy lands.
+Pitfalls: a library book cannot define a function over fn2-core (put it in an events macro);
+put-assoc-equal appends new keys; op slots and client ports are both reused (key by latest take
+and by incarnation); a defstruct slot named control clobbers a same-named function; mv-let has no
+& binder; the export needs every unit book in owed-export.lsp certified in the tree.
 
 ## Queue (main's order)
 (3), (4), (5) done; teeth landed; OWN range hooks landed; Q1 classification step 1 landed. Waiting until a POST is durable: A-S8, the R6a1

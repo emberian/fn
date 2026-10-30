@@ -1,6 +1,6 @@
 # fn2 layer C continuation (present state, rewritten whole after every commit)
 
-Seat: Opus, layer C (the ordered-run metadata engine). Eighth seat since 2026-10-30. Method of
+Seat: Opus, layer C (the ordered-run metadata engine). Eighth seat since 2026-10-30 (handed off near its ceiling, 2026-10-30 late; a ninth seat starts from this file). Method of
 2026-10-29 (`briefs/FN2-SEAT-COMMON.md`, path `build/coordinator/briefs/`): dev is the branch; Opus
 writes the code; Codex only for bounded pieces with real signatures pasted; READY to main per
 commit (SendMessage to "main"). Brief: `build/coordinator/briefs/FN2-LAYER-C-ORDERED-RUNS.md`. Layer
@@ -33,88 +33,72 @@ the commit kind) means regate whole.
   fix the comment above fn2-seal-step in the machine commit, it claims the row goes :failed).
 
 ## Next (in order)
-0. **Landed: the :sealable grant source, 83ced3bf9** (dev, pushed; READY sent; whole gate on
-   03b4a2f41 green). The constrained pair fn2-sealable-ready-p / -grant-one is at the head of
-   fn2-machine-access-events in machines-a-access.lisp. It exports cons/true-list type, the
-   corep/wfp shape, and liveness `fn2-sealable-grant-one-live` (ready implies the grant's id is
-   not *fn2-none*). The defaults fn2-sealable-ready-none / -grant-none are attached in ONE
-   defattach form, and C's real attachment must also attach both together and prove liveness.
-   :sealable is rank 23 in resources.lisp, giving `*fn2-wait-sealable*`. Waiting for B5-3's sha
-   to write machines-c-sealer.lisp.
-1. **machines-c-sealer.lisp.** Rulings and facts so far:
-   - **Field stripe (main's ruling).** The sealer needs *fn2-seal-field-rows* = 1280. That is more
-     than one 1024-row transaction stripe, and a second fn2-fields core child is refused
-     (defcorechild: "unique stobj"). In this commit, after B5-3 lands, change machines-b.lisp:
-     add `(defconst *fn2-b-seal-field-rows* 1280)` and add it to the sum in fn2-b-field-rows.
-     Name the change in the commit message; B reads the diff after. C's side:
-     `(assert-event (<= *fn2-seal-field-rows* *fn2-b-seal-field-rows*))`, and fn2-idc-profilep's
-     field inequality gains `+ *fn2-b-seal-field-rows*`. FBASE = 128*format-slots + 1024*t.
-     Regate whole.
-   - **B's answers (2026-10-30).** (1) fn2-fc, fn2-fc-context and fn2-b3 take their row count
-     from :format-slots (default 3, floor 3), so checker row 3 + windows exists only when the
-     profile sets it. Ruled: B5-4a derives it, with default and floor (+ 4
-     (:large-upload-windows profile)), and refuses a lower setting. Until B5-4a lands, the
-     machine's unit test profile sets :format-slots to 4 + its windows explicitly, and the
-     sealer reads its row through fn2-fc-rows with a run-time check. (2) Digest regions 129-135
-     are free on every per-row stripe (*fn2-digest-stride* = 136; B's named regions are 0-128).
-   - **Wake (main's ruling, 2026-10-30).** Neither the direct wake-id write nor B's :notify.
-     The sealer parks on a new D0 wait kind, :sealable, and the grant service wakes it as its
-     fifth grant source, following S5 (b31e5d4de, the ledger as the fourth). C writes this as a
-     small foundation commit under the whole-tree gate, named in the message. The A5r seat (A's
-     owner) reads the diff. It lands with, or just before, machines-c-sealer. Plan:
-     * `fn2/books/resources.lisp` (D's book): append `(:sealable :rank 23 :unit :overlay :bound
-       (:profile :identity-overlays) :reserve nil :why "...a pure wait, never held...")` to
-       *fn2-resource-order*. Appending keeps every existing enum value; rank 23 is above every
-       held kind, so rule (c) holds for a waiter holding nothing. Update `(assert-event (equal (len
-       *fn2-resource-order*) 22))` to 23 and the printed form in fn2/docs/d-machines-nntp.md §3.
-       The wait enum `fn2-wait` comes from strip-cars (machines.lisp:13), so it gains
-       `*fn2-wait-sealable*`. Check tests/resources-unit.lisp: its fixture appends a duplicate at
-       rank 23.
-     * A constrained pair, declared in the assembly world before `(fn2-machine-access-events)`
-       in assembly-access.lisp (where S5 put `(fn2-account-events)`): `(fn2-sealable-ready-p
-       fn2-core) => *` and `(fn2-sealable-grant-one fn2-core) => (mv * fn2-core)`, with exported
-       corep/wfp lemmas for the grant (what fn2-core-preserves gives). Default attachments: nil,
-       and `(mv *fn2-none* fn2-core)`. Tested on forge: defattach accepts stobj input and
-       `(mv * st)` output.
-     * machines-a-access.lisp: `fn2-machine-grant-ready-p` gains `(fn2-sealable-ready-p
-       fn2-core)`, and `fn2-machine-grant-one` gains the clause `((fn2-sealable-ready-p fn2-core)
-       (fn2-sealable-grant-one fn2-core))` before `(t ...)`. Mirror S5's edits to
-       tests/core-child-assembly-access.lisp / -index.lisp.
-     * C's attachments go in assembly-callbacks-c. Ready: the sealer row's wait reason is
-       :sealable, the seal row is :idle and `fn2-seal-pick` finds one. Grant-one: clear that
-       wait reason and return the sealer's id.
-     * The sealer's :sealing arm parks on :sealable when the step answers :idle, :full or
-       :cache.
-   - **Kind and owner.** Declare `(defmachine fn2-sealer ...)` before fn2-machine-index-events
-     (assembly-index includes machines-b, then machines-c-groups, then conn). Put it in a book
-     included at the top of machines-c-successor, after machines-c, so it comes after fn2-commit.
-     Then `*fn2-idc-owner-kind*` = its position in `(fn2-machine-names world)` through
-     make-event, replacing 254: every owner triple changes, so all C books recertify. After the
-     index: `(assert-event (equal *fn2-sealer-kind* *fn2-idc-owner-kind*))`.
-   - **Children (C's own, unique types).** fn2-seals (1), fn2-run-builds (1), fn2-run-writers
-     (*fn2-seal-writer-rows* = 7), fn2-run-restarts (7 x capacity), fn2-ribbon-builds (1),
-     fn2-ribbon-band (`fn2-ribbon-slots` of :identity-overlay-entries), with C profile keys, as
-     fn2-idc-child does in machines-c.lisp. Existing children it uses: overlays, overlay-index,
-     run-installed, run-cache, fields, pool (C/B) and fc, fc-context, b3, digests (B).
-   - **Core wrapper and costs.** `fn2-sealer-step (budget fn2-core)`: a stobj-let of the 16
-     children, emitted in assembly-callbacks-c like fn2-identity-core-events, with
-     fn2-core-preserves. defcost :bytes 4096 :tables (the 16 fn2-core-* children). Init through
-     fn2-seal-init in fn2-init-engine (executor.lisp; same pattern as fn2-groups-genesis), with
-     wbase 0, fbase as above, crow 3 + windows, fill 64 KiB, and the owner (kind 0 1).
-   - **Arms.** :sealing calls fn2-sealer-step. On :more, :retired or :done it stays runnable. On
-     :idle, :full or :cache it parks (woken by publish). Any other code stops the core: add a stop
-     reason :sealer in exec-state.lisp. :stopped is terminal. Fix the comment above
-     fn2-seal-step, which says the row goes :failed. Models: machines-a.lisp (scribe: the checked
-     language, fn2-machine-result, park), machines-a-costs.lisp (defcost forms),
-     lanes/a-to-d-arm-contracts.md (contract syntax, :holds, postures).
-   - Then the production assembly move of the C units; land; READY.
-2. **The device half**, when B5-4's :run-replacement member sha arrives: fn2-commit-admit-runs,
-   the defattach of fn2-runs-install, manifests one level deep (the sealer writes the manifest
-   run), M2's cold leg, M3's device leg, and the device half of the death-cut keystone. Inside
-   B5-4's foundation commit: rename the wrappers to fn2-succ-core-publish / -drop (reply (3)
-   given), with the lemma "a release by another owner leaves that slot unchanged".
-3. **Owed.** Test the lookup's and resolve's run legs on real runs (the sealer installs them
-   now). Shave machines-c-stage (52.7 s). runs-served is 38.8 s.
+0. **Landed: the :sealable grant source, 83ced3bf9** (dev, pushed, READY sent). The constrained pair
+   fn2-sealable-ready-p / -grant-one sits at the head of fn2-machine-access-events. It exports a
+   cons/true-list type, the corep/wfp shape, and liveness `fn2-sealable-grant-one-live`. Defaults
+   are attached in ONE defattach; C's attachment also attaches both together.
+1. **The sealer machine: 7a6680f71 on the lane branch fn2/c-found ONLY (not dev, not pushed).
+   Whole gate GREEN on forge at 83ced3bf9** (closure rc=0, export PASS). OWED rows go 484 ->
+   491 (FN2-Q1-CASE-77/78, FN2-SEALER-PHASE-TOTALITY, -SEALING-/-STOPPED-BOUND/-FRAME), so
+   regenerate OWED.md in the landing commit from that gate's export. **One red before landing:
+   assembly-reference (A's) 65.7 s at load 7** (event: the reference copy/snapshot generation,
+   'other' time, grows with the six new children). Remeasure on a quiet box (`tools/boxes.sh
+   reserve forge`). If it is still over 60, ask main and A5r for a split of assembly-reference.
+   Files:
+   - `books/machines-c-sealer-kind.lisp` (new). Includes machines-all, then machines-c, so the
+     registry order is A, commit, sealer, the same as in the assembly. It holds `defmachine
+     fn2-sealer` (states :sealing :stopped; field stopped; budget 4096/32/4; capacity 1; initial
+     wait none) and the defcosts fn2-sealer-step (16 tables) and fn2-sealer-refuse.
+   - `machines-c-successor.lisp`: includes the kind book. `*fn2-idc-owner-kind*` is now the
+     sealer's registry position (make-event; it is 4), with an assert that it is not 254.
+   - `books/machines-c-sealer.lisp` (new, includes sealer). The six children through
+     fn2-sealer-child (profilep fn2-sealer-profilep), fn2-sealer-windows (:large-upload-windows,
+     default 16), and fn2-sealer-fbase. The stripe is just below the transaction stripes:
+     rows - 1024 t - 1280. Also fn2-seal-genesis (:no-row when 3 + windows >= fc rows) and
+     fn2-seal-pending-p.
+   - `books/machines-c-sealer-events.lisp` (new). The macro fn2-sealer-core-events, emitted in
+     assembly-callbacks-c (now 47 s): fn2-sealer-step, fn2-sealer-genesis, fn2-sealer-pending-p,
+     fn2-sealer-ready, fn2-sealer-grant, the lemmas fn2-sealer-ready-id / -grant-live /
+     -grant-type, the defattach of the pair, fn2-sealer-refuse (+ preserves), fn2-sealer-start-row
+     (park on :sealable, or stop the row), fn2-engine-genesis (groups, then sealer), and the
+     callbacks fn2-sealer-seal / fn2-sealer-idle plus defmachine-run.
+   - assembly-index includes machines-c-sealer instead of machines-c-groups. assembly-callbacks-c
+     includes the events book and calls (fn2-sealer-core-events). executor.lisp's
+     fn2-init-engine calls fn2-engine-genesis. exec-state gets the stop reason :sealer.
+   - machines-b: `*fn2-b-seal-field-rows*` 1280 added to fn2-b-field-rows (main's ruling: C
+     carries it, named in the commit message, B reads it after). machines-c: fn2-idc-profilep
+     and the field-rows assert gain the term.
+   - tests/sealer-machine-unit.lisp (new; GREEN). The real executor, tiny profile plus groups,
+     :format-slots 5, :large-upload-windows 1. Before: no run, the overlay frozen, the row
+     (sealing, :sealable=24). After 400 turns: run (8 1 3 0), overlay free, the row parked
+     again, executor :idle, no stop, lookups (:ok 7) (:ok 11) (:absent 0). The no-row profile
+     shows the row stopped and the overlay frozen. Evaluated in assert-event, NOT defconst:
+     attachments are ignored in a defconst's evaluation.
+   - Other seats' tests, fixed for the new kind: q1-unit (catalogue pinned 79 with (:run
+     fn2-sealer :sealing) (:run fn2-sealer :stopped) after commit; coverage 79), q1-teeth
+     (profile gains :large-upload-windows 2 and :format-slots 6; a stopped sealer row labels
+     :outside-catalogue). sim-acquisition failed on the sealer's initial :sealable waiter;
+     fixed by initial wait none, with genesis parking the row.
+   - Layer doc: C-ENGINE-OWNER (as built), C-SEALER-MACHINE, C-SEAL-NO-ROW, departure 3 (the
+     sealer's descriptor cap is 4 only because A's guard proofs range over every kind's caps).
+   - Still to do before landing: (a) assembly-reference's time (above); assembly-init was
+     58.9 s, executor 55.0 s, machines-c-stage 53.9 s at the same load. (b) The comment above fn2-seal-step in sealer.lisp still says the row goes :failed.
+     (c) After B5-3's sha: rebase (B5-3 touches machines-b and owed-export, so a real overlap),
+     regate whole, land (commit message names the machines-b line for B, the Q1 test edits for
+     the Q1 owner, executor/exec-state for A5r), READY. Another seat has uncommitted Q1 edits
+     in the shared tree (q1.lisp, q1-contracts, q1-controls*): tell main that the sealer's two
+     cases need their controls too.
+2. **C-S3a (mine, promised to main):** late octet args. `(fn2-successor-arg-octets-late t i j
+   max)` at :prepare (max at most the slot's octet capacity, else :bounds), and
+   `(fn2-successor-fill-octets t i j slot gen off len okind oslot ogen)` between stage and bind
+   (:state unless staged and not bound; :bounds if len > max). Bind refuses :state while a late
+   arg is unfilled. In machines-c-stage / -bind, whole gate.
+3. **C-S4 (D writes machines-c-read.lisp, I read the diff).** My amendments are sent: reads
+   stripes below the sealer's; re-check the source at every step (overlay phase plus arena gen,
+   run version); the frontier comes from a :published column in fn2-id-engine set by publish
+   (C adds it); LIST is a whole-schema ordered scan, not the range engine; identity through the
+   real lookup.
+4. The device half when B5-4 lands (as before). Owed: machines-c-stage shave (52.7 s).
 
 ## C1c design (settled; the engine half above implements its first part)
 Facts learned that fix the design:

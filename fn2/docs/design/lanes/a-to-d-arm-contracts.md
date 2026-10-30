@@ -166,9 +166,10 @@ unchanged). A drain arm releases its ranges with `fn2-core-release` (`:effects` 
 `fn2-machine-reclaim-K`.
 **The listener's offer and the booking (S1, ba644c1de).** The dispatcher's COPIES are not the
 union of the admitted kinds' `:copy` lists: they are the fixed `*fn2-machine-listener-offer*` =
-`(mode principal-slot account-ref)`, in that order, whatever kinds a build admits, so the listener's
-call is one form: `(fn2-machine-admit target index nonce mode principal ref fn2-core)`, guarded by
-the listener's widths of those fields. A kind's `:copy` names a subset of the offer, in any order;
+`(mode principal-slot account-ref peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3)`, in
+that order, whatever kinds a build admits, so the listener's call is one form:
+`(fn2-machine-admit target index nonce mode principal ref family port w0 w1 w2 w3 fn2-core)`,
+guarded by the listener's widths of those fields (A5r 1/3, f6485baea, added the six peer fields). A kind's `:copy` names a subset of the offer, in any order;
 a field outside it is a hard error at `fn2-machine-admission-events` ("An admitted kind's :copy
 names a field outside the listener's offer"). Each listener row's `principal-slot` is set at init
 from the profile key `:listener-principals` (a list, one slot per listener, listener i taking element i; absent or not a u16: 0); a slot that is not a principal of the calendar stops the core at the listener's first wake (`:wake-bounds`). A kind whose
@@ -187,5 +188,34 @@ rows plus `(fn2-listener-bookings p fn2-core)` (executor.lisp; checkers only), t
 an Accept pending on its behalf. The listener's arms declare `account-ref` in `:writes` and
 `fn2-core-accounts` in `:tables`.
 
-Not yet: the peer-address words in the Accept result (an ABI change to the result cell, which
-carries two aux words today: cap-index and cap-nonce); it goes with the adapter work (A5r).
+**The peer record (A5r 1/3, f6485baea; layer doc 4.1.1).** An Accept's terminal cell carries,
+beside the capability in aux0/aux1, a peer record on the op row: `peer-family` (`:none :inet
+:inet6 :local`, compared by name: `*fn2-peer-family-inet*` etc.), `peer-port` u16, `peer-w0`..`w3`
+u32 (network order, most significant first; `:inet` uses w0 only; `:local` and `:none` carry
+zeros). The listener's `:accept-result` handler stores it in its own fields of the same names
+(read through `fn2-core-observed-peer`, the harvest latch). An admitted kind carries it by
+declaring the six fields (`(peer-family :u8) (peer-port :u16) (peer-w0 :u32) (peer-w1 :u32)
+(peer-w2 :u32) (peer-w3 :u32)`) and naming them in `:copy`; a kind that does not is unchanged. The
+simulator posts `:none`.
+
+## Taken kinds (A-S7; a machine, not the listener, takes the row)
+`:taken (:phase P :rows ROWKIND :ranges ((KIND :slot F :gen F :class N) ...) [:copy (F ...)]
+[:clear (F ...)])`, exclusive with `:admission`. P is a phase; the kind needs a `:free` phase and
+`next-free` and `stopped` fields; ROWKIND and each range KIND are D0 kinds; the range fields are
+the kind's own. `:ranges ()` is allowed (fn2-txn): nothing is reserved. Taken kinds get ordinals
+after the admitted kinds and share the partition arrays (capacity, free head, credits, active
+count, FIFO). Generated per kind (`fn2-machine-taken-kind-events`):
+`fn2-machine-take-K (waiter COPIES... fn2-core)` -> `(mv code id fn2-core)`, where COPIES are
+this kind's own `:copy` fields in their declared order, passed by the taker (unlike admission,
+no fixed offer): `:ok` with the installed row's id (phase P, the ranges, the copies, the `:clear`
+fields zeroed, the wait reason cleared, the row woken); `:no-row` or `:pool` when no row, credit
+or range is free (all ranges or none), with WAITER (a machine id, or `*fn2-none*`) parked on the
+kind's FIFO under the wait reason `*fn2-wait-ROWKIND*`, woken by the grant service when a credit
+returns; a WAITER already waiting on anything but completion stops the core (`:machine-write`).
+Its defcost: `:target (K :free P)`, effects `((:acquire (ROWKIND) :for K) (:acquire (RANGE-KINDS)
+:for K))`, the second omitted when `:ranges ()` (D5 1/n, 4ed6172b1, which also declares the take's
+`gen` ignorable then). `fn2-machine-reclaim-K (id retire fn2-core)` returns the row and its credit,
+effects `((:release (ROWKIND)))`; the drain releases its own ranges first. Today's users: fn2-upload
+(taken by fn2-conn at `:head` with two `:chunk-window` ranges) and fn2-txn (taken by fn2-upload at
+`:admit`, no ranges).
+

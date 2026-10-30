@@ -1,4 +1,4 @@
-# fn2 layer H continuation (present state, rewritten whole; 2026-10-30, seventh seat)
+# fn2 layer H continuation (present state, rewritten whole; 2026-10-30, eighth seat)
 
 Seat: Opus seat for layer H (the surface test harness). The seat WRITES the code (FN2-SEAT-COMMON "The method from
 2026-10-29 afternoon"); Codex (second account) only for bounded pieces with real signatures pasted, every line read.
@@ -17,8 +17,17 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
   sent; H7-08 withdrawn), 4ed372d1e (H7e: FNCT frame fuzz after fncu, TCPCL session fuzz after BPv7), 8ae997f07 (H8a: SimTarget, the Target
   over D's simulator session), 524e30869 (H8b: nntp S vs fn2 under the simulator, M1a gate: 16,730 served 0
   disagreements, 15,741 interim named, WIRE ok), 4b1c90ca4 (H9: nightly 2026-10-30 harvested; web removal by post access), 68677f727 (H10: fn2/docs/release-gates.md, the
-  17-gate migration matrix for R1, with a cut_release.sh dry run at 945f625ad; logs in h-quests/r1-dryrun-945f625ad/).
+  17-gate migration matrix for R1, with a cut_release.sh dry run at 945f625ad; logs in h-quests/r1-dryrun-945f625ad/),
+  c47cbeff2 (H11, merged and pushed as 762c94853): nntp S rerun at 83ced3bf9 under the sim, counts unchanged
+  (16,730 / 0 / 15,741). WIRE judged 4 of 17,776 connections, because sim-session.lsp keys clients by slot.
+  SimTarget now fails unjudged connections; D fixed the session in 323c9da1d + e0f1377a3. fn2-native target added.
   Nothing of H uncommitted.
+- Then eb692d3cf (H12: pin P-DUP-FIELD; the model accepts "<Field> appears more than once"; the Q1 seat
+  claimed from-duplicate in c16d5d862) and cd2b74e48 (H13: M1b green at 10e454049). Sim and native each gave
+  16,730 served / 0 disagreements / 15,741 interim / WIRE 17,776 opened = judged ok, 0 unjudged (native also
+  ENVELOPE ok); 105 s sim, 298 s native. All pushed, READY sent.
+- WAITING ON: D5 READYs from main (D5 2/n should remove POST's 713 interims). At each one, rerun both targets
+  (items 4 and 4b) and report served / interim / WIRE. Nothing of H is running; no PID files are live.
 - Nothing running on hbox for H. Last nightly: 2026-10-30 (build/coordinator/fn2/nightly/2026-10-30.md; h-harness.md
   section). Every S and F form passes against fn1 (web S after H9's fix, rerun 50 ex PASS).
 - Last F runs: run-h7-fuzz-4 (operator, store_ops), -7 (tls_auth), -8 (peering with H7d), run-h7-perf/rows.json.
@@ -30,7 +39,7 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
   fn2.tests.surface.test_run_surface fn2.tests.surface.tls_auth.test_model_tls_auth_unit
   fn2.tests.surface.test_adjudications fn2.tests.surface.test_live_evidence fn2.tests.surface.test_fixtures
   fn2.tests.surface.test_perf fn2.tests.surface.test_argv_fuzz fn2.tests.surface.test_config_fuzz
-  fn2.tests.surface.test_http_fuzz fn2.tests.surface.test_codec_fuzz fn2.tests.surface.test_sim_target` (406 OK at 524e30869).
+  fn2.tests.surface.test_http_fuzz fn2.tests.surface.test_codec_fuzz fn2.tests.surface.test_sim_target` (408 OK at c47cbeff2 before its last two tests; test_sim_target 6 OK).
 
 ## The drivers (H7; table in fn2/tests/surface/README.md, results in fn2/docs/h-harness.md H7a/H7b)
 - FIXTURE `fixtures:fixture` (rfc3977 live replay, consumer-position, bp golden, scram RFC 7677; web and
@@ -55,9 +64,18 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
    web p99, W3-W5 hostile workloads); bp bundle convergence with the F8 simulator scenario.
 3. Keep fn2/docs/release-gates.md current as drivers land (R1 owns it; H keeps the driver rows). The per-commit
    30-CPU-minute allocation (§2.5) is still H's.
-4. fn2 surface under the simulator: nntp S runs via serves_sim.fn2 (H8b). Run: build/h-venv/bin/python
-   build/coordinator/fn2/lanes/h-quests/h8-run.py OUTDIR with PYTHONPATH=/Users/ember/dev/fn, FN2_SIM_EXAMPLES,
-   FN2_SIM_STEPS; needs certified fn2/tests/conn-unit, sim/echo, sim/check-wire (fn2/tools/certify.sh, PID file).
+4. fn2 surface under the simulator: nntp S runs via serves_sim.fn2. Run (H11 form, from /Users/ember/dev/fn):
+   `FN2_SURFACE_SIM_NNTP=fn2.tests.surface.fn2_sim_session:session FN2_SIM_EXAMPLES=1000 FN2_SIM_STEPS=50
+   PYTHONPATH=$PWD build/h-venv/bin/python -m fn2.tests.surface.run_surface --target fn2 --family nntp --out DIR`
+   (detached via the setsid wrapper, PID file), then `build/h-venv/bin/python build/coordinator/fn2/lanes/h-quests/h8-counts.py DIR`
+   for served / interim / wire. It needs certified fn2/tests/conn-unit, sim/echo and sim/check-wire, done with
+   `sh fn2/tools/certify.sh tests/conn-unit.lisp sim/echo.lisp sim/check-wire.lisp` detached with a PID file; it
+   recertifies the whole closure (~25 min after a foundation move). If another seat edits a book mid-certify, you
+   get book-hash-mismatch: rerun on the new tip. Logs: build/h8/.
+4b. fn2-native (M1b): serves_native.fn2-native = [nntp]; NativeTarget over FN2_SURFACE_NATIVE_NNTP (same session API).
+   One command: the item-4 line with FN2_SURFACE_NATIVE_NNTP=fn2.tests.surface.fn2_native_session:session and
+   --target fn2-native. It also needs sim/check-envelope certified. It runs in parallel with the sim run. Without the hook
+   the case is a named skip (checked: build/h8/run-native-nohook.log).
    Regenerating fn2_conn_interim.json is D's. Peer connections wait for E4: open(peer=True) raises NotImplementedError.
 5. A nightly only when its tree has moved, on the seat's word (recipe below; SWARM_MEM_MAX=64G; ~6 h).
 
@@ -141,6 +159,9 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
 | H8b nntp S vs fn2 under the sim (M1a gate) | 1,000 ex x 50 steps: 16,730 served 0 disagreements; 15,741 interim named; WIRE ok | 524e30869 |
 | H9 nightly 2026-10-30 harvest + web removal by post access | every S/F passes on fn1; 11 non-ok: 8 known, 2 unprovisioned, web S fixed | 4b1c90ca4 |
 | H10 the 17-gate release matrix (fn2/docs/release-gates.md) | seat-written; dry run at 945f625ad: GREEN 02/08, RED 01/03/04/05/07/09, 10-15 preconditions present, 16 would run | 68677f727 |
+| H12 pin P-DUP-FIELD (upload contract's from-duplicate) | model moves; D unchanged | eb692d3cf |
+| H13 M1b: nntp S on a socket + sim with full WIRE | both 16,730/0/15,741, 17,776 judged ok | cd2b74e48 |
+| H11 sim rerun at 83ced3bf9, WIRE per-connection coverage, fn2-native target | counts = H8b; WIRE judged 4/17,776 -> D case; S RED until fixed | c47cbeff2 |
 | H6 pin P-UTF8-WS (D seat's request) + one pending auth slot | seat-written; D oracle 0 disagreements; 148 unit OK | 22de14c4d |
 | H6 H5c harvest, control_across_peers adjudication, nntp s_timeout, nightly world-deps + memory floor | seat-written; reruns: across_peers 4/4 at 64/96 GiB, image_differential 20/20 | 3ea9d2f8d |
 | HZ2 live on fn1: tagged-line reason parsing, fn1 tags where docs name only the class, operator-form import, O01 effect row | seat-written; probe 0 disagreements; operator S 5 ex 173 s, store_ops S 5 ex 46 s PASS | 8a4875e89 |
@@ -219,6 +240,8 @@ web/nntp W01 access rule on an open connection: LIST ACTIVE live, POST pinned ev
   spawn one sub-agent per piece and report per piece (H4's per-family skeleton is the example); never for pieces sharing files.
 
 ## Pitfalls hit
+- A session API keyed by slot id judges only the last incarnation: every carrier must give each open its own id
+  (SimTarget enforces opened == judged since H11).
 - macOS has no `setsid`: launch detached laptop runs as `nohup python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' CMD ... & echo $! > X.pid`, then check `ps -o pid=,pgid= -p $(cat X.pid)` agree.
 - build/ is git-ignored: only fn2/ files are committed; continuation, quest files and dry-run logs live on the laptop.
 - The hbox nightly output dir is `/tank/fn/scratch/fn2-h-harness/nightly-YYYYMMDD` (no dashes); surface.json under it.
