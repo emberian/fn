@@ -807,6 +807,9 @@ The sprint (`origin/fn2/sprint-cd` 8e3488fcb) is compost; its gaps are the seams
 
 - Row 1 of ROUND2 §B.2 is two kinds: A's `fn2-listener` (`:accepting :admitting :closing`) and D's
   `fn2-conn`; the brief's `accepting` phase is the listener's (§4.2).
+- D4/D5 seams (§14.7, sent through main 2026-10-30): A-S7 taken kinds, A-S8 cross-owner copy, B-S1
+  hasher rows by profile, B-S2 the transaction member, C-S1 identity in the served assembly, C-S2 the
+  private successor overlay.
 - Seam request to A (through main, 2026-10-30): the connection partition per admitted kind and the
   listener's target (§4.5, exact form); the Accept result's peer address (§8).
 - R6b item 1 re-cut onto D0 (§2); R7 carried §4's forms (done, 926b09328).
@@ -854,7 +857,8 @@ natives skip the row by name. A row leaves this table only when E's test is gree
 | D2c | framer onto R6a1's scan (drop-prefix is the connection's compaction) | R6a1 | done |
 | D3 | connection machine (§4.2-4.6): conn.lisp, the decision table, the deferred sub-form fixtures, WIRE, T1 and T8, scenario 1's plaintext half, the surface session hook | R7, the admission seam a20fac18f | done (ec9b96173) |
 | D7 | the ledger, the scheduler over principals, the services, TLS admission (§13, six slices) | A's seam S1-S5 for 4/n | 1/n design, 2/n ledger, 3/n served booking and ACCOUNT |
-| D4-D6, D8, D9 | per the brief | D4: A's assembly split and read-set snapshot; D5: C2; D6: C3 | |
+| D4, D5 | designed together (§14): the article input path, the upload machine, the transaction machine; six slices | §14.7: A-S7, A-S8, B-S1, B-S2, C-S1, C-S2 | §14 design |
+| D6, D8, D9 | per the brief | D6: C3 (C3a on dev 654d1fd39) | |
 
 ## 13. D7: principals, the ledger and the scheduler over them *(design; D7's commits rewrite it as built)*
 
@@ -1035,3 +1039,435 @@ Scenario 11's half that 3/n can run: anonymous clients beyond slot 0's connectio
 and close while every greeted one is served; a principal with a connection reserve (attributed by the
 test fixture standing for E2) keeps it while the anonymous flood holds the shared remainder. WIRE and
 ACCOUNT over every client. The request-wait half and FAIR join with 4/n.
+## 14. D4 + D5: article input, the upload machine, the transaction machine *(design; the D4/D5 commits rewrite it as built)*
+
+The contract is brief items 4 and 5, ROUND2 §B.2 rows 3-4, §B.3, §E.1-E.2 and scenarios 4, 5 and 13,
+D0's bundles `:upload :admit`, `:transaction :admit`, `:transaction :batch` and `:storage-job
+:write`, C's identity decision (`fn2/docs/c-ordered-runs.md` §4-5, `fn2/books/identity.lisp`), B's
+commit batch (`fn2/docs/b-durability.md` §10) and fn1's POST contract (`specs/nntp.md:681-1044`, the
+oracle being H's model `fn2/tests/model/nntp_model.py` `_article_block`). D4 and D5 are designed
+together because a POST needs the input path before a transaction exists: the reply to POST's body
+is the transaction's outcome, and the transaction's identity key is the upload's digest.
+
+### 14.1 The path, as one picture
+
+```
+POST line ─► fn2-conn :command ── take an upload row and its window (bundle :upload :admit) ──► 340
+                │ refused (no row / no window): park on the upload FIFO, the line kept unconsumed
+                ▼
+fn2-conn :article-input ── frame block lines from RX, unstuff, append to the window ──► upload wakes
+                │ :terminator                                     │ (hash + header scan, 4 KiB/run)
+                ▼                                                 ▼
+fn2-conn :article-input (waiting, no work)              fn2-upload :validating ── a definite refusal
+                ▲                                                 │            posts its word to the
+                │                                                 │            connection, drains
+                │   outcome word posted to the row, conn wakes    ▼
+                └──────────────────────────────  fn2-txn admit ► reserve ► lookup ► prepare ► ready
+                                                                   │ batched ► accepted | refused | uncertain
+                                                                   ▼
+fn2-conn :article-input renders 240 / 441 WORD (POST), 235 / 437 / 436 (IHAVE), 239 / 439 / 436
+(TAKETHIS) into TX ─► :reply ─► :command
+```
+
+IHAVE is the same path after `335` (its Message-ID is the command's argument, checked equal to the
+article's: a mismatch is a definite refusal). TAKETHIS has no reply before its block (RFC 4644 §2.5):
+its block is framed at once (`:immediate`), and an upload that cannot be taken discards the block to
+its terminator and answers `439` (the model's pattern admits it; the window credit is the peer
+window's, E4). CHECK answers from the identity reservation table and C's decision without a block
+(D5 2/n). On a reader connection IHAVE, CHECK and TAKETHIS stay the grammar's 502 (§4.3) until E4
+admits peers; D's tests drive the peer path by setting the peer bit at the adapter boundary, as the
+ACCOUNT test fixture stands for E2.
+
+Three machines, one per resource lifetime: the connection holds the wire for its lifetime, the upload
+holds a window while octets arrive, the transaction holds the identity claim until its outcome is
+known. They meet only through declared operations on each other's rows (a `:target` move, or a
+contracted cross-row write listed in `:tables`), never through shared fields.
+
+### 14.2 The connection's article input (`fn2-conn`, D4)
+
+New fields (fn2-conn has 22 declared; the read-set snapshot of 6b2f6ef5b removed the 32-value cap on a
+row, so this adds what the path needs): `upload :link` and `upload-gen :u60` (the upload row this
+connection feeds, `*fn2-none*` otherwise), `rule (:enum fn2-conn-rule (:none :post :ihave :takethis))`,
+`word :u8` (the outcome word the transaction or the upload posts, `0` while none is due; the words are
+the enum of 14.5), `outcome-ready :bool`, `request :u32` (the ordinal of the request awaiting its
+outcome: a word is accepted only with the matching connection generation **and** request ordinal, so a
+late or recovered outcome never answers a later request on the same row; Astra), `token-off token-len
+:u32` (IHAVE/TAKETHIS: the command's Message-ID, see below).
+
+**Opening the block.** `fn2-answer` gains one answer code, `:block` (no reply rendered): POST (in a
+posting-served state), IHAVE (peer, 335 due) and TAKETHIS (peer). `fn2-conn-frame-run` on `:block`
+calls `fn2-upload-take` (the generated taken-kind operation of seam A-S7, 14.7): `:ok` gives the row;
+the arm renders the opening reply (`340`, `335`; nothing for TAKETHIS) through
+`fn2-conn-run-block-open`, consumes the line, sets `upload upload-gen rule`, `after = :article-input`
+and moves to `:reply` (TAKETHIS straight to `:article-input`). `:no-row` or `:pool`: the generated
+take has appended the connection to the upload kind's FIFO (`wait-reason :upload-row`), and the line
+stays unconsumed (`start pos` unchanged), so the grant re-runs `:command` and re-frames the same line
+(at most 512 octets re-read: the continuation is the row). A TAKETHIS whose take is refused does not
+park (its block follows on the wire whatever we do): the row moves to `:article-input` with `upload =
+*fn2-none*`, which is discard-to-terminator, and answers `439 <message-id>` after the terminator.
+Every TAKETHIS reply carries its offered Message-ID (RFC 4644 §2.5; the oracle's pattern), so the
+token is copied out of RX at the command (to a connection-owned range: `token-off token-len` in a
+reserved 256-octet tail of TX, which the reply renderer reads first and which no compaction moves)
+and survives RX reuse and an upload that never existed (Astra).
+
+**The block arm.** `:article-input fn2-conn-block` (replacing `fn2-conn-unreached`), at most 4,096
+octets per run:
+
+| condition | the run |
+|---|---|
+| `outcome-ready` | render the reply for `(rule, word)` into TX (14.5), clear `upload rule word outcome-ready`, `after = :command` (or `:closing` for a transit body over its bound, H's `close_after_reply`), move to `:reply` |
+| the upload is terminated and no outcome yet | nothing: the row is parked on its upload (`wait-reason :completion`); the outcome wakes it |
+| otherwise | `fn2-upload-feed` (below) over `[start, fill)` of RX; at `:need-more` compact or Receive exactly as `:command` does (`fn2-conn-input` is shared); at `:terminator` wake the upload and park |
+
+`fn2-upload-feed (k budget conn-owner upload-id fn2-core) → (mv status start pos overflow fn2-core)` is
+a defcost'd D operation, not an arm: a bounded loop of `fn2-gram-block-step` over RX with the frame
+quantum, copying each `:data` line's unstuffed octets and a CRLF into the upload's current chunk
+(seam A-S8's cross-owner copy) and adding them to the upload's `source-len`. Its declared cost is
+`:bytes 3072` (1,024 framed, 1,024 rescanned by `fn2-gram-block-step`'s line check, 1,024 copied: a
+line is copied only once framed and checked; Astra), `:tables (fn2-core-pool fn2-upload-table)`. The
+upload keeps a producer offset (`filled`, written only by the feed) and consumer offsets (`hashed`,
+`scan-off`, written only by the upload), so neither machine reads a half-written line. It never fails silently: `:bad-line` (a bare CR or LF, a NUL, an
+unescaped leading dot) sets the upload's `discard` with reason `:malformed` and keeps framing to the
+terminator without copying; a line that would pass the article bound sets `discard` with reason
+`:too-large` the same way (RFC 3977 §3.1.1, scenario 4: "bounded discard", never buffered). A
+block over the bound keeps the connection open for POST (the model drains it) and closes it after the
+reply for IHAVE/TAKETHIS (`specs/nntp.md:530-534`). EOF or a failed Receive in `:article-input` moves
+the connection to `:closing`; the upload sees its connection gone (14.3 `:aborting`) and the
+transaction, if any, completes or stays uncertain on its own (a disconnect undoes nothing, ROUND2
+§E.2 `durable`).
+
+`:holds` of `:article-input` is unchanged (`:connection-row :rx-range :tx-range`): the upload's row
+and window are the upload's holdings, not the connection's (D0 row `:upload :admit`: the connection
+holds its own kinds while the upload is acquired on its behalf, `(:acquire (:upload-row :chunk-window)
+:for fn2-upload)`).
+
+### 14.3 The upload machine `fn2-upload` (`fn2/books/upload.lisp`, D4)
+
+ROUND2 §B.2 row 3. Capacity `:u`. Phases (the brief's, each with a reason to exist):
+
+| phase | holds | arm | does |
+|---|---|---|---|
+| `:free` | none | `fn2-upload-idle` | on the kind's free chain (A-S7) |
+| `:head` | `:upload-row :chunk-window` | `fn2-upload-scan` | octets arrive from the connection; each run hashes `[hashed, fill)` of the current chunk (≤ 4,096) and advances the header scan (14.3.2) until the blank line |
+| `:identity` | same | `fn2-upload-claim` | the header is complete: the Message-ID range is known exactly (for a transit offer compared with the command's). The upload takes its transaction row here (`fn2-txn-take`, bundle `:transaction :admit`), and the transaction claims the Message-ID (14.4.2) before the body is stored, so a same-Message-ID offer serializes early. A POST without a Message-ID claims after the transaction generates one (14.4.1), which needs no body |
+| `:receiving` | same | `fn2-upload-scan` | body octets: hashing only, 4,096 per run |
+| `:validating` | same | `fn2-upload-validate` | the terminator was framed and every octet is hashed: finalize the digest, apply the definite refusals (14.5) in the model's order, then wake its transaction with the digest |
+| `:discard` | same | `fn2-upload-discard` | a refused or oversized block: nothing is copied; at the terminator post the refusal word to the connection and move to `:draining` |
+| `:sealed` | same | `fn2-upload-idle` | complete, hashed and owned by a transaction; the window holds the article octets the batch packs (until D4 3/n) or the extents hold them (D4 3/n) |
+| `:aborting` | same | `fn2-upload-abort` | the connection left before the terminator: release the reservation if held, post nothing, move to `:draining` |
+| `:draining` | same | `fn2-upload-drain` | release the window (both chunk slots, then the hasher row) and the row (`fn2-machine-reclaim-fn2-upload`) |
+
+Fields: `conn :link conn-gen :u60` (the connection fed by and replying for this upload),
+`c0-slot :link c0-gen :u60 c1-slot :link c1-gen :u60` (the two chunks), `cur :bool` (the chunk being
+filled), `window :u8` (the window index: it names the hasher row, 14.3.1), `source-len :u60`,
+`hashed :u60`, `head-state` and the header-scan continuation (14.3.2: `scan-off :u32 line-start :u32
+fields :u16 lines :u16 seen :u16` and the ranges `mid-off mid-len ng-off ng-len path-off path-len`,
+`:u32` each), `discard (:enum fn2-upload-why (:none :malformed :too-large :missing :duplicate-field
+:path :message-id :mismatch :injected))`, `terminated :bool`, `bound :u60` (the article bound, from
+the profile and, for transit, the peer record's `inbound-max-octets`, E4), `rule`, `ordinal :u32`
+(TAKETHIS), `txn :link txn-gen :u60`. Budget `(:bytes 4096 :steps 32 :descriptors 4)` (ROUND2 §B.3:
+4 KiB scanned/hashed/copied, 32 manifest entries).
+
+**14.3.1 Windows.** A window is two chunk slots of the profile's chunk class and one hasher row. The
+chunk class is profile key `:upload-chunk-bytes` (the smallest pool class at least that size; 65,536
+in the concrete profile, whose largest class is 64 KiB today; ROUND2's 256 KiB is a profile change
+with its T10 row), and `:large-upload-windows` (16) windows exist. The hasher row of window `w` is
+row `2 + w` of B's `fn2-b3` table and its digest stripe (B's `fn2-b3` rows are sized by
+`:format-slots`; the served profile sets it to `2 + windows`, rows 0-1 staying the commit kind's;
+seam B-S1 is this convention plus a profile check, no code). The upload kind's partition (A-S7)
+grants a row and a window whole or not at all, so `U` rows serve at most 16 concurrent inputs
+until D4 3/n; rows beyond 16 matter once a sealed upload gives its window back after writing temporary
+extents (D4 3/n).
+
+**Article bound.** Until D4 3/n the whole article stays in its window, so the bound is `min(profile
+:article-max, 2 × chunk)`; `:article-max` defaults to 32,768 (fn1's source bound,
+`specs/article-parser.md`). Above two chunks the article must leave the window as it arrives: D4 3/n
+writes each full chunk to a temporary extent through a storage job (`:storage-job :write`, D0) under
+B's allocator, records the extent in the manifest cursor, and frees the chunk; the transaction then
+references extents, not chunks. Until 3/n an article over the bound is `:too-large` (definite, scenario
+4's oversized row), never a false durable refusal.
+
+**14.3.2 The header scan** (`fn2/books/upload-scan.lisp`, a pool-level library like conn-answer.lisp,
+D4 1/n). A bounded continuation over chunk 0 (the header section must lie in chunk 0: `:upload-chunk-
+bytes` ≥ `max-header-octets` + 2 is a profile check, so a header longer than the cap is refused by its
+limit before chunk 0 fills). Per physical line it checks fn1's header syntax
+(`specs/article-parser.md` "Header syntax": `field-name ":" (WSP body / "")`, continuations start with
+WSP, US-ASCII SP/HTAB/VCHAR only, ≤ 998 octets per line, the field/line/octet limits), counts fields,
+and records for the fields the decision needs the exact value range of their first occurrence and the
+occurrence count: `message-id` (one physical line, value trimmed of WSP: a folded Message-ID is
+`:message-id`), `newsgroups` (whole folded value), `path`, and presence bits for `from subject date
+xref injection-date injection-info approved control`. Its state is scalars only (the row's fields),
+and each call examines at most the run's remaining budget. Outcomes: `:more`, `:header-done` (offset
+of the body), or a refusal word. Message-ID syntax is the grammar's `fn2-gram-arg-msgid` over the
+recorded range (one definition of a Message-ID for the command line and the header).
+
+**The identity, exactly.** The Message-ID is the octets of that range in chunk 0 under the upload's
+owner: no copy, no list. The content identity is BLAKE3 of the **source** (the unstuffed octets the
+poster sent, without the terminator): D25 compares sources (`specs/nntp.md:952-1040`), and for
+transit the received octets are the source. B's `fn2-b3-init`/`fn2-b3-update`/`fn2-b3-finalize` over
+the chunks in order; the digest lands in the hasher row's result slot and is stored into the window's
+digest field with B's `fn2-digest-store` (C's seam 1, landed 810a4c376). Injection (RFC 5537 §3.5:
+Path, Injection-Info, generated Message-ID/Date/Injection-Date) changes the **stored** octets, not the
+source; it is the transaction's `prepare` (14.4) and the stored length is its field.
+
+### 14.4 The transaction machine `fn2-txn` (`fn2/books/txn.lisp`, D5)
+
+ROUND2 §B.2 row 4. Capacity `:t`. Phases:
+
+| phase | holds | arm | does |
+|---|---|---|---|
+| `:free` | none | idle | free chain (A-S7) |
+| `:admit` | `:transaction-row` | `fn2-txn-admit` | bind the operation identity (14.4.1) and the authority/configuration version pinned on the connection (W01: the connection's `access-ref`, never a live rule); move to `:lookup` |
+| `:reserve` | `:transaction-row` | `fn2-txn-reserve` | claim the Message-ID, or wait on the holder's FIFO holding no claim (14.4.2); a same-Message-ID waiter holds no claim and no membership, so the wait is upward in D0's order |
+| `:lookup` | `:transaction-row :identity-reservation` | `fn2-txn-lookup` | C's identity decision under the stale rule (14.4.3), at most 32 entries and 4,096 compared octets per run |
+| `:prepare` | same | `fn2-txn-prepare` | injection for POST (stored octets, stored length), membership assignment `(group-id, group-number)` (C3), the records the batch packs, the dependency manifest root (D4 3/n's extents) |
+| `:ready` | same | `fn2-txn-ready` | admitted to a commit batch (B-S2), or waiting for batch capacity (backpressure, a retry, never a refusal) |
+| `:batched` | `+ :batch-membership` | `fn2-txn-batched` | no work: waits for the batch's member outcome (an observation from the commit kind) |
+| `:accepted` | `:transaction-row :identity-reservation` | `fn2-txn-reply` | post the success word to the connection; release the reservation (waking its FIFO), the upload (→ `:draining`) and the row |
+| `:refused` | same | `fn2-txn-reply` | post the refusal word; release as `:accepted` does |
+| `:uncertain` | same, persistent | `fn2-txn-uncertain` | post the uncertain word once; the row, its reservation and its records stay until recovery resolves the batch (ROUND2 §E.2): the Message-ID stays reserved, so a resend waits rather than racing an unresolved write |
+| `:draining` | none after release | `fn2-txn-drain` | reclaim |
+
+The outcome is exactly one of accepted, refused, uncertain, decided by the batch, never by the
+transaction alone: `uncertain` is entered as soon as a recoverable committing record may exist (the
+batch reached `log-write`, ROUND2 §E.2) and its write's fate is not known; `accepted` only on the
+batch's durability evidence (B's `durable`, then install and publish: the reply follows publication,
+so a 240's poster reads its own article); `refused` only while no record of it can exist (before the
+batch's `log-write`, or a definite refusal before `ready`). Known-durable but unpublished work is an
+obligation, never a refusal; the batch hands each member its outcome with the evidence it rests on
+(B-S2), so the transaction never infers it from the batch's current phase. A disconnected connection
+changes none of this: `fn2-conn-post-word` checks the connection's generation and request ordinal and
+drops the word for a row that has moved on (the one place a word is legitimately not delivered; it is
+counted).
+
+**14.4.1 Operation identity.** `(principal-id, operation-id)` beside the Message-ID (STORAGE §4
+decision 1). On NNTP the retry identity is the Message-ID (NNT-005: a supplied Message-ID is the
+retry identity; a generated one is a new article), so the operation id is fresh per attempt: the
+node's operation counter (u60, persisted with the batch; exhaustion refused by name, never wrapped),
+and the principal is the connection's `principal-slot` (attribution, D7). The outcome of
+`(principal, operation)` is a record of the batch (C4's operation-outcome schema): an API caller (E)
+that retries with the same operation id gets the original outcome without re-execution, and a
+contradictory reuse (same id, different request digest) is refused `:operation-reused`; the NNTP
+path never retries by operation id, so D5 builds the record and E's API is its first reader.
+
+**14.4.2 The identity reservation** (D0 rank 11, `:identity-reservation`). One claim per transaction
+on its Message-ID's exact octets: a D core child `fn2-txn-claims` holding `2^k ≥ 2T` bucket heads;
+each transaction row carries `mid-hash :u32` and `claim-next :link`, and the Message-ID range it
+claims (the upload's chunk, under the upload's owner). `fn2-txn-claim (t fn2-core) → (mv code holder
+fn2-core)` walks the bucket chain comparing hashes and, on a hash match, the octets
+(`fn2-core-compare`, two owners): a free Message-ID is claimed (`:ok`); a held one returns its holder
+and the transaction parks on the holder's FIFO (`claim-wait-head`), in the same transition (no
+lost wakeup: the release that unlinks the holder grants the head). Its declared cost: at most 32
+chain steps and one 250-octet comparison per hash match, at most 4,096 compared octets per run; a
+longer walk is a continuation (`claim-cursor`). Claims are taken at the upload's `:identity` (14.3)
+and released only at the outcome: same-Message-ID offers on one node never race, so C's decision for
+a claimed Message-ID can be stale only through **other** Message-IDs sharing its stamp bucket or
+through a run installation (14.4.3).
+
+**14.4.3 C's decision, with the stale rule.** `:lookup` stages the offer (Message-ID range and digest,
+both under the upload's owner) into the transaction's decision row (decision row = transaction row
+index, C-S1) and steps it to an answer: `:stored` (new), `:duplicate` (this content is recorded),
+`:conflict` (another content is). The fact is never recorded into a public overlay at lookup (a
+refusal or a crash would leave a phantom fact), and not discovered at install either (a durable batch
+must never become unpublishable because a record is stale or an arena is full; Astra). The
+transaction's `:prepare` stages the fact into its batch's **private successor overlay** (C-S2):
+C copies the offer's octets into successor-owned storage, validates the decision against the
+predecessor (re-deciding on `:stale`, under the claim), and reserves the successor's capacity, all
+before B seals the batch's records and root. Publication exposes the successor atomically, with no
+admission or lookup at install. A private successor is invisible to every decision until
+publication (C enforces it: today `fn2-id-decide-step` visits every active and frozen overlay). **Claim stability (keystone
+`fn2-txn-claim-stabilizes-decision`, 14.6), as Astra restated it:** for an immutable offer, while its
+transaction holds the claim and before the offer's own publication, every validated decision returns
+the same answer, provided every identity writer respects claims and every representation change
+(seal, merge) preserves facts. Claims do not validate C's traversal (the stamp and version do), and
+the retry argument below gives no per-request starvation bound; the retry count is
+bounded by the records and installations that touch its bucket while it is in flight (lock-free, not
+wait-free: each stale retry means another transaction or installation progressed), which is what C
+measured (~45 stale per 30 offers under contention with no claims; the claims remove the same-Message-
+ID share of them). D's IDENTITY run (14.8) reports retries per decision.
+
+Answers to replies: POST `:duplicate` → 441 "this article is already stored here", `:conflict` → 441
+"a different article with this Message-ID is stored here"; IHAVE 437 / TAKETHIS 439 for either
+(transit decides by Message-ID alone, NNT-020); `:identity-conflict-bound` (a fifth content) → the
+same transit refusal, and for POST the conflict line (the bound is C's, the word D's).
+
+**Evidence is its own operation (Astra).** C records a conflicting content as evidence; a refused
+article must contribute no mutation (T6), and a later re-offer of evidence content must not hear
+"already stored here", which would be false. So: a POST conflict records nothing (fn1's D25: "neither
+writes anything"); a transit conflict records its evidence through a separate **evidence operation**
+with its own record and outcome in the same batch (the article is refused, the evidence is
+committed, and T6 counts them apart); and C's decision reports the matched fact's state (C-S1:
+`:duplicate` only for accepted content, `:evidence` for a content recorded only as evidence, answered
+with the conflict line).
+
+**14.4.4 The batch.** `:ready` admits the transaction to B's commit batch (B-S2): one member whose
+records are (a) the article record (stored octets by reference: the window today, extents with D4
+3/n; the content digest; the source digest; the stored length), (b) the identity fact `(mid, content,
+article, binding = batch event, principal)`, (c) the membership rows `(group, number, article)` (C3),
+(d) the operation outcome `(principal, operation, request digest, outcome, event)` (C4). Batch
+membership is acquired here (`:transaction :batch`, holding everything below rank 17); a full batch is
+backpressure (`:ready` stays, a retry, the transaction holds no batch resource). The member outcome
+comes back as an observation (`:member-result`) carrying accepted / refused / uncertain by the batch's
+own phase at the time it settled, so the transaction never infers its outcome from time or from a
+readable byte. Unfinished uploads are excluded from sealing (ROUND2 §E.1): only `:ready` transactions
+join, so a stalled uploader holds no batch.
+
+### 14.5 Replies: the typed refusal set
+
+Every word is a value of `fn2-txn-word` (the row's `word` field) and every reply is one row of
+`nntp-grammar.lisp`'s catalogue, rendered by the connection; each is a fixture in the units:
+
+| word | POST | IHAVE | TAKETHIS | decided by |
+|---|---|---|---|---|
+| `:accepted` | 240 | 235 | 239 | batch (durable, published) |
+| `:uncertain` | 441 "...the outcome is uncertain; do not repost (uncertain)" | 436 "...outcome uncertain" | 436 `<id>` "...outcome uncertain" | batch (log-write reached, fate unknown); the oracle classifies by the word `uncertain` in the text, never by 436 alone |
+| `:duplicate` | 441 "this article is already stored here" | 437 | 439 | C's decision |
+| `:conflict` | 441 "a different article with this Message-ID is stored here" | 437 | 439 | C's decision |
+| `:too-large` | 441 "...too large (bound)" | 437 + close | 439 + close | upload |
+| `:malformed` | 441 "...malformed" (header syntax, missing separator) | 437 | 439 | upload |
+| `:framing` | 441 "...malformed block" (a bare CR or LF, a NUL, an unescaped dot: the block is drained to its terminator; H's model closes after it) | 437 + close | 439 + close | conn |
+| `:line-length`, `:header-fields`, `:header-lines`, `:header-octets` | 441 "...malformed: a header field line is longer than 998 octets" / "...header limit" | 437 | 439 | upload (fn1's names, specs/article-parser.md) |
+| `:missing` | 441 "...missing a required field (From, Subject, Newsgroups)" | 437 | 439 | upload (transit also Message-ID, Date, Path) |
+| `:duplicate-field` | 441 "...duplicate field" | 437 | 439 | upload |
+| `:path` | 441 "...Path is not a valid path" (POST: POSTED, syntax) | — | — | upload |
+| `:message-id` | 441 "...Message-ID is malformed" | 437 | 439 | upload |
+| `:mismatch` | — | 437 | 439 | upload (header vs command Message-ID) |
+| `:injected` | 441 "...Xref or Injection fields are the server's" | — | — | upload |
+| `:no-clock` | 441 "posting failed; this server has no usable clock reading" | — | — | transaction (injection) |
+| `:group` | 441 "...no such newsgroup here (group)" | 437 | 439 | transaction (C3 membership) |
+| `:identity-conflict-bound` | conflict line | 437 | 439 | C's record |
+| `:unaffordable` | 441 "...unaffordable" | 436 | 436 | a capacity the profile cannot grant (a zero `:t`, an article over the window with no extents) |
+| `:control-malformed` | 441 "the Control header field is malformed" | 437 | 439 | transaction (control, RFC 5537) |
+| `:refused` | 441 "posting failed; the article was refused" | 437 | 439 | the generic refusal |
+| `:not-stored` *(interim, D5 until B-S2)* | 441 "posting failed; the article was refused (storage is not served yet)" | 436 | 436 | a transaction that reached `:ready` before the batch carries articles |
+
+The definite order is the model's (`_article_block`): bound, separator and required fields, duplicate
+fields, Path (POST), Message-ID mismatch (transit), Message-ID syntax, clock (POST), identity, group,
+read-only/moderation (E2), Xref/Injection (POST). fn1's index-specific words (`:mpx-saturated`,
+`:history-exhausted`) are retired by name: fn2 has no keyed Message-ID table that can fail to place an
+article (C's runs have no placement failure) and its capacity refusal is `:unaffordable` and
+backpressure. `:storage-failed` is not a word: a write that fails before `log-write` is a refusal only
+if nothing of it can be recovered, which B's batch decides, so it is `:refused` (before) or
+`:uncertain` (after).
+
+Posting is advertised (greeting 200, MODE READER 200, CAPABILITIES `POST`, POST answering 340) by
+one predicate, `fn2-answer-posting-p mask`. **Two positions, Astra's taken:** D's draft turned it on
+with D4 2/n, so POST's definite refusals would be served while every valid article got the interim
+`:not-stored`; Astra would keep the public posting capability off until a POST can succeed, exercising
+the interim path only in fixtures (the units and sim-layer-d with a test profile key
+`:posting-interim t`). Advertising posting that cannot succeed misleads a client; so the predicate
+turns on with D5's first durable POST, and H's 713 POST interims leave then, all at once. E2 adds the
+authentication cases.
+
+### 14.6 Keystones (statement first; each a `defthm-owed` in `fn2/books/owed-txn.lisp` with teeth)
+
+The logical view is `fn2-conn-wire-run` (§7) extended with posting clients and an adapter whose
+storage completes in a scripted order with scripted faults, so every keystone states a property of
+the served core at its adapter boundary, not of a model.
+
+| name | statement | teeth |
+|---|---|---|
+| T6 `fn2-outcome-safety` (unconditional) | for every request the core ever admitted (POST/IHAVE/TAKETHIS line framed, whether or not it got an upload or a transaction row): at most one outcome word is ever posted for it, correlated by connection generation and request ordinal; the word is accepted only if a batch holding its records reached durable and was published; uncertain only if such a batch reached log-write and did not reach durable; refused otherwise. Disconnects, death cuts and recovery included | positive: transcripts with faults at every batch phase and a disconnect at every point from the line to the outcome; negative: a runner that answers 240 at `log-write`, one that answers refused after `log-write`, one that delivers a recovered outcome into a later request on the same row |
+| T6 `fn2-outcome-delivery` (under stated progress) | under a declared bounded-completion environment (the scheduler visits, the device completes, recovery finishes, the transport sends), a request whose connection stays open gets exactly one reply, and requests that never got an upload or a transaction row (a no-row TAKETHIS, a refused take) are among them | positive: the same transcripts with faults stopped; negative: a no-row TAKETHIS that gets no 439 |
+| T6 `fn2-refusal-no-committed-mutation` | a refused transaction's operation contributed no article, membership or identity record to any batch that reached log-write; an evidence operation's records are its own (14.4.3) and are counted apart | positive: refusals of every word beside accepted posts and transit conflicts with evidence; negative: a runner that packs a refused member's article record |
+| T9 `fn2-exact-identity-served` | over the served core, for eligible offers (otherwise valid, under the bound) and **an accepted witness** (the first offer is accepted, so the statement is not vacuous under an all-refusing node): a later offer with equal Message-ID octets and equal source digest is answered duplicate, an unequal digest conflict, evidence content never duplicate; equality is of exact octets, and the answers are unchanged after the first's window is released | positive: the M3 shapes through POST and TAKETHIS with accepted witnesses; negative: an upload that lower-cases the Message-ID, a digest over the stored rather than the source octets (a resend at another clock then conflicts), an all-refusing node (refused by the witness premise) |
+| `fn2-txn-claim-stabilizes-decision` | Astra's statement (14.4.3): for an immutable offer, while it holds its claim and before its own publication, validated decisions agree | positive: decisions re-taken after other Message-IDs publish into the same bucket; negative: claims disabled and two same-Message-ID offers interleaved |
+| `fn2-upload-source-exact` | the window holds exactly the dot-unstuffed source of an accepted-for-validation block, for every fragmentation, while the article fits the window | positive: every split point of the block transcripts; negative: a framer that does not unstuff |
+| `fn2-upload-discard-bounded` | a block refused **by framing or by the bound** is consumed to its terminator with no octet copied after the refusal and at most the block's length of framing work; a block refused by a header check after octets were copied keeps them only until its upload drains (no claim that no prefix was copied; Astra) | positive: scenario 4's shapes; negative: a feeder that keeps buffering an oversized block |
+
+Owed with the existing identity keystones' D side: C's `fn2-exact-identity` and
+`fn2-identity-linearizable` are over C's adapters; `fn2-exact-identity-served` is the same claim over
+the served path, and `fn2-identity-linearizable` gains the D-side runs (IDENTITY over sim-layer-d's
+traces, 14.8).
+
+### 14.7 Seams (sent through main, exact forms)
+
+- **A-S7, taken kinds** (the admission partition, generalized; D asks rather than build a twin):
+  ```lisp
+  (defmachine fn2-upload ...
+    :taken (:phase :head :rows :upload-row
+            :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class (:profile :upload-chunk-bytes))
+                     (:chunk-window :slot c1-slot :gen c1-gen :class (:profile :upload-chunk-bytes)))
+            :copy (conn conn-gen rule) :clear (...)))
+  ;; generated, per taken kind K, beside the admission events, sharing the directory's
+  ;; per-ordinal partition arrays (capacity, free head, credits, active count, FIFO):
+  ;; (fn2-machine-take-K waiter COPIES... fn2-core) -> (mv code id fn2-core)
+  ;;   :ok, or :no-row / :pool with WAITER (a machine id, or *fn2-none*) appended to K's FIFO,
+  ;;   wait-reason the row kind; ranges all or none
+  ;;   defcost :target (K :free PHASE)
+  ;;   :effects ((:acquire (ROWKIND) :for K) (:acquire RANGES :for K))
+  ;; (fn2-machine-reclaim-K id retire fn2-core): free chain, then grant the FIFO head (wake it)
+  ```
+  `fn2-txn` declares `:taken (:phase :admit :rows :transaction-row :copy (upload upload-gen conn
+  conn-gen))`. If A prefers, D writes it as a foundation commit in a worktree with the whole-tree gate.
+- **A-S8, the cross-owner copy** (pool-ranges.lisp, the sibling of `fn2-pool-compare`):
+  `(fn2-pool-copy-across src sgen soff sk ss sg dst dgen doff dk ds dg len fn2-pool) -> (mv code
+  fn2-pool)`: `[soff, soff+len)` readable under `(sk ss sg)` copied to `doff` of a workspace of `(dk ds
+  dg)`, `doff ≤ fill`, with `fn2-core-copy-across` and a defcost. Until it lands `fn2-upload-feed`
+  copies with `fn2-core-read`/`fn2-core-write` (the D2a precedent; deleted when it lands).
+- **B-S1, hasher rows** (no code): the served profile sets `:format-slots` to `2 + :large-upload-
+  windows`; rows 0-1 are the commit kind's, row `2 + w` window `w`'s. B confirms nothing else indexes
+  `fn2-b3` rows by count.
+- **B-S2, the transaction member** (with GC2 inside B5, the same admission shape):
+  `(fn2-commit-admit-txn member-slot member-gen bytes okind oslot ogen fn2-core) -> (mv code batch
+  fn2-core)`: a D-prepared workspace holding the member's records (14.4.4) in B's record encodings;
+  `:ok` (handed to the commit kind; the batch notifies the member row with `:member-result` carrying
+  the outcome **and its evidence**: accepted with the durable and published batch, uncertain with the
+  log-write reached, refused before it; known-durable-unpublished is never refused), `:exhausted`
+  (backpressure), `:admission`. An unresolved batch fences its storage scope, not only its
+  Message-IDs; recovery resolves retained claims with protected resources, never waiting for them. Records over the batch's packing room go as payload blocks referenced
+  from the record (D4 3/n).
+- **C-S1, identity in the served assembly** (C-ONE-ASSEMBLY): C's identity stobjs as core children and
+  `(fn2-identity-offer d mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core) -> (mv code
+  fn2-core)`, `(fn2-identity-step d budget fn2-core) -> (mv answer fn2-core)` (`:more`, `:stored`,
+  `:duplicate` for accepted content, `:evidence` for content recorded only as evidence, `:conflict`;
+  `:miss` is C's to load, an invariant failure until C1c persists runs),
+  `(fn2-identity-release d fn2-core)`, decision rows = `:t`, each with its own field-row stripe, and
+  defcosts within 4,096 octets and 32 entries per call.
+- **C-S2, the batch's private successor overlay** (Astra): `(fn2-identity-stage d batch fn2-core) ->
+  (mv code fn2-core)` at the transaction's `:prepare`: C copies the offer's octets into successor-owned
+  storage, validates the decision against the predecessor (`:stale` re-decides under the claim), and
+  reserves the successor's capacity (arena, index, stamp); `:full` is backpressure. The successor is
+  invisible to decisions until the batch's publication, which exposes it atomically with no further
+  admission; a batch that ends refused drops it. Nothing at install can fail for want of a record.
+  C3's membership numbers are tentative at prepare and issued at publication, never reused.
+
+### 14.8 Slices, acceptance, scenarios
+
+Astra's order is taken: the seams that decide semantics are settled together first, then ingestion,
+then one real durable POST with its read-back, before anything is widened.
+
+| slice | contents | waits on |
+|---|---|---|
+| D4 1/n | `upload-scan.lisp` (header scan, Message-ID range, definite refusals), `tests/upload-scan-unit.lisp` | nothing (landed 92a31a6dd) |
+| seams | A-S7, A-S8, B-S1, B-S2, C-S1, C-S2 agreed together, with this section's claim, successor-visibility and evidence semantics | main, A, B, C |
+| D4 2/n | ingestion: `fn2-upload` declared, `fn2-conn` article input (fields, `:block`, `fn2-conn-block`, `fn2-upload-feed`), BLAKE3 over the window, the TAKETHIS token and no-row discard, conn-unit transcripts; POST answered only under `:posting-interim t` (fixtures and sim-layer-d), the public capability off | A-S7, A-S8 (or its interim), B-S1 |
+| D5 1/n | `fn2-txn` with `fn2-txn-claims`, the claim and its FIFO, a generated Message-ID path for POST, lookup through C-S1 | D4 2/n, C-S1 |
+| D5 2/n | one real durable POST: prepare into the private successor (C-S2), the batch member (B-S2), 240 after publication, uncertain; read-back through D6's ARTICLE by Message-ID or the IDENTITY checker; stale-decision, disconnect and death-cut controls; posting capability on; H's POST interims leave | B-S2, C-S2 |
+| D5 3/n | IHAVE, CHECK, TAKETHIS on the peer path with request/reply queuing (a connection keeps framing the next TAKETHIS while earlier outcomes are pending, replies in request order), evidence operations; scenario 5 | D5 2/n |
+| D4 3/n | temporary extents through storage jobs (articles over two chunks; chunk reuse once its octets are durable; the Message-ID keeps its own range when chunk 0 is recycled); scenario 4 whole | B's allocator in the core, a storage-job kind |
+
+**sim-layer-d** gains a posting client (POST blocks in seeded fragmentations, valid and each refusal
+shape, duplicate and conflicting resends) on every run of the existing four sets, with WIRE (reply
+codes by the model's table for POST's two phases), ACCOUNT (an upload's and a transaction's holdings
+booked on its principal, D7's `:upload-row`/`:transaction-row` dimensions), and from D5 2/n
+`check-identity` (C's checker over the offers, answers and recorded facts) and HISTORY. Mutation
+controls: a feeder that drops one data line (WIRE/IDENTITY catch the digest), a transaction that
+answers 240 before durable (HISTORY), a claim table that admits two holders of one Message-ID
+(IDENTITY). H's interim table shrinks as each slice lands: `fn2/tests/surface/fn2_conn_interim.json`
+is regenerated from `*fn2-answer-interim*` at each slice (POST's row leaves at D5 2/n, when posting
+is advertised and a POST can succeed).
+
+### 14.9 The design review (Astra, `build/d-seat/d45/astra-1.md`)
+
+Astra would build the three machines as designed and changed six things, all taken above: the feed's
+work accounting counts the block line's rescan and keeps producer and consumer offsets (14.2); the
+transaction row is taken before the claim, `:reserve` holds no claim, and POST's generated Message-ID
+path precedes the claim (14.3, 14.4); claim stability is stated for an immutable offer before its own
+publication, with no starvation bound claimed (14.4.3); identity facts are staged into a private
+successor overlay before the batch seals, never recorded at lookup and never discovered at install
+(C-S2); evidence is its own operation, and C's decision distinguishes accepted content from evidence
+(14.4.3, C-S1); outcomes carry their evidence, are correlated by request ordinal, and the keystones
+split unconditional safety from delivery under stated progress, with an accepted witness for T9
+(14.6). Two positions were recorded and Astra's taken: the posting capability stays off until a POST
+can succeed (14.5); the slice order puts the seams first and one durable POST before widening (14.8).
