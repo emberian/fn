@@ -1,13 +1,23 @@
 ; Layer C1 unit: one run page written, sealed by B's sealer, accepted by B's
 ; checker, refused after a flipped byte, and searched by the generated seek.
 (in-package "ACL2")
-(include-book "../books/runs")
+(include-book "../books/runs-assemble")
 (include-book "std/util/bstar" :dir :system)
 
 (defrunschema fn2-rt-num :id 900
  :key ((group (:id group)) (number (:id group-number)))
  :value ((article (:id article)))
  :merge :unique)
+; The octet-keyed fixture: a Binding-shaped key (Message-ID octets, content
+; digest), so one Message-ID with two contents is two adjacent entries.
+(defrunschema fn2-rt-mid :id 901
+ :key ((message-id (:octets 250)) (content :digest))
+ :value ((article (:id article)))
+ :merge :union)
+
+; One assembly after the unit's schemas: the dispatcher and the generic
+; append, seek, build and lookup over it.
+(fn2-run-assemble)
 
 ; Fixture owner (an MRef C's engine would hold) and field-row plan.
 (defconst *fn2-rt-owner* '(9 0 1))
@@ -57,7 +67,7 @@
        (fn2-fields (fn2-fields-set-value (+ e *fn2-rt-num-entry-field-number*) (* 2 (+ 1 i)) fn2-fields))
        (fn2-fields (fn2-fields-set-value (+ e *fn2-rt-num-entry-field-article*) (+ 100 i) fn2-fields))
        ((mv code fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-        (fn2-rt-num-entry-add 0 e fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
+        (fn2-run-add 0 900 e fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
    (if (eq code :ok) (fn2-rt-num-add-loop (- fuel 1) (+ 1 i)
                        fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
      (fn2-rt-mv code i)))))
@@ -92,7 +102,7 @@
       ((mv code fn2-fields) (fn2-run-read-header slot gen rb 9 0 1 fn2-fields fn2-pool))
       ((unless (eq code :ok)) (fn2-rt-mv (list :header code)))
       ((mv code & & idx & fn2-fields)
-       (fn2-rt-num-entry-seek 64 0 (fn2-run-hdr rb restarts) 0 0 q rb slot gen 9 0 1 9 0 1 fn2-fields fn2-pool))
+       (fn2-run-seek 900 0 64 0 (fn2-run-hdr rb restarts) 0 0 q rb slot gen 9 0 1 9 0 1 fn2-fields fn2-pool))
       (article (if (eq code :found) (fn2-fields-value (+ rb *fn2-run-reader-entry* *fn2-rt-num-entry-field-article*) fn2-fields) nil)))
   (fn2-rt-mv (list code idx article))))
 
@@ -142,12 +152,6 @@
  (fn2-rt-with (fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
   (fn2-rt-num-page n queries fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
 
-; The octet-keyed fixture: a Binding-shaped key (Message-ID octets, content
-; digest), so one Message-ID with two contents is two adjacent entries.
-(defrunschema fn2-rt-mid :id 901
- :key ((message-id (:octets 250)) (content :digest))
- :value ((article (:id article)))
- :merge :union)
 
 (defun fn2-rt-write-bytes (bytes slot gen off okind oslot ogen fn2-pool)
  (declare (xargs :stobjs fn2-pool :verify-guards nil))
@@ -190,7 +194,7 @@
         (fn2-rt-mid-entry i *fn2-rt-entry-base* src sgen off 9 0 1 fn2-fields fn2-pool))
        ((unless (eq code :ok)) (fn2-rt-mv (list :source code) i off))
        ((mv code fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-        (fn2-rt-mid-entry-add 0 *fn2-rt-entry-base* fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
+        (fn2-run-add 0 901 *fn2-rt-entry-base* fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
    (if (eq code :ok) (fn2-rt-mid-add-loop (- fuel 1) (+ 1 i) src sgen off
                        fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
      (fn2-rt-mv code i off)))))
@@ -206,7 +210,7 @@
       ((mv code fn2-fields) (fn2-run-read-header slot gen rb 9 0 1 fn2-fields fn2-pool))
       ((unless (eq code :ok)) (fn2-rt-mv (list :header code)))
       ((mv code & & idx & fn2-fields)
-       (fn2-rt-mid-entry-seek 64 0 (fn2-run-hdr rb restarts) 0 0 q rb slot gen 9 0 1 10 0 1 fn2-fields fn2-pool))
+       (fn2-run-seek 901 0 64 0 (fn2-run-hdr rb restarts) 0 0 q rb slot gen 9 0 1 10 0 1 fn2-fields fn2-pool))
       (article (if (eq code :found) (fn2-fields-value (+ rb *fn2-run-reader-entry* *fn2-rt-mid-entry-field-article*) fn2-fields) nil)))
   (fn2-rt-mv (list code idx article))))
 (fn2-rt-defun fn2-rt-mid-seeks (slot gen qslot qgen queries)
@@ -234,7 +238,7 @@
        (fn2-rt-mid-add-loop n 0 src sgen 0 fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
       ((mv & & fn2-fields fn2-pool) (fn2-rt-mid-entry (- count 1) *fn2-rt-entry-base* src sgen off 9 0 1 fn2-fields fn2-pool))
       ((mv repeat fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-       (fn2-rt-mid-entry-add 0 *fn2-rt-entry-base* fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
+       (fn2-run-add 0 901 *fn2-rt-entry-base* fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       ((mv & fn2-run-writers) (fn2-run-close 0 fn2-run-writers))
       ((mv close fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rt-close 64 fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
@@ -279,24 +283,24 @@
 ;; Keystone teeth, one set per schema. Positive: the statement holds at an
 ;; inhabited premise (checked). Negative: without the premise (unsorted
 ;; entries, refused :order part way) the conclusion fails.
-(defmacro fn2-rt-teeth (name key meta good bad queries badq)
+(defmacro fn2-rt-teeth (name id key meta good bad queries badq)
  (let ((entry (fn2-columns-sym name "-ENTRY")))
   `(progn
     (defun ,(fn2-columns-sym name "-PAGE-ROUNDTRIP-POSITIVE") ()
      (declare (xargs :verify-guards nil))
      (and (fn2-run-page-inputp ,(fn2-codec-constant entry "") ',key ,meta ,good)
-          (equal (,(fn2-columns-sym name "-PAGE-IMAGE") ,meta ,good)
+          (equal (fn2-run-page-image ,id ,(fn2-codec-constant entry "") ,meta ,good)
                  (list :ok :ok :ok (fn2-run-page-spec ,(fn2-codec-constant entry "") ,meta ,good)))))
     (defun ,(fn2-columns-sym name "-PAGE-ROUNDTRIP-NEGATIVE") ()
      (declare (xargs :verify-guards nil))
      (and (not (fn2-run-page-inputp ,(fn2-codec-constant entry "") ',key ,meta ,bad))
-          (not (equal (,(fn2-columns-sym name "-PAGE-IMAGE") ,meta ,bad)
+          (not (equal (fn2-run-page-image ,id ,(fn2-codec-constant entry "") ,meta ,bad)
                       (list :ok :ok :ok (fn2-run-page-spec ,(fn2-codec-constant entry "") ,meta ,bad))))))
     (defun ,(fn2-columns-sym name "-SEEKS-HOLD") (qs)
      (declare (xargs :verify-guards nil))
      (or (atom qs)
          (and (fn2-run-values-layoutp ,(fn2-codec-constant entry "") (car qs))
-              (equal (,(fn2-columns-sym name "-SEEK-IMAGE") ,meta ,good (car qs))
+              (equal (fn2-run-seek-image ,id ,(fn2-codec-constant entry "") ,meta ,good (car qs))
                      (fn2-run-lower-bound-spec ',key ,good (car qs) 0))
               (,(fn2-columns-sym name "-SEEKS-HOLD") (cdr qs)))))
     (defun ,(fn2-columns-sym name "-SEEK-LOWER-BOUND-POSITIVE") ()
@@ -304,7 +308,7 @@
      (,(fn2-columns-sym name "-SEEKS-HOLD") ,queries))
     (defun ,(fn2-columns-sym name "-SEEK-LOWER-BOUND-NEGATIVE") ()
      (declare (xargs :verify-guards nil))
-     (not (equal (,(fn2-columns-sym name "-SEEK-IMAGE") ,meta ,bad ,badq)
+     (not (equal (fn2-run-seek-image ,id ,(fn2-codec-constant entry "") ,meta ,bad ,badq)
                  (fn2-run-lower-bound-spec ',key ,bad ,badq 0))))
     (fn2-assert-owed-teeth ,(fn2-columns-sym name "-PAGE-ROUNDTRIP") ,(fn2-columns-sym name "-SEEK-LOWER-BOUND")))))
 
@@ -314,7 +318,7 @@
  (if (zp (- n i)) nil (cons (list 1 (* 2 (+ 1 i)) (+ 100 i)) (fn2-rt-num-entries (+ 1 i) n))))
 (defconst *fn2-rt-num-good* (fn2-rt-num-entries 0 40))
 (defconst *fn2-rt-num-bad* (append (list (nth 5 *fn2-rt-num-good*)) (take 5 *fn2-rt-num-good*) (nthcdr 6 *fn2-rt-num-good*)))
-(fn2-rt-teeth fn2-rt-num ((group (:id group)) (number (:id group-number)))
+(fn2-rt-teeth fn2-rt-num 900 ((group (:id group)) (number (:id group-number)))
  *fn2-rt-num-meta* *fn2-rt-num-good* *fn2-rt-num-bad*
  '((1 0 0) (1 2 0) (1 3 0) (1 33 0) (1 34 0) (1 80 0) (1 81 0) (0 99 0) (2 0 0)) '(1 40 0))
 
@@ -326,7 +330,7 @@
         (fn2-rt-mid-entries (+ 1 i) n))))
 (defconst *fn2-rt-mid-good* (fn2-rt-mid-entries 0 40))
 (defconst *fn2-rt-mid-bad* (append (list (nth 5 *fn2-rt-mid-good*)) (take 5 *fn2-rt-mid-good*) (nthcdr 6 *fn2-rt-mid-good*)))
-(fn2-rt-teeth fn2-rt-mid ((message-id (:octets 250)) (content :digest))
+(fn2-rt-teeth fn2-rt-mid 901 ((message-id (:octets 250)) (content :digest))
  *fn2-rt-mid-meta* *fn2-rt-mid-good* *fn2-rt-mid-bad*
  (list (list (fn2-rt-mid-octets 0) (cons 1 (make-list 32 :initial-element 0)) 0)
        (list (fn2-rt-mid-octets 7) (cons 1 (make-list 32 :initial-element 1)) 0)
@@ -341,27 +345,27 @@
 ; after; and a run of one entry.
 (defconst *fn2-rt-num-3000* (fn2-rt-num-entries 0 3000))
 (assert-event
- (equal (list (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 2 0))
-              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 6000 0))
-              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 3000 0))
-              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 3001 0))
-              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 6001 0))
-              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(0 9 0))
-              (fn2-rt-num-run-lookup-image (fn2-rt-num-entries 0 1) 400 '(1 2 0))
-              (fn2-rt-num-run-lookup-image (fn2-rt-num-entries 0 1) 400 '(1 4 0)))
+ (equal (list (fn2-run-lookup-image 900 *fn2-rt-num-entry* *fn2-rt-num-3000* 400 '(1 2 0))
+              (fn2-run-lookup-image 900 *fn2-rt-num-entry* *fn2-rt-num-3000* 400 '(1 6000 0))
+              (fn2-run-lookup-image 900 *fn2-rt-num-entry* *fn2-rt-num-3000* 400 '(1 3000 0))
+              (fn2-run-lookup-image 900 *fn2-rt-num-entry* *fn2-rt-num-3000* 400 '(1 3001 0))
+              (fn2-run-lookup-image 900 *fn2-rt-num-entry* *fn2-rt-num-3000* 400 '(1 6001 0))
+              (fn2-run-lookup-image 900 *fn2-rt-num-entry* *fn2-rt-num-3000* 400 '(0 9 0))
+              (fn2-run-lookup-image 900 *fn2-rt-num-entry* (fn2-rt-num-entries 0 1) 400 '(1 2 0))
+              (fn2-run-lookup-image 900 *fn2-rt-num-entry* (fn2-rt-num-entries 0 1) 400 '(1 4 0)))
         '((:found (1 2 100)) (:found (1 6000 3099)) (:found (1 3000 1599)) (:absent nil)
           (:absent nil) (:absent nil) (:found (1 2 100)) (:absent nil))))
 
 ; Run-lookup teeth. Positive: inhabited premise (checked), every query in a
 ; list agrees with the spec. Negative: without sortedness the conclusion fails.
-(defmacro fn2-rt-run-teeth (name key good bad limit queries badq)
- (let ((entry (fn2-columns-sym name "-ENTRY")) (image (fn2-columns-sym name "-RUN-LOOKUP-IMAGE")))
+(defmacro fn2-rt-run-teeth (name id key good bad limit queries badq)
+ (let ((entry (fn2-columns-sym name "-ENTRY")))
   `(progn
     (defun ,(fn2-columns-sym name "-RUN-LOOKUPS-HOLD") (qs)
      (declare (xargs :verify-guards nil))
      (or (atom qs)
          (and (fn2-run-values-layoutp ,(fn2-codec-constant entry "") (car qs))
-              (equal (,image ,good ,limit (car qs)) (fn2-run-key-lookup-spec ',key ,good (car qs)))
+              (equal (fn2-run-lookup-image ,id ,(fn2-codec-constant entry "") ,good ,limit (car qs)) (fn2-run-key-lookup-spec ',key ,good (car qs)))
               (,(fn2-columns-sym name "-RUN-LOOKUPS-HOLD") (cdr qs)))))
     (defun ,(fn2-columns-sym name "-RUN-LOOKUP-EXACT-POSITIVE") ()
      (declare (xargs :verify-guards nil))
@@ -370,16 +374,37 @@
     (defun ,(fn2-columns-sym name "-RUN-LOOKUP-EXACT-NEGATIVE") ()
      (declare (xargs :verify-guards nil))
      (and (not (fn2-run-run-inputp ,(fn2-codec-constant entry "") ',key ,bad ,limit))
-          (not (equal (,image ,bad ,limit ,badq) (fn2-run-key-lookup-spec ',key ,bad ,badq)))))
+          (not (equal (fn2-run-lookup-image ,id ,(fn2-codec-constant entry "") ,bad ,limit ,badq) (fn2-run-key-lookup-spec ',key ,bad ,badq)))))
     (fn2-assert-owed-teeth ,(fn2-columns-sym name "-RUN-LOOKUP-EXACT")))))
 (defconst *fn2-rt-num-64* (fn2-rt-num-entries 0 64))
-(fn2-rt-run-teeth fn2-rt-num ((group (:id group)) (number (:id group-number)))
+(fn2-rt-run-teeth fn2-rt-num 900 ((group (:id group)) (number (:id group-number)))
  *fn2-rt-num-64* (append (list (nth 5 *fn2-rt-num-64*)) (take 5 *fn2-rt-num-64*) (nthcdr 6 *fn2-rt-num-64*)) 400
  '((1 2 0) (1 3 0) (1 64 0) (1 128 0) (1 129 0) (1 0 0) (0 7 0) (2 2 0)) '(1 40 0))
-(fn2-rt-run-teeth fn2-rt-mid ((message-id (:octets 250)) (content :digest))
+(fn2-rt-run-teeth fn2-rt-mid 901 ((message-id (:octets 250)) (content :digest))
  *fn2-rt-mid-good* *fn2-rt-mid-bad* 1024
  (list (nth 0 *fn2-rt-mid-good*) (nth 17 *fn2-rt-mid-good*) (nth 39 *fn2-rt-mid-good*)
        (list (fn2-rt-mid-octets 7) (cons 1 (make-list 32 :initial-element 2)) 0)
        (list (fn2-rt-mid-octets 25) (cons 1 (make-list 32 :initial-element 0)) 0)
        (list nil (cons 1 (make-list 32 :initial-element 0)) 0))
  (nth 10 *fn2-rt-mid-good*))
+
+;; Glue teeth. Positive: both unit schemas are assembled and every function on
+;; their build and lookup path is guard-verified. Negative: a schema carrying
+;; old per-schema glue admitted without guard verification (as defrunschema
+;; once generated it) is refused by name, through the same check.
+(defun fn2-run-glue-verified-positive ()
+ (declare (xargs :verify-guards nil))
+ (and (equal (strip-cars (fn2-run-glue-assembled)) '(fn2-rt-num fn2-rt-mid))
+      (equal (fn2-run-glue-check (fn2-run-glue-assembled)) :ok)))
+(defun fn2-rt-old-lookup-step (c budget)
+ (declare (xargs :verify-guards nil))
+ (list c budget))
+(make-event
+ (let ((snapshot (fn2-ra-glue-snapshot
+                  (list (cons 'fn2-rt-old (list :id 902 :layouts '(fn2-rt-num-entry fn2-rt-num-index fn2-rt-num-run)
+                                                :compare 'fn2-rt-num-compare)))
+                  (w state))))
+  (value `(defun fn2-run-glue-verified-negative ()
+            (declare (xargs :verify-guards nil))
+            (equal (fn2-run-glue-check ',snapshot) '(:unverified fn2-rt-old fn2-rt-old-lookup-step))))))
+(fn2-assert-owed-teeth fn2-run-glue-verified)

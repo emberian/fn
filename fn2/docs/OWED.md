@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 331; bound statements: 326; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
+Requirements: 332; bound statements: 327; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -1938,42 +1938,6 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RT-NUM-RUN-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-RT-NUM-RUN-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 22) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-GROUP (:ID GROUP)) (MIN-NUMBER (:ID GROUP-NUMBER)) (MAX-GROUP (:ID GROUP)) (MAX-NUMBER (:ID GROUP-NUMBER)) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) (FN2-LAYOUT-VALUES '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-GROUP (:ID GROUP)) (MIN-NUMBER (:ID GROUP-NUMBER)) (MAX-GROUP (:ID GROUP)) (MAX-NUMBER (:ID GROUP-NUMBER)) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
-## Correspondence / owner: `(:SQUARE FN2-RT-NUM-PAGE-ROUNDTRIP)`
-
-Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
-
-### Case source / schema: `(NIL :ASSERTION)`
-
-Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
-
-| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-RT-NUM-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER)) (ARTICLE (:ID ARTICLE))) '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) META ENTRIES) (EQUAL (FN2-RT-NUM-PAGE-IMAGE META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER)) (ARTICLE (:ID ARTICLE))) META ENTRIES))))` | `(FN2-RT-NUM-PAGE-ROUNDTRIP-POSITIVE FN2-RT-NUM-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-
-## Correspondence / owner: `(:SQUARE FN2-RT-NUM-SEEK-LOWER-BOUND)`
-
-Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
-
-### Case source / schema: `(NIL :ASSERTION)`
-
-Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
-
-| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-RT-NUM-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER)) (ARTICLE (:ID ARTICLE))) '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER)) (ARTICLE (:ID ARTICLE))) Q)) (EQUAL (FN2-RT-NUM-SEEK-IMAGE META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q 0)))` | `(FN2-RT-NUM-SEEK-LOWER-BOUND-POSITIVE FN2-RT-NUM-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-
-## Correspondence / owner: `(:SQUARE FN2-RT-NUM-RUN-LOOKUP-EXACT)`
-
-Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
-
-### Case source / schema: `(NIL :ASSERTION)`
-
-Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
-
-| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-RT-NUM-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-NUM-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-NUM-ENTRY* Q)) (EQUAL (FN2-RT-NUM-RUN-LOOKUP-IMAGE ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q)))` | `(FN2-RT-NUM-RUN-LOOKUP-EXACT-POSITIVE FN2-RT-NUM-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-
 ## Correspondence / owner: `(:SQUARE FN2-RT-MID-ENTRY-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
@@ -2046,6 +2010,42 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RT-MID-RUN-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-RT-MID-RUN-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 22) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-MESSAGE-ID (:OCTETS 250)) (MIN-CONTENT :DIGEST) (MAX-MESSAGE-ID (:OCTETS 250)) (MAX-CONTENT :DIGEST) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) (FN2-LAYOUT-VALUES '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-MESSAGE-ID (:OCTETS 250)) (MIN-CONTENT :DIGEST) (MAX-MESSAGE-ID (:OCTETS 250)) (MAX-CONTENT :DIGEST) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
+## Correspondence / owner: `(:SQUARE FN2-RT-NUM-PAGE-ROUNDTRIP)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RT-NUM-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-RT-NUM-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 900 *FN2-RT-NUM-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-RT-NUM-ENTRY* META ENTRIES))))` | `(FN2-RT-NUM-PAGE-ROUNDTRIP-POSITIVE FN2-RT-NUM-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RT-NUM-SEEK-LOWER-BOUND)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RT-NUM-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-RT-NUM-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-NUM-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 900 *FN2-RT-NUM-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q 0)))` | `(FN2-RT-NUM-SEEK-LOWER-BOUND-POSITIVE FN2-RT-NUM-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RT-NUM-RUN-LOOKUP-EXACT)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RT-NUM-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-NUM-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-NUM-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 900 *FN2-RT-NUM-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q)))` | `(FN2-RT-NUM-RUN-LOOKUP-EXACT-POSITIVE FN2-RT-NUM-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
 ## Correspondence / owner: `(:SQUARE FN2-RT-MID-PAGE-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
@@ -2056,7 +2056,7 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-RT-MID-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (ARTICLE (:ID ARTICLE))) '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (EQUAL (FN2-RT-MID-PAGE-IMAGE META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (ARTICLE (:ID ARTICLE))) META ENTRIES))))` | `(FN2-RT-MID-PAGE-ROUNDTRIP-POSITIVE FN2-RT-MID-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-RT-MID-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-RT-MID-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 901 *FN2-RT-MID-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-RT-MID-ENTRY* META ENTRIES))))` | `(FN2-RT-MID-PAGE-ROUNDTRIP-POSITIVE FN2-RT-MID-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-RT-MID-SEEK-LOWER-BOUND)`
 
@@ -2068,7 +2068,7 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-RT-MID-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (ARTICLE (:ID ARTICLE))) '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (ARTICLE (:ID ARTICLE))) Q)) (EQUAL (FN2-RT-MID-SEEK-IMAGE META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q 0)))` | `(FN2-RT-MID-SEEK-LOWER-BOUND-POSITIVE FN2-RT-MID-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-RT-MID-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-RT-MID-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-MID-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 901 *FN2-RT-MID-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q 0)))` | `(FN2-RT-MID-SEEK-LOWER-BOUND-POSITIVE FN2-RT-MID-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-RT-MID-RUN-LOOKUP-EXACT)`
 
@@ -2080,4 +2080,16 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-RT-MID-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-MID-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-MID-ENTRY* Q)) (EQUAL (FN2-RT-MID-RUN-LOOKUP-IMAGE ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q)))` | `(FN2-RT-MID-RUN-LOOKUP-EXACT-POSITIVE FN2-RT-MID-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-RT-MID-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-MID-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-MID-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 901 *FN2-RT-MID-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q)))` | `(FN2-RT-MID-RUN-LOOKUP-EXACT-POSITIVE FN2-RT-MID-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RUN-GLUE-VERIFIED)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RUN-GLUE-VERIFIED` | :OWED | :ASSERTION | `(EQUAL (FN2-RUN-GLUE-CHECK (FN2-RUN-GLUE-ASSEMBLED)) :OK)` | `(FN2-RUN-GLUE-VERIFIED-POSITIVE FN2-RUN-GLUE-VERIFIED-NEGATIVE)` | Every assembled schema's build and lookup path (generic entry points, dispatcher, codecs, key order, generated functions, any per-schema glue) is guard-verified; the assembly refuses otherwise, by name. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |

@@ -101,8 +101,14 @@ fields prefixed `MIN-` and `MAX-` (the run's fences), `ROOT-` ref, `FILTER-` ref
 `deflayout`: `NAME-entry` (key fields then value fields), `NAME-index` (key fields, `CHILD-` ref,
 `child-entries`) and `NAME-run` (the descriptor). It generates `NAME-compare` (field-by-field over
 two decoded field ranges: integers numerically, octets lexicographically by bytes, a digest by its
-32 bytes), `NAME-add` (append one entry to a writer, refusing an out-of-order key by name) and
-`NAME-seek` (bounded lower-bound search inside one page). No runtime code walks a declaration.
+32 bytes) and nothing else. `fn2-run-assemble`, run once after a world's last schema, generates the
+layout dispatcher (`fn2-run-layout-decode/-encode/-size/-compare/-fields/-keys`, a `case` over the
+registered schema ids, level 0 the entry layout and a positive level the index layout) with its
+shape lemmas proved by cases, and the generic `fn2-run-add` (append, refusing an out-of-order key
+by name), `fn2-run-seek` (bounded lower-bound search inside one page), `fn2-run-build-add`,
+`fn2-run-build-promote`, `fn2-run-index-nth` and `fn2-run-lookup-step`, all guard-verified once
+there. A schema declared after the assembly is refused by name. No runtime code walks a
+declaration.
 
 | schema | key | value | merge rule | quest |
 |---|---|---|---|---|
@@ -166,7 +172,7 @@ never decide.
 
 ## 6. The read path and the read contract (C1-C4)
 
-- **Lookup.** Descend from the run root by lower bound over index pages, then seek inside the data
+- **Lookup.** A lookup cursor names its schema; descend from the run root by lower bound over index pages, then seek inside the data
   page: binary search over restarts, linear decode within one interval. Each call is bounded
   (≤ 4096 pool reads) and resumable from `(page, restart lo, restart hi, entry)`. Per-run Ribbon
   filters skip runs on a miss (C2); a per-run perfect hash is measured against this sorted search
@@ -203,17 +209,24 @@ never decide.
   A first version proved the whole append's arithmetic per schema: 8 minutes and a failed guard.
   The split makes each schema cost about one second of proof.
 
-- **C-GLUE-UNVERIFIED (proof cost; owed remedy).** The per-schema build and lookup glue
-  (`NAME-BUILD-ADD`, `NAME-BUILD-PROMOTE`, `NAME-INDEX-SKIP`, `NAME-INDEX-NTH`,
-  `NAME-LOOKUP-STEP`) is admitted with `:verify-guards nil`; everything it calls is guard-verified
-  (the generic build work, promotion check, child reference, commit, cache, cursor save, and the
-  per-schema page-level append and seek). Measured: verifying the lookup step's guard per schema
-  took over 5 minutes and failed on missing frame lemmas; a schema's whole expansion now costs
-  about 15 s (numeric) and 6 s (identity-shaped). The glue therefore runs through its executable
-  counterpart with guard checks at each call, which is slower but checks every precondition. The
-  remedy, owed before C3 serves: one layout dispatcher generated at the assembly point (as A's
-  machine dispatch is) over all registered schemas, so the build and lookup algorithms are written
-  and guard-verified once against the dispatcher's shape lemmas instead of once per schema.
+- **C-ASSEMBLY (replaces C-GLUE-UNVERIFIED).** The per-schema build and lookup glue that C1b'
+  admitted with `:verify-guards nil` is deleted: there is no per-schema glue. The run assembly
+  generates one layout dispatcher at the assembly point (as A's machine dispatch is generated) and
+  the append, seek, build and lookup are written once over it and guard-verified there. The proof
+  cost moved from per schema to per assembly and fell. Measured on the laptop under load: the
+  append (split into a pure readiness check and a straight-line write) 2 s, the page seek 0.5 s,
+  the build 0.2 s, the lookup 1.4 s (the lookup step, split into its three phases, each
+  guard-verified on its own, went from 355 s unsplit to 0.13 s); the whole assembly is about 4 s
+  with the unit's 2 schemas and 5.6 s with 9. A schema's expansion is now its
+  three deflayouts and its key order. The owed row `fn2-run-glue-verified` records the
+  certify-time check: every assembled schema's build and lookup path (the generic entry points,
+  the dispatcher, its codecs and key order, every function its declaration generated, and any
+  per-schema glue by the old names) must be `:common-lisp-compliant`, or `fn2-run-assemble` fails
+  naming the schema and the function.
+- **C-ASSEMBLY-THEORY.** Inside the generated guard proofs, a stobj's `-rows` accessor is disabled
+  exactly where a callee has changed that stobj (the shape lemmas are stated over `-rows`) and left
+  enabled where an element's type is read from the recognizer; disabling it everywhere loses the
+  element typing and sends the prover into inductions.
 - **C-PAGE-FILL.** A writer's fill limit (bytes of header, entries and directory) is a page-fill
   parameter, like a block size; the encoded page stays 64 KiB. Tests use small fills to reach many
   pages and levels with few entries.

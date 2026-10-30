@@ -423,23 +423,20 @@
  (let ((x (nfix (fn2-fields-value a fn2-fields))) (y (nfix (fn2-fields-value b fn2-fields))))
   (cond ((< x y) :lt) ((< y x) :gt) (t :eq))))
 
-; Preconditions of one generated append, checked at run time so that each
-; schema's append adds no arithmetic of its own to prove.
-(defun fn2-run-add-check (w schema levelp n ebase fn2-run-writers fn2-run-restarts fn2-fields)
+; Preconditions of one append, checked at run time so that the append adds
+; no arithmetic of its own to prove. EBASE holds one decoded-entry region.
+(defun fn2-run-add-check (w schema ebase fn2-run-writers fn2-run-restarts fn2-fields)
  (declare (xargs :stobjs (fn2-run-writers fn2-run-restarts fn2-fields)
   :guard (and (fn2-run-writers-wfp fn2-run-writers) (fn2-run-restarts-wfp fn2-run-restarts)
               (fn2-fields-wfp fn2-fields))))
  (cond ((not (and (natp w) (< w (fn2-run-writers-rows fn2-run-writers))
                   (<= (* (+ 1 w) *fn2-run-restart-capacity*) (fn2-run-restarts-rows fn2-run-restarts))
-                  (natp n) (<= n *fn2-run-entry-rows*) (natp ebase)
-                  (<= (+ ebase n) (fn2-fields-rows fn2-fields))
+                  (natp ebase) (<= (+ ebase *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))
                   (<= (+ (fn2-run-writers-fields w fn2-run-writers) *fn2-run-writer-fields*)
                       (fn2-fields-rows fn2-fields))))
         :bounds)
        ((not (equal (fn2-run-writers-phase w fn2-run-writers) *fn2-run-writer-phase-open*)) :state)
-       ((not (and (equal (fn2-run-writers-schema w fn2-run-writers) schema)
-                  (if levelp (< 0 (fn2-run-writers-level w fn2-run-writers))
-                    (equal (fn2-run-writers-level w fn2-run-writers) 0)))) :schema)
+       ((not (equal (fn2-run-writers-schema w fn2-run-writers) schema)) :schema)
        (t :ok)))
 ; After the encode and the decode of the previous key: advance, or fail the
 ; writer (its restart was already noted, so it cannot continue).
