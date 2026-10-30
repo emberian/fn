@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 353; bound statements: 348; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
+Requirements: 354; bound statements: 349; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -2345,3 +2345,15 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-IDENTITY-BINDING-CONVERGES` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-ID-OFFERSP O1) (FN2-ID-OFFERSP O2) (<= (LEN O1) 40) (<= (LEN O2) 40) (NATP S1) (NATP S2) (EQUAL (FN2-ID-BINDING-SPEC O1) (FN2-ID-BINDING-SPEC O2)) (FN2-ID-WITHIN-BOUND O1)) (EQUAL (FN2-IDENTITY-BINDING-IMAGE O1 S1 NIL) (FN2-IDENTITY-BINDING-IMAGE O2 S2 NIL)))` | `(FN2-IDENTITY-BINDING-CONVERGES-POSITIVE FN2-IDENTITY-BINDING-CONVERGES-NEGATIVE)` | Two nodes whose offered fact sets are equal (any order, any duplication, any sealing schedule, within the conflict bound) hold equal Bindings, hence equal conflicted predicates. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-LINEARIZABLE)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-LINEARIZABLE` | :OWED | :ASSERTION | `(IMPLIES (AND (NATP SEED) (NATP N) (<= N 64)) (EQUAL (CAR (FN2-CHECK-IDENTITY (FN2-M3-TRACE SEED N NIL) *FN2-IDENTITY-CONTENTS-MAX*)) :OK))` | `(FN2-IDENTITY-LINEARIZABLE-POSITIVE FN2-IDENTITY-LINEARIZABLE-NEGATIVE)` | Offers decided by up to three interleaved decisions, recorded as each finishes, sealed into filtered runs at arbitrary points, their bodies then released: the trace (every answer and record outcome, every later query, the Binding read back by the real scan) is accepted by the independent IDENTITY checker. A :stale record (decided around a later record of its bucket or a seal) records nothing and is offered again. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
