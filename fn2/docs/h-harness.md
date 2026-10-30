@@ -412,6 +412,8 @@ hbox` under the wall cap (`FN2_NIGHTLY_HOURS`, default 8), and renders `OUT/nigh
 | P-FNCU-HEADER (H7) | specs/consumer-progress.md:45-50 (`fncu`, version 1; "an unknown version is refused") | A cursor whose first five octets are anything but `fncu` 01 is refused as `version`. That includes an empty file, a short file and another magic. | H: `fn2/tests/surface/fncu_fuzz.py`. fn1: books/consumer-position.lisp `fn-cp-cursor-decode`. |
 | P-FNCU-EPOCH (H7) | specs/consumer-progress.md:45-50 (four u32 fields, no positivity stated) | The registration epoch is positive, so an epoch of 0 is refused as `grammar`. The query version, view version and position may be 0. | H: `fncu_fuzz.py`. fn1: `fn-cp-cursorp` (`posp` of the epoch). |
 
+| P-SASL-LINE (H7c) | specs/nntp.md:513-518 (a malformed line) and 1724-1725 (504 for a response that is not canonical base64) | A SASL response is a line before it is base64. Past 512 octets, or carrying a bare CR or LF, it is malformed, so 501, and the exchange ends. Any other line that is not canonical base64 is 504, including an empty line and one with control octets. fn1 agrees on all five shapes the fuzz met. | H: nntp_model `_sasl_response`, test `test_sasl_response_is_a_line_before_it_is_base64`. |
+
 The model still accepts a malformed line's 501 *without* a close (EOF optional, the fn1 tolerance
 `test_malformed_eof_is_optional_and_requires_observed_eof` records); for fn2 the pin is 501 and close, which is what D answers.
 
@@ -591,3 +593,18 @@ L-CATCHUP and F8 skip with tools/load's own NOT-MEASURED reasons. Rows: `run-h7-
 | H7-03 | fn1-bug | A TAKETHIS article is answered `436 the article was not received; closing` (H2d's class, now matched by reply) | RFC 4644 2.5.2 | model/adjudications.json |
 | H7-01, -02, -04, -05 | spec-ambiguity | as in the F table above; each names the decision layer D makes | as named | model/adjudications.json |
 | observed | not adjudicated | The diagnostic `fn --fn config check PATH` answers a profile over 16,384 octets with a fault (exit 4, `store file exceeds bound`). Every operator verb names the same bound as usage (exit 5), so the fuzz's subject is `operator PATH show`. | specs/native-config.md:6-12 | this note |
+
+## H7c: the F reruns after H7b's corrections
+
+The same seeds were rerun on hbox against fn1, at 600 s per family (`run-h7-fuzz-4`, then `-5`, `-6` and `-7` for the
+two wire families after each correction). With these runs, all eight families' F forms pass against fn1:
+
+| family | calls / commands | outcome |
+|---|---|---|
+| operator | 5,145 calls (235 seeds) | 0 findings. 445 non-ASCII calls recorded as A01. |
+| store_ops | 4,911 calls (216 seeds) | 0 findings. 591 recorded as A01. |
+| tls_auth | final run (`run-h7-fuzz-7`): 1,348 commands compared, 1,336 matched, 12 recorded (H7-01, H7-02, A13, H7-07), **0 new: F PASS** | Two new classes, now settled. First, a SASL response that is overlong or not a line (bare CR/LF) gets 501 from fn1 where the model said 504. This is now pinned as **P-SASL-LINE**, the model follows it, and the provisional group H7-06 was withdrawn. Second, after `XREDEEM CODE NAME` (381), fn1 answers AUTHINFO PASS with 481, a counted authentication failure. RFC 4643 2.3.2 says 482. This is **H7-07**, an fn1 bug, because fn1's one pending slot holds the redemption state and PASS finds no credential under it. |
+| peering | final run (`run-h7-fuzz-6`): 346 commands compared, 290 matched, 56 recorded (A13, H7-03, H7-04, H7-05, H7-08), **0 new: F PASS** | Two changes here. H7-OPEN-1 is closed: the differential's model now carries the node's article bound (the development profile's max-article-octets 32,768, read with `operator CONFIG status`), so the 100 KB TAKETHIS article's 439-then-close matches. One driver-side class remains as **H7-08**: in the bytewise cut fn1 sends the 439 as soon as the article passes the bound, and the differential attributes it to the TAKETHIS line. The whole and per-item cuts match, and correcting the attribution is owed. |
+
+Side effect for layer D's oracle: the model answers 381 to `XREDEEM CODE NAME` for any code (H7b), so
+`fn2/tests/grammar-fuzz-oracle.py` no longer defers XREDEEM. Its 4,416 cases still show 0 disagreements.

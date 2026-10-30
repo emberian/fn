@@ -193,7 +193,31 @@ def ihave_article_with_nul_or_bare_lf(row):
     return _article(command) and (b'\x00' in command or re.search(rb'(?<!\r)\n', command) is not None)
 
 
+def pass_after_pending_xredeem(row):
+    """AUTHINFO PASS while the connection's pending slot holds `XREDEEM CODE NAME` (H7-07)."""
+    exchanges = _exchanges(row)
+    command = _command(row)
+    if len(exchanges) < 2 or command is None or not re.match(rb'(?i)AUTHINFO[ \t]+PASS[ \t]', command):
+        return False
+    for exchange in reversed(exchanges[:-1]):
+        previous = _octets(exchange, 'command_hex') or b''
+        if re.match(rb'(?i)(AUTHINFO|XREDEEM)[ \t]', previous):
+            status = _octets(exchange, 'status_hex') or b''
+            return (re.match(rb'(?i)XREDEEM[ \t]+(?!PASS[ \t])\S+[ \t]+\S+\r\n$', previous) is not None
+                    and status.startswith(b'381'))
+    return False
+
+
+def takethis_oversized_early_reply(row):
+    """An article past the node's 32,768-octet bound whose 439 came before its end, then EOF (H7-08)."""
+    command = _octets(row, 'command_hex')
+    return (_article(command) and len(command) > 32768 and _octets(row, 'reply_hex') == b''
+            and row.get('wire_eof') is True and row.get('cut') == 'bytewise')
+
+
 PREDICATES = {
+    'H7-takethis-oversized-early-reply': takethis_oversized_early_reply,
+    'H7-pass-after-pending-xredeem': pass_after_pending_xredeem,
     'H7-group-non-ascii-name': group_non_ascii_name,
     'H7-takethis-article-not-received': takethis_article_not_received,
     'H7-transit-id-rfc3977-not-rfc5536': transit_id_rfc3977_not_rfc5536,

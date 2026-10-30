@@ -633,6 +633,18 @@ class H2dRecordedReplyTests(unittest.TestCase):
         e.update(b"439 <one@example.test> rejected\r\n", None, eof=True)
         self.assertTrue(c.quit)
 
+    def test_sasl_response_is_a_line_before_it_is_base64(self):
+        # P-SASL-LINE (H7): overlong or bare-CR/LF responses are 501 malformed; a line that is not base64 is 504.
+        for line, code in ((b'x' * 600 + b'\r\n', 501), (b'STAT x\n\rSTARTTLS\r\n', 501), (b'!!\r\n', 504),
+                           (b'\r\n', 504), (b'\x16\x03\x01\x00\x05hello\r\n', 504)):
+            with self.subTest(line=line[:16]):
+                c = connect(model(), tls=True)
+                e = c.send(b'AUTHINFO SASL SCRAM-SHA-256\r\n')
+                accept(e, b'383 =\r\n')
+                reply = c.send(line)
+                self.assertEqual(set(reply._get().codes), {code})
+                self.assertEqual(reply.close_after_reply, code == 501)
+
     def test_invalid_utf8_is_malformed_before_whitespace(self):
         # H6 pin with layer D (specs/nntp.md:513-518): decode first, so a bad-UTF-8 line with
         # surrounding whitespace is malformed (501, the connection may close), never a kept 501.

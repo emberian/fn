@@ -1392,6 +1392,15 @@ class Conn:
         return result
 
     def _sasl_response(self, line):
+        # P-SASL-LINE (H7, adjudicated with fn1's replies): a response is a line before it is base64. A line past
+        # 512 octets, or one carrying a bare CR or LF, is malformed, 501 as any such line is (specs/nntp.md:513-518).
+        # Any other line, empty or with control octets included, that is not canonical base64 is 504
+        # (specs/nntp.md:1724-1725). Either ends the exchange.
+        body = line[:-2] if line.endswith(b"\r\n") else line
+        if len(line) > framing.COMMAND_LIMIT or b"\r" in body or b"\n" in body:
+            result = self._malformed(overlong=len(line) > framing.COMMAND_LIMIT)
+            result.effect = lambda *_: setattr(self, "sasl", None)
+            return result
         try:
             value = framing.command_line(line).decode("ascii")
             if value == "*":

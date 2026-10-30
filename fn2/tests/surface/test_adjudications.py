@@ -64,6 +64,31 @@ class TestAdjudications(unittest.TestCase):
         self.assertEqual(judged('H7-05', b'Path: x\r\n\r\nclean\r\n.\r\n'), 'new')
         self.assertEqual(judged('H7-03', b'TAKETHIS <a@b>\r\n'), 'new')
 
+    def test_H7_07_needs_its_preceding_exchange(self):
+        def row(previous, previous_status, command, reply, rule, detail):
+            exchanges = [self.exchange(0, previous, previous_status), self.exchange(1, command, reply)]
+            return dict(command_index=1, command_hex=command.hex(), reply_hex=reply.hex(), rule=rule,
+                        detail=detail, exchanges=exchanges)
+        r481 = b'481 authentication failed\r\n'
+        xr = row(b'XREDEEM code code\r\n', b'381 send the password with XREDEEM PASS\r\n',
+                 b'AUTHINFO PASS fuzz-password\r\n', r481, 'AUTHINFO', 'code 481; permitted [482]')
+        self.assertEqual(surface.adjudicate_differences([xr], 'fn1')[0]['disposition'], 'recorded')
+        self.assertEqual(surface.adjudicate_differences([xr], 'fn2')[0]['disposition'], 'new')      # fn1-bug
+        user = row(b'AUTHINFO USER fuzz\r\n', b'381 password required\r\n',
+                   b'AUTHINFO PASS fuzz-password\r\n', r481, 'AUTHINFO', 'code 481; permitted [482]')
+        self.assertEqual(surface.adjudicate_differences([user], 'fn1')[0]['disposition'], 'new')
+
+    def test_H7_08_bytewise_early_refusal_only(self):
+        article = b'Path: not-for-mail\r\nX-Long: ' + b'v' * 40000 + b'\r\n\r\nx\r\n.\r\n'
+        def row(cut, eof=True, body=article):
+            return dict(command_hex=body.hex(), reply_hex='', rule='TAKETHIS', cut=cut, wire_eof=eof,
+                        detail='wrong number of status lines (including closing 400)')
+        self.assertEqual(surface.adjudicate_differences([row('bytewise')], 'fn1')[0]['disposition'], 'recorded')
+        self.assertEqual(surface.adjudicate_differences([row('bytewise')], 'fn2')[0]['disposition'], 'new')
+        self.assertEqual(surface.adjudicate_differences([row('whole')], 'fn1')[0]['disposition'], 'new')
+        self.assertEqual(surface.adjudicate_differences([row('bytewise', False)], 'fn1')[0]['disposition'], 'new')
+        self.assertEqual(surface.adjudicate_differences([row('bytewise', body=article[:2000])], 'fn1')[0]['disposition'], 'new')
+
     def test_A15_requires_reader_and_malformed_transit_argument(self):
         def row(command, mode):
             return dict(self.row(command, b'502 transit is not permitted on this connection\r\n', mode=mode),

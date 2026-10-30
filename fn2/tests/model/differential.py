@@ -96,8 +96,11 @@ def generator(seed, mode, focus=None):
 
 
 def fixture(fake=True, config=None):
+    # article_limit: fz.Node makes its store with `store init`, the development profile, whose
+    # max-article-octets is 32768 (`operator CONFIG status`, H7 probe on image c14e9e8e). A transit article past
+    # it is refused by name and the connection closed (specs/nntp.md:530-534; H7-OPEN-1).
     policy = dict(required=False, protected_only=False, posting=True,
-                  peers=['127.0.0.1'], server='.invalid', starttls=True)
+                  peers=['127.0.0.1'], server='.invalid', starttls=True, article_limit=32768)
     if config:
         cfg = tomllib.loads(Path(config).read_text())
         policy.update(required=cfg['auth']['required'],
