@@ -27,7 +27,7 @@ is attributed to layer D. Package `"ACL2"`, prefix `fn2-`; no `skip-proofs`, `de
 | generator, mutator, fuzzer and its three mutation controls | `fn2/tests/grammar-gen.lisp` (a test library: it uses the simulator's PRNG, and nothing served includes it), `fn2/tests/grammar-fuzz.lisp`; the mutation controls are `*fn2-gram-faults*` in the grammar's logical runner | D2b | D |
 | table check against H's model | `fn2/tests/grammar-export.lsp` (writes the table), `fn2/tests/grammar-oracle.py` (reads `fn2/tests/model/nntp_model.py`) | D2a | D |
 | fuzz cases checked against H's model | `fn2/tests/grammar-fuzz-export.lsp` (writes the cases and the grammar's verdicts), `fn2/tests/grammar-fuzz-oracle.py` | D2b | D |
-| listener/connection machine | `fn2/books/conn.lisp` | D3 | D |
+| connection machine `fn2-conn` (listener is A's) | `fn2/books/conn.lisp`, callbacks section `fn2/books/assembly-callbacks-d.lisp`, evidence `fn2/tests/conn-unit.lisp`, WIRE `fn2/sim/check-wire.lisp` | D3 | D |
 | upload, transaction, cursor, TLS admission, wait | `fn2/books/{upload,txn,cursor,tls-admit,wait}.lisp` | D4-D8 | D |
 | scheduler over principals, accounts | `fn2/books/sched.lisp` (extended through A's seam), `fn2/books/accounts.lisp` | D7 | D (sched.lisp changes go to A as a seam request) |
 | layer-D simulator acceptance | `fn2/tests/sim-layer-d.lisp` | D3-D9 | D |
@@ -247,35 +247,242 @@ rule check all three. Planned bundles print `pending` with their quest. Not cove
 the fence slot is adapter-side in A (no core count to observe), and scribe has no cancellation in A
 (its release row is R6b item 2's posture).
 
-## 4. The machine DSL: what D needs from R7 *(seam request; A builds it)*
+## 4. The machine DSL as landed, and D3's connection machine *(design; D3 rewrites it as built)*
 
-D's machines declare through A's `defmachine` with R7's arm contracts. The forms D needs, exactly:
+### 4.1 What R7 gave D (926b09328; read from the commit, not the plan)
 
-1. **Arm contract per continuation and per observation handler**: `:cost (:bytes F :steps F
-   :descriptors F)` where each `F` sums declared `defcost` entries of the calls the arm makes plus
-   constants; `:writes (field ...)`; `:tables (child ...)` naming D's registered children; `:next
-   (phase ...)`; `:uses (operation ...)`; `:holds` per phase as **resource-kind names from D0's
-   `*fn2-resource-order*`** (so `holds(S') - holds(S)` is checked against the bundle each acquiring
-   call declares).
-2. **`defcost` for outside calls**, at least: A's pool and issue wrappers, R6a1's range primitives,
-   D0's bundle acquire/release operations (each declaring its resource effect as an ordered list of
-   kinds), D2's parser and renderer continuations (`:bytes` bounded by the run quantum), B's commit
-   reference and C's lookups (declared by their layers).
-3. **The continuation record**: what a run keeps when a budget is exhausted is the row's fields
-   (no separate record); the arm contract's `:next` must include the arm's own phase whenever its cost
-   form can reach the cap.
-4. **Obligation stubs** into `fn2-squares` per arm (`:schema :bound` for cost ≤ cap and the cost
-   function, `:invariant` for frame and continuation preservation, phase totality per kind, account
-   conservation per declared entry), `:from (:machine K)`, with generated executable teeth.
-5. **The common row fields of ROUND2 §B.1** (`phase, generation, principal-slot:u16,
-   account-ref:u32, ready-prev/next:u32, wait-reason:u8, deadline`) generated for every kind (they
-   exist today), with `wait-reason` an enum whose values include every D0 resource kind (a wait reason
-   names the exhausted kind, never a bare integer).
-6. **Refusal postures** (`:on-refusal`, R6b item 2) for D's kinds: connection close-and-release from
-   the close reserve; upload discard to terminator; transaction refused by typed word.
+D's machines declare through A's `defmachine` with R7's arm contracts (syntax:
+`build/coordinator/fn2/lanes/a-to-d-arm-contracts.md`; source `fn2/books/arms.lisp`,
+`fn2/books/machines.lisp`; worked examples `fn2/books/machines-a.lisp`, `machines-a-costs.lisp`,
+`machines-a-run.lisp`). Every item of the seam request this section used to carry is built: per-arm
+`:cost :writes :tables :next :uses [:from] [:on-refusal]`; `defcost` for outside calls with D0's
+effect forms (`:per-use` for pool ranges, `:target` for cross-row admission); `:holds` per phase in
+D0's kinds, with each arm's operations checked to make exactly the phase deltas; the continuation is
+the row's fields, and an arm whose cost can reach a cap lists its own phase in `:next`; per-arm owed
+rows `K-PHASE-BOUND`, `K-PHASE-FRAME`, `K-OBSERVE-EVENT-FRAME`, `K-PHASE-TOTALITY` in `fn2-squares`
+with generated teeth; run-time certificates that stop the core with `:machine-contract`; postures
+`:close-and-release :discard-to-terminator :refuse-by-word :stop`. D0's interim
+`*fn2-resource-a-holds*` / `*fn2-resource-effects*` are gone (resources-owed derives both from the
+machine rows). D declares no arm `:language :unchecked`: the restricted language is the point.
 
-R7's port of listener, echo/null and scribe is D1's "A4's three machines re-declared"; D does not
-redo it. D3 is R7's first D consumer and reports every gap back through main.
+Not built by R7 and owned here or later: the line-scanner/compaction worked example (D3, below);
+per-path resource checks (per arm only); per-row accounting (A6); `*fn2-turn-transition-max*` from
+arm bounds.
+
+### 4.2 D3: the connection machine `fn2-conn` (`fn2/books/conn.lisp`)
+
+ROUND2 §B.2 row 1 is "listener/connection". R7 made the listener its own kind (A's `fn2-listener`,
+`:accepting :admitting :closing`), because a listener row and a connection row are different rows
+(one listener, `C` connections) and per-phase holds could not state both. **Departure, recorded:**
+row 1 is two kinds. The brief's `accepting` phase is the listener's; `fn2-conn` starts where the
+listener's admission puts it. Its phases, all declared in D3 so the enum is stable (phases are
+compared by name only, so later additions would also be safe), each arm landing with the quest that
+can serve it:
+
+| phase | holds (D0 kinds) | arm (quest) | does |
+|---|---|---|---|
+| `:free` | none | `fn2-conn-idle` (D3) | an unadmitted row on the connection free chain |
+| `:greeting` | `:connection-row :rx-range :tx-range` | `fn2-conn-greet` (D3) | renders the greeting, or the capacity 400 when admitted into the refusal reserve, into TX; `:next (:reply)` |
+| `:command` | same | `fn2-conn-command` (D3) | the parser continuation over RX; at a line, parse, decide, render into TX; else Receive |
+| `:article-input` | same | `fn2-conn-block` (D4) | the block framer for POST/IHAVE after 340/335 and TAKETHIS's immediate block, handing data lines to the upload machine; discard-to-terminator for a refused block |
+| `:reply` | same | `fn2-conn-reply` (D3) | Send `[tx-off, fill)` of TX by loan; when sent and released, reset TX, move to `after` |
+| `:upgrading` | same (+ `:tls-slot` is the TLS row's, not this row's) | `fn2-conn-upgrade` (D7/E1) | nothing framed; waits for the TLS admission machine's result |
+| `:closing` | same | `fn2-conn-close` (D3) | Close (from the `:close` reserve once R6b has it) |
+| `:draining` | same | `fn2-conn-drain` (D3) | wait for pending 0 and borrows 0; release TX, RX; reclaim the row |
+| `:retired` | none | `fn2-conn-idle` (D3) | generation exhausted (A's retirement rule) |
+
+Until D4 and D7, no D3 arm moves a row into `:article-input` or `:upgrading` (no `:next` names them).
+`defmachine` requires an arm per phase, in phase order, so in D3 both carry `fn2-conn-unreached`
+(`:next` its own phase, cost `(:cost fn2-machine-refuse-phase :steps)`): reaching it means the row is
+inconsistent and the core stops (assert, never absorb). POST, IHAVE and the block commands answer
+their interim refusals (below) without opening a block, and STARTTLS answers 580.
+
+**Fields** (beyond the common row: phase, generation, principal-slot, account-ref, ready-prev/next,
+wait-reason, deadline):
+
+| field | kind | meaning |
+|---|---|---|
+| `cap-index cap-nonce` | u32 u32 | the capability token (A's Accept result) |
+| `rx-slot rx-gen tx-slot tx-gen` | link u60 link u60 | the RX and TX pool ranges (whole slots; offsets below) |
+| `start pos overflow` | u32 u32 bool | the framer's whole state over `[start, fill)` of RX (`fn2-gram-frame`) |
+| `tx-off` | u32 | the sent prefix of TX |
+| `after` | u8 | the phase `:reply` moves to when TX is drained: an enum of `:command :article-input :upgrading :closing` (by name) |
+| `pending borrows` | u32 u32 | outstanding ops; TX bytes lent to a Send |
+| `mask` | u8 | the grammar state mask (`*fn2-nntp-state-reader*` etc.): reader or peer, anonymous or authenticated |
+| `ordinal` | u32 | commands answered on this connection |
+| `view` | u60 | the selected view (pinned logical version; STORAGE-DESIGN §4 decision 2): `*fn2-none*` until D6 selects one |
+| `auth-ref access-ref config-ref` | u32 u32 u32 | the principal's authentication reference (none = anonymous); the pinned access rule (W01); the configuration generation pinned at admission |
+| `auth-pending` | u8 | H's shared pending slot: none, AUTHINFO USER, SASL, XREDEEM (starting any replaces the others) |
+| `requests uses` | u32 u32 | the active request reference (cursor, upload, transaction, TLS row; none in D3) and the outstanding-use count |
+| `refused stopped event-ready` | bool bool bool | admitted into the refusal reserve; the row's stop bit; an observation is waiting |
+
+**Budget** `(:bytes 4096 :steps 32 :descriptors 4)` (ROUND2 §B.3). **Capacity** `(fn2-profile-c
+profile)`. **Pool class**: RX and TX are each one slot of the smallest class of at least
+`*fn2-conn-range-min*` = 1,024 octets (twice the 512-octet line cap, so a retained partial line and a
+whole Receive quantum fit; the concrete profile's 4,096 class). A profile whose pool cannot give
+every connection row two such slots fails the kind's profile check by name (the tiny profile's 64
+and 256 classes cannot; D's tests use `*fn2-conn-profile-tiny*`, the tiny profile with `:pool-classes
+((8 . 1024))`).
+
+**The parser as a continuation under the byte budget.** `fn2-conn-command` charges at most 4,096
+octets per run, split statically: the framer gets `*fn2-conn-frame-bytes*` = 2,048 per run (it
+examines at most that many octets, resuming from `(start pos overflow)` at `:budget`); a framed line
+is re-read once by `fn2-nntp-parse-line` (at most 512); the decision renders one status line (at most
+512) and at most `*fn2-conn-body-bytes*` = 1,024 of fixed body (HELP, CAPABILITIES). Multi-line
+bodies beyond that are the cursor's (D6), which renders and sends in its own quanta. So the arm's
+declared cost is `(:bytes (+ *fn2-conn-frame-bytes* 512 512 *fn2-conn-body-bytes*))` = 4,096, it
+reaches the cap, and its `:next` includes `:command`. Framer outcomes:
+
+| status | the run then |
+|---|---|
+| `:line` | parse, decide (4.3), render the reply into TX, set `after`, move to `:reply`; `ordinal` + 1 |
+| `:overflow` (a line over 512) | render 501, `after` = `:closing` (RFC 3977 §3.1; H's `_malformed(overlong)`) |
+| `:need-more` | compact if needed (below), then issue Receive of `cap - fill` octets; stay `:command`, pending |
+| `:budget` | stay `:command`, runnable (the continuation is the row) |
+| `:fault` | the pool refused a read of a filled octet: stop the core (assert, never absorb) |
+
+Compaction (GD4): when every filled octet is consumed (`start = fill`) the RX range is reset
+(`fn2-core-reset`) and `start = pos = 0`; when a partial line is retained and the slot is full, its at
+most 511 octets move to the front. D3 does this with R6a1's `fn2-pool-drop-prefix` if R6a1 has
+landed; otherwise through TX, which is empty whenever `:command` runs (every reply is sent before the
+next line is framed): copy `[start, fill)` to TX, reset RX, copy back, reset TX, at most 1,022
+octets, within the run's bytes. D2c deletes that interim the moment drop-prefix exists.
+
+Pipelining is preserved by construction: the framer resumes at `pos`, so lines that arrived together
+are answered in order, one reply per run of `:command` → `:reply` → `:command`. Fragmentation
+invariance is the grammar's (`fn2-nntp-fragmentation`) lifted to the machine (T8 below).
+
+**Arms, contracts, costs** (each a `defmachine-callback` in the checked language; sub-callbacks
+forwarded with `fn2-call` carry `:contract`):
+
+| arm | cost (bytes / steps / descriptors) | writes | next | uses (each a defcost or contracted callback) |
+|---|---|---|---|---|
+| `:free`, `:retired` `fn2-conn-idle` | 0 / `(:cost fn2-machine-idle :steps)` / 0 | none | own phase | `fn2-machine-idle` |
+| `:greeting` `fn2-conn-greet` | 512 / transition / 0 | `tx-off after ordinal deadline` | `:reply` | `fn2-conn-render` |
+| `:command` `fn2-conn-command` | 4,096 / transition + small / 1 | `start pos overflow after ordinal mask auth-pending deadline pending stopped wait-reason ready-prev ready-next` | `:command :reply` | `fn2-conn-frame`, `fn2-conn-parse`, `fn2-conn-decide` (contracted), `fn2-conn-render`, `fn2-conn-compact`, `fn2-issue-receive`, `fn2-machine-issue-result`, `fn2-conn-clock` |
+| `:reply` `fn2-conn-reply` | 4,096 (the send length) / mailbox / 1 | `tx-off borrows pending stopped wait-reason ready-prev ready-next` | `:reply :command :closing` | `fn2-issue-send`, `fn2-core-reset`, `fn2-machine-issue-result` |
+| `:closing` `fn2-conn-close` | 0 / transition / 1 | `pending stopped wait-reason ready-prev ready-next` | `:closing` | `fn2-issue-close`, `fn2-machine-issue-result` |
+| `:draining` `fn2-conn-drain` | 0 / release / 0 | the release set (generation, ranges, capability, offsets, next-free, wait-reason) | `:draining :free :retired` | `(fn2-core-release :effects ((:release (:tx-range))))`, `(fn2-core-release :effects ((:release (:rx-range))))`, the connection kind's reclaim (4.5) |
+
+Observation handlers, mirroring echo's: `:receive-result` (from `:command`; a positive count stays in
+`:command`, EOF or failure moves to `:closing`), `:send-result` (from `:reply`; advances `tx-off`, a
+failure moves to `:closing`), `:borrow-released` (writes `borrows`), `:close-result` (from
+`:closing`, to `:draining`). Postures: `:command`'s declared `(:close-and-release :to :closing
+:releases ())` (the row keeps its ranges until `:draining`; a refused Receive closes); `:reply` the
+same.
+
+The grammar ops get their defcosts in conn.lisp (D's layer, as the arm-contract doc asks), each a
+thin `stobj-let` wrapper over the pool child, never copying octets into a list:
+
+| op | over | declared |
+|---|---|---|
+| `fn2-conn-frame` | `fn2-gram-frame` on RX | `:bytes *fn2-conn-frame-bytes*`, `:tables (fn2-core-pool)` (reads only; none written) |
+| `fn2-conn-parse` | `fn2-nntp-parse-line` on `[start, pos)` | `:bytes *fn2-nntp-line-cap*` |
+| `fn2-conn-render` | `fn2-nntp-render` + fixed bodies into TX | `:bytes (+ 512 *fn2-conn-body-bytes*)`, `:tables (fn2-core-pool)` |
+| `fn2-conn-compact` | reset or move the retained prefix | `:bytes 1024`, `:tables (fn2-core-pool)` |
+| `fn2-conn-clock` | the clock mailbox (monotonic, realtime, flags) | reads `fn2-core-ops`, changes nothing |
+
+### 4.3 The decision table (command tag → reply), D3's half
+
+`fn2-conn-decide` is one contracted callback over the parse outcome; it never reads a live
+configuration or access rule, only the row's `config-ref`, `access-ref`, `auth-ref` and `mask`
+(**the pinned access rule, H ruling HZ3 / fn1 W01**: one rule per connection, pinned at admission for
+the anonymous principal and re-pinned only by the authentication arm; checked structurally, because
+no arm but authentication lists `access-ref` in `:writes` and no defcost reads a live rule, and by
+E2's W01 differential row once rules change at run time).
+
+| parse code / command | D3 answers |
+|---|---|
+| `:malformed` | 501, `after` = `:closing` (H pin P-UTF8-WS) |
+| `:syntax` | 501, stay |
+| `:unknown` | 500 |
+| `:state` | the command's declared state refusal (502 transit on a reader connection; 502 AUTHINFO/XREDEEM once authenticated; 480 COMPRESS before authentication) |
+| CAPABILITIES | 101 and the always-on labels `VERSION 2`, `READER`, `IMPLEMENTATION`, `LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT`, `OVER MSGID`, `HDR`, `XPAT`, `NEWNEWS`; the conditional slots (`POST` from D5, `IHAVE`/`STREAMING` with the peer bit, `STARTTLS` from E1, `AUTHINFO`/`SASL` from E2, `COMPRESS DEFLATE` only when authenticated, from E2) render nothing until their quest; a label argument must be a keyword-shaped token else 501 |
+| HELP | 100 and `*fn2-nntp-help-text*`, dot-terminated |
+| QUIT | 205, `after` = `:closing` |
+| MODE READER | 201 while posting is not served (D5 turns it to 200 by the same predicate as the greeting); MODE STREAM: 203 on a peer connection, **501 on a reader connection** (deferred sub-form check, RFC 4644 §2.3) |
+| DATE | 111 `YYYYMMDDhhmmss` from the clock mailbox's realtime reading (UTC civil date by scalar arithmetic); 503 `:no-observation` before any reading, `:no-wall` when the realtime flag is invalid, `:out-of-range` past year 9999 |
+| AUTHINFO | sub-form arity first (USER 1 token, PASS 1, SASL 1 or 2: else 501); then, with no credential store until E2: USER → 381 and the pending slot; PASS after USER → 481; PASS without USER → 482; SASL → 503 `:no-mechanism` |
+| XREDEEM | arity (2 tokens) else 501; with no invitations until E2: 482 `:refused` |
+| STARTTLS | 580 `:cannot` (no TLS context until D7/E1) |
+| GROUP LISTGROUP LIST NEXT LAST NEWGROUPS NEWNEWS ARTICLE HEAD BODY STAT OVER XOVER HDR XHDR XPAT XFN-ZARTICLE XFNCATCHUP | the sub-form checks first (LIST variant arguments: none for MOTD, DISTRIB.PATS, DISTRIBUTIONS, OVERVIEW.FMT, a Message-ID or range for HEADERS, a wildmat for the others; XPAT's patterns as wildmats; HDR/XHDR field-name syntax; XFN-ZARTICLE's 64-hex digest; XFNCATCHUP's field values), each 501 on failure; then the command's declared `:no-projection` 503 until D6 serves it (NEXT/LAST have no projection reply: 412, no group selected, which is true of every D3 connection) |
+| POST | 440 `:not-permitted` (the greeting said 201) until D5 |
+| IHAVE CHECK TAKETHIS | reader connections: the grammar's 502 state refusal; peer connections arrive with E4 |
+
+Every interim row names the quest that replaces it; the set is a constant
+(`*fn2-conn-interim-tags*`) whose emptiness is a D9 acceptance check, so the interim cannot
+outlive its quests.
+
+**The deferred fixtures from D2b's oracle** (§6, `DEFERRED` in `tests/grammar-fuzz-oracle.py`)
+become D3 fixtures in `fn2/tests/conn-unit.lisp`, one per sub-form, each with a positive and a
+negative line, and the oracle's `DEFERRED` list shrinks to nothing as each lands (the oracle then
+compares those lines too, through the machine's transcript runner instead of the grammar's).
+
+### 4.4 Timers, refusals, the anonymous principal
+
+The first-command, idle and send deadlines are the row's `deadline` field, set at greeting, after
+each reply and while a Send is pending, and compared with the clock mailbox at every run (expiry:
+close without a reply, specs/nntp.md:2318-2326). What makes an idle row *run* at its deadline is a
+wake, and the earliest-deadline `ArmWake` is the timer service's (D7, from the `:arm-wake` reserve;
+ROUND2 keeps one replaceable wake, not one per connection); D3 records the deadlines and enforces
+them on the next run, D7 adds the wake (scenario 18). Capacity refusal (NNT-031/043): the connection
+partition keeps `*fn2-conn-refusal-rows*` = 1 row in reserve; an admission that leaves fewer than
+that free is admitted with `refused` set, and `:greeting` renders 400 `:busy` with `after` =
+`:closing`. The per-address 400 needs the peer address, which the Accept result does not carry
+(ABI row, §8). Every D3 connection is the anonymous principal (`principal-slot` the anonymous slot,
+`auth-ref` none) under `anonymous open` on a plaintext listener (§11).
+
+### 4.5 The seam D3 needs from A (sent through main)
+
+A's connection partition is echo's: `fn2-machines-free-head`, `-connection-count`,
+`-admission-credits`, `-active-count` and the admission FIFO are initialized from
+`*fn2-echo-kind*` (`machines-directory.lisp`), `fn2-machine-admit-connection` installs an echo row
+(`:target (fn2-echo :free :command)`), and `fn2-machine-reclaim-connection` returns an echo row.
+`fn2-conn` needs the same partition, and A's drivers need echo's unchanged. The exact form asked:
+
+```lisp
+;; a kind admitted by the listener declares it:
+(defmachine fn2-conn ... :admission (:phase :greeting :ranges (:rx-range :tx-range)) ...)
+;; A generates, per admitted kind K (echo and conn), in the directory: the partition scalars as
+;; arrays indexed by the admitted-kind ordinal; the operations
+;;   fn2-machine-admit-K (index nonce fn2-core)   :target (K :free PHASE)
+;;     :effects ((:transfer (:connection-row) :to K) (:acquire RANGES :for K))
+;;   fn2-machine-reclaim-K (id retire fn2-core)   :effects ((:release (:connection-row)))
+;; and a listener field TARGET (the admitted-kind ordinal), initialized from the profile key
+;; :listener-targets (default: every listener admits echo, so every existing profile, driver
+;; and A4 summary is unchanged); fn2-listener-admit dispatches on row-target.
+```
+
+D's served-node profile then sets `:listener-targets` to `fn2-conn`. Until it lands, D3's tests
+install a connection row at the adapter boundary with a test fixture that does what
+`fn2-machine-admit-fn2-conn` will (reserve RX/TX, set the row, wake it), and `fn2-conn-drain` uses
+the requested reclaim name, so the served path is the requested one from the first commit. The same
+request covers D0's planned `:connection :accept` bundle (RX and TX at Accept issue rather than at
+admission) as R6b's item, unchanged.
+
+### 4.6 Acceptance of D3 (the checks, before any number)
+
+- `fn2/books/conn.lisp` declares `fn2-conn` through `defmachine` with every arm contracted, none
+  `:unchecked`; registered by `assembly-index` after B's books; its continuations in their own
+  section book `assembly-callbacks-d.lisp` after `assembly-callbacks` (A's section is at 49 s of the
+  60 s rule).
+- `fn2/tests/conn-unit.lisp`: transcripts through the real core at the adapter boundary (Receive
+  results carrying the client's octets in every chunking, Sends harvested into a wire record):
+  greeting; every D3 command, positive and negative; pipelined lines; every split point of every
+  transcript (T8's teeth); overflow, malformed and EOF closes; the compaction boundary; drain and
+  reclaim with every count back; the deferred sub-form fixtures.
+- **WIRE** (`fn2/sim/check-wire.lisp`): replies have the expected bytes (fixture text, written from
+  the spec, never read from the grammar), CRLF framing, one status line per command in order, a
+  multi-line body dot-terminated, and after a close nothing more; mutation controls: a wrong byte,
+  a missing reply, a reply after close, each caught.
+- With A's seam: `fn2/tests/sim-layer-d.lisp` scenario 1's plaintext anonymous half under the
+  simulator's network with WIRE, and the fuzz campaign's served half (`fuzz-nntp`).
+- Keystones admitted (§7): T1 `fn2-turn-served-safety` and T8 `fn2-reply-trace-fragmentation-
+  invariant` / `fn2-connection-privacy`, `defthm-owed` over `fn2-conn-wire-run` (the logical view:
+  octets and chunk sizes per connection in, the wire record per connection out), with executable
+  teeth from conn-unit.
+- A's six drivers, `sim-acquisition-driver` and B's `sim-layer-b` exit 0 with the 113 A4 blocks
+  identical; every book under 60 s; OWED.md regenerated.
 
 ## 5. Catalogue: the machine ownership matrix
 
@@ -284,7 +491,7 @@ per-run budget (§B.3; work stops at any limit). All are declared through A's `d
 
 | kind | owner (quest) | phases | retained fields beyond the common row | capacity | per-run budget |
 |---|---|---|---|---:|---|
-| listener/connection | D3 | `accepting greeting command article-input reply upgrading closing draining` | capability token; RX/TX ranges; parser offset u32; command ordinal; selected view (version + leases); auth/config refs; active request refs; outstanding-use count u32 | `C` 256, accept credits 8 | 4 KiB parsed/rendered, 32 steps, 4 descriptors |
+| listener (A's `fn2-listener`) / connection (`fn2-conn`) | D3 | listener `accepting admitting closing`; connection `free greeting command article-input reply upgrading closing draining retired` (§4.2) | capability token; RX/TX ranges; parser offset u32; command ordinal; selected view (version + leases); auth/config refs; active request refs; outstanding-use count u32 | `C` 256, accept credits 8 | 4 KiB parsed/rendered, 32 steps, 4 descriptors |
 | TLS admission | D7 | `requested reserved running result-ready cancelling draining done` | connection MRef; config generation; job OpRef; evidence range; negotiated flags; channel-binding digest | `Ltls` 16 | 32 metadata operations |
 | upload | D4 | `head identity receiving validating discard sealed aborting draining` | connection/request; source and stored lengths u64; BLAKE3 scan continuation; two chunk ranges; manifest cursor; Message-ID range; transaction ref; TAKETHIS ordinal | `U` 128; windows 16 | 4 KiB scanned/hashed/copied, 32 manifest entries |
 | transaction | D5 | `admit lookup reserve prepare ready batched accepted refused uncertain draining` | operation identity (principal-id, operation-id); authority/config version; identity reservation; membership cursor; dependency-manifest root; proposed index root; batch ref; outcome | `T` 128 | 32 index entries/comparisons/units; 4 KiB comparison |
@@ -517,11 +724,24 @@ the declared width matches; headers are excluded) or the simulator's own state; 
 guardrail. Layer B's children join the table when B registers them in the assembly; the generator
 reads the registry, so nothing here changes.
 
-## 8. The ABI reconciled *(D3)*
+## 8. The ABI reconciled *(D3 design; the D3 commits fill the last column)*
 
-Differences between ROUND2 §D and A's §4 known now: `Connect` (E4's peers), the control inbox `Qc`,
-`EvidenceObserved`, `ServicePosture` payloads, `Trace` payloads, `Send` with one range (four
-reserved). D3 records each with its resolution here.
+ROUND2 §D against A's `a-pool-host-sim.md` §4 as built, for what D's machines use. A difference is
+resolved here or sent as a seam request; none is silently absorbed.
+
+| ROUND2 §D | A as built | D's resolution |
+|---|---|---|
+| `AcceptResult` carries a fixed-width peer address/credentials | capability `(index, nonce)` only | per-address 400s (NNT-043) and the peer bit need the address: seam request to A (an address word pair in the result's aux fields, filled by the adapter, a fixed opaque value in the simulator); until then no per-address refusal and every connection is a reader |
+| `Send` with at most 4 immutable ranges | one range | D3 renders status line and fixed body into one TX range, so one range suffices; the cursor (D6) streams a stored body by successive single-range sends (a short send is terminal, ROUND2 D.1); the four-range form is a later performance change, not a semantic one |
+| `Accept` takes a reserved connection slot (and its windows) | the row credit at issue, the RX slot at admission (owed R6b) | D0's planned `:connection :accept` bundle (row, RX, TX at issue) is R6b's; D3 works with A's current split, where an admission without its ranges closes the capability (A's posture) |
+| `Close` from a protected reserve | ordinary op reservation (owed R6b) | D3's `:closing` uses `fn2-issue-close` as echo does; it gains the reserve with R6b, no D change |
+| `Connect` (E4's peers) | absent | E4's; recorded so E4 asks A for it with the peer quest |
+| `ControlObserved` / `Qc` | absent (a sticky signal word only) | D9 (shutdown and reload); the seam request goes to A with D9 |
+| `EvidenceObserved` | absent | E2/E6 (evidence for authentication and key statements) |
+| `ServicePosture` | absent | B's recovery posture and D9's serving posture; requested with D9 |
+| `Trace` payloads | A's bounded trace child | D's machines add no trace kinds in D3 |
+| `ClockObserved` (one coalesced mailbox) | `fn2-ops-clock-mono/-real/-flags` | DATE and the deadlines read it through `fn2-conn-clock`; no difference |
+| `ArmWake` (one replaceable wake) | `fn2-issue-arm-wake` | D7's timer service owns it; no connection issues one |
 
 ## 9. The sprint's gaps, and how D plans around them
 
@@ -532,15 +752,22 @@ The sprint (`origin/fn2/sprint-cd` 8e3488fcb) is compost; its gaps are the seams
 | G1 closed machine registry | closed by R5c's open registry (`defcorechild`, assembly sections) | D's kinds register in D books included by `assembly-index` after B's |
 | GD1 dispatcher fallback hardwired to A's core | closed by the same: the generated dispatch's refusal arm receives the assembled `fn2-core` | none |
 | GD2 no commit/recovery machine | B3b on `fn2/b-durability` | D5 references B's batch; no stand-in persistence |
-| GD3 no arm cost/frame contract | R7 | §4's seam request; D3 waits on R7 |
+| GD3 no arm cost/frame contract | R7 | §4's seam request; D3 builds on R7 (landed) |
 | GD4 no retained-prefix compaction | R6a1 `fn2-pool-drop-prefix` | D2a interim over scalar exports, D2c ports |
 | GC1 no two-owner range compare | R6a1 `fn2-pool-compare` | C's and D5's consumer |
 
 ## 10. Departures, seam requests and open items
 
-- Seam request to A (via main): R6b item 1 re-cut onto D0 (§2); R7 carries §4's forms.
-- `declare.lisp` gains the `command` kind's table entry (D2a), purely additive.
-- D3 owes the sub-form checks listed in §6 (from the fuzz oracle's `DEFERRED`), each with a fixture.
+- Row 1 of ROUND2 §B.2 is two kinds: A's `fn2-listener` (`:accepting :admitting :closing`) and D's
+  `fn2-conn`; the brief's `accepting` phase is the listener's (§4.2).
+- Seam request to A (through main, 2026-10-30): the connection partition per admitted kind and the
+  listener's target (§4.5, exact form); the Accept result's peer address (§8).
+- R6b item 1 re-cut onto D0 (§2); R7 carried §4's forms (done, 926b09328).
+- `declare.lisp` gained the `command` kind's table entry (D2a), purely additive.
+- D3's interim replies (§4.3) are a named constant whose emptiness is a D9 check.
+- D3's RX compaction goes through TX until R6a1's drop-prefix exists (§4.2); D2c deletes it.
+- Echo stays A's test workload in the served instance (A4's drivers); the served listener admits
+  `fn2-conn` once §4.5 lands. Whether echo leaves the served instance is A's call.
 
 ## 11. Deferred assertions E must restore
 
@@ -577,5 +804,5 @@ natives skip the row by name. A row leaves this table only when E's test is gree
 | D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | done |
 | D2b | generator, mutator, fuzzer, the three mutation controls, H's model over the cases | D2a | done |
 | D2c | parser onto R6a1's scan and drop-prefix | R6a1 | |
-| D3 | connection machine, greeting/HELP/QUIT/MODE/DATE/CAPABILITIES, timers, 400 refusals, ABI reconciled, T1 and T8 | R7, C2/C3, D0, D2 | |
+| D3 | connection machine (§4.2-4.6): conn.lisp, the decision table, the deferred sub-form fixtures, WIRE, T1 and T8 | R7 (landed), D0, D2; the listener seam (§4.5) for the simulator half | design written |
 | D4-D9 | per the brief | per the brief | |
