@@ -63,5 +63,10 @@
   "match": "test_native_store_identity",
   "class": "unprovisioned",
   "note": "box-step build/box/wire-grammar.json absent"
+ },
+ {
+  "match": "test_native_frozen_relocation",
+  "class": "unprovisioned",
+  "note": "FN_RUN_RELOCATION_E2E=1 needs a copied frozen image (image.sha256 and its bundled runtime/openssl beside the launcher); the nightly links the keyed image set, which carries SHA256SUMS, so setUp's image.sha256 assertion fails (nightly 2026-10-30)"
  }
 ]

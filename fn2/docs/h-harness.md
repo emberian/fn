@@ -653,3 +653,38 @@ Run on the laptop (certified `tests/conn-unit`, `sim/echo`, `sim/check-wire`; h-
 One model change came from the first run. A node that offers no SASL mechanism answers `AUTHINFO SASL
 PLAIN` with 503, not 483. 483 is for a mechanism the node would accept under TLS (RFC 4643 2.4). The CAPABILITIES rule
 gains `advertise_authinfo` for a node with no credential store.
+
+## The nightly of 2026-10-30 (fn1, hbox, every family and every H7 driver)
+
+The run used tree e495a7b55, image set c14e9e8e, a 64 GiB ceiling and the opt-ins FN_RUN_SLOW=1 and
+FN_RUN_RELOCATION_E2E=1. It took 22,086 s. The report is `build/coordinator/fn2/nightly/2026-10-30.md`.
+Totals: exit 1; 178 tests, 120 executed, 109 ok, 11 not ok, 26 NOT RUN; 1,411,800 TestCase calls.
+
+| family | E | S | F | H | R |
+|---|---|---|---|---|---|
+| nntp | 23/24 | PASS (5,000 examples, within the new 7,200 s window) | PASS (33 recorded, 0 new) | PASS | 6 measured, 2 not |
+| consumer | 4/5 | PASS | PASS (fncu + FNCT) | PASS | owed rows |
+| operator | 5/7 | PASS | PASS | - | W15 not measured |
+| web | 1 NOT RUN (fixtures absent) | FAIL (below; fixed) | PASS (HTTP) | - | owed row |
+| peering | 10/10 (1 opt-in skip) | PASS | PASS (feed focus) | PASS (convergence) | 3 measured, 1 not |
+| bp | 1/2 | PASS | PASS (BPv7 + TCPCL) | PASS | F8 measured |
+| tls_auth | 16/17 | PASS | PASS (auth focus) | - | native row |
+| config_limits | 8/11 | PASS 2/2 | PASS | - | 2 measured |
+| store_ops | 7/8 | PASS | PASS | - | W15 not measured |
+
+**Every S and F form passed against fn1 except web S.** The 11 non-ok rows:
+
+- Known fn1 reds (H1): conformance, status_live_posts, decoded_custody, visibility_join, bounds_join, mux,
+  public_limits, served_crash_model.
+- Unprovisioned: store_identity (box-step wire-grammar.json), and **frozen_relocation**, now in
+  known-fn1.json. Its opt-in ran for the first time and needs a copied frozen image with its own
+  image.sha256 beside the launcher; the nightly links the keyed set, which carries SHA256SUMS.
+- **web S (harness-side, fixed):** a login removing a post in a group it cannot post to. fn1 refuses the
+  face's cancel with `441 a named newsgroup is not carried here`, a 403 page. The model expected 200, because
+  it filed the cancel without the session's post access. The cancel names the post's group, so the session's
+  read and post rules now decide it, in both the model and its fake. Rerun of web S at the hbox cadence on fn1:
+  50 examples, 98 s, PASS.
+
+R is published, never a gate. This run did not complete tools/load's T-CMD, W13, W15 and W6a catch-up
+phases ("phase did not complete; metric absent"), all of which H7b's run measured. They are named in the
+report and not chased.

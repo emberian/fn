@@ -202,7 +202,11 @@ class FakeFace:
             if 'id' not in q:
                 return 404, self.frame('Not here', '<h1>Not here</h1>', session), {}, {}
             return 200, self.frame('Remove my post', f"<input type='hidden' name='id' value='{esc(q['id'])}'>", session), {}, {}
-        row = next(r for rows in self.groups.values() for r in rows if r[1] == form.get('id'))
+        group, row = next((g, r) for g, rows in self.groups.items() for r in rows if r[1] == form.get('id'))
+        rows, rules = session['pin']
+        if not self.allowed(rules, session['login'], group, 1):
+            # The cancel names the post's group: a group this login cannot post to refuses it (fn1, 2026-10-30).
+            return 403, self.frame('Not removed', "<p>The server said no.</p><p class='said dim'>441 posting failed; a named newsgroup is not carried here</p>", session), {}, {}
         self.add('control.cancel', f'<fake-cancel-{self.serial}@fake.invalid>', session['login'], 'cmsg', 'x')
         if row[2] == session['login'] or self.plant == 'remove-any':
             row[5] = True
