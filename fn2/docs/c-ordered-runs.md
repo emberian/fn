@@ -234,6 +234,23 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   run, seed, keys, slots, width, bits), and seals through B's sealer into a digest row (the
   parent-held hash). Its caller (C1c's sealer; the identity adapter today) feeds it the run's
   Message-IDs as it seals the overlay.
+- **Sealer (C1c, engine half; `sealer.lisp`).** One seal row (`fn2-seals`: phase `:idle :build
+  :filter :install :failed`, sub-phase, the overlay O, the next entry POS, schema, run, the run and
+  unit counters, the root page, the hash workspace, the filter page, its resources WBASE FBASE CROW
+  FILL and its owner) and one bounded step, `fn2-seal-step` (budget at most 4,096 bytes of page
+  work): `:idle` picks the sealable overlay (C-SEAL-ORDER) and starts the real build over it, an
+  empty one retired at once; `:build` drives `fn2-run-build-work` and acts on each answer (cache
+  the sealed page, promote, give the level a fresh 64 KiB page under the owner, the root, or the
+  overlay's next entry through `fn2-ov-entry` and `fn2-run-build-add`, then finish); `:filter`
+  (identity runs) opens the filter page on the build's seventh writer row and drives the Ribbon
+  build over the overlay's Message-IDs; `:install` enters the run in a free row of the resident
+  view with its filter, retires the overlay (frozen to free, arena released) and releases the hash
+  workspace in the same step, answering `:done`. `:full` and `:cache` are backpressure;
+  any other refusal is an invariant the caller stops on. Its field rows from FBASE: the build's,
+  the decoded entry at `*fn2-seal-eb*`, the filter writer's at `*fn2-seal-fw*`; its digest rows
+  are in checker row CROW's stripe, regions 129-134 the levels' parent-held hashes, 135 the
+  filter's. The pages stay resident (C-SEAL-RESIDENT); B's run-replacement member makes them
+  durable (the device half).
 - **Sealing through the commit protocol.** C's sealer machine (declared through A's `defmachine`)
   reserves extents, writes sealed pages into them and harvests their completions; the commit batch
   then carries a run-replacement record naming old and new manifest refs, lists every new page in
@@ -447,6 +464,23 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   1.25 s once measured for the same lemma came from a world built by `ld` of the books' sources, whose
   top-level `local` theory events stay in force; a certified world drops them, so time a lemma in a
   world that includes the certified books.
+- **C-MANIFEST-ENTRY.** The manifest schema (`runs-manifest.lisp`, `fn2-manifest` id 10, key
+  (schema, run), `:latest`, pages `:manifest`) holds per live run its height, entry count, the
+  root page's identity and parent-held hash and the filter page's (zero when it has none): twelve
+  fields, the successor's bound for every assembled schema (`fn2-succ-schemas-fit`). The run
+  descriptor's per-schema `MIN-`/`MAX-` fences and its page count are not in it: they differ in
+  shape per schema and the root page holds the fences.
+- **C-SEAL-ORDER.** An overlay is sealable when it is `:frozen` and no overlay of its schema that
+  is `:frozen`, `:private` or `:active` has a smaller SEQ; of the sealable ones the least SEQ goes
+  first. A newer frozen overlay sealed before an older private one would put newer rows into a
+  run that the older overlay outranks. Run identifiers grow, so run order is SEQ order, and every
+  overlay a reader still meets is newer than every run, which is what the readers' newest-wins
+  rules assume.
+- **C-SEAL-RESIDENT (interim until M2's cold leg).** The engine half names each page itself (a
+  unit counter in the seal row; physical identity (unit, unit)) and installs every sealed page in
+  the verified-page cache. The cache is direct mapped by unit, so a seal whose next unit's cache
+  row is occupied refuses `:cache` (backpressure) and evicts nothing: served capacity is the
+  cache's rows of pages until the cold leg reloads pages through the storage path.
 - **C-ENGINE-OWNER (interim until C1c).** The engine's workspaces are owned by the MRef
   (`*fn2-idc-owner-kind*` = 254, 0, 1); no machine kind takes that number. C1c's sealer machine row
   becomes the owner.
@@ -673,6 +707,8 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 | `fn2-range-seek-position` | within one stream whose positions grow with the number, the seek over runs and an overlay answers `fn2-range-seek-spec`: one past the last entry at or before `p` | positive: group 1 at p = 0, 35, 40, 41, 150 (0 4 5 5 16) and group 2, equal to the spec; negative: positions that do not grow with the number mislead it | C3b |
 | `NAME-summary-adequate-KIND` (generated per fold and event kind; 6 rows) | for a state of at most 8 rows (`NAME-fold-statep`), an event of that kind and at most 8 query keys, sealed or not: the rows written through the real insert observe through the real range read as the fold's state (`obs(σ s) = obs s`), and after the event applied by the real step (range read of its key, `fn2-fold-apply`, overlay replace) as the fold's step of it (`σ(δ(s,e)) = δ_Σ(σ s, e)`, observed at every query) | positive: an event on a held key and one on a fresh key or refused, sealed and in the overlay; negative (TRANSPORT §9 tooth 2): an engine whose step adds one to the first value field disagrees | C4a |
 | `NAME-summary-cut` (generated per fold; 3 rows) | for at most 8 events, every cut k, sealed or not: `Fold(Summary_k, E_{k+1..n})` through the real engine observes as the whole list fold | positive: every cut of a six-event scenario, both placements (exhaustive in the tiny profile); negative: a summary that drops a row, and a summary step applied twice (or off by one, for the idempotent cursor); weak (tooth 1): a projection of the observation that is not step-closed, evaluated | C4a |
+| `fn2-sealer-run-equals-overlay` | at most four published batches of at most 48 distinct well-formed rows of the groups schema, SEQs in batch order, a fill at which every page holds two entries: after the real `fn2-seal-step` is driven until idle, every lookup through the installed runs (newest first, the real cursor) answers as the overlays did, the newest batch holding the key (`fn2-sealer-spec`) | positive: three overlapping batches at fills 400 and 65,536, answers from each batch and two absent; negative: a sealer stopped before the last overlay; SEQs against batch order read the older rows | C1c |
+| `fn2-manifest-replacement-atomic` (engine half) | for one nonempty batch of the groups or identity schema, the views (live runs, overlay phase) at every cut of the real sealer's steps are exactly the old runs with the overlay frozen, then the new run with the overlay free, never a third (`fn2-sealer-cuts-ok`); the device half (B5 recovery over the run-replacement member) owes the same of the recovered manifest | positive: 30 groups rows and 20 identity facts with their filter, at fill 400; negative: a run beside its still-published overlay, and neither | C1c |
 | `fn2-select-materialize-equivalent` | for every policy assignment and materializer schedule, a consumer's observations equal the select-only reference | a materializer that skips an entry; a reader that trusts the fold above `cov` | C4 |
 | `fn2-compaction-preserves-observations` | a compaction step preserves every supported read at every unexpired pin | a merge that drops a pinned version | C5 |
 | `fn2-relocation-preserves-lease` | a relocation under a lease publishes the replacement before retiring the old placement and keeps the content identity | relocation that retires first | C5 |
@@ -687,7 +723,7 @@ OWED.md is regenerated when the export is green.
 | C1a | `:schema` kind in declare.lisp (foundation commit, worktree, export green) | export PASS, unchanged counts plus zero | dev |
 | C1b | runs-page, runs-schema; runs-unit with a numeric-key and an octet-key test schema | **done**: books under 60 s; sealed pages pass B's checker, a flipped byte is refused; seek agrees with the spec; the two page keystones' teeth | C1a |
 | C1b' | runs.lisp: multi-page build, promotion, verified-page cache, resumable lookup cursor; `NAME-run-lookup-exact`; R6a1's compare in place of the interim | **done**: 3,000 entries at a 400-byte fill build 80 pages, height 4, and every query answers right; the teeth | C1b, R6a1 |
-| C1c | sealer machine; run descriptor and manifest schema; run sealing through the commit batch (B's GC2 member); retirement through the allocator; the assembly dispatcher (C-GLUE-UNVERIFIED's remedy) | tiny exhaustive death cuts over one run replacement: recovered manifest is old or new, never mixed | B's GC2 member |
+| C1c | sealer machine; run descriptor and manifest schema; run sealing through the commit batch (B's GC2 member); retirement through the allocator; the assembly dispatcher (C-GLUE-UNVERIFIED's remedy) | **engine half done** (`sealer.lisp`, `runs-manifest.lisp`, `sealer-unit`): both keystones' teeth, the first-overlay rule, an identity seal with its filter. Then the machine (`machines-c-sealer.lisp`), then the device half: tiny exhaustive death cuts over one run replacement: recovered manifest is old or new, never mixed | B's GC2 member (device half) |
 | C2a | range scan through the cursor path; the generic overlay | **done**: scans and overlays agree with the list specification; both keystones' teeth | C1c first item |
 | C2b | identity schema, the decision machine, the recording under the bound, the two keystones | **done**: the M3-shaped scenario pinned; both keystones' teeth | C2a |
 | C2c | Ribbon per sealed run, the probe in the identity decision | **done**: no key ever `:absent`; 8.5 bits/key at 60,000 keys (8.75 at 2,000); false positives 0.375% (75 in 20,000) and 0.395% (790 in 200,000 at 60,000 keys) against 2^-8 = 0.39%; the M3-shaped scenario reads only the runs holding the Message-ID (an absent one reads none); both keystones' teeth | C2b |
