@@ -1227,7 +1227,7 @@ ROUND2 §B.2 row 4. Capacity `:t`. Phases:
 | `:reserve` | `:transaction-row` | `fn2-txn-reserve` | claim the Message-ID, or wait on the holder's FIFO holding no claim (14.4.2); a same-Message-ID waiter holds no claim and no membership, so the wait is upward in D0's order |
 | `:lookup` | `:transaction-row :identity-reservation` | `fn2-txn-lookup` | C's identity decision under the stale rule (14.4.3), at most 32 entries and 4,096 compared octets per run |
 | `:prepare` | same | `fn2-txn-prepare` | injection for POST (stored octets, stored length), membership assignment `(group-id, group-number)` (C3), the records the batch packs, the dependency manifest root (D4 3/n's extents) |
-| `:ready` | same | `fn2-txn-ready` | admitted to a commit batch (B-S2), or waiting for batch capacity (backpressure, a retry, never a refusal) |
+| `:ready` | same | `fn2-txn-ready` | `fn2-identity-stage` (C-S2; `:full` and batch capacity are backpressure: stay `:ready`), then `fn2-commit-admit-txn` (B-S2), then on `:ok` `fn2-identity-bind` in the same transition |
 | `:batched` | `+ :batch-membership` | `fn2-txn-batched` | no work: waits for the batch's member outcome (an observation from the commit kind) |
 | `:accepted` | `:transaction-row :identity-reservation` | `fn2-txn-reply` | post the success word to the connection; release the reservation (waking its FIFO), the upload (→ `:draining`) and the row |
 | `:refused` | same | `fn2-txn-reply` | post the refusal word; release as `:accepted` does |
@@ -1256,7 +1256,13 @@ that retries with the same operation id gets the original outcome without re-exe
 contradictory reuse (same id, different request digest) is refused `:operation-reused`; the NNTP
 path never retries by operation id, so D5 builds the record and E's API is its first reader.
 
-**14.4.2 The identity reservation** (D0 rank 11, `:identity-reservation`). One claim per transaction
+**14.4.2 The identity reservation** (D0 rank 11, `:identity-reservation`). *As built
+(`fn2/books/claims.lisp`, `tests/claims-unit.lisp`): the table is its own stobj `fn2-claims` (a D core
+child with D5 1/n), one row per transaction slot whose `head`/`stamp` columns are also bucket `r`'s;
+`fn2-claim-begin`, `fn2-claim-walk` (budgeted, restarting when its bucket's stamp moved),
+`fn2-claim-release` (unlink, then hand the claim to the FIFO head in the same step). Owed with the
+machine: a waiter's cancellation (an upload aborting while its transaction waits) unlinks it from its
+holder's FIFO.* The design: One claim per transaction
 on its Message-ID's exact octets: a D core child `fn2-txn-claims` holding `2^k ≥ 2T` bucket heads;
 each transaction row carries `mid-hash :u32` and `claim-next :link`, and the Message-ID range it
 claims (the upload's chunk, under the upload's owner). `fn2-txn-claim (t fn2-core) → (mv code holder
@@ -1276,10 +1282,11 @@ index, C-S1) and steps it to an answer: `:stored` (new), `:duplicate` (this cont
 `:conflict` (another content is). The fact is never recorded into a public overlay at lookup (a
 refusal or a crash would leave a phantom fact), and not discovered at install either (a durable batch
 must never become unpublishable because a record is stale or an arena is full; Astra). The
-transaction's `:prepare` stages the fact into its batch's **private successor overlay** (C-S2):
-C copies the offer's octets into successor-owned storage, validates the decision against the
-predecessor (re-deciding on `:stale`, under the claim), and reserves the successor's capacity, all
-before B seals the batch's records and root. Publication exposes the successor atomically, with no
+transaction's `:ready` arm stages the fact for its batch's **private successor overlay** (C-S2, as C
+amended it): `fn2-identity-stage` validates the decision against published state (re-deciding on
+`:stale`, under the claim) and reserves room, the batch admission follows, and `fn2-identity-bind`
+copies the offer's octets into the successor in the same transition, which cannot fail; all before B
+seals the batch's records and root. Publication exposes the successor atomically, with no
 admission or lookup at install. A private successor is invisible to every decision until
 publication (C enforces it: today `fn2-id-decide-step` visits every active and frozen overlay). **Claim stability (keystone
 `fn2-txn-claim-stabilizes-decision`, 14.6), as Astra restated it:** for an immutable offer, while its
@@ -1425,20 +1432,36 @@ traces, 14.8).
   (backpressure), `:admission`. An unresolved batch fences its storage scope, not only its
   Message-IDs; recovery resolves retained claims with protected resources, never waiting for them. Records over the batch's packing room go as payload blocks referenced
   from the record (D4 3/n).
-- **C-S1, identity in the served assembly** (C-ONE-ASSEMBLY): C's identity stobjs as core children and
-  `(fn2-identity-offer d mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core) -> (mv code
-  fn2-core)`, `(fn2-identity-step d budget fn2-core) -> (mv answer fn2-core)` (`:more`, `:stored`,
-  `:duplicate` for accepted content, `:evidence` for content recorded only as evidence, `:conflict`;
-  `:miss` is C's to load, an invariant failure until C1c persists runs),
-  `(fn2-identity-release d fn2-core)`, decision rows = `:t`, each with its own field-row stripe, and
-  defcosts within 4,096 octets and 32 entries per call.
-- **C-S2, the batch's private successor overlay** (Astra): `(fn2-identity-stage d batch fn2-core) ->
-  (mv code fn2-core)` at the transaction's `:prepare`: C copies the offer's octets into successor-owned
-  storage, validates the decision against the predecessor (`:stale` re-decides under the claim), and
-  reserves the successor's capacity (arena, index, stamp); `:full` is backpressure. The successor is
-  invisible to decisions until the batch's publication, which exposes it atomically with no further
-  admission; a batch that ends refused drops it. Nothing at install can fail for want of a record.
-  C3's membership numbers are tentative at prepare and issued at publication, never reused.
+- **C-S1, identity in the served assembly** (agreed by C, 2026-10-30; lands with C's move onto the
+  production assembly, `books/machines-c.lisp`, section `assembly-callbacks-c` between `-a` and `-d`):
+  `(fn2-identity-offer d mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core)`,
+  `(fn2-identity-step d budget fn2-core)` → `:more | :stored | :duplicate` (accepted content) `|
+  :evidence` (content recorded only as evidence) `| :conflict`, `(fn2-identity-release d fn2-core)`;
+  one decision row per `:t`, each with a 128-row field stripe (B's `fn2-fields` default grows to 128 ×
+  (format-slots + t), the stripes after B's format stripes).
+- **C-S2, the private successor, as C amended it** (a transaction joins a batch only at `:ready`, so a
+  stage cannot name its batch earlier, and nothing may fail after admission): both steps are in the
+  `:ready` arm. `(fn2-identity-stage d fn2-core) → (mv code fn2-core)` immediately before
+  `fn2-commit-admit-txn`: validates the decision against published state (`:stale` re-decides under the
+  claim), guarantees room for one fact in a private successor (`:full` is backpressure: stay `:ready`),
+  or answers `:duplicate` / `:evidence` (reply, nothing to record) / `:identity-conflict-bound`. Then
+  `(fn2-identity-bind d batch article binding principal fn2-core) → (mv code fn2-core)` right after the
+  admission's `:ok`, in the same arm: copies the offer's octets into the batch's private successor
+  (stored → accepted, conflict → evidence); it cannot fail after an `:ok` stage, so a non-`:ok` is an
+  invariant failure (stop). For B's commit kind: `(fn2-identity-publish batch fn2-core)` after the root
+  swap and before any member result (private → frozen in one step; the buckets' stamps move so
+  in-flight decisions go `:stale`; bounded by members per batch), `(fn2-identity-drop batch fn2-core)`
+  for a refused batch; an uncertain batch calls neither (recovery resolves it); `fn2-id-decide-step`
+  skips private overlays. Until C1c's sealer, identity capacity is overlay rows × arenas, and exhaustion
+  shows as `:full` at stage. So `:prepare` does injection and membership only, and the identity staging
+  moves into `:ready`.
+- **A-S7 ruling (DSL seat, 2026-10-30):** D writes taken kinds itself as a foundation commit in a
+  worktree on top of S1 (S1 touches the admission generator), under the whole-tree gate (every layer's
+  unit books, A's seven drivers with the 113 A4 blocks identical, B's units); the DSL seat reads the diff
+  before it lands.
+- **S1's refusal semantics (A as built; D accepts):** a booking refused at Accept does not park the
+  listener; the connection is admitted unbooked and its greeting renders the 400, which keeps the
+  flood's refusals as 400s rather than an accept backlog.
 
 ### 14.8 Slices, acceptance, scenarios
 
