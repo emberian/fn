@@ -35,7 +35,7 @@
   (append (fn2-sld-octets-of *fn2-cu-fixtures*) posts (fn2-sld-transcripts nrandom 0)))
 
 ; Posting clients (D4 2/n, layer doc 14.8) for the POSTING set: POST blocks,
-; valid (the interim refusal until D5) and each refusal shape, pipelined,
+; valid (the interim refusal until B-S2) and each refusal shape, pipelined,
 ; and a block over the bound, under a profile that serves posting
 ; (:posting-interim) with two upload windows of 4 KiB chunks. Fixture bytes
 ; are not compared there (the greeting is 200 and POST is served); WIRE and
@@ -56,9 +56,11 @@
         (fn2-sld-post-text (append '("POST" "From: a" "Subject: s" "Newsgroups: g" "") (fn2-sld-big 100) '("." "QUIT")))
         (fn2-sld-post-text (append '("POST") *fn2-sld-good* '("." "QUIT")))))
 (defconst *fn2-sld-posting-profile*
-  (put-assoc-equal :posting-interim t
-    (put-assoc-equal :format-slots 5
-      (put-assoc-equal :pool-classes '((8 . 1024) (4 . 4096)) *fn2-sld-profile*))))
+  (put-assoc-equal :groups '(("local.test" . 1) ("g" . 2))
+  (put-assoc-equal :identity-arena-bytes 4096
+    (put-assoc-equal :posting-interim t
+      (put-assoc-equal :format-slots 5
+        (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096)) *fn2-sld-profile*))))))
 
 ; A client record per network slot: (nonce todo sent received closed index
 ; rx tx), RX and TX the octets the simulator delivered to the core by

@@ -1228,13 +1228,14 @@ ROUND2 §B.2 row 4. Capacity `:t`. Phases:
 | `:admit` | `:transaction-row` | `fn2-txn-admit` | bind the operation identity (14.4.1) and the authority/configuration version pinned on the connection (W01: the connection's `access-ref`, never a live rule); move to `:lookup` |
 | `:reserve` | `:transaction-row` | `fn2-txn-reserve` | claim the Message-ID, or wait on the holder's FIFO holding no claim (14.4.2); a same-Message-ID waiter holds no claim and no membership, so the wait is upward in D0's order |
 | `:lookup` | `:transaction-row :identity-reservation` | `fn2-txn-lookup` | C's identity decision under the stale rule (14.4.3), at most 32 entries and 4,096 compared octets per run |
-| `:prepare` | same | `fn2-txn-prepare` | injection for POST (stored octets, stored length), membership assignment `(group-id, group-number)` (C3), the records the batch packs, the dependency manifest root (D4 3/n's extents) |
+| `:prepare` | same | `fn2-txn-slots` | injection for POST (stored octets, stored length), membership assignment `(group-id, group-number)` (C3), the records the batch packs, the dependency manifest root (D4 3/n's extents) |
 | `:ready` | same | `fn2-txn-ready` | `fn2-identity-stage` (C-S2; `:full` and batch capacity are backpressure: stay `:ready`), then `fn2-commit-admit-txn` (B-S2), then on `:ok` `fn2-identity-bind` in the same transition |
 | `:batched` | `+ :batch-membership` | `fn2-txn-batched` | no work: waits for the batch's member outcome (an observation from the commit kind) |
 | `:accepted` | `:transaction-row :identity-reservation` | `fn2-txn-reply` | post the success word to the connection; release the reservation (waking its FIFO), the upload (→ `:draining`) and the row |
 | `:refused` | same | `fn2-txn-reply` | post the refusal word; release as `:accepted` does |
 | `:uncertain` | same, persistent | `fn2-txn-uncertain` | post the uncertain word once; the row, its reservation and its records stay until recovery resolves the batch (ROUND2 §E.2): the Message-ID stays reserved, so a resend waits rather than racing an unresolved write |
-| `:draining` | none after release | `fn2-txn-drain` | reclaim |
+| `:releasing` | same | `fn2-txn-unclaim` | release the claim (its FIFO's head takes it and is woken) |
+| `:draining` | none after release | `fn2-txn-drain` | wake the upload, reclaim |
 
 The outcome is exactly one of accepted, refused, uncertain, decided by the batch, never by the
 transaction alone: `uncertain` is entered as soon as a recoverable committing record may exist (the
@@ -1509,6 +1510,43 @@ octet, each expected wire also passing WIRE; three clients over two windows, the
 granted; WIRE's two-phase controls) and sim-layer-d's POSTING set (four seeds under network faults).
 WIRE now reads POST and IHAVE in two phases (`POST` 340/440, `POST-BLOCK` 240/441; `IHAVE`
 335/435/436, `IHAVE-BLOCK` 235/436/437).
+
+**D5 1/n as built.** `fn2-txn` (`fn2/books/txn.lisp`, section book `assembly-callbacks-d-txn` for its operations and arms) is a
+taken kind (`:taken (:phase :admit :rows :transaction-row :ranges () :copy (upload upload-gen conn
+conn-gen request rule principal-slot))`, capacity `:t` under `:posting-interim`), with the claim
+table `fn2-claims` as a D core child (`fn2-core-claims`, one row per transaction slot). The upload
+whose header scan reaches `:header-done` moves to `:identity` and takes the transaction there
+(`fn2-machine-take-fn2-txn`; refused, it parks on the kind's FIFO), then keeps receiving. At its
+terminator it appends the source's BLAKE3 to the window right after the source (chunk 0 when it
+fits, else chunk 1; a pool workspace is written at its fill; the article bound leaves the room:
+`min(:article-max, cap0 + cap1 - 33)`), writes its verdict on its own row (`word` the
+definite refusal or 0, `inj` the injected-field refusal or 0), wakes the transaction and waits in
+`:sealed` until the transaction lets go of it (an upload aborting with a live transaction waits
+the same way). One writer posts the word: the transaction. Its arms: `:admit` hashes the
+Message-ID (FNV-1a, 250 octets) and begins the claim (a POST without one waits for the verdict
+and gets the interim); `:reserve` walks the claim (16 chain steps a run; a held Message-ID parks
+the transaction in its holder's FIFO, the holder's release hands it over and wakes it); `:lookup`
+applies the upload's verdict first, then offers the Message-ID and digest (C-S1) and steps the
+decision (`:duplicate` and `:conflict`/`:evidence` refused by word); `:prepare` counts the body's
+lines, looks each Newsgroups name up (S-GROUP, one source a run; none carried is `:group`), applies
+the injected fields, and declares the slots: the identity fact (article = binding = `:event`),
+the article row (key and birth `:event`), the operation outcome (`(principal, operation)` with the
+operation `:event`: fresh per NNTP attempt, NNT-005) and one group-count accept per carried group
+(at most 6, else `:unaffordable`); then resolves. `:ready` is one transition: stage, the admission
+(`fn2-commit-admit-txn`, B-S2's interim answering `:not-served` until B lands the member: the
+transaction is refused `:not-stored`), bind on `:ok`; `:stale` decides again. `:accepted` and
+`:refused` post the word and release the successor, `:releasing` releases the claim (its FIFO's head
+takes it), `:draining` wakes the upload and reclaims the row: a run has one wake slot, so each wakes
+one row. Departures: the kind's
+budget is 16 KiB, not B.3's 4 KiB, because stage (4 KiB), bind (8 KiB) and the admission are one
+run by C-S3's design; `:full` and an exhausted batch re-run the arm (no wake source until C1c and
+B-S2: owed with them). Owed rows (`fn2/books/owed-txn.lisp`, teeth in `tests/txn-unit.lisp`):
+`fn2-txn-admission-interim` (B-S2), `fn2-txn-generated-message-id-interim` (injection, D5 2/n).
+Also owed: a waiter's cancellation in a claim FIFO (an aborted upload's transaction waits for the
+hand-over, then releases at once); the overview row and the addr entries (D5 2/n, with the
+overview line). Evidence: `tests/txn-unit.lisp` (refused, duplicate and conflict over facts seeded
+through C-S3, the model's order of verdict, identity, group and injected fields, pipelined posts,
+two clients on one Message-ID, every transcript whole, by 7 and by 1).
 
 **sim-layer-d** gains a posting client (POST blocks in seeded fragmentations, valid and each refusal
 shape, duplicate and conflicting resends) on every run of the existing four sets, with WIRE (reply

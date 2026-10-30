@@ -12,10 +12,15 @@
 (include-book "../books/owed-conn")
 (include-book "../sim/check-wire")
 
+;; Two upload windows of 4 KiB chunks, and room for C's engine (4 KiB
+;; arenas and the bind scratch): a valid article reaches the transaction's
+;; :ready (txn-unit.lisp has the transaction's answers).
 (defconst *fn2-uu-profile*
-  (put-assoc-equal :posting-interim t
-    (put-assoc-equal :format-slots 5
-      (put-assoc-equal :pool-classes '((8 . 1024) (4 . 4096)) *fn2-conn-wire-profile*))))
+  (put-assoc-equal :groups '(("local.test" . 1) ("g" . 2))
+  (put-assoc-equal :identity-arena-bytes 4096
+    (put-assoc-equal :posting-interim t
+      (put-assoc-equal :format-slots 5
+        (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096)) *fn2-conn-wire-profile*))))))
 
 (defun fn2-uu-text (lines)
   (declare (xargs :verify-guards nil))
@@ -45,7 +50,8 @@
 (defun fn2-uu-fixtures ()
   (declare (xargs :verify-guards nil))
   (and
-   ;; a valid article: 340, then the interim refusal (no transaction until D5),
+   ;; a valid article: 340, then the interim refusal (the transaction reaches
+   ;; :ready; the batch admission is B-S2's interim),
    ;; and the connection goes on to its next command
    (fn2-uu-check (append '("POST") *fn2-uu-good* '("." "QUIT"))
                  (list *fn2-uu-greeting* "340 send article to be posted" "441 posting failed"

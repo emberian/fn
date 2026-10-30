@@ -8,6 +8,7 @@
 (include-book "machines-c-groups")
 (include-book "conn")
 (include-book "upload")
+(include-book "txn")
 (fn2-machine-index-events)
 (in-theory (disable fn2-machine-local-id))
 (fn2-machine-directory-events)

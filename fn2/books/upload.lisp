@@ -32,6 +32,21 @@
 ;; Large-upload windows (ROUND2 B.1): an upload holds one while it streams.
 (defconst *fn2-upload-windows* 16)
 (defconst *fn2-upload-article-max* 32768)
+;; The source's content identity (BLAKE3, 32 octets) is appended to the
+;; window right after the source at the verdict, for C's offer and the
+;; article row (a pool workspace is written at its fill): in chunk 0 when it
+;; fits there, else in chunk 1. The bound leaves its room in chunk 1.
+(defconst *fn2-upload-digest-octets* 32)
+;; Where it goes for a source of FILLED octets: (mv in1 off), IN1 true for
+;; chunk 1.
+(defun fn2-upload-digest-at (filled cap0)
+  (declare (xargs :guard (and (natp filled) (natp cap0))))
+  (cond ((<= (+ filled *fn2-upload-digest-octets*) cap0) (mv nil filled))
+        ((<= filled cap0) (mv t 0))
+        (t (mv t (- filled cap0)))))
+(defthm fn2-upload-digest-at-natp
+  (implies (and (natp filled) (natp cap0)) (natp (mv-nth 1 (fn2-upload-digest-at filled cap0))))
+  :rule-classes :type-prescription)
 ;; Words an upload or a transaction posts to its connection (section 14.5),
 ;; by name; 0 is none.
 (defconst *fn2-upload-words*
@@ -123,7 +138,7 @@
           (mo :u32) (ml :u32) (no :u32) (nl :u32) (po :u32) (pl :u32)
           (head-status (:enum fn2-upload-head (:scanning :done :malformed :line-length :header-fields
                                                 :header-lines :header-octets)))
-          (word :u8) (stopped :bool) (next-free :link))
+          (word :u8) (inj :u8) (txn :link) (txn-gen :u60) (stopped :bool) (next-free :link))
  :holds ((:head :upload-row :chunk-window) (:identity :upload-row :chunk-window)
          (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)
          (:discard :upload-row :chunk-window) (:sealed :upload-row :chunk-window)
@@ -136,37 +151,43 @@
                   (:chunk-window :slot c1-slot :gen c1-gen :class 1))
          :copy (conn conn-gen request rule principal-slot)
          :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
-                 head-status word stopped))
+                 head-status word inj txn-gen stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
-           (c0-slot *fn2-none*) (c1-slot *fn2-none*) (conn *fn2-none*) (account-ref *fn2-none*)
+           (c0-slot *fn2-none*) (c1-slot *fn2-none*) (conn *fn2-none*) (txn *fn2-none*) (account-ref *fn2-none*)
            (ofield 12) (next-free fn2-machine-initial-next-free))
  :continuations
  ((:free fn2-upload-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:free)
    :uses (fn2-machine-idle))
   (:head fn2-upload-work :cost (:bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*)
-   :writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word)
+   :writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word inj)
    :tables (fn2-core-b3 fn2-core-digests fn2-core-machines fn2-core-machine-tables fn2-core-pool)
-   :next (:head :receiving :validating :discard :aborting :draining) :uses (fn2-upload-advance fn2-machine-refuse-phase))
-  (:identity fn2-upload-unreached :cost (:steps (:cost fn2-machine-refuse-phase :steps)) :writes ()
-   :next (:identity) :uses (fn2-machine-refuse-phase))
+   :next (:head :identity :receiving :validating :discard :sealed :aborting :draining)
+   :uses (fn2-upload-advance fn2-machine-refuse-phase))
+  ;; the header is complete: take the transaction (bundle :transaction :admit)
+  (:identity fn2-upload-claim :cost (:steps *fn2-work-transition*)
+   :writes (txn txn-gen wait-reason)
+   :tables (fn2-core-machines fn2-core-pool fn2-txn-table fn2-core-machine-tables)
+   :next (:identity :receiving :aborting) :uses (fn2-machine-take-fn2-txn fn2-upload-conn-live-p fn2-txn-gen-of))
   (:receiving fn2-upload-work :cost (:bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*)
-   :writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word)
+   :writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word inj)
    :tables (fn2-core-b3 fn2-core-digests fn2-core-machines fn2-core-machine-tables fn2-core-pool)
-   :next (:receiving :validating :discard :aborting :draining) :uses (fn2-upload-advance fn2-machine-refuse-phase))
+   :next (:receiving :validating :discard :sealed :aborting :draining) :uses (fn2-upload-advance fn2-machine-refuse-phase))
   (:validating fn2-upload-work :cost (:bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*)
-   :writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word)
+   :writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word inj)
    :tables (fn2-core-b3 fn2-core-digests fn2-core-machines fn2-core-machine-tables fn2-core-pool)
-   :next (:validating :aborting :draining) :uses (fn2-upload-advance fn2-machine-refuse-phase))
+   :next (:validating :sealed :aborting :draining) :uses (fn2-upload-advance fn2-machine-refuse-phase))
   (:discard fn2-upload-work :cost (:bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*)
-   :writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word)
+   :writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word inj)
    :tables (fn2-core-b3 fn2-core-digests fn2-core-machines fn2-core-machine-tables fn2-core-pool)
-   :next (:discard :aborting :draining) :uses (fn2-upload-advance fn2-machine-refuse-phase))
-  (:sealed fn2-upload-unreached :cost (:steps (:cost fn2-machine-refuse-phase :steps)) :writes ()
-   :next (:sealed) :uses (fn2-machine-refuse-phase))
-  (:aborting fn2-upload-abort :cost (:steps *fn2-work-transition*) :writes () :next (:draining)
-   :uses ())
+   :next (:discard :sealed :aborting :draining) :uses (fn2-upload-advance fn2-machine-refuse-phase))
+  ;; its transaction holds the octets (the Message-ID, the digest, the
+  ;; source) until its outcome, then lets it drain
+  (:sealed fn2-upload-hold :cost (:steps *fn2-work-transition*) :writes ()
+   :next (:sealed :draining) :uses (fn2-upload-txn-live-p))
+  (:aborting fn2-upload-abort :cost (:steps *fn2-work-transition*) :writes () :tables (fn2-core-machines)
+   :next (:aborting :draining) :uses (fn2-upload-txn-live-p fn2-upload-wake))
   (:draining fn2-upload-drain :cost (:steps (:cost fn2-upload-release :steps))
-   :writes (generation c0-slot c0-gen c1-slot c1-gen conn conn-gen filled hashed next-free wait-reason)
+   :writes (generation c0-slot c0-gen c1-slot c1-gen conn conn-gen filled hashed txn next-free wait-reason)
    :tables (fn2-core-pool fn2-core-machines)
    :next (:free :retired) :uses (fn2-upload-release))
   (:retired fn2-upload-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:retired)
@@ -189,8 +210,12 @@
   :doc "Post an outcome word to the connection that awaits it (generation and request checked); wake it.")
 (defcost fn2-upload-advance :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-machines fn2-core-machine-tables fn2-core-pool)
-  :own-writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word)
-  :doc "One run of an upload's work: hash, scan, and at the end the verdict posted to its connection; returns the phase to move to.")
+  :own-writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word inj)
+  :doc "One run of an upload's work: hash, scan, and at the end the verdict posted to its connection (or handed to its transaction); returns the phase to move to.")
+(defcost fn2-txn-gen-of :doc "A transaction row's generation.")
+(defcost fn2-upload-conn-live-p :doc "Whether the connection still feeds this upload.")
+(defcost fn2-upload-txn-live-p :doc "Whether the upload's transaction still names it.")
+(defcost fn2-upload-wake :tables (fn2-core-machines) :doc "Wake the upload's transaction.")
 
 ;; ------------------------------------------------------------------------
 ;; The operations both machines call, materialized after the core instance
@@ -245,7 +270,7 @@
     (if (and (fn2-input-config-wfp fn2-input-config) (natp (fn2-input-config-rows fn2-input-config))
              (< 0 (fn2-input-config-rows fn2-input-config)))
         (fn2-input-config-article-max 0 fn2-input-config) 0)
-    (min (nfix max) (+ (nfix cap0) (nfix cap1)))))
+    (min (nfix max) (nfix (- (+ (nfix cap0) (nfix cap1)) (+ 1 *fn2-upload-digest-octets*))))))
 (defun fn2-upload-scan-step (slot gen off field visible fields lines seen mo ml no nl po pl id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
@@ -353,11 +378,13 @@
   (b* (((mv bcode fn2-core) (if (equal hashed 0) (fn2-upload-hash-begin row fn2-core) (mv :ok fn2-core))))
     (if (eq bcode :ok) (fn2-upload-hash-end row fn2-core) (mv bcode fn2-core))))
 (fn2-core-preserves fn2-upload-digest (row hashed fn2-core) :position 1 :rows nil)
-;; The verdict's word code over the scanned header (reads only): 0..255, or
-;; nil when the row cannot be read.
+;; The verdict over the scanned header (reads only): (mv ok word inj), WORD
+;; the definite refusal's code (0 none) and INJ the injected-field refusal's
+;; (0 none), which the transaction applies after identity and group (the
+;; model's order); OK nil when the row cannot be read.
 (defun fn2-upload-word-now (id gen c0 g0 cap0 cap1 filled fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp filled))))
-  (if (not (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)) nil
+  (if (not (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)) (mv nil 0 0)
     (b* ((seen (fn2-upload-row-seen id fn2-core))
          (rule (case (fn2-upload-row-rule id fn2-core) (0 :post) (1 :ihave) (otherwise :takethis)))
          ((mv word injected)
@@ -365,12 +392,37 @@
                                    (fn2-upload-row-mo id fn2-core) (fn2-upload-row-ml id fn2-core)
                                    (fn2-upload-row-po id fn2-core) (fn2-upload-row-pl id fn2-core) filled
                                    (fn2-upload-bound cap0 cap1 fn2-core) c0 g0 id gen fn2-core))
-         ;; until D5 1/n takes a transaction here, a valid article is refused
-         ;; with the interim word (section 14.5); Xref/Injection after it
-         (code (fn2-upload-word-code
-                (fn2-upload-word-by-field (cond ((not (eq word :ok)) word) (injected :injected) (t :not-stored))
-                                          seen))))
-      (and (unsigned-byte-p 8 code) code))))
+         (w (if (eq word :ok) 0 (fn2-upload-word-code (fn2-upload-word-by-field word seen))))
+         (inj (if (and (eq word :ok) injected) (fn2-upload-word-code (fn2-upload-word-by-field :injected seen)) 0)))
+      (mv (and (unsigned-byte-p 8 w) (unsigned-byte-p 8 inj)) w inj))))
+;; The source's content identity appended after the source at SLOT GEN OFF
+;; (fn2-upload-digest-at), under this upload's owner.
+(defun fn2-upload-digest-store (row slot gen off id ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp off))))
+  (stobj-let ((fn2-digests (fn2-core-digests fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+    (code fn2-pool)
+    (let ((src (fn2-digest-slot (nfix row) *fn2-b3-result*)))
+      (if (and (natp row) (fn2-digest-rowp src fn2-digests) (fn2-pool-wfp fn2-pool))
+          (fn2-digest-store *fn2-upload-digest-octets* src slot gen off *fn2-upload-kind* id ogen fn2-digests fn2-pool)
+        (mv :bounds fn2-pool)))
+    (mv code fn2-core)))
+(fn2-core-preserves fn2-upload-digest-store (row slot gen off id ogen fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+;; Wake a row (the upload's transaction).
+(defun fn2-upload-wake (x fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (and (unsigned-byte-p 32 x) (not (equal x *fn2-none*)) (fn2-machine-idp x fn2-core))
+      (fn2-machine-set-wake-id x fn2-core)
+    fn2-core))
+(fn2-core-preserves fn2-upload-wake (x fn2-core) :rows nil)
+;; The verdict handed to the transaction (it posts the one word): WORD and
+;; INJ on this row, the digest stored, the transaction woken.
+(defun fn2-upload-hand-over (id w inj txn fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (unsigned-byte-p 8 w) (unsigned-byte-p 8 inj))))
+  (b* ((fn2-core (fn2-machine-write-word id w fn2-core))
+       (fn2-core (fn2-machine-write-inj id inj fn2-core)))
+    (fn2-upload-wake txn fn2-core)))
+(fn2-core-preserves fn2-upload-hand-over (id w inj txn fn2-core) :rows nil)
 ;; The word recorded on the row and posted to the connection.
 (defun fn2-upload-deliver-word (id code conn conn-gen request fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (unsigned-byte-p 8 code))))
@@ -378,25 +430,38 @@
        ((mv & fn2-core) (fn2-conn-post-word conn conn-gen request code fn2-core)))
     fn2-core))
 (fn2-core-preserves fn2-upload-deliver-word (id code conn conn-gen request fn2-core) :rows nil)
-(in-theory (disable fn2-upload-digest fn2-upload-word-now fn2-upload-deliver-word))
-(defun fn2-upload-finish (id gen row c0 g0 cap0 cap1 filled hashed conn conn-gen request fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp filled))))
+(in-theory (disable fn2-upload-digest fn2-upload-word-now fn2-upload-digest-store fn2-upload-wake fn2-upload-hand-over
+                    fn2-upload-deliver-word))
+;; The block is complete and hashed: (mv next fn2-core). With a transaction
+;; (the header was complete): the digest stored, the verdict handed over,
+;; :sealed. Without one (the header was refused): the refusal posted to the
+;; connection, :draining; a clean verdict without a transaction is an
+;; invariant failure.
+(defun fn2-upload-finish (id gen row c0 g0 c1 g1 cap0 cap1 filled hashed conn conn-gen request txn fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp filled) (natp cap1))))
   (b* (((mv ecode fn2-core) (fn2-upload-digest row hashed fn2-core))
-       ((unless (eq ecode :ok)) (mv ecode fn2-core))
-       (code (fn2-upload-word-now id gen c0 g0 cap0 cap1 filled fn2-core))
-       ((unless (unsigned-byte-p 8 code)) (mv :fault fn2-core))
-       (fn2-core (fn2-upload-deliver-word id code conn conn-gen request fn2-core)))
-    (mv :ok fn2-core)))
-(fn2-core-preserves fn2-upload-finish (id gen row c0 g0 cap0 cap1 filled hashed conn conn-gen request fn2-core)
+       ((unless (eq ecode :ok)) (mv :stop fn2-core))
+       ((mv ok w inj) (fn2-upload-word-now id gen c0 g0 cap0 cap1 filled fn2-core))
+       ((unless (and ok (unsigned-byte-p 8 w) (unsigned-byte-p 8 inj))) (mv :stop fn2-core))
+       ((when (equal txn *fn2-none*))
+        (if (equal w 0) (mv :stop fn2-core)
+          (let ((fn2-core (fn2-upload-deliver-word id w conn conn-gen request fn2-core))) (mv :draining fn2-core))))
+       ((mv in1 doff) (fn2-upload-digest-at filled (nfix cap0)))
+       ((mv scode fn2-core) (fn2-upload-digest-store row (if in1 c1 c0) (if in1 g1 g0) doff id gen fn2-core))
+       ((unless (eq scode :ok)) (mv :stop fn2-core)))
+    (let ((fn2-core (fn2-upload-hand-over id w inj txn fn2-core))) (mv :sealed fn2-core))))
+(fn2-core-preserves fn2-upload-finish (id gen row c0 g0 c1 g1 cap0 cap1 filled hashed conn conn-gen request txn fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-upload-hash-run fn2-upload-scan-run fn2-upload-finish))
 
 ;; One run of the upload's work (section 14.3): hash at most
 ;; *fn2-upload-hash-bytes* of what the connection fed, advance the header
 ;; scan, and once the terminator was framed and everything is hashed, give
-;; the verdict and post its word. Returns (mv next fn2-core), NEXT the phase
-;; to move to (:receiving :discard :aborting :draining), or :run (more to do
-;; now), :idle (wait for input), :stop (an invariant failed).
+;; the verdict (to the transaction once the header is complete, else as the
+;; refusal posted to the connection). Returns (mv next fn2-core), NEXT the
+;; phase to move to (:identity :receiving :discard :sealed :aborting
+;; :draining), or :run (more to do now), :idle (wait for input), :stop (an
+;; invariant failed).
 (defun fn2-upload-advance (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)) (mv :stop fn2-core))
@@ -407,6 +472,8 @@
        (conn (fn2-upload-row-conn id fn2-core)) (conn-gen (fn2-upload-row-conn-gen id fn2-core))
        (request (fn2-upload-row-request id fn2-core))
        (hashed (fn2-upload-row-hashed id fn2-core))
+       (txn (fn2-upload-row-txn id fn2-core))
+       (ph (fn2-upload-row-phase id fn2-core))
        ;; what the connection fed, read from its row: it has moved on when its
        ;; generation changed or it no longer feeds this row (this generation
        ;; of it). Its phase is not read: the take wakes this row while the
@@ -421,26 +488,48 @@
        (terminated (equal (fn2-conn-row-feed-mode conn fn2-core) *fn2-conn-feed-done*))
        (discard (fn2-conn-row-feed-discard conn fn2-core))
        ;; a discarded block: nothing to hash; at its terminator, the refusal
+       ;; (handed to the transaction when there is one)
        ((unless (equal discard 0))
-        (if (not terminated) (mv :discard fn2-core)
-          (mv-let (pcode fn2-core)
-            (fn2-conn-post-word conn conn-gen request
-                                (fn2-upload-word-code (if (equal discard 1) :framing :too-large)) fn2-core)
-            (declare (ignore pcode))
-            (mv :draining fn2-core))))
+        (b* (((unless terminated)
+              (mv (if (equal ph *fn2-upload-state-discard*) :idle :discard) fn2-core))
+             (w (fn2-upload-word-code (if (equal discard 1) :framing :too-large)))
+             ((unless (equal txn *fn2-none*)) (let ((fn2-core (fn2-upload-hand-over id w 0 txn fn2-core))) (mv :sealed fn2-core)))
+             ((mv & fn2-core) (fn2-conn-post-word conn conn-gen request w fn2-core)))
+          (mv :draining fn2-core)))
        ((mv hcode hashed fn2-core) (fn2-upload-hash-run id gen row c0 g0 c1 g1 cap0 hashed filled fn2-core))
        ((unless (and (eq hcode :ok) (unsigned-byte-p 60 hashed))) (mv :stop fn2-core))
        (fn2-core (fn2-machine-write-hashed id hashed fn2-core))
        ((mv st hs fn2-core) (fn2-upload-scan-run id gen c0 g0 fn2-core))
        ((when (eq st :fault)) (mv :stop fn2-core))
+       ;; the header is complete: the transaction first (its claim serializes
+       ;; same-Message-ID offers before the body is stored)
+       ((when (and (equal hs *fn2-upload-head-done*) (equal txn *fn2-none*))) (mv :identity fn2-core))
        ((unless (and terminated (<= filled hashed)))
         (mv (cond ((or (< hashed filled) (eq st :budget)) :run)
-                  ((not (equal hs *fn2-upload-head-scanning*)) :receiving)
+                  ((and (not (equal hs *fn2-upload-head-scanning*)) (equal ph *fn2-upload-state-head*)) :receiving)
                   (t :idle))
-            fn2-core))
-       ((mv fcode fn2-core) (fn2-upload-finish id gen row c0 g0 cap0 cap1 filled hashed conn conn-gen request fn2-core)))
-    (mv (if (eq fcode :ok) :draining :stop) fn2-core)))
+            fn2-core)))
+    (fn2-upload-finish id gen row c0 g0 c1 g1 cap0 cap1 filled hashed conn conn-gen request txn fn2-core)))
 (fn2-core-preserves fn2-upload-advance (id fn2-core) :position 1 :rows nil)
+;; Whether the connection still feeds this upload (its generation, and it
+;; names this row and generation).
+(defun fn2-upload-conn-live-p (conn conn-gen id gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (and (eq (fn2-conn-snapshot-read-code conn fn2-core) :ok)
+       (equal (fn2-machine-generation conn fn2-core) conn-gen)
+       (equal (fn2-conn-row-upload conn fn2-core) id)
+       (equal (fn2-conn-row-upload-gen conn fn2-core) gen)))
+;; Whether the transaction TXN (of generation TGEN) still names this upload:
+;; it lets go of it at its outcome.
+(defun fn2-upload-txn-live-p (txn tgen id fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (and (eq (fn2-txn-snapshot-read-code txn fn2-core) :ok)
+       (equal (fn2-machine-generation txn fn2-core) tgen)
+       (equal (fn2-txn-row-upload txn fn2-core) id)))
+(defun fn2-txn-gen-of (txn fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (eq (fn2-txn-snapshot-read-code txn fn2-core) :ok) (fn2-machine-generation txn fn2-core) 0))
+(in-theory (disable fn2-upload-conn-live-p fn2-upload-txn-live-p fn2-txn-gen-of))
 ))
 
 ;; ------------------------------------------------------------------------
@@ -449,11 +538,35 @@
  '(progn
 (defmachine-callback fn2-upload-idle fn2-upload (id budget) 4
   (fn2-machine-idle id fn2-core))
-(defmachine-callback fn2-upload-unreached fn2-upload (id budget) 4
-  (fn2-machine-refuse-phase id fn2-core))
+;; :aborting: the connection left. A transaction that still names this row
+;; holds its octets: wake it (it finishes without a word) and wait for it to
+;; let go; then drain.
 (defmachine-callback fn2-upload-abort fn2-upload (id budget) 4
-  (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-draining*))))
-    (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core)))
+  (if (fn2-upload-txn-live-p row-txn row-txn-gen id fn2-core)
+      (let ((fn2-core (fn2-upload-wake row-txn fn2-core)))
+        (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core))
+    (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-draining*))))
+      (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))))
+;; :sealed: wait for the transaction's outcome, then drain.
+(defmachine-callback fn2-upload-hold fn2-upload (id budget) 4
+  (if (fn2-upload-txn-live-p row-txn row-txn-gen id fn2-core)
+      (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)
+    (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-draining*))))
+      (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))))
+;; :identity: take the transaction row (A-S7), the transaction's copies this
+;; row's; refused, the take parked this row on the transaction kind's FIFO
+;; and its grant runs this arm again. The connection gone: abort.
+(defmachine-callback fn2-upload-claim fn2-upload (id budget) 4
+  (if (not (fn2-upload-conn-live-p row-conn row-conn-gen id row-generation fn2-core))
+      (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-aborting*))))
+        (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))
+    (mv-let (code tid fn2-core)
+      (fn2-machine-take-fn2-txn id id row-generation row-conn row-conn-gen row-request row-rule row-principal-slot fn2-core)
+      (if (eq code :ok)
+          (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-receiving*) (txn tid)
+                                               (txn-gen (fn2-txn-gen-of tid fn2-core)))))
+            (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))
+        (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)))))
 
 ;; :head, :receiving, :validating, :discard: one run of the work.
 (defmachine-callback fn2-upload-work fn2-upload (id budget) 4
@@ -462,8 +575,12 @@
       (case next
         (:run (fn2-machine-result *fn2-upload-run-bytes* *fn2-work-transition* 0 t fn2-core))
         (:idle (fn2-machine-result *fn2-upload-run-bytes* *fn2-work-transition* 0 nil fn2-core))
+        (:identity (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-identity*))))
+                     (fn2-machine-result *fn2-upload-run-bytes* *fn2-work-transition* 0 t fn2-core)))
         (:receiving (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-receiving*))))
                       (fn2-machine-result *fn2-upload-run-bytes* *fn2-work-transition* 0 t fn2-core)))
+        (:sealed (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-sealed*))))
+                   (fn2-machine-result *fn2-upload-run-bytes* *fn2-work-transition* 0 nil fn2-core)))
         (:discard (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-discard*))))
                     (fn2-machine-result *fn2-upload-run-bytes* *fn2-work-transition* 0 nil fn2-core)))
         (:aborting (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-aborting*))))
@@ -475,7 +592,7 @@
 ;; :draining releases the second chunk, then the first, then the row.
 (defmachine-callback fn2-upload-release fn2-upload (id budget) 4
   :contract (:cost (:steps *fn2-work-release*)
-             :writes (generation c0-slot c0-gen c1-slot c1-gen conn conn-gen filled hashed next-free wait-reason)
+             :writes (generation c0-slot c0-gen c1-slot c1-gen conn conn-gen filled hashed txn next-free wait-reason)
              :tables (fn2-core-pool fn2-core-machines) :next (:free :retired)
              :uses ((fn2-core-release :effects ((:release (:chunk-window))))
                     fn2-machine-gen-limit fn2-machine-free-head fn2-machine-reclaim-fn2-upload fn2-core-stop))
@@ -491,7 +608,7 @@
                        (phase (if retire *fn2-upload-state-retired* *fn2-upload-state-free*))
                        (generation (if retire gen (+ 1 gen)))
                        (c0-slot *fn2-none*) (c0-gen 0) (c1-slot *fn2-none*) (c1-gen 0)
-                       (conn *fn2-none*) (conn-gen 0) (filled 0) (hashed 0)
+                       (conn *fn2-none*) (conn-gen 0) (filled 0) (hashed 0) (txn *fn2-none*)
                        (next-free next) (wait-reason *fn2-wait-none*)))
            (fn2-core (fn2-machine-reclaim-fn2-upload id retire fn2-core)))
         (fn2-machine-result 0 *fn2-work-release* 0 nil fn2-core)))))

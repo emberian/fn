@@ -1553,6 +1553,8 @@
                (let ((fn2-core ,park)) (mv :no-row *fn2-none* fn2-core))
              (let ((gen (fn2-machine-generation target fn2-core))
                    (next (fn2-machine-next-free target fn2-core)))
+               ;; a kind taken with no ranges (fn2-txn) reserves nothing
+               (declare (ignorable gen))
                ,(fn2-machine-taken-reserves specs 0 kconst install park))))))
       (fn2-core-preserves ,take (waiter ,@copies fn2-core) :position 2 :rows nil :prefix "")
       (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
@@ -1570,7 +1572,8 @@
                (fn2-machine-set-active-count ,o (- active 1) fn2-core))))))
       (fn2-core-preserves ,reclaim (id retire fn2-core) :rows nil :prefix "")
       (defcost ,take :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE") fn2-core-machine-tables)
-        :effects ((:acquire (,rowkind) :for ,kind) (:acquire ,(remove-duplicates-eq (strip-cars specs)) :for ,kind))
+        :effects ((:acquire (,rowkind) :for ,kind)
+                  ,@(and specs `((:acquire ,(remove-duplicates-eq (strip-cars specs)) :for ,kind))))
         :target (,kind :free ,(fn2-arm-get :phase tk))
         :doc ,(concatenate 'string "Take a " (symbol-name kind) " row and its ranges, or park the taker."))
       (defcost ,reclaim :tables (fn2-core-machines) :effects ((:release (,rowkind)))
