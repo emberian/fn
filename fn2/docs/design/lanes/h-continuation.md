@@ -1,53 +1,109 @@
-# fn2 layer H continuation (present state, rewritten whole; 2026-10-29, third monitor)
+# fn2 layer H continuation (present state, rewritten whole; 2026-10-30, sixth seat)
 
-Seat: Opus monitor for layer H (the surface test harness). Brief: `build/coordinator/briefs/FN2-LAYER-H-HARNESS.md`
-over `FN2-SEAT-COMMON.md`; design `fn2/RELEASE-PLAN.md` §1-2 (esp. §2.2-2.6) and §5.5's H row (H4 tools/load at B READY,
-H5 per-commit budget benchmark + nightly driver at D READY); review `fn2/REVIEW-SINS-20261028.md` §5 (H1-H5).
-Touches nothing under fn2/books, fn2/sim, fn2/host. Reports to main only READY/RED/BLOCKED (SendMessage to "main"),
-ONE READY LINE PER LANDED QUEST with its sha (coordinator, 10-29).
+Seat: Opus seat for layer H (the surface test harness). The seat WRITES the code (FN2-SEAT-COMMON "The method from
+2026-10-29 afternoon"); Codex (second account) only for bounded pieces with real signatures pasted, every line read.
+Brief `build/coordinator/briefs/FN2-LAYER-H-HARNESS.md` over `FN2-SEAT-COMMON.md`; design `fn2/RELEASE-PLAN.md`
+§1-2 and §5.5's H row. Touches nothing under fn2/books, fn2/sim, fn2/host. Reports to main (SendMessage "main"):
+READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after every commit.
 
-## NOW (third monitor, 2026-10-29)
-- HX landed dd05b20d6, HY landed 287655a40 (READY sent for both).
-- config_limits S live PASS on fn1 (hbox tree12, hy-live.sh -> run-hy/): 2 tests ok, 5 ex, 48 s, with L01-L06 recorded.
-  Probe scripts on hbox (scratch tree tree11p): keyprobe.sh, setprobe.sh (copy h-quests/hy-setprobe.py); evidence <wt>/build/hy-evidence/.
-- H5c RUNNING on hbox (tree11 = dd05b20d6; h5c-surface-fn1.sh -> run-h5c/out; PID h5c-surface-fn1.pid; 8 h cap; launched 05:16 hbox).
-  Its config_limits S fails on L01 (known, fixed by HY after the tree was cut). Harvest per family when DONE; READY with counts.
-- HZ RUNNING (Codex 01a18703-969d-7eb3-88fb-ccb9197a582e; h-quests/HZ.{prompt,log,pid}): operator S (rows 76-77) +
-  store_ops S (rows 73-75, line-84 subset) as two sub-agent pieces; ADJUDICATIONS start empty, wired as limits_model.
-- Coordinator 10-29: main merged fn2/h-harness at 287655a40. After H5c lands: rebase fn2/h-harness onto the new fn2/main
-  (the worktree must be clean: do it after HZ is committed), then keep merging main forward into the branch on every READY;
-  main fast-forwards from the branch when it contains main.
-- Review notes kept: OperatorExpectation needs the refusal as a whole word; init passes --max-record-octets 24 MiB.
-- Laptop unit acceptance: `build/venv/bin/python -m unittest fn2.tests.harness.test_harness fn2.tests.history.test_history
+## NOW (state)
+- dev is the branch; shared tree `/Users/ember/dev/fn` (other seats' files dirty there: commit ONLY named layer-H
+  files). Commit: `git add -N` new files, then `git commit --no-gpg-sign -F <msg> -- <paths>` (zsh arrays for path
+  lists); before a push `python3 tools/secrets_check.py`, `git fetch origin dev`, merge if behind (never rebase/stash).
+- Commits this seat, all pushed, READY sent: 22de14c4d (P-UTF8-WS pin; one pending auth slot), 3ea9d2f8d (H5c
+  harvest; control_across_peers = memory ceiling; nightly floor + world-deps), a1167fc24 (H7a fixture drivers),
+  cfdeb5e6f (H7b F/H/R drivers + first runs), e495a7b55 (H7c reruns: every F form passes on fn1; P-SASL-LINE,
+  H7-07, H7-08, the node's article bound in the differential), 4f931bd74 (H7d: reply window grows with segments
+  sent; H7-08 withdrawn), 4ed372d1e (H7e: FNCT frame fuzz after fncu, TCPCL session fuzz after BPv7). Nothing of H
+  uncommitted.
+- RUNNING on hbox: the full nightly on e495a7b55 (tree nightly-e495a7b55, 64 GiB, every family, every driver),
+  started 2026-10-30 01:44 hbox time, cap 8 h. PID file /tank/fn/scratch/fn2-h-harness/nightly-20261030/nightly.pid,
+  log nightly-20261030.log, report nightly-20261030/nightly.md when the log's last line is DONE. Harvest: copy
+  nightly.md to build/coordinator/fn2/nightly/2026-10-30.md, classify `unclassified` rows (the tree predates H7d:
+  a bytewise TAKETHIS 'wrong number of status lines' row in nntp F is the fixed H7-08, still recorded in that
+  tree), write the per-family table into fn2/docs/h-harness.md, commit, READY with per-family numbers (main asked).
+- Last F runs: run-h7-fuzz-4 (operator, store_ops), -7 (tls_auth), -8 (peering with H7d), run-h7-perf/rows.json.
+- Laptop unit acceptance (~65 s, 402 OK at e495a7b55 (403 OK at 4ed372d1e)), from /Users/ember/dev/fn: `build/h-venv/bin/python -m unittest
+  fn2.tests.harness.test_harness fn2.tests.history.test_history fn2.tests.history.test_convergence
   fn2.tests.model.test_nntp_model fn2.tests.model.test_differential fn2.tests.model.test_consumer_model
-  fn2.tests.model.test_limits_model fn2.tests.surface.test_run_surface fn2.tests.surface.tls_auth.test_model_tls_auth_unit
-  fn2.tests.surface.test_adjudications fn2.tests.surface.test_live_evidence` (~60 s, 310 OK at 287655a40) and the empty fn2 run (exit 3).
+  fn2.tests.model.test_limits_model fn2.tests.model.test_operator_model fn2.tests.model.test_store_ops_model
+  fn2.tests.model.test_web_model fn2.tests.model.test_peering_model fn2.tests.model.test_bp_model
+  fn2.tests.surface.test_run_surface fn2.tests.surface.tls_auth.test_model_tls_auth_unit
+  fn2.tests.surface.test_adjudications fn2.tests.surface.test_live_evidence fn2.tests.surface.test_fixtures
+  fn2.tests.surface.test_perf fn2.tests.surface.test_argv_fuzz fn2.tests.surface.test_config_fuzz
+  fn2.tests.surface.test_http_fuzz fn2.tests.surface.test_codec_fuzz`.
+
+## The drivers (H7; table in fn2/tests/surface/README.md, results in fn2/docs/h-harness.md H7a/H7b)
+- FIXTURE `fixtures:fixture` (rfc3977 live replay, consumer-position, bp golden, scram RFC 7677; web and
+  wire-grammar named skips). FUZZ `fuzz:fuzz` dispatching: tls_auth/peering -> differential `--focus auth|feed`;
+  operator/store_ops -> `argv_fuzz`; config_limits -> `config_fuzz` (`operator PATH show`); web -> `http_fuzz`;
+  consumer -> `fncu_fuzz --with-fnct` (then `fnct_fuzz`); bp -> `bp_fuzz --with-tcpcl` (then `tcpcl_fuzz`). HISTORY `history_drivers:history` (peering convergence V1-V4 + durable;
+  bp durable). PERF `perf:perf` (tools/load cells; row map perf.ROWS / UNMEASURED).
+- Standalone: `python3 -m fn2.tests.surface.<module> --target fake|fn1 --seeds A..B --out DIR [--plant P]`.
+  Live on hbox: image env FN_NATIVE_HOST / FN_NATIVE_DEVELOPER_HOST (consumer-inspect, web) / FN_NATIVE_DTN_HOST
+  (bp decode). Seat runners: h-quests/h7-fix.sh (E fixtures), hbox h7-fuzz.sh (H7_TREE, S_OUT, H7_LABEL,
+  H7_FAMILIES, H7_SECONDS), h7-perf.sh.
+- Spec pins both sides read (h-harness.md "Spec pins read by layer D"): P-UTF8-WS, P-FNCU-HEADER, P-FNCU-EPOCH,
+  P-SASL-LINE.
+- Adjudications added: H7-01..H7-05, H7-07, H7-08 (model/adjudications.json, predicates in
+  surface/adjudication_predicates.py; H7-06 withdrawn for the pin P-SASL-LINE); A01 (argv_fuzz.ADJUDICATIONS).
+- Open: listed under What remains, item 2.
+
+## What remains (in order)
+1. Harvest the running nightly (above) -> commit + READY with per-family numbers.
+2. Owed pieces: bp bundle convergence (F8, the simulator); the W7
+   perf adapter; perf rows with no tools/load cell (consumer wake/M5, web p99, W3-W5).
+3. Surface runs against layer D as D serves (main will say). Agreed shape, sent to main 2026-10-30: D provides
+   one hook `FN2_SURFACE_SIM_NNTP=module:callable` -> a session with open(peer)->(id, greeting octets),
+   send(id, octets, chunks)->(server octets, closed) running the sim to quiescence for that connection, close(id),
+   stop()->WIRE verdicts, deterministic per seed (an ACL2 process on stdin/stdout: OPEN / SEND id hex chunks /
+   CLOSE id / STOP); plus `*fn2-conn-interim-tags*` as JSON (tag -> reply, replacing quest). H then writes the
+   Target over the session (Client-like: greeting, command, line, close), restricts the fn2 S machine to served
+   verbs, and reports interim replies as OWED with their quest. Start when D reports scenario 1's plaintext half
+   green (D doc: fn2/docs/d-machines-nntp.md §4, conn.lisp, sim/check-wire.lisp): `serves.fn2` gains the family; `--target fn2`; only
+   spec-ambiguity rows and spec pins apply to fn2.
+
+## The nightly recipe (fn2/tests/harness/hbox_nightly.sh; documented in fn2/docs/h-harness.md "The hbox nightly")
+- Ship the commit: `git archive --prefix=nightly-<sha>/ <sha> | gzip -1 | ssh hbox 'cd /tank/fn/scratch/fn2-h-harness
+  && tar xzf -'`. Launch without hanging ssh: `ssh hbox 'cd /tank/fn/scratch/fn2-h-harness/nightly-<sha> &&
+  (SWARM_MEM_MAX=64G setsid nohup swarm-build sh fn2/tests/harness/hbox_nightly.sh ../nightly-<date> >
+  ../nightly-<date>.log 2>&1 < /dev/null &)'`. Wait with a background `until ssh hbox 'grep -q "^DONE" ...log'`.
+- The script refuses an existing OUT, < 60 GiB free, or a memory ceiling < 32 GiB (H6; ALWAYS launch at 64G), writes OUT/nightly.pid (stop: `kill $(cat OUT/nightly.pid)`,
+  which TERMs run_surface via its PID file), links the image set (FN2_NIGHTLY_IMAGE, default c14e9e8e) into
+  TREE/build, exports FN_NATIVE_HOST + identity and FN_NATIVE_DEVELOPER_HOST + identity under FN_NATIVE_DEVELOPER_
+  (web and bp), the OpenSSL wrapper, durable tmp, opt-ins (FN2_NIGHTLY_OPT_INS, default FN_RUN_SLOW=1
+  FN_RUN_RELOCATION_E2E=1), runs `run_surface --box hbox` (FN2_NIGHTLY_FAMILIES or --all; FN2_NIGHTLY_HOURS cap,
+  default 8), and writes OUT/nightly.md. Copy nightly.md to `build/coordinator/fn2/nightly/<date>.md`; rows are not
+  chased except `unclassified` reds that name a decision.
+- Not yet provisioned for a full nightly: the 2 GiB wrapper for heap_from_profile; prof/source-matched developer
+  images for dead_run, protected_peering, consumer_e2, topic_local, checkpoint; the per-commit 30-CPU-minute budget
+  from measured timings (RELEASE-PLAN §2.5) is still owed.
+
+## fn1-bug ledger (S forms and differential; every row is backed by a recorded fn1 reply)
+| row | family | what fn1 does vs the spec | recorded in |
+|---|---|---|---|
+| A01 | operator, store_ops | a non-ASCII argument: host usage error, no ARGV-MALFORMED tag (specs/native-admin.md:12-15) | argv_fuzz.ADJUDICATIONS; h-harness.md H7b |
+| H7-03 | peering, nntp | TAKETHIS article answered 436 closing (H2d class, widened by reply) | model/adjudications.json |
+| H7-07 | tls_auth | AUTHINFO PASS after a pending XREDEEM CODE NAME answered 481 (counted) where RFC 4643 2.3.2 says 482 | model/adjudications.json |
+| L01, L02, L04 | config_limits | live policy refusal rows (HY's 152-pair probe); L03/L05/L06 are spec-ambiguity | fn2/tests/model/limits_model.py ADJUDICATIONS; h-quests/hy-policy-pairs-fn1.json; fn2/docs/h-harness.md (HY) |
+| O01 | operator | `group retire` accepted but the wire keeps serving the group (effect row) | operator_model.py ADJUDICATIONS; h-harness.md "HZ"; wp2-operator.json, hz-micro.py |
+| W01 | web/nntp (outside the S profile) | access change on an open connection: LIST ACTIVE live, POST still pinned after GROUP | h-harness.md "HZ3"; h-quests/w01-micro.py |
+| P01 | peering | a transferred article fed by its Newsgroups names, not its local memberships (effect row) | peering_model.py ADJUDICATIONS; h-harness.md "HZ4"; wp2-peering.json |
+| B01 | bp | `carry pause *` is a separate wildcard hold: listed paused, `resume WORK` refuses not-paused (effect row) | bp_model.py ADJUDICATIONS; h-harness.md "HZ4"; h-quests/b01-micro.py |
+| C01 | consumer | repeated unregister `scope` (adjudicated, HT) | fn2/tests/model/consumer_model.py (adjudication table) |
+| H2d TAKETHIS | nntp | TAKETHIS 436 without the Message-ID (13 rows) | fn2/tests/model/adjudications.json, DIFFERENCES.md |
+| observed, not adjudicated | nntp | a transit IHAVE with two Path fields accepted (235); nntp_model refuses duplicates | h-harness.md "HZ4" (for the nntp differential) |
 
 ## Where things are
-- Worktree `/Users/ember/dev/fn/build/lanes/fn2/h-harness`, branch `fn2/h-harness`, pushed head 287655a40 (HY). Rebased on fn2/main 9cc09f2bf on 10-29 (zero diff vs main in fn2/books, sim, host); shas of H1a-H2d in the
-  table are pre-rebase. READY sent for HR, HS, HT, HU, HV, HW, HX, HY.
-- Quest files: `build/coordinator/fn2/lanes/h-quests/<Q>.{prompt,log,pid,last.md,REPORT.md,commitmsg,repair.msg}`.
-- Venv with hypothesis 6.170.13 (py3.11): `<wt>/build/venv`. Native inventory: `inventory.load()` (build/natives/).
-- Evidence copied from hbox into the worktree's build/: h5a-fn1/ (H5a surface.json + own_cancel logs), hs-live-fn1/ (probe runs).
-- Layer D/E are not serving; fn2 serves no family (families.json serves.fn2 = []).
-
-## Decision: the fn1 node runs on hbox, not the laptop
-hbox image set `/tank/fn/images/keyed/c14e9e8e29ef4e34765271d69885970751f516ba317e583774b9bb9d261a40c4/` (TREE_SHA d377d4559);
-recorded at the top of `fn2/docs/h-harness.md`. hbox scratch: `/tank/fn/scratch/fn2-h-harness/` (trees tree..tree10, run-*/).
-
-## hbox recipe (works)
-- Ship: `git archive --prefix=tree/ HEAD | gzip -1 | ssh hbox 'cd /tank/fn/scratch/fn2-h-harness && rm -rf tree && tar xzf -'` (commit first).
-- The full-fidelity fn1 run: `/tank/fn/scratch/fn2-h-harness/h1b-fn1.sh` (copy: h-quests/h1b-fn1.sh;
-  description if lost): symlinks every image file into `tree/build/`, writes the openssl-test wrapper, exports FN_TEST_OPENSSL_BIN,
-  FN_OPENSSL_PREFIX, FN_TEST_DURABLE_TMP=$B/tmp, FN_FIXTURES_DIR=/tank/fn/scratch/fixtures, `native_env.py identity` of build/fn-host
-  with source = the image's TREE_SHA, then `native_env.py plan --allow-skips --images developer,production,dtn,dtn-developer,reference,developer-stripped`
-  for the 120 modules and runs each line as `env <assignments> python3 -m fn2.tests.harness.run_natives --backend fn1 --modules M --timeout 2400 --out run-h1b/out/M`
-  with `xargs -P 4`. Launched as `SWARM_MEM_MAX=64G nohup swarm-build sh h1b-fn1.sh > h1b-fn1.log 2>&1 < /dev/null & echo $! > h1b-fn1.pid`
-  (the ssh call hangs until the job ends: run it with run_in_background, check with a second ssh).
-- Results: `/tank/fn/scratch/fn2-h-harness/run-h1b/out/<module>/<module>.json`; aggregate them with a short python over `*/*.json`.
-- Live S forms on fn1: `h-quests/hu-live.sh` (on hbox as hu-live.sh): env HU_TREE (tree dir), HU_FAMILIES (space list);
-  runs each family's S test at the laptop cadence with /usr/bin/python3 + PYTHONPATH=venv site-packages.
-- Whole suite: `h-quests/h5b-surface-fn1.sh` (hbox cadence: --box hbox; tree7/run-h5b): copy with a new tree/out for H5c.
+- Quest files and seat tools: `build/coordinator/fn2/lanes/h-quests/` (<Q>.commitmsg; probes: witprobe2.py (generic,
+  family arg: operator|store_ops|peering|bp), peerprobe.py, bpprobe.py, b01-micro.py, hz-micro.py, w01-micro.py,
+  webprobe.py, webwit.py; hbox runners hz-probe.sh (overlay fn2/tests onto tree14 + witprobe2, production image),
+  seatprobe.sh (WP_SCRIPT, WP_IMAGE=fn-host|fn-host-developer, WP_OUT), h5c-surface-fn1.sh; replies wp2-*.json, pp.json, bpp.json).
+- hbox `/tank/fn/scratch/fn2-h-harness/`: tree..tree14 (tree14 = tree13 + the shared tree's fn2/tests overlaid,
+  the seat's probe tree), hz2-live.sh (production image live S: HU_TREE, HU_FAMILIES), web-live.sh (same with the
+  developer image: web, bp), run-*/ outputs, nightly-smoke*/, venv.
+- fn1 image set (the evidence): `/tank/fn/images/keyed/c14e9e8e29ef4e34765271d69885970751f516ba317e583774b9bb9d261a40c4/`
+  (TREE_SHA d377d4559); the fn1 node runs on hbox only, never the laptop.
 
 ## Quests
 | quest | state | commit |
@@ -74,24 +130,25 @@ recorded at the top of `fn2/docs/h-harness.md`. hbox scratch: `/tank/fn/scratch/
 | H5b whole suite, hbox cadence vs fn1 (tree7 = 2beebb84c) | DONE but poisoned by consumer S fd leak (EMFILE) -> HX A; nntp S 5000 ex lost its failure to a diverging replay -> HX B; nntp F 3 new A13-class rows -> HX C | - |
 | HX isolation + fd leak (tools.ports lock per Node), live failure capture (s-failure.json), predicate adjudication (schema 2), config_limits fixture | accepted, pushed; diff read whole; seat applied B's hooks + an end-to-end control; 304 unit tests OK | dd05b20d6 |
 | HY config_limits adjudications L01-L06 from the seat's 152-pair fn1 probe + live greeting (fn1-bug L01/L02/L04, spec-ambiguity L03/L05/L06) | accepted, pushed; 310 unit tests OK; config_limits S live PASS on fn1 (5 ex, 48 s) | 287655a40 |
-
-## Next (after HX lands)
-1. H5c (whole suite, hbox cadence) and config_limits S live; READY with the counts per family.
-2. H5 (plan): hbox nightly provisioning of the opt-ins (FN_RUN_SLOW for peer_rows_growth, a 2 GiB memory wrapper for
-   heap_from_profile, prof and source-matched developer images for dead_run, protected_peering, consumer_e2, topic_local,
-   checkpoint if hbox has them under /tank/fn/images/keyed/*, FN_RUN_RELOCATION_E2E), the nightly driver + report table
-   (build/coordinator/fn2/nightly/<date>.md), and the per-commit budget from measured per-driver timings (30 CPU-min, §2.5).
-   Still to look at from H5a: peer_hostile_feed and image_differential (LISTENING not seen in 180 s) under the new timeouts.
-3. The remaining S forms: operator, store_ops, web, peering, bp (owed) in the consumer/tls_auth/config_limits pattern
-   (one model per protocol, composed; fixed witnesses + generated steps; independent fake + mutation controls; adjudicate
-   only from recorded fn1 replies). Each live run finds model-vs-fn1 differences: consumer found 2, tls_auth 1 (COMPRESS), config 2.
-4. Owed E fixture drivers (FN2_SURFACE_FIXTURE_* for nntp, consumer, web, peering, bp, tls_auth) and H history drivers
-   (peering, bp) and R perf drivers: currently NOT RUN by design.
-5. Review H4 (nntp_model's command table from layer D's defgrammar) waits for D. When D serves: serves.fn2 gains the family.
+| HZ operator S (rows 76-77) + store_ops S (rows 73-75, row-84 subset), Codex, died at usage limit | seat read whole, fake-accepted, merged | 1244dbb62 (merge d4aeb6600) |
+| HZ3 web S (WebModel over pinned NntpModel sessions; fake face + 7 controls; W01 recorded, outside profile) | seat-written; crawl 153 req, witnesses 138 agree; live 5 ex 15 s PASS | 80458ea94 + 335878b2b |
+| HZ5 hbox nightly script, bp B01 (found by its first smoke at 50 ex), evidence written as json_value | smoke: script plumbing OK; bp S PASS at 50 ex | 9eda68ca0 |
+| HZ4 peering + bp S (seat-written; probes peerprobe.py/bpprobe.py, witprobe2 peering|bp; P01 fn1-bug feed by Newsgroups names) | peering live 5 ex 84 s, bp 5 ex 322 s (148 s trimmed); probes 0 disagreements (50 / 219 calls) | cd92f8635 |
+| H7a E fixture drivers | rfc3977 19/19, consumer-position 6, bp golden 2 (octet-equal re-author), scram 4 ok live | a1167fc24 |
+| H7b F/H/R drivers | F: config 5,659 / web 1,000,000 / fncu 800 / bp 800 cases 0 findings; argv+focus classes adjudicated; H: 0 anomalies; R: 20 rows | cfdeb5e6f |
+| H7c F reruns | operator 5,145 / store_ops 4,911 calls 0 findings; tls_auth 1,348 / peering 346 compared 0 new | e495a7b55 |
+| H7d reply window (H7-08 fixed) | peering F rerun 346 compared, 0 new | 4f931bd74 |
+| H7e FNCT + TCPCL fuzz | fnct 300 / tcpcl 80 cases vs fn1, 0 findings | 4ed372d1e |
+| H6 pin P-UTF8-WS (D seat's request) + one pending auth slot | seat-written; D oracle 0 disagreements; 148 unit OK | 22de14c4d |
+| H6 H5c harvest, control_across_peers adjudication, nntp s_timeout, nightly world-deps + memory floor | seat-written; reruns: across_peers 4/4 at 64/96 GiB, image_differential 20/20 | 3ea9d2f8d |
+| HZ2 live on fn1: tagged-line reason parsing, fn1 tags where docs name only the class, operator-form import, O01 effect row | seat-written; probe 0 disagreements; operator S 5 ex 173 s, store_ops S 5 ex 46 s PASS | 8a4875e89 |
 
 ## Known fn1 reds (not harness): agent_wait, control, bounds_join, conformance, decoded_custody, live_reconfiguration,
 mux (x2), owner (x2), public_limits (x2), served_crash_model, store_identity, visibility_join, status_live_posts (timeout);
 H2d fn1-bugs: TAKETHIS 436 without Message-ID (13). (COMPRESS not advertised, 24, was the model's: HV.)
+S-form fn1-bugs: config_limits L01/L02/L04 (HY); operator O01 group retire keeps the group served (HZ2);
+peering P01 feed by Newsgroups names not local memberships (HZ4); bp B01 `pause *` is a separate wildcard hold (HZ5);
+web/nntp W01 access rule on an open connection: LIST ACTIVE live, POST pinned even after GROUP (HZ3, outside profile).
 
 ## fn1 evidence (hbox, image c14e9e8e, TREE_SHA d377d4559) -- H1's acceptance, FINAL
 - 120 modules through the adapter (fn1 backend; pass 1 + pass 2 with /usr/bin/python3 + H1c's harness rerun):
@@ -160,6 +217,26 @@ H2d fn1-bugs: TAKETHIS 436 without Message-ID (13). (COMPRESS not advertised, 24
   spawn one sub-agent per piece and report per piece (H4's per-family skeleton is the example); never for pieces sharing files.
 
 ## Pitfalls hit
+- `bp receive` without a STORE (with an enrolled bp-boundary for the peer at the receive port) refuses every inbound bundle at the receive boundary; accepted bundles journal to lifecycle/*.fnb (the log's `BP accepted ... path=`), not receive-evidence/*.adu.
+- fn1 refuses a control socket path past 103 octets (CONTROL-PATH-TOO-LONG): a deep --out kills every differential node (fixed: short scratch dir in differential.owner).
+- `fn --fn config check` answers an oversize profile with a fault; the operator verbs say usage: fuzz through `operator PATH show`.
+- Never put a running seat script under edit in place: replace by `mv` of a new file (sh reads scripts incrementally).
+- A fuzz value list must not contain flag names (`--off`, `--queue`): flag-shaped values ask a question no spec decides.
+- fn1's connection capacity follows the launch's cgroup ceiling (limit = ceiling - ~134 MB): a swarm-build under 32 GiB shrinks C' below 31 and natives holding many connections meet a correct 400. Launch nightlies at 64G.
+- Link the WHOLE image set (fn-host* incl. *.world-deps), never a fixed list.
+- surface.json at the hbox cadence is huge (1.7 GB for H5b): read it on hbox only.
+- bp: enqueue every work before any request (an enqueue needs no pending journal transaction and a fresh txid).
+- The argv preflight's tagged line has subject `request` (`usage operator request ARGV-MALFORMED`).
+- `OWNER-OPEN ... reason=absent` precedes every store-opening reply: take `reason=` from the tagged/`store:` line only (bp_reason).
+- Shared index: anything staged can be swept into another seat's bare commit. Commit `-- <paths>`, never stage.
+- NntpModel Conn copies policy/credentials at connect: set policy['stored_articles'][id] before connecting
+  (or on the conn), and mark temporary model conns quit (31-connection model limit).
+- Web face: fnr_pre persists while the browser presents a live one (HEAD does not invalidate it); CSRF is on every
+  signed-in page, absent until one is read after sign-in.
+- `git worktree remove` deletes the worktree's git-ignored build/ (venv, evidence copies): copy evidence out first.
+- fn1 CLI replies: the tagged line can follow `Password: Confirm password: ` on the same line; `store` sub-verbs
+  inspect/import (and the direct `fn store S ...` verbs) print no tagged line; reasons appear as `reason=X`.
+- The direct `fn store S import --FIELD N` ignores the override; use `operator CONFIG store import`.
 - hbox: venv has hypothesis but no cryptography, /usr/bin/python3 the reverse (both 3.12.7): run /usr/bin/python3 with
   PYTHONPATH=$B/venv/lib/python3.12/site-packages.
 - The inventory JSON is now a build output: `inventory.load()` (or `python3 -m fn2.tests.harness.inventory --out build/natives`),

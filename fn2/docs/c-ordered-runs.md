@@ -19,7 +19,8 @@ departure from a decision that is not recorded here is a defect.
 | multi-page runs: the build (one writer per level, promotion of sealed pages into index entries), the verified-page cache, resumable lookup cursors, the run-level adapter and keystone | `fn2/books/runs.lisp` | C1b' |
 | the manifest schema (the engine's own directory is a run) | `fn2/books/runs-manifest.lisp` | C1c |
 | identity schema, Binding merge, conflict bound | `fn2/books/identity.lisp` | C2 |
-| active overlay per schema (bounded resident sorted table), InfiniFilter for the identity overlay | `fn2/books/overlay.lisp`, `fn2/books/infinifilter.lisp` | C2 |
+| active overlay per schema: a bounded in-memory sorted run (tables and placement in `fn2/books/overlay.lisp`; entry, locate, insert generated at the assembly) | `fn2/books/overlay.lisp`, `fn2/books/runs-assemble.lisp` | C2a |
+| range scan from a lower bound (cursor path, next leaf through it) | `fn2/books/runs.lisp` (path table), `fn2/books/runs-assemble.lisp` | C2a |
 | Ribbon filter per sealed run | `fn2/books/ribbon.lisp` | C2 |
 | article metadata, overview, addressing schemas; range cursors | `fn2/books/ordered.lisp`, `fn2/books/cursor.lisp` | C3 |
 | `deffold` (interpretation, initialization, coverage), the folds (cursors, accounts, pins, signer heads, registration, read-state, edge-policy, inbox), the summary cut | `fn2/books/folds.lisp`, `fn2/sim/check-fold.lisp` | C4 |
@@ -101,8 +102,14 @@ fields prefixed `MIN-` and `MAX-` (the run's fences), `ROOT-` ref, `FILTER-` ref
 `deflayout`: `NAME-entry` (key fields then value fields), `NAME-index` (key fields, `CHILD-` ref,
 `child-entries`) and `NAME-run` (the descriptor). It generates `NAME-compare` (field-by-field over
 two decoded field ranges: integers numerically, octets lexicographically by bytes, a digest by its
-32 bytes), `NAME-add` (append one entry to a writer, refusing an out-of-order key by name) and
-`NAME-seek` (bounded lower-bound search inside one page). No runtime code walks a declaration.
+32 bytes) and nothing else. `fn2-run-assemble`, run once after a world's last schema, generates the
+layout dispatcher (`fn2-run-layout-decode/-encode/-size/-compare/-fields/-keys`, a `case` over the
+registered schema ids, level 0 the entry layout and a positive level the index layout) with its
+shape lemmas proved by cases, and the generic `fn2-run-add` (append, refusing an out-of-order key
+by name), `fn2-run-seek` (bounded lower-bound search inside one page), `fn2-run-build-add`,
+`fn2-run-build-promote`, `fn2-run-index-nth` and `fn2-run-lookup-step`, all guard-verified once
+there. A schema declared after the assembly is refused by name. No runtime code walks a
+declaration.
 
 | schema | key | value | merge rule | quest |
 |---|---|---|---|---|
@@ -145,11 +152,14 @@ never decide.
   C-owned 64 KiB workspace and its physical identity from the allocator), `(:root L)`, or `:idle`
   (append the next entry with `NAME-BUILD-ADD`, or `fn2-run-build-finish`). The protocol keeps the
   library free of allocator and device coupling; C1c's sealer machine is its caller.
-- **Overlay (C2).** One bounded active overlay per schema, fed by the commit batch's prepared
+- **Overlay (C2a).** One bounded active overlay per schema, fed by the commit batch's prepared
   successor (Astra §E: the read-visible successor overlay is built before sealing; installation is
-  a handle swap). Sealing an overlay produces a level-0 run through the writer. The identity
-  overlay carries an InfiniFilter (FILTERS-2026 item 3) that never deletes a non-member (the 2024
-  lower bound).
+  a handle swap). An overlay is an in-memory sorted run: entries are encoded by the schema's entry
+  codec into one C-owned arena workspace in arrival order, and a resident index of their arena
+  offsets is kept in key order (locate by binary search, insert by opening a gap; both bounded by
+  the overlay's index capacity). `:active` takes inserts; `:frozen` is being sealed and stays
+  readable; then `:free`. An equal key is refused `:duplicate` and changes nothing; no room is
+  `:full` (seal and start another). Sealing reads the overlay in order into the run writer.
 - **Sealing through the commit protocol.** C's sealer machine (declared through A's `defmachine`)
   reserves extents, writes sealed pages into them and harvests their completions; the commit batch
   then carries a run-replacement record naming old and new manifest refs, lists every new page in
@@ -166,13 +176,19 @@ never decide.
 
 ## 6. The read path and the read contract (C1-C4)
 
-- **Lookup.** Descend from the run root by lower bound over index pages, then seek inside the data
+- **Lookup.** A lookup cursor names its schema; descend from the run root by lower bound over index pages, then seek inside the data
   page: binary search over restarts, linear decode within one interval. Each call is bounded
   (≤ 4096 pool reads) and resumable from `(page, restart lo, restart hi, entry)`. Per-run Ribbon
   filters skip runs on a miss (C2); a per-run perfect hash is measured against this sorted search
   before it is adopted (C6).
 - **Exactness.** A lookup's `:found` means a byte-equal key was compared; `:absent` means the
   search ended at a lower bound whose key is greater. Neither ever comes from a filter alone.
+- **Scan (C2a).** A cursor notes, at every level of its descent, the page (slot, generation,
+  physical identity), its entry count and the index entry it took. A scan positioned at the lower
+  bound of a query delivers level-0 entries in order (`:entry`); at a leaf's end it climbs to the
+  lowest level with an entry to the right, takes it, and descends leftmost (`:more`, `:miss` as for
+  lookup), and answers `:end` after the last entry. A page of its path that left the cache answers
+  `:lost`: the caller re-seeks strictly after the last delivered key.
 - **Cursors (C3).** A range cursor holds a stable resume key and the logical version (the root
   generation it read); after a yield it re-seeks from the resume key in the current version. It
   never holds an old manifest or a physical traversal state as its meaning.
@@ -203,17 +219,31 @@ never decide.
   A first version proved the whole append's arithmetic per schema: 8 minutes and a failed guard.
   The split makes each schema cost about one second of proof.
 
-- **C-GLUE-UNVERIFIED (proof cost; owed remedy).** The per-schema build and lookup glue
-  (`NAME-BUILD-ADD`, `NAME-BUILD-PROMOTE`, `NAME-INDEX-SKIP`, `NAME-INDEX-NTH`,
-  `NAME-LOOKUP-STEP`) is admitted with `:verify-guards nil`; everything it calls is guard-verified
-  (the generic build work, promotion check, child reference, commit, cache, cursor save, and the
-  per-schema page-level append and seek). Measured: verifying the lookup step's guard per schema
-  took over 5 minutes and failed on missing frame lemmas; a schema's whole expansion now costs
-  about 15 s (numeric) and 6 s (identity-shaped). The glue therefore runs through its executable
-  counterpart with guard checks at each call, which is slower but checks every precondition. The
-  remedy, owed before C3 serves: one layout dispatcher generated at the assembly point (as A's
-  machine dispatch is) over all registered schemas, so the build and lookup algorithms are written
-  and guard-verified once against the dispatcher's shape lemmas instead of once per schema.
+- **C-ASSEMBLY (replaces C-GLUE-UNVERIFIED).** The per-schema build and lookup glue that C1b'
+  admitted with `:verify-guards nil` is deleted: there is no per-schema glue. The run assembly
+  generates one layout dispatcher at the assembly point (as A's machine dispatch is generated) and
+  the append, seek, build and lookup are written once over it and guard-verified there. The proof
+  cost moved from per schema to per assembly and fell. Measured on the laptop under load: the
+  append (split into a pure readiness check and a straight-line write) 2 s, the page seek 0.5 s,
+  the build 0.2 s, the lookup 1.4 s (the lookup step, split into its three phases, each
+  guard-verified on its own, went from 355 s unsplit to 0.13 s); the whole assembly is about 4 s
+  with the unit's 2 schemas and 5.6 s with 9. A schema's expansion is now its
+  three deflayouts and its key order. The owed row `fn2-run-glue-verified` records the
+  certify-time check: every assembled schema's build and lookup path (the generic entry points,
+  the dispatcher, its codecs and key order, every function its declaration generated, and any
+  per-schema glue by the old names) must be `:common-lisp-compliant`, or `fn2-run-assemble` fails
+  naming the schema and the function.
+- **C-ASSEMBLY-THEORY.** Inside the generated guard proofs, a stobj's `-rows` accessor is disabled
+  exactly where a callee has changed that stobj (the shape lemmas are stated over `-rows`) and left
+  enabled where an element's type is read from the recognizer; disabling it everywhere loses the
+  element typing and sends the prover into inductions.
+- **C-OVERLAY-SORTED (FILTERS-2026 item 3 not adopted, measured alternative).** The active overlay
+  is a bounded resident sorted index over an arena, so membership in it is an exact binary search
+  over at most its index capacity. A filter in front of it would save decodes no measurement has
+  shown to matter; InfiniFilter's two properties (growth without rebuild, deletion) answer needs
+  this overlay does not have: it is bounded and sealed when full, and a removal from a sorted index
+  is exact, so deleting a non-member cannot arise. Revisit only with a measurement of overlay probe
+  cost against a filter.
 - **C-PAGE-FILL.** A writer's fill limit (bytes of header, entries and directory) is a page-fill
   parameter, like a block size; the encoded page stays 64 KiB. Tests use small fills to reach many
   pages and levels with few entries.
@@ -287,7 +317,8 @@ OWED.md is regenerated when the export is green.
 | C1b | runs-page, runs-schema; runs-unit with a numeric-key and an octet-key test schema | **done**: books under 60 s; sealed pages pass B's checker, a flipped byte is refused; seek agrees with the spec; the two page keystones' teeth | C1a |
 | C1b' | runs.lisp: multi-page build, promotion, verified-page cache, resumable lookup cursor; `NAME-run-lookup-exact`; R6a1's compare in place of the interim | **done**: 3,000 entries at a 400-byte fill build 80 pages, height 4, and every query answers right; the teeth | C1b, R6a1 |
 | C1c | sealer machine; run descriptor and manifest schema; run sealing through the commit batch (B's GC2 member); retirement through the allocator; the assembly dispatcher (C-GLUE-UNVERIFIED's remedy) | tiny exhaustive death cuts over one run replacement: recovered manifest is old or new, never mixed | B's GC2 member |
-| C2 | identity schema, overlay, InfiniFilter, Ribbon, IDENTITY checker, M3 | identity correct after bodies and placements reclaimed; filter bits/key and probe time | C1 |
+| C2a | range scan through the cursor path; the generic overlay | **done**: scans and overlays agree with the list specification; both keystones' teeth | C1c first item |
+| C2 | identity schema, decide/admit, Ribbon, IDENTITY checker, M3 | identity correct after bodies and placements reclaimed; filter bits/key and probe time | C1 |
 | C3 | metadata, overview, `addr`, range cursors with resume key and version, positioned seek, M2 | XOVER-shaped reads over cold sparse groups charging directory and overlap reads | C1 |
 | C4 | `deffold`, the folds with their three declarations, summary cut exhaustively in tiny, CONSUMER checker, inbox equivalence | the scholar's chapter-1 scenario exhaustively in tiny | C2, C3 |
 | C5 | compaction with reservations and backpressure, relocation under a stalled lease | compaction under a stalled lease; compaction bytes per committed byte | C4, C1c |
