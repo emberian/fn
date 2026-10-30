@@ -127,10 +127,10 @@
 ; asks the caller to load the page the cursor names, :filter-miss the
 ; filter page of the installed run SRC names.
 (defcolumns fn2-id-decides
- ((phase (:enum fn2-id-decide-phase (:idle :overlay :run-start :run-scan :done)))
+ ((phase (:enum fn2-id-decide-phase (:idle :overlay :run-start :run-scan :done :staged :bound :published)))
   (src :u32) (qbase :u32) (lbq :u32) (eb :u32) (cursor :u32) (rb :u32)
   (qk :u8) (qs :u32) (qg :u60) (exact :u8) (others :u32) (rexact :u8) (rothers :u32) (seen :u32)
-  (reads :u32) (skips :u32) (bucket :u32) (stamp :u60) (vrun :u60)))
+  (reads :u32) (skips :u32) (bucket :u32) (stamp :u60) (vrun :u60) (batch :u60)))
 
 
 (defconst *fn2-id-mid* *fn2-identity-entry-field-message-id*)

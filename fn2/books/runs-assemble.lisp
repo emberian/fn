@@ -706,7 +706,7 @@
     (declare (xargs :stobjs (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard (fn2-ra-ov-guard)
      :guard-hints (("Goal" :in-theory (disable fn2-ov-write fn2-fields-rows)))))
     (b* (((unless (and (fn2-ov-okp o fn2-overlays fn2-overlay-index)
-                       (equal (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-active*)))
+                       (member (fn2-overlays-phase o fn2-overlays) (list *fn2-overlay-phase-active* *fn2-overlay-phase-private*))))
           (mv :state fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (< (fn2-overlays-count o fn2-overlays) (fn2-overlays-icap o fn2-overlays)))
           (mv :full fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
