@@ -1,5 +1,6 @@
 """SimTarget/SimClient over a fake simulator session (the model's own fake renderer behind a session API)."""
 import os
+from pathlib import Path
 import unittest
 from unittest import mock
 
@@ -83,6 +84,19 @@ class SimTargetUnit(unittest.TestCase):
             os.environ.pop('FN2_SURFACE_SIM_NNTP', None)
             with self.assertRaisesRegex(unittest.SkipTest, 'simulator session owed'):
                 sim_target.SimTarget(self)
+
+
+    def test_sim_machine_lines_against_the_interim_table(self):
+        # Every interim line names a verb the table holds; no served line names an interim verb with its
+        # projection form (a served line may carry an interim verb only as a sub-form error, e.g. bare GROUP).
+        import re
+        from fn2.tests.surface.nntp import sim_nntp
+        text = Path(sim_nntp.__file__).read_text()
+        interim = re.search(r"interim_lines = st.sampled_from\(\[(.*?)\]\)", text, re.S).group(1)
+        verbs = set(re.findall(r"b'([A-Z-]+)", interim))
+        self.assertLessEqual(verbs, set(sim_nntp.INTERIM['interim']))
+        self.assertGreaterEqual(len(verbs), 18)
+        self.assertEqual(sim_nntp.D3_POLICY['posting'], False)
 
 
 if __name__ == '__main__':

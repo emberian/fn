@@ -2066,5 +2066,12 @@
   "fixture_rows_merged": {
     "tests/fixtures/source-corpus": "exercised whole by the carried source_corpus native (nntp E); a fixture row beside it was the same construction twice (H7)",
     "tests/test_native_peer_pull.py": "NativePeerPullTests.test_pull_from_inn runs inside the carried peer_pull native (peering E) (H7)"
-  }
+  },
+  "serves_sim": {
+    "fn1": [],
+    "fn2": [
+      "nntp"
+    ]
+  },
+  "serves_sim_note": "S forms that run through layer D's simulator session (sim_target.SimTarget, FN2_SURFACE_SIM_<FAMILY>) before the family serves on a socket: M1a, nntp under D3 (fn2_conn_interim.json names the interim replies)."
 }

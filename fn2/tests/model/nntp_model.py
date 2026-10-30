@@ -642,6 +642,12 @@ class Conn:
             optional = {m.encode() for m in optional_mechs}
             if not offered <= set(mechanisms) <= offered | optional or len(mechanisms) != len(set(mechanisms)):
                 return "SASL mechanism list differs from configured connection context"
+            if self.policy.get("advertise_authinfo", True) is False:
+                # A profile with no credential store and no mechanism (fn2 D3, until E2): no AUTHINFO or
+                # SASL line is advertised (RFC 4643 2.1: the capability is for a server that offers it).
+                if b"AUTHINFO" in labels or mechanisms:
+                    return "AUTHINFO/SASL advertised without a credential store"
+                return None
             if not (self.authenticated_as or self.compressed):
                 auth = next((r.split()[1:] for r in rows if r.startswith(b"AUTHINFO ")), [])
                 wanted = {b"SASL"} | ({b"USER"} if self.tls or not self.policy.get("protected_only") else set())
@@ -1333,7 +1339,11 @@ class Conn:
         if len(args) not in {1, 2}:
             return self._error()
         mech = args[0].upper()
-        if (self.policy.get("protected_only") or mech == "PLAIN") and not self.tls:
+        # PLAIN before TLS is 483 when this node offers PLAIN under TLS (RFC 4643 2.4: encryption required for
+        # the mechanism); a node that offers no mechanism at all (sasl_mechanisms empty: fn2 D3 until E2)
+        # does not recognise it, 503 (M1a: D3 answers 503 `mechanism not recognized`).
+        plain_offered = "sasl_mechanisms" not in self.policy or "PLAIN" in self.policy["sasl_mechanisms"]
+        if (self.policy.get("protected_only") or (mech == "PLAIN" and plain_offered)) and not self.tls:
             return self._reply("AUTHINFO", 483)
         offered, optional = self._sasl_offers()
         if mech in optional:
