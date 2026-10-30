@@ -608,3 +608,23 @@ two wire families after each correction). With these runs, all eight families' F
 
 Side effect for layer D's oracle: the model answers 381 to `XREDEEM CODE NAME` for any code (H7b), so
 `fn2/tests/grammar-fuzz-oracle.py` no longer defers XREDEEM. Its 4,416 cases still show 0 disagreements.
+
+## H7e: the owed fuzz halves, FNCT frames and TCPCL sessions
+
+- **consumer, FNCT** (`fnct_fuzz`, run after `fncu_fuzz` in the consumer F): the driver starts an owner and
+  captures, through a recording proxy on a second control path, the request frames `operator CONFIG status`
+  sends and their replies. On fn1 that is three frames: FNCT kind 26 (identity), FNCT kind 19 (`status`),
+  and FNLS. The driver never builds a frame. Each case is a captured frame, either unchanged or with one
+  mutation: a bit flip anywhere, truncation, extension, garbage, or a megabyte. The oracle needs no decoder.
+  An unchanged frame must get its captured reply. A mutated frame must never get the success reply, because
+  the 32-octet trailer covers the whole prefix (books/frame-trailer.lisp). Every reply must come within the
+  ten-second frame deadline (specs/owner.md:58-62). After each case the owner must still answer the identity
+  request as captured. fn1: 300 cases, 0 findings. Mutation controls: `accept-trailer-flip`, `die-on-oversize`.
+- **bp, TCPCL** (`tcpcl_fuzz`, run after `bp_fuzz` in the bp F): RFC 9174 v4 sessions, encoded as the carried
+  TcpclPeer encodes them, carry the captured dtn7-rs bundle to `bp receive PORT 1 ...`. `bp receive` admits
+  an inbound principal only against a Store's enrolled boundary (host/native/bp.lisp), so each case makes a
+  Store whose boundary names `dtn://dtn7x/` at the receive port. Expected outcomes: one segment, or 2-4
+  segments of one transfer, are accepted with the payload ADU. Another contact magic or version, a first
+  segment without START, a short segment, a flipped bundle or a 2**62 length are never delivered. The
+  receiver must exit within 30 s with no crash. fn1: 80 cases, 0 findings. Mutation controls:
+  `accept-bad-magic`, `accept-no-start`, checked against an independent receiver over bp_fuzz's reader.

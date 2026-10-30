@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from fn2.tests.surface import bp_fuzz, fncu_fuzz
+from fn2.tests.surface import bp_fuzz, fnct_fuzz, fncu_fuzz, tcpcl_fuzz
 
 
 def run(module, plant=None, seeds='0..999'):
@@ -16,13 +16,29 @@ def run(module, plant=None, seeds='0..999'):
 
 class CodecFuzzUnit(unittest.TestCase):
     def test_unmutated_fakes_agree_on_every_case(self):
-        for module, cases in ((fncu_fuzz, fncu_fuzz.CASES), (bp_fuzz, bp_fuzz.CASES)):
+        for module, cases in ((fncu_fuzz, fncu_fuzz.CASES), (bp_fuzz, bp_fuzz.CASES), (fnct_fuzz, fnct_fuzz.CASES),
+                              (tcpcl_fuzz, tcpcl_fuzz.CASES)):
             code, summary = run(module)
             self.assertEqual((code, summary['findings']), (0, 0), module.__name__)
             self.assertEqual(set(summary['by_mutation']), set(cases), module.__name__)
 
+    def test_bp_then_tcpcl_on_the_fake(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code = bp_fuzz.main(['--target', 'fake', '--seeds', '0..99', '--seconds', '20', '--out', directory,
+                                 '--with-tcpcl'])
+            self.assertEqual(code, 0)
+            self.assertGreater(json.loads(Path(directory, 'tcpcl', 'summary.json').read_text())['cases'], 0)
+
+    def test_fncu_then_fnct_on_the_fake(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code = fncu_fuzz.main(['--target', 'fake', '--seeds', '0..99', '--seconds', '20', '--out', directory,
+                                   '--with-fnct'])
+            self.assertEqual(code, 0)
+            self.assertTrue(Path(directory, 'summary.json').exists())
+            self.assertGreater(json.loads(Path(directory, 'fnct', 'summary.json').read_text())['cases'], 0)
+
     def test_each_plant_is_caught(self):
-        for module in (fncu_fuzz, bp_fuzz):
+        for module in (fncu_fuzz, bp_fuzz, fnct_fuzz, tcpcl_fuzz):
             for plant in module.PLANTS:
                 code, summary = run(module, plant, '0..299')
                 self.assertEqual(code, 1, (module.__name__, plant))
