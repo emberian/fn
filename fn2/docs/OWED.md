@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 349; bound statements: 344; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
+Requirements: 353; bound statements: 348; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -1865,6 +1865,54 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RUN-RESTART-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-RUN-RESTART-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 1) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((OFFSET :U32)) (FN2-LAYOUT-VALUES '((OFFSET :U32)) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RIBBON-HEADER-ROUNDTRIP)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RIBBON-HEADER-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RIBBON-HEADER-ROUNDTRIP-HYPS BASE SLOT GEN OFF OKIND OSLOT OGEN F P) (MV-LET (EC END P2) (FN2-RIBBON-HEADER-ENCODE BASE SLOT GEN OFF OKIND OSLOT OGEN F P) (AND (EQ EC :OK) (MV-LET (CODE NEXT F2) (FN2-RIBBON-HEADER-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P2) (FN2-LAYOUT-ROUNDTRIP-RESULTP '((SCHEMA (:ID SCHEMA)) (RUN (:ID RUN)) (SEED :U32) (KEYS :VARINT) (SLOTS :VARINT) (WIDTH :U8) (BITS :U8)) (FN2-LAYOUT-VALUES '((SCHEMA (:ID SCHEMA)) (RUN (:ID RUN)) (SEED :U32) (KEYS :VARINT) (SLOTS :VARINT) (WIDTH :U8) (BITS :U8)) BASE F P) CODE NEXT END (FN2-LAYOUT-VALUES '((SCHEMA (:ID SCHEMA)) (RUN (:ID RUN)) (SEED :U32) (KEYS :VARINT) (SLOTS :VARINT) (WIDTH :U8) (BITS :U8)) BASE F2 P2) (FN2-POOL-LOGICAL-OCTETS (- END OFF) (+ (FN2-POOL-BASE SLOT P2) OFF) P2))))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Generated one-shot exports refine the list specification when the complete transition count fits their 4096-step budget. General proof owed; larger inputs use decode-step. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RIBBON-HEADER-CANONICAL)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RIBBON-HEADER-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-RIBBON-HEADER-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 7) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((SCHEMA (:ID SCHEMA)) (RUN (:ID RUN)) (SEED :U32) (KEYS :VARINT) (SLOTS :VARINT) (WIDTH :U8) (BITS :U8)) (FN2-LAYOUT-VALUES '((SCHEMA (:ID SCHEMA)) (RUN (:ID RUN)) (SEED :U32) (KEYS :VARINT) (SLOTS :VARINT) (WIDTH :U8) (BITS :U8)) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RIBBON-NO-FALSE-NEGATIVE)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RIBBON-NO-FALSE-NEGATIVE` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RIBBON-KEYSP KEYS) (CONSP KEYS) (<= (LEN KEYS) 256) (FN2-RIBBON-KEYSP QUERIES) (<= (LEN QUERIES) 256)) (LET ((R (FN2-RIBBON-IMAGE KEYS NIL QUERIES NIL))) (AND (EQUAL (CAR R) :SEALED) (EQUAL (CADR R) :OK) (FN2-RIBBON-ANSWERS-SOUND KEYS QUERIES (CADDR R)))))` | `(FN2-RIBBON-NO-FALSE-NEGATIVE-POSITIVE FN2-RIBBON-NO-FALSE-NEGATIVE-NEGATIVE)` | A filter built through the real build from a run's keys seals, passes B's checker under its parent-held hash, and its probe answers :absent only for a query that is no key of the run: a filter may skip a run, never hide a key. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RIBBON-MUTATION-REFUSED)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RIBBON-MUTATION-REFUSED` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RIBBON-KEYSP KEYS) (CONSP KEYS) (<= (LEN KEYS) 256) (NATP OFF) (< OFF *FN2-RUN-PAGE-SIZE*) (UNSIGNED-BYTE-P 8 X) (NOT (EQUAL X 0))) (LET ((CHECK (CADR (FN2-RIBBON-IMAGE KEYS NIL NIL (CONS OFF X))))) (AND (KEYWORDP CHECK) (NOT (EQUAL CHECK :OK)))))` | `(FN2-RIBBON-MUTATION-REFUSED-POSITIVE FN2-RIBBON-MUTATION-REFUSED-NEGATIVE)` | Any one-byte change anywhere in a sealed filter page (header, filter header, solution bytes or padding) is refused by name by B's checker before a probe can read it. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-IDENTITY-ENTRY-ROUNDTRIP)`
 
