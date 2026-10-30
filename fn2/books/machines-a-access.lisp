@@ -178,13 +178,28 @@
 (defun fn2-machine-waiting-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (not (equal (fn2-machine-wait-head fn2-core) *fn2-none*)))
-; The first admitted kind with a parked listener and a free credit, or nil.
+; Whether the pool has COUNT free rows of each (CLASS . COUNT) in NEEDS.
+(defun fn2-machine-pool-has-p (needs fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (atom needs) t
+    (and (consp (car needs)) (natp (caar needs)) (natp (cdar needs))
+         (let ((class (caar needs)) (count (cdar needs)))
+           (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+             (yes)
+             (and (< class (fn2-pool-nclasses fn2-pool))
+                  (< class (fn2-pool-class-counts-length fn2-pool))
+                  (<= count (fn2-pool-class-countsi class fn2-pool)))
+             yes))
+         (fn2-machine-pool-has-p (cdr needs) fn2-core))))
+; The first partition with a parked taker, a free credit and (for a taken
+; kind, A-S7) the pool rows its take reserves, or nil.
 (defun fn2-machine-admission-ready-ord (o fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix (- *fn2-machine-admitted-max* (nfix o)))
                   :guard (and (fn2-core-wfp fn2-core) (natp o))))
   (if (or (not (natp o)) (>= o *fn2-machine-admitted-max*)) nil
     (if (and (not (equal (fn2-machine-admission-head o fn2-core) *fn2-none*))
-             (< 0 (fn2-machine-admission-credits o fn2-core)))
+             (< 0 (fn2-machine-admission-credits o fn2-core))
+             (fn2-machine-pool-has-p (fn2-machine-partition-classes o) fn2-core))
         o
       (fn2-machine-admission-ready-ord (+ 1 o) fn2-core))))
 (defthm fn2-machine-admission-ready-ord-range
