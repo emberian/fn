@@ -451,11 +451,13 @@
 ; Installed runs: the engine's resident view of each schema's sealed runs (the
 ; manifest, C1c, makes it durable). A row names a run's root page (its level,
 ; cache slot and physical identity, the owner its pages are read under) and
-; its entry count.
+; its entry count; FILTER says whether the run has a Ribbon filter page
+; (ribbon.lisp), named by its physical identity (FUNIT, FCOUNTER) and read
+; through the verified-page cache under the run's owner.
 (defcolumns fn2-run-installed
  ((state (:enum fn2-run-installed-state (:free :live)))
   (schema :u60) (run :u60) (top :u8) (slot :u32) (gen :u60) (unit :u60) (counter :u60) (entries :u60)
-  (okind :u8) (oslot :u32) (ogen :u60)))
+  (okind :u8) (oslot :u32) (ogen :u60) (filter :bool) (funit :u60) (fcounter :u60)))
 (defun fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
  (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
@@ -468,6 +470,17 @@
        (mv :state fn2-run-installed))
       (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-live*) (schema schema) (run run)
                            (top top) (slot slot) (gen gen) (unit unit) (counter counter) (entries entries)
-                           (okind okind) (oslot oslot) (ogen ogen))))
+                           (okind okind) (oslot oslot) (ogen ogen) (filter 0) (funit 0) (fcounter 0))))
   (mv :ok fn2-run-installed)))
 (fn2-run-installed-preserves fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed) :position 1 :raw-rows t)
+; Name live run R's filter page.
+(defun fn2-run-install-filter (r unit counter fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
+                    (unsigned-byte-p 60 unit) (unsigned-byte-p 60 counter)))
+       (mv :bounds fn2-run-installed))
+      ((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*))
+       (mv :state fn2-run-installed))
+      (fn2-run-installed (fn2-run-installed-put r (filter 1) (funit unit) (fcounter counter))))
+  (mv :ok fn2-run-installed)))
+(fn2-run-installed-preserves fn2-run-install-filter (r unit counter fn2-run-installed) :position 1 :raw-rows t)
