@@ -34,7 +34,7 @@
 ; credit reserved. Fixtures inject the completion directly.
 (defun fn2-machine-test-admitting (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (let ((fn2-core (fn2-listener-take-credit fn2-core)))
+  (let ((fn2-core (fn2-listener-take-credit *fn2-echo-admission-ordinal* fn2-core)))
     (fn2-listener-put-core 0 (phase *fn2-listener-state-admitting*))))
 
 (defun fn2-machine-test-short-send (release-already-posted-p fn2-core)
@@ -167,7 +167,7 @@
                  (equal (fn2-machine-phase id fn2-core) *fn2-echo-state-free*)
                  (equal (fn2-machine-generation id fn2-core) 2)
                  (equal (fn2-machine-pool-slot id fn2-core) *fn2-none*)
-                 (equal (fn2-machine-free-head fn2-core) id))
+                 (equal (fn2-machine-free-head *fn2-echo-admission-ordinal* fn2-core) id))
             :ok :null-release)
         fn2-core)))
 

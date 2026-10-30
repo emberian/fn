@@ -185,6 +185,8 @@
                     (fn2-core-init profile fn2-core))))))))
   (b* ((fn2-core (fn2-core-init profile fn2-core))
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
+       (fn2-core (fn2-listener-set-target-all
+                  (fn2-machine-admission-ordinal-of (fn2-profile-get :listener-targets profile)) fn2-core))
        (fn2-core (fn2-exec-start-listeners (fn2-machine-accept-count fn2-core)
                    (fn2-machine-kind-base *fn2-listener-kind* fn2-core) fn2-core))
        (fn2-core (if scribe-p (fn2-scribe-start fn2-core) fn2-core))

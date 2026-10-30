@@ -19,7 +19,9 @@
 ;; gives each phase's resources in D0's order (fn2/books/resources.lisp).
 (defmachine fn2-listener
  :states (:accepting :admitting :closing)
- :fields ((cap-index :u32) (cap-nonce :u32) (pending :u32) (stopped :bool) (event-ready :bool) (mode :bool))
+ :fields ((cap-index :u32) (cap-nonce :u32) (pending :u32) (stopped :bool) (event-ready :bool) (mode :bool)
+          ; the admitted kind's ordinal (D 4.5): echo unless :listener-targets names another
+          (target :u8))
  :holds ((:accepting :accept-credit) (:admitting :accept-credit :connection-row) (:closing :accept-credit))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-profile-accept-credits profile)
@@ -39,11 +41,11 @@
    :tables (fn2-core-ops fn2-core-machines fn2-core-machine-tables)
    :next (:accepting :admitting)
    :uses (fn2-machine-admission-credits fn2-machine-park-admission fn2-issue-accept
-          fn2-listener-take-credit fn2-machine-issue-result))
+          fn2-listener-take-credit fn2-machine-issue-result fn2-machine-refuse-phase))
   (:admitting fn2-listener-admitting
    :cost (:steps (:cost fn2-listener-admit :steps))
    :writes (event-ready)
-   :tables (fn2-core-machines fn2-core-pool fn2-echo-table)
+   :tables (fn2-core-machines fn2-core-pool fn2-core-machine-tables)
    :next (:admitting :accepting :closing)
    :uses (fn2-listener-admit fn2-machine-refuse-phase)
    :on-refusal (:close-and-release :to :closing :releases (:connection-row)))
@@ -65,6 +67,8 @@
  :capacity (fn2-profile-c profile)
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (pool-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
+ :admission (:phase :command :ranges ((:rx-range :slot pool-slot :gen pool-gen :class 0))
+             :copy (mode) :clear (off length pending borrows))
  :observes ((:receive-result fn2-echo-observe-receive
              :cost (:steps *fn2-work-transition*) :writes (length off) :next (:reply :closing) :uses ())
             (:send-result fn2-echo-observe-send
