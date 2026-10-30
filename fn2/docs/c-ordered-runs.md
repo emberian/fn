@@ -24,13 +24,15 @@ departure from a decision that is not recorded here is a defect.
 | range scan from a lower bound (cursor path, next leaf through it) | `fn2/books/runs.lisp` (path table), `fn2/books/runs-assemble.lisp` | C2a |
 | Ribbon filter per sealed run: the build (band, insertion, back substitution, page), the probe, the adapter and keystones | `fn2/books/ribbon.lisp`; unit `fn2/tests/ribbon-unit.lisp` | C2c |
 | article metadata, overview, addressing schemas | `fn2/books/ordered.lisp` | C3 |
-| range reads (merge over overlays and runs, resume key, version) and the read plan; assembled by `fn2-range-assemble` | `fn2/books/range.lisp`; test assembly `fn2/tests/range-assembly.lisp`; unit `fn2/tests/range-unit.lisp` | C3 |
+| range reads (merge over overlays and runs, resume key, version) and the read plan; assembled by `fn2-range-assemble` | `fn2/books/range.lisp`; unit `fn2/tests/range-unit.lisp` | C3 |
+| the served assembly: the production schemas assembled once with the identity decision, then the range reads | `fn2/books/runs-served.lisp`, `fn2/books/range-served.lisp` | C-ONE-ASSEMBLY |
+| C in the served core: the engine's tables as core children, the decision rows' field stripes, the identity operations layer D calls (C-S1) and their defcosts; the core wrappers (`fn2-identity-core-events`) | `fn2/books/machines-c.lisp` (included by `assembly-index`), materialized in `fn2/books/assembly-callbacks-c.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S1 |
 | `deffold` (interpretation, initialization, coverage), the folds (cursors, accounts, pins, signer heads, registration, read-state, edge-policy, inbox), the summary cut | `fn2/books/folds.lisp`, `fn2/sim/check-fold.lisp` | C4 |
 | compaction with reservations and backpressure; relocation under a lease | `fn2/books/compact.lisp` | C5 |
 | IDENTITY checker (an independent list interpreter with its own Binding); CONSUMER checker | `fn2/sim/check-identity.lisp` (C2d); `fn2/sim/check-consumer.lisp` (C4) | C2d, C4 |
 | acceptance | `fn2/tests/sim-layer-c.lisp` (scenario M3 so far; `fn2/tests/sim-layer-c-sweep.lsp` the 10,000-seed driver) | C2d-C6 |
-| C's test assembly: the identity schema and the run units' fixture schemas, assembled once; the teeth makers | `fn2/tests/runs-assembly.lisp` | C2b |
-| units | `fn2/tests/runs-unit.lisp`, `fn2/tests/identity-unit.lisp` (both include the test assembly), `fn2/tests/ribbon-unit.lisp` (the filter alone) | each |
+| C's test world: the served assembly (range-served) and the teeth makers | `fn2/tests/runs-assembly.lisp` | C2b |
+| units | `fn2/tests/runs-unit.lisp` (over the overview and identity schemas), `fn2/tests/identity-unit.lisp`, `fn2/tests/range-unit.lisp`, `fn2/tests/sim-layer-c.lisp` (all include `runs-assembly`), `fn2/tests/ribbon-unit.lisp` (the filter alone), `fn2/tests/identity-core-unit.lisp` (the served core) | each |
 
 Every C book starts `(fn2-book-layer :c)` after its includes, so its rows count under layer C.
 
@@ -135,8 +137,12 @@ offerer). The key includes the content identity, so a Message-ID's facts are adj
 The decision (`fn2-id-decide-start`, `fn2-id-decide-step`, one row of `fn2-id-decides` per
 decision in flight) visits every identity overlay, then every installed identity run, each
 positioned at the lower bound `(mid, empty content)`, and reads that Message-ID's block: whether
-`(mid, c)` is recorded, and how many other contents are. The answer is `:duplicate` when `(mid, c)`
-is recorded, `:conflict` when another content is, else `:stored`. Each step is bounded (a run's
+`(mid, c)` is recorded and in which state, and how many other contents are. The answer is
+`:duplicate` when `(mid, c)` is recorded as the accepted content, `:evidence` when it is recorded
+only as conflict evidence (a re-offer of evidence must never hear "already stored"; D's §14.4.3),
+`:conflict` when another content is, else `:stored`. One step skips, in one bounded scan of the
+table, every overlay row that is not a readable identity overlay and every installed row that is not
+a live identity run, so a decision on a node with nothing recorded answers in three steps. Each step is bounded (a run's
 block is read through the scan, one entry per step; a block longer than the bound plus two is cut
 short) and resumable; `:miss` hands the caller the page to load. `:found`/`:absent` come from byte
 comparisons only; no filter decides.
@@ -292,11 +298,13 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   the dispatcher, its codecs and key order, every function its declaration generated, and any
   per-schema glue by the old names) must be `:common-lisp-compliant`, or `fn2-run-assemble` fails
   naming the schema and the function.
-- **C-ONE-ASSEMBLY.** A world holds one assembly: the dispatcher and the generic functions are
-  defined once, so two books that each assemble cannot be included together (the OWED export
-  includes every unit). C's units therefore share one test assembly book. When the node's
-  production assembly lands (with the sealer, C1c), the C units move onto it: their fixture schemas
-  join it under the test profile or the units use the production schemas.
+- **C-ONE-ASSEMBLY (done with C-S1).** A world holds one assembly: the dispatcher and the generic
+  functions are defined once. The production schemas are assembled in `runs-served.lisp` (with the
+  identity decision) and `range-served.lisp` (the range reads); the node's assembly includes them
+  through `machines-c.lisp`, and every C unit includes them through `tests/runs-assembly.lisp`. The
+  run units' fixture schemas (`fn2-rt-num`, `fn2-rt-mid`) are deleted: their tests run over the
+  overview schema (numeric key) and the identity schema (octet key), whose keystone teeth they
+  supply.
 - **C-ASSEMBLY-THEORY.** Each assembly (`fn2-run-assemble`, `fn2-identity-assemble`) expands inside
   an `encapsulate` with one local theory (the rows accessors of the pool, fields, digests and
   checker tables folded, as in runs.lisp), so its proofs do not depend on the including world's
@@ -354,9 +362,15 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   entry at or before `p`). Cost: about log2(range) probes of one descent each, no format change.
   The alternative, a position fence in index entries (a second order searched over the same
   pages), is a format change taken only if consumer seeks measure as hot; `addr` seeks by its key.
-- **C-RANGE-ASSEMBLY.** The range reads are generated by their own macro in their own test book
-  (`range-assembly.lisp`, including `runs-assembly.lisp`), so neither assembly book nears the
-  minute (20 s and 33 s on the laptop).
+- **C-RANGE-ASSEMBLY.** The range reads are generated by their own macro in their own book
+  (`range-served.lisp`, including `runs-served.lisp`), so neither assembly book nears the minute
+  (20.6 s and 25.5 s on the laptop under load).
+- **C-DECISION-STRIPES (C-S1).** The decision rows are the profile's `:t` (one per transaction) and
+  share B's `fn2-fields` table: B's 128-row stripe per format slot from row 0, then one 256-row
+  stripe per decision ending at the table's end (`fn2-b-field-rows` sizes the table for both). In a
+  stripe: the offer at +0, its lower bound at +2, the decoded entry at +4, the run reader at +84.
+  A decision's run cursor is the cursor row with its number. An offer refuses `:bounds` when the
+  stripes would reach into B's.
 - **C-LEVELS.** A build has at most `*fn2-run-max-levels*` = 6 levels, a format parameter: with
   64 KiB pages and index entries of at most about 350 bytes, six levels address over 10^13 pages.
   Exhaustion is the named refusal `:levels`.
@@ -401,6 +415,13 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
    `fn2-ribbon-mix`. Asked: hoist the three into a `fn2/books/` word book that `sim/prng.lisp`
    includes; C then calls them and deletes its copies.
 
+6. **C-S1 (to D, served).** `(fn2-identity-offer d mslot mgen moff mlen dslot dgen doff okind
+   oslot ogen fn2-core) → (mv code fn2-core)` (decision row `d` idle or done; the octets readable
+   under the owner for the decision's life), `(fn2-identity-step d budget fn2-core) → (mv answer
+   fn2-core)` (`:more`, `:stored`, `:duplicate`, `:evidence`, `:conflict`; `:miss` cannot arise
+   before C1c installs runs in the served core; budget ≤ 4,096), `(fn2-identity-release d
+   fn2-core) → (mv code fn2-core)`; defcosts in `machines-c.lisp`.
+
 ## 9. Keystones (defthm-owed, each with teeth)
 
 | name | statement (real entry points) | teeth | quest |
@@ -408,7 +429,7 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 | `NAME-page-roundtrip` (generated per schema) | for sorted, well-formed entries that fit one page (`fn2-run-page-inputp`), the real append, close, head and seal produce, and B's checker accepts under the parent-held hash, exactly the octets of `fn2-run-page-spec` (B's list codec for the headers and each entry, the restart directory, zero padding) | positive: 40 entries per test schema, inputs checked; negative: unsorted entries (refused `:order` part way) give a different image | C1 |
 | `NAME-seek-lower-bound` (generated per schema) | the real page seek returns `(:found i)` or `(:absent i)` equal to `fn2-run-lower-bound-spec` over the spec key order | positive: queries before, inside, between, after and at restart boundaries, including empty octets and a query held by another owner; negative: the unsorted page disagrees with the spec | C1 |
 | `NAME-run-lookup-exact` (generated per schema) | for at most 64 sorted well-formed entries and a fill at which every page holds two entries (`fn2-run-run-inputp`), a run built through the real build entry points and searched from its root through the real cursor steps answers `(:found entry)` exactly when an entry's key equals the query's, with that entry, and `(:absent nil)` otherwise (`fn2-run-key-lookup-spec`) | positive: present, between, before, after and empty-octet queries over multi-level runs of both test schemas; negative: unsorted entries make the conclusion false | C1b' |
-| `fn2-exact-identity` (RELEASE-PLAN T9) | offers decided and recorded through the real decision and recording, sealed into runs every `split` offers, the offers' staging workspace released, then queries decided: each answer equals `fn2-id-answers-spec` (`:duplicate` iff recorded, `:conflict` iff another content is, else `:stored`) | positive: the M3-shaped scenario (a conflict, a duplicate, five contents for one Message-ID against the bound of four) at splits 0, 4 and 1; negative: a node whose summary dropped the Message-ID octets answers `:stored` to the re-offer of m1 with another content, where the statement requires `:conflict` | C2b |
+| `fn2-exact-identity` (RELEASE-PLAN T9) | offers decided and recorded through the real decision and recording, sealed into runs every `split` offers, the offers' staging workspace released, then queries decided: each answer equals `fn2-id-answers-spec` (`:duplicate` iff recorded as the accepted content, `:evidence` iff recorded only as evidence, `:conflict` iff another content is, else `:stored`) | positive: the M3-shaped scenario (a conflict, a duplicate, five contents for one Message-ID against the bound of four; two queries answer `:evidence`) at splits 0, 4 and 1; negative: a node whose summary dropped the Message-ID octets answers `:stored` to the re-offer of m1 with another content, where the statement requires `:conflict` | C2b |
 | `fn2-identity-binding-converges` | two nodes whose offered fact sets are equal (any order, duplication or sealing schedule, within the bound) hold equal Bindings, read back by the real scan of every installed run | positive: one fact set in two orders (one with a duplicate) under splits 2 and 3, equal to each other and to `fn2-id-binding-spec`; negative: nodes that refuse a conflict and record nothing hold different Bindings for the two orders | C2b |
 | `fn2-ribbon-no-false-negative` | a filter built through the real start, add, finish and work from at most 256 keys seals, passes B's checker under its parent-held hash, and its probe answers `:absent` only for a query that is no key (`fn2-ribbon-answers-sound`) | positive: 200 keys and 56 others probed, every key `:maybe`, at least 50 others `:absent`; negative: a filter built without key 17 answers `:absent` to it | C2c |
 | `fn2-ribbon-mutation-refused` | any one-byte change (offset in the page, nonzero XOR) of a sealed filter page is refused by B's checker by name | positive: changes in B's header, the filter header, Z and the padding refused while the unchanged page is accepted; negative: a zero change is accepted | C2c |

@@ -105,7 +105,7 @@
           (fn2-id-decide-step d (+ 1 budget) fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
                               fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
          ((when (eq answer :more)) (fn2-ida-mv :ok offers inflight off runs events s0 s1 s2 s3))
-         ((unless (member-eq answer '(:stored :duplicate :conflict)))
+         ((unless (member-eq answer '(:stored :duplicate :evidence :conflict)))
           (fn2-ida-mv (list :step answer) offers inflight off runs events s0 s1 s2 s3))
          ((mv outcome fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps)
           (fn2-ida-call fn2-m3-record d defeat (+ 1 (len events)))))

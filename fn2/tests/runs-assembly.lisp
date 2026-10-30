@@ -1,26 +1,11 @@
-; Layer C's test assembly: the identity schema (fn2/books/identity.lisp), the
-; ordered schemas (fn2/books/ordered.lisp) and the run units' two fixture
-; schemas, assembled once, with the identity decision. Every C unit includes
-; this book (range-assembly.lisp adds the range reads on top), so a world
-; holds one assembly (the dispatcher's functions are defined once per world).
+; Layer C's units stand on the served assembly (C-ONE-ASSEMBLY): the
+; production schemas (identity, article metadata, overview, addressing)
+; assembled once in books/runs-served.lisp, the range reads in
+; books/range-served.lisp. Every C unit includes this book, which holds the
+; teeth makers for the per-schema keystones the assembly generates.
 (in-package "ACL2")
-(include-book "../books/identity")
-(include-book "../books/ordered")
+(include-book "../books/range-served")
 (include-book "std/util/bstar" :dir :system)
-
-(defrunschema fn2-rt-num :id 900
- :key ((group (:id group)) (number (:id group-number)))
- :value ((article (:id article)))
- :merge :unique)
-; The octet-keyed fixture: a Binding-shaped key (Message-ID octets, content
-; digest), so one Message-ID with two contents is two adjacent entries.
-(defrunschema fn2-rt-mid :id 901
- :key ((message-id (:octets 250)) (content :digest))
- :value ((article (:id article)))
- :merge :union)
-
-(fn2-run-assemble)
-(fn2-identity-assemble)
 
 ;; Teeth makers for the per-schema keystones the assembly generates; each
 ;; unit instantiates them for its schemas.

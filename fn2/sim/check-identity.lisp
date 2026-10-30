@@ -4,12 +4,15 @@
 ; judges each event at its own point in the trace. No identity book is
 ; included: the contract is restated here (UC 4.3 decision 3, STORAGE 4
 ; decision 6). The decision for (mid, c) is :duplicate iff c is recorded
-; for mid, :conflict iff another content is, else :stored. A record
+; for mid as its accepted content (the first recorded), :evidence iff c is
+; recorded only as conflict evidence, :conflict iff another content is,
+; else :stored. A record
 ; (outcome :ok) of a stored offer adds the accepted content; of a
 ; conflicting one adds evidence while mid holds fewer than BOUND contents,
 ; and past that the outcome must be :identity-conflict-bound. A duplicate
-; records nothing. :stale records nothing and constrains nothing (the offer
-; was decided around a later record of its bucket and is decided again);
+; or an :evidence records nothing. :stale records nothing and constrains
+; nothing (the offer was decided around a later record of its bucket and is
+; decided again);
 ; every other outcome is judged against the Binding at the record, its
 ; linearization point. Queries are judged at their point; seals and
 ; reclaims (staged bodies, journal placements) change nothing a query may
@@ -38,7 +41,9 @@
 (defun fn2-ci-decide (mid c binding)
  (declare (xargs :guard t))
  (let ((cs (fn2-ci-contents mid binding)))
-  (cond ((member-equal c (true-list-fix cs)) :duplicate) ((consp cs) :conflict) (t :stored))))
+  (cond ((and (consp cs) (equal c (car cs))) :duplicate)
+        ((member-equal c (true-list-fix cs)) :evidence)
+        ((consp cs) :conflict) (t :stored))))
 (defun fn2-ci-facts-of (mid cs)
  (declare (xargs :guard t))
  (if (atom cs) nil (cons (list mid (car cs)) (fn2-ci-facts-of mid (cdr cs)))))
@@ -56,6 +61,7 @@
  (declare (xargs :guard (and (natp n) (natp bound))))
  (case expected
   (:duplicate (member-eq outcome '(:duplicate :none)))
+  (:evidence (member-eq outcome '(:evidence :none)))
   (:stored (eq outcome :ok))
   (otherwise (if (< n bound) (eq outcome :ok) (eq outcome :identity-conflict-bound)))))
 
@@ -90,13 +96,14 @@
  (fn2-ci-loop events 0 bound nil 0 0 0))
 
 ; Controls (the checker's own teeth): a correct trace passes; a flipped
-; answer, a conflict recorded past the bound, a dropped conflict record,
-; a binding missing a fact, and an accepted second content are refused.
+; answer, evidence answered as accepted content, a conflict recorded past
+; the bound, a dropped conflict record, a binding missing a fact, and an
+; accepted second content are refused.
 (defconst *fn2-ci-good*
  '((:offer m1 a :stored :ok) (:offer m1 a :duplicate :duplicate) (:offer m1 b :conflict :ok)
    (:offer m2 a :stored :stale) (:offer m2 a :stored :ok) (:seal 1) (:reclaim :bodies)
    (:offer m1 c :conflict :identity-conflict-bound)
-   (:query m1 b :duplicate) (:query m1 z :conflict) (:query m3 a :stored)
+   (:query m1 b :evidence) (:query m1 a :duplicate) (:query m1 z :conflict) (:query m3 a :stored)
    (:binding ((m2 a) (m1 b) (m1 a)))))
 (assert-event (equal (fn2-check-identity *fn2-ci-good* 2) '(:ok ((m1 a) (m1 b) (m2 a)) 1 1 1)))
 (assert-event (equal (car (fn2-check-identity (cons '(:offer m9 a :conflict :ok) *fn2-ci-good*) 2)) :identity-error))
@@ -105,5 +112,7 @@
 (assert-event (equal (fn2-check-identity '((:offer m1 a :stored :ok) (:offer m1 b :conflict :none)) 4)
                      '(:identity-error 1 :outcome m1 b :conflict :none)))
 (assert-event (equal (car (fn2-check-identity (append (butlast *fn2-ci-good* 1) '((:binding ((m1 a) (m1 b))))) 2)) :identity-error))
+(assert-event (equal (fn2-check-identity '((:offer m1 a :stored :ok) (:offer m1 b :conflict :ok) (:query m1 b :duplicate)) 4)
+                     '(:identity-error 2 :query m1 b :evidence :duplicate)))
 (assert-event (equal (fn2-check-identity '((:offer m1 a :stored :ok) (:offer m1 b :stored :ok)) 4)
                      '(:identity-error 1 :answer m1 b :conflict :stored)))

@@ -29,21 +29,25 @@
 ; fact is an offer that was recorded, with its state.
 (defun fn2-id-mid (x) (declare (xargs :verify-guards nil)) (car x))
 (defun fn2-id-content (x) (declare (xargs :verify-guards nil)) (cadr x))
-; (exact others): whether (mid, c) is recorded, and how many other contents
-; of mid are.
+(defun fn2-id-state (x) (declare (xargs :verify-guards nil)) (caddr x))
+; (exact others): the state of (mid, c) when it is recorded (:accepted or
+; :conflict, the latter evidence only), else nil; and how many other
+; contents of mid are recorded.
 (defun fn2-id-block-spec (facts mid c)
  (declare (xargs :verify-guards nil))
  (if (atom facts) (list nil 0)
   (let ((rest (fn2-id-block-spec (cdr facts) mid c)))
    (cond ((not (equal (fn2-id-mid (car facts)) mid)) rest)
-         ((equal (fn2-id-content (car facts)) c) (list t (cadr rest)))
+         ((equal (fn2-id-content (car facts)) c) (list (or (fn2-id-state (car facts)) :accepted) (cadr rest)))
          (t (list (car rest) (+ 1 (cadr rest))))))))
 (defun fn2-id-decide-spec (facts mid c)
  (declare (xargs :verify-guards nil))
  (let ((b (fn2-id-block-spec facts mid c)))
-  (cond ((car b) :duplicate) ((< 0 (cadr b)) :conflict) (t :stored))))
-; Offers processed in order: stored and conflicting contents are recorded,
-; the latter while the Message-ID holds fewer than the bound.
+  (cond ((eq (car b) :conflict) :evidence) ((car b) :duplicate) ((< 0 (cadr b)) :conflict) (t :stored))))
+; Offers processed in order: a stored content is recorded as the accepted
+; one, a conflicting content as evidence while the Message-ID holds fewer
+; than the bound. Re-offering accepted content is :duplicate; re-offering
+; content held only as evidence is :evidence (never "already stored").
 (defun fn2-id-record-spec (offers facts)
  (declare (xargs :verify-guards nil))
  (if (atom offers) facts
@@ -51,7 +55,7 @@
          (d (fn2-id-decide-spec facts mid c))
          (facts (if (or (eq d :stored)
                         (and (eq d :conflict) (< (cadr (fn2-id-block-spec facts mid c)) *fn2-identity-contents-max*)))
-                    (cons (list mid c) facts) facts)))
+                    (cons (list mid c (if (eq d :stored) :accepted :conflict)) facts) facts)))
    (fn2-id-record-spec (cdr offers) facts))))
 (defun fn2-id-answers-over (facts queries)
  (declare (xargs :verify-guards nil))
@@ -112,10 +116,12 @@
 ; The decision and the recording (generated after the run assembly).
 ; A decision row D holds one in-flight decision for the offer whose
 ; Message-ID and content are field rows QBASE (+0, +1), readable under the
-; owner QK QS QG. It visits every identity overlay, then every installed
+; owner QK QS QG. It visits every readable identity overlay (active or
+; frozen; a batch's private successor is invisible), then every installed
 ; identity run, positioned at the lower bound LBQ = (Message-ID, empty
-; content), and reads that Message-ID's block: EXACT when (mid, c) is
-; recorded, OTHERS the number of other contents. A run with a filter is
+; content), and reads that Message-ID's block: EXACT is 1 when (mid, c) is
+; recorded as the accepted content, 2 when only as evidence, else 0; OTHERS
+; the number of other contents. A run with a filter is
 ; probed first and skipped when the filter answers :absent (SKIPS counts
 ; those, READS the runs read). Each step is bounded; :more resumes; :miss
 ; asks the caller to load the page the cursor names, :filter-miss the
@@ -123,7 +129,7 @@
 (defcolumns fn2-id-decides
  ((phase (:enum fn2-id-decide-phase (:idle :overlay :run-start :run-scan :done)))
   (src :u32) (qbase :u32) (lbq :u32) (eb :u32) (cursor :u32) (rb :u32)
-  (qk :u8) (qs :u32) (qg :u60) (exact :bool) (others :u32) (rexact :bool) (rothers :u32) (seen :u32)
+  (qk :u8) (qs :u32) (qg :u60) (exact :u8) (others :u32) (rexact :u8) (rothers :u32) (seen :u32)
   (reads :u32) (skips :u32) (bucket :u32) (stamp :u60) (vrun :u60)))
 
 
@@ -173,7 +179,8 @@
 (fn2-fields-preserves fn2-id-lower-query (qbase lbq fn2-fields) :position 1)
 
 ; How a decoded entry at EB (read under EK ES EG) stands to the offer at
-; QBASE: :other-mid (outside the block), :exact, or :other.
+; QBASE: :other-mid (outside the block), :exact (the accepted content),
+; :evidence (the same content held as conflict evidence), or :other.
 (defun fn2-id-classify (eb ek es eg qbase qk qs qg fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool)
   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
@@ -184,7 +191,33 @@
       ((unless (eq code :ok)) (mv code :other-mid))
       ((unless (eq order :eq)) (mv :ok :other-mid))
       ((mv code order) (fn2-run-octets-field-compare (+ eb *fn2-id-con*) (+ qbase *fn2-id-con*) ek es eg qk qs qg fn2-fields fn2-pool)))
-  (mv code (if (eq order :eq) :exact :other))))
+  (cond ((not (eq order :eq)) (mv code :other))
+        ((not (< (+ eb *fn2-identity-entry-field-state*) (fn2-fields-rows fn2-fields))) (mv :bounds :other-mid))
+        ((equal (fn2-fields-value (+ eb *fn2-identity-entry-field-state*) fn2-fields) *fn2-identity-state-conflict*)
+         (mv code :evidence))
+        (t (mv code :exact)))))
+
+;; The next source a decision reads, skipping in one step the rows that are
+;; not its: the first readable identity overlay at or after O (active or
+;; frozen; free rows and private successors are not), and the first live
+;; identity run at or after R; past the last, the table's row count. K bounds
+;; the rows looked at (the caller passes the row count).
+(defun fn2-id-next-overlay (k o fn2-overlays)
+ (declare (xargs :stobjs fn2-overlays :measure (nfix k) :guard (and (fn2-overlays-wfp fn2-overlays) (natp k))))
+ (cond ((not (and (natp o) (< o (fn2-overlays-rows fn2-overlays)) (posp k))) (nfix (fn2-overlays-rows fn2-overlays)))
+       ((and (equal (fn2-overlays-schema o fn2-overlays) 1)
+             (member (fn2-overlays-phase o fn2-overlays) (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*)))
+        o)
+       (t (fn2-id-next-overlay (- k 1) (+ 1 o) fn2-overlays))))
+(defthm fn2-id-next-overlay-natp (natp (fn2-id-next-overlay k o fn2-overlays)) :rule-classes :type-prescription)
+(defun fn2-id-next-run (k r fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :measure (nfix k) :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp k))))
+ (cond ((not (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)) (posp k))) (nfix (fn2-run-installed-rows fn2-run-installed)))
+       ((and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
+             (equal (fn2-run-installed-schema r fn2-run-installed) 1))
+        r)
+       (t (fn2-id-next-run (- k 1) (+ 1 r) fn2-run-installed))))
+(defthm fn2-id-next-run-natp (natp (fn2-id-next-run k r fn2-run-installed)) :rule-classes :type-prescription)
 
 ; Fold inside a function that returns (mv code fn2-id-decides fn2-fields).
 (defmacro fn2-id-decide-fold* (d phase src exact others)
@@ -214,7 +247,8 @@
          ((unless (eq code :ok)) (mv code exact others fn2-fields)))
      (case class
       (:other-mid (mv :ok exact others fn2-fields))
-      (:exact (fn2-id-overlay-walk (- n 1) o (+ 1 i) eb qbase qk qs qg t others fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (:exact (fn2-id-overlay-walk (- n 1) o (+ 1 i) eb qbase qk qs qg 1 others fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (:evidence (fn2-id-overlay-walk (- n 1) o (+ 1 i) eb qbase qk qs qg 2 others fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       (otherwise (fn2-id-overlay-walk (- n 1) o (+ 1 i) eb qbase qk qs qg exact (+ 1 others) fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))))
    (fn2-fc-shape fn2-id-overlay-walk-shape
     (fn2-id-overlay-walk n o i eb qbase qk qs qg exact others fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
@@ -266,7 +300,7 @@
    (defun fn2-id-decide-fold (d phase src exact others fn2-id-decides)
     (declare (xargs :stobjs fn2-id-decides :guard (fn2-id-decides-wfp fn2-id-decides)))
     (b* (((unless (and (natp d) (< d (fn2-id-decides-rows fn2-id-decides)))) (mv :bounds fn2-id-decides))
-         (e (if (or exact (equal (fn2-id-decides-exact d fn2-id-decides) 1)) 1 0))
+         (e (cond ((equal exact 1) 1) ((equal exact 2) 2) (t (fn2-id-decides-exact d fn2-id-decides))))
          (o (min 4294967295 (+ (nfix others) (fn2-id-decides-others d fn2-id-decides))))
          ((unless (and (natp phase) (< phase *fn2-id-decide-phase-count*) (unsigned-byte-p 32 src))) (mv :bounds fn2-id-decides))
          (fn2-id-decides (fn2-id-decides-put d (phase phase) (src src) (exact e) (others o) (rexact 0) (rothers 0) (seen 0))))
@@ -277,12 +311,9 @@
      :guard (and (fn2-id-decides-wfp fn2-id-decides) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
                  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp d) (< d (fn2-id-decides-rows fn2-id-decides)))
      :guard-hints (("Goal" :in-theory (disable fn2-id-decide-fold)))))
-    (b* ((o (fn2-id-decides-src d fn2-id-decides))
+    (b* ((o (fn2-id-next-overlay (fn2-overlays-rows fn2-overlays) (fn2-id-decides-src d fn2-id-decides) fn2-overlays))
          ((unless (< o (fn2-overlays-rows fn2-overlays)))
           (fn2-id-decide-fold* d *fn2-id-decide-phase-run-start* 0 nil 0))
-         ((unless (and (equal (fn2-overlays-schema o fn2-overlays) 1)
-                       (member (fn2-overlays-phase o fn2-overlays) (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*))))
-          (fn2-id-decide-fold* d *fn2-id-decide-phase-overlay* (+ 1 o) nil 0))
          ((mv code exact others fn2-fields)
           (fn2-id-overlay-block o (fn2-id-decides-eb d fn2-id-decides) (fn2-id-decides-lbq d fn2-id-decides)
                                 (fn2-id-decides-qbase d fn2-id-decides) (fn2-id-decides-qk d fn2-id-decides)
@@ -312,13 +343,9 @@
                  (fn2-run-cache-wfp fn2-run-cache) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
                  (natp d) (< d (fn2-id-decides-rows fn2-id-decides)))
      :guard-hints (("Goal" :in-theory (disable fn2-id-decide-fold fn2-run-cursor-start)))))
-    (b* ((r (fn2-id-decides-src d fn2-id-decides))
+    (b* ((r (fn2-id-next-run (fn2-run-installed-rows fn2-run-installed) (fn2-id-decides-src d fn2-id-decides) fn2-run-installed))
          ((unless (< r (fn2-run-installed-rows fn2-run-installed)))
-          (mv-let (code fn2-id-decides) (fn2-id-decide-fold d *fn2-id-decide-phase-done* r nil 0 fn2-id-decides)
-           (mv code fn2-id-decides fn2-run-cursors fn2-fields)))
-         ((unless (and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
-                       (equal (fn2-run-installed-schema r fn2-run-installed) 1)))
-          (mv-let (code fn2-id-decides) (fn2-id-decide-fold d *fn2-id-decide-phase-run-start* (+ 1 r) nil 0 fn2-id-decides)
+          (mv-let (code fn2-id-decides) (fn2-id-decide-fold d *fn2-id-decide-phase-done* 0 nil 0 fn2-id-decides)
            (mv code fn2-id-decides fn2-run-cursors fn2-fields)))
          ((mv probe fn2-fields)
           (fn2-id-filter r (fn2-id-decides-eb d fn2-id-decides) (fn2-id-decides-qbase d fn2-id-decides) (fn2-id-decides-qk d fn2-id-decides)
@@ -351,7 +378,8 @@
      :guard-hints (("Goal" :in-theory (disable fn2-id-decide-fold fn2-run-scan-step fn2-id-classify fn2-fields-rows
                                                fn2-run-cursors-rows fn2-run-paths-rows fn2-id-decides-src fn2-id-decides-qbase fn2-id-decides-lbq fn2-id-decides-eb fn2-id-decides-cursor fn2-id-decides-rb fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg fn2-id-decides-exact fn2-id-decides-others fn2-id-decides-rexact fn2-id-decides-rothers fn2-id-decides-seen fn2-run-cursors-rb fn2-run-cursors-okind fn2-run-cursors-oslot fn2-run-cursors-ogen)))))
     (b* ((c (fn2-id-decides-cursor d fn2-id-decides)) (r (nfix (fn2-id-decides-src d fn2-id-decides)))
-         (rexact (equal (fn2-id-decides-rexact d fn2-id-decides) 1)) (rothers (nfix (fn2-id-decides-rothers d fn2-id-decides)))
+         (rexact (fn2-id-decides-rexact d fn2-id-decides)) (rothers (nfix (fn2-id-decides-rothers d fn2-id-decides)))
+         ((unless (unsigned-byte-p 8 rexact)) (mv :bounds fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields))
          ((mv code fn2-run-cursors fn2-run-paths fn2-fields)
           (fn2-run-scan-step c budget (fn2-id-decides-lbq d fn2-id-decides) (fn2-id-decides-qk d fn2-id-decides)
                              (fn2-id-decides-qs d fn2-id-decides) (fn2-id-decides-qg d fn2-id-decides)
@@ -376,14 +404,15 @@
          ((when (or (eq class :other-mid) (< *fn2-id-block-max* seen)))
           (mv-let (c2 fn2-id-decides) (fn2-id-decide-fold d *fn2-id-decide-phase-run-start* (+ 1 r) rexact rothers fn2-id-decides)
            (mv (if (eq c2 :ok) :more c2) fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)))
-         (fn2-id-decides (fn2-id-decides-put d (rexact (if (or rexact (eq class :exact)) 1 0))
-                                             (rothers (min 4294967295 (+ rothers (if (eq class :exact) 0 1))))
+         (fn2-id-decides (fn2-id-decides-put d (rexact (case class (:exact 1) (:evidence 2) (otherwise rexact)))
+                                             (rothers (min 4294967295 (+ rothers (if (member-eq class '(:exact :evidence)) 0 1))))
                                              (seen (min 4294967295 seen)))))
      (mv :more fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)))
    (in-theory (disable fn2-id-step-overlay fn2-id-step-run-start fn2-id-step-run-scan))
 
    ;; One bounded step of decision D: :more, :miss, or the answer :stored,
-   ;; :duplicate or :conflict.
+   ;; :duplicate (the accepted content), :evidence (the content is held only
+   ;; as conflict evidence) or :conflict.
    (defun fn2-id-decide-step (d budget fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
                                fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
@@ -404,6 +433,7 @@
        (fn2-id-step-run-scan d budget fn2-id-decides fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
       ((equal phase *fn2-id-decide-phase-done*)
        (mv (cond ((equal (fn2-id-decides-exact d fn2-id-decides) 1) :duplicate)
+                 ((equal (fn2-id-decides-exact d fn2-id-decides) 2) :evidence)
                  ((< 0 (fn2-id-decides-others d fn2-id-decides)) :conflict)
                  (t :stored))
            fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields))
@@ -414,7 +444,7 @@
    ;; holds fewer than the bound; :duplicate records nothing. A decision
    ;; whose bucket's stamp or the identity version moved since it started is
    ;; :stale before anything else (its verdict, refusals included, may be
-   ;; wrong: decide again). EBASE is scratch for the entry; the offer's octets must be
+   ;; wrong: decide again); :evidence records nothing either. EBASE is scratch for the entry; the offer's octets must be
    ;; readable under the overlay's owner (they are copied into its arena).
    (defun fn2-id-record-insert (d o ebase article binding principal fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
@@ -457,6 +487,7 @@
                               (fn2-id-decides-vrun d fn2-id-decides))))
           (mv :stale fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((when (equal (fn2-id-decides-exact d fn2-id-decides) 1)) (mv :duplicate fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((when (equal (fn2-id-decides-exact d fn2-id-decides) 2)) (mv :evidence fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (< (fn2-id-decides-others d fn2-id-decides) *fn2-identity-contents-max*))
           (mv :identity-conflict-bound fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (unsigned-byte-p 60 (+ 1 (nfix stamp)))) (mv :bounds fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
@@ -718,7 +749,7 @@
     (implies (and (fn2-id-offersp offers) (<= (len offers) 40) (fn2-id-offersp queries) (natp split))
              (equal (caddr (fn2-identity-decide-image offers split nil queries)) (fn2-id-answers-spec offers queries)))
     :teeth (fn2-exact-identity-positive fn2-exact-identity-negative)
-    :doc "The identity decision for (mid, c) is :duplicate iff (mid, c) is recorded, :conflict iff another content of mid is, else :stored; it stays exact after the offers' bodies are released and after any split of the facts between the overlay and sealed runs.")
+    :doc "The identity decision for (mid, c) is :duplicate iff (mid, c) is recorded as the accepted content, :evidence iff it is recorded only as conflict evidence, :conflict iff another content of mid is, else :stored; it stays exact after the offers' bodies are released and after any split of the facts between the overlay and sealed runs.")
    (defthm-owed fn2-identity-binding-converges (o1 s1 o2 s2)
     (implies (and (fn2-id-offersp o1) (fn2-id-offersp o2) (<= (len o1) 40) (<= (len o2) 40) (natp s1) (natp s2)
                   (equal (fn2-id-binding-spec o1) (fn2-id-binding-spec o2)) (fn2-id-within-bound o1))

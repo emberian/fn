@@ -54,10 +54,17 @@
  :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :digest-slots (fn2-b-digest-minimum profile) profile))
   (<= (fn2-b-digest-minimum profile) (fn2-b-capacity :digest-slots (fn2-b-digest-minimum profile) profile)))
  :why "Hasher stripes and immutable predecessor seals survive commit yields and row reuse.")
+; Field rows: a 128-row stripe per format slot from row 0 (commit.lisp), then
+; layer C's 256-row identity-decision stripe per transaction at the table's end
+; (C-S1, machines-c.lisp).
+(defun fn2-b-field-rows (profile)
+ (declare (xargs :guard t))
+ (+ (* 128 (nfix (fn2-b-capacity :format-slots 2 profile))) (* 256 (nfix (fn2-profile-t profile)))))
+(in-theory (disable fn2-b-field-rows))
 (defcorechild fn2-core-fields fn2-fields
- :init (fn2-fields-init (fn2-b-capacity :format-field-slots 256 profile) fn2-fields)
- :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-field-slots 256 profile))
-                (<= 256 (fn2-b-capacity :format-field-slots 256 profile)))
+ :init (fn2-fields-init (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile) fn2-fields)
+ :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile))
+                (<= 256 (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))
  :why "Commit work survives scheduler yields.")
 ; Each resource row retains its exact issuing op generation as edge holder.
 (defcolumns fn2-commit-io
